@@ -3,10 +3,25 @@
  *
  * The template ships one generated sample scenario (the scale fixture in
  * src/data/scaleFixture.ts, produced by scripts/generate_scale_fixture.mjs).
- * An import pipeline (generate_fallbacks.py, plan Phase 3) replaces this
- * registry with generated content for a real organization. All lookups are
- * keyed by scenario / path UUIDs, so foreign content simply misses.
+ * The import pipeline (scripts/generate_fallbacks.py --register) replaces the
+ * marker-delimited registry block below with generated content for a real
+ * organization. All lookups are keyed by scenario / path UUIDs, so foreign
+ * content simply misses.
  */
+import type { BlueprintData } from '@/types/blueprint'
+
+type FallbackPathListItem = {
+  id: string
+  name: string
+  description: string | null
+  note: string | null
+  path_type: BlueprintData['path']['path_type']
+}
+
+// GENERATED-BLUEPRINT-REGISTRY:BEGIN — managed by scripts/generate_fallbacks.py --register.
+// Everything between the BEGIN/END markers is replaced wholesale on
+// registration; do not hand-edit. Default content wires the template's
+// sample scale fixture.
 import {
   SCALE_TEST_ALTERNATIVE_PATH_FALLBACK,
   SCALE_TEST_ALTERNATIVE_PATH_ID,
@@ -17,7 +32,6 @@ import {
   SCALE_TEST_PATH_FALLBACKS,
   SCALE_TEST_SCENARIO_ID,
 } from '@/data/scaleFixture'
-import type { BlueprintData } from '@/types/blueprint'
 
 /** The template's sample scenario (rendered offline without a database). */
 export const SAMPLE_SCENARIO_ID = SCALE_TEST_SCENARIO_ID
@@ -26,14 +40,6 @@ const FALLBACK_BY_PATH: Record<string, BlueprintData> = {
   [SCALE_TEST_HAPPY_PATH_ID]: SCALE_TEST_HAPPY_PATH_FALLBACK,
   [SCALE_TEST_ALTERNATIVE_PATH_ID]: SCALE_TEST_ALTERNATIVE_PATH_FALLBACK,
   [SCALE_TEST_EXCEPTION_PATH_ID]: SCALE_TEST_EXCEPTION_PATH_FALLBACK,
-}
-
-type FallbackPathListItem = {
-  id: string
-  name: string
-  description: string | null
-  note: string | null
-  path_type: BlueprintData['path']['path_type']
 }
 
 const FALLBACK_PATHS_BY_SCENARIO: Record<string, FallbackPathListItem[]> = {
@@ -52,6 +58,7 @@ const FALLBACK_BY_SCENARIO: Record<string, BlueprintData> = {
 
 /** Paths hidden from pickers/grids until ready in the UI (template: none). */
 const UI_HIDDEN_PATH_IDS_BY_SCENARIO: Record<string, readonly string[]> = {}
+// GENERATED-BLUEPRINT-REGISTRY:END
 
 const EMPTY_FALLBACK_PATHS: FallbackPathListItem[] = []
 
