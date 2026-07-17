@@ -5,8 +5,6 @@ import {
   getCellContentBox,
   getWrapCorridorBounds,
   getWrapLoopRouteY,
-  isReportingAnIssueFrontStageActionStep1ToResolveConnection,
-  isCallOffFrontStageActionStep3ToBackStageActionStep5Connection,
   parseStepIndex,
   type Point,
 } from '@/lib/blueprintArrowGeometry'
@@ -64,21 +62,6 @@ export function detectIntegratedForkGroups(
   const grouped = new Map<string, IntegratedBlueprintTrigger[]>()
 
   for (const trigger of triggers) {
-    if (
-      isReportingAnIssueFrontStageActionStep1ToResolveConnection(
-        trigger.id,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      ) ||
-      isCallOffFrontStageActionStep3ToBackStageActionStep5Connection(
-        trigger.id,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      )
-    ) {
-      continue
-    }
-
     const source = cellById.get(trigger.source_cell_id)
     const target = cellById.get(trigger.target_cell_id)
     if (!source || !target) continue

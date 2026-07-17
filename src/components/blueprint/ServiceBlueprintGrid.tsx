@@ -20,8 +20,7 @@ import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
 import { VisualRowPlayOverlay } from '@/components/blueprint/VisualRowPlayOverlay'
 import { useCollapsedBlueprintLayers } from '@/hooks/useCollapsedBlueprintLayers'
 import {
-  BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN,
-  BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
   BLUEPRINT_ROW_MIN_HEIGHT,
   INTERACTION_LINE_LABEL,
@@ -35,8 +34,7 @@ import {
   getBlueprintGridMinWidth,
   getLayerRowMinHeight,
   getVisualCellButtonMaxHeight,
-  layerHasDiscoveryRailCorridor,
-  layerHasRegularTutorInLaneLoopCorridor,
+  blueprintLayerHasBackwardInLaneLoop,
   layerHasWrapCorridorBelow,
   layerPrecedesBlueprintDivider,
   shouldShowInteractionLineAfter,
@@ -243,28 +241,17 @@ export function ServiceBlueprintGrid({
               )
 
               const flushBottom = layerPrecedesBlueprintDivider(layer, layers)
-              const showDiscoveryCorridorAbove =
-                !collapsed && layerHasDiscoveryRailCorridor(layer, data)
               const showWrapCorridorBelow =
-                !collapsed && layerHasWrapCorridorBelow(layer, data)
+                !collapsed && layerHasWrapCorridorBelow(layer)
               const showInLaneLoopCorridorAbove =
                 !collapsed &&
-                layerHasRegularTutorInLaneLoopCorridor(layer, data)
+                blueprintLayerHasBackwardInLaneLoop(layer, data)
               const showInteractionDivider =
                 !collapsed && shouldShowInteractionLineAfter(layer)
 
               return (
                 <Fragment key={layer.id}>
                   <div className="flex shrink-0 flex-col">
-                    {showDiscoveryCorridorAbove && (
-                      <div
-                        aria-hidden
-                        className="shrink-0"
-                        style={{
-                          height: BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN,
-                        }}
-                      />
-                    )}
                     <BlueprintSwimLane
                       layer={layer}
                       laneStyle={laneStyle}
@@ -408,7 +395,7 @@ function BlueprintSwimLane({
   const layerName = layer.name
   const isVisualLayer = shouldUseVisualContent(layer)
   const loopCorridorHeight = showInLaneLoopCorridorAbove
-    ? BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN
+    ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
     : 0
 
   return (

@@ -8,17 +8,10 @@ import {
 } from 'react'
 import {
   ARROW_VIEWPORT_PAD,
-  buildApplicationRegularTutorRailBusPath,
   buildArrowPath,
   buildBidirectionalArrowPath,
-  buildReportingAnIssueFrontStageActionStep1ToResolvePath,
-  collectOverheadRailFanOutTriggerIds,
-  buildOverheadRailFanOutDropPath,
-  buildOverheadRailFanOutTrunkPath,
   findBidirectionalTriggerPairs,
-  groupDiscoveryRailTriggers,
   isWrapTrigger,
-  partitionReportingAnIssueFsaStep1ToResolveTriggers,
 } from '@/lib/blueprintArrowGeometry'
 import {
   buildIntegratedForkDetourBranchPath,
@@ -136,19 +129,9 @@ export function IntegratedTriggerArrows({
     [paths],
   )
 
-  const fanOutTriggerIds = useMemo(
-    () => collectOverheadRailFanOutTriggerIds(triggers),
-    [triggers],
-  )
-
   const { groups: forkMeta, forkTriggerIds } = useMemo(
-    () =>
-      detectIntegratedForkGroups(
-        triggers.filter((trigger) => !fanOutTriggerIds.has(trigger.id)),
-        cells,
-        steps,
-      ),
-    [triggers, cells, steps, fanOutTriggerIds],
+    () => detectIntegratedForkGroups(triggers, cells, steps),
+    [triggers, cells, steps],
   )
 
   const updateArrows = useCallback(() => {
@@ -162,153 +145,6 @@ export function IntegratedTriggerArrows({
     const nextSimple: SimpleSegment[] = []
     const nextForks: ForkRenderGroup[] = []
     const nonForkTriggers = triggers.filter((t) => !forkTriggerIds.has(t.id))
-    const { resolveTriggers, otherTriggers: railInputTriggers } =
-      partitionReportingAnIssueFsaStep1ToResolveTriggers(nonForkTriggers)
-
-    for (const trigger of resolveTriggers) {
-      const sourceEl = content.querySelector<HTMLElement>(
-        `[data-blueprint-cell="${trigger.source_cell_id}"]`,
-      )
-      const targetEl = content.querySelector<HTMLElement>(
-        `[data-blueprint-cell="${trigger.target_cell_id}"]`,
-      )
-      if (!sourceEl || !targetEl) continue
-
-      const wrap = isWrapTrigger(
-        sourceEl,
-        targetEl,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      )
-      if (layer === 'forward' && wrap) continue
-      if (layer === 'wrap' && !wrap) continue
-
-      const d = buildReportingAnIssueFrontStageActionStep1ToResolvePath(
-        sourceEl,
-        targetEl,
-        content,
-      )
-      if (!d) continue
-
-      const style = resolveSegmentStyle(trigger.path_id, pathById)
-      nextSimple.push({
-        id: trigger.id,
-        d,
-        colorKey: style.colorKey,
-        arrowColor: style.arrowColor,
-        opacity: trigger.opacity,
-      })
-    }
-
-    const { busGroups, fanOutGroups, remaining } = groupDiscoveryRailTriggers(
-      railInputTriggers,
-      content,
-    )
-
-    for (const group of fanOutGroups) {
-      const sampleTrigger = nonForkTriggers.find((entry) =>
-        group.branches.some((branch) => branch.triggerId === entry.id),
-      )
-      const trunkStyle = resolveSegmentStyle(
-        sampleTrigger?.path_id ?? '',
-        pathById,
-      )
-      const targetEls = group.branches.map((branch) => branch.targetEl)
-      const trunk = buildOverheadRailFanOutTrunkPath(
-        group.sourceEl,
-        targetEls,
-        content,
-      )
-      if (trunk) {
-        nextSimple.push({
-          id: `${group.sourceCellId}-trunk`,
-          d: trunk,
-          colorKey: trunkStyle.colorKey,
-          arrowColor: trunkStyle.arrowColor,
-          opacity: 1,
-          showMarker: false,
-        })
-      }
-
-      for (const branch of group.branches) {
-        const trigger = nonForkTriggers.find(
-          (entry) => entry.id === branch.triggerId,
-        )
-        const branchStyle = resolveSegmentStyle(trigger?.path_id ?? '', pathById)
-        const d = buildOverheadRailFanOutDropPath(
-          group.sourceEl,
-          branch.targetEl,
-          content,
-        )
-        if (!d) continue
-
-        nextSimple.push({
-          id: branch.triggerId,
-          d,
-          colorKey: branchStyle.colorKey,
-          arrowColor: branchStyle.arrowColor,
-          opacity: trigger?.opacity ?? 1,
-        })
-      }
-    }
-
-    for (const group of busGroups) {
-      const triggersInGroup = nonForkTriggers.filter((trigger) =>
-        group.triggerIds.includes(trigger.id),
-      )
-      const byPathId = new Map<
-        string,
-        { sourceEls: HTMLElement[]; opacity: number; triggerIds: string[] }
-      >()
-
-      for (const trigger of triggersInGroup) {
-        const sourceEl = content.querySelector<HTMLElement>(
-          `[data-blueprint-cell="${trigger.source_cell_id}"]`,
-        )
-        if (!sourceEl) continue
-
-        const existing = byPathId.get(trigger.path_id)
-        if (existing) {
-          existing.sourceEls.push(sourceEl)
-          existing.triggerIds.push(trigger.id)
-          existing.opacity = Math.max(existing.opacity, trigger.opacity)
-        } else {
-          byPathId.set(trigger.path_id, {
-            sourceEls: [sourceEl],
-            opacity: trigger.opacity,
-            triggerIds: [trigger.id],
-          })
-        }
-      }
-
-      for (const [pathId, pathGroup] of byPathId) {
-        const style = resolveSegmentStyle(pathId, pathById)
-        const targetEl =
-          triggersInGroup
-            .filter((trigger) => trigger.path_id === pathId)
-            .map((trigger) =>
-              content.querySelector<HTMLElement>(
-                `[data-blueprint-cell="${trigger.target_cell_id}"]`,
-              ),
-            )
-            .find((el): el is HTMLElement => el !== null) ?? group.targetEl
-
-        const d = buildApplicationRegularTutorRailBusPath(
-          pathGroup.sourceEls,
-          targetEl,
-          content,
-        )
-        if (!d) continue
-
-        nextSimple.push({
-          id: `${group.targetCellId}-${pathId}`,
-          d,
-          colorKey: style.colorKey,
-          arrowColor: style.arrowColor,
-          opacity: pathGroup.opacity,
-        })
-      }
-    }
 
     for (const group of forkMeta) {
       const sampleBranch = group.branches[0]
@@ -330,12 +166,7 @@ export function IntegratedTriggerArrows({
         )
         if (!targetEl) continue
 
-        const wrap = isWrapTrigger(
-          sourceEl,
-          targetEl,
-          branch.source_cell_id,
-          branch.target_cell_id,
-        )
+        const wrap = isWrapTrigger(sourceEl, targetEl)
         if (layer === 'forward' && wrap) continue
         if (layer === 'wrap' && !wrap) continue
 
@@ -395,7 +226,7 @@ export function IntegratedTriggerArrows({
     }
 
     const { pairs, remaining: unpaired } =
-      findBidirectionalTriggerPairs(remaining)
+      findBidirectionalTriggerPairs(nonForkTriggers)
 
     for (const pair of pairs) {
       const cellAEl = content.querySelector<HTMLElement>(
@@ -406,12 +237,7 @@ export function IntegratedTriggerArrows({
       )
       if (!cellAEl || !cellBEl) continue
 
-      const wrap = isWrapTrigger(
-        cellAEl,
-        cellBEl,
-        pair.cellAId,
-        pair.cellBId,
-      )
+      const wrap = isWrapTrigger(cellAEl, cellBEl)
       if (layer === 'forward' && wrap) continue
       if (layer === 'wrap' && !wrap) continue
 
@@ -438,23 +264,11 @@ export function IntegratedTriggerArrows({
       )
       if (!sourceEl || !targetEl) continue
 
-      const wrap = isWrapTrigger(
-        sourceEl,
-        targetEl,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      )
+      const wrap = isWrapTrigger(sourceEl, targetEl)
       if (layer === 'forward' && wrap) continue
       if (layer === 'wrap' && !wrap) continue
 
-      const d = buildArrowPath(
-        sourceEl,
-        targetEl,
-        content,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-        trigger.id,
-      )
+      const d = buildArrowPath(sourceEl, targetEl, content)
       if (!d) continue
 
       const style = resolveSegmentStyle(trigger.path_id, pathById)

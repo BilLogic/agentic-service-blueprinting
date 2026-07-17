@@ -19,9 +19,8 @@ import {
 import { useCollapsedBlueprintLayers } from '@/hooks/useCollapsedBlueprintLayers'
 import { itemsInSelectionOrder } from '@/lib/pathSelection'
 import {
-  BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN,
   BLUEPRINT_LAYER_ROW_GAP,
-  BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
   STEP_COLUMN_GAP,
   STEP_COLUMN_WIDTH,
@@ -424,14 +423,11 @@ function IntegratedContentRow({
     row.kind === 'visibility' ||
     row.kind === 'internalInteraction'
   const isLayerRow = row.kind === 'layer'
-  const corridorAbove = row.wrapCorridorAbove
-    ? BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN
-    : 0
   const corridorBelow = row.wrapCorridorBelow
     ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
     : 0
   const inLaneLoopCorridorAbove = row.inLaneLoopCorridorAbove
-    ? BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN
+    ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
     : 0
 
   return (
@@ -460,9 +456,6 @@ function IntegratedContentRow({
       }}
       {...(isDivider ? { role: 'separator' as const } : {})}
     >
-      {corridorAbove > 0 && (
-        <div aria-hidden className="shrink-0" style={{ height: corridorAbove }} />
-      )}
       <div
         className={cn(
           'min-h-0',

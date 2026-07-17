@@ -5,7 +5,6 @@ import {
   type FlowConnectionDirection,
   type FlowInteractionDirection,
 } from '@/lib/blueprintCellConnections'
-import { abbreviateConnectionLayerName } from '@/lib/blueprintLayout'
 
 export type CellDependencyKind = 'connection' | 'interaction' | 'tech' | 'link'
 
@@ -80,7 +79,7 @@ export function buildCellDependencyRows(options: {
     rows.push({
       id: `connection:${connection.cellId}`,
       kind: 'connection',
-      label: abbreviateConnectionLayerName(connection.layerName),
+      label: connection.layerName,
       detail: connection.stepName,
       direction: connection.direction,
       cellId: connection.cellId,
@@ -101,7 +100,7 @@ export function buildCellDependencyRows(options: {
           id: `interaction-tech:${interaction.cellId}:${item}`,
           kind: 'interaction',
           label: item,
-          detail: abbreviateConnectionLayerName(interaction.layerName),
+          detail: interaction.layerName,
           direction: interaction.direction,
           cellId: interaction.cellId,
           techItem: item,
@@ -113,7 +112,7 @@ export function buildCellDependencyRows(options: {
     rows.push({
       id: `interaction:${interaction.cellId}`,
       kind: 'interaction',
-      label: abbreviateConnectionLayerName(interaction.layerName),
+      label: interaction.layerName,
       detail: interaction.contentPreview || interaction.stepName,
       direction: interaction.direction,
       cellId: interaction.cellId,
@@ -129,7 +128,7 @@ export function buildCellDependencyRows(options: {
       kind: 'tech',
       label: entry.item,
       detail: entry.layerName
-        ? abbreviateConnectionLayerName(entry.layerName)
+        ? entry.layerName
         : undefined,
       cellId: entry.cellId,
       techItem: entry.item,

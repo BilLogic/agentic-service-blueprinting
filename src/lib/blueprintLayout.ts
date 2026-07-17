@@ -10,10 +10,6 @@ import {
   SUPPORT_SYSTEMS_ROLE,
   VISUAL_ROLE,
 } from '@/lib/layerRoles'
-import {
-  isParallelSessionLeadBottomWrapTrigger,
-  isParallelSessionPartnerWrapTrigger,
-} from '@/data/parallelSessionPartnerLead'
 import type { BlueprintData, BlueprintLayer } from '@/types/blueprint'
 
 /** Minimal layer shape for role-driven layout checks. */
@@ -84,10 +80,7 @@ export function shouldShowVisibilityLineAfter(
 /**
  * The internal interaction line marks the hand-off from backstage actions to
  * support systems, so it draws after a backstage-actions layer only when a
- * support-systems lane follows. (PLUS 'Back Stage Actions' lanes — backfilled
- * to `backstage_actions` — are followed by tech or generic support-action
- * lanes and never drew this line under name matching; anchoring on the
- * following lane keeps their rendering unchanged.)
+ * support-systems lane follows.
  */
 export function shouldShowInternalInteractionLineAfter(
   layer: BlueprintLayer,
@@ -132,264 +125,102 @@ export const INTERNAL_INTERACTION_LINE_LABEL = 'INTERNAL INTERACTION LINE'
 export const BLUEPRINT_DIVIDER_ROW_HEIGHT = 28
 /** Right inset so interaction / visibility lines stop before the board edge. */
 export const BLUEPRINT_DIVIDER_LINE_END_INSET = 16
-/** Transparent margin above the interaction line for the Regular Tutor loop arrow. */
+/** Transparent margin above the interaction line for cross-lane loop arrows. */
 export const BLUEPRINT_WRAP_CORRIDOR_MARGIN = 36
-/** Space above the Regular Tutor row for overhead-rail arrows (Discovery, Call-off, etc.). */
-export const BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN = 36
-/** Space at the top of the Regular Tutor row for in-lane loop-back arrows. */
-export const BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN = 32
+/** Space at the top of a lane for in-lane loop-back arrows. */
+export const BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN = 32
 
-/** Regular Tutor cell ids that route forward connectors on the overhead rail. */
-export const OVERHEAD_RAIL_REGULAR_TUTOR_CELL_PATTERN =
-  /000000(?:07|72|17)(\d{2})03$/
+/**
+ * Structural blueprint shape for in-lane loop detection — satisfied by both
+ * `BlueprintData` (single path) and `IntegratedBlueprintData` (merged paths).
+ */
+export type InLaneLoopLayoutSource = {
+  layers: BlueprintLayer[]
+  steps: ReadonlyArray<{ id: string; column_position: number }>
+  cells: ReadonlyArray<{ id: string; layer_id: string; step_id: string }>
+  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>
+}
 
-/** Application discovery triggers that span forward across Regular Tutor columns. */
-export function triggersIncludeDiscoveryRail(
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>,
+/** Map a canonical swimlane row onto a path's layer ids (paths use different layer uuids). */
+export function resolveBlueprintLayer(
+  canonicalLayer: BlueprintLayer,
+  blueprint: Pick<InLaneLoopLayoutSource, 'layers'>,
+): BlueprintLayer {
+  return (
+    blueprint.layers.find((layer) => layer.id === canonicalLayer.id) ??
+    blueprint.layers.find((layer) => layer.name === canonicalLayer.name) ??
+    blueprint.layers.find(
+      (layer) =>
+        layer.row_position === canonicalLayer.row_position &&
+        layer.name === canonicalLayer.name,
+    ) ??
+    blueprint.layers.find(
+      (layer) => layer.row_position === canonicalLayer.row_position,
+    ) ??
+    canonicalLayer
+  )
+}
+
+/**
+ * Generic in-lane loop-corridor rule: a layer needs loop headroom at the top
+ * of its lane when it contains a trigger whose source and target cells are
+ * BOTH in that layer with the source at a later column than the target — a
+ * backward in-lane loop. Derived purely from blueprint data (cell layer
+ * membership + step column positions), with no scenario or layer identity.
+ */
+export function blueprintLayerHasBackwardInLaneLoop(
+  canonicalLayer: BlueprintLayer,
+  source: InLaneLoopLayoutSource,
 ): boolean {
-  return triggers.some((trigger) => {
-    const { source_cell_id: src, target_cell_id: tgt } = trigger
+  const layer = resolveBlueprintLayer(canonicalLayer, source)
+  const cellById = new Map(source.cells.map((cell) => [cell.id, cell]))
+  const columnByStepId = new Map(
+    source.steps.map((step) => [step.id, step.column_position]),
+  )
+
+  return source.triggers.some((trigger) => {
+    const sourceCell = cellById.get(trigger.source_cell_id)
+    const targetCell = cellById.get(trigger.target_cell_id)
+    if (!sourceCell || !targetCell) return false
+    if (
+      sourceCell.layer_id !== layer.id ||
+      targetCell.layer_id !== layer.id
+    ) {
+      return false
+    }
+
+    const sourceColumn = columnByStepId.get(sourceCell.step_id)
+    const targetColumn = columnByStepId.get(targetCell.step_id)
     return (
-      OVERHEAD_RAIL_REGULAR_TUTOR_CELL_PATTERN.test(src) &&
-      OVERHEAD_RAIL_REGULAR_TUTOR_CELL_PATTERN.test(tgt) &&
-      src !== tgt
+      sourceColumn !== undefined &&
+      targetColumn !== undefined &&
+      targetColumn < sourceColumn
     )
   })
 }
 
-export function blueprintHasDiscoveryRailTriggers(
-  data: BlueprintData,
+/** Canonical row needs an in-lane loop corridor when any compared variant has one. */
+export function layerHasInLaneLoopCorridor(
+  canonicalLayer: BlueprintLayer,
+  sources: readonly InLaneLoopLayoutSource[],
 ): boolean {
-  return triggersIncludeDiscoveryRail(data.triggers)
-}
-
-export function layerHasDiscoveryRailCorridor(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  if (layer.name !== 'Regular Tutor') return false
-  if (data) {
-    const blueprints = Array.isArray(data) ? data : [data]
-    if (blueprints.some(blueprintHasDiscoveryRailTriggers)) return true
-  }
-  if (extraTriggers && triggersIncludeDiscoveryRail(extraTriggers)) {
-    return true
-  }
-  return false
-}
-
-export const PARTNER_ACTION_LAYER_NAME = 'Partner Action: Teacher'
-
-export function abbreviateConnectionLayerName(layerName: string): string {
-  if (layerName === PARTNER_ACTION_LAYER_NAME) return 'Teacher'
-  return layerName
-}
-
-export function triggersIncludePartnerActionOverheadWrap(
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>,
-): boolean {
-  return triggers.some((trigger) =>
-    isParallelSessionPartnerWrapTrigger(
-      trigger.source_cell_id,
-      trigger.target_cell_id,
-    ),
+  return sources.some((source) =>
+    blueprintLayerHasBackwardInLaneLoop(canonicalLayer, source),
   )
 }
 
-export function blueprintHasPartnerActionOverheadWrapTriggers(
-  data: BlueprintData,
-): boolean {
-  return triggersIncludePartnerActionOverheadWrap(data.triggers)
+/** Lanes with a cross-lane loop corridor below (above the interaction line). */
+export function layerHasWrapCorridorBelow(layer: BlueprintLayer): boolean {
+  return shouldShowInteractionLineAfter(layer)
 }
 
-export function layerHasPartnerActionOverheadWrapCorridor(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  if (layer.name !== PARTNER_ACTION_LAYER_NAME) return false
-  if (data) {
-    const blueprints = Array.isArray(data) ? data : [data]
-    if (blueprints.some(blueprintHasPartnerActionOverheadWrapTriggers)) {
-      return true
-    }
-  }
-  if (extraTriggers && triggersIncludePartnerActionOverheadWrap(extraTriggers)) {
-    return true
-  }
-  return false
-}
-
-export const LEAD_TUTOR_LAYER_NAME = 'Lead Tutor'
-
-export function triggersIncludeLeadTutorBottomWrap(
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>,
-): boolean {
-  return triggers.some((trigger) =>
-    isParallelSessionLeadBottomWrapTrigger(
-      trigger.source_cell_id,
-      trigger.target_cell_id,
-    ),
-  )
-}
-
-export function blueprintHasLeadTutorBottomWrapTriggers(
-  data: BlueprintData,
-): boolean {
-  return triggersIncludeLeadTutorBottomWrap(data.triggers)
-}
-
-export function layerHasLeadTutorBottomWrapCorridor(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  if (layer.name !== LEAD_TUTOR_LAYER_NAME) return false
-  if (data) {
-    const blueprints = Array.isArray(data) ? data : [data]
-    if (blueprints.some(blueprintHasLeadTutorBottomWrapTriggers)) {
-      return true
-    }
-  }
-  if (extraTriggers && triggersIncludeLeadTutorBottomWrap(extraTriggers)) {
-    return true
-  }
-  return false
-}
-
-/** @deprecated Lead Tutor loops route below the row, not overhead. */
-export function triggersIncludeLeadTutorOverheadWrap(
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>,
-): boolean {
-  return triggersIncludeLeadTutorBottomWrap(triggers)
-}
-
-/** @deprecated Lead Tutor loops route below the row, not overhead. */
-export function blueprintHasLeadTutorOverheadWrapTriggers(
-  data: BlueprintData,
-): boolean {
-  return blueprintHasLeadTutorBottomWrapTriggers(data)
-}
-
-/** @deprecated Lead Tutor loops route below the row, not overhead. */
-export function layerHasLeadTutorOverheadWrapCorridor(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  return layerHasLeadTutorBottomWrapCorridor(layer, data, extraTriggers)
-}
-
-export function layerHasWrapCorridorBelow(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  return (
-    shouldShowInteractionLineAfter(layer) ||
-    layerHasLeadTutorBottomWrapCorridor(layer, data, extraTriggers)
-  )
-}
-
-const REGULAR_TUTOR_LAYER_CELL_ID_PATTERN = /(\d{2})03$/
-
-export function isRegularTutorInLaneLoopTrigger(
-  sourceCellId: string,
-  targetCellId: string,
-): boolean {
-  const sourceMatch = sourceCellId.match(REGULAR_TUTOR_LAYER_CELL_ID_PATTERN)
-  const targetMatch = targetCellId.match(REGULAR_TUTOR_LAYER_CELL_ID_PATTERN)
-  if (!sourceMatch || !targetMatch) return false
-
-  const sourceStep = Number.parseInt(sourceMatch[1]!, 10)
-  const targetStep = Number.parseInt(targetMatch[1]!, 10)
-  return targetStep < sourceStep
-}
-
-export function triggersIncludeRegularTutorInLaneLoop(
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>,
-): boolean {
-  return triggers.some((trigger) =>
-    isRegularTutorInLaneLoopTrigger(
-      trigger.source_cell_id,
-      trigger.target_cell_id,
-    ),
-  )
-}
-
-export function blueprintHasRegularTutorInLaneLoopTriggers(
-  data: BlueprintData,
-): boolean {
-  return triggersIncludeRegularTutorInLaneLoop(data.triggers)
-}
-
-export function layerHasRegularTutorInLaneLoopCorridor(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  if (layer.name !== 'Regular Tutor') return false
-  if (data) {
-    const blueprints = Array.isArray(data) ? data : [data]
-    if (blueprints.some(blueprintHasRegularTutorInLaneLoopTriggers)) {
-      return true
-    }
-  }
-  if (extraTriggers && triggersIncludeRegularTutorInLaneLoop(extraTriggers)) {
-    return true
-  }
-  return false
-}
-
-export function countRegularTutorInLaneLoopCorridorMargins(
+export function countInLaneLoopCorridorMargins(
   layers: BlueprintLayer[],
   data?: BlueprintData,
 ): number {
   if (!data) return 0
   return layers.filter((layer) =>
-    layerHasRegularTutorInLaneLoopCorridor(layer, data),
-  ).length
-}
-
-export function layerHasOverheadArrowCorridor(
-  layer: BlueprintLayer,
-  data?: BlueprintData | readonly BlueprintData[],
-  extraTriggers?: ReadonlyArray<{
-    source_cell_id: string
-    target_cell_id: string
-  }>,
-): boolean {
-  return (
-    layerHasDiscoveryRailCorridor(layer, data, extraTriggers) ||
-    layerHasPartnerActionOverheadWrapCorridor(layer, data, extraTriggers)
-  )
-}
-
-export function countDiscoveryRailCorridorMargins(
-  layers: BlueprintLayer[],
-  data: BlueprintData,
-): number {
-  return layers.filter((layer) =>
-    layerHasDiscoveryRailCorridor(layer, data),
+    blueprintLayerHasBackwardInLaneLoop(layer, data),
   ).length
 }
 
@@ -404,14 +235,8 @@ export function countBlueprintDividerRows(layers: BlueprintLayer[]): number {
 
 export function countBlueprintWrapCorridorMargins(
   layers: BlueprintLayer[],
-  data?: BlueprintData,
 ): number {
-  return layers.filter(
-    (layer) =>
-      shouldShowInteractionLineAfter(layer) ||
-      (data !== undefined &&
-        layerHasLeadTutorBottomWrapCorridor(layer, data)),
-  ).length
+  return layers.filter((layer) => layerHasWrapCorridorBelow(layer)).length
 }
 
 export const LAYER_COLUMN_WIDTH = 220
@@ -602,14 +427,11 @@ export function getBlueprintGridMinHeight(
   const dividers =
     countBlueprintDividerRows(data.layers) * BLUEPRINT_DIVIDER_ROW_HEIGHT
   const wrapCorridorMargins =
-    countBlueprintWrapCorridorMargins(data.layers, data) *
+    countBlueprintWrapCorridorMargins(data.layers) *
     BLUEPRINT_WRAP_CORRIDOR_MARGIN
-  const discoveryRailCorridorMargins =
-    countDiscoveryRailCorridorMargins(data.layers, data) *
-    BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN
-  const regularTutorLoopCorridorMargins =
-    countRegularTutorInLaneLoopCorridorMargins(data.layers, data) *
-    BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN
+  const inLaneLoopCorridorMargins =
+    countInLaneLoopCorridorMargins(data.layers, data) *
+    BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
   const layerRows = data.layers.reduce(
     (sum, layer) => sum + getLayerRowMinHeight(layer, data, compact),
     0,
@@ -622,8 +444,7 @@ export function getBlueprintGridMinHeight(
     layerRows +
     dividers +
     wrapCorridorMargins +
-    discoveryRailCorridorMargins +
-    regularTutorLoopCorridorMargins +
+    inLaneLoopCorridorMargins +
     rowGaps
   )
 }
@@ -682,7 +503,7 @@ export function getBlueprintArtboardSize(data: BlueprintData): ArtboardSize {
   return { width, height }
 }
 
-/** Canvas artboard size for multiple side-by-side compact grids (e.g. Warm-Up path compare). */
+/** Canvas artboard size for multiple side-by-side compact grids (path compare). */
 export function getStackedCanvasArtboardSize(
   blueprints: BlueprintData[],
   options?: {

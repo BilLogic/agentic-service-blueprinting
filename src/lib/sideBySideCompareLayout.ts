@@ -9,14 +9,13 @@ import {
   BLUEPRINT_ROW_MIN_HEIGHT,
   BLUEPRINT_ROW_MIN_HEIGHT_COMPACT,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
-  BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN,
-  BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   INTERACTION_LINE_LABEL,
   INTERNAL_INTERACTION_LINE_LABEL,
   VISIBILITY_LINE_LABEL,
   getLayerRowMinHeight,
   getStepColumnsWidth,
-  layerHasOverheadArrowCorridor,
+  layerHasInLaneLoopCorridor,
   layerHasWrapCorridorBelow,
   shouldShowInteractionLineAfter,
   shouldShowInternalInteractionLineAfter,
@@ -28,10 +27,6 @@ import {
   COMPARE_LAYER_COLLAPSED_HEIGHT,
   isBlueprintLayerCollapsed,
 } from '@/lib/blueprintLayerCollapse'
-import {
-  isParallelSessionLeadBottomWrapTrigger,
-  isParallelSessionPartnerWrapTrigger,
-} from '@/data/parallelSessionPartnerLead'
 import { deriveSourceBlueprintsFromIntegrated, mergeIntegratedBlueprint } from '@/lib/mergeIntegratedBlueprint'
 import { PATH_TYPE_SECTION_BORDER_WIDTH } from '@/lib/pathTypeTheme'
 import type { PathListItem } from '@/lib/pathSelection'
@@ -160,7 +155,6 @@ export function getComparePanelScrollPaddingY(): number {
 
 export type CompareRowHeightSpec = {
   height: number
-  wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
   kind?: 'path' | 'layer' | 'interaction' | 'visibility' | 'internalInteraction'
@@ -174,7 +168,6 @@ export type BlueprintLabelRowSpec = {
   kind: 'path' | 'layer' | 'interaction' | 'visibility' | 'internalInteraction'
   layer?: BlueprintLayer
   collapsed?: boolean
-  wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
   showDividerBelow?: boolean
@@ -185,7 +178,6 @@ type SwimlaneRowSpec = Pick<
   | 'height'
   | 'kind'
   | 'collapsed'
-  | 'wrapCorridorAbove'
   | 'wrapCorridorBelow'
   | 'inLaneLoopCorridorAbove'
 >
@@ -285,11 +277,7 @@ export function buildSideBySideLabelRowSpecs(
       height: collapsed
         ? COMPARE_LAYER_COLLAPSED_HEIGHT
         : getSharedLayerRowHeight(layer, blueprints, compact),
-      wrapCorridorAbove:
-        !collapsed && layerHasOverheadArrowCorridor(layer, blueprints),
-      wrapCorridorBelow:
-        !collapsed &&
-        layerHasWrapCorridorBelow(layer, blueprints),
+      wrapCorridorBelow: !collapsed && layerHasWrapCorridorBelow(layer),
       inLaneLoopCorridorAbove:
         !collapsed && layerHasInLaneLoopCorridor(layer, blueprints),
       showDividerBelow: shouldShowLaneDividerAfter(layer, layerIndex, layers),
@@ -400,107 +388,6 @@ export function getCanonicalLayers(blueprints: BlueprintData[]): BlueprintLayer[
   return [...source.layers].sort((a, b) => a.row_position - b.row_position)
 }
 
-/** Map a canonical swimlane row onto a path's layer ids (paths use different layer uuids). */
-export function resolveBlueprintLayer(
-  canonicalLayer: BlueprintLayer,
-  blueprint: Pick<BlueprintData, 'layers'>,
-): BlueprintLayer {
-  return (
-    blueprint.layers.find((layer) => layer.id === canonicalLayer.id) ??
-    blueprint.layers.find((layer) => layer.name === canonicalLayer.name) ??
-    blueprint.layers.find(
-      (layer) =>
-        layer.row_position === canonicalLayer.row_position &&
-        layer.name === canonicalLayer.name,
-    ) ??
-    blueprint.layers.find(
-      (layer) => layer.row_position === canonicalLayer.row_position,
-    ) ??
-    canonicalLayer
-  )
-}
-
-/**
- * Structural blueprint shape for in-lane loop detection — satisfied by both
- * `BlueprintData` (single path) and `IntegratedBlueprintData` (merged paths).
- */
-type InLaneLoopLayoutSource = {
-  layers: BlueprintLayer[]
-  steps: ReadonlyArray<{ id: string; column_position: number }>
-  cells: ReadonlyArray<{ id: string; layer_id: string; step_id: string }>
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>
-}
-
-/**
- * Generic in-lane loop-corridor rule: a layer needs loop headroom at the top
- * of its lane when it contains a trigger whose source and target cells are
- * BOTH in that layer with the source at a later column than the target — a
- * backward in-lane loop. Derived purely from blueprint data (cell layer
- * membership + step column positions), with no scenario or layer identity;
- * this replaces the side-by-side layout's dependence on the PLUS
- * `layerHasRegularTutorInLaneLoopCorridor` cell-ID shim (which arrow
- * rendering still uses for route styling).
- *
- * Backward loops already claimed by the PLUS legacy wrap shims are skipped:
- * Partner Action loops ride the overhead corridor and Lead Tutor loops ride
- * the below-row wrap corridor, so those lanes must not also reserve an
- * in-lane corridor. Generic (non-PLUS) content never matches those ID
- * patterns and gets the pure data-driven rule.
- */
-export function blueprintLayerHasBackwardInLaneLoop(
-  canonicalLayer: BlueprintLayer,
-  source: InLaneLoopLayoutSource,
-): boolean {
-  const layer = resolveBlueprintLayer(canonicalLayer, source)
-  const cellById = new Map(source.cells.map((cell) => [cell.id, cell]))
-  const columnByStepId = new Map(
-    source.steps.map((step) => [step.id, step.column_position]),
-  )
-
-  return source.triggers.some((trigger) => {
-    if (
-      isParallelSessionPartnerWrapTrigger(
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      ) ||
-      isParallelSessionLeadBottomWrapTrigger(
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      )
-    ) {
-      return false
-    }
-
-    const sourceCell = cellById.get(trigger.source_cell_id)
-    const targetCell = cellById.get(trigger.target_cell_id)
-    if (!sourceCell || !targetCell) return false
-    if (
-      sourceCell.layer_id !== layer.id ||
-      targetCell.layer_id !== layer.id
-    ) {
-      return false
-    }
-
-    const sourceColumn = columnByStepId.get(sourceCell.step_id)
-    const targetColumn = columnByStepId.get(targetCell.step_id)
-    return (
-      sourceColumn !== undefined &&
-      targetColumn !== undefined &&
-      targetColumn < sourceColumn
-    )
-  })
-}
-
-/** Canonical row needs an in-lane loop corridor when any compared variant has one. */
-export function layerHasInLaneLoopCorridor(
-  canonicalLayer: BlueprintLayer,
-  sources: readonly InLaneLoopLayoutSource[],
-): boolean {
-  return sources.some((source) =>
-    blueprintLayerHasBackwardInLaneLoop(canonicalLayer, source),
-  )
-}
-
 export function getCompareCellShellMinHeight(
   rowHeight: number,
   compact = false,
@@ -513,17 +400,13 @@ export function getCompareCellShellMinHeight(
 
 export function getCompareRowTrackHeight(row: {
   height: number
-  wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
 }): number {
   return (
     row.height +
-    (row.wrapCorridorAbove ? BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN : 0) +
     (row.wrapCorridorBelow ? BLUEPRINT_WRAP_CORRIDOR_MARGIN : 0) +
-    (row.inLaneLoopCorridorAbove
-      ? BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN
-      : 0)
+    (row.inLaneLoopCorridorAbove ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN : 0)
   )
 }
 
@@ -666,13 +549,6 @@ export function getSideBySideCompareArtboardSize(
   }
 }
 
-export function layerHasDiscoveryRailCorridorAbove(
-  layer: BlueprintLayer,
-  blueprints: BlueprintData[],
-): boolean {
-  return layerHasOverheadArrowCorridor(layer, blueprints)
-}
-
 export function layerHasInteractionLine(layer: BlueprintLayer): boolean {
   return shouldShowInteractionLineAfter(layer)
 }
@@ -732,20 +608,7 @@ export function buildIntegratedLabelRowSpecs(
       height: collapsed
         ? COMPARE_LAYER_COLLAPSED_HEIGHT
         : getIntegratedLayerRowHeight(layer, data, compact, options),
-      wrapCorridorAbove:
-        !collapsed &&
-        layerHasOverheadArrowCorridor(
-          layer,
-          sourceBlueprints.length > 0 ? sourceBlueprints : undefined,
-          sourceBlueprints.length > 0 ? undefined : data.triggers,
-        ),
-      wrapCorridorBelow:
-        !collapsed &&
-        layerHasWrapCorridorBelow(
-          layer,
-          sourceBlueprints.length > 0 ? sourceBlueprints : undefined,
-          sourceBlueprints.length > 0 ? undefined : data.triggers,
-        ),
+      wrapCorridorBelow: !collapsed && layerHasWrapCorridorBelow(layer),
       inLaneLoopCorridorAbove:
         !collapsed &&
         layerHasInLaneLoopCorridor(
