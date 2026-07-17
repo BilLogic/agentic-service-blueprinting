@@ -4,15 +4,6 @@ import { phasesToSlides, type PhaseRow } from '@/lib/phasesToSlides'
 import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
 import type { Slide } from '@/types/slides'
 
-/** Default lifecycle from seed.sql */
-export const DEFAULT_LIFECYCLE_ID = 'a0000000-0000-4000-8000-000000000001'
-
-/** In-session phase from seed.sql */
-export const IN_SESSION_PHASE_ID = 'a0000000-0000-4000-8000-000000000104'
-
-/** Pre-session phase from seed.sql */
-export const PRE_SESSION_PHASE_ID = 'a0000000-0000-4000-8000-000000000103'
-
 const LIFECYCLE_PHASES_SELECT = `
   id,
   name,
@@ -29,7 +20,14 @@ const LIFECYCLE_PHASES_SELECT = `
   )
 `
 
-export function useLifecyclePhases(lifecycleId: string = DEFAULT_LIFECYCLE_ID) {
+/**
+ * Load the phases (and nested scenarios) of one service lifecycle.
+ *
+ * With no explicit `lifecycleId`, the first lifecycle by `created_at` is used
+ * — the common case is a single lifecycle per database. Pass an id to pin a
+ * specific lifecycle in multi-lifecycle databases.
+ */
+export function useLifecyclePhases(lifecycleId?: string) {
   const { client, configured } = useSupabase()
   const [phases, setPhases] = useState<PhaseRow[]>([])
   const [slides, setSlides] = useState<Slide[]>([])
@@ -48,35 +46,73 @@ export function useLifecyclePhases(lifecycleId: string = DEFAULT_LIFECYCLE_ID) {
     let cancelled = false
     setLoading(true)
 
-    const query = client
-      .from('phases')
-      .select(LIFECYCLE_PHASES_SELECT)
-      .eq('service_lifecycle_id', lifecycleId)
-      .order('order_position', { ascending: true })
+    const fail = (message: string | null) => {
+      if (cancelled) return
+      setError(message)
+      setPhases([])
+      setSlides([])
+      setLoading(false)
+    }
 
-    void raceSupabaseQuery(query).then((result) => {
+    const loadPhases = (resolvedLifecycleId: string) => {
+      const query = client
+        .from('phases')
+        .select(LIFECYCLE_PHASES_SELECT)
+        .eq('service_lifecycle_id', resolvedLifecycleId)
+        .order('order_position', { ascending: true })
+
+      void raceSupabaseQuery(query).then((result) => {
         if (cancelled) return
         if (result === 'timeout') {
-          setPhases([])
-          setSlides([])
-          setError(null)
-          setLoading(false)
+          fail(null)
           return
         }
 
         const { data, error: err } = result
         if (err) {
-          setError(err.message)
-          setPhases([])
-          setSlides([])
+          fail(err.message)
         } else {
           const rows = (data ?? []) as PhaseRow[]
           setError(null)
           setPhases(rows)
           setSlides(phasesToSlides(rows))
+          setLoading(false)
         }
-        setLoading(false)
       })
+    }
+
+    if (lifecycleId) {
+      loadPhases(lifecycleId)
+    } else {
+      const lifecycleQuery = client
+        .from('service_lifecycles')
+        .select('id')
+        .order('created_at', { ascending: true })
+        .limit(1)
+
+      void raceSupabaseQuery(lifecycleQuery).then((result) => {
+        if (cancelled) return
+        if (result === 'timeout') {
+          fail(null)
+          return
+        }
+
+        const { data, error: err } = result
+        if (err) {
+          fail(err.message)
+          return
+        }
+
+        const first = (data ?? [])[0] as { id: string } | undefined
+        if (!first) {
+          // Empty database — fall back to local sample slides upstream.
+          fail(null)
+          return
+        }
+
+        loadPhases(first.id)
+      })
+    }
 
     return () => {
       cancelled = true
