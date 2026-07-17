@@ -1,0 +1,24 @@
+{
+  "name": "service-blueprinting",
+  "version": "0.1.0",
+  "description": "Service-blueprint lifecycle skill: ingest scattered service docs, co-create from nothing, translate foreign blueprints (FigJam/spreadsheet/Shostack), review with hash-bound sign-off, import via backend adapters (no-DB fallback or Supabase), and evolve deployed blueprints in place. One skill + three agents + three hooks around a validated YAML intermediate representation, presented with the bundled React blueprint template.",
+  "author": {
+    "name": "BilLogic (Bill & Meryem)",
+    "url": "https://github.com/BilLogic"
+  },
+  "homepage": "https://github.com/BilLogic/agentic-service-blueprinting",
+  "repository": "https://github.com/BilLogic/agentic-service-blueprinting",
+  "license": "MIT",
+  "keywords": [
+    "service-blueprint",
+    "service-design",
+    "journey-map",
+    "customer-journey",
+    "frontstage-backstage",
+    "blueprint-import",
+    "crosswalk",
+    "figjam",
+    "supabase",
+    "swimlanes"
+  ]
+}
