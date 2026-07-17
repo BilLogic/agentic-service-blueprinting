@@ -10,9 +10,9 @@ import {
 import { Menubar } from '@/components/ui/menubar'
 import { cn } from '@/lib/utils'
 
-const OVERVIEW_MENU_TITLE = 'Uno Blueprint'
+const OVERVIEW_MENU_TITLE = 'Service Overview'
 const OVERVIEW_MENU_DESCRIPTION =
-  'An overview of the phases across the PLUS service lifecycle.'
+  'An overview of the phases across the service lifecycle.'
 
 type ServiceOverviewMenubarHeaderProps = {
   paths: PathOption[]

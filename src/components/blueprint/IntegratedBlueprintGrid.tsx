@@ -696,7 +696,7 @@ function IntegratedVisualCell({
           pathName:
             (representative
               ? pathNameById.get(representative.path_id)
-              : undefined) ?? 'Warm-Up',
+              : undefined) ?? '',
           pathDescription: representative
             ? (pathDescriptionById.get(representative.path_id) ?? null)
             : null,
