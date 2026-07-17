@@ -12,7 +12,6 @@ import { ZoomPanViewport } from '@/components/editor/ZoomPanViewport'
 import { BlueprintCellDetailProvider } from '@/contexts/BlueprintCellDetailContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { usePhaseBlueprintFilters } from '@/hooks/usePhaseBlueprintFilters'
-import { isBlueprintCellDetailEnabled } from '@/lib/blueprintDisplayFlags'
 import {
   OVERVIEW_CANVAS_PADDING_X,
   OVERVIEW_CANVAS_PADDING_Y,
@@ -21,7 +20,6 @@ import {
   getMainSlides,
   getSlideDisplayLabel,
   getOverviewPostToPreLoopTransition,
-  isOverviewFlowArrowAnchorPhase,
   shouldShowOverviewPhaseFlowArrow,
   isSubslide,
   type Slide,
@@ -132,7 +130,7 @@ export function ServiceOverviewView() {
     () => [...blueprintsByPathId.values()],
     [blueprintsByPathId],
   )
-  const cellDetailEnabled = isBlueprintCellDetailEnabled()
+  const cellDetailEnabled = true
 
   if (!overviewReady) {
     return (
@@ -205,7 +203,7 @@ export function ServiceOverviewView() {
                     phase,
                     phases[index + 1],
                   )}
-                  isFlowArrowAnchor={isOverviewFlowArrowAnchorPhase(phase)}
+                  isFlowArrowAnchor={index === 0}
                   isLoopArrowFrom={phase.id === postToPreLoop?.fromPhaseId}
                   isLoopArrowTo={phase.id === postToPreLoop?.toPhaseId}
                 />

@@ -8,16 +8,10 @@ import {
 } from 'react'
 import {
   ARROW_VIEWPORT_PAD,
-  buildApplicationRegularTutorRailBusPath,
   buildArrowPath,
   buildBidirectionalArrowPath,
-  buildOverheadRailFanOutDropPath,
-  buildOverheadRailFanOutTrunkPath,
-  buildReportingAnIssueFrontStageActionStep1ToResolvePath,
   findBidirectionalTriggerPairs,
-  groupDiscoveryRailTriggers,
   isWrapTrigger,
-  partitionReportingAnIssueFsaStep1ToResolveTriggers,
 } from '@/lib/blueprintArrowGeometry'
 import {
   getPathArrowColor,
@@ -95,103 +89,9 @@ export function BlueprintTriggerArrows({
     }
 
     const next: ArrowSegment[] = []
-    const { resolveTriggers, otherTriggers: railInputTriggers } =
-      partitionReportingAnIssueFsaStep1ToResolveTriggers(triggers)
-
-    for (const trigger of resolveTriggers) {
-      const sourceEl = content.querySelector<HTMLElement>(
-        `[data-blueprint-cell="${trigger.source_cell_id}"]`,
-      )
-      const targetEl = content.querySelector<HTMLElement>(
-        `[data-blueprint-cell="${trigger.target_cell_id}"]`,
-      )
-      if (!sourceEl || !targetEl) continue
-
-      const wrap = isWrapTrigger(
-        sourceEl,
-        targetEl,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      )
-      if (layer === 'forward' && wrap) continue
-      if (layer === 'wrap' && !wrap) continue
-
-      const d = buildReportingAnIssueFrontStageActionStep1ToResolvePath(
-        sourceEl,
-        targetEl,
-        content,
-      )
-      if (!d) continue
-
-      next.push({
-        id: trigger.id,
-        d,
-        colorKey: defaultColorKey,
-        arrowColor: defaultArrowColor,
-        opacity: isColoredTrigger(trigger) ? (trigger.opacity ?? 1) : 1,
-      })
-    }
-
-    const { busGroups, fanOutGroups, remaining } = groupDiscoveryRailTriggers(
-      railInputTriggers,
-      content,
-    )
-
-    for (const group of fanOutGroups) {
-      const targetEls = group.branches.map((branch) => branch.targetEl)
-      const trunk = buildOverheadRailFanOutTrunkPath(
-        group.sourceEl,
-        targetEls,
-        content,
-      )
-      if (trunk) {
-        next.push({
-          id: `${group.sourceCellId}-trunk`,
-          d: trunk,
-          colorKey: defaultColorKey,
-          arrowColor: defaultArrowColor,
-          opacity: 1,
-          showMarker: false,
-        })
-      }
-
-      for (const branch of group.branches) {
-        const d = buildOverheadRailFanOutDropPath(
-          group.sourceEl,
-          branch.targetEl,
-          content,
-        )
-        if (!d) continue
-
-        next.push({
-          id: branch.triggerId,
-          d,
-          colorKey: defaultColorKey,
-          arrowColor: defaultArrowColor,
-          opacity: 1,
-        })
-      }
-    }
-
-    for (const group of busGroups) {
-      const d = buildApplicationRegularTutorRailBusPath(
-        group.sourceEls,
-        group.targetEl,
-        content,
-      )
-      if (!d) continue
-
-      next.push({
-        id: group.triggerIds.join('-'),
-        d,
-        colorKey: defaultColorKey,
-        arrowColor: defaultArrowColor,
-        opacity: 1,
-      })
-    }
 
     const { pairs, remaining: unpaired } =
-      findBidirectionalTriggerPairs(remaining)
+      findBidirectionalTriggerPairs(triggers)
 
     for (const pair of pairs) {
       const cellAEl = content.querySelector<HTMLElement>(
@@ -202,12 +102,7 @@ export function BlueprintTriggerArrows({
       )
       if (!cellAEl || !cellBEl) continue
 
-      const wrap = isWrapTrigger(
-        cellAEl,
-        cellBEl,
-        pair.cellAId,
-        pair.cellBId,
-      )
+      const wrap = isWrapTrigger(cellAEl, cellBEl)
       if (layer === 'forward' && wrap) continue
       if (layer === 'wrap' && !wrap) continue
 
@@ -235,23 +130,11 @@ export function BlueprintTriggerArrows({
       )
       if (!sourceEl || !targetEl) continue
 
-      const wrap = isWrapTrigger(
-        sourceEl,
-        targetEl,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-      )
+      const wrap = isWrapTrigger(sourceEl, targetEl)
       if (layer === 'forward' && wrap) continue
       if (layer === 'wrap' && !wrap) continue
 
-      const d = buildArrowPath(
-        sourceEl,
-        targetEl,
-        content,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-        trigger.id,
-      )
+      const d = buildArrowPath(sourceEl, targetEl, content)
       if (!d) continue
 
       next.push({

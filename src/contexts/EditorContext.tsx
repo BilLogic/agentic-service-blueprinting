@@ -11,6 +11,7 @@ import { useLifecyclePhases } from '@/hooks/useLifecyclePhases'
 import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
 import {
   FALLBACK_SLIDES,
+  getSlideViewType,
   type EditorView,
   type Slide,
   type SlideViewType,
@@ -60,14 +61,24 @@ export function EditorProvider({ children }: EditorProviderProps) {
     setView('detail')
   }, [])
 
+  /** Session-local display overrides on top of the stored `view_type`. */
+  const [viewTypeOverrides, setViewTypeOverrides] = useState<
+    Record<string, SlideViewType>
+  >({})
+
   const getScenarioDisplayViewType = useCallback(
-    (_slide: Slide): SlideViewType => 'side-by-side',
-    [],
+    (slide: Slide): SlideViewType =>
+      viewTypeOverrides[slide.id] ?? getSlideViewType(slide),
+    [viewTypeOverrides],
   )
 
   const setScenarioDisplayViewType = useCallback(
-    (_scenarioId: string, _viewType: SlideViewType) => {
-      // Integrated view is disabled; display is always side-by-side.
+    (scenarioId: string, viewType: SlideViewType) => {
+      setViewTypeOverrides((current) =>
+        current[scenarioId] === viewType
+          ? current
+          : { ...current, [scenarioId]: viewType },
+      )
     },
     [],
   )

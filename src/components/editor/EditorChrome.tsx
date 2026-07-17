@@ -1,12 +1,13 @@
 import { Home, PanelLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EDITOR_SIDEBAR_COLLAPSED_WIDTH_CLASS } from '@/components/editor/EditorSidebarRail'
+import { ORG_NAME } from '@/config'
 import { cn } from '@/lib/utils'
 
 function EditorTitleLabel() {
   return (
     <p className="truncate text-sm font-medium leading-tight text-foreground">
-      PLUS
+      {ORG_NAME}
     </p>
   )
 }

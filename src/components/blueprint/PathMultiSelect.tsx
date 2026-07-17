@@ -17,7 +17,7 @@ const PRIMARY_COLUMN_PATH_TYPES = new Set<PathType>(['happy', 'alternative'])
 const SECONDARY_COLUMN_PATH_TYPES = new Set<PathType>(['unhappy', 'exception'])
 
 export function formatPathPickerLabel(name: string): string {
-  return name.replace(/^Warm-Up\s+/i, '')
+  return name
 }
 
 function chunkPaths<T>(items: T[], size: number): T[][] {

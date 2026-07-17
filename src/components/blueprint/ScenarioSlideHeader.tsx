@@ -1,5 +1,4 @@
 import { NotionPropertyRow } from '@/components/blueprint/NotionPropertyRow'
-import { ScenarioParallelInfoTooltip } from '@/components/blueprint/ScenarioParallelInfoTooltip'
 import { ScenarioSlideFilters } from '@/components/blueprint/ScenarioSlideFilters'
 import { PathMultiSelect, type PathOption } from '@/components/blueprint/PathMultiSelect'
 import { cn } from '@/lib/utils'
@@ -21,7 +20,6 @@ type ScenarioSlideHeaderProps = {
 
 export function ScenarioSlideHeader({
   title,
-  slide,
   description,
   phaseLabel,
   paths = [],
@@ -45,9 +43,6 @@ export function ScenarioSlideHeader({
           <p className="mb-1 text-sm text-muted-foreground">{phaseLabel}</p>
         )}
         <div className="flex items-center gap-2">
-          {slide ? (
-            <ScenarioParallelInfoTooltip slide={slide} iconClassName="size-4" />
-          ) : null}
           <h1 className="text-[2.5rem] font-bold leading-[1.15] tracking-tight text-foreground">
             {title}
           </h1>
@@ -102,12 +97,6 @@ export function ScenarioSlideHeader({
             phaseLabel && 'mt-1',
           )}
         >
-          {slide ? (
-            <ScenarioParallelInfoTooltip
-              slide={slide}
-              iconClassName={compact ? 'size-3.5' : 'size-4'}
-            />
-          ) : null}
           <h1
             className={cn(
               'font-semibold tracking-tight text-foreground',

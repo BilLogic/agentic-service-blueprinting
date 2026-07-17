@@ -5,8 +5,7 @@ import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
 import {
   BLUEPRINT_DIVIDER_ROW_HEIGHT,
   BLUEPRINT_DIVIDER_LINE_END_INSET,
-  BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN,
-  BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
 } from '@/lib/blueprintLayout'
 import {
@@ -150,14 +149,11 @@ export function BlueprintLabelRow({
     row.kind === 'internalInteraction'
   if (isDivider) return null
 
-  const corridorAbove = row.wrapCorridorAbove
-    ? BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN
-    : 0
   const corridorBelow = row.wrapCorridorBelow
     ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
     : 0
   const inLaneLoopCorridorAbove = row.inLaneLoopCorridorAbove
-    ? BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN
+    ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
     : 0
 
   const labelColor =
@@ -178,16 +174,6 @@ export function BlueprintLabelRow({
         borderColor: BLUEPRINT_THEME.laneDivider,
       }}
     >
-      {corridorAbove > 0 && (
-        <div
-          aria-hidden
-          className="shrink-0"
-          style={{
-            height: corridorAbove,
-            backgroundColor: blueprintPanelLabelRailColor(),
-          }}
-        />
-      )}
       {inLaneLoopCorridorAbove > 0 && (
         <div
           aria-hidden

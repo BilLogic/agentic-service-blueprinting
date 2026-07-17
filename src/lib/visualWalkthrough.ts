@@ -1,18 +1,54 @@
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
-import type { BlueprintData } from '@/types/blueprint'
+import {
+  BACKSTAGE_ACTIONS_ROLE,
+  BACKSTAGE_TECH_ROLE,
+  FRONTSTAGE_ACTIONS_ROLE,
+  FRONTSTAGE_TECH_ROLE,
+  getLayerRole,
+  STEP_VISUAL_ROLE,
+  SUPPORT_SYSTEMS_ROLE,
+  VISUAL_ROLE,
+} from '@/lib/layerRoles'
+import type { BlueprintData, BlueprintLayer } from '@/types/blueprint'
 import type { PathType } from '@/types/database'
 
-export const VISUAL_WALKTHROUGH_LAYER_NAMES = [
-  'Partner Action: Teacher',
-  'Lead Tutor',
-  'Regular Tutor',
-] as const
+/**
+ * Visual walkthrough / presentation mode (play button + modal).
+ * Iteration flag — flip when the walkthrough is ready to ship.
+ */
+export const BLUEPRINT_VISUAL_WALKTHROUGH_ENABLED = false
 
-export const VISUAL_LAYER_SHORT_LABELS: Record<string, string> = {
-  'Partner Action: Teacher': 'Partner',
-  'Lead Tutor': 'Lead Tutor',
-  'Regular Tutor': 'Regular Tutor',
+export function isBlueprintVisualWalkthroughEnabled(): boolean {
+  return BLUEPRINT_VISUAL_WALKTHROUGH_ENABLED
+}
+
+/**
+ * Walkthrough (and Visual-row) pictures come from actor lanes: layers whose
+ * role is null, org-defined, or customer_actions — i.e. everything except the
+ * canonical stage/tech/visual rendering roles. Derived from `layer_role`, not
+ * layer display names, so it works in any language.
+ */
+const NON_ACTOR_ROLES: readonly string[] = [
+  FRONTSTAGE_ACTIONS_ROLE,
+  BACKSTAGE_ACTIONS_ROLE,
+  FRONTSTAGE_TECH_ROLE,
+  BACKSTAGE_TECH_ROLE,
+  SUPPORT_SYSTEMS_ROLE,
+  VISUAL_ROLE,
+  STEP_VISUAL_ROLE,
+]
+
+export function isWalkthroughActorLayer(layer: {
+  name: string
+  role?: string | null
+}): boolean {
+  const role = getLayerRole(layer)
+  return role === null || !NON_ACTOR_ROLES.includes(role)
+}
+
+function getActorLayers(layers: readonly BlueprintLayer[]): BlueprintLayer[] {
+  return layers.filter((layer) => isWalkthroughActorLayer(layer))
 }
 
 export type VisualWalkthroughLayerEntry = {
@@ -72,19 +108,16 @@ export function resolveVisualStepPictureEntries(
   stepId: string,
 ): VisualStepPictureEntry[] {
   const cellLookup = buildCellLookup(blueprint.cells)
-  const layerByName = new Map(blueprint.layers.map((layer) => [layer.name, layer]))
 
-  return VISUAL_WALKTHROUGH_LAYER_NAMES.flatMap((name) => {
-    const layer = layerByName.get(name)
-    if (!layer) return []
+  return getActorLayers(blueprint.layers).flatMap((layer) => {
     const cell = getCellAt(cellLookup, layer.id, stepId)
     if (!cell?.content.trim()) return []
     const picture = cell.picture?.trim()
     if (!picture || isBlueprintStepVisualPlaceholder(picture)) return []
     return [
       {
-        layerName: name,
-        label: VISUAL_LAYER_SHORT_LABELS[name] ?? name,
+        layerName: layer.name,
+        label: layer.name,
         picture,
         description: resolveCellDescription(cell),
       },
@@ -92,17 +125,14 @@ export function resolveVisualStepPictureEntries(
   })
 }
 
-/** True when Partner, Lead Tutor, or Regular Tutor has a cell in this step. */
+/** True when any actor lane has a cell in this step. */
 export function stepHasVisualWalkthroughLayerCells(
   blueprint: VisualPictureBlueprint,
   stepId: string,
 ): boolean {
   const cellLookup = buildCellLookup(blueprint.cells)
-  const layerByName = new Map(blueprint.layers.map((layer) => [layer.name, layer]))
 
-  return VISUAL_WALKTHROUGH_LAYER_NAMES.some((name) => {
-    const layer = layerByName.get(name)
-    if (!layer) return false
+  return getActorLayers(blueprint.layers).some((layer) => {
     const cell = getCellAt(cellLookup, layer.id, stepId)
     return Boolean(cell?.content.trim())
   })

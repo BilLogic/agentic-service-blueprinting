@@ -19,8 +19,7 @@ import { IntegratedTriggerArrows } from '@/components/blueprint/IntegratedTrigge
 import { useCollapsedBlueprintLayers } from '@/hooks/useCollapsedBlueprintLayers'
 import {
   BLUEPRINT_LAYER_ROW_GAP,
-  BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN,
-  BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
   STEP_COLUMN_GAP,
   STEP_COLUMN_WIDTH,
@@ -28,6 +27,7 @@ import {
   getVisualCellButtonMaxHeight,
   shouldUsePillCellContent,
   shouldUseVisualContent,
+  resolveBlueprintLayer,
 } from '@/lib/blueprintLayout'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { parseCellContentItems } from '@/lib/parseCellContent'
@@ -49,7 +49,6 @@ import {
   getCompareRowTrackCss,
   COMPARE_PATH_SECTION_TOP_INSET,
   COMPARE_PATH_SECTION_BOTTOM_INSET,
-  resolveBlueprintLayer,
 } from '@/lib/sideBySideCompareLayout'
 import { cn } from '@/lib/utils'
 import {
@@ -310,14 +309,11 @@ function CompareCardRow({
     row.kind === 'visibility' ||
     row.kind === 'internalInteraction'
   const isLayerRow = row.kind === 'layer'
-  const corridorAbove = row.wrapCorridorAbove
-    ? BLUEPRINT_DISCOVERY_RAIL_CORRIDOR_MARGIN
-    : 0
   const corridorBelow = row.wrapCorridorBelow
     ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
     : 0
   const inLaneLoopCorridorAbove = row.inLaneLoopCorridorAbove
-    ? BLUEPRINT_REGULAR_TUTOR_LOOP_CORRIDOR_MARGIN
+    ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
     : 0
 
   return (
@@ -346,9 +342,6 @@ function CompareCardRow({
       }}
       {...(isDivider ? { role: 'separator' as const } : {})}
     >
-      {corridorAbove > 0 && (
-        <div aria-hidden className="shrink-0" style={{ height: corridorAbove }} />
-      )}
       <div
         className={cn(
           'min-h-0',

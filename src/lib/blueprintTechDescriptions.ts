@@ -4,6 +4,11 @@ import { parseCellContentItems } from '@/lib/parseCellContent'
 export const TECH_DESCRIPTION_LINK_TYPE = 'tech_description'
 export const URL_LINK_TYPE = 'url'
 
+/**
+ * Per-tech copy/pictures live in cell `links` (type `tech_description`), not
+ * in a hardcoded registry — content authors attach the description, optional
+ * screenshots, and an optional external URL per tech label.
+ */
 export function techDescriptionLink(
   techLabel: string,
   description?: string,
@@ -73,7 +78,7 @@ function getLinkedDescriptionsForContentItems(
   return parts.length > 0 ? parts.join('\n\n') : null
 }
 
-/** Tech pill label for the detail panel heading (Front Stage Tech, Back Stage Tech). */
+/** Tech pill label for the detail panel heading. */
 export function resolveTechCellDetailLabel(
   techItem: string | undefined,
   cell: Pick<BlueprintCell, 'content'>,
@@ -94,10 +99,6 @@ export function resolveTechCellDetailText(
   if (techItem) {
     const fromLinks = getTechDescriptionFromLinks(cell.links, techItem)
     if (fromLinks) return fromLinks
-
-    if (techItem === 'Zoom/Pencil' && cell.description?.trim()) {
-      return cell.description.trim()
-    }
 
     if (cell.description?.trim()) {
       const items = parseCellContentItems(cell.content)
@@ -120,15 +121,6 @@ export function resolveTechCellDetailText(
     if (fromLinks) return fromLinks
   }
 
-  if (content === 'Zoom/Pencil' && cell.description?.trim()) {
-    return cell.description.trim()
-  }
-
-  if (content === 'PLUS App') {
-    const fromLinks = getTechDescriptionFromLinks(cell.links, 'PLUS App')
-    if (fromLinks) return fromLinks
-  }
-
   if (cell.description?.trim()) {
     return cell.description.trim()
   }
@@ -141,14 +133,13 @@ export function resolveTechCellDetailUrl(
   techItem: string | undefined,
   cell: Pick<BlueprintCell, 'content' | 'links'>,
 ): string | null {
-  const content = cell.content.trim()
-
   if (techItem) {
     return getTechUrlFromLinks(cell.links, techItem)
   }
 
-  if (content === 'PLUS App') {
-    return getTechUrlFromLinks(cell.links, 'PLUS App')
+  const contentItems = parseCellContentItems(cell.content.trim())
+  if (contentItems.length === 1) {
+    return getTechUrlFromLinks(cell.links, contentItems[0]!)
   }
 
   return null
@@ -172,67 +163,6 @@ export function mergeUrlLinks(
       merged[existingIndex] = {
         ...existing,
         url: existing.url?.trim() || fallbackLink.url,
-      }
-      continue
-    }
-
-    merged.push(fallbackLink)
-  }
-
-  return merged
-}
-
-export function mergeTechDescriptionLinks(
-  links: CellLink[],
-  fallbackLinks: CellLink[],
-): CellLink[] {
-  const fallbackUrlLabels = new Set(
-    fallbackLinks
-      .filter(
-        (link) => link.type === URL_LINK_TYPE && link.label && link.url?.trim(),
-      )
-      .map((link) => link.label!),
-  )
-
-  // When fallback defines URL resource links, drop existing URL links that are
-  // not in that set (removes obsolete onboarding / resource links).
-  const baseLinks =
-    fallbackUrlLabels.size > 0
-      ? links.filter(
-          (link) =>
-            link.type !== URL_LINK_TYPE ||
-            (link.label != null && fallbackUrlLabels.has(link.label)),
-        )
-      : links
-
-  const merged = mergeUrlLinks(
-    baseLinks.map((link) => ({ ...link })),
-    fallbackLinks,
-  )
-
-  for (const fallbackLink of fallbackLinks) {
-    if (fallbackLink.type !== TECH_DESCRIPTION_LINK_TYPE) continue
-
-    const existingIndex = merged.findIndex(
-      (entry) =>
-        entry.type === TECH_DESCRIPTION_LINK_TYPE &&
-        entry.label === fallbackLink.label,
-    )
-
-    if (existingIndex >= 0) {
-      const existing = merged[existingIndex]
-      merged[existingIndex] = {
-        ...existing,
-        description:
-          existing.description?.trim() || fallbackLink.description || undefined,
-        picture: existing.picture?.trim() || fallbackLink.picture || undefined,
-        pictures:
-          existing.pictures?.length
-            ? existing.pictures
-            : fallbackLink.pictures?.length
-              ? fallbackLink.pictures
-              : undefined,
-        url: existing.url?.trim() || fallbackLink.url || undefined,
       }
       continue
     }

@@ -1,4 +1,3 @@
-import { remapDiscoverySadFinalStepId } from '@/lib/repairDiscoverySadPathBlueprint'
 import type { BlueprintData } from '@/types/blueprint'
 import {
   getIntegratedCellDisplayOpacity,
@@ -87,10 +86,7 @@ export function mergeIntegratedBlueprint(
   for (const blueprint of blueprints) {
     for (const cell of blueprint.cells) {
       const layer = blueprint.layers.find((entry) => entry.id === cell.layer_id)
-      const resolvedStepId = remapDiscoverySadFinalStepId(
-        cell.step_id,
-        blueprint.path.id,
-      )
+      const resolvedStepId = cell.step_id
       const step =
         blueprint.steps.find((entry) => entry.id === resolvedStepId) ??
         (integratedStepIds.has(resolvedStepId)

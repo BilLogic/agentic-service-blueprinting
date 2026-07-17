@@ -249,8 +249,8 @@ export function BlueprintSlideContent({
           )}
           {!configured && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Without Supabase, only Application and Warm-Up use demo data. Copy{' '}
-              <code className="text-xs">.env.example</code> to{' '}
+              Without Supabase, only the bundled sample scenario has demo
+              data. Copy <code className="text-xs">.env.example</code> to{' '}
               <code className="text-xs">.env</code> and run{' '}
               <code className="text-xs">npm run supabase:reset</code> for live data.
             </p>

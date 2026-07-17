@@ -346,33 +346,6 @@ export type Database = {
           },
         ]
       }
-      services: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          slug: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          slug: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          slug?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       steps: {
         Row: {
           id: string
@@ -419,7 +392,6 @@ export type Layer = Database['public']['Tables']['layers']['Row']
 export type Path = Database['public']['Tables']['paths']['Row']
 export type PathStep = Database['public']['Tables']['path_steps']['Row']
 export type Phase = Database['public']['Tables']['phases']['Row']
-export type Service = Database['public']['Tables']['services']['Row']
 export type ServiceLifecycle = Database['public']['Tables']['service_lifecycles']['Row']
 export type ServiceScenario = Database['public']['Tables']['service_scenarios']['Row']
 export type Step = Database['public']['Tables']['steps']['Row']

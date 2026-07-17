@@ -183,28 +183,12 @@ function cellStyleFromFill(
 const LAYER_STYLES: Record<string, BlueprintLayerStyle> = {
   Visual: cellStyleFromFill(BLUEPRINT_CELL_PALETTE.visual),
   'Step Visual': cellStyleFromFill(BLUEPRINT_CELL_PALETTE.visual),
-  'Partner Action: Teacher': cellStyleFromFill(
-    BLUEPRINT_CELL_PALETTE.powderBlue,
-    BLUEPRINT_LABEL_TEXT.frontstage,
-  ),
-  'Lead Tutor': cellStyleFromFill(
-    BLUEPRINT_CELL_PALETTE.mint,
-    BLUEPRINT_LABEL_TEXT.frontstage,
-  ),
-  'Regular Tutor': cellStyleFromFill(
-    BLUEPRINT_CELL_PALETTE.mint,
-    BLUEPRINT_LABEL_TEXT.frontstage,
-  ),
   'Front Stage Tech': cellStyleFromFill(
     BLUEPRINT_CELL_PALETTE.lavender,
     BLUEPRINT_LABEL_TEXT.customerFacing,
   ),
   'Front Stage Actions': cellStyleFromFill(
     BLUEPRINT_CELL_PALETTE.blush,
-    BLUEPRINT_LABEL_TEXT.customerFacing,
-  ),
-  'Tutor Resources': cellStyleFromFill(
-    BLUEPRINT_CELL_PALETTE.cream,
     BLUEPRINT_LABEL_TEXT.customerFacing,
   ),
   'Back Stage Actions': cellStyleFromFill(

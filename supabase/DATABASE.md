@@ -1,17 +1,16 @@
 # Database
 
-Postgres database managed by [Supabase](https://supabase.com/) for **PLUS Uno Blueprint**.
+Postgres database managed by [Supabase](https://supabase.com/) for the **agentic service blueprinting** template.
 
 | Property | Value |
 | --- | --- |
 | **Engine** | PostgreSQL 17 |
 | **Primary schema** | `public` |
-| **Migrations** | `supabase/migrations/` |
-| **Seed data** | `supabase/seed.sql` |
+| **Migrations** | `supabase/migrations/` (one consolidated schema migration) |
+| **Seed data** | `supabase/seed.sql` (generated sample content) |
 | **ERD diagram** | `docs/erd.mmd` |
 | **DDL snapshot** | `supabase/schema.reference.sql` |
 | **TypeScript types** | `src/types/database.ts` |
-| **Verification SQL** | `docs/seed-verification.sql` |
 
 ## Connection (application)
 
@@ -19,6 +18,9 @@ Postgres database managed by [Supabase](https://supabase.com/) for **PLUS Uno Bl
 | --- | --- |
 | `VITE_SUPABASE_URL` | Project API URL |
 | `VITE_SUPABASE_ANON_KEY` | Public anon key (**Settings → API**) |
+
+Without these variables the app runs in **no-DB mode** from the generated
+fallback content in `src/data/` — no database required.
 
 ## Entity relationship (Service Blueprint)
 
@@ -38,6 +40,9 @@ erDiagram
   cells ||--o{ cell_triggers : "target"
 ```
 
+The full attribute-level ERD (with enums and the `layer_role` vocabulary) is
+in [`docs/erd.mmd`](../docs/erd.mmd).
+
 ## Hierarchy
 
 | Level | Table | Ordering |
@@ -46,7 +51,7 @@ erDiagram
 | Phase | `phases` | `order_position`; optional `loops_to_phase_id` |
 | Service Scenario | `service_scenarios` | `order_position`; `view_type` for layout |
 | Path | `paths` | `path_type`: happy, unhappy, exception, alternative; optional `note` for path-level context |
-| Blueprint row | `layers` | `row_position` (per path) |
+| Blueprint row | `layers` | `row_position` (per path); `layer_role` semantic key |
 | Blueprint column | `steps` | canonical per `service_scenario` |
 | Path column order | `path_steps` | `column_position` per `(path_id, step_id)` |
 | Cell | `cells` | unique `(layer_id, step_id)` per path |
@@ -56,9 +61,26 @@ erDiagram
 
 **Cascade deletes:** Deleting a lifecycle removes phases, scenarios, paths, layers, steps, path_steps, cells, and triggers. Deleting a phase removes its descendants.
 
-**Path integrity:** `cells.path_id` must match `layers.path_id`, and `cells.step_id` must appear in `path_steps` for that path (trigger `cells_validate_path_match`).
+**Path integrity:** `cells.path_id` must match `layers.path_id`, and `cells.step_id` must appear in `path_steps` for that path (trigger `cells_validate_path_match`). Import order: `paths → steps → path_steps → layers → cells → cell_triggers`.
 
 **Shared steps:** Multiple paths under the same scenario can reference the same `steps.id` via `path_steps` with different `column_position` values. See [`docs/scenario-steps-design.md`](../docs/scenario-steps-design.md).
+
+## Layers (`layer_role`)
+
+A layer's display name (`layers.name`) is free-form in any language; the
+semantic key `layers.layer_role` drives rendering (pill cells, visual rows,
+divider-line anchoring):
+
+| Role | Rendering |
+| --- | --- |
+| `customer_actions` | Spine actor lane — the **interaction line** draws after it |
+| `frontstage_actions`, `frontstage_tech` | Frontstage lanes — the **visibility line** draws after them |
+| `backstage_actions` | Backstage lane — the **internal interaction line** draws after it when a `support_systems` lane follows |
+| `frontstage_tech`, `backstage_tech`, `support_systems` | Cells render as multi-item **pills** (newline-separated content) |
+| `visual`, `step_visual` | Picture rows |
+| any other value / `null` | Generic swimlane (actor lanes, org-defined custom roles) |
+
+Frontend contract: `src/lib/layerRoles.ts`.
 
 ## Cells
 
@@ -75,13 +97,19 @@ Each cell sits at a **layer × step** intersection for one path.
 
 ```json
 [
-  { "type": "url", "label": "Warm-Up runbook", "url": "https://example.com/runbook" }
+  { "type": "url", "label": "Runbook", "url": "https://example.com/runbook" },
+  {
+    "type": "tech_description",
+    "label": "Work Order App",
+    "description": "Longer copy shown in the tech pill detail panel",
+    "picture": "https://example.com/screenshot.png"
+  }
 ]
 ```
 
-- `type` — link kind (usually `"url"`)
-- `label` — display text
-- `url` — optional href when `type` is `"url"`
+- `type` — `"url"` (external resource) or `"tech_description"` (per-tech copy/pictures for pill lanes)
+- `label` — display text; for `tech_description`, must match the pill label in `content`
+- `url` / `description` / `picture` / `pictures` — optional payload fields
 
 App types: `CellLink` and `BlueprintCell` in `src/types/blueprint.ts`. Parsing: `normalizeCellLinks()` in `src/lib/cellMetadata.ts`.
 
@@ -93,42 +121,28 @@ App types: `CellLink` and `BlueprintCell` in `src/types/blueprint.ts`. Parsing: 
 | `side-by-side` | Compare paths in parallel columns |
 | `integrated` | Merge all paths at **runtime** (`mergeIntegratedBlueprint.ts`); each path is still stored separately |
 
-## Seed data (fixed UUIDs)
+## Sample seed
 
-| UUID suffix | Entity |
-| --- | --- |
-| `…000001` | Lifecycle: PLUS Application |
-| `…000101` | Phase: Application |
-| `…000121` | Scenario: Application → Discovery |
-| `…000102` | Phase: Onboarding |
-| `…000103` | Phase: Pre-session |
-| `…000104` | Phase: in-session |
-| `…000105` | Phase: post-session (loops to Pre-session) |
-| `…000201–206` | Pre-session scenarios (Before Students Join → Wrap-up) |
-
-Stack/Canvas UI loads phases and nested scenarios via `useLifecyclePhases`.
-
-**Application Discovery Happy Path** (`supabase/seeds/application_discovery_happy_path.sql`): 7 layers, 5 steps, 32 cells, 10 triggers. Fallback: `src/data/applicationHappyPathFallback.ts`.
-
-**Warm-Up Happy Path** (`supabase/seeds/warm_up_happy_path.sql`): 9 layers, 8 steps, 38 cells, 7 Regular Tutor triggers. ID map: [`docs/warm-up-happy-path-ids.md`](../docs/warm-up-happy-path-ids.md).
+`supabase/seed.sql` is **generated** by `scripts/generate_scale_fixture.mjs`
+alongside the offline fallback module (`src/data/scaleFixture.ts`): one
+`Sample Lifecycle` → `Discover`/`Deliver` phases (with a phase loop) → one
+`Sample Service` scenario with three paths (happy / alternative / exception),
+12 lanes (canonical + custom roles, CJK labels), and 16 shared steps. Sample
+UUIDs use the `f0000000-…` prefix. Re-run the generator after editing it —
+never edit the emitted files by hand.
 
 ## Row Level Security
 
-Blueprint tables and `services` have RLS **enabled** with public `SELECT` policies. No write policies yet.
+All blueprint tables have RLS **enabled** with public `SELECT` policies. No
+write policies exist — writes go through the Supabase CLI (seeds/migrations)
+with your own credentials. **Anything you deploy with an anon key is publicly
+readable.**
 
 ## Migration history
 
 | File | Description |
 | --- | --- |
-| `20250602160000_initial.sql` | `services` catalog |
-| `20250602170000_service_workflow_erd.sql` | Legacy ERD (**superseded** — tables dropped in next migration) |
-| `20250603120000_service_blueprint.sql` | Service Blueprint schema |
-| `20250603130000_phase_loop_target.sql` | `phases.loops_to_phase_id` |
-| `20250604000000_scenario_steps_path_steps.sql` | Scenario-scoped steps + `path_steps` |
-| `20250604120000_service_scenario_view_type.sql` | `service_scenarios.view_type` |
-| `20250605120000_service_scenario_integrated_view_type.sql` | `integrated` view type |
-| `20250606120000_path_description.sql` | `paths.description` |
-| `20250612120000_cell_metadata.sql` | `cells.picture`, `description`, `links` |
+| `20260716200000_template_schema.sql` | Consolidated template schema: hierarchy + blueprint grid + `layer_role`, integrity trigger, `updated_at` triggers, read-only RLS, legacy `services` cleanup |
 
 ## Example query (path blueprint)
 
@@ -149,7 +163,7 @@ const { data } = await supabase
         service_lifecycles ( id, name )
       )
     ),
-    layers ( id, name, row_position ),
+    layers ( id, name, layer_role, row_position ),
     path_steps (
       column_position,
       steps ( id, name )

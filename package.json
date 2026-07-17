@@ -1,5 +1,5 @@
 {
-  "name": "plus-service-hub",
+  "name": "agentic-service-blueprinting",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,6 @@
     "supabase:reset": "supabase db reset",
     "supabase:types": "supabase gen types typescript --linked > src/types/database.ts",
     "supabase:types:local": "supabase gen types typescript --local > src/types/database.ts",
-    "supabase:apply-goal-setting-pending": "node scripts/apply_pending_goal_setting_migrations.mjs",
     "setup:env": "cp -n .env.example .env 2>/dev/null || cp .env.example .env"
   },
   "dependencies": {

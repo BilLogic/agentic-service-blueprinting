@@ -1,8 +1,6 @@
 -- Reference snapshot: Service Blueprint schema
--- Source of truth: supabase/migrations/
--- Snapshot verified against migrations through 20260716120000_layer_role.sql (2026-07-16).
--- Note: a legacy `public.services` table from 20250602160000_initial.sql still exists in
--- live databases (never dropped); it is unused by the app and excluded from this snapshot.
+-- Source of truth: supabase/migrations/20260716200000_template_schema.sql
+-- (consolidated template schema; snapshot verified 2026-07-16).
 
 -- Hierarchy
 create table public.service_lifecycles (
