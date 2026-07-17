@@ -1,0 +1,310 @@
+-- In-session → Before Students Join scenario — Happy Path
+-- Stable keys map to fixed UUIDs in src/data/beforeStudentsJoinHappyPathFallback.ts
+
+insert into public.paths (id, service_scenario_id, name, description, path_type)
+values (
+  'a0000000-0000-4000-8000-000000000809',
+  'a0000000-0000-4000-8000-000000000201',
+  'Happy Path',
+  'Teachers and tutors prepare the session before students join.',
+  'happy'
+)
+on conflict (id) do update set
+  service_scenario_id = excluded.service_scenario_id,
+  name = excluded.name,
+  description = excluded.description,
+  path_type = excluded.path_type;
+
+delete from public.cell_triggers
+where source_cell_id in (
+  select id from public.cells
+  where path_id = 'a0000000-0000-4000-8000-000000000809'
+);
+
+delete from public.cells
+where path_id = 'a0000000-0000-4000-8000-000000000809';
+
+delete from public.layers
+where path_id = 'a0000000-0000-4000-8000-000000000809';
+
+insert into public.layers (id, path_id, name, row_position)
+values
+  ('a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000809', 'Visual', 0),
+  ('a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000809', 'Partner Action: Teacher', 1),
+  ('a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000809', 'Lead Tutor', 2),
+  ('a0000000-0000-4000-8000-000000002013', 'a0000000-0000-4000-8000-000000000809', 'Regular Tutor', 3),
+  ('a0000000-0000-4000-8000-000000002014', 'a0000000-0000-4000-8000-000000000809', 'Front Stage Tech', 4),
+  ('a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000809', 'Front Stage Actions', 5),
+  ('a0000000-0000-4000-8000-000000002017', 'a0000000-0000-4000-8000-000000000809', 'Back Stage Tech', 6),
+  ('a0000000-0000-4000-8000-000000002016', 'a0000000-0000-4000-8000-000000000809', 'Back Stage Actions', 7),
+  ('a0000000-0000-4000-8000-000000002018', 'a0000000-0000-4000-8000-000000000809', 'Support Actions', 8)
+on conflict (id) do update set
+  name = excluded.name,
+  row_position = excluded.row_position,
+  path_id = excluded.path_id;
+
+insert into public.steps (id, service_scenario_id, name)
+values
+  ('a0000000-0000-4000-8000-000000000950', 'a0000000-0000-4000-8000-000000000201', 'Set up classroom'),
+  ('a0000000-0000-4000-8000-000000000951', 'a0000000-0000-4000-8000-000000000201', 'Open session'),
+  ('a0000000-0000-4000-8000-000000000952', 'a0000000-0000-4000-8000-000000000201', 'Share Zoom link'),
+  ('a0000000-0000-4000-8000-000000000953', 'a0000000-0000-4000-8000-000000000201', 'Prepare breakout rooms'),
+  ('a0000000-0000-4000-8000-000000000954', 'a0000000-0000-4000-8000-000000000201', 'Review room order'),
+  ('a0000000-0000-4000-8000-000000000955', 'a0000000-0000-4000-8000-000000000201', 'Distribute breakout list')
+on conflict (id) do update set
+  name = excluded.name,
+  service_scenario_id = excluded.service_scenario_id;
+
+delete from public.path_steps
+where path_id = 'a0000000-0000-4000-8000-000000000809';
+
+insert into public.path_steps (path_id, step_id, column_position)
+values
+  ('a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000000950', 1),
+  ('a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000000951', 2),
+  ('a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000000952', 3),
+  ('a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000000953', 4),
+  ('a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000000954', 5),
+  ('a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000000955', 6)
+on conflict (path_id, step_id) do update set
+  column_position = excluded.column_position;
+
+insert into public.cells (id, path_id, layer_id, step_id, content)
+values
+  ('a0000000-0000-4000-8000-000000180110', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000950', ''),
+  ('a0000000-0000-4000-8000-000000180210', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000951', ''),
+  ('a0000000-0000-4000-8000-000000180310', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000952', ''),
+  ('a0000000-0000-4000-8000-000000180410', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000953', ''),
+  ('a0000000-0000-4000-8000-000000180510', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000954', ''),
+  ('a0000000-0000-4000-8000-000000180610', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002010', 'a0000000-0000-4000-8000-000000000955', ''),
+  ('a0000000-0000-4000-8000-000000180101', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000950', 'Turn on the projector or interactive whiteboard.'),
+  ('a0000000-0000-4000-8000-000000180201', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000951', 'Open slide deck shared by the tutor team.'),
+  ('a0000000-0000-4000-8000-000000180301', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000952', 'Post Zoom link in LMS or share the QR code depending on session needs.'),
+  ('a0000000-0000-4000-8000-000000180401', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000953', 'Test the wifi.'),
+  ('a0000000-0000-4000-8000-000000180501', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000954', 'Make sure all student devices are ready.'),
+  ('a0000000-0000-4000-8000-000000180601', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002011', 'a0000000-0000-4000-8000-000000000955', 'Remind students to plug in their headphones and use their real names on Zoom.'),
+  ('a0000000-0000-4000-8000-000000180102', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000950', 'Open session detail page.'),
+  ('a0000000-0000-4000-8000-000000180202', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000951', 'Joins Zoom/ Pencil session.'),
+  ('a0000000-0000-4000-8000-000000180302', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000952', 'Take tutor attendance.'),
+  ('a0000000-0000-4000-8000-000000180402', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000953', 'Create breakout rooms.'),
+  ('a0000000-0000-4000-8000-000000180502', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000954', 'Remind tutors to go through rooms in order of dashboard list.'),
+  ('a0000000-0000-4000-8000-000000180602', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002012', 'a0000000-0000-4000-8000-000000000955', 'Give breakout room list to the tutors.'),
+  ('a0000000-0000-4000-8000-000000180103', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002013', 'a0000000-0000-4000-8000-000000000950', 'Tutor open session detail page.'),
+  ('a0000000-0000-4000-8000-000000180203', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002013', 'a0000000-0000-4000-8000-000000000951', 'Joins Zoom session.'),
+  ('a0000000-0000-4000-8000-000000180303', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002013', 'a0000000-0000-4000-8000-000000000952', 'Sign in with lead tutor and confirms they have co-host permissions.'),
+  ('a0000000-0000-4000-8000-000000180503', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002013', 'a0000000-0000-4000-8000-000000000954', 'Review student list for session.'),
+  ('a0000000-0000-4000-8000-000000180603', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002013', 'a0000000-0000-4000-8000-000000000955', 'Receive breakout rooms from lead tutor.'),
+  ('a0000000-0000-4000-8000-000000180106', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000950', 'PLUS App'),
+  ('a0000000-0000-4000-8000-000000180206', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000951', 'PLUS App, Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000180306', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000952', 'Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000180406', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000953', 'Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000180506', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000954', 'PLUS App, Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000180606', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002015', 'a0000000-0000-4000-8000-000000000955', 'Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000180107', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002016', 'a0000000-0000-4000-8000-000000000950', 'Tutor supervisor team sets up session details.'),
+  ('a0000000-0000-4000-8000-000000180207', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002016', 'a0000000-0000-4000-8000-000000000951', 'Tutor supervisor team sets up Zoom/Pencil link.'),
+  ('a0000000-0000-4000-8000-000000180109', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002018', 'a0000000-0000-4000-8000-000000000950', E'Dev team\nDesign team'),
+  ('a0000000-0000-4000-8000-000000180209', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002018', 'a0000000-0000-4000-8000-000000000951', E'Dev team\nDesign team'),
+  ('a0000000-0000-4000-8000-000000180509', 'a0000000-0000-4000-8000-000000000809', 'a0000000-0000-4000-8000-000000002018', 'a0000000-0000-4000-8000-000000000954', E'Dev team\nDesign team')
+on conflict (id) do update set
+  path_id = excluded.path_id,
+  layer_id = excluded.layer_id,
+  step_id = excluded.step_id,
+  content = excluded.content;
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/partner/step-01-projector-whiteboard.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180101';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/partner/step-02-slide-deck.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180201';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/partner/step-03-zoom-link-qr.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180301';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/partner/step-04-test-wifi.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180401';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/partner/step-05-student-devices-ready.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180501';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/partner/step-06-headphones-zoom.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180601';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/lead-tutor/step-01-session-detail-page.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180102';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/lead-tutor/step-02-join-zoom.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180202';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/lead-tutor/step-03-tutor-attendance.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180302';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/lead-tutor/step-04-breakout-rooms.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180402';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/lead-tutor/step-05-room-order-list.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180502';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/lead-tutor/step-06-breakout-room-list.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180602';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/regular-tutor/step-01-session-detail-page-headset.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180103';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/regular-tutor/step-02-join-zoom-headset.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180203';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/regular-tutor/step-03-sign-in-co-host.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180303';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/regular-tutor/step-05-student-list.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180503';
+
+update public.cells
+set picture = '/blueprint-images/before-students-join/happy-path/regular-tutor/step-06-receive-breakout-rooms.png'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180603';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Tutors join the session via Zoom/Pencil.'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180206';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Tutors sign in for the session via Zoom/Pencil.'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180306';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Lead tutors create breakout rooms on Zoom/Pencil.'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180406';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Lead tutors connect with regular tutors on Zoom/Pencil about the student list.'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180506';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Lead tutors connect with regular tutors about assigned breakout rooms via Zoom/Pencil.'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180606';
+
+update public.cells
+set links = jsonb_build_array(
+  jsonb_build_object(
+    'type', 'tech_description',
+    'label', 'PLUS App',
+    'description', 'The tutors open the session detail page in the PLUS app to join the session.',
+    'picture', '/blueprint-images/before-students-join/happy-path/plus-app/step-01-your-sessions.png',
+    'url', 'https://www.figma.com/design/W0qzhXWxFsMwSJzkdV2yal/Design-System---Web-App-Specs?node-id=1687-169958&t=LvyyxUtQVUCLMMc2-1'
+  )
+)
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180106';
+
+update public.cells
+set links = jsonb_build_array(
+  jsonb_build_object(
+    'type', 'tech_description',
+    'label', 'PLUS App',
+    'description', 'The tutors join the Zoom/Pencil page via the join session modal in the session dashboard.',
+    'picture', '/blueprint-images/before-students-join/happy-path/plus-app/step-02-session-detail.png',
+    'url', 'https://www.figma.com/design/W0qzhXWxFsMwSJzkdV2yal/Design-System---Web-App-Specs?node-id=5486-76055&t=LvyyxUtQVUCLMMc2-1'
+  )
+)
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180206';
+
+update public.cells
+set links = jsonb_build_array(
+  jsonb_build_object(
+    'type', 'tech_description',
+    'label', 'PLUS App',
+    'description', 'The tutors review the student list for the session in the PLUS app.',
+    'picture', '/blueprint-images/before-students-join/happy-path/plus-app/step-05-your-students.png',
+    'url', 'https://www.figma.com/design/W0qzhXWxFsMwSJzkdV2yal/Design-System---Web-App-Specs?node-id=4764-199729&t=LvyyxUtQVUCLMMc2-1'
+  )
+)
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id = 'a0000000-0000-4000-8000-000000180506';
+
+update public.cells
+set description =
+  'Dev Team Builds the app and the Design Team creates the screens and flows relevant to this step. Both implement the findings from the research team into the app in their respective role.'
+where path_id = 'a0000000-0000-4000-8000-000000000809'
+  and id in (
+    'a0000000-0000-4000-8000-000000180109',
+    'a0000000-0000-4000-8000-000000180209',
+    'a0000000-0000-4000-8000-000000180509'
+  );
+
+insert into public.cell_triggers (id, source_cell_id, target_cell_id)
+values
+  ('a0000000-0000-4000-8000-000000096001', 'a0000000-0000-4000-8000-000000180101', 'a0000000-0000-4000-8000-000000180201'),
+  ('a0000000-0000-4000-8000-000000096002', 'a0000000-0000-4000-8000-000000180201', 'a0000000-0000-4000-8000-000000180301'),
+  ('a0000000-0000-4000-8000-000000096003', 'a0000000-0000-4000-8000-000000180301', 'a0000000-0000-4000-8000-000000180401'),
+  ('a0000000-0000-4000-8000-000000096004', 'a0000000-0000-4000-8000-000000180401', 'a0000000-0000-4000-8000-000000180501'),
+  ('a0000000-0000-4000-8000-000000096005', 'a0000000-0000-4000-8000-000000180501', 'a0000000-0000-4000-8000-000000180601'),
+  ('a0000000-0000-4000-8000-000000096010', 'a0000000-0000-4000-8000-000000180102', 'a0000000-0000-4000-8000-000000180202'),
+  ('a0000000-0000-4000-8000-000000096011', 'a0000000-0000-4000-8000-000000180202', 'a0000000-0000-4000-8000-000000180302'),
+  ('a0000000-0000-4000-8000-000000096012', 'a0000000-0000-4000-8000-000000180302', 'a0000000-0000-4000-8000-000000180402'),
+  ('a0000000-0000-4000-8000-000000096013', 'a0000000-0000-4000-8000-000000180402', 'a0000000-0000-4000-8000-000000180502'),
+  ('a0000000-0000-4000-8000-000000096014', 'a0000000-0000-4000-8000-000000180502', 'a0000000-0000-4000-8000-000000180602'),
+  ('a0000000-0000-4000-8000-000000096020', 'a0000000-0000-4000-8000-000000180103', 'a0000000-0000-4000-8000-000000180203'),
+  ('a0000000-0000-4000-8000-000000096021', 'a0000000-0000-4000-8000-000000180203', 'a0000000-0000-4000-8000-000000180303'),
+  ('a0000000-0000-4000-8000-000000096022', 'a0000000-0000-4000-8000-000000180303', 'a0000000-0000-4000-8000-000000180503'),
+  ('a0000000-0000-4000-8000-000000096023', 'a0000000-0000-4000-8000-000000180503', 'a0000000-0000-4000-8000-000000180603'),
+  ('a0000000-0000-4000-8000-000000096031', 'a0000000-0000-4000-8000-000000180502', 'a0000000-0000-4000-8000-000000180503'),
+  ('a0000000-0000-4000-8000-000000096032', 'a0000000-0000-4000-8000-000000180602', 'a0000000-0000-4000-8000-000000180603'),
+  ('a0000000-0000-4000-8000-000000096041', 'a0000000-0000-4000-8000-000000180103', 'a0000000-0000-4000-8000-000000180106'),
+  ('a0000000-0000-4000-8000-000000096042', 'a0000000-0000-4000-8000-000000180203', 'a0000000-0000-4000-8000-000000180206'),
+  ('a0000000-0000-4000-8000-000000096043', 'a0000000-0000-4000-8000-000000180303', 'a0000000-0000-4000-8000-000000180306'),
+  ('a0000000-0000-4000-8000-000000096044', 'a0000000-0000-4000-8000-000000180503', 'a0000000-0000-4000-8000-000000180506'),
+  ('a0000000-0000-4000-8000-000000096045', 'a0000000-0000-4000-8000-000000180603', 'a0000000-0000-4000-8000-000000180606'),
+  ('a0000000-0000-4000-8000-000000096061', 'a0000000-0000-4000-8000-000000180107', 'a0000000-0000-4000-8000-000000180106'),
+  ('a0000000-0000-4000-8000-000000096062', 'a0000000-0000-4000-8000-000000180207', 'a0000000-0000-4000-8000-000000180206')
+on conflict (id) do update set
+  source_cell_id = excluded.source_cell_id,
+  target_cell_id = excluded.target_cell_id;

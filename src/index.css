@@ -1,0 +1,319 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+}
+
+@layer utilities {
+  .blueprint-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .blueprint-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
+  [data-phase-scenario-panel] {
+    background-color: #e8e8ed;
+    border-color: #d4d4da;
+  }
+
+  [data-scenario-panel-title-badge] {
+    background-color: #c2c2c8;
+    border-color: #c2c2c8;
+    color: #2c2c2e;
+  }
+
+  [data-phase-title-badge] {
+    background-color: #b6c7d2;
+    border-color: #b6c7d2;
+    color: #1c1c1e;
+  }
+
+  [data-canvas-phase-interactive] [data-phase-frame] {
+    background-color: #d9e4ea;
+    border-color: #b6c7d2;
+  }
+
+  [data-phase-scenario-panel]:hover,
+  [data-phase-scenario-panel]:focus-within {
+    background-color: #dddfe4;
+    border-color: #babac4;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    --blueprint-panel-label-rail: #dddfe4;
+    --blueprint-panel-canvas: #f4f4f7;
+    --blueprint-panel-section-fill: #f4f4f7;
+    --blueprint-panel-divider-bg: #dddfe4;
+    --blueprint-panel-cell-blend: #c8c8d0;
+  }
+
+  [data-phase-scenario-panel]:hover [data-scenario-panel-title-badge],
+  [data-phase-scenario-panel]:focus-within [data-scenario-panel-title-badge] {
+    background-color: #b0b0b8;
+    border-color: #b0b0b8;
+  }
+
+  [data-phase-scenario-panel]:hover [data-blueprint-cell-anchor],
+  [data-phase-scenario-panel]:focus-within [data-blueprint-cell-anchor] {
+    --blueprint-cell-bg-panel: color-mix(
+      in srgb,
+      var(--blueprint-cell-bg-origin, var(--blueprint-cell-bg, #ddeef0)) 88%,
+      var(--blueprint-panel-cell-blend, #c8c8d0) 12%
+    );
+  }
+
+  [data-blueprint-cell-anchor] {
+    transition-property: box-shadow, transform, opacity;
+  }
+
+  [data-canvas-phase-interactive]:hover:not(:has([data-phase-scenario-panel]:hover))
+    [data-phase-frame],
+  [data-canvas-phase-interactive]:focus-within:not(:has([data-phase-scenario-panel]:focus-within))
+    [data-phase-frame] {
+    background-color: #c5d6e0;
+    border-color: #9aadbe;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+
+  [data-canvas-phase-interactive]:hover:not(:has([data-phase-scenario-panel]:hover))
+    [data-phase-title-badge],
+  [data-canvas-phase-interactive]:focus-within:not(:has([data-phase-scenario-panel]:focus-within))
+    [data-phase-title-badge] {
+    background-color: #9aadbe;
+    border-color: #9aadbe;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Print / PDF export (Cmd+P → Save as PDF).
+ * Goal: while viewing a blueprint, printing yields the per-path blueprint grid
+ * at natural scale on a white page — no app chrome, no zoom/pan transform.
+ * ------------------------------------------------------------------------- */
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  /* Force light theme tokens so dark mode still prints dark-on-white. */
+  :root,
+  .dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --border: oklch(0.922 0 0);
+  }
+
+  /* Preserve lane fills, badges, and divider colors in the PDF. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* --- Hide app chrome ---------------------------------------------------
+   * Sidebar, collapsed-sidebar rail, zoom indicator, prev/next slide nav,
+   * sticky slide header (title + path filters), cell detail side panel,
+   * walkthrough modal, and per-element opt-outs (play buttons, collapse
+   * toggles).
+   */
+  [data-editor-shell] > aside,
+  [data-editor-chrome],
+  [data-zoom-indicator],
+  [data-canvas-nav],
+  [data-slide-canvas] > [data-slide-sticky-header],
+  [data-cell-detail-panel],
+  [data-visual-walkthrough-modal],
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* The inactive stacked view (home vs. detail) is opacity-0/aria-hidden on
+   * screen; remove it entirely so only the visible view prints. */
+  [data-editor-view][aria-hidden='true'] {
+    display: none !important;
+  }
+
+  /* --- Unlock the fixed-viewport layout so content flows across pages --- */
+  [data-editor-shell] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  [data-editor-shell] > main,
+  [data-editor-view],
+  [data-slide-canvas],
+  [data-zoom-pan-root],
+  [data-zoom-pan-viewport],
+  [data-zoom-pan-content] {
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Neutralize the zoom/pan transform (inline translate3d + scale) so the
+   * grid prints at natural scale from the top-left. */
+  [data-zoom-pan-content] {
+    transform: none !important;
+  }
+
+  [data-zoom-pan-viewport] {
+    background: #fff !important;
+  }
+
+  /* Grid scroll containers clip on screen; let them overflow onto pages. */
+  .blueprint-scroll {
+    overflow: visible !important;
+  }
+
+  /* Page breaks: keep a swimlane row (and each grid cell) on one page. */
+  [data-blueprint-row],
+  [data-blueprint-cell-anchor] {
+    break-inside: avoid;
+  }
+
+  /* Visual-row screenshots must fit their cells / the page. */
+  img {
+    max-width: 100% !important;
+  }
+}

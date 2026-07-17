@@ -1,0 +1,5 @@
+-- Set Goals path — Regular Tutor step 3 illustration
+
+update public.cells
+set picture = '/blueprint-images/goal-setting/set-goals/regular-tutor/step-03-share-screen.png'
+where id = 'a0000000-0000-4000-8000-0000001f0303';

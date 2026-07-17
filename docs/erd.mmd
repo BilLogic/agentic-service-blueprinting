@@ -1,0 +1,97 @@
+%% Service Blueprint ERD
+%% Source of truth: supabase/migrations/ — verified through 20260716120000_layer_role.sql (2026-07-16)
+%% Enums: service_scenarios.view_type ∈ (single | side-by-side | integrated)
+%%        paths.path_type ∈ (happy | unhappy | exception | alternative)
+%% Integrity: cells.path_id must match layers.path_id AND (path_id, step_id) must exist in
+%%            path_steps (DB trigger cells_validate_path_match). Import order:
+%%            paths → steps → path_steps → layers → cells → cell_triggers.
+%% Roles: layers.layer_role — semantic role key separate from the display name. Canonical:
+%%            customer_actions, frontstage_actions, backstage_actions, frontstage_tech,
+%%            backstage_tech, support_systems, visual, step_visual; extensible (org-defined
+%%            custom roles render as generic swimlanes); null = generic swimlane.
+erDiagram
+  service_lifecycles ||--o{ phases : "has many"
+  phases ||--o{ service_scenarios : "has many"
+  phases |o--o| phases : "loops_to_phase_id"
+  service_scenarios ||--o{ paths : "has many"
+  service_scenarios ||--o{ steps : "has many"
+  paths ||--o{ path_steps : "has many"
+  steps ||--o{ path_steps : "has many"
+  paths ||--o{ layers : "has many"
+  paths ||--o{ cells : "has many"
+  layers ||--o{ cells : "has many"
+  steps ||--o{ cells : "has many"
+  cells ||--o{ cell_triggers : "source"
+  cells ||--o{ cell_triggers : "target"
+
+  service_lifecycles {
+    uuid id PK
+    text name
+    text description
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  phases {
+    uuid id PK
+    uuid service_lifecycle_id FK
+    text name
+    text description
+    int order_position
+    uuid loops_to_phase_id FK "optional self-reference"
+  }
+
+  service_scenarios {
+    uuid id PK
+    uuid phase_id FK
+    text name
+    text description
+    int order_position
+    text view_type "single | side-by-side | integrated"
+  }
+
+  paths {
+    uuid id PK
+    uuid service_scenario_id FK
+    text name
+    text description
+    text note "optional, e.g. parallel-scenario context"
+    text path_type "happy | unhappy | exception | alternative"
+  }
+
+  steps {
+    uuid id PK
+    uuid service_scenario_id FK "columns are scenario-scoped, shared across paths"
+    text name
+  }
+
+  path_steps {
+    uuid path_id PK, FK
+    uuid step_id PK, FK
+    int column_position "unique per (path_id, column_position)"
+  }
+
+  layers {
+    uuid id PK
+    uuid path_id FK
+    text name "display label - free-form, any language"
+    text layer_role "semantic role key; null = generic swimlane"
+    int row_position
+  }
+
+  cells {
+    uuid id PK
+    uuid path_id FK
+    uuid layer_id FK "unique (layer_id, step_id)"
+    uuid step_id FK
+    text content "Cell Label - primary grid text"
+    text picture "optional image URL"
+    text description "optional detail-panel text"
+    jsonb links "array of {type, label, url?}"
+  }
+
+  cell_triggers {
+    uuid id PK
+    uuid source_cell_id FK "unique pair; source != target"
+    uuid target_cell_id FK
+  }

@@ -1,0 +1,154 @@
+-- In-session → Student Just Joined scenario — Happy Path
+-- Stable keys map to fixed UUIDs in src/data/studentsJustJoinedHappyPathFallback.ts
+
+update public.service_scenarios
+set
+  description = 'Teachers and tutors welcome students as they join the session.',
+  view_type = 'side-by-side'
+where id = 'a0000000-0000-4000-8000-000000000202';
+
+insert into public.paths (id, service_scenario_id, name, description, path_type)
+values (
+  'a0000000-0000-4000-8000-00000000080b',
+  'a0000000-0000-4000-8000-000000000202',
+  'Happy Path',
+  'Teachers and tutors welcome students as they join the session.',
+  'happy'
+)
+on conflict (id) do update set
+  service_scenario_id = excluded.service_scenario_id,
+  name = excluded.name,
+  description = excluded.description,
+  path_type = excluded.path_type;
+
+delete from public.cell_triggers
+where source_cell_id in (
+  select id from public.cells
+  where path_id = 'a0000000-0000-4000-8000-00000000080b'
+);
+
+delete from public.cells
+where path_id = 'a0000000-0000-4000-8000-00000000080b';
+
+delete from public.layers
+where path_id = 'a0000000-0000-4000-8000-00000000080b';
+
+insert into public.layers (id, path_id, name, row_position)
+values
+  ('a0000000-0000-4000-8000-000000002020', 'a0000000-0000-4000-8000-00000000080b', 'Visual', 0),
+  ('a0000000-0000-4000-8000-000000002021', 'a0000000-0000-4000-8000-00000000080b', 'Partner Action: Teacher', 1),
+  ('a0000000-0000-4000-8000-000000002022', 'a0000000-0000-4000-8000-00000000080b', 'Lead Tutor', 2),
+  ('a0000000-0000-4000-8000-000000002023', 'a0000000-0000-4000-8000-00000000080b', 'Regular Tutor', 3),
+  ('a0000000-0000-4000-8000-000000002024', 'a0000000-0000-4000-8000-00000000080b', 'Front Stage Tech', 4),
+  ('a0000000-0000-4000-8000-000000002025', 'a0000000-0000-4000-8000-00000000080b', 'Front Stage Actions', 5),
+  ('a0000000-0000-4000-8000-000000002027', 'a0000000-0000-4000-8000-00000000080b', 'Back Stage Tech', 6),
+  ('a0000000-0000-4000-8000-000000002026', 'a0000000-0000-4000-8000-00000000080b', 'Back Stage Actions', 7),
+  ('a0000000-0000-4000-8000-000000002028', 'a0000000-0000-4000-8000-00000000080b', 'Support Actions', 8)
+on conflict (id) do update set
+  name = excluded.name,
+  row_position = excluded.row_position,
+  path_id = excluded.path_id;
+
+insert into public.steps (id, service_scenario_id, name)
+values
+  ('a0000000-0000-4000-8000-000000000960', 'a0000000-0000-4000-8000-000000000202', 'Students join'),
+  ('a0000000-0000-4000-8000-000000000961', 'a0000000-0000-4000-8000-000000000202', 'Share screen and log in'),
+  ('a0000000-0000-4000-8000-000000000962', 'a0000000-0000-4000-8000-000000000202', 'Raise hand for help')
+on conflict (id) do update set
+  name = excluded.name,
+  service_scenario_id = excluded.service_scenario_id;
+
+delete from public.path_steps
+where path_id = 'a0000000-0000-4000-8000-00000000080b';
+
+insert into public.path_steps (path_id, step_id, column_position)
+values
+  ('a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000000960', 1),
+  ('a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000000961', 2),
+  ('a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000000962', 3)
+on conflict (path_id, step_id) do update set
+  column_position = excluded.column_position;
+
+insert into public.cells (id, path_id, layer_id, step_id, content)
+values
+  ('a0000000-0000-4000-8000-000000190110', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002020', 'a0000000-0000-4000-8000-000000000960', ''),
+  ('a0000000-0000-4000-8000-000000190210', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002020', 'a0000000-0000-4000-8000-000000000961', ''),
+  ('a0000000-0000-4000-8000-000000190310', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002020', 'a0000000-0000-4000-8000-000000000962', ''),
+  ('a0000000-0000-4000-8000-000000190101', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002021', 'a0000000-0000-4000-8000-000000000960', 'Remind students that tutors support multiple students and wait time is normal.'),
+  ('a0000000-0000-4000-8000-000000190201', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002021', 'a0000000-0000-4000-8000-000000000961', 'Ask students to share screen and log into math software.'),
+  ('a0000000-0000-4000-8000-000000190301', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002021', 'a0000000-0000-4000-8000-000000000962', 'Show students how to use the ''raise hand'' emoji to let tutors know when they need help.'),
+  ('a0000000-0000-4000-8000-000000190102', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002022', 'a0000000-0000-4000-8000-000000000960', 'Greet students as they join.'),
+  ('a0000000-0000-4000-8000-000000190202', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002022', 'a0000000-0000-4000-8000-000000000961', 'Mute students if necessary.'),
+  ('a0000000-0000-4000-8000-000000190302', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002022', 'a0000000-0000-4000-8000-000000000962', 'Ping tutor if they missed moving student to breakout room for late joiners.'),
+  ('a0000000-0000-4000-8000-000000190303', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002023', 'a0000000-0000-4000-8000-000000000962', 'Move student to breakout room.'),
+  ('a0000000-0000-4000-8000-000000190106', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002025', 'a0000000-0000-4000-8000-000000000960', 'Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000190206', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002025', 'a0000000-0000-4000-8000-000000000961', 'Zoom/Pencil'),
+  ('a0000000-0000-4000-8000-000000190306', 'a0000000-0000-4000-8000-00000000080b', 'a0000000-0000-4000-8000-000000002025', 'a0000000-0000-4000-8000-000000000962', 'Zoom/Pencil')
+on conflict (id) do update set
+  path_id = excluded.path_id,
+  layer_id = excluded.layer_id,
+  step_id = excluded.step_id,
+  content = excluded.content;
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/partner/step-01-remind-wait-time.png'
+where id = 'a0000000-0000-4000-8000-000000190101';
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/partner/step-02-share-screen-math-software.png'
+where id = 'a0000000-0000-4000-8000-000000190201';
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/partner/step-03-raise-hand-emoji.png'
+where id = 'a0000000-0000-4000-8000-000000190301';
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/lead-tutor/step-01-greet-students.png'
+where id = 'a0000000-0000-4000-8000-000000190102';
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/lead-tutor/step-02-mute-students.png'
+where id = 'a0000000-0000-4000-8000-000000190202';
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/lead-tutor/step-03-ping-tutor-late-joiners.png'
+where id = 'a0000000-0000-4000-8000-000000190302';
+
+update public.cells
+set picture = '/blueprint-images/students-just-joined/happy-path/regular-tutor/step-03-move-breakout-room.png'
+where id = 'a0000000-0000-4000-8000-000000190303';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'The lead tutor greets students on Zoom/Pencil as they join the session.'
+where path_id = 'a0000000-0000-4000-8000-00000000080b'
+  and id = 'a0000000-0000-4000-8000-000000190106';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Lead tutors utilize the mute function on Zoom/Pencil if necessary.'
+where path_id = 'a0000000-0000-4000-8000-00000000080b'
+  and id = 'a0000000-0000-4000-8000-000000190206';
+
+update public.cells
+set
+  picture = '/blueprint-images/goal-setting/shared/front-stage-tech/zoom-logo.png',
+  description = 'Regular tutors move their students to their corresponding breakout room on Zoom/Pencil.'
+where path_id = 'a0000000-0000-4000-8000-00000000080b'
+  and id = 'a0000000-0000-4000-8000-000000190306';
+
+insert into public.cell_triggers (id, source_cell_id, target_cell_id)
+values
+  ('a0000000-0000-4000-8000-000000097001', 'a0000000-0000-4000-8000-000000190101', 'a0000000-0000-4000-8000-000000190201'),
+  ('a0000000-0000-4000-8000-000000097002', 'a0000000-0000-4000-8000-000000190201', 'a0000000-0000-4000-8000-000000190301'),
+  ('a0000000-0000-4000-8000-000000097010', 'a0000000-0000-4000-8000-000000190102', 'a0000000-0000-4000-8000-000000190202'),
+  ('a0000000-0000-4000-8000-000000097011', 'a0000000-0000-4000-8000-000000190202', 'a0000000-0000-4000-8000-000000190302'),
+  ('a0000000-0000-4000-8000-000000097020', 'a0000000-0000-4000-8000-000000190302', 'a0000000-0000-4000-8000-000000190303'),
+  ('a0000000-0000-4000-8000-000000097031', 'a0000000-0000-4000-8000-000000190102', 'a0000000-0000-4000-8000-000000190106'),
+  ('a0000000-0000-4000-8000-000000097032', 'a0000000-0000-4000-8000-000000190202', 'a0000000-0000-4000-8000-000000190206'),
+  ('a0000000-0000-4000-8000-000000097030', 'a0000000-0000-4000-8000-000000190303', 'a0000000-0000-4000-8000-000000190306')
+on conflict (id) do update set
+  source_cell_id = excluded.source_cell_id,
+  target_cell_id = excluded.target_cell_id;

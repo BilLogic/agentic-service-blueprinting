@@ -1,0 +1,11 @@
+export {
+  REPORTING_AN_ISSUE_HAPPY_PATH_FALLBACK,
+  REPORTING_AN_ISSUE_HAPPY_PATH_ID,
+  REPORTING_AN_ISSUE_SCENARIO_ID,
+} from '@/data/reportingAnIssueHappyPathFallback'
+
+export {
+  REPORTING_HOURS_HAPPY_PATH_FALLBACK,
+  REPORTING_HOURS_HAPPY_PATH_ID,
+  REPORTING_HOURS_SCENARIO_ID,
+} from '@/data/reportingHoursHappyPathFallback'
