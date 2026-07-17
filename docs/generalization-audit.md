@@ -6,6 +6,12 @@ status: draft
 
 # Generalization Audit
 
+> **Template note (2026-07-16):** this audit inventories the *source* repo
+> ([plus-uno-blueprint](https://github.com/BilLogic/plus-uno-blueprint)). In this
+> template repo every finding classed **delete** or **parameterize** has been
+> executed by the scrub (`feat/template-scrub`); the file/line references below
+> describe the pre-scrub tree and are kept as the record of what was removed and why.
+
 Inventory of every hardcoded PLUS-specific ID, flag, shim, and magic string that blocks other orgs from using this app as a template. Produced for Phase 0-A of [the skill plan](plans/2026-07-16-001-feat-service-blueprint-agent-skill-plan.md).
 
 Remediation classes: **parameterize** (make configurable), **generalize** (replace mechanism), **delete** (remove in scrubbed template; may stay in the PLUS instance), **move-to-adapter** (belongs in backend adapter territory).

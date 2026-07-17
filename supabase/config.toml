@@ -68,7 +68,7 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql", "./seeds/application_discovery_happy_path.sql", "./seeds/application_discovery_sad_path.sql", "./seeds/application_interview_happy_path.sql", "./seeds/onboarding_tech_setup_happy_path.sql", "./seeds/onboarding_modules_happy_path.sql", "./seeds/lesson_modules_happy_path.sql", "./seeds/onboarding_session_sign_up_happy_path.sql", "./seeds/pre_session_standard_scheduling_happy_path.sql", "./seeds/pre_session_fill_in_request_happy_path.sql", "./seeds/pre_session_call_off_request_happy_path.sql", "./seeds/in_session_before_students_join_happy_path.sql", "./seeds/in_session_students_just_joined_happy_path.sql", "./seeds/in_session_goal_setting_happy_path.sql", "./seeds/in_session_goal_setting_detailed_path.sql", "./seeds/in_session_goal_setting_check_update_paths.sql", "./seeds/in_session_goal_setting_set_goals_edge_case.sql", "./seeds/in_session_goal_setting_updated_goals_edge_case.sql", "./seeds/goal_setting_parallel_session_pictures.sql", "./seeds/in_session_help_request_happy_path.sql", "./seeds/in_session_wrap_up_happy_path.sql", "./seeds/warm_up_happy_path.sql", "./seeds/warm_up_alternate_path.sql"]
+sql_paths = ["./seed.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
