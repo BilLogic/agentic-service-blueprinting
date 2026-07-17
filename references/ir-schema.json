@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/ir-schema.json",
+  "title": "Service Blueprint IR",
+  "description": "Intermediate representation for a service blueprint, authored as human-editable YAML in the workspace blueprint/ directory and validated by scripts/validate_ir.py. Mirrors the template data model (see references/data-model.md): lifecycle -> phases -> scenarios -> paths -> layers/steps/cells/triggers. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (lifecycle/phase/scenario/path/layer/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, layer, step) key triple; triggers by their source->target cell pair. Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
+  "type": "object",
+  "required": ["schema_version", "locales", "lifecycle"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Template schema version this IR was authored against. Import performs a compatibility check against the workspace clone's schema_version (see references/workspace-state.md)."
+    },
+    "locales": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/locale" },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Locales this blueprint is authored in. Every localeText field should cover all declared locales; the validator flags gaps. One generated artifact set and one deploy target per locale."
+    },
+    "lifecycle": { "$ref": "#/$defs/lifecycle" }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "description": "Stable identifier: lowercase alphanumerics, hyphen, underscore. Locale-independent. Feeds UUIDv5 derivation — treat as permanent once imported."
+    },
+    "locale": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+      "description": "BCP-47-style locale tag, e.g. en, zh, zh-Hant."
+    },
+    "localeText": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/locale" },
+      "additionalProperties": { "type": "string" },
+      "description": "Locale -> text map, e.g. {en: 'Submit repair ticket', zh: '提交报修工单'}."
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string", "description": "Source document path or URL this content was extracted from." },
+        "section": { "type": "string", "description": "Section heading, page, sheet, or frame within the source." }
+      }
+    },
+    "cellRef": {
+      "type": "object",
+      "required": ["layer", "step"],
+      "additionalProperties": false,
+      "properties": {
+        "layer": { "$ref": "#/$defs/key" },
+        "step": { "$ref": "#/$defs/key" }
+      },
+      "description": "Reference to a cell on the same path by its (layer, step) key pair."
+    },
+    "link": {
+      "type": "object",
+      "required": ["type", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["url", "tech_description"],
+          "description": "url = external link chip; tech_description = long-form copy attached to a tech pill, keyed by the pill label."
+        },
+        "label": { "$ref": "#/$defs/localeText" },
+        "url": { "type": "string", "format": "uri" },
+        "description": { "$ref": "#/$defs/localeText", "description": "Long-form copy for tech_description links." },
+        "picture": { "type": "string", "description": "Screenshot/illustration path or URL for tech_description links." },
+        "pictures": { "type": "array", "items": { "type": "string" }, "description": "Multiple images (e.g. logo + screenshot); takes precedence over picture." }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "url" } } }, "then": { "required": ["url"] } }
+      ]
+    },
+    "lifecycle": {
+      "type": "object",
+      "required": ["key", "name", "phases"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/localeText" },
+        "description": { "$ref": "#/$defs/localeText" },
+        "phases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/phase" } }
+      }
+    },
+    "phase": {
+      "type": "object",
+      "required": ["key", "name", "order", "scenarios"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/localeText" },
+        "description": { "$ref": "#/$defs/localeText" },
+        "order": { "type": "integer", "minimum": 0, "description": "order_position within the lifecycle." },
+        "loops_to": { "$ref": "#/$defs/key", "description": "Key of another phase this phase loops back to (loops_to_phase_id)." },
+        "scenarios": { "type": "array", "items": { "$ref": "#/$defs/scenario" } }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "required": ["key", "name", "order", "view_type", "steps", "paths"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/localeText" },
+        "description": { "$ref": "#/$defs/localeText" },
+        "order": { "type": "integer", "minimum": 0 },
+        "view_type": {
+          "enum": ["single", "side-by-side", "integrated"],
+          "description": "single = one path at a time; side-by-side = labeled variant comparison (see paths[].variant_label); integrated = runtime merge of all paths."
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/step" },
+          "description": "Scenario-scoped step columns, shared across paths. Per-path column order lives in paths[].path_steps."
+        },
+        "paths": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/path" } }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["key", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/localeText" }
+      }
+    },
+    "path": {
+      "type": "object",
+      "required": ["key", "name", "path_type", "layers", "path_steps", "cells"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "name": { "$ref": "#/$defs/localeText" },
+        "description": { "$ref": "#/$defs/localeText" },
+        "note": { "$ref": "#/$defs/localeText", "description": "Optional note shown with path metadata (e.g. parallel-scenario context)." },
+        "path_type": { "enum": ["happy", "unhappy", "exception", "alternative"] },
+        "variant_label": {
+          "$ref": "#/$defs/localeText",
+          "description": "Label for this path as a comparison variant in side-by-side view (e.g. 'as designed' vs 'as actually done'). Any two labeled variants compare — designed-vs-reality is just the default labeling."
+        },
+        "layers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/layer" } },
+        "path_steps": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/key" },
+          "description": "Scenario step keys in column order for THIS path (array index = column_position). Every cell's step must appear here — the DB trigger aborts imports otherwise."
+        },
+        "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" } },
+        "triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "required": ["key", "display_name", "row"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "display_name": { "$ref": "#/$defs/localeText", "description": "Free-form swimlane label in any language (layers.name in the DB)." },
+        "role": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9_]*$",
+          "description": "Semantic role key (layers.layer_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. Org-defined custom roles and null both render as generic swimlanes. See references/layer-roles.md."
+        },
+        "row": { "type": "integer", "minimum": 0, "description": "row_position, top to bottom." }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "required": ["layer", "step"],
+      "additionalProperties": false,
+      "properties": {
+        "layer": { "$ref": "#/$defs/key" },
+        "step": { "$ref": "#/$defs/key" },
+        "content": {
+          "$ref": "#/$defs/localeText",
+          "description": "Cell label, the primary grid text. Newline-separated items render as pills on pill-role lanes. Omit (or empty strings) for visual-row picture cells."
+        },
+        "description": { "$ref": "#/$defs/localeText", "description": "Detail-panel text." },
+        "picture": { "type": "string", "description": "Image path or URL (visual rows and illustrated cells)." },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "needs_review": { "type": "boolean", "description": "Low-confidence extraction — surface during review; sign-off should clear or confirm these." },
+        "evidence": { "type": "array", "items": { "type": "string" }, "description": "Verbatim quotes or pointers backing this cell (researcher traceability). Reserved shape; no v1 UX." },
+        "attribution": { "type": "string", "description": "Who asserted this content (stakeholder-merge conflicts modeled as data). Reserved shape; no v1 UX." }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["source", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "$ref": "#/$defs/cellRef" },
+        "target": { "$ref": "#/$defs/cellRef" }
+      },
+      "description": "Directed trigger arrow between two cells on the SAME path (cross-path triggers are invalid). source != target."
+    }
+  }
+}

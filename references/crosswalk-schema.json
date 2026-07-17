@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/crosswalk-schema.json",
+  "title": "Blueprint Crosswalk",
+  "description": "Reviewable, reusable mapping from a foreign blueprint's structure (their swimlanes/columns/variants) onto the template data model (roles/layers/steps/paths). Built during translation (references/translate-playbook.md) and presented for user approval BEFORE any IR is generated. Invariant: every source element is either mapped or listed in `unmapped` with a reason — nothing is ever silently dropped.",
+  "type": "object",
+  "required": ["source", "scenario", "lanes", "columns", "unmapped"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "type": "object",
+      "required": ["format"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "enum": ["figjam", "figma", "xlsx", "csv", "markdown-table", "miro-export", "other"],
+          "description": "v1 inputs: xlsx/CSV, markdown tables, FigJam via MCP; Miro only via CSV/board export."
+        },
+        "file": { "type": "string", "description": "Path or URL of the source blueprint." },
+        "description": { "type": "string" }
+      }
+    },
+    "scenario": { "type": "string", "description": "Target scenario key in the IR this crosswalk populates." },
+    "lanes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/laneMapping" },
+      "description": "Source swimlanes/rows -> target layers. N:1 merges are expressed as multiple lane mappings sharing one target_layer (set merge_note on each)."
+    },
+    "columns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/columnMapping" },
+      "description": "Source columns/stages -> target scenario steps, in column order."
+    },
+    "paths": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pathMapping" },
+      "description": "Source variants/branches/boards -> target paths. A single-flow source maps to one happy path."
+    },
+    "unmapped": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unmappedElement" },
+      "description": "REQUIRED bucket (may be empty) for every source element with no mapping. Typical dispositions: promote to an org-defined custom role, exclude with the user's consent, or leave pending for a follow-up pass."
+    }
+  },
+  "$defs": {
+    "laneMapping": {
+      "type": "object",
+      "required": ["source_lane", "target_layer"],
+      "additionalProperties": false,
+      "properties": {
+        "source_lane": { "type": "string", "description": "The foreign lane's label, verbatim." },
+        "target_layer": { "type": "string", "description": "Target layer key in the IR." },
+        "target_role": {
+          "type": ["string", "null"],
+          "description": "Semantic role for the target layer (canonical or org-defined custom, e.g. Shostack's physical evidence -> a custom physical_evidence role). null = generic swimlane."
+        },
+        "target_display_name": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Locale map for the target layer's display label. Keep the org's own vocabulary — customize our layers to fit them, not the reverse."
+        },
+        "merge_note": { "type": "string", "description": "Present when several source lanes merge into one target layer (N:1): how cell content is combined and why." },
+        "note": { "type": "string" }
+      }
+    },
+    "columnMapping": {
+      "type": "object",
+      "required": ["source_column", "target_step"],
+      "additionalProperties": false,
+      "properties": {
+        "source_column": { "type": "string" },
+        "target_step": { "type": "string", "description": "Target step key in the IR." },
+        "note": { "type": "string" }
+      }
+    },
+    "pathMapping": {
+      "type": "object",
+      "required": ["source_path", "target_path", "path_type"],
+      "additionalProperties": false,
+      "properties": {
+        "source_path": { "type": "string", "description": "The foreign variant/branch/board name, verbatim." },
+        "target_path": { "type": "string", "description": "Target path key in the IR." },
+        "path_type": { "enum": ["happy", "unhappy", "exception", "alternative"] },
+        "note": { "type": "string" }
+      }
+    },
+    "unmappedElement": {
+      "type": "object",
+      "required": ["source_element", "kind", "reason", "disposition"],
+      "additionalProperties": false,
+      "properties": {
+        "source_element": { "type": "string", "description": "The unmapped element, verbatim." },
+        "kind": { "enum": ["lane", "column", "path", "annotation", "region", "other"] },
+        "reason": { "type": "string" },
+        "disposition": {
+          "enum": ["pending", "excluded", "custom_role", "merged", "deferred"],
+          "description": "pending = awaiting user decision; excluded = user consented to drop; custom_role = will become an org-defined role; merged = folded into a mapped element; deferred = later scenario/session."
+        }
+      }
+    }
+  }
+}
