@@ -1,0 +1,280 @@
+{
+  "schema_version": "2026.07.16",
+  "locales": ["en", "zh"],
+  "lifecycle": {
+    "key": "streetlight-service",
+    "name": { "en": "Streetlight Service Lifecycle", "zh": "路灯服务生命周期" },
+    "description": {
+      "en": "Test fixture lifecycle for the Phase 1 script round-trip tests.",
+      "zh": "用于第一阶段脚本往返测试的示例生命周期。"
+    },
+    "phases": [
+      {
+        "key": "operate",
+        "name": { "en": "Operate", "zh": "运营" },
+        "description": { "en": "Day-2 operations.", "zh": "日常运营阶段。" },
+        "order": 0,
+        "scenarios": [
+          {
+            "key": "asset-repair",
+            "name": { "en": "Asset Repair", "zh": "资产报修" },
+            "description": {
+              "en": "A reported streetlight fault is triaged, dispatched, repaired, and archived.",
+              "zh": "上报的路灯故障经过分诊、派单、维修与归档。"
+            },
+            "order": 0,
+            "view_type": "side-by-side",
+            "steps": [
+              { "key": "report", "name": { "en": "Report fault", "zh": "提交报修" } },
+              { "key": "triage", "name": { "en": "Triage & prioritize", "zh": "分诊与排序" } },
+              { "key": "dispatch", "name": { "en": "Dispatch crew", "zh": "派单出勤" } },
+              { "key": "repair", "name": { "en": "Repair on site", "zh": "现场维修" } },
+              { "key": "verify", "name": { "en": "Verify & close", "zh": "验收关单" } },
+              { "key": "archive", "name": { "en": "Archive record", "zh": "归档记录" } }
+            ],
+            "paths": [
+              {
+                "key": "as-designed",
+                "name": { "en": "Platform flow (as designed)", "zh": "平台流程（设计）" },
+                "description": {
+                  "en": "The repair flow as the platform designs it.",
+                  "zh": "平台设计的报修流程。"
+                },
+                "path_type": "happy",
+                "variant_label": { "en": "as designed", "zh": "设计流程" },
+                "path_steps": ["report", "triage", "dispatch", "repair", "verify", "archive"],
+                "layers": [
+                  {
+                    "key": "citizen",
+                    "display_name": { "en": "Citizen", "zh": "市民" },
+                    "role": "customer_actions",
+                    "row": 0
+                  },
+                  {
+                    "key": "field-tech",
+                    "display_name": { "en": "现场技术员", "zh": "现场技术员" },
+                    "role": null,
+                    "row": 1
+                  },
+                  {
+                    "key": "frontstage-tech",
+                    "display_name": { "en": "Citizen-Facing Tech", "zh": "市民端系统" },
+                    "role": "frontstage_tech",
+                    "row": 2
+                  },
+                  {
+                    "key": "backstage-tech",
+                    "display_name": { "en": "Backstage Tech", "zh": "后台系统" },
+                    "role": "backstage_tech",
+                    "row": 3
+                  },
+                  {
+                    "key": "compliance",
+                    "display_name": { "en": "Compliance Review", "zh": "合规审查" },
+                    "role": "compliance_review",
+                    "row": 4
+                  }
+                ],
+                "cells": [
+                  {
+                    "layer": "citizen",
+                    "step": "report",
+                    "content": { "en": "Submit repair ticket", "zh": "提交报修工单" },
+                    "description": {
+                      "en": "The citizen files a fault via the GIS portal.",
+                      "zh": "市民通过 GIS 门户提交故障。"
+                    },
+                    "links": [
+                      {
+                        "type": "url",
+                        "label": { "en": "Intake SOP", "zh": "受理 SOP 文档" },
+                        "url": "https://example.com/sop/intake"
+                      }
+                    ],
+                    "provenance": { "source": "docs/session-guide.md", "section": "Repair intake" }
+                  },
+                  {
+                    "layer": "citizen",
+                    "step": "verify",
+                    "content": { "en": "Confirm fix & rate service", "zh": "确认修复并评价" },
+                    "needs_review": true
+                  },
+                  {
+                    "layer": "field-tech",
+                    "step": "dispatch",
+                    "content": { "en": "接单出发", "zh": "接单出发" }
+                  },
+                  {
+                    "layer": "field-tech",
+                    "step": "repair",
+                    "content": { "en": "更换灯具并拍照回传", "zh": "更换灯具并拍照回传" }
+                  },
+                  {
+                    "layer": "frontstage-tech",
+                    "step": "report",
+                    "content": { "en": "GIS Portal\nWork Order App", "zh": "GIS 门户\n工单应用" },
+                    "links": [
+                      {
+                        "type": "tech_description",
+                        "label": { "en": "GIS Portal", "zh": "GIS 门户" },
+                        "description": {
+                          "en": "Public map-based intake channel for streetlight faults.",
+                          "zh": "面向公众的地图报修入口。"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "layer": "frontstage-tech",
+                    "step": "verify",
+                    "content": { "en": "SMS Gateway", "zh": "短信网关" }
+                  },
+                  {
+                    "layer": "backstage-tech",
+                    "step": "triage",
+                    "content": { "en": "Asset DB", "zh": "资产数据库" }
+                  },
+                  {
+                    "layer": "backstage-tech",
+                    "step": "archive",
+                    "content": { "en": "Asset DB\nETL Jobs", "zh": "资产数据库\nETL 作业" }
+                  },
+                  {
+                    "layer": "compliance",
+                    "step": "verify",
+                    "content": { "en": "Spot-check evidence photos", "zh": "抽查取证照片" }
+                  },
+                  {
+                    "layer": "compliance",
+                    "step": "archive",
+                    "content": { "en": "Audit checkpoint", "zh": "审计留痕" }
+                  }
+                ],
+                "triggers": [
+                  {
+                    "source": { "layer": "citizen", "step": "report" },
+                    "target": { "layer": "backstage-tech", "step": "triage" }
+                  },
+                  {
+                    "source": { "layer": "backstage-tech", "step": "triage" },
+                    "target": { "layer": "field-tech", "step": "dispatch" }
+                  },
+                  {
+                    "source": { "layer": "field-tech", "step": "repair" },
+                    "target": { "layer": "citizen", "step": "verify" }
+                  }
+                ]
+              },
+              {
+                "key": "as-done",
+                "name": { "en": "Manual flow (as actually done)", "zh": "人工流程（实际）" },
+                "description": {
+                  "en": "How repairs actually run today: phone calls and WeChat.",
+                  "zh": "目前实际的报修方式：电话与微信。"
+                },
+                "note": {
+                  "en": "Runs in parallel with the platform flow during rollout.",
+                  "zh": "推广期间与平台流程并行。"
+                },
+                "path_type": "alternative",
+                "variant_label": { "en": "as actually done", "zh": "实际做法" },
+                "path_steps": ["report", "triage", "dispatch", "repair", "verify"],
+                "layers": [
+                  {
+                    "key": "citizen",
+                    "display_name": { "en": "Citizen", "zh": "市民" },
+                    "role": "customer_actions",
+                    "row": 0
+                  },
+                  {
+                    "key": "field-tech",
+                    "display_name": { "en": "现场技术员", "zh": "现场技术员" },
+                    "role": null,
+                    "row": 1
+                  },
+                  {
+                    "key": "frontstage-tech",
+                    "display_name": { "en": "Citizen-Facing Tech", "zh": "市民端系统" },
+                    "role": "frontstage_tech",
+                    "row": 2
+                  },
+                  {
+                    "key": "backstage-tech",
+                    "display_name": { "en": "Backstage Tech", "zh": "后台系统" },
+                    "role": "backstage_tech",
+                    "row": 3
+                  },
+                  {
+                    "key": "compliance",
+                    "display_name": { "en": "Compliance Review", "zh": "合规审查" },
+                    "role": "compliance_review",
+                    "row": 4
+                  }
+                ],
+                "cells": [
+                  {
+                    "layer": "citizen",
+                    "step": "report",
+                    "content": { "en": "Call the maintenance hotline", "zh": "拨打维修热线" }
+                  },
+                  {
+                    "layer": "citizen",
+                    "step": "triage",
+                    "content": { "en": "Repeat details over WeChat", "zh": "在微信里重复故障详情" }
+                  },
+                  {
+                    "layer": "citizen",
+                    "step": "verify",
+                    "content": { "en": "Check the light after dark", "zh": "天黑后自行查看路灯" },
+                    "needs_review": true
+                  },
+                  {
+                    "layer": "field-tech",
+                    "step": "dispatch",
+                    "content": { "en": "电话派工", "zh": "电话派工" }
+                  },
+                  {
+                    "layer": "field-tech",
+                    "step": "repair",
+                    "content": { "en": "现场维修，纸质记录", "zh": "现场维修，纸质记录" }
+                  },
+                  {
+                    "layer": "field-tech",
+                    "step": "verify",
+                    "content": { "en": "微信群里回报完工", "zh": "微信群里回报完工" }
+                  },
+                  {
+                    "layer": "frontstage-tech",
+                    "step": "report",
+                    "content": { "en": "Hotline\nWeChat Group", "zh": "热线电话\n微信群" }
+                  },
+                  {
+                    "layer": "backstage-tech",
+                    "step": "triage",
+                    "content": { "en": "Paper Ledger", "zh": "纸质台账" }
+                  },
+                  {
+                    "layer": "backstage-tech",
+                    "step": "repair",
+                    "content": { "en": "Spare-Parts Spreadsheet", "zh": "备件表格" }
+                  },
+                  {
+                    "layer": "compliance",
+                    "step": "verify",
+                    "content": { "en": "Monthly manual audit", "zh": "每月人工核查" }
+                  }
+                ],
+                "triggers": [
+                  {
+                    "source": { "layer": "citizen", "step": "verify" },
+                    "target": { "layer": "citizen", "step": "triage" }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
