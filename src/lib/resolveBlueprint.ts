@@ -1,18 +1,7 @@
 import {
-  DISCOVERY_SCENARIO_ID,
-} from '@/data/applicationHappyPathFallback'
-import {
   getBlueprintFallback,
   getRawBlueprintFallback,
-  WARM_UP_ALTERNATE_PATH_ID,
-  WARM_UP_SCENARIO_ID,
 } from '@/data/blueprintFallbacks'
-import { applyBlueprintDisplayFilters } from '@/lib/applyBlueprintDisplayFilters'
-import { repairDiscoverySadPathBlueprint } from '@/lib/repairDiscoverySadPathBlueprint'
-import {
-  repairWarmUpAlternatePathBlueprint,
-  repairWarmUpPathLayerPositions,
-} from '@/lib/repairWarmUpAlternatePathBlueprint'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 import {
   deduplicateBlueprintLayers,
@@ -27,19 +16,6 @@ export type BlueprintSource = 'database' | 'fallback' | null
 
 export function isBlueprintEmpty(data: BlueprintData): boolean {
   return data.layers.length === 0
-}
-
-function repairBlueprintLayerPositionsFromFallback(
-  data: BlueprintData,
-  fallback: BlueprintData | null,
-): BlueprintData {
-  if (!fallback) {
-    return sortBlueprintLayers(data)
-  }
-
-  return sortBlueprintLayers(
-    repairWarmUpPathLayerPositions(data, fallback.layers),
-  )
 }
 
 /** DB value wins when non-empty; fallback only fills empty/null fields. */
@@ -235,88 +211,11 @@ function mergeMissingBlueprintContent(
   return deduplicateBlueprintLayers(merged)
 }
 
-// ---------------------------------------------------------------------------
-// PLUS legacy repairs
-//
-// Instance-specific data fixups for the original PLUS content. Every repair
-// below is gated on hardcoded PLUS scenario/path UUIDs (and the shims are
-// additionally ID-gated internally), so foreign (non-PLUS) content provably
-// never enters these code paths. The shim modules themselves are deleted by
-// the template scrub — do not add new callers.
-// ---------------------------------------------------------------------------
-
-function applyPlusLegacyRepairs(
-  data: BlueprintData,
-  scenarioId: string | undefined,
-  pathId: string | undefined,
-  fallback: BlueprintData | null,
-): BlueprintData {
-  let repaired = data
-
-  // Discovery sad path: move outcome cells onto their own step column
-  // (shim is internally gated on APPLICATION_SAD_PATH_ID).
-  if (scenarioId === DISCOVERY_SCENARIO_ID && fallback) {
-    repaired = repairDiscoverySadPathBlueprint(repaired, fallback)
-  }
-
-  if (scenarioId === WARM_UP_SCENARIO_ID) {
-    // Warm-Up alternate path: reassign cells to the correct swimlanes
-    // (shim is internally gated on WARM_UP_ALTERNATE_PATH_ID).
-    if (pathId === WARM_UP_ALTERNATE_PATH_ID) {
-      repaired = repairWarmUpAlternatePathBlueprint(repaired)
-    }
-
-    // Warm-Up legacy DB drift: realign layer row positions to the fallback
-    // reference swimlanes. Only for the Warm-Up scenario — DB row positions
-    // win everywhere else.
-    if (fallback) {
-      repaired = repairWarmUpPathLayerPositions(repaired, fallback.layers)
-    }
-  }
-
-  return repaired
-}
-
 export function resolveBlueprintForScenario(
   scenarioId: string | undefined,
   rawPath: RawPath | null | undefined,
 ): { blueprint: BlueprintData | null; source: BlueprintSource } {
   const pathId = rawPath?.id
-  const fallback = getBlueprintFallback(scenarioId, pathId)
-
-  // PLUS legacy repair (see block above): the Warm-Up alternate path renders
-  // from its curated fallback regardless of DB state. Gated on PLUS UUIDs.
-  if (
-    scenarioId === WARM_UP_SCENARIO_ID &&
-    pathId === WARM_UP_ALTERNATE_PATH_ID &&
-    fallback
-  ) {
-    const corrected = repairWarmUpAlternatePathBlueprint({
-      ...fallback,
-      path: rawPath
-        ? {
-            id: rawPath.id,
-            name: fallback.path.name,
-            description:
-              fallback.path.description ?? rawPath.description ?? null,
-            note: fallback.path.note ?? rawPath.note ?? null,
-            path_type: rawPath.path_type,
-          }
-        : fallback.path,
-    })
-
-    return {
-      blueprint: applyBlueprintDisplayFilters(
-        repairBlueprintLayerPositionsFromFallback(corrected, fallback),
-        scenarioId,
-        pathId,
-      ),
-      source:
-        rawPath && !isBlueprintEmpty(normalizeBlueprint(rawPath))
-          ? 'database'
-          : 'fallback',
-    }
-  }
 
   if (rawPath) {
     const fromDb = normalizeBlueprint(rawPath)
@@ -346,28 +245,16 @@ export function resolveBlueprintForScenario(
         : merged
 
       return {
-        blueprint: applyBlueprintDisplayFilters(
-          sortBlueprintLayers(
-            applyPlusLegacyRepairs(blueprint, scenarioId, pathId, fallback),
-          ),
-          scenarioId,
-          pathId,
-        ),
+        blueprint: sortBlueprintLayers(blueprint),
         source: 'database',
       }
     }
   }
 
+  const fallback = getBlueprintFallback(scenarioId, pathId)
   if (fallback) {
     return {
-      blueprint: applyBlueprintDisplayFilters(
-        repairBlueprintLayerPositionsFromFallback(
-          deduplicateBlueprintLayers(fallback),
-          fallback,
-        ),
-        scenarioId,
-        rawPath?.id ?? fallback.path.id,
-      ),
+      blueprint: sortBlueprintLayers(deduplicateBlueprintLayers(fallback)),
       source: 'fallback',
     }
   }

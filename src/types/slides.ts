@@ -1,7 +1,5 @@
-import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
-// Scale-test fixture (Phase 0-G) — template scrub may strip this import and
-// the 'Scale Test' FALLBACK_SLIDES entry below.
-import { SCALE_TEST_SCENARIO_ID } from '@/data/scaleFixture'
+import { hasBlueprintFallback, SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
+import { ORG_NAME } from '@/config'
 
 /** Home = birds-eye service overview; detail = single slide/scenario editor. */
 export type EditorView = 'home' | 'detail'
@@ -11,8 +9,8 @@ export type SlideViewType = 'single' | 'side-by-side' | 'integrated'
 
 export const SLIDE_VIEW_TYPES: SlideViewType[] = ['single', 'side-by-side', 'integrated']
 
-/** Options shown in the scenario view type control (integrated disabled). */
-export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = ['side-by-side']
+/** Options shown in the scenario view type control. */
+export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = SLIDE_VIEW_TYPES
 
 export const SLIDE_VIEW_TYPE_LABELS: Record<SlideViewType, string> = {
   single: 'Single',
@@ -26,7 +24,7 @@ export type Slide = {
   label: string
   /** When set, this slide is a subslide branching from the parent (not in the main vertical stack). */
   parentId?: string
-  /** Main-phase loop target (e.g. post-session → pre-session). Stored in DB; not drawn on canvas. */
+  /** Main-phase loop target (DB `phases.loops_to_phase_id`). Not drawn on canvas. */
   loopToId?: string
   /** Scenario blueprint layout; defaults to single-path view. */
   viewType?: SlideViewType
@@ -34,67 +32,15 @@ export type Slide = {
   description?: string | null
 }
 
-const PRE_SESSION_ID = 'a0000000-0000-4000-8000-000000000103'
-const IN_SESSION_ID = 'a0000000-0000-4000-8000-000000000104'
-const POST_SESSION_ID = 'a0000000-0000-4000-8000-000000000105'
-
-export const APPLICATION_PHASE_ID = 'a0000000-0000-4000-8000-000000000101'
-export const ONBOARDING_PHASE_ID = 'a0000000-0000-4000-8000-000000000102'
-export const PRE_SESSION_PHASE_ID = 'a0000000-0000-4000-8000-000000000103'
-export const IN_SESSION_PHASE_ID = 'a0000000-0000-4000-8000-000000000104'
-export const POST_SESSION_PHASE_ID = 'a0000000-0000-4000-8000-000000000105'
-
-const OVERVIEW_PHASE_FLOW_TRANSITIONS: ReadonlyArray<{
-  fromId: string
-  toId: string
-  fromLabel: string
-  toLabel: string
-}> = [
-  {
-    fromId: APPLICATION_PHASE_ID,
-    toId: ONBOARDING_PHASE_ID,
-    fromLabel: 'Application',
-    toLabel: 'Onboarding',
-  },
-  {
-    fromId: ONBOARDING_PHASE_ID,
-    toId: PRE_SESSION_PHASE_ID,
-    fromLabel: 'Onboarding',
-    toLabel: 'Pre-session',
-  },
-  {
-    fromId: PRE_SESSION_PHASE_ID,
-    toId: IN_SESSION_PHASE_ID,
-    fromLabel: 'Pre-session',
-    toLabel: 'In-session',
-  },
-  {
-    fromId: IN_SESSION_PHASE_ID,
-    toId: POST_SESSION_PHASE_ID,
-    fromLabel: 'In-session',
-    toLabel: 'Post-session',
-  },
-]
-
-/** Whether the service overview canvas should draw a flow arrow between two phases. */
+/**
+ * The service overview draws a flow arrow between consecutive main phases.
+ * Purely positional — no phase-ID or label heuristics.
+ */
 export function shouldShowOverviewPhaseFlowArrow(
-  fromPhase: Slide,
+  _fromPhase: Slide,
   toPhase: Slide | undefined,
 ): boolean {
-  if (!toPhase) return false
-
-  return OVERVIEW_PHASE_FLOW_TRANSITIONS.some(
-    ({ fromId, toId, fromLabel, toLabel }) =>
-      (fromPhase.id === fromId && toPhase.id === toId) ||
-      (fromPhase.label === fromLabel && toPhase.label === toLabel),
-  )
-}
-
-/** Horizontal anchor for overview flow arrows (Application phase center). */
-export function isOverviewFlowArrowAnchorPhase(phase: Slide): boolean {
-  return (
-    phase.id === APPLICATION_PHASE_ID || phase.label === 'Application'
-  )
+  return Boolean(toPhase)
 }
 
 /** Lifecycle loop arrow between main phases on the overview canvas. */
@@ -125,190 +71,39 @@ export function getOverviewPostToPreLoopTransition(
   return null
 }
 
-/** Offline fallback matching supabase/seed.sql when Supabase is not configured. */
+const DISCOVER_PHASE_ID = 'f0000000-0000-4000-8000-000000000100'
+const DELIVER_PHASE_ID = 'f0000000-0000-4000-8000-000000000200'
+
+/**
+ * Offline fallback matching supabase/seed.sql when Supabase is not configured:
+ * a minimal sample lifecycle wrapping the generated sample scenario
+ * (src/data/scaleFixture.ts). Replace with your own content via the import
+ * pipeline or by editing the seed + this list together.
+ */
 export const FALLBACK_SLIDES: Slide[] = [
   {
-    id: 'a0000000-0000-4000-8000-000000000101',
+    id: DISCOVER_PHASE_ID,
     index: 1,
-    label: 'Application',
+    label: 'Discover',
     description:
-      'Potential tutors discover, interview and receive an offer to join the PLUS Team',
+      'Sample phase — a request is received, triaged, and resolved on site.',
   },
   {
-    id: 'a0000000-0000-4000-8000-000000000121',
+    id: SAMPLE_SCENARIO_ID,
     index: 1,
-    label: 'Discovery',
-    parentId: 'a0000000-0000-4000-8000-000000000101',
+    label: 'Sample Service',
+    parentId: DISCOVER_PHASE_ID,
     viewType: 'side-by-side',
-    description: 'Potential tutors discover plus',
+    description:
+      'Generated sample scenario: 12 lanes (canonical + custom roles, CJK labels), 16 steps, 3 paths.',
   },
   {
-    id: 'a0000000-0000-4000-8000-000000000122',
+    id: DELIVER_PHASE_ID,
     index: 2,
-    label: 'Interview & Offer',
-    parentId: 'a0000000-0000-4000-8000-000000000101',
-    viewType: 'side-by-side',
-    description: 'Potential Tutors Interview for role and receive an offer.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000102',
-    index: 2,
-    label: 'Onboarding',
+    label: 'Deliver',
     description:
-      'The tutor goes through required onboarding before joining a tutoring session.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000120',
-    index: 1,
-    label: 'Tech Setup',
-    parentId: 'a0000000-0000-4000-8000-000000000102',
-    viewType: 'side-by-side',
-    description:
-      'The tutor sets up necessary tech and obtains required clearances.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000123',
-    index: 2,
-    label: 'Onboarding Modules',
-    parentId: 'a0000000-0000-4000-8000-000000000102',
-    viewType: 'side-by-side',
-    description: 'The tutor completes required onboarding modules.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000124',
-    index: 3,
-    label: 'Lesson Modules',
-    parentId: 'a0000000-0000-4000-8000-000000000102',
-    viewType: 'side-by-side',
-    description:
-      'The tutor goes through required lessons before joining a tutoring session.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000125',
-    index: 4,
-    label: 'Session Sign Up',
-    parentId: 'a0000000-0000-4000-8000-000000000102',
-    viewType: 'side-by-side',
-    description:
-      'The tutor signs up for recurring sessions for the semester.',
-  },
-  { id: PRE_SESSION_ID, index: 3, label: 'Pre-session', description: 'Preparation before a live tutoring session' },
-  {
-    id: 'a0000000-0000-4000-8000-000000000126',
-    index: 1,
-    label: 'Standard Scheduling',
-    parentId: PRE_SESSION_ID,
-    viewType: 'side-by-side',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000127',
-    index: 2,
-    label: 'Fill-in Request',
-    parentId: PRE_SESSION_ID,
-    viewType: 'side-by-side',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000128',
-    index: 3,
-    label: 'Call-off Request',
-    parentId: PRE_SESSION_ID,
-    viewType: 'side-by-side',
-  },
-  // Scale-test fixture (Phase 0-G): generated offline stress-test scenario —
-  // see src/data/scaleFixture.ts; template scrub may strip.
-  {
-    id: SCALE_TEST_SCENARIO_ID,
-    index: 4,
-    label: 'Scale Test',
-    parentId: PRE_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Generated scale fixture: 12 lanes (incl. custom roles), 16 steps, 3 paths.',
-  },
-  {
-    id: IN_SESSION_ID,
-    index: 4,
-    label: 'In-session',
-    description:
-      'Tutoring activities that occur during live sessions.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000201',
-    index: 1,
-    label: 'Before Students Join',
-    parentId: IN_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Teachers and tutors prepare the session before students join.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000202',
-    index: 2,
-    label: 'Student Just Joined',
-    parentId: IN_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Teachers and tutors welcome students as they join the session.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000203',
-    index: 3,
-    label: 'Warm-Up',
-    parentId: IN_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Tutors greet and move students to breakout rooms as the session begins.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000204',
-    index: 4,
-    label: 'Goal Setting',
-    parentId: IN_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Tutors guide students through goal setting in breakout sessions.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000205',
-    index: 5,
-    label: 'Help Request',
-    parentId: IN_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Tutors receive and resolve student help requests during the session.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000206',
-    index: 6,
-    label: 'Wrap-Up',
-    parentId: IN_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Teachers and tutors close breakout sessions, debrief, and complete wrap-up tasks.',
-  },
-  {
-    id: POST_SESSION_ID,
-    index: 5,
-    label: 'Post-session',
-    description: 'Wrap-up after session; may return to pre-session',
-    loopToId: PRE_SESSION_ID,
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000207',
-    index: 1,
-    label: 'Reporting an Issue',
-    parentId: POST_SESSION_ID,
-    viewType: 'side-by-side',
-    description:
-      'Tutors report session issues to the tutor supervisor team after the session.',
-  },
-  {
-    id: 'a0000000-0000-4000-8000-000000000208',
-    index: 2,
-    label: 'Reporting Hours',
-    parentId: POST_SESSION_ID,
-    viewType: 'side-by-side',
-    description: 'Tutors log their tutoring hours after the session.',
+      'Sample phase — demonstrates the lifecycle loop back to Discover.',
+    loopToId: DISCOVER_PHASE_ID,
   },
 ]
 
@@ -331,8 +126,6 @@ export function getBlueprintScenarioId(slide: Slide): string | undefined {
 }
 
 export function getSlideViewType(slide: Slide): SlideViewType {
-  // Integrated view is disabled app-wide; treat it as side-by-side.
-  if (slide.viewType === 'integrated') return 'side-by-side'
   if (slide.viewType) return slide.viewType
   if (isSubslide(slide)) return 'side-by-side'
   if (hasBlueprintFallback(slide.id)) return 'side-by-side'
@@ -354,8 +147,8 @@ export function showsBlueprintFilters(
   return false
 }
 
-export function isIntegratedBlueprintSlide(_slide: Slide): boolean {
-  return false
+export function isIntegratedBlueprintSlide(slide: Slide): boolean {
+  return isSubslide(slide) && getSlideViewType(slide) === 'integrated'
 }
 
 export function isSideBySideBlueprintSlide(slide: Slide): boolean {
@@ -481,7 +274,7 @@ export function getParentSlide(
 }
 
 export const WORKSPACE_BREADCRUMB_ID = '__workspace__'
-export const WORKSPACE_BREADCRUMB_LABEL = 'PLUS'
+export const WORKSPACE_BREADCRUMB_LABEL = ORG_NAME
 
 /** Sidebar id for the service overview (home) nav item. */
 export const SERVICE_OVERVIEW_NAV_ID = '__service_overview__'
@@ -524,12 +317,9 @@ export function getSlideBreadcrumbs(
   return crumbs
 }
 
-/** Default navigation target when the workspace breadcrumb is selected. */
+/** Default navigation target when the workspace breadcrumb is selected: first main phase. */
 export function getWorkspaceBreadcrumbTarget(
   slides: Slide[] = FALLBACK_SLIDES,
 ): string | undefined {
-  const application = slides.find(
-    (slide) => !slide.parentId && slide.label === 'Application',
-  )
-  return application?.id ?? getMainSlides(slides)[0]?.id
+  return getMainSlides(slides)[0]?.id
 }

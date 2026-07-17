@@ -10,7 +10,6 @@ import {
   usePhaseBlueprintFilters,
 } from '@/hooks/usePhaseBlueprintFilters'
 import { useScenarioBlueprint } from '@/hooks/useScenarioBlueprint'
-import { isBlueprintCellDetailEnabled } from '@/lib/blueprintDisplayFlags'
 import { SlideNav } from '@/components/editor/SlideNav'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -123,7 +122,7 @@ export function SlideModeMain() {
     scenarioBlueprint.allBlueprints,
   ])
 
-  const cellDetailEnabled = isBlueprintCellDetailEnabled(scenarioId)
+  const cellDetailEnabled = true
 
   return (
     <BlueprintCellDetailProvider

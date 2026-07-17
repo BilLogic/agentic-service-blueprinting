@@ -1,5 +1,5 @@
 import { BlueprintVisualPlayButton } from '@/components/blueprint/BlueprintVisualPlayButton'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
+import { isBlueprintVisualWalkthroughEnabled } from '@/lib/visualWalkthrough'
 import type { BlueprintData } from '@/types/blueprint'
 import { cn } from '@/lib/utils'
 

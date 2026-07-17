@@ -1,6 +1,6 @@
 import { Play } from 'lucide-react'
 import { useVisualWalkthrough } from '@/contexts/VisualWalkthroughContext'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
+import { isBlueprintVisualWalkthroughEnabled } from '@/lib/visualWalkthrough'
 import { pickWalkthroughBlueprint } from '@/lib/visualWalkthrough'
 import type { BlueprintData } from '@/types/blueprint'
 import { cn } from '@/lib/utils'

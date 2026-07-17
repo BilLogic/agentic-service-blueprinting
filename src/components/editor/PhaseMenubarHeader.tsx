@@ -1,5 +1,4 @@
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
-import { ScenarioParallelInfoTooltip } from '@/components/blueprint/ScenarioParallelInfoTooltip'
 import { StackHeaderFilterMenu } from '@/components/editor/StackHeaderFilterMenu'
 import {
   BLUEPRINT_MENUBAR_DESCRIPTION_CLASS,
@@ -55,7 +54,6 @@ export function PhaseMenubarHeader({
   className,
 }: PhaseMenubarHeaderProps) {
   const label = getSlideDisplayLabel(slide, slides)
-  const isScenario = isSubslide(slide)
   const description = resolveHeaderDescription(slide, paths, selectedPathIds)
   const showFilterMenus =
     showFilters && showsBlueprintFilters(slide, slides) && onTogglePath
@@ -70,7 +68,6 @@ export function PhaseMenubarHeader({
     >
       <div className={BLUEPRINT_MENUBAR_TITLE_CLASS}>
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-          {isScenario ? <ScenarioParallelInfoTooltip slide={slide} /> : null}
           <span className={BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS}>{label}</span>
         </div>
         {description ? (

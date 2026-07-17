@@ -17,15 +17,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useVisualWalkthrough } from '@/contexts/VisualWalkthroughContext'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
+import { isBlueprintVisualWalkthroughEnabled } from '@/lib/visualWalkthrough'
 import { getBlueprintLayerStyle } from '@/lib/blueprintTheme'
 import type { VisualWalkthroughLayerEntry } from '@/lib/visualWalkthrough'
-import { VISUAL_LAYER_SHORT_LABELS } from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
 
 function WalkthroughLayerPanel({ entry }: { entry: VisualWalkthroughLayerEntry }) {
   const layerStyle = getBlueprintLayerStyle(entry.layerName, 'frontstage')
-  const label = VISUAL_LAYER_SHORT_LABELS[entry.layerName] ?? entry.layerName
+  const label = entry.layerName
 
   return (
     <div
