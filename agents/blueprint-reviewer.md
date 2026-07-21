@@ -10,8 +10,9 @@ that the drafter got it right. The dispatching prompt gives you the IR file
 path(s), the workspace root, and which scenarios to review.
 
 Ground yourself first: read the IR, `references/ir-schema.json`,
-`references/layer-roles.md`, and any source documents the IR's `provenance`
-fields point at (spot-check, don't re-read the corpus). If
+`references/layer-roles.md`, `references/lane-vocabulary.md` (for multi-phase
+consistency), and any source documents the IR's `provenance` fields point at
+(spot-check, don't re-read the corpus). If
 `scripts/validate_ir.py` exists, run it — but your job starts where the
 validator stops: it proves the IR is well-formed; you probe whether it is
 *right*.
@@ -36,6 +37,17 @@ validator stops: it proves the IR is well-formed; you probe whether it is
   names in actor lanes, a `visual` row with text content.
 - Cells that read like system capabilities rather than journey moments —
   the fabricated-from-a-manual signature. Flag hard if pervasive.
+
+**Cross-phase consistency** (when reviewing more than one phase/scenario, per
+`references/lane-vocabulary.md`):
+- Missing spine: a customer-facing phase (sales, setup, incident, renewal…)
+  with no `customer_actions` lane, or the buyer/customer miscast as
+  `backstage_actions`. Check the phase-type → spine table.
+- Label drift: the same actor group labeled differently across phases
+  (`前台·BD` vs `前台·售前对接` vs `我方人工`). Flag each divergent label and name
+  the one canonical form.
+- Human work cast as tech: back-office staff actions modeled as `*_tech`
+  pills instead of `*_actions` prose.
 
 **Provenance coverage**:
 - Ingested/translated scenarios: what fraction of cells carry provenance?

@@ -1,0 +1,83 @@
+# Lane Vocabulary — cross-phase drafting convergence
+
+`references/layer-roles.md` says how a role renders. This says how independent
+drafters **converge** on the same roles and labels across many phases — so a
+10-phase lifecycle drafted by parallel agents reads as one blueprint, not ten.
+
+Read this before drafting when a lifecycle has more than one phase/scenario,
+especially when phases are drafted in parallel. Feed it into every drafter.
+
+## Why this exists
+
+Parallel per-phase drafting reliably diverges three ways:
+
+1. **No customer spine.** Sales/procurement/renewal phases get drafted with the
+   buyer cast as `backstage_actions` and no `customer_actions` lane — so half
+   the lifecycle has an interaction line and half doesn't.
+2. **The same actor, named four ways.** One team appears as `前台·BD` in phase ①,
+   `前台·售前对接` in ②, `我方人工` in ⑤, `前台·现场` in ⑥ — the reader can't tell
+   it's one group.
+3. **Human work cast as tech.** Back-office staff actions get modeled as
+   `backstage_tech` pills instead of `backstage_actions` prose.
+
+The fixes below are conventions, not schema rules. The validator won't enforce
+them; the `blueprint-reviewer` agent flags deviations.
+
+## 1. Who is the customer of THIS phase?
+
+Every phase has a spine — the actor whose journey the phase follows. Put that
+actor on `customer_actions` (one per path; it draws the interaction line). The
+spine can **change across phases** of one lifecycle, and that is correct: a B2B
+lifecycle sells to a buyer, then serves end users. Pick per phase-type:
+
+| Phase type | Spine actor (→ `customer_actions`) |
+| --- | --- |
+| Sales / bid / win | The **buyer** you're selling to (procurement lead, sponsor) |
+| Procurement / contracting | The **buyer**'s purchasing/contracting role |
+| Setup / onboarding / migration | The **admin** being provisioned (their first-run journey) |
+| Training / account handout | The **end user** or admin being trained |
+| Daily operations / inspection | The **operator** running the service day-to-day |
+| Incident / fault / complaint | The **person who reports it** (citizen, end user, operator) |
+| Assessment / reporting | The **party being reported to** (regulator, client sponsor) |
+| Renewal / retrofit / exit | The **buyer** again (the renewal decision-maker) |
+
+If a phase genuinely has no external spine (pure internal ops), it's valid to
+have **no** `customer_actions` lane — but say so deliberately, don't just drop
+it. "Whose journey is the spine?" is the elicitation question
+(`references/layer-roles.md` §Line-anchoring).
+
+## 2. One label per actor group, lifecycle-wide
+
+Before drafting phase 2+, list the actor groups already named in earlier phases
+and **reuse the exact label**. Maintain a small actor glossary for the
+lifecycle (in the workspace notes or the IR provenance) so drafters converge:
+
+| Actor group | One canonical `display_name` | Typical role |
+| --- | --- | --- |
+| The provider's customer-facing team | e.g. `前台·<provider>` (pick once) | `frontstage_actions` |
+| The provider's back-office | e.g. `后台·<provider>` | `backstage_actions` |
+| External partner/vendor | e.g. `支撑·<partner>` | `support_systems` |
+| The buyer/customer spine | e.g. `<buyer org>` | `customer_actions` |
+
+Rules:
+
+- Same group → **byte-identical** label in every phase. Not "our staff" here and
+  "provider team" there.
+- Distinguish **actor** (a who → actions role) from **system** (a what → tech/
+  pill role). A person doing work is `*_actions`, not a `*_tech` pill.
+- Prefix conventions (`前台·` / `后台· ` / `支撑·`) are optional but, once chosen,
+  applied everywhere.
+
+## 3. Source-layout crosswalk
+
+Foreign diagrams rarely use Shostack roles. Map their lanes to roles once, then
+apply the mapping to every phase (see also `references/crosswalk-schema.json`):
+
+| Source layout | Map to role |
+| --- | --- |
+| FigJam **actor lanes** (one lane per team) | The spine actor → `customer_actions`; other people-lanes → `frontstage_actions` / `backstage_actions` by visibility; system lanes → `*_tech`; vendors → `support_systems` |
+| Notion / Shostack **5-lane** (物理证据 / 服务对象 / 前台 / 后台 / 支撑) | 物理证据 → `visual` or a custom `physical_evidence`; 服务对象 → `customer_actions`; 前台 → `frontstage_actions` (+ `frontstage_tech` for its systems); 后台 → `backstage_actions` (+ `backstage_tech`); 支撑 → `support_systems` |
+| Spreadsheet with a "system/tool" column | Tool column → the matching `*_tech` pill lane; owner column → the `*_actions` lane |
+
+Don't transcribe a foreign layout verbatim — interpret it to the canonical
+roles so all phases share one structure.

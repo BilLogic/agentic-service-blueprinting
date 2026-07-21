@@ -125,6 +125,7 @@ definition needed.
 | Running the co-creation conversation | `references/elicitation-protocol.md` (question script + right-sizing branches) |
 | Writing or checking IR structure | `references/ir-schema.json`; model background in `references/data-model.md` |
 | Assigning swimlane roles / divider lines | `references/layer-roles.md` |
+| Drafting multiple phases consistently (customer spine per phase, shared actor labels) | `references/lane-vocabulary.md` |
 | Building a translation mapping | `references/crosswalk-schema.json` |
 | Anything touching an import target | `references/adapter-contract.md` |
 | Reading/writing workspace state or sign-off | `references/workspace-state.md` |
