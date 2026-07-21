@@ -70,6 +70,12 @@ live-DB = requires Supabase or a PostgREST-compatible read API. See
 - IR `schema_version` compatible with the workspace clone's.
 - Target echo + user confirmation (project ref / output paths) — wrong-project
   protection (⚠ REQUIRED).
+- Connector reachable: for a live-DB target, confirm the Supabase MCP can see
+  the project. A connector added mid-session (e.g. `claude mcp add` for the
+  import account) is **not live until a Claude Code reload** — if the target is
+  unreachable even though the user just authenticated, the fix is a reload, not
+  more retries. Say so and prompt it. Cross-account targets also need the right
+  account's connector (`references/adapter-contract.md` §1).
 - Pre-import read-back diff: if the target differs from `last_import` state
   (e.g. manual Studio edits), warn and offer an export before replacing.
 

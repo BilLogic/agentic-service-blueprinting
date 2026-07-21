@@ -27,7 +27,7 @@ Large corpora blow up context (real example: 900+ files). So:
 | --- | --- |
 | md / text | Read natively |
 | docx / pdf | Convert (pandoc / pdf tooling). Scanned PDFs: unsupported in v1 — say so |
-| FigJam / Figma | Via MCP when connected. **Without MCP**: CSV/table export or text extraction only — a PDF of a spatial board is effectively a whiteboard image, which is out of scope v1; say so rather than pretend |
+| FigJam / Figma | Via MCP when connected — but fetch **per frame**, not the whole board: get the target frame's node id from board metadata / a screenshot first, then pull that one frame. A whole-board extraction blows the MCP tool token limit (a real 12-phase board hit ~87k chars and failed). **Without MCP**: CSV/table export or text extraction only — a PDF of a spatial board is effectively a whiteboard image, which is out of scope v1; say so rather than pretend |
 | xlsx / CSV | Tabular extraction |
 | Whiteboard photos | Out of scope v1 — decline and suggest co-creation from the same knowledge |
 
