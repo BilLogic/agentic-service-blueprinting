@@ -10,7 +10,7 @@ a target without passing both gates, in order.
 
 Render each drafted scenario as a **markdown grid** (lanes as rows, steps as
 columns, cell labels in the grid) in chat — non-technical users can't edit
-YAML safely, so the preview IS their editing surface.
+the raw IR JSON safely, so the preview IS their editing surface.
 
 - **Paginate above ~8 layers or ~12 steps** — a 10×20 grid in one message is
   unreadable. Split by lane groups or step ranges and label each page.

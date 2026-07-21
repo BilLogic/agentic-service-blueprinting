@@ -11,7 +11,7 @@ inject a status summary; every phase checks its preconditions against it.
 ```json
 {
   "schema_version": "2026.07.16",
-  "ir_path": "blueprint/blueprint.yaml",
+  "ir_path": "blueprint/blueprint.json",
   "locales": ["en", "zh"],
   "scenarios": {
     "asset-repair": {
@@ -45,7 +45,7 @@ inject a status summary; every phase checks its preconditions against it.
 | Field | Meaning |
 | --- | --- |
 | `schema_version` | Template schema version of the workspace clone. Import compat-checks the IR's `schema_version` against it; mismatch routes to the upgrade recipe in `references/customization.md` |
-| `ir_path` | Workspace-relative path to the IR YAML |
+| `ir_path` | Workspace-relative path to the IR JSON |
 | `locales` | Authored locales; one target per locale |
 | `scenarios` | **Per-scenario status map**, keyed by IR scenario key — partial completion is a promise ("2 of 6 now, more later"). Each signed scenario carries its own `content_hash` + `signed_at`/`signed_by` — the hash-bound gate (below) |
 | `targets` | Per-locale import target + deploy record |

@@ -21,11 +21,13 @@ files in its template clone.
 Everything revolves around one canonical artifact and one state file, both
 git-tracked in the org's **workspace** (a clone of this template):
 
-- `blueprint/*.yaml` — the **IR**: human-editable YAML mirroring the data
-  model, validated by `references/ir-schema.json`. Text fields are locale
-  maps (`{en: …, zh: …}`); every entity has a stable key that UUIDs derive
-  from, so re-imports are idempotent.
-- `blueprint-workspace.json` — per-scenario status, sign-off hash,
+- `blueprint/*.json` — the **IR**: human-editable JSON mirroring the data
+  model, validated by `references/ir-schema.json`. JSON is the supported
+  authoring format (the scripts are stdlib-only; `.yaml`/`.yml` is read only
+  if PyYAML happens to be installed). Text fields are locale maps
+  (`{en: …, zh: …}`); every entity has a stable key that UUIDs derive from,
+  so re-imports are idempotent.
+- `blueprint-workspace.json` — per-scenario status + sign-off hash,
   per-locale targets, schema_version. Spec: `references/workspace-state.md`.
 
 Pipeline: `sources → IR → validate → review/sign-off → import (adapter) →
