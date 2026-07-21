@@ -44,7 +44,6 @@ export const BLUEPRINT_THEME = {
   panelScenarioBadgeFillHover: '#B0B0B8',
   panelCanvasHover: '#F4F4F7',
   panelSectionFillHover: '#F4F4F7',
-  panelCellBlend: '#C8C8D0',
 } as const
 
 /** Set on interactive compare panels; children inherit label-rail hover. */
@@ -56,7 +55,6 @@ export const BLUEPRINT_PANEL_SECTION_FILL_VAR = '--blueprint-panel-section-fill'
 export const BLUEPRINT_PANEL_DIVIDER_BG_VAR = '--blueprint-panel-divider-bg'
 /** Cell tint strength when an interactive panel is hovered (0–1). */
 export const BLUEPRINT_PANEL_CELL_HOVER_VAR = '--blueprint-panel-cell-hover'
-export const BLUEPRINT_PANEL_CELL_BLEND_VAR = '--blueprint-panel-cell-blend'
 
 export function blueprintPanelLabelRailColor(
   fallback: string = BLUEPRINT_THEME.labelRail,
@@ -89,7 +87,6 @@ export function getBlueprintPanelHoverCssVars(): Record<string, string> {
     [BLUEPRINT_PANEL_SECTION_FILL_VAR]: BLUEPRINT_THEME.panelSectionFillHover,
     [BLUEPRINT_PANEL_DIVIDER_BG_VAR]: BLUEPRINT_THEME.panelLabelRailHover,
     [BLUEPRINT_PANEL_CELL_HOVER_VAR]: '1',
-    [BLUEPRINT_PANEL_CELL_BLEND_VAR]: BLUEPRINT_THEME.panelCellBlend,
   }
 }
 
@@ -243,13 +240,51 @@ const BACKSTAGE_FALLBACK: BlueprintLayerStyle = cellStyleFromFill(
   BLUEPRINT_LABEL_TEXT.backstage,
 )
 
+/**
+ * Canonical cell fills keyed by `layer_role` — the intentional coloring system.
+ * Roles are locale-independent, so non-English lane labels still color correctly
+ * (name-keyed `LAYER_STYLES` below is a legacy fallback for pre-role content).
+ */
+const ROLE_STYLES: Record<string, BlueprintLayerStyle> = {
+  visual: cellStyleFromFill(BLUEPRINT_CELL_PALETTE.visual),
+  step_visual: cellStyleFromFill(BLUEPRINT_CELL_PALETTE.visual),
+  journey_stage: cellStyleFromFill(BLUEPRINT_CELL_PALETTE.visual),
+  physical_evidence: cellStyleFromFill(BLUEPRINT_CELL_PALETTE.powderBlue),
+  customer_actions: cellStyleFromFill(
+    BLUEPRINT_CELL_PALETTE.mint,
+    BLUEPRINT_LABEL_TEXT.frontstage,
+  ),
+  frontstage_tech: cellStyleFromFill(
+    BLUEPRINT_CELL_PALETTE.lavender,
+    BLUEPRINT_LABEL_TEXT.customerFacing,
+  ),
+  frontstage_actions: cellStyleFromFill(
+    BLUEPRINT_CELL_PALETTE.blush,
+    BLUEPRINT_LABEL_TEXT.customerFacing,
+  ),
+  backstage_actions: cellStyleFromFill(
+    BLUEPRINT_CELL_PALETTE.peach,
+    BLUEPRINT_LABEL_TEXT.backstage,
+  ),
+  backstage_tech: cellStyleFromFill(
+    BLUEPRINT_CELL_PALETTE.powderBlue,
+    BLUEPRINT_LABEL_TEXT.backstage,
+  ),
+  support_systems: cellStyleFromFill(
+    BLUEPRINT_CELL_PALETTE.cream,
+    BLUEPRINT_LABEL_TEXT.backstage,
+  ),
+}
+
 export type BlueprintZone = 'frontstage' | 'backstage'
 
 export function getBlueprintLayerStyle(
   layerName: string,
   zone: BlueprintZone,
+  role?: string | null,
 ): BlueprintLayerStyle {
   return (
+    (role ? ROLE_STYLES[role] : undefined) ??
     LAYER_STYLES[layerName] ??
     (zone === 'backstage' ? BACKSTAGE_FALLBACK : FRONTSTAGE_FALLBACK)
   )

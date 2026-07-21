@@ -159,7 +159,6 @@
     --blueprint-panel-canvas: #f4f4f7;
     --blueprint-panel-section-fill: #f4f4f7;
     --blueprint-panel-divider-bg: #dddfe4;
-    --blueprint-panel-cell-blend: #c8c8d0;
   }
 
   [data-phase-scenario-panel]:hover [data-scenario-panel-title-badge],
@@ -168,14 +167,8 @@
     border-color: #b0b0b8;
   }
 
-  [data-phase-scenario-panel]:hover [data-blueprint-cell-anchor],
-  [data-phase-scenario-panel]:focus-within [data-blueprint-cell-anchor] {
-    --blueprint-cell-bg-panel: color-mix(
-      in srgb,
-      var(--blueprint-cell-bg-origin, var(--blueprint-cell-bg, #ddeef0)) 88%,
-      var(--blueprint-panel-cell-blend, #c8c8d0) 12%
-    );
-  }
+  /* Cell fills stay at their role color when a panel is hovered/focused —
+     the old grey color-mix blend muddied role-based colors on click. */
 
   [data-blueprint-cell-anchor] {
     transition-property: box-shadow, transform, opacity;

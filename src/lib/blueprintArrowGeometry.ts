@@ -16,10 +16,10 @@ export type CellAnchor = {
 }
 
 /** Arrowhead size (userSpaceOnUse) — Lucide-style filled tip. */
-export const ARROW_CHEVRON_SIZE = 7
+export const ARROW_CHEVRON_SIZE = 16
 /** Half-height of the chevron base — smaller values read sharper. */
 export const ARROW_CHEVRON_HALF_WIDTH = 2.5
-export const ARROW_STROKE_WIDTH = 1.5
+export const ARROW_STROKE_WIDTH = 3
 /** refX/refY: chevron base attaches to path end; tip extends toward target. */
 export const ARROW_MARKER_REF_X = 0
 export const ARROW_MARKER_REF_Y = ARROW_CHEVRON_SIZE / 2

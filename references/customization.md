@@ -24,6 +24,34 @@ generic swimlanes); no role is mandatory. Prefer creating a custom role over
 - Tech pills use a neutral palette by default; link-driven tech metadata
   (`tech_description` links) carries per-tool copy and imagery.
 
+### Pinning an org tech-pill palette
+
+By default `src/lib/techPillColors.ts` ships an **empty** `TECH_PILL_COLORS`
+and colors each pill deterministically by hashing its label into a neutral
+palette. That keeps a fresh clone brand-neutral, but hash-assigned pastels
+carry no meaning — two tools in the same system land on unrelated colors.
+
+To give a client's tools coherent color families, pin them: add
+`label → hex` entries to `TECH_PILL_COLORS` (exact pill label as the key),
+grouping related tools onto one family. Example:
+
+```ts
+export const TECH_PILL_COLORS: Record<string, string> = {
+  // Customer-facing app → green family
+  'Mobile App': '#DCF3E4',
+  'SMS Notify': '#DCF3E4',
+  // Internal platform → slate family
+  'Work-order Intake': '#DCE6F5',
+  'SLA Timer': '#DCE6F5',
+  // External partner → amber family
+  'Field Contractor': '#F8E6D0',
+}
+```
+
+Any label not in the map still falls back to the deterministic hash palette,
+so partial pinning is fine. Keep the map **client-specific** — do not commit
+one client's labels into the shared template.
+
 ## View types & path types
 
 Set per scenario / per path **in the IR**, not in code: `view_type`
