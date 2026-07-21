@@ -71,6 +71,29 @@ For each scenario the user picked:
 Then hand off to `references/review-import-playbook.md` for preview, review,
 sign-off, and import.
 
+## 6. Journey-stage images (`visual` / `step_visual` rows)
+
+The `visual`, `step_visual`, and `journey_stage` roles render a cell's
+`picture` (an image URL / storage ref) and ignore its text. Most orgs have no
+ready screenshots when they first blueprint, so **an empty visual row is the
+default and is fine** — leave `picture` null and the row renders as an empty
+stage band; it does not block validation, sign-off, or import. Do NOT fabricate
+image URLs to fill it.
+
+When the org does want stage imagery, source it (cheapest first):
+
+- **Manual screenshots** of the real product/app at each stage — the org
+  captures them; you reference the uploaded URL/storage path in `picture`.
+- **FigJam / Figma frame exports** — if the journey already lives on a board,
+  export each stage frame as an image (per-frame, per §2) and use those.
+- **Photos** of physical touchpoints (kiosks, signage, forms) for offline
+  stages.
+
+Store images the adapter can serve (e.g. Supabase Storage for live-DB, or a
+`public/` asset path for the fallback build) and put the resolved URL in
+`picture`. Add images incrementally — a text-complete blueprint with empty
+visual rows is a valid, shippable deliverable.
+
 ## ⚠ Exit condition (deterministic)
 
 A scenario's ingestion loop ends when **`scripts/validate_ir.py` exits 0 AND

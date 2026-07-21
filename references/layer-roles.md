@@ -52,7 +52,9 @@ elicitation), or to none.
   `content` as **pills**: one pill per newline-separated line
   (`"GIS Portal\nWork Order App"` → two pills). `tech_description` links
   attach long-form copy/screenshots to a pill by matching its label.
-- Roles `visual`/`step_visual` render `picture` and ignore text content.
+- Roles `visual`/`step_visual` render `picture` and ignore text content. An
+  empty visual row (null `picture`) is a valid default — see
+  `references/ingest-playbook.md` §6 for sourcing stage images.
 
 ## Custom roles
 
