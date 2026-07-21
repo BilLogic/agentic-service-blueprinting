@@ -1,7 +1,7 @@
 ---
 title: "Fix 12 skill frictions surfaced by the Ecoeled dogfood"
 type: fix
-status: active
+status: completed
 date: 2026-07-21
 ---
 
