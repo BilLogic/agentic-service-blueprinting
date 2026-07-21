@@ -2,8 +2,8 @@ import {
   getMainSlides,
   getSubslides,
   isSubslide,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 import {
   getBlueprintArtboardSize,
   type ArtboardSize,
@@ -36,7 +36,7 @@ export type SlidePosition = { x: number; y: number }
 export type SlideLayout = SlidePosition & ArtboardSize
 
 export function getSlideArtboardSize(
-  slide: Slide,
+  slide: NavItem,
   blueprintsByScenario: Map<string, BlueprintData>,
 ): ArtboardSize {
   if (!isSubslide(slide)) return DEFAULT_ARTBOARD_SIZE
@@ -47,7 +47,7 @@ export function getSlideArtboardSize(
 
 /** Main slides stacked vertically; scenarios extend horizontally with per-slide widths. */
 export function computeSlideLayouts(
-  slides: Slide[],
+  slides: NavItem[],
   blueprintsByScenario: Map<string, BlueprintData> = new Map(),
   layoutOverrides: Map<string, ArtboardSize> = new Map(),
 ): Map<string, SlideLayout> {
@@ -95,7 +95,7 @@ export function computeSlideLayouts(
 }
 
 export function computeSlidePositions(
-  slides: Slide[],
+  slides: NavItem[],
   blueprintsByScenario?: Map<string, BlueprintData>,
 ): Map<string, SlidePosition> {
   const layouts = computeSlideLayouts(slides, blueprintsByScenario)
@@ -108,7 +108,7 @@ export function computeSlidePositions(
 
 export function getSlideLayout(
   slideId: string,
-  slides: Slide[],
+  slides: NavItem[],
   blueprintsByScenario?: Map<string, BlueprintData>,
 ): SlideLayout {
   const layouts = computeSlideLayouts(slides, blueprintsByScenario)
@@ -123,7 +123,7 @@ export function getSlideLayout(
 
 export function getSlideCanvasPosition(
   slideId: string,
-  slides: Slide[],
+  slides: NavItem[],
   blueprintsByScenario?: Map<string, BlueprintData>,
 ): SlidePosition {
   const { x, y } = getSlideLayout(slideId, slides, blueprintsByScenario)
@@ -132,7 +132,7 @@ export function getSlideCanvasPosition(
 
 export function getSlideCanvasCenter(
   slideId: string,
-  slides: Slide[],
+  slides: NavItem[],
   blueprintsByScenario?: Map<string, BlueprintData>,
 ) {
   const layout = getSlideLayout(slideId, slides, blueprintsByScenario)

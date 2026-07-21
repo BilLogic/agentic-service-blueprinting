@@ -6,14 +6,14 @@ import {
   getSlideDisplayLabel,
   getSlideSequenceNav,
   isSubslide,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 import { cn } from '@/lib/utils'
 
 type SequenceNavPreviewProps = {
   direction: 'prev' | 'next'
-  slide: Slide
-  slides: Slide[]
+  slide: NavItem
+  slides: NavItem[]
   onClick: () => void
 }
 

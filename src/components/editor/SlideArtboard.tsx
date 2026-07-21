@@ -2,11 +2,11 @@ import type { CSSProperties } from 'react'
 import { cn } from '@/lib/utils'
 import { SLIDE_ARTBOARD_WIDTH } from '@/lib/slideLayout'
 import { useEditor } from '@/contexts/EditorContext'
-import { getSlideDisplayLabel, isSubslide, type Slide } from '@/types/slides'
+import { getSlideDisplayLabel, isSubslide, type NavItem } from '@/types/nav'
 import { Badge } from '@/components/ui/badge'
 
 type SlideArtboardProps = {
-  slide: Slide
+  slide: NavItem
   isActive?: boolean
   onSelect?: () => void
   className?: string

@@ -1,12 +1,12 @@
 import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
 import {
-  FALLBACK_SLIDES,
+  FALLBACK_NAV,
   getMainSlides,
   getSubslides,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 
-function mergeSlideFromFallback(slide: Slide, fallback: Slide | undefined): Slide {
+function mergeSlideFromFallback(slide: NavItem, fallback: NavItem | undefined): NavItem {
   if (!fallback) return slide
 
   const description = fallback.description?.trim()
@@ -40,9 +40,9 @@ function mergeSlideFromFallback(slide: Slide, fallback: Slide | undefined): Slid
  * database row predates a description migration.
  */
 export function mergeSlidesWithFallback(
-  dbSlides: Slide[],
-  fallbackSlides: Slide[] = FALLBACK_SLIDES,
-): Slide[] {
+  dbSlides: NavItem[],
+  fallbackSlides: NavItem[] = FALLBACK_NAV,
+): NavItem[] {
   if (dbSlides.length === 0) return fallbackSlides
 
   const fallbackById = new Map(fallbackSlides.map((slide) => [slide.id, slide]))
@@ -61,7 +61,7 @@ export function mergeSlidesWithFallback(
     dbIds.add(fallback.id)
   }
 
-  const ordered: Slide[] = []
+  const ordered: NavItem[] = []
   for (const main of getMainSlides(merged)) {
     ordered.push(main)
     ordered.push(

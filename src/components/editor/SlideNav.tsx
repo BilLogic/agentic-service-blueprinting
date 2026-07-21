@@ -21,12 +21,12 @@ import {
   getSlideById,
   getSlideDisplayLabel,
   getSubslides,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 import { cn } from '@/lib/utils'
 
 type SlideNavProps = {
-  slides: Slide[]
+  slides: NavItem[]
   activeSlideId: string
   onSelect: (id: string) => void
   isHome?: boolean

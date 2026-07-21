@@ -17,8 +17,8 @@ import {
   getSlideDisplayLabel,
   getSubslides,
   isSubslide,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
 
 type ScenarioBlueprintState = ReturnType<typeof useScenarioBlueprint>
@@ -26,8 +26,8 @@ type ScenarioBlueprintState = ReturnType<typeof useScenarioBlueprint>
 const canvasFitAttrs = { 'data-canvas-fit': '' } as const
 
 type BlueprintSlideContentProps = {
-  slide: Slide
-  slides: Slide[]
+  slide: NavItem
+  slides: NavItem[]
   scenarioBlueprint: ScenarioBlueprintState
   phaseBlueprintFilters?: PhaseBlueprintFilters | null
   showHeader?: boolean

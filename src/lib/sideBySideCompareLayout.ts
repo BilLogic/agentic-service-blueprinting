@@ -38,7 +38,7 @@ import type {
   IntegratedBlueprintStep,
   IntegratedBlueprintTrigger,
 } from '@/types/integratedBlueprint'
-import type { SlideViewType } from '@/types/slides'
+import type { SlideViewType } from '@/types/nav'
 
 export type IntegratedLayoutOptions = {
   fitVertically?: boolean

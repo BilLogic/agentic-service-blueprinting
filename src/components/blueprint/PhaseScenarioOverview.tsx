@@ -15,9 +15,9 @@ import { SUBSLIDE_GAP } from '@/lib/slideLayout'
 import {
   getSlideDisplayLabel,
   getSubslides,
-  type Slide,
+  type NavItem,
   type SlideViewType,
-} from '@/types/slides'
+} from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -25,8 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 const DEFAULT_SCENARIO_GAP = SUBSLIDE_GAP
 
 type PhaseScenarioOverviewProps = {
-  phase: Slide
-  slides: Slide[]
+  phase: NavItem
+  slides: NavItem[]
   className?: string
   /** When true, scenario panels share one row height (detail phase view). */
   alignPanelHeights?: boolean

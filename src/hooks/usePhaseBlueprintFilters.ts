@@ -11,13 +11,13 @@ import {
 import { defaultSelectedPathIds } from '@/lib/pathSelection'
 import type { BlueprintData } from '@/types/blueprint'
 import type { PathListItem } from '@/lib/pathSelection'
-import { getSubslides, isSubslide, type Slide, type SlideViewType } from '@/types/slides'
+import { getSubslides, isSubslide, type NavItem, type SlideViewType } from '@/types/nav'
 
 type UsePhaseBlueprintFiltersOptions = {
   scenarioIds: string[]
-  slides: Slide[]
+  slides: NavItem[]
   enabled?: boolean
-  getScenarioDisplayViewType: (slide: Slide) => SlideViewType
+  getScenarioDisplayViewType: (slide: NavItem) => SlideViewType
   setScenarioDisplayViewType: (scenarioId: string, viewType: SlideViewType) => void
 }
 
@@ -126,10 +126,10 @@ export function usePhaseBlueprintFilters({
   }
 }
 
-export function getPhaseScenarioIds(phase: Slide, slides: Slide[]): string[] {
+export function getPhaseScenarioIds(phase: NavItem, slides: NavItem[]): string[] {
   return getSubslides(phase.id, slides).map((scenario) => scenario.id)
 }
 
-export function isPhaseWithScenarios(slide: Slide, slides: Slide[]): boolean {
+export function isPhaseWithScenarios(slide: NavItem, slides: NavItem[]): boolean {
   return !isSubslide(slide) && getPhaseScenarioIds(slide, slides).length > 0
 }

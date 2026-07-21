@@ -24,7 +24,7 @@ import {
 import {
   getBlueprintScenarioId,
   isSubslide,
-} from '@/types/slides'
+} from '@/types/nav'
 
 export function SlideModeSidebarNav() {
   const {

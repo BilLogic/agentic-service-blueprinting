@@ -11,12 +11,12 @@ import { useEditor } from '@/contexts/EditorContext'
 import {
   getSlideBreadcrumbs,
   WORKSPACE_BREADCRUMB_ID,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 
 type ScenarioMenubarBreadcrumbProps = {
-  slide: Slide
-  slides: Slide[]
+  slide: NavItem
+  slides: NavItem[]
   /** Omit the active slide — shown separately as the title below. */
   excludeCurrent?: boolean
 }

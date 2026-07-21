@@ -4,13 +4,13 @@ import { PhaseMenubarHeader } from '@/components/editor/PhaseMenubarHeader'
 import {
   getSlideDisplayLabel,
   isSubslide,
-  type Slide,
-} from '@/types/slides'
+  type NavItem,
+} from '@/types/nav'
 import { cn } from '@/lib/utils'
 
 type SlideHeaderContentProps = {
-  slide: Slide
-  slides: Slide[]
+  slide: NavItem
+  slides: NavItem[]
   paths: PathOption[]
   selectedPathIds: string[]
   onTogglePath?: (pathId: string) => void
@@ -19,7 +19,7 @@ type SlideHeaderContentProps = {
 }
 
 function resolveScenarioDescription(
-  slide: Slide,
+  slide: NavItem,
   paths: PathOption[],
   selectedPathIds: string[],
 ): string | null | undefined {

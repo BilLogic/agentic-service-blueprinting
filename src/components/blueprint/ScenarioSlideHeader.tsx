@@ -2,11 +2,11 @@ import { NotionPropertyRow } from '@/components/blueprint/NotionPropertyRow'
 import { ScenarioSlideFilters } from '@/components/blueprint/ScenarioSlideFilters'
 import { PathMultiSelect, type PathOption } from '@/components/blueprint/PathMultiSelect'
 import { cn } from '@/lib/utils'
-import type { Slide } from '@/types/slides'
+import type { NavItem } from '@/types/nav'
 
 type ScenarioSlideHeaderProps = {
   title: string
-  slide?: Pick<Slide, 'id' | 'label'>
+  slide?: Pick<NavItem, 'id' | 'label'>
   description?: string | null
   phaseLabel?: string
   paths?: PathOption[]

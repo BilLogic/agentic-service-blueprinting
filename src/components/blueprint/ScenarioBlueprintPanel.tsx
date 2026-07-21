@@ -21,15 +21,15 @@ export {
 export type { ScenarioSwimlaneLayoutInput } from '@/lib/sideBySideCompareLayout'
 import {
   getSlideDisplayLabel,
-  type Slide,
+  type NavItem,
   type SlideViewType,
-} from '@/types/slides'
+} from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
 import { Skeleton } from '@/components/ui/skeleton'
 
 type ScenarioBlueprintPanelProps = {
-  slide: Slide
-  slides: Slide[]
+  slide: NavItem
+  slides: NavItem[]
   paths: PathListItem[]
   selectedPathIds: string[]
   blueprintsByPathId: Map<string, BlueprintData>

@@ -22,9 +22,9 @@ import {
   getOverviewPostToPreLoopTransition,
   shouldShowOverviewPhaseFlowArrow,
   isSubslide,
-  type Slide,
+  type NavItem,
   type SlideViewType,
-} from '@/types/slides'
+} from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
 import type { PathListItem } from '@/lib/pathSelection'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -33,8 +33,8 @@ const OVERVIEW_PAN_IGNORE =
   "button, a, input, textarea, select, label, [role='button'], [data-slide-sticky-header], [data-compare-panel], [data-zoom-indicator], [data-phase-scenario-overview], [data-phase-scenario-panel], [data-canvas-phase-interactive], [data-phase-menubar-header], [data-canvas-phase-section], [data-path-description-trigger], [data-cell-detail-panel], [data-blueprint-cell-interactive], [data-slot='menubar'], [data-slot='menubar-trigger']"
 
 type ServicePhaseSectionProps = {
-  phase: Slide
-  slides: Slide[]
+  phase: NavItem
+  slides: NavItem[]
   pathsByScenario: Map<string, PathListItem[]>
   blueprintsByPathId: Map<string, BlueprintData>
   getSelectedPathIds: (scenarioId: string, paths: PathListItem[]) => string[]

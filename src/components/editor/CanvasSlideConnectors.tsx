@@ -1,10 +1,10 @@
 import { computeSlideLayouts } from '@/lib/slideLayout'
 import type { ArtboardSize } from '@/lib/blueprintLayout'
 import type { BlueprintData } from '@/types/blueprint'
-import { getMainSlides, getSubslides, type Slide } from '@/types/slides'
+import { getMainSlides, getSubslides, type NavItem } from '@/types/nav'
 
 type CanvasSlideConnectorsProps = {
-  slides: Slide[]
+  slides: NavItem[]
   blueprintsByScenario?: Map<string, BlueprintData>
   layoutOverrides?: Map<string, ArtboardSize>
 }

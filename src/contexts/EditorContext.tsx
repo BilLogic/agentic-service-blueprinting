@@ -10,20 +10,20 @@ import {
 import { useLifecyclePhases } from '@/hooks/useLifecyclePhases'
 import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
 import {
-  FALLBACK_SLIDES,
+  FALLBACK_NAV,
   getSlideViewType,
   type EditorView,
-  type Slide,
+  type NavItem,
   type SlideViewType,
-} from '@/types/slides'
+} from '@/types/nav'
 
 type EditorContextValue = {
   view: EditorView
   setView: (view: EditorView) => void
   goHome: () => void
   openDetail: (slideId: string) => void
-  slides: Slide[]
-  getScenarioDisplayViewType: (slide: Slide) => SlideViewType
+  slides: NavItem[]
+  getScenarioDisplayViewType: (slide: NavItem) => SlideViewType
   setScenarioDisplayViewType: (
     scenarioId: string,
     viewType: SlideViewType,
@@ -32,7 +32,7 @@ type EditorContextValue = {
   slidesError: string | null
   activeSlideId: string
   setActiveSlideId: (id: string) => void
-  activeSlide: Slide
+  activeSlide: NavItem
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null)
@@ -46,11 +46,11 @@ export function EditorProvider({ children }: EditorProviderProps) {
   const { slides: dbSlides, loading, error, configured } = useLifecyclePhases()
 
   const slides = useMemo(() => {
-    if (dbSlides.length === 0) return FALLBACK_SLIDES
+    if (dbSlides.length === 0) return FALLBACK_NAV
     return mergeSlidesWithFallback(dbSlides)
   }, [dbSlides])
 
-  const [activeSlideId, setActiveSlideId] = useState(FALLBACK_SLIDES[0].id)
+  const [activeSlideId, setActiveSlideId] = useState(FALLBACK_NAV[0].id)
 
   const goHome = useCallback(() => {
     setView('home')
@@ -67,7 +67,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
   >({})
 
   const getScenarioDisplayViewType = useCallback(
-    (slide: Slide): SlideViewType =>
+    (slide: NavItem): SlideViewType =>
       viewTypeOverrides[slide.id] ?? getSlideViewType(slide),
     [viewTypeOverrides],
   )
@@ -93,7 +93,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
     () =>
       slides.find((s) => s.id === activeSlideId) ??
       slides[0] ??
-      FALLBACK_SLIDES[0],
+      FALLBACK_NAV[0],
     [activeSlideId, slides],
   )
 

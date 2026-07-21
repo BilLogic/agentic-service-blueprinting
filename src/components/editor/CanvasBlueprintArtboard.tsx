@@ -5,12 +5,12 @@ import { BLUEPRINT_CANVAS_COMPARE_GAP } from '@/lib/blueprintLayout'
 import { cn } from '@/lib/utils'
 import type { BlueprintData } from '@/types/blueprint'
 import type { IntegratedBlueprintData } from '@/types/integratedBlueprint'
-import { getSlideDisplayLabel, type Slide } from '@/types/slides'
+import { getSlideDisplayLabel, type NavItem } from '@/types/nav'
 import { Skeleton } from '@/components/ui/skeleton'
 
 type CanvasBlueprintArtboardProps = {
-  slide: Slide
-  slides: Slide[]
+  slide: NavItem
+  slides: NavItem[]
   blueprint?: BlueprintData | null
   blueprints?: BlueprintData[]
   integratedBlueprint?: IntegratedBlueprintData | null
