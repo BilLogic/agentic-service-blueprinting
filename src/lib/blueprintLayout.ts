@@ -296,6 +296,36 @@ export function getBlueprintCellInnerWidth(compact = false): number {
   return STEP_COLUMN_WIDTH - shellPadX
 }
 
+/** East-Asian full-width codepoints render ~2× the width of a Latin glyph.
+ * Counting them as 1 char made the line-count estimate undershoot badly for
+ * CJK content, so tall cells overflowed their fixed row track and painted the
+ * divider line on top of the cell block (#18). */
+function isWideCodePoint(cp: number): boolean {
+  return (
+    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+    (cp >= 0x2e80 && cp <= 0x303e) || // CJK radicals, Kangxi, CJK punctuation
+    (cp >= 0x3041 && cp <= 0x33ff) || // Hiragana, Katakana, CJK symbols
+    (cp >= 0x3400 && cp <= 0x4dbf) || // CJK Ext A
+    (cp >= 0x4e00 && cp <= 0x9fff) || // CJK Unified
+    (cp >= 0xa000 && cp <= 0xa4cf) || // Yi
+    (cp >= 0xac00 && cp <= 0xd7a3) || // Hangul Syllables
+    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
+    (cp >= 0xfe30 && cp <= 0xfe4f) || // CJK Compatibility Forms
+    (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth Forms
+    (cp >= 0xffe0 && cp <= 0xffe6) ||
+    (cp >= 0x20000 && cp <= 0x3fffd) // CJK Ext B+
+  )
+}
+
+/** Display width of a line in half-width units (CJK glyphs count as 2). */
+function lineDisplayWidth(line: string): number {
+  let width = 0
+  for (const ch of line) {
+    width += isWideCodePoint(ch.codePointAt(0) ?? 0) ? 2 : 1
+  }
+  return width
+}
+
 /** Line count including soft-wrap at the blueprint column width. */
 export function getEffectiveLineCount(content: string, compact = false): number {
   const innerWidth = getBlueprintCellInnerWidth(compact)
@@ -304,7 +334,7 @@ export function getEffectiveLineCount(content: string, compact = false): number 
 
   return content.split('\n').reduce((total, line) => {
     if (line.length === 0) return total + 1
-    return total + Math.ceil(line.length / charsPerLine)
+    return total + Math.ceil(lineDisplayWidth(line) / charsPerLine)
   }, 0)
 }
 
