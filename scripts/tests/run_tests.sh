@@ -296,5 +296,46 @@ npx tsc -p tsconfig.app.json > "$TMP/tsc3.out" 2>&1 \
   || fail "restore-tsc: default registry no longer type-checks — $(tail -20 "$TMP/tsc3.out")"
 pass "restore-tsc (default scale-fixture registry + nav restored and type-check)"
 
+# ---------------------------------------------------------------------------
+# 6. Per-scenario sign-off hash (friction #19)
+# ---------------------------------------------------------------------------
+
+SIGNOFF_GEN="$REPO_ROOT/scripts/compute_signoff_hash.py"
+
+H1="$(python3 "$SIGNOFF_GEN" "$SAMPLE")"
+H2="$(python3 "$SIGNOFF_GEN" "$SAMPLE")"
+[ "$H1" = "$H2" ] || fail "signoff-deterministic: two runs differ"
+echo "$H1" | grep -qE 'asset-repair[[:space:]]+sha256:[0-9a-f]{64}' \
+  || fail "signoff-format: expected '<key>\\tsha256:<hex>'"
+pass "signoff-deterministic (stable per-scenario hash; sha256 format)"
+
+# Editing a scenario changes ITS hash (content sensitivity).
+python3 - "$SAMPLE" "$SIGNOFF_GEN" <<'PY' || fail "signoff-sensitivity: edit did not change the hash"
+import json, subprocess, sys, tempfile, os
+ir, gen = sys.argv[1], sys.argv[2]
+base = subprocess.run([sys.executable, gen, ir], capture_output=True, text=True).stdout
+doc = json.load(open(ir, encoding="utf-8"))
+sc = doc["lifecycle"]["phases"][0]["scenarios"][0]
+name = sc["name"]
+if isinstance(name, dict):
+    k = next(iter(name)); name[k] = name[k] + " EDIT"
+else:
+    sc["name"] = name + " EDIT"
+tmp = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+json.dump(doc, tmp, ensure_ascii=False); tmp.close()
+after = subprocess.run([sys.executable, gen, tmp.name], capture_output=True, text=True).stdout
+os.unlink(tmp.name)
+sys.exit(0 if base != after else 1)
+PY
+pass "signoff-sensitivity (editing a scenario changes its content hash)"
+
+# --scenario filter + missing-key error.
+python3 "$SIGNOFF_GEN" "$SAMPLE" --scenario asset-repair --json | grep -q '"asset-repair"' \
+  || fail "signoff-filter: --scenario --json did not emit the key"
+if python3 "$SIGNOFF_GEN" "$SAMPLE" --scenario nope > /dev/null 2>&1; then
+  fail "signoff-missing: expected non-zero exit for an unknown scenario key"
+fi
+pass "signoff-filter (--scenario selects one; unknown key errors)"
+
 echo
 echo "All $PASS_COUNT tests passed."

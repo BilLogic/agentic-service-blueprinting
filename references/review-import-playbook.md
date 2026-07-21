@@ -33,21 +33,24 @@ parsing, so it isn't anchored on it). It returns numbered findings:
 referential gaps, journey-logic holes, provenance coverage. Resolve each
 finding — fix, or record a reasoned won't-fix with the user's agreement.
 
-### 4. ⚠ REQUIRED — hash-bound sign-off
+### 4. ⚠ REQUIRED — hash-bound sign-off (per scenario)
 
-When the user explicitly approves the previewed content:
+Sign-off binds **per scenario**, not per file — so approving scenario ⑥ and
+later appending scenario ⑦ leaves ⑥ signed (friction #19). When the user
+explicitly approves a previewed scenario:
 
-1. Compute SHA-256 of the IR file bytes.
-2. Record it in `blueprint-workspace.json` under `sign_off`
-   (see `references/workspace-state.md`), and mark covered scenarios
-   `signed_off`.
+1. Compute its hash: `python3 scripts/compute_signoff_hash.py <ir> --scenario <key>`.
+2. Record that `content_hash` (+ `signed_at`/`signed_by`) on the scenario's
+   entry in `blueprint-workspace.json` (see `references/workspace-state.md`),
+   and set its status to `signed_off`.
 
-Import **refuses on hash mismatch** — an edit after approval de-signs the
-IR and re-enters this phase. Never record the hash without an explicit
-user approval.
+Import **refuses on hash mismatch, per scenario** — an edit after approval
+de-signs only the scenario it touched and re-enters this phase for that
+scenario. Never record a hash without an explicit user approval.
 
 **Phase A exit (deterministic): all `blueprint-reviewer` findings resolved
-AND the sign-off hash is recorded and matches the current IR file.**
+AND each covered scenario's `content_hash` is recorded and matches its current
+subtree hash.**
 
 ## Phase B — Import
 
@@ -62,7 +65,8 @@ live-DB = requires Supabase or a PostgREST-compatible read API. See
 ### 6. Pre-flight
 
 - `scripts/validate_ir.py` exits 0 (⚠ REQUIRED before any import).
-- Sign-off hash matches the IR (⚠ REQUIRED).
+- Each imported scenario's `content_hash` matches its current subtree hash
+  from `scripts/compute_signoff_hash.py` (⚠ REQUIRED, per scenario).
 - IR `schema_version` compatible with the workspace clone's.
 - Target echo + user confirmation (project ref / output paths) — wrong-project
   protection (⚠ REQUIRED).
