@@ -1,4 +1,4 @@
-import { hasBlueprintFallback, SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
+import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
 import { ORG_NAME } from '@/config'
 
 /** Home = birds-eye service overview; detail = single slide/scenario editor. */
@@ -71,15 +71,15 @@ export function getOverviewPostToPreLoopTransition(
   return null
 }
 
+// GENERATED-NAV:BEGIN — managed by scripts/generate_fallbacks.py --register.
+// Replaced wholesale on registration (from the IR lifecycle); do not hand-edit.
+// Default content is the template's sample lifecycle: two phases wrapping the
+// sample scenario, matching supabase/seed.sql when Supabase is not configured.
+import { SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
+
 const DISCOVER_PHASE_ID = 'f0000000-0000-4000-8000-000000000100'
 const DELIVER_PHASE_ID = 'f0000000-0000-4000-8000-000000000200'
 
-/**
- * Offline fallback matching supabase/seed.sql when Supabase is not configured:
- * a minimal sample lifecycle wrapping the generated sample scenario
- * (src/data/scaleFixture.ts). Replace with your own content via the import
- * pipeline or by editing the seed + this list together.
- */
 export const FALLBACK_NAV: NavItem[] = [
   {
     id: DISCOVER_PHASE_ID,
@@ -106,6 +106,7 @@ export const FALLBACK_NAV: NavItem[] = [
     loopToId: DISCOVER_PHASE_ID,
   },
 ]
+// GENERATED-NAV:END
 
 export function getSlideDisplayLabel(
   slide: NavItem,

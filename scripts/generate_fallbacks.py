@@ -22,9 +22,15 @@ marker-delimited block:
   * With --register, this script rewrites the block in place to import from
     the generated module (transactional: the registry is only rewritten after
     the generated module has been written successfully; re-running is
-    idempotent).
+    idempotent). It ALSO regenerates the offline nav list (FALLBACK_NAV) in
+    src/types/nav.ts from the IR lifecycle, between its own markers:
+
+        // GENERATED-NAV:BEGIN …
+        // GENERATED-NAV:END
+
+    so the nav (phases + scenarios) never drifts from the blueprint data.
   * Without --register (or if the markers are missing), it prints the exact
-    block to paste, so nothing is guessed about a hand-modified registry.
+    blocks to paste, so nothing is guessed about a hand-modified file.
 
 Output is tsc-clean by construction: all literals are emitted through JSON
 serialization (double-quoted, control characters escaped, U+2028/U+2029
@@ -50,8 +56,11 @@ from generate_seed_sql import build_model  # noqa: E402
 
 MARKER_BEGIN = "GENERATED-BLUEPRINT-REGISTRY:BEGIN"
 MARKER_END = "GENERATED-BLUEPRINT-REGISTRY:END"
+NAV_MARKER_BEGIN = "GENERATED-NAV:BEGIN"
+NAV_MARKER_END = "GENERATED-NAV:END"
 DEFAULT_OUT = Path("src/data/generatedBlueprints.ts")
 REGISTRY_FILE = Path("src/data/blueprintFallbacks.ts")
+NAV_FILE = Path("src/types/nav.ts")
 
 
 def ts_literal(value) -> str:
@@ -220,23 +229,74 @@ const UI_HIDDEN_PATH_IDS_BY_SCENARIO: Record<string, readonly string[]> = {{}}
 // {MARKER_END}"""
 
 
-def register(registry_path: Path, specifier: str) -> bool:
-    """Rewrite the marker block. Returns True on success, False if markers are
-    missing/malformed (caller prints manual instructions)."""
-    text = registry_path.read_text(encoding="utf-8")
+def rewrite_marker_block(
+    path: Path, begin_marker: str, end_marker: str, block_text: str
+) -> bool:
+    """Replace a marker-delimited block in place. Returns True on success,
+    False if markers are missing/malformed (caller prints manual instructions)."""
+    text = path.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
     begin = end = None
     for index, line in enumerate(lines):
-        if MARKER_BEGIN in line and begin is None:
+        if begin_marker in line and begin is None:
             begin = index
-        elif MARKER_END in line and begin is not None:
+        elif end_marker in line and begin is not None:
             end = index
             break
     if begin is None or end is None:
         return False
-    new_text = "".join(lines[:begin]) + registry_block(specifier) + "\n" + "".join(lines[end + 1:])
-    registry_path.write_text(new_text, encoding="utf-8")
+    new_text = "".join(lines[:begin]) + block_text + "\n" + "".join(lines[end + 1:])
+    path.write_text(new_text, encoding="utf-8")
     return True
+
+
+# ---------------------------------------------------------------------------
+# Offline nav (src/types/nav.ts FALLBACK_NAV between the GENERATED-NAV markers)
+# ---------------------------------------------------------------------------
+
+
+def nav_items(model: dict) -> list:
+    """The offline nav list (FALLBACK_NAV) derived from the IR lifecycle: one
+    entry per phase, each followed by its scenarios (subslides). Positional
+    ordering only — mirrors the DB-backed nav the app builds from phases +
+    scenarios, so fallback nav never drifts from the blueprint data."""
+    phase_id_by_key = {ph["key"]: ph["id"] for ph in model["phases"]}
+    scenarios_by_phase: dict = {}
+    for scenario in model["scenarios"]:
+        scenarios_by_phase.setdefault(scenario["phase_id"], []).append(scenario)
+
+    items = []
+    for phase in sorted(model["phases"], key=lambda p: p["order"]):
+        item = {"id": phase["id"], "index": phase["order"], "label": phase["name"]}
+        if phase.get("description"):
+            item["description"] = phase["description"]
+        if phase.get("loops_to"):
+            loop_id = phase_id_by_key.get(phase["loops_to"])
+            if loop_id:
+                item["loopToId"] = loop_id
+        items.append(item)
+        for scenario in sorted(
+            scenarios_by_phase.get(phase["id"], []), key=lambda s: s["order"]
+        ):
+            sub = {
+                "id": scenario["id"],
+                "index": scenario["order"],
+                "label": scenario["name"],
+                "parentId": phase["id"],
+                "viewType": scenario["view_type"],
+            }
+            if scenario.get("description"):
+                sub["description"] = scenario["description"]
+            items.append(sub)
+    return items
+
+
+def nav_block(model: dict) -> str:
+    return f"""// {NAV_MARKER_BEGIN} — managed by scripts/generate_fallbacks.py --register.
+// Replaced wholesale on registration; do not hand-edit. Offline nav derived
+// from the IR lifecycle (phases + their scenarios) for locale {model['locale']}.
+export const FALLBACK_NAV: NavItem[] = {ts_literal(nav_items(model))}
+// {NAV_MARKER_END}"""
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +364,8 @@ def main(argv=None) -> int:
     specifier = module_specifier(out_path, repo_root)
     registry_path = repo_root / REGISTRY_FILE
 
+    nav_path = repo_root / NAV_FILE
+
     if args.register:
         if specifier is None:
             print(
@@ -312,25 +374,41 @@ def main(argv=None) -> int:
                 file=sys.stderr,
             )
             return 1
-        if register(registry_path, specifier):
-            print(f"Registered: rewrote the marker block in {registry_path}")
-            print("Verify with: npx tsc -p tsconfig.app.json")
-            return 0
-        print(
-            f"ERROR: could not find the {MARKER_BEGIN} … {MARKER_END} markers in "
-            f"{registry_path} — the registry looks hand-modified. Replace its "
-            "import + SAMPLE_SCENARIO_ID + FALLBACK_* + UI_HIDDEN_PATH_IDS_BY_SCENARIO "
-            "definitions with this block (and keep the markers for next time):\n",
-            file=sys.stderr,
-        )
-        print(registry_block(specifier), file=sys.stderr)
-        return 1
+        if not rewrite_marker_block(
+            registry_path, MARKER_BEGIN, MARKER_END, registry_block(specifier)
+        ):
+            print(
+                f"ERROR: could not find the {MARKER_BEGIN} … {MARKER_END} markers in "
+                f"{registry_path} — the registry looks hand-modified. Replace its "
+                "import + SAMPLE_SCENARIO_ID + FALLBACK_* + UI_HIDDEN_PATH_IDS_BY_SCENARIO "
+                "definitions with this block (and keep the markers for next time):\n",
+                file=sys.stderr,
+            )
+            print(registry_block(specifier), file=sys.stderr)
+            return 1
+        print(f"Registered: rewrote the marker block in {registry_path}")
+
+        if not rewrite_marker_block(
+            nav_path, NAV_MARKER_BEGIN, NAV_MARKER_END, nav_block(model)
+        ):
+            print(
+                f"ERROR: could not find the {NAV_MARKER_BEGIN} … {NAV_MARKER_END} markers "
+                f"in {nav_path} — replace the FALLBACK_NAV block with this (and keep the "
+                "markers for next time):\n",
+                file=sys.stderr,
+            )
+            print(nav_block(model), file=sys.stderr)
+            return 1
+        print(f"Registered: rewrote the nav block in {nav_path}")
+        print("Verify with: npx tsc -p tsconfig.app.json")
+        return 0
 
     if specifier is not None:
         print(
             "\nNot registered (dry run). To wire the app to this module either re-run "
-            "with --register, or replace the marker block in "
-            f"{REGISTRY_FILE} with:\n\n{registry_block(specifier)}\n\n"
+            "with --register, or replace the two marker blocks by hand.\n\n"
+            f"{REGISTRY_FILE} — blueprint registry block:\n\n{registry_block(specifier)}\n\n"
+            f"{NAV_FILE} — offline nav block:\n\n{nav_block(model)}\n\n"
             "Then verify with: npx tsc -p tsconfig.app.json"
         )
     return 0
