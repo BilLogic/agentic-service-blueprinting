@@ -63,10 +63,24 @@ Rules:
 
 - Same group → **byte-identical** label in every phase. Not "our staff" here and
   "provider team" there.
+- **The label survives role changes.** An actor group's ROLE legitimately varies
+  by phase (the field crew is the `customer_actions` spine in an operations
+  phase but `frontstage_actions` in an incident phase) — its LABEL must not.
+  Therefore never bake a role word into a role-varying group's label: `青翼·班组`
+  in every phase, not `青翼·班组` in one and `前台·青翼` in another.
+- **Same rule for shared systems.** A platform lane (e.g. `平台·<provider>`) may
+  be `frontstage_tech` in a phase where the spine actor touches it directly and
+  `backstage_tech` where it works behind the spine — that flip is correct, but
+  decide it from "does THIS phase's spine actor interact with it?", label it
+  identically everywhere, and if one phase has BOTH a spine-facing surface and
+  an internal one (citizen miniapp + admin console), split into two lanes
+  rather than casting the customer's touchpoint backstage.
 - Distinguish **actor** (a who → actions role) from **system** (a what → tech/
   pill role). A person doing work is `*_actions`, not a `*_tech` pill.
 - Prefix conventions (`前台·` / `后台· ` / `支撑·`) are optional but, once chosen,
-  applied everywhere.
+  applied everywhere — and only on groups whose role never varies (see above).
+- Non-spine client orgs (e.g. a supervising bureau): prefer one named custom
+  role (`gov_management`) over `null`, and use the SAME choice in every phase.
 
 ## 3. Source-layout crosswalk
 
