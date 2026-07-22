@@ -15,6 +15,8 @@ export type BlueprintCellPathEntry = {
 
 export type BlueprintCellSelection = {
   scenarioName: string
+  /** Parent lifecycle phase label when known (e.g. Pre-Session). */
+  phaseName?: string
   layerName: string
   stepId: string
   stepName: string

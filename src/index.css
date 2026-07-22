@@ -171,7 +171,43 @@
      the old grey color-mix blend muddied role-based colors on click. */
 
   [data-blueprint-cell-anchor] {
-    transition-property: box-shadow, transform, opacity;
+    transition-property: box-shadow, transform, opacity, background-color;
+    transition-duration: 180ms;
+  }
+
+  [data-blueprint-cell-anchor][data-blueprint-cell-preview-hover] {
+    background-color: var(
+      --blueprint-cell-bg-hover,
+      var(
+        --blueprint-cell-bg-panel,
+        var(--blueprint-cell-bg-origin, var(--blueprint-cell-bg))
+      )
+    );
+  }
+
+  [data-blueprint-cell-emphasis='connected'] {
+    position: relative;
+    box-shadow:
+      inset 0 0 0 1px
+        color-mix(
+          in srgb,
+          var(--blueprint-cell-ring-soft, var(--ring)) 42%,
+          transparent
+        ),
+      0 3px 8px rgb(0 0 0 / 0.1);
+  }
+
+  [data-blueprint-cell-emphasis='connected']::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(
+      in srgb,
+      var(--blueprint-cell-bg-hover, var(--foreground)) 30%,
+      transparent
+    );
+    content: '';
+    pointer-events: none;
   }
 
   [data-canvas-phase-interactive]:hover:not(:has([data-phase-scenario-panel]:hover))
@@ -197,7 +233,28 @@
     @apply border-border outline-ring/50;
   }
   body {
+    /* Required by shadcn Base UI drawer overlay on iOS Safari */
+    position: relative;
     @apply bg-background text-foreground;
+  }
+  :where(
+    a[href],
+    button:not(:disabled),
+    select:not(:disabled),
+    summary,
+    label[for],
+    input[type='button']:not(:disabled),
+    input[type='submit']:not(:disabled),
+    input[type='reset']:not(:disabled),
+    input[type='checkbox']:not(:disabled),
+    input[type='radio']:not(:disabled),
+    input[type='range']:not(:disabled),
+    input[type='file']:not(:disabled),
+    [role='button']:not([aria-disabled='true']),
+    [role='link']:not([aria-disabled='true']),
+    [data-blueprint-cell-interactive]
+  ) {
+    cursor: pointer;
   }
   html {
     @apply font-sans;

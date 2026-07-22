@@ -20,6 +20,7 @@ export {
 } from '@/lib/sideBySideCompareLayout'
 export type { ScenarioSwimlaneLayoutInput } from '@/lib/sideBySideCompareLayout'
 import {
+  getParentSlide,
   getSlideDisplayLabel,
   type NavItem,
   type SlideViewType,
@@ -69,6 +70,10 @@ export function ScenarioBlueprintPanel({
   const scrollContainerRef = scrollContainerRefProp ?? internalScrollRef
 
   const scenarioName = getSlideDisplayLabel(slide, slides)
+  const parentPhase = getParentSlide(slide, slides)
+  const phaseName = parentPhase
+    ? getSlideDisplayLabel(parentPhase, slides)
+    : undefined
   const displayViewType =
     displayViewTypeProp ?? getScenarioDisplayViewType(slide)
   const useIntegratedLayout =
@@ -188,6 +193,7 @@ export function ScenarioBlueprintPanel({
           scrollContainerRef={scrollContainerRef}
           selectedPathIds={selectedPathIds}
           scenarioName={scenarioName}
+          phaseName={phaseName}
           walkthroughBlueprints={allBlueprints}
           fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
           fillSwimlaneHeight={fillSwimlaneHeight}
@@ -207,6 +213,7 @@ export function ScenarioBlueprintPanel({
           blueprints={visibleBlueprints}
           scrollContainerRef={scrollContainerRef}
           scenarioName={scenarioName}
+          phaseName={phaseName}
           sectionTitleLabel={sectionTitleLabel}
           sectionTitleDescription={sectionTitleDescription}
           fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
@@ -228,6 +235,7 @@ export function ScenarioBlueprintPanel({
             data={data}
             className="shrink-0"
             scenarioName={scenarioName}
+            phaseName={phaseName}
             walkthroughBlueprints={allBlueprints}
             headerTitleLabel={sectionTitleLabel}
             headerTitleDescription={sectionTitleDescription}

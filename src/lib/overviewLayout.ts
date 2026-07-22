@@ -1,10 +1,10 @@
 /** Service overview canvas spacing — compact row/grid rhythm. */
 
 /** Horizontal gap between scenario blueprint panels in a phase row. */
-export const OVERVIEW_SCENARIO_GAP = 48
+export const OVERVIEW_SCENARIO_GAP = 192
 
 /** Vertical gap between phase rows (excluding section insets). */
-export const OVERVIEW_PHASE_ROW_GAP = 160
+export const OVERVIEW_PHASE_ROW_GAP = 228
 
 /** Phase section frame padding on the service overview. */
 export const OVERVIEW_PHASE_SECTION_INSET = 24

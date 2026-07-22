@@ -5,6 +5,7 @@ import {
   getBlueprintCellInteractionStyle,
 } from '@/lib/blueprintCellStyle'
 import { isSameBlueprintCellSelection } from '@/lib/blueprintCellSelection'
+import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
@@ -44,6 +45,46 @@ export function BlueprintCellButton({
   const isActive =
     isInteractive &&
     isSameBlueprintCellSelection(detail!.selection, selection!)
+  const resolvedCellId = cellId ? resolveBlueprintCellId(cellId) : null
+  const isSelectedCell = Boolean(
+    detail?.selection &&
+      cellId &&
+      (detail.selectedCellIds.has(cellId) ||
+        (resolvedCellId && detail.selectedCellIds.has(resolvedCellId))),
+  )
+  const isDirectlyConnected = Boolean(
+    detail?.selection &&
+      cellId &&
+      (detail.directlyConnectedCellIds.has(cellId) ||
+        (resolvedCellId &&
+          detail.directlyConnectedCellIds.has(resolvedCellId))),
+  )
+  const preview = detail?.previewHover ?? null
+  const previewCellId = preview?.cellId
+    ? resolveBlueprintCellId(preview.cellId)
+    : null
+  const matchesPreviewCell = Boolean(
+    preview &&
+      cellId &&
+      (preview.cellId === cellId ||
+        previewCellId === cellId ||
+        (resolvedCellId != null &&
+          (preview.cellId === resolvedCellId ||
+            previewCellId === resolvedCellId))),
+  )
+  const isPreviewHover = Boolean(
+    matchesPreviewCell &&
+      (techPillLabel
+        ? preview?.techItem === techPillLabel
+        : !preview?.techItem),
+  )
+  const emphasis = !detail?.selection
+    ? undefined
+    : isActive
+      ? 'active'
+      : isSelectedCell || isDirectlyConnected
+        ? 'connected'
+        : 'unrelated'
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (!isInteractive) return
@@ -69,6 +110,8 @@ export function BlueprintCellButton({
       {...(techPillLabel ? { 'data-blueprint-tech-pill': techPillLabel } : {})}
       aria-label={ariaLabel}
       aria-pressed={isInteractive ? isActive : undefined}
+      data-blueprint-cell-emphasis={emphasis}
+      {...(isPreviewHover ? { 'data-blueprint-cell-preview-hover': '' } : {})}
       {...(isInteractive ? { 'data-blueprint-cell-interactive': '' } : {})}
       onClick={isInteractive ? handleClick : undefined}
       tabIndex={isInteractive ? 0 : -1}

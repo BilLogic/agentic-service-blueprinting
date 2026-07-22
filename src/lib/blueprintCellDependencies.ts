@@ -12,6 +12,8 @@ export type CellDependencyRow = {
   id: string
   kind: CellDependencyKind
   label: string
+  layerLabel?: string
+  stepLabel?: string
   detail?: string
   direction?: FlowConnectionDirection | FlowInteractionDirection
   cellId?: string
@@ -24,6 +26,22 @@ export type CellDependencyTechEntry = {
   cellId: string
   item: string
   layerName?: string
+  stepIndex?: number
+}
+
+function formatStepLabel(stepIndex: number): string | undefined {
+  if (stepIndex < 0) return undefined
+  return `Step ${stepIndex + 1}`
+}
+
+function resolveTechStepIndex(
+  cellId: string,
+  connections: BlueprintCellConnections,
+): number | undefined {
+  const match =
+    connections.incoming.find((entry) => entry.cellId === cellId) ??
+    connections.outgoing.find((entry) => entry.cellId === cellId)
+  return match?.stepIndex
 }
 
 export type CellDependencyLinkEntry = {
@@ -52,6 +70,37 @@ export function getCellDependencyKindLabel(kind: CellDependencyKind): string {
   }
 }
 
+function resolveTechDependencyDirection(
+  cellId: string,
+  connections: BlueprintCellConnections,
+  selectedLayerRowPosition: number,
+): FlowConnectionDirection | FlowInteractionDirection | undefined {
+  const incoming = connections.incoming.filter(
+    (entry) => entry.cellId === cellId && entry.isTech,
+  )
+  const outgoing = connections.outgoing.filter(
+    (entry) => entry.cellId === cellId && entry.isTech,
+  )
+  if (incoming.length === 0 && outgoing.length === 0) return undefined
+
+  const interactionSample =
+    incoming.find((entry) => entry.kind === 'interaction') ??
+    outgoing.find((entry) => entry.kind === 'interaction')
+
+  if (interactionSample) {
+    return interactionSample.layerRowPosition < selectedLayerRowPosition
+      ? 'up'
+      : 'down'
+  }
+
+  const hasPrev = incoming.some((entry) => entry.kind === 'connection')
+  const hasNext = outgoing.some((entry) => entry.kind === 'connection')
+  if (hasPrev && hasNext) return 'both'
+  if (hasPrev) return 'prev'
+  if (hasNext) return 'next'
+  return undefined
+}
+
 export function buildCellDependencyRows(options: {
   connections: BlueprintCellConnections
   selectedLayerRowPosition: number
@@ -63,11 +112,11 @@ export function buildCellDependencyRows(options: {
   const {
     connections,
     selectedLayerRowPosition,
-    isTechCellSelected,
     selectedTechItem,
     otherTech,
     links,
   } = options
+  void options.isTechCellSelected
 
   const rows: CellDependencyRow[] = []
   const interactionTechIds = new Set<string>()
@@ -80,7 +129,8 @@ export function buildCellDependencyRows(options: {
       id: `connection:${connection.cellId}`,
       kind: 'connection',
       label: connection.layerName,
-      detail: connection.stepName,
+      layerLabel: connection.layerName,
+      stepLabel: formatStepLabel(connection.stepIndex),
       direction: connection.direction,
       cellId: connection.cellId,
     })
@@ -91,16 +141,17 @@ export function buildCellDependencyRows(options: {
     connections.outgoing,
     selectedLayerRowPosition,
   )) {
-    if (isTechCellSelected && interaction.isTech) continue
-
-    if (!isTechCellSelected && interaction.isTech) {
+    if (interaction.isTech) {
       for (const item of interaction.techItems) {
+        if (selectedTechItem && item === selectedTechItem) continue
         interactionTechIds.add(`${interaction.cellId}:${item}`)
         rows.push({
           id: `interaction-tech:${interaction.cellId}:${item}`,
-          kind: 'interaction',
+          kind: 'tech',
           label: item,
-          detail: interaction.layerName,
+          layerLabel: interaction.layerName,
+          stepLabel: formatStepLabel(interaction.stepIndex),
+          detail: item,
           direction: interaction.direction,
           cellId: interaction.cellId,
           techItem: item,
@@ -113,23 +164,55 @@ export function buildCellDependencyRows(options: {
       id: `interaction:${interaction.cellId}`,
       kind: 'interaction',
       label: interaction.layerName,
-      detail: interaction.contentPreview || interaction.stepName,
+      layerLabel: interaction.layerName,
+      stepLabel: formatStepLabel(interaction.stepIndex),
       direction: interaction.direction,
       cellId: interaction.cellId,
     })
+  }
+
+  const techIncoming = connections.incoming.filter((entry) => entry.isTech)
+  const techOutgoing = connections.outgoing.filter((entry) => entry.isTech)
+  for (const connection of getDirectedConnections(techIncoming, techOutgoing)) {
+    for (const item of connection.techItems) {
+      const id = `${connection.cellId}:${item}`
+      if (interactionTechIds.has(id)) continue
+      if (selectedTechItem && item === selectedTechItem) continue
+      interactionTechIds.add(id)
+      rows.push({
+        id: `connection-tech:${connection.cellId}:${item}`,
+        kind: 'tech',
+        label: item,
+        layerLabel: connection.layerName,
+        stepLabel: formatStepLabel(connection.stepIndex),
+        detail: item,
+        direction: connection.direction,
+        cellId: connection.cellId,
+        techItem: item,
+      })
+    }
   }
 
   for (const entry of otherTech) {
     if (interactionTechIds.has(entry.id)) continue
     if (selectedTechItem && entry.item === selectedTechItem) continue
 
+    const stepIndex =
+      entry.stepIndex ?? resolveTechStepIndex(entry.cellId, connections)
+
     rows.push({
       id: `tech:${entry.id}`,
       kind: 'tech',
       label: entry.item,
-      detail: entry.layerName
-        ? entry.layerName
-        : undefined,
+      layerLabel: entry.layerName,
+      stepLabel:
+        stepIndex !== undefined ? formatStepLabel(stepIndex) : undefined,
+      detail: entry.layerName ? entry.item : undefined,
+      direction: resolveTechDependencyDirection(
+        entry.cellId,
+        connections,
+        selectedLayerRowPosition,
+      ),
       cellId: entry.cellId,
       techItem: entry.item,
     })

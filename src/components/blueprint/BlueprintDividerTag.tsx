@@ -51,6 +51,8 @@ export function BlueprintDividerTag({
 }
 
 /** Label + rule in one row — line starts flush at the label's right edge. */
+export type BlueprintDividerLineStyle = 'dashed' | 'dotted' | 'solid'
+
 export function BlueprintDividerRailLabelLine({
   label,
   lineStyle,
@@ -58,7 +60,7 @@ export function BlueprintDividerRailLabelLine({
   className,
 }: {
   label: string
-  lineStyle: 'dashed' | 'solid'
+  lineStyle: BlueprintDividerLineStyle
   compact?: boolean
   className?: string
 }) {
@@ -71,7 +73,7 @@ export function BlueprintDividerRailLabelLine({
 }
 
 type BlueprintDividerRuleProps = {
-  lineStyle: 'dashed' | 'solid'
+  lineStyle: BlueprintDividerLineStyle
   className?: string
   style?: CSSProperties
 }
@@ -92,7 +94,14 @@ export function BlueprintDividerRule({
           backgroundRepeat: 'repeat-x',
           backgroundPosition: 'left center',
         }
-      : { backgroundColor: DIVIDER_LINE_COLOR }
+      : lineStyle === 'dotted'
+        ? {
+            backgroundImage: `linear-gradient(to right, ${DIVIDER_LINE_COLOR} 0, ${DIVIDER_LINE_COLOR} 2px, transparent 2px, transparent 6px)`,
+            backgroundSize: '6px 1px',
+            backgroundRepeat: 'repeat-x',
+            backgroundPosition: 'left center',
+          }
+        : { backgroundColor: DIVIDER_LINE_COLOR }
 
   return (
     <div
@@ -105,7 +114,7 @@ export function BlueprintDividerRule({
 
 type BlueprintDividerLabelLineProps = {
   label: string
-  lineStyle: 'dashed' | 'solid'
+  lineStyle: BlueprintDividerLineStyle
   compact?: boolean
   /** Tag + rule as one inline flex cluster (no gap between pill and line). */
   className?: string

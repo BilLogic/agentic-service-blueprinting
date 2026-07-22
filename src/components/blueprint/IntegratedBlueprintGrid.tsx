@@ -67,7 +67,7 @@ import type {
 } from '@/types/integratedBlueprint'
 import { getIntegratedCellDisplayOpacity } from '@/types/integratedBlueprint'
 import type { BlueprintLayer } from '@/types/blueprint'
-import { resolveVisualStepPictures } from '@/lib/visualWalkthrough'
+import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
 
 type IntegratedBlueprintGridProps = {
   data: IntegratedBlueprintData
@@ -80,6 +80,7 @@ type IntegratedBlueprintGridProps = {
   selectedPathIds?: string[]
   onTogglePath?: (pathId: string) => void
   scenarioName?: string
+  phaseName?: string
   walkthroughBlueprints?: BlueprintData[]
   fixedSwimlaneBodyHeight?: number
   fillSwimlaneHeight?: boolean
@@ -119,6 +120,7 @@ export function IntegratedBlueprintGrid({
   selectedPathIds = [],
   onTogglePath,
   scenarioName,
+  phaseName,
   walkthroughBlueprints = [],
   fixedSwimlaneBodyHeight,
   fillSwimlaneHeight = false,
@@ -281,7 +283,13 @@ export function IntegratedBlueprintGrid({
               key={row.key}
               rowIndex={rowIndex}
               label={row.label}
-              lineStyle={row.kind === 'interaction' ? 'dashed' : 'solid'}
+              lineStyle={
+                row.kind === 'interaction'
+                  ? 'dashed'
+                  : row.kind === 'internalInteraction'
+                    ? 'dotted'
+                    : 'solid'
+              }
             />
           ) : (
             <Fragment key={`label-${row.key}`}>
@@ -332,6 +340,7 @@ export function IntegratedBlueprintGrid({
               compact={compact}
               fitVertically={fillSwimlaneHeight || fitVertically}
               scenarioName={scenarioName}
+              phaseName={phaseName}
               pathNameById={pathNameById}
               pathDescriptionById={pathDescriptionById}
             />
@@ -404,6 +413,7 @@ function IntegratedContentRow({
   compact,
   fitVertically,
   scenarioName,
+  phaseName,
   pathNameById,
   pathDescriptionById,
 }: {
@@ -415,6 +425,7 @@ function IntegratedContentRow({
   compact?: boolean
   fitVertically?: boolean
   scenarioName?: string
+  phaseName?: string
   pathNameById: Map<string, string>
   pathDescriptionById: Map<string, string | null>
 }) {
@@ -484,6 +495,7 @@ function IntegratedContentRow({
               compact={compact}
               fitVertically={fitVertically}
               scenarioName={scenarioName}
+              phaseName={phaseName}
               pathNameById={pathNameById}
               pathDescriptionById={pathDescriptionById}
             />
@@ -512,6 +524,7 @@ function IntegratedLayerContent({
   compact,
   fitVertically,
   scenarioName,
+  phaseName,
   pathNameById,
   pathDescriptionById,
 }: {
@@ -522,6 +535,7 @@ function IntegratedLayerContent({
   compact?: boolean
   fitVertically?: boolean
   scenarioName?: string
+  phaseName?: string
   pathNameById: Map<string, string>
   pathDescriptionById: Map<string, string | null>
 }) {
@@ -552,7 +566,7 @@ function IntegratedLayerContent({
                   ? undefined
                   : [...slotCells].sort((a, b) => b.opacity - a.opacity)[0]
               if (representative == null) return []
-              return resolveVisualStepPictures(
+              return resolveVisualStepPictureEntries(
                 {
                   layers,
                   cells: cells.filter(
@@ -581,6 +595,7 @@ function IntegratedLayerContent({
                   fitVertically={fitVertically}
                   flushBottom={flushBottom}
                   scenarioName={scenarioName}
+              phaseName={phaseName}
                   pathNameById={pathNameById}
                   pathDescriptionById={pathDescriptionById}
                   visualPictures={visualPictures ?? []}
@@ -598,6 +613,7 @@ function IntegratedLayerContent({
                   fitVertically={fitVertically}
                   flushBottom={flushBottom}
                   scenarioName={scenarioName}
+              phaseName={phaseName}
                   pathNameById={pathNameById}
                   pathDescriptionById={pathDescriptionById}
                 />
@@ -653,6 +669,7 @@ function IntegratedVisualCell({
   fitVertically,
   flushBottom,
   scenarioName,
+  phaseName,
   pathNameById,
   pathDescriptionById,
   visualPictures,
@@ -666,9 +683,10 @@ function IntegratedVisualCell({
   fitVertically?: boolean
   flushBottom?: boolean
   scenarioName?: string
+  phaseName?: string
   pathNameById: Map<string, string>
   pathDescriptionById: Map<string, string | null>
-  visualPictures: readonly string[]
+  visualPictures: ReadonlyArray<{ picture: string; label: string }>
 }) {
   const shellPadding = cn(
     compact ? 'px-3' : 'px-3.5',
@@ -687,6 +705,8 @@ function IntegratedVisualCell({
     scenarioName
       ? {
           scenarioName,
+
+          phaseName,
           layerName: layer.name,
           stepId: step.id,
           stepName: step.name,
@@ -755,6 +775,7 @@ function IntegratedCellSlot({
   fitVertically,
   flushBottom,
   scenarioName,
+  phaseName,
   pathNameById,
   pathDescriptionById,
 }: {
@@ -769,6 +790,7 @@ function IntegratedCellSlot({
   fitVertically?: boolean
   flushBottom?: boolean
   scenarioName?: string
+  phaseName?: string
   pathNameById: Map<string, string>
   pathDescriptionById: Map<string, string | null>
 }) {
@@ -810,6 +832,7 @@ function IntegratedCellSlot({
         flushBottom={flushBottom}
         stacked={false}
         scenarioName={scenarioName}
+              phaseName={phaseName}
         pathNameById={pathNameById}
         pathDescriptionById={pathDescriptionById}
       />
@@ -827,6 +850,7 @@ function IntegratedCellSlot({
           flushBottom={flushBottom}
           stacked
           scenarioName={scenarioName}
+              phaseName={phaseName}
           pathNameById={pathNameById}
           pathDescriptionById={pathDescriptionById}
         />
@@ -847,6 +871,7 @@ function IntegratedCellBlock({
   flushBottom,
   stacked,
   scenarioName,
+  phaseName,
   pathNameById,
   pathDescriptionById,
 }: {
@@ -861,6 +886,7 @@ function IntegratedCellBlock({
   flushBottom?: boolean
   stacked?: boolean
   scenarioName?: string
+  phaseName?: string
   pathNameById: Map<string, string>
   pathDescriptionById: Map<string, string | null>
 }) {
@@ -887,6 +913,8 @@ function IntegratedCellBlock({
     scenarioName
       ? {
           scenarioName,
+
+          phaseName,
           layerName,
           stepId: cell.step_id,
           stepName: step.name,

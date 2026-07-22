@@ -58,7 +58,13 @@ function WalkthroughStepSlide({
 
   return (
     <div className="flex flex-col gap-3">
-      <BlueprintStepVisual pictures={step.pictures} presentation />
+      <BlueprintStepVisual
+        pictures={step.layerEntries.map((entry) => ({
+          picture: entry.picture,
+          label: entry.layerName,
+        }))}
+        presentation
+      />
 
       {entryCount > 0 ? (
         <div

@@ -51,6 +51,15 @@ function getActorLayers(layers: readonly BlueprintLayer[]): BlueprintLayer[] {
   return layers.filter((layer) => isWalkthroughActorLayer(layer))
 }
 
+/**
+ * True when an artwork batch bakes its own gray rounded frame into the PNG,
+ * so the renderer scales it up slightly to hide the double frame. The template
+ * ships no such batches; orgs can match their own picture path prefixes here.
+ */
+export function hasEmbeddedVisualFrame(_picture: string): boolean {
+  return false
+}
+
 export type VisualWalkthroughLayerEntry = {
   layerName: string
   content: string

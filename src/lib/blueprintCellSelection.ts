@@ -5,6 +5,7 @@ import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 
 export type BlueprintCellSelectionContext = {
   scenarioName: string
+  phaseName?: string
   layerName: string
   stepId: string
   stepName: string
@@ -25,6 +26,7 @@ export function buildBlueprintCellSelection(
 ): BlueprintCellSelection {
   return {
     scenarioName: context.scenarioName,
+    phaseName: context.phaseName,
     layerName: context.layerName,
     stepId: context.stepId,
     stepName: context.stepName,
@@ -51,6 +53,7 @@ export function buildTechPillSelection(
 ): BlueprintCellSelection {
   return {
     scenarioName: context.scenarioName,
+    phaseName: context.phaseName,
     layerName: context.layerName,
     stepId: context.stepId,
     stepName: context.stepName,

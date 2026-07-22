@@ -1,4 +1,7 @@
-import type { VisualStepPictureEntry } from '@/lib/visualWalkthrough'
+import {
+  hasEmbeddedVisualFrame,
+  type VisualStepPictureEntry,
+} from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
 
 const PICTURE_FRAME_CLASS =
@@ -24,7 +27,14 @@ export function VisualStepDetailStack({
       {entries.map((entry) => (
         <div key={entry.layerName} className="flex flex-col gap-2.5">
           <div className={PICTURE_FRAME_CLASS}>
-            <img src={entry.picture} alt="" className={PICTURE_CLASS} />
+            <img
+              src={entry.picture}
+              alt=""
+              className={cn(
+                PICTURE_CLASS,
+                hasEmbeddedVisualFrame(entry.picture) && 'scale-[1.08]',
+              )}
+            />
           </div>
           <p className="text-xs font-semibold leading-snug text-foreground/90">
             {entry.label}

@@ -67,6 +67,7 @@ export function buildTechPillSelectionForItem(
   cellId: string,
   techItem: string,
   scenarioName: string,
+  phaseName?: string,
 ): BlueprintCellSelection | null {
   const cell = blueprint.cells.find(
     (entry) => entry.id === resolveBlueprintCellId(cellId),
@@ -83,6 +84,7 @@ export function buildTechPillSelectionForItem(
   return buildTechPillSelection(
     {
       scenarioName,
+      phaseName,
       layerName: layer.name,
       stepId: step.id,
       stepName: step.name,

@@ -56,7 +56,7 @@ import {
   getTechPillItems,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
-import { resolveVisualStepPictures } from '@/lib/visualWalkthrough'
+import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
 import type { BlueprintData } from '@/types/blueprint'
 
 type SideBySideCompareGridProps = {
@@ -65,6 +65,7 @@ type SideBySideCompareGridProps = {
   compact?: boolean
   scrollContainerRef?: RefObject<HTMLDivElement | null>
   scenarioName?: string
+  phaseName?: string
   /** When set, scenario title sits on the gray panel edge; path frames show path type. */
   sectionTitleLabel?: string
   sectionTitleDescription?: string | null
@@ -91,6 +92,7 @@ export function SideBySideCompareGrid({
   compact = false,
   scrollContainerRef: scrollContainerRefProp,
   scenarioName,
+  phaseName,
   sectionTitleLabel,
   sectionTitleDescription,
   fixedSwimlaneBodyHeight,
@@ -169,7 +171,13 @@ export function SideBySideCompareGrid({
                 key={row.key}
                 rowIndex={rowIndex}
                 label={row.label}
-                lineStyle={row.kind === 'interaction' ? 'dashed' : 'solid'}
+                lineStyle={
+                  row.kind === 'interaction'
+                    ? 'dashed'
+                    : row.kind === 'internalInteraction'
+                      ? 'dotted'
+                      : 'solid'
+                }
               />
             ) : (
               <Fragment key={`label-${row.key}`}>
@@ -196,6 +204,7 @@ export function SideBySideCompareGrid({
               compact={compact}
               scrollContainerRef={scrollContainerRefProp}
               scenarioName={scenarioName}
+              phaseName={phaseName}
               sectionTitleLabel={sectionTitleLabel}
               sectionTitleDescription={sectionTitleDescription}
               showPathTypeBadge={showPathTypeBadge}
@@ -215,6 +224,7 @@ function ComparePathColumn({
   compact,
   scrollContainerRef,
   scenarioName,
+  phaseName,
   showPathTypeBadge = false,
   fillSwimlaneHeight = false,
 }: {
@@ -225,6 +235,7 @@ function ComparePathColumn({
   compact?: boolean
   scrollContainerRef?: RefObject<HTMLDivElement | null>
   scenarioName?: string
+  phaseName?: string
   sectionTitleLabel?: string
   sectionTitleDescription?: string | null
   showPathTypeBadge?: boolean
@@ -271,6 +282,7 @@ function ComparePathColumn({
           layers={layers}
           compact={compact}
           scenarioName={scenarioName}
+              phaseName={phaseName}
           fillSwimlaneHeight={fillSwimlaneHeight}
         />
       ))}
@@ -294,6 +306,7 @@ function CompareCardRow({
   layers,
   compact,
   scenarioName,
+  phaseName,
   fillSwimlaneHeight = false,
 }: {
   row: CompareRowSpec
@@ -302,6 +315,7 @@ function CompareCardRow({
   layers: BlueprintData['layers']
   compact?: boolean
   scenarioName?: string
+  phaseName?: string
   fillSwimlaneHeight?: boolean
 }) {
   const isDivider =
@@ -368,6 +382,7 @@ function CompareCardRow({
               layers={layers}
               compact={compact}
               scenarioName={scenarioName}
+              phaseName={phaseName}
               fillSwimlaneHeight={fillSwimlaneHeight}
             />
           )
@@ -393,6 +408,7 @@ function CompareLayerRow({
   layers,
   compact,
   scenarioName,
+  phaseName,
   fillSwimlaneHeight = false,
 }: {
   blueprint: BlueprintData
@@ -400,6 +416,7 @@ function CompareLayerRow({
   layers: BlueprintData['layers']
   compact?: boolean
   scenarioName?: string
+  phaseName?: string
   fillSwimlaneHeight?: boolean
 }) {
   const blueprintLayer = useMemo(
@@ -431,7 +448,7 @@ function CompareLayerRow({
         const isVisualLayer = shouldUseVisualContent(layer)
         const variant = isVisualLayer ? 'visual' : isPillLayer ? 'pills' : 'default'
         const visualPictures = isVisualLayer
-          ? resolveVisualStepPictures(blueprint, step.id)
+          ? resolveVisualStepPictureEntries(blueprint, step.id)
           : undefined
         const showCell = isVisualLayer
           ? (visualPictures?.length ?? 0) > 0
@@ -456,6 +473,7 @@ function CompareLayerRow({
                   scenarioName && (cell?.id || isVisualLayer)
                     ? {
                         scenarioName,
+                        phaseName,
                         layerName: layer.name,
                         stepId: step.id,
                         stepName: step.name,
@@ -529,7 +547,7 @@ function CompareCellBlock({
   compact?: boolean
   flushBottom?: boolean
   selectionContext?: BlueprintCellSelectionContext
-  visualPictures?: string[]
+  visualPictures?: Array<{ picture: string; label: string }>
 }) {
   const shellPadding = cn(
     compact ? 'px-3' : 'px-3.5',

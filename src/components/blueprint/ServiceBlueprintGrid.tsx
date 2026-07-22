@@ -66,7 +66,7 @@ import {
   getTechPillItems,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
-import { resolveVisualStepPictures } from '@/lib/visualWalkthrough'
+import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
 import type { BlueprintData } from '@/types/blueprint'
 
 type ServiceBlueprintGridProps = {
@@ -75,6 +75,7 @@ type ServiceBlueprintGridProps = {
   compact?: boolean
   fitVertically?: boolean
   scenarioName?: string
+  phaseName?: string
   walkthroughBlueprints?: BlueprintData[]
   /** When set, scenario title sits on the gray panel; path frame shows path type. */
   headerTitleLabel?: string
@@ -90,6 +91,7 @@ export function ServiceBlueprintGrid({
   compact = false,
   fitVertically = false,
   scenarioName,
+  phaseName,
   walkthroughBlueprints,
   headerTitleLabel,
   showPathTypeBadge = false,
@@ -268,6 +270,7 @@ export function ServiceBlueprintGrid({
                       onToggleCollapse={() => toggleLayer(layer.id)}
                       blueprint={data}
                       scenarioName={scenarioName}
+              phaseName={phaseName}
                       walkthroughBlueprints={walkthroughBlueprints}
                     />
                     {showWrapCorridorBelow && (
@@ -320,7 +323,7 @@ export function ServiceBlueprintGrid({
                     shouldShowInternalInteractionLineAfter(layer, layers) && (
                     <BlueprintDividerRow
                       label={INTERNAL_INTERACTION_LINE_LABEL}
-                      lineStyle="solid"
+                      lineStyle="dotted"
                       compact={compact}
                       labelWidth={LAYER_COLUMN_WIDTH}
                       labelRailBg={blueprintPanelLabelRailColor(
@@ -372,6 +375,7 @@ function BlueprintSwimLane({
   onToggleCollapse,
   blueprint,
   scenarioName,
+  phaseName,
   walkthroughBlueprints,
 }: {
   layer: BlueprintData['layers'][number]
@@ -389,6 +393,7 @@ function BlueprintSwimLane({
   onToggleCollapse?: () => void
   blueprint: BlueprintData
   scenarioName?: string
+  phaseName?: string
   walkthroughBlueprints?: BlueprintData[]
 }) {
   const layerId = layer.id
@@ -488,7 +493,7 @@ function BlueprintSwimLane({
         const cell = getCellAt(cellLookup, layerId, step.id)
         const variant = isVisualLayer ? 'visual' : isPillLayer ? 'pills' : 'default'
         const visualPictures = isVisualLayer
-          ? resolveVisualStepPictures(blueprint, step.id)
+          ? resolveVisualStepPictureEntries(blueprint, step.id)
           : undefined
         const showCell = isVisualLayer
           ? (visualPictures?.length ?? 0) > 0
@@ -520,6 +525,7 @@ function BlueprintSwimLane({
                   scenarioName && (cell?.id || isVisualLayer)
                     ? {
                         scenarioName,
+                        phaseName,
                         layerName,
                         stepId: step.id,
                         stepName: step.name,
@@ -609,7 +615,7 @@ function BlueprintCellBlock({
   rowMinHeight?: number
   flushBottom?: boolean
   selectionContext?: BlueprintCellSelectionContext
-  visualPictures?: string[]
+  visualPictures?: Array<{ picture: string; label: string }>
   blueprint?: BlueprintData
   walkthroughBlueprints?: BlueprintData[]
 }) {

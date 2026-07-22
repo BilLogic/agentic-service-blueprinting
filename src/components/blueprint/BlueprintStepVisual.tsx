@@ -1,8 +1,15 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import { getVisualCellButtonMaxHeight } from '@/lib/blueprintLayout'
 import { BLUEPRINT_CELL_PALETTE } from '@/lib/blueprintTheme'
+import { hasEmbeddedVisualFrame } from '@/lib/visualWalkthrough'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
+import type { CSSProperties } from 'react'
+
+export type BlueprintStepVisualPicture = {
+  picture: string
+  label?: string
+}
 
 type BlueprintStepVisualProps = {
   compact?: boolean
@@ -12,35 +19,56 @@ type BlueprintStepVisualProps = {
   cellId?: string
   stepIndex?: number
   opacity?: number
-  pictures?: readonly string[]
+  pictures?: readonly string[] | readonly BlueprintStepVisualPicture[]
   /** Larger walkthrough/presentation layout — images scale to fit without clipping. */
   presentation?: boolean
+}
+
+function normalizePictures(
+  pictures: readonly string[] | readonly BlueprintStepVisualPicture[],
+): BlueprintStepVisualPicture[] {
+  return pictures.map((entry) =>
+    typeof entry === 'string' ? { picture: entry } : entry,
+  )
 }
 
 function VisualPictureStrip({
   pictures,
   className,
 }: {
-  pictures: readonly string[]
+  pictures: readonly BlueprintStepVisualPicture[]
   className?: string
 }) {
+  const showLabels =
+    pictures.some((entry) => Boolean(entry.label?.trim()))
+
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 max-h-full w-full items-center justify-center gap-0.5 overflow-hidden',
+        'flex h-full min-h-0 max-h-full w-full items-stretch justify-center gap-0.5 overflow-hidden',
         className,
       )}
     >
-      {pictures.map((src, index) => (
+      {pictures.map((entry, index) => (
         <div
-          key={`${src}-${index}`}
-          className="flex h-full min-h-0 max-h-full min-w-0 flex-1 items-center justify-center self-stretch overflow-hidden"
+          key={`${entry.picture}-${entry.label ?? index}`}
+          className="flex h-full min-h-0 max-h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 self-stretch overflow-hidden"
         >
-          <img
-            src={src}
-            alt=""
-            className="max-h-full max-w-full rounded-sm object-contain object-center"
-          />
+          <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden">
+            <img
+              src={entry.picture}
+              alt=""
+              className={cn(
+                'max-h-full max-w-full rounded-sm object-contain object-center',
+                hasEmbeddedVisualFrame(entry.picture) && 'scale-[1.08]',
+              )}
+            />
+          </div>
+          {showLabels && entry.label?.trim() ? (
+            <p className="w-full shrink-0 whitespace-nowrap px-0.5 text-center text-[8px] font-medium leading-none tracking-tight text-foreground/80">
+              {entry.label}
+            </p>
+          ) : null}
         </div>
       ))}
     </div>
@@ -58,7 +86,7 @@ export function BlueprintStepVisual({
   pictures,
   presentation = false,
 }: BlueprintStepVisualProps) {
-  const displayPictures = pictures ?? []
+  const displayPictures = normalizePictures(pictures ?? [])
   const hasRealPictures = displayPictures.length > 0
   const ariaLabel = hasRealPictures
     ? `Step visuals for ${displayPictures.length} users`
@@ -96,7 +124,10 @@ export function BlueprintStepVisual({
         'items-stretch justify-stretch p-1',
         className,
       )}
-      style={{ maxHeight: inlineMaxHeight }}
+      style={{
+        maxHeight: inlineMaxHeight,
+        '--blueprint-cell-bg-panel': 'transparent',
+      } as CSSProperties}
       selection={selection}
       cellId={cellId}
       stepIndex={stepIndex}

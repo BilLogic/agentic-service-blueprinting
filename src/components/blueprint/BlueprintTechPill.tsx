@@ -24,6 +24,7 @@ export function BlueprintTechPill({
     <BlueprintCellButton
       fill={getTechPillStyle(item).backgroundColor}
       selection={buildTechPillSelection(selectionContext, item)}
+      cellId={selectionContext.cellId}
       stepIndex={stepIndex}
       variant="pill"
       compact={compact}
