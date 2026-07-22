@@ -29,7 +29,11 @@ The pipeline in one line:
 
 **sources → IR** (JSON, validated) **→ preview + adversarial review → per-scenario sign-off → import** (no-DB fallback or live Supabase) **→ verify + deploy**
 
-Entry point: [skills/blueprint/SKILL.md](./skills/blueprint/SKILL.md). Phase playbooks and contracts live in [references/](./references/); the IR pipeline scripts in [scripts/](./scripts/).
+### How the skill is architected
+
+![Skill architecture — one skill, fresh-context subagents, on-demand references, deterministic gates](./docs/skill-architecture.svg)
+
+*One **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) stays loaded and routes by entry state; the phase **playbooks in [references/](./references/) load one at a time**, so the main context stays small no matter how big the job is. Heavy or bias-sensitive work runs in **subagents with fresh contexts**: `document-reader` fans out over sources in parallel, `blueprint-reviewer` reviews adversarially without ever seeing how the draft was made, `render-checker` walks the running app. Correctness never rests on model judgment alone — **deterministic scripts and hooks** gate every edit (IR validation, per-scenario sign-off hashes, generated artifacts, secret guard).*
 
 ## Data model
 
