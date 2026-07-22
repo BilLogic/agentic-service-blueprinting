@@ -1,0 +1,81 @@
+<svg viewBox="0 0 880 442" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .h1 { font-size: 15px; font-weight: 700; fill: #273036; }
+    .h2 { font-size: 13px; font-weight: 600; fill: #273036; }
+    .h3 { font-size: 12px; font-weight: 600; fill: #273036; }
+    .tag { font-size: 10px; fill: #6b7280; }
+    .flow { stroke: #8e8e93; stroke-width: 1.8; fill: none; marker-end: url(#arr); }
+    @media (prefers-color-scheme: dark) {
+      .h1, .h2, .h3 { fill: #273036; }
+    }
+  </style>
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7" fill="none" stroke="#8e8e93" stroke-width="1.6"/>
+    </marker>
+  </defs>
+
+  <!-- Lifecycle: outermost container -->
+  <rect x="12" y="12" width="856" height="406" rx="14" fill="#eceef2" stroke="#c9ccd4" stroke-width="1.5"/>
+  <text x="30" y="40" class="h1">Service lifecycle</text>
+  <text x="852" y="40" text-anchor="end" class="tag">1 per service</text>
+
+  <!-- Phase ① (collapsed) -->
+  <rect x="30" y="58" width="130" height="336" rx="12" fill="#dde4ec" stroke="#b6c7d2"/>
+  <text x="46" y="84" class="h2">Phase ①</text>
+
+  <!-- Phase ② (expanded) -->
+  <rect x="176" y="58" width="524" height="336" rx="12" fill="#d9e4ea" stroke="#9aadbe" stroke-width="1.5"/>
+  <text x="192" y="84" class="h2">Phase ②</text>
+  <text x="684" y="84" text-anchor="end" class="tag">N per lifecycle</text>
+
+  <!-- Scenario A (expanded) inside Phase 2 -->
+  <rect x="192" y="98" width="492" height="230" rx="10" fill="#ffffff" stroke="#b6c7d2" stroke-width="1.2"/>
+  <text x="208" y="122" class="h3">Scenario A</text>
+  <text x="668" y="122" text-anchor="end" class="tag">N per phase</text>
+
+  <!-- shared steps strip inside scenario -->
+  <rect x="208" y="134" width="336" height="30" rx="7" fill="#f4f4f7" stroke="#d4d4da"/>
+  <text x="220" y="153" class="tag" font-weight="600">Steps</text>
+  <rect x="266" y="141" width="60" height="16" rx="4" fill="#e8e8ed" stroke="#d4d4da"/>
+  <rect x="334" y="141" width="60" height="16" rx="4" fill="#e8e8ed" stroke="#d4d4da"/>
+  <rect x="402" y="141" width="60" height="16" rx="4" fill="#e8e8ed" stroke="#d4d4da"/>
+  <rect x="470" y="141" width="60" height="16" rx="4" fill="#e8e8ed" stroke="#d4d4da"/>
+  
+
+  <!-- Path stack inside scenario -->
+  <rect x="240" y="186" width="336" height="118" rx="9" fill="#f4f4f7" stroke="#d4d4da"/>
+  <rect x="224" y="180" width="336" height="118" rx="9" fill="#fafafa" stroke="#d4d4da"/>
+  <rect x="208" y="174" width="336" height="118" rx="9" fill="#ffffff" stroke="#9aadbe" stroke-width="1.3"/>
+  <text x="222" y="194" class="h3" font-size="11">Path · happy</text>
+  <text x="536" y="194" text-anchor="end" class="tag">N per scenario</text>
+  <!-- mini grid inside the path: lanes x steps -->
+  <g>
+    <rect x="222" y="202" width="64" height="18" rx="4" fill="#e0f0e8" stroke="#c3ddd0"/>
+    <rect x="294" y="202" width="64" height="18" rx="4" fill="#e0f0e8" stroke="#c3ddd0"/>
+    <rect x="366" y="202" width="64" height="18" rx="4" fill="#e0f0e8" stroke="#c3ddd0"/>
+    <rect x="438" y="202" width="64" height="18" rx="4" fill="#e0f0e8" stroke="#c3ddd0"/>
+    <rect x="222" y="226" width="64" height="18" rx="4" fill="#f8dde8" stroke="#e7c2d2"/>
+    <rect x="366" y="226" width="64" height="18" rx="4" fill="#f8dde8" stroke="#e7c2d2"/>
+    <rect x="294" y="250" width="64" height="18" rx="4" fill="#f5dfd0" stroke="#e3c6ae"/>
+    <rect x="438" y="250" width="64" height="18" rx="4" fill="#f5dfd0" stroke="#e3c6ae"/>
+    <rect x="366" y="274" width="64" height="18" rx="4" fill="#f8e8d4" stroke="#e5d0b2"/>
+  </g>
+  <text x="222" y="288" class="tag">Lanes × Steps → Cells</text>
+
+  <!-- annotation callouts for lane/cell inside path -->
+  <text x="560" y="214" class="tag">← Lane</text>
+  <text x="560" y="258" class="tag">← Cell</text>
+
+  <!-- Scenario B (collapsed) -->
+  <rect x="192" y="340" width="492" height="38" rx="10" fill="#ffffff" stroke="#b6c7d2"/>
+  <text x="208" y="364" class="h3">Scenario B</text>
+
+  <!-- Phase ③ (collapsed) -->
+  <rect x="716" y="58" width="130" height="336" rx="12" fill="#dde4ec" stroke="#b6c7d2"/>
+  <text x="732" y="84" class="h2">Phase ③</text>
+
+  <!-- loop-back arrow phase3 -> phase1 along the bottom -->
+  <path class="flow" d="M781,394 C781,414 95,414 95,398"/>
+  <text x="440" y="434" text-anchor="middle" class="tag">loops_to_phase_id</text>
+</svg>

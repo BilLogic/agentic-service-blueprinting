@@ -1,0 +1,94 @@
+<svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .h2 { font-size: 14px; font-weight: 700; fill: #273036; }
+    .lane { font-size: 12px; font-weight: 600; fill: #4f4b47; }
+    .step { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .tag { font-size: 11px; fill: #6b7280; }
+    .callout { font-size: 11px; font-weight: 600; fill: #3a3a3c; }
+    .trigger { stroke: #3a3a3c; stroke-width: 2.2; fill: none; marker-end: url(#arrD); }
+    .lead { stroke: #9ca3af; stroke-width: 1; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .step, .tag { fill: #9ca3af; }
+      .callout { fill: #e5e7eb; }
+    }
+  </style>
+  <defs>
+    <marker id="arrD" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7" fill="none" stroke="#3a3a3c" stroke-width="1.8"/>
+    </marker>
+  </defs>
+
+  <!-- path sheets (variants behind) -->
+  <rect x="72" y="26" width="620" height="330" rx="10" fill="#f4f4f7" stroke="#d4d4da"/>
+  <rect x="62" y="36" width="620" height="330" rx="10" fill="#fafafa" stroke="#d4d4da"/>
+  <rect x="52" y="46" width="620" height="318" rx="10" fill="#ffffff" stroke="#9aadbe" stroke-width="1.5"/>
+  <text x="70" y="72" class="h2">Path · happy</text>
+
+  <!-- callout: path variants -->
+  <text x="700" y="44" class="callout">Paths = variants</text>
+  <text x="700" y="60" class="tag">happy · exception · …</text>
+  <path class="lead" d="M696,40 L676,34"/>
+
+  <!-- steps header -->
+  <text x="196" y="96" text-anchor="middle" class="step">Step 1</text>
+  <text x="316" y="96" text-anchor="middle" class="step">Step 2</text>
+  <text x="436" y="96" text-anchor="middle" class="step">Step 3</text>
+  <text x="556" y="96" text-anchor="middle" class="step">Step 4</text>
+  <text x="376" y="80" text-anchor="middle" class="tag">Steps — the journey's columns</text>
+
+  <!-- lanes -->
+  <!-- customer -->
+  <text x="70" y="128" class="lane" fill="#2d5a58">Customer</text>
+  <rect x="156" y="108" width="80" height="30" rx="6" fill="#e0f0e8" stroke="#c3ddd0"/>
+  <rect x="276" y="108" width="80" height="30" rx="6" fill="#e0f0e8" stroke="#c3ddd0"/>
+  <rect x="396" y="108" width="80" height="30" rx="6" fill="#e0f0e8" stroke="#c3ddd0"/>
+  <rect x="516" y="108" width="80" height="30" rx="6" fill="#e0f0e8" stroke="#c3ddd0"/>
+
+  <!-- interaction line -->
+  <line x1="64" y1="150" x2="660" y2="150" stroke="#3a3a3c" stroke-width="1" stroke-dasharray="5 4"/>
+  <text x="656" y="146" text-anchor="end" class="tag">interaction line</text>
+
+  <!-- frontstage -->
+  <text x="70" y="180" class="lane" fill="#5c4e62">Frontstage</text>
+  <rect x="156" y="160" width="80" height="30" rx="6" fill="#f8dde8" stroke="#e7c2d2"/>
+  <rect x="396" y="160" width="80" height="30" rx="6" fill="#f8dde8" stroke="#e7c2d2"/>
+
+  <!-- visibility line -->
+  <line x1="64" y1="202" x2="660" y2="202" stroke="#3a3a3c" stroke-width="1" stroke-dasharray="5 4"/>
+  <text x="656" y="198" text-anchor="end" class="tag">visibility line</text>
+
+  <!-- backstage -->
+  <text x="70" y="232" class="lane" fill="#4f4b47">Backstage</text>
+  <rect x="276" y="212" width="80" height="30" rx="6" fill="#f5dfd0" stroke="#e3c6ae"/>
+  <rect x="516" y="212" width="80" height="30" rx="6" fill="#f5dfd0" stroke="#e3c6ae"/>
+
+  <!-- support (pills) -->
+  <text x="70" y="290" class="lane" fill="#4f4b47">Support</text>
+  <rect x="396" y="268" width="80" height="14" rx="7" fill="#f8e8d4" stroke="#e5d0b2"/>
+  <rect x="396" y="286" width="58" height="14" rx="7" fill="#f8e8d4" stroke="#e5d0b2"/>
+
+  <!-- trigger arrow: frontstage step3 -> backstage step2 wait direction: frontstage(396..476,160-190) down-left to backstage step2? backstage cells at 276 and 516. Use frontstage step1 (156..236) -> backstage step2 (276..356) -->
+  <path class="trigger" d="M236,186 C260,200 260,204 276,216"/>
+
+  <!-- callout: trigger -->
+  <text x="180" y="252" class="callout">Trigger</text>
+  <text x="180" y="266" class="tag">one cell kicks off another</text>
+  <path class="lead" d="M224,248 L252,206"/>
+
+  <!-- callout: lane roles -->
+  <text x="700" y="120" class="callout">Lanes = rows</text>
+  <text x="700" y="136" class="tag">colored by layer_role,</text>
+  <text x="700" y="150" class="tag">label free-form (any language)</text>
+  <path class="lead" d="M696,116 L600,120"/>
+
+  <!-- callout: cell -->
+  <text x="700" y="224" class="callout">Cell</text>
+  <text x="700" y="240" class="tag">what happens at</text>
+  <text x="700" y="254" class="tag">lane × step</text>
+  <path class="lead" d="M696,220 L600,224"/>
+
+  <!-- callout: pills -->
+  <text x="700" y="284" class="callout">Pill lanes</text>
+  <text x="700" y="300" class="tag">tech / support systems</text>
+  <path class="lead" d="M696,280 L480,278"/>
+</svg>

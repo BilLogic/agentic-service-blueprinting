@@ -33,9 +33,17 @@ Entry point: [skills/blueprint/SKILL.md](./skills/blueprint/SKILL.md). Phase pla
 
 ## Data model
 
-One picture instead of an ERD — how the tables map onto what you see:
+Two pictures instead of an ERD. First, **what contains what**:
 
-![How the entities map onto the rendered blueprint](./docs/data-model-overview.svg)
+![Entity hierarchy — nesting shows the parent/child containment](./docs/data-model-hierarchy.svg)
+
+*A service has one **lifecycle**, made of ordered **phases** (a phase can loop back via `loops_to_phase_id`). Each phase holds **scenarios** — one concrete journey each. A scenario owns a shared set of **steps** (its columns) and one or more **paths** (happy / exception / …), and every path lays its **lanes** × the scenario's steps into **cells**.*
+
+Second, **what a single path looks like when rendered**:
+
+![Anatomy of one rendered path](./docs/blueprint-anatomy.svg)
+
+*Lanes are rows, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns. A cell is what happens at lane × step; pill lanes hold tech/support systems as pills. The interaction and visibility lines are derived from roles, and **triggers** are "this moment kicks off that one" dependency arrows between cells.*
 
 Key semantics:
 
