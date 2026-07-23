@@ -1,8 +1,8 @@
 # Agentic Service Blueprinting
 
-Map how a service actually works — as an interactive, navigable **service blueprint** — and let an agent do the heavy lifting.
+Service blueprints have traditionally been strategic artifacts rather than day-to-day reference tools. Partly because they are expensive to use: interpreting one takes facilitation, workshops, and built-up context, so teams engage with them occasionally, not daily. Agents change that constraint. An agent can consult the blueprint continuously — grounding each recommendation in the full journey and checking proposed changes against the wider service — without adding work for the team. Stored as structured, queryable data, the blueprint turns from a static artifact into an operational source of truth. **It stops being a poster and becomes a database.**
 
-This repo is two things in one:
+This repo is that idea, working end to end — two things in one:
 
 1. **The `service-blueprinting` Claude Code plugin** — a skill that ingests service docs, co-creates with stakeholders, translates foreign diagrams (FigJam / spreadsheets / Shostack layouts), validates, and imports blueprints end-to-end, with adversarial review and hash-bound sign-off gates along the way.
 2. **An org-agnostic frontend + backend template** the skill deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
@@ -11,6 +11,13 @@ This repo is two things in one:
 
 - **[PLUS tutoring blueprint](https://uno-blueprint.netlify.app)** — the in-house service blueprint this template was generalized from: a five-phase tutoring lifecycle with side-by-side path comparisons, trigger arrows, and cell detail panels. Click any phase, then flip paths.
 - **Local sample in 10 seconds** — the Quickstart below renders a bundled bilingual sample (3 paths × 12 lanes × 16 steps) with zero setup.
+
+## Why a queryable blueprint
+
+- **It gives agents the service context they are otherwise missing.** Most context-engineering approaches hand the agent piles of documents that each describe part of the product. The blueprint gives it a coherent model of the whole service: the user journey, frontstage and backstage activity, supporting systems, and the relationships between them.
+- **It improves everyday product work.** With that context, an agent writes clearer PRDs, scopes projects more precisely, locates where a change sits within the service, and reasons about downstream effects.
+- **It creates a shared lens for people and agents.** The blueprint does more than add facts — it pushes the agent to reason through a service-design frame, and grounds the team's own thinking in that same frame.
+- **It makes the blueprint continuously used.** Because the agent depends on it daily, the team has a practical reason to keep it accurate. Operational use strengthens its value as a strategic artifact rather than replacing it.
 
 ## Quickstart (no database needed)
 
@@ -29,25 +36,31 @@ The pipeline in one line:
 
 **sources → IR** (JSON, validated) **→ preview + adversarial review → per-scenario sign-off → import** (no-DB fallback or live Supabase) **→ verify + deploy**
 
-### How the skill is architected
+### How the skill works
 
-![Skill architecture — one skill, fresh-context subagents, on-demand references, deterministic gates](./docs/skill-architecture.svg)
+![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
 
-*One **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) stays loaded and routes by entry state; the phase **playbooks in [references/](./references/) load one at a time**, so the main context stays small no matter how big the job is. Heavy or bias-sensitive work runs in **subagents with fresh contexts**: `document-reader` fans out over sources in parallel, `blueprint-reviewer` reviews adversarially without ever seeing how the draft was made, `render-checker` walks the running app. Correctness never rests on model judgment alone — **deterministic scripts and hooks** gate every edit (IR validation, per-scenario sign-off hashes, generated artifacts, secret guard).*
+*One always-loaded **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
+
+### The agentic blueprinting workflow
+
+![Agentic blueprinting workflow — four phases; what loads, who spawns, and which gate must pass at each](./docs/skill-workflow.svg)
+
+*Each phase swaps in its own playbook, spawns only the agents it needs, and ends at a deterministic gate checked against `blueprint-workspace.json` — never "looks done". The loop back is the point: a blueprint touched once is a failure; touched monthly, it stays the operational source of truth.*
 
 ## Data model
 
-Two pictures instead of an ERD. First, **what contains what**:
+Two pictures instead of an ERD. First, **how a blueprint is organized**:
 
-![Entity hierarchy — nesting shows the parent/child containment](./docs/data-model-hierarchy.svg)
+![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/data-model-hierarchy.svg)
 
-*A service has one **lifecycle**, made of ordered **phases** (a phase can loop back via `loops_to_phase_id`). Each phase holds **scenarios** — one concrete journey each. A scenario owns a shared set of **steps** (its columns) and one or more **paths** (happy / exception / …), and every path lays its **lanes** × the scenario's steps into **cells**.*
+*Read left to right — each panel zooms one level in: a **lifecycle** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
 
-Second, **what a single path looks like when rendered**:
+Second, **inside a single path**:
 
-![Anatomy of one rendered path](./docs/blueprint-anatomy.svg)
+![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/blueprint-anatomy.svg)
 
-*Lanes are rows, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns. A cell is what happens at lane × step; pill lanes hold tech/support systems as pills. The interaction and visibility lines are derived from roles, and **triggers** are "this moment kicks off that one" dependency arrows between cells.*
+*Lanes are rows — one actor each, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
 
 Key semantics:
 
