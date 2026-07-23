@@ -1,25 +1,37 @@
 # Agentic Service Blueprinting
 
-Service blueprints have traditionally been strategic artifacts rather than day-to-day reference tools. Partly because they are expensive to use: interpreting one takes facilitation, workshops, and built-up context, so teams engage with them occasionally, not daily. Agents change that constraint. An agent can consult the blueprint continuously — grounding each recommendation in the full journey and checking proposed changes against the wider service — without adding work for the team. Stored as structured, queryable data, the blueprint turns from a static artifact into an operational source of truth. **It stops being a poster and becomes a database.**
+Turn a service blueprint from a static artifact into an operational source of truth — structured, queryable data that agents consult continuously. **It stops being a poster and becomes a database.**
 
 This repo is that idea, working end to end — two things in one:
 
 1. **The `service-blueprinting` Claude Code plugin** — a skill that ingests service docs, co-creates with stakeholders, translates foreign diagrams (FigJam / spreadsheets / Shostack layouts), validates, and imports blueprints end-to-end, with adversarial review and hash-bound sign-off gates along the way.
 2. **An org-agnostic frontend + backend template** the skill deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
 
-## See it live
-
-- **[PLUS tutoring blueprint](https://uno-blueprint.netlify.app)** — the in-house service blueprint this template was generalized from: a five-phase tutoring lifecycle with side-by-side path comparisons, trigger arrows, and cell detail panels. Click any phase, then flip paths.
-- **Local sample in 10 seconds** — the Quickstart below renders a bundled bilingual sample (3 paths × 12 lanes × 16 steps) with zero setup.
-
 ## Why a queryable blueprint
+
+Service blueprints have traditionally been strategic artifacts rather than day-to-day reference tools. Partly because they are expensive to use: interpreting one takes facilitation, workshops, and built-up context, so teams engage with them occasionally, not daily. Agents change that constraint — an agent can consult the blueprint continuously, grounding each recommendation in the full journey and checking proposed changes against the wider service, without adding work for the team.
+
+What that buys you:
 
 - **It gives agents the service context they are otherwise missing.** Most context-engineering approaches hand the agent piles of documents that each describe part of the product. The blueprint gives it a coherent model of the whole service: the user journey, frontstage and backstage activity, supporting systems, and the relationships between them.
 - **It improves everyday product work.** With that context, an agent writes clearer PRDs, scopes projects more precisely, locates where a change sits within the service, and reasons about downstream effects.
 - **It creates a shared lens for people and agents.** The blueprint does more than add facts — it pushes the agent to reason through a service-design frame, and grounds the team's own thinking in that same frame.
 - **It makes the blueprint continuously used.** Because the agent depends on it daily, the team has a practical reason to keep it accurate. Operational use strengthens its value as a strategic artifact rather than replacing it.
 
-## Quickstart (no database needed)
+## See it live
+
+- **[PLUS tutoring blueprint](https://uno-blueprint.netlify.app)** — the in-house service blueprint this template was generalized from: a five-phase tutoring lifecycle with side-by-side path comparisons, trigger arrows, and cell detail panels. Click any phase, then flip paths.
+- **Local sample in 10 seconds** — [Run the template locally](#run-the-template-locally) below renders a bundled bilingual sample (3 paths × 12 lanes × 16 steps) with zero setup.
+
+Demos of the blueprint in use (recordings coming soon):
+
+- *Agent in the IDE* — Claude Code queries the blueprint while scoping a feature: locating the moment a change touches, tracing downstream effects. *(placeholder)*
+- *Inline agent* — a chat agent answers service questions ("where does refund approval happen?") with cell-level citations. *(placeholder)*
+- *Human browsing* — a teammate walks phases, flips path variants, and reads cell detail panels in the deployed app. *(placeholder)*
+
+## Run the template locally
+
+No database needed — this renders the bundled sample blueprint so you can see the frontend working before wiring anything up:
 
 ```bash
 npm install
