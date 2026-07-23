@@ -21,7 +21,6 @@ What that buys you:
 ## See it live
 
 - **[PLUS tutoring blueprint](https://uno-blueprint.netlify.app)** — the in-house service blueprint this template was generalized from: a five-phase tutoring lifecycle with side-by-side path comparisons, trigger arrows, and cell detail panels. Click any phase, then flip paths.
-- **Local sample in 10 seconds** — [Run the template locally](#run-the-template-locally) below renders a bundled bilingual sample (3 paths × 12 lanes × 16 steps) with zero setup.
 
 Demos of the blueprint in use (recordings coming soon):
 
@@ -29,7 +28,56 @@ Demos of the blueprint in use (recordings coming soon):
 - *Inline agent* — a chat agent answers service questions ("where does refund approval happen?") with cell-level citations. *(placeholder)*
 - *Human browsing* — a teammate walks phases, flips path variants, and reads cell detail panels in the deployed app. *(placeholder)*
 
-## Run the template locally
+## The skill
+
+### What it does
+
+Install the repo as a Claude Code plugin, then ask Claude to map a service — "turn our FigJam service map into a deployed blueprint", "blueprint how our support process works". The skill routes by what exists: nothing → co-create from conversation; docs → ingest with per-cell provenance; a foreign structured diagram → translate via crosswalk; an existing workspace → resume/update.
+
+The pipeline in one line:
+
+**sources → IR** (JSON, validated) **→ preview + adversarial review → per-scenario sign-off → import** (no-DB fallback or live Supabase) **→ verify + deploy**
+
+### How it works
+
+![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
+
+*One always-loaded **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
+
+### The workflow
+
+![Agentic blueprinting workflow — four phases; what loads, who spawns, and which gate must pass at each](./docs/skill-workflow.svg)
+
+*Each phase swaps in its own playbook, spawns only the agents it needs, and ends at a deterministic gate checked against `blueprint-workspace.json` — never "looks done". The loop back is the point: a blueprint touched once is a failure; touched monthly, it stays the operational source of truth.*
+
+## The blueprint model
+
+### How a blueprint is organized
+
+![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/data-model-hierarchy.svg)
+
+*Read left to right — each panel zooms one level in: a **lifecycle** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
+
+### Inside a single path
+
+![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/blueprint-anatomy.svg)
+
+*Lanes are rows — one actor each, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
+
+### Key semantics
+
+- **`layers.layer_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/layerRoles.ts`](./src/lib/layerRoles.ts).
+- **Steps are scenario-scoped columns** shared across paths via `path_steps` ordering — see [docs/scenario-steps-design.md](./docs/scenario-steps-design.md).
+- **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → layers → cells → cell_triggers`.
+- **View modes** per scenario: `single`, `side-by-side` (any set of labeled variants — e.g. designed vs. reality), `integrated` (runtime merge).
+
+Full detail when you need it: [supabase/DATABASE.md](./supabase/DATABASE.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
+
+## Get set up
+
+Hand this section to your agent — it can run all of it. Each subsection also works as manual steps.
+
+### Run locally
 
 No database needed — this renders the bundled sample blueprint so you can see the frontend working before wiring anything up:
 
@@ -40,50 +88,7 @@ npm run dev
 
 With no `VITE_SUPABASE_*` env vars the app runs in **no-DB mode** and renders the bundled sample content — generated by [`scripts/generate_scale_fixture.mjs`](./scripts/generate_scale_fixture.mjs) into both `src/data/scaleFixture.ts` (offline fallback) and `supabase/seed.sql` (database seed).
 
-## Using the skill
-
-Install the repo as a Claude Code plugin (manifest: [.claude-plugin/plugin.json](./.claude-plugin/plugin.json)), then ask Claude to map a service — "turn our FigJam service map into a deployed blueprint", "blueprint how our support process works". The skill routes by what exists: nothing → co-create; docs → ingest with per-cell provenance; a foreign structured diagram → translate via crosswalk; an existing workspace → resume/update.
-
-The pipeline in one line:
-
-**sources → IR** (JSON, validated) **→ preview + adversarial review → per-scenario sign-off → import** (no-DB fallback or live Supabase) **→ verify + deploy**
-
-### How the skill works
-
-![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
-
-*One always-loaded **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
-
-### The agentic blueprinting workflow
-
-![Agentic blueprinting workflow — four phases; what loads, who spawns, and which gate must pass at each](./docs/skill-workflow.svg)
-
-*Each phase swaps in its own playbook, spawns only the agents it needs, and ends at a deterministic gate checked against `blueprint-workspace.json` — never "looks done". The loop back is the point: a blueprint touched once is a failure; touched monthly, it stays the operational source of truth.*
-
-## Data model
-
-Two pictures instead of an ERD. First, **how a blueprint is organized**:
-
-![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/data-model-hierarchy.svg)
-
-*Read left to right — each panel zooms one level in: a **lifecycle** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
-
-Second, **inside a single path**:
-
-![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/blueprint-anatomy.svg)
-
-*Lanes are rows — one actor each, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
-
-Key semantics:
-
-- **`layers.layer_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/layerRoles.ts`](./src/lib/layerRoles.ts).
-- **Steps are scenario-scoped columns** shared across paths via `path_steps` ordering — see [docs/scenario-steps-design.md](./docs/scenario-steps-design.md).
-- **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → layers → cells → cell_triggers`.
-- **View modes** per scenario: `single`, `side-by-side` (any set of labeled variants — e.g. designed vs. reality), `integrated` (runtime merge).
-
-Full detail when you need it: [supabase/DATABASE.md](./supabase/DATABASE.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
-
-## With Supabase
+### Add a database
 
 ```bash
 cp .env.example .env
@@ -96,11 +101,18 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 
 > **Exposure note:** all tables carry public `SELECT` policies (read-only anon access). Anything you deploy is publicly readable — don't load client-sensitive content into a public deployment.
 
-## Deploy
+### Deploy
 
 `netlify.toml` at the repo root carries the build command, `dist/` publish dir, node version, and the SPA redirect (`/* /index.html 200`). Any static host works — the build always produces a plain `dist/`; live-DB mode needs `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at **build time**. Blueprint-specific deploy gotchas: [references/deploy-notes.md](./references/deploy-notes.md).
 
-## Scripts
+### Connect your agents
+
+- **In the IDE** — install this repo as a Claude Code plugin (manifest: [.claude-plugin/plugin.json](./.claude-plugin/plugin.json)). That loads the skill, agents, and hooks: Claude can then build, review, import, and update blueprints in your workspace.
+- **Everywhere else (Slack, claude.ai, any MCP-capable agent)** — the deployed blueprint is a Supabase project, so any agent with a [Supabase MCP](https://supabase.com/docs/guides/getting-started/mcp) connection can query it read-only with the anon key. Point the MCP server at your project and the agent can answer service questions with cell-level precision — no plugin required.
+
+## Reference
+
+### Scripts
 
 | Command | Description |
 | --- | --- |
@@ -116,11 +128,7 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 | `python3 scripts/compute_signoff_hash.py <ir.json>` | Per-scenario sign-off content hashes |
 | `bash scripts/tests/run_tests.sh` | Round-trip test suite for the IR pipeline |
 
-## UI
-
-Built with **shadcn/ui** (Tailwind v4). Add components with `npx shadcn@latest add <component>`; theme tokens live in `src/index.css`.
-
-## Repo map
+### Repo map
 
 | Path | Purpose |
 | --- | --- |
@@ -130,7 +138,7 @@ Built with **shadcn/ui** (Tailwind v4). Add components with `npx shadcn@latest a
 | [references/](./references/) | Phase playbooks, IR + crosswalk schemas, layer-role & lane vocabularies, adapter contract, workspace state spec |
 | [scripts/](./scripts/) | IR pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, IR auto-validation on edit, service-role secret guard |
-| `src/components/blueprint/` | Blueprint grid, paths, trigger arrows |
+| `src/components/blueprint/` | Blueprint grid, paths, trigger arrows (shadcn/ui + Tailwind v4; theme tokens in `src/index.css`) |
 | `src/components/editor/` | Canvas/slide editor shell |
 | [src/lib/layerRoles.ts](./src/lib/layerRoles.ts) | `layer_role` rendering contract |
 | [src/data/blueprintFallbacks.ts](./src/data/blueprintFallbacks.ts) | Offline/no-DB fallback registry (sample content) |
