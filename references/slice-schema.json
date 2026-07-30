@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/slice-schema.json",
+  "title": "Slice file",
+  "description": "Slices for one workspace, authored as human-editable JSON in slices/*.json and validated by scripts/slice_tools.py. A slice is an ordered one-dimensional selection of cells that ALREADY EXIST in the IR — it never creates, edits, or deletes a cell. Cells are referenced by their qualified key (<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>); database UUIDs are UUIDv5-derived from that key plus the locale, exactly as in the IR import, so a slice and the blueprint it slices always agree on cell identity. Both are written to slice_items: cell_ids for the join the app runs, cell_keys so a re-import (which is delete-and-reinsert) leaves a recoverable trail. Text fields are locale maps; structural fields are locale-independent.",
+  "type": "object",
+  "required": ["schema_version", "slices"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Slice-file schema version. Bump the major on any breaking key-path change."
+    },
+    "slices": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/slice" }
+    }
+  },
+  "$defs": {
+    "localeText": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string" },
+      "description": "Locale map, e.g. {\"en\": \"...\", \"zh\": \"...\"}. Resolution falls back through the IR's declared locale order."
+    },
+    "slice": {
+      "type": "object",
+      "required": ["key", "type", "scenario", "path", "title", "frames"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Stable, locale-independent slice key. The slice's UUID derives from it — renaming after import creates a NEW slice and orphans the old one."
+        },
+        "type": {
+          "enum": ["journey", "step", "lane", "cell", "custom"],
+          "description": "journey = one actor's experience (own-lane cells plus what they demonstrably touch); step = one column across lanes; lane = one lane across steps; cell = a single cell read closely; custom = an explicitly listed set. A storyboard is a RENDERING of a journey slice, not a sixth type."
+        },
+        "scenario": {
+          "type": "string",
+          "pattern": "^[^/]+/[^/]+$",
+          "description": "<phase>/<scenario> key. v1 slices are single-scenario: the app resolves a slice's canvas from its cells, and cells from two scenarios share no canvas."
+        },
+        "path": {
+          "type": "string",
+          "description": "The path key the selection was taken from. One path choice per slice — a slice that mixed paths would claim a journey nobody can walk."
+        },
+        "title": { "$ref": "#/$defs/localeText" },
+        "description": { "$ref": "#/$defs/localeText" },
+        "actor": {
+          "type": ["string", "null"],
+          "description": "Whose slice this is, as a display label. Required in spirit for journey and lane; meaningless for step."
+        },
+        "origin": {
+          "enum": ["generated", "customized", "human"],
+          "default": "generated",
+          "description": "generated = agent-authored, safe to regenerate in place. customized = agent-authored then hand-edited; regeneration needs explicit confirmation. human = authored in the app; agents never overwrite it."
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Sort order within the slice's type group in the sidebar."
+        },
+        "frames": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/frame" },
+          "description": "Ordered frames. A frame groups the cells that are read together — one moment of the slice. Frame order IS the slice's order; there is no separate index."
+        }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "required": ["cells"],
+      "additionalProperties": false,
+      "properties": {
+        "cells": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[^/]+/[^/]+/[^/]+/[^/]+/[^/]+/[^/]+$",
+            "description": "Qualified cell key: <lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>. Must resolve in the IR — an unresolvable key is a hard validation failure, never a warning."
+          },
+          "description": "Cells in this frame, in reading order. A cell may appear in at most one frame of a slice."
+        },
+        "caption": { "$ref": "#/$defs/localeText" },
+        "narrative": {
+          "$ref": "#/$defs/localeText",
+          "description": "Prose for this frame. MUST NOT quote evidence excerpts or proposition figures verbatim — slices are public-read artifacts; cite by cell key instead."
+        },
+        "illustration": {
+          "type": "object",
+          "description": "Optional storyboard image for this frame. Written by the storyboard sub-flow, not by hand.",
+          "additionalProperties": true,
+          "properties": {
+            "url": { "type": "string" },
+            "prompt": { "type": "string", "description": "Redacted prompt — persona archetype only, never a real person, org, or contact string." },
+            "updated_at": { "type": "string", "description": "Stamped on regeneration; the app cache-busts on it." }
+          }
+        }
+      }
+    }
+  }
+}
