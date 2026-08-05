@@ -56,4 +56,7 @@ nothing here relaxes one.
   promised cell exists with content.
 - Fill-specs: every targeted cell has a summary that is not a copy of
   its content, and owners come from the existing vocabulary.
-- Q&A: the answer cites cell ids for every claim; zero writes occurred.
+- Q&A: every claim is pinned to a specific cell — named by its content,
+  step, and lane, and pointable via `focus_cell` — with zero writes.
+  Raw ids are tool plumbing: keep them out of prose unless the human
+  explicitly asks for ids.
