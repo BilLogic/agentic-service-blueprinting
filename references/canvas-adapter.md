@@ -10,8 +10,9 @@ nothing here relaxes one.
 
 | Skill-world operation | Here |
 |---|---|
-| Edit IR JSON | call write tools: `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `rename_path` — this is the FULL write surface; nothing else exists |
-| Save a slice | no tool — propose the member cells by name and point the human at the app's slice UI (Design-mode gather → save as slice) |
+| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `rename_path`, `create_slice`, `update_slice`, `replace_slice_frames` — this is the FULL write surface; nothing else exists. Structural creates get the same nod gate as everything else. |
+| Save / rework a slice | `create_slice` (references cells, never copies), `update_slice` (fields), `replace_slice_frames` (reorder / merge / split screens — full replacement) |
+| Drive the interface | `open_phase`, `open_scenario`, `focus_cell`, `open_cell_panel`, `set_canvas_mode` (view/design), `set_sidebar`, `annotate_cells` (ephemeral marker boxes + note) — the same gestures the human has; none of these touch data |
 | Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
 | Run `validate_ir.py` | doesn't exist — the database constraints and wrappers ARE the validator; a rejected call is your validation error, report it verbatim |
 | Sign-off hash gate | the human's Save gate — every write you make lands immediately but revertibly in the change sheet; the human keeps or reverts each row |
