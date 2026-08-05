@@ -10,7 +10,9 @@ nothing here relaxes one.
 
 | Skill-world operation | Here |
 |---|---|
-| Edit IR JSON | call write tools: `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `create_slice`, `rename_path`, `duplicate_path` |
+| Edit IR JSON | call write tools: `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `rename_path` — this is the FULL write surface; nothing else exists |
+| Save a slice | no tool — propose the member cells by name and point the human at the app's slice UI (Design-mode gather → save as slice) |
+| Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
 | Run `validate_ir.py` | doesn't exist — the database constraints and wrappers ARE the validator; a rejected call is your validation error, report it verbatim |
 | Sign-off hash gate | the human's Save gate — every write you make lands immediately but revertibly in the change sheet; the human keeps or reverts each row |
 | Scenario import / re-import | not available here — say so and point at the IDE flow |
