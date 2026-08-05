@@ -1,5 +1,5 @@
 ---
-name: service-blueprinting
+name: map
 description: Creates, imports, translates, presents, and evolves service blueprints end-to-end. Use whenever the user mentions a service blueprint, journey map, customer journey, user journey documentation, service design, frontstage/backstage, swimlane service diagram, Shostack blueprint, or asks to "map how our service works", "map how customers actually experience X", document a service process, compare a designed process against reality, import a FigJam/Figma/Miro/spreadsheet blueprint into an app or database (e.g. "get our FigJam service map into Supabase"), turn service docs or discovery research into a blueprint, or update/redeploy an existing blueprint workspace. Also use when a directory contains blueprint-workspace.json or a blueprint/ IR directory.
 ---
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook (service-blueprinting plugin): service-role secret guard.
+"""PreToolUse hook (sb plugin): service-role secret guard.
 
 Fires before Write/Edit/MultiEdit. Blocks service-role-style Supabase JWTs
 (an `eyJ…` JWT whose payload contains "role":"service_role") from landing in
@@ -85,7 +85,7 @@ def main() -> int:
         return 0  # e.g. a gitignored .env — outside this guard's scope
 
     print(
-        f"[service-blueprinting] BLOCKED: the content being written to "
+        f"[sb] BLOCKED: the content being written to "
         f"{file_path} contains what looks like a Supabase service-role key "
         '(a JWT whose payload carries "role":"service_role"), and that path '
         "is committable (not gitignored). Service-role keys grant full "

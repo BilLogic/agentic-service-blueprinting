@@ -53,7 +53,7 @@ fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n'))
    human judgement about an agent statement, not an edit of the statement.
 3. Confirm back: check, cells, old → new status.
 4. Never run checks, never write anything else. If the user ALSO wants the
-   underlying issue fixed, that is the `service-blueprinting` skill, after.
+   underlying issue fixed, that is the `sb:map` skill, after.
 
 Status vocabulary is closed: `open | resolved | dismissed`. `dismissed`
 means "true but accepted — do not show me again"; `resolved` means "was
@@ -89,9 +89,12 @@ then add it to the roster.
 
 ## §6 Canvas note
 
-Inside the uno-blueprint canvas agent, the audit runs **read-only**: same
-roster, same check docs (via `read_reference`), but findings are delivered
-in chat — the canvas tool surface has no findings writer in v1. Label the
-output "audit findings (chat-only — not recorded for triage)" so nobody
-believes rows landed. The IDE flow is where findings persist and triage
-lives. `references/canvas-adapter.md` carries the full translation.
+Inside the uno-blueprint canvas agent, the audit is **fully live**: same
+roster, same check docs (via `read_reference`), and findings land as rows
+via `record_finding` — fingerprint dedupe included (open updates in place,
+dismissed stays dismissed, resolved reopens as a new row). Triage happens
+in chat through `set_finding_status`. Two translations differ from the IDE
+flow: cell identity uses cell ids (the canvas convention: `cell_keys` are
+written as the ids themselves, so canvas and IDE fingerprints are separate
+dedupe spaces), and there is no findings report file — `list_findings` is
+the ledger. `references/canvas-adapter.md` carries the full translation.

@@ -4,7 +4,7 @@ Turn a service blueprint from a static artifact into an operational source of tr
 
 This repo is that idea, working end to end — two things in one:
 
-1. **The `service-blueprinting` Claude Code plugin** — a skill that ingests service docs, co-creates with stakeholders, translates foreign diagrams (FigJam / spreadsheets / Shostack layouts), validates, and imports blueprints end-to-end, with adversarial review and hash-bound sign-off gates along the way.
+1. **The `sb` Claude Code plugin** — four skills: `sb:map` ingests service docs, co-creates with stakeholders, translates foreign diagrams (FigJam / spreadsheets / Shostack layouts), validates, and imports blueprints end-to-end with adversarial review and hash-bound sign-off gates; `sb:slice` cuts stakeholder-ready views out of the blueprint; `sb:audit` runs a consistency-check roster into triageable findings; `sb:whatif` traces hypothetical changes before anyone commits to them.
 2. **An org-agnostic frontend + backend template** the skill deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
 
 ## Why a queryable blueprint

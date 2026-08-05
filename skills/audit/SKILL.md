@@ -1,6 +1,6 @@
 ---
-name: service-blueprint-audit
-description: Runs consistency checks over an imported service blueprint and records what they find as triageable findings — gaps a scenario never covers, jargon customers would not say, channel conflicts, KPI drift, ownership mismatches, value dead-ends, invisible fees. Use when the user asks to "audit the blueprint", "check Warm-Up for gaps/inconsistencies", "what's wrong with this scenario", "re-run the checks", or wants a finding dismissed or resolved ("that jargon one is fine, dismiss it"). Requires an imported blueprint — for building or importing one, use the service-blueprinting skill; for hypothetical changes, use service-blueprint-whatif.
+name: audit
+description: Runs consistency checks over an imported service blueprint and records what they find as triageable findings — gaps a scenario never covers, jargon customers would not say, channel conflicts, KPI drift, ownership mismatches, value dead-ends, invisible fees. Use when the user asks to "audit the blueprint", "check Warm-Up for gaps/inconsistencies", "what's wrong with this scenario", "re-run the checks", or wants a finding dismissed or resolved ("that jargon one is fine, dismiss it"). Requires an imported blueprint — for building or importing one, use the sb:map skill; for hypothetical changes, use sb:whatif.
 ---
 
 # Blueprint Audit
@@ -19,7 +19,7 @@ All `references/`, `agents/`, and `scripts/` paths live at the plugin root
 
 | Entry state | Route |
 | --- | --- |
-| No workspace / no IR | Stop. Nothing to audit — that is the `service-blueprinting` skill's job |
+| No workspace / no IR | Stop. Nothing to audit — that is the `sb:map` skill's job |
 | IR exists, never imported | Audit the IR files directly; findings stay in a local report (no DB rows without an import target) |
 | Imported blueprint | Full run: roster → auditors → dedupe → findings rows |
 | "Audit just scenario X" | Same pipeline, cell universe scoped to that scenario's keys |
@@ -58,7 +58,7 @@ triage rules, and the check-authoring template.
   `references/adapter-contract.md` applies unchanged.
 - ⚠ **REQUIRED — an audit is reads + findings.** If the user asks the audit
   to also fix what it finds, that is a separate, explicitly-confirmed pass
-  with the `service-blueprinting` skill afterwards.
+  with the `sb:map` skill afterwards.
 
 ## The pipeline
 

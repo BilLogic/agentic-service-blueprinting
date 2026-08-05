@@ -1,6 +1,6 @@
 ---
-name: service-blueprint-whatif
-description: Traces the consequences of a hypothetical change to an existing service blueprint before anyone commits to it — replays a scenario as if the change were made, restages a moment across the visibility line (frontstage/backstage), or prioritizes which cells matter most right now. Use when the user asks "what if we removed/automated/moved X", "what breaks if…", "should this be customer-visible", "which cells should we focus on", or wants an accepted analysis promoted into an actual blueprint change. Requires an imported blueprint — for building one use service-blueprinting; for finding present-tense inconsistencies use service-blueprint-audit.
+name: whatif
+description: Traces the consequences of a hypothetical change to an existing service blueprint before anyone commits to it — replays a scenario as if the change were made, restages a moment across the visibility line (frontstage/backstage), or prioritizes which cells matter most right now. Use when the user asks "what if we removed/automated/moved X", "what breaks if…", "should this be customer-visible", "which cells should we focus on", or wants an accepted analysis promoted into an actual blueprint change. Requires an imported blueprint — for building one use sb:map; for finding present-tense inconsistencies use sb:audit.
 ---
 
 # Blueprint Whatif
@@ -18,7 +18,7 @@ All `references/`, `agents/`, and `scripts/` paths live at the plugin root
 
 | Entry state | Route |
 | --- | --- |
-| No workspace / no IR | Stop — nothing to hypothesize against; `service-blueprinting` first |
+| No workspace / no IR | Stop — nothing to hypothesize against; `sb:map` first |
 | Imported blueprint, hypothetical named | Pick the operation: replay / restage / prioritize (playbook §2) |
 | "What if we removed/changed/automated X" | **replay** |
 | "Should X be customer-visible / hidden?" | **restage** |

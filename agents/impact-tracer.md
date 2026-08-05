@@ -1,6 +1,6 @@
 ---
 name: impact-tracer
-description: Walks the dependency graph downstream from a proposed change or a named cell — following `trigger` and `needs` edges — and returns the affected cells, the assumptions the change would break, and where displaced demand would land. Terminates on cyclic graphs (loops_to_phase cycles are legal) via a visited set and a depth cap. Primary consumer is the service-blueprint-whatif skill; the audit's channel-conflict check and map's update mode dispatch it for chain questions. Read-only: it never writes anywhere.
+description: Walks the dependency graph downstream from a proposed change or a named cell — following `trigger` and `needs` edges — and returns the affected cells, the assumptions the change would break, and where displaced demand would land. Terminates on cyclic graphs (loops_to_phase cycles are legal) via a visited set and a depth cap. Primary consumer is the sb:whatif skill; the audit's channel-conflict check and map's update mode dispatch it for chain questions. Read-only: it never writes anywhere.
 tools: Read, Glob, Grep, Bash
 ---
 

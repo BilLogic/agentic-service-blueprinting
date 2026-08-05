@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart hook (service-blueprinting plugin).
+# SessionStart hook (sb plugin).
 # If the session starts inside a blueprint workspace (blueprint-workspace.json
 # in cwd), print a concise status summary to stdout — SessionStart stdout is
 # injected into context, so any session resumes intelligently. In every other
@@ -19,12 +19,12 @@ try:
         ws = json.load(f)
 except Exception as exc:  # malformed state is itself worth surfacing
     print(
-        "[service-blueprinting] blueprint-workspace.json exists but could not "
+        "[sb] blueprint-workspace.json exists but could not "
         f"be parsed ({exc}). Inspect it before doing any blueprint work."
     )
     sys.exit(0)
 
-lines = ["[service-blueprinting] Blueprint workspace detected."]
+lines = ["[sb] Blueprint workspace detected."]
 
 schema_version = ws.get("schema_version")
 if schema_version:
@@ -64,7 +64,7 @@ for locale, target in sorted(targets.items()):
     lines.append(f"Target [{locale}]: mode={mode}, {imported}, {deployed}")
 
 lines.append(
-    "Use the service-blueprinting skill to resume; it routes by this state "
+    "Use the sb:map skill to resume; it routes by this state "
     "(see references/workspace-state.md)."
 )
 print("\n".join(lines))

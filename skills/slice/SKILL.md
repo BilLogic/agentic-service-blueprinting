@@ -1,6 +1,6 @@
 ---
-name: service-blueprint-slice
-description: Cuts a stakeholder-ready view out of an existing service blueprint — one actor's journey, one moment across every lane, one lane end to end, or one cell read closely — and writes it back as a slice the app can present. Use when the user asks to "pull out the tutor's journey", "show what everyone is doing at check-in", "make a storyboard from the blueprint", "what does the lead tutor own", "turn this blueprint into something I can show the client/exec/team", or mentions a slice, journey summary, lane spec, cell brief, or storyboard of a blueprint that already exists. Requires an imported, signed-off blueprint — for creating or importing the blueprint itself, use the service-blueprinting skill instead.
+name: slice
+description: Cuts a stakeholder-ready view out of an existing service blueprint — one actor's journey, one moment across every lane, one lane end to end, or one cell read closely — and writes it back as a slice the app can present. Use when the user asks to "pull out the tutor's journey", "show what everyone is doing at check-in", "make a storyboard from the blueprint", "what does the lead tutor own", "turn this blueprint into something I can show the client/exec/team", or mentions a slice, journey summary, lane spec, cell brief, or storyboard of a blueprint that already exists. Requires an imported, signed-off blueprint — for creating or importing the blueprint itself, use the sb:map skill instead.
 ---
 
 # Blueprint Slices
@@ -25,7 +25,7 @@ selecting anything:
 
 | Entry state | Route |
 | --- | --- |
-| No workspace / no IR | Stop. This is the `service-blueprinting` skill's job — a slice of nothing is a fabrication |
+| No workspace / no IR | Stop. This is the `sb:map` skill's job — a slice of nothing is a fabrication |
 | IR exists, scenario not signed off | Finish review first: a slice of unsigned IR cites cells review may still change |
 | Signed off, not imported | Import the scenario, then slice |
 | Imported, no slices yet | Read `references/slice-playbook.md`, then select |
@@ -46,7 +46,7 @@ actually breaks:
 - ⚠ **REQUIRED — never write cells.** Slices write `slices` and
   `slice_items`, nothing else. If a slice needs a cell that does not exist,
   or an interaction the blueprint does not record, that is a blueprint edit:
-  hand it to the `service-blueprinting` skill, re-sign, re-import, then
+  hand it to the `sb:map` skill, re-sign, re-import, then
   slice. A slice that asserts an unrecorded interaction is an invention
   wearing a citation.
 - ⚠ **REQUIRED — every claim traces to a cited cell.** Captions and

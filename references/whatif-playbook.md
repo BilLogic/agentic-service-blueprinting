@@ -66,7 +66,7 @@ When the human accepts a whatif's recommendation:
    `references/change-request-schema.json` — the diff (cell-key
    addressed), affected scenario keys, the base sign-off hashes captured
    at analysis time, and the finding fingerprints it supersedes.
-2. Hand off to **map-promote** (the service-blueprinting skill's playbook):
+2. Hand off to **map-promote** (the sb:map skill's playbook):
    verify hashes → edit IR → de-sign notice → re-sign → re-import →
    `sweep_orphans.py` → auto-resolve the superseded whatif findings.
 3. Whole-request promote only in v1 — no cherry-picking diff entries; a
@@ -77,11 +77,15 @@ offering re-trace (re-run the whatif on the current base) instead.
 
 ## §5 Canvas note
 
-Inside the uno-blueprint canvas agent, whatif runs **read-only analysis**:
-replay/restage/prioritize reasoning over `get_blueprint` reads, verdicts
-in chat, clearly labeled "whatif analysis (chat-only — no variant, no
-recorded findings)". No variant files (no workspace), no DB writes, no
-change requests. If the human wants the change made after discussing it,
-that is the normal canvas write flow — nod gate, small batches, ledger —
-NOT a promote. The IDE flow owns variants, findings, and promotion.
+Inside the uno-blueprint canvas agent, whatif is **fully live** with two
+translations. (1) The variant is conversational, not a file: analysis
+still never touches the blueprint — replay/restage/prioritize reason over
+`get_blueprint` reads, and consequence findings land via `record_finding`
+(source `whatif`). (2) Promotion is direct: when the human accepts, there
+is no change-request file — the agent applies the accepted diff through
+the ordinary canvas write tools under the ordinary discipline (nod gate,
+small batches, ledger, revertible), then resolves the superseded whatif
+findings via `set_finding_status`. Staleness is handled by liveness: the
+canvas writes against current rows with optimistic-concurrency tokens, so
+a stale base fails loudly instead of needing a hash guard.
 `references/canvas-adapter.md` carries the full translation.
