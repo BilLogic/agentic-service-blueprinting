@@ -10,7 +10,7 @@ markdown and work anywhere; read the SKILL.md and follow it.**
 
 | Invocation / intent | Read and follow |
 | --- | --- |
-| `sb:map` — create, import, translate, present, or evolve a service blueprint; a directory contains `blueprint-workspace.json` or `blueprint/` | `skills/blueprint/SKILL.md` |
+| `sb:map` — create, import, translate, present, or evolve a service blueprint; a directory contains `blueprint-workspace.json` or `blueprint/` | `skills/map/SKILL.md` |
 | `sb:slice` — cut a stakeholder view (actor journey, moment, lane, cell brief) out of an existing blueprint | `skills/slice/SKILL.md` |
 | `sb:audit` — run the consistency-check roster; record/triage findings | `skills/audit/SKILL.md` |
 | `sb:whatif` — trace a hypothetical change; promote only on acceptance | `skills/whatif/SKILL.md` |

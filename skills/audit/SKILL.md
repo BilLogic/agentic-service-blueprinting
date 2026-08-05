@@ -63,9 +63,9 @@ triage rules, and the check-authoring template.
   public-read rows. Cite cell keys and titles; never paste evidence text,
   proposition figures, or interviewee words.
 - ⚠ **REQUIRED — confirm the import target** before any DB write;
-  `references/adapter-contract.md` applies unchanged. (Vacuous on the
-  no-DB route — no DB write ever happens there, so there is no target to
-  hunt for.)
+  `references/adapter-contract.md` applies unchanged — wrong-project
+  protection. (Vacuous on the no-DB route — no DB write ever happens
+  there, so there is no target to hunt for.)
 - ⚠ **REQUIRED — an audit is reads + findings.** If the user asks the audit
   to also fix what it finds, that is a separate, explicitly-confirmed pass
   with the `sb:map` skill afterwards.
@@ -74,12 +74,10 @@ triage rules, and the check-authoring template.
 
 ```
 imported blueprint (or IR files)
-  → roster    (enumerate references/check-*.md; the roster ALONE decides
-               skips — wave-2 checks skip when their columns are absent/
-               empty, and fee-visibility's test is a content scan: skip
-               only when no money mention exists in scope. Say which were
-               skipped and why; a dispatched auditor never re-decides)
-  → export    (one read-only blueprint export the auditors share)
+  → roster    (enumerate references/check-*.md; skips decided HERE and
+               only here — rules in playbook §1.5, every skip reported)
+  → export    (one read-only blueprint export the auditors share —
+               scripts/audit_tools.py export)
   → dispatch  (one auditor per check, parallel, blind)
   → collect   (findings JSON per check; malformed output = check failed,
                re-dispatch once, then report the check as failed)

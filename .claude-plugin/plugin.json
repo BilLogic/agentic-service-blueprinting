@@ -1,7 +1,7 @@
 {
   "name": "sb",
-  "version": "0.2.1",
-  "description": "Service blueprinting (sb): four skills — sb:map ingests/co-creates/translates/imports blueprints with hash-bound sign-off, sb:slice cuts stakeholder views, sb:audit runs a check roster into triageable findings, sb:whatif traces hypothetical changes before promotion. Five agents + three hooks around a validated YAML intermediate representation, presented with the bundled React blueprint template.",
+  "version": "0.2.2",
+  "description": "Service blueprinting (sb): four skills — sb:map ingests/co-creates/translates/imports blueprints with hash-bound sign-off, sb:slice cuts stakeholder views, sb:audit runs a check roster into triageable findings, sb:whatif traces hypothetical changes before promotion. Five agents + three hooks around a validated JSON intermediate representation, presented with the bundled React blueprint template.",
   "author": {
     "name": "BilLogic (Bill & Meryem)",
     "url": "https://github.com/BilLogic"

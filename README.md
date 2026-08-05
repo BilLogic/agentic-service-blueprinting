@@ -42,7 +42,7 @@ The pipeline in one line:
 
 ![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
 
-*One always-loaded **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
+*One always-loaded **skill** ([SKILL.md](./skills/map/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
 
 ### The workflow
 
@@ -133,7 +133,7 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 | Path | Purpose |
 | --- | --- |
 | [.claude-plugin/plugin.json](./.claude-plugin/plugin.json) | Claude Code plugin manifest — this is what makes the repo installable as a plugin |
-| [skills/blueprint/SKILL.md](./skills/blueprint/SKILL.md) | The skill entry point: routing, hard rules, phase exit conditions |
+| [skills/map/SKILL.md](./skills/map/SKILL.md) | The skill entry point: routing, hard rules, phase exit conditions |
 | [agents/](./agents/) | Subagents: `document-reader`, `blueprint-reviewer` (adversarial pre-sign-off review), `render-checker` |
 | [references/](./references/) | Phase playbooks, IR + crosswalk schemas, layer-role & lane vocabularies, adapter contract, workspace state spec |
 | [scripts/](./scripts/) | IR pipeline: validator, fallback + seed generators, sign-off hasher, tests |

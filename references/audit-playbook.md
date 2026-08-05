@@ -31,11 +31,31 @@ hard rules; this file carries the mechanics.
   whose `cell_keys` all fall inside the scope are eligible; a scoped run
   must never resolve a finding it could not have re-detected.
 
+## §1.5 Roster & skips
+
+The roster stage ALONE decides which checks run — a dispatched auditor
+never re-decides (it may only report that the export contradicts the
+dispatch). Wave 1 always runs. Wave-2 rules:
+
+- `kpi-alignment`: skip when no lane in scope carries `kpis`/`tools`.
+- `perceived-owner`: skip when no cell carries the owner pair.
+- `value-ledger`: skip when no cell carries `value_props`.
+- `fee-visibility`: a CONTENT SCAN, not a column test — skip only when no
+  money mention exists anywhere in scope (beware substring false
+  positives: "fee" in "feedback", 收 as receive, 款 inside 条款).
+
+Every skip is reported with its reason; a silent skip reads as coverage
+that never happened.
+
 ## §2 Fingerprint
 
 ```
 fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n'))
 ```
+
+`scripts/audit_tools.py fingerprint` is the reference implementation —
+execute it rather than hand-computing (two hand-rolled implementations
+that disagree on a separator split the finding history).
 
 - Sorted, so cell order never changes identity.
 - `cell_keys` use the qualified key convention
@@ -56,6 +76,9 @@ fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n'))
   never as "insert with a tweaked fingerprint".
 
 ## §3 Dedupe decision table
+
+`scripts/audit_tools.py dedupe` (plan) / `report --apply` (no-DB ledger)
+implement this table — execute, never improvise.
 
 | Incoming fingerprint matches… | Action |
 | --- | --- |
@@ -110,12 +133,7 @@ then add it to the roster.
 
 ## §6 Canvas note
 
-Inside the uno-blueprint canvas agent, the audit is **fully live**: same
-roster, same check docs (via `read_reference`), and findings land as rows
-via `record_finding` — fingerprint dedupe included (open updates in place,
-dismissed stays dismissed, resolved reopens as a new row). Triage happens
-in chat through `set_finding_status`. Two translations differ from the IDE
-flow: cell identity uses cell ids (the canvas convention: `cell_keys` are
-written as the ids themselves, so canvas and IDE fingerprints are separate
-dedupe spaces), and there is no findings report file — `list_findings` is
-the ledger. `references/canvas-adapter.md` carries the full translation.
+Inside the uno-blueprint canvas agent the audit is fully live — the
+`/sb:audit` row of `references/canvas-adapter.md` is the ONLY canonical
+canvas translation (tools, dedupe wiring, pacing, cell-id fingerprints).
+Read that row; nothing here overrides it.

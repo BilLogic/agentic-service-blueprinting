@@ -4,6 +4,23 @@ All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
 repository and version together (workspace plugin version = template version).
 
+## 0.2.2 — 2026-08-05
+
+Structural pass per Anthropic skill-authoring standards (skill-creator).
+skills/blueprint renamed skills/map — the runtime registration is now
+sb:map, matching every cross-pointer. Whatif sign-off hashes re-aligned
+to the canonical PER-SCENARIO model (workspace-state.md; the 0.2.1
+whole-file form survives only as the legacy __file__ fallback). Dedupe
+semantics single-sourced (playbook §3 + canvas-adapter row; playbook
+canvas notes are now pointers). New scripts/audit_tools.py: fingerprint /
+export / dedupe / report — the reference implementation of playbook §2-§3
+and the no-DB ledger substrate. Roster & skips moved to playbook §1.5.
+journey_stage added to layer-roles. Slice type table single-sourced in
+SKILL.md. blueprint-reviewer three modes. Map description gains reverse
+pointers to audit/whatif. adapter-contract multi-account paragraph
+compressed (mechanics live in review-import §6). sweep_orphans.py marked
+planned. plugin.json says JSON IR.
+
 ## 0.2.1 — 2026-08-05
 
 Nineteen text-level gaps closed after blind cold-follow evals of sb:audit

@@ -24,16 +24,8 @@ not a separate kind of slice.
 
 ## 1. Choose the type
 
-| The user wants | Type | Selection |
-| --- | --- | --- |
-| "What does the tutor actually go through?" | `journey` | The actor's own lane, plus the cells their cells exchange arrows with |
-| "What is everyone doing at the greeting?" | `step` | One column, every lane, top to bottom |
-| "What does the lead tutor own end to end?" | `lane` | One lane, left to right |
-| "Explain this one cell properly" | `cell` | That cell |
-| "These six, in this order" | `custom` | Exactly what was listed |
-
-Ambiguity resolves toward `journey` — it is the type that answers "what is it
-like to be X", which is what people usually mean.
+The question→type table lives in SKILL.md ("The four questions") — one
+copy, there. This section carries only the binding selection rules.
 
 **Journey selection is arrow-derived, not adjacency-derived.** A companion
 cell joins a frame because the blueprint records a `trigger` between it and

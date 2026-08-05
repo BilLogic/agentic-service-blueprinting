@@ -13,11 +13,17 @@ compare view over local files, plan 003 Phase 5); the deploy-safe artifact
 is the **comparison markdown** (`whatif/<key>/comparison.md`), which cites
 cell keys from both versions and quotes nothing.
 
-Record at analysis time: the base sign-off hash. v1 workspace state
-records ONE whole-file `sign_off.content_hash` (there are no per-scenario
-hashes) — embed it under the key `__file__` in `base_signoff_hashes`.
-Every artifact (findings, comparison doc, change request) embeds it —
-that is what makes later promotion refusable when the base moved.
+Record at analysis time: the base sign-off hashes, **per scenario**
+(workspace-state.md is canonical: sign-off binds per scenario, friction
+#19). For every scenario in scope, embed its recorded `content_hash`
+(from the workspace's `scenarios` entry; recompute with
+`scripts/compute_signoff_hash.py <ir> --scenario <key>` when checking)
+keyed by scenario key in `base_signoff_hashes`. Legacy workspaces that
+predate per-scenario sign-off carry only a whole-file
+`sign_off.content_hash` — embed that under `__file__` and flag the
+legacy form in the report. Every artifact (findings, comparison doc,
+change request) embeds them — that is what makes later promotion
+refusable when the base moved.
 
 The zero-verbatim-excerpts exit is a defined grep test: no run of ≥6
 consecutive source words (≥8 consecutive CJK characters) from any
@@ -84,30 +90,28 @@ When the human accepts a whatif's recommendation:
    chain into promotion in the same turn; the gap between accept and
    promote is a human gate. Map-promote's steps for reference:
    verify hashes → edit IR → de-sign notice → re-sign → re-import →
-   `sweep_orphans.py` → auto-resolve the superseded whatif findings.
+   `sweep_orphans.py` (planned — if the script is absent, skip the sweep
+   and say so in the report) → auto-resolve the superseded whatif
+   findings.
 3. Whole-request promote only in v1 — no cherry-picking diff entries; a
    partial acceptance is a NEW, smaller whatif.
 
-The staleness guard is absolute, and the comparison is TWO checks, both
-against defined targets: (a) each embedded `base_signoff_hashes` value
-must equal the workspace's RECORDED `sign_off.content_hash`, and (b) the
-recorded hash must equal a RECOMPUTED hash of the IR file. One mismatch
-in (a) = base re-signed since analysis → refuse, offer re-trace. A
-mismatch in (b) = the base itself carries unsigned edits → refuse with
-"re-sign first" (promoting onto a dirty base is promoting onto an
-unreviewed one). Never compare against only the recorded value.
+The staleness guard is absolute, and the comparison is TWO checks per
+affected scenario, both against defined targets: (a) each embedded
+`base_signoff_hashes[scenario_key]` must equal that scenario's RECORDED
+`content_hash` in workspace state, and (b) the recorded hash must equal
+a RECOMPUTED `compute_signoff_hash.py <ir> --scenario <key>`. A mismatch
+in (a) = the scenario was re-signed since analysis → refuse, offer
+re-trace. A mismatch in (b) = the scenario carries unsigned edits →
+refuse with "re-sign first" (promoting onto a dirty base is promoting
+onto an unreviewed one). Never compare against only the recorded value.
+Legacy `__file__` entries get the same two checks against the whole-file
+`sign_off.content_hash` and a whole-file recompute.
 
 ## §5 Canvas note
 
-Inside the uno-blueprint canvas agent, whatif is **fully live** with two
-translations. (1) The variant is conversational, not a file: analysis
-still never touches the blueprint — replay/restage/prioritize reason over
-`get_blueprint` reads, and consequence findings land via `record_finding`
-(source `whatif`). (2) Promotion is direct: when the human accepts, there
-is no change-request file — the agent applies the accepted diff through
-the ordinary canvas write tools under the ordinary discipline (nod gate,
-small batches, ledger, revertible), then resolves the superseded whatif
-findings via `set_finding_status`. Staleness is handled by liveness: the
-canvas writes against current rows with optimistic-concurrency tokens, so
-a stale base fails loudly instead of needing a hash guard.
-`references/canvas-adapter.md` carries the full translation.
+Inside the uno-blueprint canvas agent whatif is fully live — the
+`/sb:whatif` row of `references/canvas-adapter.md` is the ONLY canonical
+canvas translation (conversational variant, direct promotion on
+acceptance, optimistic-concurrency staleness). Read that row; nothing
+here overrides it.

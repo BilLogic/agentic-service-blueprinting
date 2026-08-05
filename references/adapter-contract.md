@@ -31,15 +31,11 @@ paths), echo it to the user, and get confirmation **before any write**
 (wrong-project protection). Locale-scoped: one target per locale, tracked in
 `blueprint-workspace.json` (see `references/workspace-state.md`).
 
-**Multi-account Supabase:** the Supabase MCP is scoped to ONE account/org. To
-import into a project that lives in a different account, add a **second
-connector** for that account (the same pattern as multiple Slack/Notion/Figma
-connectors) and use its tools for that target. Failure signature: a write
-returns a bare `permission denied` / "project not found" with no other context —
-that means the connected account can't see the target project, not that the SQL
-is wrong. Don't retry the write; tell the user which account owns the target and
-that its connector must be added. (A freshly added connector isn't live until a
-session reload — see `references/review-import-playbook.md` §6.)
+**Multi-account Supabase:** a connector sees ONE account/org. A bare
+`permission denied` / "project not found" means the connected account
+cannot see the target project — not that the SQL is wrong; don't retry.
+Connector setup mechanics and the session-reload requirement live in
+`references/review-import-playbook.md` §6.
 
 ### 2. Schema provisioning
 Ensure the target carries the template schema at a compatible

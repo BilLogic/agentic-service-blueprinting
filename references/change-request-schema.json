@@ -28,7 +28,7 @@
       "type": "object",
       "minProperties": 1,
       "additionalProperties": { "type": "string" },
-      "description": "Sign-off hash(es) captured at analysis time. v1 workspace state records ONE whole-file sign_off.content_hash — embed it under the key \"__file__\" (per-scenario keys are reserved for a future per-scenario sign-off). The staleness guard compares each value against the workspace's RECORDED sign_off.content_hash AND checks that recorded hash against a RECOMPUTED hash of the IR file; map-promote refuses on any mismatch (recomputed mismatch = unsigned base edits, re-sign first)."
+      "description": "scenario_key -> that scenario's sign-off content_hash captured at analysis time (per-scenario sign-off is canonical — workspace-state.md; compute via compute_signoff_hash.py --scenario). Legacy workspaces with only a whole-file sign_off.content_hash embed it under \"__file__\". The staleness guard runs TWO checks per entry: embedded vs RECORDED hash, and recorded vs RECOMPUTED hash; map-promote refuses on any mismatch (recomputed mismatch = unsigned base edits, re-sign first)."
     },
     "affected_scenario_keys": {
       "type": "array",

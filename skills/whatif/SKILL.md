@@ -60,7 +60,9 @@ the change-request handoff.
   algorithm, same dedupe, same triage, same no-verbatim-excerpts rule
   (audit-playbook §2–§4).
 - ⚠ **REQUIRED — confirm the import target** before writing findings;
-  `references/adapter-contract.md` applies unchanged.
+  `references/adapter-contract.md` applies unchanged — wrong-project
+  protection: findings written into someone else's database are pollution
+  you cannot easily unwind.
 
 ## The pipeline
 
@@ -84,7 +86,7 @@ imported blueprint + a hypothetical
 | Trace | impact-tracer returned with `truncated: false`, or the truncation is reported in the results |
 | Verify | Every surviving claim carries cell keys the reviewer confirmed exist |
 | Record | Findings rows land deduped under one run_id; comparison.md contains zero verbatim excerpts (grep test) |
-| Accept | `changes/<key>.json` validates against `change-request-schema.json`; embedded hashes equal the workspace's RECORDED sign_off.content_hash AND that recorded hash equals a RECOMPUTED hash of the IR file (recorded mismatch → refuse + offer re-trace; recomputed mismatch → refuse, base has unsigned edits, re-sign first) |
+| Accept | `changes/<key>.json` validates against `change-request-schema.json`; embedded per-scenario hashes pass playbook §4's double check (recorded AND recomputed) — any mismatch refuses |
 | Report | Printed checklist: operation, scope, findings count, artifact paths, promote status — never silent |
 
 ## Agents
