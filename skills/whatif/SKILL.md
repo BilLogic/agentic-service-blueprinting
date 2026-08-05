@@ -12,7 +12,10 @@ displaced work lands — without the database ever learning about a change
 nobody has agreed to make.
 
 All `references/`, `agents/`, and `scripts/` paths live at the plugin root
-(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files.
+(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files
+(workspaces scaffolded before this skill shipped may lack them — fall back
+to the plugin root, and suggest the upgrade recipe in
+`references/customization.md`).
 
 ## Entry-state detection (do this first)
 
@@ -23,7 +26,7 @@ All `references/`, `agents/`, and `scripts/` paths live at the plugin root
 | "What if we removed/changed/automated X" | **replay** |
 | "Should X be customer-visible / hidden?" | **restage** |
 | "Where should we focus / what matters most?" | **prioritize** |
-| Whatif exists, user accepts the recommendation | **Accept route** — emit a change request, hand to map-promote (playbook §4). Never edit the IR from here |
+| Whatif exists, user accepts the recommendation | **Accept route** — emit a change request (playbook §4), then STOP and tell the user to invoke sb:map for map-promote. Never edit the IR from here, never chain into promotion in the same turn |
 | Whatif exists, base blueprint has changed since | Stale — the embedded sign-off hashes say so. Offer re-trace; never promote stale analysis |
 | "Dismiss / resolve whatif finding X" | Triage route — identical to audit (audit-playbook §4) |
 
@@ -81,7 +84,7 @@ imported blueprint + a hypothetical
 | Trace | impact-tracer returned with `truncated: false`, or the truncation is reported in the results |
 | Verify | Every surviving claim carries cell keys the reviewer confirmed exist |
 | Record | Findings rows land deduped under one run_id; comparison.md contains zero verbatim excerpts (grep test) |
-| Accept | `changes/<key>.json` validates against `change-request-schema.json`; embedded hashes match the workspace NOW (else refuse + offer re-trace) |
+| Accept | `changes/<key>.json` validates against `change-request-schema.json`; embedded hashes equal the workspace's RECORDED sign_off.content_hash AND that recorded hash equals a RECOMPUTED hash of the IR file (recorded mismatch → refuse + offer re-trace; recomputed mismatch → refuse, base has unsigned edits, re-sign first) |
 | Report | Printed checklist: operation, scope, findings count, artifact paths, promote status — never silent |
 
 ## Agents

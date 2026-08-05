@@ -13,19 +13,26 @@ results as `findings` rows a human can triage. The audit never fixes
 anything: it points, with severities, at cells by key.
 
 All `references/`, `agents/`, and `scripts/` paths live at the plugin root
-(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files.
+(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files
+(workspaces scaffolded before this skill shipped may lack them — fall back
+to the plugin root, and suggest the upgrade recipe in
+`references/customization.md`).
 
 ## Entry-state detection (do this first)
 
 | Entry state | Route |
 | --- | --- |
 | No workspace / no IR | Stop. Nothing to audit — that is the `sb:map` skill's job |
-| IR exists, never imported | Audit the IR files directly; findings stay in a local report (no DB rows without an import target) |
-| Imported blueprint | Full run: roster → auditors → dedupe → findings rows |
+| IR exists, no DB reachable | Audit the IR files directly; `audit/findings-report.json` is the ledger (playbook §1 route substrate) |
+| Imported blueprint, DB reachable | Full run: roster → auditors → dedupe → findings rows |
 | "Audit just scenario X" | Same pipeline, cell universe scoped to that scenario's keys |
 | "Dismiss / resolve finding X" | **Triage route** — status change only, playbook §4. Never re-run checks to honor a triage ask |
 | Re-run after edits | Full run; supersede semantics below make it safe |
 | "Add a new check" | Author a `references/check-*.md` from the template in playbook §5, then run it alone once before adding it to the roster |
+
+Row precedence when the first three could overlap: DB reachability decides
+(credentials present AND the target answers) — per-scenario draft status
+never changes the route, only lands as a staleness note in the report.
 
 **Playbook gating**: read `references/audit-playbook.md` before executing
 any route. It carries the run semantics, the fingerprint algorithm, the
@@ -42,7 +49,8 @@ triage rules, and the check-authoring template.
   and never sees other checks' output. Cross-check synthesis happens in the
   main context after all auditors return.
 - ⚠ **REQUIRED — dedupe by fingerprint; dismissed stays dismissed.**
-  `fingerprint = check_name + ':' + sha256 of the sorted cell_keys`. A
+  `fingerprint = check_name + ':' + sha256 of the sorted cell_keys joined
+  with '\n'` (exact form: playbook §2). A
   re-detected finding whose fingerprint matches a `dismissed` row is
   dropped silently; matching a `resolved` row reopens it; matching an
   `open` row updates it in place. The DB backstop (partial unique index on
@@ -55,7 +63,9 @@ triage rules, and the check-authoring template.
   public-read rows. Cite cell keys and titles; never paste evidence text,
   proposition figures, or interviewee words.
 - ⚠ **REQUIRED — confirm the import target** before any DB write;
-  `references/adapter-contract.md` applies unchanged.
+  `references/adapter-contract.md` applies unchanged. (Vacuous on the
+  no-DB route — no DB write ever happens there, so there is no target to
+  hunt for.)
 - ⚠ **REQUIRED — an audit is reads + findings.** If the user asks the audit
   to also fix what it finds, that is a separate, explicitly-confirmed pass
   with the `sb:map` skill afterwards.
@@ -64,8 +74,11 @@ triage rules, and the check-authoring template.
 
 ```
 imported blueprint (or IR files)
-  → roster    (enumerate references/check-*.md; skip wave-2 checks whose
-               columns are absent/empty — say which were skipped and why)
+  → roster    (enumerate references/check-*.md; the roster ALONE decides
+               skips — wave-2 checks skip when their columns are absent/
+               empty, and fee-visibility's test is a content scan: skip
+               only when no money mention exists in scope. Say which were
+               skipped and why; a dispatched auditor never re-decides)
   → export    (one read-only blueprint export the auditors share)
   → dispatch  (one auditor per check, parallel, blind)
   → collect   (findings JSON per check; malformed output = check failed,

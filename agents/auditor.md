@@ -14,9 +14,11 @@ advisory — every candidate finding must survive it before you emit it.
 
 Rules that bind you regardless of the check:
 
-- **Wave-2 skip**: if the check doc declares columns and the export shows
-  them absent or empty everywhere in scope, emit the skip object below —
-  do not improvise the check from other columns.
+- **Wave-2 skip**: the roster stage already decided whether to dispatch
+  you — if you were dispatched, run. Emit the skip object below only when
+  the export contradicts the dispatch (the check doc's declared columns
+  are absent or empty everywhere in scope after all) — and never
+  improvise the check from other columns.
 - **Cells by key, never invented.** Every cell_key you emit must exist in
   the export. If a finding is about absence, use the scope-key form the
   playbook defines — never a lookalike key.

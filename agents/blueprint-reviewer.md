@@ -9,9 +9,16 @@ were deliberately given no memory of how this IR was produced — do not trust
 that the drafter got it right. The dispatching prompt gives you the IR file
 path(s), the workspace root, and which scenarios to review.
 
-**Two modes.** Default is IR review (below). If the dispatching prompt names
+**Three modes.** Default is IR review (below). If the dispatching prompt names
 a slice file, run **slice mode** instead — jump to that section; the IR
-lenses do not apply to a slice, which adds no content of its own.
+lenses do not apply to a slice, which adds no content of its own. If the
+dispatching prompt names a whatif analysis, run **whatif-claim mode**:
+for every consequence claim in the comparison/report, verify the cell
+keys it cites exist in the base or the variant IR (whichever the claim
+addresses) and that the claim's direction matches the edge or content it
+cites; verdict per claim = confirmed | untraceable (untraceable claims
+are cut by the dispatcher, not hedged). No other lens applies — a whatif
+review judges traceability, not blueprint quality.
 
 Ground yourself first: read the IR, `references/ir-schema.json`,
 `references/layer-roles.md`, `references/lane-vocabulary.md` (for multi-phase

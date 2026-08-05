@@ -13,7 +13,11 @@ from), and the scope.
 1. **Seed set**: the cells the change touches (or the named cells).
 2. **Walk downstream**: from each frontier cell, follow outgoing `trigger`
    edges (this cell sets that one in motion) and incoming `needs` edges
-   pointing at it (that cell depends on this one existing). Same-path
+   pointing at it (that cell depends on this one existing). IR exports
+   carry only `trigger` edges — `needs` exists as a dependency kind only
+   in DB-backed deployments; when the export has none, walk triggers
+   only and say so in your output rather than treating it as missing
+   data. Same-path
    edges only — that is the data model's contract.
 3. **Visited set, always.** `loops_to_phase` makes cycles legal; a cell
    already visited is never re-expanded.

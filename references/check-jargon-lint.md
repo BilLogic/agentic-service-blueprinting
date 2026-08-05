@@ -20,5 +20,9 @@ lanes → not a finding.
 ## Non-findings
 Domain terms the customer genuinely uses (verify against evidence titles
 if present); product names the service deliberately teaches; backstage
-shorthand. When unsure whether the customer sees the cell, check the
-lane's role — do not guess from wording.
+shorthand. Crew-behavior narration in `frontstage_actions` cells that the
+customer experiences but never READS (the cell describes what staff do,
+not copy shown to the customer) — the lint applies to customer-read text.
+`journey_stage` labels ARE customer-facing (they render as headers).
+When unsure whether the customer sees the cell, check the lane's role —
+do not guess from wording.

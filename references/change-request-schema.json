@@ -28,7 +28,7 @@
       "type": "object",
       "minProperties": 1,
       "additionalProperties": { "type": "string" },
-      "description": "scenario_key -> sign-off content hash at analysis time. The staleness guard: map-promote refuses on any mismatch."
+      "description": "Sign-off hash(es) captured at analysis time. v1 workspace state records ONE whole-file sign_off.content_hash — embed it under the key \"__file__\" (per-scenario keys are reserved for a future per-scenario sign-off). The staleness guard compares each value against the workspace's RECORDED sign_off.content_hash AND checks that recorded hash against a RECOMPUTED hash of the IR file; map-promote refuses on any mismatch (recomputed mismatch = unsigned base edits, re-sign first)."
     },
     "affected_scenario_keys": {
       "type": "array",

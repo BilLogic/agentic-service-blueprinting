@@ -7,6 +7,19 @@ hard rules; this file carries the mechanics.
 
 - **One `run_id` per run** (a fresh UUID, minted at dispatch time). It is
   identity for reporting only — there is deliberately no runs table.
+- **The export** the auditors share: `audit/export-<scenario>.json` (or
+  `export-all.json` for whole-blueprint runs) — a read-only JSON subset of
+  the IR scoped to the run, written once at dispatch, deleted or ignored
+  after. Auditors read it, never the live IR, so mid-run edits cannot
+  split the checks across two realities.
+- **Route substrate.** DB reachable (credentials present AND the target
+  answers) → findings are DB rows and the partial unique index is the
+  backstop. No DB → `audit/findings-report.json` is the ledger: same row
+  shape, same dedupe table (§3) applied against the file, and the
+  idempotence exit is judged against it. Entry-state precedence follows
+  the same test: reachable target = imported-blueprint route, else
+  IR-only — a scenario's `drafted`/pending-sign-off status never changes
+  the route, it only gets flagged in the report as a staleness note.
 - **Per-check atomic supersede.** When check C completes and its deduped
   findings are ready: in ONE transaction, resolve-or-delete C's previous
   `open` findings that this run did not re-detect, and insert/update the
@@ -25,10 +38,18 @@ fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n'))
 ```
 
 - Sorted, so cell order never changes identity.
+- `cell_keys` use the qualified key convention
+  `<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>` (the same
+  convention slice-schema.json defines; IR cells carry layer+step — the
+  rest of the path comes from their position in the tree). On a live
+  canvas, cell ids stand in for keys (separate dedupe space, by design).
 - The note is NOT part of the fingerprint — rewording a finding updates the
   open row rather than duplicating it.
-- Zero-cell findings (e.g. "no scenario covers onboarding at all") use the
-  scope key instead of cell keys: `check_name + ':scope:' + scenario_key`.
+- Zero-cell findings (e.g. "no scenario covers onboarding at all") use a
+  scope key instead of cell keys, WITH a short reason slug so two distinct
+  zero-cell findings from one check cannot collide:
+  `check_name + ':scope:' + scenario_key + ':' + <reason-slug>`
+  (e.g. `gap-sweep:scope:warm-up:orphan-step-cooldown`).
 - The DB backstop: `findings_open_fingerprint_idx` — unique on
   `(service_lifecycle_id, fingerprint) where status = 'open'`. An insert
   conflict means the dedupe logic missed; treat it as update-in-place,

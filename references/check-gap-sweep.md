@@ -17,10 +17,15 @@ Emit one finding per contiguous silent stretch, not per empty cell:
   silent steps.
 - A trigger whose narrative implies a follow-up ("which kicks off…") with
   no cell at the receiving end → warn; cell_keys = the source cell.
+- The inverse: a cell whose narrative promises an INBOUND transition
+  (reopen, return, retry, "comes back to…") with no incoming trigger edge
+  → warn; cell_keys = the promising cell.
 - A step no path includes (declared but orphaned) → info; scope-key
   fingerprint.
-Raise to critical only when the gap sits on the interaction line — a
-customer-visible moment with no frontstage cell at all.
+Raise to critical when the gap touches the interaction line — the rule
+applies if ANY step inside the silent stretch is a customer-visible
+moment with no frontstage cell at all (not only when the finding is
+itself that moment).
 
 ## Non-findings
 Empty cells are NORMAL — a lane legitimately idle at a step is not a gap.
