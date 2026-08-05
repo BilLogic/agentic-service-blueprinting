@@ -1,0 +1,14 @@
+{
+  "name": "sb-marketplace",
+  "owner": {
+    "name": "BilLogic (Bill & Meryem)",
+    "url": "https://github.com/BilLogic"
+  },
+  "plugins": [
+    {
+      "name": "sb",
+      "source": "./",
+      "description": "Service blueprinting (sb): sb:map, sb:slice, sb:audit, sb:whatif — blueprint lifecycle, stakeholder slices, consistency-check findings, hypothetical-change tracing."
+    }
+  ]
+}
