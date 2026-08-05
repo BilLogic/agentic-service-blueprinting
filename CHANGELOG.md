@@ -4,6 +4,19 @@ All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
 repository and version together (workspace plugin version = template version).
 
+## 0.2.1 — 2026-08-05
+
+Nineteen text-level gaps closed after blind cold-follow evals of sb:audit
+and sb:whatif (fresh-context agents following the SKILL.mds literally on a
+real workspace): two-target staleness guard, __file__ hash form, orphan-
+reopen gap shape, zero-cell fingerprint reason slugs, audit cell-key
+convention, export + no-DB findings-report substrate, entry-state
+precedence, roster-owned skips, reviewer whatif-claim mode, impact-tracer
+trigger-only IR caveat, accept-route hard stop, plus polish. AGENTS.md
+router added for non-Claude harnesses (Cursor/Codex). Canvas adapter:
+check docs binding per executed check; audit pacing rule (batch doc
+reads, record per check).
+
 ## 0.2.0 — 2026-08-05
 
 Plugin renamed `service-blueprinting` → `sb`; skills renamed to bare tokens
