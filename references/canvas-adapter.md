@@ -14,6 +14,8 @@ nothing here relaxes one.
 | Save / rework a slice | `create_slice` (references cells, never copies), `update_slice` (fields), `replace_slice_frames` (reorder / merge / split screens — full replacement) |
 | Drive the interface | `open_phase`, `open_scenario`, `focus_cell`, `open_cell_panel`, `set_canvas_mode` (view/design), `set_sidebar`, `annotate_cells` (ephemeral marker boxes + note) — the same gestures the human has; none of these touch data |
 | Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
+| Run an audit (`/audit`) | READ-ONLY on canvas: same roster and check docs (`read_reference`), checks run over `get_blueprint` reads, results delivered in chat labeled "audit findings (chat-only — not recorded for triage)". No findings writer exists here in v1; persistence + triage live in the IDE flow |
+| Whatif (`/whatif`) | READ-ONLY on canvas: replay/restage/prioritize reasoning over reads, verdicts in chat labeled "whatif analysis (chat-only — no variant, no recorded findings)". No variant files, no change requests. If the human then wants the change made, that is the NORMAL canvas write flow — nod gate, small batches, ledger — never a promote |
 | Run `validate_ir.py` | doesn't exist — the database constraints and wrappers ARE the validator; a rejected call is your validation error, report it verbatim |
 | Sign-off hash gate | the human's Save gate — every write you make lands immediately but revertibly in the change sheet; the human keeps or reverts each row |
 | Scenario import / re-import | not available here — say so and point at the IDE flow |
