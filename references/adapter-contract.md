@@ -40,7 +40,7 @@ Connector setup mechanics and the session-reload requirement live in
 ### 2. Schema provisioning
 Ensure the target carries the template schema at a compatible
 `schema_version`, including the `cells_validate_path_match` trigger function.
-Supabase: `assets/schema.ddl.sql` (portable DDL) + `assets/policies.supabase.sql`
+Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `schema.reference.sql` is the read-friendly mirror)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
 No-DB: provisioning is a no-op (the template app ships the types).
 

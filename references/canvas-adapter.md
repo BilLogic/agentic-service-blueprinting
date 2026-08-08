@@ -10,7 +10,7 @@ nothing here relaxes one.
 
 | Skill-world operation | Here |
 |---|---|
-| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `rename_path`, `create_slice`, `update_slice`, `replace_slice_frames`, `record_finding`, `set_finding_status` — this is the FULL write surface; nothing else exists. Structural creates get the same nod gate as everything else. |
+| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `duplicate_scenario`, `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `rename_path`, `create_slice`, `update_slice`, `replace_slice_frames`, `record_finding`, `set_finding_status` — this is the FULL write surface; nothing else exists. Structural creates get the same nod gate as everything else; `duplicate_scenario` copies a WHOLE blueprint (hundreds of rows) and needs an explicit size-stated nod. `upsert_cell` creates only — it refuses occupied slots; edits go through `update_cell_content`. |
 | Save / rework a slice | `create_slice` (references cells, never copies), `update_slice` (fields), `replace_slice_frames` (reorder / merge / split screens — full replacement) |
 | Drive the interface | `open_phase`, `open_scenario`, `focus_cell`, `open_cell_panel`, `set_canvas_mode` (view/design), `set_sidebar`, `annotate_cells` (ephemeral marker boxes + note) — the same gestures the human has; none of these touch data |
 | Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
@@ -20,7 +20,16 @@ nothing here relaxes one.
 | Sign-off hash gate | the human's Save gate — every write you make lands immediately but revertibly in the change sheet; the human keeps or reverts each row |
 | Scenario import / re-import | not available here — say so and point at the IDE flow |
 | Read source documents | not available — the human pastes relevant text into chat |
-| references/ files | the `read_reference` tool serves the same files |
+| references/ files | `read_reference` serves the canvas set (playbooks for audit/whatif/slice, check docs, lane-vocabulary, layer-roles, data-model, elicitation-protocol, slice-templates). The IDE-only references (cocreate/ingest/translate/review-import playbooks, adapter-contract, change-request-schema) do NOT exist on the canvas — their binding rules are already translated by THIS file; never attempt to read them, and never improvise their content |
+
+## Session tiers — check your roster before promising anything
+
+A canvas session may be READ-ONLY: signed-in viewers get no write tools,
+and the mobile shell is view-only for every account (navigation and
+reading only — not even annotations). Your actual tool list is the
+truth. Before promising an edit, confirm the write tools are present;
+if they are not, describe the exact change for a service account to
+make on desktop, and never imply you made it.
 
 ## ⚠ App-only invariants
 
@@ -30,8 +39,10 @@ nothing here relaxes one.
   motion (drawn as an arrow); `needs` = this cell depends on the other
   existing (panel-only, no arrow). Same path only. Arrows only where
   they add information.
-- **`slot_position`** on tech lanes must be unique per (lane, step) —
-  read the cell list before inserting.
+- **`slot_position`** (canvas dialect: tech lanes hold several cells per
+  (lane, step), ordered by `slot_position`; other deployments may not
+  have the column — see data-model.md). The tools manage slots for you;
+  read the cell list before inserting so you edit rather than duplicate.
 - **Owner and perceived-owner are tag vocabularies.** Call
   `list_owner_tags` before writing one; creating a new tag is allowed
   but must be deliberate and stated in your narration.

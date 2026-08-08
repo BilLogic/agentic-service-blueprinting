@@ -1,6 +1,6 @@
 ---
 name: slice
-description: Cuts a stakeholder-ready view out of an existing service blueprint — one actor's journey, one moment across every lane, one lane end to end, or one cell read closely — and writes it back as a slice the app can present. Use when the user asks to "pull out the tutor's journey", "show what everyone is doing at check-in", "make a storyboard from the blueprint", "what does the lead tutor own", "turn this blueprint into something I can show the client/exec/team", or mentions a slice, journey summary, lane spec, cell brief, or storyboard of a blueprint that already exists. Requires an imported, signed-off blueprint — for creating or importing the blueprint itself, use the sb:map skill instead.
+description: Cuts a stakeholder-ready view out of an existing service blueprint — one actor's journey, one moment across every lane, one lane end to end, or one cell read closely — and writes it back as a slice the app can present. Use when the user asks to "pull out the customer's journey", "show what everyone is doing at check-in", "make a storyboard from the blueprint", "what does the support team own", "turn this blueprint into something I can show the client/exec/team", or mentions a slice, journey summary, lane spec, cell brief, or storyboard of a blueprint that already exists. Requires an imported, signed-off blueprint — for creating or importing the blueprint itself, use the sb:map skill instead.
 ---
 
 # Blueprint Slices
@@ -15,8 +15,11 @@ It selects, orders, captions, and cites. Every claim points at a cell key.
 Regenerating a slice is therefore cheap and safe, which is the whole reason
 the derived layer exists.
 
-All `references/` and `scripts/` paths live at the plugin root
-(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files.
+All `references/`, `agents/`, and `scripts/` paths live at the plugin root
+(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files
+(workspaces scaffolded before this skill shipped may lack them — fall back
+to the plugin root, and suggest the upgrade recipe in
+`references/customization.md`).
 
 ## Entry-state detection (do this first)
 
@@ -26,6 +29,7 @@ selecting anything:
 | Entry state | Route |
 | --- | --- |
 | No workspace / no IR | Stop. This is the `sb:map` skill's job — a slice of nothing is a fabrication |
+| Workspace DB predates the derived layer (`relation public.slices does not exist`) | Stop before any insert: apply the derived-layer migrations (`supabase/migrations/20260729120000_derived_layer.sql` onward) to the target, then resume — never hand-create the tables |
 | IR exists, scenario not signed off | Finish review first: a slice of unsigned IR cites cells review may still change |
 | Signed off, not imported | Import the scenario, then slice |
 | Imported, no slices yet | Read `references/slice-playbook.md`, then select |

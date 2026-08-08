@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Runs consistency checks over an imported service blueprint and records what they find as triageable findings — gaps a scenario never covers, jargon customers would not say, channel conflicts, KPI drift, ownership mismatches, value dead-ends, invisible fees. Use when the user asks to "audit the blueprint", "check Warm-Up for gaps/inconsistencies", "what's wrong with this scenario", "re-run the checks", or wants a finding dismissed or resolved ("that jargon one is fine, dismiss it"). Requires an imported blueprint — for building or importing one, use the sb:map skill; for hypothetical changes, use sb:whatif.
+description: Runs consistency checks over an imported service blueprint and records what they find as triageable findings — gaps a scenario never covers, jargon customers would not say, channel conflicts, KPI drift, ownership mismatches, value dead-ends, invisible fees. Use when the user asks to "audit the blueprint", "check Warm-Up for gaps/inconsistencies", "what's wrong with this scenario", "re-run the checks", "sanity check my blueprint", "health check", "is my blueprint consistent", or wants a finding dismissed or resolved ("that jargon one is fine, dismiss it"). Requires an imported blueprint — for building or importing one, use the sb:map skill; for hypothetical changes, use sb:whatif.
 ---
 
 # Blueprint Audit
@@ -103,6 +103,13 @@ reported, never silent — when they are absent or empty.
 | 2 | `perceived-owner` | Where the recorded owner and the perceived owner diverge (owner pair) |
 | 2 | `value-ledger` | Which cells deliver value to nobody, and which audiences receive none (`value_props`) |
 | 2 | `fee-visibility` | Where money changes hands invisibly to the customer journey |
+
+Wave-2 checks read spec columns (`kpis`/`tools`, owner pair,
+`value_props`). The database carries them once the derived-layer
+migrations are applied, but the IR schema does not yet allow them — so
+an export-driven (IDE) audit will usually see wave 2 return
+`status: skipped`. That skip is a correct, reportable result, not a
+failure; the canvas deployment audits these columns live.
 
 ## Deterministic exit conditions
 

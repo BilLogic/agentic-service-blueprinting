@@ -8,8 +8,8 @@ rules; this file carries the three operations and the promote handoff.
 A whatif variant is **an IR file in the workspace, never a DB row**:
 `whatif/<key>/variant-<scenario>.json`, a copy of the base IR with the
 hypothetical applied. The database only ever holds reality plus findings
-about it. Comparing variant vs base happens in local dev (the app's
-compare view over local files, plan 003 Phase 5); the deploy-safe artifact
+about it. Comparing variant vs base happens in local dev (side-by-side over the
+local files); the deploy-safe artifact
 is the **comparison markdown** (`whatif/<key>/comparison.md`), which cites
 cell keys from both versions and quotes nothing.
 

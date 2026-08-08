@@ -71,7 +71,8 @@ the user volunteers in `description`, not by bloating labels.
 > what's the workaround?" (→ `exception` / `unhappy` / `alternative` paths)
 
 For designed-vs-reality comparisons: make it two labeled variants
-(`variant_label`, view_type `side-by-side`) and ask for the two labels.
+(`variant_label`, view_type `side-by-side` — the stored DB token; the UI
+calls this view "Stacked") and ask for the two labels.
 
 ## Q8 — Triggers
 
