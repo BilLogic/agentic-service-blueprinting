@@ -62,8 +62,33 @@ def dedupe_action(existing_rows: list[dict], fp: str) -> str:
     return "insert"
 
 
+def _read_json(path: Path, label: str):
+    """Every JSON read goes through here so a malformed or missing file exits
+    with the same `error: ...` line the other subcommands print, not a
+    traceback the calling agent has to interpret."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise ValueError(f"cannot read {label} {str(path)!r}: {error.strerror}") from error
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"{label} {str(path)!r} is not valid JSON (line {error.lineno}, "
+            f"column {error.colno}): {error.msg}"
+        ) from error
+
+
 def load_ir(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return _read_json(path, "IR")
+
+
+def _read_findings(path: Path) -> list[dict]:
+    findings = _read_json(path, "findings file")
+    if not isinstance(findings, list):
+        raise ValueError(
+            f"findings file {str(path)!r} must be a JSON array of findings, "
+            f"got {type(findings).__name__}"
+        )
+    return findings
 
 
 def cmd_fingerprint(args: argparse.Namespace) -> int:
@@ -103,9 +128,12 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 
 def _load_ledger(path: Path) -> dict:
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
-    return {"rows": []}
+    if not path.exists():
+        return {"rows": []}
+    ledger = _read_json(path, "ledger")
+    if not isinstance(ledger, dict) or not isinstance(ledger.get("rows"), list):
+        raise ValueError(f"ledger {str(path)!r} must be an object with a 'rows' array")
+    return ledger
 
 
 def _plan(ledger: dict, incoming: list[dict], run_id: str | None) -> list[tuple[str, dict]]:
@@ -123,7 +151,7 @@ def _plan(ledger: dict, incoming: list[dict], run_id: str | None) -> list[tuple[
 
 def cmd_dedupe(args: argparse.Namespace) -> int:
     ledger = _load_ledger(Path(args.ledger))
-    incoming = json.loads(Path(args.incoming).read_text(encoding="utf-8"))
+    incoming = _read_findings(Path(args.incoming))
     for action, finding in _plan(ledger, incoming, None):
         print(f"{action:7s} {finding['fingerprint']}")
     return 0
@@ -132,7 +160,7 @@ def cmd_dedupe(args: argparse.Namespace) -> int:
 def cmd_report(args: argparse.Namespace) -> int:
     ledger_path = Path(args.ledger)
     ledger = _load_ledger(ledger_path)
-    incoming = json.loads(Path(args.incoming).read_text(encoding="utf-8"))
+    incoming = _read_findings(Path(args.incoming))
     counts = {"insert": 0, "update": 0, "drop": 0, "reopen": 0}
     for action, finding in _plan(ledger, incoming, args.run_id):
         counts[action] += 1
@@ -190,7 +218,11 @@ def main() -> int:
     p.set_defaults(fn=cmd_report)
 
     args = parser.parse_args()
-    return args.fn(args)
+    try:
+        return args.fn(args)
+    except ValueError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
