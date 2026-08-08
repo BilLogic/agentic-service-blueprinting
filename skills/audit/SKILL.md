@@ -104,12 +104,11 @@ reported, never silent — when they are absent or empty.
 | 2 | `value-ledger` | Which cells deliver value to nobody, and which audiences receive none (`value_props`) |
 | 2 | `fee-visibility` | Where money changes hands invisibly to the customer journey |
 
-Wave-2 checks read spec columns (`kpis`/`tools`, owner pair,
-`value_props`). The database carries them once the derived-layer
-migrations are applied, but the IR schema does not yet allow them — so
-an export-driven (IDE) audit will usually see wave 2 return
-`status: skipped`. That skip is a correct, reportable result, not a
-failure; the canvas deployment audits these columns live.
+Wave-2 checks read spec columns (`kpis`/`tools` on lanes, the owner
+pair and `value_props` on cells). Both the IR schema and the template
+database carry them as optional fields; an export whose cells simply
+never filled them will see wave 2 return `status: skipped` — a correct,
+reportable result, not a failure.
 
 ## Deterministic exit conditions
 

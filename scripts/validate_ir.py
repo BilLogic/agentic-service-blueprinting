@@ -321,7 +321,9 @@ def validate_layer(layer, jp: str, rep: Report, locales: list, rows_seen: dict):
     if not isinstance(layer, dict):
         rep.error(jp, f"layer must be an object, got {type_name(layer)}")
         return None
-    check_extra_keys(layer, {"key", "display_name", "role", "row"}, jp, rep)
+    check_extra_keys(
+        layer, {"key", "display_name", "role", "row", "kpis", "tools"}, jp, rep
+    )
     key = check_key(layer.get("key"), f"{jp}.key", rep) if "key" in layer else rep.error(jp, "missing required field 'key'")
     check_locale_text(layer.get("display_name"), f"{jp}.display_name", rep, locales, True, "display_name")
     row = check_int(layer, "row", jp, rep, required=True)
@@ -378,7 +380,9 @@ def validate_cell(cell, jp: str, rep: Report, locales: list):
     check_extra_keys(
         cell,
         {"layer", "step", "content", "description", "picture", "links",
-         "provenance", "needs_review", "evidence", "attribution"},
+         "provenance", "needs_review", "evidence", "attribution",
+         # Spec fields — audit wave 2 reads these; optional everywhere.
+         "function", "form", "owner", "perceived_owner", "value_props"},
         jp, rep,
     )
     for field in ("layer", "step"):
