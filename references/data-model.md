@@ -6,6 +6,20 @@ The template's blueprint data model. Source of truth:
 (`references/ir-schema.json`) mirrors this shape one-to-one with locale maps
 and stable keys in place of UUIDs.
 
+## Contents
+
+- Hierarchy
+- ERD
+- Tables in brief
+- Enums
+- Integrity trigger (why import order matters)
+- ⚠ REQUIRED: import order
+- Re-import semantics
+- Ordering fields
+- Working precedent
+- Canvas dialect: cell slots
+- Derived layer: findings and slices
+
 ## Hierarchy
 
 ```

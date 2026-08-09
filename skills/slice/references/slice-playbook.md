@@ -4,6 +4,19 @@ Read this before selecting, regenerating, editing, or deleting a slice. The
 branch logic below is what keeps a slice an honest *view* of the blueprint
 rather than a second, drifting copy of it.
 
+## Contents
+
+- What a slice is
+- 0. Preconditions
+- 1. Choose the type
+- 2. Propose the selection
+- 3. Write the prose
+- 4. Validate
+- 5. Import
+- 6. Regenerate, edit, delete
+- 7. Storyboard (optional, after the text path)
+- Exit conditions
+
 ## What a slice is
 
 An ordered one-dimensional selection of cells that **already exist**. It

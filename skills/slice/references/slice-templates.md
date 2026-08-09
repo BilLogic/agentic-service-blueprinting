@@ -11,6 +11,18 @@ Headings below are ours, not any vendor's. Cell content is described with the
 to accomplish (role, responsibility, requirements); *form* is how it comes
 across (communication, look, feel).
 
+## Contents
+
+- Journey summary (`journey`)
+- Step summary (`step`)
+- Lane spec (`lane`)
+- Cell brief (`cell`)
+- Custom (`custom`)
+- Common to all
+
+(Headings inside each template block are the template's own structure,
+not sections of this file.)
+
 ## Journey summary (`journey`)
 
 For: anyone who needs to feel the service from one actor's side — execs,

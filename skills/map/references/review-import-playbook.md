@@ -4,6 +4,11 @@ Two gated phases: human review ending in a hash-bound sign-off, then import
 through a backend adapter ending in read-back verification. Nothing reaches
 a target without passing both gates, in order.
 
+## Contents
+
+- Phase A — Review & sign-off
+- Phase B — Import
+
 ## Phase A — Review & sign-off
 
 ### 1. Grid preview, per scenario

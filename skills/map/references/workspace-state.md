@@ -6,6 +6,12 @@ IR directory. Enables resume, per-scenario progress, sign-off integrity,
 idempotent re-import, and the update loop. The SessionStart hook reads it to
 inject a status summary; every phase checks its preconditions against it.
 
+## Contents
+
+- Shape
+- Fields
+- Lifecycle notes
+
 ## Shape
 
 ```json

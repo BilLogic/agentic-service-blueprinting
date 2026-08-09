@@ -3,6 +3,16 @@
 The audit skill's operating manual. The SKILL.md carries the routes and the
 hard rules; this file carries the mechanics.
 
+## Contents
+
+- §1 Run semantics
+- §1.5 Roster & skips
+- §2 Fingerprint
+- §3 Dedupe decision table
+- §4 Triage route
+- §5 Check-authoring template (its Question / Read / Finding shape / Non-findings headings are the template itself)
+- §6 Canvas note
+
 ## §1 Run semantics
 
 - **One `run_id` per run** (a fresh UUID, minted at dispatch time). It is

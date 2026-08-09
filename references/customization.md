@@ -5,6 +5,15 @@ conventions for running many client workspaces, and the template upgrade
 recipe. Everything here is guidance — the only hard rule is the
 schema-version compat check in the upgrade recipe.
 
+## Contents
+
+- Layer roles
+- Theming & branding
+- View types & path types
+- Scale
+- Portfolio conventions (consultants / agencies)
+- Template upgrade recipe (⚠ compat check required)
+
 ## Layer roles
 
 The canonical vocabulary + org-defined custom roles are documented in

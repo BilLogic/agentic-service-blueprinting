@@ -3,6 +3,14 @@
 The whatif skill's operating manual. SKILL.md carries routes and hard
 rules; this file carries the three operations and the promote handoff.
 
+## Contents
+
+- §1 The variant discipline
+- §2 The three operations
+- §3 Findings
+- §4 Accept → change request
+- §5 Canvas note
+
 ## §1 The variant discipline
 
 A whatif variant is **an IR file in the workspace, never a DB row**:

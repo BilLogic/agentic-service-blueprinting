@@ -140,3 +140,4 @@ reportable result, not a failure.
 | Anything touching an import target | `references/adapter-contract.md` |
 | Understanding the findings table | `references/data-model.md` |
 | Naming lanes/actors while reading | `references/lane-vocabulary.md` |
+| How the same audit behaves on the app canvas (dedupe spaces, canonical dedupe row) | `references/canvas-adapter.md` |

@@ -7,6 +7,16 @@ per-cell provenance, one scenario at a time. If the docs turn out to be a
 if they describe the system rather than a journey, switch to
 `skills/map/references/cocreate-playbook.md` (see the critical branch below).
 
+## Contents
+
+- 1. Triage + exclusion (before reading anything at depth)
+- 2. Format handling
+- 3. ⚠ REQUIRED — the system-vs-journey branch
+- 4. Cheap skeleton preview before IR
+- 5. Deep read + draft, one scenario at a time
+- 6. Journey-stage images (`visual` / `step_visual` rows)
+- ⚠ Exit condition (deterministic)
+
 ## 1. Triage + exclusion (before reading anything at depth)
 
 Large corpora blow up context (real example: 900+ files). So:

@@ -107,3 +107,4 @@ imported blueprint + a hypothetical
 | Findings mechanics (shared with audit) | `references/audit-playbook.md` §2–§4 |
 | Anything touching an import target | `references/adapter-contract.md` |
 | Understanding the underlying tables | `references/data-model.md` |
+| How the same whatif behaves on the app canvas | `references/canvas-adapter.md` |
