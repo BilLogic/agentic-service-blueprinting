@@ -1,0 +1,18 @@
+[
+  {"query": "sanity check my blueprint — anything inconsistent or missing?", "should_trigger": true},
+  {"query": "run the checks on the Warm-Up scenario again, we edited a bunch of cells yesterday", "should_trigger": true},
+  {"query": "is there jargon in our customer-facing steps that a parent wouldnt understand?", "should_trigger": true},
+  {"query": "health check the whole board — which steps have no owner?", "should_trigger": true},
+  {"query": "that jargon finding about 'engagement telemetry' is actually fine, dismiss it", "should_trigger": true},
+  {"query": "do any of our fees show up invisibly? like charges the customer never sees coming in the journey", "should_trigger": true},
+  {"query": "check whether the KPIs on each lane still line up with what the cells actually do", "should_trigger": true},
+  {"query": "whats the state of the findings ledger — anything open from last run?", "should_trigger": true},
+  {"query": "what breaks if we remove the intake call entirely?", "should_trigger": false},
+  {"query": "audit our npm dependencies for known vulnerabilities", "should_trigger": false},
+  {"query": "check my SQL migration for errors before i apply it", "should_trigger": false},
+  {"query": "review this PR that adds the findings table to the schema", "should_trigger": false},
+  {"query": "audit our AWS bill for waste, we're overspending on lambda", "should_trigger": false},
+  {"query": "lint the typescript and fix whatever eslint complains about", "should_trigger": false},
+  {"query": "is our database schema properly normalized? third normal form etc", "should_trigger": false},
+  {"query": "proofread this client email and cut the corporate jargon", "should_trigger": false}
+]

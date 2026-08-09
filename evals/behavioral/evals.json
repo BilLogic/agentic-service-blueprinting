@@ -1,0 +1,131 @@
+{
+  "skill_name": "sb",
+  "notes": "Behavioral evals per the Agent Skills best-practices guide (three per skill). Fixtures live in scripts/tests/. Run each query in a fresh session with the plugin installed and judge against expected_behavior; there is no built-in runner — see evals/README.md.",
+  "evals": [
+    {
+      "id": "map-1",
+      "skills": ["map"],
+      "query": "Turn scripts/tests/sample-notes/ into a service blueprint IR. Don't import anywhere yet.",
+      "files": ["scripts/tests/sample-ir.json"],
+      "expected_behavior": [
+        "Scaffolds or detects a workspace before drafting (checks for blueprint-workspace.json)",
+        "Reads the ingest playbook before deep-reading sources; triages sources before reading at depth",
+        "Produces an IR that passes scripts/validate_ir.py with exit 0",
+        "Does not import or deploy anything — stops at drafted IR pending review/sign-off"
+      ]
+    },
+    {
+      "id": "map-2",
+      "skills": ["map"],
+      "query": "Import the signed-off IR into my Supabase project.",
+      "expected_behavior": [
+        "Runs the §6 pre-flight: validator exit 0, per-scenario sign-off hash match, schema_version compatibility",
+        "Echoes the target project and waits for explicit confirmation before any write (wrong-project protection)",
+        "Never writes the service-role key to disk or chat; elevated writes go through user-run CLI or the connected Supabase MCP server's tools",
+        "On connector-unreachable, prompts a Claude Code reload rather than retrying"
+      ]
+    },
+    {
+      "id": "map-3",
+      "skills": ["map"],
+      "query": "Here's our FigJam board link — translate it into the blueprint app.",
+      "expected_behavior": [
+        "Fetches the board per frame, never the whole board at once (token-limit rule)",
+        "Builds a crosswalk mapping (crosswalk-schema.json) before translating content",
+        "Flags unmappable lanes/columns to the user instead of inventing placements"
+      ]
+    },
+    {
+      "id": "audit-1",
+      "skills": ["audit"],
+      "query": "Audit the blueprint export at scripts/tests/sample-ir.json for gaps and jargon.",
+      "files": ["scripts/tests/sample-ir.json"],
+      "expected_behavior": [
+        "Enumerates the check roster from skills/audit/references/check-*.md; every check is either dispatched or reported skipped-with-reason",
+        "Dispatches each executed check with only its own check doc (fresh-context auditor discipline)",
+        "Findings cite cells by key; wave-2 checks skip gracefully when spec columns are absent",
+        "Reports per-check counts; proposes no fixes"
+      ]
+    },
+    {
+      "id": "audit-2",
+      "skills": ["audit"],
+      "query": "Re-run the audit — we fixed the jargon in three cells since last time.",
+      "expected_behavior": [
+        "Mints one new run_id for the run",
+        "Dedupes against prior findings per the playbook §3 table: open updates in place, dismissed stays dismissed, resolved reopens only on recurrence",
+        "Does not resurrect findings the user dismissed"
+      ]
+    },
+    {
+      "id": "audit-3",
+      "skills": ["audit"],
+      "query": "That channel-conflict finding about the phone lane is intentional — dismiss it.",
+      "expected_behavior": [
+        "Routes to triage (status change), not a re-run",
+        "Sets the finding to dismissed with the user's reason attached",
+        "Leaves all other findings untouched"
+      ]
+    },
+    {
+      "id": "slice-1",
+      "skills": ["slice"],
+      "query": "Cut the customer's journey out of the imported blueprint as a slice.",
+      "expected_behavior": [
+        "Reads the slice playbook, proposes the selection (cells by key) before writing prose",
+        "Every claim in the prose cites a cell key; nothing is invented beyond selected cells",
+        "Runs slice_tools.py validate before any import; validation failure blocks import"
+      ]
+    },
+    {
+      "id": "slice-2",
+      "skills": ["slice"],
+      "query": "We edited the cells behind the ops lane spec — regenerate that slice.",
+      "expected_behavior": [
+        "Regenerates from current cells rather than editing stale prose",
+        "Preserves the slice's identity/key so the app updates in place",
+        "Re-validates before re-import"
+      ]
+    },
+    {
+      "id": "slice-3",
+      "skills": ["slice"],
+      "query": "Make the check-in moment slice into a storyboard.",
+      "expected_behavior": [
+        "Runs the storyboard sub-flow only after the text slice exists",
+        "Uses skills/slice/references/storyboard-prompts.md for image prompts",
+        "Frame captions still cite cell keys"
+      ]
+    },
+    {
+      "id": "whatif-1",
+      "skills": ["whatif"],
+      "query": "What breaks if we remove the welcome call from onboarding?",
+      "expected_behavior": [
+        "Builds a hypothetical variant; the database is never written during analysis",
+        "Walks trigger/needs edges downstream (impact-tracer discipline: visited set, bounded depth)",
+        "Reports affected cells, broken assumptions, and where displaced demand lands, cited by cell key"
+      ]
+    },
+    {
+      "id": "whatif-2",
+      "skills": ["whatif"],
+      "query": "Should the refund approval step be customer-visible?",
+      "expected_behavior": [
+        "Restages the moment across the visibility line rather than replaying the whole scenario",
+        "Weighs frontstage/backstage consequences using layer-roles semantics",
+        "Delivers a recommendation with cited cells, not a blueprint edit"
+      ]
+    },
+    {
+      "id": "whatif-3",
+      "skills": ["whatif"],
+      "query": "The team accepted the welcome-call analysis. Make it real.",
+      "expected_behavior": [
+        "Emits a change request conforming to skills/whatif/references/change-request-schema.json",
+        "Hands off to the map skill's update flow for the actual edit + re-sign-off + re-import",
+        "Does not write blueprint tables directly from the whatif skill"
+      ]
+    }
+  ]
+}

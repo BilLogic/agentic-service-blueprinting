@@ -83,6 +83,9 @@ live-DB = requires Supabase or a PostgREST-compatible read API. See
   account's connector (`references/adapter-contract.md` §1). Adding one
   follows the same pattern as multiple Slack/Notion/Figma connectors:
   one connector per account, use that account's tools for its target.
+  Address tools by discovering the connected server's name at runtime —
+  tool names are stable, server names are user-chosen
+  (`references/adapter-contract.md` §"MCP tool addressing").
 - Pre-import read-back diff: if the target differs from `last_import` state
   (e.g. manual Studio edits), warn and offer an export before replacing.
 

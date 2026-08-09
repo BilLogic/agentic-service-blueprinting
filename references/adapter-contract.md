@@ -79,7 +79,18 @@ condition.
   gitignored**.
 - Service-role key: **never written to disk by the skill, never pasted
   through chat**. Writes that need elevated rights go through user-run CLI
-  commands with their own credentials, or Supabase MCP `apply_migration`.
+  commands with their own credentials, or the Supabase MCP's
+  `apply_migration` tool.
+- **MCP tool addressing**: Supabase MCP *tool* names are stable
+  (`apply_migration`, `execute_sql`, `list_tables`, …) but the *server*
+  segment of the fully-qualified name is whatever the user named their
+  connector (`mcp__supabase__apply_migration`, `mcp__supabase-work__…`,
+  `mcp__plugin_supabase_supabase__…`), and the separator convention varies
+  by surface (Claude Code uses `mcp__server__tool`; API-hosted skills use
+  `Server:tool`). Never hardcode a server name: enumerate the connected
+  MCP servers at runtime, pick the Supabase server whose project matches
+  the confirmed target (multi-account rule above), and address tools
+  through it.
 - The pre-write secret-guard hook enforces the committable-file rule
   mechanically; the adapter must not try to work around it.
 
