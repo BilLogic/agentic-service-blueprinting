@@ -85,10 +85,11 @@ tool descriptions — trust them at call time. Adapter-only additions:
 - Propose structure (step/lane outlines) as plain text FIRST and get a
   nod — structure mistakes are cheap in chat, expensive in the grid.
 - Do not ask permission per cell — the ledger is the review surface.
-- On a tool error: report the message verbatim, stop the batch, do not
-  retry blind, and never re-route a refusal through different tools. If
-  recovering means a different target or approach, say so explicitly —
-  never silently switch targets.
+- On a tool error: quote the message verbatim to the user EVEN WHEN you
+  recover — a silently-absorbed error hides real state from the human.
+  Stop the batch, do not retry blind, and never re-route a refusal
+  through different tools. If recovering means a different target or
+  approach, say so explicitly — never silently switch targets.
 - Ids (UUIDs) are tool plumbing, never prose: point at things by NAME
   (cell content, step, lane, scenario) and with `focus_cell` /
   `open_scenario`; print ids only when the human explicitly asks.
