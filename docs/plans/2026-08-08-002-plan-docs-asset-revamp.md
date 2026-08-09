@@ -54,32 +54,83 @@ flow into both. One caption line: "Two consumer surfaces, one source of
 truth" — IDE plugin and the in-app canvas agent both read these files
 (canvas-adapter is the translation seam).
 
-## Asset 2 — `skill-workflow.svg` : REVAMP + ADDITION
+## Asset 2 — the workflow: SPLIT INTO TWO SVGs (Bill, 2026-08-08 round 4)
 
-**Current:** depicts only the sb:map pipeline (Draft → Review & sign-off →
-Import → Verify & deploy) yet is captioned in the README as the whole
-"Agentic blueprinting workflow".
+**Current:** one `skill-workflow.svg` depicting only the sb:map pipeline,
+captioned as the whole workflow. Earlier rounds proposed one two-loop
+figure; Bill's call: **break it up** — each loop is its own asset, each
+readable alone, connected by a repeated visual motif.
 
-**New figure — two connected loops** (this is the headline diagram):
+*(Round 6, Bill: the two loop figures break down further — **one SVG per
+skill**, each explaining its concrete, separated use case. This also
+replaces the practice-scenarios figure: the per-skill figures ARE the
+use-case visuals. `skill-workflow.svg` retires.)*
 
-- **Authoring loop (sb:map)** — keep the existing four-phase rail, it is
-  correct: ingest/co-create → review & sign-off (hash) → import via adapter
-  → verify & deploy. Compress horizontally to make room.
-- **Living loop (new)** — the derived cycle that runs after a blueprint is
-  live: `sb:slice` (cut stakeholder views) → `sb:audit` (blind check roster
-  → findings, fingerprint-deduped) → triage (open/dismissed/resolved) →
-  `sb:whatif` (trace change downstream, variant never touches DB) → accept →
-  change request → promote via sb:map → **re-import**, which closes the loop
-  back into the authoring rail.
-- Junction points labeled: sign-off hashes guard whatif's staleness check;
-  re-import is transactional scenario-replace; findings survive re-import via
-  fingerprints.
-- Rail beneath: which gate must pass at each hop (validator exit 0, reviewer
-  pass, read-back verification, hash match) — carries the old figure's
-  "gate" idea across both loops.
+### The four skill figures — one shared template
 
-Layout: authoring loop upper track, living loop lower track, re-import arrow
-connecting them on the right. May need viewBox height ~560; width stays 880.
+`sb-map.svg` · `sb-slice.svg` · `sb-audit.svg` · `sb-whatif.svg`. Each
+~880×320, identical three-band template so they read as a matched set:
+
+1. **Situation band** (top): the practice moment in service-design voice,
+   one line, grounded in the textbook (Løvlie/Polaine/Reason, *Service
+   Design: From Insight to Implementation*, ch. 6 — the wording anchors
+   below).
+2. **Flow rail** (middle): that skill's stations left to right, green gate
+   diamonds between, amber agent chips beneath the stations that spawn
+   them.
+3. **Artifact strip** (bottom): what exists when the skill finishes.
+
+Each figure ends in a small chip naming which skill typically follows —
+the set chains without needing a master loop figure.
+
+### 2-map — `sb-map.svg`
+
+Situation: *"You have research, journey maps, a FigJam — scattered
+descriptions of the service, and no single picture everyone can work
+from."* Rail: sources → draft (per-cell provenance) → review & sign-off
+(hash) → import → verify. Artifact strip absorbs the cut pipeline figure:
+docs cluster → one validated blueprint file (`.mono` blueprint.json) →
+generated app data → live blueprint. Follow-chip: → slice / audit.
+
+### 2-slice — `sb-slice.svg`
+
+Situation: *"The whole blueprint is too much for Thursday's meeting — you
+need the journey summary for leadership, the channel view for the web
+team."* Rail: pick a cut (the textbook's four slices: journey summary ·
+phase/step column · channel row · touchpoint cell — plus custom) → compose
+frames → present / hand off. Artifact: a slice deck pointing back at live
+cells (dashed soft refs). Follow-chip: → present · audit.
+
+### 2-audit — `sb-audit.svg`
+
+Situation: *"Two touchpoints are pushing in opposite directions, and
+nobody noticed — the gaps everyone thought somebody else was responsible
+for."* Rail: check roster (blind, one auditor per check) → findings
+(fingerprint-deduped, pink) → triage (open / dismissed / resolved).
+Artifact: the findings ledger. Follow-chip: → whatif · map (update).
+
+### 2-whatif — `sb-whatif.svg`
+
+Situation: *"Before anyone commits — what happens to the rest of the
+service if we change this?"* (the textbook's "What if…" scenarios played
+out on the blueprint, its "If… then" decisions). Rail: name the change →
+trace downstream (variant file, never the live DB) → weigh displaced
+demand → accept → change request → promote via map → re-import. Gate:
+sign-off hash staleness guard. Artifact: the change request. Follow-chip:
+→ map (re-import closes the loop).
+
+### Textbook wording anchors (for all four situation bands + README §5 prose)
+
+From ch. 6, use THIS vocabulary, not ours: "as-is" and "to-be" states ·
+"sketching" a service on the blueprint · playing out "What if…" scenarios,
+working through "If… then" decisions with all stakeholders · zooming in
+and out between big picture and detail · situating a touchpoint in the
+wider journey · journey / phase & step / channel summaries and touchpoint
+specifications as the four slices · touchpoints pushing in opposite
+directions · the gaps everyone thought somebody else was responsible for ·
+the blueprint as the central source from which other specification
+documents are created · print it, hang it on the wall, take it to
+meetings.
 
 ## Asset 3 — data model + slices: SEPARATE COMPANION FIGURE (recommendation)
 
@@ -363,22 +414,26 @@ without a distinct question is a merge candidate).
 | # | Asset | Verdict | Priority |
 | --- | --- | --- | --- |
 | 1 | `why-now.svg` | new — the thesis (Gap 2a); canonical visual, reusable in the case study | now, first |
-| 2 | `practice-scenarios.svg` | new — scenario vignettes + three-ways footer (Gap 1) | now |
-| 3 | `skill-architecture.svg` | total revamp (4 skills / 5 agents / 29 refs / gates) | now |
-| 4 | `skill-workflow.svg` | revamp + living loop | now |
+| 2 | ~~`practice-scenarios.svg`~~ | CUT round 6 — README scenarios go prose-only, textbook voice; per-skill figures carry the use cases | — |
+| 3 | `skill-architecture.svg` | total revamp (4 skills / 5 agents / 29 refs / gates); re-inventory tree first | now |
+| 4a–d | `sb-map.svg` · `sb-slice.svg` · `sb-audit.svg` · `sb-whatif.svg` | new — one per skill, shared three-band template; replaces the loop pair (round 6); sb-map absorbs the pipeline artifact track; skill-workflow.svg retires | now |
 | 5a | `cell-anatomy.svg` | new | now |
 | 5b | `slicing-model.svg` | new (incl. design vs present) | now |
 | 6 | `blueprint-anatomy.svg` | + role legend strip (Gap 4) | now, cheap |
 | 7 | `four-ways-in.svg` | new (Gap 2b) | next |
-| 8 | `from-docs-to-blueprint.svg` | new, de-jargoned, docs-page only (Gap 3) | next |
+| 8 | ~~`from-docs-to-blueprint.svg`~~ | CUT round 5 — merged into 4a's artifact track; guide/03 keeps the prose | — |
 | 9 | `data-model-hierarchy.svg` | unchanged + one pointer line | now, trivial |
 | 10 | `erd.mmd` | deferred to Migration v2 Phase 1 | later |
 | — | compare/view-modes figure | covered as a practice-scenarios vignette; dedicated figure after the port | later |
 | — | eval/grading figure | deferred to Phase 3 | later |
 | — | demo recordings | replanned: one per practice scenario, three-ways beat at the end | after figure 2 locks the roster |
 
-Draft order: **1 → 2** (the two Bill-directed figures lock the narrative) →
-3 → 4 → 5a → 5b → 6 → 7 → 8, still one figure at a time for review.
+Draft order: **1 (why-now) → 4a sb-map** (locks the shared skill template)
+→ 4b–d (slice · audit · whatif, fast once the template holds) → 3
+(skill-architecture) → 5a cell-anatomy → 5b slicing-model → 6 anatomy
+legend → 7 four-ways-in — one figure at a time for review. README §5
+scenario PROSE (textbook voice) drafts alongside the skill figures since
+they share the wording anchors.
 Reorganization (G1–G4) executes last, as the captions + README-order commit,
 because the budget decision needs the finished set. README five-figure
 budget under the new roster: why-now · hierarchy · anatomy ·
@@ -394,6 +449,177 @@ practice-scenarios · skill-workflow; all else on docs pages.
   `data-model-hierarchy.svg`, each with a two-line bridge sentence.
 - The full README rewrite (four-skill restructure, tier story, repo-map
   corrections) stays in Migration v2 Phase 4 — not here.
+
+## Visual system — one language for all eleven
+
+Extracted from the four shipped SVGs (they already agree); every new/revamped
+asset uses exactly this and nothing else:
+
+- **Canvas**: `viewBox` 880 wide, height per figure (~360–630). System font
+  stack; `.mono` (ui-monospace) reserved for filenames, skill names, and
+  literal terms (`sb:map`, `blueprint.json`).
+- **Background — never transparent** (Bill, round 5): every figure opens
+  with a full-canvas rounded rect filled `#fafbfc` with a `#e2e4e9` hairline
+  border, so figures hold up on dark-mode screens (GitHub dark, docs sites).
+  Applies retroactively to the four shipped SVGs in the same commit that
+  moves them to docs/assets/.
+- **The annotated-UI motif** (new, Bill round 5): where a figure explains a
+  *surface*, don't invent an abstract composition — draw a faithful,
+  simplified vector mock of the actual app UI (wireframe fidelity: real
+  layout, real proportions, neutral fills, no text-level detail) and
+  dissect it with callout pointers (1px `#8a8f98` leader lines to 9.5px
+  labels outside the mock). Used by cell-anatomy, slicing-model's posture
+  band, and four-ways-in. Mocks reference uno's shipped UI until the
+  template port lands; re-verify proportions at draft time.
+- **Type scale** (existing classes): section/rail label 10px 700
+  letter-spaced `#8a8f98` · box title 11px 700 `#273036` · chip 10–11px
+  600 · annotation 9.5px 700 letter-spaced.
+- **Surfaces**: white `#ffffff` cards on `#fafbfc`/`#f4f5f7` group panels,
+  borders `#c9ccd4`/`#d4d4da`/`#e2e4e9`. Dashed border = derived/virtual/
+  not-stored. Dimmed (40% opacity) = context being quoted, not taught.
+- **Semantic tints** (the four already in use, now given fixed meanings so
+  the set reads as one system):
+  - **green** `#e8f3ed` / stroke `#9dbfa9` — human practice & judgment:
+    review, sign-off, triage, presenting, gates passed.
+  - **blue** `#d9e4ea`–`#e9eff4` / stroke `#9aadbe` — structure & data:
+    the blueprint itself, files, schema, imports.
+  - **amber** `#fdf1e3` / stroke `#d4b483` — agents & automation: skills
+    firing, subagents, generated artifacts.
+  - **pink** `#fbe9f0` / stroke rose — findings & divergence: audit
+    results, conflicts, differences. (Sparingly.)
+- **Connectors**: 1.5px solid `#9aadbe` arrows for flow; dashed for
+  soft/derived references; no arrowheads on "needs"-style relations. Gate
+  markers = small green diamond on the connector with a one-word label.
+- **Recurring motifs** (what makes the set feel like one family): the
+  faded-spine quote (a figure that builds on the core hierarchy draws it
+  dimmed, same chip shapes as data-model-hierarchy) · the "live blueprint"
+  chip (2a hands to 2b) · the gate rail (thin strip under any process
+  figure) · the three-ways footer (practice-scenarios only).
+
+## Per-asset look
+
+**`why-now.svg`** (~880×420) — the only figure allowed a touch of rhetoric.
+Two horizontal strands entering from the left as labeled bands: top strand
+amber ("agents joining teams" — small doc-pile icon cluster with a
+"confidently wrong" annotation chip in pink), bottom strand green ("service
+design practice" — a tiny classic blueprint thumbnail with a wall-calendar
+annotation: consulted a few times a year). They converge mid-canvas into
+one blue node — the structured blueprint ("poster → database" as the
+label) — from which two thin arrows exit right to twin consumers: team ·
+agents, sharing one "shared lens" caption. Eval-ladder chips (open
+question 8) would sit as four small steps under the convergence point if
+included. No UI drawn anywhere — this figure is ideas only.
+
+**`practice-scenarios.svg` — CUT** (round 6, Bill). No figure: the four
+per-skill SVGs carry the concrete use cases now, and the README's
+scenarios section becomes **prose only, in a service designer's voice**,
+re-worded against the textbook anchors above — e.g. "you've been briefed
+on one touchpoint, but situating it in the wider journey shows the scope
+is broader" · "as-is vs. to-be, side by side" · "the journey summary for
+leadership, the channel view for the web team" · "two touchpoints pushing
+in opposite directions." The three-ways line survives as the section's
+closing prose sentence.
+
+**`sb-map.svg` / `sb-slice.svg` / `sb-audit.svg` / `sb-whatif.svg`**
+(~880×320 each) — visual spec is the shared three-band template + per-skill
+content defined in the Asset 2 section above: situation band in textbook
+voice · flow rail with green gate diamonds and amber agent chips ·
+artifact strip · follow-chip chaining to the next skill. Matched set:
+identical band heights, identical title treatment (`.mono` skill name +
+plain-English subtitle), the ONLY figure-to-figure variation is rail
+content. sb-map's artifact strip carries the absorbed pipeline (docs → one
+validated file → generated app data → live blueprint).
+
+**`data-model-hierarchy.svg`** — unchanged + one 9.5px dim footer line
+pointing at the slicing figure.
+
+**`blueprint-anatomy.svg`** — unchanged + role-legend strip along the
+bottom edge: eight `.mono` role keys, each with its lane-color swatch
+(the tints already in the figure) and a 3-word rendering note; final cell
+of the strip: "custom / null → generic lane · the two lines derive from
+roles".
+
+**`cell-anatomy.svg`** (~880×480) — *(REDESIGNED round 5: abstract radial
+composition scrapped; Bill's direction — use the actual UI and dissect it
+with pointers.)* The annotated-UI motif at full size: left third = a small
+blueprint-grid excerpt with one cell selected (its real in-grid rendering);
+the remaining two thirds = a faithful wireframe mock of the **cell detail
+panel as it actually opens in the app** — header, tab row, spec fields
+(function / form / value props / owner) laid out as the panel lays them
+out, evidence section, findings section. Callout pointers dissect it from
+the outside margins: each spec field gets a one-line "what goes here";
+evidence gets the assumption-as-absence note on a dashed empty row;
+findings get the open/dismissed/resolved lifecycle chips; a pointer pair on
+the grid excerpt distinguishes a drawn trigger arrow vs. a needs relation
+("shown in the panel, no arrow — on purpose"). Footer pointer: "this cell
+appears in N slices →". The figure teaches the model THROUGH the surface
+the reader will actually meet.
+
+**`slicing-model.svg`** (~880×620) — *(REDESIGNED round 5; the old spec
+buried the two questions Bill named. The figure now answers them in order,
+as three labeled bands:)*
+
+- **Band 1 — "A slice is a lens on the blueprint, not a copy."** (the
+  relationship question, answered first and biggest). One mini blueprint
+  grid (quoting anatomy, dimmed) with a handful of cells highlighted; thin
+  arrows pull those exact cells rightward into an ordered frame deck (the
+  slice). Two annotations: the frames *point back* at cells (dashed
+  soft-ref connectors — update the cell, the slice sees it), and deleting/
+  re-importing the blueprint never breaks the slice (refs by key).
+- **Band 2 — "Five ways to cut."** (the types question, answered
+  explicitly). Five small thumbnails of the SAME dimmed grid, each with a
+  different selection pattern highlighted: journey = a reading-order sweep
+  across lanes · step = one column · lane = one row · cell = a single
+  cell · custom = an arbitrary dashed lasso. One-word label + one use-case
+  clause under each.
+- **Band 3 — "One slice, two postures."** Annotated-UI motif: two wireframe
+  mocks of the actual slice surfaces side by side — the composer (frame
+  strip, storyboard, edit affordances) and the presentation view (one
+  frame full-bleed, chrome gone) — with two callouts each, and the "same
+  slice" connector between them.
+
+**`four-ways-in.svg`** (~880×440) — *(RECOMPOSED round 5; the
+corners-converging layout was weak).* New composition: **one blueprint,
+four surfaces.** A full-width blue foundation bar across the bottom — the
+blueprint as structured data (mini-grid motif + `.mono` "one source of
+truth"). Above it, four equal mini-scenes in a row, each an annotated-UI
+wireframe of the surface where that consumption actually happens: a
+browser window (the app — read, compare, present) · the app with the agent
+dock open (ask & author, amber accent) · an IDE window with `sb:` in the
+composer (map & maintain, amber, `.mono`) · a chat surface (Slack /
+claude.ai via MCP — query from anywhere, dashed border = read-only). One
+drop-line from each scene into the foundation bar, labeled with what that
+way is FOR. Small-print footer: tiers/rosters/RLS enforcement — security
+as footnote, not frame.
+
+**`skill-architecture.svg`** (~880×520, total redraw) — four columns under
+one roof, matching the package: SKILLS (4 amber cards, `.mono` names, one
+firing line each) · AGENTS (5 white cards, "fresh context · blind" badge
+row) · REFERENCES (blue group panel, grouped stacks with generated counts)
+· SCRIPTS & GATES (green-accented, validator/tools/generators; hooks as a
+3-chip footer). Thin arrows: skills → agents; references → both; scripts
+gate the flow (green diamonds). Bottom caption band: "one source of truth,
+two consumers — IDE plugin · canvas agent" with two small outlet chips.
+**Drafting prerequisite (round 5):** the skill setup changed recently
+(0.2.2 structural pass — `skills/blueprint` → `skills/map`, audit_tools
+reference impl, slice fallback clause — plus uncommitted fixes in the
+tree); re-inventory the ACTUAL tree (incl. uncommitted state, once
+committed) immediately before drafting, and take every count from the
+count script, not from this plan.
+
+**`from-docs-to-blueprint.svg` — CUT** (round 5, Bill: "what's this???").
+The standalone pipeline figure kept failing its audience twice (first as
+"IR", then de-jargoned) — the concept doesn't earn a figure of its own.
+Its content merges into `creating-a-blueprint.svg` as the artifact track
+under the rail (sources → one validated file → generated data), which is
+where the reader is already looking when the question arises. Guide/03's
+"what lands on disk" section keeps the prose + the `.mono` filename table;
+IR is introduced there, once, parenthetically.
+
+Consistency checklist applied at every figure review: 880 wide · type
+scale classes reused verbatim · tints only with their fixed meanings ·
+dashed = derived/virtual · gates always green diamonds · `.mono` only for
+literals · any quoted structure drawn dimmed in data-model chip shapes.
 
 ## Process — how review works
 
@@ -417,9 +643,9 @@ practice-scenarios · skill-workflow; all else on docs pages.
 
 1. ~~Companion vs. extend-original~~ — RESOLVED (Bill, 2026-08-08): two
    companion figures, cell-anatomy + slicing-model; original untouched.
-2. skill-workflow two-loop layout: stacked tracks (proposed) vs. one circular
-   loop? Stacked keeps the existing left-to-right reading grammar; circular
-   is prettier but breaks the house style's rail idiom.
+2. ~~skill-workflow layout~~ — RESOLVED (Bill, 2026-08-08): split into two
+   assets, `authoring-loop.svg` + `living-loop.svg`, interlocked via the
+   shared "live blueprint" chip; each keeps the left-to-right rail grammar.
 3. Count-drift test (Process 3) — worth keeping as a permanent test, or
    review-time script only?
 4. Dark-mode variants: current SVGs are light-only (README renders them on

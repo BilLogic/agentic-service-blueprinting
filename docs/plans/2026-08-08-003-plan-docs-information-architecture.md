@@ -82,7 +82,7 @@ after:
 
 Ends with the case-study link for the full argument + eval ladder.
 
-### 3. See it live (~12 lines · one hero screenshot, not a drawn figure)
+### 3. See it live (~15 lines · hero screenshot + the video set)
 
 Now the reader knows what they're looking at (that was §2's job — this is
 the ordering answer: plain definition BEFORE the demo, detailed model
@@ -95,9 +95,14 @@ after). Contents, concretely:
 - **Three "try this" bullets**: click a phase and open a scenario · flip
   between paths (or compare them side by side) · open a cell and read what
   sits behind the moment.
-
-No demo-recording placeholders here — recordings land inside §5's
-scenarios when they exist (asset plan: one per practice scenario).
+- **The videos** (Bill, round 3: several recordings ARE part of See it
+  live). One per practice scenario, same locked roster and order as §5:
+  ground a decision · compare paths · align stakeholders · keep it honest.
+  Each video portrays the practice first, then the three-ways beat
+  (UI → in-app agent → IDE), per the asset plan's recording replan. Listed
+  here as titled links/embeds, one line each; §5's vignettes link back to
+  their matching video rather than re-embedding. Until recorded, this
+  subsection simply doesn't exist — no placeholders.
 
 ### 4. The blueprint model (~25 lines · figures: `data-model-hierarchy.svg`, `blueprint-anatomy.svg`)
 
@@ -111,27 +116,41 @@ vs. reality, current vs. proposed, side by side"). Everything deeper —
 cells' spec fields, evidence/findings, slices, steps-scoping, import order
 — is one link: guide/01.
 
-### 5. When your team reaches for it (~30 lines · figure: `practice-scenarios.svg`)
+### 5. When your team reaches for it (~28 lines · NO figure — prose, round 6)
 
-The heart. Four vignettes under the figure, 3–4 lines each, locked order:
-**ground a product decision → compare paths → align stakeholders → keep it
-honest.** Each: the situation in the reader's words → what the blueprint
-does for it → link to the guide/02 walkthrough. Demo recordings embed per
-vignette when produced.
+The heart, now carried entirely by writing (Bill: the per-skill figures in
+§6 cover the concrete use cases; this section earns recognition through
+voice, not a diagram). Four short paragraphs **in a service designer's
+voice, worded against the textbook** (Løvlie/Polaine/Reason ch. 6 — the
+wording anchors live in the asset plan):
 
-Closes with the three-ways line as prose — *"every one of these runs three
-ways: click through the app, ask the in-app agent, or work from your IDE"*
-— the README's only agent mention above §6. Agent stays the bonus.
+1. *Situate a change* — briefed on one touchpoint, but situating it in the
+   wider journey shows what it actually touches; play out the "what if…"
+   before anyone commits.
+2. *Compare journeys* — as-is against to-be, this path against that one,
+   side by side; the two most common uses of a blueprint, rendered.
+3. *Slice it for the room* — the journey summary for leadership, the
+   channel view for the web team, the touchpoint spec for the squad;
+   print it, take it to the meeting.
+4. *Keep it coherent* — find the touchpoints pushing in opposite
+   directions and the gaps everyone thought somebody else owned.
 
-### 6. How blueprints get made (~15 lines · figure: `skill-workflow.svg`)
+Each paragraph links its guide/02 walkthrough; demo recordings attach per
+scenario when produced. Closes with the three-ways sentence — the README's
+only agent mention above §6.
 
-One figure of machinery depth: install the plugin, ask for a map. The
-authoring loop (draft → review → sign off → import → verify) and the living
-loop (slice → audit → what-if → promote → re-import). The four skills are
-named here for the first time, one clause each. Everything deeper — the
-architecture figure, the pipeline, agents, gates, other backends — is one
-link: guide/03. (Today's "How it works" subsection and the
-skill-architecture figure move out of the README entirely.)
+### 6. The four skills (~20 lines · figures: `sb-map.svg` · `sb-slice.svg` · `sb-audit.svg` · `sb-whatif.svg`)
+
+One figure per skill (round 6 — the loop pair is retired), matched
+three-band template: the situation in textbook voice · the flow with its
+gates · what you're left with. Order: map → slice → audit → whatif, each
+with one sentence of prose beneath; follow-chips inside the figures chain
+them so no master loop diagram is needed. §5's scenarios and §6's skills
+deliberately rhyme — the reader recognizes the situation first, then meets
+the skill that serves it. Deeper machinery (architecture figure, agents,
+gates, other backends) is one link: guide/03. Budget note: README carries
+7 inline SVGs (why-now, hierarchy, anatomy, the four skill figures); the
+skill set occupies one narrative slot.
 
 ### 7. Get set up (~25 lines)
 
@@ -147,11 +166,31 @@ Corrected scripts table (+ audit_tools, slice_tools) · corrected repo map
 (4 skills, 5 agents, styles pointer post-port) · closing line: "full map in
 docs/INDEX.md".
 
-**Figure placement summary** — README inline (5): why-now · hierarchy ·
-anatomy · practice-scenarios · skill-workflow. Guides: cell-anatomy +
-slicing-model → guide/01 · four-ways-in → guide/02 · skill-architecture +
-from-docs-to-blueprint → guide/03. Plus the §3 hero screenshot (not part of
-the SVG set).
+**The weave — every planned asset, both homes:**
+
+| Asset | README | Guide |
+| --- | --- | --- |
+| `why-now.svg` (new) | §2 inline | — (case study reuses it) |
+| hero screenshot | §3 inline | — |
+| scenario videos ×4 | §3 embeds | guide/02 §1 links back |
+| `data-model-hierarchy.svg` (keep + pointer line) | §4 inline | guide/01 §1 re-embed |
+| `blueprint-anatomy.svg` (keep + role legend) | §4 inline | guide/01 §2 re-embed |
+| ~~`practice-scenarios.svg`~~ | CUT round 6 — §5 is prose in textbook voice | guide/02 §1 stays prose too |
+| `sb-map.svg` (new; artifact strip carries the pipeline) | §6 inline | guide/03 §§1,3 re-embed |
+| `sb-slice.svg` (new) | §6 inline | guide/03 §1 + guide/01 §4 link |
+| `sb-audit.svg` (new) | §6 inline | guide/03 §1 re-embed |
+| `sb-whatif.svg` (new) | §6 inline | guide/03 §1 re-embed |
+| `cell-anatomy.svg` (new) | — | guide/01 §3 |
+| `slicing-model.svg` (new) | — | guide/01 §4 |
+| `four-ways-in.svg` (new) | — | guide/02 §2 |
+| `skill-architecture.svg` (total revamp) | — | guide/03 §2 |
+| ~~`from-docs-to-blueprint.svg`~~ | CUT (round 5) — content lives in creating-a-blueprint's artifact track + guide/03 §3 prose | — |
+| `erd.mmd` (deferred to Migration v2 P1) | — | guide/04 §2 links it |
+
+Rule the table enforces: every SVG has exactly one README home OR one guide
+home as its primary, and depth pages stand alone (re-embeds allowed
+downward, never a guide figure floating up into the README past the
+5-figure budget).
 
 ## The four guides — outlines
 
@@ -204,11 +243,12 @@ does the machinery work, and what lands on my disk?*
    exit gate.
 2. **The agents** — five, and the fresh-context / deliberately-blind design
    rule *(figure: skill-architecture)*.
-3. **From your docs to a blueprint** *(figure: from-docs-to-blueprint)* —
-   sources in → one validated blueprint file (here, once, parenthetically:
-   "internally called the IR") → workspace companions (state, sign-off
-   hashes, findings ledger) → generated outputs (no-DB module, seed) →
-   deployed app. Gates in plain words.
+3. **From your docs to a blueprint** *(no dedicated figure — reads off
+   creating-a-blueprint's artifact track, re-embedded here)* — sources in →
+   one validated blueprint file (here, once, parenthetically: "internally
+   called the IR") → workspace companions (state, sign-off hashes, findings
+   ledger) → generated outputs (no-DB module, seed) → deployed app. Gates
+   in plain words; `.mono` filename table for the engineer.
 4. **The loop and its gates** *(re-embed skill-workflow)* — deterministic
    exits, never "looks done"; cadence guidance (a blueprint touched once is
    a failure).
