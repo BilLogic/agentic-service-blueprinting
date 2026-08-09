@@ -12,8 +12,10 @@ import via a backend adapter (no-DB fallback or Supabase), present with the
 bundled React template, and update in place. A blueprint touched once is a
 failure; touched monthly is the product.
 
-All `references/`, `scripts/`, and `assets/` paths below live at the plugin
-root (`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same
+All paths below are relative to the plugin root (`${CLAUDE_PLUGIN_ROOT}`):
+this skill's own materials live under `skills/map/references/`, while the
+shared core (`references/`, `scripts/`, `agents/`, `assets/`) sits at the
+root because every skill uses it. A scaffolded workspace carries the same
 files in its template clone.
 
 ## The workspace
@@ -28,7 +30,7 @@ git-tracked in the org's **workspace** (a clone of this template):
   (`{en: …, zh: …}`); every entity has a stable key that UUIDs derive from,
   so re-imports are idempotent.
 - `blueprint-workspace.json` — per-scenario status + sign-off hash,
-  per-locale targets, schema_version. Spec: `references/workspace-state.md`.
+  per-locale targets, schema_version. Spec: `skills/map/references/workspace-state.md`.
 
 Pipeline: `sources → IR → validate → review/sign-off → import (adapter) →
 build check → deploy`, then the update loop re-enters at ingest or import.
@@ -42,21 +44,21 @@ Then route:
 
 | Entry state | Route | Read first |
 | --- | --- | --- |
-| Nothing — no docs, no workspace | Scaffold workspace (confirm directory!), co-create | `references/cocreate-playbook.md` |
-| Prose/service docs exist | Scaffold, then ingest | `references/ingest-playbook.md` |
-| Foreign structured blueprint (FigJam/xlsx/Shostack/Miro export) | Scaffold, then translate via crosswalk | `references/translate-playbook.md` |
+| Nothing — no docs, no workspace | Scaffold workspace (confirm directory!), co-create | `skills/map/references/cocreate-playbook.md` |
+| Prose/service docs exist | Scaffold, then ingest | `skills/map/references/ingest-playbook.md` |
+| Foreign structured blueprint (FigJam/xlsx/Shostack/Miro export) | Scaffold, then translate via crosswalk | `skills/map/references/translate-playbook.md` |
 | Existing template clone, no IR yet | Ask: ingest or co-create | playbook per answer |
 | Stale clone (schema_version mismatch vs plugin/template) | Upgrade recipe before any content work | `references/customization.md` |
-| Mid-pipeline (workspace state shows drafted/unreviewed scenarios) | Resume at the first unmet exit condition | `references/review-import-playbook.md` |
-| Deployed, needs update | Delta edits/docs → IR → re-sign-off → re-import → redeploy | playbook for the delta + `references/review-import-playbook.md`, `references/deploy-notes.md` |
-| Inherited workspace (state file present, unknown provenance) | Read state + `HANDOFF.md`, verify sign-off hash, resume | `references/workspace-state.md` |
+| Mid-pipeline (workspace state shows drafted/unreviewed scenarios) | Resume at the first unmet exit condition | `skills/map/references/review-import-playbook.md` |
+| Deployed, needs update | Delta edits/docs → IR → re-sign-off → re-import → redeploy | playbook for the delta + `skills/map/references/review-import-playbook.md`, `skills/map/references/deploy-notes.md` |
+| Inherited workspace (state file present, unknown provenance) | Read state + `HANDOFF.md`, verify sign-off hash, resume | `skills/map/references/workspace-state.md` |
 
 **Playbook gating**: before executing a phase, READ its playbook — do not
 improvise the phase from memory. Before ingesting, read
-`references/ingest-playbook.md`; before co-creating,
-`references/cocreate-playbook.md`; before translating,
-`references/translate-playbook.md`; before reviewing or importing,
-`references/review-import-playbook.md`. The playbooks carry the branch
+`skills/map/references/ingest-playbook.md`; before co-creating,
+`skills/map/references/cocreate-playbook.md`; before translating,
+`skills/map/references/translate-playbook.md`; before reviewing or importing,
+`skills/map/references/review-import-playbook.md`. The playbooks carry the branch
 logic and gates this skill's correctness depends on.
 
 Decline early what this isn't for: org charts, gantt charts, non-journey
@@ -123,15 +125,15 @@ definition needed.
 
 | Read when | File |
 | --- | --- |
-| Executing a phase | `references/ingest-playbook.md` / `cocreate-playbook.md` / `translate-playbook.md` / `review-import-playbook.md` |
-| Running the co-creation conversation | `references/elicitation-protocol.md` (question script + right-sizing branches) |
+| Executing a phase | `skills/map/references/ingest-playbook.md` / `cocreate-playbook.md` / `translate-playbook.md` / `review-import-playbook.md` |
+| Running the co-creation conversation | `skills/map/references/elicitation-protocol.md` (question script + right-sizing branches) |
 | Writing or checking IR structure | `references/ir-schema.json`; model background in `references/data-model.md` |
 | Assigning swimlane roles / divider lines | `references/layer-roles.md` |
 | Drafting multiple phases consistently (customer spine per phase, shared actor labels) | `references/lane-vocabulary.md` |
-| Building a translation mapping | `references/crosswalk-schema.json` |
+| Building a translation mapping | `skills/map/references/crosswalk-schema.json` |
 | Anything touching an import target | `references/adapter-contract.md` |
-| Reading/writing workspace state or sign-off | `references/workspace-state.md` |
-| Before anything goes public; deploy gotchas | `references/deploy-notes.md` (⚠ public-exposure warning lives here) |
+| Reading/writing workspace state or sign-off | `skills/map/references/workspace-state.md` |
+| Before anything goes public; deploy gotchas | `skills/map/references/deploy-notes.md` (⚠ public-exposure warning lives here) |
 | Theming, custom roles, portfolio/client conventions, template upgrades | `references/customization.md` |
 | Generating the workspace handoff doc | `assets/HANDOFF.md.template` |
 

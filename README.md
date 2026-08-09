@@ -42,7 +42,7 @@ The pipeline in one line:
 
 ![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
 
-*One always-loaded **skill** ([SKILL.md](./skills/map/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
+*One always-loaded **skill** ([SKILL.md](./skills/map/SKILL.md)) routes the work: it pulls **one playbook per phase** from its own [skills/map/references/](./skills/map/references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
 
 ### The workflow
 
@@ -103,7 +103,7 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 
 ### Deploy
 
-`netlify.toml` at the repo root carries the build command, `dist/` publish dir, node version, and the SPA redirect (`/* /index.html 200`). Any static host works — the build always produces a plain `dist/`; live-DB mode needs `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at **build time**. Blueprint-specific deploy gotchas: [references/deploy-notes.md](./references/deploy-notes.md).
+`netlify.toml` at the repo root carries the build command, `dist/` publish dir, node version, and the SPA redirect (`/* /index.html 200`). Any static host works — the build always produces a plain `dist/`; live-DB mode needs `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at **build time**. Blueprint-specific deploy gotchas: [skills/map/references/deploy-notes.md](./skills/map/references/deploy-notes.md).
 
 ### Connect your agents
 
@@ -133,10 +133,10 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 | Path | Purpose |
 | --- | --- |
 | [.claude-plugin/plugin.json](./.claude-plugin/plugin.json) | Claude Code plugin manifest — this is what makes the repo installable as a plugin |
-| [skills/map/SKILL.md](./skills/map/SKILL.md) | The skill entry point: routing, hard rules, phase exit conditions |
+| [skills/](./skills/) | Four skills, one directory each (`map`, `slice`, `audit`, `whatif`): `SKILL.md` entry point plus that skill's own `references/` (playbooks, schemas, check docs) and `scripts/` |
 | [agents/](./agents/) | Subagents: `document-reader`, `blueprint-reviewer` (adversarial pre-sign-off review), `render-checker` |
-| [references/](./references/) | Phase playbooks, IR + crosswalk schemas, layer-role & lane vocabularies, adapter contract, workspace state spec |
-| [scripts/](./scripts/) | IR pipeline: validator, fallback + seed generators, sign-off hasher, tests |
+| [references/](./references/) | Shared core every skill uses: data model, IR schema, adapter contract, canvas adapter, layer-role & lane vocabularies, customization, audit playbook |
+| [scripts/](./scripts/) | Shared IR pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, IR auto-validation on edit, service-role secret guard |
 | `src/components/blueprint/` | Blueprint grid, paths, trigger arrows (shadcn/ui + Tailwind v4; theme tokens in `src/index.css`) |
 | `src/components/editor/` | Canvas/slide editor shell |

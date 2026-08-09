@@ -65,7 +65,7 @@ for locale, target in sorted(targets.items()):
 
 lines.append(
     "Use the sb:map skill to resume; it routes by this state "
-    "(see references/workspace-state.md)."
+    "(see skills/map/references/workspace-state.md)."
 )
 print("\n".join(lines))
 PY

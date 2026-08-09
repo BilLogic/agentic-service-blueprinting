@@ -341,7 +341,7 @@ pass "signoff-filter (--scenario selects one; unknown key errors)"
 # Slice tools
 # ---------------------------------------------------------------------------
 
-SLICE_TOOLS="$REPO_ROOT/scripts/slice_tools.py"
+SLICE_TOOLS="$REPO_ROOT/skills/slice/scripts/slice_tools.py"
 SLICE_FILE="$TMP/slices.json"
 
 # select -> validate -> sql -> doc round trip.

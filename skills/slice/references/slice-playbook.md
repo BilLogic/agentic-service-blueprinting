@@ -37,7 +37,7 @@ slice that asserts it.
 ## 2. Propose the selection
 
 ```bash
-python3 scripts/slice_tools.py select \
+python3 skills/slice/scripts/slice_tools.py select \
   --ir blueprint/<file>.json --scenario <phase>/<scenario> \
   --path <path> --type journey --layer <lane> --key <slice-key> --actor "<label>"
 ```
@@ -73,7 +73,7 @@ hides two. Frame count is an editorial choice — cell membership is not.
 ## 4. Validate
 
 ```bash
-python3 scripts/slice_tools.py validate --ir blueprint/<file>.json --slices slices/<key>.json
+python3 skills/slice/scripts/slice_tools.py validate --ir blueprint/<file>.json --slices slices/<key>.json
 ```
 
 Exit 0 is required before any import. It enforces: every cell key resolves in
@@ -92,7 +92,7 @@ differently:
 ## 5. Import
 
 ```bash
-python3 scripts/slice_tools.py sql --ir blueprint/<file>.json --slices slices/<key>.json \
+python3 skills/slice/scripts/slice_tools.py sql --ir blueprint/<file>.json --slices slices/<key>.json \
   --locale <locale> --lifecycle-id <service_lifecycles.id>
 ```
 
@@ -122,7 +122,7 @@ the DB but absent from the file is an orphan the next validate cannot see.
 ## 7. Storyboard (optional, after the text path)
 
 Frames are complete without images. When illustrations are wanted, read
-`references/storyboard-prompts.md` — it carries the character-reference flow,
+`skills/slice/references/storyboard-prompts.md` — it carries the character-reference flow,
 the style block, the **prompt redaction step**, and the human review gate
 before the first upload of a slice.
 

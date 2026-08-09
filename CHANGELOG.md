@@ -4,6 +4,24 @@ All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
 repository and version together (workspace plugin version = template version).
 
+## 0.3.0 — 2026-08-08
+
+Per-skill resource layout, per the official plugin-structure guidance:
+each skill now owns its exclusive materials under its own directory —
+skills/map/references/ (four phase playbooks, elicitation-protocol,
+deploy-notes, workspace-state, crosswalk-schema), skills/audit/
+(references/check-*.md ×7, scripts/audit_tools.py), skills/slice/
+(references/ slice-playbook + slice-templates + slice-schema +
+storyboard-prompts, scripts/slice_tools.py), skills/whatif/references/
+(whatif-playbook, change-request-schema). Root references/ and scripts/
+now hold only the shared core consumed by 2+ skills (data-model,
+adapter-contract, canvas-adapter, customization, lane-vocabulary,
+layer-roles, ir-schema, audit-playbook; validate_ir, sign-off hasher,
+generators). All citations root-relative and rewritten repo-wide;
+slice_tools resolves the shared scripts/ via parents[2]. App-side
+vendored copy of map/SKILL.md renamed blueprint.md → map.md (last
+fossil of the pre-0.2.2 skill name). Tests 30/30.
+
 ## 0.2.2 — 2026-08-05
 
 Structural pass per Anthropic skill-authoring standards (skill-creator).

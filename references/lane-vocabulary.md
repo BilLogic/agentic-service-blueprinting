@@ -85,7 +85,7 @@ Rules:
 ## 3. Source-layout crosswalk
 
 Foreign diagrams rarely use Shostack roles. Map their lanes to roles once, then
-apply the mapping to every phase (see also `references/crosswalk-schema.json`):
+apply the mapping to every phase (see also `skills/map/references/crosswalk-schema.json`):
 
 | Source layout | Map to role |
 | --- | --- |

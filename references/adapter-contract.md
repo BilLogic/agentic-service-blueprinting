@@ -29,13 +29,13 @@ An adapter must implement all of these:
 Identify exactly what will be written to (Supabase project ref / output file
 paths), echo it to the user, and get confirmation **before any write**
 (wrong-project protection). Locale-scoped: one target per locale, tracked in
-`blueprint-workspace.json` (see `references/workspace-state.md`).
+`blueprint-workspace.json` (see `skills/map/references/workspace-state.md`).
 
 **Multi-account Supabase:** a connector sees ONE account/org. A bare
 `permission denied` / "project not found" means the connected account
 cannot see the target project — not that the SQL is wrong; don't retry.
 Connector setup mechanics and the session-reload requirement live in
-`references/review-import-playbook.md` §6.
+`skills/map/references/review-import-playbook.md` §6.
 
 ### 2. Schema provisioning
 Ensure the target carries the template schema at a compatible

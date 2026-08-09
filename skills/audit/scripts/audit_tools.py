@@ -9,13 +9,13 @@ audit-playbook §2 (fingerprint) and §3 (dedupe table), plus the §1 export
 and the no-DB findings-report substrate.
 
 Usage:
-    python3 scripts/audit_tools.py fingerprint --check gap-sweep \
+    python3 skills/audit/scripts/audit_tools.py fingerprint --check gap-sweep \
         --cell-keys k1 k2 ...              # or --scope "warm-up:orphan-step"
-    python3 scripts/audit_tools.py export <ir-file> [--scenario <key>] \
+    python3 skills/audit/scripts/audit_tools.py export <ir-file> [--scenario <key>] \
         --out audit/export-<scenario>.json
-    python3 scripts/audit_tools.py dedupe --ledger audit/findings-report.json \
+    python3 skills/audit/scripts/audit_tools.py dedupe --ledger audit/findings-report.json \
         --incoming <findings.json>          # prints actions, applies nothing
-    python3 scripts/audit_tools.py report --ledger audit/findings-report.json \
+    python3 skills/audit/scripts/audit_tools.py report --ledger audit/findings-report.json \
         --incoming <findings.json> --run-id <uuid> --apply
         # applies §3 to the file ledger (the no-DB route substrate)
 

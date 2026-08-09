@@ -83,7 +83,7 @@ and vice versa — fingerprints keep them disjoint by construction.
 
 When the human accepts a whatif's recommendation:
 1. Emit `changes/<key>.json` conforming to
-   `references/change-request-schema.json` — the diff (cell-key
+   `skills/whatif/references/change-request-schema.json` — the diff (cell-key
    addressed), affected scenario keys, the base sign-off hashes captured
    at analysis time, and the finding fingerprints it supersedes.
 2. Then STOP and tell the user to invoke sb:map (map-promote) — never

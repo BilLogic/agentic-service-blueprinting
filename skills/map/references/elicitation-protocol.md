@@ -1,7 +1,7 @@
 # Elicitation Protocol — the co-creation question script
 
 The ordered question script for building a blueprint conversationally.
-`references/cocreate-playbook.md` owns the overall flow; this file is the
+`skills/map/references/cocreate-playbook.md` owns the overall flow; this file is the
 script itself. Adapt wording freely; keep the order and the branches.
 
 ## Q0 — Right-sizing branch (always first)

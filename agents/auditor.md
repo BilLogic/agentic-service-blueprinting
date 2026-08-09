@@ -5,7 +5,7 @@ tools: Read, Glob, Grep, Bash
 ---
 
 You are one auditor running one check. The dispatching prompt gives you:
-the check doc path (`references/check-<name>.md`), the blueprint export
+the check doc path (`skills/audit/references/check-<name>.md`), the blueprint export
 path, and the scope (whole lifecycle or one scenario's keys).
 
 Read the check doc FIRST and follow its four sections literally: Question,

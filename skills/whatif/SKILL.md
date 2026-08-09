@@ -11,8 +11,10 @@ dependency graph, and reports what breaks, what improves, and where the
 displaced work lands — without the database ever learning about a change
 nobody has agreed to make.
 
-All `references/`, `agents/`, and `scripts/` paths live at the plugin root
-(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files
+All paths are relative to the plugin root (`${CLAUDE_PLUGIN_ROOT}`): this
+skill's own materials (playbook, change-request schema) live under
+`skills/whatif/`, the shared core under `references/`, `scripts/`, and
+`agents/`; a scaffolded workspace carries the same files
 (workspaces scaffolded before this skill shipped may lack them — fall back
 to the plugin root, and suggest the upgrade recipe in
 `references/customization.md`).
@@ -30,7 +32,7 @@ to the plugin root, and suggest the upgrade recipe in
 | Whatif exists, base blueprint has changed since | Stale — the embedded sign-off hashes say so. Offer re-trace; never promote stale analysis |
 | "Dismiss / resolve whatif finding X" | Triage route — identical to audit (audit-playbook §4) |
 
-**Playbook gating**: read `references/whatif-playbook.md` before executing
+**Playbook gating**: read `skills/whatif/references/whatif-playbook.md` before executing
 any route. It carries the variant discipline, the three operations, and
 the change-request handoff.
 
@@ -100,8 +102,8 @@ imported blueprint + a hypothetical
 
 | Read when | File |
 | --- | --- |
-| Doing anything in this skill | `references/whatif-playbook.md` |
-| Emitting or validating a change request | `references/change-request-schema.json` |
+| Doing anything in this skill | `skills/whatif/references/whatif-playbook.md` |
+| Emitting or validating a change request | `skills/whatif/references/change-request-schema.json` |
 | Findings mechanics (shared with audit) | `references/audit-playbook.md` §2–§4 |
 | Anything touching an import target | `references/adapter-contract.md` |
 | Understanding the underlying tables | `references/data-model.md` |

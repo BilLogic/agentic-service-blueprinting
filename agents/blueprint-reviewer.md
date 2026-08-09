@@ -72,8 +72,8 @@ validator stops: it proves the IR is well-formed; you probe whether it is
 ## Slice mode
 
 Ground yourself in the slice file, the IR it cites, and
-`references/slice-playbook.md`. Run
-`python3 scripts/slice_tools.py validate` first — it proves the keys resolve;
+`skills/slice/references/slice-playbook.md`. Run
+`python3 skills/slice/scripts/slice_tools.py validate` first — it proves the keys resolve;
 your job is whether the slice tells the truth about them.
 
 A slice selects cells that already exist. It may not add information. Every

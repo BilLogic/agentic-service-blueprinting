@@ -55,7 +55,7 @@ elicitation), or to none.
   attach long-form copy/screenshots to a pill by matching its label.
 - Roles `visual`/`step_visual` render `picture` and ignore text content. An
   empty visual row (null `picture`) is a valid default — see
-  `references/ingest-playbook.md` §6 for sourcing stage images.
+  `skills/map/references/ingest-playbook.md` §6 for sourcing stage images.
 
 ## Custom roles
 

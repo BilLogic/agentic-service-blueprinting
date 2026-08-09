@@ -15,8 +15,10 @@ It selects, orders, captions, and cites. Every claim points at a cell key.
 Regenerating a slice is therefore cheap and safe, which is the whole reason
 the derived layer exists.
 
-All `references/`, `agents/`, and `scripts/` paths live at the plugin root
-(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files
+All paths are relative to the plugin root (`${CLAUDE_PLUGIN_ROOT}`): this
+skill's own materials (playbook, templates, schema, `slice_tools.py`) live
+under `skills/slice/`, the shared core under `references/`, `scripts/`, and
+`agents/`; a scaffolded workspace carries the same files
 (workspaces scaffolded before this skill shipped may lack them — fall back
 to the plugin root, and suggest the upgrade recipe in
 `references/customization.md`).
@@ -32,13 +34,13 @@ selecting anything:
 | Workspace DB predates the derived layer (`relation public.slices does not exist`) | Stop before any insert: apply the derived-layer migrations (`supabase/migrations/20260729120000_derived_layer.sql` onward) to the target, then resume — never hand-create the tables |
 | IR exists, scenario not signed off | Finish review first: a slice of unsigned IR cites cells review may still change |
 | Signed off, not imported | Import the scenario, then slice |
-| Imported, no slices yet | Read `references/slice-playbook.md`, then select |
+| Imported, no slices yet | Read `skills/slice/references/slice-playbook.md`, then select |
 | Slices exist, user wants another | Select; reuse the existing slice keys' naming conventions |
 | Slices exist, user wants this one changed | Check `origin` before touching it (playbook §6) |
 | Slice cites keys that no longer resolve | Stale after a key rename — re-select, re-apply prose. Never substitute a lookalike key |
-| Text slices exist, user wants pictures | Storyboard sub-flow — `references/storyboard-prompts.md` |
+| Text slices exist, user wants pictures | Storyboard sub-flow — `skills/slice/references/storyboard-prompts.md` |
 
-**Playbook gating**: read `references/slice-playbook.md` before executing any
+**Playbook gating**: read `skills/slice/references/slice-playbook.md` before executing any
 of these routes. It carries the selection rules, the framing defaults, and
 the regeneration branches this skill's correctness depends on.
 
@@ -60,7 +62,7 @@ actually breaks:
   public-read tables and to docs that get shared. Reference evidence and
   propositions by cell key or title; never paste excerpt text or figures.
   Personas, never participants ("a first-time tutor", not a name).
-- ⚠ **REQUIRED — validate before import.** `scripts/slice_tools.py validate`
+- ⚠ **REQUIRED — validate before import.** `skills/slice/scripts/slice_tools.py validate`
   must exit 0. It catches unresolvable cell keys, duplicate cells, and
   multi-scenario slices — each of which renders as silently wrong rather
   than as an error.
@@ -88,7 +90,7 @@ imported + signed scenario
 ```
 
 Correctness-critical logic — cell-id derivation, selection rules, validation,
-SQL emission — lives in `scripts/slice_tools.py`. **Execute it; never
+SQL emission — lives in `skills/slice/scripts/slice_tools.py`. **Execute it; never
 reimplement its logic in-context.** Its cell-id derivation must agree
 byte-for-byte with the blueprint import, or the slice points at rows that do
 not exist.
@@ -134,10 +136,10 @@ Never "looks done":
 
 | Read when | File |
 | --- | --- |
-| Doing anything in this skill | `references/slice-playbook.md` |
-| Writing or checking a slice file | `references/slice-schema.json` |
-| Structuring the markdown companion | `references/slice-templates.md` |
-| Generating illustrations | `references/storyboard-prompts.md` |
+| Doing anything in this skill | `skills/slice/references/slice-playbook.md` |
+| Writing or checking a slice file | `skills/slice/references/slice-schema.json` |
+| Structuring the markdown companion | `skills/slice/references/slice-templates.md` |
+| Generating illustrations | `skills/slice/references/storyboard-prompts.md` |
 | Naming lanes and actors consistently across slices | `references/lane-vocabulary.md` |
 | Anything touching an import target | `references/adapter-contract.md` |
 | Understanding the underlying tables | `references/data-model.md` |

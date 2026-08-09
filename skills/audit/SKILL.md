@@ -12,8 +12,10 @@ interrogation, each executed by a fresh-context auditor — and lands the
 results as `findings` rows a human can triage. The audit never fixes
 anything: it points, with severities, at cells by key.
 
-All `references/`, `agents/`, and `scripts/` paths live at the plugin root
-(`${CLAUDE_PLUGIN_ROOT}`); a scaffolded workspace carries the same files
+All paths are relative to the plugin root (`${CLAUDE_PLUGIN_ROOT}`): this
+skill's own materials (the check docs, `audit_tools.py`) live under
+`skills/audit/`, the shared core under `references/`, `scripts/`, and
+`agents/`; a scaffolded workspace carries the same files
 (workspaces scaffolded before this skill shipped may lack them — fall back
 to the plugin root, and suggest the upgrade recipe in
 `references/customization.md`).
@@ -28,7 +30,7 @@ to the plugin root, and suggest the upgrade recipe in
 | "Audit just scenario X" | Same pipeline, cell universe scoped to that scenario's keys |
 | "Dismiss / resolve finding X" | **Triage route** — status change only, playbook §4. Never re-run checks to honor a triage ask |
 | Re-run after edits | Full run; supersede semantics below make it safe |
-| "Add a new check" | Author a `references/check-*.md` from the template in playbook §5, then run it alone once before adding it to the roster |
+| "Add a new check" | Author a `skills/audit/references/check-*.md` from the template in playbook §5, then run it alone once before adding it to the roster |
 
 Row precedence when the first three could overlap: DB reachability decides
 (credentials present AND the target answers) — per-scenario draft status
@@ -74,10 +76,10 @@ triage rules, and the check-authoring template.
 
 ```
 imported blueprint (or IR files)
-  → roster    (enumerate references/check-*.md; skips decided HERE and
+  → roster    (enumerate skills/audit/references/check-*.md; skips decided HERE and
                only here — rules in playbook §1.5, every skip reported)
   → export    (one read-only blueprint export the auditors share —
-               scripts/audit_tools.py export)
+               skills/audit/scripts/audit_tools.py export)
   → dispatch  (one auditor per check, parallel, blind)
   → collect   (findings JSON per check; malformed output = check failed,
                re-dispatch once, then report the check as failed)
@@ -90,7 +92,7 @@ imported blueprint (or IR files)
 
 ## The check roster
 
-One file per check, `references/check-<name>.md`. Wave 1 needs only core
+One file per check, `skills/audit/references/check-<name>.md`. Wave 1 needs only core
 blueprint data; wave 2 reads the spec columns and **skips gracefully** —
 reported, never silent — when they are absent or empty.
 
@@ -134,7 +136,7 @@ reportable result, not a failure.
 | Read when | File |
 | --- | --- |
 | Doing anything in this skill | `references/audit-playbook.md` |
-| Executing a specific check | `references/check-<name>.md` |
+| Executing a specific check | `skills/audit/references/check-<name>.md` |
 | Anything touching an import target | `references/adapter-contract.md` |
 | Understanding the findings table | `references/data-model.md` |
 | Naming lanes/actors while reading | `references/lane-vocabulary.md` |

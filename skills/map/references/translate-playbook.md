@@ -22,7 +22,7 @@ Do not interpret yet — extraction first, mapping second.
 ## 2. Build the crosswalk (the reviewable artifact)
 
 Write a crosswalk file in the workspace `blueprint/` dir conforming to
-`references/crosswalk-schema.json`:
+`skills/map/references/crosswalk-schema.json`:
 
 - **Lanes → layers/roles.** Map to canonical roles where semantics match
   (their "Customer" → `customer_actions`); create **org-defined custom
@@ -61,14 +61,14 @@ Apply the approved crosswalk to generate the IR per
 - Run `scripts/validate_ir.py`; fix to exit 0; mark the scenario `drafted`
   in `blueprint-workspace.json`.
 
-Then hand off to `references/review-import-playbook.md` — translated
+Then hand off to `skills/map/references/review-import-playbook.md` — translated
 blueprints go through the same preview/review/sign-off gate as everything
 else.
 
 ## ⚠ Exit condition (deterministic)
 
 Translation of a scenario ends when **the crosswalk file validates against
-`references/crosswalk-schema.json` with an explicitly user-approved mapping
+`skills/map/references/crosswalk-schema.json` with an explicitly user-approved mapping
 (zero `unmapped` entries left at disposition `pending`), AND
 `scripts/validate_ir.py` exits 0 on the generated IR, AND the scenario is
 marked `drafted` in `blueprint-workspace.json`.**

@@ -55,7 +55,7 @@ npx tsc --noEmit && npm run build    # must be green before any deploy
 ```
 
 Deep-link check after deploying: open `{{DEPLOY_SMOKE_URL}}` cold — a 404
-means the host's SPA redirect is missing (see `references/deploy-notes.md`).
+means the host's SPA redirect is missing (see `skills/map/references/deploy-notes.md`).
 
 **Public exposure**: these deployments are public unless you added access
 control. Do not import content here that can't be public.

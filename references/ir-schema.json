@@ -13,7 +13,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "description": "Template schema version this IR was authored against. Import performs a compatibility check against the workspace clone's schema_version (see references/workspace-state.md)."
+      "description": "Template schema version this IR was authored against. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md)."
     },
     "locales": {
       "type": "array",

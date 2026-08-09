@@ -8,7 +8,7 @@ truth for journey structure).
 ## Posture
 
 This is a conversation, not a form. The full question script with exact
-wording lives in `references/elicitation-protocol.md` — follow its order but
+wording lives in `skills/map/references/elicitation-protocol.md` — follow its order but
 keep it dialogic: reflect back what you heard, propose structure, let the
 user correct. The user is the source of truth; you are the notation.
 
@@ -64,7 +64,7 @@ Content elicited from conversation carries no `provenance` (there is no
 source doc); if the user cites a document for a specific claim, record it.
 Mark genuinely unconfirmed guesses `needs_review: true`.
 
-Then hand off to `references/review-import-playbook.md`.
+Then hand off to `skills/map/references/review-import-playbook.md`.
 
 ## ⚠ Exit condition (deterministic)
 

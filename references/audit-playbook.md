@@ -53,7 +53,7 @@ that never happened.
 fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n'))
 ```
 
-`scripts/audit_tools.py fingerprint` is the reference implementation —
+`skills/audit/scripts/audit_tools.py fingerprint` is the reference implementation —
 execute it rather than hand-computing (two hand-rolled implementations
 that disagree on a separator split the finding history).
 
@@ -77,7 +77,7 @@ that disagree on a separator split the finding history).
 
 ## §3 Dedupe decision table
 
-`scripts/audit_tools.py dedupe` (plan) / `report --apply` (no-DB ledger)
+`skills/audit/scripts/audit_tools.py dedupe` (plan) / `report --apply` (no-DB ledger)
 implement this table — execute, never improvise.
 
 | Incoming fingerprint matches… | Action |

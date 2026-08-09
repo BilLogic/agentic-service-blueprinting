@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/slice-schema.json",
+  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/skills/slice/references/slice-schema.json",
   "title": "Slice file",
-  "description": "Slices for one workspace, authored as human-editable JSON in slices/*.json and validated by scripts/slice_tools.py. A slice is an ordered one-dimensional selection of cells that ALREADY EXIST in the IR — it never creates, edits, or deletes a cell. Cells are referenced by their qualified key (<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>); database UUIDs are UUIDv5-derived from that key plus the locale, exactly as in the IR import, so a slice and the blueprint it slices always agree on cell identity. Both are written to slice_items: cell_ids for the join the app runs, cell_keys so a re-import (which is delete-and-reinsert) leaves a recoverable trail. Text fields are locale maps; structural fields are locale-independent.",
+  "description": "Slices for one workspace, authored as human-editable JSON in slices/*.json and validated by skills/slice/scripts/slice_tools.py. A slice is an ordered one-dimensional selection of cells that ALREADY EXIST in the IR — it never creates, edits, or deletes a cell. Cells are referenced by their qualified key (<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>); database UUIDs are UUIDv5-derived from that key plus the locale, exactly as in the IR import, so a slice and the blueprint it slices always agree on cell identity. Both are written to slice_items: cell_ids for the join the app runs, cell_keys so a re-import (which is delete-and-reinsert) leaves a recoverable trail. Text fields are locale maps; structural fields are locale-independent.",
   "type": "object",
   "required": ["schema_version", "slices"],
   "additionalProperties": false,

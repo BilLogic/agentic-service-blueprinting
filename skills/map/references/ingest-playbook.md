@@ -3,9 +3,9 @@
 For when the org **has documentation** (prose, research, guides, manuals in
 md/text/docx/pdf/xlsx, FigJam/Figma via MCP). Goal: a validated IR with
 per-cell provenance, one scenario at a time. If the docs turn out to be a
-*structured blueprint already*, switch to `references/translate-playbook.md`;
+*structured blueprint already*, switch to `skills/map/references/translate-playbook.md`;
 if they describe the system rather than a journey, switch to
-`references/cocreate-playbook.md` (see the critical branch below).
+`skills/map/references/cocreate-playbook.md` (see the critical branch below).
 
 ## 1. Triage + exclusion (before reading anything at depth)
 
@@ -41,14 +41,14 @@ Before drafting anything, classify what the docs actually describe:
   **do not fabricate a blueprint from them.** A blueprint hallucinated from
   a user manual is plausible, wrong, and presented as parsed truth — the
   worst failure mode. Tell the user what you found, then pivot to
-  `references/cocreate-playbook.md` using the docs as reference material.
+  `skills/map/references/cocreate-playbook.md` using the docs as reference material.
 
 ## 4. Cheap skeleton preview before IR
 
 Propose the lifecycle → phases → scenarios outline as plain markdown FIRST
 and get a nod. A wrong parse costs one message here; after IR drafting it
 costs a rebuild. Also settle right-sizing now (single flow? skip lifecycle
-ceremony — see `references/elicitation-protocol.md`).
+ceremony — see `skills/map/references/elicitation-protocol.md`).
 
 ## 5. Deep read + draft, one scenario at a time
 
@@ -68,7 +68,7 @@ For each scenario the user picked:
 3. Run `scripts/validate_ir.py`; fix until exit 0.
 4. Mark the scenario `drafted` in `blueprint-workspace.json`.
 
-Then hand off to `references/review-import-playbook.md` for preview, review,
+Then hand off to `skills/map/references/review-import-playbook.md` for preview, review,
 sign-off, and import.
 
 ## 6. Journey-stage images (`visual` / `step_visual` rows)

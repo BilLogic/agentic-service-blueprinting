@@ -41,7 +41,7 @@ explicitly approves a previewed scenario:
 
 1. Compute its hash: `python3 scripts/compute_signoff_hash.py <ir> --scenario <key>`.
 2. Record that `content_hash` (+ `signed_at`/`signed_by`) on the scenario's
-   entry in `blueprint-workspace.json` (see `references/workspace-state.md`),
+   entry in `blueprint-workspace.json` (see `skills/map/references/workspace-state.md`),
    and set its status to `signed_off`.
 
 Import **refuses on hash mismatch, per scenario** — an edit after approval
