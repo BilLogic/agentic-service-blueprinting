@@ -17,7 +17,7 @@
 
   <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Types of slices</text>
 
-  <!-- ==================== band 1: the five cuts ==================== -->
+  <!-- ==================== band 1: the five slice types ==================== -->
   <text x="16" y="18" class="rail">FIVE WAYS TO SLICE</text>
 
   <!-- journey -->

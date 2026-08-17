@@ -4,6 +4,18 @@ All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
 repository and version together (workspace plugin version = template version).
 
+## Unreleased
+
+- Parity plan carries the 2026-08-17 uno field adjustments (docs/plans/
+  2026-08-08-001, top STATUS REFRESH): compare-view doctrine (quiet canvas,
+  fold retired, wash-on-face path affiliation, shared-cell member labels,
+  arrow layering/dedupe), canonical `LINE OF …` divider names + 208px rail,
+  container anatomy (header band in frame, rail bleed, badge headroom, pan
+  rule), per-scenario loading with real progress + surgical invalidation,
+  agent-surface lessons (capped reads carry `count=exact` totals; no
+  agent-only controls; replies never fold), and an obsolete-source content
+  hygiene check for sb:audit.
+
 ## 0.3.0 — 2026-08-08
 
 Per-skill resource layout, per the official plugin-structure guidance:

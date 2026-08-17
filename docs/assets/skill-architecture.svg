@@ -90,7 +90,7 @@
     <path d="M16,158 a10,10 0 0 1 10,-10 h226 a10,10 0 0 1 10,10 v18 h-246 z" fill="#e8f3ed"/>
     <line x1="16" y1="176" x2="262" y2="176" stroke="#9dbfa9"/>
     <text x="30" y="167" class="title mono">sb:slice</text>
-    <text x="248" y="167" class="sub" text-anchor="end">cut stakeholder views</text>
+    <text x="248" y="167" class="sub" text-anchor="end">take a stakeholder view</text>
     <text x="30" y="196" class="tree mono">SKILL.md</text>
     <path class="twig" d="M36,202 L36,244 M36,212 L50,212 M36,228 L50,228 M36,244 L50,244"/>
     <text x="56" y="215" class="tree mono">references/ 4</text>

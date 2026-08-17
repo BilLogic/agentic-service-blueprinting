@@ -223,10 +223,10 @@ rect; the failures are copy and concept.
 | F5 | `slicing-model.svg` | 0 | 16 | **compliant** — the five cuts lead as parallel thumbnails; below them the same slice on the canvas and in presentation, linked by the play control; type keys verified against `slice-schema.json`, both surfaces against `SliceView.tsx` / `SlicePresentation.tsx` |
 | F6 | `four-ways-in.svg` | 0 | 13 | **compliant** — titled `The four ways in`; four plain cards named for what they are; amber stroke marks agent-capable, dashed marks read-only, arrow pairs carry read/write (labelled once, on the first pair) |
 | F7 | `skill-architecture.svg` | 0 | 46 | **compliant** — redrawn: three even columns (skills · shared references · agents); one container per shared doc; per-doc links drawn as one rail per skill, verified against each SKILL.md; docs ordered so every skill's set is contiguous; arrowheads reserved for the spawn relation |
-| F8 | `sb-map.svg` | 0 | 11 | **compliant** — caption cut (it restated the drawing) |
-| F9 | `sb-slice.svg` | 0 | 10 | **compliant** — output is now one document per cut, all five types (`journey` `step` `lane` `cell` `custom`); invented audiences, the grid caption and the closing caption all cut |
-| F10 | `sb-audit.svg` | 0 | 12 | **compliant** — caption cut; the two left callouts cut as duplicates of the findings rows they described |
-| F11 | `sb-whatif.svg` | 0 | 11 | **compliant** — caption cut; the dashed panel and the accept row already carry it |
+| F8 | `sb-map.svg` | 0 | 10 | **compliant** — output is now drawn: one file glyph carrying `blueprint.json` with a green validator check, opening into the rendered blueprint. The two label lines ("one validated file", "no database required") were telling and are gone |
+| F9 | `sb-slice.svg` | 0 | 10 | **compliant** — five documents, each previewing the shape it holds (ordered moments · a column · a strip · one cell plus spec · an irregular set); no "cut" anywhere |
+| F10 | `sb-audit.svg` | 0 | 22 | **compliant** — the real roster is the subject: seven named checks, blueprint fanning into each, findings labelled with the check that raised them. Over the 12-element guide, justified: the check names are the value proposition |
+| F11 | `sb-whatif.svg` | 0 | 12 | **compliant** — left is the blueprint as it stands, not a changed one; the question sits in the middle; three dashed futures branch out, each showing how far the change reaches |
 | — | `why-now-a.svg`, `why-now-b.svg` | 2 each | 14 / 21 | **delete** — superseded prototypes |
 
 ### Cleanup order

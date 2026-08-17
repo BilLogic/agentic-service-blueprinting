@@ -133,6 +133,6 @@
   <path class="lead" d="M150,546 L246,560"/>
 
   <text x="644" y="640" class="anno">SLICES</text>
-  <text x="644" y="653" class="sub">the cuts this cell appears in</text>
+  <text x="644" y="653" class="sub">the slices this cell appears in</text>
   <path class="lead" d="M640,644 L632,646"/>
 </svg>

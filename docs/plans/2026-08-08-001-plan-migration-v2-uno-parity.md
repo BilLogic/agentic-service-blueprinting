@@ -12,6 +12,94 @@ sources:
 
 # Migration v2 — the starter kit catches up to the proving ground
 
+## STATUS REFRESH — 2026-08-17 (uno field adjustments to port)
+
+uno-blueprint ran a nine-round live-review cycle (PR #24, merged to its
+main 2026-08-17) that settled several DESIGN DECISIONS the template and
+skills here should adopt as parity items. These are decisions, not
+sketches — each was iterated against Bill live and shipped:
+
+**Compare-view doctrine (viewer template)**
+- The canvas stays QUIET in both compare arrangements: divergent-column
+  tints and the tinted header cells are retired everywhere — the Diff
+  ledger is the difference finder. The divergence zone strip renders in
+  Stacked only (merged is one combined board; the strip there was chrome
+  without a job).
+- Fold/pleats are deleted end-to-end (state, tracks, pleat cells, pin
+  rule, agent commands). Lesson recorded: when a human control is removed,
+  its agent commands go WITH it — an agent-only canvas control the human
+  cannot see or undo is an anti-pattern.
+- Path affiliation in merged view = a WASH on the cell face itself
+  (`background-image` layered over the face's own background so bounds and
+  radius are inherited — never a separate tint box), at 16% `color-mix` in
+  oklab: 24% repainted the cell, 10% was invisible. The lane color stays
+  the primary identity.
+- Equal-content sub-cells in a divergent slot collapse into ONE drawn cell
+  carrying every member path (striped wash + one short label per member);
+  a FULLY-shared cell carries every member's label but no wash (wash means
+  "strict subset"). Hidden members' arrow endpoints alias onto the drawn
+  cell; identical (source, target, kind, label) edges draw once.
+- Trigger-arrow layering: the forward layer sits UNDER the cells (z-0 vs
+  the cells' z-1) — a run crossing a cell tucks behind it, never strikes
+  through its face. A fuller anchor-slot/confluence router is specced in
+  uno's `docs/plans/2026-08-17-003-feat-trigger-line-anatomy-plan.md`
+  (S1–S10 situation catalog) — port when built.
+
+**Canonical vocabulary**
+- Divider rows are the service-blueprint canon names: `LINE OF
+  INTERACTION` / `LINE OF VISIBILITY` / `LINE OF INTERNAL INTERACTION`.
+- Lane-rail width 208px (192 clipped two-word lane names + the longer
+  canonical divider labels).
+
+**Container anatomy**
+- The step-header row lives INSIDE the path frame with no container of its
+  own; it gets a light band — the lane rail's horizontal counterpart, one
+  tint lighter (45% of the rail color) — held 3px inside the frame edges
+  so the border is never overpainted. The lane rail bleeds through the
+  frame's top gap and bottom inset (also stopping 3px short of the
+  border, with a matched inner corner radius) so the frame interior has
+  no white L-gaps.
+- Semantic-zoom phase badges counter-scale with a 10× cap (16× reached
+  into the previous phase's row) and generous row gaps (320px), so group
+  affiliation reads at any zoom.
+- Pan-ignore selectors match interactive CHROME only — container-wide
+  entries (panel, phase-section wrappers) make every drag inside a board a
+  dead drag.
+
+**Loading doctrine**
+- Blueprint fetch = ONE QUERY PER SCENARIO (`canvas-blueprints:scenario:
+  <id>`): real progress ticks per settled request, cache keys stable under
+  membership changes, and surgical invalidation (a cell edit invalidates
+  exactly the scenario whose cached rows contain the edited path;
+  structural creates/deletes sweep the prefix). A failed scenario degrades
+  only itself to the bundled fallback.
+- The progress bar is anchored to real completions with a bounded creep
+  between anchors (never past real work + 12, capped 94), snaps to 100 on
+  completion, and the content reveal holds 450ms so loading always ends on
+  a visibly full bar — but ONLY when the mount actually showed a loading
+  pass: warm remounts settle instantly (skeleton flash on tab-switch was
+  the bug).
+- Skeletons are INVISIBLE pure geometry (the camera pre-fits against their
+  dimensions); the bar is the sole visible signal.
+
+**Agent-surface lessons (skills + any bot built on the schema)**
+- Any capped read tool MUST carry the table total alongside the page
+  (PostgREST `Prefer: count=exact` rides the same request) and the tool
+  result must instruct the model to answer count questions from the
+  total, never the page (uno-bot shipped "answered 5 of 14" before this;
+  live-verified fixed at r66).
+- Chat replies never fold into accordions; only completed tool/status
+  step runs do. Loading flags must cover the window BEFORE hydration
+  starts (client still resolving), and a hydrate that fires before its
+  persistence attaches must park and replay on the attach signal, not
+  burn its attempt.
+
+**Content hygiene**
+- Blueprints must not model obsolete source: uno purged a whole scenario
+  built on a dead student-portal surface (`/PLUSStudent`) plus a stray
+  step in a second scenario. sb:audit candidate check: flag cells whose
+  code links point at paths absent from the current tree.
+
 ## STATUS REFRESH — 2026-08-08 (end of day; supersedes stale claims below)
 
 Both repos moved after this plan was written. Current truth:
