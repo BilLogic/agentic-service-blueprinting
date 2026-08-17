@@ -40,27 +40,21 @@ The pipeline in one line:
 
 ### How it works
 
-![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
+![The skill set and agent fleet — four skills with their own resources, the shared references each links, and the agents they spawn](./docs/assets/skill-architecture.svg)
 
-*One always-loaded **skill** ([SKILL.md](./skills/map/SKILL.md)) routes the work: it pulls **one playbook per phase** from its own [skills/map/references/](./skills/map/references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
-
-### The workflow
-
-![Agentic blueprinting workflow — four phases; what loads, who spawns, and which gate must pass at each](./docs/skill-workflow.svg)
-
-*Each phase swaps in its own playbook, spawns only the agents it needs, and ends at a deterministic gate checked against `blueprint-workspace.json` — never "looks done". The loop back is the point: a blueprint touched once is a failure; touched monthly, it stays the operational source of truth.*
+*Four skills, each carrying its own playbooks and scripts and linking only the shared references its task needs. The heavy reading happens in **fresh-context agents** — `document-reader` over the sources, `blueprint-reviewer` over the draft, `auditor` one check at a time, `impact-tracer` down the dependency graph — each returning a thin summary rather than its raw material. Every phase ends at a deterministic gate, never at "looks done".*
 
 ## The blueprint model
 
 ### How a blueprint is organized
 
-![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/data-model-hierarchy.svg)
+![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/assets/data-model-hierarchy.svg)
 
 *Read left to right — each panel zooms one level in: a **lifecycle** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
 
 ### Inside a single path
 
-![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/blueprint-anatomy.svg)
+![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
 
 *Lanes are rows — one actor each, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
 

@@ -17,6 +17,8 @@
     </marker>
   </defs>
 
+  <rect x="0" y="-44" width="880" height="634" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+
   <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">How a blueprint is organized</text>
 
   <!-- ===== Panel A: lifecycle holds phases ===== -->
@@ -104,4 +106,5 @@
   <text x="785" y="550" text-anchor="middle" class="head">PATH</text>
   <text x="785" y="568" text-anchor="middle" class="sub">actors as lanes, moments as steps,</text>
   <text x="785" y="581" text-anchor="middle" class="sub">actions as cells</text>
+
 </svg>

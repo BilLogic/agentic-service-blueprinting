@@ -12,6 +12,49 @@ sources:
 
 # Migration v2 — the starter kit catches up to the proving ground
 
+## STATUS REFRESH — 2026-08-08 (end of day; supersedes stale claims below)
+
+Both repos moved after this plan was written. Current truth:
+
+**This repo is at 0.3.0** (`274c4a0..3e7127a`): Phase 0's plugin fixes are
+LANDED (`b80af90`), the version was cut, and the structure changed to the
+**per-skill resource layout** — 8 shared root `references/` + per-skill
+`references/` and `scripts/` under each of `skills/{map,slice,audit,whatif}`.
+The IR now carries the wave-2 spec fields (`1472c5b` — an IR schema change;
+Phase 6's "confirm schema_version unchanged" is now "bump and CHANGELOG
+it"). Skill eval sets landed in-plugin (`4998869`). Canvas-adapter rules
+single-homed (`c5fab6c`).
+
+**Phase 1 is substantially DONE**: the derived-layer DDL is in
+`supabase/migrations/` (`20260729120000_derived_layer.sql` +
+`20260730090000_..._grants_hardening.sql` + `20260803001000_slices_origin_
+allows_human.sql`). Still open from Phase 1: the **service-tier recipe**
+(no service_account / RPC-assert migrations here yet), **ERD regen** (now
+unblocked — do it), **seed/fixture parity for derived rows**, and the
+adapter-contract no-DB findings note.
+
+**Phase 0 residue**: `package.json` still says `0.0.0` (version invariant
+still broken — one-line fix) and the Ecoeled workspace upgrade hasn't run.
+
+**uno-blueprint executed its docs IA** (`c410d10`, `73b6504`): generated
+`docs/INDEX.md` via `scripts/generate-docs-index.mjs`, full
+product/design/engineering/reference trees, boot-protocol AGENTS.md.
+Phase 4 here mirrors that — adopt the **generated-INDEX script** pattern
+rather than a hand-written map. uno's `decisions/` was left empty, which
+supports this repo's decision to cut that layer.
+
+**New uno surface a port must now account for** (`71cb1f7`, `93f1c22`):
+a canonical cross-repo **blueprint contract** (`src/lib/blueprintContract.
+ts`, `urlViewState.ts`) with a CI probe (`bot-contract-probe.yml`), shared
+**semantic-search DDL** (versioned migrations 20260809…), and **uno-bot** —
+a Slack consumer hitting the deployed blueprint. The bot is live proof of
+the "external agent" way-in; the contract + probe pattern is worth porting
+as the template's own consumer-contract story (new Phase 2/3 line item).
+Eval harness in uno is now one-sourced on the app's real tool surface
+(`1d33428`) — port that shape, not the older mirrored-cases shape.
+
+Everything below stands except where this section corrects it.
+
 ## Why a v2 plan
 
 The 2026-08-06 transfer plan was written when the delta was "design system +

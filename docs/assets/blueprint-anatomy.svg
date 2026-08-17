@@ -15,6 +15,8 @@
     </marker>
   </defs>
 
+  <rect x="0" y="-44" width="880" height="544" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+
   <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Inside a single path</text>
 
   <!-- Path sheets: variants stacked behind -->
@@ -122,4 +124,5 @@
   <text x="724" y="322" class="anno">LINE OF VISIBILITY</text>
   <text x="724" y="335" class="sub">users can't see below this line</text>
   <path class="lead" d="M720,325 L694,310"/>
+
 </svg>

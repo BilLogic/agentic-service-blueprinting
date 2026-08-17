@@ -1,0 +1,167 @@
+<svg viewBox="0 -44 880 474" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .sub { font-size: 9.5px; fill: #9ca3af; }
+    .rail { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .link { stroke: #b6bac2; stroke-width: 1.2; fill: none; marker-end: url(#aLink); }
+    .dk { fill: #8f98a3; }
+    .pick { stroke: #9aadbe; stroke-width: 1.6; fill: none; }
+  </style>
+
+  <defs>
+    <marker id="aLink" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#b6bac2"/></marker>
+  </defs>
+
+  <rect x="0" y="-44" width="880" height="474" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+
+  <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Types of slices</text>
+
+  <!-- ==================== band 1: the five cuts ==================== -->
+  <text x="16" y="18" class="rail">FIVE WAYS TO SLICE</text>
+
+  <!-- journey -->
+  <g>
+    <g opacity="0.55">
+      <rect x="16" y="30" width="152" height="22" fill="#e8f3ed"/>
+      <rect x="16" y="52" width="152" height="22" fill="#fdf1e3"/>
+      <rect x="16" y="74" width="152" height="22" fill="#fbe9f0"/>
+      <rect x="16" y="96" width="152" height="22" fill="#ecebf5"/>
+      <rect x="16" y="30" width="152" height="88" fill="none" stroke="#d4d4da"/>
+      <line x1="54" y1="30" x2="54" y2="118" stroke="#e2e4e9"/>
+      <line x1="92" y1="30" x2="92" y2="118" stroke="#e2e4e9"/>
+      <line x1="130" y1="30" x2="130" y2="118" stroke="#e2e4e9"/>
+    </g>
+    <path class="pick" d="M24,41 L46,41 L62,63 L84,63 L100,85 L122,85 L138,107 L160,107"/>
+  </g>
+  <text x="16" y="140" class="chip mono">journey</text>
+  <text x="16" y="155" class="sub">one actor's path, summarized</text>
+
+  <!-- step -->
+  <g>
+    <g opacity="0.55">
+      <rect x="190" y="30" width="152" height="22" fill="#e8f3ed"/>
+      <rect x="190" y="52" width="152" height="22" fill="#fdf1e3"/>
+      <rect x="190" y="74" width="152" height="22" fill="#fbe9f0"/>
+      <rect x="190" y="96" width="152" height="22" fill="#ecebf5"/>
+      <rect x="190" y="30" width="152" height="88" fill="none" stroke="#d4d4da"/>
+      <line x1="228" y1="30" x2="228" y2="118" stroke="#e2e4e9"/>
+      <line x1="266" y1="30" x2="266" y2="118" stroke="#e2e4e9"/>
+      <line x1="304" y1="30" x2="304" y2="118" stroke="#e2e4e9"/>
+    </g>
+    <rect class="pick" x="266" y="30" width="38" height="88"/>
+  </g>
+  <text x="190" y="140" class="chip mono">step</text>
+  <text x="190" y="155" class="sub">one step, top to bottom</text>
+
+  <!-- lane -->
+  <g>
+    <g opacity="0.55">
+      <rect x="364" y="30" width="152" height="22" fill="#e8f3ed"/>
+      <rect x="364" y="52" width="152" height="22" fill="#fdf1e3"/>
+      <rect x="364" y="74" width="152" height="22" fill="#fbe9f0"/>
+      <rect x="364" y="96" width="152" height="22" fill="#ecebf5"/>
+      <rect x="364" y="30" width="152" height="88" fill="none" stroke="#d4d4da"/>
+      <line x1="402" y1="30" x2="402" y2="118" stroke="#e2e4e9"/>
+      <line x1="440" y1="30" x2="440" y2="118" stroke="#e2e4e9"/>
+      <line x1="478" y1="30" x2="478" y2="118" stroke="#e2e4e9"/>
+    </g>
+    <rect class="pick" x="364" y="52" width="152" height="22"/>
+  </g>
+  <text x="364" y="140" class="chip mono">lane</text>
+  <text x="364" y="155" class="sub">one lane, left to right</text>
+
+  <!-- cell -->
+  <g>
+    <g opacity="0.55">
+      <rect x="538" y="30" width="152" height="22" fill="#e8f3ed"/>
+      <rect x="538" y="52" width="152" height="22" fill="#fdf1e3"/>
+      <rect x="538" y="74" width="152" height="22" fill="#fbe9f0"/>
+      <rect x="538" y="96" width="152" height="22" fill="#ecebf5"/>
+      <rect x="538" y="30" width="152" height="88" fill="none" stroke="#d4d4da"/>
+      <line x1="576" y1="30" x2="576" y2="118" stroke="#e2e4e9"/>
+      <line x1="614" y1="30" x2="614" y2="118" stroke="#e2e4e9"/>
+      <line x1="652" y1="30" x2="652" y2="118" stroke="#e2e4e9"/>
+    </g>
+    <rect class="pick" x="614" y="52" width="38" height="22"/>
+  </g>
+  <text x="538" y="140" class="chip mono">cell</text>
+  <text x="538" y="155" class="sub">one cell, in full</text>
+
+  <!-- custom -->
+  <g>
+    <g opacity="0.55">
+      <rect x="712" y="30" width="152" height="22" fill="#e8f3ed"/>
+      <rect x="712" y="52" width="152" height="22" fill="#fdf1e3"/>
+      <rect x="712" y="74" width="152" height="22" fill="#fbe9f0"/>
+      <rect x="712" y="96" width="152" height="22" fill="#ecebf5"/>
+      <rect x="712" y="30" width="152" height="88" fill="none" stroke="#d4d4da"/>
+      <line x1="750" y1="30" x2="750" y2="118" stroke="#e2e4e9"/>
+      <line x1="788" y1="30" x2="788" y2="118" stroke="#e2e4e9"/>
+      <line x1="826" y1="30" x2="826" y2="118" stroke="#e2e4e9"/>
+    </g>
+    <path class="pick" stroke-dasharray="4 3" d="M726,44 L822,38 L840,88 L774,110 L722,82 Z"/>
+  </g>
+  <text x="712" y="140" class="chip mono">custom</text>
+  <text x="712" y="155" class="sub">whatever the question needs</text>
+
+
+  <!-- ==================== band 2: the same slice, two ways to look at it ==================== -->
+  <text x="16" y="196" class="rail">ON THE CANVAS</text>
+  <text x="452" y="196" class="rail">IN PRESENTATION</text>
+
+  <!-- left: the slice on the canvas -->
+  <rect x="16" y="210" width="412" height="190" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+  <rect x="32" y="226" width="120" height="9" rx="3" fill="#d4d4da"/>
+  <rect x="352" y="222" width="60" height="18" rx="9" fill="#fafbfc" stroke="#c9ccd4"/>
+  <path d="M363,227 L370,231 L363,235 Z" fill="#6b7280"/>
+  <text x="376" y="234" class="sub" font-size="8.5" fill="#6b7280">present</text>
+  <line x1="16" y1="250" x2="428" y2="250" stroke="#e2e4e9"/>
+
+  <g>
+    <g opacity="0.55">
+      <rect x="32" y="266" width="380" height="29" fill="#e8f3ed"/>
+      <rect x="32" y="295" width="380" height="29" fill="#fdf1e3"/>
+      <rect x="32" y="324" width="380" height="29" fill="#fbe9f0"/>
+      <rect x="32" y="353" width="380" height="29" fill="#ecebf5"/>
+      <rect x="32" y="266" width="380" height="116" fill="none" stroke="#d4d4da"/>
+      <line x1="127" y1="266" x2="127" y2="382" stroke="#e2e4e9"/>
+      <line x1="222" y1="266" x2="222" y2="382" stroke="#e2e4e9"/>
+      <line x1="317" y1="266" x2="317" y2="382" stroke="#e2e4e9"/>
+    </g>
+    <rect x="44" y="273" width="71" height="15" rx="3" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
+    <rect x="139" y="302" width="71" height="15" rx="3" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
+    <rect x="234" y="302" width="71" height="15" rx="3" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
+    <rect x="234" y="331" width="71" height="15" rx="3" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
+    <rect x="329" y="360" width="71" height="15" rx="3" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
+    <rect x="139" y="360" width="71" height="15" rx="3" fill="none" stroke="#e2e4e9"/>
+    <rect x="329" y="273" width="71" height="15" rx="3" fill="none" stroke="#e2e4e9"/>
+  </g>
+
+  <!-- the play control opens the same slice in presentation -->
+  <path class="link" d="M412,231 H448"/>
+
+  <!-- right: presentation -->
+  <rect x="452" y="210" width="412" height="190" rx="10" fill="#273036"/>
+  <text x="658" y="240" class="mono" font-size="8" letter-spacing=".2em" fill="#8f98a3" text-anchor="middle">FRAME 2 OF 4</text>
+  <rect x="588" y="256" width="140" height="12" rx="3" fill="#5d6771"/>
+  <rect x="568" y="280" width="180" height="7" rx="3" fill="#434c55"/>
+  <rect x="592" y="294" width="132" height="7" rx="3" fill="#434c55"/>
+  <rect x="468" y="252" width="18" height="40" rx="4" fill="#323a42"/>
+  <path d="M479,266 L474,272 L479,278" stroke="#8f98a3" stroke-width="1.4" fill="none"/>
+  <rect x="830" y="252" width="18" height="40" rx="4" fill="#323a42"/>
+  <path d="M837,266 L842,272 L837,278" stroke="#8f98a3" stroke-width="1.4" fill="none"/>
+
+  <line x1="452" y1="324" x2="864" y2="324" stroke="#3a424b"/>
+  <rect x="500" y="338" width="64" height="40" rx="5" fill="#323a42"/>
+  <rect x="580" y="338" width="64" height="40" rx="5" fill="#3f4952" stroke="#8f98a3" stroke-width="1.2"/>
+  <rect x="660" y="338" width="64" height="40" rx="5" fill="#323a42"/>
+  <rect x="740" y="338" width="64" height="40" rx="5" fill="#323a42"/>
+  <g opacity="0.4">
+    <rect x="820" y="352" width="28" height="4" fill="#8f98a3"/>
+    <rect x="820" y="358" width="28" height="4" fill="#8f98a3"/>
+    <rect x="820" y="364" width="28" height="4" fill="#8f98a3"/>
+    <rect x="820" y="370" width="28" height="4" fill="#8f98a3"/>
+    <rect x="834" y="358" width="7" height="4" fill="#ffffff"/>
+  </g>
+</svg>

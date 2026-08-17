@@ -104,7 +104,13 @@ after). Contents, concretely:
   their matching video rather than re-embedding. Until recorded, this
   subsection simply doesn't exist — no placeholders.
 
-### 4. The blueprint model (~25 lines · figures: `data-model-hierarchy.svg`, `blueprint-anatomy.svg`)
+### 4. The blueprint model (~34 lines · figures: F2 organized · F3 path · F4 cell · F5 slice)
+
+**Revised 2026-08-08 (Bill):** the cell and slice figures move up from
+guide/01 into the README, so §4 reads as one continuous zoom — structure,
+then one path, then one cell, then one slice. Density note: four figures
+back to back is the longest such stretch in the document; if it drags in
+review, F4 and F5 are the two to demote back into guide/01.
 
 The nitty-gritty §2's definition deferred: how a blueprint is actually
 organized. Hierarchy figure (lifecycle → phase → scenario → path), three
@@ -139,18 +145,20 @@ Each paragraph links its guide/02 walkthrough; demo recordings attach per
 scenario when produced. Closes with the three-ways sentence — the README's
 only agent mention above §6.
 
-### 6. The four skills (~20 lines · figures: `sb-map.svg` · `sb-slice.svg` · `sb-audit.svg` · `sb-whatif.svg`)
+### 6. The plugin (~18 lines · figure: F6 overview of the sb skill set and agent fleet)
 
-One figure per skill (round 6 — the loop pair is retired), matched
-three-band template: the situation in textbook voice · the flow with its
-gates · what you're left with. Order: map → slice → audit → whatif, each
-with one sentence of prose beneath; follow-chips inside the figures chain
-them so no master loop diagram is needed. §5's scenarios and §6's skills
-deliberately rhyme — the reader recognizes the situation first, then meets
-the skill that serves it. Deeper machinery (architecture figure, agents,
-gates, other backends) is one link: guide/03. Budget note: README carries
-7 inline SVGs (why-now, hierarchy, anatomy, the four skill figures); the
-skill set occupies one narrative slot.
+**Revised 2026-08-08 (Bill) — progressive disclosure.** The README no
+longer carries a figure per command. It carries ONE plugin figure: the
+four skills, the docs and scripts each one uses, and the agent fleet they
+call on. Prose names the skills in a clause each and links to guide/03,
+where every command gets its own section and its own figure (F8–F11).
+
+### 6b. How to make use of the blueprint (~12 lines · figure: F7)
+
+The four ways the same rows are reached — the app, the agent inside it,
+your agentic tools, and Claude in Slack or your own bot — over one
+foundation. Prose owns who may do what; the figure owns "same data,
+different surfaces".
 
 ### 7. Get set up (~25 lines)
 
@@ -229,8 +237,10 @@ Answers: *what do I actually do with it?*
    Compare-paths section speaks service-design vocabulary explicitly.
    Demo recordings embed here.
 2. **Four ways in** *(figure: four-ways-in)* — browse · in-app agent `[P3]`
-   · IDE skills · external MCP; per way: who it's for, what it can do,
-   smallest example. Enforcement footnote table → guide/04.
+   · IDE skills · external agents (MCP / dedicated bots — uno's live Slack
+   uno-bot, built on the canonical blueprint contract, is the proof case to
+   cite); per way: who it's for, what it can do, smallest example.
+   Enforcement footnote table → guide/04.
 3. **Presenting and sharing** — present a slice · print/PDF · deep links
    `[P2]` · read-only public deploy as the share-out default.
 
@@ -275,7 +285,13 @@ For whoever runs a deployment. Answers: *how do I run this responsibly?*
 4. **Upgrading** — version invariant (plugin = template) · CHANGELOG ·
    the customization.md recipe · recompute sign-off hashes after.
 
-## docs/INDEX.md (~30 lines)
+## docs/INDEX.md (~30 lines, GENERATED)
+
+*(Round 7: uno executed its IA with a generated INDEX —
+`scripts/generate-docs-index.mjs` reading doc frontmatter, header warning
+"edit frontmatter or the script, never this file." Adopt the same pattern
+here; it also subsumes the asset plan's count-drift idea — one generator
+script owns every derivable number in the docs.)*
 
 Table: doc · the question it answers · phase tag if gated. Then the agent
 routing block (task family → guide + references), and the two-line

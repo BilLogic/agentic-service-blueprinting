@@ -1,0 +1,100 @@
+<svg viewBox="0 -40 880 292" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 11px; font-weight: 700; fill: #273036; }
+    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .sub { font-size: 9.5px; fill: #9ca3af; }
+    .rail { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .flow { stroke: #8e8e93; stroke-width: 1.6; fill: none; marker-end: url(#arrA); }
+    .fan { stroke: #d4d4da; stroke-width: 1; fill: none; }
+  </style>
+  <defs>
+    <marker id="arrA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#8e8e93"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="-40" width="880" height="292" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+
+  <text x="16" y="-14" font-size="15" font-weight="700" fill="#273036">How to use <tspan class="mono">sb:audit</tspan></text>
+
+  <!-- left: the blueprint under review -->
+  <text x="24" y="10" class="rail">THE BLUEPRINT</text>
+  <rect x="16" y="18" width="212" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+  <g opacity="0.7">
+    <rect x="36" y="52" width="172" height="35" fill="#e8f3ed"/>
+    <rect x="36" y="87" width="172" height="35" fill="#fdf1e3"/>
+    <rect x="36" y="122" width="172" height="35" fill="#fbe9f0"/>
+    <rect x="36" y="157" width="172" height="35" fill="#ecebf5"/>
+    <rect x="36" y="52" width="172" height="140" fill="none" stroke="#d4d4da"/>
+    <line x1="79" y1="52" x2="79" y2="192" stroke="#e2e4e9"/>
+    <line x1="122" y1="52" x2="122" y2="192" stroke="#e2e4e9"/>
+    <line x1="165" y1="52" x2="165" y2="192" stroke="#e2e4e9"/>
+    <g fill="#ffffff" stroke="#d4d4da">
+      <rect x="42" y="62" width="31" height="15" rx="3"/><rect x="128" y="62" width="31" height="15" rx="3"/><rect x="171" y="62" width="31" height="15" rx="3"/>
+      <rect x="42" y="97" width="31" height="15" rx="3"/><rect x="85" y="97" width="31" height="15" rx="3"/><rect x="171" y="97" width="31" height="15" rx="3"/>
+      <rect x="85" y="132" width="31" height="15" rx="3"/><rect x="171" y="132" width="31" height="15" rx="3"/>
+      <rect x="42" y="167" width="31" height="15" rx="3"/><rect x="128" y="167" width="31" height="15" rx="3"/>
+    </g>
+  </g>
+
+  <!-- centre: the roster, one check per row, each blind to the others -->
+  <text x="260" y="10" class="rail">EVERY CHECK, RUN ON ITS OWN</text>
+  <rect x="252" y="18" width="256" height="210" rx="10" fill="#fdf1e3" stroke="#d4b483" stroke-width="1.4"/>
+  <text x="268" y="40" class="title mono">sb:audit</text>
+  <g>
+    <rect x="268" y="52" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="66" class="sub" font-size="9" fill="#6b7280">gap sweep</text>
+    <rect x="268" y="77" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="91" class="sub" font-size="9" fill="#6b7280">channel conflict</text>
+    <rect x="268" y="102" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="116" class="sub" font-size="9" fill="#6b7280">perceived owner</text>
+    <rect x="268" y="127" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="141" class="sub" font-size="9" fill="#6b7280">value ledger</text>
+    <rect x="268" y="152" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="166" class="sub" font-size="9" fill="#6b7280">fee visibility</text>
+    <rect x="268" y="177" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="191" class="sub" font-size="9" fill="#6b7280">kpi alignment</text>
+    <rect x="268" y="202" width="224" height="21" rx="5" fill="#ffffff" stroke="#e6d3b8"/>
+    <text x="278" y="216" class="sub" font-size="9" fill="#6b7280">jargon lint</text>
+  </g>
+
+  <!-- the whole blueprint goes to each check -->
+  <path class="fan" d="M228,123 C240,123 244,62 264,62"/>
+  <path class="fan" d="M228,123 C242,123 246,87 264,87"/>
+  <path class="fan" d="M228,123 C246,123 250,112 264,112"/>
+  <path class="fan" d="M228,123 C246,123 250,137 264,137"/>
+  <path class="fan" d="M228,123 C244,123 248,162 264,162"/>
+  <path class="fan" d="M228,123 C242,123 246,187 264,187"/>
+  <path class="fan" d="M228,123 C240,123 244,212 264,212"/>
+
+  <path class="flow" d="M508,123 L528,123"/>
+
+  <!-- right: findings you triage -->
+  <text x="544" y="10" class="rail">FINDINGS YOU TRIAGE</text>
+  <rect x="536" y="18" width="328" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+
+  <rect x="556" y="46" width="288" height="34" rx="5" fill="#fafbfc" stroke="#d4d4da"/>
+  <circle cx="570" cy="63" r="3" fill="#f2cfdf"/>
+  <text x="580" y="60" class="chip" font-size="9">the app and the call script disagree</text>
+  <text x="580" y="73" class="sub" font-size="8">channel conflict</text>
+  <rect x="800" y="56" width="32" height="14" rx="7" fill="#fbe9f0" stroke="#f2cfdf"/>
+  <text x="816" y="66" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">open</text>
+
+  <rect x="556" y="88" width="288" height="34" rx="5" fill="#fafbfc" stroke="#d4d4da"/>
+  <circle cx="570" cy="105" r="3" fill="#f2cfdf"/>
+  <text x="580" y="102" class="chip" font-size="9">nothing backstage behind the sms step</text>
+  <text x="580" y="115" class="sub" font-size="8">gap sweep</text>
+  <rect x="800" y="98" width="32" height="14" rx="7" fill="#fbe9f0" stroke="#f2cfdf"/>
+  <text x="816" y="108" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">open</text>
+
+  <rect x="556" y="130" width="288" height="34" rx="5" fill="#fafbfc" stroke="#d4d4da"/>
+  <circle cx="570" cy="147" r="3" fill="#d4d4da"/>
+  <text x="580" y="144" class="chip" font-size="9">the customer thanks the wrong team</text>
+  <text x="580" y="157" class="sub" font-size="8">perceived owner</text>
+  <rect x="788" y="140" width="44" height="14" rx="7" fill="#cfe6d9" stroke="#9dbfa9"/>
+  <text x="810" y="150" class="sub" font-size="8" text-anchor="middle" fill="#4f5f52">resolved</text>
+
+  <rect x="556" y="172" width="288" height="26" rx="5" fill="#eceef2" stroke="#e2e4e9"/>
+  <text x="580" y="189" class="chip" font-size="9" fill="#9ca3af">+ 4 more from this run</text>
+</svg>

@@ -1,0 +1,97 @@
+<svg viewBox="0 -40 880 292" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .title { font-size: 11px; font-weight: 700; fill: #273036; }
+    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .sub { font-size: 9.5px; fill: #9ca3af; }
+    .rail { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .flow { stroke: #8e8e93; stroke-width: 1.6; fill: none; marker-end: url(#arrW); }
+    .branch { stroke: #b6bac2; stroke-width: 1.2; fill: none; marker-end: url(#arrB); }
+  </style>
+  <defs>
+    <marker id="arrW" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#8e8e93"/>
+    </marker>
+    <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#b6bac2"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="-40" width="880" height="292" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+
+  <text x="16" y="-14" font-size="15" font-weight="700" fill="#273036">How to use <tspan class="mono">sb:whatif</tspan></text>
+
+  <!-- left: the blueprint as it stands -->
+  <text x="24" y="10" class="rail">THE BLUEPRINT TODAY</text>
+  <rect x="16" y="18" width="212" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+  <g opacity="0.7">
+    <rect x="36" y="52" width="172" height="35" fill="#e8f3ed"/>
+    <rect x="36" y="87" width="172" height="35" fill="#fdf1e3"/>
+    <rect x="36" y="122" width="172" height="35" fill="#fbe9f0"/>
+    <rect x="36" y="157" width="172" height="35" fill="#ecebf5"/>
+    <rect x="36" y="52" width="172" height="140" fill="none" stroke="#d4d4da"/>
+    <line x1="79" y1="52" x2="79" y2="192" stroke="#e2e4e9"/>
+    <line x1="122" y1="52" x2="122" y2="192" stroke="#e2e4e9"/>
+    <line x1="165" y1="52" x2="165" y2="192" stroke="#e2e4e9"/>
+    <g fill="#ffffff" stroke="#d4d4da">
+      <rect x="42" y="62" width="31" height="15" rx="3"/><rect x="128" y="62" width="31" height="15" rx="3"/><rect x="171" y="62" width="31" height="15" rx="3"/>
+      <rect x="42" y="97" width="31" height="15" rx="3"/><rect x="85" y="97" width="31" height="15" rx="3"/><rect x="171" y="97" width="31" height="15" rx="3"/>
+      <rect x="85" y="132" width="31" height="15" rx="3"/><rect x="171" y="132" width="31" height="15" rx="3"/>
+      <rect x="42" y="167" width="31" height="15" rx="3"/><rect x="128" y="167" width="31" height="15" rx="3"/>
+    </g>
+  </g>
+
+  <!-- centre: the question -->
+  <text x="260" y="10" class="rail">THE QUESTION YOU ASK</text>
+  <rect x="252" y="18" width="256" height="210" rx="10" fill="#fdf1e3" stroke="#d4b483" stroke-width="1.4"/>
+  <text x="268" y="40" class="title mono">sb:whatif</text>
+  <rect x="268" y="106" width="224" height="34" rx="17" fill="#ffffff" stroke="#d4b483"/>
+  <text x="380" y="127" class="chip" font-size="9.5" text-anchor="middle" fill="#6b7280">what if we drop the sign-up call?</text>
+
+  <path class="flow" d="M228,123 L248,123"/>
+
+  <!-- right: the futures it traces, none of them live yet -->
+  <text x="544" y="10" class="rail">FUTURES IT TRACES</text>
+  <rect x="536" y="18" width="328" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+
+  <!-- option A -->
+  <rect x="556" y="30" width="288" height="54" rx="6" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
+  <g>
+    <rect x="568" y="40" width="56" height="34" fill="#ffffff" stroke="#d4d4da"/>
+    <line x1="582" y1="40" x2="582" y2="74" stroke="#e2e4e9"/><line x1="596" y1="40" x2="596" y2="74" stroke="#e2e4e9"/><line x1="610" y1="40" x2="610" y2="74" stroke="#e2e4e9"/>
+    <rect x="570" y="43" width="10" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
+    <rect x="584" y="52" width="10" height="6" fill="#fdf1e3" stroke="#d4b483"/>
+    <rect x="598" y="52" width="10" height="6" fill="#fdf1e3" stroke="#d4b483"/>
+    <rect x="612" y="61" width="10" height="6" fill="#fdf1e3" stroke="#d4b483"/>
+  </g>
+  <text x="638" y="53" class="chip" font-size="9.5">route it to chat support</text>
+  <text x="638" y="68" class="sub" font-size="9">7 cells reached, 2 assumptions break</text>
+
+  <!-- option B -->
+  <rect x="556" y="90" width="288" height="54" rx="6" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
+  <g>
+    <rect x="568" y="100" width="56" height="34" fill="#ffffff" stroke="#d4d4da"/>
+    <line x1="582" y1="100" x2="582" y2="134" stroke="#e2e4e9"/><line x1="596" y1="100" x2="596" y2="134" stroke="#e2e4e9"/><line x1="610" y1="100" x2="610" y2="134" stroke="#e2e4e9"/>
+    <rect x="570" y="103" width="10" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
+    <rect x="584" y="112" width="10" height="6" fill="#fdf1e3" stroke="#d4b483"/>
+    <rect x="612" y="121" width="10" height="6" fill="#fdf1e3" stroke="#d4b483"/>
+  </g>
+  <text x="638" y="113" class="chip" font-size="9.5">let people book it themselves</text>
+  <text x="638" y="128" class="sub" font-size="9">4 cells reached, 1 assumption breaks</text>
+
+  <!-- option C -->
+  <rect x="556" y="150" width="288" height="54" rx="6" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
+  <g>
+    <rect x="568" y="160" width="56" height="34" fill="#ffffff" stroke="#d4d4da"/>
+    <line x1="582" y1="160" x2="582" y2="194" stroke="#e2e4e9"/><line x1="596" y1="160" x2="596" y2="194" stroke="#e2e4e9"/><line x1="610" y1="160" x2="610" y2="194" stroke="#e2e4e9"/>
+    <rect x="570" y="163" width="10" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
+    <rect x="584" y="172" width="10" height="6" fill="#fdf1e3" stroke="#d4b483"/>
+  </g>
+  <text x="638" y="173" class="chip" font-size="9.5">keep it, but only for new accounts</text>
+  <text x="638" y="188" class="sub" font-size="9">2 cells reached, nothing downstream</text>
+
+
+  <path class="branch" d="M508,110 C528,96 532,62 552,57"/>
+  <path class="branch" d="M508,123 C528,120 532,117 552,117"/>
+  <path class="branch" d="M508,136 C528,150 532,172 552,177"/>
+</svg>

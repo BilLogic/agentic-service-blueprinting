@@ -66,58 +66,68 @@ skill**, each explaining its concrete, separated use case. This also
 replaces the practice-scenarios figure: the per-skill figures ARE the
 use-case visuals. `skill-workflow.svg` retires.)*
 
-### The four skill figures — one shared template
+### The four skill figures — one shared template (revised round 7: clear · convincing · straightforward)
 
-`sb-map.svg` · `sb-slice.svg` · `sb-audit.svg` · `sb-whatif.svg`. Each
-~880×320, identical three-band template so they read as a matched set:
+`sb-map.svg` · `sb-slice.svg` · `sb-audit.svg` · `sb-whatif.svg`, ~880×300
+each. *(The round-6 three-band process-rail template is scrapped — rails
+of stations are machinery-first and don't convince. What convinces a
+practitioner is seeing the **transformation**.)* New shared template,
+three elements only:
 
-1. **Situation band** (top): the practice moment in service-design voice,
-   one line, grounded in the textbook (Løvlie/Polaine/Reason, *Service
-   Design: From Insight to Implementation*, ch. 6 — the wording anchors
-   below).
-2. **Flow rail** (middle): that skill's stations left to right, green gate
-   diamonds between, amber agent chips beneath the stations that spawn
-   them.
-3. **Artifact strip** (bottom): what exists when the skill finishes.
+- **LEFT panel — what you have.** Concrete and recognizable, drawn with
+  miniature real-ish content, never generic boxes.
+- **CENTER — the skill.** One amber action chip (`.mono` skill name +
+  four-word plain subtitle) on the connecting arrow; underneath, in 9px,
+  the guardrails that make the claim credible (e.g. "validated · reviewed
+  · signed off by you").
+- **RIGHT panel — what you get.** Equally concrete.
+- **Caption line beneath** (the one full sentence): the situation in
+  textbook voice.
 
-Each figure ends in a small chip naming which skill typically follows —
-the set chains without needing a master loop figure.
+Identical panel geometry, chip treatment, and caption position across all
+four — the ONLY variation is panel content. No follow-chips, no agent
+chips, no gate diamonds inside the panels: one message per figure.
 
-### 2-map — `sb-map.svg`
+### `sb-map.svg` — scattered descriptions → one shared picture
 
-Situation: *"You have research, journey maps, a FigJam — scattered
-descriptions of the service, and no single picture everyone can work
-from."* Rail: sources → draft (per-cell provenance) → review & sign-off
-(hash) → import → verify. Artifact strip absorbs the cut pipeline figure:
-docs cluster → one validated blueprint file (`.mono` blueprint.json) →
-generated app data → live blueprint. Follow-chip: → slice / audit.
+LEFT: an untidy pile — a doc page, a FigJam-ish frame, a spreadsheet
+corner, an interview note, each with a tiny real-ish title. RIGHT: the
+blueprint mini-grid, live, with a small `.mono` chip beneath it: one
+validated file → app. Center chip: `sb:map` — *map your service*.
+Guardrail line: validated · adversarially reviewed · signed off by you.
+Caption: *"Scattered descriptions of the service become one picture the
+whole team — and its agents — work from."*
 
-### 2-slice — `sb-slice.svg`
+### `sb-slice.svg` — the whole map → the view each audience needs
 
-Situation: *"The whole blueprint is too much for Thursday's meeting — you
-need the journey summary for leadership, the channel view for the web
-team."* Rail: pick a cut (the textbook's four slices: journey summary ·
-phase/step column · channel row · touchpoint cell — plus custom) → compose
-frames → present / hand off. Artifact: a slice deck pointing back at live
-cells (dashed soft refs). Follow-chip: → present · audit.
+LEFT: the full mini-grid (busy, slightly dimmed — deliberately "too
+much"). RIGHT: three small slice decks fanned out, each labeled with the
+textbook's slice names and an audience tag: journey summary → leadership ·
+channel view → web team · touchpoint spec → the squad. Dashed soft-ref
+threads from deck frames back to grid cells. Center chip: `sb:slice` —
+*cut the view you need*. Guardrail: a lens, not a copy — stays in sync.
+Caption: *"The whole blueprint is too much for the room; each audience
+gets the slice that speaks to them."*
 
-### 2-audit — `sb-audit.svg`
+### `sb-audit.svg` — a drifting map → a triage list
 
-Situation: *"Two touchpoints are pushing in opposite directions, and
-nobody noticed — the gaps everyone thought somebody else was responsible
-for."* Rail: check roster (blind, one auditor per check) → findings
-(fingerprint-deduped, pink) → triage (open / dismissed / resolved).
-Artifact: the findings ledger. Follow-chip: → whatif · map (update).
+LEFT: the mini-grid with three small trouble marks a reader can decode:
+two cells with opposing arrows, an empty lane run, one stale-looking cell.
+RIGHT: a findings list, three realistic one-line rows with severity +
+open/resolved chips (pink accents). Center chip: `sb:audit` — *check it
+still holds*. Guardrail: blind checks · deduped · nothing auto-fixed.
+Caption: *"Touchpoints pushing in opposite directions, gaps everyone
+thought somebody else owned — surfaced as findings you triage."*
 
-### 2-whatif — `sb-whatif.svg`
+### `sb-whatif.svg` — a proposed change → its consequences, before commitment
 
-Situation: *"Before anyone commits — what happens to the rest of the
-service if we change this?"* (the textbook's "What if…" scenarios played
-out on the blueprint, its "If… then" decisions). Rail: name the change →
-trace downstream (variant file, never the live DB) → weigh displaced
-demand → accept → change request → promote via map → re-import. Gate:
-sign-off hash staleness guard. Artifact: the change request. Follow-chip:
-→ map (re-import closes the loop).
+LEFT: the mini-grid with one cell flagged (amber "change?") and a ripple
+halo over its downstream cells. RIGHT: a change-request card — miniature
+but legible: what changes, N cells affected, where displaced demand lands,
+accept ▸ re-import. Center chip: `sb:whatif` — *play it out first*.
+Guardrail: traced on a copy — the live blueprint is never touched.
+Caption: *"Work through the 'if… then' decisions on the blueprint before
+anyone commits resources."*
 
 ### Textbook wording anchors (for all four situation bands + README §5 prose)
 
@@ -198,21 +208,17 @@ the reference.
 line "analysis layer over this structure → see the slicing figure" so
 readers know the companions exist. Original stays otherwise untouched.
 
-**Persistence honesty (required label):** this repo's shipped Supabase schema
-does not yet contain these tables (Migration v2 Phase 1). Figures 3a/3b depict
-the model as specified in `references/slice-schema.json`, audit/whatif
-playbooks, and canvas-adapter — which IS normative for skills today (no-DB
-ledger via audit_tools.py; canvas persistence in uno). A small "persistence"
-footnote states this so the figure doesn't over-claim, and stops being needed
-the day Phase 1 lands.
+**Persistence honesty — RESOLVED (round 7):** the derived-layer DDL now
+ships in this repo's migrations, so the planned "not yet in the schema"
+footnotes are obsolete — draw the figures without them.
 
-## Asset 4 — `erd.mmd` : DEFERRED, with a stopgap
+## Asset 4 — `erd.mmd` : DEFERRAL LIFTED (round 7)
 
-Current ERD (9 entities) truthfully matches the shipped schema — regenerating
-it with derived tables would make it *lie* until Phase 1 DDL exists. Do not
-touch the entity set now. Stopgap: header comment pointing at
-`derived-layer.svg` + slice-schema.json for the specified-but-not-yet-DDL'd
-layer. Full regen is Migration v2 Phase 1 step 3, where it belongs.
+The derived-layer DDL landed in this repo (`supabase/migrations/
+20260729120000_derived_layer.sql` + hardening + slices-origin). Regenerate
+the ERD from the ACTUAL shipped migrations now — full entity set, core +
+derived. Same commit deletes the persistence-honesty footnotes planned for
+the cell-anatomy and slicing figures (no longer true — the tables exist).
 
 ## Asset 5 — `blueprint-anatomy.svg` : NO STRUCTURAL CHANGE, one legend strip
 
@@ -521,14 +527,14 @@ in opposite directions." The three-ways line survives as the section's
 closing prose sentence.
 
 **`sb-map.svg` / `sb-slice.svg` / `sb-audit.svg` / `sb-whatif.svg`**
-(~880×320 each) — visual spec is the shared three-band template + per-skill
-content defined in the Asset 2 section above: situation band in textbook
-voice · flow rail with green gate diamonds and amber agent chips ·
-artifact strip · follow-chip chaining to the next skill. Matched set:
-identical band heights, identical title treatment (`.mono` skill name +
-plain-English subtitle), the ONLY figure-to-figure variation is rail
-content. sb-map's artifact strip carries the absorbed pipeline (docs → one
-validated file → generated app data → live blueprint).
+(~880×300 each) — visual spec is the round-7 before→after template defined
+in the Asset 2 section above: LEFT what-you-have · CENTER amber skill chip
+with guardrail small print · RIGHT what-you-get · caption sentence in
+textbook voice. Matched set: identical panel geometry and chip treatment;
+only panel content varies. sb-map's right panel carries the absorbed
+pipeline chip (one validated file → app). Process detail (stations, gates,
+agents) lives in guide/03 prose and skill-architecture — NOT in these
+four.
 
 **`data-model-hierarchy.svg`** — unchanged + one 9.5px dim footer line
 pointing at the slicing figure.
@@ -592,20 +598,22 @@ drop-line from each scene into the foundation bar, labeled with what that
 way is FOR. Small-print footer: tiers/rosters/RLS enforcement — security
 as footnote, not frame.
 
-**`skill-architecture.svg`** (~880×520, total redraw) — four columns under
-one roof, matching the package: SKILLS (4 amber cards, `.mono` names, one
-firing line each) · AGENTS (5 white cards, "fresh context · blind" badge
-row) · REFERENCES (blue group panel, grouped stacks with generated counts)
-· SCRIPTS & GATES (green-accented, validator/tools/generators; hooks as a
-3-chip footer). Thin arrows: skills → agents; references → both; scripts
-gate the flow (green diamonds). Bottom caption band: "one source of truth,
-two consumers — IDE plugin · canvas agent" with two small outlet chips.
-**Drafting prerequisite (round 5):** the skill setup changed recently
-(0.2.2 structural pass — `skills/blueprint` → `skills/map`, audit_tools
-reference impl, slice fallback clause — plus uncommitted fixes in the
-tree); re-inventory the ACTUAL tree (incl. uncommitted state, once
-committed) immediately before drafting, and take every count from the
-count script, not from this plan.
+**`skill-architecture.svg`** (~880×520, total redraw) — *(composition
+updated round 7 for the 0.3.0 per-skill resource layout — the old
+central-references column no longer matches the package).* **Hub and
+spokes:** four skill cards across the top (amber, `.mono` names), each
+with its OWN small stack hanging beneath it — its SKILL.md, its
+`references/`, its `scripts/` where present — because that is how 0.3.0
+actually organizes resources. Beneath the spokes, a shared blue panel:
+the 8 root references every skill draws on (adapter-contract,
+canvas-adapter, data-model, ir-schema, layer-roles, lane-vocabulary,
+customization, audit-playbook), plus the AGENTS row (5 white cards,
+"fresh context · blind" badge) and the hooks 3-chip footer. Green gate
+diamonds where scripts guard flows. Bottom caption band: "one source of
+truth, two consumers — IDE plugin · canvas agent." **Drafting
+prerequisite:** re-inventory the tree at draft time and take every count
+from the count script — the layout changed twice in one week; assume it
+can again.
 
 **`from-docs-to-blueprint.svg` — CUT** (round 5, Bill: "what's this???").
 The standalone pipeline figure kept failing its audience twice (first as
@@ -620,6 +628,16 @@ Consistency checklist applied at every figure review: 880 wide · type
 scale classes reused verbatim · tints only with their fixed meanings ·
 dashed = derived/virtual · gates always green diamonds · `.mono` only for
 literals · any quoted structure drawn dimmed in data-model chip shapes.
+
+## Per-asset execution specs (round 8)
+
+Granular per-figure specs live in `docs/plans/asset-specs/` — 00 is a
+style guide extracted verbatim from the four shipped SVGs (canvas grammar,
+exact classes, radii, marker geometry, spacing rhythm, voice rules with
+quoted shipped strings); 01–10 spec each asset with layout coordinates and
+exact content strings. Where this plan and a spec disagree, the spec wins
+— it was reviewed against the shipped files. The "Per-asset look" section
+above remains as decision history.
 
 ## Process — how review works
 
