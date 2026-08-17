@@ -4,7 +4,7 @@ Turn a service blueprint from a static artifact into an operational source of tr
 
 This repo is that idea, working end to end — two things in one:
 
-1. **The `service-blueprinting` Claude Code plugin** — a skill that ingests service docs, co-creates with stakeholders, translates foreign diagrams (FigJam / spreadsheets / Shostack layouts), validates, and imports blueprints end-to-end, with adversarial review and hash-bound sign-off gates along the way.
+1. **The `sb` Claude Code plugin** — four skills: `sb:map` ingests service docs, co-creates with stakeholders, translates foreign diagrams (FigJam / spreadsheets / Shostack layouts), validates, and imports blueprints end-to-end with adversarial review and hash-bound sign-off gates; `sb:slice` cuts stakeholder-ready views out of the blueprint; `sb:audit` runs a consistency-check roster into triageable findings; `sb:whatif` traces hypothetical changes before anyone commits to them.
 2. **An org-agnostic frontend + backend template** the skill deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
 
 ## Why a queryable blueprint
@@ -40,27 +40,21 @@ The pipeline in one line:
 
 ### How it works
 
-![How the skill works — one skill, fresh-context agents, progressively loaded references, script gates](./docs/skill-architecture.svg)
+![The skill set and agent fleet — four skills with their own resources, the shared references each links, and the agents they spawn](./docs/assets/skill-architecture.svg)
 
-*One always-loaded **skill** ([SKILL.md](./skills/blueprint/SKILL.md)) routes the work: it pulls **one playbook per phase** from [references/](./references/) into the main context, and spawns **fresh-context agents** for the heavy reading — `document-reader` over the sources, `blueprint-reviewer` over the draft IR, `render-checker` over the deployed app. Each agent consults just the reference docs its job needs and returns a thin summary.*
-
-### The workflow
-
-![Agentic blueprinting workflow — four phases; what loads, who spawns, and which gate must pass at each](./docs/skill-workflow.svg)
-
-*Each phase swaps in its own playbook, spawns only the agents it needs, and ends at a deterministic gate checked against `blueprint-workspace.json` — never "looks done". The loop back is the point: a blueprint touched once is a failure; touched monthly, it stays the operational source of truth.*
+*Four skills, each carrying its own playbooks and scripts and linking only the shared references its task needs. The heavy reading happens in **fresh-context agents** — `document-reader` over the sources, `blueprint-reviewer` over the draft, `auditor` one check at a time, `impact-tracer` down the dependency graph — each returning a thin summary rather than its raw material. Every phase ends at a deterministic gate, never at "looks done".*
 
 ## The blueprint model
 
 ### How a blueprint is organized
 
-![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/data-model-hierarchy.svg)
+![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/assets/data-model-hierarchy.svg)
 
 *Read left to right — each panel zooms one level in: a **lifecycle** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
 
 ### Inside a single path
 
-![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/blueprint-anatomy.svg)
+![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
 
 *Lanes are rows — one actor each, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
 
@@ -103,7 +97,7 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 
 ### Deploy
 
-`netlify.toml` at the repo root carries the build command, `dist/` publish dir, node version, and the SPA redirect (`/* /index.html 200`). Any static host works — the build always produces a plain `dist/`; live-DB mode needs `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at **build time**. Blueprint-specific deploy gotchas: [references/deploy-notes.md](./references/deploy-notes.md).
+`netlify.toml` at the repo root carries the build command, `dist/` publish dir, node version, and the SPA redirect (`/* /index.html 200`). Any static host works — the build always produces a plain `dist/`; live-DB mode needs `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at **build time**. Blueprint-specific deploy gotchas: [skills/map/references/deploy-notes.md](./skills/map/references/deploy-notes.md).
 
 ### Connect your agents
 
@@ -133,10 +127,10 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 | Path | Purpose |
 | --- | --- |
 | [.claude-plugin/plugin.json](./.claude-plugin/plugin.json) | Claude Code plugin manifest — this is what makes the repo installable as a plugin |
-| [skills/blueprint/SKILL.md](./skills/blueprint/SKILL.md) | The skill entry point: routing, hard rules, phase exit conditions |
+| [skills/](./skills/) | Four skills, one directory each (`map`, `slice`, `audit`, `whatif`): `SKILL.md` entry point plus that skill's own `references/` (playbooks, schemas, check docs) and `scripts/` |
 | [agents/](./agents/) | Subagents: `document-reader`, `blueprint-reviewer` (adversarial pre-sign-off review), `render-checker` |
-| [references/](./references/) | Phase playbooks, IR + crosswalk schemas, layer-role & lane vocabularies, adapter contract, workspace state spec |
-| [scripts/](./scripts/) | IR pipeline: validator, fallback + seed generators, sign-off hasher, tests |
+| [references/](./references/) | Shared core every skill uses: data model, IR schema, adapter contract, canvas adapter, layer-role & lane vocabularies, customization, audit playbook |
+| [scripts/](./scripts/) | Shared IR pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, IR auto-validation on edit, service-role secret guard |
 | `src/components/blueprint/` | Blueprint grid, paths, trigger arrows (shadcn/ui + Tailwind v4; theme tokens in `src/index.css`) |
 | `src/components/editor/` | Canvas/slide editor shell |

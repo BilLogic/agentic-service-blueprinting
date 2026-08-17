@@ -1,0 +1,18 @@
+[
+  {"query": "what if we automated the reminder emails — what breaks downstream?", "should_trigger": true},
+  {"query": "whats the impact of moving identity verification before payment instead of after?", "should_trigger": true},
+  {"query": "should the refund step be customer-visible or stay backstage?", "should_trigger": true},
+  {"query": "which cells should we focus on next quarter? prioritize for me", "should_trigger": true},
+  {"query": "replay the onboarding scenario as if the welcome phone call was removed", "should_trigger": true},
+  {"query": "ok the team agreed the analysis is right — promote it into an actual blueprint change", "should_trigger": true},
+  {"query": "whats downstream of the intake-form cell? walk the dependency chain", "should_trigger": true},
+  {"query": "if support absorbs the billing questions, where does the displaced load land?", "should_trigger": true},
+  {"query": "whats wrong with the blueprint right now? current-state problems please", "should_trigger": false},
+  {"query": "what if we used postgres instead of mysql for the new service?", "should_trigger": false},
+  {"query": "add the new escalation flow to the blueprint — its decided, not hypothetical", "should_trigger": false},
+  {"query": "show me the customer's journey through the service", "should_trigger": false},
+  {"query": "hypothetically, if service design were a sport, write the commentary", "should_trigger": false},
+  {"query": "simulate 1000 concurrent users hitting the app and report latency", "should_trigger": false},
+  {"query": "what would our revenue be if we raised prices 10 percent?", "should_trigger": false},
+  {"query": "undo yesterday's blueprint edits, they were wrong", "should_trigger": false}
+]

@@ -28,6 +28,7 @@ contract; it broke every non-English blueprint.
 | `support_systems` | Pill cells | Supporting teams/vendors/infrastructure |
 | `visual` | Picture row (image cells, no text) | Journey snapshots |
 | `step_visual` | Picture row variant | Per-step imagery |
+| `journey_stage` | Stage-label row (customer-facing headers; may carry a picture) | 触点/stage bands in Shostack-style layouts |
 
 ## Line-anchoring semantics
 
@@ -54,7 +55,7 @@ elicitation), or to none.
   attach long-form copy/screenshots to a pill by matching its label.
 - Roles `visual`/`step_visual` render `picture` and ignore text content. An
   empty visual row (null `picture`) is a valid default — see
-  `references/ingest-playbook.md` §6 for sourcing stage images.
+  `skills/map/references/ingest-playbook.md` §6 for sourcing stage images.
 
 ## Custom roles
 

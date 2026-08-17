@@ -6,6 +6,20 @@ The template's blueprint data model. Source of truth:
 (`references/ir-schema.json`) mirrors this shape one-to-one with locale maps
 and stable keys in place of UUIDs.
 
+## Contents
+
+- Hierarchy
+- ERD
+- Tables in brief
+- Enums
+- Integrity trigger (why import order matters)
+- ⚠ REQUIRED: import order
+- Re-import semantics
+- Ordering fields
+- Working precedent
+- Canvas dialect: cell slots
+- Derived layer: findings and slices
+
 ## Hierarchy
 
 ```
@@ -34,8 +48,8 @@ erDiagram
 
   service_lifecycles { uuid id PK  text name  text description }
   phases { uuid id PK  uuid service_lifecycle_id FK  text name  text description  int order_position  uuid loops_to_phase_id FK "optional self-reference" }
-  service_scenarios { uuid id PK  uuid phase_id FK  text name  text description  int order_position  text view_type "single | side-by-side | integrated" }
-  paths { uuid id PK  uuid service_scenario_id FK  text name  text description  text note "optional, e.g. parallel-scenario context"  text path_type "happy | unhappy | exception | alternative" }
+  service_scenarios { uuid id PK  uuid phase_id FK  text name  text description  int order_position  text view_type "DB tokens: single | side-by-side | integrated (UI: single | stacked | merged)" }
+  paths { uuid id PK  uuid service_scenario_id FK  text name  text description  text note "optional, e.g. parallel-scenario context"  text path_type "happy | unhappy | exception | alternative | named" }
   steps { uuid id PK  uuid service_scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int column_position "unique per (path_id, column_position)" }
   layers { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text layer_role "semantic role key; null = generic swimlane"  int row_position }
@@ -60,11 +74,16 @@ erDiagram
 ## Enums
 
 - `service_scenarios.view_type`: `single` \| `side-by-side` \| `integrated`
+  — these are the STORED (DB) tokens; the UI vocabulary is `single` \|
+  `stacked` \| `merged`, mapped in `src/lib/viewTypeVocabulary.ts`
   - `single`: one path at a time (path picker)
-  - `side-by-side`: labeled variant comparison — any two labeled variants
-    ("as designed" vs "reality" is just the default labeling)
-  - `integrated`: runtime merge of all the scenario's paths into one grid
-- `paths.path_type`: `happy` \| `unhappy` \| `exception` \| `alternative`
+  - `side-by-side` (UI: "Stacked"): labeled variant comparison — any two
+    labeled variants ("as designed" vs "reality" is just the default labeling)
+  - `integrated`: legacy value; persisted rows coerce to the plain Stacked
+    view on read. The UI's "Merged" canvas (the compared paths drawn as one
+    combined blueprint) is session-only and is never written back as
+    `integrated`
+- `paths.path_type`: `happy` \| `unhappy` \| `exception` \| `alternative` \| `named` (a labeled variant that is none of the canonical four)
 
 ## Integrity trigger (why import order matters)
 
@@ -108,3 +127,24 @@ harmless, duplicates are not (validator checks).
 (TS fallback module + `supabase/seed.sql`) from one source of truth with
 deterministic IDs and correct insert order — it is the pattern the IR
 generators follow.
+
+## Canvas dialect: cell slots
+
+The canvas deployment splits tech-lane touchpoints into multiple cells
+per (lane, step), ordered by `slot_position` (unique on
+`(layer_id, step_id, slot_position)`; rows predating the split carry no
+value and read as slot 0). Deployments scaffolded from the plain
+template keep one cell per (lane, step). Tools and the IR never expose
+slot management directly — treat "the" cell of a slot as slot 0.
+
+## Derived layer: findings and slices
+
+Both skills' outputs land in three derived tables (present in the canvas
+deployment; template workspaces without them must route through the
+upgrade recipe rather than failing mid-import):
+
+| Table | What it is | Notes |
+|---|---|---|
+| `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`), `check_name`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id`, `fingerprint` (dedupe: open updates in place, dismissed stays dismissed, resolved reopens as a new row) |
+| `slices` | A stakeholder view that REFERENCES cells | `title`, `description`, `slice_type` (`journey`\|`lane`\|`step`\|`custom`), `actor`, `origin` |
+| `slice_items` | One frame of a slice | `position`, `cell_ids` (ordered), `caption`, `narrative` — full-replacement semantics on rework |

@@ -1,8 +1,89 @@
 # Changelog
 
-All notable changes to the `service-blueprinting` plugin are documented here.
-The plugin and the blueprint template app share this repository and version
-together (workspace plugin version = template version).
+All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
+documented here. The plugin and the blueprint template app share this
+repository and version together (workspace plugin version = template version).
+
+## Unreleased
+
+- Parity plan carries the 2026-08-17 uno field adjustments (docs/plans/
+  2026-08-08-001, top STATUS REFRESH): compare-view doctrine (quiet canvas,
+  fold retired, wash-on-face path affiliation, shared-cell member labels,
+  arrow layering/dedupe), canonical `LINE OF …` divider names + 208px rail,
+  container anatomy (header band in frame, rail bleed, badge headroom, pan
+  rule), per-scenario loading with real progress + surgical invalidation,
+  agent-surface lessons (capped reads carry `count=exact` totals; no
+  agent-only controls; replies never fold), and an obsolete-source content
+  hygiene check for sb:audit.
+
+## 0.3.0 — 2026-08-08
+
+Per-skill resource layout, per the official plugin-structure guidance:
+each skill now owns its exclusive materials under its own directory —
+skills/map/references/ (four phase playbooks, elicitation-protocol,
+deploy-notes, workspace-state, crosswalk-schema), skills/audit/
+(references/check-*.md ×7, scripts/audit_tools.py), skills/slice/
+(references/ slice-playbook + slice-templates + slice-schema +
+storyboard-prompts, scripts/slice_tools.py), skills/whatif/references/
+(whatif-playbook, change-request-schema). Root references/ and scripts/
+now hold only the shared core consumed by 2+ skills (data-model,
+adapter-contract, canvas-adapter, customization, lane-vocabulary,
+layer-roles, ir-schema, audit-playbook; validate_ir, sign-off hasher,
+generators). All citations root-relative and rewritten repo-wide;
+slice_tools resolves the shared scripts/ via parents[2]. App-side
+vendored copy of map/SKILL.md renamed blueprint.md → map.md (last
+fossil of the pre-0.2.2 skill name). Tests 30/30.
+
+## 0.2.2 — 2026-08-05
+
+Structural pass per Anthropic skill-authoring standards (skill-creator).
+skills/blueprint renamed skills/map — the runtime registration is now
+sb:map, matching every cross-pointer. Whatif sign-off hashes re-aligned
+to the canonical PER-SCENARIO model (workspace-state.md; the 0.2.1
+whole-file form survives only as the legacy __file__ fallback). Dedupe
+semantics single-sourced (playbook §3 + canvas-adapter row; playbook
+canvas notes are now pointers). New scripts/audit_tools.py: fingerprint /
+export / dedupe / report — the reference implementation of playbook §2-§3
+and the no-DB ledger substrate. Roster & skips moved to playbook §1.5.
+journey_stage added to layer-roles. Slice type table single-sourced in
+SKILL.md. blueprint-reviewer three modes. Map description gains reverse
+pointers to audit/whatif. adapter-contract multi-account paragraph
+compressed (mechanics live in review-import §6). sweep_orphans.py marked
+planned. plugin.json says JSON IR.
+
+## 0.2.1 — 2026-08-05
+
+Nineteen text-level gaps closed after blind cold-follow evals of sb:audit
+and sb:whatif (fresh-context agents following the SKILL.mds literally on a
+real workspace): two-target staleness guard, __file__ hash form, orphan-
+reopen gap shape, zero-cell fingerprint reason slugs, audit cell-key
+convention, export + no-DB findings-report substrate, entry-state
+precedence, roster-owned skips, reviewer whatif-claim mode, impact-tracer
+trigger-only IR caveat, accept-route hard stop, plus polish. AGENTS.md
+router added for non-Claude harnesses (Cursor/Codex). Canvas adapter:
+check docs binding per executed check; audit pacing rule (batch doc
+reads, record per check).
+
+## 0.2.0 — 2026-08-05
+
+Plugin renamed `service-blueprinting` → `sb`; skills renamed to bare tokens
+(`map`, `slice`, `audit`, `whatif`) so invocations read `sb:map`, `sb:slice`,
+`sb:audit`, `sb:whatif` on every surface (IDE plugin and canvas composer).
+Prose references swept across skills, references, agents, and hooks.
+
+Canvas translation upgraded from read-only to full write parity:
+
+- `sb:audit` on canvas records findings rows via `record_finding` with the
+  same dedupe discipline (open updates in place, dismissed stays dismissed,
+  resolved reopens); triage via `set_finding_status`; ledger via
+  `list_findings`. Canvas cell identity uses cell ids (cell_keys written as
+  ids), so canvas and IDE fingerprints are separate dedupe spaces.
+- `sb:whatif` on canvas keeps the variant conversational (analysis never
+  writes cells), records consequence findings (source `whatif`), and on
+  explicit acceptance promotes directly through the ordinary canvas write
+  tools; optimistic-concurrency tokens replace the hash staleness guard.
+- `references/canvas-adapter.md`, `references/audit-playbook.md` §6, and
+  `references/whatif-playbook.md` §5 carry the updated translation.
 
 ## 0.1.0 — 2026-07-16
 

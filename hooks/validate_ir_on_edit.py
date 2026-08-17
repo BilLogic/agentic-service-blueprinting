@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse hook (service-blueprinting plugin): auto-validate IR edits.
+"""PostToolUse hook (sb plugin): auto-validate IR edits.
 
 Fires after Write/Edit/MultiEdit. If the edited file is IR YAML
 (blueprint/*.yaml|*.yml inside a blueprint workspace), run validate_ir.py on
@@ -82,7 +82,7 @@ def main() -> int:
         )
     except subprocess.TimeoutExpired:
         print(
-            f"[service-blueprinting] validate_ir.py timed out on {path}",
+            f"[sb] validate_ir.py timed out on {path}",
             file=sys.stderr,
         )
         return 2
@@ -92,7 +92,7 @@ def main() -> int:
 
     output = (result.stdout + "\n" + result.stderr).strip()
     print(
-        f"[service-blueprinting] IR validation FAILED for {path} "
+        f"[sb] IR validation FAILED for {path} "
         f"(validate_ir.py exit {result.returncode}):\n{output}\n"
         "Fix the IR before proceeding — imports are gated on a passing "
         "validator.",

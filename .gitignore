@@ -29,3 +29,9 @@ dist-ssr
 *.sw?
 .claude/
 scripts/__pycache__/
+
+# Agent scratch files. These leaked into the 0.2.2 package twice (9b3adc2,
+# then again by 695cd12) — every file here ships to every adopter, so the
+# ignore is the fix, not the deletion.
+.tmp_*
+*.scratch.*

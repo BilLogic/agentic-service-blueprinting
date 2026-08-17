@@ -337,5 +337,149 @@ if python3 "$SIGNOFF_GEN" "$SAMPLE" --scenario nope > /dev/null 2>&1; then
 fi
 pass "signoff-filter (--scenario selects one; unknown key errors)"
 
+# ---------------------------------------------------------------------------
+# Slice tools
+# ---------------------------------------------------------------------------
+
+SLICE_TOOLS="$REPO_ROOT/skills/slice/scripts/slice_tools.py"
+SLICE_FILE="$TMP/slices.json"
+
+# select -> validate -> sql -> doc round trip.
+python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
+  --type journey --layer citizen --key citizen-repair --actor "Citizen" > "$SLICE_FILE" \
+  || fail "slice-select: journey selection failed"
+python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$SLICE_FILE" > /dev/null \
+  || fail "slice-validate: generated skeleton did not validate"
+pass "slice-select (journey skeleton validates)"
+
+# The cell ids a slice emits MUST match the ids the seed generator writes —
+# this is the whole contract between the derived layer and the blueprint.
+python3 "$SEED_GEN" "$SAMPLE" --locale en --out "$TMP/seed-slice-check.sql" > /dev/null
+python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$SLICE_FILE" --locale en \
+  --lifecycle-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-en.sql" \
+  || fail "slice-sql: emission failed"
+python3 - "$TMP/slice-en.sql" "$TMP/seed-slice-check.sql" <<'PY' \
+  || fail "slice-idmatch: a slice cell id is absent from the seed SQL"
+import re, sys
+slice_sql, seed_sql = (open(p, encoding="utf-8").read() for p in sys.argv[1:3])
+ids = set(re.findall(r"array\[([^\]]*)\]::uuid\[\]", slice_sql))
+cell_ids = {value.strip().strip("'") for group in ids for value in group.split(",") if value.strip()}
+assert cell_ids, "no cell ids found in slice SQL"
+missing = [cid for cid in cell_ids if cid not in seed_sql]
+sys.exit(1 if missing else 0)
+PY
+pass "slice-idmatch (every slice cell id appears in the seed SQL)"
+
+grep -q "^begin;" "$TMP/slice-en.sql" && grep -q "^commit;$" "$TMP/slice-en.sql" \
+  || fail "slice-sql: missing transaction wrapper"
+grep -q "delete from public.slices where id" "$TMP/slice-en.sql" \
+  || fail "slice-sql: missing delete-then-insert replace"
+pass "slice-sql (transactional replace)"
+
+# Locales diverge (per-locale artifacts), keys do not.
+python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$SLICE_FILE" --locale zh \
+  --lifecycle-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-zh.sql"
+if diff -q "$TMP/slice-en.sql" "$TMP/slice-zh.sql" > /dev/null; then
+  fail "slice-locale: en and zh emitted identical SQL"
+fi
+pass "slice-locale (per-locale ids and text diverge)"
+
+# Determinism: same inputs, same bytes.
+python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$SLICE_FILE" --locale en \
+  --lifecycle-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-en-2.sql"
+diff -q "$TMP/slice-en.sql" "$TMP/slice-en-2.sql" > /dev/null \
+  || fail "slice-determinism: two runs produced different SQL"
+pass "slice-determinism (re-run is byte-identical)"
+
+# Validation catches the three failures that would otherwise render as
+# silently-wrong content rather than as errors.
+python3 - "$SLICE_FILE" "$TMP/slice-bad.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+entry = doc["slices"][0]
+entry["frames"][0]["cells"].append(
+    "streetlight-service/operate/asset-repair/as-designed/citizen/does-not-exist"
+)
+entry["frames"][-1]["cells"].append(entry["frames"][0]["cells"][0])
+json.dump(doc, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
+PY
+if python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$TMP/slice-bad.json" > /dev/null 2>&1; then
+  fail "slice-validate-bad: expected non-zero exit for unresolvable + duplicate cells"
+fi
+# Capture first: the validator exits non-zero by design, and `pipefail` would
+# fail the pipeline even when grep matches.
+python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$TMP/slice-bad.json" \
+  > "$TMP/slice-bad.out" 2>&1 || true
+grep -q "cell key not in IR" "$TMP/slice-bad.out" \
+  || fail "slice-validate-bad: missing unresolvable-key message"
+grep -q "appears twice" "$TMP/slice-bad.out" \
+  || fail "slice-validate-bad: missing duplicate-cell message"
+pass "slice-validate-bad (unresolvable key and duplicate cell both reported)"
+
+# Emitters refuse an invalid slice file — no half-written import artifacts.
+if python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$TMP/slice-bad.json" --locale en \
+  --lifecycle-id 11111111-1111-4111-8111-111111111111 > /dev/null 2>&1; then
+  fail "slice-sql-guard: emitted SQL for an invalid slice file"
+fi
+pass "slice-sql-guard (invalid slice file produces no SQL)"
+
+# Journey selection is arrow-derived: a lane with no triggers to the actor
+# must not appear in any frame.
+python3 - "$SAMPLE" "$SLICE_FILE" <<'PY' || fail "slice-journey-arrows: uncited companion cell in a frame"
+import json, sys
+ir = json.load(open(sys.argv[1], encoding="utf-8"))
+doc = json.load(open(sys.argv[2], encoding="utf-8"))
+entry = doc["slices"][0]
+scenario = ir["lifecycle"]["phases"][0]["scenarios"][0]
+path = next(p for p in scenario["paths"] if p["key"] == entry["path"])
+linked = set()
+for trigger in path.get("triggers", []):
+    for end in ("source", "target"):
+        linked.add((trigger[end]["layer"], trigger[end]["step"]))
+for frame in entry["frames"]:
+    for key in frame["cells"][1:]:
+        layer, step = key.split("/")[4:6]
+        if (layer, step) not in linked:
+            print(f"uncited companion: {key}", file=sys.stderr)
+            sys.exit(1)
+PY
+pass "slice-journey-arrows (companions come from recorded triggers only)"
+
+# Step and lane selections stay inside their column / row.
+python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
+  --type step --step dispatch --key dispatch-moment > "$TMP/slice-step.json"
+python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$TMP/slice-step.json" > /dev/null \
+  || fail "slice-step: step selection did not validate"
+python3 - "$TMP/slice-step.json" <<'PY' || fail "slice-step: frame contains a foreign step"
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+for frame in doc["slices"][0]["frames"]:
+    for key in frame["cells"]:
+        if key.split("/")[5] != "dispatch":
+            sys.exit(1)
+PY
+python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
+  --type lane --layer field-tech --key field-tech-lane > "$TMP/slice-lane.json"
+python3 - "$TMP/slice-lane.json" <<'PY' || fail "slice-lane: frame contains a foreign lane"
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+for frame in doc["slices"][0]["frames"]:
+    for key in frame["cells"]:
+        if key.split("/")[4] != "field-tech":
+            sys.exit(1)
+PY
+pass "slice-step/lane (selections stay inside their column and row)"
+
+# Unknown scenario / missing required flag are errors, not empty output.
+if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario nope/nope --type lane \
+  --layer citizen --key x > /dev/null 2>&1; then
+  fail "slice-select-guard: expected non-zero exit for an unknown scenario"
+fi
+if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
+  --type lane --key x > /dev/null 2>&1; then
+  fail "slice-select-guard: expected non-zero exit for a missing --layer"
+fi
+pass "slice-select-guard (unknown scenario and missing flag both error)"
+
 echo
 echo "All $PASS_COUNT tests passed."

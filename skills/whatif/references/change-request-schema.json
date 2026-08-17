@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Blueprint change request",
+  "description": "The whatif→map handoff contract. A whatif analysis the human accepts becomes ONE of these; map-promote consumes it, verifying base_signoff_hashes still match the workspace before touching the IR — a mismatch means the blueprint moved since the analysis, so promote refuses or re-traces. Transport: a workspace file in local dev (changes/<key>.json), a downloaded JSON from deployed builds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["key", "created_at", "source", "title", "base_signoff_hashes", "affected_scenario_keys", "diff"],
+  "properties": {
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Stable slug for this change request; also its filename."
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "string",
+      "enum": ["whatif"],
+      "description": "v1: only whatif emits change requests."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "whatif_operation": {
+      "type": "string",
+      "enum": ["replay", "restage", "prioritize"],
+      "description": "Which whatif operation produced this."
+    },
+    "base_signoff_hashes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string" },
+      "description": "scenario_key -> that scenario's sign-off content_hash captured at analysis time (per-scenario sign-off is canonical — workspace-state.md; compute via compute_signoff_hash.py --scenario). Legacy workspaces with only a whole-file sign_off.content_hash embed it under \"__file__\". The staleness guard runs TWO checks per entry: embedded vs RECORDED hash, and recorded vs RECOMPUTED hash; map-promote refuses on any mismatch (recomputed mismatch = unsigned base edits, re-sign first)."
+    },
+    "affected_scenario_keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "finding_fingerprints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The whatif findings this request supersedes; map-promote auto-resolves them after import (its one sanctioned findings.status write)."
+    },
+    "diff": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered edit list against the IR — cell-key-addressed, never DB ids.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["op"],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "update_cell", "add_cell", "move_visibility",
+              "add_step", "add_lane", "add_path",
+              "set_dependency", "clear_dependency"
+            ]
+          },
+          "cell_key": { "type": "string" },
+          "target_key": { "type": "string" },
+          "fields": {
+            "type": "object",
+            "description": "For update/add ops: the IR fields being set (locale maps as in ir-schema)."
+          },
+          "position": { "type": "string", "description": "For structural ops: where (step/lane/path key context)." },
+          "note": { "type": "string", "description": "Why this edit, citing the analysis — no excerpts." }
+        }
+      }
+    }
+  }
+}

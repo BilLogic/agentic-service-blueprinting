@@ -29,22 +29,18 @@ An adapter must implement all of these:
 Identify exactly what will be written to (Supabase project ref / output file
 paths), echo it to the user, and get confirmation **before any write**
 (wrong-project protection). Locale-scoped: one target per locale, tracked in
-`blueprint-workspace.json` (see `references/workspace-state.md`).
+`blueprint-workspace.json` (see `skills/map/references/workspace-state.md`).
 
-**Multi-account Supabase:** the Supabase MCP is scoped to ONE account/org. To
-import into a project that lives in a different account, add a **second
-connector** for that account (the same pattern as multiple Slack/Notion/Figma
-connectors) and use its tools for that target. Failure signature: a write
-returns a bare `permission denied` / "project not found" with no other context —
-that means the connected account can't see the target project, not that the SQL
-is wrong. Don't retry the write; tell the user which account owns the target and
-that its connector must be added. (A freshly added connector isn't live until a
-session reload — see `references/review-import-playbook.md` §6.)
+**Multi-account Supabase:** a connector sees ONE account/org. A bare
+`permission denied` / "project not found" means the connected account
+cannot see the target project — not that the SQL is wrong; don't retry.
+Connector setup mechanics and the session-reload requirement live in
+`skills/map/references/review-import-playbook.md` §6.
 
 ### 2. Schema provisioning
 Ensure the target carries the template schema at a compatible
 `schema_version`, including the `cells_validate_path_match` trigger function.
-Supabase: `assets/schema.ddl.sql` (portable DDL) + `assets/policies.supabase.sql`
+Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `schema.reference.sql` is the read-friendly mirror)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
 No-DB: provisioning is a no-op (the template app ships the types).
 
@@ -83,7 +79,18 @@ condition.
   gitignored**.
 - Service-role key: **never written to disk by the skill, never pasted
   through chat**. Writes that need elevated rights go through user-run CLI
-  commands with their own credentials, or Supabase MCP `apply_migration`.
+  commands with their own credentials, or the Supabase MCP's
+  `apply_migration` tool.
+- **MCP tool addressing**: Supabase MCP *tool* names are stable
+  (`apply_migration`, `execute_sql`, `list_tables`, …) but the *server*
+  segment of the fully-qualified name is whatever the user named their
+  connector (`mcp__supabase__apply_migration`, `mcp__supabase-work__…`,
+  `mcp__plugin_supabase_supabase__…`), and the separator convention varies
+  by surface (Claude Code uses `mcp__server__tool`; API-hosted skills use
+  `Server:tool`). Never hardcode a server name: enumerate the connected
+  MCP servers at runtime, pick the Supabase server whose project matches
+  the confirmed target (multi-account rule above), and address tools
+  through it.
 - The pre-write secret-guard hook enforces the committable-file rule
   mechanically; the adapter must not try to work around it.
 

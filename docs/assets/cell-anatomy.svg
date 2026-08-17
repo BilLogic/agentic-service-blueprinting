@@ -1,0 +1,138 @@
+<svg viewBox="0 -44 880 730" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <style>
+    .anno { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
+    .sub { font-size: 9.5px; fill: #9ca3af; }
+    .lead { stroke: #b6bac2; stroke-width: 1; fill: none; }
+    .beam { stroke: #c9ccd4; stroke-width: 1; fill: none; }
+    .ui { font-size: 9px; fill: #4b5563; }
+    .uiLabel { font-size: 8px; font-weight: 600; fill: #9ca3af; }
+    .uiTitle { font-size: 11px; font-weight: 700; fill: #273036; }
+  </style>
+
+  <rect x="0" y="-44" width="880" height="730" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+
+  <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Inside a single cell</text>
+
+  <!-- ==================== the canvas, with one cell selected ==================== -->
+  <text x="290" y="18" class="anno">ON THE CANVAS</text>
+  <g>
+    <rect x="290" y="28" width="300" height="22" fill="#e8f3ed"/>
+    <rect x="290" y="50" width="300" height="22" fill="#fdf1e3"/>
+    <rect x="290" y="72" width="300" height="22" fill="#fbe9f0"/>
+    <rect x="290" y="94" width="300" height="22" fill="#ecebf5"/>
+    <rect x="290" y="28" width="300" height="88" fill="none" stroke="#d4d4da"/>
+    <line x1="365" y1="28" x2="365" y2="116" stroke="#e2e4e9"/>
+    <line x1="440" y1="28" x2="440" y2="116" stroke="#e2e4e9"/>
+    <line x1="515" y1="28" x2="515" y2="116" stroke="#e2e4e9"/>
+    <rect x="298" y="33" width="59" height="12" rx="3" fill="#ffffff" stroke="#d4d4da"/>
+    <rect x="448" y="33" width="59" height="12" rx="3" fill="#ffffff" stroke="#d4d4da"/>
+    <rect x="373" y="55" width="59" height="12" rx="3" fill="#ffffff" stroke="#d4d4da"/>
+    <rect x="373" y="77" width="59" height="12" rx="3" fill="#ffffff" stroke="#d4d4da"/>
+    <rect x="523" y="99" width="59" height="12" rx="3" fill="#ffffff" stroke="#d4d4da"/>
+    <!-- the selected cell -->
+    <rect x="523" y="54" width="59" height="14" rx="3" fill="#ffffff" stroke="#9aadbe" stroke-width="1.8"/>
+  </g>
+
+  <!-- the selected cell opens into the panel below -->
+  <path d="M368,116 L252,152 L628,152 L608,116 Z" fill="#eff1f4" opacity="0.65"/>
+  <path class="beam" d="M523,68 L252,152 M582,68 L628,152"/>
+
+  <!-- ==================== the panel ==================== -->
+  <rect x="252" y="152" width="376" height="500" rx="12" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+
+  <!-- header: breadcrumb and the two panel buttons -->
+  <text x="268" y="176" class="ui" font-size="8.5">Phase</text>
+  <text x="300" y="176" class="ui" font-size="8.5" fill="#c9ccd4">›</text>
+  <text x="310" y="176" class="ui" font-size="8.5" fill="#9ca3af">⋯</text>
+  <text x="323" y="176" class="ui" font-size="8.5" fill="#c9ccd4">›</text>
+  <text x="333" y="176" class="ui" font-size="8.5">Path</text>
+  <text x="358" y="176" class="ui" font-size="8.5" fill="#c9ccd4">›</text>
+  <text x="368" y="176" class="ui" font-size="8.5" font-weight="700" fill="#273036">Step 4</text>
+  <line x1="252" y1="190" x2="628" y2="190" stroke="#e2e4e9"/>
+
+  <!-- title and lane chip -->
+  <rect x="268" y="210" width="214" height="11" rx="3" fill="#c9ccd4"/>
+  <rect x="268" y="228" width="110" height="16" rx="8" fill="#fdf1e3" stroke="#d4b483"/>
+  <text x="278" y="240" class="ui" font-size="8" fill="#6b7280">Front Stage Actions</text>
+
+  <!-- description -->
+  <rect x="268" y="260" width="300" height="8" rx="3" fill="#e8eaee"/>
+  <rect x="268" y="274" width="232" height="8" rx="3" fill="#e8eaee"/>
+
+  <!-- owner pair -->
+  <text x="268" y="310" class="uiLabel">Owner</text>
+  <rect x="268" y="318" width="76" height="9" rx="3" fill="#e8eaee"/>
+  <text x="420" y="310" class="uiLabel">Perceived owner</text>
+  <rect x="420" y="318" width="88" height="9" rx="3" fill="#e8eaee"/>
+
+  <!-- spec: function, form, value -->
+  <text x="268" y="356" class="uiLabel">Function</text>
+  <rect x="268" y="364" width="264" height="9" rx="3" fill="#e8eaee"/>
+  <text x="268" y="395" class="uiLabel">Form</text>
+  <rect x="268" y="403" width="208" height="9" rx="3" fill="#e8eaee"/>
+  <text x="268" y="434" class="uiLabel">Value</text>
+  <rect x="268" y="442" width="288" height="9" rx="3" fill="#e8eaee"/>
+
+  <!-- tab row -->
+  <text x="268" y="486" class="ui" font-weight="600" fill="#273036">Dependencies</text>
+  <text x="352" y="486" class="ui" fill="#9ca3af">Evidence</text>
+  <text x="414" y="486" class="ui" fill="#9ca3af">Resources</text>
+  <line x1="252" y1="500" x2="628" y2="500" stroke="#e2e4e9"/>
+  <line x1="268" y1="500" x2="334" y2="500" stroke="#9aadbe" stroke-width="2.4"/>
+
+  <!-- dependencies tab content -->
+  <text x="268" y="522" class="uiLabel">Set off by</text>
+  <text x="268" y="537" class="ui">Front Stage Tech · Step 4</text>
+  <text x="268" y="561" class="uiLabel">Sets off</text>
+  <text x="268" y="576" class="ui">Back Stage Actions · Step 5</text>
+  <text x="268" y="600" class="uiLabel">Needs</text>
+  <text x="268" y="615" class="ui">Back Stage Tech · Step 3</text>
+
+  <!-- footer -->
+  <line x1="252" y1="626" x2="628" y2="626" stroke="#e2e4e9"/>
+  <text x="440" y="642" class="ui" font-size="8.5" text-anchor="middle" fill="#9ca3af">In slices (2)  ⌄</text>
+
+  <!-- ==================== callouts ==================== -->
+  <text x="16" y="170" class="anno">WHERE IT SITS</text>
+  <text x="16" y="183" class="sub">phase, scenario, path, step</text>
+  <path class="lead" d="M150,166 L246,172"/>
+
+  <text x="644" y="224" class="anno">WHAT HAPPENS HERE</text>
+  <text x="644" y="237" class="sub">one actor's action, and</text>
+  <text x="644" y="249" class="sub">the lane it belongs to</text>
+  <path class="lead" d="M640,220 L632,224"/>
+
+  <text x="16" y="314" class="anno">OWNERS</text>
+  <text x="16" y="327" class="sub">who is accountable, and who</text>
+  <text x="16" y="339" class="sub">the customer thinks it is</text>
+  <path class="lead" d="M150,310 L246,314"/>
+
+  <text x="644" y="360" class="anno">FUNCTION</text>
+  <text x="644" y="373" class="sub">what it has to accomplish</text>
+  <path class="lead" d="M640,356 L632,366"/>
+
+  <text x="16" y="399" class="anno">FORM</text>
+  <text x="16" y="412" class="sub">how it comes across</text>
+  <path class="lead" d="M150,395 L246,405"/>
+
+  <text x="644" y="438" class="anno">VALUE</text>
+  <text x="644" y="451" class="sub">who gets what from it</text>
+  <path class="lead" d="M640,434 L632,444"/>
+
+  <text x="644" y="490" class="anno">EVIDENCE</text>
+  <text x="644" y="503" class="sub">the sources this cell rests on</text>
+  <path class="lead" d="M640,486 L632,490"/>
+
+  <text x="644" y="527" class="anno">RESOURCES</text>
+  <text x="644" y="540" class="sub">what it links out to</text>
+  <path class="lead" d="M640,523 L632,500"/>
+
+  <text x="16" y="550" class="anno">DEPENDENCIES</text>
+  <text x="16" y="563" class="sub">what sets it off, what it sets</text>
+  <text x="16" y="575" class="sub">off, and what it needs</text>
+  <path class="lead" d="M150,546 L246,560"/>
+
+  <text x="644" y="640" class="anno">SLICES</text>
+  <text x="644" y="653" class="sub">the slices this cell appears in</text>
+  <path class="lead" d="M640,644 L632,646"/>
+</svg>

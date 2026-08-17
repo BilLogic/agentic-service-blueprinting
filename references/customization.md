@@ -5,6 +5,15 @@ conventions for running many client workspaces, and the template upgrade
 recipe. Everything here is guidance — the only hard rule is the
 schema-version compat check in the upgrade recipe.
 
+## Contents
+
+- Layer roles
+- Theming & branding
+- View types & path types
+- Scale
+- Portfolio conventions (consultants / agencies)
+- Template upgrade recipe (⚠ compat check required)
+
 ## Layer roles
 
 The canonical vocabulary + org-defined custom roles are documented in
@@ -98,7 +107,7 @@ version together; `blueprint-workspace.json` records the workspace's
    template for app code — workspace-local app edits are unsupported.
 4. Update `schema_version` in both the workspace state and the IR.
 5. Re-run `scripts/validate_ir.py` (vocabulary/schema drift surfaces here).
-6. Re-import per `references/review-import-playbook.md` (re-provision if the
+6. Re-import per `skills/map/references/review-import-playbook.md` (re-provision if the
    DDL changed), rebuild, redeploy, verify with `render-checker`.
 
 **Never import an IR whose `schema_version` mismatches the workspace clone**

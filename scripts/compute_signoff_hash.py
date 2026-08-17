@@ -6,7 +6,7 @@ Usage:
 
 Sign-off binds to a hash of ONE scenario's content, not the whole IR file.
 Adding or editing a scenario therefore changes only that scenario's hash —
-previously signed-off siblings stay signed (see references/workspace-state.md
+previously signed-off siblings stay signed (see skills/map/references/workspace-state.md
 and friction #19: a whole-file hash de-signed every scenario whenever any new
 phase was appended).
 
