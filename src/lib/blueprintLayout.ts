@@ -35,6 +35,26 @@ export function getVisualCellButtonMaxHeight(compact = false): number {
   return rowHeight - shellVerticalPad
 }
 
+/** Which face a lane's cells wear — pill stack, step visual, or plain cell. */
+export type BlueprintCellVariant = 'default' | 'pills' | 'visual'
+
+/**
+ * Whether a cell has anything to draw for its lane's variant. A visual cell
+ * is decided by its pictures upstream, a pill cell by having at least one
+ * parsable item, a plain cell by non-blank content.
+ */
+export function hasBlueprintCellContent(
+  content: string | undefined,
+  variant: BlueprintCellVariant,
+): boolean {
+  if (variant === 'visual') return true
+  if (!content?.trim()) return false
+  if (variant === 'pills') {
+    return parseCellContentItems(content).length > 0
+  }
+  return true
+}
+
 export function shouldUsePillCellContent(layer: LayerRoleSource): boolean {
   const role = getLayerRole(layer)
   return (
@@ -118,9 +138,11 @@ export function layerPrecedesBlueprintDivider(
   )
 }
 
-export const INTERACTION_LINE_LABEL = 'INTERACTION LINE'
-export const VISIBILITY_LINE_LABEL = 'VISIBILITY LINE'
-export const INTERNAL_INTERACTION_LINE_LABEL = 'INTERNAL INTERACTION LINE'
+// Canonical service-blueprint divider names (Shostack lineage) — the rail is
+// sized (COMPARE_LABEL_WIDTH 208) so these never clip.
+export const INTERACTION_LINE_LABEL = 'LINE OF INTERACTION'
+export const VISIBILITY_LINE_LABEL = 'LINE OF VISIBILITY'
+export const INTERNAL_INTERACTION_LINE_LABEL = 'LINE OF INTERNAL INTERACTION'
 
 export const BLUEPRINT_DIVIDER_ROW_HEIGHT = 28
 /** Right inset so interaction / visibility lines stop before the board edge. */

@@ -70,18 +70,18 @@ export function usePhaseBlueprintFilters({
   )
 
   const viewType = useMemo(() => {
-    if (activeScenarioIds.length === 0) return 'side-by-side' as SlideViewType
+    if (activeScenarioIds.length === 0) return 'stacked' as SlideViewType
 
     const viewTypes = activeScenarioIds.map((scenarioId) => {
       const scenario = slides.find((slide) => slide.id === scenarioId)
       return scenario
         ? getScenarioDisplayViewType(scenario)
-        : ('side-by-side' as SlideViewType)
+        : ('stacked' as SlideViewType)
     })
 
     return viewTypes.every((type) => type === viewTypes[0])
       ? viewTypes[0]!
-      : ('side-by-side' as SlideViewType)
+      : ('stacked' as SlideViewType)
   }, [activeScenarioIds, slides, getScenarioDisplayViewType])
 
   const setViewType = useCallback(

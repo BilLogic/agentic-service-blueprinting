@@ -5,13 +5,13 @@
 // 12 swimlanes per path (CJK actor lanes, canonical roles, a visual row and
 // three org-defined custom roles), pill lanes, links, and forward /
 // same-column / backward-loop triggers. Registered as the offline fallback
-// scenario in src/data/blueprintFallbacks.ts and src/types/slides.ts; the
+// scenario in src/data/blueprintFallbacks.ts and src/types/nav.ts; the
 // matching database seed is generated into supabase/seed.sql.
 //
 // Dimensions:
 //   Happy Path: 12 layers, 16 steps, 148 cells, 18 triggers
-//   Alternative Path: 12 layers, 16 steps, 148 cells, 18 triggers
-//   Exception Path: 12 layers, 16 steps, 148 cells, 19 triggers
+//   Alternative Path: 12 layers, 16 steps, 147 cells, 18 triggers
+//   Exception Path: 12 layers, 16 steps, 149 cells, 19 triggers
 
 import type { BlueprintData } from '@/types/blueprint'
 
@@ -334,7 +334,6 @@ export const SCALE_TEST_ALTERNATIVE_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-020300050010","layer_id":"f0000000-0000-4000-8000-020100050000","step_id":"f0000000-0000-4000-8000-000200100000","content":"Notify requester S10 (alt)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-020300050011","layer_id":"f0000000-0000-4000-8000-020100050000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Notify requester S11 (alt)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-020300050012","layer_id":"f0000000-0000-4000-8000-020100050000","step_id":"f0000000-0000-4000-8000-000200120000","content":"Notify requester S12 (alt)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-020300050014","layer_id":"f0000000-0000-4000-8000-020100050000","step_id":"f0000000-0000-4000-8000-000200140000","content":"Notify requester S14 (alt)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-020300050015","layer_id":"f0000000-0000-4000-8000-020100050000","step_id":"f0000000-0000-4000-8000-000200150000","content":"Notify requester S15 (alt)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-020300050016","layer_id":"f0000000-0000-4000-8000-020100050000","step_id":"f0000000-0000-4000-8000-000200160000","content":"Notify requester S16 (alt)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-020300060001","layer_id":"f0000000-0000-4000-8000-020100060000","step_id":"f0000000-0000-4000-8000-000200010000","content":"Asset DB","picture":null,"description":null,"links":[]},
@@ -486,11 +485,11 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300010002","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200020000","content":"审批工单 S02（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010003","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200030000","content":"分派任务 S03（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010004","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200040000","content":"跟进进度 S04（异常）","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300010006","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200060000","content":"归档记录 S06（异常）","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300010006","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200060000","content":"归档记录 S06","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010007","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200070000","content":"接收报修 S07（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010008","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200080000","content":"审批工单 S08（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010010","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200100000","content":"跟进进度 S10（异常）","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300010011","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200110000","content":"验收结果 S11（异常）","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300010011","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200110000","content":"验收结果 S11","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010012","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200120000","content":"归档记录 S12（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010014","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200140000","content":"审批工单 S14（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300010015","layer_id":"f0000000-0000-4000-8000-030100010000","step_id":"f0000000-0000-4000-8000-000200150000","content":"分派任务 S15（异常）","picture":null,"description":null,"links":[]},
@@ -502,7 +501,7 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300020007","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200070000","content":"接单出发 S07（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300020008","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200080000","content":"到场勘查 S08（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300020009","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200090000","content":"更换灯具 S09（异常）","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300020011","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200110000","content":"填写台账 S11（异常）","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300020011","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200110000","content":"填写台账 S11","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300020012","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200120000","content":"返回站点 S12（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300020013","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200130000","content":"接单出发 S13（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300020015","layer_id":"f0000000-0000-4000-8000-030100020000","step_id":"f0000000-0000-4000-8000-000200150000","content":"更换灯具 S15（异常）","picture":null,"description":null,"links":[]},
@@ -511,7 +510,7 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300030002","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200020000","content":"协调排期 S02（异常）","picture":null,"description":"Scale fixture spine cell at column 2 — exercises the cell detail panel.","links":[{"type":"url","label":"SOP 文档","url":"https://example.com/scale-test/sop"}]},
     {"id":"f0000000-0000-4000-8000-030300030004","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200040000","content":"催办异常 S04（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300030005","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200050000","content":"确认闭环 S05（异常）","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300030006","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200060000","content":"输出周报 S06（异常）","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300030006","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200060000","content":"输出周报 S06","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300030008","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200080000","content":"协调排期 S08（异常）","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300030009","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200090000","content":"同步进展 S09（异常）","picture":null,"description":"Scale fixture spine cell at column 9 — exercises the cell detail panel.","links":[{"type":"url","label":"SOP 文档","url":"https://example.com/scale-test/sop"}]},
     {"id":"f0000000-0000-4000-8000-030300030010","layer_id":"f0000000-0000-4000-8000-030100030000","step_id":"f0000000-0000-4000-8000-000200100000","content":"催办异常 S10（异常）","picture":null,"description":null,"links":[]},
@@ -534,12 +533,13 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300050002","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200020000","content":"Notify requester S02 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050003","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200030000","content":"Notify requester S03 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050004","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200040000","content":"Notify requester S04 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300050006","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200060000","content":"Notify requester S06 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300050006","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200060000","content":"Notify requester S06","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050007","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200070000","content":"Notify requester S07 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050008","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200080000","content":"Notify requester S08 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050010","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200100000","content":"Notify requester S10 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300050011","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Notify requester S11 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300050011","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Notify requester S11","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050012","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200120000","content":"Notify requester S12 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300050013","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200130000","content":"Notify requester S13 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050014","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200140000","content":"Notify requester S14 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050015","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200150000","content":"Notify requester S15 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300050016","layer_id":"f0000000-0000-4000-8000-030100050000","step_id":"f0000000-0000-4000-8000-000200160000","content":"Notify requester S16 (exc)","picture":null,"description":null,"links":[]},
@@ -559,7 +559,7 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300070002","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200020000","content":"Reconcile records S02 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300070004","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200040000","content":"Reconcile records S04 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300070005","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200050000","content":"Reconcile records S05 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300070006","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200060000","content":"Reconcile records S06 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300070006","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200060000","content":"Reconcile records S06","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300070008","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200080000","content":"Reconcile records S08 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300070009","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200090000","content":"Reconcile records S09 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300070010","layer_id":"f0000000-0000-4000-8000-030100070000","step_id":"f0000000-0000-4000-8000-000200100000","content":"Reconcile records S10 (exc)","picture":null,"description":null,"links":[]},
@@ -582,11 +582,11 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300090002","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200020000","content":"Audit checkpoint S02 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090003","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200030000","content":"Audit checkpoint S03 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090004","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200040000","content":"Audit checkpoint S04 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300090006","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200060000","content":"Audit checkpoint S06 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300090006","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200060000","content":"Audit checkpoint S06","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090007","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200070000","content":"Audit checkpoint S07 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090008","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200080000","content":"Audit checkpoint S08 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090010","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200100000","content":"Audit checkpoint S10 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300090011","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Audit checkpoint S11 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300090011","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Audit checkpoint S11","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090012","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200120000","content":"Audit checkpoint S12 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090014","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200140000","content":"Audit checkpoint S14 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300090015","layer_id":"f0000000-0000-4000-8000-030100090000","step_id":"f0000000-0000-4000-8000-000200150000","content":"Audit checkpoint S15 (exc)","picture":null,"description":null,"links":[]},
@@ -598,7 +598,7 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300100007","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200070000","content":"Partner sync S07 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300100008","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200080000","content":"Partner sync S08 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300100009","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200090000","content":"Partner sync S09 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300100011","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Partner sync S11 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300100011","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200110000","content":"Partner sync S11","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300100012","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200120000","content":"Partner sync S12 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300100013","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200130000","content":"Partner sync S13 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300100015","layer_id":"f0000000-0000-4000-8000-030100100000","step_id":"f0000000-0000-4000-8000-000200150000","content":"Partner sync S15 (exc)","picture":null,"description":null,"links":[]},
@@ -607,7 +607,7 @@ export const SCALE_TEST_EXCEPTION_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-030300110002","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200020000","content":"SLA check S02 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300110004","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200040000","content":"SLA check S04 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300110005","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200050000","content":"SLA check S05 (exc)","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-030300110006","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200060000","content":"SLA check S06 (exc)","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-030300110006","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200060000","content":"SLA check S06","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300110008","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200080000","content":"SLA check S08 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300110009","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200090000","content":"SLA check S09 (exc)","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-030300110010","layer_id":"f0000000-0000-4000-8000-030100110000","step_id":"f0000000-0000-4000-8000-000200100000","content":"SLA check S10 (exc)","picture":null,"description":null,"links":[]},

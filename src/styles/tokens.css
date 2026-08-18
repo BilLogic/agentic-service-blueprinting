@@ -103,3 +103,11 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
 }
+
+/* Motion tokens — shared durations for micro-interactions, fades and camera
+ * moves (compare strip, ledger rows, panel dimming, cell pulse). */
+:root {
+  --motion-micro: 150ms;
+  --motion-fade: 200ms;
+  --motion-camera: 420ms;
+}

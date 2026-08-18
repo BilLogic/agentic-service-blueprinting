@@ -31,19 +31,38 @@ export type { BlueprintLabelRowSpec }
 export function BlueprintStickyLabelBackdrop({
   rowCount,
   rowStart = 1,
+  bleedTop = 0,
+  bleedBottom = 0,
+  bleedLeft = 0,
 }: {
   rowCount: number
   rowStart?: number
+  /**
+   * Extend the rail past the row tracks (px) so it meets the section
+   * frame's INNER edges (stop short of the border — the rail must never
+   * paint over it) instead of leaving white L-gaps inside the frame — the
+   * band's rows do not include the frame insets.
+   */
+  bleedTop?: number
+  bleedBottom?: number
+  bleedLeft?: number
 }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none sticky left-0 z-[35] blueprint-panel-label-surface"
+      className="pointer-events-none sticky z-[35] blueprint-panel-label-surface"
       style={{
         gridColumn: 1,
         gridRow: `${rowStart} / ${rowCount + rowStart}`,
-        width: COMPARE_LABEL_WIDTH,
+        width: COMPARE_LABEL_WIDTH + bleedLeft,
         alignSelf: 'stretch',
+        left: bleedLeft > 0 ? -bleedLeft : 0,
+        marginLeft: bleedLeft > 0 ? -bleedLeft : undefined,
+        marginTop: bleedTop > 0 ? -bleedTop : undefined,
+        marginBottom: bleedBottom > 0 ? -bleedBottom : undefined,
+        // The frame's inner corner is rounded; a square gray corner poking
+        // into it reads as a layering bug.
+        borderBottomLeftRadius: bleedLeft > 0 && bleedBottom > 0 ? 9 : undefined,
         backgroundColor: blueprintPanelLabelRailColor(),
       }}
     />

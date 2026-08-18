@@ -1,3 +1,4 @@
+import { CompareControlsCluster } from '@/components/blueprint/CompareControls'
 import { NotionPropertyRow } from '@/components/blueprint/NotionPropertyRow'
 import { ScenarioSlideFilters } from '@/components/blueprint/ScenarioSlideFilters'
 import { PathMultiSelect, type PathOption } from '@/components/blueprint/PathMultiSelect'
@@ -6,7 +7,7 @@ import type { NavItem } from '@/types/nav'
 
 type ScenarioSlideHeaderProps = {
   title: string
-  slide?: Pick<NavItem, 'id' | 'label'>
+  slide?: NavItem
   description?: string | null
   phaseLabel?: string
   paths?: PathOption[]
@@ -20,6 +21,7 @@ type ScenarioSlideHeaderProps = {
 
 export function ScenarioSlideHeader({
   title,
+  slide,
   description,
   phaseLabel,
   paths = [],
@@ -42,10 +44,16 @@ export function ScenarioSlideHeader({
         {phaseLabel && (
           <p className="mb-1 text-sm text-muted-foreground">{phaseLabel}</p>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <h1 className="text-[2.5rem] font-bold leading-[1.15] tracking-tight text-foreground">
             {title}
           </h1>
+          {slide ? (
+            <CompareControlsCluster
+              slide={slide}
+              selectedPathIds={selectedPathIds}
+            />
+          ) : null}
         </div>
         {description && (
           <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">
@@ -105,6 +113,12 @@ export function ScenarioSlideHeader({
           >
             {title}
           </h1>
+          {slide ? (
+            <CompareControlsCluster
+              slide={slide}
+              selectedPathIds={selectedPathIds}
+            />
+          ) : null}
         </div>
         {description && (
           <p

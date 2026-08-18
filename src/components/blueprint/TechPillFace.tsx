@@ -14,6 +14,8 @@ type TechPillFaceProps = {
   className?: string
   opacity?: number
   asSpan?: boolean
+  /** Extra face styling (e.g. the merged view's path wash). */
+  style?: CSSProperties
 }
 
 export function TechPillFace({
@@ -22,6 +24,7 @@ export function TechPillFace({
   className,
   opacity,
   asSpan = false,
+  style: styleProp,
 }: TechPillFaceProps) {
   const fill = getTechPillStyle(item).backgroundColor
 
@@ -29,6 +32,7 @@ export function TechPillFace({
     const style = {
       ...getBlueprintCellInteractionStyle(fill),
       ...(opacity != null && opacity < 1 ? { opacity } : undefined),
+      ...styleProp,
     } as CSSProperties
 
     return (
@@ -52,6 +56,7 @@ export function TechPillFace({
       variant="pill"
       compact={compact}
       opacity={opacity}
+      style={styleProp}
       className={cn('min-w-0 shrink-0 break-words', className)}
     >
       {item}

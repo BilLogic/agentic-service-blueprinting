@@ -1,4 +1,5 @@
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
+import { CompareControlsCluster } from '@/components/blueprint/CompareControls'
 import { StackHeaderFilterMenu } from '@/components/editor/StackHeaderFilterMenu'
 import {
   BLUEPRINT_MENUBAR_DESCRIPTION_CLASS,
@@ -79,6 +80,8 @@ export function PhaseMenubarHeader({
           </>
         ) : null}
       </div>
+
+      <CompareControlsCluster slide={slide} selectedPathIds={selectedPathIds} />
 
       {showFilterMenus ? (
         <StackHeaderFilterMenu

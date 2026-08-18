@@ -4,18 +4,22 @@ import { ORG_NAME } from '@/config'
 /** Home = birds-eye service overview; detail = single slide/scenario editor. */
 export type EditorView = 'home' | 'detail'
 
-/** How blueprint paths are laid out on a scenario slide. */
-export type SlideViewType = 'single' | 'side-by-side' | 'integrated'
+/**
+ * How blueprint paths are laid out on a scenario slide — CLIENT vocabulary.
+ * The DB keeps `side-by-side`/`integrated`; the two meet only in
+ * `src/lib/viewTypeVocabulary.ts`. `'merged'` is session-only, never persisted.
+ */
+export type SlideViewType = 'single' | 'stacked' | 'merged'
 
-export const SLIDE_VIEW_TYPES: SlideViewType[] = ['single', 'side-by-side', 'integrated']
+export const SLIDE_VIEW_TYPES: SlideViewType[] = ['single', 'stacked', 'merged']
 
-/** Options shown in the scenario view type control. */
-export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = SLIDE_VIEW_TYPES
+/** Options shown in the scenario view type control (merged is session-only). */
+export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = ['stacked']
 
 export const SLIDE_VIEW_TYPE_LABELS: Record<SlideViewType, string> = {
   single: 'Single',
-  'side-by-side': 'Side by side',
-  integrated: 'Integrated',
+  stacked: 'Stacked',
+  merged: 'Merged',
 }
 
 export type NavItem = {
@@ -93,7 +97,7 @@ export const FALLBACK_NAV: NavItem[] = [
     index: 1,
     label: 'Sample Service',
     parentId: DISCOVER_PHASE_ID,
-    viewType: 'side-by-side',
+    viewType: 'stacked',
     description:
       'Generated sample scenario: 12 lanes (canonical + custom roles, CJK labels), 16 steps, 3 paths.',
   },
@@ -127,9 +131,12 @@ export function getBlueprintScenarioId(slide: NavItem): string | undefined {
 }
 
 export function getSlideViewType(slide: NavItem): SlideViewType {
+  // `slide.viewType` is already client vocabulary: the raw DB value is mapped
+  // at the read seam (`phasesToSlides` via `viewTypeVocabulary`), where a
+  // persisted 'integrated' keeps coercing to the plain stacked view.
   if (slide.viewType) return slide.viewType
-  if (isSubslide(slide)) return 'side-by-side'
-  if (hasBlueprintFallback(slide.id)) return 'side-by-side'
+  if (isSubslide(slide)) return 'stacked'
+  if (hasBlueprintFallback(slide.id)) return 'stacked'
   return 'single'
 }
 
@@ -148,12 +155,8 @@ export function showsBlueprintFilters(
   return false
 }
 
-export function isIntegratedBlueprintSlide(slide: NavItem): boolean {
-  return isSubslide(slide) && getSlideViewType(slide) === 'integrated'
-}
-
 export function isSideBySideBlueprintSlide(slide: NavItem): boolean {
-  return isSubslide(slide) && getSlideViewType(slide) === 'side-by-side'
+  return isSubslide(slide) && getSlideViewType(slide) === 'stacked'
 }
 
 export function getMainSlides(slides: NavItem[] = FALLBACK_NAV): NavItem[] {

@@ -5,10 +5,18 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react'
-import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
+import type {
+  BlueprintCellSelection,
+  BlueprintPanelSurface,
+} from '@/types/blueprintCellDetail'
 import type { BlueprintData } from '@/types/blueprint'
+import {
+  getCompareReviewState,
+  subscribeCompareReview,
+} from '@/lib/compareReviewStore'
 import {
   getBlueprintCellConnections,
   getBlueprintForPath,
@@ -24,12 +32,28 @@ export type BlueprintCellPreviewHover = {
   techItem?: string | null
 }
 
+export type { BlueprintPanelSurface }
+
+export type BlueprintPanelState = { surface: BlueprintPanelSurface }
+
 type BlueprintCellDetailContextValue = {
   enabled: boolean
   blueprints: BlueprintData[]
   selection: BlueprintCellSelection | null
   selectCell: (selection: BlueprintCellSelection) => void
   clearSelection: () => void
+  /**
+   * THE single owner of "is the panel open, and on which surface".
+   * `null` = closed. Everything else derives: `isOpen`, the drawer's
+   * `open`, the surface switcher. Never OR a second boolean into it.
+   */
+  panelState: BlueprintPanelState | null
+  /** Open the Differences (compare ledger) surface — no selection required. */
+  openDifferences: () => void
+  /** Swap surfaces inside the open drawer — content swap, never close-reopen. */
+  setPanelSurface: (surface: BlueprintPanelSurface) => void
+  /** Close the panel: clears panelState + selection atomically. */
+  closePanel: () => void
   isOpen: boolean
   selectedCellIds: ReadonlySet<string>
   directlyConnectedCellIds: ReadonlySet<string>
@@ -55,21 +79,53 @@ export function BlueprintCellDetailProvider({
   blueprints = [],
 }: BlueprintCellDetailProviderProps) {
   const [selection, setSelection] = useState<BlueprintCellSelection | null>(null)
+  const [panelState, setPanelState] = useState<BlueprintPanelState | null>(null)
   const [previewHover, setPreviewHover] =
     useState<BlueprintCellPreviewHover | null>(null)
 
   useEffect(() => {
     setSelection(null)
+    setPanelState(null)
     setPreviewHover(null)
   }, [resetKey])
 
+  // The Differences surface only means something while a comparison is live
+  // (≥2 selected paths in the focused scenario view). When that stops being
+  // true — a path deselected, the scenario left compare — the surface falls
+  // back: details if a cell is selected, closed otherwise. Render-phase
+  // guarded set (derive-during-render idiom).
+  const compareActive =
+    useSyncExternalStore(
+      subscribeCompareReview,
+      () => getCompareReviewState().registration,
+    ) !== null
+  if (panelState?.surface === 'differences' && !compareActive) {
+    setPanelState(selection ? { surface: 'details' } : null)
+  }
+
   const selectCell = useCallback((next: BlueprintCellSelection) => {
     setSelection(next)
+    setPanelState({ surface: 'details' })
     setPreviewHover(null)
   }, [])
 
   const clearSelection = useCallback(() => {
     setSelection(null)
+    setPanelState(null)
+    setPreviewHover(null)
+  }, [])
+
+  const openDifferences = useCallback(() => {
+    setPanelState({ surface: 'differences' })
+  }, [])
+
+  const setPanelSurface = useCallback((surface: BlueprintPanelSurface) => {
+    setPanelState({ surface })
+  }, [])
+
+  const closePanel = useCallback(() => {
+    setSelection(null)
+    setPanelState(null)
     setPreviewHover(null)
   }, [])
 
@@ -138,7 +194,11 @@ export function BlueprintCellDetailProvider({
       selection,
       selectCell,
       clearSelection,
-      isOpen: enabled && selection !== null,
+      panelState,
+      openDifferences,
+      setPanelSurface,
+      closePanel,
+      isOpen: enabled && panelState !== null,
       selectedCellIds: cellEmphasis.selectedCellIds,
       directlyConnectedCellIds: cellEmphasis.directlyConnectedCellIds,
       previewHover,
@@ -150,6 +210,10 @@ export function BlueprintCellDetailProvider({
       selection,
       selectCell,
       clearSelection,
+      panelState,
+      openDifferences,
+      setPanelSurface,
+      closePanel,
       cellEmphasis,
       previewHover,
     ],

@@ -202,9 +202,35 @@ const LANES = [
   },
 ]
 
+/**
+ * Compare-demo shaping (Compare v3): the sample scenario must demonstrate
+ * every compare verdict out of the box —
+ *  - divergent slots: the path tags on cjk/en lanes already make most
+ *    text slots differ per path;
+ *  - fully-shared slots: pill lanes carry identical content on every path;
+ *  - SUBSET-shared slots: on these columns the EXCEPTION path drops its tag
+ *    and matches the happy content exactly, so a three-path merge collapses
+ *    happy+exception into one drawn cell (striped wash, two member labels)
+ *    while the alternative keeps its own;
+ *  - `only` slots: one cell each that exists on only some paths (below).
+ */
+const EXCEPTION_MATCHES_HAPPY_COLS = new Set([6, 11])
+
+/** Frontstage Ops (row 5): missing on the alternative path — an "only" diff. */
+const ALTERNATIVE_MISSING_SLOTS = new Set(['5:14'])
+/** Frontstage Ops (row 5): present ONLY on the exception path. */
+const EXCEPTION_EXTRA_SLOTS = new Set(['5:13'])
+
 /** Non-visual lanes skip every 4th column so density stays realistic (~148 cells/path). */
-function laneHasCell(row, col) {
+function laneHasCell(row, col, path) {
   if (row === 0) return true
+  if (path) {
+    const slot = `${row}:${col}`
+    if (path.path_type === 'alternative' && ALTERNATIVE_MISSING_SLOTS.has(slot))
+      return false
+    if (path.path_type === 'exception' && EXCEPTION_EXTRA_SLOTS.has(slot))
+      return true
+  }
   return (row * 3 + col) % 4 !== 0
 }
 
@@ -213,15 +239,20 @@ function pillContent(lane, col) {
 }
 
 function cellContent(lane, col, path) {
+  // Subset-shared columns: the exception path matches happy exactly here.
+  const untagged =
+    path.path_type === 'exception' && EXCEPTION_MATCHES_HAPPY_COLS.has(col)
+  const cjkTag = untagged ? '' : path.cjkTag
+  const enTag = untagged ? '' : path.enTag
   switch (lane.kind) {
     case 'visual':
       return ''
     case 'cjk':
-      return `${lane.verbs[(col - 1) % lane.verbs.length]} S${pad2(col)}${path.cjkTag}`
+      return `${lane.verbs[(col - 1) % lane.verbs.length]} S${pad2(col)}${cjkTag}`
     case 'pills':
       return pillContent(lane, col)
     case 'en':
-      return `${lane.verb} S${pad2(col)}${path.enTag}`
+      return `${lane.verb} S${pad2(col)}${enTag}`
     default:
       throw new Error(`unknown lane kind: ${lane.kind}`)
   }
@@ -282,7 +313,7 @@ function buildCells(path, steps) {
   const cells = []
   for (const lane of LANES) {
     for (let col = 1; col <= STEP_COUNT; col += 1) {
-      if (!laneHasCell(lane.row, col)) continue
+      if (!laneHasCell(lane.row, col, path)) continue
       const extras = cellExtras(lane, col)
       cells.push({
         id: fid(path.ordinal, KIND.cell, lane.row, col),
@@ -340,7 +371,7 @@ function buildTriggers(path) {
 
   return pairs.map(([source, target], index) => {
     for (const [row, col] of [source, target]) {
-      if (!laneHasCell(row, col)) {
+      if (!laneHasCell(row, col, path)) {
         throw new Error(
           `trigger references missing cell (row ${row}, col ${col})`,
         )

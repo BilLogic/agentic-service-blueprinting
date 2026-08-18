@@ -1,0 +1,111 @@
+import {
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_WRAP_CORRIDOR_MARGIN,
+} from '@/lib/blueprintLayout'
+import type { BlueprintLabelRowSpec } from '@/lib/sideBySideCompareLayout'
+import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
+
+/**
+ * One lane row's grid cell: the swimlane data attributes canvas queries rely
+ * on (`data-blueprint-swimlane`, `data-layer-id`/`-name`), the arrow
+ * corridors, and the divider-row treatment. Row anatomy is a property of the
+ * LANE, not of any path, so the stacked bands and the merged grid share this
+ * shell and only differ in the cells they put inside it.
+ *
+ * `children` renders only for an expanded layer row — a collapsed lane or a
+ * divider keeps its track height with inert filler.
+ */
+export function CompareLaneRowShell({
+  row,
+  rowIndex,
+  /** Stacked/merged rows span the rail column too; cells start at track 2. */
+  cellTracksOnly = false,
+  children,
+}: {
+  row: BlueprintLabelRowSpec
+  rowIndex: number
+  cellTracksOnly?: boolean
+  children: ReactNode
+}) {
+  const isDivider =
+    row.kind === 'interaction' ||
+    row.kind === 'visibility' ||
+    row.kind === 'internalInteraction'
+  const isLayerRow = row.kind === 'layer'
+  const corridorAbove = row.wrapCorridorAbove
+    ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
+    : 0
+  const corridorBelow = row.wrapCorridorBelow
+    ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
+    : 0
+  const inLaneLoopCorridorAbove = row.inLaneLoopCorridorAbove
+    ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
+    : 0
+
+  return (
+    <div
+      {...(isLayerRow && row.layer
+        ? {
+            'data-blueprint-swimlane': '',
+            'data-blueprint-row': '',
+            'data-layer-id': row.layer.id,
+            // Lets a picked cell name its lane without the selection
+            // carrying the whole blueprint (see lib/canvasCellQuery).
+            'data-layer-name': row.layer.name,
+          }
+        : {})}
+      {...(isDivider
+        ? {
+            'data-blueprint-divider':
+              row.kind === 'interaction' ? 'interaction' : 'visibility',
+          }
+        : {})}
+      className={cn(
+        'flex h-full min-h-0 flex-col',
+        isDivider && 'relative z-[1] overflow-hidden bg-transparent',
+        isLayerRow && 'overflow-visible',
+      )}
+      style={{
+        gridRow: rowIndex + 1,
+        ...(cellTracksOnly ? { gridColumn: '2 / -1' } : {}),
+        backgroundColor: isDivider ? undefined : 'transparent',
+      }}
+      {...(isDivider ? { role: 'separator' as const } : {})}
+    >
+      {corridorAbove > 0 && (
+        <div aria-hidden className="shrink-0" style={{ height: corridorAbove }} />
+      )}
+      <div
+        className={cn(
+          'min-h-0',
+          isDivider
+            ? 'flex h-full items-center overflow-hidden'
+            : 'flex flex-1 flex-col',
+        )}
+      >
+        {inLaneLoopCorridorAbove > 0 && (
+          <div
+            aria-hidden
+            data-blueprint-loop-corridor="above"
+            className="shrink-0"
+            style={{ height: inLaneLoopCorridorAbove }}
+          />
+        )}
+        {isLayerRow && row.layer && !row.collapsed ? (
+          children
+        ) : (
+          <div className="h-full" aria-hidden />
+        )}
+      </div>
+      {corridorBelow > 0 && (
+        <div
+          aria-hidden
+          data-blueprint-wrap-corridor="below"
+          className="shrink-0"
+          style={{ height: corridorBelow }}
+        />
+      )}
+    </div>
+  )
+}
