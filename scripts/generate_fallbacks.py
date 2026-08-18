@@ -298,7 +298,13 @@ def nav_items(model: dict) -> list:
                 "index": scenario["order"],
                 "label": scenario["name"],
                 "parentId": phase["id"],
-                "viewType": scenario["view_type"],
+                # IR/DB vocabulary -> client slide vocabulary (mirrors
+                # src/lib/viewTypeVocabulary.ts dbToClientViewType).
+                "viewType": {
+                    "single": "single",
+                    "side-by-side": "stacked",
+                    "integrated": "stacked",
+                }.get(scenario["view_type"], "single"),
             }
             if scenario.get("description"):
                 sub["description"] = scenario["description"]
