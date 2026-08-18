@@ -145,3 +145,41 @@
     }
   }
 }
+
+@layer utilities {
+  /*
+   * SEMANTIC ZOOM — the blocks tier. Below the threshold (stamped as
+   * data-semantic-tier by the camera's transform writer, never by React)
+   * cell text is smudge, so cells render as flat blocks and the phase
+   * title badges counter-scale to hold a constant on-screen size: the
+   * overview reads as a table of contents — journey length, density per
+   * phase — instead of a shrunken page. The `scale` property composes
+   * with the badge's inline translate, so no transform fight.
+   */
+  [data-semantic-tier='blocks'] [data-blueprint-cell] > * {
+    visibility: hidden;
+  }
+
+  [data-semantic-tier='blocks'] [data-blueprint-cell] {
+    background-color: var(--border);
+    border-color: transparent;
+  }
+
+  [data-semantic-tier='blocks'] [data-phase-title-badge] {
+    scale: var(--semantic-label-boost, 1);
+    transform-origin: left bottom;
+    /* Counter-scaling is instant framing math, not an animation — a
+       transition here reads as a "growing label" at the tier boundary. */
+    transition: none;
+  }
+
+  /* Forced-colors flattens the --border fill to Canvas — the whole board
+     would vanish at the blocks tier. Restate the blocks with the system
+     ink so the density map survives High Contrast. */
+  @media (forced-colors: active) {
+    [data-semantic-tier='blocks'] [data-blueprint-cell] {
+      background-color: CanvasText;
+      border-color: CanvasText;
+    }
+  }
+}

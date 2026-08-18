@@ -8,6 +8,23 @@ export type PathListItem = {
   path_type: PathType
 }
 
+/**
+ * The one "which path should a fresh visit show?" rule: a path literally
+ * named "Happy Path" wins over other happy-typed paths, then any happy
+ * path, then the first path.
+ */
+export function pickPreferredPath<
+  T extends { name: string; path_type: PathType },
+>(paths: readonly T[]): T | undefined {
+  if (paths.length === 0) return undefined
+  const namedHappy = paths.find(
+    (path) =>
+      path.path_type === 'happy' && /^happy\s*path$/i.test(path.name.trim()),
+  )
+  if (namedHappy) return namedHappy
+  return paths.find((path) => path.path_type === 'happy') ?? paths[0]
+}
+
 export function defaultSelectedPathIds(paths: PathListItem[]): string[] {
   const preferred = paths.find((p) => p.path_type === 'happy') ?? paths[0]
   return preferred ? [preferred.id] : []

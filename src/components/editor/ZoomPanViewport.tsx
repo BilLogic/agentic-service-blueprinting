@@ -1,5 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
+import { RotateCcw } from 'lucide-react'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
+import { useMobileShell } from '@/hooks/useMobileShell'
+import { Button } from '@/components/ui/button'
 import { EditorSequenceNav } from '@/components/editor/EditorSequenceNav'
 import { EditorZoomIndicator } from '@/components/editor/EditorZoomIndicator'
 import { registerFocusCells } from '@/lib/canvasFocusCells'
@@ -32,6 +35,7 @@ export function ZoomPanViewport({
   refitOnResize = true,
   focusCellsKey,
 }: ZoomPanViewportProps) {
+  const mobile = useMobileShell()
   const {
     containerRef,
     contentRef,
@@ -39,6 +43,7 @@ export function ZoomPanViewport({
     isPanning,
     pointerHandlers,
     focusCells,
+    fitToView,
   } = useZoomPanViewport({
     resetKey,
     panIgnoreSelector,
@@ -79,8 +84,30 @@ export function ZoomPanViewport({
         </div>
       </div>
 
-      {showSequenceNav ? <EditorSequenceNav /> : null}
-      <EditorZoomIndicator zoom={zoom} />
+      {showSequenceNav && !mobile ? <EditorSequenceNav /> : null}
+      {mobile ? (
+        /* Reset View is a MOBILE affordance (no scroll wheel, easy to lose
+           the canvas): bottom-centered under the thumb, replacing the
+           passive zoom readout. Desktop keeps the % pill. */
+        <div
+          data-zoom-indicator=""
+          className="pointer-events-none absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Reset view"
+            onClick={() => fitToView()}
+            className="pointer-events-auto h-8 shrink-0 gap-1.5 rounded-lg border-border/80 bg-card px-3 text-xs font-medium text-muted-foreground shadow-md hover:text-foreground hover:shadow-lg"
+          >
+            <RotateCcw className="size-3" aria-hidden />
+            Reset View
+          </Button>
+        </div>
+      ) : (
+        <EditorZoomIndicator zoom={zoom} />
+      )}
     </div>
   )
 }

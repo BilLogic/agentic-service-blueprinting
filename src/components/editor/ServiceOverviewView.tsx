@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
 import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
 import { PhaseScenarioOverview } from '@/components/blueprint/PhaseScenarioOverview'
 import { CanvasPhaseSection } from '@/components/editor/CanvasPhaseSection'
@@ -89,7 +89,19 @@ function ServicePhaseSection({
   )
 }
 
-export function ServiceOverviewView() {
+type ServiceOverviewViewProps = {
+  /**
+   * Replaces the docked sticky header (path filters). The mobile shell
+   * passes `() => null`: its own top bar names the view, and path choice
+   * happens through the single-select pill, so the desktop filter chrome
+   * would be a second surface saying less.
+   */
+  renderHeader?: () => ReactNode
+}
+
+export function ServiceOverviewView({
+  renderHeader,
+}: ServiceOverviewViewProps = {}) {
   const overviewRef = useRef<HTMLDivElement>(null)
   const [overviewEl, setOverviewEl] = useState<HTMLDivElement | null>(null)
   const {
@@ -218,11 +230,15 @@ export function ServiceOverviewView() {
           </div>
         </ZoomPanViewport>
         {cellDetailEnabled ? <BlueprintCellDetailPanel /> : null}
-        <ServiceOverviewStickyHeader
-          paths={overviewPaths}
-          selectedPathIds={overviewSelectedPathIds}
-          onTogglePath={handleOverviewTogglePath}
-        />
+        {renderHeader ? (
+          renderHeader()
+        ) : (
+          <ServiceOverviewStickyHeader
+            paths={overviewPaths}
+            selectedPathIds={overviewSelectedPathIds}
+            onTogglePath={handleOverviewTogglePath}
+          />
+        )}
       </div>
     </BlueprintCellDetailProvider>
   )

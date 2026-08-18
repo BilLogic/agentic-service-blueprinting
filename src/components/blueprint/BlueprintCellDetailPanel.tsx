@@ -26,6 +26,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useBlueprintCellDetail } from '@/contexts/BlueprintCellDetailContext'
+import { useMobileShell } from '@/hooks/useMobileShell'
 import {
   buildBlueprintCellSelectionForId,
   getBlueprintCellConnections,
@@ -134,6 +135,9 @@ function resolveFigmaUrl(
 }
 
 export function BlueprintCellDetailPanel() {
+  // Same drawer, two postures: the desktop right-pinned card, or — on the
+  // mobile shell — a bottom sheet the width of the phone.
+  const mobile = useMobileShell()
   const {
     selection: currentSelection,
     isOpen,
@@ -404,6 +408,10 @@ export function BlueprintCellDetailPanel() {
   if (showDifferences) {
     return (
       <Drawer
+        // Keyed on posture: a resize across the breakpoint while open would
+        // otherwise reinterpret an in-flight swipe's offset against the
+        // other posture's axis. A flip remounts the drawer clean instead.
+        key={mobile ? 'mobile' : 'desktop'}
         open={drawerOpen}
         onOpenChange={(open) => {
           setDrawerOpen(open)
@@ -411,11 +419,15 @@ export function BlueprintCellDetailPanel() {
         }}
         modal={false}
         disablePointerDismissal
-        swipeDirection="right"
+        swipeDirection={mobile ? 'down' : 'right'}
       >
         <DrawerContent
           data-cell-detail-panel=""
-          className="!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[24rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]"
+          className={
+            mobile
+              ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:0px]'
+              : '!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[24rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]'
+          }
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
         >
@@ -686,6 +698,8 @@ export function BlueprintCellDetailPanel() {
 
   return (
     <Drawer
+      // Same posture key as the differences drawer above.
+      key={mobile ? 'mobile' : 'desktop'}
       open={drawerOpen}
       onOpenChange={(open) => {
         setDrawerOpen(open)
@@ -696,11 +710,15 @@ export function BlueprintCellDetailPanel() {
       }}
       modal={false}
       disablePointerDismissal
-      swipeDirection="right"
+      swipeDirection={mobile ? 'down' : 'right'}
     >
       <DrawerContent
         data-cell-detail-panel=""
-        className="!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[20rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]"
+        className={
+          mobile
+            ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:0px]'
+            : '!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[20rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]'
+        }
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
