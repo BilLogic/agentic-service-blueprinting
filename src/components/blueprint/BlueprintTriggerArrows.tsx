@@ -10,12 +10,17 @@ import {
   ARROW_VIEWPORT_PAD,
   buildArrowPath,
   buildBidirectionalArrowPath,
+  buildOverheadRailBusPath,
+  buildOverheadRailFanOutDropPath,
+  buildOverheadRailFanOutTrunkPath,
   findBidirectionalTriggerPairs,
+  groupOverheadRailTriggers,
   isWrapTrigger,
 } from '@/lib/blueprintArrowGeometry'
 import {
   getPathArrowColor,
   getPathColorKey,
+  getPathDashArrayFromKey,
   pathColorKeyToMarkerSuffix,
 } from '@/lib/pathColorTheme'
 import { getPathTypeArrowColor } from '@/lib/pathTypeTheme'
@@ -56,12 +61,27 @@ type ArrowSegment = {
   dualMarker?: boolean
 }
 
+/** Identity of a rendered segment list — cheaper than re-rendering to find out. */
+function serializeSegments(segments: readonly ArrowSegment[]): string {
+  return segments
+    .map(
+      (segment) =>
+        `${segment.id}|${segment.d}|${segment.colorKey}|${segment.arrowColor}|${segment.opacity}|${segment.showMarker ?? ''}|${segment.dualMarker ?? ''}`,
+    )
+    .join('~')
+}
+
 function isColoredTrigger(
   trigger: BlueprintCellTrigger,
 ): trigger is ColoredBlueprintTrigger {
   return 'path_type' in trigger
 }
 
+/**
+ * SVG arrow overlay for a single-path blueprint grid. Each segment carries its
+ * path's colour and dash pattern, so arrows stay distinguishable where they
+ * cross and in a monochrome print.
+ */
 export function BlueprintTriggerArrows({
   triggers,
   contentRef,
@@ -83,15 +103,75 @@ export function BlueprintTriggerArrows({
 
   const updateArrows = useCallback(() => {
     const content = contentRef.current
-    if (!content || triggers.length === 0) {
+    // `needs` links are panel-only by design — arrows draw temporal triggers only.
+    const arrowTriggers = triggers.filter((t) => (t.kind ?? 'trigger') === 'trigger')
+    if (!content || arrowTriggers.length === 0) {
       setSegments([])
       return
     }
 
     const next: ArrowSegment[] = []
 
+    const { busGroups, fanOutGroups, remaining } = groupOverheadRailTriggers(
+      arrowTriggers,
+      content,
+    )
+
+    for (const group of fanOutGroups) {
+      const targetEls = group.branches.map((branch) => branch.targetEl)
+      const trunk = buildOverheadRailFanOutTrunkPath(
+        group.sourceEl,
+        targetEls,
+        content,
+      )
+      if (trunk) {
+        next.push({
+          id: `${group.sourceCellId}-trunk`,
+          d: trunk,
+          colorKey: defaultColorKey,
+          arrowColor: defaultArrowColor,
+          opacity: 1,
+          showMarker: false,
+        })
+      }
+
+      for (const branch of group.branches) {
+        const d = buildOverheadRailFanOutDropPath(
+          group.sourceEl,
+          branch.targetEl,
+          content,
+        )
+        if (!d) continue
+
+        next.push({
+          id: branch.triggerId,
+          d,
+          colorKey: defaultColorKey,
+          arrowColor: defaultArrowColor,
+          opacity: 1,
+        })
+      }
+    }
+
+    for (const group of busGroups) {
+      const d = buildOverheadRailBusPath(
+        group.sourceEls,
+        group.targetEl,
+        content,
+      )
+      if (!d) continue
+
+      next.push({
+        id: group.triggerIds.join('-'),
+        d,
+        colorKey: defaultColorKey,
+        arrowColor: defaultArrowColor,
+        opacity: 1,
+      })
+    }
+
     const { pairs, remaining: unpaired } =
-      findBidirectionalTriggerPairs(triggers)
+      findBidirectionalTriggerPairs(remaining)
 
     for (const pair of pairs) {
       const cellAEl = content.querySelector<HTMLElement>(
@@ -146,11 +226,21 @@ export function BlueprintTriggerArrows({
       })
     }
 
-    setSegments(next)
-    setSize({
-      width: Math.max(content.scrollWidth, content.offsetWidth, 1),
-      height: Math.max(content.scrollHeight, content.offsetHeight, 1),
-    })
+    // Equality-guarded: a ResizeObserver burst during camera-fit relayout
+    // fires many notifications for identical geometry; fresh object
+    // identities on each would re-render (and re-observe) in a loop. Same
+    // hardening as IntegratedTriggerArrows.
+    const nextKey = serializeSegments(next)
+    setSegments((prev) =>
+      serializeSegments(prev) === nextKey ? prev : next,
+    )
+    const width = Math.max(content.scrollWidth, content.offsetWidth, 1)
+    const height = Math.max(content.scrollHeight, content.offsetHeight, 1)
+    setSize((prev) =>
+      prev.width === width && prev.height === height
+        ? prev
+        : { width, height },
+    )
   }, [
     contentRef,
     defaultArrowColor,
@@ -165,26 +255,31 @@ export function BlueprintTriggerArrows({
     if (!content) return
 
     const scrollParent = scrollContainerRef.current ?? content
-    const observer = new ResizeObserver(() => updateArrows())
+
+    // ONE rAF coalescer for every geometry-invalidating signal, the
+    // ResizeObserver included — resize notifications arrive in bursts
+    // during layout, and a synchronous DOM sweep per notification is
+    // exactly the storm the integrated twin already guards against.
+    let raf = 0
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(updateArrows)
+    }
+
+    const observer = new ResizeObserver(scheduleUpdate)
     observer.observe(content)
     if (scrollParent !== content) {
       observer.observe(scrollParent)
     }
 
-    let raf = 0
-    const onScrollOrResize = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(updateArrows)
-    }
-
-    scrollParent.addEventListener('scroll', onScrollOrResize, { passive: true })
-    window.addEventListener('resize', onScrollOrResize)
+    scrollParent.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', scheduleUpdate)
 
     return () => {
       cancelAnimationFrame(raf)
       observer.disconnect()
-      scrollParent.removeEventListener('scroll', onScrollOrResize)
-      window.removeEventListener('resize', onScrollOrResize)
+      scrollParent.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', scheduleUpdate)
     }
   }, [contentRef, scrollContainerRef, updateArrows])
 
@@ -245,7 +340,7 @@ export function BlueprintTriggerArrows({
           <g key={segment.id} opacity={segment.opacity}>
             <path
               d={segment.d}
-              {...blueprintArrowPathProps(segment.arrowColor)}
+              {...blueprintArrowPathProps(segment.arrowColor, getPathDashArrayFromKey(segment.colorKey))}
               {...(segment.showMarker === false
                 ? {}
                 : segment.dualMarker

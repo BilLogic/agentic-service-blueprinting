@@ -7,6 +7,7 @@ import {
   BLUEPRINT_ROW_MIN_HEIGHT,
   BLUEPRINT_ROW_MIN_HEIGHT_COMPACT,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
+  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
   BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   INTERACTION_LINE_LABEL,
   INTERNAL_INTERACTION_LINE_LABEL,
@@ -14,9 +15,7 @@ import {
   getLayerRowMinHeight,
   getStepColumnsWidth,
   STEP_COLUMN_GAP,
-  layerHasInLaneLoopCorridor,
   layerHasWrapCorridorBelow,
-  resolveBlueprintLayer,
   shouldShowInteractionLineAfter,
   shouldShowInternalInteractionLineAfter,
   shouldShowLaneDividerAfter,
@@ -36,17 +35,13 @@ import type {
 } from '@/types/integratedBlueprint'
 import type { SlideViewType } from '@/types/nav'
 
-// Canonical-lane resolution lives in blueprintLayout (the generic corridor
-// rules use it too); compare components import it from here.
-export { resolveBlueprintLayer } from '@/lib/blueprintLayout'
-
 export type ComparePathArrowData = {
   triggers: IntegratedBlueprintTrigger[]
   cells: IntegratedBlueprintCell[]
   steps: IntegratedBlueprintStep[]
 }
 
-/** One path's arrow inputs. */
+/** One path's arrow inputs (fold's trigger-drop retired 2026-08-17). */
 export function getComparePathArrowData(
   blueprint: BlueprintData,
 ): ComparePathArrowData {
@@ -70,13 +65,13 @@ export function getComparePathArrowData(
       opacity: 1,
     })),
     triggers: triggers.map((trigger) => ({
-      id: trigger.id,
-      source_cell_id: trigger.source_cell_id,
-      target_cell_id: trigger.target_cell_id,
-      path_id: path.id,
-      path_type: path.path_type,
-      opacity: 1,
-    })),
+        id: trigger.id,
+        source_cell_id: trigger.source_cell_id,
+        target_cell_id: trigger.target_cell_id,
+        path_id: path.id,
+        path_type: path.path_type,
+        opacity: 1,
+      })),
   }
 }
 
@@ -89,7 +84,7 @@ export const COMPARE_PANEL_PADDING = 24
 /** Extra inset on the right edge of the compare blueprint grid. */
 export const COMPARE_PANEL_PADDING_RIGHT = 40
 
-/** Gray padding around compare blueprint boards inside a panel. */
+/** Gray padding around compare / integrated blueprint boards inside a panel. */
 export function getCompareBoardWrapperPadding(): {
   paddingTop: number
   paddingBottom: number
@@ -109,6 +104,8 @@ export const COMPARE_PATH_SECTION_INSET = 8
 export const COMPARE_PATH_SECTION_BOTTOM_INSET = COMPARE_PATH_SECTION_TOP_INSET
 /** Space reserved above compare body rows for section title badges. */
 export const COMPARE_PATH_IDENTITY_HEIGHT = COMPARE_PATH_SECTION_TOP_INSET
+/** @deprecated Path info now lives in section frames, not a grid swim lane. */
+export const COMPARE_PATH_HEADER_HEIGHT = COMPARE_PATH_SECTION_TOP_INSET
 export const COMPARE_STEP_HEADER_HEIGHT = BLUEPRINT_HEADER_HEIGHT_COMPACT + 8
 export const COMPARE_MIN_PANEL_WIDTH = 720
 export const COMPARE_MIN_PANEL_HEIGHT = 480
@@ -261,6 +258,8 @@ export function buildSideBySideLabelRowSpecs(
       height: collapsed
         ? COMPARE_LAYER_COLLAPSED_HEIGHT
         : getSharedLayerRowHeight(layer, blueprints, compact),
+      wrapCorridorAbove:
+        !collapsed && layerHasOverheadRailCorridorAbove(layer, blueprints),
       wrapCorridorBelow: !collapsed && layerHasWrapCorridorBelow(layer),
       inLaneLoopCorridorAbove:
         !collapsed && layerHasInLaneLoopCorridor(layer, blueprints),
@@ -361,6 +360,117 @@ export function getCanonicalLayers(blueprints: BlueprintData[]): BlueprintLayer[
   return [...source.layers].sort((a, b) => a.row_position - b.row_position)
 }
 
+/** Map a canonical swimlane row onto a path's layer ids (paths use different layer uuids). */
+export function resolveBlueprintLayer(
+  canonicalLayer: BlueprintLayer,
+  blueprint: Pick<BlueprintData, 'layers'>,
+): BlueprintLayer {
+  return (
+    blueprint.layers.find((layer) => layer.id === canonicalLayer.id) ??
+    blueprint.layers.find((layer) => layer.name === canonicalLayer.name) ??
+    blueprint.layers.find(
+      (layer) =>
+        layer.row_position === canonicalLayer.row_position &&
+        layer.name === canonicalLayer.name,
+    ) ??
+    blueprint.layers.find(
+      (layer) => layer.row_position === canonicalLayer.row_position,
+    ) ??
+    canonicalLayer
+  )
+}
+
+/**
+ * Structural blueprint shape for in-lane loop detection — satisfied by both
+ * `BlueprintData` (a single path's blueprint).
+ */
+type InLaneLoopLayoutSource = {
+  layers: BlueprintLayer[]
+  steps: ReadonlyArray<{ id: string; column_position: number }>
+  cells: ReadonlyArray<{ id: string; layer_id: string; step_id: string }>
+  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>
+}
+
+/**
+ * Does one compared blueprint route a trigger that both starts and ends in
+ * this lane, with its two step columns satisfying `matches`?
+ *
+ * The rule is read straight off the data — which layer a cell belongs to, and
+ * which column its step sits in — so it holds for any content. The canonical
+ * row is resolved into each blueprint first: compared variants describe the
+ * same lane, but they need not agree on its id, and a lane matched by identity
+ * alone would silently report "no corridor" for every variant but one.
+ */
+function blueprintLayerHasCorridorTrigger(
+  canonicalLayer: BlueprintLayer,
+  source: InLaneLoopLayoutSource,
+  matches: (sourceColumn: number, targetColumn: number) => boolean,
+): boolean {
+  const layer = resolveBlueprintLayer(canonicalLayer, source)
+  const cellById = new Map(source.cells.map((cell) => [cell.id, cell]))
+  const columnByStepId = new Map(
+    source.steps.map((step) => [step.id, step.column_position]),
+  )
+
+  return source.triggers.some((trigger) => {
+    const sourceCell = cellById.get(trigger.source_cell_id)
+    const targetCell = cellById.get(trigger.target_cell_id)
+    if (!sourceCell || !targetCell) return false
+    if (
+      sourceCell.layer_id !== layer.id ||
+      targetCell.layer_id !== layer.id
+    ) {
+      return false
+    }
+
+    const sourceColumn = columnByStepId.get(sourceCell.step_id)
+    const targetColumn = columnByStepId.get(targetCell.step_id)
+    if (sourceColumn === undefined || targetColumn === undefined) return false
+    return matches(sourceColumn, targetColumn)
+  })
+}
+
+/** A backward loop that stays inside the lane, needing headroom at its top. */
+export function blueprintLayerHasBackwardInLaneLoop(
+  canonicalLayer: BlueprintLayer,
+  source: InLaneLoopLayoutSource,
+): boolean {
+  return blueprintLayerHasCorridorTrigger(
+    canonicalLayer,
+    source,
+    (sourceColumn, targetColumn) => targetColumn < sourceColumn,
+  )
+}
+
+/** Canonical row needs an in-lane loop corridor when any compared variant has one. */
+export function layerHasInLaneLoopCorridor(
+  canonicalLayer: BlueprintLayer,
+  sources: readonly InLaneLoopLayoutSource[],
+): boolean {
+  return sources.some((source) =>
+    blueprintLayerHasBackwardInLaneLoop(canonicalLayer, source),
+  )
+}
+
+/**
+ * Canonical row needs the overhead rail when any compared variant routes a
+ * forward in-lane trigger that clears at least one column — the arrow cannot
+ * run along the row, so it climbs into the strip above it. Mirrors
+ * `isOverheadRailTrigger`, which decides the same thing off the rendered grid.
+ */
+export function layerHasOverheadRailCorridorAbove(
+  canonicalLayer: BlueprintLayer,
+  sources: readonly InLaneLoopLayoutSource[],
+): boolean {
+  return sources.some((source) =>
+    blueprintLayerHasCorridorTrigger(
+      canonicalLayer,
+      source,
+      (sourceColumn, targetColumn) => targetColumn >= sourceColumn + 2,
+    ),
+  )
+}
+
 export function getCompareCellShellMinHeight(
   rowHeight: number,
   compact = false,
@@ -379,9 +489,11 @@ export function getCompareRowTrackHeight(row: {
 }): number {
   return (
     row.height +
-    (row.wrapCorridorAbove ? BLUEPRINT_WRAP_CORRIDOR_MARGIN : 0) +
+    (row.wrapCorridorAbove ? BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN : 0) +
     (row.wrapCorridorBelow ? BLUEPRINT_WRAP_CORRIDOR_MARGIN : 0) +
-    (row.inLaneLoopCorridorAbove ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN : 0)
+    (row.inLaneLoopCorridorAbove
+      ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
+      : 0)
   )
 }
 
@@ -413,10 +525,12 @@ export function getSharedLayerRowHeight(
 }
 
 /**
- * Lane rows must be able to GROW: the row shells are `overflow-visible`, so
- * an underestimated cell would paint OVER the next lane instead of clipping.
- * `minmax(Npx, auto)` keeps the estimated floor; rows only diverge from it
- * when content genuinely swells past it.
+ * Lane rows must be able to GROW (todo 026): the row shells are
+ * `overflow-visible`, so an underestimated cell painted OVER the next lane
+ * instead of clipping — the merged arrangement had the `minmax` fix
+ * (`getMergedCompareRowTrackCss` below) while Stacked, the default view,
+ * kept a bare fixed track. `minmax(Npx, auto)` keeps the estimated floor;
+ * rows only diverge from it when content genuinely swells past it.
  */
 export function getCompareRowTrackCss(row: CompareRowHeightSpec): string {
   return `minmax(${getCompareRowTrackHeight(row)}px, auto)`
@@ -529,11 +643,11 @@ export const COMPARE_STACKED_HEADER_GAP = 36
 /**
  * Extra top inset that stretches a path frame from its normal top edge all
  * the way up PAST the step-header row to the grid's first row line — the
- * header row is inside the frame with no container of its own. Derivation:
- * the band box starts `COMPARE_STACKED_HEADER_GAP` below the header row's
- * bottom, the frame already reaches `COMPARE_PATH_SECTION_TOP_INSET` above
- * the band box, and the header row itself is `COMPARE_STEP_HEADER_HEIGHT`
- * tall.
+ * header row is inside the frame with no container of its own (plan
+ * 2026-08-17-002 U1). Derivation: the band box starts
+ * `COMPARE_STACKED_HEADER_GAP` below the header row's bottom, the frame
+ * already reaches `COMPARE_PATH_SECTION_TOP_INSET` above the band box, and
+ * the header row itself is `COMPARE_STEP_HEADER_HEIGHT` tall.
  */
 export const COMPARE_HEADER_WRAP_EXTRA_INSET =
   COMPARE_STACKED_HEADER_GAP +
@@ -607,9 +721,9 @@ export function getStackedComparePanelHeight(
 
 /**
  * Merged lane rows must GROW: a divergent slot stacks one cell per path
- * inside a single row, so a fixed `Npx` track would clip the swell.
- * `minmax(Npx, auto)` keeps the shared floor — a lane with no divergence
- * measures exactly as it does in Stacked.
+ * inside a single row, so a fixed `Npx` track (what the stacked bands use)
+ * would clip the swell. `minmax(Npx, auto)` keeps the shared floor — a lane
+ * with no divergence measures exactly as it does in Stacked.
  */
 export function getMergedCompareRowTrackCss(row: CompareRowHeightSpec): string {
   return `minmax(${getCompareRowTrackHeight(row)}px, auto)`

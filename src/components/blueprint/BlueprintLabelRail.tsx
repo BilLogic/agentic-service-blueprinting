@@ -1,10 +1,13 @@
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import {
   BlueprintDividerRailLabelLine,
 } from '@/components/blueprint/BlueprintDividerTag'
 import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
+import { IconTooltip } from '@/components/editor/IconTooltip'
 import {
   BLUEPRINT_DIVIDER_ROW_HEIGHT,
   BLUEPRINT_DIVIDER_LINE_END_INSET,
+  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
   BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
 } from '@/lib/blueprintLayout'
@@ -50,7 +53,7 @@ export function BlueprintStickyLabelBackdrop({
   return (
     <div
       aria-hidden
-      className="pointer-events-none sticky z-[35] blueprint-panel-label-surface"
+      className="pointer-events-none sticky z-[35]"
       style={{
         gridColumn: 1,
         gridRow: `${rowStart} / ${rowCount + rowStart}`,
@@ -140,7 +143,7 @@ export function BlueprintDividerRow({
     >
       <div
         aria-hidden
-        className="sticky left-0 top-0 z-0 blueprint-panel-label-surface"
+        className="sticky left-0 top-0 z-0"
         style={{
           width: labelWidth,
           height: BLUEPRINT_DIVIDER_ROW_HEIGHT,
@@ -159,6 +162,11 @@ export function BlueprintDividerRow({
   )
 }
 
+import { useCanvasModeValue } from '@/contexts/canvasModeContext'
+import { useCellPick } from '@/contexts/cellPickContext'
+import { cellsInLane } from '@/lib/canvasCellQuery'
+
+/** One row of the left label column — a layer name plus its collapse toggle. */
 export function BlueprintLabelRow({
   row,
   layers,
@@ -172,12 +180,36 @@ export function BlueprintLabelRow({
   compact?: boolean
   onToggleLayer?: (layerId: string) => void
 }) {
+  // Hooks first: this component returns early for divider rows, and a hook
+  // after that return would run in a different order between row kinds.
+  //
+  // In Design mode the lane label becomes a selection handle — clicking takes
+  // the whole lane, shift-clicking adds it to what is already picked. Inert in
+  // View, so reading the blueprint is untouched.
+  const canvasMode = useCanvasModeValue()
+  const pick = useCellPick()
+  const laneId = row.kind === 'layer' ? (row.layer?.id ?? null) : null
+  const laneSelectable =
+    canvasMode === 'design' && pick !== null && laneId !== null
+  const selectLane = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!laneSelectable || laneId === null) return
+    const cells = cellsInLane(laneId)
+    if (cells.length === 0) return
+    event.stopPropagation()
+    // Add, not toggle: a lane that is already half-picked should end up wholly
+    // picked. Shift takes the lane back out.
+    pick.pickMany(cells, event.shiftKey ? 'toggle' : 'add')
+  }
+
   const isDivider =
     row.kind === 'interaction' ||
     row.kind === 'visibility' ||
     row.kind === 'internalInteraction'
   if (isDivider) return null
 
+  const corridorAbove = row.wrapCorridorAbove
+    ? BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN
+    : 0
   const corridorBelow = row.wrapCorridorBelow
     ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
     : 0
@@ -194,7 +226,7 @@ export function BlueprintLabelRow({
     <div
       className={cn(
         'sticky left-0 isolate flex h-full min-h-0 flex-col overflow-hidden',
-        'z-40 border-r blueprint-panel-label-surface',
+        'z-40 border-r ',
       )}
       style={{
         ...style,
@@ -203,6 +235,16 @@ export function BlueprintLabelRow({
         borderColor: BLUEPRINT_THEME.laneDivider,
       }}
     >
+      {corridorAbove > 0 && (
+        <div
+          aria-hidden
+          className="shrink-0"
+          style={{
+            height: corridorAbove,
+            backgroundColor: blueprintPanelLabelRailColor(),
+          }}
+        />
+      )}
       {inLaneLoopCorridorAbove > 0 && (
         <div
           aria-hidden
@@ -219,12 +261,25 @@ export function BlueprintLabelRow({
           compact ? 'pt-3' : 'pt-4',
         )}
       >
-        <span
-          className="min-w-0 flex-1 text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words"
-          style={{ color: labelColor }}
-        >
-          {row.label}
-        </span>
+        {laneSelectable ? (
+          <IconTooltip label={`Select the ${row.label} lane`}>
+            <button
+              type="button"
+              onClick={selectLane}
+              className="group/lane min-w-0 flex-1 cursor-pointer rounded-sm text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words underline-offset-4 hover:underline"
+              style={{ color: labelColor }}
+            >
+              {row.label}
+            </button>
+          </IconTooltip>
+        ) : (
+          <span
+            className="min-w-0 flex-1 text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words"
+            style={{ color: labelColor }}
+          >
+            {row.label}
+          </span>
+        )}
         {BLUEPRINT_LAYER_COLLAPSE_ENABLED &&
           row.kind === 'layer' &&
           row.layer &&
