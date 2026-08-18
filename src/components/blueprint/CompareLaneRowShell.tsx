@@ -75,7 +75,12 @@ export function CompareLaneRowShell({
       {...(isDivider ? { role: 'separator' as const } : {})}
     >
       {corridorAbove > 0 && (
-        <div aria-hidden className="shrink-0" style={{ height: corridorAbove }} />
+        <div
+          aria-hidden
+          data-blueprint-rail-corridor="above"
+          className="shrink-0"
+          style={{ height: corridorAbove }}
+        />
       )}
       <div
         className={cn(

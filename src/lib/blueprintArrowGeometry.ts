@@ -56,9 +56,38 @@ function isCrossLayerForwardTrigger(
   return Boolean(sourceRow && targetRow && sourceRow !== targetRow)
 }
 
+/** Is a horizontal run at `y` between two X values clear of every other card? */
+function isHorizontalRunClear(
+  root: HTMLElement,
+  fromX: number,
+  toX: number,
+  y: number,
+  exclude: readonly HTMLElement[],
+): boolean {
+  return (
+    getCellsOverlappingRect(
+      root,
+      {
+        left: Math.min(fromX, toX),
+        right: Math.max(fromX, toX),
+        top: y - ARROW_DETOUR_CLEARANCE,
+        bottom: y + ARROW_DETOUR_CLEARANCE,
+      },
+      exclude,
+    ).length === 0
+  )
+}
+
 /**
  * Forward cross-column connector between different layer rows: exit the source
- * horizontally, travel in the column gap, then rise or drop into the target.
+ * horizontally, travel in a column gap, then rise or drop into the target.
+ *
+ * The long horizontal leg is the one that can strike a card, and which side it
+ * is safe on depends on the board: the source's own row may carry the columns
+ * the connector skips, or the target's may, or both. So the leg is placed on
+ * whichever row is clear, and when neither is, the run moves out of the rows
+ * entirely and crosses in the strip above the target lane. Travelling far along
+ * a lane at a card's own centre line is never assumed.
  */
 export function buildCrossLayerForwardArrowPath(
   sourceEl: HTMLElement,
@@ -72,18 +101,60 @@ export function buildCrossLayerForwardArrowPath(
   const lineEndX = targetBox.left - ARROW_CHEVRON_SIZE
 
   const sourceStep = parseStepIndex(sourceEl)
-  const routeX =
+  const preTargetX =
     getPreTargetGapCenterX(root, sourceEl, targetEl) ??
     (sourceStep !== null ? getStepGapCenterX(root, sourceStep) : null) ??
     (sourceBox.right + targetBox.left) / 2
+  const exitGapX =
+    sourceStep !== null
+      ? getVerticalRouteRightGutterX(root, sourceStep, sourceEl)
+      : preTargetX
 
   if (lineEndX <= sourceBox.right) return ''
 
+  const ends = [sourceEl, targetEl]
+
+  // Drop late: the long leg runs along the SOURCE row to the gap before the
+  // target column. Only when that row is empty in between.
+  if (isHorizontalRunClear(root, sourceBox.right, preTargetX, sourceY, ends)) {
+    return buildRoundedPolylinePath(
+      [
+        { x: sourceBox.right, y: sourceY },
+        { x: preTargetX, y: sourceY },
+        { x: preTargetX, y: targetY },
+        { x: lineEndX, y: targetY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+  }
+
+  // Drop early: leave through the gap right after the source and run the long
+  // leg along the TARGET row instead.
+  if (
+    exitGapX > sourceBox.right &&
+    isHorizontalRunClear(root, exitGapX, lineEndX, targetY, ends)
+  ) {
+    return buildRoundedPolylinePath(
+      [
+        { x: sourceBox.right, y: sourceY },
+        { x: exitGapX, y: sourceY },
+        { x: exitGapX, y: targetY },
+        { x: lineEndX, y: targetY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+  }
+
+  // Both rows are occupied in between: cross above the target lane, where the
+  // row's own headroom leaves the strip clear, and drop in at the last gap.
+  const bandY = getLaneContentTop(targetEl, root) - ARROW_DETOUR_CLEARANCE
   return buildRoundedPolylinePath(
     [
       { x: sourceBox.right, y: sourceY },
-      { x: routeX, y: sourceY },
-      { x: routeX, y: targetY },
+      { x: exitGapX, y: sourceY },
+      { x: exitGapX, y: bandY },
+      { x: preTargetX, y: bandY },
+      { x: preTargetX, y: targetY },
       { x: lineEndX, y: targetY },
     ],
     ARROW_CORNER_RADIUS,
@@ -1313,12 +1384,60 @@ export function getCellTopCenter(
   }
 }
 
-/** Y of the rail shared by every overhead connector above a lane row. */
+/**
+ * The strip a lane reserves above itself for overhead rails, when it has one.
+ * The grids differ in where they hang it — the single-path grid puts it before
+ * the row, the compare shell inside it — so both placements are looked for by
+ * the marker rather than inferred from the row's own box.
+ */
+function getOverheadRailCorridorBox(
+  cellEl: HTMLElement,
+  root: HTMLElement,
+): LayoutBox | null {
+  const row = getLayerRow(cellEl)
+  if (!row) return null
+
+  const inside = row.querySelector<HTMLElement>(
+    '[data-blueprint-rail-corridor="above"]',
+  )
+  if (inside) return getElementLayoutBox(inside, root)
+
+  let sibling = row.previousElementSibling
+  while (sibling instanceof HTMLElement) {
+    if (sibling.dataset.blueprintRailCorridor === 'above') {
+      return getElementLayoutBox(sibling, root)
+    }
+    if (
+      sibling.dataset.blueprintRow !== undefined ||
+      sibling.dataset.blueprintDivider !== undefined
+    ) {
+      break
+    }
+    sibling = sibling.previousElementSibling
+  }
+  return null
+}
+
+/**
+ * Y of the rail shared by every overhead connector above a lane row — the
+ * middle of the strip the layout reserved for it.
+ *
+ * Measuring the reserved strip rather than counting back from the cards is
+ * what keeps the rail out of the OTHER corridor: a lane that also loops back
+ * on itself carries a second, thinner strip between the rail's and its cards,
+ * and a rail placed half a rail-margin above the card tops would land inside
+ * it, drawn on top of the loop it was supposed to clear.
+ */
 export function getOverheadRailY(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
 ): number {
+  const corridor =
+    getOverheadRailCorridorBox(sourceEl, root) ??
+    getOverheadRailCorridorBox(targetEl, root)
+  if (corridor) return corridor.top + corridor.height / 2
+
   // Lane-wide tops, not the two cards' own: a merged slot stacks a sub-cell
   // per path, so a rail measured off a lower sub-cell would run through the
   // ones above it.
@@ -1329,28 +1448,45 @@ export function getOverheadRailY(
 }
 
 /**
- * Single overhead-rail connector: up from the source top-center, across the
- * rail, then down into the target top-center.
+ * Single overhead-rail connector: up out of the source, across the rail, then
+ * down into the target.
+ *
+ * Both climbs go through `buildWrapColumnLeg`, so a column that is not empty
+ * between the card and the rail sends that end sideways into the gutter
+ * instead. A merged slot stacks one sub-cell per path, and a lower sub-cell's
+ * straight climb would otherwise pass through the faces of the sub-cells
+ * sitting above it.
  */
 export function buildOverheadRailPath(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
 ): string {
-  const source = getCellTopCenter(sourceEl, root)
   const target = getCellTopCenter(targetEl, root)
   const railY = getOverheadRailY(sourceEl, targetEl, root)
-  const lineEndY = target.y - ARROW_CHEVRON_SIZE
 
-  if (lineEndY <= railY) return ''
+  if (target.y - ARROW_CHEVRON_SIZE <= railY) return ''
+
+  const exitLeg = buildWrapColumnLeg(
+    sourceEl,
+    root,
+    railY,
+    'exit',
+    'above',
+    'forward',
+  )
+  const enterLeg = buildWrapColumnLeg(
+    targetEl,
+    root,
+    railY,
+    'enter',
+    'above',
+    'forward',
+  )
+  if (!exitLeg || !enterLeg) return ''
 
   return buildRoundedPolylinePath(
-    [
-      source,
-      { x: source.x, y: railY },
-      { x: target.x, y: railY },
-      { x: target.x, y: lineEndY },
-    ],
+    [...exitLeg, ...enterLeg],
     ARROW_CORNER_RADIUS,
   )
 }
@@ -1390,8 +1526,9 @@ export function buildOverheadRailBusPath(
   )
 
   const tapPaths = sorted.slice(1).map((el) => {
-    const cell = getCellTopCenter(el, root)
-    return `M ${cell.x} ${railY} L ${cell.x} ${cell.y}`
+    const leg = buildWrapColumnLeg(el, root, railY, 'exit', 'above', 'forward')
+    if (!leg) return ''
+    return buildRoundedPolylinePath([...leg].reverse(), ARROW_CORNER_RADIUS)
   })
 
   // Taps first so markerEnd lands on the main trunk's downward segment.
@@ -1436,9 +1573,17 @@ export function buildOverheadRailFanOutDropPath(
 ): string {
   const target = getCellTopCenter(targetEl, root)
   const railY = getOverheadRailY(sourceEl, targetEl, root)
-  const lineEndY = target.y - ARROW_CHEVRON_SIZE
-  if (lineEndY <= railY) return ''
-  return `M ${target.x} ${railY} L ${target.x} ${lineEndY}`
+  if (target.y - ARROW_CHEVRON_SIZE <= railY) return ''
+  const enterLeg = buildWrapColumnLeg(
+    targetEl,
+    root,
+    railY,
+    'enter',
+    'above',
+    'forward',
+  )
+  if (!enterLeg) return ''
+  return buildRoundedPolylinePath(enterLeg, ARROW_CORNER_RADIUS)
 }
 
 /** Trigger ids that share a source and fan out to multiple overhead-rail targets. */
@@ -1748,6 +1893,20 @@ export function buildWrapArrowPath(
   }
 
   /*
+    Each end meets the corridor on the side it actually faces. A loop back to
+    a lane at or above the source's own finds the corridor below both, and
+    both ends face down — the ordinary case. But a backward trigger can also
+    land on a lane BELOW the source, and then the corridor runs above the
+    target: entering it from underneath would take the arrow down through the
+    card and leave the head pointing at empty space past its far edge.
+  */
+  const sourceBox = getCellContentBox(sourceEl, root)
+  const targetBox = getCellContentBox(targetEl, root)
+  const sourceSide =
+    corridorY >= sourceBox.top + sourceBox.height ? 'below' : 'above'
+  const targetSide = corridorY <= targetBox.top ? 'above' : 'below'
+
+  /*
     The drop to the corridor and the rise back out both travel INSIDE a step
     column, which the merged canvas no longer guarantees is empty below a
     card: a divergent slot stacks one sub-cell per path, so a wrap leaving the
@@ -1755,8 +1914,20 @@ export function buildWrapArrowPath(
     Where that happens the vertical leg moves into the column's gutter and
     meets the card side-on instead.
   */
-  const exitLeg = buildWrapColumnLeg(sourceEl, root, corridorY, 'exit')
-  const enterLeg = buildWrapColumnLeg(targetEl, root, corridorY, 'enter')
+  const exitLeg = buildWrapColumnLeg(
+    sourceEl,
+    root,
+    corridorY,
+    'exit',
+    sourceSide,
+  )
+  const enterLeg = buildWrapColumnLeg(
+    targetEl,
+    root,
+    corridorY,
+    'enter',
+    targetSide,
+  )
   // No clear leg on one side (a blocked column with no usable gutter — an
   // edge column of a one-column board). Drawing the straight leg anyway
   // would strike through the sub-cell under the card, so drop the arrow.
@@ -1769,14 +1940,16 @@ export function buildWrapArrowPath(
 }
 
 /**
- * One end of a wrap: the points that take the route between a card and the
- * corridor it runs along — `below` the lane for a loop under it, `above` for
- * an overhead rail. Straight up or down the column when that stretch of the
- * column is clear, otherwise out of the card's side, into the gutter, and
+ * One end of a corridor route: the points that take it between a card and the
+ * corridor — `below` the lane for a loop under it, `above` for an overhead
+ * rail or an in-lane loop. Straight up or down the column when that stretch of
+ * the column is clear, otherwise out of the card's side, into the gutter, and
  * along there.
  *
- * A wrap runs right → left, so the source leaves by its left edge and the
- * target is met on its right edge — the detour never doubles back.
+ * `direction` says which way the corridor run travels, and the side detour
+ * follows it so the route never doubles back: a `backward` wrap leaves by the
+ * source's left edge and meets the target on its right, a `forward` rail does
+ * the mirror.
  */
 export function buildWrapColumnLeg(
   cellEl: HTMLElement,
@@ -1784,6 +1957,7 @@ export function buildWrapColumnLeg(
   corridorY: number,
   end: 'exit' | 'enter',
   side: 'below' | 'above' = 'below',
+  direction: 'backward' | 'forward' = 'backward',
 ): Point[] | null {
   const box = getCellContentBox(cellEl, root)
   const centerX = (box.left + box.right) / 2
@@ -1816,20 +1990,31 @@ export function buildWrapColumnLeg(
 
   const stepIndex = parseStepIndex(cellEl) ?? 0
   const midY = box.top + box.height / 2
+  // A backward route leaves left and arrives from the right; a forward one
+  // mirrors that. The tail starts ON the card edge — only the head end is held
+  // a chevron short, so the arrowhead lands on the edge instead of inside it.
+  const leavesLeft = direction === 'backward'
+
   if (end === 'exit') {
-    const gutterX = getVerticalRouteGutterX(root, stepIndex, cellEl)
-    const entryX = box.left - ARROW_CHEVRON_SIZE
-    if (gutterX >= entryX) return null
+    const gutterX = leavesLeft
+      ? getVerticalRouteGutterX(root, stepIndex, cellEl)
+      : getVerticalRouteRightGutterX(root, stepIndex, cellEl)
+    const edgeX = leavesLeft ? box.left : box.right
+    if (leavesLeft ? gutterX >= edgeX : gutterX <= edgeX) return null
     return [
-      { x: entryX, y: midY },
+      { x: edgeX, y: midY },
       { x: gutterX, y: midY },
       { x: gutterX, y: corridorY },
     ]
   }
 
-  const gutterX = getVerticalRouteRightGutterX(root, stepIndex, cellEl)
-  const entryX = box.right + ARROW_CHEVRON_SIZE
-  if (gutterX <= entryX) return null
+  const gutterX = leavesLeft
+    ? getVerticalRouteRightGutterX(root, stepIndex, cellEl)
+    : getVerticalRouteGutterX(root, stepIndex, cellEl)
+  const entryX = leavesLeft
+    ? box.right + ARROW_CHEVRON_SIZE
+    : box.left - ARROW_CHEVRON_SIZE
+  if (leavesLeft ? gutterX <= entryX : gutterX >= entryX) return null
   return [
     { x: gutterX, y: corridorY },
     { x: gutterX, y: midY },
