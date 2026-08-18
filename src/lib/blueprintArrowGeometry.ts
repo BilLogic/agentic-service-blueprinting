@@ -1893,6 +1893,20 @@ export function buildWrapArrowPath(
   }
 
   /*
+    Each end meets the corridor on the side it actually faces. A loop back to
+    a lane at or above the source's own finds the corridor below both, and
+    both ends face down — the ordinary case. But a backward trigger can also
+    land on a lane BELOW the source, and then the corridor runs above the
+    target: entering it from underneath would take the arrow down through the
+    card and leave the head pointing at empty space past its far edge.
+  */
+  const sourceBox = getCellContentBox(sourceEl, root)
+  const targetBox = getCellContentBox(targetEl, root)
+  const sourceSide =
+    corridorY >= sourceBox.top + sourceBox.height ? 'below' : 'above'
+  const targetSide = corridorY <= targetBox.top ? 'above' : 'below'
+
+  /*
     The drop to the corridor and the rise back out both travel INSIDE a step
     column, which the merged canvas no longer guarantees is empty below a
     card: a divergent slot stacks one sub-cell per path, so a wrap leaving the
@@ -1900,8 +1914,20 @@ export function buildWrapArrowPath(
     Where that happens the vertical leg moves into the column's gutter and
     meets the card side-on instead.
   */
-  const exitLeg = buildWrapColumnLeg(sourceEl, root, corridorY, 'exit')
-  const enterLeg = buildWrapColumnLeg(targetEl, root, corridorY, 'enter')
+  const exitLeg = buildWrapColumnLeg(
+    sourceEl,
+    root,
+    corridorY,
+    'exit',
+    sourceSide,
+  )
+  const enterLeg = buildWrapColumnLeg(
+    targetEl,
+    root,
+    corridorY,
+    'enter',
+    targetSide,
+  )
   // No clear leg on one side (a blocked column with no usable gutter — an
   // edge column of a one-column board). Drawing the straight leg anyway
   // would strike through the sub-cell under the card, so drop the arrow.

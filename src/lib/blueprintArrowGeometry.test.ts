@@ -4,6 +4,7 @@ import {
   ARROW_CHEVRON_SIZE,
   buildCrossLayerForwardArrowPath,
   buildOverheadRailPath,
+  buildWrapArrowPath,
   buildWrapColumnLeg,
   getOverheadRailY,
   runArrowMeasurementPass,
@@ -344,5 +345,66 @@ describe('cross-lane forward', () => {
     expect(path[3]).toEqual([gapCenter(1), path[2]![1]])
     expect(path[4]).toEqual([gapCenter(1), 350])
     expect(path[5]).toEqual([columnLeft(2) - ARROW_CHEVRON_SIZE, 350])
+  })
+})
+
+describe('backward wrap', () => {
+  /**
+   * Three lanes with a wrap corridor hung under the middle one — the strip a
+   * loop-back runs along. The two outer lanes give the wrap a target above it
+   * and a target below it.
+   */
+  function wrapGrid() {
+    const grid = new Grid()
+      .row('above', 20, 80)
+      .cell('above', 0, 30, 60)
+      .row('middle', 120, 100)
+      .cell('middle', 2, 130, 60)
+      .row('below', 300, 100)
+      .cell('below', 1, 320, 60)
+      .gaps(4)
+
+    const corridor = document.createElement('div')
+    corridor.dataset.blueprintWrapCorridor = 'below'
+    place(corridor, { left: 0, top: 220, width: 2000, height: 36 })
+    grid.root.append(corridor)
+    return grid
+  }
+
+  it('rises into the target from underneath when the target sits higher', () => {
+    const grid = wrapGrid()
+    const path = route(() =>
+      buildWrapArrowPath(
+        grid.find('middle', 2),
+        grid.find('above', 0),
+        grid.root,
+      ),
+    )
+    // Down out of the source, along the corridor, back UP into the target's
+    // bottom edge — the head sits below the card it points at.
+    expect(path[0]).toEqual([columnCenter(2), 190])
+    expect(path[path.length - 1]).toEqual([
+      columnCenter(0),
+      90 + ARROW_CHEVRON_SIZE,
+    ])
+  })
+
+  it('drops into the target from above when the target sits lower', () => {
+    const grid = wrapGrid()
+    const path = route(() =>
+      buildWrapArrowPath(
+        grid.find('middle', 2),
+        grid.find('below', 1),
+        grid.root,
+      ),
+    )
+    // The corridor is ABOVE this target, so the arrow meets its top edge.
+    // Entering from below would run down through the card and leave the head
+    // pointing past its far side.
+    expect(path[0]).toEqual([columnCenter(2), 190])
+    expect(path[path.length - 1]).toEqual([
+      columnCenter(1),
+      320 - ARROW_CHEVRON_SIZE,
+    ])
   })
 })
