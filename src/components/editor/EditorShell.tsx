@@ -1,4 +1,6 @@
 import { useState, type CSSProperties } from 'react'
+import { MobileShell } from '@/components/mobile/MobileShell'
+import { useMobileShell } from '@/hooks/useMobileShell'
 import { useEditor } from '@/contexts/EditorContext'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
@@ -15,6 +17,11 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
 export function EditorShell() {
+  const mobile = useMobileShell()
+  return mobile ? <MobileShell /> : <DesktopEditorShell />
+}
+
+function DesktopEditorShell() {
   const { view, goHome } = useEditor()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const isDetail = view === 'detail'
