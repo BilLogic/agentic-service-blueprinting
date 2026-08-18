@@ -9,6 +9,18 @@
 --   20260818002000_service_account_tier.sql   (OPTIONAL tier recipe)
 -- This file shows the post-migration shape as plain CREATEs for reading;
 -- it is never executed. (Snapshot refreshed 2026-08-18.)
+--
+-- Portability partition. Everything in this schema is one of two things:
+--   PORTABLE POSTGRES CORE — the tables, constraints, checks, triggers,
+--     indexes, views, and the *logic* of every function below. This half
+--     runs on any Postgres and is what a replacement backend must carry
+--     (see references/adapter-contract.md, "Live backend surface").
+--   SUPABASE RECIPE — the `auth.uid()` column defaults, the anon /
+--     authenticated role grants, the RLS policies, the SECURITY DEFINER
+--     wrappers around the function bodies in the migrations, and
+--     is_service_account()'s JWT reading. This half is how *Supabase*
+--     enforces the contract; another host re-expresses it with its own
+--     auth and authorization primitives, keeping the semantics.
 
 -- Hierarchy
 create table public.service_lifecycles (

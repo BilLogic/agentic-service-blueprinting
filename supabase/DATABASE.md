@@ -9,7 +9,7 @@ Postgres database managed by [Supabase](https://supabase.com/) for the **agentic
 | **Migrations** | `supabase/migrations/` (consolidated schema + derived-layer migrations) |
 | **Seed data** | `supabase/seed.sql` (generated sample content) |
 | **ERD diagram** | `docs/erd.mmd` |
-| **DDL snapshot** | `supabase/schema.reference.sql` |
+| **DDL snapshot** | `supabase/schema.reference.sql` (its header partitions the portable Postgres core from the Supabase-specific recipe — auth defaults, role grants, RLS, `SECURITY DEFINER`; see also [`references/adapter-contract.md`](../references/adapter-contract.md) § Live backend surface) |
 | **TypeScript types** | `src/types/database.ts` |
 
 ## Connection (application)
