@@ -32,7 +32,7 @@ export const PATH_BLUEPRINT_SELECT = `
     picture,
     description,
     links,
-    outgoing:cell_triggers!cell_triggers_source_cell_id_fkey (
+    outgoing:cell_triggers!source_cell_id (
       id,
       target_cell_id
     )
