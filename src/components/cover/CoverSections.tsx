@@ -26,13 +26,14 @@ function Paragraph({ children }: { children: ReactNode }) {
 }
 
 /**
- * Prose beside a wide figure at `lg`; stacked everywhere else. Tall figures
- * never sit beside text — a tall figure in a half-width column is unreadable.
+ * One layout for every section on the page: prose first, figure below it at
+ * full width. No side-by-side variant — a page that mixes the two reads as
+ * two designs, and the wide figures were the only ones that ever qualified.
  *
  * An absent figure is the ordinary empty-slot case: the prose renders alone,
- * full width, with nothing standing in for the missing plate.
+ * with nothing standing in for the missing plate.
  */
-function FigurePair({
+function FigureStack({
   figure,
   eager,
   children,
@@ -41,19 +42,64 @@ function FigurePair({
   eager?: boolean
   children: ReactNode
 }) {
-  if (!figure) {
-    return <div className="flex max-w-2xl min-w-0 flex-col gap-2">{children}</div>
-  }
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-6',
-        figure.wide &&
-          'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,36rem)] lg:items-start lg:gap-8',
-      )}
-    >
+    <div className="flex flex-col gap-6">
       <div className="flex max-w-2xl min-w-0 flex-col gap-2">{children}</div>
-      <CoverFigure figure={figure} eager={eager} />
+      {figure ? <CoverFigure figure={figure} eager={eager} /> : null}
+    </div>
+  )
+}
+
+/**
+ * A defs list is a two-column table, not a loose run of pairs: a header row
+ * on a muted ground, bordered rows, and the term column carrying the weight.
+ * Every colour is a token, so both themes follow the same rules.
+ */
+function DefsTable({
+  columns,
+  items,
+}: {
+  columns: { term: string; definition: string }
+  items: { term: string; definition: string }[]
+}) {
+  return (
+    <div className="max-w-2xl overflow-x-auto rounded-lg border border-border">
+      <table className="w-full border-collapse text-left text-sm sm:text-base">
+        <thead>
+          <tr className="bg-muted/50">
+            <th
+              scope="col"
+              className="border-b border-border px-4 py-2.5 font-semibold text-foreground"
+            >
+              {columns.term}
+            </th>
+            <th
+              scope="col"
+              className="border-b border-border px-4 py-2.5 font-semibold text-foreground"
+            >
+              {columns.definition}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr
+              key={item.term}
+              className={cn(index > 0 && 'border-t border-border')}
+            >
+              <th
+                scope="row"
+                className="w-44 px-4 py-3 align-top font-semibold text-foreground"
+              >
+                {item.term}
+              </th>
+              <td className="px-4 py-3 align-top leading-relaxed text-muted-foreground">
+                {renderInline(item.definition)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -106,14 +152,14 @@ export function CoverSections({
           case 'prose':
             return (
               <section key={section.id} className="flex flex-col gap-2">
-                <FigurePair figure={section.figure} eager={eager}>
+                <FigureStack figure={section.figure} eager={eager}>
                   {section.heading ? (
                     <SectionHeading>{section.heading}</SectionHeading>
                   ) : null}
                   {section.paragraphs.map((paragraph, index) => (
                     <Paragraph key={index}>{renderInline(paragraph)}</Paragraph>
                   ))}
-                </FigurePair>
+                </FigureStack>
               </section>
             )
           case 'figure':
@@ -127,30 +173,18 @@ export function CoverSections({
             )
           case 'defs':
             return (
-              <section key={section.id} className="flex flex-col gap-4">
-                <div className="flex max-w-2xl min-w-0 flex-col gap-2">
-                  {section.heading ? (
-                    <SectionHeading>{section.heading}</SectionHeading>
-                  ) : null}
-                  {section.intro ? (
-                    <Paragraph>{renderInline(section.intro)}</Paragraph>
-                  ) : null}
+              <section key={section.id} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-4">
+                  <div className="flex max-w-2xl min-w-0 flex-col gap-2">
+                    {section.heading ? (
+                      <SectionHeading>{section.heading}</SectionHeading>
+                    ) : null}
+                    {section.intro ? (
+                      <Paragraph>{renderInline(section.intro)}</Paragraph>
+                    ) : null}
+                  </div>
+                  <DefsTable columns={section.columns} items={section.items} />
                 </div>
-                <dl className="flex max-w-2xl flex-col gap-2">
-                  {section.items.map((item) => (
-                    <div
-                      key={item.term}
-                      className="flex flex-col gap-0.5 sm:flex-row sm:gap-3"
-                    >
-                      <dt className="w-44 shrink-0 text-sm font-semibold text-foreground sm:text-base">
-                        {item.term}
-                      </dt>
-                      <dd className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-                        {renderInline(item.definition)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
                 {section.figure ? (
                   <CoverFigure figure={section.figure} eager={eager} />
                 ) : null}

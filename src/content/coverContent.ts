@@ -54,6 +54,7 @@ export const coverContent: CoverContent = {
           kind: 'defs',
           id: 'overview-when',
           heading: 'When to reach for it',
+          columns: { term: 'Use', definition: 'What the blueprint gives you' },
           intro:
             'Five moments where the blueprint is the shortest path to an answer. They are alternatives, not a sequence — most teams start with one and grow into the rest.',
           items: [
@@ -102,7 +103,6 @@ export const coverContent: CoverContent = {
             alt: 'Four ways into the blueprint — the app, the in-app agent, agentic tools, and a chat bot — over one shared context layer',
             width: 880,
             height: 334,
-            wide: true,
           },
         },
       ],
@@ -189,6 +189,7 @@ export const coverContent: CoverContent = {
           kind: 'defs',
           id: 'slices-types',
           heading: 'Five ways to slice',
+          columns: { term: 'Type', definition: 'What it selects' },
           items: [
             { term: 'journey', definition: "One actor's path, end to end." },
             {

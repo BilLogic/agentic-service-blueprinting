@@ -56,7 +56,7 @@ const content = (over: Partial<CoverContent> = {}): CoverContent => ({
           paragraphs: ['This section carries its own weight.'],
         },
       ],
-      link: { label: 'Using it in practice →', docPath: 'docs/guide/02-x.md' },
+      link: { label: 'Learn more →', docPath: 'docs/guide/02-x.md' },
     },
     {
       value: 'two',
@@ -69,6 +69,16 @@ const content = (over: Partial<CoverContent> = {}): CoverContent => ({
           purpose: 'Second body.',
           producesLabel: 'Produces',
           produces: 'A validated blueprint file.',
+        },
+        {
+          kind: 'defs',
+          id: 'd1',
+          heading: 'A defs list',
+          columns: { term: 'Term', definition: 'Meaning' },
+          items: [
+            { term: 'first term', definition: 'What the first term means.' },
+            { term: 'second term', definition: 'What the second term means.' },
+          ],
         },
       ],
     },
@@ -159,9 +169,40 @@ describe('CoverPageView', () => {
     )
   })
 
+  it('renders a defs list as a real table with a header row', () => {
+    render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Second tab' }))
+
+    const table = screen.getByRole('table')
+    const headers = screen.getAllByRole('columnheader')
+    expect(headers.map((cell) => cell.textContent)).toEqual(['Term', 'Meaning'])
+    // The header row is a muted ground; the rows are bordered with tokens.
+    expect(table.querySelector('thead tr')?.className).toContain('bg-muted/50')
+    expect(table.querySelector('thead th')?.className).toContain('border-border')
+    // The term column is a row header, and it carries the emphasis.
+    const rowHeaders = screen.getAllByRole('rowheader')
+    expect(rowHeaders.map((cell) => cell.textContent)).toEqual([
+      'first term',
+      'second term',
+    ])
+    expect(rowHeaders[0]?.className).toContain('font-semibold')
+  })
+
+  it('stacks every figure section the same way — no side-by-side variant', () => {
+    const { container } = render(
+      <CoverPageView content={content()} onOpenCanvas={vi.fn()} />,
+    )
+    expect(container.querySelector('[class*="lg:grid-cols-"]')).toBeNull()
+    const plate = screen.getByRole('img', {
+      name: 'What the first figure shows',
+    })
+    // Prose above, figure below, in one column.
+    expect(plate.parentElement?.className).toContain('flex-col')
+  })
+
   it('renders the guide link as quiet inline text when repoUrl is set', () => {
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
-    const link = screen.getByRole('link', { name: 'Using it in practice →' })
+    const link = screen.getByRole('link', { name: 'Learn more →' })
     expect(link.getAttribute('href')).toBe(
       'https://example.test/repo/blob/main/docs/guide/02-x.md',
     )

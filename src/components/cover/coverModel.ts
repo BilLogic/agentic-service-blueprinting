@@ -17,11 +17,6 @@ export type CoverFigure = {
   alt: string
   width: number
   height: number
-  /**
-   * Wide-and-short figures may sit beside their prose at `lg`. Tall ones
-   * always stack, because a tall figure in a half-width column is unreadable.
-   */
-  wide?: boolean
 }
 
 /**
@@ -60,6 +55,8 @@ export type CoverSection =
       id: string
       heading?: string
       intro?: string
+      /** Header row for the definition table. Both cells are copy. */
+      columns: { term: string; definition: string }
       items: { term: string; definition: string }[]
       figure?: CoverFigure
     }
