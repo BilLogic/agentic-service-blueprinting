@@ -63,6 +63,9 @@ export function ZoomPanViewport({
     <div
       className={cn('relative min-h-0 flex-1', className)}
       data-zoom-pan-root
+      // Cell-corner overlays (slice sequence badges) scale with the canvas;
+      // below this zoom they are illegible specks, so CSS hides them.
+      data-canvas-zoom-far={zoom < 0.25 ? '' : undefined}
     >
       <div
         ref={containerRef}

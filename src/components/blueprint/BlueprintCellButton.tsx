@@ -5,6 +5,7 @@ import {
   getBlueprintCellInteractionStyle,
 } from '@/lib/blueprintCellStyle'
 import { isSameBlueprintCellSelection } from '@/lib/blueprintCellSelection'
+import { useSliceMembership } from '@/contexts/sliceMembershipContext'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,11 @@ type BlueprintCellButtonProps = {
   cellId?: string
   stepIndex?: number
   variant?: 'cell' | 'pill' | 'visual'
+  /**
+   * Whether this button may carry the slice sequence badge. Tech pills share
+   * a cell id per stack, so only the cell-shaped face renders the number.
+   */
+  sliceSequenceBadge?: boolean
   opacity?: number
   children: ReactNode
   'aria-label'?: string
@@ -35,6 +41,7 @@ export function BlueprintCellButton({
   cellId,
   stepIndex = -1,
   variant = 'cell',
+  sliceSequenceBadge = true,
   opacity,
   children,
   'aria-label': ariaLabel,
@@ -59,6 +66,22 @@ export function BlueprintCellButton({
         (resolvedCellId &&
           detail.directlyConnectedCellIds.has(resolvedCellId))),
   )
+  const sliceMembership = useSliceMembership()
+  const isSliceMember = Boolean(
+    sliceMembership &&
+      cellId &&
+      (sliceMembership.memberCellIds.has(cellId) ||
+        (resolvedCellId && sliceMembership.memberCellIds.has(resolvedCellId))),
+  )
+  // Checking `sliceMembership && cellId` directly (not via isSliceMember)
+  // lets TypeScript narrow both — no non-null assertions.
+  const sliceSequence =
+    sliceMembership && cellId && isSliceMember && sliceSequenceBadge
+      ? (sliceMembership.sequenceByCellId.get(cellId) ??
+        (resolvedCellId
+          ? sliceMembership.sequenceByCellId.get(resolvedCellId)
+          : undefined))
+      : undefined
   const preview = detail?.previewHover ?? null
   const previewCellId = preview?.cellId
     ? resolveBlueprintCellId(preview.cellId)
@@ -111,6 +134,7 @@ export function BlueprintCellButton({
       aria-label={ariaLabel}
       aria-pressed={isInteractive ? isActive : undefined}
       data-blueprint-cell-emphasis={emphasis}
+      {...(isSliceMember ? { 'data-slice-member': '' } : {})}
       {...(isPreviewHover ? { 'data-blueprint-cell-preview-hover': '' } : {})}
       {...(isInteractive ? { 'data-blueprint-cell-interactive': '' } : {})}
       onClick={isInteractive ? handleClick : undefined}
@@ -121,9 +145,19 @@ export function BlueprintCellButton({
         variant === 'visual' &&
           'min-h-0 h-full max-h-full overflow-hidden',
         !isInteractive && 'pointer-events-none cursor-default',
+        sliceSequence !== undefined && 'relative overflow-visible',
       )}
       style={surfaceStyle}
     >
+      {sliceSequence !== undefined ? (
+        <span
+          aria-hidden
+          data-slice-sequence-badge=""
+          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-foreground font-mono text-3xs font-semibold text-background tabular-nums shadow-sm"
+        >
+          {sliceSequence}
+        </span>
+      ) : null}
       {children}
     </Button>
   )

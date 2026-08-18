@@ -25,6 +25,7 @@ export function BlueprintTechPill({
   compact = false,
   opacity,
   style,
+  sliceSequenceBadge = false,
 }: BlueprintTechPillProps) {
   return (
     <BlueprintCellButton
@@ -33,6 +34,7 @@ export function BlueprintTechPill({
       cellId={selectionContext.cellId}
       stepIndex={stepIndex}
       variant="pill"
+      sliceSequenceBadge={sliceSequenceBadge}
       compact={compact}
       opacity={opacity}
       style={style}
