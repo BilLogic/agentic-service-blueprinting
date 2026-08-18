@@ -23,7 +23,7 @@ Large corpora blow up context (real example: 900+ files). So:
 
 1. List candidate files; **ask the user which describe journeys** rather
    than reading everything.
-2. **Exclude sensitive files explicitly** — credentials (`账号信息.txt`-style
+2. **Exclude sensitive files explicitly** — credentials (`passwords.txt`-style
    account files), DB dumps, media. Sensitive content must never enter the
    IR, and remember imports may eventually be publicly deployed.
 3. For corpora too big to ask file-by-file, dispatch `document-reader` in

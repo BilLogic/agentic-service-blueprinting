@@ -75,7 +75,7 @@ Rules that are not style preferences:
 - **Cite, never quote.** Slices land in public-read tables. Reference
   evidence by cell key or title; never paste an interview excerpt or a
   proposition figure into a caption, narrative, or doc.
-- **Personas, not people.** "A first-time tutor", never a participant's name,
+- **Personas, not people.** "A first-week field technician", never a participant's name,
   employer, or contact string.
 - **No claim without a cell.** If a sentence cannot point at a cell in its own
   frame, delete the sentence or add the cell.

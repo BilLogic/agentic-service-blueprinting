@@ -1,5 +1,5 @@
 [
-  {"query": "we run a tutoring service and all our onboarding knowledge lives in a google doc export plus some slack threads i saved to ./discovery-notes. can you turn this into a proper service blueprint?", "should_trigger": true},
+  {"query": "we run a municipal repair service and all our intake knowledge lives in a google doc export plus some slack threads i saved to ./discovery-notes. can you turn this into a proper service blueprint?", "should_trigger": true},
   {"query": "map how customers actually experience our returns process vs how ops thinks it works — we have the SOP pdf and a support-ticket dump", "should_trigger": true},
   {"query": "i exported our FigJam service map, get it into supabase so the team can browse it in the app", "should_trigger": true},
   {"query": "help me document our patient intake journey end to end, frontstage and backstage, including what the billing system does behind the scenes", "should_trigger": true},
@@ -7,9 +7,9 @@
   {"query": "our blueprint is deployed but we changed the escalation flow last sprint. update it and redeploy", "should_trigger": true},
   {"query": "translate this Shostack-style xlsx blueprint from the consultants into our app format", "should_trigger": true},
   {"query": "start a service blueprint for our cafe from scratch, ill answer your questions as we go", "should_trigger": true},
-  {"query": "whats wrong with our warm-up scenario? it feels inconsistent, some lanes look empty", "should_trigger": false},
+  {"query": "whats wrong with our sample-service scenario? it feels inconsistent, some lanes look empty", "should_trigger": false},
   {"query": "what happens downstream if we automate the greeting step instead of having a host do it", "should_trigger": false},
-  {"query": "make a one-pager of just the tutor journey for the client meeting tomorrow", "should_trigger": false},
+  {"query": "make a one-pager of just the field technician journey for the client meeting tomorrow", "should_trigger": false},
   {"query": "draw an architecture diagram of our microservices and how they talk to each other", "should_trigger": false},
   {"query": "wireframe the onboarding screens for our mobile app in figma", "should_trigger": false},
   {"query": "import this CSV of sales leads into supabase for me", "should_trigger": false},
