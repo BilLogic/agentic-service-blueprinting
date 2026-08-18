@@ -3,6 +3,7 @@ import { EditorShell } from '@/components/editor/EditorShell'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { EditorProvider } from '@/contexts/EditorContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
+import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import { queryClient } from '@/lib/queryClient'
 
 function App() {
@@ -10,9 +11,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <SupabaseProvider>
         <EditorProvider>
-          <TooltipProvider delay={200}>
-            <EditorShell />
-          </TooltipProvider>
+          <ViewStateProvider>
+            <TooltipProvider delay={200}>
+              <EditorShell />
+            </TooltipProvider>
+          </ViewStateProvider>
         </EditorProvider>
       </SupabaseProvider>
     </QueryClientProvider>

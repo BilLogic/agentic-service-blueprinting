@@ -14,8 +14,10 @@
 //   Exception Path: 12 layers, 16 steps, 149 cells, 19 triggers
 
 import type { BlueprintData } from '@/types/blueprint'
+import type { Slice, SliceItem } from '@/types/database'
 
 export const SCALE_TEST_SCENARIO_ID = 'f0000000-0000-4000-8000-000000000001'
+export const SCALE_TEST_LIFECYCLE_ID = 'f0000000-0000-4000-8000-000000000010'
 export const SCALE_TEST_HAPPY_PATH_ID = 'f0000000-0000-4000-8000-010000000000'
 export const SCALE_TEST_ALTERNATIVE_PATH_ID = 'f0000000-0000-4000-8000-020000000000'
 export const SCALE_TEST_EXCEPTION_PATH_ID = 'f0000000-0000-4000-8000-030000000000'
@@ -645,3 +647,25 @@ export const SCALE_TEST_PATH_FALLBACKS: BlueprintData[] = [
   SCALE_TEST_ALTERNATIVE_PATH_FALLBACK,
   SCALE_TEST_EXCEPTION_PATH_FALLBACK,
 ]
+
+/**
+ * Demo slices over the happy path — the zero-config content for the slices
+ * surface (sidebar groups, focus view, presentation). Same shape as the
+ * database rows, so the read hooks fall back to them verbatim.
+ */
+export const SCALE_TEST_DEMO_SLICES: Slice[] = [
+  {"id":"f0000000-0000-4000-8000-000500010000","service_lifecycle_id":"f0000000-0000-4000-8000-000000000010","title":"Requester updates, end to end","description":"Every touchpoint where the frontstage keeps the requester informed, from acknowledgement to closure.","actor":"Frontstage Ops","slice_type":"journey","origin":"generated","locale":"en","position":1,"created_by":null,"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+  {"id":"f0000000-0000-4000-8000-000500020000","service_lifecycle_id":"f0000000-0000-4000-8000-000000000010","title":"The on-site inspection moment","description":"One step read vertically: who acts and which systems carry the inspection.","actor":null,"slice_type":"step","origin":"generated","locale":"en","position":2,"created_by":null,"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+]
+
+export const SCALE_TEST_DEMO_SLICE_ITEMS: Record<string, SliceItem[]> = {
+  'f0000000-0000-4000-8000-000500010000': [
+    {"id":"f0000000-0000-4000-8000-000600010001","slice_id":"f0000000-0000-4000-8000-000500010000","position":1,"caption":"Acknowledge the request","narrative":"The request is triaged and the requester hears back that work is underway.","illustration":null,"cell_ids":["f0000000-0000-4000-8000-010300050002","f0000000-0000-4000-8000-010300050003"],"cell_keys":["sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/triage-prioritize","sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/verify-asset-record"],"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+    {"id":"f0000000-0000-4000-8000-000600010002","slice_id":"f0000000-0000-4000-8000-000500010000","position":2,"caption":"Report from the field","narrative":"Inspection and repair progress is relayed while the crew is on site.","illustration":null,"cell_ids":["f0000000-0000-4000-8000-010300050006","f0000000-0000-4000-8000-010300050007"],"cell_keys":["sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/on-site-inspection","sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/replace-component"],"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+    {"id":"f0000000-0000-4000-8000-000600010003","slice_id":"f0000000-0000-4000-8000-000500010000","position":3,"caption":"Confirm and close","narrative":"Quality review completes and the requester gets the closing notice.","illustration":null,"cell_ids":["f0000000-0000-4000-8000-010300050010","f0000000-0000-4000-8000-010300050011"],"cell_keys":["sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/quality-review","sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/notify-requester"],"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+  ],
+  'f0000000-0000-4000-8000-000500020000': [
+    {"id":"f0000000-0000-4000-8000-000600020001","slice_id":"f0000000-0000-4000-8000-000500020000","position":1,"caption":"People at the step","narrative":"The actors coordinating the inspection on the ground.","illustration":null,"cell_ids":["f0000000-0000-4000-8000-010300010006","f0000000-0000-4000-8000-010300030006"],"cell_keys":["sample-lifecycle/discover/sample-service/happy-path/x54c8116a/on-site-inspection","sample-lifecycle/discover/sample-service/happy-path/x5d59fc49/on-site-inspection"],"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+    {"id":"f0000000-0000-4000-8000-000600020002","slice_id":"f0000000-0000-4000-8000-000500020000","position":2,"caption":"Systems at the step","narrative":"The tech and frontstage work carrying the same moment.","illustration":null,"cell_ids":["f0000000-0000-4000-8000-010300040006","f0000000-0000-4000-8000-010300050006"],"cell_keys":["sample-lifecycle/discover/sample-service/happy-path/citizen-facing-tech/on-site-inspection","sample-lifecycle/discover/sample-service/happy-path/frontstage-ops/on-site-inspection"],"created_at":"2026-08-17T00:00:00+00:00","updated_at":"2026-08-17T00:00:00+00:00"},
+  ],
+}

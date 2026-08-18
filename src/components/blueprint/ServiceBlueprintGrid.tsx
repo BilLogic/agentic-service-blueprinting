@@ -690,6 +690,8 @@ function BlueprintCellBlock({
               selectionContext={selectionContext}
               stepIndex={stepIndex}
               compact={compact}
+              // Pills share one cell id — only the first carries the badge.
+              sliceSequenceBadge={index === 0}
             />
           ) : (
             <TechPillFace key={`${item}-${index}`} item={item} compact={compact} />

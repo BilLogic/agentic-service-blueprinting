@@ -62,6 +62,39 @@
     transition-duration: 180ms;
   }
 
+  /* Slice focus — member rings persist whether or not the dim is up. Ring
+     takes the lane's role accent so members pop at overview zoom, plus a
+     soft shadow lift over the dimmed field. */
+  [data-slice-focus] [data-blueprint-cell-anchor][data-slice-member] {
+    outline: 2px solid var(--blueprint-cell-ring, var(--ring));
+    outline-offset: 1px;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+  }
+
+  /* While focused, non-member cells drop toward the canvas: per-cell dim +
+     desaturate, no scrim plane. 0.6 opacity (not lower) keeps the dimmed
+     text above ~5:1 contrast against its own fill — content still on screen
+     is still meant to be legible (SC 1.4.3); the desaturate does the
+     de-emphasis work. The `filter` is deliberately NOT transitioned:
+     easing a filter repaints every non-member cell per frame. */
+  [data-slice-focus='focused']
+    [data-blueprint-cell-anchor]:not([data-slice-member]) {
+    opacity: 0.6;
+    filter: saturate(0.3) grayscale(0.55);
+  }
+
+  /* Sequence badges scale with the canvas transform; once the camera is far
+     enough out that the numbers are illegible they read as noise. Fading
+     rather than `display: none` keeps the threshold from popping. */
+  [data-slice-sequence-badge] {
+    transition: opacity var(--motion-micro) ease-out;
+  }
+
+  [data-canvas-zoom-far] [data-slice-sequence-badge] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   [data-blueprint-cell-anchor][data-blueprint-cell-preview-hover] {
     background-color: var(
       --blueprint-cell-bg-hover,

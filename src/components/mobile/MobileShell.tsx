@@ -4,12 +4,23 @@ import { BlueprintSlideContent } from '@/components/blueprint/BlueprintSlideCont
 import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
 import { ZoomPanViewport } from '@/components/editor/ZoomPanViewport'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
-import { MobileNavSheet } from '@/components/mobile/MobileNavSheet'
+import {
+  MissingSliceNotice,
+  SliceUrlBootResolver,
+} from '@/components/editor/EditorShell'
+import { SlicePresentation } from '@/components/editor/SlicePresentation'
+import { SliceView } from '@/components/editor/SliceView'
+import {
+  MobileNavSheet,
+  type MobileNavSurface,
+} from '@/components/mobile/MobileNavSheet'
 import { MobilePathSelector } from '@/components/mobile/MobilePathSelector'
 import { MobileTopBar } from '@/components/mobile/MobileTopBar'
 import { BlueprintCellDetailProvider } from '@/contexts/BlueprintCellDetailContext'
 import { useEditor } from '@/contexts/EditorContext'
+import { useViewState } from '@/contexts/viewStateStore'
 import { useScenarioBlueprint } from '@/hooks/useScenarioBlueprint'
+import { useSlices } from '@/hooks/useSlices'
 import {
   readLastViewedPath,
   resolveDefaultPathId,
@@ -26,20 +37,16 @@ import {
 /**
  * The phone's shell — the view-only visitor experience, for every tier.
  *
- * The same canvases the desktop shows: the service overview on home, and a
- * scenario's blueprint canvas when one is selected. Navigation lives in the
- * drawer — the drawer IS the index and opens on first load while the
- * overview is showing. Nothing here can write: no editing surfaces mount on
- * this shell.
+ * The same canvases the desktop shows: the service overview on home, a
+ * scenario's blueprint canvas when one is selected, and — from this unit —
+ * the slice surfaces: the drawer's Slices radio opens a slice focus view,
+ * and Present covers everything full-bleed. Slice state lives in the SAME
+ * tab store the desktop shell uses, so `?slice=` deep links resolve through
+ * one reducer on both form factors. Nothing here can write.
  *
- * Paths are SINGLE-select on the phone (ported from uno-blueprint's
- * 2026-08-17 redesign): the top-bar pill picks exactly one path for the
- * showing scenario, defaulting to the last-viewed path per scenario. A
- * side effect worth naming: with one path selected the compare surfaces
- * (stacked ⇄ merged toggle, difference ledger) never engage on the phone —
- * the same behavior uno's mobile shell ships. Multi-path compare stays a
- * desktop surface; the overview canvas still renders each scenario in its
- * stored view type.
+ * Paths are SINGLE-select on the phone: the top-bar pill picks exactly one
+ * path for the showing scenario, defaulting to the last-viewed path per
+ * scenario.
  */
 
 const MOBILE_DETAIL_PAN_IGNORE =
@@ -47,14 +54,36 @@ const MOBILE_DETAIL_PAN_IGNORE =
 
 export function MobileShell() {
   const { view, slides, openDetail, goHome, activeSlide } = useEditor()
+  const { activeTab, openTab, closeTab, activateTab } = useViewState()
 
   const scenario =
     view === 'detail' && isSubslide(activeSlide) ? activeSlide : null
   const isHome = scenario === null
 
+  // Slice surfaces come from the shared tab store: a `slice` tab is the
+  // visible view, a `present` tab covers everything.
+  const viewingSliceId = activeTab?.kind === 'slice' ? activeTab.sliceId : null
+  const presentingSliceId =
+    activeTab?.kind === 'present' ? activeTab.sliceId : null
+
+  const slicesQuery = useSlices()
+  const slices =
+    slicesQuery.status === 'ready'
+      ? slicesQuery.data
+      : slicesQuery.status === 'error'
+        ? (slicesQuery.fallback ?? [])
+        : []
+  const viewingSlice = viewingSliceId
+    ? slices.find((slice) => slice.id === viewingSliceId)
+    : null
+
   // First load: the drawer IS the index, so it opens over the overview.
-  // Captured at mount — navigating back home later does not re-open it.
-  const [navOpen, setNavOpen] = useState(() => view === 'home')
+  // Captured at mount — a deep link (slice) is a destination of its own, so
+  // the drawer stays closed there.
+  const [navOpen, setNavOpen] = useState(
+    () => view === 'home' && window.location.search === '',
+  )
+  const [navSurface, setNavSurface] = useState<MobileNavSurface>('blueprints')
 
   const phases = useMemo(() => getMainSlides(slides), [slides])
   const scenariosByPhase = useMemo(
@@ -87,9 +116,11 @@ export function MobileShell() {
       return next
     })
 
-  const title = scenario
-    ? getSlideDisplayLabel(scenario, slides)
-    : 'Service blueprint'
+  const title = viewingSlice
+    ? viewingSlice.title
+    : scenario
+      ? getSlideDisplayLabel(scenario, slides)
+      : 'Service blueprint'
 
   // ONE path at a time: the pill drives the same selection state the
   // scenario canvas reads, but always replaces the whole selection with one
@@ -98,10 +129,6 @@ export function MobileShell() {
   const scenarioBlueprint = useScenarioBlueprint(scenario?.id)
   const { paths, selectedPathIds, setSelectedPathIds } = scenarioBlueprint
 
-  // Apply the default once per scenario visit — after the paths have
-  // loaded, so the id resolves against a real list. Also what collapses a
-  // desktop multi-select down to one when the viewport crosses into this
-  // shell mid-session.
   const appliedForRef = useRef<string | null>(null)
   useEffect(() => {
     if (!scenario) return
@@ -125,13 +152,20 @@ export function MobileShell() {
     writeLastViewedPath(scenario.id, pathId)
   }
 
-  // Navigation closes the drawer so the move is visible.
+  // Navigation closes the drawer so the move is visible. Selecting a
+  // scenario also deactivates any slice tab (it stops covering the view).
   const openScenario = (scenarioId: string) => {
     openDetail(scenarioId)
+    activateTab(null)
     setNavOpen(false)
   }
   const openOverview = () => {
     goHome()
+    activateTab(null)
+    setNavOpen(false)
+  }
+  const openSlice = (sliceId: string) => {
+    openTab({ kind: 'slice', sliceId })
     setNavOpen(false)
   }
 
@@ -140,12 +174,13 @@ export function MobileShell() {
        max-h-svh because its root carries a height; this template's #root
        does not, so the shell owns its own height like DesktopEditorShell.) */
     <div className="flex h-svh max-h-svh flex-col overflow-hidden bg-background">
+      <SliceUrlBootResolver />
       <MobileTopBar
         title={title}
         navOpen={navOpen}
         onToggleNav={() => setNavOpen((open) => !open)}
         rightSlot={
-          scenario && paths.length > 0 ? (
+          !viewingSliceId && scenario && paths.length > 0 ? (
             <MobilePathSelector
               paths={paths}
               activePathId={activePathId}
@@ -155,42 +190,75 @@ export function MobileShell() {
         }
       />
 
+      {/* A dead ?slice= link: same notice desktop shows, instead of the
+          link silently doing nothing. */}
+      <MissingSliceNotice />
+
       <main className="relative min-h-0 flex-1">
-        <VisualWalkthroughShell>
-          <div
-            className="absolute inset-0 flex min-h-0 flex-col"
-            data-editor-view
-          >
-            {scenario ? (
-              <MobileScenarioCanvas
-                key={scenario.id}
-                scenario={scenario}
-                slides={slides}
-                scenarioBlueprint={scenarioBlueprint}
-              />
-            ) : (
-              /* The shell's own top bar already names the view, so the
-                 docked filter header is suppressed — two bars saying the
-                 same thing read as clutter. */
-              <ServiceOverviewView renderHeader={() => null} />
-            )}
+        {viewingSliceId ? (
+          <div className="absolute inset-0 flex min-h-0 flex-col">
+            <SliceView
+              key={viewingSliceId}
+              sliceId={viewingSliceId}
+              onPresent={(sliceId) => openTab({ kind: 'present', sliceId })}
+            />
           </div>
-        </VisualWalkthroughShell>
+        ) : (
+          <VisualWalkthroughShell>
+            <div
+              className="absolute inset-0 flex min-h-0 flex-col"
+              data-editor-view
+            >
+              {scenario ? (
+                <MobileScenarioCanvas
+                  key={scenario.id}
+                  scenario={scenario}
+                  slides={slides}
+                  scenarioBlueprint={scenarioBlueprint}
+                />
+              ) : (
+                /* The shell's own top bar already names the view, so the
+                   docked filter header is suppressed — two bars saying the
+                   same thing read as clutter. */
+                <ServiceOverviewView renderHeader={() => null} />
+              )}
+            </div>
+          </VisualWalkthroughShell>
+        )}
       </main>
 
       <MobileNavSheet
         open={navOpen}
         onOpenChange={setNavOpen}
+        surface={navSurface}
+        onSurfaceChange={setNavSurface}
+        slices={slices}
+        slicesLoading={slicesQuery.status === 'loading'}
         phases={phases}
         scenariosByPhase={scenariosByPhase}
         slides={slides}
         expandedPhaseIds={expandedPhaseIds}
         onPhaseExpandedChange={setPhaseExpanded}
-        isHome={isHome}
-        selectedScenarioId={scenario?.id ?? null}
+        isHome={isHome && !viewingSliceId}
+        selectedScenarioId={viewingSliceId ? null : (scenario?.id ?? null)}
         onSelectOverview={openOverview}
         onSelectScenario={openScenario}
+        onSelectSlice={openSlice}
       />
+
+      {/* Presenting a slice: full-bleed over everything; Return closes the
+          present tab, and the store activates the slice tab beneath it (or
+          the base view for a boot ?slice=&mode=present link). The tab is
+          STATE — a network flap cannot unmount this mid-read. */}
+      {presentingSliceId ? (
+        <div className="fixed inset-0 z-40 bg-background">
+          <SlicePresentation
+            key={presentingSliceId}
+            sliceId={presentingSliceId}
+            onReturn={() => closeTab(`present:${presentingSliceId}`)}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

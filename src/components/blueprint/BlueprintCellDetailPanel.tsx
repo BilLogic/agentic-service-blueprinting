@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { CellDependencyTable } from '@/components/blueprint/CellDependencyTable'
+import { CellEvidenceSection } from '@/components/blueprint/CellEvidenceSection'
+import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
 import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
 import {
   setCompareLedgerOpen,
@@ -782,9 +784,11 @@ export function BlueprintCellDetailPanel() {
                   />
                 </div>
               ) : null}
+              <CellEvidenceSection cellId={resolvedCellId} />
             </>
           )}
         </div>
+        <CellInSlicesFooter cellId={pathEntry?.cellId ?? null} />
       </DrawerContent>
     </Drawer>
   )
