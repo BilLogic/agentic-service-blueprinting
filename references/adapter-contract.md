@@ -124,6 +124,133 @@ confident count before them):
   model as quoted/JSON data fields; never splice DB content into the
   instruction sentences of a tool result.
 
+## Live backend surface (beyond import)
+
+Importing is the floor; **serving the app live** is a larger surface. A
+backend replacing Supabase must provide everything below, or the app's
+authoring, agent, and derived-layer features silently break. (Read-only
+serving needs only the PostgREST-style embedded selects from the honesty
+note above — including **column-form FK hints**: the blueprint read embeds
+`cell_triggers!source_cell_id`, so the read API must disambiguate a
+multi-FK embed by column name.)
+
+### 1. The authoring RPC roster
+
+Structural writes never touch tables — the app calls `POST /rpc/<fn>` for
+each function in the signature block at the end of
+[`supabase/schema.reference.sql`](../supabase/schema.reference.sql)
+(bodies in `supabase/migrations/20260818001000_authoring_operations.sql`;
+client wrappers in `src/lib/mutations/authoringRpc.ts`). The roster:
+
+- **Read helpers** (open to anon): `key_slug`, `cell_natural_key`,
+  `mint_cell_key`, `slices_referencing`, `deletion_impact`,
+  `is_service_account`
+- **Creates**: `create_phase`, `create_scenario`, `create_path`,
+  `add_step`, `add_lane`, `upsert_cell`
+- **Duplicates**: `duplicate_scenario`, `duplicate_path`
+- **Renames**: `rename_phase`, `rename_scenario`, `rename_path`,
+  `rename_owner_tag`
+- **Reorders**: `reorder_steps`, `set_path_steps`, `reorder_lanes`
+- **Dependencies**: `set_cell_dependency`, `clear_cell_dependency`
+- **Deletes** (each archives to `deleted_structure` and returns the
+  archive id): `delete_scenario`, `delete_path`, `remove_step`,
+  `remove_lane`, `remove_lanes`, `delete_cell`
+
+Each RPC performs one complete, valid edit in one transaction and asserts
+the write-tier guard in its own body. Signatures — argument names, types,
+and return shapes — in the schema.reference.sql block are **normative**:
+the generated `Database['public']['Functions']` types are the client's
+compile-time contract.
+
+### 2. The direct table-write surface
+
+Non-structural edits go straight at tables and must be honored with the
+same scoping the Supabase grants encode (see `supabase/DATABASE.md` § Row
+Level Security):
+
+- **Column-scoped UPDATE** on `cells`, `layers`, `steps`, `paths`,
+  `service_scenarios` (panel text edits and spec fields — never ids,
+  positions, or FK columns).
+- **INSERT + column-scoped UPDATE** on `findings` (inserts arrive with
+  `status = 'open'`; updates touch `status, note, severity, run_id,
+  cell_ids, cell_keys, source`).
+- **INSERT / DELETE** on `slices` and `slice_items`.
+- **Full CRUD for the owner** on `agent_sessions` / `agent_messages`
+  (`src/lib/agent/persistence.ts`), reachable by authenticated sessions
+  only.
+
+**Zero rows written is a failure.** The client sends writes with a
+returning representation and treats an empty result as a refused or
+conflicted write, never a success — optimistic-concurrency updates
+(`updateSliceMeta` matching on `updated_at`) and status flips
+(`setFindingStatus`) all rely on this. A backend that returns 2xx with no
+rows for a policy-refused write is conforming; one that fabricates a row
+count is not.
+
+### 3. Non-transactional multi-statement writes exist
+
+PostgREST offers no multi-statement transaction, and two client writes
+lean on that being survivable (`src/lib/mutations/sliceMutations.ts`):
+
+- `createSlice` inserts the `slices` row **first**, then its frames — a
+  failure between the two leaves an empty slice, which is visible and
+  deletable; the reverse order would strand orphan frames.
+- `replaceSliceFrames` is delete-then-insert on `slice_items` — a failure
+  after the delete leaves a frameless slice.
+
+A replacement backend must preserve this ordering tolerance: partial
+states above are recoverable by design and must not be rejected,
+auto-repaired, or hidden behind a mandatory transaction wrapper.
+
+### 4. Read timeout
+
+Every app read races a **10-second timeout**
+(`SUPABASE_FETCH_TIMEOUT_MS` in `src/lib/supabaseFetchTimeout.ts`); a
+read that exceeds it is treated as failed and the app falls back or
+errors. A live backend must answer blueprint reads comfortably inside
+that budget.
+
+### 5. Findings dedupe semantics and operators
+
+`recordFinding` (`src/lib/mutations/findingMutations.ts`) is
+read-then-write, not upsert: it reads existing rows by
+`(service_lifecycle_id, fingerprint)`, updates an open row in place,
+skips a dismissed one, and inserts a fresh `open` row otherwise. The
+schema's **open-fingerprint partial unique index**
+(`findings_open_fingerprint_idx` on `(service_lifecycle_id, fingerprint)
+where status = 'open'`) is the backstop that makes the race harmless —
+two concurrent recorders cannot create two open rows for one
+fingerprint. A backend must enforce exactly that partial uniqueness:
+uniqueness over *all* statuses would break the resolved-then-reopen path.
+
+Reads additionally require the **array-containment operator** (`cs`) on
+`findings.cell_ids` — `useCellFindings` filters with
+`.contains('cell_ids', [cellId])` — so `uuid[]` columns must be
+queryable by containment, not just equality.
+
+### Auth contract
+
+The client consumes a **GoTrue-compatible session API** via
+`@supabase/supabase-js` — the surface actually used is small:
+`auth.getSession()`, `auth.onAuthStateChange()`,
+`auth.signInWithPassword({ email, password })`, and `auth.signOut()`. A
+replacement backend must issue JWTs the data API accepts and keep those
+four behaviors intact.
+
+Tier semantics ride the JWT's `app_metadata.role` claim
+(consuming code: `src/contexts/SupabaseProvider.tsx`):
+
+- `role === 'service'` → full write (service account).
+- any **other explicit role** → the tier recipe is in play and this
+  session is a **view-only agent** (scripted refusals instead of raw
+  policy errors).
+- **no role claim** → the tier recipe was never adopted, so **every
+  signed-in session writes** — the template default.
+
+These client checks are UX gates only; the backend must enforce the same
+tiers server-side (the RPC in-body guard plus table policies), because a
+definer-style RPC bypasses row policies entirely.
+
 ## Per-locale artifacts
 
 One bilingual IR → one artifact set per locale (two seed files / two fallback
