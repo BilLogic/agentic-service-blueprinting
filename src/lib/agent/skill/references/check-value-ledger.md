@@ -9,6 +9,9 @@ service but never receive value?
 ## Read
 All value_props across the scenario: build audience → cells and
 cells-without-props lists. Lane vocabulary for who the audiences are.
+Layer roles resolve PER PATH (`paths[].layers[]`) — the same layer key can
+carry different roles in different scenarios/paths, so never resolve a
+role from the key alone.
 
 ## Finding shape
 - A frontstage/customer cell with zero value_props while its siblings have

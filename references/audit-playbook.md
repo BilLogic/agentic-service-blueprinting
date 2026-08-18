@@ -53,6 +53,13 @@ dispatch). Wave 1 always runs. Wave-2 rules:
 - `fee-visibility`: a CONTENT SCAN, not a column test — skip only when no
   money mention exists anywhere in scope (beware substring false
   positives: "fee" in "feedback", 收 as receive, 款 inside 条款).
+- `obsolete-source`: wave 1, but CONDITIONAL on source access (a repo
+  checkout, reachable URLs). Without any verifiable source its canonical
+  outcome is **unverifiable** — neither ran-with-findings nor skipped:
+  record it as a scope-keyed zero-cell finding with the canonical scope
+  form `all:no-verifiable-source`, i.e. fingerprint
+  `obsolete-source:scope:all:no-verifiable-source`, so "we could not
+  check" is a triageable row rather than a silent skip or a false clean.
 
 Every skip is reported with its reason; a silent skip reads as coverage
 that never happened.
@@ -60,8 +67,14 @@ that never happened.
 ## §2 Fingerprint
 
 ```
-fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n'))
+fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n')) + ':' + <reason-slug>
 ```
+
+EVERY finding carries a short reason slug — cell-bearing findings included,
+not only zero-cell ones. Without it, two distinct findings from one check
+over the same cells (e.g. a jargon warn and a permissions info citing the
+same three cells) collide on one fingerprint and dedupe silently destroys
+one of them.
 
 `skills/audit/scripts/audit_tools.py fingerprint` is the reference implementation —
 execute it rather than hand-computing (two hand-rolled implementations
@@ -76,14 +89,26 @@ that disagree on a separator split the finding history).
 - The note is NOT part of the fingerprint — rewording a finding updates the
   open row rather than duplicating it.
 - Zero-cell findings (e.g. "no scenario covers onboarding at all") use a
-  scope key instead of cell keys, WITH a short reason slug so two distinct
-  zero-cell findings from one check cannot collide:
+  scope key instead of cell keys, WITH the same reason-slug discipline:
   `check_name + ':scope:' + scenario_key + ':' + <reason-slug>`
   (e.g. `gap-sweep:scope:sample-service:orphan-step-inspection`).
+- **Migration note (existing ledgers).** Rows written before the reason
+  slug was extended to cell-bearing findings carry old-form fingerprints
+  (`check_name + ':' + sha256(cell_keys)`, no slug). They remain valid
+  rows — dedupe compares exact fingerprint strings, so old rows simply
+  never match new-form incoming findings and NO ledger rewrite is needed.
+  New writes always use the new form; per-check supersede retires the
+  old-form open rows the next time their check completes.
+- **Batch discipline.** A duplicate fingerprint WITHIN one incoming batch
+  is a reported error, never a second insert — `audit_tools.py`
+  dedupe/report refuse the batch and name the colliding fingerprint;
+  give each finding a distinct reason slug and re-run.
 - The DB backstop: `findings_open_fingerprint_idx` — unique on
   `(service_lifecycle_id, fingerprint) where status = 'open'`. An insert
   conflict means the dedupe logic missed; treat it as update-in-place,
-  never as "insert with a tweaked fingerprint".
+  never as "insert with a tweaked fingerprint". On the no-DB route,
+  `report --apply` mirrors the same backstop: it refuses to write a ledger
+  holding two open rows with one fingerprint.
 
 ## §3 Dedupe decision table
 

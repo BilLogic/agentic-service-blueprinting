@@ -9,7 +9,9 @@ something the journey never shows?
 ## Read
 Per lane with non-empty `kpis`: the KPI list vs that lane's cells across
 all steps and paths. `tools` for whether the measured thing is even
-instrumented.
+instrumented. Layer roles resolve PER PATH (`paths[].layers[]`) — the same
+layer key can carry different roles in different scenarios/paths, so never
+resolve a role from the key alone.
 
 ## Finding shape
 Two directions, one finding each per lane:

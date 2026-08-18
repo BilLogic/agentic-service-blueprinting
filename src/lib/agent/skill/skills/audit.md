@@ -52,7 +52,10 @@ triage rules, and the check-authoring template.
   main context after all auditors return.
 - ⚠ **REQUIRED — dedupe by fingerprint; dismissed stays dismissed.**
   `fingerprint = check_name + ':' + sha256 of the sorted cell_keys joined
-  with '\n'` (exact form: playbook §2). A
+  with '\n' + ':' + reason-slug` — every finding carries a reason slug,
+  cell-bearing ones included (exact form + old-ledger migration note:
+  playbook §2). A duplicate fingerprint within one incoming batch is a
+  reported error, never a second insert. A
   re-detected finding whose fingerprint matches a `dismissed` row is
   dropped silently; matching a `resolved` row reopens it; matching an
   `open` row updates it in place. The DB backstop (partial unique index on
@@ -81,8 +84,11 @@ imported blueprint (or IR files)
   → export    (one read-only blueprint export the auditors share —
                skills/audit/scripts/audit_tools.py export)
   → dispatch  (one auditor per check, parallel, blind)
-  → collect   (findings JSON per check; malformed output = check failed,
-               re-dispatch once, then report the check as failed)
+  → collect   (findings JSON per check; validate each auditor's output
+               against the findings-row shape pinned in agents/auditor.md
+               BEFORE any dedupe or `report --apply` — malformed output =
+               check failed, re-dispatch once, then report the check as
+               failed)
   → dedupe    (fingerprint vs existing rows: drop dismissed, reopen
                resolved, update open)
   → write     (one run_id for the run; per-check atomic supersede)
@@ -96,11 +102,17 @@ One file per check, `skills/audit/references/check-<name>.md`. Wave 1 needs only
 blueprint data; wave 2 reads the spec columns and **skips gracefully** —
 reported, never silent — when they are absent or empty.
 
+The table below is **illustrative — the roster is the directory listing**
+(`skills/audit/references/check-*.md`, enumerated at roster time). A check
+file that exists runs (or is reported skipped) whether or not a row here
+mentions it.
+
 | Wave | Check | Asks |
 | --- | --- | --- |
 | 1 | `gap-sweep` | Which experienced moments have no cell — empty stretches, dangling triggers, uncovered steps |
 | 1 | `jargon-lint` | Which customer-facing cell texts use words the customer would never say |
 | 1 | `channel-conflict` | Where do simultaneous cells compete for the same actor or channel |
+| 1 | `obsolete-source` | Which cells model a surface or flow the mapped source no longer has (conditional on source access — playbook §1.5) |
 | 2 | `kpi-alignment` | Do lane KPIs reward what the cells actually do (lane `kpis`/`tools`) |
 | 2 | `perceived-owner` | Where the recorded owner and the perceived owner diverge (owner pair) |
 | 2 | `value-ledger` | Which cells deliver value to nobody, and which audiences receive none (`value_props`) |
