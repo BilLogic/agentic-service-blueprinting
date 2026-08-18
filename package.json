@@ -4,7 +4,9 @@
   "version": "0.4.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-cover-assets.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-cover-assets.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "node scripts/sync-canvas-skills.mjs --check && vitest run",
