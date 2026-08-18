@@ -24,11 +24,16 @@ export function CoverCommandChip({ command }: { command: string }) {
     // Guarded: the clipboard API is absent over plain http and in jsdom.
     const clipboard = navigator.clipboard
     if (!clipboard?.writeText) return
-    void clipboard.writeText(command).then(() => {
-      setCopied(true)
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(() => setCopied(false), 1600)
-    })
+    clipboard
+      .writeText(command)
+      .then(() => {
+        setCopied(true)
+        if (timer.current) clearTimeout(timer.current)
+        timer.current = setTimeout(() => setCopied(false), 1600)
+      })
+      // A denied clipboard (permissions, embedded contexts) is not an error
+      // worth surfacing on an orientation page — the chip simply stays put.
+      .catch(() => {})
   }, [command])
 
   return (
