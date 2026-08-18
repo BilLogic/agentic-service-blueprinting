@@ -1,11 +1,22 @@
-/*
- * Base element rules — defaults every component inherits (borders, body
- * background, pointer cursors on interactive elements, app font).
- */
-
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    /* Full alpha, not `outline-ring/50`. This is the default focus outline colour
+       for the 27 raw `<button>` elements that define no `focus-visible` rule of
+       their own; at 50% it composited to 1.76:1 and failed SC 1.4.11. Fixing
+       `--ring` alone does not reach here — the modifier is applied at this site. */
+    @apply border-border outline-ring;
+  }
+  /*
+   * A real height chain from the viewport down. The shells size with
+   * viewport units (svh/dvh), but embedded webviews and preview panes have
+   * been seen resolving those against a stale viewport after a resize —
+   * a 100%-height chain gives the shells a layout-derived fallback that is
+   * always current.
+   */
+  html,
+  body,
+  #root {
+    height: 100%;
   }
   body {
     /* Required by shadcn Base UI drawer overlay on iOS Safari */
@@ -33,5 +44,61 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+   * Baseline focus ring.
+   *
+   * The app has 41 raw `<button>` elements; twelve files' worth define no
+   * `focus-visible` rule at all, and seventeen sites set `focus-visible:
+   * outline-none` with nothing in its place — a keyboard user lands on them
+   * with no visible indicator (SC 2.4.7). This is the same recipe `ui/button.tsx`
+   * uses, so the two agree by construction rather than by convention.
+   *
+   * Wrapped in `:where()`, which contributes zero specificity: any component
+   * that declares its own `focus-visible:ring-*` still wins. Adding a shared
+   * constant to 41 call sites would have left the next raw button uncovered.
+   */
+  :where(
+    a[href],
+    button:not(:disabled),
+    summary,
+    [role='button']:not([aria-disabled='true']),
+    [role='tab'],
+    [tabindex]:not([tabindex='-1'])
+  ):focus-visible {
+    @apply border-ring ring-3 ring-ring/50 outline-none;
+  }
+
+  /*
+   * Windows High Contrast / forced-colors. The system replaces every colour, so
+   * anything carrying meaning through a background or a ring alone disappears.
+   * Re-state those affordances with system keywords, which forced-colors keeps.
+   */
+  @media (forced-colors: active) {
+    :where(
+      a[href],
+      button:not(:disabled),
+      summary,
+      [role='button'],
+      [role='tab'],
+      [tabindex]:not([tabindex='-1'])
+    ):focus-visible {
+      outline: 3px solid Highlight;
+      outline-offset: 2px;
+    }
+    [aria-pressed='true'],
+    [aria-selected='true'],
+    [data-state='active'],
+    [data-state='checked'] {
+      forced-color-adjust: none;
+      background-color: Highlight;
+      color: HighlightText;
+    }
+    /* Blueprint cells identify their lane by fill alone; keep the border so the
+       grid still reads as a grid when the fills are flattened. */
+    [data-blueprint-cell-interactive] {
+      border: 1px solid CanvasText;
+    }
   }
 }

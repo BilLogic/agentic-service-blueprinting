@@ -1,0 +1,17 @@
+/*
+ * Backwards-compatibility aliases. Mirrors packages/ui/build/css/source/compat.css.
+ *
+ * These give Supabase's documented vocabulary the same spelling it has in their
+ * docs, so a snippet borrowed from them resolves here. Nothing new should reach
+ * for these — prefer the semantic token they point at. The file goes away once
+ * it is empty.
+ *
+ * Kept out of semantic.css so the core model reads as just inputs → derivations.
+ * Must be imported after semantic.css.
+ */
+@theme inline {
+  --color-foreground-light: var(--muted-foreground);
+  --color-foreground-lighter: var(--tertiary-foreground);
+  --color-foreground-muted: var(--tertiary-foreground);
+  --color-foreground-contrast: var(--foreground-contrast);
+}

@@ -1,0 +1,11 @@
+/*
+ * Custom Tailwind v4 variants. Mirrors packages/config/css/variants.css.
+ */
+
+/*
+ * `:where()` rather than `:is()`. `:is()` takes the specificity of its most
+ * specific argument, so `dark:bg-x` would land at (0,2,0) and outrank unrelated
+ * rules it has no business beating. `:where()` is always (0,0,0), which is what
+ * Supabase ships and what a variant should be.
+ */
+@custom-variant dark (&:where(.dark, .dark *));

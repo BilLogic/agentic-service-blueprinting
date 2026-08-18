@@ -1,0 +1,60 @@
+/*
+ * Dark theme dials. Structure ported from uno-blueprint; values anchor to
+ * the template's historical `.dark` block (near-black canvas, near-white
+ * ink) rather than uno's charcoal.
+ *
+ * Imported AFTER themes/light.css so that `.dark` on the root element beats
+ * the `:root` light defaults — the two have equal specificity, so source
+ * order is what decides.
+ *
+ * No status overrides here beyond the lightness/chroma anchors: `--warning`,
+ * `--destructive`, `--info` and `--success` are derived in semantic.css, so
+ * dials are all this file owes them.
+ */
+.dark {
+  --helpers-os-appearance: Dark;
+
+  /* Same dial, same value as light — see the BRAND SEAM note in
+     themes/light.css. The brand hue is mode-invariant. */
+  --hue: 159;
+  --chroma: 0;
+  --surface: 0.145;
+  --elevation-step: 0.03;
+  --contrast: 0.5;
+  --foreground-lightness: 0.985;
+  --muted-foreground-level: 0.67;
+  --tertiary-foreground-level: 0.55;
+
+  /* Neutral filled control inverts: near-white fill, dark ink on it. */
+  --primary-lightness: 0.922;
+  --primary-chroma: 0;
+  --ring-lightness: 0.556;
+
+  --warning-lightness: 0.8;
+  --destructive-lightness: 0.704;
+  --destructive-chroma: 0.191;
+  --info-lightness: 0.7;
+  --success-lightness: 0.76;
+
+  /* Stepped numeric scales — inverted relative to light (200 darkest,
+     600 lightest), same construction as themes/light.css. */
+  --brand-link: 0deg 0% 58.3%;
+  --brand-default: 0deg 0% 49.5%;
+  --brand-600: 0deg 0% 58.3%;
+  --brand-500: 0deg 0% 18.2%;
+  --brand-400: 0deg 0% 11.4%;
+  --brand-300: 0deg 0% 9.9%;
+  --brand-200: 0deg 0% 8.3%;
+
+  --warning-600: 38.9deg 100% 42.9%;
+  --warning-500: 34.8deg 90.9% 21.6%;
+  --warning-400: 33.2deg 100% 14.5%;
+  --warning-300: 32.3deg 100% 10.2%;
+  --warning-200: 36.6deg 100% 8%;
+  --destructive-default: 10.2deg 77.9% 53.9%;
+  --destructive-600: 9.7deg 85.2% 62.9%;
+  --destructive-500: 7.9deg 71.6% 29%;
+  --destructive-400: 6.7deg 60% 20.6%;
+  --destructive-300: 7.5deg 51.3% 15.3%;
+  --destructive-200: 10.9deg 23.4% 9.2%;
+}

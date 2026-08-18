@@ -1,0 +1,407 @@
+/*
+ * Core semantic colour system. Mirrors packages/ui/build/css/source/semantic.css.
+ *
+ * Themes declare a small set of dial inputs; every semantic colour below is
+ * derived from them in OKLCH. Dials live in `themes/`, derivations live here —
+ * a name should never be declared in both.
+ *
+ * The stepped numeric scales (brand / warning / destructive) are NOT derived
+ * here. They are per-theme HSL literals in the theme files, mapped to utilities
+ * in theme.css — same split Supabase uses.
+ *
+ * SELECTOR LIST — the one place we diverge from Supabase, deliberately.
+ *
+ * Supabase declares this block once at `:root`, because their `[data-theme]`
+ * always sits on the root element. Ours does not: the presentation stage puts
+ * `.dark` on a *subtree* (SlicePresentation.tsx). Custom properties resolve
+ * their `var()`s at computed-value time, which happens BEFORE inheritance — so
+ * a descendant that re-declares a dial cannot retroactively re-derive anything
+ * declared only at `:root`. Every derivation must therefore be re-declared at
+ * each scope that can override a dial.
+ *
+ * `.light` is included for the same reason: it lets a subtree force light
+ * inside a dark ancestor.
+ */
+:root,
+.dark,
+.light {
+  /*
+   * Hue inputs. `--hue` is the single knob; `--surface-hue` tints the neutral
+   * ramp (backgrounds, text, borders) and `--primary-hue` drives the brand, so
+   * a theme can run a warm-grey surface against a cool brand without the two
+   * being locked together.
+   */
+  --surface-hue: var(--hue);
+  --primary-hue: var(--hue);
+
+  /* --- Contrast ---------------------------------------------------------
+   * Global knob, 0–1. 0.5 is the baseline: foreground lands exactly on
+   * `--foreground-lightness`, and borders sit mid-strength. Below 0.5 text
+   * eases back toward the surface (floor `--contrast-text-floor`); the border
+   * ramp is squared so most of its travel happens near full strength.
+   */
+  --contrast-delta: calc((var(--contrast) - 0.5) / 0.5);
+  --contrast-up: max(0, var(--contrast-delta));
+  --contrast-down: max(0, calc(var(--contrast-delta) * -1));
+  --contrast-text-floor: 0.9;
+  --contrast-border-floor: 0.05;
+  --contrast-text: calc(
+    1 - (1 - var(--contrast-text-floor)) * var(--contrast-down)
+  );
+  --contrast-border-linear: calc(
+    var(--contrast-border-floor) + (1 - var(--contrast-border-floor)) *
+      var(--contrast)
+  );
+  --contrast-border: calc(
+    var(--contrast-border-linear) * var(--contrast-border-linear)
+  );
+
+  /* --- Elevation --------------------------------------------------------
+   * Shared ratios; `--elevation-step` is signed per theme, so "higher = lighter"
+   * holds in both modes. See themes/light.css for why the light step is small.
+   */
+  --elevation-1: 1;
+  --elevation-2: 1.5;
+  --elevation-3: 2;
+  --elevation-4: 3;
+  /* Signed span surface→foreground (+ in dark, − in light). */
+  --tone-span: calc(var(--foreground-lightness) - var(--surface));
+  /*
+   * `max(x, -x)` rather than `abs()`: Tailwind hardcodes its Lightning CSS
+   * targets at Chrome 111 / Safari 16.4 / Firefox 128 and does not read
+   * vite.config.ts, and `abs()` did not ship until Chrome 133. Supabase's
+   * source uses `abs()`; this is the same value with wider reach.
+   */
+  --tone-span-abs: max(var(--tone-span), calc(var(--tone-span) * -1));
+
+  /*
+   * Foreground overlays for muted / accent / tertiary. These are translucent
+   * `--foreground`, NOT lightened surfaces, which is the fix for the light-mode
+   * ladder: a raised surface has nowhere to go once it clips at white, but an
+   * overlay composites against whatever sits beneath it and therefore darkens
+   * in light and lightens in dark. Alpha is tuned so each level matches the
+   * lightness delta of the same elevation ratio.
+   */
+  --surface-overlay-unit: calc(var(--elevation-step) / var(--tone-span-abs));
+  --muted-alpha: calc(var(--surface-overlay-unit) * var(--elevation-1));
+  --accent-alpha: calc(var(--surface-overlay-unit) * var(--elevation-2));
+  --tertiary-alpha: calc(var(--surface-overlay-unit) * var(--elevation-3));
+
+  /* --- Surfaces: canvas darkest → popover lightest --------------------- */
+  --background: oklch(
+    var(--surface) calc(var(--chroma) * 0.5) var(--surface-hue)
+  );
+  --canvas: var(--background);
+  --sidebar: oklch(
+    from var(--background) calc(l + var(--elevation-step) * var(--elevation-1))
+      c h
+  );
+  --card: oklch(
+    from var(--background) calc(l + var(--elevation-step) * var(--elevation-2))
+      c h
+  );
+  --popover: oklch(
+    from var(--background) calc(l + var(--elevation-step) * var(--elevation-3))
+      c h
+  );
+  /*
+   * Deliberate divergence from uno, where `--secondary` is the elevation-3
+   * surface: in this template's light theme that clips to pure white against
+   * a white card, and secondary chips/badges vanish. The template has always
+   * rendered secondary at exactly the muted fill, so it aliases the muted
+   * overlay and keeps that identity in both themes.
+   */
+  --secondary: var(--muted);
+
+  /* --- Text ------------------------------------------------------------ */
+  --foreground: oklch(
+    calc(var(--surface) + var(--tone-span) * var(--contrast-text))
+      calc(var(--chroma) * 0.55) var(--surface-hue)
+  );
+  /* Canvas-coloured text for inverted fills (bg-foreground, bg-primary is
+     handled separately by --primary-foreground). */
+  --foreground-contrast: oklch(
+    var(--surface) calc(var(--chroma) * 0.55) var(--surface-hue)
+  );
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --secondary-foreground: var(--foreground);
+  --accent-foreground: var(--foreground);
+  --sidebar-foreground: var(--foreground);
+  --muted-foreground-mix: calc(
+    var(--muted-foreground-level) + (1 - var(--muted-foreground-level)) *
+      var(--contrast-up) - var(--muted-foreground-level) * 0.5 *
+      var(--contrast-down)
+  );
+  --muted-foreground: oklch(
+    from var(--foreground)
+      calc(var(--surface) + var(--tone-span) * var(--muted-foreground-mix)) c h
+  );
+  --tertiary-foreground-mix: calc(
+    var(--tertiary-foreground-level) + (1 - var(--tertiary-foreground-level)) *
+      var(--contrast-up) - var(--tertiary-foreground-level) * 0.5 *
+      var(--contrast-down)
+  );
+  --tertiary-foreground: oklch(
+    from var(--foreground)
+      calc(var(--surface) + var(--tone-span) * var(--tertiary-foreground-mix)) c
+      h
+  );
+
+  /* --- State surfaces (translucent, see --*-alpha above) --------------- */
+  --muted: oklch(from var(--foreground) l c h / var(--muted-alpha));
+  --accent: oklch(from var(--foreground) l c h / var(--accent-alpha));
+  --tertiary: oklch(from var(--foreground) l c h / var(--tertiary-alpha));
+
+  /* --- Brand / primary -------------------------------------------------- */
+  /*
+   * The filled control, driven by dials rather than a literal: the template
+   * ships a neutral brand (`--primary-chroma: 0`), so `--primary` is
+   * near-black ink in light and near-white in dark (`--primary-lightness`
+   * flips per theme). A branded fork raises the chroma dial and the whole
+   * family — border, on-colour, ring, sidebar selection — follows.
+   *
+   * This deliberately diverges from uno, whose `--primary` is a
+   * mode-invariant brand fill with dark ink on it in both themes; a neutral
+   * primary has to invert with the theme or it disappears into the canvas.
+   */
+  --primary: oklch(
+    var(--primary-lightness) var(--primary-chroma) var(--primary-hue)
+  );
+  /* Flat fill, one shade-darker hairline. Derived, so it tracks the dials. */
+  --primary-border: oklch(from var(--primary) calc(l - 0.12) calc(c * 1.25) h);
+  /*
+   * Ink on the fill, via the same hard flip the status on-colours use:
+   * (0.62 − l) is hugely positive for a dark fill (→ ceiling 0.985, the
+   * template's near-white) and hugely negative for a light one (→ floor
+   * 0.205, the template's dark ink). A trace of hue chroma keeps a branded
+   * fill's ink off flat grey; at chroma 0 it is exact grey.
+   */
+  --primary-foreground: oklch(
+    from var(--primary) clamp(0.205, calc((0.62 - l) * 100), 0.985)
+      calc(c * 0.08) h
+  );
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+
+  /* --- Interaction states ----------------------------------------------
+   * There are none here, deliberately. Supabase's semantic.css defines no
+   * hover, pressed, selected or disabled colour: across their whole system
+   * exactly three state tokens exist, and all three are component tokens, not
+   * palette ones — `--background-selection`, `--background-overlay-hover` and
+   * `--border-button-hover`.
+   *
+   * State is expressed at the call site, by one of two means:
+   *   1. alpha on the resting token   `hover:bg-primary/90`
+   *   2. a step of a numeric scale    `bg-brand-400 hover:border-brand-600`
+   *
+   * We follow that. The one place a state token is unavoidable is the
+   * blueprint canvas, where the resting colour comes from data and so cannot
+   * be a static utility class — see blueprint.css.
+   */
+
+  /* --- Borders & controls ---------------------------------------------- */
+  --border: oklch(
+    from var(--foreground) l calc(c * 0.54) h /
+      calc(2% + 20% * var(--contrast-border))
+  );
+  --input: oklch(
+    from var(--foreground) l calc(c * 0.5) h /
+      calc(3% + 38% * var(--contrast-border))
+  );
+  /*
+   * Full alpha on a darker brand weight, deliberately diverging from Supabase's
+   * `oklch(from var(--primary) l c h / 55%)`.
+   *
+   * `--ring` is consumed two ways in `ui/button.tsx`: as `focus-visible:border-ring`
+   * — the line that *carries* the focus affordance — and as `focus-visible:ring-3
+   * ring-ring/50`, a decorative glow. Inheriting `--primary`'s L 0.874 at 55%
+   * would put the affordance around 1.2:1 on the light canvas, failing WCAG 2.2
+   * SC 1.4.11 (non-text contrast, 3:1). Dropping to the per-theme `--ring-lightness` clears it while
+   * staying unmistakably the brand hue; the `/50` at the utility site still
+   * produces the softer glow, so one token serves both.
+   *
+   * This never renders over a blueprint cell: those resolve
+   * `--ring-blueprint-cell-soft`, which the `[data-blueprint-lane]` rules in
+   * blueprint.css always set, so the fallback in
+   * `var(--ring-blueprint-cell-soft, var(--ring))` is unreachable. `--ring` only ever sits on app chrome.
+   */
+  --ring: oklch(from var(--primary) var(--ring-lightness) calc(c * 1.3) h);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+
+  /*
+   * Sidebar selection language (nav plan D8). Hover and selected used to be
+   * the same fill, which is why a selected row was indistinguishable from a
+   * hovered one. Now: hover keeps `--sidebar-accent`, the neutral elevation
+   * lift shadcn and Supabase both name; selected is a brand tint plus a
+   * full-chroma left rail; and a row that merely *contains* the selection
+   * gets the marker dot. There is no `--sidebar-hover` — Supabase has no such
+   * token, and ours was a verbatim alias of `--sidebar-accent`.
+   */
+  --sidebar-selected: oklch(from var(--ring) l c h / 0.16);
+  --sidebar-selected-foreground: var(--foreground);
+  --sidebar-selected-rail: var(--ring);
+  --sidebar-ancestor: oklch(from var(--ring) l c h / 0.55);
+
+  /* --- Status ----------------------------------------------------------
+   * Hues stay anchored to amber / red / green / violet but pull a fraction of
+   * the way toward `--primary-hue` for harmony, then clamp to their perceptual
+   * category so warning always reads amber and destructive always reads red.
+   * At `--brand-hue-reference` the pull term is zero.
+   *
+   * Warning sits at 75 (amber) rather than nearer yellow: yellow cannot darken
+   * without going olive, so it loses contrast on light surfaces.
+   *
+   * Left unpinned through the 2026-08-07b brand move (--primary-hue 183 →
+   * 177.6). The pull is 15% of the distance from this reference, so a 5.4°
+   * brand move rotates each status hue by 0.81° — warning 78.6 → 77.79,
+   * destructive 28.6 → 27.79, info 291.6 → 290.79, none of them near a clamp
+   * bound. Decoupling to hold those three sub-degree deltas would cost the
+   * property the harmony math exists for: status hues that follow the brand.
+   */
+  --brand-hue-reference: 159;
+  --status-hue-pull: 0.15;
+  --warning-hue: clamp(
+    65,
+    calc(
+      75 + (var(--primary-hue) - var(--brand-hue-reference)) *
+        var(--status-hue-pull)
+    ),
+    95
+  );
+  --destructive-hue: clamp(
+    12,
+    calc(
+      25 + (var(--primary-hue) - var(--brand-hue-reference)) *
+        var(--status-hue-pull)
+    ),
+    42
+  );
+  --info-hue: clamp(
+    272,
+    calc(
+      288 + (var(--primary-hue) - var(--brand-hue-reference)) *
+        var(--status-hue-pull)
+    ),
+    302
+  );
+  /*
+   * `--success-hue` is pinned rather than pulled: with the brand at 177.6 a
+   * brand-relative green would collide with `--primary`, and a success state
+   * has to stay distinguishable from a brand fill.
+   */
+  --success-hue: 152;
+  /*
+   * Expressive colours are deliberately NOT derived from the neutral
+   * surface→foreground span the way text and surfaces are — an expressive
+   * colour has its own identity. Each is anchored to a per-theme target
+   * lightness near its hue's chroma peak plus one shared `--expressive-chroma`,
+   * a flat constant so status stays legible even when the brand is dialled
+   * toward greyscale. A role may override it with `--<role>-chroma` — the
+   * template's destructive keeps its saturated shadcn red that way.
+   */
+  --expressive-chroma: 0.14;
+  --warning: oklch(
+    var(--warning-lightness)
+      var(--warning-chroma, var(--expressive-chroma)) var(--warning-hue)
+  );
+  --destructive: oklch(
+    var(--destructive-lightness)
+      var(--destructive-chroma, var(--expressive-chroma)) var(--destructive-hue)
+  );
+  --info: oklch(var(--info-lightness)
+      var(--info-chroma, var(--expressive-chroma)) var(--info-hue));
+  --success: oklch(
+    var(--success-lightness)
+      var(--success-chroma, var(--expressive-chroma)) var(--success-hue)
+  );
+  /*
+   * Text that sits on the solid fill: dark ink on light fills, near-white on
+   * dark ones. The clamp turns the fill's own lightness into a hard flip around
+   * L≈0.62 — (0.62 − l) is negative for light fills (→ floor 0.12) and positive
+   * for dark ones (→ ceiling 0.99) — so on-colours keep flipping correctly if
+   * the anchors are retuned. A trace of hue chroma keeps the ink off flat grey.
+   */
+  --warning-foreground: oklch(
+    from var(--warning) clamp(0.12, calc((0.62 - l) * 100), 0.99) calc(c * 0.08)
+      h
+  );
+  --destructive-foreground: oklch(
+    from var(--destructive) clamp(0.12, calc((0.62 - l) * 100), 0.99)
+      calc(c * 0.08) h
+  );
+  --info-foreground: oklch(
+    from var(--info) clamp(0.12, calc((0.62 - l) * 100), 0.99) calc(c * 0.08) h
+  );
+  --success-foreground: oklch(
+    from var(--success) clamp(0.12, calc((0.62 - l) * 100), 0.99)
+      calc(c * 0.08) h
+  );
+
+  /*
+   * Status border tokens for subtle / tinted surfaces.
+   *
+   * These are for a status role that has no numeric ramp. `destructive` and
+   * `warning` do have one — `alert.tsx` borders those variants with
+   * `-400`, a step tuned against its own `-200` fill — so their two tokens here
+   * are superseded in practice and kept because Supabase declares the same
+   * four. `info` and `success` have no ramp, so these are the only way to draw
+   * a tinted edge that tracks the role.
+   *
+   * `--border-success` is the one Supabase does not have, because they have no
+   * success role at all. It exists so every status role that can tint a surface
+   * borders it the same way, rather than success alone reaching for an inline
+   * alpha at the call site.
+   */
+  --border-destructive: oklch(from var(--destructive) l c h / 30%);
+  --border-warning: oklch(from var(--warning) l c h / 30%);
+  --border-info: oklch(from var(--info) l c h / 30%);
+  --border-success: oklch(from var(--success) l c h / 30%);
+  --border-brand: oklch(from var(--primary) l c h / 30%);
+
+  /*
+   * Selection chrome for canvas annotations (outline, resize handles).
+   *
+   * Blue step 900 rather than `--primary`: annotations sit on the frozen
+   * blueprint palette, whose lanes are already green/teal, so a brand-hue
+   * selection outline would compete with the cell fills it has to read against.
+   * Radix step 9 is the mode-stable "solid" step — light and dark are the same
+   * value here — so this stays put when the presentation stage flips to `.dark`.
+   */
+  --annotation-selected: var(--color-blue-900);
+
+  /* --- Charts (neutral ramp along the tone span) ----------------------- */
+  --chart-1: oklch(
+    from var(--foreground) calc(var(--surface) + var(--tone-span) * 0.2) c h
+  );
+  --chart-2: oklch(
+    from var(--foreground) calc(var(--surface) + var(--tone-span) * 0.4) c h
+  );
+  --chart-3: oklch(
+    from var(--foreground) calc(var(--surface) + var(--tone-span) * 0.55) c h
+  );
+  --chart-4: oklch(
+    from var(--foreground) calc(var(--surface) + var(--tone-span) * 0.7) c h
+  );
+  --chart-5: oklch(
+    from var(--foreground) calc(var(--surface) + var(--tone-span) * 0.85) c h
+  );
+}
+
+/* No P3 chroma boost for the primary — but the reason changed on 2026-08-07.
+ *
+ * The old reason ("the muted fill is deliberate") stopped being true when the
+ * saturation pass took C from 0.09 to 0.12; it now runs 0.135, 88.1% of the
+ * sRGB ceiling. The fill is not deliberately quiet, so that reason is retired.
+ *
+ * The reason it still doesn't get one: `--primary-border` and `--ring` are
+ * both already pinned to the sRGB ceiling at their lightnesses (see the note
+ * on `--primary`). Widening only `--primary` in a P3 block would push the fill
+ * past an edge and a focus ring that cannot follow it, inverting the
+ * relationship the pair is built on — the edge would read *less* saturated
+ * than the fill it is supposed to anchor. A P3 pass that is worth doing has to
+ * move the whole brand triplet together, and that is a deliberate piece of
+ * work, not a one-line boost. */

@@ -1,0 +1,26 @@
+/* Target-size helpers. Mirrors config/tailwind-plugins/hit-area.css. */
+
+@layer utilities {
+  /*
+   * WCAG 2.2 SC 2.5.8 (Target Size, Minimum): grow a small control's pointer
+   * target to 24×24 without touching layout. The visible glyph keeps its size —
+   * a 16px colour swatch has to stay 16px to read as a swatch — while an
+   * invisible pseudo-element centred on it takes the hits.
+   *
+   * `max(100%, 24px)` rather than a fixed 24px so a control that is already
+   * larger in one axis does not get a smaller hit area than its own box.
+   */
+  .tap-target-24 {
+    position: relative;
+  }
+
+  .tap-target-24::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 24px);
+    height: max(100%, 24px);
+    transform: translate(-50%, -50%);
+    content: '';
+  }
+}

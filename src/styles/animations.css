@@ -1,0 +1,190 @@
+/*
+ * Motion tokens — the CSS half of the vocabulary in src/lib/motion.ts.
+ * Same five numbers, one per motion class; scripts/tests/motion-tokens
+ * pins the two files together so they cannot drift apart silently.
+ * `--ease-structural` is a Tailwind @theme key, so `ease-structural` is a
+ * utility; durations are plain vars because Tailwind v4 has no duration
+ * namespace — consume them as `duration-(--motion-structural)`.
+ */
+@theme {
+  --ease-structural: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  --motion-structural: 320ms;
+  --motion-fade: 200ms;
+  --motion-fade-stagger: 75ms;
+  --motion-camera: 420ms;
+  --motion-micro: 150ms;
+}
+
+@keyframes editor-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes editor-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes editor-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes editor-stage-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes editor-filmstrip-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes editor-filmstrip-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* Tab / landing ⇄ canvas switches. Only the active surface is mounted, so
+   this is a fade-through: the incoming surface fades up after the same
+   75 ms stagger the sidebar crossfade uses. */
+[data-editor-content] {
+  animation: editor-fade-in var(--motion-fade) ease-out var(--motion-fade-stagger) both;
+}
+
+/* Presentation enter — sidebar collapses (320 ms, owned by the shell) ∥
+   stage fades up (200 ms) ∥ filmstrip slides up (200 ms). The 75 ms offset
+   lines the pair up with the surface crossfade above. */
+[data-presentation-root] [data-presentation-stage] {
+  animation: editor-stage-in var(--motion-fade) ease-out var(--motion-fade-stagger) both;
+}
+
+[data-presentation-root] [data-presentation-filmstrip] {
+  animation: editor-filmstrip-in var(--motion-fade) ease-out var(--motion-fade-stagger) both;
+}
+
+/* Presentation exit — the same three in reverse, same durations. The shell
+   holds the tab switch for the full 320 ms so this actually plays instead
+   of being cut off by the unmount; the band fades last so the dark surface
+   lands on the incoming tab rather than snapping to it. */
+[data-presentation-root][data-leaving] [data-presentation-stage] {
+  animation: editor-stage-out var(--motion-fade) ease-out both;
+}
+
+[data-presentation-root][data-leaving] [data-presentation-filmstrip] {
+  animation: editor-filmstrip-out var(--motion-fade) ease-out both;
+}
+
+[data-presentation-root][data-leaving] {
+  animation: editor-fade-out var(--motion-fade) ease-out 120ms both;
+}
+
+/*
+ * Cell inspector panel — an inspector, not a sheet.
+ *
+ * The panel is built on the drawer primitive for its swipe/dismiss plumbing,
+ * but the drawer's *motion* is a full sheet arriving from off-screen: a 354px
+ * horizontal slide (panel width + inset) over 400 ms, no opacity change at
+ * all. That vocabulary is wrong here — the panel appears because a cell was
+ * clicked, so it should read as the selection expanding into a panel, not as
+ * a sheet arriving. And since clicking a selected cell now closes it, that
+ * exit runs on every second click.
+ *
+ * So: a short lift from the right (10px) plus a fade and a hair of scale,
+ * entering on --motion-fade and leaving on the shorter --motion-micro. Exit
+ * beats enter, the usual asymmetry — arriving is an event, leaving is not.
+ * These rules are deliberately unlayered so they win over the primitive's
+ * Tailwind utilities without !important; only --closed-transform and the
+ * transition are touched, so the swipe-driven open transform (and with it
+ * swipe-to-dismiss) is untouched.
+ */
+[data-cell-detail-panel] {
+  --closed-transform: translate3d(10px, 0, 0) scale(0.98);
+  transition-property: transform, opacity;
+  transition-duration: var(--motion-fade);
+  transition-timing-function: var(--ease-structural);
+}
+
+/*
+ * The entry, from the browser rather than from base-ui.
+ *
+ * The panel only exists while it is open — every closed render returns null —
+ * so the drawer Root mounts with `open` ALREADY true, and base-ui's
+ * `useTransitionStatus` only marks `starting` on a false→true change it never
+ * sees. Measured: no enter transition ever fired, in any version of this
+ * panel; it popped in and then took 400 ms to leave, which is the asymmetry
+ * that read as "off and weird". `@starting-style` states the pre-insertion
+ * values directly, so the entry does not depend on that flag existing.
+ */
+@starting-style {
+  [data-cell-detail-panel] {
+    opacity: 0;
+    transform: var(--closed-transform);
+  }
+}
+
+/* base-ui's own starting flag, kept so the two entry paths say the same
+   thing if the shell ever stays mounted across a close. */
+[data-cell-detail-panel][data-starting-style],
+[data-cell-detail-panel][data-ending-style] {
+  opacity: 0;
+}
+
+/* Leaving: shorter, and eased *in* so it clears out instead of trailing the
+   long quintic tail the structural ease ends on. */
+[data-cell-detail-panel][data-ending-style] {
+  transition-duration: var(--motion-micro);
+  transition-timing-function: ease-in;
+}
+
+/* A finger on the panel moves it 1:1 — no easing between frames. */
+[data-cell-detail-panel][data-swiping]:not([data-ending-style]) {
+  transition-duration: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-editor-content],
+  [data-presentation-root],
+  [data-presentation-root] [data-presentation-stage],
+  [data-presentation-root] [data-presentation-filmstrip] {
+    animation: none !important;
+  }
+
+  /* The panel appears and disappears; it never travels. */
+  [data-cell-detail-panel],
+  [data-cell-detail-panel][data-ending-style] {
+    --closed-transform: none;
+    transition-duration: 0s;
+  }
+}
