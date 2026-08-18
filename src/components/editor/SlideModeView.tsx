@@ -140,6 +140,7 @@ export function SlideModeMain() {
           <>
             <ZoomPanViewport
               resetKey={viewportResetKey}
+              focusCellsKey={activeSlide?.id}
               className="absolute inset-0"
               panIgnoreSelector="button, a, input, textarea, select, label, [role='button'], [data-slide-sticky-header], [data-compare-panel], [data-zoom-indicator], [data-canvas-nav], [data-path-description-trigger], [data-cell-detail-panel], [data-visual-walkthrough-modal], [data-blueprint-cell-interactive], [data-phase-scenario-overview]"
             >

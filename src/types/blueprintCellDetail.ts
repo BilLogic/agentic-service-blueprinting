@@ -25,3 +25,10 @@ export type BlueprintCellSelection = {
   techItem?: string
   paths: BlueprintCellPathEntry[]
 }
+
+/**
+ * Which surface the cell panel drawer is showing. Lives here rather than
+ * beside the provider so pure helpers can name a surface without importing
+ * React.
+ */
+export type BlueprintPanelSurface = 'details' | 'differences'

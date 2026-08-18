@@ -1,0 +1,126 @@
+import { Fragment, useMemo, type RefObject } from 'react'
+import { BlueprintPathBand } from '@/components/blueprint/BlueprintPathBand'
+import { CompareStepHeaderRow } from '@/components/blueprint/CompareTrackDecorations'
+import { useCompareGridAxis } from '@/hooks/useCompareGridAxis'
+import { STEP_COLUMN_GAP } from '@/lib/blueprintLayout'
+import {
+  COMPARE_HEADER_WRAP_EXTRA_INSET,
+  COMPARE_STACKED_BAND_GAP,
+  COMPARE_STACKED_HEADER_GAP,
+  COMPARE_STEP_HEADER_HEIGHT,
+  getCompareBoardWrapperPadding,
+  getCompareRowTrackCss,
+} from '@/lib/sideBySideCompareLayout'
+import { cn } from '@/lib/utils'
+import type { CompareModel } from '@/lib/compareSlots'
+import type { BlueprintData } from '@/types/blueprint'
+
+type StackedCompareGridProps = {
+  blueprints: BlueprintData[]
+  /**
+   * The compare model owned by `ScenarioBlueprintPanel` (one `useMemo`,
+   * gated on every selected blueprint being loaded). Null with a single
+   * path — the band still stacks, there is just nothing to compare.
+   */
+  model: CompareModel | null
+  className?: string
+  compact?: boolean
+  scrollContainerRef?: RefObject<HTMLDivElement | null>
+  scenarioName?: string
+  phaseName?: string
+  /** When set, scenario title sits on the gray panel edge; path frames show path type. */
+  sectionTitleLabel?: string
+}
+
+/**
+ * The stacked ARRANGEMENT of `BlueprintPathBand` (focused scenario view):
+ * every compared path renders as a full-width band, one below the other, on
+ * ONE canonical step-column axis owned by this parent grid. Bands pick their
+ * column tracks up via `gridTemplateColumns: subgrid`; columns a path lacks
+ * hold inert spacers inside its band. Divergent columns (column verdict !==
+ * 'shared') carry a light tint — the v3 diff signal is column-level, never
+ * per-cell paint.
+ *
+ * No `position: sticky` in here: the grid lives inside the zoom-transformed
+ * canvas, where sticky both misbehaves and has nothing to stick to.
+ */
+export function StackedCompareGrid({
+  blueprints,
+  model,
+  className,
+  compact = false,
+  scrollContainerRef,
+  scenarioName,
+  phaseName,
+  sectionTitleLabel,
+}: StackedCompareGridProps) {
+  const { layers, rows, toggleLayer, tracks, gridTemplateColumns } =
+    useCompareGridAxis(model, blueprints, compact)
+
+  const rowTrackCss = useMemo(
+    () => rows.map((row) => getCompareRowTrackCss(row)).join(' '),
+    [rows],
+  )
+
+  const showPathTypeBadge = Boolean(sectionTitleLabel)
+
+  if (blueprints.length === 0) {
+    return (
+      <p className="p-6 text-sm text-muted-foreground">
+        Select at least one path to compare.
+      </p>
+    )
+  }
+
+  return (
+    <div
+      className={cn('w-max shrink-0', className)}
+      style={getCompareBoardWrapperPadding()}
+    >
+      <div
+        className="relative grid w-max"
+        style={{
+          gridTemplateColumns,
+          gridTemplateRows: `${COMPARE_STEP_HEADER_HEIGHT}px repeat(${blueprints.length}, auto)`,
+          columnGap: STEP_COLUMN_GAP,
+        }}
+      >
+        <CompareStepHeaderRow tracks={tracks} />
+        {blueprints.map((blueprint, bandIndex) => (
+          <Fragment key={blueprint.path.id}>
+            <BlueprintPathBand
+              blueprint={blueprint}
+              layers={layers}
+              rows={rows}
+              // Single-path boards: the step-header row is a fact about
+              // THIS path's columns, so the frame wraps it (plan
+              // 2026-08-17-002 U1). Multi-path keeps the shared canonical
+              // header outside every frame — it belongs to all of them.
+              frameExtraTopInset={
+                blueprints.length === 1 && bandIndex === 0
+                  ? COMPARE_HEADER_WRAP_EXTRA_INSET
+                  : undefined
+              }
+              arrangement={{
+                kind: 'row',
+                gridRow: bandIndex + 2,
+                tracks,
+                rowTrackCss,
+                marginTop:
+                  bandIndex === 0
+                    ? COMPARE_STACKED_HEADER_GAP
+                    : COMPARE_STACKED_BAND_GAP,
+                onToggleLayer: toggleLayer,
+              }}
+              compact={compact}
+              scrollContainerRef={scrollContainerRef}
+              scenarioName={scenarioName}
+              phaseName={phaseName}
+              showPathTypeBadge={showPathTypeBadge}
+            />
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  )
+}

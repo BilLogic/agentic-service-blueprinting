@@ -377,7 +377,10 @@ export function IntegratedTriggerArrows({
     <svg
       className={cn(
         'pointer-events-none absolute overflow-visible',
-        layer === 'forward' ? 'z-[2]' : 'z-[30]',
+        // Forward layer sits at z-0, UNDER the z-[1] cells: a run that
+        // crosses a cell tucks behind it, never strikes through its face.
+        // The wrap layer stays above everything.
+        layer === 'forward' ? 'z-0' : 'z-[30]',
       )}
       style={svgStyle}
       overflow="visible"

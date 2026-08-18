@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import { EditorSequenceNav } from '@/components/editor/EditorSequenceNav'
 import { EditorZoomIndicator } from '@/components/editor/EditorZoomIndicator'
+import { registerFocusCells } from '@/lib/canvasFocusCells'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,12 @@ type ZoomPanViewportProps = {
   fitSelector?: string
   showSequenceNav?: boolean
   refitOnResize?: boolean
+  /**
+   * Registers this viewport's `focusCells` in the module registry under
+   * this key (the focused scenario's slide id) — the fly-to-cell pipeline
+   * for the difference ledger and the divergence strip.
+   */
+  focusCellsKey?: string
 }
 
 export function ZoomPanViewport({
@@ -23,6 +30,7 @@ export function ZoomPanViewport({
   fitSelector,
   showSequenceNav = true,
   refitOnResize = true,
+  focusCellsKey,
 }: ZoomPanViewportProps) {
   const {
     containerRef,
@@ -30,12 +38,21 @@ export function ZoomPanViewport({
     zoom,
     isPanning,
     pointerHandlers,
+    focusCells,
   } = useZoomPanViewport({
     resetKey,
     panIgnoreSelector,
     fitSelector,
     refitOnResize,
   })
+
+  // Cross-tree fly-to-cell: portalled surfaces (the ledger drawer) resolve
+  // this at call time from the module registry — `focusCells` is
+  // identity-stable, so this re-registers only on key moves.
+  useEffect(() => {
+    if (!focusCellsKey) return
+    return registerFocusCells(focusCellsKey, focusCells)
+  }, [focusCells, focusCellsKey])
 
   return (
     <div

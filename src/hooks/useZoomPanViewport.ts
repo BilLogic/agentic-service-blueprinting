@@ -10,6 +10,7 @@ import {
   BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN,
   BLUEPRINT_VIEWPORT_FIT_TOP_INSET,
 } from '@/lib/slideLayout'
+import { pulseBlueprintCells, type FocusCellsResult } from '@/lib/canvasFocusCells'
 
 export const MIN_ZOOM = 0.1
 export const MAX_ZOOM = 4
@@ -311,6 +312,59 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     containerRef.current?.releasePointerCapture(e.pointerId)
   }, [])
 
+  /**
+   * Fly the camera to a set of blueprint cells (by `data-blueprint-cell` id)
+   * and pulse them — the single cell-focus gesture the difference ledger,
+   * the divergence strip and zone chips all go through. Cells not on the
+   * current canvas are reported as a miss instead of doing nothing.
+   */
+  const focusCells = useCallback(
+    (cellIds: string[]): FocusCellsResult => {
+      const container = containerRef.current
+      const content = contentRef.current
+      if (!container || !content) {
+        return { kind: 'miss', missing: [...cellIds] }
+      }
+
+      const found: HTMLElement[] = []
+      const missing: string[] = []
+      for (const cellId of cellIds) {
+        const el = content.querySelector<HTMLElement>(
+          `[data-blueprint-cell="${CSS.escape(cellId)}"]`,
+        )
+        if (el) found.push(el)
+        else missing.push(cellId)
+      }
+      if (found.length === 0) return { kind: 'miss', missing }
+
+      // The debounced refit must not yank the camera back after the fly.
+      userAdjustedViewRef.current = true
+
+      const { zoom: currentZoom } = transformRef.current
+      const safeZoom = currentZoom || 1
+      const contentRect = content.getBoundingClientRect()
+      const targetRect = found[0].getBoundingClientRect()
+      // Content-space center of the first target.
+      const worldX =
+        (targetRect.left - contentRect.left + targetRect.width / 2) / safeZoom
+      const worldY =
+        (targetRect.top - contentRect.top + targetRect.height / 2) / safeZoom
+
+      // Readable-zoom clamp: keep the camera the user chose when it can
+      // already read a cell; only zoom in from far-out overview scales.
+      const nextZoom = safeZoom >= 0.5 ? safeZoom : clampZoom(0.7)
+      const nextPan = {
+        x: container.clientWidth / 2 - worldX * nextZoom,
+        y: container.clientHeight / 2 - worldY * nextZoom,
+      }
+
+      commitTransform(nextPan, nextZoom, true)
+      pulseBlueprintCells(found)
+      return { kind: 'flown' }
+    },
+    [commitTransform],
+  )
+
   const zoomIn = useCallback(() => {
     const el = containerRef.current
     if (!el) return
@@ -333,6 +387,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     isPanning,
     fitToView,
     resetView,
+    focusCells,
     zoomIn,
     zoomOut,
     pointerHandlers: {

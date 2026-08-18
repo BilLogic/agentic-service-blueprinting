@@ -1,11 +1,18 @@
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { PathTypeBadge } from '@/components/blueprint/PathTypeBadge'
-import { getPathTypeSectionBorderStyle } from '@/lib/pathTypeTheme'
-import { blueprintPanelSectionFillColor } from '@/lib/blueprintTheme'
+import {
+  getPathTypeSectionBorderStyle,
+  shouldShowPathTypeBadge,
+} from '@/lib/pathTypeTheme'
+import {
+  blueprintPanelLabelRailColor,
+  blueprintPanelSectionFillColor,
+} from '@/lib/blueprintTheme'
 import {
   COMPARE_PATH_SECTION_INSET,
   COMPARE_PATH_SECTION_TOP_INSET,
   COMPARE_PATH_SECTION_BOTTOM_INSET,
+  COMPARE_STEP_HEADER_HEIGHT,
 } from '@/lib/sideBySideCompareLayout'
 import type { BlueprintData } from '@/types/blueprint'
 
@@ -15,9 +22,19 @@ export const SERVICE_PATH_SECTION_INSET = 8
 type ComparePathSectionFrameProps = {
   blueprint: BlueprintData
   compact?: boolean
+  /**
+   * Extends the frame upward (px) so it also wraps the step-header row —
+   * step names are facts about the path's columns and belong INSIDE the
+   * path frame (plan 2026-08-17-002 U1). The header row itself stays bare
+   * labels: no container of its own.
+   */
+  extraTopInset?: number
   /** When false, only the colored path outline is rendered (service blueprint). */
   showTitle?: boolean
-  /** Overview mode: show path-type badge instead of path name on the frame edge. */
+  /**
+   * Overview mode: prefer a path-type badge for generic names (Happy Path, etc.).
+   * Named paths (Set Goals, …) always show their title.
+   */
   showPathTypeBadge?: boolean
   /** Compare uses extra top inset for the title badge; service uses uniform inset. */
   variant?: 'compare' | 'service'
@@ -30,16 +47,18 @@ export function ComparePathSectionFrame({
   showTitle = true,
   showPathTypeBadge = false,
   variant = 'compare',
+  extraTopInset = 0,
 }: ComparePathSectionFrameProps) {
   const { path } = blueprint
   const pathBorder = getPathTypeSectionBorderStyle(path.path_type, path)
   const { borderColor, borderStyle, borderWidth } = pathBorder
   const sectionFill = blueprintPanelSectionFillColor()
+  const useTypeBadge = showPathTypeBadge && shouldShowPathTypeBadge(path)
 
   const inset =
     variant === 'compare'
       ? {
-          top: -COMPARE_PATH_SECTION_TOP_INSET,
+          top: -COMPARE_PATH_SECTION_TOP_INSET - extraTopInset,
           left: -COMPARE_PATH_SECTION_INSET,
           right: -COMPARE_PATH_SECTION_INSET,
           bottom: -COMPARE_PATH_SECTION_BOTTOM_INSET,
@@ -52,7 +71,9 @@ export function ComparePathSectionFrame({
         }
 
   const titleTop =
-    variant === 'compare' ? -COMPARE_PATH_SECTION_TOP_INSET : -SERVICE_PATH_SECTION_INSET
+    variant === 'compare'
+      ? -COMPARE_PATH_SECTION_TOP_INSET - extraTopInset
+      : -SERVICE_PATH_SECTION_INSET
   const titleLeft =
     variant === 'compare'
       ? COMPARE_PATH_SECTION_INSET + 2
@@ -62,7 +83,7 @@ export function ComparePathSectionFrame({
     <>
       <div
         aria-hidden
-        className="blueprint-panel-section-frame pointer-events-none absolute rounded-xl"
+        className="pointer-events-none absolute rounded-xl"
         style={{
           ...inset,
           borderWidth,
@@ -71,8 +92,25 @@ export function ComparePathSectionFrame({
           backgroundColor: sectionFill,
         }}
       />
+      {extraTopInset > 0 ? (
+        // The wrapped step-header row gets a light band — the horizontal
+        // counterpart of the lane-label rail, one tint lighter so the two
+        // axes read as related but distinct. Offset 3px inside the frame
+        // edges so it never paints over the frame's border.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute rounded-t-[9px]"
+          style={{
+            top: inset.top + 3,
+            left: inset.left + 3,
+            right: inset.right + 3,
+            height: COMPARE_STEP_HEADER_HEIGHT - 3,
+            backgroundColor: `color-mix(in oklab, ${blueprintPanelLabelRailColor()} 45%, transparent)`,
+          }}
+        />
+      ) : null}
       {showTitle ? (
-        showPathTypeBadge ? (
+        useTypeBadge ? (
           <PathTypeBadge
             pathType={path.path_type}
             description={path.description}

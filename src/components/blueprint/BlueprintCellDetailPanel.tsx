@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 import { CellDependencyTable } from '@/components/blueprint/CellDependencyTable'
+import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
+import {
+  setCompareLedgerOpen,
+  useCompareReviewState,
+} from '@/lib/compareReviewStore'
+import type { BlueprintPanelSurface } from '@/types/blueprintCellDetail'
 import { TechPillFace } from '@/components/blueprint/TechPillFace'
 import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -59,6 +65,50 @@ const CELL_DETAIL_SMALL_LOGO_CLASS =
 
 const SHOW_CELL_DEPENDENCIES = true
 
+/**
+ * The Details │ Differences switcher — the two surfaces are true siblings
+ * inside the one drawer, so switching is a content swap, never a
+ * close-reopen. Rendered only while a comparison is live.
+ */
+function PanelSurfaceSwitcher({
+  value,
+  onValueChange,
+}: {
+  value: BlueprintPanelSurface
+  onValueChange: (surface: BlueprintPanelSurface) => void
+}) {
+  const surfaces: Array<{ key: BlueprintPanelSurface; label: string }> = [
+    { key: 'details', label: 'Details' },
+    { key: 'differences', label: 'Differences' },
+  ]
+  return (
+    <div
+      role="group"
+      aria-label="Panel surface"
+      className="flex items-center gap-px rounded-md border border-border bg-muted/60 p-0.5"
+    >
+      {surfaces.map(({ key, label }) => (
+        <Button
+          key={key}
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-pressed={value === key}
+          className={cn(
+            'h-6 rounded px-2 text-xs',
+            value === key
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+          onClick={() => onValueChange(key)}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 function isFigmaUrl(url: string): boolean {
   return /figma\.com/i.test(url)
 }
@@ -86,38 +136,55 @@ function resolveFigmaUrl(
 export function BlueprintCellDetailPanel() {
   const {
     selection: currentSelection,
-    clearSelection,
     isOpen,
     blueprints,
     selectCell,
+    panelState,
+    setPanelSurface,
+    closePanel,
   } =
     useBlueprintCellDetail()
   const [closingSelection, setClosingSelection] = useState(currentSelection)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const selection = currentSelection ?? closingSelection
 
+  const compareRegistration = useCompareReviewState().registration
+  const comparing = compareRegistration !== null
+  const activeSurface = panelState?.surface ?? null
+  const showDifferences = activeSurface === 'differences'
+
   useEffect(() => {
-    if (currentSelection) {
-      setClosingSelection(currentSelection)
+    if (panelState !== null) {
       const frame = window.requestAnimationFrame(() => setDrawerOpen(true))
       return () => window.cancelAnimationFrame(frame)
     }
 
     setDrawerOpen(false)
+  }, [panelState])
+
+  useEffect(() => {
+    if (currentSelection) setClosingSelection(currentSelection)
   }, [currentSelection])
+
+  // Mirror "the ledger is showing" into the compare store so surfaces with
+  // no provider access (the divergence strip) can read it.
+  useEffect(() => {
+    setCompareLedgerOpen(showDifferences)
+    return () => setCompareLedgerOpen(false)
+  }, [showDifferences])
 
   useEffect(() => {
     if (!isOpen) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        clearSelection()
+        closePanel()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [clearSelection, isOpen])
+  }, [closePanel, isOpen])
 
   const pathEntry = selection?.paths[0]
   const resolvedCellId = pathEntry?.cellId
@@ -329,6 +396,75 @@ export function BlueprintCellDetailPanel() {
 
     return resolveVisualStepPictureEntries(blueprint, stepId)
   }, [blueprints, pathEntry?.pathId, selection?.stepId])
+
+  /*
+    The Differences surface — the compare ledger, a true sibling of the
+    cell-detail view inside the same drawer. Needs no selection.
+  */
+  if (showDifferences) {
+    return (
+      <Drawer
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open)
+          if (!open) closePanel()
+        }}
+        modal={false}
+        disablePointerDismissal
+        swipeDirection="right"
+      >
+        <DrawerContent
+          data-cell-detail-panel=""
+          className="!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[24rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-border/60 px-4 py-2 text-left">
+            <DrawerTitle className="sr-only">Path differences</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              Every difference between the compared paths, grouped by step
+            </DrawerDescription>
+            {comparing ? (
+              <PanelSurfaceSwitcher
+                value="differences"
+                onValueChange={setPanelSurface}
+              />
+            ) : (
+              <span className="text-sm font-bold tracking-tight">
+                Differences
+              </span>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Close differences"
+              onClick={closePanel}
+            >
+              <X />
+            </Button>
+          </DrawerHeader>
+          {compareRegistration ? (
+            <div className="flex min-h-0 flex-1 flex-col pt-3">
+              <CompareDifferencesSurface
+                registration={compareRegistration}
+                onOpenCell={selectCell}
+              />
+            </div>
+          ) : (
+            // Reachable only during the exit animation after a comparison
+            // ended — the provider is already routing panelState away.
+            <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
+              <p className="text-center text-xs text-muted-foreground">
+                No comparison is active.
+              </p>
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
+    )
+  }
 
   if (!selection) return null
 
@@ -553,7 +689,7 @@ export function BlueprintCellDetailPanel() {
       open={drawerOpen}
       onOpenChange={(open) => {
         setDrawerOpen(open)
-        if (!open) clearSelection()
+        if (!open) closePanel()
       }}
       onOpenChangeComplete={(open) => {
         if (!open) setClosingSelection(null)
@@ -574,6 +710,14 @@ export function BlueprintCellDetailPanel() {
             <DrawerDescription className="sr-only">
               Details for the selected blueprint cell
             </DrawerDescription>
+            {comparing ? (
+              <div className="mb-2">
+                <PanelSurfaceSwitcher
+                  value="details"
+                  onValueChange={setPanelSurface}
+                />
+              </div>
+            ) : null}
             {cellBreadcrumb}
           </div>
           <Button
@@ -582,7 +726,7 @@ export function BlueprintCellDetailPanel() {
             size="icon-sm"
             className="shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Close cell details"
-            onClick={clearSelection}
+            onClick={closePanel}
           >
             <X />
           </Button>

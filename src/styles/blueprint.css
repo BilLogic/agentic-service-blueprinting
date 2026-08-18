@@ -114,3 +114,34 @@
     border-color: var(--canvas-phase-accent-hover);
   }
 }
+
+@layer utilities {
+  /*
+   * FOCUS PULSE — brief emphasis ring after a fly-to-cell (the counterpart
+   * highlight from ledger rows and the divergence strip). Attribute
+   * set/cleared by pulseBlueprintCells. Reduced motion keeps a static ring
+   * for the same window instead of animating.
+   */
+  [data-blueprint-cell-pulse] {
+    animation: blueprint-cell-pulse 1.3s ease-out both;
+  }
+
+  @keyframes blueprint-cell-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--ring) 65%, transparent);
+    }
+    35% {
+      box-shadow: 0 0 0 4px color-mix(in oklab, var(--ring) 55%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 8px color-mix(in oklab, var(--ring) 0%, transparent);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-blueprint-cell-pulse] {
+      animation: none;
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 55%, transparent);
+    }
+  }
+}
