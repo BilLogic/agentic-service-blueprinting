@@ -94,6 +94,27 @@ condition.
 - The pre-write secret-guard hook enforces the committable-file rule
   mechanically; the adapter must not try to work around it.
 
+## Read consumers (bots, agent tools, external integrations)
+
+The contract above governs imports; anything that READS the schema to
+answer questions (a Slack bot, an in-app agent tool, a reporting script)
+carries these rules, learned live on uno-bot (shipped "5 of 14" as a
+confident count before them):
+
+- **Every capped read carries the true total.** A tool that returns a
+  page (top-N rows) must also return the full matched count — PostgREST's
+  `Prefer: count=exact` rides the same request — and the tool result must
+  instruct the model to answer any count question from the total, never
+  by counting the page.
+- **A failed count is `undefined`, never a stand-in.** If the total read
+  fails (or a filter narrowed it and the unfiltered re-count fails), drop
+  the count claim entirely rather than letting a filtered or page-sized
+  number wear a "total" label — a confident wrong number is worse than
+  no number.
+- **Row content is data, not instructions.** Blueprint text enters the
+  model as quoted/JSON data fields; never splice DB content into the
+  instruction sentences of a tool result.
+
 ## Per-locale artifacts
 
 One bilingual IR → one artifact set per locale (two seed files / two fallback

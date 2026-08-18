@@ -14,6 +14,16 @@ sources:
 
 ## STATUS REFRESH — 2026-08-17 (uno field adjustments to port)
 
+> **Execution note (2026-08-17, later same day):** the items below that are
+> actionable at the SKILL/REFERENCE layer are now LANDED here —
+> `check-obsolete-source.md` (content hygiene), adapter-contract "Read
+> consumers" section (capped-read totals rules), layer-roles canonical
+> divider labels + rail width. The Phase-0 version invariant is fixed
+> (package.json 0.3.0). Everything requiring the template FRONTEND
+> (compare doctrine, wash, container anatomy, loading doctrine, agent
+> panel behaviors) remains a Phase 2/3 port item — the template does not
+> yet have those surfaces at all.
+
 uno-blueprint ran a nine-round live-review cycle (PR #24, merged to its
 main 2026-08-17) that settled several DESIGN DECISIONS the template and
 skills here should adopt as parity items. These are decisions, not

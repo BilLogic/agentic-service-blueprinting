@@ -41,6 +41,13 @@ positions:
 - **Internal interaction line**: after `backstage_actions` only when a
   `support_systems` lane comes next (marks the hand-off to support).
 
+Rendered labels use the service-blueprint canon in full — `LINE OF
+INTERACTION` / `LINE OF VISIBILITY` / `LINE OF INTERNAL INTERACTION` —
+never shortened forms ("internal interaction" alone reads as a lane, not
+a boundary). The lane-label rail must be sized for the longest canonical
+divider label, not just the lane names (uno settled on 208px after 192px
+clipped them).
+
 No role present → no line. That is valid: an internal-ops blueprint with no
 customer lane renders as plain swimlanes with no interaction line.
 **No role is a mandatory spine** — assign `customer_actions` to whichever
