@@ -2,9 +2,9 @@ import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import { buttonVariants } from '@/components/ui/button'
 import {
   blueprintCellButtonClassName,
-  getBlueprintCellInteractionStyle,
+  blueprintToneAttrs,
 } from '@/lib/blueprintCellStyle'
-import { getTechPillStyle } from '@/lib/techPillTheme'
+import { getTouchpointTone } from '@/lib/techPillColors'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
@@ -12,25 +12,27 @@ type TechPillFaceProps = {
   item: string
   compact?: boolean
   className?: string
+  style?: CSSProperties
   opacity?: number
   asSpan?: boolean
-  /** Extra face styling (e.g. the merged view's path wash). */
-  style?: CSSProperties
 }
 
+/**
+ * Presentational half of a tech pill — the same face without the button
+ * behaviour, for read-only surfaces (`asSpan`) and for print.
+ */
 export function TechPillFace({
   item,
   compact = false,
   className,
+  style: styleProp,
   opacity,
   asSpan = false,
-  style: styleProp,
 }: TechPillFaceProps) {
-  const fill = getTechPillStyle(item).backgroundColor
+  const tone = getTouchpointTone(item)
 
   if (asSpan) {
     const style = {
-      ...getBlueprintCellInteractionStyle(fill),
       ...(opacity != null && opacity < 1 ? { opacity } : undefined),
       ...styleProp,
     } as CSSProperties
@@ -44,6 +46,7 @@ export function TechPillFace({
           className,
         )}
         style={style}
+        {...blueprintToneAttrs(tone)}
       >
         {item}
       </span>
@@ -52,12 +55,13 @@ export function TechPillFace({
 
   return (
     <BlueprintCellButton
-      fill={fill}
+      fill="frontstage-tech"
+      tone={tone}
       variant="pill"
       compact={compact}
       opacity={opacity}
-      style={styleProp}
       className={cn('min-w-0 shrink-0 break-words', className)}
+      style={styleProp}
     >
       {item}
     </BlueprintCellButton>

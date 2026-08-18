@@ -32,6 +32,9 @@ function SequenceNavPreview({
   const accessibleLabel = phaseLabel ? `${phaseLabel}, ${title}` : title
   const ariaLabel = `${actionLabel}: ${accessibleLabel}`
 
+  // Both buttons always render the same two-line structure so the pair
+  // shares one height and baseline: the phase line is reserved (invisible)
+  // when the target is a phase itself.
   const label = (
     <span
       className={cn(
@@ -39,12 +42,16 @@ function SequenceNavPreview({
         isPrev ? 'items-start text-left' : 'items-end text-right',
       )}
     >
-      {phaseLabel ? (
-        <span className="truncate text-[10px] font-normal text-muted-foreground">
-          {phaseLabel}
-        </span>
-      ) : null}
-      <span className="truncate text-xs font-medium">{title}</span>
+      <span
+        className={cn(
+          'w-full truncate text-3xs font-normal text-muted-foreground',
+          !phaseLabel && 'invisible',
+        )}
+        aria-hidden={!phaseLabel}
+      >
+        {phaseLabel ?? '\u00A0'}
+      </span>
+      <span className="w-full truncate text-xs font-medium">{title}</span>
     </span>
   )
 
@@ -58,6 +65,12 @@ function SequenceNavPreview({
       data-canvas-nav=""
       className={cn(
         'pointer-events-auto absolute bottom-3 z-30 h-auto max-w-40 gap-1.5 py-1.5',
+        // Frozen board palette, not app chrome: the nav floats over the
+        // always-light canvas, so it stays white in dark mode and its hover
+        // stays on the neutral ramp — `hover:bg-accent` would flip dark here.
+        'border-border/80 bg-white text-foreground shadow-sm',
+        'hover:bg-neutral-100 hover:text-foreground',
+        'dark:bg-white dark:text-foreground dark:hover:bg-neutral-200',
         isPrev ? 'left-3' : 'right-3',
       )}
     >
@@ -76,8 +89,9 @@ function SequenceNavPreview({
   )
 }
 
+/** Previous/next slide controls; renders nothing when the active slide is alone in its sequence. */
 export function EditorSequenceNav() {
-  const { slides, activeSlideId, setActiveSlideId } = useEditor()
+  const { slides, activeSlideId, openDetail } = useEditor()
   const { prev, next } = getSlideSequenceNav(activeSlideId, slides)
 
   if (!prev && !next) return null
@@ -89,7 +103,7 @@ export function EditorSequenceNav() {
           direction="prev"
           slide={prev}
           slides={slides}
-          onClick={() => setActiveSlideId(prev.id)}
+          onClick={() => openDetail(prev.id)}
         />
       ) : null}
       {next ? (
@@ -97,7 +111,7 @@ export function EditorSequenceNav() {
           direction="next"
           slide={next}
           slides={slides}
-          onClick={() => setActiveSlideId(next.id)}
+          onClick={() => openDetail(next.id)}
         />
       ) : null}
     </div>

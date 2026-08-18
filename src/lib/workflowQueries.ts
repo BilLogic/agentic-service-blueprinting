@@ -28,13 +28,17 @@ export const PATH_BLUEPRINT_SELECT = `
     id,
     layer_id,
     step_id,
+    slot_position,
     content,
     picture,
     description,
     links,
-    outgoing:cell_triggers!source_cell_id (
+    outgoing:cell_triggers!cell_triggers_source_cell_id_fkey (
       id,
-      target_cell_id
+      target_cell_id,
+      kind,
+      label,
+      note
     )
   )
 `

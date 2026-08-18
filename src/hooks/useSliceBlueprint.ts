@@ -27,11 +27,11 @@ export type SliceBlueprint = {
 }
 
 /**
- * Shared resolution preamble for the slice surfaces (focus view and
+ * Shared resolution preamble for the slice tabs (focus view and
  * presentation): slice detail → position-sorted frames → ordered cell ids →
  * owning scenario → best-matching blueprint. Every step reads the shared
- * query cache, so the focus and present surface of one slice resolve from
- * the same fetches.
+ * query cache, so the focus and present tab of one slice resolve from the
+ * same fetches.
  */
 export function useSliceBlueprint(sliceId: string): SliceBlueprint {
   const result = useSlice(sliceId)
@@ -61,14 +61,10 @@ export function useSliceBlueprint(sliceId: string): SliceBlueprint {
         ? (scenarioResult.fallback ?? undefined)
         : undefined
 
-  // Same cached query key as the canvas (`canvas-blueprints:scenario:<id>`)
-  // — membership resolution never refetches what the canvas already loaded.
-  const scenarioIds = useMemo(
-    () => (scenarioId ? [scenarioId] : []),
-    [scenarioId],
-  )
+  // Same cached query key as the embedded canvas (ServiceOverviewView) —
+  // membership resolution never refetches what the canvas already loaded.
   const { blueprintsByPathId, loading: blueprintsLoading } =
-    useCanvasBlueprints(scenarioIds)
+    useCanvasBlueprints(scenarioId ? [scenarioId] : [])
   const blueprint = useMemo(
     () => pickBlueprintForCells([...blueprintsByPathId.values()], cellIds),
     [blueprintsByPathId, cellIds],

@@ -5,20 +5,37 @@ export type PathColorInput = {
   name: string
 }
 
-/** Primary accent per path type — also used as defaults for unnamed paths. */
+/**
+ * Primary accent per path type — the default when a path's own name is not
+ * pinned and its type is not one of the open-ended two.
+ *
+ * Radix step 1100, not the Tailwind v3 defaults these used to be (#10B981 and
+ * friends). The step matters: `getPathBadgeStyle` renders white on this fill,
+ * and the old values measured 2.0–2.9:1 against white — the amber one worst.
+ * Step 11 is Radix's text weight; `palette.test.ts` measures every entry
+ * against the stylesheet to keep that true.
+ *
+ * `unhappy` is orange rather than amber for the same reason: amber's step 9/10
+ * are near-yellow and unusable under white text, so the whole family would have
+ * had to be read at a different step from every other path type.
+ */
 export const PATH_TYPE_COLORS: Record<PathType, string> = {
-  happy: '#10B981',
-  unhappy: '#F59E0B',
-  exception: '#EF4444',
-  alternative: '#3B82F6',
+  happy: 'var(--color-green-1100)',
+  unhappy: 'var(--color-orange-1100)',
+  exception: 'var(--color-red-1100)',
+  alternative: 'var(--color-blue-1100)',
 }
 
-/** Stroke color for blueprint trigger arrows — muted to complement pastel cells. */
+/**
+ * Stroke color for blueprint trigger arrows — step 1000, one notch lighter than
+ * the badge, so a stroke reads as related to the label it belongs to without
+ * being the same value. Same family per path type as `PATH_TYPE_COLORS`.
+ */
 export const PATH_TYPE_ARROW_COLORS: Record<PathType, string> = {
-  happy: '#5FA88A',
-  unhappy: '#C49A5C',
-  exception: '#C97171',
-  alternative: '#6E8FC7',
+  happy: 'var(--color-green-1000)',
+  unhappy: 'var(--color-orange-1000)',
+  exception: 'var(--color-red-1000)',
+  alternative: 'var(--color-blue-1000)',
 }
 
 /** Stable identity for path colors across scenarios (same type + name → same color). */
@@ -27,82 +44,64 @@ export function getPathColorKey(path: PathColorInput): string {
 }
 
 /**
- * Canonical path colors — shared across every scenario.
- * Keys match `getPathColorKey` (`path_type:Path Name`).
+ * The families a path may be drawn from once its identity is a *name* rather
+ * than a type — the same seven the touchpoint tones use.
+ *
+ * Deliberately disjoint from the eight lane families, and `palette.test.ts`
+ * holds that. An earlier open set drew on ten families including green, blue,
+ * violet and pink, so a differently-named path could render as a 2px line in
+ * exactly the hue of the lane it crossed.
+ *
+ * Sharing the tone set rather than inventing a third one is safe because the
+ * two never render at the same weight: a tone is a step-400 pill fill, a path
+ * is a step-1100 line and badge. Seven hundred steps apart, they cannot be
+ * mistaken for each other, and there is one palette to learn instead of two.
+ *
+ * The order puts distant hues next to each other, so adjacent hashes do not
+ * land on neighbours.
+ */
+const PATH_NAMED_FAMILIES = [
+  'indigo',
+  'tomato',
+  'purple',
+  'gold',
+  'crimson',
+  'yellow',
+  'red',
+] as const
+
+const step = (family: string, weight: 1000 | 1100) =>
+  `var(--color-${family}-${weight})`
+
+/**
+ * Pinned colours for the canonical archetype names. Anything else — every
+ * differently-named `alternative` path — hashes into the open set below, so a
+ * blueprint can name its paths whatever it likes and still get a stable,
+ * distinct colour + dash pair.
  */
 export const PATH_COLOR_REGISTRY: Record<string, string> = {
   'happy:Happy Path': PATH_TYPE_COLORS.happy,
   'unhappy:Sad Path': PATH_TYPE_COLORS.unhappy,
   'alternative:Alternate Path': PATH_TYPE_COLORS.alternative,
-  'alternative:Set Goals': '#6366F1',
-  'alternative:Check Goals': '#8B5CF6',
-  'alternative:Update Goals': '#EC4899',
-  'alternative:Set Goals Edge Case': '#0EA5E9',
-  'alternative:Update Goals Edge Case': '#14B8A6',
 }
 
 export const PATH_ARROW_COLOR_REGISTRY: Record<string, string> = {
   'happy:Happy Path': PATH_TYPE_ARROW_COLORS.happy,
   'unhappy:Sad Path': PATH_TYPE_ARROW_COLORS.unhappy,
   'alternative:Alternate Path': PATH_TYPE_ARROW_COLORS.alternative,
-  'alternative:Set Goals': '#7C83DB',
-  'alternative:Check Goals': '#9F88D8',
-  'alternative:Update Goals': '#D16BA0',
-  'alternative:Set Goals Edge Case': '#3DAFD6',
-  'alternative:Update Goals Edge Case': '#3CB8A8',
 }
 
-const EXTENDED_PATH_COLORS = [
-  '#6366F1',
-  '#8B5CF6',
-  '#EC4899',
-  '#0EA5E9',
-  '#14B8A6',
-  '#F97316',
-  '#84CC16',
-  '#A855F7',
-  '#E11D48',
-  '#0891B2',
-] as const
-
-function hashKey(key: string): number {
-  let hash = 0
-  for (const char of key) {
-    hash = (hash + char.charCodeAt(0)) | 0
-  }
-  return Math.abs(hash)
-}
-
-export function getPathColor(path: PathColorInput): string {
-  const key = getPathColorKey(path)
-  const known = PATH_COLOR_REGISTRY[key]
-  if (known) return known
-
-  if (path.path_type !== 'alternative') {
-    return PATH_TYPE_COLORS[path.path_type]
-  }
-
-  return EXTENDED_PATH_COLORS[hashKey(key) % EXTENDED_PATH_COLORS.length]
-}
-
-export function getPathArrowColor(path: PathColorInput): string {
-  const key = getPathColorKey(path)
-  const known = PATH_ARROW_COLOR_REGISTRY[key]
-  if (known) return known
-
-  if (path.path_type !== 'alternative') {
-    return PATH_TYPE_ARROW_COLORS[path.path_type]
-  }
-
-  return getPathColor(path)
-}
+/** Hash fallback for a path with no registry entry. Step 1100, the badge weight. */
+const EXTENDED_PATH_COLORS = PATH_NAMED_FAMILIES.map((f) =>
+  step(f, 1100),
+) as readonly string[]
 
 /**
  * Stroke pattern per path type — the non-colour half of path identity.
  *
- * Paths distinguishable by hue alone fail SC 1.4.1 (use of colour) and are
- * hard to read where two arrows cross. `undefined` means a solid stroke,
- * kept for the happy path so the common case stays cleanest.
+ * Paths were distinguishable by hue alone, which fails SC 1.4.1 (use of colour)
+ * and is also just hard to read where two arrows cross. `undefined` means a
+ * solid stroke, kept for the happy path so the common case stays cleanest.
  *
  * Patterns are tuned for the 2px arrow stroke: shorter than ~2px reads as a
  * dotted blur at overview zoom, longer than ~12px stops repeating within a
@@ -116,9 +115,14 @@ const PATH_TYPE_DASH: Record<PathType, string | undefined> = {
 }
 
 /**
- * Extra patterns for `alternative` paths (the open-ended type), hashed the
- * same way `EXTENDED_PATH_COLORS` is so a path's dash and colour stay paired
- * — one per extended colour, a real second channel rather than decoration.
+ * Extra patterns for the types that can have many distinct paths at once, hashed
+ * the same way `EXTENDED_PATH_COLORS` is so a path's dash and colour stay paired.
+ *
+ * One per family in `PATH_NAMED_FAMILIES`. An earlier version had five dashes
+ * against ten colours, which meant two open paths could share a dash — fine
+ * while colour is visible, and exactly the case SC 1.4.1 is about when it is
+ * not. Matching the lengths makes the pattern a real second channel rather
+ * than a decoration.
  */
 const EXTENDED_PATH_DASHES = [
   '7 4 2 4',
@@ -128,14 +132,16 @@ const EXTENDED_PATH_DASHES = [
   '5 5',
   '3 3 9 3',
   '14 4 3 4',
-  '9 3',
-  '4 4 12 4',
-  '6 3 2 3',
 ] as const
 
 /**
  * Dash pattern for a path's arrows and section borders, paired with
- * {@link getPathColor} through the same hash so the two never come apart.
+ * {@link getPathColor} through the same slot so the two never come apart.
+ *
+ * Every type uses its own pattern, except an `alternative` path nobody has
+ * pinned: its identity is its name, so it hashes into the open set instead of
+ * sharing the one type default with every other custom-named path — which
+ * would leave colour as the only thing telling them apart.
  */
 export function getPathDashArray(path: PathColorInput): string | undefined {
   if (path.path_type === 'alternative') {
@@ -162,11 +168,44 @@ export function getPathDashArrayFromKey(colorKey: string): string | undefined {
   })
 }
 
+function hashKey(key: string): number {
+  let hash = 0
+  for (const char of key) {
+    hash = (hash + char.charCodeAt(0)) | 0
+  }
+  return Math.abs(hash)
+}
+
+export function getPathColor(path: PathColorInput): string {
+  const key = getPathColorKey(path)
+  const known = PATH_COLOR_REGISTRY[key]
+  if (known) return known
+
+  if (path.path_type === 'alternative') {
+    // Same index the dash is read from, so the pair holds.
+    return EXTENDED_PATH_COLORS[hashKey(key) % EXTENDED_PATH_COLORS.length]
+  }
+
+  return PATH_TYPE_COLORS[path.path_type]
+}
+
+export function getPathArrowColor(path: PathColorInput): string {
+  const key = getPathColorKey(path)
+  const known = PATH_ARROW_COLOR_REGISTRY[key]
+  if (known) return known
+
+  if (path.path_type === 'alternative') {
+    return getPathColor(path)
+  }
+
+  return PATH_TYPE_ARROW_COLORS[path.path_type]
+}
+
 /**
- * Frame around a path's section. Solid for the happy path, dashed for
- * anything else, so the frame carries the same non-colour distinction the
- * arrows do — CSS borders take a style keyword rather than a dash array, so
- * this is the coarse version of {@link getPathDashArray}.
+ * Frame around a path's section. Solid for the happy path, dashed for anything
+ * else, so the frame carries the same non-colour distinction the arrows do —
+ * CSS borders take a style keyword rather than a dash array, so this is the
+ * coarse version of {@link getPathDashArray}.
  */
 export function getPathSectionBorderStyle(path: PathColorInput): {
   borderColor: string
@@ -186,7 +225,7 @@ export function getPathBadgeStyle(path: PathColorInput): {
 } {
   return {
     backgroundColor: getPathColor(path),
-    color: '#FFFFFF',
+    color: 'var(--color-gray-100)',
   }
 }
 

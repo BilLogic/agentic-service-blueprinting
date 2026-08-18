@@ -1,6 +1,18 @@
 import type { CSSProperties } from 'react'
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
-import { PhaseMenubarHeader } from '@/components/editor/PhaseMenubarHeader'
+import { PathSelectorMenu } from '@/components/editor/PathSelectorMenu'
+import {
+  CompareControlsCluster,
+  PhaseMenubarHeader,
+} from '@/components/editor/PhaseMenubarHeader'
+import {
+  BLUEPRINT_MENUBAR_FLAT_CLASS,
+  BLUEPRINT_NAVBAR_BAR_CLASS,
+} from '@/components/editor/menubarHeaderLayout'
+import {
+  useCollapsedNavSummary,
+  useSidebarCollapsedState,
+} from '@/contexts/sidebarCollapsedContext'
 import {
   getSlideDisplayLabel,
   isSubslide,
@@ -11,9 +23,9 @@ import { cn } from '@/lib/utils'
 type SlideHeaderContentProps = {
   slide: NavItem
   slides: NavItem[]
+  /** Paths still inform the description fallback; filtering lives in the sidebar. */
   paths: PathOption[]
   selectedPathIds: string[]
-  onTogglePath?: (pathId: string) => void
   /** When true, title and description share one row inside a menubar. */
   inlineDescription?: boolean
 }
@@ -34,7 +46,6 @@ function SlideHeaderContent({
   slides,
   paths,
   selectedPathIds,
-  onTogglePath,
   inlineDescription = false,
 }: SlideHeaderContentProps) {
   if (inlineDescription) {
@@ -44,8 +55,6 @@ function SlideHeaderContent({
         slides={slides}
         paths={paths}
         selectedPathIds={selectedPathIds}
-        onTogglePath={onTogglePath}
-        showFilters
       />
     )
   }
@@ -62,7 +71,7 @@ function SlideHeaderContent({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border/80 bg-card shadow-sm',
+        'rounded-2xl border border-border/60 bg-card shadow-sm',
         'px-4 py-3',
       )}
     >
@@ -88,22 +97,50 @@ type SlideStickyHeaderProps = SlideHeaderContentProps & {
   className?: string
 }
 
-/** Fixed overlay header for stack view. */
+/** Docked horizontal navbar above the canvas (main column only). */
 export function SlideStickyHeader({
   className,
   ...contentProps
 }: SlideStickyHeaderProps) {
+  // Collapsed: the floating pill carries this header's identity instead —
+  // one chrome layer at any width. Path filters and the zoom readout are
+  // deliberately not folded in; they come back when the sidebar does.
+  const { collapsed } = useSidebarCollapsedState()
+  useCollapsedNavSummary(
+    collapsed
+      ? {
+          title: getSlideDisplayLabel(contentProps.slide, contentProps.slides),
+        }
+      : null,
+  )
+  if (collapsed) return null
+
   return (
     <div
-      data-slide-sticky-header
+      data-editor-navbar
       className={cn(
-        'pointer-events-none absolute inset-x-0 top-0 z-20 px-4 pt-4',
+        'relative flex items-center gap-3',
+        BLUEPRINT_NAVBAR_BAR_CLASS,
         className,
       )}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="pointer-events-auto w-full">
-        <SlideHeaderContent {...contentProps} inlineDescription />
+      <PhaseMenubarHeader
+        slide={contentProps.slide}
+        slides={contentProps.slides}
+        paths={contentProps.paths}
+        selectedPathIds={contentProps.selectedPathIds}
+        className={cn('min-w-0 flex-1', BLUEPRINT_MENUBAR_FLAT_CLASS)}
+      />
+      {/* Right cluster in FLOW, not absolute: the title's truncation now
+          respects the controls' real width instead of running under them.
+          One edge, one gap rhythm for every view control. */}
+      <div className="flex shrink-0 items-center gap-2">
+        <CompareControlsCluster
+          slide={contentProps.slide}
+          selectedPathIds={contentProps.selectedPathIds}
+        />
+        <PathSelectorMenu options={contentProps.paths} />
       </div>
     </div>
   )

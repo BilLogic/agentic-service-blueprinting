@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
@@ -12,11 +11,11 @@ import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
 import { resolveBlueprintForScenario } from '@/lib/resolveBlueprint'
 import type { RawPath } from '@/lib/normalizeBlueprint'
 import type { PathListItem } from '@/lib/pathSelection'
+import { pickPreferredPath } from '@/lib/pathSelection'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
 import type { BlueprintData } from '@/types/blueprint'
-import type { Database } from '@/types/database'
 
-export type CanvasRawPath = RawPath & {
+type CanvasRawPath = RawPath & {
   service_scenario_id: string
 }
 
@@ -36,7 +35,7 @@ const EMPTY_MAPS: CanvasBlueprintMaps = {
 
 function pickPathForScenario(paths: CanvasRawPath[]): CanvasRawPath | null {
   if (paths.length === 0) return null
-  return paths.find((p) => p.path_type === 'happy') ?? paths[0] ?? null
+  return pickPreferredPath(paths) ?? null
 }
 
 function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
@@ -133,7 +132,10 @@ function deriveFromRows(
     }
   }
 
-  if (byScenario.size === 0 && staticFallbacks.blueprintsByScenario.size > 0) {
+  if (
+    byScenario.size === 0 &&
+    staticFallbacks.blueprintsByScenario.size > 0
+  ) {
     return { ...staticFallbacks, usingFallback: true }
   }
 
@@ -150,44 +152,13 @@ function deriveFromRows(
   }
 }
 
-export const SCENARIO_KEY_PREFIX = 'canvas-blueprints:scenario:'
-
-/** The cache key of one scenario's blueprint query. */
-export function scenarioBlueprintQueryKey(scenarioId: string): [string] {
-  return [`${SCENARIO_KEY_PREFIX}${scenarioId}`]
-}
-
-/**
- * The one blueprint read this app makes: every path row (with layers, steps
- * and cells) of a single scenario. Shared by the canvas hook below and
- * `useScenarioBlueprint`, so both surfaces ride the same cache entry and one
- * invalidation covers them both. Ordered by `created_at` so path order is
- * deterministic wherever the rows land.
- */
-export async function fetchScenarioBlueprintRows(
-  client: SupabaseClient<Database>,
-  scenarioId: string,
-): Promise<CanvasRawPath[]> {
-  const outcome = await raceSupabaseQuery(
-    (async () => {
-      const { data, error } = await client
-        .from('paths')
-        .select(PATH_BLUEPRINT_SELECT)
-        .eq('service_scenario_id', scenarioId)
-        .order('created_at', { ascending: true })
-      if (error) throw new Error(error.message)
-      return (data ?? []) as CanvasRawPath[]
-    })(),
-  )
-  if (outcome === 'timeout') throw new Error('The request timed out')
-  return outcome
-}
+const SCENARIO_KEY_PREFIX = 'canvas-blueprints:scenario:'
 
 /**
  * Invalidate exactly the scenarios a write touched — one refetch, not a
- * board-wide storm. Membership changes (create/delete/duplicate scenario)
- * still go through `invalidateStructure()`'s bare 'canvas-blueprints'
- * prefix, which these keys also match.
+ * board-wide storm (todo 029). Membership changes (create/delete/duplicate
+ * scenario) still go through `invalidateStructure()`'s bare
+ * 'canvas-blueprints' prefix, which these keys also match.
  */
 export function invalidateCanvasBlueprintsForScenario(
   scenarioId: string,
@@ -199,9 +170,10 @@ export function invalidateCanvasBlueprintsForScenario(
 }
 
 /**
- * Path-scoped variant for callers that only know the path (e.g. a cell
- * editor): match the one scenario query whose cached rows contain the path.
- * A query with no cached data yet is counted as matching — stale to be safe.
+ * Path-scoped variant for callers that only know the path (the cell panel
+ * editor): match the one scenario query whose cached rows contain the
+ * path. A query with no cached data yet is counted as matching — stale to
+ * be safe.
  */
 export function invalidateCanvasBlueprintsForPath(pathId: string): void {
   void queryClient.invalidateQueries({
@@ -216,12 +188,12 @@ export function invalidateCanvasBlueprintsForPath(pathId: string): void {
 
 /**
  * Blueprints for a set of scenarios, fetched ONE QUERY PER SCENARIO so
- * loading progress is measurable (each settle is one real tick), cache keys
- * are stable under membership changes (adding a scenario adds one key; the
- * rest stay warm), and a lost request degrades only its own scenario to the
- * bundled fallback instead of the whole board. With no database configured,
- * the same maps resolve synchronously from the bundled fallback module —
- * components never see a second code path.
+ * loading progress is measurable (each settle is one real tick), cache
+ * keys are stable under membership changes (adding a scenario adds one
+ * key; the rest stay warm — todo 029), and a lost request degrades only
+ * its own scenario to the static fallback instead of the whole board
+ * (todo 030). Keys live under the `canvas-blueprints:` prefix the
+ * mutation contract invalidates.
  */
 export function useCanvasBlueprints(scenarioIds: string[]) {
   const idsKey = scenarioIds.slice().sort().join(',')
@@ -239,9 +211,22 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
 
   const results = useQueries({
     queries: orderedScenarioIds.map((scenarioId) => ({
-      queryKey: scenarioBlueprintQueryKey(scenarioId),
+      queryKey: [`${SCENARIO_KEY_PREFIX}${scenarioId}`],
       enabled: !noDb,
-      queryFn: () => fetchScenarioBlueprintRows(client!, scenarioId),
+      queryFn: async (): Promise<CanvasRawPath[]> => {
+        const outcome = await raceSupabaseQuery(
+          (async () => {
+            const { data, error } = await client!
+              .from('paths')
+              .select(PATH_BLUEPRINT_SELECT)
+              .eq('service_scenario_id', scenarioId)
+            if (error) throw new Error(error.message)
+            return (data ?? []) as CanvasRawPath[]
+          })(),
+        )
+        if (outcome === 'timeout') throw new Error('The request timed out')
+        return outcome
+      },
     })),
   })
 
@@ -252,24 +237,24 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
   const allSettled = noDb || loadedCount === results.length
   const loading = orderedScenarioIds.length > 0 && !allSettled
 
-  // dataUpdatedAt, not a status string: after a mutation invalidates
-  // 'canvas-blueprints' the refetched queries come back with data still
-  // DEFINED, so a status-only key would never change and the canvas would
-  // keep rendering pre-edit rows until a reload.
+  // dataUpdatedAt, not a y/e/n status string: after a mutation calls
+  // invalidateQueries('canvas-blueprints') the refetched chunks come back
+  // with data still DEFINED, so a status-only key never changed and the
+  // canvas kept rendering pre-edit rows until a reload.
   const rowsKey = results
     .map((result) => (result.error ? 'e' : String(result.dataUpdatedAt ?? 0)))
     .join(',')
   const derived = useMemo<CanvasBlueprintMaps>(() => {
     if (orderedScenarioIds.length === 0) return EMPTY_MAPS
     if (noDb || !allSettled) {
-      // Still on the wire → empty (the loading state owns the canvas); no DB
-      // at all → the static local fallbacks.
+      // Still on the wire → empty (the skeleton owns the canvas); no DB at
+      // all → the static local fallbacks, same as before the split.
       return noDb ? staticFallbacks : EMPTY_MAPS
     }
-    // Per-scenario degradation: a failed scenario contributes no rows, and
-    // deriveFromRows already falls back to the bundled fixture for a
-    // scenario with nothing — the other scenarios keep their fetched data
-    // instead of the whole board swapping to statics.
+    // Per-scenario degradation (todo 030): a failed scenario contributes no
+    // rows, and deriveFromRows already falls back to the bundled fixture
+    // for a scenario with nothing — the other scenarios keep their fetched
+    // data instead of the whole board swapping to statics.
     const rows = results.flatMap((result) => result.data ?? [])
     return deriveFromRows(rows, orderedScenarioIds, staticFallbacks)
     // rowsKey stands in for the results array's per-render identity churn.
@@ -289,11 +274,10 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
     blueprintsByPathId: derived.blueprintsByPathId,
     loading,
     error,
-    configured,
     usingFallback: derived.usingFallback || anyError,
-    /** Real network progress: settled scenario queries over total. A no-DB
-     *  session has nothing on the wire — it reports complete, so a progress
-     *  bar never parks below full while nothing is loading. */
+    /** Real network progress: settled chunks over total chunks. A no-DB
+     *  session has nothing on the wire — it reports complete, so the bar
+     *  never parks below full while nothing is loading. */
     progress: noDb
       ? { loaded: results.length, total: results.length }
       : { loaded: loadedCount, total: results.length },

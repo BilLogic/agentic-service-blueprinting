@@ -1,37 +1,59 @@
-import { BLUEPRINT_CELL_PALETTE } from '@/lib/blueprintTheme'
+import type { TouchpointTone } from '@/lib/blueprintCellStyle'
 
 /**
- * Stable fill color per technology name — shared across every blueprint and
- * phase. The template ships no branded registry: every tech label gets a
- * deterministic color from the neutral palette below (hash of the label), so
- * the same tech name always renders the same color. Orgs can pin specific
- * brand colors by adding entries keyed by canonical display label.
+ * DEFAULT family per touchpoint, not a styling decision.
+ *
+ * A touchpoint's colour is meant to be chosen by whoever owns the blueprint —
+ * "our scheduling tool is blue" is a product fact, not a palette one. There is nowhere to
+ * store that yet: a tech pill is a parsed substring of `cells.content`, so
+ * there is no row to attach a colour to. Until a `touchpoints` table exists,
+ * this map is the seed, and `getTouchpointTone` already takes the override that
+ * will carry the stored value.
+ *
+ * A pill renders at step 400, one paler than the step-500 lane it sits in, so
+ * it reads as an object on the cell rather than as another cell.
  */
-export const TECH_PILL_COLORS: Record<string, string> = {}
+export const TECH_PILL_COLORS = {
+  Email: 'purple',
+  Figma: 'purple',
+  'Google Docs': 'crimson',
+  'Google Forms': 'gold',
+  'Google Sheets': 'red',
+  'Marketing Website': 'indigo',
+  Notion: 'gold',
+  Phone: 'yellow',
+  Slack: 'tomato',
+  'Social Media': 'crimson',
+  Zoom: 'indigo',
+} as const satisfies Record<string, TouchpointTone>
 
-/** Optional label aliases mapping raw cell text to a canonical registry key. */
-const TECH_LABEL_ALIASES: Record<string, string> = {}
+export type TechPillName = keyof typeof TECH_PILL_COLORS
+
+/*
+ * Spelling variants that should resolve to one registry key. Empty in the
+ * template: an adopter's own touchpoints go in the registry above, and their
+ * aliases here, so `Google Docs` and `google docs` do not become two colours.
+ * (Case alone is already handled by LOWER_TO_CANONICAL below.)
+ */
+const TECH_LABEL_ALIASES: Record<string, TechPillName> = {}
 
 const LOWER_TO_CANONICAL = Object.fromEntries(
-  Object.keys(TECH_PILL_COLORS).map((name) => [name.toLowerCase(), name]),
-) as Record<string, string>
+  (Object.keys(TECH_PILL_COLORS) as TechPillName[]).map((name) => [
+    name.toLowerCase(),
+    name,
+  ]),
+) as Record<string, TechPillName>
 
-/** Neutral palette for deterministic per-label color assignment. */
-const TECH_PILL_PALETTE = [
-  BLUEPRINT_CELL_PALETTE.powderBlue,
-  BLUEPRINT_CELL_PALETTE.lavender,
-  BLUEPRINT_CELL_PALETTE.mint,
-  BLUEPRINT_CELL_PALETTE.peach,
-  BLUEPRINT_CELL_PALETTE.blush,
-  BLUEPRINT_CELL_PALETTE.cream,
-  '#E8F4E0',
-  '#F4E8F0',
-  '#E0F4F0',
-  '#F0F0E0',
-  '#F0E4E8',
-  '#E4F0F8',
-  '#F8F0E0',
-] as const
+/** Unknown tech names fall back to a deterministic family from this set. */
+const EXTENDED_FALLBACK_TONES = [
+  'indigo',
+  'gold',
+  'crimson',
+  'purple',
+  'tomato',
+  'yellow',
+  'red',
+] as const satisfies readonly TouchpointTone[]
 
 function hashLabel(label: string): number {
   let hash = 0
@@ -48,10 +70,22 @@ export function normalizeTechPillLabel(label: string): string {
   return TECH_LABEL_ALIASES[lower] ?? LOWER_TO_CANONICAL[lower] ?? trimmed
 }
 
-export function getTechPillFill(label: string): string {
+/**
+ * The Radix family a tech pill draws from.
+ *
+ * `chosen` wins when present — it is the seam the stored per-touchpoint colour
+ * will arrive through, so adding the table later needs no restructuring here.
+ */
+export function getTouchpointTone(
+  label: string,
+  chosen?: TouchpointTone,
+): TouchpointTone {
+  if (chosen) return chosen
   const canonical = normalizeTechPillLabel(label)
-  const pinned = TECH_PILL_COLORS[canonical]
-  if (pinned) return pinned
+  const known = TECH_PILL_COLORS[canonical as TechPillName]
+  if (known) return known
 
-  return TECH_PILL_PALETTE[hashLabel(canonical) % TECH_PILL_PALETTE.length]
+  return EXTENDED_FALLBACK_TONES[
+    hashLabel(canonical) % EXTENDED_FALLBACK_TONES.length
+  ]
 }

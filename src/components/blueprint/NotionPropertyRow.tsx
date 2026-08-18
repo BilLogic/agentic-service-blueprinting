@@ -7,6 +7,7 @@ type NotionPropertyRowProps = {
   className?: string
 }
 
+/** Label-and-value row in the cell detail panel, styled after Notion properties. */
 export function NotionPropertyRow({
   label,
   children,

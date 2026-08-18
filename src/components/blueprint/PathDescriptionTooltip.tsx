@@ -28,6 +28,11 @@ type PathDescriptionTooltipProps = {
   side?: 'top' | 'bottom' | 'left' | 'right'
 }
 
+/**
+ * Wraps a path label so its description appears on hover/focus. The name is
+ * prepended only when the trigger itself truncates it, so the tooltip does not
+ * repeat what is already on screen.
+ */
 export function PathDescriptionTooltip({
   description,
   pathName,

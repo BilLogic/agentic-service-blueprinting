@@ -4,16 +4,20 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /**
- * The phone's top chrome: menu · title · contextual right slot. The bar is
- * navigation-only.
+ * The phone's top chrome (plan 2026-08-16-002 Phase 3): menu · title ·
+ * contextual right slot. The agent is NOT here — it enters through the
+ * floating action button (MobileAgentFab), so the bar stays navigation-only.
  *
  * The menu button is stateful — ☰ while the drawer is closed, ✕ while it is
  * open — and tapping it toggles, so the same control opens and closes the
  * drawer; `aria-expanded` and the label follow. The swap animates with a
  * small rotation, stilled under `prefers-reduced-motion`.
  *
- * `rightSlot` is contextual chrome the shell owns: the path selector while
- * a scenario is showing, nothing when no surface has a path dimension.
+ * `rightSlot` is contextual chrome the shell owns: the path selector on the
+ * reader, Fit on the map, nothing when neither applies. The ⋯ overflow and
+ * the theme toggle are gone — the overflow held only a disabled caption,
+ * and light/dark now lives at the foot of the drawer's rail, where the
+ * desktop keeps its utilities.
  */
 export function MobileTopBar({
   title,

@@ -41,8 +41,8 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         label: scenario.name,
         description: scenario.description,
         parentId: phase.id,
-        // Read seam: raw DB tokens become client vocabulary here and nowhere
-        // else ('side-by-side'/'integrated' → 'stacked').
+        // Read seam: DB tokens become client vocabulary here (and only here);
+        // unknown values fall back to 'single' instead of leaking through.
         viewType: toClientViewType(scenario.view_type),
       })
     })

@@ -8,18 +8,21 @@ import type { Evidence } from '@/types/database'
 
 /**
  * Drop the cached evidence for one cell and refetch mounted readers. Call
- * after a write lands (the template's read surface never writes, but agent
- * or import pipelines can).
+ * after inserting or deleting a source. (This replaced a component-local
+ * reload token baked into the key: the token reset to 0 on remount, so with
+ * staleTime Infinity a reopened panel served the pre-insert list forever,
+ * and every dead token generation stayed cached.)
  */
 export function invalidateEvidence(cellId: string): void {
   invalidateQueries(`evidence:${cellId}`)
 }
 
 /**
- * Evidence rows for one cell, newest first. Evidence is public-readable by
- * policy — the research behind a published blueprint ships with it. No-DB
- * sessions resolve to `error`/null fallback, which the tab renders as an
- * offline note.
+ * Evidence rows for one cell, newest first. Evidence is deliberately
+ * public-readable (decision 2026-08-06, access-model plan): the research
+ * behind a published blueprint ships with it, and anon SELECT is granted by
+ * policy. Mount with the Evidence tab open; call `invalidateEvidence` after
+ * a write.
  */
 export function useEvidence(cellId: string): QueryResult<Evidence[]> {
   const fallback = useCallback(() => null, [])

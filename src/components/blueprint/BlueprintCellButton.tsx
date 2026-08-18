@@ -1,19 +1,38 @@
 import { Button } from '@/components/ui/button'
-import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
+import {
+  useBlueprintCellDetailOptional,
+  useBlueprintCellPreviewHover,
+} from '@/contexts/BlueprintCellDetailContext'
+import { useCanvasAnnotationsOptional } from '@/contexts/canvasAnnotationContext'
+import { useCellPick } from '@/contexts/cellPickContext'
+import {
+  clickOpensDetail,
+  clickPicks,
+  detailClickCloses,
+  pickModeForClick,
+} from '@/lib/cellPickGrammar'
+import { useSliceMembership } from '@/contexts/sliceMembershipContext'
 import {
   blueprintCellButtonClassName,
-  getBlueprintCellInteractionStyle,
+  blueprintLaneAttrs,
+  blueprintToneAttrs,
+  type TouchpointTone,
+  type BlueprintLaneRole,
 } from '@/lib/blueprintCellStyle'
 import { isSameBlueprintCellSelection } from '@/lib/blueprintCellSelection'
-import { useSliceMembership } from '@/contexts/sliceMembershipContext'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
 import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 
 type BlueprintCellButtonProps = {
-  /** Layer or pill pastel fill — drives button background while keeping shadcn interaction states. */
-  fill: string
+  /** What this lane is; blueprint.css turns the role into its steps. */
+  fill: BlueprintLaneRole
+  /**
+   * A touchpoint pill's chosen tone. Takes the place of the lane role when set —
+   * the two sets share no family, so a pill never reads as its lane.
+   */
+  tone?: TouchpointTone
   compact?: boolean
   className?: string
   style?: CSSProperties
@@ -21,19 +40,28 @@ type BlueprintCellButtonProps = {
   cellId?: string
   stepIndex?: number
   variant?: 'cell' | 'pill' | 'visual'
+  opacity?: number
   /**
    * Whether this button may carry the slice sequence badge. Tech pills share
-   * a cell id per stack, so only the cell-shaped face renders the number.
+   * their cell's id, so pill call sites pass `index === 0` to badge the
+   * first pill only; plain cell faces leave the default (true).
    */
   sliceSequenceBadge?: boolean
-  opacity?: number
   children: ReactNode
   'aria-label'?: string
   'data-blueprint-tech-pill'?: string
 }
 
+/**
+ * A single blueprint cell face — the app's most-used control.
+ *
+ * Interaction tones (hover, pressed, both focus rings) are resolved from the
+ * cell's own family rather than from `--ring`, so it reads against whichever
+ * lane the cell sits in. See `CELL_STEP` for which step each state uses and why.
+ */
 export function BlueprintCellButton({
   fill,
+  tone,
   compact = false,
   className,
   style,
@@ -41,8 +69,8 @@ export function BlueprintCellButton({
   cellId,
   stepIndex = -1,
   variant = 'cell',
-  sliceSequenceBadge = true,
   opacity,
+  sliceSequenceBadge = true,
   children,
   'aria-label': ariaLabel,
   'data-blueprint-tech-pill': techPillLabel,
@@ -82,7 +110,23 @@ export function BlueprintCellButton({
           ? sliceMembership.sequenceByCellId.get(resolvedCellId)
           : undefined))
       : undefined
-  const preview = detail?.previewHover ?? null
+  // Slice membership and picking both key on the canonical cell id, so
+  // integrated-view overlay ids resolve to the same cell as the base grid.
+  const pick = useCellPick()
+  // Optional, not asserted: this button also renders inside the portalled
+  // detail drawer, which is outside CanvasAnnotationProvider. The throwing
+  // hook there was an app-wide white screen (see canvasAnnotationContext).
+  const annotationTool = useCanvasAnnotationsOptional()?.tool ?? null
+  const pickCellId = resolvedCellId ?? cellId ?? null
+  const pickOrder = pick && pickCellId ? pick.orderOf(pickCellId) : undefined
+  const isPicked = Boolean(pick && pickCellId && pick.isPicked(pickCellId))
+  // While a selection is being built (slice edit, Make slice), the picked
+  // cells are the subject — everything else recedes. No dim while nothing
+  // is picked yet: an empty selection should not gray the whole canvas.
+  const dimUnpicked = Boolean(
+    pick && pick.picked.length > 0 && pickCellId && !isPicked,
+  )
+  const preview = useBlueprintCellPreviewHover()
   const previewCellId = preview?.cellId
     ? resolveBlueprintCellId(preview.cellId)
     : null
@@ -101,22 +145,92 @@ export function BlueprintCellButton({
         ? preview?.techItem === techPillLabel
         : !preview?.techItem),
   )
-  const emphasis = !detail?.selection
-    ? undefined
-    : isActive
-      ? 'active'
-      : isSelectedCell || isDirectlyConnected
-        ? 'connected'
-        : 'unrelated'
+  /*
+    While gathering (Edit's canvas), the detail selection paints nothing.
+
+    The emphasis system is View's vocabulary: opening a cell rings it, rings
+    its dependency chain, and dims everything else. In a service blueprint
+    dependencies run vertically within a step, so ⌘-clicking one cell ringed
+    a column of them — on a canvas where rings mean *picked*, that read as
+    "⌘-click selected the whole column". Two ring vocabularies cannot share
+    one canvas; in Edit, picking owns it and the panel is just a panel.
+  */
+  const emphasis =
+    pick?.gathers || !detail?.selection
+      ? undefined
+      : isActive
+        ? 'active'
+        : isSelectedCell || isDirectlyConnected
+          ? 'connected'
+          : 'unrelated'
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (!isInteractive) return
+    // Focus mode: ignore cells in dimmed (inactive) phases/scenarios.
+    if (event.currentTarget.closest('[data-canvas-focus-dimmed]')) return
     event.stopPropagation()
+    // Picking a cell for a slice takes precedence over opening the panel:
+    // in edit mode every click picks, elsewhere only cmd/shift-click does,
+    // so ordinary reading of the blueprint is unaffected.
+    // Hand means the canvas is being moved, not read: a click that lands at
+    // the end of a pan must not also change the selection.
+    if (annotationTool === 'hand') return
+    /*
+      The grammar lives in one place — `cellPickGrammar` — and the branch
+      order here is the whole of it: ⌘/ctrl reads, everything else picks
+      (when there is a picker), and a bare click on a canvas with no picker
+      opens the panel — or closes it, when the panel is already showing this
+      exact cell.
+
+      Double-click deliberately does nothing special. In a toggle grammar,
+      click-in click-out *is* a fast double-click — the two are
+      indistinguishable by construction, and every attempt to give the pair
+      its own meaning turned reading a cell into flipping its membership. A
+      held modifier cannot be produced by clicking fast; that is why the
+      open gesture is a modifier, with right-click → "View cell detail" as
+      the discoverable route to the same place.
+    */
+    if (clickOpensDetail(event)) {
+      detail!.selectCell(selection!)
+      return
+    }
+
+    if (pickCellId && pick && clickPicks(event, pick.plainClick)) {
+      pick.pick(pickCellId, pickModeForClick(event, pick.gathers ?? false))
+      return
+    }
+    /*
+      A bare click on the cell the panel is already showing closes it. The
+      close goes through `closePanel` — the SAME single owner the ✕ and
+      Escape use — rather than a second "is it open" fact living out here;
+      `panelState` stays the one thing that knows. All four non-toggling
+      cases (⌘-click, synthetic clicks, the Differences surface, an open
+      draft) are decided inside `detailClickCloses`, next to the rest of the
+      click grammar, so this branch is just which verb to call.
+    */
+    if (
+      detailClickCloses({
+        event: {
+          shiftKey: event.shiftKey,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+          // The native flag, not React's mirror of it: this is the one field
+          // separating a person's click from the agent's dispatched one.
+          isTrusted: event.nativeEvent.isTrusted,
+        },
+        openSurface: detail!.panelState?.surface ?? null,
+        current: detail!.selection,
+        next: selection!,
+      })
+    ) {
+      detail!.closePanel()
+      return
+    }
     detail!.selectCell(selection!)
   }
 
+
   const surfaceStyle = {
-    ...getBlueprintCellInteractionStyle(fill),
     ...(opacity != null && opacity < 1 ? { opacity } : undefined),
     ...style,
   } as CSSProperties
@@ -128,6 +242,7 @@ export function BlueprintCellButton({
       type="button"
       variant={buttonVariant}
       data-blueprint-cell-anchor=""
+      {...(tone ? blueprintToneAttrs(tone) : blueprintLaneAttrs(fill))}
       {...(cellId ? { 'data-blueprint-cell': cellId } : {})}
       data-step-index={stepIndex}
       {...(techPillLabel ? { 'data-blueprint-tech-pill': techPillLabel } : {})}
@@ -135,6 +250,7 @@ export function BlueprintCellButton({
       aria-pressed={isInteractive ? isActive : undefined}
       data-blueprint-cell-emphasis={emphasis}
       {...(isSliceMember ? { 'data-slice-member': '' } : {})}
+      {...(isPicked ? { 'data-slice-picked': '' } : {})}
       {...(isPreviewHover ? { 'data-blueprint-cell-preview-hover': '' } : {})}
       {...(isInteractive ? { 'data-blueprint-cell-interactive': '' } : {})}
       onClick={isInteractive ? handleClick : undefined}
@@ -145,11 +261,23 @@ export function BlueprintCellButton({
         variant === 'visual' &&
           'min-h-0 h-full max-h-full overflow-hidden',
         !isInteractive && 'pointer-events-none cursor-default',
-        sliceSequence !== undefined && 'relative overflow-visible',
+        (sliceSequence !== undefined || isPicked) && 'relative overflow-visible',
+        dimUnpicked && 'opacity-60 saturate-[.6] transition-[opacity,filter]',
       )}
       style={surfaceStyle}
     >
-      {sliceSequence !== undefined ? (
+      {/* Pick order wins the badge slot while picking: during selection the
+          number the user cares about is the one they are building, not the
+          one the saved slice already has. */}
+      {isPicked && pickOrder !== undefined && sliceSequenceBadge ? (
+        <span
+          aria-hidden
+          data-slice-pick-badge=""
+          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-primary text-3xs font-semibold text-primary-foreground shadow-sm"
+        >
+          {pickOrder}
+        </span>
+      ) : sliceSequence !== undefined ? (
         <span
           aria-hidden
           data-slice-sequence-badge=""

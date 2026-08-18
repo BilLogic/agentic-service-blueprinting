@@ -7,9 +7,9 @@ import {
 } from '@/lib/mobilePathMemory'
 import type { PathType } from '@/types/database'
 
-// Pins the mobile default rule (ported from uno-blueprint): last-viewed
-// wins when it still exists, else the happy path, and storage failures
-// degrade to defaults rather than throwing.
+// Pins the Phase-3 default rule (plan 2026-08-16-002): last-viewed wins
+// when it still exists, else the happy path, and storage failures degrade
+// to defaults rather than throwing.
 
 const path = (id: string, name: string, path_type: PathType = 'happy') => ({
   id,

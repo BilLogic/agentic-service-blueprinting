@@ -5,17 +5,38 @@ import { cn } from '@/lib/utils'
 import type { PathType } from '@/types/database'
 
 export type PathOption = {
+  /**
+   * The *filter* key, not a row id. Overview filtering folds paths that share
+   * a name and type across scenarios into one option, so this is
+   * `${path_type}:${name}` — never a uuid. Anything that writes to a path row
+   * wants `pathIds` instead.
+   */
   id: string
   name: string
   description: string | null
   path_type: PathType
+  /**
+   * The real path uuids folded into this option, in the order they were
+   * collected. Present only on options built by `collectOverviewPathOptions`;
+   * absent where a single concrete path is handed straight to the picker.
+   */
+  pathIds?: string[]
 }
 
 const MAX_PATHS_PER_COLUMN = 2
 
-const PRIMARY_COLUMN_PATH_TYPES = new Set<PathType>(['happy', 'alternative'])
+const PRIMARY_COLUMN_PATH_TYPES = new Set<PathType>([
+  'happy',
+  'alternative',
+])
 const SECONDARY_COLUMN_PATH_TYPES = new Set<PathType>(['unhappy', 'exception'])
 
+/**
+ * The picker shows a path's name as authored. It used to strip a scenario-name
+ * prefix so "<Scenario> Alternate Path" read as "Alternate Path" — a rule that
+ * only held for one organisation's naming habit and silently truncated any
+ * path legitimately starting with those words.
+ */
 export function formatPathPickerLabel(name: string): string {
   return name
 }
@@ -93,6 +114,7 @@ function PathNotionPill({
   )
 }
 
+/** Single-path toggle in the compact filter toolbar — swatch, label, pressed state. */
 export function PathToolbarButton({
   path,
   checked,
@@ -161,7 +183,7 @@ function PathCheckbox({
         id={inputId}
         type="checkbox"
         className={cn(
-          'shrink-0 rounded border-input accent-primary',
+          'shrink-0 rounded border-input accent-foreground',
           dense ? 'size-3' : 'size-4',
         )}
         checked={checked}
@@ -182,6 +204,7 @@ function PathCheckbox({
   )
 }
 
+/** Checkbox list of a scenario's paths, used to filter what the grid draws. */
 export function PathMultiSelect({
   paths,
   selectedPathIds,
@@ -195,8 +218,12 @@ export function PathMultiSelect({
   const isBar = layout === 'bar'
   const isNotion = layout === 'notion'
   const isToolbar = layout === 'toolbar'
+  // Vertical (filter popover) and chip layouts stay one column; only the
+  // horizontal picker groups happy/unhappy into side-by-side columns.
   const columns =
-    isBar || isNotion || isToolbar ? [paths] : groupPathsIntoColumns(paths)
+    isVertical || isBar || isNotion || isToolbar
+      ? [paths]
+      : groupPathsIntoColumns(paths)
 
   return (
     <div
@@ -217,13 +244,13 @@ export function PathMultiSelect({
       )}
       <div
         className={cn(
-          'flex flex-row items-start gap-x-4',
-          isVertical && 'gap-y-2',
+          'flex items-start gap-x-4',
+          isVertical ? 'flex-col gap-y-2' : 'flex-row',
           layout === 'horizontal' &&
             'mt-1 gap-y-2 rounded-lg border border-border bg-background px-3 py-2.5',
-          isBar && 'items-center gap-x-3 gap-y-0',
-          isNotion && 'flex-wrap gap-1.5',
-          isToolbar && 'flex-wrap items-center gap-2',
+          isBar && 'flex-row items-center gap-x-3 gap-y-0',
+          isNotion && 'flex-row flex-wrap gap-1.5',
+          isToolbar && 'flex-row flex-wrap items-center gap-2',
         )}
       >
         {columns.map((column, columnIndex) => (

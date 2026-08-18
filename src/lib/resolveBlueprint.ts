@@ -2,6 +2,7 @@ import {
   getBlueprintFallback,
   getRawBlueprintFallback,
 } from '@/data/blueprintFallbacks'
+import { applyBlueprintDisplayFilters } from '@/lib/applyBlueprintDisplayFilters'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 import {
   deduplicateBlueprintLayers,
@@ -211,11 +212,21 @@ function mergeMissingBlueprintContent(
   return deduplicateBlueprintLayers(merged)
 }
 
+function sortBlueprintSteps(data: BlueprintData): BlueprintData {
+  return {
+    ...data,
+    steps: [...data.steps].sort(
+      (a, b) => a.column_position - b.column_position,
+    ),
+  }
+}
+
 export function resolveBlueprintForScenario(
   scenarioId: string | undefined,
   rawPath: RawPath | null | undefined,
 ): { blueprint: BlueprintData | null; source: BlueprintSource } {
   const pathId = rawPath?.id
+  const fallback = getBlueprintFallback(scenarioId, pathId)
 
   if (rawPath) {
     const fromDb = normalizeBlueprint(rawPath)
@@ -245,16 +256,27 @@ export function resolveBlueprintForScenario(
         : merged
 
       return {
-        blueprint: sortBlueprintLayers(blueprint),
+        blueprint: applyBlueprintDisplayFilters(
+          sortBlueprintSteps(
+            sortBlueprintLayers(blueprint),
+          ),
+          scenarioId,
+          pathId,
+        ),
         source: 'database',
       }
     }
   }
 
-  const fallback = getBlueprintFallback(scenarioId, pathId)
   if (fallback) {
     return {
-      blueprint: sortBlueprintLayers(deduplicateBlueprintLayers(fallback)),
+      blueprint: applyBlueprintDisplayFilters(
+        sortBlueprintSteps(
+          sortBlueprintLayers(deduplicateBlueprintLayers(fallback)),
+        ),
+        scenarioId,
+        rawPath?.id ?? fallback.path.id,
+      ),
       source: 'fallback',
     }
   }

@@ -146,13 +146,13 @@ export function PhaseOverviewPhaseLoopArrow({
       <path
         d={geometry.path}
         fill="none"
-        stroke={CONNECTOR_STROKE}
+        style={{ stroke: CONNECTOR_STROKE }}
         strokeWidth={2}
         vectorEffect="non-scaling-stroke"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d={geometry.headPath} fill={CONNECTOR_STROKE} />
+      <path d={geometry.headPath} style={{ fill: CONNECTOR_STROKE }} />
     </svg>
   )
 }

@@ -7,7 +7,13 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
-import { createSupabaseClient, isSupabaseConfigured } from '../lib/supabase'
+import {
+  createSupabaseClient,
+  devLoginCredentials,
+  hasDevAuthoringKey,
+  hasDevAuthoringUi,
+  isSupabaseConfigured,
+} from '../lib/supabase'
 import type { Database } from '../types/database'
 
 type SupabaseContextValue = {
@@ -16,21 +22,30 @@ type SupabaseContextValue = {
   session: Session | null
   isLoading: boolean
   /**
-   * A signed-in session may hold the write tools. UX gate only — with the
-   * service-tier recipe applied, the RPCs and RESTRICTIVE policies still
-   * refuse a non-service session server-side.
+   * Visibility hint for mutation UI (hidden — never disabled — when false).
+   * RLS is the authority; this only reflects whether this session has any
+   * chance of a write succeeding: a signed-in user, or a dev server holding
+   * the local authoring key. A deployed visitor is neither.
    */
   canWrite: boolean
+  /** Writing with the local authoring key rather than as a signed-in user. */
+  isDevAuthoring: boolean
   /**
-   * The agent loop may hold the write tools. Derived from the JWT's
-   * app_metadata.role: no role claim means the tier recipe was never
-   * adopted, so every signed-in session writes; an explicit non-'service'
-   * role means the recipe IS in play and this session is a viewer — the
-   * loop then produces its scripted view-only refusals instead of raw RLS
-   * errors. UX gate only; the server stays the real enforcer.
+   * Showing the authoring UI on a dev server that cannot actually write.
+   * Distinct from `isDevAuthoring`, and the two must never share a badge: one
+   * means "your writes reach the live database", the other means "they will
+   * not". Getting those the wrong way round is the expensive mistake.
    */
-  canAgentWrite: boolean
-  /** Agent persistence (sessions/transcripts in the DB) is possible. */
+  isEditPreview: boolean
+  /**
+   * This session holds the editing tier: either the optional service-account
+   * recipe is not applied (no role claim) or it is and this account carries
+   * app_metadata.role === 'service' (set server-side; RLS's restrictive
+   * policies are the authority — this mirrors them for the UI).
+   * Sessions outside the tier view and use the agent read-only.
+   */
+  isServiceAccount: boolean
+  /** Any signed-in session may open the agent (viewers chat read-only). */
   canAgent: boolean
 }
 
@@ -40,14 +55,23 @@ type SupabaseProviderProps = {
   children: ReactNode
 }
 
+/*
+ * Module singleton, not useMemo: StrictMode's double render re-runs memo
+ * initializers, and two GoTrueClients on one storage key is undefined
+ * behavior (and a console warning on every load). One client per page is
+ * the actual contract — same reasoning as lib/queryClient.ts.
+ */
+const sharedClient = createSupabaseClient()
+
 export function SupabaseProvider({ children }: SupabaseProviderProps) {
   const configured = isSupabaseConfigured()
-  const client = useMemo(() => createSupabaseClient(), [])
+  const client = sharedClient
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(configured)
 
   useEffect(() => {
     if (!client) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot resolution of the initial loading gate when Supabase is unconfigured; the async auth sync below is the real work
       setIsLoading(false)
       return
     }
@@ -58,6 +82,11 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       if (!mounted) return
       setSession(data.session)
       setIsLoading(false)
+      // Roles live in the JWT, which is minted at sign-in — a session that
+      // predates a role change carries stale claims until refresh. One
+      // refresh per boot keeps app_metadata.role current for long-lived
+      // sessions (onAuthStateChange delivers the updated session).
+      if (data.session) void client.auth.refreshSession()
     })
 
     const {
@@ -73,23 +102,85 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     }
   }, [client])
 
-  const value = useMemo(() => {
-    const canWrite = configured && session !== null
-    // Contract: no role claim in the JWT = the tier recipe (20260818002000)
-    // was never adopted = every signed-in session writes. Any explicit role
-    // other than 'service' marks a viewer session under the recipe. This
-    // only shapes the agent's UX — RLS/RPCs enforce for real server-side.
-    const role = session?.user.app_metadata?.role as string | undefined
-    return {
+  /*
+    Dev sign-in. A real session through the front door: `signInWithPassword`
+    against a dev account, so RLS sees `authenticated` exactly as it would
+    for any user. This is the sanctioned alternative to the service key —
+    the key bypasses policy; this obeys it.
+
+    Runs once per boot, only in DEV, only when the pair is configured, and
+    only when no session already exists (a persisted session from the last
+    boot wins). Failure downgrades to read-only and logs — same behavior as
+    having no credentials at all.
+  */
+  useEffect(() => {
+    if (!client || isLoading || session) return
+    const credentials = devLoginCredentials()
+    if (!credentials) return
+    let cancelled = false
+    void client.auth
+      .signInWithPassword(credentials)
+      .then(({ error }) => {
+        if (!cancelled && error) {
+          console.error('[dev-login] sign-in failed:', error.message)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, isLoading, session])
+
+  const isDevAuthoring = hasDevAuthoringKey()
+  // Only ever true on a dev server, and never while anything can actually
+  // write — a session that saves for real is not a preview of one, and the
+  // "nothing saves" chip lying over working saves would be worse than either
+  // state alone.
+  const isEditPreview =
+    hasDevAuthoringUi() && !isDevAuthoring && session === null
+
+  /*
+   * Contract with supabase/migrations/20260818002000_service_account_tier —
+   * an OPTIONAL recipe. NO role claim in the JWT means the recipe was never
+   * adopted, so every signed-in session edits (the template default); an
+   * explicit role other than 'service' means the recipe IS in play and this
+   * session is a viewer. Reading a missing claim as "not a service account"
+   * would lock every adopter who skipped the recipe out of their own data.
+   *
+   * UX gate only — the RESTRICTIVE policies and RPC guards are the wall.
+   */
+  const sessionRole = (
+    session?.user.app_metadata as { role?: string } | undefined
+  )?.role
+  const isServiceAccount =
+    (session !== null && (sessionRole == null || sessionRole === 'service')) ||
+    isDevAuthoring
+
+  const value = useMemo(
+    () => ({
       client,
       configured,
       session,
       isLoading,
-      canWrite,
-      canAgentWrite: canWrite && (role == null || role === 'service'),
-      canAgent: configured && session !== null,
-    }
-  }, [client, configured, session, isLoading])
+      canWrite:
+        configured &&
+        ((session !== null && isServiceAccount) ||
+          isDevAuthoring ||
+          isEditPreview),
+      isDevAuthoring,
+      isEditPreview,
+      isServiceAccount,
+      canAgent: configured && (session !== null || isDevAuthoring),
+    }),
+    [
+      client,
+      configured,
+      session,
+      isLoading,
+      isDevAuthoring,
+      isEditPreview,
+      isServiceAccount,
+    ],
+  )
 
   return (
     <SupabaseContext.Provider value={value}>

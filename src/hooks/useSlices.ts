@@ -27,7 +27,6 @@ const slicesFallback = (): SliceListEntry[] =>
  * All slices for one service lifecycle, ordered by position, each carrying
  * its frames' cell ids. With no explicit `lifecycleId`, the first lifecycle
  * by `created_at` is used — the same resolution as `useLifecyclePhases`.
- * No-DB sessions resolve to the bundled demo slices.
  */
 export function useSlices(lifecycleId?: string): QueryResult<SliceListEntry[]> {
   return useSupabaseQuery<SliceListEntry[]>(

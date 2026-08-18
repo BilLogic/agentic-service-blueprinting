@@ -21,6 +21,7 @@ type WalkthroughPathSelectProps = {
   className?: string
 }
 
+/** Path picker inside the walkthrough, showing each path's badge colour. */
 export function WalkthroughPathSelect({
   blueprints,
   value,

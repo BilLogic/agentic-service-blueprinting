@@ -29,13 +29,13 @@ export function PhaseSectionFlowArrow({
       <path
         d={`M ${centerX} 0 V ${shaftEnd}`}
         fill="none"
-        stroke={CONNECTOR_STROKE}
+        style={{ stroke: CONNECTOR_STROKE }}
         strokeWidth={2}
         vectorEffect="non-scaling-stroke"
       />
       <path
         d={`M ${centerX} ${height} L ${centerX - headHalfWidth} ${shaftEnd} L ${centerX + headHalfWidth} ${shaftEnd} Z`}
-        fill={CONNECTOR_STROKE}
+        style={{ fill: CONNECTOR_STROKE }}
       />
     </svg>
   )

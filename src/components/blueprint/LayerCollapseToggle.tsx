@@ -1,4 +1,5 @@
 import { Minus, Plus } from 'lucide-react'
+import { IconTooltip } from '@/components/editor/IconTooltip'
 import { cn } from '@/lib/utils'
 
 type LayerCollapseToggleProps = {
@@ -8,6 +9,7 @@ type LayerCollapseToggleProps = {
   className?: string
 }
 
+/** Expand/collapse control for a swim lane, shown in the label rail. */
 export function LayerCollapseToggle({
   layerName,
   collapsed,
@@ -15,27 +17,35 @@ export function LayerCollapseToggle({
   className,
 }: LayerCollapseToggleProps) {
   return (
-    <button
-      type="button"
-      className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground',
-        className,
-      )}
-      data-print-hide
-      aria-expanded={!collapsed}
-      aria-label={
-        collapsed ? `Expand ${layerName} layer` : `Collapse ${layerName} layer`
+    <IconTooltip
+      label={
+        collapsed
+          ? `Expand the ${layerName} lane`
+          : `Collapse the ${layerName} lane`
       }
-      onClick={(e) => {
-        e.stopPropagation()
-        onToggle()
-      }}
     >
-      {collapsed ? (
-        <Plus className="size-3.5" aria-hidden />
-      ) : (
-        <Minus className="size-3.5" aria-hidden />
-      )}
-    </button>
+      <button
+        type="button"
+        className={cn(
+          'inline-flex shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground',
+          className,
+        )}
+        data-print-hide
+        aria-expanded={!collapsed}
+        aria-label={
+          collapsed ? `Expand ${layerName} layer` : `Collapse ${layerName} layer`
+        }
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle()
+        }}
+      >
+        {collapsed ? (
+          <Plus className="size-3.5" aria-hidden />
+        ) : (
+          <Minus className="size-3.5" aria-hidden />
+        )}
+      </button>
+    </IconTooltip>
   )
 }

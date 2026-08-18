@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom'
 import { ChevronDown, GripHorizontal, X } from 'lucide-react'
 import { AgentPanel } from '@/components/editor/AgentPanel'
 import { IconTooltip } from '@/components/editor/IconTooltip'
+import { AGENT_FLOAT_MIN } from '@/lib/layoutTokens'
 import {
-  AGENT_FLOAT_MIN,
   DOCK_MAX_RATIO,
   DOCK_MIN_RATIO,
+  
   dockAgent,
   persistAgentPlacement,
   setAgentDrag,
@@ -48,6 +49,9 @@ function AgentDockChrome({
     <div
       className={cn(
         'flex min-h-0 flex-1 flex-col overflow-hidden',
+        // ONE edge treatment: the token border carries it, the shadow does
+        // the lift. A ring on top of the border read as a second outline
+        // (and `ring-black/…` was a raw colour literal besides).
         floating && 'rounded-lg border border-border bg-popover shadow-lg',
         dropTarget && 'ring-2 ring-primary/50',
       )}
@@ -55,6 +59,8 @@ function AgentDockChrome({
       <div
         onPointerDown={onDragStart}
         className={cn(
+          // pr-2 + a size-6 close box below: the ✕ shares one right edge
+          // with the sessions header's `+` (icon-xs, size-6, in a px-2 row).
           'group/agent-grab flex h-6 shrink-0 cursor-grab touch-none items-center gap-1 border-b border-border/60 pl-1.5 pr-2 active:cursor-grabbing',
           floating ? 'bg-muted/40' : 'bg-transparent',
         )}
@@ -94,9 +100,9 @@ function AgentDockChrome({
 }
 
 /**
- * The agent, docked under the sidebar panel or floating over the canvas.
- * Rendered once by the shell; the portal handles the floating case so the
- * window escapes the sidebar's clip and stacking context.
+ * The agent, docked under the active sidebar panel or floating over the
+ * canvas. Rendered once by the shell; the portal handles the floating case
+ * so the window escapes the sidebar's clip and stacking context.
  */
 export function AgentDock({ visible }: { visible: boolean }) {
   const placement = useAgentPlacement()
@@ -144,7 +150,8 @@ export function AgentDock({ visible }: { visible: boolean }) {
     }
     const move = (event: PointerEvent) => {
       // Leaving the sidebar mid-drag floats it immediately: the window
-      // appears under the pointer and keeps following.
+      // appears under the pointer and keeps following, which is what a
+      // drag-out is supposed to feel like.
       if (!hitTest(event)) {
         setAgentPlacement(
           {
@@ -163,14 +170,18 @@ export function AgentDock({ visible }: { visible: boolean }) {
     }
     const up = (event: PointerEvent) => {
       // Re-run the hit test on the release point itself: a fast drag can
-      // deliver its last position with the pointerup and no move between.
+      // deliver its last position with the pointerup and no move in
+      // between, and the drop still has to land where the pointer is.
       const inside = hitTest(event)
       setAgentDrag({ active: false, overSidebar: false })
+      // Dropped on the sidebar: dock. Anywhere else: it is already
+      // floating (the move handler switched it) and stays put.
       if (inside) dockAgent()
       else persistAgentPlacement()
     }
-    // A release the page never sees — over the OS taskbar, devtools,
-    // another app — would otherwise leave the window glued to the cursor.
+    // A release the page never sees — over the OS taskbar, devtools, another
+    // app — would otherwise leave the window glued to the cursor with no
+    // button held. Blur and Escape are the escape hatches.
     const abandon = () => {
       setAgentDrag({ active: false, overSidebar: false })
       persistAgentPlacement()
@@ -192,15 +203,20 @@ export function AgentDock({ visible }: { visible: boolean }) {
     }
   }, [dragging])
 
-  // Corner resize. State-flagged with effect-owned listeners rather than
-  // listeners registered inside the pointerdown handler: those leak if the
-  // component unmounts mid-drag.
+  // Corner resize. State-flagged with effect-owned listeners (the pattern
+  // AgentDockDivider already uses) rather than listeners registered inside
+  // the pointerdown handler: those leak if the component unmounts mid-drag
+  // — closing the chat while resizing left an orphaned handler resurrecting
+  // the window on every mouse move.
   useEffect(() => {
     if (!resizeFrom) return
     const move = (event: PointerEvent) => {
       setAgentPlacement(
         {
           float: {
+            // x/y come from the store (setAgentPlacement merges over the
+            // live float), so a stale captured position cannot be written
+            // back on top of a newer one.
             ...placementRef.current.float,
             width: Math.max(
               AGENT_FLOAT_MIN.width,
@@ -279,7 +295,10 @@ export function AgentDock({ visible }: { visible: boolean }) {
     <div
       ref={windowRef}
       data-agent-dock="floating"
-      className={cn('fixed z-40 flex flex-col', dragging && 'select-none')}
+      className={cn(
+        'fixed z-40 flex flex-col',
+        dragging && 'select-none',
+      )}
       style={{
         left: placement.float.x,
         top: placement.float.y,
@@ -309,11 +328,7 @@ export function AgentDock({ visible }: { visible: boolean }) {
 }
 
 /** Drag divider between the sidebar panel and the docked chat. */
-export function AgentDockDivider({
-  columnRef,
-}: {
-  columnRef: React.RefObject<HTMLDivElement | null>
-}) {
+export function AgentDockDivider({ columnRef }: { columnRef: React.RefObject<HTMLDivElement | null> }) {
   const [resizing, setResizing] = useState(false)
   useEffect(() => {
     if (!resizing) return

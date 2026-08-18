@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { serializeUrlViewState, type UrlViewState } from '@/lib/urlViewState'
+import { useOpenCellId } from '@/lib/openCellStore'
 import {
   createInitialViewState,
   tabKey,
@@ -20,11 +21,15 @@ import {
 /** Safari throttles history.replaceState — debounce per-frame writes. */
 const FRAME_URL_DEBOUNCE_MS = 250
 
-function urlStateForTab(tab: TabDescriptor | null, frame: number): UrlViewState {
+function urlStateForTab(
+  tab: TabDescriptor | null,
+  frame: number,
+  openCellId: string | null,
+): UrlViewState {
   if (tab === null) {
-    // Base blueprint view — no tab is active. (This template has no `?cell=`
-    // share link yet; when it lands, the open cell rides along here.)
-    return { kind: 'blueprint' }
+    // Base blueprint view — no tab is active. The open cell rides along so the
+    // address bar IS the share link for what the reader is looking at.
+    return { kind: 'blueprint', cellId: openCellId ?? undefined }
   }
   switch (tab.kind) {
     case 'slice':
@@ -42,6 +47,7 @@ function urlStateForTab(tab: TabDescriptor | null, frame: number): UrlViewState 
 function useUrlViewState(
   state: ViewState,
   activeTab: TabDescriptor | null,
+  openCellId: string | null,
 ): (frame: number) => void {
   const pending = state.pendingUrlState !== null
   const frameRef = useRef(0)
@@ -58,8 +64,15 @@ function useUrlViewState(
     restoredFrameRef.current = state.restoredFrame
   })
 
+  // Read the open cell through a ref inside the writer: a cell opening must
+  // not re-run the tab-change effect (which resets the presentation frame),
+  // and the write itself is driven by the effect below.
+  const openCellRef = useRef(openCellId)
+
   const writeUrl = useCallback((tab: TabDescriptor | null, frame: number) => {
-    const search = serializeUrlViewState(urlStateForTab(tab, frame))
+    const search = serializeUrlViewState(
+      urlStateForTab(tab, frame, openCellRef.current),
+    )
     window.history.replaceState(null, '', `${window.location.pathname}${search}`)
   }, [])
 
@@ -80,6 +93,16 @@ function useUrlViewState(
     }
     writeUrl(activeTab, frameRef.current)
   }, [activeTab, pending, writeUrl])
+
+  // Opening or closing a cell rewrites the base view's URL. Its own effect,
+  // NOT a dependency of the one above: that effect also reseeds the
+  // presentation frame, and a cell opening is not a tab change. Tabs own the
+  // URL while one is active — `?cell=` belongs to the base blueprint.
+  useEffect(() => {
+    openCellRef.current = openCellId
+    if (pending || activeTab !== null) return
+    writeUrl(null, frameRef.current)
+  }, [openCellId, activeTab, pending, writeUrl])
 
   useEffect(
     () => () => {
@@ -122,7 +145,8 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
     [state.tabs, state.activeKey],
   )
 
-  const reportPresentFrame = useUrlViewState(state, activeTab)
+  const openCellId = useOpenCellId()
+  const reportPresentFrame = useUrlViewState(state, activeTab, openCellId)
 
   const openTab = useCallback(
     (tab: TabDescriptor) => dispatch({ type: 'open', tab }),

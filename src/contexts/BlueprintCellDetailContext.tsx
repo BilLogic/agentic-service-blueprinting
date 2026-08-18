@@ -4,19 +4,17 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
+import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type {
   BlueprintCellSelection,
   BlueprintPanelSurface,
 } from '@/types/blueprintCellDetail'
 import type { BlueprintData } from '@/types/blueprint'
-import {
-  getCompareReviewState,
-  subscribeCompareReview,
-} from '@/lib/compareReviewStore'
 import {
   getBlueprintCellConnections,
   getBlueprintForPath,
@@ -25,13 +23,23 @@ import {
   shouldUsePillCellContent,
   shouldUseVisualContent,
 } from '@/lib/blueprintLayout'
+import { registerAgentUiContext } from '@/lib/agent/uiBridge'
+import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
+import {
+  getCompareReviewState,
+  subscribeCompareReview,
+} from '@/lib/compareReviewStore'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
+import { setOpenCellId } from '@/lib/openCellStore'
 
 export type BlueprintCellPreviewHover = {
   cellId: string
   techItem?: string | null
 }
 
+// Re-exported from `@/types/blueprintCellDetail`, where it moved so that pure
+// helpers can name a surface without importing React. Existing imports of
+// `BlueprintPanelSurface` from this module keep resolving.
 export type { BlueprintPanelSurface }
 
 export type BlueprintPanelState = { surface: BlueprintPanelSurface }
@@ -43,6 +51,13 @@ type BlueprintCellDetailContextValue = {
   selectCell: (selection: BlueprintCellSelection) => void
   clearSelection: () => void
   /**
+   * A cell being *created*: the panel opens on this target with an empty
+   * form, and nothing is written until Save. Mutually exclusive with
+   * `selection` — a draft is not a cell yet.
+   */
+  draftCell: DraftCellTarget | null
+  openDraftCell: (draft: DraftCellTarget) => void
+  /**
    * THE single owner of "is the panel open, and on which surface".
    * `null` = closed. Everything else derives: `isOpen`, the drawer's
    * `open`, the surface switcher. Never OR a second boolean into it.
@@ -52,17 +67,22 @@ type BlueprintCellDetailContextValue = {
   openDifferences: () => void
   /** Swap surfaces inside the open drawer — content swap, never close-reopen. */
   setPanelSurface: (surface: BlueprintPanelSurface) => void
-  /** Close the panel: clears panelState + selection atomically. */
+  /** Close the panel: clears panelState + selection + draft atomically. */
   closePanel: () => void
   isOpen: boolean
   selectedCellIds: ReadonlySet<string>
   directlyConnectedCellIds: ReadonlySet<string>
-  previewHover: BlueprintCellPreviewHover | null
   setPreviewHover: (preview: BlueprintCellPreviewHover | null) => void
 }
 
 const BlueprintCellDetailContext =
   createContext<BlueprintCellDetailContextValue | null>(null)
+
+// Hover state lives in its own context: it changes on every pointer move over
+// the dependency table, and keeping it inside the main context value re-renders
+// every cell in every mounted grid per hover.
+const BlueprintCellHoverContext =
+  createContext<BlueprintCellPreviewHover | null>(null)
 
 type BlueprintCellDetailProviderProps = {
   children: ReactNode
@@ -79,12 +99,15 @@ export function BlueprintCellDetailProvider({
   blueprints = [],
 }: BlueprintCellDetailProviderProps) {
   const [selection, setSelection] = useState<BlueprintCellSelection | null>(null)
+  const [draftCell, setDraftCell] = useState<DraftCellTarget | null>(null)
   const [panelState, setPanelState] = useState<BlueprintPanelState | null>(null)
   const [previewHover, setPreviewHover] =
     useState<BlueprintCellPreviewHover | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset-on-key: clears the panel state together when the workspace changes
     setSelection(null)
+    setDraftCell(null)
     setPanelState(null)
     setPreviewHover(null)
   }, [resetKey])
@@ -93,7 +116,7 @@ export function BlueprintCellDetailProvider({
   // (≥2 selected paths in the focused scenario view). When that stops being
   // true — a path deselected, the scenario left compare — the surface falls
   // back: details if a cell is selected, closed otherwise. Render-phase
-  // guarded set (derive-during-render idiom).
+  // guarded set, the codebase's derive-during-render idiom.
   const compareActive =
     useSyncExternalStore(
       subscribeCompareReview,
@@ -103,14 +126,51 @@ export function BlueprintCellDetailProvider({
     setPanelState(selection ? { surface: 'details' } : null)
   }
 
+  // Tell the agent's UI-context collector which cell the human has open in
+  // the side panel — the panel mounts under the canvas, out of the agent
+  // panel's React reach, so this goes through the module bridge.
+  useEffect(() => {
+    if (!selection) return
+    return registerAgentUiContext('cell-panel', () => {
+      const cells = selection.paths
+        .map((entry) => `${entry.pathName}: ${entry.cellId}`)
+        .join('; ')
+      return `Cell panel open: "${selection.paths[0]?.content ?? selection.stepName}" — layer "${selection.layerName}", step "${selection.stepName}" (#${selection.stepIndex}), scenario "${selection.scenarioName}". Cell ids by path: ${cells}`
+    })
+  }, [selection])
+
+  // Publish the open cell so the URL can carry it (`?cell=`) — that address is
+  // the share link, and the same one the agent builds when it cites this cell.
+  // First path only: a multi-path selection is one cell read across variants,
+  // and the first entry is the one the panel opens on.
+  useEffect(() => {
+    const cellId = selection?.paths[0]?.cellId ?? null
+    setOpenCellId(cellId)
+    return () => setOpenCellId(null)
+  }, [selection])
+
   const selectCell = useCallback((next: BlueprintCellSelection) => {
     setSelection(next)
+    setDraftCell(null)
     setPanelState({ surface: 'details' })
     setPreviewHover(null)
   }, [])
 
+  const openDraftCell = useCallback((next: DraftCellTarget) => {
+    setDraftCell(next)
+    setSelection(null)
+    setPanelState({ surface: 'details' })
+    setPreviewHover(null)
+  }, [])
+
+  /**
+   * Close the panel: panelState, selection and draft clear atomically —
+   * `clearSelection` kept its historical name because every existing caller
+   * means "close the panel" by it.
+   */
   const clearSelection = useCallback(() => {
     setSelection(null)
+    setDraftCell(null)
     setPanelState(null)
     setPreviewHover(null)
   }, [])
@@ -123,11 +183,73 @@ export function BlueprintCellDetailProvider({
     setPanelState({ surface })
   }, [])
 
-  const closePanel = useCallback(() => {
-    setSelection(null)
-    setPanelState(null)
-    setPreviewHover(null)
-  }, [])
+  // Latest panel facts for the agent commands below — the commands register
+  // once per (enabled, compareActive) and read the live state at fire time.
+  const latestRef = useRef({ panelState, selection })
+  useEffect(() => {
+    latestRef.current = { panelState, selection }
+  })
+
+  // Agent parity for the panel surfaces (registry norm: a surface ships
+  // with its commands). differences_* exist only while a comparison is
+  // live, so list_ui_commands reflects real availability.
+  useEffect(() => {
+    if (!enabled) return
+    const unregister: Array<() => void> = [
+      registerAgentUiCommand({
+        name: 'panel_surface',
+        description:
+          "Switch the open floating panel's surface. arg: details | differences",
+        run: (arg) => {
+          const { panelState: current, selection: liveSelection } =
+            latestRef.current
+          if (current === null)
+            return 'The panel is closed — open a cell (open_cell_panel) or the ledger (differences_open) first.'
+          const surface = arg === 'differences' ? 'differences' : 'details'
+          if (
+            surface === 'differences' &&
+            getCompareReviewState().registration === null
+          )
+            return 'No comparison is active — the Differences surface needs 2+ selected paths in a focused scenario.'
+          setPanelState({ surface })
+          return `Panel is on the ${surface} surface${
+            surface === 'details' && !liveSelection ? ' (no cell selected)' : ''
+          }.`
+        },
+      }),
+    ]
+    if (compareActive) {
+      unregister.push(
+        registerAgentUiCommand({
+          name: 'differences_open',
+          description:
+            'Open the difference ledger (the Differences surface of the floating panel) enumerating every difference between the compared paths.',
+          run: () => {
+            setPanelState({ surface: 'differences' })
+            return 'Difference ledger is open.'
+          },
+        }),
+        registerAgentUiCommand({
+          name: 'differences_close',
+          description:
+            'Close the difference ledger — falls back to cell details when a cell is selected, otherwise closes the panel.',
+          run: () => {
+            const { panelState: current, selection: liveSelection } =
+              latestRef.current
+            if (current?.surface !== 'differences')
+              return 'The difference ledger is not open.'
+            if (liveSelection) {
+              setPanelState({ surface: 'details' })
+              return "Ledger closed — back on the selected cell's details."
+            }
+            setPanelState(null)
+            return 'Ledger closed.'
+          },
+        }),
+      )
+    }
+    return () => unregister.forEach((fn) => fn())
+  }, [enabled, compareActive])
 
   const cellEmphasis = useMemo(() => {
     const selectedCellIds = new Set<string>()
@@ -194,14 +316,15 @@ export function BlueprintCellDetailProvider({
       selection,
       selectCell,
       clearSelection,
+      draftCell,
+      openDraftCell,
       panelState,
       openDifferences,
       setPanelSurface,
-      closePanel,
+      closePanel: clearSelection,
       isOpen: enabled && panelState !== null,
       selectedCellIds: cellEmphasis.selectedCellIds,
       directlyConnectedCellIds: cellEmphasis.directlyConnectedCellIds,
-      previewHover,
       setPreviewHover,
     }),
     [
@@ -210,20 +333,28 @@ export function BlueprintCellDetailProvider({
       selection,
       selectCell,
       clearSelection,
+      draftCell,
+      openDraftCell,
       panelState,
       openDifferences,
       setPanelSurface,
-      closePanel,
       cellEmphasis,
-      previewHover,
     ],
   )
 
   return (
     <BlueprintCellDetailContext.Provider value={value}>
-      {children}
+      <BlueprintCellHoverContext.Provider value={previewHover}>
+        {children}
+      </BlueprintCellHoverContext.Provider>
     </BlueprintCellDetailContext.Provider>
   )
+}
+
+/** Hover preview only — subscribe here instead of the main context so hover
+ * changes don't re-render selection consumers. */
+export function useBlueprintCellPreviewHover() {
+  return useContext(BlueprintCellHoverContext)
 }
 
 export function useBlueprintCellDetail() {

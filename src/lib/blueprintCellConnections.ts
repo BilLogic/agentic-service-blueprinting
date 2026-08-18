@@ -14,6 +14,12 @@ export type BlueprintCellConnection = {
   stepName: string
   stepIndex: number
   kind: BlueprintCellConnectionKind
+  /** Link semantics from the trigger row: temporal trigger vs functional need. */
+  linkKind: 'trigger' | 'needs'
+  /** Short edge label chip (e.g. a channel tag like "Email"). */
+  linkLabel: string | null
+  /** Why-line shown under the dependency row. */
+  linkNote: string | null
   isTech: boolean
   techItems: string[]
   contentPreview: string
@@ -73,6 +79,9 @@ function toConnection(
     stepName: resolveStepName(blueprint, cell.step_id),
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
+    linkKind: trigger.kind === 'needs' ? 'needs' : 'trigger',
+    linkLabel: trigger.label ?? null,
+    linkNote: trigger.note ?? null,
     isTech,
     techItems,
     contentPreview: contentPreview(cell.content),
@@ -304,7 +313,16 @@ export function buildBlueprintCellSelectionForId(
 
 export function scrollBlueprintCellIntoView(cellId: string): void {
   const element = document.querySelector<HTMLElement>(
-    `[data-blueprint-cell="${cellId}"]`,
+    `[data-blueprint-cell="${CSS.escape(cellId)}"]`,
   )
-  element?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  if (!element) return
+  // Inside the zoom/pan camera, "scroll" is a lie (todo 027 §5): the
+  // viewport is overflow-hidden and moves by transform, but a programmatic
+  // scrollIntoView still sets scrollTop on the hidden-overflow box — which
+  // every camera calculation assumes is zero, so the board afterwards zooms
+  // toward a point offset from the fingers. Cells on a canvas are brought
+  // into view by the camera (the focus-cells pipeline); this helper only
+  // scrolls surfaces that genuinely scroll.
+  if (element.closest('[data-zoom-pan-viewport]')) return
+  element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
 }

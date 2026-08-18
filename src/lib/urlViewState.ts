@@ -3,21 +3,27 @@
  *
  * Params: `slice` (slice id), `mode` (`present` only; absence of `mode` with a
  * `slice` param means slice focus view), `frame` (presentation frame index),
- * `cell` (cell id — reserved for the base blueprint's share link). Unknown
- * params are ignored on parse and dropped on serialize.
+ * `cell` (cell id — opens the base blueprint with that cell's panel showing).
+ * Unknown params are ignored on parse and dropped on serialize.
  *
- * `cell` belongs to the BASE view — a slice tab is a different reading of the
- * blueprint, so `slice` wins and `cell` is dropped when both appear rather
- * than opening a panel behind a tab.
+ * `cell` is the share link an outside tool hands back: the agent's
+ * blueprint_search cites a cell and attaches `…/?cell=<id>` so a reader can
+ * open the exact cell it quoted. It belongs to the BASE view — a
+ * slice tab is a different reading of the blueprint, so `slice` wins and `cell`
+ * is dropped when both appear rather than opening a panel behind a tab.
  */
 
-/** The view query-param vocabulary. External consumers (bots, docs) build
- * links against these names — change them only with a migration story. */
+/*
+ * The deep-link vocabulary, declared once. Anything that builds a link into
+ * this app — the agent's citations, a share button, an external integration —
+ * spells the params the same way, so keeping them in one object is what makes
+ * "the link format" a thing that can be read rather than grepped for.
+ */
 const PARAMS = {
+  cell: 'cell',
   slice: 'slice',
   mode: 'mode',
   frame: 'frame',
-  cell: 'cell',
 } as const
 
 export type UrlViewState =
