@@ -11,14 +11,21 @@ import {
   type ReactNode,
 } from 'react'
 import { getOverviewPathKey } from '@/lib/overviewPathFilters'
-import { pickPreferredPath, type PathListItem } from '@/lib/pathSelection'
-
-type PathCatalog = Record<string, PathListItem[]>
+import type { PathListItem } from '@/lib/pathSelection'
+import {
+  defaultPathKeysFromCatalog,
+  deriveSelections,
+  type ActivePathKeys,
+  type PathCatalog,
+} from '@/lib/pathCatalogSelection'
 
 type PathSelectionState = {
   catalog: PathCatalog
-  /** `null` = uninitialized; first sync applies the happy-path default. */
-  activePathKeys: string[] | null
+  /**
+   * `null` = untouched, so every scenario shows its own default path.
+   * An array = an explicit global selection (`[]` included).
+   */
+  activePathKeys: ActivePathKeys
   selections: Record<string, string[]>
 }
 
@@ -26,10 +33,10 @@ type PathSelectionContextValue = {
   /** Registered paths per scenario id (read-only; merged, pruned by scope). */
   catalog: PathCatalog
   /** Selected path identities (`path_type:name`) — shared across overview/phase/scenario. */
-  activePathKeys: string[]
+  activePathKeys: readonly string[]
   /**
-   * The happy-path default derived from the catalog — the same derivation
-   * the first sync applies. Empty until some scenario's paths have loaded.
+   * The default path identities: each scenario's own happy path, deduped.
+   * Empty until some scenario's paths have loaded.
    */
   defaultPathKeys: string[]
   /** Restore that default: the way back from "no paths selected". */
@@ -60,37 +67,10 @@ function pathIdsKey(paths: PathListItem[]): string {
   return paths.map((path) => path.id).join('|')
 }
 
-function defaultPathKeysFromCatalog(catalog: PathCatalog): string[] {
-  for (const paths of Object.values(catalog)) {
-    const preferred = pickPreferredPath(paths)
-    if (preferred) return [getOverviewPathKey(preferred)]
-  }
-  return []
-}
-
-function selectedIdsForPaths(
-  paths: PathListItem[],
-  activePathKeys: readonly string[],
+function toggleKeyInList(
+  keys: readonly string[],
+  pathKey: string,
 ): string[] {
-  if (activePathKeys.length === 0) return []
-  const keySet = new Set(activePathKeys)
-  return paths
-    .filter((path) => keySet.has(getOverviewPathKey(path)))
-    .map((path) => path.id)
-}
-
-function deriveSelections(
-  catalog: PathCatalog,
-  activePathKeys: readonly string[],
-): Record<string, string[]> {
-  const next: Record<string, string[]> = {}
-  for (const [scenarioId, paths] of Object.entries(catalog)) {
-    next[scenarioId] = selectedIdsForPaths(paths, activePathKeys)
-  }
-  return next
-}
-
-function toggleKeyInList(keys: string[], pathKey: string): string[] {
   if (keys.includes(pathKey)) {
     return keys.filter((key) => key !== pathKey)
   }
@@ -186,22 +166,24 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
           pathsByScenario,
           scope,
         )
-        // Stay uninitialized until the catalog has paths — an empty first sync
-        // must not lock in "nothing selected" and skip the happy-path default.
-        let activePathKeys = prev.activePathKeys
-        if (activePathKeys === null) {
-          const defaults = defaultPathKeysFromCatalog(catalog)
-          if (defaults.length > 0) activePathKeys = defaults
-        }
-        const keysChanged = activePathKeys !== prev.activePathKeys
-        const selections = deriveSelections(
-          catalog,
-          activePathKeys ?? [],
-        )
+        /*
+          The filter state is NOT frozen on the first sync any more.
 
-        if (!catalogChanged && !keysChanged) {
-          // Still refresh selections when path lists are unchanged but keys
-          // already set — covers re-entry into a scenario with the same catalog.
+          It used to be: the first sync that saw any paths derived one global
+          key from the first scenario and stored it. Scenarios that loaded
+          later — every other phase on the service overview — were then
+          filtered against a key drawn from a scenario they have nothing to do
+          with, so they matched nothing and rendered "No selected paths in this
+          phase". Leaving `null` in place means "still following defaults", and
+          `deriveSelections` gives each scenario its own, however the catalog
+          grows.
+        */
+        const activePathKeys = prev.activePathKeys
+        const selections = deriveSelections(catalog, activePathKeys)
+
+        if (!catalogChanged) {
+          // Still recompute selections when the path lists are unchanged —
+          // covers re-entry into a scenario with the same catalog.
           const selectionUnchanged =
             Object.keys(selections).length ===
               Object.keys(prev.selections).length &&
@@ -237,12 +219,14 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
 
   const restoreDefaultPathKeys = useCallback(() => {
     setState((prev) => {
-      const activePathKeys = defaultPathKeysFromCatalog(prev.catalog)
-      if (activePathKeys.length === 0) return prev
+      // Back to default mode rather than to a snapshot of it, so scenarios
+      // that load after the reset get their own defaults too.
+      if (prev.activePathKeys === null) return prev
+      if (defaultPathKeysFromCatalog(prev.catalog).length === 0) return prev
       return {
         ...prev,
-        activePathKeys,
-        selections: deriveSelections(prev.catalog, activePathKeys),
+        activePathKeys: null,
+        selections: deriveSelections(prev.catalog, null),
       }
     })
   }, [])
