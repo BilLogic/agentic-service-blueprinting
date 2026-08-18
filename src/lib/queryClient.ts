@@ -55,7 +55,13 @@ export function invalidateQueries(prefix: string): void {
  * here, or structural writes will leave it stale until a reload
  * (`staleTime: Infinity` never expires on its own).
  */
-const STRUCTURE_KEYS = ['lifecycle-phases', 'canvas-blueprints'] as const
+const STRUCTURE_KEYS = [
+  'lifecycle-phases',
+  'canvas-blueprints',
+  'slices',
+  // A slice's own detail is keyed separately, and a cascade can empty it.
+  'slice:',
+] as const
 
 export function invalidateStructure(): void {
   for (const prefix of STRUCTURE_KEYS) invalidateQueries(prefix)
