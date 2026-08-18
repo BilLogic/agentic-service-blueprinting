@@ -1,24 +1,32 @@
-/* ---------------------------------------------------------------------------
- * Print / PDF export (Cmd+P → Save as PDF).
- * Goal: while viewing a blueprint, printing yields the per-path blueprint grid
- * at natural scale on a white page — no app chrome, no zoom/pan transform.
- * ------------------------------------------------------------------------- */
 @page {
   size: A4 landscape;
   margin: 12mm;
 }
 
 @media print {
-  /* Force light theme tokens so dark mode still prints dark-on-white. */
+  /*
+   * Force light theme so dark mode still prints dark-on-white.
+   *
+   * Dials only — every semantic colour re-derives from these, including the
+   * status roles (`--warning` and friends read `--*-lightness`), so this block
+   * does not need to restate them. It must restate the full dial set the light
+   * theme declares, because `.dark` here overrides at the same scope.
+   */
   :root,
   .dark {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --border: oklch(0.922 0 0);
+    --hue: 177.6;
+    --surface-hue: 34;
+    --chroma: 0;
+    --surface: 0.968;
+    --foreground-lightness: 0.1;
+    --elevation-step: 0.009;
+    --contrast: 0.53;
+    --muted-foreground-level: 0.65;
+    --tertiary-foreground-level: 0.5;
+    --warning-lightness: 0.68;
+    --destructive-lightness: 0.52;
+    --info-lightness: 0.54;
+    --success-lightness: 0.55;
   }
 
   /* Preserve lane fills, badges, and divider colors in the PDF. */
@@ -43,18 +51,14 @@
    */
   [data-editor-shell] > aside,
   [data-editor-chrome],
+  [data-editor-navbar],
   [data-zoom-indicator],
+  [data-annotation-toolbar],
   [data-canvas-nav],
   [data-slide-canvas] > [data-slide-sticky-header],
   [data-cell-detail-panel],
   [data-visual-walkthrough-modal],
   [data-print-hide] {
-    display: none !important;
-  }
-
-  /* The inactive stacked view (home vs. detail) is opacity-0/aria-hidden on
-   * screen; remove it entirely so only the visible view prints. */
-  [data-editor-view][aria-hidden='true'] {
     display: none !important;
   }
 

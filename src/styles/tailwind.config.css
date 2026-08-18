@@ -1,27 +1,27 @@
 /*
- * Stylesheet entry — the only CSS file imported from TypeScript
- * (src/main.tsx). Everything else in src/styles/ is reached from here.
+ * Stylesheet entry. Mirrors packages/config/tailwind.config.css.
  *
  * This file contains imports and nothing else — every at-rule lives in an
  * imported file. `@import` must precede all other at-rules, so keeping the
- * entry pure removes a whole class of ordering mistake. Layout mirrors
- * uno-blueprint's src/styles/tailwind.config.css.
+ * entry pure removes a whole class of ordering mistake.
  */
 @import 'tailwindcss';
-/* JS plugins. Tailwind v4 supports `@plugin` for v3-style JS plugins.
- * (No @tailwindcss/forms here, deliberately: it restyles native inputs and
- * the template's controls are already styled by the shadcn components.) */
+/* JS plugins. Tailwind v4 supports `@plugin` for both v3-style JS plugins and
+ * v4-native packages. */
 @plugin '@tailwindcss/typography';
+@plugin '@tailwindcss/forms';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 /* The face the sans stack in theme.css names first — variable, so it is one
- * file across its whole weight axis. */
+ * file across its whole weight axis. (BRAND SEAM: swap this import and the
+ * --font-sans default in theme.css together.) */
 @import '@fontsource-variable/geist';
 
 /*
  * Define the semantic system first, then override its core inputs per theme.
- * This order is significant because `:root` and a single class selector have
- * equal specificity, so source order breaks the tie.
+ * This order is significant because :root and a single class selector have
+ * equal specificity, so source order breaks the tie. (Comment adapted from
+ * Supabase's own entry, where the same constraint applies.)
  */
 @import './global.css';
 @import './semantic.css';
@@ -45,6 +45,8 @@
 /*
  * Typography prose overrides live in a focused JS config because
  * @tailwindcss/typography reads its theme.typography options from the JS
- * config — not from CSS @theme tokens.
+ * config — not from CSS @theme tokens. Mirrors Supabase's
+ * packages/config/typography.config.js. See:
+ * https://github.com/tailwindlabs/tailwindcss-typography#customizing-the-css
  */
 @config './typography.config.js';

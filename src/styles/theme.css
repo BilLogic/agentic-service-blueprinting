@@ -313,30 +313,45 @@
   /*
    * Font stacks, in Supabase's shape: an injection seam variable first, the
    * full fallback chain after it, generic always last. An embedding app
-   * declares `--app-font-sans` at `:root` to swap the face; unset, the
-   * default applies. The default here is Geist — the template's brand face,
-   * loaded from `@fontsource-variable/geist` in the entry (variable, so the
-   * whole weight axis comes in one file).
+   * declares `--app-font-sans` (or `--font-source-code-pro`) at `:root` to
+   * swap the face; unset, the defaults apply.
    *
-   * The fallback chain sits OUTSIDE the var() slot on purpose: inside it,
-   * the entire list lives in the var's fallback position, so the moment the
-   * seam variable is defined every fallback (including the generic!) is
+   * The default is the one thing that differs from theirs, and it has to:
+   * their default is Circular, which is a licensed face we cannot ship. The
+   * template's face is Geist (BRAND SEAM), loaded from
+   * `@fontsource-variable/geist` in the entry — variable, so the whole weight
+   * axis comes in one file. Swap the import and this default together.
+   *
+   * No heading font, no type-scale overrides, no weight overrides: Supabase
+   * defines none, and headings are this stack at a heavier weight.
+   */
+  /*
+   * The fallback chain sits OUTSIDE the var() slot on purpose. Inside it,
+   * the entire list lives in the var's fallback position — so the moment the
+   * seam variable is defined, every fallback (including the generic!) is
    * discarded, and a face that fails to load renders as the browser default
    * serif. Outside, var() substitutes into a comma list and the system
-   * faces + generic always survive.
-   *
-   * The seam is `--app-font-sans`, NOT `--font-sans` itself: a
-   * self-referential `--font-sans: var(--font-sans, …)` is a custom-property
-   * cycle — invalid at computed-value time.
-   *
-   * No mono seam: the template loads no mono face, so `--font-mono` stays
-   * Tailwind's system-mono default. Headings are the sans stack — kept as a
-   * named alias because the shadcn components consume `font-heading`.
+   * faces + generic always survive. (Found live: `font-mono` computed to
+   * just "Source Code Pro Variable","Source Code Pro" — Times on any load
+   * failure.)
+   */
+  /*
+   * The seam is `--app-font-sans`, NOT `--font-sans` itself: this file's
+   * `@theme inline` block DOES emit these as custom properties on :root, so
+   * a self-referential `--font-sans: var(--font-sans, …)` is a custom-property
+   * cycle — invalid at computed-value time, and it silently discards an
+   * embedder's own `--font-sans` whenever this sheet sorts later in the
+   * cascade. A distinctly named seam (mirroring `--font-source-code-pro` on
+   * the mono side) cannot cycle.
    */
   --font-sans:
     var(--app-font-sans, 'Geist Variable'), Geist, 'Helvetica Neue', Helvetica,
     Arial, sans-serif;
-  --font-heading: var(--font-sans);
+  /*
+   * No mono seam filled: the template loads no mono face, so `--font-mono`
+   * stays Tailwind's system-mono default. A branded fork adds its face to
+   * the entry and declares the stack here, in the same shape as --font-sans.
+   */
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);

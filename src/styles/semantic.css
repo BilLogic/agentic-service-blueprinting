@@ -104,14 +104,10 @@
     from var(--background) calc(l + var(--elevation-step) * var(--elevation-3))
       c h
   );
-  /*
-   * Deliberate divergence from uno, where `--secondary` is the elevation-3
-   * surface: in this template's light theme that clips to pure white against
-   * a white card, and secondary chips/badges vanish. The template has always
-   * rendered secondary at exactly the muted fill, so it aliases the muted
-   * overlay and keeps that identity in both themes.
-   */
-  --secondary: var(--muted);
+  --secondary: oklch(
+    from var(--background) calc(l + var(--elevation-step) * var(--elevation-3))
+      c h
+  );
 
   /* --- Text ------------------------------------------------------------ */
   --foreground: oklch(
@@ -155,27 +151,46 @@
 
   /* --- Brand / primary -------------------------------------------------- */
   /*
-   * The filled control, driven by dials rather than a literal: the template
-   * ships a neutral brand (`--primary-chroma: 0`), so `--primary` is
-   * near-black ink in light and near-white in dark (`--primary-lightness`
-   * flips per theme). A branded fork raises the chroma dial and the whole
-   * family — border, on-colour, ring, sidebar selection — follows.
+   * The filled control, driven by the dials in themes/ rather than a literal
+   * (BRAND SEAM). The template ships neutral — `--primary-chroma: 0` — so
+   * `--primary` is near-black ink in light and near-white in dark, since
+   * `--primary-lightness` flips per theme. A branded fork raises the chroma
+   * dial and the whole family (border, on-colour, ring, sidebar selection)
+   * follows without another edit.
    *
-   * This deliberately diverges from uno, whose `--primary` is a
-   * mode-invariant brand fill with dark ink on it in both themes; a neutral
-   * primary has to invert with the theme or it disappears into the canvas.
-   */
+   * A neutral primary HAS to invert with the theme: a mode-invariant fill
+   * only works when it carries chroma to separate it from the canvas. Keep
+   * that in mind when rebranding — a light brand fill wants the light-theme
+   * lightness in BOTH theme files, and the `--primary-foreground` flip below
+   * will follow it.
+   *
+   * `--primary` stays a computed triple rather than aliasing `--brand-400`:
+   * the ramp inverts between themes while the on-colour must stay legible
+   * against whatever the fill resolves to, and the flip below is what buys
+   * that. `--hue` is pinned to the ramp's own hue in themes/light.css, so
+   * the fill can never drift off the brand the rest of the app wears.
+   *
+   * Derived tokens, all measured after CSS Color 4 gamut mapping:
+   *   --primary-border  a flat one-shade-darker hairline; the edge is carried
+   *     by the −0.12 lightness step, and at chroma 0 the ×1.25 buys nothing.
+   *   --ring  reads `--ring-lightness` so the focus affordance clears SC
+   *     1.4.11's 3:1 in both themes instead of inheriting a fill lightness
+   *     that only works in one.
+   * The multipliers stay ratios rather than literals: a hardcoded ceiling
+   * would be wrong the moment `--hue` or `--primary-chroma` moves, and the
+   * browser's own chroma reduction is already the behaviour we want. */
   --primary: oklch(
     var(--primary-lightness) var(--primary-chroma) var(--primary-hue)
   );
-  /* Flat fill, one shade-darker hairline. Derived, so it tracks the dials. */
+  /* The Supabase button treatment: flat fill, one shade-darker hairline.
+   * Derived, so it tracks any future retune of --primary. */
   --primary-border: oklch(from var(--primary) calc(l - 0.12) calc(c * 1.25) h);
   /*
    * Ink on the fill, via the same hard flip the status on-colours use:
-   * (0.62 − l) is hugely positive for a dark fill (→ ceiling 0.985, the
-   * template's near-white) and hugely negative for a light one (→ floor
-   * 0.205, the template's dark ink). A trace of hue chroma keeps a branded
-   * fill's ink off flat grey; at chroma 0 it is exact grey.
+   * (0.62 − l) is hugely positive for a dark fill (→ clamps to the 0.985
+   * ceiling, near-white) and hugely negative for a light one (→ the 0.205
+   * floor, dark ink). A trace of the fill's chroma keeps a branded fill's
+   * ink off flat grey; at chroma 0 it is exact grey.
    */
   --primary-foreground: oklch(
     from var(--primary) clamp(0.205, calc((0.62 - l) * 100), 0.985)
@@ -217,7 +232,8 @@
    * — the line that *carries* the focus affordance — and as `focus-visible:ring-3
    * ring-ring/50`, a decorative glow. Inheriting `--primary`'s L 0.874 at 55%
    * would put the affordance around 1.2:1 on the light canvas, failing WCAG 2.2
-   * SC 1.4.11 (non-text contrast, 3:1). Dropping to the per-theme `--ring-lightness` clears it while
+   * SC 1.4.11 (non-text contrast, 3:1). Dropping to the per-theme
+   * `--ring-lightness` clears it while
    * staying unmistakably the brand hue; the `/50` at the utility site still
    * produces the softer glow, so one token serves both.
    *
@@ -300,23 +316,18 @@
    * colour has its own identity. Each is anchored to a per-theme target
    * lightness near its hue's chroma peak plus one shared `--expressive-chroma`,
    * a flat constant so status stays legible even when the brand is dialled
-   * toward greyscale. A role may override it with `--<role>-chroma` — the
-   * template's destructive keeps its saturated shadcn red that way.
+   * toward greyscale.
    */
   --expressive-chroma: 0.14;
   --warning: oklch(
-    var(--warning-lightness)
-      var(--warning-chroma, var(--expressive-chroma)) var(--warning-hue)
+    var(--warning-lightness) var(--expressive-chroma) var(--warning-hue)
   );
   --destructive: oklch(
-    var(--destructive-lightness)
-      var(--destructive-chroma, var(--expressive-chroma)) var(--destructive-hue)
+    var(--destructive-lightness) var(--expressive-chroma) var(--destructive-hue)
   );
-  --info: oklch(var(--info-lightness)
-      var(--info-chroma, var(--expressive-chroma)) var(--info-hue));
+  --info: oklch(var(--info-lightness) var(--expressive-chroma) var(--info-hue));
   --success: oklch(
-    var(--success-lightness)
-      var(--success-chroma, var(--expressive-chroma)) var(--success-hue)
+    var(--success-lightness) var(--expressive-chroma) var(--success-hue)
   );
   /*
    * Text that sits on the solid fill: dark ink on light fills, near-white on

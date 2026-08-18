@@ -1,0 +1,12 @@
+# Netlify response headers.
+#
+# The CSP's connect-src / img-src must name YOUR Supabase project origin —
+# `https://<project-ref>.supabase.co` — because a CSP is static text and
+# cannot read VITE_SUPABASE_URL at build time. Replace the placeholder below
+# when you deploy; leaving it means every database call is blocked by the
+# browser, which fails loudly rather than silently.
+#
+# The three model-provider origins are the agent's direct browser calls; drop
+# any provider you do not enable.
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data: https://YOUR_PROJECT_REF.supabase.co; connect-src 'self' https://YOUR_PROJECT_REF.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'
