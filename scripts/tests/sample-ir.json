@@ -93,7 +93,7 @@
                         "url": "https://example.com/sop/intake"
                       }
                     ],
-                    "provenance": { "source": "docs/session-guide.md", "section": "Repair intake" },
+                    "provenance": { "source": "docs/intake-guide.md", "section": "Repair intake" },
                     "function": "Capture the fault with enough detail to triage without a call-back",
                     "form": "Mobile web form with photo upload; confirmation SMS",
                     "owner": "city-311",

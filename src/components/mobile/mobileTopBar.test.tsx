@@ -13,7 +13,7 @@ function renderBar(over: Partial<Parameters<typeof MobileTopBar>[0]> = {}) {
   const onToggleNav = vi.fn()
   render(
     <MobileTopBar
-      title="Warm-Up"
+      title="Sample Service"
       navOpen={false}
       onToggleNav={onToggleNav}
       {...over}
@@ -43,6 +43,6 @@ describe('MobileTopBar', () => {
   it('renders the contextual right slot the shell provides', () => {
     renderBar({ rightSlot: <span>Happy Path</span> })
     expect(screen.getByText('Happy Path')).toBeDefined()
-    expect(screen.getByText('Warm-Up')).toBeDefined()
+    expect(screen.getByText('Sample Service')).toBeDefined()
   })
 })
