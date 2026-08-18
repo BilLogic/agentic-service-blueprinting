@@ -15,6 +15,14 @@ type SupabaseContextValue = {
   configured: boolean
   session: Session | null
   isLoading: boolean
+  /**
+   * A signed-in session may hold the write tools. UX gate only — with the
+   * service-tier recipe applied, the RPCs and RESTRICTIVE policies still
+   * refuse a non-service session server-side.
+   */
+  canWrite: boolean
+  /** Agent persistence (sessions/transcripts in the DB) is possible. */
+  canAgent: boolean
 }
 
 const SupabaseContext = createContext<SupabaseContextValue | null>(null)
@@ -62,6 +70,8 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       configured,
       session,
       isLoading,
+      canWrite: configured && session !== null,
+      canAgent: configured && session !== null,
     }),
     [client, configured, session, isLoading],
   )

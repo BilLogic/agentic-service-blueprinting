@@ -22,6 +22,62 @@ export type PathType = 'happy' | 'unhappy' | 'exception' | 'alternative'
 export type Database = {
   public: {
     Tables: {
+      agent_sessions: {
+        Row: {
+          id: string
+          title: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          title?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agent_messages: {
+        Row: {
+          id: string
+          session_id: string
+          seq: number
+          kind: string
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          seq: number
+          kind: string
+          payload: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          seq?: number
+          kind?: string
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'agent_messages_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'agent_sessions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       cell_triggers: {
         Row: {
           id: string
@@ -71,6 +127,13 @@ export type Database = {
           picture: string | null
           description: string | null
           links: Json
+          owner: string | null
+          perceived_owner: string | null
+          function: string | null
+          form: string | null
+          value_props: Json
+          cell_key: string | null
+          slot_position: number
           created_at: string
           updated_at: string
         }
@@ -83,6 +146,13 @@ export type Database = {
           picture?: string | null
           description?: string | null
           links?: Json
+          owner?: string | null
+          perceived_owner?: string | null
+          function?: string | null
+          form?: string | null
+          value_props?: Json
+          cell_key?: string | null
+          slot_position?: number
           created_at?: string
           updated_at?: string
         }
@@ -95,6 +165,13 @@ export type Database = {
           picture?: string | null
           description?: string | null
           links?: Json
+          owner?: string | null
+          perceived_owner?: string | null
+          function?: string | null
+          form?: string | null
+          value_props?: Json
+          cell_key?: string | null
+          slot_position?: number
           created_at?: string
           updated_at?: string
         }
