@@ -95,10 +95,22 @@ returns text
 language sql immutable
 set search_path = pg_catalog, pg_temp
 as $$
-  select nullif(
-    trim(both '-' from regexp_replace(lower(coalesce(value, '')), '[^a-z0-9]+', '-', 'g')),
-    ''
-  );
+  -- Non-ASCII names (CJK lanes, Cyrillic steps) slug to nothing under the
+  -- [a-z0-9] filter; returning null there made concat_ws silently DROP the
+  -- segment, so two differently-named lanes could mint the same cell key.
+  -- Deterministic fallback: an md5 fragment of the raw name keeps the
+  -- segment present, stable, and distinct per name. Truly empty input
+  -- still yields null.
+  select case
+    when coalesce(value, '') = '' then null
+    else coalesce(
+      nullif(
+        trim(both '-' from regexp_replace(lower(value), '[^a-z0-9]+', '-', 'g')),
+        ''
+      ),
+      'x' || substr(md5(value), 1, 8)
+    )
+  end;
 $$;
 
 /**

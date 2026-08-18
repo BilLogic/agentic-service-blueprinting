@@ -31,6 +31,7 @@
  * Usage: node scripts/generate_scale_fixture.mjs
  */
 
+import { createHash } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -503,6 +504,38 @@ const q = (value) => {
   return `'${String(value).replace(/'/g, "''")}'`
 }
 
+/**
+ * Segment slug, mirroring the SQL `key_slug` exactly: ascii slug when the
+ * name has ascii, else a deterministic md5 fragment so non-ASCII (CJK)
+ * segments are never silently dropped from a key.
+ */
+const keySlug = (value) => {
+  const raw = String(value ?? '')
+  if (raw === '') return null
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug !== '' ? slug : `x${createHash('md5').update(raw).digest('hex').slice(0, 8)}`
+}
+
+/**
+ * Seeded cells carry the IMPORT key convention (6 segments —
+ * lifecycle/phase/scenario/path/layer/step), matching
+ * scripts/generate_seed_sql.py and slice_tools.cell_key(). App-minted keys
+ * (`mint_cell_key`) use their own 5-segment form; the two never collide
+ * because seeds and app-created cells are distinct rows.
+ */
+const cellKeyFor = (pathName, layerName, stepName) =>
+  [
+    keySlug('Sample Lifecycle'),
+    keySlug('Discover'),
+    keySlug('Sample Service'),
+    keySlug(pathName),
+    keySlug(layerName),
+    keySlug(stepName),
+  ].join('/')
+
 function sqlRows(rows) {
   return rows.map((row) => `  (${row.join(', ')})`).join(',\n')
 }
@@ -579,10 +612,12 @@ ${sqlRows(
 )};
 `)
 
-seedParts.push(`insert into public.cells (id, path_id, layer_id, step_id, content, picture, description, links) values
+seedParts.push(`insert into public.cells (id, path_id, layer_id, step_id, content, picture, description, links, cell_key) values
 ${sqlRows(
-  blueprints.flatMap(({ blueprint }) =>
-    blueprint.cells.map((cell) => [
+  blueprints.flatMap(({ blueprint }) => {
+    const layerName = new Map(blueprint.layers.map((l) => [l.id, l.name]))
+    const stepName = new Map(blueprint.steps.map((s) => [s.id, s.name]))
+    return blueprint.cells.map((cell) => [
       q(cell.id),
       q(blueprint.path.id),
       q(cell.layer_id),
@@ -591,8 +626,9 @@ ${sqlRows(
       q(cell.picture),
       q(cell.description),
       `${q(JSON.stringify(cell.links))}::jsonb`,
-    ]),
-  ),
+      q(cellKeyFor(blueprint.path.name, layerName.get(cell.layer_id), stepName.get(cell.step_id))),
+    ])
+  }),
 )};
 `)
 
