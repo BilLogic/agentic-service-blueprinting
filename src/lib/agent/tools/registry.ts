@@ -58,6 +58,16 @@ import {
   listSlices,
   readReference,
 } from '@/lib/agent/tools/read'
+import {
+  sampleGetBlueprint,
+  sampleGetCell,
+  sampleGetCompareDiff,
+  sampleGetSlice,
+  sampleListOwnerTags,
+  sampleListScenarios,
+  sampleListSlices,
+} from '@/lib/agent/tools/sampleRead'
+import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
 
 type Client = SupabaseClient<Database>
 
@@ -96,11 +106,15 @@ function need(args: Record<string, unknown>, key: string): string {
  * cache is invalidated so the canvas repaints live.
  */
 export async function dispatchTool(
-  client: Client,
+  client: Client | null,
   agentSessionId: string,
   name: string,
   args: Record<string, unknown>,
 ): Promise<string> {
+  // No-database trial: the read tools answer from the bundled sample, and
+  // the roster the panel registered contains nothing else. A call from
+  // outside it can only be a model inventing a name — say so plainly.
+  if (client === null) return dispatchSampleTool(name, args)
   switch (name) {
     case 'read_reference':
       return readReference(need(args, 'name'))
@@ -558,5 +572,58 @@ export async function dispatchTool(
     // The canvas reads through the shared query cache; empty prefix
     // matches every key, so the grids refetch and repaint after a write.
     invalidateQueries('')
+  }
+}
+
+/**
+ * Trial dispatch — sample data in, compact text out, no client anywhere.
+ *
+ * Shares the UI/navigation cases with the database path (they drive the
+ * canvas, which is rendering the same sample content) and routes every
+ * data read to `sampleRead.ts`. Writes are unreachable by construction:
+ * `SAMPLE_TRIAL_TOOL_NAMES` is what the loop registers, and anything else
+ * lands on the closing refusal rather than on a mutation.
+ */
+async function dispatchSampleTool(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  switch (name) {
+    case 'read_reference':
+      return readReference(need(args, 'name'))
+    case 'list_scenarios':
+      return sampleListScenarios()
+    case 'get_blueprint':
+      return sampleGetBlueprint(need(args, 'scenario_id'))
+    case 'get_compare_diff': {
+      const pathIds = Array.isArray(args.path_ids)
+        ? args.path_ids.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : undefined
+      return sampleGetCompareDiff(need(args, 'scenario_id'), pathIds)
+    }
+    case 'get_cell':
+      return sampleGetCell(need(args, 'cell_id'))
+    case 'list_slices':
+      return sampleListSlices()
+    case 'get_slice':
+      return sampleGetSlice(need(args, 'slice_id'))
+    case 'list_owner_tags':
+      return sampleListOwnerTags()
+    case 'get_ui_state': {
+      const context = collectAgentUiContext()
+      return context || 'No UI state is being reported right now.'
+    }
+    case 'open_phase':
+      return agentOpenPhase(need(args, 'phase_id'))
+    case 'open_scenario':
+      return agentOpenScenario(need(args, 'scenario_id'))
+    case 'focus_cell':
+      return agentFocusCell(need(args, 'cell_id'))
+    case 'open_cell_panel':
+      return agentOpenCellPanel(need(args, 'cell_id'))
+    default:
+      return `This session is running on the bundled SAMPLE blueprint with no database connected, so "${name}" does not exist here. Available: ${[...SAMPLE_TRIAL_TOOL_NAMES].join(', ')}. Connect a database to author.`
   }
 }

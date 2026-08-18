@@ -177,6 +177,8 @@ import {
   useAgentSettings,
   useAgentSettingsOpen,
 } from '@/lib/agent/settings'
+import { AgentTrialBanner } from '@/components/editor/AgentTrialBanner'
+import { DevPortalSection } from '@/components/editor/DevPortal'
 import { cn } from '@/lib/utils'
 
 /**
@@ -347,8 +349,10 @@ function AgentSessionsView({
 }) {
   // canAgent gates the pending flag: without persistence there is nothing
   // on the wire, so "not yet hydrated" must not read as loading forever.
-  const { canAgent } = useSupabase()
-  const hydrating = useAgentSessionsHydrating() && canAgent
+  // The no-database trial passes canAgent with NO client — persistence can
+  // never attach there, so it must not wait for it either.
+  const { canAgent, isSampleTrial } = useSupabase()
+  const hydrating = useAgentSessionsHydrating() && canAgent && !isSampleTrial
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [todayOpen, setTodayOpen] = useState(true)
@@ -765,7 +769,7 @@ function AgentChatView({
   onBack: () => void
 }) {
   const settings = useAgentSettings()
-  const { client, canWrite, canAgent } = useSupabase()
+  const { client, canAgentWrite, canAgent, isSampleTrial } = useSupabase()
   const mode = useCanvasModeValue()
   const { activePathKeys } = usePathSelectionContext()
   const changes = useSyncExternalStore(subscribeToSession, sessionSnapshot)
@@ -790,7 +794,8 @@ function AgentChatView({
   const { events, running } = useAgentRun(session.id)
   // Same canAgent gate as the sessions list: without persistence the
   // "not yet hydrated" half of the flag would be a forever-skeleton.
-  const transcriptHydrating = useAgentTranscriptHydrating(session.id) && canAgent
+  const transcriptHydrating =
+    useAgentTranscriptHydrating(session.id) && canAgent && !isSampleTrial
   const changeCount = useAgentChangeCount(session.id)
   const [renaming, setRenaming] = useState(false)
   // The slash menu is a portalled popover; this is what it anchors to (and
@@ -886,7 +891,8 @@ function AgentChatView({
     const attached = takePendingAgentAttachment()
     if (!text && skill) text = `Run ${skill.label} from the top of its flow.`
     if (!text && attached) text = 'Here are my canvas annotations.'
-    if (!text || running || !client) {
+    // The trial runs with NO client on purpose — sample reads, no writes.
+    if (!text || running || (!client && !isSampleTrial)) {
       // Nothing usable to send — put a taken attachment back on the shelf.
       if (attached) setPendingAgentAttachment(attached)
       return
@@ -900,7 +906,7 @@ function AgentChatView({
       text,
       skill,
       attachment: attached,
-      allowWrites: canWrite,
+      allowWrites: canAgentWrite,
     })
   }
 
@@ -942,6 +948,8 @@ function AgentChatView({
         ) : null}
       </div>
 
+      {isSampleTrial ? <AgentTrialBanner /> : null}
+
       {/* MessageScroller owns the hard parts: anchored turns, streamed
           replies, jump-to-latest. */}
       <MessageScrollerProvider>
@@ -963,15 +971,22 @@ function AgentChatView({
                     <Skeleton className="h-8 w-2/5 rounded-2xl" />
                   </div>
                 ) : keyed ? (
-                  <p className="text-sm text-muted-foreground">
-                    Ready ({modelFor(settings)}). Writes land live on the
-                    canvas as{' '}
-                    <Sparkles
-                      className="inline size-3 align-[-0.1em]"
-                      aria-hidden
-                    />{' '}
-                    rows in Changes — each revertible.
-                  </p>
+                  isSampleTrial ? (
+                    <p className="text-sm text-muted-foreground">
+                      Ready ({modelFor(settings)}). Ask about the sample
+                      blueprint — reading and navigation only.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Ready ({modelFor(settings)}). Writes land live on the
+                      canvas as{' '}
+                      <Sparkles
+                        className="inline size-3 align-[-0.1em]"
+                        aria-hidden
+                      />{' '}
+                      rows in Changes — each revertible.
+                    </p>
+                  )
                 ) : (
                   <div className="flex flex-col items-start gap-2">
                     <p className="text-sm text-muted-foreground">
@@ -1407,7 +1422,11 @@ function DeleteSessionDialog({
  */
 export function AgentSettingsRailButton() {
   const settings = useAgentSettings()
-  const { client, session, canAgent } = useSupabase()
+  const { client, configured, session, canAgent } = useSupabase()
+  // With no backend there is no session to gain, and the key field is the
+  // trial's only door — so the agent block shows for an unconfigured build
+  // too, or the trial could never be started from inside the app.
+  const showAgentSettings = canAgent || !configured
   const [keyDraft, setKeyDraft] = useState('')
   const [emailDraft, setEmailDraft] = useState('')
   const [passwordDraft, setPasswordDraft] = useState('')
@@ -1535,7 +1554,12 @@ export function AgentSettingsRailButton() {
             {/* Show/hide the chat is the rail's ✦ toggle — settings hold
                 settings, not surface toggles. */}
             <p className="text-xs font-medium text-foreground">Admin</p>
-            {session ? (
+            {!configured ? (
+              <p className="text-3xs leading-snug text-muted-foreground">
+                No database configured — there is no account to sign in to.
+                The canvas is showing the kit’s bundled sample blueprint.
+              </p>
+            ) : session ? (
               <div className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-2xs text-muted-foreground">
                   {session.user.email ?? 'Signed in'}
@@ -1610,7 +1634,7 @@ export function AgentSettingsRailButton() {
               </>
             )}
 
-            {canAgent ? (
+            {showAgentSettings ? (
               <>
             <div className="my-0.5 border-t border-border/60" />
             <p className="text-xs font-medium text-foreground">Agent</p>
@@ -1704,6 +1728,8 @@ export function AgentSettingsRailButton() {
             </div>
               </>
             ) : null}
+
+            <DevPortalSection />
           </div>
         </PopoverContent>
       </Popover>

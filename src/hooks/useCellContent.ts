@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { getFallbackCell } from '@/data/blueprintFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import type { CellLink } from '@/types/blueprint'
 
@@ -20,13 +21,25 @@ const CELL_CONTENT_SELECT = 'content, description, owner, perceived_owner, links
  * the canvas read would add two columns across every cell in the lifecycle to
  * serve a panel that shows one cell at a time.
  *
- * `null` means the cell exists only in local fallback content: there is
- * nothing stored to edit, and the editor stays hidden.
+ * With no database the sample content answers instead: the generated fallback
+ * carries the same cell spec the seed writes, so a keyless clone still shows
+ * the owner pair where the sample sets one. `null` means the cell is not in the
+ * fallback registry either — there is nothing stored to show or edit.
  */
 export function useCellContent(
   cellId: string | null,
 ): QueryResult<CellContent | null> {
-  const fallback = useCallback(() => null, [])
+  const fallback = useCallback((): CellContent | null => {
+    const cell = getFallbackCell(cellId)
+    if (!cell) return null
+    return {
+      content: cell.content,
+      description: cell.description,
+      owner: cell.owner ?? null,
+      perceived_owner: cell.perceived_owner ?? null,
+      links: cell.links,
+    }
+  }, [cellId])
 
   return useSupabaseQuery<CellContent | null>(
     `cell-content:${cellId ?? 'none'}`,

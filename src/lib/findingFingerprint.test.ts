@@ -17,7 +17,7 @@ describe('findingFingerprint', () => {
 
   it('uses the scope verbatim for zero-cell findings', async () => {
     expect(
-      await findingFingerprint('gap-sweep', [], 'scenario:Sample Service:x'),
-    ).toBe('gap-sweep:scenario:Sample Service:x')
+      await findingFingerprint('gap-sweep', [], 'scenario:Map your service:x'),
+    ).toBe('gap-sweep:scenario:Map your service:x')
   })
 })

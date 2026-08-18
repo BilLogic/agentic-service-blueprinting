@@ -98,20 +98,38 @@ describe('pickBlueprintForCells', () => {
 })
 
 describe('bundled demo slices', () => {
-  it('every demo slice resolves onto the sample scenario', () => {
+  it('every demo slice resolves onto a registered sample scenario', () => {
+    // The meta-blueprint ships three demo slices — a journey over the
+    // first-run scenario, a step down the mapping scenario's import column,
+    // and a lane across the first-run terminal row — and each must land on
+    // exactly one registered fallback scenario.
     for (const slice of FALLBACK_SLICES) {
       const items = FALLBACK_SLICE_ITEMS[slice.id] ?? []
       const cellIds = items.flatMap((entry) => entry.cell_ids)
       expect(cellIds.length).toBeGreaterThan(0)
-      expect(findFallbackScenarioForCells(cellIds)).toBe(SAMPLE_SCENARIO_ID)
+      expect(findFallbackScenarioForCells(cellIds)).not.toBeNull()
     }
   })
 
+  it('the journey slice lives on the primary (compare-demo) scenario', () => {
+    const journey = FALLBACK_SLICES.find((slice) => slice.slice_type === 'journey')
+    expect(journey).toBeDefined()
+    const cellIds = (FALLBACK_SLICE_ITEMS[journey!.id] ?? []).flatMap(
+      (entry) => entry.cell_ids,
+    )
+    expect(findFallbackScenarioForCells(cellIds)).toBe(SAMPLE_SCENARIO_ID)
+  })
+
   it('no demo slice carries a dangling cell id', () => {
-    const fallback = getBlueprintFallback(SAMPLE_SCENARIO_ID)
-    expect(fallback).not.toBeNull()
     for (const slice of FALLBACK_SLICES) {
       const items = FALLBACK_SLICE_ITEMS[slice.id] ?? []
+      const cellIds = items.flatMap((entry) => entry.cell_ids)
+      const scenarioId = findFallbackScenarioForCells(cellIds)
+      expect(scenarioId).not.toBeNull()
+      // The scenario's default path: every demo slice is authored on it, so
+      // opening one in the focus view needs no path change first.
+      const fallback = getBlueprintFallback(scenarioId!)
+      expect(fallback).not.toBeNull()
       const resolution = resolveSliceCells(fallback, items)
       expect(resolution.missingCellIds).toEqual([])
     }

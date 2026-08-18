@@ -95,38 +95,32 @@ export function getOverviewPostToPreLoopTransition(
 
 // GENERATED-NAV:BEGIN — managed by scripts/generate_fallbacks.py --register.
 // Replaced wholesale on registration (from the IR lifecycle); do not hand-edit.
-// Default content is the template's sample lifecycle: two phases wrapping the
-// sample scenario, matching supabase/seed.sql when Supabase is not configured.
-import { SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
-
-const DISCOVER_PHASE_ID = 'f0000000-0000-4000-8000-000000000100'
-const DELIVER_PHASE_ID = 'f0000000-0000-4000-8000-000000000200'
+// Default content is the template's meta-blueprint lifecycle: four phases
+// (Discover → Adopt → Map → Operate, Operate looping back to Map) wrapping
+// five sample scenarios, matching supabase/seed.sql when Supabase is not
+// configured.
+import { SAMPLE_PHASES, SAMPLE_SCENARIOS } from '@/data/sampleBlueprint'
 
 export const FALLBACK_NAV: NavItem[] = [
-  {
-    id: DISCOVER_PHASE_ID,
-    index: 1,
-    label: 'Discover',
-    description:
-      'Sample phase — a request is received, triaged, and resolved on site.',
-  },
-  {
-    id: SAMPLE_SCENARIO_ID,
-    index: 1,
-    label: 'Sample Service',
-    parentId: DISCOVER_PHASE_ID,
-    viewType: 'stacked',
-    description:
-      'Generated sample scenario: 12 lanes (canonical + custom roles, CJK labels), 16 steps, 3 paths.',
-  },
-  {
-    id: DELIVER_PHASE_ID,
-    index: 2,
-    label: 'Deliver',
-    description:
-      'Sample phase — demonstrates the lifecycle loop back to Discover.',
-    loopToId: DISCOVER_PHASE_ID,
-  },
+  ...SAMPLE_PHASES.map(
+    (phase): NavItem => ({
+      id: phase.id,
+      index: phase.order_position,
+      label: phase.name,
+      description: phase.description,
+      ...(phase.loops_to_phase_id ? { loopToId: phase.loops_to_phase_id } : {}),
+    }),
+  ),
+  ...SAMPLE_SCENARIOS.map(
+    (scenario): NavItem => ({
+      id: scenario.id,
+      index: scenario.order_position,
+      label: scenario.name,
+      parentId: scenario.phase_id,
+      viewType: scenario.view_type,
+      description: scenario.description,
+    }),
+  ),
 ]
 // GENERATED-NAV:END
 
