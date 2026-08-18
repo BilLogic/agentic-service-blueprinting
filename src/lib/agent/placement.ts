@@ -1,24 +1,22 @@
 import { useSyncExternalStore } from 'react'
+import { AGENT_FLOAT_DEFAULT, AGENT_FLOAT_MIN } from '@/lib/layoutTokens'
 
 /**
  * Where the agent chat lives — and the fact that it is ONE surface with two
  * postures, not two features.
  *
- * `docked` puts it under the sidebar panel (chat while the blueprint nav or
- * the slice list stays in view — the posture people actually work in).
- * `floating` lifts it over the canvas so it can sit beside the cells being
- * discussed. Dragging the chat's header out of the sidebar floats it;
+ * `docked` puts it under the active sidebar panel (chat while the blueprint
+ * nav or the slice list stays in view — the posture people actually work
+ * in). `floating` lifts it over the canvas so it can sit beside the cells
+ * being discussed. Dragging the chat's header out of the sidebar floats it;
  * dragging it back over the sidebar re-docks it. Same conversation either
  * way — placement never touches session state.
  */
 export type AgentPlacementMode = 'docked' | 'floating'
 
-export const AGENT_FLOAT_DEFAULT = { x: 96, y: 96, width: 360, height: 480 }
-export const AGENT_FLOAT_MIN = { width: 280, height: 320 }
-
 export type AgentPlacement = {
   mode: AgentPlacementMode
-  /** Is the agent showing at all (the ✦ toggle flips this). */
+  /** Is the agent showing at all (the rail's ✦ toggles this). */
   open: boolean
   /** Docked height as a fraction of the sidebar column. */
   dockRatio: number
@@ -26,7 +24,7 @@ export type AgentPlacement = {
   float: { x: number; y: number; width: number; height: number }
 }
 
-const STORAGE_KEY = 'asb-agent-placement'
+const STORAGE_KEY = 'sb-agent-placement'
 
 export const DOCK_MIN_RATIO = 0.2
 export const DOCK_MAX_RATIO = 0.8
@@ -35,6 +33,7 @@ const DEFAULTS: AgentPlacement = {
   mode: 'docked',
   open: false,
   dockRatio: 0.5,
+  // Spread: the token is readonly; AgentPlacement.float is not.
   float: { ...AGENT_FLOAT_DEFAULT },
 }
 
@@ -128,7 +127,8 @@ export function setAgentPlacement(
  * The chat renders from two places (docked in the sidebar, floating over
  * the canvas) and a drag-out flips which one is visible MID-GESTURE. Held
  * as component state, the gesture would belong to the instance that is
- * about to hide. Transient by design: never persisted.
+ * about to hide — which is why the drop-target ring never appeared on a
+ * drag-out. Transient by design: never persisted.
  */
 export type AgentDragState = { active: boolean; overSidebar: boolean }
 
@@ -157,7 +157,7 @@ export function useAgentDrag(): AgentDragState {
   )
 }
 
-/** The ✦ toggle: show/hide the agent wherever it currently lives. */
+/** The rail's ✦: show/hide the agent wherever it currently lives. */
 export function toggleAgentOpen(force?: boolean): void {
   setAgentPlacement({ open: force ?? !state.open })
 }
@@ -171,9 +171,7 @@ export function useAgentPlacement(): AgentPlacement {
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
+      return () => listeners.delete(listener)
     },
     () => state,
     () => state,

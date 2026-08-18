@@ -1,4 +1,5 @@
 import {
+  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
   BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
 } from '@/lib/blueprintLayout'
@@ -34,7 +35,7 @@ export function CompareLaneRowShell({
     row.kind === 'internalInteraction'
   const isLayerRow = row.kind === 'layer'
   const corridorAbove = row.wrapCorridorAbove
-    ? BLUEPRINT_WRAP_CORRIDOR_MARGIN
+    ? BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN
     : 0
   const corridorBelow = row.wrapCorridorBelow
     ? BLUEPRINT_WRAP_CORRIDOR_MARGIN

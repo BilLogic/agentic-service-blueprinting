@@ -1,17 +1,43 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, X } from 'lucide-react'
-import { CellDependencyTable } from '@/components/blueprint/CellDependencyTable'
-import { CellEvidenceSection } from '@/components/blueprint/CellEvidenceSection'
-import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
-import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
+import { Component, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import {
-  setCompareLedgerOpen,
-  useCompareReviewState,
-} from '@/lib/compareReviewStore'
-import type { BlueprintPanelSurface } from '@/types/blueprintCellDetail'
+  ExternalLink,
+  FileSearch,
+  Link2,
+  PanelRightClose,
+  PanelRightOpen,
+  Plus,
+  Workflow,
+  X,
+} from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { CellDependencyEditor } from '@/components/blueprint/CellDependencyEditor'
+import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
+import { CellDependencySections } from '@/components/blueprint/CellDependencySections'
+import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
+import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
+import { CellOverviewSpec } from '@/components/blueprint/CellOverviewSpec'
+import { CellContentSection } from '@/components/blueprint/CellContentSection'
+import {
+  CELL_PANEL_FOOTER_ID,
+  CellPanelEditor,
+} from '@/components/blueprint/CellPanelEditor'
+import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
+import { IconTooltip } from '@/components/editor/IconTooltip'
 import { TechPillFace } from '@/components/blueprint/TechPillFace'
 import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
-import { Button, buttonVariants } from '@/components/ui/button'
+import {
+  CANVAS_REGION_SELECTOR,
+  CELL_DETAIL_PANEL_BOTTOM_CLASS,
+  CELL_DETAIL_PANEL_TOP_CLASS,
+  CELL_DETAIL_PANEL_TOP_GAP_PX,
+  CELL_DETAIL_PANEL_TOP_VAR,
+} from '@/components/editor/menubarHeaderLayout'
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from '@/components/editor/SegmentedControl'
+import { Button } from '@/components/ui/button'
 import {
   Drawer,
   DrawerContent,
@@ -27,8 +53,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { useBlueprintCellDetail } from '@/contexts/BlueprintCellDetailContext'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  useBlueprintCellDetail,
+  type BlueprintPanelSurface,
+} from '@/contexts/BlueprintCellDetailContext'
+import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useMobileShell } from '@/hooks/useMobileShell'
+import { useSupabase } from '@/contexts/SupabaseProvider'
+import {
+  setCompareLedgerOpen,
+  useCompareReviewState,
+} from '@/lib/compareReviewStore'
 import {
   buildBlueprintCellSelectionForId,
   getBlueprintCellConnections,
@@ -37,14 +73,18 @@ import {
   getSelectedCellLayerRowPosition,
   scrollBlueprintCellIntoView,
 } from '@/lib/blueprintCellConnections'
-import { buildCellDependencyRows } from '@/lib/blueprintCellDependencies'
 import {
   buildTechPillSelectionForItem,
   getBlueprintStepTechItems,
   scrollBlueprintTechPillIntoView,
 } from '@/lib/blueprintStepTech'
 import { shouldUsePillCellContent, shouldUseVisualContent } from '@/lib/blueprintLayout'
+import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { resolveCellDetailPictures } from '@/lib/blueprintTechPictures'
+import {
+  getBlueprintLayerStyle,
+  getBlueprintLayerZone,
+} from '@/lib/blueprintTheme'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import {
   resolveTechCellDetailLabel,
@@ -54,7 +94,27 @@ import {
 } from '@/lib/blueprintTechDescriptions'
 import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
+import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
+import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
+import type { DependencyEndpoint } from '@/lib/dependencyValidation'
 import type { BlueprintCell, CellLink } from '@/types/blueprint'
+import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
+
+/**
+ * Where a cell sits, said so that two cells never say the same thing.
+ *
+ * Step names are not unique — a blueprint may run several columns all called
+ * "Discovers the service" — so the column number leads. Without it the picker
+ * offers three identical rows and choosing between them is a coin flip.
+ */
+function cellPositionLabel(
+  stepIndex: number,
+  stepName: string,
+  layerName: string,
+): string {
+  const column = stepIndex >= 0 ? `${stepIndex + 1}. ` : ''
+  return `${column}${stepName} · ${layerName}`
+}
 
 /** Fixed panel and illustration frame so every row/step uses the same size. */
 const CELL_DETAIL_PICTURE_FRAME_CLASS =
@@ -66,51 +126,17 @@ const CELL_DETAIL_LOGO_CLASS =
 const CELL_DETAIL_SMALL_LOGO_CLASS =
   'size-[6.5rem] shrink-0 rounded-lg bg-muted/20 p-2 object-contain object-center'
 
-const SHOW_CELL_DEPENDENCIES = true
+type PanelTab = 'dependencies' | 'evidence' | 'resources'
 
-/**
- * The Details │ Differences switcher — the two surfaces are true siblings
- * inside the one drawer, so switching is a content swap, never a
- * close-reopen. Rendered only while a comparison is live.
- */
-function PanelSurfaceSwitcher({
-  value,
-  onValueChange,
-}: {
-  value: BlueprintPanelSurface
-  onValueChange: (surface: BlueprintPanelSurface) => void
-}) {
-  const surfaces: Array<{ key: BlueprintPanelSurface; label: string }> = [
-    { key: 'details', label: 'Details' },
-    { key: 'differences', label: 'Differences' },
-  ]
-  return (
-    <div
-      role="group"
-      aria-label="Panel surface"
-      className="flex items-center gap-px rounded-md border border-border bg-muted/60 p-0.5"
-    >
-      {surfaces.map(({ key, label }) => (
-        <Button
-          key={key}
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-pressed={value === key}
-          className={cn(
-            'h-6 rounded px-2 text-xs',
-            value === key
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-          onClick={() => onValueChange(key)}
-        >
-          {label}
-        </Button>
-      ))}
-    </div>
-  )
-}
+const PANEL_TABS: Array<{
+  value: PanelTab
+  label: string
+  icon: typeof Workflow
+}> = [
+  { value: 'dependencies', label: 'Dependencies', icon: Workflow },
+  { value: 'evidence', label: 'Evidence', icon: FileSearch },
+  { value: 'resources', label: 'Resources', icon: Link2 },
+]
 
 function isFigmaUrl(url: string): boolean {
   return /figma\.com/i.test(url)
@@ -136,61 +162,359 @@ function resolveFigmaUrl(
   return null
 }
 
-export function BlueprintCellDetailPanel() {
-  // Same drawer, two postures: the desktop right-pinned card, or — on the
-  // mobile shell — a bottom sheet the width of the phone.
+/**
+ * Publishes the canvas region's top edge so the portalled drawer can sit
+ * below whatever chrome that surface stacks above it — the base view's navbar
+ * alone, or a slice tab's header band on top of it. Re-measured on resize and
+ * whenever the panel opens; the surface's own transitions (sidebar wipe, tab
+ * strip) do not move the canvas top, so no observer is needed.
+ */
+function useCanvasTopOffset(active: boolean) {
+  useEffect(() => {
+    if (!active) return
+
+    const measure = () => {
+      const canvas = document.querySelector(CANVAS_REGION_SELECTOR)
+      const top = canvas?.getBoundingClientRect().top ?? 0
+      document.documentElement.style.setProperty(
+        CELL_DETAIL_PANEL_TOP_VAR,
+        `${Math.max(0, top) + CELL_DETAIL_PANEL_TOP_GAP_PX}px`,
+      )
+    }
+
+    measure()
+    window.addEventListener('resize', measure)
+    return () => {
+      window.removeEventListener('resize', measure)
+      document.documentElement.style.removeProperty(CELL_DETAIL_PANEL_TOP_VAR)
+    }
+  }, [active])
+}
+
+/**
+ * True while the panel's editor has a save in flight. Every dismiss path
+ * (Escape, ✕-driven close requests) checks this: closing mid-save reads as
+ * "cancelled", but the write lands anyway — for a draft that means a cell
+ * materializing after the panel that explained it is gone.
+ */
+function panelEditorBusy(): boolean {
+  return document.querySelector('[data-cell-panel-editor][data-busy]') !== null
+}
+
+/**
+ * A render error in the drawer must cost the drawer, not the app.
+ *
+ * This panel is the one surface that renders arbitrary cell content —
+ * pictures, links, tech pills, prose — outside the canvas's providers, which
+ * makes it the most likely place for a render throw. Without a boundary that
+ * throw unmounted the entire editor to a white page, which is how a broken
+ * pill icon read as "loading is broken". React error boundaries are still
+ * class-only.
+ */
+class CellDetailErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch(error: unknown) {
+    console.error('[cell-detail] panel render failed:', error)
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="fixed right-4 bottom-16 z-40 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-md">
+          This cell's details failed to display. The canvas is unaffected.
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+/**
+ * The one drawer shell every surface of the panel renders through. Each
+ * render branch (details, draft, placeholder, differences) returns this at
+ * the same tree position, so React reconciles them as the SAME drawer —
+ * a surface switch is a content swap inside the open drawer, never a
+ * close-reopen.
+ */
+function PanelDrawerShell({
+  open,
+  expanded,
+  onCloseRequest,
+  onClosed,
+  children,
+}: {
+  open: boolean
+  expanded: boolean
+  onCloseRequest: () => void
+  onClosed: () => void
+  children: ReactNode
+}) {
+  // Same drawer, two postures: the desktop right-pinned card, or — below
+  // md — a bottom sheet the width of the phone. One component, mirroring
+  // the AgentDock docked/floating precedent; the reconciliation guarantee
+  // above (same tree position) holds in both postures.
   const mobile = useMobileShell()
+  return (
+    <Drawer
+      // Keyed on posture: a resize across the breakpoint while open would
+      // otherwise reinterpret an in-flight swipe's x-offset against the
+      // other posture's axis. A flip remounts the drawer clean instead.
+      key={mobile ? 'mobile' : 'desktop'}
+      open={open}
+      onOpenChange={(next) => {
+        // Only close *requests* (✕, Escape, swipe) arrive here, and with
+        // `open` derived from panelState they can only fire while the panel
+        // is open — the delayed-callback-wipes-new-selection class of bug
+        // died with the second owner.
+        if (!next && !panelEditorBusy()) onCloseRequest()
+      }}
+      onOpenChangeComplete={(next) => {
+        if (!next) onClosed()
+      }}
+      modal={false}
+      disablePointerDismissal
+      swipeDirection={mobile ? 'down' : 'right'}
+    >
+      <DrawerContent
+        data-cell-detail-panel=""
+        className={cn(
+          mobile
+            ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border/80 bg-popover shadow-sm after:hidden [--drawer-inset:0px]'
+            : cn(
+                CELL_DETAIL_PANEL_TOP_CLASS,
+                CELL_DETAIL_PANEL_BOTTOM_CLASS,
+                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-2xl border border-border/80 bg-popover shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
+                expanded
+                  ? 'w-(--width-cell-panel-expanded)'
+                  : 'w-(--width-cell-panel)',
+              ),
+        )}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {children}
+      </DrawerContent>
+    </Drawer>
+  )
+}
+
+/**
+ * The Details │ Differences switch — TOP-LEVEL panel chrome (the two
+ * surfaces are siblings of the whole panel), rendered from two call sites:
+ * the details branch's own header row and the differences DrawerHeader. ONE
+ * component, because two verbatim copies drifted apart once already.
+ *
+ * No count on the Differences tab: counts live in exactly two places
+ * app-wide now — the menubar Diff pill and each ledger group's trailing
+ * number.
+ */
+function PanelSurfaceSwitcher({
+  value,
+  onValueChange,
+}: {
+  value: BlueprintPanelSurface
+  onValueChange: (surface: BlueprintPanelSurface) => void
+}) {
+  return (
+    <SegmentedControl
+      aria-label="Panel surface"
+      value={value}
+      onValueChange={onValueChange}
+    >
+      <SegmentedControlItem value="details" className="px-2">
+        Details
+      </SegmentedControlItem>
+      <SegmentedControlItem value="differences" className="px-2">
+        Differences
+      </SegmentedControlItem>
+    </SegmentedControl>
+  )
+}
+
+/**
+ * Side panel for the selected cell — its content, evidence, dependencies and
+ * the slices it belongs to. Anchors below the sticky slide header via a
+ * measured CSS variable so it never covers it.
+ */
+export function BlueprintCellDetailPanel() {
+  return (
+    <CellDetailErrorBoundary>
+      <BlueprintCellDetailPanelBody />
+    </CellDetailErrorBoundary>
+  )
+}
+
+/**
+ * The one snapshot of what the drawer was showing, kept only so the exit
+ * animation glides out with content — a ledger-only close animates the
+ * ledger, a cell close animates the cell. Cleared when the exit animation
+ * completes; while the panel is open it mirrors the live state exactly, so
+ * a mid-close reopen can never strand a stale flag.
+ */
+type PanelClosingSnapshot = {
+  selection: BlueprintCellSelection | null
+  draft: DraftCellTarget | null
+  surface: BlueprintPanelSurface
+}
+
+function BlueprintCellDetailPanelBody() {
   const {
     selection: currentSelection,
+    clearSelection,
     isOpen,
     blueprints,
     selectCell,
+    draftCell,
     panelState,
     setPanelSurface,
-    closePanel,
   } =
     useBlueprintCellDetail()
-  const [closingSelection, setClosingSelection] = useState(currentSelection)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const selection = currentSelection ?? closingSelection
-
+  const [closing, setClosing] = useState<PanelClosingSnapshot | null>(
+    panelState
+      ? {
+          selection: currentSelection,
+          draft: draftCell,
+          surface: panelState.surface,
+        }
+      : null,
+  )
+  const [expanded, setExpanded] = useState(false)
+  const [activeTab, setActiveTab] = useState<PanelTab>('dependencies')
+  /**
+   * One-shot "← Back to Differences" chip: set when the ledger's ⇱ opens a
+   * cell in Details, cleared when used — and whenever the panel leaves
+   * Details, so it can never go stale.
+   */
+  const [returnToDifferences, setReturnToDifferences] = useState(false)
   const compareRegistration = useCompareReviewState().registration
   const comparing = compareRegistration !== null
-  const activeSurface = panelState?.surface ?? null
-  const showDifferences = activeSurface === 'differences'
 
+  // Agent parity: the panel's own controls, registered while it is open.
   useEffect(() => {
-    if (panelState !== null) {
-      const frame = window.requestAnimationFrame(() => setDrawerOpen(true))
-      return () => window.cancelAnimationFrame(frame)
-    }
+    const unregister = [
+      registerAgentUiCommand({
+        name: 'cell_panel_tab',
+        description: "Switch the open cell panel's tab. arg: dependencies | evidence | resources",
+        run: (arg) => {
+          const tab = arg === 'evidence' || arg === 'resources' ? arg : 'dependencies'
+          setActiveTab(tab)
+          return `Cell panel is on the ${tab} tab.`
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'cell_panel_expand',
+        description: 'Widen or shrink the open cell panel. arg: true (wide) | false (normal)',
+        run: (arg) => {
+          const wide = arg !== 'false'
+          setExpanded(wide)
+          return wide ? 'Cell panel expanded.' : 'Cell panel back to normal width.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'cell_panel_close',
+        description: 'Close the open cell detail panel.',
+        run: () => {
+          clearSelection()
+          return 'Cell panel closed.'
+        },
+      }),
+    ]
+    return () => unregister.forEach((fn) => fn())
+  }, [clearSelection])
+  const [addingDependency, setAddingDependency] = useState(false)
+  const { canWrite } = useSupabase()
+  // View mode presents everything read-only; every edit affordance in this
+  // panel — pencils, Add dependency, resource editing — is Edit-mode only.
+  const canEdit = useCanvasModeValue() === 'design' && canWrite
+  const selection = currentSelection ?? closing?.selection ?? null
+  const draft = draftCell ?? closing?.draft ?? null
+  const activeSurface: BlueprintPanelSurface | null =
+    panelState?.surface ?? closing?.surface ?? null
+  useCanvasTopOffset(panelState !== null)
 
-    setDrawerOpen(false)
-  }, [panelState])
+  /*
+    The drawer's `open` is derived from `panelState`, full stop.
 
-  useEffect(() => {
-    if (currentSelection) setClosingSelection(currentSelection)
-  }, [currentSelection])
+    It used to be its own state, synced from the selection by an effect,
+    through a requestAnimationFrame, and back again through base-ui's async
+    close callbacks — two owners of one fact, reconciled asynchronously,
+    which is a machine for manufacturing disagreements. The reproducible
+    one: close the panel, reselect a cell during the ~1s exit animation,
+    and the two halves wedge — selection set, canvas dimmed, drawer
+    convinced it is already open, and no edge left that could ever reopen
+    it. Minutes later a delayed close callback would wipe a selection it
+    had never met.
 
-  // Mirror "the ledger is showing" into the compare store so surfaces with
-  // no provider access (the divergence strip) can read it.
-  useEffect(() => {
-    setCompareLedgerOpen(showDifferences)
-    return () => setCompareLedgerOpen(false)
-  }, [showDifferences])
+    `closing` survives only to keep the *content* rendered during the exit
+    animation, and is cleared when that animation completes. panelState is
+    the SINGLE owner — never OR a second boolean into this.
+  */
+  const drawerOpen = panelState !== null
+
+  /*
+    While the panel is open the snapshot mirrors the live state exactly —
+    ONE snapshot for everything the drawer renders (selection, draft,
+    surface), so a stale half from a still-animating close can never win
+    over freshly opened content. Guarded render-phase set, the codebase's
+    derive-during-render idiom.
+  */
+  if (
+    panelState &&
+    (closing?.selection !== currentSelection ||
+      closing.draft !== draftCell ||
+      closing.surface !== panelState.surface)
+  ) {
+    setClosing({
+      selection: currentSelection,
+      draft: draftCell,
+      surface: panelState.surface,
+    })
+  }
+
+  // One-shot hygiene for the return chip (guarded render-phase set).
+  if (
+    returnToDifferences &&
+    (activeSurface !== 'details' || !comparing)
+  ) {
+    setReturnToDifferences(false)
+  }
+
+  // A new cell always opens on Dependencies (state reset during render).
+  // The arrow editor closes with it — a half-typed arrow carried onto a
+  // different cell would be pointing away from somewhere nobody is looking.
+  const currentCellId = currentSelection?.paths[0]?.cellId
+  const [lastCellId, setLastCellId] = useState(currentCellId)
+  if (lastCellId !== currentCellId) {
+    setLastCellId(currentCellId)
+    setActiveTab('dependencies')
+    setAddingDependency(false)
+  }
 
   useEffect(() => {
     if (!isOpen) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        closePanel()
+      if (event.key === 'Escape' && !panelEditorBusy()) {
+        clearSelection()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [closePanel, isOpen])
+  }, [clearSelection, isOpen])
+
+  // Mirror "the ledger is showing" into the compare store so surfaces with
+  // no React path to this panel (get_ui_state, the strip) can read it.
+  const ledgerShowing = panelState?.surface === 'differences'
+  useEffect(() => {
+    setCompareLedgerOpen(ledgerShowing)
+    return () => setCompareLedgerOpen(false)
+  }, [ledgerShowing])
 
   const pathEntry = selection?.paths[0]
   const resolvedCellId = pathEntry?.cellId
@@ -275,17 +599,6 @@ export function BlueprintCellDetailPanel() {
     [connections],
   )
 
-  const selectedLayerRowPosition = useMemo(() => {
-    const cellId = pathEntry?.cellId
-    const pathId = pathEntry?.pathId
-    if (!cellId || !pathId) return -1
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    if (!blueprint || !resolvedCellId) return -1
-
-    return getSelectedCellLayerRowPosition(blueprint, resolvedCellId)
-  }, [blueprints, pathEntry?.cellId, pathEntry?.pathId, resolvedCellId])
-
   const selectedLayer = useMemo((): { name: string; role?: string | null } | null => {
     const layerName = selection?.layerName
     if (!layerName) return null
@@ -297,6 +610,22 @@ export function BlueprintCellDetailPanel() {
         name: layerName,
       }
     )
+  }, [blueprints, pathEntry?.pathId, selection?.layerName])
+
+  const laneChipStyle = useMemo(() => {
+    const layerName = selection?.layerName
+    if (!layerName) return null
+
+    const pathId = pathEntry?.pathId
+    const blueprint = pathId ? getBlueprintForPath(blueprints, pathId) : null
+    const layerRecord =
+      blueprint?.layers.find((layer) => layer.name === layerName) ?? null
+    const zone =
+      layerRecord && blueprint
+        ? getBlueprintLayerZone(layerRecord, blueprint.layers)
+        : 'frontstage'
+    // Keyed by layer_role — the name argument is only the legacy fallback.
+    return getBlueprintLayerStyle(layerName, zone, layerRecord?.role)
   }, [blueprints, pathEntry?.pathId, selection?.layerName])
 
   const otherTechEntries = useMemo(() => {
@@ -355,42 +684,100 @@ export function BlueprintCellDetailPanel() {
     return resolveFigmaUrl(selection.techItem, selectedCell, cellLinks)
   }, [cellLinks, selectedCell, selection])
 
-  const dependencyRows = useMemo(() => {
-    if (!selection) return []
+  // Lane row position of the selected cell — orients up/down direction
+  // glyphs on same-step dependency rows.
+  const selectedLayerRowPosition = useMemo(() => {
+    const pathId = pathEntry?.pathId
+    if (!resolvedCellId || !pathId) return -1
+    const blueprint = getBlueprintForPath(blueprints, pathId)
+    if (!blueprint) return -1
+    return getSelectedCellLayerRowPosition(blueprint, resolvedCellId)
+  }, [blueprints, pathEntry?.pathId, resolvedCellId])
 
-    const relevantLinks = cellLinks.flatMap((link, index) => {
-      if (link.type !== URL_LINK_TYPE || !link.url?.trim()) return []
-      const url = link.url.trim()
-      const label = link.label?.trim() || 'Link'
-      if (isFigmaUrl(url) || /figma/i.test(label)) return []
-      return [
-        {
-          id: `link-${index}`,
-          label,
-          url,
-        },
-      ]
-    })
+  /**
+   * Every other cell in this version, as somewhere an arrow could point.
+   *
+   * Scoped to the version on purpose — the RPC refuses a cross-version
+   * dependency, and offering one here would only be a way to reach that
+   * refusal. Versions are alternatives, not stages.
+   *
+   * Labels lead with the column number because step *names* repeat: Discovery
+   * holds several columns all named the same thing, so name-and-lane alone
+   * names three different cells and the picker becomes a guess. The column
+   * number is the only part of a cell's position that is always unique, and
+   * ordering by it puts the list in the reading order of the grid.
+   */
+  const dependencyCandidates = useMemo<DependencyEndpoint[]>(() => {
+    const pathId = pathEntry?.pathId
+    if (!resolvedCellId || !pathId) return []
+    const blueprint = getBlueprintForPath(blueprints, pathId)
+    if (!blueprint) return []
 
-    return buildCellDependencyRows({
-      connections,
-      selectedLayerRowPosition,
-      isTechCellSelected:
-        Boolean(selection.techItem) ||
-        Boolean(selectedLayer && shouldUsePillCellContent(selectedLayer)),
-      selectedTechItem: selection.techItem,
-      otherTech: otherTechEntries,
-      links: relevantLinks,
-    })
-  }, [
-    cellLinks,
-    connections,
-    otherTechEntries,
-    selectedCell,
-    selectedLayer,
-    selectedLayerRowPosition,
-    selection,
-  ])
+    const layerNames = new Map(
+      blueprint.layers.map((layer) => [layer.id, layer.name]),
+    )
+    const stepOrder = new Map(
+      blueprint.steps.map((step, index) => [step.id, { index, name: step.name }]),
+    )
+
+    return blueprint.cells
+      .filter((cell) => cell.id !== resolvedCellId)
+      .map((cell) => {
+        const step = stepOrder.get(cell.step_id)
+        return {
+          cellId: cell.id,
+          pathId,
+          stepIndex: step?.index ?? Number.MAX_SAFE_INTEGER,
+          label: cellPositionLabel(
+            step?.index ?? -1,
+            step?.name ?? 'Unknown step',
+            layerNames.get(cell.layer_id) ?? 'Unknown lane',
+          ),
+        }
+      })
+      .sort(
+        (a, b) =>
+          a.stepIndex - b.stepIndex || a.label.localeCompare(b.label),
+      )
+      .map(({ cellId, pathId: path, label }) => ({
+        cellId,
+        pathId: path,
+        label,
+      }))
+  }, [blueprints, pathEntry?.pathId, resolvedCellId])
+
+  // Only outgoing arrows: this cell owns the ones it is the source of, and
+  // those are the ones it may remove. An incoming arrow belongs to the cell at
+  // the other end, and is edited from there.
+  const existingDependencies = useMemo<ExistingDependency[]>(
+    () =>
+      connections.outgoing.map((connection) => ({
+        id: connection.triggerId,
+        targetCellId: connection.cellId,
+        targetLabel: cellPositionLabel(
+          connection.stepIndex,
+          connection.stepName,
+          connection.layerName,
+        ),
+        kind: connection.linkKind,
+        label: connection.linkLabel,
+      })),
+    [connections.outgoing],
+  )
+
+  const dependencySource = useMemo<DependencyEndpoint | null>(() => {
+    const pathId = pathEntry?.pathId
+    if (!resolvedCellId || !pathId || !selection) return null
+    return {
+      cellId: resolvedCellId,
+      pathId,
+      label: cellPositionLabel(
+        selection.stepIndex,
+        selection.stepName,
+        selection.layerName,
+      ),
+    }
+  }, [pathEntry?.pathId, resolvedCellId, selection])
 
   const visualStepEntries = useMemo(() => {
     const stepId = selection?.stepId
@@ -403,84 +790,231 @@ export function BlueprintCellDetailPanel() {
     return resolveVisualStepPictureEntries(blueprint, stepId)
   }, [blueprints, pathEntry?.pathId, selection?.stepId])
 
+  // Fully closed and the exit animation has completed — nothing to render.
+  if (activeSurface === null) return null
+
+  const handleClosed = () => setClosing(null)
+
+  /*
+    The Details │ Differences switcher — the two surfaces are true siblings
+    of the whole panel, so their switch is TOP-LEVEL chrome, above every
+    branch's own header. Rendered only while a comparison is live; outside
+    compare the panel is exactly what it was before v3.
+  */
+  const surfaceSwitcher = comparing ? (
+    <div className="flex shrink-0 items-center border-b border-border/60 px-4 py-2">
+      <PanelSurfaceSwitcher
+        value={activeSurface}
+        onValueChange={setPanelSurface}
+      />
+    </div>
+  ) : null
+
+  const handleOpenCellFromDifferences = (
+    nextSelection: BlueprintCellSelection,
+  ) => {
+    setReturnToDifferences(true)
+    selectCell(nextSelection)
+  }
+
   /*
     The Differences surface — the compare ledger, a true sibling of the
     cell-detail view inside the same drawer. Needs no selection.
   */
-  if (showDifferences) {
+  if (activeSurface === 'differences') {
     return (
-      <Drawer
-        // Keyed on posture: a resize across the breakpoint while open would
-        // otherwise reinterpret an in-flight swipe's offset against the
-        // other posture's axis. A flip remounts the drawer clean instead.
-        key={mobile ? 'mobile' : 'desktop'}
+      <PanelDrawerShell
         open={drawerOpen}
-        onOpenChange={(open) => {
-          setDrawerOpen(open)
-          if (!open) closePanel()
-        }}
-        modal={false}
-        disablePointerDismissal
-        swipeDirection={mobile ? 'down' : 'right'}
+        expanded={expanded}
+        onCloseRequest={clearSelection}
+        onClosed={handleClosed}
       >
-        <DrawerContent
-          data-cell-detail-panel=""
-          className={
-            mobile
-              ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:0px]'
-              : '!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[24rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]'
-          }
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-border/60 px-4 py-2 text-left">
-            <DrawerTitle className="sr-only">Path differences</DrawerTitle>
-            <DrawerDescription className="sr-only">
-              Every difference between the compared paths, grouped by step
+        <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-border/60 px-4 py-2 text-left">
+          <DrawerTitle className="sr-only">Path differences</DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Every difference between the compared paths, grouped by step
+          </DrawerDescription>
+          {comparing ? (
+            <PanelSurfaceSwitcher
+              value="differences"
+              onValueChange={setPanelSurface}
+            />
+          ) : (
+            <span className="text-sm font-bold tracking-tight">
+              Differences
+            </span>
+          )}
+          <div className="flex shrink-0 items-center gap-0.5">
+            <IconTooltip
+              label={expanded ? 'Narrow the panel' : 'Widen the panel'}
+              side="left"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
+                aria-pressed={expanded}
+                onClick={() => setExpanded((value) => !value)}
+              >
+                {expanded ? <PanelRightClose /> : <PanelRightOpen />}
+              </Button>
+            </IconTooltip>
+            <IconTooltip label="Close the difference ledger" side="left">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Close differences"
+                onClick={clearSelection}
+              >
+                <X />
+              </Button>
+            </IconTooltip>
+          </div>
+        </DrawerHeader>
+        {compareRegistration ? (
+          <div className="flex min-h-0 flex-1 flex-col pt-3">
+            <CompareDifferencesSurface
+              registration={compareRegistration}
+              onOpenCell={handleOpenCellFromDifferences}
+            />
+          </div>
+        ) : (
+          // Reachable only during the exit animation after a comparison
+          // ended — the provider is already routing panelState away.
+          <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
+            <p className="text-center text-xs text-muted-foreground">
+              No comparison is active.
+            </p>
+          </div>
+        )}
+      </PanelDrawerShell>
+    )
+  }
+
+  /*
+    Draft creation: the panel opens on an empty slot's target and nothing is
+    written until Save. Closing the drawer (✕, Escape, Cancel) discards the
+    draft entirely — a cancelled cell never existed.
+  */
+  if (!selection && draft) {
+    const blueprint = getBlueprintForPath(blueprints, draft.pathId)
+    const layerRecord =
+      blueprint?.layers.find((layer) => layer.name === draft.layerName) ?? null
+    const zone =
+      layerRecord && blueprint
+        ? getBlueprintLayerZone(layerRecord, blueprint.layers)
+        : 'frontstage'
+    const draftLaneStyle = getBlueprintLayerStyle(
+      draft.layerName,
+      zone,
+      layerRecord?.role,
+    )
+
+    return (
+      <PanelDrawerShell
+        open={drawerOpen}
+        expanded={expanded}
+        onCloseRequest={clearSelection}
+        onClosed={handleClosed}
+      >
+        {surfaceSwitcher}
+        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
+          <div className="min-w-0 flex-1">
+            <DrawerTitle className="text-sm font-bold tracking-tight">
+              New cell
+            </DrawerTitle>
+            <DrawerDescription className="text-2xs text-muted-foreground">
+              {[
+                draft.phaseName,
+                draft.scenarioName,
+                `${draft.stepIndex + 1}. ${draft.stepName}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </DrawerDescription>
-            {comparing ? (
-              <PanelSurfaceSwitcher
-                value="differences"
-                onValueChange={setPanelSurface}
-              />
-            ) : (
-              <span className="text-sm font-bold tracking-tight">
-                Differences
-              </span>
-            )}
+          </div>
+          <IconTooltip label="Discard this new cell" side="left">
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
               className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Close differences"
-              onClick={closePanel}
+              aria-label="Discard new cell"
+              onClick={clearSelection}
             >
               <X />
             </Button>
-          </DrawerHeader>
-          {compareRegistration ? (
-            <div className="flex min-h-0 flex-1 flex-col pt-3">
-              <CompareDifferencesSurface
-                registration={compareRegistration}
-                onOpenCell={selectCell}
-              />
-            </div>
-          ) : (
-            // Reachable only during the exit animation after a comparison
-            // ended — the provider is already routing panelState away.
-            <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
-              <p className="text-center text-xs text-muted-foreground">
-                No comparison is active.
-              </p>
-            </div>
-          )}
-        </DrawerContent>
-      </Drawer>
+          </IconTooltip>
+        </DrawerHeader>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 blueprint-scroll">
+          <span
+            className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-3xs font-medium leading-tight"
+            style={{
+              backgroundColor: draftLaneStyle.lane,
+              color: 'var(--foreground-blueprint-cell)',
+            }}
+          >
+            {draft.layerName}
+          </span>
+          <CellPanelEditor cellId={null} draft={draft} onDone={clearSelection} />
+        </div>
+        {/* The editor portals Create/Cancel here — panel-level footing. */}
+        <div
+          id={CELL_PANEL_FOOTER_ID}
+          className="shrink-0 border-t border-border/60 px-4 py-3 empty:hidden"
+        />
+      </PanelDrawerShell>
     )
   }
 
-  if (!selection) return null
+  /*
+    Details surface with nothing selected — a ledger-era state: the drawer
+    can sit open on Details after a surface switch with no cell picked.
+    A quiet placeholder rather than a vanished drawer.
+  */
+  if (!selection) {
+    return (
+      <PanelDrawerShell
+        open={drawerOpen}
+        expanded={expanded}
+        onCloseRequest={clearSelection}
+        onClosed={handleClosed}
+      >
+        {surfaceSwitcher}
+        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
+          <div className="min-w-0 flex-1">
+            <DrawerTitle className="text-sm font-bold tracking-tight">
+              Cell details
+            </DrawerTitle>
+            <DrawerDescription className="sr-only">
+              No cell selected
+            </DrawerDescription>
+          </div>
+          <IconTooltip label="Close cell details" side="left">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Close cell details"
+              onClick={clearSelection}
+            >
+              <X />
+            </Button>
+          </IconTooltip>
+        </DrawerHeader>
+        <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
+          <p className="text-center text-xs text-muted-foreground">
+            No cell selected — click a cell on the board.
+          </p>
+        </div>
+      </PanelDrawerShell>
+    )
+  }
 
   const isVisualLayer = Boolean(
     selectedLayer && shouldUseVisualContent(selectedLayer),
@@ -568,7 +1102,7 @@ export function BlueprintCellDetailPanel() {
 
   const cellBreadcrumb = (
     <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-0.5 text-[11px] leading-tight text-muted-foreground">
+      <BreadcrumbList className="flex-nowrap gap-0.5 text-2xs leading-tight text-muted-foreground">
         {phaseName ? (
           <>
             <BreadcrumbItem className="min-w-0">
@@ -609,33 +1143,29 @@ export function BlueprintCellDetailPanel() {
     </Breadcrumb>
   )
 
-  const layerTitle = (
-    <p className="min-w-0 flex-1 text-sm font-bold leading-snug tracking-tight text-foreground">
+  // Panel v2 header: title is the cell content snippet; the lane appears as
+  // one role-colored chip (colored by layer_role, never by name).
+  const cellTitleText =
+    cellContent.split('\n')[0]?.trim() || selection.layerName
+  const laneChip = laneChipStyle ? (
+    <span
+      className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-3xs font-medium leading-tight"
+      style={{
+        backgroundColor: laneChipStyle.lane,
+        color: BLUEPRINT_THEME.cellText,
+      }}
+      title={selection.layerName}
+    >
       {selection.layerName}
-    </p>
-  )
-
-  const figmaButton =
-    figmaUrl != null ? (
-      <a
-        href={figmaUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(
-          buttonVariants({ variant: 'outline', size: 'xs' }),
-          'h-5 shrink-0 gap-1 px-1.5 text-[10px]',
-        )}
-        aria-label="View in Figma"
-      >
-        Figma
-        <ExternalLink className="size-2.5 opacity-70" aria-hidden />
-      </a>
-    ) : null
+    </span>
+  ) : null
 
   const titleRow = (
-    <div className="flex min-w-0 items-center gap-2">
-      {layerTitle}
-      {figmaButton}
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <p className="min-w-0 text-sm font-bold leading-snug tracking-tight text-foreground">
+        {cellTitleText}
+      </p>
+      {laneChip}
     </div>
   )
 
@@ -643,7 +1173,7 @@ export function BlueprintCellDetailPanel() {
     <TechPillFace
       item={techDetailLabel!}
       compact
-      className="w-fit shrink-0 !px-2 !py-0.5 !text-[10px] leading-none"
+      className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
     />
   ) : null
 
@@ -683,113 +1213,283 @@ export function BlueprintCellDetailPanel() {
                 ))}
               </div>
             ) : null}
-            {screenshots.map((src) => (
-              <div key={src} className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
-                <img
-                  src={src}
-                  alt=""
-                  className={CELL_DETAIL_PICTURE_CLASS}
-                />
-              </div>
-            ))}
+            {screenshots.map((src) =>
+              figmaUrl ? (
+                <a
+                  key={src}
+                  href={figmaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    CELL_DETAIL_PICTURE_FRAME_CLASS,
+                    'group block cursor-pointer',
+                  )}
+                  aria-label="View in Figma"
+                >
+                  <img
+                    src={src}
+                    alt=""
+                    className={cn(
+                      CELL_DETAIL_PICTURE_CLASS,
+                      'transition-[filter,opacity] duration-(--motion-fade)',
+                      'group-hover:opacity-80 group-hover:grayscale-[15%]',
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'absolute inset-0 z-10 flex items-center justify-center',
+                      'bg-black/55 opacity-0 transition-opacity duration-(--motion-fade)',
+                      'group-hover:opacity-100',
+                    )}
+                    aria-hidden
+                  >
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-2xs font-semibold text-white',
+                        'transition-opacity duration-(--motion-fade)',
+                      )}
+                    >
+                      View in Figma
+                      <ExternalLink className="size-2.5 text-white" />
+                    </span>
+                  </span>
+                </a>
+              ) : (
+                <div key={src} className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
+                  <img
+                    src={src}
+                    alt=""
+                    className={CELL_DETAIL_PICTURE_CLASS}
+                  />
+                </div>
+              ),
+            )}
           </>
         )
       })()}
     </div>
   ) : null
 
+  // A pill that says exactly what the title says is the title twice — one of
+  // them yields. The pill keeps the tech identity; the plain-text title only
+  // renders when it adds words the pill does not have. Same rule for the
+  // description paragraph: a cell with no authored description falls back to
+  // its own content, and printing the title again as "description" is the
+  // same word twice pretending to be two facts.
+  const titleRepeatsPill =
+    showTechPill && techDetailLabel?.trim() === cellTitleText.trim()
+  const descriptionRepeatsTitle =
+    detailDescriptionText.trim() === cellTitleText.trim() ||
+    detailDescriptionText.trim() === cellContent.trim()
+  const editingCell = canEdit && resolvedCellId !== null
+
+  const overviewContent = (
+    <>
+      {pictureBlock}
+      <div className="flex min-w-0 flex-col gap-2">
+        {showTechPillAboveTitle ? selectedTechPill : null}
+        {/* In edit mode the form's TEXT field *is* the title; repeating it
+            above the field would be the same word twice on one screen. */}
+        {editingCell ? (
+          titleRepeatsPill ? null : laneChip
+        ) : titleRepeatsPill ? (
+          laneChip
+        ) : (
+          titleRow
+        )}
+        {showTechPill && !showTechPillAboveTitle ? selectedTechPill : null}
+        {editingCell && titleRepeatsPill ? laneChip : null}
+      </div>
+      {/* The description paragraph is the reading view; the editor shows the
+          same text inside its DESCRIPTION field instead. */}
+      {!editingCell && detailDescriptionText.trim() && !descriptionRepeatsTitle ? (
+        <p className="-mt-3 text-sm whitespace-pre-wrap text-foreground/75">
+          {detailDescriptionText.trim()}
+        </p>
+      ) : null}
+      {editingCell ? (
+        <CellPanelEditor
+          cellId={resolvedCellId}
+          // Never seed the field with the title wearing a description's
+          // clothes — only prose that actually says more than the cell text.
+          fallbackDescription={
+            descriptionRepeatsTitle ? '' : detailDescriptionText.trim()
+          }
+          onDone={clearSelection}
+        />
+      ) : (
+        <>
+          {/* Basic info (text, description, owners) first; the function/form/
+              value spec is a deeper layer of the same cell and reads below it. */}
+          <CellContentSection cellId={resolvedCellId} />
+          <CellOverviewSpec cellId={resolvedCellId} />
+        </>
+      )}
+    </>
+  )
+
   return (
-    <Drawer
-      // Same posture key as the differences drawer above.
-      key={mobile ? 'mobile' : 'desktop'}
+    <PanelDrawerShell
       open={drawerOpen}
-      onOpenChange={(open) => {
-        setDrawerOpen(open)
-        if (!open) closePanel()
-      }}
-      onOpenChangeComplete={(open) => {
-        if (!open) setClosingSelection(null)
-      }}
-      modal={false}
-      disablePointerDismissal
-      swipeDirection={mobile ? 'down' : 'right'}
+      expanded={expanded}
+      onCloseRequest={clearSelection}
+      onClosed={handleClosed}
     >
-      <DrawerContent
-        data-cell-detail-panel=""
-        className={
-          mobile
-            ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:0px]'
-            : '!top-[67px] !right-4 !bottom-[61px] !left-auto !m-0 !h-auto !max-h-none w-[20rem] rounded-2xl border border-border/80 bg-card shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]'
-        }
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-5 text-left">
+        {surfaceSwitcher}
+        {returnToDifferences && comparing ? (
+          <div className="shrink-0 px-4 pt-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md text-2xs text-muted-foreground transition-colors duration-(--motion-micro) hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              onClick={() => {
+                setReturnToDifferences(false)
+                setPanelSurface('differences')
+              }}
+            >
+              <ArrowLeft className="size-3" aria-hidden />
+              Back to Differences
+            </button>
+          </div>
+        ) : null}
+        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
             <DrawerTitle className="sr-only">Cell details</DrawerTitle>
             <DrawerDescription className="sr-only">
               Details for the selected blueprint cell
             </DrawerDescription>
-            {comparing ? (
-              <div className="mb-2">
-                <PanelSurfaceSwitcher
-                  value="details"
-                  onValueChange={setPanelSurface}
-                />
-              </div>
-            ) : null}
             {cellBreadcrumb}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label="Close cell details"
-            onClick={closePanel}
-          >
-            <X />
-          </Button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <IconTooltip
+              label={expanded ? 'Narrow the panel' : 'Widen the panel'}
+              side="left"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
+                aria-pressed={expanded}
+                onClick={() => setExpanded((value) => !value)}
+              >
+                {expanded ? <PanelRightClose /> : <PanelRightOpen />}
+              </Button>
+            </IconTooltip>
+            <IconTooltip label="Close cell details" side="left">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Close cell details"
+                onClick={clearSelection}
+              >
+                <X />
+              </Button>
+            </IconTooltip>
+          </div>
         </DrawerHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">
-          {pictureBlock}
-          {isVisualLayer ? (
-            <>
-              {titleRow}
-              <VisualStepDetailStack entries={visualStepEntries} />
-            </>
-          ) : (
-            <>
-              <div className="flex min-w-0 flex-col gap-2">
-                {showTechPillAboveTitle ? selectedTechPill : null}
-                {titleRow}
-                {showTechPill && !showTechPillAboveTitle
-                  ? selectedTechPill
-                  : null}
+        {isVisualLayer ? (
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">
+            {titleRow}
+            <VisualStepDetailStack entries={visualStepEntries} />
+          </div>
+        ) : (
+          <>
+            {/*
+              Overview content is not a tab — it always renders inline at the
+              top; the tab row (Dependencies default) sits below it and both
+              share one scroll area.
+            */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto blueprint-scroll">
+              <div className="flex flex-col gap-5 px-4 pb-5">
+                {overviewContent}
               </div>
-              {detailDescriptionText.trim() ? (
-                <p className="-mt-3 text-sm whitespace-pre-wrap text-foreground/75">
-                  {detailDescriptionText.trim()}
-                </p>
-              ) : !showTechPill ? (
-                <p className="-mt-3 text-sm text-muted-foreground">No content</p>
-              ) : null}
-              {SHOW_CELL_DEPENDENCIES && dependencyRows.length > 0 ? (
-                <div className="mt-2">
-                  <CellDependencyTable
-                    rows={dependencyRows}
-                    onCellSelect={handleConnectionSelect}
-                    onTechSelect={handleTechSelect}
-                  />
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as PanelTab)}
+                className="gap-0"
+              >
+                <TabsList
+                  variant="line"
+                  className="h-auto w-full justify-start gap-4 rounded-none border-b border-border/60 px-4 pb-0"
+                >
+                  {PANEL_TABS.map(({ value, label, icon: TabIcon }) => (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-2xs font-normal text-muted-foreground/60 hover:text-muted-foreground data-active:text-foreground/90 after:bottom-[-1px] after:bg-foreground/70"
+                    >
+                      <TabIcon className="size-3" aria-hidden />
+                      {label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {/*
+                  Reserved height: the three tabs have very different
+                  content lengths, and without a floor the panel jumped a
+                  couple of hundred pixels on every switch. Cheaper and
+                  steadier than easing the height.
+                */}
+                <div className="flex min-h-56 flex-col gap-5 px-4 pt-4 pb-4">
+                  {activeTab === 'dependencies' ? (
+                    <>
+                      <CellDependencySections
+                        connections={connections}
+                        otherTech={otherTechEntries}
+                        selectedLayerRowPosition={selectedLayerRowPosition}
+                        onCellSelect={handleConnectionSelect}
+                        onTechSelect={handleTechSelect}
+                      />
+                      {canEdit && dependencySource ? (
+                        addingDependency ? (
+                          <CellDependencyEditor
+                            source={dependencySource}
+                            candidates={dependencyCandidates}
+                            existing={existingDependencies}
+                            onDone={() => setAddingDependency(false)}
+                          />
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => setAddingDependency(true)}
+                          >
+                            <Plus className="size-3" aria-hidden />
+                            Add dependency
+                          </Button>
+                        )
+                      ) : null}
+                    </>
+                  ) : null}
+                  {activeTab === 'evidence' ? (
+                    <CellEvidenceTab cellId={resolvedCellId} />
+                  ) : null}
+                  {activeTab === 'resources' ? (
+                    <CellResourcesTab
+                      cellId={resolvedCellId}
+                      links={cellLinks}
+                      figmaUrl={figmaUrl}
+                    />
+                  ) : null}
                 </div>
-              ) : null}
-              <CellEvidenceSection cellId={resolvedCellId} />
-            </>
-          )}
-        </div>
-        <CellInSlicesFooter cellId={pathEntry?.cellId ?? null} />
-      </DrawerContent>
-    </Drawer>
+              </Tabs>
+            </div>
+            {/* The editor portals Save/Cancel here — below the tabs, shared
+                footing for every property the panel holds. */}
+            {editingCell ? (
+              <div
+                id={CELL_PANEL_FOOTER_ID}
+                className="shrink-0 border-t border-border/60 px-4 py-3 empty:hidden"
+              />
+            ) : null}
+            <CellInSlicesFooter cellId={pathEntry?.cellId ?? null} />
+          </>
+        )}
+    </PanelDrawerShell>
   )
 }

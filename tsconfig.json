@@ -5,7 +5,9 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
+    // No baseUrl (removed in TypeScript 7) and no ignoreDeprecations — the
+    // TS5101 trap that made bare `tsc --noEmit` silently typecheck nothing
+    // is gone with them. `paths` resolves relative to this file.
     "paths": {
       "@/*": ["./src/*"]
     }

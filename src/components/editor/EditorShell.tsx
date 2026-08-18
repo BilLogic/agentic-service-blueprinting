@@ -1,367 +1,644 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Diamond, Info, LayoutGrid, Sparkles, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEditor } from '@/contexts/EditorContext'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { useMobileShell } from '@/hooks/useMobileShell'
-import { useEditor } from '@/contexts/EditorContext'
+import {
+  RAIL_WIDTH,
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+} from '@/lib/layoutTokens'
+import { Homepage } from '@/components/editor/Homepage'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
-  EditorChrome,
-  EditorSidebarWorkspaceHeader,
+  FloatingSidebarPill,
+  SidebarCollapseButton,
 } from '@/components/editor/EditorChrome'
-import {
-  EDITOR_SIDEBAR_COLLAPSED_WIDTH_CLASS,
-  EDITOR_SIDEBAR_WIDTH_CLASS,
-} from '@/components/editor/EditorSidebarRail'
-import { SlideModeMain, SlideModeSidebarNav } from '@/components/editor/SlideModeView'
+import { AgentDock, AgentDockDivider } from '@/components/editor/AgentDock'
+import { EditorRail, type SidebarSurface } from '@/components/editor/EditorRail'
+import { AgentSettingsRailButton } from '@/components/editor/AgentPanel'
+import { ThemeToggle } from '@/components/editor/ThemeToggle'
+import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
+import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'
+import { SlideModeSidebarNav } from '@/components/editor/SlideModeView'
 import { SlicePresentation } from '@/components/editor/SlicePresentation'
 import { SliceView } from '@/components/editor/SliceView'
-import { SlicesSidebarSection } from '@/components/editor/SlicesSidebarSection'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { TabStrip } from '@/components/editor/TabStrip'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { useSlices } from '@/hooks/useSlices'
-import { tabKey, useViewState } from '@/contexts/viewStateStore'
-import { AgentDock, AgentDockDivider } from '@/components/editor/AgentDock'
-import { AgentSettingsButton } from '@/components/editor/AgentPanel'
-import { IconTooltip } from '@/components/editor/IconTooltip'
-import { toggleAgentOpen, useAgentPlacement } from '@/lib/agent/placement'
+import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useCellDeepLink } from '@/hooks/useCellDeepLink'
+import { setSidebarCollapsedState } from '@/contexts/sidebarCollapsedContext'
+import {
+  tabKey,
+  useViewState,
+  type TabDescriptor,
+} from '@/contexts/viewStateStore'
 import {
   registerAgentUiBridge,
   registerAgentUiContext,
 } from '@/lib/agent/uiBridge'
+import {
+  toggleAgentOpen,
+  useAgentPlacement,
+} from '@/lib/agent/placement'
+import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
+import { suppressCanvasResizeRefit } from '@/lib/canvasChromeResize'
+import { getSlideDisplayLabel } from '@/types/nav'
+import {
+  MOTION_STRUCTURAL_EASE,
+  MOTION_STRUCTURAL_MS,
+  prefersReducedMotion,
+} from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
+/**
+ * Aside = rail + content panel, drag-resizable from the aside's right edge
+ * with one persisted width shared by every surface. Dimensions live in
+ * `lib/layoutTokens` — one home for every shell width the runtime does
+ * math on.
+ */
+const WIDTH_STORAGE_KEY = 'sb-sidebar-width'
+
+function loadAsideWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(WIDTH_STORAGE_KEY)
+    const value = raw ? Number(raw) : Number.NaN
+    return Number.isFinite(value)
+      ? Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, value))
+      : SIDEBAR_DEFAULT_WIDTH
+  } catch {
+    return SIDEBAR_DEFAULT_WIDTH
+  }
+}
+
+/**
+ * The shell gate: one breakpoint decides which app this is. Below `md`
+ * (767px) the phone gets the view-only mobile shell — journey reader, touch
+ * map, sheets. At or above it, the desktop shell below, untouched. The
+ * check is synchronous (`matchMedia` via `useSyncExternalStore`), so a
+ * phone never mounts the desktop canvas for even one frame.
+ */
 export function EditorShell() {
   const mobile = useMobileShell()
   return mobile ? <MobileShell /> : <DesktopEditorShell />
 }
 
 /**
- * Resolves the boot `?slice=` deep link once the slice list has loaded: the
- * reducer opens the named tab (or records `missingSliceId`) exactly once.
- * Mounted by both shells so a phone and a desktop read the same link.
+ * The app frame: sidebar, tab strip and whichever view the current tab selects.
+ *
+ * Owns sidebar collapse and the hover-peek rail. Both are timed against
+ * `suppressCanvasResizeRefit`, so the canvas does not refit mid-animation.
  */
-export function SliceUrlBootResolver() {
-  const { pendingUrlState, resolvePending } = useViewState()
-  const slicesQuery = useSlices()
-  const status = slicesQuery.status
-  const ids = (
-    status === 'ready'
-      ? slicesQuery.data
-      : status === 'error'
-        ? (slicesQuery.fallback ?? [])
-        : []
-  ).map((slice) => slice.id)
-  const idsKey = ids.join(',')
-
-  useEffect(() => {
-    if (pendingUrlState === null) return
-    if (status === 'loading') return
-    resolvePending(idsKey ? idsKey.split(',') : [])
-  }, [pendingUrlState, resolvePending, status, idsKey])
-
-  return null
-}
-
-/** A dead `?slice=` link — say so rather than the link silently doing nothing. */
-export function MissingSliceNotice() {
-  const { missingSliceId, dismissMissingSlice } = useViewState()
-  if (missingSliceId === null) return null
-  return (
-    <div className="shrink-0 border-b border-border bg-sidebar px-2 py-1.5">
-      <Alert className="relative items-center">
-        <Info className="size-3.5" aria-hidden />
-        <AlertDescription className="text-xs">
-          That link points to a slice that no longer exists — it may have been
-          deleted.
-        </AlertDescription>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="absolute top-1 right-1"
-          aria-label="Dismiss"
-          onClick={dismissMissingSlice}
-        >
-          <X className="size-3" />
-        </Button>
-      </Alert>
-    </div>
-  )
-}
-
-type SidebarSurface = 'blueprints' | 'slices'
-
-/** The sidebar's surface radio — Blueprints ◫ / Slices ◇. */
-function SidebarSurfaceToggle({
-  surface,
-  onSurfaceChange,
-  trailing,
-}: {
-  surface: SidebarSurface
-  onSurfaceChange: (surface: SidebarSurface) => void
-  /** Toggles that accompany the radio (the agent ✦ and its ⚙). */
-  trailing?: ReactNode
-}) {
-  const surfaces: Array<{
-    id: SidebarSurface
-    label: string
-    icon: typeof LayoutGrid
-  }> = [
-    { id: 'blueprints', label: 'Blueprints', icon: LayoutGrid },
-    { id: 'slices', label: 'Slices', icon: Diamond },
-  ]
-  return (
-    <div
-      role="group"
-      aria-label="Sidebar surfaces"
-      className="flex items-center gap-1 border-b border-border/60 px-2 py-1.5"
-    >
-      {surfaces.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          type="button"
-          aria-pressed={surface === id}
-          onClick={() => onSurfaceChange(id)}
-          className={cn(
-            'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
-            surface === id
-              ? 'bg-accent text-accent-foreground'
-              : 'text-sidebar-foreground/60 hover:text-sidebar-foreground',
-          )}
-        >
-          <Icon className="size-3.5" aria-hidden />
-          {label}
-        </button>
-      ))}
-      {trailing}
-    </div>
-  )
-}
-
-/**
- * ✦ is a TOGGLE, not a surface swap — the chat docks under whichever panel
- * is open (or floats), so Blueprints/Slices keeps its own highlight while
- * the agent is showing. It wears a tint and a presence dot, never the
- * selected state.
- */
-function AgentToggleButton() {
-  const placement = useAgentPlacement()
-  const active = placement.open
-  return (
-    <IconTooltip label={active ? 'Hide the agent' : 'Show the agent'} side="bottom">
-      <button
-        type="button"
-        aria-label={active ? 'Hide the agent' : 'Show the agent'}
-        aria-pressed={active}
-        onClick={() => toggleAgentOpen()}
-        className={cn(
-          'relative flex size-6 shrink-0 items-center justify-center rounded-md transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-          active
-            ? 'bg-accent text-accent-foreground after:absolute after:right-0.5 after:top-0.5 after:size-1.5 after:rounded-full after:bg-primary'
-            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground',
-        )}
-      >
-        <Sparkles className="size-3.5" aria-hidden />
-      </button>
-    </IconTooltip>
-  )
-}
-
 function DesktopEditorShell() {
-  const { view, goHome, openDetail, activeSlide } = useEditor()
-  const { activeTab, activateTab, openTab } = useViewState()
+  const {
+    view,
+    goHome,
+    selectPhase,
+    selectScenario,
+    selectedPhaseId,
+    selectedScenarioId,
+    slides,
+    togglePhaseExpanded,
+    setScenarioDisplayViewType,
+  } = useEditor()
+  const { activeTab, activateTab, openTab, closeTab } = useViewState()
+  const { canAgent } = useSupabase()
+  // `?cell=` boot deep link — the receiving end of the share link the agent
+  // hands back with a cited cell. Mounted here because it needs the editor's
+  // navigation and the boot URL state, and both live at this level.
+  useCellDeepLink()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const placement = useAgentPlacement()
-  const sidebarColumnRef = useRef<HTMLDivElement>(null)
-  const isDetail = view === 'detail'
-  const isHome = view === 'home'
-
-  // The agent's hands (navigation) and eyes (get_ui_state) on this shell.
-  useEffect(
-    () =>
-      registerAgentUiBridge({
-        selectPhase: (phaseId) => {
-          activateTab(null)
-          openDetail(phaseId)
-        },
-        selectScenario: (scenarioId) => {
-          activateTab(null)
-          openDetail(scenarioId)
-        },
-        openAgentSurface: () => toggleAgentOpen(true),
-      }),
-    [activateTab, openDetail],
-  )
-
-  useEffect(
-    () =>
-      registerAgentUiContext('editor-shell', () => {
-        const lines = [
-          `View level: ${view === 'home' ? 'service overview (all phases)' : 'detail'}`,
-        ]
-        if (view === 'detail')
-          lines.push(
-            `Open slide: "${activeSlide.label}" (${activeSlide.id})${activeSlide.parentId ? ' — a scenario' : ' — a phase'}`,
-          )
-        lines.push(
-          activeTab
-            ? `Active tab: ${activeTab.kind === 'present' ? 'presenting slice' : 'slice'} ${activeTab.sliceId}`
-            : 'Active tab: base blueprint view (no slice tab)',
-        )
-        return lines.join('\n')
-      }),
-    [view, activeSlide, activeTab],
-  )
+  const isLanding = view === 'landing'
+  // Home reads as active only on the overview canvas itself, and only while
+  // no tab is covering it.
+  const isOverview = view === 'home' && activeTab === null
 
   const activeTabKind = activeTab?.kind ?? null
 
-  // The sidebar picks a surface. Slice/present activation auto-selects ◇
-  // (initializer covers remounts while a tab is already active, e.g. a
-  // `?slice=` boot).
+  // The rail picks a surface. Slice/present tab activation auto-selects ◇,
+  // exactly as the old horizontal tabs did (initializer covers remounts
+  // while a tab is already active, e.g. returning from a presentation).
   const [surface, setSurface] = useState<SidebarSurface>(
     activeTabKind !== null ? 'slices' : 'blueprints',
   )
+  const agentPlacement = useAgentPlacement()
+  const agentDocked = agentPlacement.mode === 'docked' && agentPlacement.open
+  const panelColumnRef = useRef<HTMLDivElement>(null)
   const [lastTabKind, setLastTabKind] = useState(activeTabKind)
   if (lastTabKind !== activeTabKind) {
     setLastTabKind(activeTabKind)
     if (activeTabKind !== null) setSurface('slices')
   }
 
-  // Presentation is full-bleed: the whole sidebar hides — Return is the way
-  // back.
-  const presenting = activeTabKind === 'present'
+  // Leaving presentation runs before the tab actually switches: tabs unmount
+  // on switch, so the exit animation has to play while the present tab is
+  // still mounted. `leavingPresent` drops the shell back to its non-present
+  // pose (sidebar expands) while the presentation surface fades out, then
+  // the tab switch lands at the end of the same 320 ms.
+  const [leavingPresent, setLeavingPresent] = useState(false)
+  const leaveTimer = useRef<number | null>(null)
+  useEffect(
+    () => () => {
+      if (leaveTimer.current !== null) window.clearTimeout(leaveTimer.current)
+    },
+    [],
+  )
 
-  const contentKey = activeTab ? tabKey(activeTab) : 'blueprint'
+  // Presentation is full-bleed: the whole sidebar collapses (the pill hides
+  // too — Return is the way back), on the same 320 ms width ease as a manual
+  // collapse. It never unmounts, which is what keeps entering smooth.
+  const presenting = activeTabKind === 'present' && !leavingPresent
 
-  return (
-    <div
-      className="relative flex h-svh overflow-hidden bg-background"
-      data-editor-shell
-    >
-      <SliceUrlBootResolver />
-      <aside
-        data-editor-sidebar
-        className={cn(
-          'flex shrink-0 flex-col overflow-hidden border-r border-border bg-muted/20 transition-[width,border-color,opacity] duration-300 ease-in-out dark:bg-muted/10',
-          sidebarCollapsed || presenting
-            ? EDITOR_SIDEBAR_COLLAPSED_WIDTH_CLASS
-            : EDITOR_SIDEBAR_WIDTH_CLASS,
-        )}
-      >
-        {!sidebarCollapsed && !presenting && (
-          <div
-            ref={sidebarColumnRef}
-            className="flex min-h-0 min-w-0 flex-1 flex-col"
-          >
-            <SidebarProvider
-              style={
-                {
-                  '--sidebar-width': '15rem',
-                } as CSSProperties
-              }
-              className="flex min-h-0 min-w-0 flex-1 flex-col"
-            >
-              <EditorSidebarWorkspaceHeader
-                sidebarCollapsed={sidebarCollapsed}
-                onToggleSidebar={() =>
-                  setSidebarCollapsed((collapsed) => !collapsed)
-                }
-                isHome={isHome}
-                onHome={() => {
-                  activateTab(null)
-                  goHome()
-                }}
-              />
-              <SidebarSurfaceToggle
-                surface={surface}
-                onSurfaceChange={setSurface}
-                trailing={
-                  <div className="ml-0.5 flex items-center gap-0.5 border-l border-border/60 pl-1.5">
-                    <AgentToggleButton />
-                    <AgentSettingsButton />
-                  </div>
-                }
-              />
-              {surface === 'slices' ? (
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  <SlicesSidebarSection />
-                </div>
-              ) : (
-                <SlideModeSidebarNav />
-              )}
-            </SidebarProvider>
-            {placement.open && placement.mode === 'docked' ? (
-              <AgentDockDivider columnRef={sidebarColumnRef} />
-            ) : null}
-            <AgentDock visible />
-          </div>
-        )}
-      </aside>
+  const railOnly = presenting || sidebarCollapsed
 
-      {/* A floating agent must survive the sidebar collapsing (its normal
-          mount lives inside the expanded sidebar column). Exactly one
-          instance exists at a time. */}
-      {(sidebarCollapsed || presenting) && placement.mode === 'floating' ? (
-        <AgentDock visible />
-      ) : null}
+  useEffect(() => {
+    // Entering and leaving presentation both resize the canvas container.
+    suppressCanvasResizeRefit()
+  }, [presenting])
 
-      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <MissingSliceNotice />
-        <div className="relative min-h-0 min-w-0 flex-1">
-          {activeTab === null ? (
-            <>
-              <div
-                className={cn(
-                  'absolute inset-0 flex min-h-0 flex-col transition-opacity duration-300 ease-in-out',
-                  isDetail ? 'opacity-100' : 'pointer-events-none opacity-0',
-                )}
-                aria-hidden={!isDetail}
-                data-editor-view
-              >
-                <SlideModeMain />
-              </div>
-              <div
-                className={cn(
-                  'absolute inset-0 flex min-h-0 flex-col transition-opacity duration-300 ease-in-out',
-                  isDetail ? 'pointer-events-none opacity-0' : 'opacity-100',
-                )}
-                aria-hidden={isDetail}
-                data-editor-view
-              >
-                <ServiceOverviewView />
-              </div>
-            </>
-          ) : (
-            <div key={contentKey} className="absolute inset-0" data-editor-view>
-              {activeTab.kind === 'slice' ? (
-                <SliceView key={tabKey(activeTab)} sliceId={activeTab.sliceId} />
-              ) : (
-                <SlicePresentation
-                  key={tabKey(activeTab)}
-                  sliceId={activeTab.sliceId}
-                  onReturn={() =>
-                    openTab({ kind: 'slice', sliceId: activeTab.sliceId })
-                  }
-                />
-              )}
-            </div>
-          )}
-        </div>
-      </main>
+  // Publish the collapsed state so canvas navbars can host the expand
+  // control themselves — see sidebarCollapsedContext for why the pill is
+  // now the fallback rather than the default.
+  const expandSidebar = useCallback(() => {
+    suppressCanvasResizeRefit()
+    setSidebarCollapsed(false)
+  }, [])
+  useEffect(() => {
+    // NOT `railOnly`: presentation also collapses the sidebar, but it hides
+    // the pill too (full-bleed). Telling the bands they are collapsed there
+    // would strand a presentation with no header and no Return — the band
+    // must keep drawing itself when nothing else can carry it.
+    setSidebarCollapsedState({
+      collapsed: railOnly && !presenting,
+      expand: expandSidebar,
+    })
+  }, [railOnly, presenting, expandSidebar])
 
-      {!presenting ? (
-        <EditorChrome
-          sidebarCollapsed={sidebarCollapsed}
-          onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)}
-          isHome={isHome && activeTab === null}
-          onHome={() => {
-            activateTab(null)
-            goHome()
-          }}
-        />
-      ) : null}
+  // Hand the agent its navigation hands: open_phase / open_scenario tools
+  // land on the same callbacks the sidebar rows use.
+  useEffect(
+    () =>
+      registerAgentUiBridge({
+        selectPhase,
+        selectScenario,
+        openAgentSurface: () => {
+          toggleAgentOpen(true)
+          setSidebarCollapsed(false)
+        },
+        setSidebarCollapsed: (collapsed) => {
+          suppressCanvasResizeRefit()
+          setSidebarCollapsed(collapsed)
+        },
+      }),
+    [selectPhase, selectScenario],
+  )
+
+  // The read side: what the shell itself knows about what's on screen.
+  // Ref-refreshed each render, registered once — the collector always sees
+  // the latest without effect churn.
+  const phaseSlide = slides.find((slide) => slide.id === selectedPhaseId)
+  const scenarioSlide = slides.find((slide) => slide.id === selectedScenarioId)
+  const shellContext = [
+    `View level: ${view}${view === 'home' ? ' (zoomed-out overview of all phases)' : ''}`,
+    phaseSlide
+      ? `Selected phase: "${getSlideDisplayLabel(phaseSlide, slides)}" (${phaseSlide.id})`
+      : 'Selected phase: none',
+    scenarioSlide
+      ? `Selected scenario: "${getSlideDisplayLabel(scenarioSlide, slides)}" (${scenarioSlide.id})`
+      : 'Selected scenario: none',
+    activeTab
+      ? `Active tab: ${activeTab.kind} for slice ${activeTab.sliceId}`
+      : 'Active tab: base blueprint view (no slice tab)',
+    `Sidebar: ${surface} surface${railOnly ? ', collapsed' : ''}${presenting ? ', presenting' : ''}`,
+    `Agent chat: ${agentPlacement.open ? `${agentPlacement.mode} (visible)` : 'hidden'}`,
+  ].join('\n')
+  const shellContextRef = useRef(shellContext)
+  useEffect(() => {
+    shellContextRef.current = shellContext
+  })
+  useEffect(
+    () => registerAgentUiContext('shell', () => shellContextRef.current),
+    [],
+  )
+
+  // Agent parity: the shell-level controls (tabs, presentation, phase
+  // accordion, compare toggle). Ref-snapshotted so registration is stable
+  // while the handlers stay current.
+  type ShellCommands = {
+    goOverview: () => void
+    activateBase: () => void
+    openSliceTab: (sliceId: string, present: boolean) => void
+    closeSliceTab: (sliceId: string) => void
+    exitPresent: () => string
+    togglePhase: (phaseId: string) => void
+    setScenarioView: (view: 'stacked' | 'merged') => string
+  }
+  const shellCommandsRef = useRef<ShellCommands>({
+    goOverview: () => {},
+    activateBase: () => {},
+    openSliceTab: () => {},
+    closeSliceTab: () => {},
+    exitPresent: () => 'Shell not ready yet.',
+    togglePhase: () => {},
+    setScenarioView: () => 'Shell not ready yet.',
+  })
+  useEffect(() => {
+    const commands = shellCommandsRef
+    const unregister = [
+      registerAgentUiCommand({
+        name: 'go_overview',
+        description: 'Back to the zoomed-out overview of all phases (Home).',
+        run: () => {
+          commands.current.goOverview()
+          return 'On the overview.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'activate_base_tab',
+        description: 'Bring the base blueprint view forward (deactivate any slice tab).',
+        run: () => {
+          commands.current.activateBase()
+          return 'Base blueprint view is active.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'open_slice_tab',
+        description: 'Open a slice in a tab. arg: slice id (list_slices).',
+        run: (arg) => {
+          if (!arg) throw new Error('arg required: slice id')
+          commands.current.openSliceTab(arg, false)
+          return 'Slice tab opened.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'present_slice',
+        description: 'Start presenting a slice full-bleed. arg: slice id.',
+        run: (arg) => {
+          if (!arg) throw new Error('arg required: slice id')
+          commands.current.openSliceTab(arg, true)
+          return 'Presenting the slice.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'exit_presentation',
+        description: 'Leave the running presentation back onto its slice tab.',
+        run: () => commands.current.exitPresent(),
+      }),
+      registerAgentUiCommand({
+        name: 'close_slice_tab',
+        description: 'Close a slice\'s open tab(s). arg: slice id.',
+        run: (arg) => {
+          if (!arg) throw new Error('arg required: slice id')
+          commands.current.closeSliceTab(arg)
+          return 'Tab closed.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'toggle_phase_expanded',
+        description: "Expand/collapse a phase's accordion in the sidebar. arg: phase id.",
+        run: (arg) => {
+          if (!arg) throw new Error('arg required: phase id')
+          commands.current.togglePhase(arg)
+          return 'Toggled the phase accordion.'
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'set_scenario_view',
+        description: 'Switch the SELECTED scenario between its two displays. arg: stacked | merged (needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also applies the reading preset — shared steps fold and the difference ledger opens; returning to stacked unfolds. Legacy aliases accepted: side-by-side = stacked, integrated = merged.',
+        run: (arg) =>
+          // 'side-by-side'/'integrated' are the pre-v3 tokens, kept as
+          // documented aliases so older prompts and transcripts still work.
+          commands.current.setScenarioView(
+            arg === 'merged' || arg === 'integrated' ? 'merged' : 'stacked',
+          ),
+      }),
+    ]
+    return () => unregister.forEach((fn) => fn())
+  }, [])
+
+  const toggleSidebar = () => {
+    // The width ease resizes the canvas container for 320 ms. That is
+    // chrome moving, not the user navigating — the camera holds still.
+    suppressCanvasResizeRefit()
+    setSidebarCollapsed((collapsed) => !collapsed)
+  }
+
+  // Shared drag-resize. During a drag the width transition is off —
+  // easing against the pointer reads as lag, not motion.
+  const [asideWidth, setAsideWidth] = useState(loadAsideWidth)
+  const [resizing, setResizing] = useState(false)
+  const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setResizing(true)
+    suppressCanvasResizeRefit()
+  }
+  const moveResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizing) return
+    // The aside is flush with the window's left edge, so the pointer's x IS
+    // the aside width.
+    const next = Math.min(
+      SIDEBAR_MAX_WIDTH,
+      Math.max(SIDEBAR_MIN_WIDTH, Math.round(event.clientX)),
+    )
+    suppressCanvasResizeRefit()
+    setAsideWidth((width) => (width === next ? width : next))
+  }
+  const endResize = () => {
+    if (!resizing) return
+    setResizing(false)
+    setAsideWidth((width) => {
+      try {
+        window.localStorage.setItem(WIDTH_STORAGE_KEY, String(width))
+      } catch {
+        // Width memory is a nicety; failing to store is fine.
+      }
+      return width
+    })
+  }
+
+  /**
+   * Return: exit presentation onto that slice's focus tab, creating the tab
+   * if it is not already open. The three entry moves play in reverse over
+   * the same durations before the switch commits.
+   */
+  const exitPresentation = useCallback(
+    (sliceId: string) => {
+      if (leaveTimer.current !== null) return
+      const land = () => {
+        leaveTimer.current = null
+        openTab({ kind: 'slice', sliceId })
+        setLeavingPresent(false)
+      }
+      if (prefersReducedMotion()) {
+        land()
+        return
+      }
+      setLeavingPresent(true)
+      suppressCanvasResizeRefit()
+      leaveTimer.current = window.setTimeout(land, MOTION_STRUCTURAL_MS)
+    },
+    [openTab],
+  )
+
+  // Home (in the tab strip) is the route back to the birds-eye overview
+  // canvas — it deactivates any tab, clears the selection and animates the
+  // fit, exactly like Escape and the workspace breadcrumb. `goHome` (not
+  // `enterCanvas`) so every overview return has the same feel.
+  const goOverview = () => {
+    activateTab(null)
+    goHome()
+  }
+
+  // Latest handlers for the registered shell commands (declared above);
+  // assigned below everything they close over, inside an every-render
+  // effect (refs are not written during render).
+  const shellCommands: ShellCommands = {
+    goOverview,
+    activateBase: () => activateTab(null),
+    openSliceTab: (sliceId, present) =>
+      openTab({ kind: present ? 'present' : 'slice', sliceId }),
+    closeSliceTab: (sliceId) => {
+      closeTab(tabKey({ kind: 'slice', sliceId }))
+      closeTab(tabKey({ kind: 'present', sliceId }))
+    },
+    exitPresent: () => {
+      if (activeTab?.kind !== 'present') return 'Not presenting right now.'
+      exitPresentation(activeTab.sliceId)
+      return 'Left the presentation onto the slice tab.'
+    },
+    togglePhase: (phaseId) => togglePhaseExpanded(phaseId),
+    setScenarioView: (viewType) => {
+      const scenario = slides.find((slide) => slide.id === selectedScenarioId)
+      if (!scenario) return 'No scenario is selected — open one first.'
+      setScenarioDisplayViewType(scenario.id, viewType)
+      return `Scenario view set to ${viewType === 'merged' ? 'Merged' : 'Stacked'}.`
+    },
+  }
+  useEffect(() => {
+    shellCommandsRef.current = shellCommands
+  })
+
+  // What counts as a content switch for the crossfade. Navigation *inside*
+  // the base canvas (home ⇄ detail) is a camera move, not a screen change,
+  // so it deliberately keeps the same key.
+  const contentKey = activeTab
+    ? tabKey(activeTab)
+    : isLanding
+      ? 'landing'
+      : 'blueprint'
+
+  const sidebarBody = (
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-row">
+      <EditorRail
+        surface={surface}
+        agentActive={agentPlacement.open}
+        showAgent={canAgent}
+        onSelectSurface={(next) => {
+          // ✦ toggles the chat's presence; the other two still pick the
+          // panel underneath it, so "chat while looking at the nav" is
+          // the default posture rather than a swap away from it.
+          if (next === 'agent') toggleAgentOpen()
+          else setSurface(next)
+          if (sidebarCollapsed) {
+            suppressCanvasResizeRefit()
+            setSidebarCollapsed(false)
+          }
+        }}
+        topSlot={
+          <SidebarCollapseButton collapsed={false} onToggle={toggleSidebar} />
+        }
+        bottomSlot={
+          <>
+            {/* Theme is a utility toggle, not a surface — it lives in the
+                rail's bottom group with the other toggles, not in the
+                collapsed pill, which is already the app's tightest 32px. */}
+            <ThemeToggle size="icon-sm" />
+            <AgentSettingsRailButton />
+          </>
+        }
+      />
+      <div ref={panelColumnRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <SidebarProvider
+          style={
+            {
+              '--sidebar-width': `${asideWidth - RAIL_WIDTH}px`,
+            } as CSSProperties
+          }
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+        >
+          <SlideModeSidebarNav surface={surface === 'agent' ? 'blueprints' : surface} />
+        </SidebarProvider>
+        {agentDocked ? <AgentDockDivider columnRef={panelColumnRef} /> : null}
+        <AgentDock visible={canAgent && agentDocked} />
+      </div>
     </div>
   )
+
+  return (
+    // The base surface's mode, hoisted to include the sidebar.
+    //
+    // It used to wrap only the canvas, which left the sidebar unable to answer
+    // "are we editing?" — so its `+` and `⋯` were on in View mode, offering to
+    // create and rename things on a surface whose whole premise is that it
+    // changes nothing. A slice tab still mounts its own provider inside this
+    // one and shadows it, which is what keeps the two surfaces independent.
+    <CanvasModeProvider>
+      <div
+        // h-full rides the html/body/#root 100% chain — unlike svh units it
+        // tracks the real laid-out viewport in embedded panes that resolve
+        // viewport units against a stale size after a resize.
+        className="relative flex h-full flex-col overflow-hidden bg-background"
+        data-editor-shell
+      >
+        {/* Full-width top nav: workspace identity, Home, open tabs. */}
+        <TabStrip
+          isOverview={isOverview}
+          onHome={goOverview}
+          onBase={() => activateTab(null)}
+        />
+
+        <div className="relative flex min-h-0 min-w-0 flex-1">
+          <aside
+            className={cn(
+              'relative z-20 shrink-0 overflow-hidden bg-sidebar',
+              !railOnly && 'border-r border-border',
+            )}
+            style={{
+              width: railOnly ? 0 : asideWidth,
+              transitionProperty: resizing ? 'none' : 'width',
+              transitionDuration: `${MOTION_STRUCTURAL_MS}ms`,
+              transitionTimingFunction: MOTION_STRUCTURAL_EASE,
+            }}
+            data-editor-sidebar=""
+            data-collapsed={railOnly ? '' : undefined}
+            aria-label="Workspace navigation"
+          >
+            {/*
+              Fixed-width sidebar body (rail + panel). In flow it is clipped
+              by the animating aside, so open/close reads as a wipe rather
+              than a mount/unmount.
+            */}
+            <div
+              className={cn(
+                'flex h-full min-h-0 flex-row',
+                'transition-[opacity,transform] duration-(--motion-fade) ease-out motion-reduce:transition-none',
+                railOnly
+                  ? 'pointer-events-none -translate-x-2 opacity-0'
+                  : 'translate-x-0 opacity-100 delay-75',
+              )}
+              style={{ width: asideWidth }}
+              aria-hidden={railOnly}
+            >
+              {sidebarBody}
+            </div>
+            {/* Drag the aside's right edge to resize; width is remembered
+                per surface. Hidden while collapsed — there is no edge. */}
+            {!railOnly ? (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize sidebar"
+                onPointerDown={startResize}
+                onPointerMove={moveResize}
+                onPointerUp={endResize}
+                onPointerCancel={endResize}
+                className={cn(
+                  'absolute inset-y-0 right-0 z-30 w-1.5 cursor-col-resize',
+                  'hover:bg-border/80 active:bg-border',
+                  resizing && 'bg-border',
+                )}
+              />
+            ) : null}
+          </aside>
+
+          {/*
+            The floating posture: portalled to the body so the window
+            escapes the sidebar's clip. Hidden while presenting — a
+            full-bleed slice is not the place for a chat window.
+          */}
+          <AgentDock
+            visible={canAgent && agentPlacement.mode === 'floating' && !presenting}
+          />
+
+          {/*
+            Collapsed remnant: the floating pill over the canvas. Hidden
+            while presenting (full-bleed; Return is the way back). Its
+            toggle is the same single control the rail carries expanded.
+          */}
+          {railOnly && !presenting ? (
+            <div className="pointer-events-none absolute left-3 top-3 z-30">
+              <FloatingSidebarPill onExpand={toggleSidebar} />
+            </div>
+          ) : null}
+
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="relative min-h-0 min-w-0 flex-1">
+              {/*
+                Only the active tab's content mounts, so switching is a
+                fade-through rather than a true crossfade: the keyed wrapper
+                remounts and the incoming surface fades up over 200 ms after
+                the 75 ms stagger the sidebar already uses.
+              */}
+              <div
+                key={contentKey}
+                className="absolute inset-0"
+                data-editor-content=""
+              >
+                <ActiveTabContent
+                  tab={activeTab}
+                  isLanding={isLanding}
+                  leavingPresent={leavingPresent}
+                  onReturn={exitPresentation}
+                />
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </CanvasModeProvider>
+  )
+}
+
+function ActiveTabContent({
+  tab,
+  isLanding,
+  leavingPresent,
+  onReturn,
+}: {
+  tab: TabDescriptor | null
+  isLanding: boolean
+  leavingPresent: boolean
+  onReturn: (sliceId: string) => void
+}) {
+  if (tab === null) {
+    // Base blueprint view — existing landing / home / detail behavior.
+    return isLanding ? (
+      <Homepage />
+    ) : (
+      // No provider here: the base surface's mode is the shell's, so the
+      // sidebar and this canvas are always in the same one.
+      <VisualWalkthroughShell>
+        <div
+          className="absolute inset-0 flex min-h-0 flex-col"
+          data-editor-view
+        >
+          <ServiceOverviewView />
+        </div>
+      </VisualWalkthroughShell>
+    )
+  }
+  switch (tab.kind) {
+    case 'slice':
+      return <SliceView key={tabKey(tab)} sliceId={tab.sliceId} />
+    case 'present':
+      return (
+        <SlicePresentation
+          key={tabKey(tab)}
+          sliceId={tab.sliceId}
+          leaving={leavingPresent}
+          onReturn={() => onReturn(tab.sliceId)}
+        />
+      )
+  }
 }

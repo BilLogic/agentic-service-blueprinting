@@ -5,14 +5,16 @@ import { MobileNavSheet } from '@/components/mobile/MobileNavSheet'
 import type { NavItem } from '@/types/nav'
 import type { Slice } from '@/types/database'
 
-// Render tests for the drawer (ported from uno-blueprint, slices surface
-// included as of migration-v2 Unit 5). The pinned contract survives: the
-// sheet only reports what was tapped (overview, phase expansion, scenario,
-// slice, surface); the shell owns what a tap means for the visible surface.
-// The accordion renders scenarios only for expanded phases.
+// Render tests for the Phase-3 drawer (plan 2026-08-16-002): rail + panel.
+// The pinned contract from Phase 2 survives — the sheet only reports what
+// was tapped (slice, phase, scenario, surface, expansion); the shell owns
+// what a tap means for the visible surface. New in Phase 3: the accordion
+// renders scenarios only for expanded phases, driven by EditorContext's
+// expandedPhaseIds rather than always-expanded.
 
 const nav = (over: Partial<NavItem> & { id: string; label: string }): NavItem =>
   ({
+    parentId: null,
     index: 0,
     description: '',
     ...over,
@@ -34,16 +36,15 @@ const scenariosByPhase = new Map<string, NavItem[]>([
 const slices = [
   {
     id: 'sl-1',
-    title: 'Support lane, read closely',
+    title: 'Field Crew lane: intake',
     slice_type: 'lane',
   } as Slice,
 ]
 const allExpanded = new Set(['ph-1', 'ph-2'])
 
 function renderSheet(over: Partial<Parameters<typeof MobileNavSheet>[0]> = {}) {
-  const onSelectOverview = vi.fn()
-  const onSelectScenario = vi.fn()
   const onSelectSlice = vi.fn()
+  const onSelectScenario = vi.fn()
   const onSurfaceChange = vi.fn()
   const onPhaseExpandedChange = vi.fn()
   render(
@@ -59,18 +60,16 @@ function renderSheet(over: Partial<Parameters<typeof MobileNavSheet>[0]> = {}) {
       slides={slides}
       expandedPhaseIds={allExpanded}
       onPhaseExpandedChange={onPhaseExpandedChange}
-      isHome={false}
+      selectedPhaseId={null}
       selectedScenarioId={null}
-      onSelectOverview={onSelectOverview}
-      onSelectScenario={onSelectScenario}
       onSelectSlice={onSelectSlice}
+      onSelectScenario={onSelectScenario}
       {...over}
     />,
   )
   return {
-    onSelectOverview,
-    onSelectScenario,
     onSelectSlice,
+    onSelectScenario,
     onSurfaceChange,
     onPhaseExpandedChange,
   }
@@ -81,7 +80,7 @@ afterEach(cleanup)
 describe('MobileNavSheet routing', () => {
   it('a slice row (Slices surface) reports the slice and only the slice', () => {
     const h = renderSheet({ surface: 'slices' })
-    screen.getByText('Support lane, read closely').click()
+    screen.getByText('Field Crew lane: intake').click()
     expect(h.onSelectSlice).toHaveBeenCalledWith('sl-1')
     expect(h.onSelectScenario).not.toHaveBeenCalled()
   })
@@ -92,7 +91,6 @@ describe('MobileNavSheet routing', () => {
     expect(h.onPhaseExpandedChange).toHaveBeenCalledWith('ph-1', true)
     expect(h.onSelectScenario).not.toHaveBeenCalled()
     expect(h.onSelectSlice).not.toHaveBeenCalled()
-    expect(h.onSelectOverview).not.toHaveBeenCalled()
   })
 
   it('tapping an expanded phase label collapses it', () => {
@@ -105,15 +103,7 @@ describe('MobileNavSheet routing', () => {
     const h = renderSheet()
     screen.getByText('Discovery').click()
     expect(h.onSelectScenario).toHaveBeenCalledWith('sc-1')
-    expect(h.onSelectOverview).not.toHaveBeenCalled()
     expect(h.onSelectSlice).not.toHaveBeenCalled()
-  })
-
-  it('the overview row reports overview and nothing else', () => {
-    const h = renderSheet()
-    screen.getByText('Service overview').click()
-    expect(h.onSelectOverview).toHaveBeenCalledTimes(1)
-    expect(h.onSelectScenario).not.toHaveBeenCalled()
   })
 
   it('marks the selected scenario with aria-current', () => {
@@ -122,10 +112,10 @@ describe('MobileNavSheet routing', () => {
     expect(row?.getAttribute('aria-current')).toBe('true')
   })
 
-  it('marks the overview row only while home is showing', () => {
-    renderSheet({ isHome: true })
-    const row = screen.getByText('Service overview').closest('button')
-    expect(row?.getAttribute('aria-current')).toBe('true')
+  it('marks the selected phase only while no scenario is selected', () => {
+    renderSheet({ selectedPhaseId: 'ph-1', selectedScenarioId: 'sc-1' })
+    const phaseRow = screen.getByText(/Application/).closest('button')
+    expect(phaseRow?.getAttribute('aria-current')).toBeNull()
   })
 })
 
@@ -160,13 +150,13 @@ describe('MobileNavSheet accordion and rail', () => {
 
   it('the blueprints surface does not render slice rows', () => {
     renderSheet({ surface: 'blueprints' })
-    expect(screen.queryByText('Support lane, read closely')).toBeNull()
+    expect(screen.queryByText('Field Crew lane: intake')).toBeNull()
   })
 
   it('slices surface groups rows under the slice_type section', () => {
     renderSheet({ surface: 'slices' })
     expect(screen.getByText('lane')).toBeDefined()
-    expect(screen.getByText('Support lane, read closely')).toBeDefined()
+    expect(screen.getByText('Field Crew lane: intake')).toBeDefined()
   })
 
   it('a loading slice list shows skeleton rows, not the empty message', () => {

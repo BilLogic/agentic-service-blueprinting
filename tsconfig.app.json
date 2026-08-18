@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
+    // No baseUrl: removed in TypeScript 7. `paths` resolves relative to this
+    // file, which is what the mapping already assumed.
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -8,8 +9,8 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    // `node` is here for the token tests, which read tokens.css off disk to
-    // check that the stylesheet and its consumers still agree.
+    // `node` is here for the token tests, which read colors.css off disk to check
+    // that the TypeScript side and the stylesheet still agree.
     "types": ["vite/client", "node"],
     "skipLibCheck": true,
 
@@ -22,6 +23,7 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

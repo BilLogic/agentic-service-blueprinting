@@ -166,12 +166,6 @@ export type ViewStateContextValue = {
 
 export const ViewStateContext = createContext<ViewStateContextValue | null>(null)
 
-/** Null outside a provider — for surfaces (the cell panel) that also render
- * in provider-less test harnesses. */
-export function useViewStateOptional(): ViewStateContextValue | null {
-  return useContext(ViewStateContext)
-}
-
 export function useViewState(): ViewStateContextValue {
   const context = useContext(ViewStateContext)
   if (!context) {

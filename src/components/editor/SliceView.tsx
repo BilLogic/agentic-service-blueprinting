@@ -1,38 +1,41 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
   type MouseEvent,
   type PointerEvent,
 } from 'react'
-import { Play } from 'lucide-react'
-import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
-import { BlueprintSlideContent } from '@/components/blueprint/BlueprintSlideContent'
+import { Check, Play } from 'lucide-react'
+import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
+import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
+import {
+  PendingCanvasLoadingSkeleton,
+  SliceTabLoadingSkeleton,
+} from '@/components/editor/EditorLoadingSkeletons'
+import { NavbarZoomIndicator } from '@/components/editor/EditorZoomIndicator'
+import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
+import { useMobileShell } from '@/hooks/useMobileShell'
+import { SliceEditSession } from '@/components/editor/SliceEditSession'
 import { SliceHeaderBand } from '@/components/editor/SliceHeaderBand'
-import { ZoomPanViewport } from '@/components/editor/ZoomPanViewport'
-import { BlueprintCellDetailProvider } from '@/contexts/BlueprintCellDetailContext'
-import { useEditor } from '@/contexts/EditorContext'
+import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
+import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
+import { EditorDetailScope } from '@/contexts/EditorContext'
+import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'
+import { useCanvasMode } from '@/contexts/canvasModeContext'
 import { SliceMembershipContext } from '@/contexts/sliceMembershipContext'
 import { useViewState } from '@/contexts/viewStateStore'
-import { useScenarioBlueprint } from '@/hooks/useScenarioBlueprint'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import { resolveSliceCells } from '@/lib/sliceCells'
 import { cn } from '@/lib/utils'
-import { Skeleton } from '@/components/ui/skeleton'
-import type { NavItem } from '@/types/nav'
 
 /**
  * Chrome that must neither re-focus nor de-focus the slice when clicked:
- * the cell detail panel, the header band, canvas nav, zoom chrome, and any
- * open walkthrough modal.
+ * the cell detail panel, navbar, canvas nav, zoom chrome, and any open
+ * walkthrough modal.
  */
 const FOCUS_CLICK_IGNORE =
-  '[data-cell-detail-panel], [data-editor-navbar], [data-canvas-nav], [data-zoom-indicator], [data-visual-walkthrough-modal]'
-
-const SLICE_PAN_IGNORE =
-  "button, a, input, textarea, select, label, [role='button'], [data-slide-sticky-header], [data-compare-panel], [data-zoom-indicator], [data-canvas-nav], [data-path-description-trigger], [data-cell-detail-panel], [data-visual-walkthrough-modal], [data-blueprint-cell-interactive], [data-phase-scenario-overview]"
+  '[data-cell-detail-panel], [data-editor-navbar], [data-canvas-nav], [data-zoom-indicator], [data-annotation-toolbar], [data-visual-walkthrough-modal]'
 
 type SliceViewProps = {
   sliceId: string
@@ -44,18 +47,39 @@ type SliceViewProps = {
 }
 
 /**
- * Slice focus view — the normal scenario blueprint canvas (same zoom/pan
- * viewport, same cell panel) opened on the slice's scenario, with slice
- * membership applied on top: non-member cells dim via the `data-slice-focus`
- * container attribute + CSS, member cells carry outlines and sequence badges
- * (BlueprintCellButton reads SliceMembershipContext). View-only in this
- * template — authoring slices belongs to the agent tiers.
+ * Slice focus tab — the normal blueprint detail view (same zoom/pan canvas,
+ * same cell panel) opened on the slice's scenario, with slice membership
+ * applied on top: non-member cells dim via the `data-slice-focus` container
+ * attribute + CSS, member cells carry outlines and sequence badges
+ * (BlueprintCellButton reads SliceMembershipContext).
  */
 export function SliceView({ sliceId, onPresent }: SliceViewProps) {
+  // The provider sits above the surface, not inside the viewport, because the
+  // slice tab itself has to know the mode: in Design mode the tab *is* the
+  // editor, so the frame strip and the picker mount here rather than behind a
+  // separate Edit button.
+  return (
+    <CanvasModeProvider>
+      <SliceSurface sliceId={sliceId} onPresent={onPresent} />
+    </CanvasModeProvider>
+  )
+}
+
+function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
   const { openTab } = useViewState()
-  const { slides } = useEditor()
-  const { result, detail, items, scenarioResult, scenarioId, blueprint } =
-    useSliceBlueprint(sliceId)
+  const mobileShell = useMobileShell()
+  const {
+    result,
+    detail,
+    items,
+    scenarioResult,
+    scenarioId,
+    blueprint,
+  } = useSliceBlueprint(sliceId)
+  // One skeleton session for the whole slice → scenario → blueprints
+  // waterfall: the stage that resolves the scenario and the canvas that
+  // loads the blueprints hand the same skeleton back and forth.
+  const skeletonHoldKey = `slice-tab:${sliceId}`
 
   const resolution = useMemo(
     () => resolveSliceCells(blueprint, items),
@@ -70,6 +94,11 @@ export function SliceView({ sliceId, onPresent }: SliceViewProps) {
   )
 
   const [focused, setFocused] = useState(true)
+  const canvasMode = useCanvasMode()
+  // Design mode is edit mode. Two overlapping "clicks mean something else"
+  // states was one too many.
+  const editing = canvasMode?.mode === 'design'
+  const setMode = canvasMode?.setMode
 
   // Click vs drag discrimination: a drag-pan also fires a click on pointer
   // up, which must not toggle the focus dim. Track the pointer-down origin
@@ -110,23 +139,39 @@ export function SliceView({ sliceId, onPresent }: SliceViewProps) {
     [],
   )
 
+  // Stage 0 — even the slice detail is still in flight, so the header band
+  // has nothing to paint. The tab-shaped skeleton (band + canvas rectangle)
+  // shares the surface's hold key, so stages 1–2 below inherit it unbroken.
   if (result.status === 'loading') {
     return (
-      <div
-        className="relative h-full min-h-0"
-        role="status"
-        aria-label="Loading slice"
+      <DeferredSkeleton
+        loading
+        holdKey={skeletonHoldKey}
+        skeleton={
+          <div className="relative h-full" role="status" aria-label="Loading slice">
+            <SliceTabLoadingSkeleton />
+            {/* Plan 2026-08-17-001 U3: the slice waterfall's stages, over
+                the same skeleton session the whole chain shares. */}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <CanvasLoadProgress
+                stages={[
+                  { label: 'Loading slice…', done: false },
+                  { label: 'Loading blueprints…', done: false },
+                ]}
+              />
+            </div>
+          </div>
+        }
+        className="h-full min-h-0"
       >
-        <Skeleton className="absolute inset-0 rounded-none opacity-40" />
-        <div className="relative flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-          <p className="text-sm font-medium text-foreground">Loading slice…</p>
-        </div>
-      </div>
+        {null}
+      </DeferredSkeleton>
     )
   }
 
   if (!detail) {
-    // The slice may have been deleted (possibly by another session).
+    // The slice may have been deleted (possibly by another session) — close
+    // any tabs pointing at it is left to the tab menu; show the message.
     return (
       <SliceViewMessage>
         {result.status === 'error'
@@ -150,116 +195,109 @@ export function SliceView({ sliceId, onPresent }: SliceViewProps) {
       // Every cell reads as missing until the blueprint lands — the notice
       // stays out of the band rather than flashing a false count.
       missingCellCount={blueprint ? resolution.missingCellIds.length : 0}
-      primaryAction={{
-        label: 'Present',
-        icon: Play,
-        onClick: () =>
-          onPresent ? onPresent(sliceId) : openTab({ kind: 'present', sliceId }),
-      }}
+      primaryAction={
+        editing
+          ? {
+              label: 'Done',
+              icon: Check,
+              onClick: () => setMode?.('view'),
+            }
+          : {
+              label: 'Present',
+              icon: Play,
+              onClick: () =>
+                onPresent
+                  ? onPresent(sliceId)
+                  : openTab({ kind: 'present', sliceId }),
+            }
+      }
     />
   )
 
-  const scenarioSlide = scenarioId
-    ? slides.find((slide) => slide.id === scenarioId)
-    : undefined
-
-  if (!scenarioId || !scenarioSlide) {
-    // The owning scenario is still resolving (or not in the nav yet) — the
-    // band paints immediately, the canvas area holds a quiet skeleton.
+  // Stage 2 — the owning scenario is still resolving, so the canvas cannot
+  // mount yet. The header band paints immediately (the slice row is already
+  // cached from the sidebar) and the canvas area holds the surface's one
+  // skeleton, which the canvas below picks up unbroken once it mounts.
+  if (!scenarioId) {
     return (
       <div className="flex h-full min-h-0 min-w-0 flex-col">
         {header}
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
-          <Skeleton className="absolute inset-0 rounded-none opacity-40" />
+        <div
+          className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
+          style={{ backgroundColor: BLUEPRINT_THEME.viewportPad }}
+        >
+          <DeferredSkeleton
+            loading
+            holdKey={skeletonHoldKey}
+            skeleton={
+              <>
+                <PendingCanvasLoadingSkeleton />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <CanvasLoadProgress
+                    stages={[
+                      { label: 'Loading slice…', done: true },
+                      { label: 'Loading blueprints…', done: false },
+                    ]}
+                  />
+                </div>
+              </>
+            }
+          >
+            {null}
+          </DeferredSkeleton>
         </div>
       </div>
     )
   }
 
-  return (
-    <SliceMembershipContext.Provider value={membership}>
-      <div
-        className="relative flex h-full min-h-0 min-w-0 flex-col"
-        data-slice-focus={focused ? 'focused' : 'idle'}
-        onPointerDownCapture={handleFocusPointerDownCapture}
-        onClickCapture={handleFocusClickCapture}
-      >
-        {header}
-        <SliceScenarioCanvas
-          scenario={scenarioSlide}
-          slices={{ bestPathId: blueprint?.path.id ?? null }}
-        />
-        {!focused && <SliceRefocusPill onRefocus={() => setFocused(true)} />}
-      </div>
-    </SliceMembershipContext.Provider>
-  )
-}
-
-/**
- * The scenario canvas, slice posture: the same ZoomPanViewport +
- * BlueprintSlideContent pipeline the scenario detail drives, minus the
- * docked sticky header (the slice band replaces it). The path selection is
- * pinned to the path carrying the most of the slice's cells, so the members
- * always have a face to ring.
- */
-function SliceScenarioCanvas({
-  scenario,
-  slices,
-}: {
-  scenario: NavItem
-  slices: { bestPathId: string | null }
-}) {
-  const { slides } = useEditor()
-  const scenarioBlueprint = useScenarioBlueprint(scenario.id)
-  const { paths, selectedPathIds, setSelectedPathIds } = scenarioBlueprint
-
-  // Pin the selection to the slice's path once per mount — after the paths
-  // load, so the id resolves against a real list.
-  const appliedRef = useRef(false)
-  const bestPathId = slices.bestPathId
-  useEffect(() => {
-    if (appliedRef.current) return
-    if (!bestPathId || paths.length === 0) return
-    if (!paths.some((path) => path.id === bestPathId)) return
-    appliedRef.current = true
-    if (selectedPathIds.length !== 1 || selectedPathIds[0] !== bestPathId) {
-      setSelectedPathIds([bestPathId])
-    }
-  }, [bestPathId, paths, selectedPathIds, setSelectedPathIds])
-
-  const viewportResetKey = `slice:${scenario.id}:${selectedPathIds.join(',')}:${scenarioBlueprint.blueprints.length}`
-
-  return (
-    <BlueprintCellDetailProvider
-      resetKey={scenario.id}
-      enabled
-      blueprints={scenarioBlueprint.allBlueprints}
+  const canvas = (
+    <div
+      className="relative flex h-full min-h-0 min-w-0 flex-col"
+      // Editing lifts the dim: you cannot pick a cell you cannot see, and
+      // the slice's own members are already marked by their badges.
+      data-slice-focus={focused && !editing ? 'focused' : 'idle'}
+      onPointerDownCapture={handleFocusPointerDownCapture}
+      onClickCapture={editing ? undefined : handleFocusClickCapture}
     >
-      <div
-        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
-        data-slide-canvas
-      >
-        <ZoomPanViewport
-          resetKey={viewportResetKey}
-          focusCellsKey={scenario.id}
-          className="absolute inset-0"
-          showSequenceNav={false}
-          panIgnoreSelector={SLICE_PAN_IGNORE}
-        >
-          <div className="px-6 md:px-8">
-            <BlueprintSlideContent
-              slide={scenario}
-              slides={slides}
-              scenarioBlueprint={scenarioBlueprint}
-              phaseBlueprintFilters={null}
-              showHeader={false}
-              showHeaderFilters={false}
+      <EditorDetailScope slideId={scenarioId}>
+        <VisualWalkthroughShell>
+          <div
+            className="absolute inset-0 flex min-h-0 flex-col"
+            data-editor-view
+          >
+            <ServiceOverviewView
+              skeletonHoldKey={skeletonHoldKey}
+              soloScenarioId={scenarioId}
+              renderHeader={() => header}
+              // Reset View is mobile-only (no wheel, easy to lose the
+              // canvas); desktop slice tabs carry no float at all.
+              floatingChrome={
+                mobileShell ? (
+                  <div className="rounded-full border border-border bg-card px-1 shadow-sm">
+                    <NavbarZoomIndicator />
+                  </div>
+                ) : undefined
+              }
             />
           </div>
-        </ZoomPanViewport>
-        <BlueprintCellDetailPanel />
-      </div>
-    </BlueprintCellDetailProvider>
+        </VisualWalkthroughShell>
+      </EditorDetailScope>
+      {!focused && !editing && (
+        <SliceRefocusPill onRefocus={() => setFocused(true)} />
+      )}
+    </div>
+  )
+
+  return (
+    <SliceMembershipContext.Provider value={membership}>
+      {editing ? (
+        <SliceEditSession detail={detail} onClose={() => setMode?.('view')}>
+          {canvas}
+        </SliceEditSession>
+      ) : (
+        canvas
+      )}
+    </SliceMembershipContext.Provider>
   )
 }
 
@@ -270,6 +308,7 @@ function SliceScenarioCanvas({
  */
 function SliceRefocusPill({ onRefocus }: { onRefocus: () => void }) {
   return (
+    // bottom-16 clears the annotation toolbar docked at the bottom center.
     <div
       className="pointer-events-none absolute inset-x-0 bottom-16 z-30 flex justify-center"
       data-canvas-nav=""

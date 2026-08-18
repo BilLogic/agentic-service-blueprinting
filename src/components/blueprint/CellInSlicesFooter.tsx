@@ -4,7 +4,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { useViewStateOptional } from '@/contexts/viewStateStore'
+import { useViewState } from '@/contexts/viewStateStore'
 import { useSlices, type SliceListEntry } from '@/hooks/useSlices'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 
@@ -33,14 +33,14 @@ type CellInSlicesFooterProps = {
 /**
  * Collapsible "In slices" footer — derived client-side from the shared
  * useSlices cache (no per-open membership query). On error it falls back to
- * the stale/fallback list, matching the sidebar section. Rows open the
- * slice focus view.
+ * the stale/fallback list, matching TabStrip and SlicesSidebarSection. Rows
+ * open the slice tab.
  */
 export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
   const slices = useSlices()
-  const viewState = useViewStateOptional()
+  const { openTab } = useViewState()
 
-  if (!cellId || !viewState) return null
+  if (!cellId) return null
 
   const rows: SliceListEntry[] =
     slices.status === 'ready'
@@ -68,9 +68,7 @@ export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
               <button
                 type="button"
                 className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-foreground/85 transition-colors hover:bg-accent hover:text-foreground"
-                onClick={() =>
-                  viewState.openTab({ kind: 'slice', sliceId: slice.id })
-                }
+                onClick={() => openTab({ kind: 'slice', sliceId: slice.id })}
               >
                 <span aria-hidden>◇</span>
                 <span className="min-w-0 flex-1 truncate">{slice.title}</span>

@@ -13,9 +13,14 @@ export default defineConfig({
     },
   },
   test: {
-    // Node by default (token parsing, layout helpers); component tests opt
-    // into jsdom per-file with a `// @vitest-environment jsdom` docblock.
+    // Node by default (colour math, layout helpers, script-level suites);
+    // component tests opt into jsdom per-file with a
+    // `// @vitest-environment jsdom` docblock.
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'scripts/tests/**/*.test.mjs',
+    ],
   },
 })

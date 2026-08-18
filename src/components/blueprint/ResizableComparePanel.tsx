@@ -49,6 +49,7 @@ type ResizableComparePanelProps = {
   panelTitleLabel?: string
   panelTitleDescription?: string | null
   /** Optional info note shown inside the panel title badge. */
+  panelTitleInfoTooltip?: string | null
   /** Anchor id for canvas camera focus framing. */
   focusSlideId?: string
   /** When true, this panel is visually de-emphasized (canvas focus mode). */
@@ -78,6 +79,7 @@ export function ResizableComparePanel({
   navigateLabel,
   panelTitleLabel,
   panelTitleDescription,
+  panelTitleInfoTooltip,
   focusSlideId,
   dimmed = false,
   focusActive = false,
@@ -282,6 +284,7 @@ export function ResizableComparePanel({
         <ScenarioTitleBadge
           name={panelTitleLabel}
           description={panelTitleDescription}
+          infoTooltip={panelTitleInfoTooltip}
           tone="panel"
           className="pointer-events-auto absolute z-30 max-w-[min(calc(100%-3rem),28rem)]"
           style={{

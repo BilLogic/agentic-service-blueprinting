@@ -10,7 +10,21 @@ import {
 } from '@/components/blueprint/CompareDivergenceStrip'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { useEditor } from '@/contexts/EditorContext'
-import { registerCompareReview } from '@/lib/compareReviewStore'
+import { registerAgentUiContext } from '@/lib/agent/uiBridge'
+import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
+import {
+  countCompareDifferences,
+  deriveCompareStepGroups,
+  parseCompareLedgerFilter,
+  resolveCompareStepKeys,
+} from '@/lib/compareLedger'
+import { jumpToCompareStep } from '@/lib/compareZoneNavigation'
+import {
+  clearCompareFilters,
+  getCompareReviewState,
+  registerCompareReview,
+  setCompareFilters,
+} from '@/lib/compareReviewStore'
 import {
   buildCompareModel,
   type CompareBlueprints,
@@ -181,7 +195,9 @@ export function ScenarioBlueprintPanel({
     the cross-surface store — the menubar [≠ N] chip, the portalled ledger
     drawer and the agent all read from it. Exactly one panel qualifies at a
     time (only the focused scenario leaves the overview's shared-row
-    contract), so the registration is effectively a singleton.
+    contract), so the registration is effectively a singleton. Agent parity
+    ships with the surface: differences_filter + the get_ui_state 'compare'
+    line register alongside.
   */
   useEffect(() => {
     if (!compareModel) return
@@ -193,7 +209,138 @@ export function ScenarioBlueprintPanel({
       model: compareModel,
       blueprints: visibleBlueprints,
     })
+    const unregisterContext = registerAgentUiContext('compare', () => {
+      const state = getCompareReviewState()
+      const registration = state.registration
+      if (!registration) return null
+      const stepGroups = deriveCompareStepGroups(registration.model)
+      const names = registration.blueprints
+        .map((blueprint) => `"${blueprint.path.name}"`)
+        .join(' vs ')
+      const filterBits: string[] = []
+      if (state.filters.lanes.length > 0)
+        filterBits.push(`lanes ${state.filters.lanes.join(', ')}`)
+      if (state.filters.verdicts.length > 0)
+        filterBits.push(`verdicts ${state.filters.verdicts.join(', ')}`)
+      if (state.filters.steps.length > 0) {
+        const labels = stepGroups
+          .filter((group) => state.filters.steps.includes(group.columnKey))
+          .map((group) => group.headerLabel)
+        filterBits.push(`steps ${labels.join(', ')}`)
+      }
+      const activeIndex = stepGroups.findIndex(
+        (group) => group.columnKey === state.activeStepKey,
+      )
+      // Mode is a real canvas fact, not a preset: describe what the reader
+      // is looking at so the agent never says "Merged view" without saying
+      // that the paths are drawn as ONE blueprint.
+      const modeLine =
+        registration.viewMode === 'merged'
+          ? 'Merged view — the paths are combined into ONE blueprint: one lane rail, one step axis, shared cells drawn once, and divergent slots stacking each path\'s version (each still its own clickable cell)'
+          : 'Stacked view — one full band per path on a shared step axis'
+      return [
+        `Comparing ${names} in ${modeLine} (scenario "${registration.scenarioName}"):`,
+        `${countCompareDifferences(registration.model)} differences across ${stepGroups.length} divergent steps.`,
+        activeIndex >= 0
+          ? `Active step ${stepGroups[activeIndex].headerLabel} (${activeIndex + 1} of ${stepGroups.length}).`
+          : 'No step active.',
+        state.ledgerOpen
+          ? 'Difference ledger is OPEN.'
+          : 'Difference ledger is closed.',
+        filterBits.length > 0
+          ? `Ledger filter: ${filterBits.join('; ')}.`
+          : 'Ledger filter: none.',
+      ].join(' ')
+    })
+    const unregisterJump = registerAgentUiCommand({
+      name: 'jump_divergence',
+      description:
+        "Fly the camera to a divergent STEP of the compared paths and mark it active (the ledger opens that step's group; in Stacked the strip highlights it too). arg: next | prev | <step number> — the canonical step number the ledger shows as \"Step N\".",
+      run: async (arg) => {
+        const state = getCompareReviewState()
+        const registration = state.registration
+        if (!registration) return 'No comparison is active.'
+        const stepGroups = deriveCompareStepGroups(registration.model)
+        if (stepGroups.length === 0)
+          return 'The compared paths have no divergent steps — they are identical on the canvas.'
+        const currentIndex = stepGroups.findIndex(
+          (group) => group.columnKey === state.activeStepKey,
+        )
+        const input = arg?.trim() ?? ''
+        let targetIndex: number
+        if (input === '' || input === 'next') {
+          targetIndex =
+            currentIndex < 0
+              ? 0
+              : Math.min(currentIndex + 1, stepGroups.length - 1)
+        } else if (input === 'prev') {
+          targetIndex =
+            currentIndex < 0 ? stepGroups.length - 1 : Math.max(currentIndex - 1, 0)
+        } else {
+          const parsedStep = Number(input)
+          const found = stepGroups.findIndex((group) => group.step === parsedStep)
+          if (!Number.isInteger(parsedStep) || found < 0)
+            return `No divergent step "${input}" — divergent steps are ${stepGroups
+              .map((group) => group.step)
+              .join(', ')}. arg: next | prev | <step number>.`
+          targetIndex = found
+        }
+        const group = stepGroups[targetIndex]
+        const outcome = await jumpToCompareStep(group, registration.slideId)
+        return `${group.headerLabel} — divergent step ${targetIndex + 1} of ${stepGroups.length}, ${group.slots.length} difference${
+          group.slots.length === 1 ? '' : 's'
+        }${
+          outcome?.kind === 'flown'
+            ? ' — camera flown to it.'
+            : ' — marked active, but its cells are not on the current canvas.'
+        }`
+      },
+    })
+    const unregisterFilter = registerAgentUiCommand({
+      name: 'differences_filter',
+      description:
+        'Filter the difference ledger. arg grammar: lane:"Front Stage" verdict:divergent step:"Pay" — space-separated, multi-select per key; verdicts: divergent | only; steps are matched by step name; empty arg clears the filter.',
+      run: (arg) => {
+        const input = arg?.trim() ?? ''
+        if (input === '') {
+          clearCompareFilters()
+          return 'Ledger filter cleared — showing every difference.'
+        }
+        const registration = getCompareReviewState().registration
+        if (!registration) return 'No comparison is active.'
+        const parsed = parseCompareLedgerFilter(input)
+        if (parsed.errors.length > 0)
+          return `Could not parse: ${parsed.errors.join(', ')}. Grammar: lane:"<lane name>" verdict:<divergent|only> step:"<step name>". Nothing was changed.`
+        const resolvedSteps = resolveCompareStepKeys(
+          registration.model,
+          parsed.stepNames,
+        )
+        if (resolvedSteps.unknown.length > 0)
+          return `No such step${
+            resolvedSteps.unknown.length === 1 ? '' : 's'
+          }: ${resolvedSteps.unknown.join(', ')}. Steps in this comparison: ${registration.model.columns
+            .map((column) => column.label)
+            .join(', ')}. Nothing was changed.`
+        setCompareFilters({
+          lanes: parsed.lanes,
+          verdicts: parsed.verdicts,
+          steps: resolvedSteps.steps,
+        })
+        const bits: string[] = []
+        if (parsed.lanes.length > 0) bits.push(`lanes: ${parsed.lanes.join(', ')}`)
+        if (parsed.verdicts.length > 0)
+          bits.push(`verdicts: ${parsed.verdicts.join(', ')}`)
+        if (parsed.stepNames.length > 0)
+          bits.push(`steps: ${parsed.stepNames.join(', ')}`)
+        return `Ledger filtered — ${bits.join('; ') || 'no facets'}.`
+      },
+    })
+    // Fold retired 2026-08-17: collapse_shared / toggle_pleat commands
+    // removed with the human toggle — no agent-only canvas state.
     return () => {
+      unregisterFilter()
+      unregisterJump()
+      unregisterContext()
       unregisterStore()
     }
   }, [
@@ -257,6 +404,10 @@ export function ScenarioBlueprintPanel({
     navigateLabel: onNavigate ? `Open ${scenarioName} scenario` : undefined,
     panelTitleLabel: sectionTitleLabel,
     panelTitleDescription: sectionTitleDescription,
+    // No note fed here by default. The prop is the seam a fork uses to hang
+    // a per-scenario aside on the panel title (e.g. "runs in parallel with
+    // …"); the template has nowhere to store one, so it stays empty.
+    panelTitleInfoTooltip: null,
     focusSlideId: slide.id,
     dimmed,
     focusActive,
@@ -277,7 +428,7 @@ export function ScenarioBlueprintPanel({
   ) {
     return (
       <div
-        className="flex flex-col gap-2 transition-[opacity,filter] ease-out"
+        className="flex flex-col gap-2 transition-[opacity,filter] duration-(--motion-fade) ease-out"
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
         style={dimmed ? { opacity: 0.3, filter: 'saturate(0.5)' } : undefined}
@@ -299,7 +450,7 @@ export function ScenarioBlueprintPanel({
 
     return (
       <div
-        className="flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-[opacity,filter] ease-out"
+        className="flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-[opacity,filter] duration-(--motion-fade) ease-out"
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
         style={dimmed ? { opacity: 0.3, filter: 'saturate(0.5)' } : undefined}

@@ -1,30 +1,35 @@
 import { useState } from 'react'
-import { ChevronRight, Diamond, LayoutGrid } from 'lucide-react'
+import { Diamond, LayoutGrid } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { Skeleton } from '@/components/ui/skeleton'
-import { groupSlicesByType } from '@/lib/sliceGroups'
+import { NavChildren, NavRow, NavSection } from '@/components/editor/SidebarNav'
+import { SliceListLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
+import { ThemeToggle } from '@/components/editor/ThemeToggle'
 import { getSlideDisplayLabel } from '@/types/nav'
 import { cn } from '@/lib/utils'
 import type { NavItem } from '@/types/nav'
 import type { Slice } from '@/types/database'
-import type { ReactNode } from 'react'
 
 /**
- * The drawer IS the index: the same phase → scenario IA as the desktop
- * sidebar, plus a rail carrying the surface radio — Blueprints ◫ /
- * Slices ◇ — mirroring uno-blueprint's drawer now that this template has a
- * slice library. One divergence from desktop: a phase row is purely an
- * accordion header — label and caret both just toggle — because on a phone
- * "tap phase" navigating somewhere reads as a misfire. Scenarios, slices
- * (and the overview row) are the only navigators here.
+ * The drawer IS the index (plan 2026-08-16-002 Phase 3): a rail + panel,
+ * the same IA as the desktop sidebar — and the same COMPONENTS. Rows are
+ * `NavRow`/`NavChildren` from SidebarNav, so the phone inherits the desktop
+ * disclosure vocabulary wholesale: chevron in a fixed left slot (always
+ * visible on coarse pointers), children indent by one chevron slot. One
+ * divergence from desktop, decided 2026-08-17: a phase row is purely an
+ * accordion header — label and chevron both just toggle — because on a
+ * phone "tap phase" navigating somewhere read as a misfire.
  *
- * This component only reports WHAT was tapped. What a tap means for the
- * visible view is the shell's decision.
+ * The rail carries the surface radio — Blueprints ◫ / Slices ◇,
+ * `EditorRail`'s vocabulary — with the light/dark control at its foot.
+ * Expansion lives on `EditorContext.expandedPhaseIds`, reported up.
+ *
+ * Doctrine unchanged from Phase 2: this component only reports WHAT was
+ * tapped. What a tap means for the visible view is the shell's decision.
  */
 export type MobileNavSurface = 'blueprints' | 'slices'
 
@@ -37,53 +42,18 @@ const RAIL_SURFACES: Array<{
   { id: 'slices', label: 'Slices', icon: Diamond },
 ]
 
-function SheetRow({
-  label,
-  selected,
-  onSelect,
-  icon,
-  size = 'md',
-  className,
-}: {
-  label: string
-  selected?: boolean
-  onSelect: () => void
-  icon?: ReactNode
-  size?: 'sm' | 'md'
-  className?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={selected ? 'true' : undefined}
-      className={cn(
-        'flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left',
-        size === 'sm' ? 'text-xs' : 'text-sm',
-        selected
-          ? 'bg-accent font-medium text-accent-foreground'
-          : 'text-sidebar-foreground/90 hover:bg-accent/50',
-        className,
-      )}
-    >
-      {icon}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-    </button>
-  )
+/** Same group taxonomy and order as the desktop slices sidebar
+ * (SlicesSidebarSection) — unknown types fall into CUSTOM. */
+const SLICE_TYPE_GROUPS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
+
+function sliceTypeGroup(
+  sliceType: string,
+): (typeof SLICE_TYPE_GROUPS)[number] {
+  const type = sliceType.toLowerCase()
+  return SLICE_TYPE_GROUPS.find((group) => group === type) ?? 'custom'
 }
 
-/** Reserves a few rows while the slice list is in flight. */
-function SliceListLoadingSkeleton() {
-  return (
-    <div className="flex flex-col gap-2 px-2 py-1.5" aria-hidden>
-      {[1, 2, 3].map((row) => (
-        <Skeleton key={row} className="h-8 w-full rounded-md" />
-      ))}
-    </div>
-  )
-}
-
-/** The drawer's Slices surface: type groups (open by default), tap opens. */
+/** The drawer's Slices surface: type groups (open by default), NavRow rows. */
 function SliceGroups({
   slices,
   loading,
@@ -96,7 +66,12 @@ function SliceGroups({
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
     new Set(),
   )
-  const groups = groupSlicesByType(slices)
+  const groups = SLICE_TYPE_GROUPS.map((type) => ({
+    type,
+    slices: slices.filter(
+      (slice) => sliceTypeGroup(slice.slice_type) === type,
+    ),
+  })).filter((group) => group.slices.length > 0)
 
   if (groups.length === 0) {
     // Loading and empty are different states: skeleton rows while the list
@@ -110,51 +85,38 @@ function SliceGroups({
   }
 
   return (
-    <div className="flex flex-col" data-mobile-slice-groups="">
-      {groups.map((group) => {
-        const isOpen = !collapsedGroups.has(group.type)
-        return (
-          <div key={group.type}>
-            <button
-              type="button"
-              aria-expanded={isOpen}
-              onClick={() =>
-                setCollapsedGroups((collapsed) => {
-                  const next = new Set(collapsed)
-                  if (isOpen) next.add(group.type)
-                  else next.delete(group.type)
-                  return next
-                })
-              }
-              className="flex min-h-9 w-full items-center gap-1.5 rounded-md px-2 text-left font-mono text-2xs tracking-wide text-sidebar-foreground/60 uppercase"
-            >
-              <ChevronRight
-                className={cn(
-                  'size-3 transition-transform duration-(--motion-micro) motion-reduce:transition-none',
-                  isOpen && 'rotate-90',
-                )}
-                aria-hidden
-              />
-              {group.type}
-            </button>
-            {isOpen ? (
-              <ul className="flex flex-col gap-0.5 pb-1">
-                {group.slices.map((slice) => (
-                  <li key={slice.id}>
-                    <SheetRow
-                      label={slice.title}
-                      icon={<Diamond className="size-3 shrink-0" aria-hidden />}
-                      onSelect={() => onSelectSlice(slice.id)}
-                      size="sm"
-                      className="pl-6"
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        )
-      })}
+    <div className="flex flex-col">
+      {groups.map((group) => (
+        <NavSection
+          key={group.type}
+          title={group.type}
+          open={!collapsedGroups.has(group.type)}
+          onOpenChange={(open) =>
+            setCollapsedGroups((collapsed) => {
+              const next = new Set(collapsed)
+              if (open) next.delete(group.type)
+              else next.add(group.type)
+              return next
+            })
+          }
+        >
+          <ul className="flex flex-col gap-0.5">
+            {group.slices.map((slice) => (
+              <li key={slice.id}>
+                <NavRow
+                  rowId={slice.id}
+                  className="min-h-11"
+
+                  label={slice.title}
+                  icon={<Diamond className="inline size-3" />}
+                  onSelect={() => onSelectSlice(slice.id)}
+                  size="sm"
+                />
+              </li>
+            ))}
+          </ul>
+        </NavSection>
+      ))}
     </div>
   )
 }
@@ -171,11 +133,10 @@ export function MobileNavSheet({
   slides,
   expandedPhaseIds,
   onPhaseExpandedChange,
-  isHome,
+  selectedPhaseId,
   selectedScenarioId,
-  onSelectOverview,
-  onSelectScenario,
   onSelectSlice,
+  onSelectScenario,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -188,11 +149,10 @@ export function MobileNavSheet({
   slides: NavItem[]
   expandedPhaseIds: ReadonlySet<string>
   onPhaseExpandedChange: (phaseId: string, open: boolean) => void
-  isHome: boolean
+  selectedPhaseId: string | null
   selectedScenarioId: string | null
-  onSelectOverview: () => void
-  onSelectScenario: (scenarioId: string) => void
   onSelectSlice: (sliceId: string) => void
+  onSelectScenario: (scenarioId: string) => void
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -201,7 +161,7 @@ export function MobileNavSheet({
         aria-label="Blueprint contents"
         className="flex w-80 flex-row bg-sidebar p-0 text-sidebar-foreground"
       >
-        {/* The rail: surface radio. size-11 = the 44px touch floor. */}
+        {/* The rail: surface radio on top, utilities at the foot. */}
         <nav
           aria-label="Sidebar surfaces"
           className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-border/60 px-1.5 py-2"
@@ -216,13 +176,16 @@ export function MobileNavSheet({
               className={cn(
                 'relative flex size-11 items-center justify-center rounded-md',
                 surface === id
-                  ? 'bg-accent text-accent-foreground'
+                  ? 'bg-sidebar-selected text-sidebar-selected-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-selected-rail'
                   : 'text-sidebar-foreground/60',
               )}
             >
               <Icon className="size-4" aria-hidden />
             </button>
           ))}
+          <div className="flex-1" aria-hidden />
+          {/* size-11 = the 44px touch floor (plan Phase 5). */}
+          <ThemeToggle size="icon-sm" className="size-11" />
         </nav>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -241,15 +204,6 @@ export function MobileNavSheet({
               />
             ) : (
               <div className="flex flex-col gap-0.5">
-                {/* The way back out to the whole board — the desktop keeps
-                    this on its workspace header; the phone keeps it in the
-                    index. */}
-                <SheetRow
-                  label="Service overview"
-                  icon={<LayoutGrid className="size-4 shrink-0" aria-hidden />}
-                  selected={isHome}
-                  onSelect={onSelectOverview}
-                />
                 {phases.map((phase) => {
                   const children = scenariosByPhase.get(phase.id) ?? []
                   const hasChildren = children.length > 0
@@ -257,44 +211,38 @@ export function MobileNavSheet({
                   const phaseLabel = getSlideDisplayLabel(phase, slides)
                   return (
                     <div key={phase.id}>
-                      <div className="flex items-center">
-                        {hasChildren ? (
-                          <button
-                            type="button"
-                            aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${phaseLabel}`}
-                            onClick={() =>
-                              onPhaseExpandedChange(phase.id, !isOpen)
-                            }
-                            className="flex size-11 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60"
-                          >
-                            <ChevronRight
-                              className={cn(
-                                'size-3.5 transition-transform duration-(--motion-micro) motion-reduce:transition-none',
-                                isOpen && 'rotate-90',
-                              )}
-                              aria-hidden
-                            />
-                          </button>
-                        ) : (
-                          <span className="size-11 shrink-0" aria-hidden />
-                        )}
-                        {/* One touch space, one meaning: a phase row is an
-                            accordion header, nothing more — tapping it toggles
-                            its scenarios and never moves the camera. */}
-                        <SheetRow
-                          label={phaseLabel}
-                          onSelect={() => {
-                            if (hasChildren)
-                              onPhaseExpandedChange(phase.id, !isOpen)
-                          }}
-                          className="px-1 font-medium"
-                        />
-                      </div>
+                      <NavRow
+                        rowId={phase.id}
+                        className="min-h-11"
+
+                        label={phaseLabel}
+                        toggleLabel={phaseLabel}
+                        open={hasChildren ? isOpen : undefined}
+                        onToggle={
+                          hasChildren
+                            ? () => onPhaseExpandedChange(phase.id, !isOpen)
+                            : undefined
+                        }
+                        // One touch space, one meaning (decided 2026-08-17):
+                        // a phase row is an accordion header, nothing more —
+                        // tapping it toggles its scenarios and never moves
+                        // the camera. Scenarios are the only navigators here.
+                        onSelect={() => {
+                          if (hasChildren)
+                            onPhaseExpandedChange(phase.id, !isOpen)
+                        }}
+                        selected={
+                          phase.id === selectedPhaseId && !selectedScenarioId
+                        }
+                      />
                       {hasChildren && isOpen ? (
-                        <ul className="flex flex-col gap-0.5 pl-11">
+                        <NavChildren>
                           {children.map((item) => (
                             <li key={item.id}>
-                              <SheetRow
+                              <NavRow
+                                rowId={item.id}
+                                className="min-h-11"
+
                                 label={getSlideDisplayLabel(item, slides)}
                                 onSelect={() => onSelectScenario(item.id)}
                                 selected={item.id === selectedScenarioId}
@@ -302,7 +250,7 @@ export function MobileNavSheet({
                               />
                             </li>
                           ))}
-                        </ul>
+                        </NavChildren>
                       ) : null}
                     </div>
                   )

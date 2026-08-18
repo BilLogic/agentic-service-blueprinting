@@ -4,16 +4,21 @@ import {
   getPathDashArray,
   getPathDashArrayFromKey,
   getPathSectionBorderStyle,
-  getPathWashStyle,
 } from '@/lib/pathColorTheme'
 
 /**
- * Path identity has to survive both a monochrome print and a viewer who
- * cannot separate the hues (SC 1.4.1), so every path carries a stroke
- * pattern as well as a colour.
+ * Path identity has to survive both a monochrome print and a viewer who cannot
+ * separate the hues (SC 1.4.1), so every path carries a stroke pattern as well
+ * as a colour. The colour side is measured in `palette.test.ts`, which can
+ * resolve the tokens against the stylesheet.
  */
 describe('path identity', () => {
   it('gives every non-happy type a distinct dash pattern', () => {
+    // Only the closed types resolve to their own `PATH_TYPE_DASH` entry. A
+    // `named` path — and an `alternative` one with no registry entry — hashes
+    // into the open set instead, so asking for its "type dash" measures the
+    // hash rather than the type. Those are covered by the colour+dash pairing
+    // assertion in palette.test.ts.
     const closed = [
       { path_type: 'happy', name: 'Happy Path' },
       { path_type: 'unhappy', name: 'Sad Path' },
@@ -26,9 +31,9 @@ describe('path identity', () => {
     expect(new Set(nonHappy).size).toBe(nonHappy.length)
   })
 
-  it('separates two unregistered alternative paths', () => {
-    const a = { path_type: 'alternative', name: 'Alpha Detour' } as const
-    const b = { path_type: 'alternative', name: 'Beta Detour' } as const
+  it('separates two unregistered custom-named paths', () => {
+    const a = { path_type: 'alternative', name: 'Alpha' } as const
+    const b = { path_type: 'alternative', name: 'Beta' } as const
     // They may share a hue slot, but not both a hue and a dash.
     const same =
       getPathColor(a) === getPathColor(b) &&
@@ -54,34 +59,5 @@ describe('path identity', () => {
       getPathSectionBorderStyle({ path_type: 'exception', name: 'Boom' })
         .borderStyle,
     ).toBe('dashed')
-  })
-})
-
-/**
- * Merged-view wash doctrine: path affiliation is a `background-image`
- * layered over the cell face's own background (bounds + radius inherited,
- * never a separate tint box), at 16% color-mix in oklab — 24% repainted the
- * cell, 10% was invisible. The lane colour stays the primary identity.
- */
-describe('getPathWashStyle', () => {
-  it('returns nothing for no member colours (fully-shared cells carry no wash)', () => {
-    expect(getPathWashStyle(undefined)).toBeUndefined()
-    expect(getPathWashStyle([])).toBeUndefined()
-  })
-
-  it('paints one member as a flat 16% oklab wash background-image', () => {
-    const style = getPathWashStyle(['#10B981'])
-    expect(style).toBeDefined()
-    expect(style!.backgroundImage).toContain('linear-gradient')
-    expect(style!.backgroundImage).toContain(
-      'color-mix(in oklab, #10B981 16%, transparent)',
-    )
-  })
-
-  it('paints N members as N equal vertical stripes', () => {
-    const style = getPathWashStyle(['#10B981', '#3B82F6'])
-    expect(style!.backgroundImage).toContain('90deg')
-    expect(style!.backgroundImage).toContain('#10B981 16%, transparent) 0.00% 50.00%')
-    expect(style!.backgroundImage).toContain('#3B82F6 16%, transparent) 50.00% 100.00%')
   })
 })

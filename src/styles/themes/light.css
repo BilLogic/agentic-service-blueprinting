@@ -1,7 +1,5 @@
 /*
- * Light theme dials. Structure ported from uno-blueprint
- * (packages/ui/build/css/themes/light.css lineage); values are this
- * template's own — see the BRAND SEAM note below.
+ * Light theme dials. Mirrors packages/ui/build/css/themes/light.css.
  *
  * Imported BEFORE themes/dark.css: `:root` and `.dark` have equal specificity,
  * so when `.dark` sits on the root element the later import must win.
@@ -14,57 +12,61 @@
 
   /* -------------------------------------------------------------------------
    * BRAND SEAM — the block an adopter edits to rebrand the app chrome.
-   * (The canvas half of the seam — the phase/panel chrome — lives at the top
-   * of blueprint.css, next to its consumer.)
    *
    * The template ships hue-neutral: every chroma dial below is 0, so the
-   * whole semantic layer renders greyscale and `--hue` is visually moot.
-   * It is pinned to 159 — the `--brand-hue-reference` in semantic.css — so
-   * the status-hue harmony pull is exactly zero and warning/destructive/
-   * info/success sit on their category anchors (amber/red/violet/green).
+   * whole semantic layer renders greyscale and `--hue` is visually moot. It
+   * is pinned to 159 — the `--brand-hue-reference` in semantic.css — so the
+   * status-hue harmony pull is exactly zero and warning / destructive /
+   * info / success sit on their category anchors.
    *
    * To rebrand: set `--hue` to your brand's OKLCH hue, raise `--chroma`
-   * (surfaces) and `--primary-chroma` (the filled control) to taste, and
-   * replace the greyscale `--brand-*` ramp below with your tint family.
-   * Status hues will lean toward the brand automatically.
+   * (surfaces) and `--primary-chroma` (the filled control), and replace the
+   * greyscale `--brand-*` ramp below with your tint family. `--hue` must
+   * stay the OKLCH hue of that ramp, or the filled control drifts off the
+   * brand every other surface wears.
    * ---------------------------------------------------------------------- */
   --hue: 159;
+  /* Warm grey canvas, decoupled from the brand hue (`--surface-hue` defaults to
+     `--hue`; overriding it is the point of splitting the two). Moot while
+     `--chroma` is 0, but it is what a tinted light theme would turn. */
+  --surface-hue: 34;
   --chroma: 0;
   /*
-   * Pure-white canvas. Raised surfaces round up against L=1, so in light mode
+   * Near-white canvas. Raised surfaces round up against L=1, so in light mode
    * elevation is carried by the translucent `--muted` / `--accent` /
-   * `--tertiary` overlays rather than by the surface ladder. The step is
-   * tuned so the muted overlay composites to the template's historical
-   * oklch(0.97 0 0) fill on white.
+   * `--tertiary` overlays rather than by the surface ladder — same as Supabase.
+   * Retune the step alongside `--surface`.
    */
-  --surface: 1;
-  --elevation-step: 0.03;
-  --contrast: 0.5;
-  --foreground-lightness: 0.145;
-  /* 0.52 lands muted-foreground on the template's oklch(0.556) exactly at
-   * contrast 0.5; tertiary sits one legibility tier lighter. */
-  --muted-foreground-level: 0.52;
-  --tertiary-foreground-level: 0.42;
+  --surface: 0.995;
+  --elevation-step: 0.024;
+  --contrast: 0.53;
+  --foreground-lightness: 0.1;
+  --muted-foreground-level: 0.65;
+  --tertiary-foreground-level: 0.5;
 
   /*
-   * The filled control. Neutral brand: near-black fill, chroma 0. A branded
-   * fork raises `--primary-chroma` and (usually) `--primary-lightness`; the
-   * derivations in semantic.css (border, foreground flip, ring) follow.
+   * The filled control (BRAND SEAM). Neutral brand: near-black fill,
+   * chroma 0. A branded fork raises `--primary-chroma` and usually
+   * `--primary-lightness`; the derivations in semantic.css (border, the
+   * foreground flip, the ring) follow on their own.
    */
   --primary-lightness: 0.205;
   --primary-chroma: 0;
-  /* Focus ring / selection chrome lightness (mid-grey on white). */
-  --ring-lightness: 0.708;
-
+  /*
+   * Focus ring / selection chrome lightness. 0.58, not the mid-grey 0.708 a
+   * neutral palette reaches for first: at 0.708 the ring measures 2.56:1 on
+   * this near-white canvas and fails SC 1.4.11's 3:1 for a non-text
+   * affordance. 0.58 measures 4.22:1 and is still unmistakably lighter than
+   * the ink. `palette.test.ts` holds the floor in both themes.
+   */
+  --ring-lightness: 0.58;
   /*
    * Expressive fills run darker than the dark-theme anchors so they hold
-   * contrast against the white surface. Lightness is mode-aware; chroma is
-   * the shared `--expressive-chroma` except where a role overrides it —
-   * destructive keeps the template's saturated red.
+   * contrast against the near-white surface (a light amber on white disappears).
+   * Lightness is mode-aware; chroma is the shared `--expressive-chroma`.
    */
   --warning-lightness: 0.68;
-  --destructive-lightness: 0.577;
-  --destructive-chroma: 0.245;
+  --destructive-lightness: 0.52;
   --info-lightness: 0.54;
   --success-lightness: 0.55;
 
@@ -72,10 +74,10 @@
    * Stepped numeric scales — per-theme HSL literals, mapped to utilities in
    * theme.css and consumed by colors.css via `hsl(var(--brand-N))`.
    *
-   * Neutral brand ramp: the lightness curve of the uno/Supabase ramp with
-   * saturation removed. 400 is the anchor step; 500/600/link run dark enough
-   * to serve as text and links on the white canvas. A rebrand swaps these
-   * for a tint family with the same light → dark ordering.
+   * Neutral brand ramp (BRAND SEAM): the lightness curve of the Supabase
+   * ramp with saturation removed. 400 is the anchor step; 500/600/link run
+   * dark enough to serve as text and links on the light canvas. A rebrand
+   * swaps these for a tint family with the same light → dark ordering.
    */
   --brand-link: 0deg 0% 26%;
   --brand-default: 0deg 0% 49.5%;
@@ -85,7 +87,7 @@
   --brand-300: 0deg 0% 86.5%;
   --brand-200: 0deg 0% 93.1%;
 
-  /* Warning / destructive tint ramps (status, not brand — kept saturated):
+  /* Warning / destructive tint ramps, taken from Supabase's light theme:
      200 = subtle surface, 500 = border, 600 = text. */
   --warning-600: 30.3deg 80.3% 47.8%;
   --warning-500: 36.3deg 85.7% 67.1%;

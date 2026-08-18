@@ -9,11 +9,12 @@ import { cn } from '@/lib/utils'
 import type { PathListItem } from '@/lib/pathSelection'
 
 /**
- * The top-bar path control: the phone reads one path at a time, so the
- * thing that picks it lives in the chrome, not as a chip row inside the
- * canvas. A pill naming the current path; tapping it opens the scenario's
- * few paths (happy / unhappy / exception). The shell decides when to render
- * this — only surfaces with a path dimension get a selector at all.
+ * The top-bar path control (plan 2026-08-16-002 Phase 3): the phone reads
+ * one path at a time, so the thing that picks it lives in the chrome, not
+ * as a chip row inside the reader's scroll. A pill naming the current path;
+ * tapping it opens the scenario's few paths (happy / unhappy / exception).
+ * The shell decides when to render this — only surfaces with a path
+ * dimension get a selector at all.
  */
 export function MobilePathSelector({
   paths,

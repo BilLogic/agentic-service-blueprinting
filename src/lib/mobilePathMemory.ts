@@ -2,11 +2,12 @@ import { pickPreferredPath } from '@/lib/pathSelection'
 import type { PathType } from '@/types/database'
 
 /**
- * Which path the phone last showed for each scenario: the mobile top-bar
- * selector reads one path at a time, and coming back to a scenario should
- * land on the path the user was reading, not reset to the happy path. One
- * localStorage key holding a scenario→path map that degrades to in-memory
- * defaults when storage is unavailable (private mode, quota).
+ * Which path the phone last showed for each scenario (plan 2026-08-16-002
+ * Phase 3): the top-bar selector reads one path at a time, and coming back
+ * to a scenario should land on the path the user was reading, not reset to
+ * the happy path. One localStorage key holding a scenario→path map — the
+ * same shape as the agent stores (`sb-agent-*`), and like them it degrades
+ * to in-memory defaults when storage is unavailable (private mode, quota).
  */
 
 const STORAGE_KEY = 'sb-mobile-paths'

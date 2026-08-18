@@ -1,7 +1,12 @@
 import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
+import { ORG_NAME } from '@/config'
 
-/** Home = birds-eye service overview; detail = single slide/scenario editor. */
-export type EditorView = 'home' | 'detail'
+/**
+ * landing = orientation homepage;
+ * home = birds-eye service overview canvas;
+ * detail = focused phase/scenario on the canvas.
+ */
+export type EditorView = 'landing' | 'home' | 'detail'
 
 /**
  * How blueprint paths are laid out on a scenario slide — CLIENT vocabulary.
@@ -10,13 +15,24 @@ export type EditorView = 'home' | 'detail'
  */
 export type SlideViewType = 'single' | 'stacked' | 'merged'
 
+export const SLIDE_VIEW_TYPES: SlideViewType[] = ['single', 'stacked', 'merged']
+
+/** Options shown in the scenario view type control (merged is session-only). */
+export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = ['stacked']
+
+export const SLIDE_VIEW_TYPE_LABELS: Record<SlideViewType, string> = {
+  single: 'Single',
+  stacked: 'Stacked',
+  merged: 'Merged',
+}
+
 export type NavItem = {
   id: string
   index: number
   label: string
   /** When set, this slide is a subslide branching from the parent (not in the main vertical stack). */
   parentId?: string
-  /** Main-phase loop target (DB `phases.loops_to_phase_id`). Not drawn on canvas. */
+  /** Main-phase loop target (e.g. post-session → pre-session). Stored in DB; not drawn on canvas. */
   loopToId?: string
   /** Scenario blueprint layout; defaults to single-path view. */
   viewType?: SlideViewType
@@ -26,13 +42,34 @@ export type NavItem = {
 
 /**
  * The service overview draws a flow arrow between consecutive main phases.
- * Purely positional — no phase-ID or label heuristics.
+ * Purely positional — no phase-ID or display-label heuristics, so it works
+ * for any org's ids and any language. A missing `toPhase` is the last phase
+ * in the lifecycle, which has nothing to point at.
  */
 export function shouldShowOverviewPhaseFlowArrow(
   _fromPhase: NavItem,
   toPhase: NavItem | undefined,
 ): boolean {
   return Boolean(toPhase)
+}
+
+/**
+ * Horizontal anchor for overview flow arrows: the FIRST main phase, whose
+ * centre every arrow in the column aligns to. Positional rather than named,
+ * so an org's own first phase anchors its own canvas.
+ */
+export function isOverviewFlowArrowAnchorPhase(
+  phase: NavItem,
+  slides: NavItem[] = FALLBACK_NAV,
+): boolean {
+  return getMainSlides(slides)[0]?.id === phase.id
+}
+
+/** Lifecycle loop arrow between main phases on the overview canvas. */
+export function shouldShowOverviewPostToPreLoopArrow(
+  phases: NavItem[],
+): boolean {
+  return getOverviewPostToPreLoopTransition(phases) !== null
 }
 
 /**
@@ -93,6 +130,16 @@ export const FALLBACK_NAV: NavItem[] = [
 ]
 // GENERATED-NAV:END
 
+/**
+ * The time-marker register's label: `01 · Application`. Phases and steps ARE
+ * ordered sequences, so the zero-padded ordinal is information. One helper,
+ * because five surfaces (phase badges, reader eyebrows, nav sheets) claim to
+ * "name time the same way" — this is what makes that claim structural.
+ */
+export function ordinalLabel(ordinal: number, name: string): string {
+  return `${String(ordinal).padStart(2, '0')} · ${name}`
+}
+
 export function getSlideDisplayLabel(
   slide: NavItem,
   _slides: NavItem[] = FALLBACK_NAV,
@@ -136,12 +183,39 @@ export function showsBlueprintFilters(
   return false
 }
 
+export function isIntegratedBlueprintSlide(_slide: NavItem): boolean {
+  // The integrated (single-grid, all-paths) layout is disabled app-wide: a
+  // scenario's paths render stacked. Kept as a named predicate because the
+  // DB vocabulary still carries 'integrated' and the read seam coerces it.
+  return false
+}
+
+export function isSideBySideBlueprintSlide(slide: NavItem): boolean {
+  return isSubslide(slide) && getSlideViewType(slide) === 'stacked'
+}
+
 export function getMainSlides(slides: NavItem[] = FALLBACK_NAV): NavItem[] {
-  return slides.filter((s) => !s.parentId)
+  return slides
+    .filter((s) => !s.parentId)
+    .slice()
+    .sort((a, b) => a.index - b.index || a.label.localeCompare(b.label))
 }
 
 export function getSubslides(parentId: string, slides: NavItem[] = FALLBACK_NAV): NavItem[] {
-  return slides.filter((s) => s.parentId === parentId)
+  return slides
+    .filter((s) => s.parentId === parentId)
+    .slice()
+    .sort((a, b) => a.index - b.index || a.label.localeCompare(b.label))
+}
+
+/** Sidebar / filmstrip order: each main slide followed by its subslides. */
+export function getSlidesInNavOrder(slides: NavItem[] = FALLBACK_NAV): NavItem[] {
+  const ordered: NavItem[] = []
+  for (const main of getMainSlides(slides)) {
+    ordered.push(main)
+    ordered.push(...getSubslides(main.id, slides))
+  }
+  return ordered
 }
 
 export type SlideSequenceNav = {
@@ -242,4 +316,45 @@ export function getParentSlide(
 ): NavItem | undefined {
   if (!slide.parentId) return undefined
   return getSlideById(slide.parentId, slides)
+}
+
+export const WORKSPACE_BREADCRUMB_ID = '__workspace__'
+export const WORKSPACE_BREADCRUMB_LABEL = ORG_NAME
+
+export type SlideBreadcrumb = {
+  id: string
+  label: string
+}
+
+/** Breadcrumb trail from workspace root through parent phases to the active slide. */
+export function getSlideBreadcrumbs(
+  slide: NavItem,
+  slides: NavItem[] = FALLBACK_NAV,
+): SlideBreadcrumb[] {
+  const crumbs: SlideBreadcrumb[] = [
+    { id: WORKSPACE_BREADCRUMB_ID, label: WORKSPACE_BREADCRUMB_LABEL },
+  ]
+
+  const ancestors: NavItem[] = []
+  let parentId = slide.parentId
+  while (parentId) {
+    const parent = getSlideById(parentId, slides)
+    if (!parent) break
+    ancestors.unshift(parent)
+    parentId = parent.parentId
+  }
+
+  for (const ancestor of ancestors) {
+    crumbs.push({
+      id: ancestor.id,
+      label: getSlideDisplayLabel(ancestor, slides),
+    })
+  }
+
+  crumbs.push({
+    id: slide.id,
+    label: getSlideDisplayLabel(slide, slides),
+  })
+
+  return crumbs
 }

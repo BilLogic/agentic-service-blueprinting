@@ -7,10 +7,12 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { ChevronLeft, ChevronRight, CornerUpLeft } from 'lucide-react'
+import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
+import { SlicePresentationLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { SliceHeaderBand } from '@/components/editor/SliceHeaderBand'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
@@ -38,8 +40,10 @@ function cellSnippet(cell: BlueprintCell | undefined): string {
 type SlicePresentationProps = {
   sliceId: string
   /**
-   * Exit request. The shell owns it because leaving is a shell-wide move —
-   * the tab only switches once any exit animation has played.
+   * Exit request. The shell owns it because leaving is a shell-wide move:
+   * the sidebar re-expands in step with the stage fading out, and the tab
+   * only switches once that has played (tabs unmount on switch, so the
+   * outgoing animation has to happen while this tab is still mounted).
    */
   onReturn: () => void
   /** True while the shell is playing the exit animation. */
@@ -47,7 +51,7 @@ type SlicePresentationProps = {
 }
 
 /**
- * Presentation surface: a dark full-bleed stage (the root carries the `.dark`
+ * Presentation tab: a dark full-bleed stage (the root carries the `.dark`
  * token class regardless of app theme) with the illustration as the star
  * when present, caption as headline, cell chips as a subtle bottom row, a
  * dim mini-map locator bottom-right, and a filmstrip of cells bracketed per
@@ -57,7 +61,7 @@ type SlicePresentationProps = {
  * debounced ViewStateContext mechanism.
  *
  * The slice header band rides at the top of the stage in dark tokens, with
- * Return where the focus view shows Present — presentation is a mode of the
+ * Return where the focus tab shows Present — presentation is a mode of the
  * slice, not a separate screen.
  */
 export function SlicePresentation({
@@ -78,7 +82,8 @@ export function SlicePresentation({
     blueprintsLoading,
   } = useSliceBlueprint(sliceId)
   const cellById = useMemo(
-    () => new Map((blueprint?.cells ?? []).map((cell) => [cell.id, cell])),
+    () =>
+      new Map((blueprint?.cells ?? []).map((cell) => [cell.id, cell])),
     [blueprint],
   )
   const memberCellIds = useMemo(
@@ -93,7 +98,7 @@ export function SlicePresentation({
   )
 
   // The deep-link frame is one-shot: consume it after the initial read so
-  // reopening this present surface later starts at frame 0.
+  // reopening this present tab later starts at frame 0.
   useEffect(() => {
     if (restoredFrame) consumeRestoredFrame()
   }, [restoredFrame, consumeRestoredFrame])
@@ -108,7 +113,7 @@ export function SlicePresentation({
 
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    // Only the active surface mounts, so mount focus covers activation.
+    // Only the active tab mounts, so mount focus covers tab activation.
     containerRef.current?.focus()
   }, [])
 
@@ -160,16 +165,29 @@ export function SlicePresentation({
     blueprintsLoading
   ) {
     return (
-      <div
-        className="dark relative h-full min-h-0 bg-background"
-        role="status"
-        aria-label="Loading presentation"
+      <DeferredSkeleton
+        loading
+        holdKey={`present-tab:${sliceId}`}
+        skeleton={
+          <div className="relative h-full min-h-0">
+            <SlicePresentationLoadingSkeleton />
+            {/* Same stage bar the slice tab shows (plan 2026-08-17-001):
+                every canvas-loading surface carries the one progress
+                vocabulary, presentation included. */}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <CanvasLoadProgress
+                stages={[
+                  { label: 'Loading slice…', done: result.status !== 'loading' },
+                  { label: 'Loading blueprints…', done: false },
+                ]}
+              />
+            </div>
+          </div>
+        }
+        className="h-full min-h-0"
       >
-        <Skeleton className="absolute inset-0 rounded-none opacity-40" />
-        <div className="relative flex h-full items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading slice…</p>
-        </div>
-      </div>
+        {null}
+      </DeferredSkeleton>
     )
   }
 

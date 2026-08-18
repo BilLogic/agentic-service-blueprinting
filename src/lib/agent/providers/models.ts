@@ -11,9 +11,8 @@ const cache = new Map<string, string[]>()
 
 async function listGoogle(apiKey: string, signal?: AbortSignal): Promise<string[]> {
   const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
-    // Key rides in a header, never the URL — URLs land in logs.
-    { headers: { 'x-goog-api-key': apiKey }, signal },
+    `https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(apiKey)}`,
+    { signal },
   )
   if (!response.ok) throw new Error(`google models ${response.status}`)
   const body = (await response.json()) as {

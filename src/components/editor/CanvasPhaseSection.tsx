@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from 'react'
 import { PhaseSectionFlowArrow } from '@/components/editor/PhaseSectionFlowArrow'
+import { ordinalLabel } from '@/types/nav'
 import {
   PHASE_SECTION_BOTTOM_INSET,
   PHASE_SECTION_INSET,
@@ -31,6 +32,10 @@ export {
 
 type CanvasPhaseSectionProps = {
   title: string
+  /** 1-based lifecycle position. Phases ARE an ordered sequence in time, so
+   * the ordinal is information — it prefixes the badge (`01 · Application`)
+   * in the same time-marker register the mobile reader uses. */
+  ordinal: number
   description?: string | null
   phaseId: string
   children: ReactNode
@@ -47,6 +52,10 @@ type CanvasPhaseSectionProps = {
   isLoopArrowTo?: boolean
   /** Overview: hover + click opens the phase detail view. */
   onNavigate?: () => void
+  /** When true, this phase is visually de-emphasized (canvas focus mode). */
+  dimmed?: boolean
+  /** When true, this phase is the camera focus target — no hover chrome. */
+  focusActive?: boolean
 }
 
 function useAlignedFlowArrowLeft(
@@ -95,6 +104,7 @@ function isBlueprintPanelTarget(target: EventTarget | null): boolean {
 /** Figma-style canvas section grouping a lifecycle phase and its scenarios. */
 export function CanvasPhaseSection({
   title,
+  ordinal,
   description,
   phaseId,
   children,
@@ -104,6 +114,8 @@ export function CanvasPhaseSection({
   isLoopArrowFrom = false,
   isLoopArrowTo = false,
   onNavigate,
+  dimmed = false,
+  focusActive = false,
   variant = 'default',
 }: CanvasPhaseSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
@@ -125,7 +137,7 @@ export function CanvasPhaseSection({
     : undefined
 
   const handleNavigateKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (!onNavigate) return
+    if (!onNavigate || focusActive) return
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       onNavigate()
@@ -133,9 +145,13 @@ export function CanvasPhaseSection({
   }
 
   const interactive = Boolean(onNavigate)
+  // `navigable` also gates the data-canvas-phase-interactive pan-ignore
+  // marker below: in focus mode the click affordance is gone, and a drag
+  // inside the board must PAN, not die on that attribute.
+  const navigable = interactive && !focusActive
 
   const handleSectionClick = (event: MouseEvent<HTMLElement>) => {
-    if (!interactive || isBlueprintPanelTarget(event.target)) return
+    if (!navigable || isBlueprintPanelTarget(event.target)) return
     onNavigate?.()
   }
 
@@ -143,26 +159,30 @@ export function CanvasPhaseSection({
     <section
       ref={sectionRef}
       className={cn(
-        'relative inline-flex w-max flex-col items-start',
-        interactive &&
+        'relative inline-flex w-max flex-col items-start transition-[opacity,filter] duration-(--motion-fade) ease-out',
+        dimmed &&
+          'opacity-30 saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
+        navigable &&
           'cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         className,
       )}
       data-canvas-phase-section=""
       data-phase-id={phaseId}
+      data-canvas-focus-dimmed={dimmed ? '' : undefined}
+      {...(focusActive ? { 'data-canvas-focus-active': '' } : {})}
       data-phase-section-inset={sectionInset}
-      {...(interactive ? { 'data-canvas-phase-interactive': '' } : {})}
+      {...(navigable ? { 'data-canvas-phase-interactive': '' } : {})}
       {...(isFlowArrowAnchor ? { 'data-flow-arrow-anchor': '' } : {})}
       {...(isLoopArrowFrom ? { 'data-phase-loop-from': '' } : {})}
       {...(isLoopArrowTo ? { 'data-phase-loop-to': '' } : {})}
       style={showFlowArrow ? { marginBottom: phaseRowGap } : undefined}
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      aria-label={interactive ? `Open ${title} phase` : undefined}
-      onClick={interactive ? handleSectionClick : undefined}
-      onKeyDown={interactive ? handleNavigateKeyDown : undefined}
+      role={navigable ? 'button' : undefined}
+      tabIndex={navigable ? 0 : undefined}
+      aria-label={navigable ? `Open ${title} phase` : undefined}
+      onClick={navigable ? handleSectionClick : undefined}
+      onKeyDown={navigable ? handleNavigateKeyDown : undefined}
       onMouseLeave={
-        interactive
+        navigable
           ? () => {
               if (
                 sectionRef.current?.contains(document.activeElement) &&
@@ -186,10 +206,15 @@ export function CanvasPhaseSection({
         }}
       />
       <ScenarioTitleBadge
-        name={title}
+        name={ordinalLabel(ordinal, title)}
         description={description}
         tone={interactive ? 'phase' : 'default'}
-        className="pointer-events-auto absolute z-10 max-w-[min(100%,28rem)] border-transparent"
+        // The time-marker register: mono, uppercase, letterspaced — the same
+        // idiom the mobile reader's step eyebrows use, so both surfaces name
+        // time the same way. The aria-label above keeps the plain title.
+        // z-30: zoomed far out the badge counter-scales larger than its
+        // inset and must not sink under a neighboring phase's panels.
+        className="pointer-events-auto absolute z-30 max-w-[min(100%,28rem)] border-transparent font-mono text-2xs uppercase tracking-wider"
         style={{
           top: -sectionTopInset,
           left: sectionInset,

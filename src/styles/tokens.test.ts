@@ -15,7 +15,8 @@ import { describe, expect, it } from 'vitest'
  *    stylesheet declaration, an inline declaration in TS, or a runtime
  *    property injected by a library (allowlisted by prefix),
  *  - the theme dial set the semantic layer derives from must exist in both
- *    themes, and the canvas brand-seam tokens must hold colour values,
+ *    themes, and every blueprint component token a lane rule promises must
+ *    actually be declared for every lane role,
  *  - the motion tokens in animations.css must agree with lib/motion.ts.
  */
 
@@ -51,12 +52,16 @@ const cssDeclarations = new Set(
 )
 
 /** Custom properties declared from TS: inline style objects
- * (`'--x': value`), Tailwind arbitrary properties (`[--x:value]`), and
- * imperative `setProperty('--x', …)` calls. */
+ * (`'--x': value`), Tailwind arbitrary properties (`[--x:value]`),
+ * imperative `setProperty('--x', …)` calls, and the named constants those
+ * calls go through (`const FOO_VAR = '--x'`) — a token set through a named
+ * constant is still declared by this app, and reading only literal
+ * `setProperty` calls would miss every one of them. */
 const tsDeclarations = new Set([
   ...[...TS.matchAll(/['"](--[\w-]+)['"]\s*:/g)].map((m) => m[1]),
   ...[...TS.matchAll(/\[(--[\w-]+):/g)].map((m) => m[1]),
   ...[...TS.matchAll(/setProperty\(\s*['"](--[\w-]+)['"]/g)].map((m) => m[1]),
+  ...[...TS.matchAll(/=\s*['"](--[\w-]+)['"]/g)].map((m) => m[1]),
 ])
 
 /** Properties injected at runtime by libraries (never declared in source). */
@@ -77,6 +82,9 @@ function resolves(token: string): boolean {
   )
 }
 
+/** Prefixes left behind when a token name is built by interpolation. */
+const COMPOSED_TOKEN_PREFIXES = ['--color-']
+
 describe('token resolution', () => {
   it('resolves every bare var(--x) reference in the stylesheets', () => {
     const unresolved = new Set(
@@ -94,7 +102,13 @@ describe('token resolution', () => {
       // Tailwind shorthand: duration-(--motion-micro), w-(--sidebar-width)…
       ...[...TS.matchAll(/[a-z]\((--[\w-]+)\)/g)].map((m) => m[1]),
     ])
-    const unresolved = [...refs].filter((t) => !resolves(t))
+    const unresolved = [...refs]
+      // Names composed at runtime — `var(--color-${family}-${step})` — arrive
+      // here truncated at the interpolation. The families and steps they
+      // compose from are covered by palette.test.ts, which resolves the real
+      // token against colors.css.
+      .filter((token) => !COMPOSED_TOKEN_PREFIXES.includes(token))
+      .filter((t) => !resolves(t))
     expect(unresolved).toEqual([])
   })
 })
@@ -212,58 +226,82 @@ describe('theme dials and semantic layer', () => {
 })
 
 /* ------------------------------------------------------------------ *
- * Canvas brand seam (kept from the original template guard set).
+ * Blueprint component tokens. A cell's resting colour comes from its LANE,
+ * which comes from data, so blueprint.css hands the value to the shared
+ * rules through `--{property}-blueprint-{part}` custom properties declared
+ * per `[data-blueprint-lane]`. Nothing type-checks that contract — a lane
+ * that declares six of the seven just renders a fallback — so it is checked
+ * here: every lane role promises the same set.
  * ------------------------------------------------------------------ */
 const BLUEPRINT = stripComments(
   readFileSync(join(STYLES_DIR, 'blueprint.css'), 'utf8'),
 )
-const blueprintDecls = new Map(
-  [...BLUEPRINT.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [
-    m[1],
-    m[2].trim(),
-  ]),
+
+/** The per-lane declaration blocks, keyed by the lane role they style. */
+const LANE_BLOCKS = new Map(
+  [
+    ...BLUEPRINT.matchAll(
+      /\[data-blueprint-lane='([a-z-]+)'\]\s*\{([^}]*)\}/g,
+    ),
+  ].map(([, role, body]) => [role, body]),
 )
 
-const CANVAS_COLOR_TOKENS = [
-  '--canvas-phase-frame',
-  '--canvas-phase-accent',
-  '--canvas-phase-frame-hover',
-  '--canvas-phase-accent-hover',
-  '--canvas-phase-badge-foreground',
-  '--canvas-panel-bg',
-  '--canvas-panel-border',
-  '--canvas-panel-badge',
-  '--canvas-panel-badge-foreground',
-  '--canvas-panel-bg-hover',
-  '--canvas-panel-border-hover',
-  '--canvas-panel-badge-hover',
-  '--canvas-panel-surface-hover',
+const CELL_TOKENS = [
+  '--background-blueprint-cell',
+  '--background-blueprint-cell-origin',
+  '--background-blueprint-cell-hover',
+  '--background-blueprint-cell-pressed',
+  '--ring-blueprint-cell',
+  '--ring-blueprint-cell-soft',
+  '--foreground-blueprint-cell',
 ]
 
-describe('canvas brand seam', () => {
-  it('declares the canvas chrome tokens with colour values', () => {
-    for (const token of CANVAS_COLOR_TOKENS) {
-      const value = blueprintDecls.get(token)
-      expect(value, `blueprint.css missing ${token}`).toBeDefined()
-      expect(value, `${token} is not a colour: ${value}`).toMatch(
-        /^(#[0-9a-f]{3,8}|oklch\(|rgb|hsl)/i,
-      )
+describe('blueprint component tokens', () => {
+  it('styles every lane role the cell styling module knows about', async () => {
+    const { CELL_STEP } = await import('@/lib/blueprintCellStyle')
+    expect(CELL_STEP).toBeDefined()
+    expect(LANE_BLOCKS.size).toBeGreaterThanOrEqual(8)
+  })
+
+  it('declares the full cell token set on every lane', () => {
+    for (const [role, body] of LANE_BLOCKS) {
+      for (const token of CELL_TOKENS) {
+        expect(
+          body.includes(`${token}:`),
+          `lane '${role}' is missing ${token}`,
+        ).toBe(true)
+      }
     }
   })
 
-  it('declares the raise shadow token', () => {
-    expect(blueprintDecls.get('--canvas-raise-shadow')).toMatch(/rgba?\(/)
+  it('assigns only token references, never a raw colour', () => {
+    // The whole point of the tier: a component token hands over a value that
+    // was chosen in colors.css or semantic.css. A literal here would be a
+    // colour invented at the consumer, invisible to both themes' palettes.
+    for (const [role, body] of LANE_BLOCKS) {
+      for (const [, token, value] of body.matchAll(
+        /(--[\w-]+):\s*([^;]+);/g,
+      )) {
+        expect(
+          value.trim().startsWith('var(') ||
+            value.trim().startsWith('color-mix('),
+          `lane '${role}' assigns a literal to ${token}: ${value.trim()}`,
+        ).toBe(true)
+      }
+    }
   })
 
-  it('resolves every var(--canvas-*) reference in blueprint.css', () => {
-    const referenced = new Set(
-      [...BLUEPRINT.matchAll(/var\((--canvas-[\w-]+)\)/g)].map((m) => m[1]),
-    )
-    expect(referenced.size).toBeGreaterThan(0)
-    for (const token of referenced) {
-      expect(blueprintDecls.has(token), `blueprint.css missing ${token}`).toBe(
-        true,
-      )
+  it('declares no blueprint cell token at :root', () => {
+    // Every consumer reads these as `var(--…-blueprint-…, fallback)`, and the
+    // fallback arm IS the default state. A root declaration would make the
+    // property always resolve, so the default would become unreachable.
+    const rootBlocks = [...BLUEPRINT.matchAll(/:root\s*\{([^}]*)\}/g)]
+    for (const [, body] of rootBlocks) {
+      for (const token of CELL_TOKENS) {
+        expect(body.includes(`${token}:`), `${token} declared at :root`).toBe(
+          false,
+        )
+      }
     }
   })
 })

@@ -5,6 +5,7 @@ export const EDITOR_SIDEBAR_WIDTH_CLASS = 'w-60'
 export const EDITOR_SIDEBAR_COLLAPSED_WIDTH_CLASS = 'w-12'
 export const EDITOR_SIDEBAR_WIDTH_PX = '15rem'
 
+/** Rounded floating surface used by the sidebar and the canvas overlays. */
 export function EditorFloatingPanel({
   children,
   className,

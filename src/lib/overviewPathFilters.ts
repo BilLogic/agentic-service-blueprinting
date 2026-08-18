@@ -15,8 +15,14 @@ export function collectOverviewPathOptions(
   for (const paths of pathsByScenario.values()) {
     for (const path of paths) {
       const key = getOverviewPathKey(path)
-      if (!byKey.has(key)) {
-        byKey.set(key, { ...path, id: key })
+      const existing = byKey.get(key)
+      if (existing) {
+        // Same name and type in another scenario — one filter row, but both
+        // real rows recorded, so a caller that needs to *write* can tell that
+        // this option is ambiguous rather than guessing at the first uuid.
+        existing.pathIds?.push(path.id)
+      } else {
+        byKey.set(key, { ...path, id: key, pathIds: [path.id] })
       }
     }
   }
@@ -24,49 +30,32 @@ export function collectOverviewPathOptions(
   return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/** Path options limited to the given scenario ids (focused phase or scenario). */
+export function collectOverviewPathOptionsForScenarios(
+  pathsByScenario: Map<string, PathListItem[]>,
+  scenarioIds: readonly string[],
+): PathOption[] {
+  const scoped = new Map<string, PathListItem[]>()
+  for (const scenarioId of scenarioIds) {
+    const paths = pathsByScenario.get(scenarioId)
+    if (paths?.length) scoped.set(scenarioId, paths)
+  }
+  return collectOverviewPathOptions(scoped)
+}
+
 export function isOverviewPathFilterChecked(
   pathKey: string,
-  pathsByScenario: Map<string, PathListItem[]>,
-  getSelectedPathIds: (scenarioId: string) => string[],
+  _pathsByScenario: Map<string, PathListItem[]>,
+  activePathKeys: readonly string[],
 ): boolean {
-  let hasMatch = false
-
-  for (const [scenarioId, paths] of pathsByScenario) {
-    for (const path of paths) {
-      if (getOverviewPathKey(path) !== pathKey) continue
-      hasMatch = true
-      if (!getSelectedPathIds(scenarioId).includes(path.id)) {
-        return false
-      }
-    }
-  }
-
-  return hasMatch
+  return activePathKeys.includes(pathKey)
 }
 
 export function toggleOverviewPathFilter(
   pathKey: string,
-  pathsByScenario: Map<string, PathListItem[]>,
-  getSelectedPathIds: (scenarioId: string) => string[],
-  togglePathSelection: (scenarioId: string, pathId: string) => void,
+  _pathsByScenario: Map<string, PathListItem[]>,
+  _getSelectedPathIds: (scenarioId: string) => string[],
+  togglePathKey: (pathKey: string) => void,
 ): void {
-  const shouldSelect = !isOverviewPathFilterChecked(
-    pathKey,
-    pathsByScenario,
-    getSelectedPathIds,
-  )
-
-  for (const [scenarioId, paths] of pathsByScenario) {
-    for (const path of paths) {
-      if (getOverviewPathKey(path) !== pathKey) continue
-
-      const isSelected = getSelectedPathIds(scenarioId).includes(path.id)
-      if (shouldSelect && !isSelected) {
-        togglePathSelection(scenarioId, path.id)
-      }
-      if (!shouldSelect && isSelected) {
-        togglePathSelection(scenarioId, path.id)
-      }
-    }
-  }
+  togglePathKey(pathKey)
 }

@@ -13,6 +13,7 @@ type ScenarioSlideFiltersProps = {
   variant?: 'default' | 'bar' | 'toolbar' | 'panel'
 }
 
+/** Path filter control for a scenario, in the layout its host surface needs. */
 export function ScenarioSlideFilters({
   paths = [],
   selectedPathIds = [],

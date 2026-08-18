@@ -1,38 +1,41 @@
 /*
- * Dark theme dials. Structure ported from uno-blueprint; values anchor to
- * the template's historical `.dark` block (near-black canvas, near-white
- * ink) rather than uno's charcoal.
+ * Dark theme dials. Mirrors packages/ui/build/css/themes/dark.css.
  *
- * Imported AFTER themes/light.css so that `.dark` on the root element beats
- * the `:root` light defaults — the two have equal specificity, so source
- * order is what decides.
+ * Imported AFTER themes/light.css so that `.dark` on the root element beats the
+ * `:root` light defaults — the two have equal specificity, so source order is
+ * what decides.
  *
- * No status overrides here beyond the lightness/chroma anchors: `--warning`,
- * `--destructive`, `--info` and `--success` are derived in semantic.css, so
- * dials are all this file owes them.
+ * No status overrides here beyond the lightness anchors: `--warning`,
+ * `--destructive`, `--info` and `--success` are derived in semantic.css from
+ * `--*-lightness` + `--expressive-chroma`, so a dial is all this file owes them.
  */
 .dark {
   --helpers-os-appearance: Dark;
 
   /* Same dial, same value as light — see the BRAND SEAM note in
-     themes/light.css. The brand hue is mode-invariant. */
+     themes/light.css. The brand hue is mode-invariant, so these two must
+     move together. */
   --hue: 159;
+  /* `--surface-hue` is left at its `var(--hue)` default; at chroma 0 the dark
+     surfaces are exact greys. A branded fork raises this to let them carry a
+     trace of the brand hue. */
   --chroma: 0;
-  --surface: 0.145;
-  --elevation-step: 0.03;
+  --surface: 0.19;
+  --elevation-step: 0.025;
   --contrast: 0.5;
-  --foreground-lightness: 0.985;
-  --muted-foreground-level: 0.67;
-  --tertiary-foreground-level: 0.55;
+  --foreground-lightness: 0.95;
+  --muted-foreground-level: 0.8;
+  --tertiary-foreground-level: 0.65;
 
-  /* Neutral filled control inverts: near-white fill, dark ink on it. */
+  /* BRAND SEAM, dark half. The neutral filled control inverts: near-white
+     fill, dark ink on it (semantic.css derives the flip). */
   --primary-lightness: 0.922;
   --primary-chroma: 0;
-  --ring-lightness: 0.556;
+  /* 0.62 on the charcoal canvas: 5.07:1, clearing SC 1.4.11 with headroom. */
+  --ring-lightness: 0.62;
 
   --warning-lightness: 0.8;
-  --destructive-lightness: 0.704;
-  --destructive-chroma: 0.191;
+  --destructive-lightness: 0.75;
   --info-lightness: 0.7;
   --success-lightness: 0.76;
 

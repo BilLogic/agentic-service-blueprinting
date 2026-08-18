@@ -3,9 +3,9 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MobileTopBar } from '@/components/mobile/MobileTopBar'
 
-// Pins the top bar (ported from uno-blueprint): the stateful menu toggle
-// (☰ ⇄ ✕, aria-expanded, one control opens AND closes) and the contextual
-// right slot the shell owns.
+// Pins the Phase-3 top bar (plan 2026-08-16-002): the stateful menu toggle
+// (☰ ⇄ ✕, aria-expanded, one control opens AND closes) and the bar being
+// navigation-only — the agent enters through the FAB, never this bar.
 
 afterEach(cleanup)
 
@@ -13,7 +13,7 @@ function renderBar(over: Partial<Parameters<typeof MobileTopBar>[0]> = {}) {
   const onToggleNav = vi.fn()
   render(
     <MobileTopBar
-      title="Sample Service"
+      title="Intake Call"
       navOpen={false}
       onToggleNav={onToggleNav}
       {...over}
@@ -23,6 +23,11 @@ function renderBar(over: Partial<Parameters<typeof MobileTopBar>[0]> = {}) {
 }
 
 describe('MobileTopBar', () => {
+  it('carries no agent affordance — the FAB owns that entry', () => {
+    renderBar()
+    expect(screen.queryByLabelText('Ask the agent')).toBeNull()
+  })
+
   it('closed drawer: menu button reads "Open navigation" and is not expanded', () => {
     const h = renderBar({ navOpen: false })
     const button = screen.getByLabelText('Open navigation')
@@ -43,6 +48,6 @@ describe('MobileTopBar', () => {
   it('renders the contextual right slot the shell provides', () => {
     renderBar({ rightSlot: <span>Happy Path</span> })
     expect(screen.getByText('Happy Path')).toBeDefined()
-    expect(screen.getByText('Sample Service')).toBeDefined()
+    expect(screen.getByText('Intake Call')).toBeDefined()
   })
 })

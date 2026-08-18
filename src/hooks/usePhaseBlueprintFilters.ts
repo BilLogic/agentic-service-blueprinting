@@ -8,7 +8,6 @@ import {
   isOverviewPathFilterChecked,
   toggleOverviewPathFilter,
 } from '@/lib/overviewPathFilters'
-import { defaultSelectedPathIds } from '@/lib/pathSelection'
 import type { BlueprintData } from '@/types/blueprint'
 import type { PathListItem } from '@/lib/pathSelection'
 import { getSubslides, isSubslide, type NavItem, type SlideViewType } from '@/types/nav'
@@ -25,6 +24,8 @@ export type PhaseBlueprintFilters = {
   pathsByScenario: Map<string, PathListItem[]>
   blueprintsByPathId: Map<string, BlueprintData>
   loading: boolean
+  /** Real fetch progress: settled request chunks over total. */
+  progress: { loaded: number; total: number }
   filterPaths: PathOption[]
   filterSelectedPathIds: string[]
   viewType: SlideViewType
@@ -41,14 +42,22 @@ export function usePhaseBlueprintFilters({
   getScenarioDisplayViewType,
   setScenarioDisplayViewType,
 }: UsePhaseBlueprintFiltersOptions): PhaseBlueprintFilters {
-  const activeScenarioIds = enabled ? scenarioIds : []
+  const activeScenarioIds = useMemo(
+    () => (enabled ? scenarioIds : []),
+    [enabled, scenarioIds],
+  )
   const {
     pathsByScenario,
     blueprintsByPathId,
     loading,
+    progress,
   } = useCanvasBlueprints(activeScenarioIds)
-  const { getSelectedPathIds, togglePathSelection } =
-    usePathSelectionsByScenario(pathsByScenario)
+
+  // `activeScenarioIds` is the scope: the store may prune any of these that
+  // came back with no paths, which is how a deleted — or reverted-duplicate —
+  // scenario leaves the catalog instead of outliving the session in it.
+  const { getSelectedPathIds, togglePathKey, activePathKeys } =
+    usePathSelectionsByScenario(pathsByScenario, activeScenarioIds)
 
   const filterPaths = useMemo(
     () => collectOverviewPathOptions(pathsByScenario),
@@ -62,11 +71,11 @@ export function usePhaseBlueprintFilters({
           isOverviewPathFilterChecked(
             getOverviewPathKey(path),
             pathsByScenario,
-            getSelectedPathIds,
+            activePathKeys,
           ),
         )
         .map((path) => path.id),
-    [filterPaths, pathsByScenario, getSelectedPathIds],
+    [filterPaths, pathsByScenario, activePathKeys],
   )
 
   const viewType = useMemo(() => {
@@ -74,9 +83,13 @@ export function usePhaseBlueprintFilters({
 
     const viewTypes = activeScenarioIds.map((scenarioId) => {
       const scenario = slides.find((slide) => slide.id === scenarioId)
-      return scenario
+      const scenarioViewType = scenario
         ? getScenarioDisplayViewType(scenario)
         : ('stacked' as SlideViewType)
+      // 'merged' is a focused-scenario mode; overview rows render stacked.
+      return scenarioViewType === 'merged'
+        ? ('stacked' as SlideViewType)
+        : scenarioViewType
     })
 
     return viewTypes.every((type) => type === viewTypes[0])
@@ -99,16 +112,16 @@ export function usePhaseBlueprintFilters({
         pathKey,
         pathsByScenario,
         getSelectedPathIds,
-        togglePathSelection,
+        togglePathKey,
       )
     },
-    [pathsByScenario, getSelectedPathIds, togglePathSelection],
+    [pathsByScenario, getSelectedPathIds, togglePathKey],
   )
 
   const resolveSelectedPathIds = useCallback(
-    (scenarioId: string, paths: PathListItem[]) => {
-      const selected = getSelectedPathIds(scenarioId)
-      return selected.length > 0 ? selected : defaultSelectedPathIds(paths)
+    (scenarioId: string, _paths: PathListItem[]) => {
+      // Empty selection is intentional — do not fall back to happy path.
+      return getSelectedPathIds(scenarioId)
     },
     [getSelectedPathIds],
   )
@@ -117,6 +130,7 @@ export function usePhaseBlueprintFilters({
     pathsByScenario,
     blueprintsByPathId,
     loading,
+    progress,
     filterPaths,
     filterSelectedPathIds,
     viewType,

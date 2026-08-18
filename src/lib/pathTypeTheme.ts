@@ -41,7 +41,8 @@ export function getPathTypeSectionBorderStyle(
 
   return {
     borderColor: PATH_TYPE_COLORS[pathType],
-    borderStyle: 'solid',
+    // Solid only for the happy path — matches the arrow dash vocabulary.
+    borderStyle: pathType === 'happy' ? 'solid' : 'dashed',
     borderWidth: PATH_TYPE_SECTION_BORDER_WIDTH,
   }
 }
@@ -55,43 +56,6 @@ export function getPathTypeArrowColor(
   }
 
   return PATH_TYPE_ARROW_COLORS[pathType]
-}
-
-export const PATH_TYPE_SWATCH_CLASSES: Record<PathType, string> = {
-  happy: 'bg-emerald-500',
-  unhappy: 'bg-amber-900',
-  exception: 'bg-red-900',
-  alternative: 'bg-blue-900',
-}
-
-/** Default Badge fill + label text per path type. */
-export const PATH_TYPE_BADGE_CLASSES: Record<PathType, string> = {
-  happy: 'bg-emerald-500 text-white',
-  unhappy: 'bg-amber-900 text-white',
-  exception: 'bg-red-900 text-white',
-  alternative: 'bg-blue-900 text-white',
-}
-
-const GENERIC_PATH_TYPE_NAMES = new Set([
-  'happy path',
-  'sad path',
-  'unhappy path',
-  'alternate path',
-  'alternative path',
-  'exception',
-  'exception path',
-])
-
-export function isGenericPathTypeName(name: string): boolean {
-  return GENERIC_PATH_TYPE_NAMES.has(name.trim().toLowerCase())
-}
-
-/** Overview frames: type badge only for generic archetype names. */
-export function shouldShowPathTypeBadge(path: {
-  name: string
-  path_type?: PathType
-}): boolean {
-  return isGenericPathTypeName(path.name)
 }
 
 /** Path-type suffix for compare labels — omitted when the name already implies the type. */
@@ -112,4 +76,31 @@ export function getPathTypeSuffixIfNeeded(path: {
   }
 
   return short
+}
+
+/**
+ * Generic path names (Happy Path, Alternate Path, …) can show a type badge.
+ * A path with its own title (an `alternative` named for the activity it
+ * covers) shows that title instead — the badge would say less than the name.
+ */
+const GENERIC_PATH_TYPE_NAMES = new Set([
+  'happy path',
+  'sad path',
+  'unhappy path',
+  'alternate path',
+  'alternative path',
+  'exception',
+  'exception path',
+])
+
+export function isGenericPathTypeName(name: string): boolean {
+  return GENERIC_PATH_TYPE_NAMES.has(name.trim().toLowerCase())
+}
+
+/** Overview frames: type badge only for generic archetype names. */
+export function shouldShowPathTypeBadge(path: {
+  name: string
+  path_type?: PathType
+}): boolean {
+  return isGenericPathTypeName(path.name)
 }

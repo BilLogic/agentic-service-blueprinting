@@ -3,17 +3,19 @@ import type { SlideViewType } from '@/types/nav'
 /**
  * The two view-type vocabularies and the only place they meet.
  *
- * The database CHECK constraint keeps the historical tokens
- * `single | side-by-side | integrated`. The client speaks
- * `single | stacked | merged` (Compare v3). Everything above the two seams —
- * the read seam in `phasesToSlides.ts` and any future write seam — uses
- * client tokens only.
+ * The database CHECK constraint (supabase/schema.reference.sql:33) keeps the
+ * historical tokens `single | side-by-side | integrated`. The client speaks
+ * `single | stacked | merged` (Compare v3 — docs/plans/2026-08-06-003).
+ * Everything above the two seams — the read seam in `phasesToSlides.ts` and
+ * the write seam feeding `authoringRpc.ts` — uses client tokens only; the
+ * grep gate in the plan enforces that in both directions.
  */
 export type DbScenarioViewType = 'single' | 'side-by-side' | 'integrated'
 
 /**
- * Read seam map. Persisted `'integrated'` rows coerce to the plain stacked
- * view — no migration is needed and old data does not change meaning.
+ * Read seam map. Persisted `'integrated'` rows keep coercing to the plain
+ * stacked view — the same behavior the old `getSlideViewType` coercion gave
+ * them — so no migration is needed and old data does not change meaning.
  */
 export const dbToClientViewType = {
   single: 'single',

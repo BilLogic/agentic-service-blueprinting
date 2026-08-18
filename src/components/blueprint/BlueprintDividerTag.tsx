@@ -21,7 +21,7 @@ export function BlueprintDividerRailLabel({
     <span
       className={cn(
         'shrink-0 font-medium uppercase leading-none tracking-[0.08em]',
-        compact ? 'text-[10px]' : 'text-[11px]',
+        compact ? 'text-3xs' : 'text-2xs',
       )}
       style={{ color: BLUEPRINT_THEME.dividerLabel }}
     >
@@ -40,7 +40,7 @@ export function BlueprintDividerTag({
     <span
       className={cn(
         'inline-flex shrink-0 items-center px-3 py-1.5 font-semibold uppercase leading-none tracking-[0.06em] text-white',
-        compact ? 'text-[10px]' : 'text-[11px]',
+        compact ? 'text-3xs' : 'text-2xs',
         connected ? 'rounded-l rounded-r-none' : 'rounded',
       )}
       style={{ backgroundColor: BLUEPRINT_THEME.dividerTagBg }}

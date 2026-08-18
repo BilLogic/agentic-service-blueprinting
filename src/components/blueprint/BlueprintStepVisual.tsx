@@ -1,6 +1,6 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import { getVisualCellButtonMaxHeight } from '@/lib/blueprintLayout'
-import { BLUEPRINT_CELL_PALETTE } from '@/lib/blueprintTheme'
+import type { BlueprintLaneRole } from '@/lib/blueprintCellStyle'
 import { hasEmbeddedVisualFrame } from '@/lib/visualWalkthrough'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
@@ -14,7 +14,7 @@ export type BlueprintStepVisualPicture = {
 type BlueprintStepVisualProps = {
   compact?: boolean
   className?: string
-  fill?: string
+  fill?: BlueprintLaneRole
   selection?: BlueprintCellSelection
   cellId?: string
   stepIndex?: number
@@ -58,6 +58,8 @@ function VisualPictureStrip({
             <img
               src={entry.picture}
               alt=""
+              loading="lazy"
+              decoding="async"
               className={cn(
                 'max-h-full max-w-full rounded-sm object-contain object-center',
                 hasEmbeddedVisualFrame(entry.picture) && 'scale-[1.08]',
@@ -75,10 +77,11 @@ function VisualPictureStrip({
   )
 }
 
+/** Visual-layer cell: the screenshots for a step, laid out inside a cell face. */
 export function BlueprintStepVisual({
   compact = false,
   className,
-  fill = BLUEPRINT_CELL_PALETTE.visual,
+  fill = 'visual',
   selection,
   cellId,
   stepIndex,
@@ -105,7 +108,7 @@ export function BlueprintStepVisual({
           'h-[min(16rem,35vh)] min-h-[12.5rem]',
           className,
         )}
-        style={{ backgroundColor: fill }}
+        style={{ backgroundColor: 'var(--background-blueprint-cell)' }}
         role="img"
         aria-label={ariaLabel}
       >
@@ -126,7 +129,7 @@ export function BlueprintStepVisual({
       )}
       style={{
         maxHeight: inlineMaxHeight,
-        '--blueprint-cell-bg-panel': 'transparent',
+        '--background-blueprint-cell-panel': 'transparent',
       } as CSSProperties}
       selection={selection}
       cellId={cellId}

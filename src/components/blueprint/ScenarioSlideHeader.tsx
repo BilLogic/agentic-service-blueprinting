@@ -1,13 +1,10 @@
-import { CompareControlsCluster } from '@/components/blueprint/CompareControls'
 import { NotionPropertyRow } from '@/components/blueprint/NotionPropertyRow'
 import { ScenarioSlideFilters } from '@/components/blueprint/ScenarioSlideFilters'
 import { PathMultiSelect, type PathOption } from '@/components/blueprint/PathMultiSelect'
 import { cn } from '@/lib/utils'
-import type { NavItem } from '@/types/nav'
 
 type ScenarioSlideHeaderProps = {
   title: string
-  slide?: NavItem
   description?: string | null
   phaseLabel?: string
   paths?: PathOption[]
@@ -19,9 +16,9 @@ type ScenarioSlideHeaderProps = {
   className?: string
 }
 
+/** Sticky header above a scenario grid: title badge, description tooltip and path filters. */
 export function ScenarioSlideHeader({
   title,
-  slide,
   description,
   phaseLabel,
   paths = [],
@@ -44,16 +41,10 @@ export function ScenarioSlideHeader({
         {phaseLabel && (
           <p className="mb-1 text-sm text-muted-foreground">{phaseLabel}</p>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <h1 className="text-[2.5rem] font-bold leading-[1.15] tracking-tight text-foreground">
             {title}
           </h1>
-          {slide ? (
-            <CompareControlsCluster
-              slide={slide}
-              selectedPathIds={selectedPathIds}
-            />
-          ) : null}
         </div>
         {description && (
           <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">
@@ -93,7 +84,7 @@ export function ScenarioSlideHeader({
           <p
             className={cn(
               'font-medium uppercase tracking-wide text-muted-foreground',
-              compact ? 'text-[10px]' : 'text-xs',
+              compact ? 'text-3xs' : 'text-xs',
             )}
           >
             {phaseLabel}
@@ -113,12 +104,6 @@ export function ScenarioSlideHeader({
           >
             {title}
           </h1>
-          {slide ? (
-            <CompareControlsCluster
-              slide={slide}
-              selectedPathIds={selectedPathIds}
-            />
-          ) : null}
         </div>
         {description && (
           <p

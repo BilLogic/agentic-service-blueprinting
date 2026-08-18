@@ -1,123 +1,139 @@
 /*
- * Blueprint canvas chrome — interactive overview panels and cell emphasis
- * states. (Scroll utilities live in utilities.css.) Colours resolve through
- * the canvas tokens declared below.
+ * Blueprint board styling, and the contract for its component tokens.
+ *
+ * TOKEN TIERS — three you can look up, one you set.
+ *
+ *   1. Primitive   colors.css      --color-{family}-{step}
+ *   2. Semantic    semantic.css    --background, --primary, --warning, --sidebar-*
+ *   3. Tailwind    theme.css       --color-{semantic}, so utilities exist
+ *   4. Component   here            --{property}-blueprint-{part}-{state}
+ *
+ * Tier 4 is what a component sets on itself so a shared rule can read it — the
+ * same shape as Radix's `--radix-popper-*` or Supabase's `--card-padding-x`. It
+ * is NOT a design token: nothing here introduces a colour. Every value assigned
+ * to one of these is a tier-1 or tier-2 reference, and the assignment happens in
+ * TypeScript because the value depends on row data (which lane a cell is in),
+ * which CSS cannot know.
+ *
+ * Names follow Supabase's component-token order — property first, component,
+ * then state (`--border-button-hover`, `--background-overlay-hover`) — with
+ * `blueprint` as the component namespace: `--background-blueprint-cell-hover`.
+ *
+ * The inventory, since it is otherwise only discoverable by reading .ts:
+ *
+ *   --background-blueprint-cell              resting surface   set per lane below
+ *   --background-blueprint-cell-hover        hover surface     "
+ *   --background-blueprint-cell-pressed      pressed surface   "
+ *   --ring-blueprint-cell                    outline + focus   "
+ *   --ring-blueprint-cell-soft               "                 "
+ *   --background-blueprint-cell-panel        opt-in override   set by BlueprintStepVisual
+ *   --background-blueprint-panel-label-rail  panel hover       set by the hover rule below
+ *   --background-blueprint-panel-canvas      "                 "
+ *   --background-blueprint-panel-section     "                 "
+ *   --background-blueprint-panel-divider     "                 "
+ *
+ * None of them are declared at `:root`, deliberately. Every consumer reads them
+ * as `var(--…-blueprint-…, fallback)`, and a root declaration would make the
+ * property always resolve, so the fallback arm — which is the default state —
+ * would become unreachable.
  */
-
-:root {
-  /* -------------------------------------------------------------------------
-   * BRAND SEAM (canvas half) — the one block an adopter edits to rebrand the
-   * canvas. The app-chrome half of the seam is the dial block in
-   * themes/light.css.
-   *
-   * The template ships hue-neutral: the semantic layer is greyscale and the
-   * only chromatic family in the app is this muted blue-grey used for the
-   * interactive phase frames on the overview canvas. Swap these five values
-   * for your brand's tint family (keep the light → dark ordering: frame fill
-   * lightest, accent/border mid, hover states one step darker) and the
-   * canvas follows. The greys further down are deliberately colourless and
-   * rarely need to change.
-   *
-   * Light-theme-only on purpose: the canvas paints its own surfaces in both
-   * themes, exactly like uno's frozen blueprint palette.
-   * ---------------------------------------------------------------------- */
-  --canvas-phase-frame: #d9e4ea;
-  --canvas-phase-accent: #b6c7d2;
-  --canvas-phase-frame-hover: #c5d6e0;
-  --canvas-phase-accent-hover: #9aadbe;
-  --canvas-phase-badge-foreground: #1c1c1e;
-
-  /* Neutral canvas-panel chrome (scenario panels, badges, hover states). */
-  --canvas-panel-bg: #e8e8ed;
-  --canvas-panel-border: #d4d4da;
-  --canvas-panel-badge: #c2c2c8;
-  --canvas-panel-badge-foreground: #2c2c2e;
-  --canvas-panel-bg-hover: #dddfe4;
-  --canvas-panel-border-hover: #babac4;
-  --canvas-panel-badge-hover: #b0b0b8;
-  --canvas-panel-surface-hover: #f4f4f7;
-  --canvas-raise-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  /* Semantic-zoom blocks-tier cell fill. A canvas token, not var(--border):
-     the canvas paints itself light in both themes, and the dark theme's
-     translucent near-white border would vanish on it. The value is the
-     light theme's historical border grey. */
-  --canvas-cell-block: oklch(0.922 0 0);
-}
 
 @layer utilities {
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
   [data-phase-scenario-panel] {
-    background-color: var(--canvas-panel-bg);
-    border-color: var(--canvas-panel-border);
+    background-color: var(--color-slate-500);
+    border-color: var(--color-slate-700);
   }
 
   [data-scenario-panel-title-badge] {
-    background-color: var(--canvas-panel-badge);
-    border-color: var(--canvas-panel-badge);
-    color: var(--canvas-panel-badge-foreground);
+    background-color: var(--color-gray-800);
+    border-color: var(--color-gray-800);
+    color: var(--color-gray-1200);
   }
 
   [data-phase-title-badge] {
-    background-color: var(--canvas-phase-accent);
-    border-color: var(--canvas-phase-accent);
-    color: var(--canvas-phase-badge-foreground);
+    background-color: var(--color-slate-800);
+    border-color: var(--color-slate-800);
+    color: var(--color-gray-1200);
   }
 
   [data-canvas-phase-interactive] [data-phase-frame] {
-    background-color: var(--canvas-phase-frame);
-    border-color: var(--canvas-phase-accent);
+    background-color: var(--color-slate-700);
+    border-color: var(--color-slate-800);
   }
 
-  [data-phase-scenario-panel]:hover,
-  [data-phase-scenario-panel]:focus-within {
-    background-color: var(--canvas-panel-bg-hover);
-    border-color: var(--canvas-panel-border-hover);
-    box-shadow: var(--canvas-raise-shadow);
-    --blueprint-panel-label-rail: var(--canvas-panel-bg-hover);
-    --blueprint-panel-canvas: var(--canvas-panel-surface-hover);
-    --blueprint-panel-section-fill: var(--canvas-panel-surface-hover);
-    --blueprint-panel-divider-bg: var(--canvas-panel-bg-hover);
+  [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
+  [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
+    background-color: var(--color-slate-600);
+    border-color: var(--color-slate-800);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    --background-blueprint-panel-label-rail: var(--color-slate-600);
+    --background-blueprint-panel-canvas: var(--color-slate-300);
+    --background-blueprint-panel-section: var(--color-slate-300);
+    --background-blueprint-panel-divider: var(--color-slate-600);
   }
 
-  [data-phase-scenario-panel]:hover [data-scenario-panel-title-badge],
-  [data-phase-scenario-panel]:focus-within [data-scenario-panel-title-badge] {
-    background-color: var(--canvas-panel-badge-hover);
-    border-color: var(--canvas-panel-badge-hover);
+  [data-phase-scenario-panel]:hover:not([data-canvas-focus-active])
+    [data-scenario-panel-title-badge],
+  [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active])
+    [data-scenario-panel-title-badge] {
+    background-color: var(--color-gray-900);
+    border-color: var(--color-gray-900);
   }
 
   /* Cell fills stay at their role color when a panel is hovered/focused —
      the old grey color-mix blend muddied role-based colors on click. */
 
+  /* The slice dim eases on opacity only. `filter` is applied but never
+     listed here on purpose: transitioning a filter repaints every
+     non-member cell on every frame of the ease, which the perf review
+     flagged explicitly. The desaturation lands on frame 1 under a cell that
+     is still near-opaque, so the pair still reads as one event. */
   [data-blueprint-cell-anchor] {
     transition-property: box-shadow, transform, opacity, background-color;
-    transition-duration: 180ms;
+    transition-duration: var(--motion-micro);
   }
 
   /* Slice focus — member rings persist whether or not the dim is up. Ring
      takes the lane's role accent so members pop at overview zoom, plus a
      soft shadow lift over the dimmed field. */
   [data-slice-focus] [data-blueprint-cell-anchor][data-slice-member] {
-    outline: 2px solid var(--blueprint-cell-ring, var(--ring));
+    outline: 2px solid var(--ring-blueprint-cell, var(--ring));
     outline-offset: 1px;
     box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
   }
 
-  /* While focused, non-member cells drop toward the canvas: per-cell dim +
-     desaturate, no scrim plane. 0.6 opacity (not lower) keeps the dimmed
-     text above ~5:1 contrast against its own fill — content still on screen
-     is still meant to be legible (SC 1.4.3); the desaturate does the
-     de-emphasis work. The `filter` is deliberately NOT transitioned:
-     easing a filter repaints every non-member cell per frame. */
+  /* While focused, non-member cells drop hard toward the canvas (the slice
+     tab wraps the normal blueprint view, so the grid keeps its own stacking
+     contexts — no scrim plane, just per-cell dim + desaturate + grey).
+
+     0.6, not the 0.22 this used to be. Opacity composites the cell's black text
+     against the canvas along with its fill, so at 0.22 the text measured 1.61:1
+     against its own cell — content still on screen and still meant to be
+     legible, well under SC 1.4.3. Measured across the lane fills: 0.45 gives
+     ~3.0:1, 0.55 ~4.2:1, 0.6 ~5.0:1. The desaturate does the de-emphasis work
+     that the opacity used to overreach for, so members still dominate. */
   [data-slice-focus='focused']
     [data-blueprint-cell-anchor]:not([data-slice-member]) {
     opacity: 0.6;
     filter: saturate(0.3) grayscale(0.55);
   }
 
+  /* A cell picked for a slice being authored. Deliberately the primary
+     accent rather than the lane ring used for saved membership: while
+     picking, "in this draft" and "in some saved slice" are different states
+     that can both be true on the same cell. */
+  [data-blueprint-cell-anchor][data-slice-picked] {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+
   /* Sequence badges scale with the canvas transform; once the camera is far
      enough out that the numbers are illegible they read as noise. Fading
-     rather than `display: none` keeps the threshold from popping. */
-  [data-slice-sequence-badge] {
+     rather than `display: none` keeps the 0.25 threshold from popping —
+     crossing it now costs one 150 ms opacity animation, not a relayout. */
+  [data-slice-sequence-badge],
+  [data-slice-pick-badge] {
     transition: opacity var(--motion-micro) ease-out;
   }
 
@@ -126,12 +142,16 @@
     pointer-events: none;
   }
 
+  /* Pick badges deliberately survive the far-zoom threshold: while building
+     a slice the numbers are the whole point, and picking from a zoomed-out
+     view is the normal way to span a wide scenario. */
+
   [data-blueprint-cell-anchor][data-blueprint-cell-preview-hover] {
     background-color: var(
-      --blueprint-cell-bg-hover,
+      --background-blueprint-cell-hover,
       var(
-        --blueprint-cell-bg-panel,
-        var(--blueprint-cell-bg-origin, var(--blueprint-cell-bg))
+        --background-blueprint-cell-panel,
+        var(--background-blueprint-cell-origin, var(--background-blueprint-cell))
       )
     );
   }
@@ -142,7 +162,7 @@
       inset 0 0 0 1px
         color-mix(
           in srgb,
-          var(--blueprint-cell-ring-soft, var(--ring)) 42%,
+          var(--ring-blueprint-cell-soft, var(--ring)) 42%,
           transparent
         ),
       0 3px 8px rgb(0 0 0 / 0.1);
@@ -152,42 +172,267 @@
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    /* `--color-gray-1200`, not `var(--foreground)`: the scrim should darken the
+       cell it sits on in either theme, and `--foreground` inverts.
+       the `[data-blueprint-lane]` rules always set the hover var, so the
+       fallback only covers a cell rendered without a lane. */
     background: color-mix(
       in srgb,
-      var(--blueprint-cell-bg-hover, var(--foreground)) 30%,
+      var(--background-blueprint-cell-hover, var(--color-gray-1200)) 30%,
       transparent
     );
     content: '';
     pointer-events: none;
   }
 
-  [data-canvas-phase-interactive]:hover:not(:has([data-phase-scenario-panel]:hover))
+  [data-canvas-phase-interactive]:hover:not([data-canvas-focus-active]):not(
+      :has([data-phase-scenario-panel]:hover)
+    )
     [data-phase-frame],
-  [data-canvas-phase-interactive]:focus-within:not(:has([data-phase-scenario-panel]:focus-within))
+  [data-canvas-phase-interactive]:focus-within:not([data-canvas-focus-active]):not(
+      :has([data-phase-scenario-panel]:focus-within)
+    )
     [data-phase-frame] {
-    background-color: var(--canvas-phase-frame-hover);
-    border-color: var(--canvas-phase-accent-hover);
-    box-shadow: var(--canvas-raise-shadow);
+    background-color: var(--color-slate-800);
+    border-color: var(--color-slate-900);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   }
 
-  [data-canvas-phase-interactive]:hover:not(:has([data-phase-scenario-panel]:hover))
+  [data-canvas-phase-interactive]:hover:not([data-canvas-focus-active]):not(
+      :has([data-phase-scenario-panel]:hover)
+    )
     [data-phase-title-badge],
-  [data-canvas-phase-interactive]:focus-within:not(:has([data-phase-scenario-panel]:focus-within))
+  [data-canvas-phase-interactive]:focus-within:not([data-canvas-focus-active]):not(
+      :has([data-phase-scenario-panel]:focus-within)
+    )
     [data-phase-title-badge] {
-    background-color: var(--canvas-phase-accent-hover);
-    border-color: var(--canvas-phase-accent-hover);
+    background-color: var(--color-slate-900);
+    border-color: var(--color-slate-900);
+  }
+}
+
+@layer utilities {
+  /*
+   * CELL SEMANTIC TOKENS — the full state set, per lane role.
+   *
+   * A cell is the app's most-used control, so it needs every state a control
+   * needs, not just a fill. Each role below defines the same ten properties;
+   * only the family changes. Nothing outside this file picks a colour.
+   *
+   *   --background-blueprint-cell           resting surface
+   *   --background-blueprint-cell-origin    resting surface, kept for the panel chain
+   *   --background-blueprint-cell-hover     pointer over
+   *   --background-blueprint-cell-pressed   aria-pressed / active
+   *   --ring-blueprint-cell                 2px slice-member outline
+   *   --ring-blueprint-cell-soft            focus-visible ring
+   *   --foreground-blueprint-cell           primary label
+   *
+   * Seven, not ten. `-bg-selected`, `-text-muted` and `-border` were also
+   * defined here and nothing read any of them: selection is the ring, cells
+   * have no secondary label, and every cell draws the flat
+   * `BLUEPRINT_CELL_BORDER_COLOR` (gray-1200) regardless of family. Giving each
+   * family its own step-8 edge instead is a real improvement and a visible
+   * change to the board — so it is a decision to take, not a token to leave
+   * lying here unconsumed.
+   *
+   * WHY TOKENS HERE AND NOWHERE ELSE. Supabase expresses state at the call
+   * site — `hover:bg-primary/90`, or a step of a numeric scale. Both need the
+   * resting colour to be known when the class is written. A cell's resting
+   * colour comes from its lane, which comes from data, so neither works: there
+   * is no static class to write. The lane rule below is the call site, and a
+   * custom property is the only way to hand a value to it.
+   *
+   * The *mechanism* is still Supabase's second form — step the scale. Radix
+   * tunes 5 → 6 → 7 as surface → hover → pressed, per family, per theme, with
+   * the chroma correction each hue needs, exactly as Supabase steps
+   * `brand-400` → `brand-600` for a button's hover border.
+   *
+   * Steps by role: 500/600/700 for lanes, 400/500/600 for tones — a pill sits a
+   * step paler than the lane it lives in. Ring is 1100 in both: step 8, Radix's
+   * "border" step, is specified against the app background (steps 1–2) and
+   * measures 1.38:1 on a step-5 surface, failing SC 1.4.11. A per-family cell
+   * border would be step 8, because that IS a border against the cell's own fill.
+   *
+   * Disabled and dimmed are deliberately absent: both are opacity, applied by
+   * the element, and giving them colours would let a dimmed cell drift away
+   * from the one it is dimming.
+   */
+  /* visual */
+[data-blueprint-lane='visual'] {
+    --background-blueprint-cell-origin: var(--color-slate-500);
+    --background-blueprint-cell: var(--color-slate-500);
+    --background-blueprint-cell-hover: var(--color-slate-600);
+    --background-blueprint-cell-pressed: var(--color-slate-700);
+    --ring-blueprint-cell: var(--color-slate-1100);
+    --ring-blueprint-cell-soft: var(--color-slate-1100);
+    --foreground-blueprint-cell: var(--color-slate-1200);
+  }
+
+  /* evidence */
+[data-blueprint-lane='evidence'] {
+    --background-blueprint-cell-origin: var(--color-blue-500);
+    --background-blueprint-cell: var(--color-blue-500);
+    --background-blueprint-cell-hover: var(--color-blue-600);
+    --background-blueprint-cell-pressed: var(--color-blue-700);
+    --ring-blueprint-cell: var(--color-blue-1100);
+    --ring-blueprint-cell-soft: var(--color-blue-1100);
+    --foreground-blueprint-cell: var(--color-blue-1200);
+  }
+
+  /* actor */
+[data-blueprint-lane='actor'] {
+    --background-blueprint-cell-origin: var(--color-green-500);
+    --background-blueprint-cell: var(--color-green-500);
+    --background-blueprint-cell-hover: var(--color-green-600);
+    --background-blueprint-cell-pressed: var(--color-green-700);
+    --ring-blueprint-cell: var(--color-green-1100);
+    --ring-blueprint-cell-soft: var(--color-green-1100);
+    --foreground-blueprint-cell: var(--color-green-1200);
+  }
+
+  /* frontstage-tech */
+[data-blueprint-lane='frontstage-tech'] {
+    --background-blueprint-cell-origin: var(--color-violet-500);
+    --background-blueprint-cell: var(--color-violet-500);
+    --background-blueprint-cell-hover: var(--color-violet-600);
+    --background-blueprint-cell-pressed: var(--color-violet-700);
+    --ring-blueprint-cell: var(--color-violet-1100);
+    --ring-blueprint-cell-soft: var(--color-violet-1100);
+    --foreground-blueprint-cell: var(--color-violet-1200);
+  }
+
+  /* frontstage-action */
+[data-blueprint-lane='frontstage-action'] {
+    --background-blueprint-cell-origin: var(--color-pink-500);
+    --background-blueprint-cell: var(--color-pink-500);
+    --background-blueprint-cell-hover: var(--color-pink-600);
+    --background-blueprint-cell-pressed: var(--color-pink-700);
+    --ring-blueprint-cell: var(--color-pink-1100);
+    --ring-blueprint-cell-soft: var(--color-pink-1100);
+    --foreground-blueprint-cell: var(--color-pink-1200);
+  }
+
+  /* backstage-tech */
+[data-blueprint-lane='backstage-tech'] {
+    --background-blueprint-cell-origin: var(--color-lime-500);
+    --background-blueprint-cell: var(--color-lime-500);
+    --background-blueprint-cell-hover: var(--color-lime-600);
+    --background-blueprint-cell-pressed: var(--color-lime-700);
+    --ring-blueprint-cell: var(--color-lime-1100);
+    --ring-blueprint-cell-soft: var(--color-lime-1100);
+    --foreground-blueprint-cell: var(--color-lime-1200);
+  }
+
+  /* backstage-action */
+[data-blueprint-lane='backstage-action'] {
+    --background-blueprint-cell-origin: var(--color-orange-500);
+    --background-blueprint-cell: var(--color-orange-500);
+    --background-blueprint-cell-hover: var(--color-orange-600);
+    --background-blueprint-cell-pressed: var(--color-orange-700);
+    --ring-blueprint-cell: var(--color-orange-1100);
+    --ring-blueprint-cell-soft: var(--color-orange-1100);
+    --foreground-blueprint-cell: var(--color-orange-1200);
+  }
+
+  /* support */
+[data-blueprint-lane='support'] {
+    --background-blueprint-cell-origin: var(--color-amber-500);
+    --background-blueprint-cell: var(--color-amber-500);
+    --background-blueprint-cell-hover: var(--color-amber-600);
+    --background-blueprint-cell-pressed: var(--color-amber-700);
+    --ring-blueprint-cell: var(--color-amber-1100);
+    --ring-blueprint-cell-soft: var(--color-amber-1100);
+    --foreground-blueprint-cell: var(--color-amber-1200);
+  }
+
+  /*
+   * TOUCHPOINT TONES — the same ten properties, a step paler, and sharing no
+   * family with the roles above so a pill never reads as its lane.
+   *
+   * Named after the hue on purpose: a touchpoint's colour is chosen by whoever
+   * owns the blueprint, so the hue is the meaning here.
+   */
+  [data-blueprint-tone='crimson'] {
+    --background-blueprint-cell-origin: var(--color-crimson-400);
+    --background-blueprint-cell: var(--color-crimson-400);
+    --background-blueprint-cell-hover: var(--color-crimson-500);
+    --background-blueprint-cell-pressed: var(--color-crimson-600);
+    --ring-blueprint-cell: var(--color-crimson-1100);
+    --ring-blueprint-cell-soft: var(--color-crimson-1100);
+    --foreground-blueprint-cell: var(--color-crimson-1200);
+  }
+
+  [data-blueprint-tone='gold'] {
+    --background-blueprint-cell-origin: var(--color-gold-400);
+    --background-blueprint-cell: var(--color-gold-400);
+    --background-blueprint-cell-hover: var(--color-gold-500);
+    --background-blueprint-cell-pressed: var(--color-gold-600);
+    --ring-blueprint-cell: var(--color-gold-1100);
+    --ring-blueprint-cell-soft: var(--color-gold-1100);
+    --foreground-blueprint-cell: var(--color-gold-1200);
+  }
+
+  [data-blueprint-tone='indigo'] {
+    --background-blueprint-cell-origin: var(--color-indigo-400);
+    --background-blueprint-cell: var(--color-indigo-400);
+    --background-blueprint-cell-hover: var(--color-indigo-500);
+    --background-blueprint-cell-pressed: var(--color-indigo-600);
+    --ring-blueprint-cell: var(--color-indigo-1100);
+    --ring-blueprint-cell-soft: var(--color-indigo-1100);
+    --foreground-blueprint-cell: var(--color-indigo-1200);
+  }
+
+  [data-blueprint-tone='purple'] {
+    --background-blueprint-cell-origin: var(--color-purple-400);
+    --background-blueprint-cell: var(--color-purple-400);
+    --background-blueprint-cell-hover: var(--color-purple-500);
+    --background-blueprint-cell-pressed: var(--color-purple-600);
+    --ring-blueprint-cell: var(--color-purple-1100);
+    --ring-blueprint-cell-soft: var(--color-purple-1100);
+    --foreground-blueprint-cell: var(--color-purple-1200);
+  }
+
+  [data-blueprint-tone='red'] {
+    --background-blueprint-cell-origin: var(--color-red-400);
+    --background-blueprint-cell: var(--color-red-400);
+    --background-blueprint-cell-hover: var(--color-red-500);
+    --background-blueprint-cell-pressed: var(--color-red-600);
+    --ring-blueprint-cell: var(--color-red-1100);
+    --ring-blueprint-cell-soft: var(--color-red-1100);
+    --foreground-blueprint-cell: var(--color-red-1200);
+  }
+
+  [data-blueprint-tone='tomato'] {
+    --background-blueprint-cell-origin: var(--color-tomato-400);
+    --background-blueprint-cell: var(--color-tomato-400);
+    --background-blueprint-cell-hover: var(--color-tomato-500);
+    --background-blueprint-cell-pressed: var(--color-tomato-600);
+    --ring-blueprint-cell: var(--color-tomato-1100);
+    --ring-blueprint-cell-soft: var(--color-tomato-1100);
+    --foreground-blueprint-cell: var(--color-tomato-1200);
+  }
+
+  [data-blueprint-tone='yellow'] {
+    --background-blueprint-cell-origin: var(--color-yellow-400);
+    --background-blueprint-cell: var(--color-yellow-400);
+    --background-blueprint-cell-hover: var(--color-yellow-500);
+    --background-blueprint-cell-pressed: var(--color-yellow-600);
+    --ring-blueprint-cell: var(--color-yellow-1100);
+    --ring-blueprint-cell-soft: var(--color-yellow-1100);
+    --foreground-blueprint-cell: var(--color-yellow-1200);
   }
 }
 
 @layer utilities {
   /*
    * FOCUS PULSE — brief emphasis ring after a fly-to-cell (the counterpart
-   * highlight from ledger rows and the divergence strip). Attribute
-   * set/cleared by pulseBlueprintCells. Reduced motion keeps a static ring
-   * for the same window instead of animating.
+   * highlight from ledger rows, the divergence strip and agent focus).
+   * Attribute set/cleared by pulseBlueprintCells; duration built from the
+   * camera motion token so the ring fades as the camera settles. Reduced
+   * motion keeps a static ring for the same window instead of animating.
    */
   [data-blueprint-cell-pulse] {
-    animation: blueprint-cell-pulse 1.3s ease-out both;
+    animation: blueprint-cell-pulse calc(var(--motion-camera) * 3) ease-out both;
   }
 
   @keyframes blueprint-cell-pulse {
@@ -208,9 +453,24 @@
       box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 55%, transparent);
     }
   }
-}
 
-@layer utilities {
+  /*
+   * ANNOTATION SHAPE FILL SHADOW — component token (tier 4) with a dark
+   * variant; the TS layer reads it by var() so the shape style stays
+   * data-driven while the color values live with every other color.
+   */
+  :root {
+    --shadow-blueprint-annotation-fill:
+      0 1px 2px rgb(15 23 42 / 0.08),
+      0 4px 12px rgb(15 23 42 / 0.06);
+  }
+
+  .dark {
+    --shadow-blueprint-annotation-fill:
+      0 1px 2px rgb(0 0 0 / 0.45),
+      0 4px 12px rgb(0 0 0 / 0.35);
+  }
+
   /*
    * SEMANTIC ZOOM — the blocks tier. Below the threshold (stamped as
    * data-semantic-tier by the camera's transform writer, never by React)
@@ -225,15 +485,17 @@
   }
 
   [data-semantic-tier='blocks'] [data-blueprint-cell] {
-    background-color: var(--canvas-cell-block);
+    background-color: var(--border);
     border-color: transparent;
   }
 
   [data-semantic-tier='blocks'] [data-phase-title-badge] {
     scale: var(--semantic-label-boost, 1);
     transform-origin: left bottom;
-    /* Counter-scaling is instant framing math, not an animation — a
-       transition here reads as a "growing label" at the tier boundary. */
+    /* The badge component's own transition-all animated this scale at the
+       tier boundary — a visible "growing label" effect nobody asked for
+       (removed 2026-08-17). Counter-scaling is instant framing math, not
+       an animation. */
     transition: none;
   }
 
