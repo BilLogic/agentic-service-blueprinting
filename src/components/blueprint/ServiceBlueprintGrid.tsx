@@ -280,6 +280,7 @@ export function ServiceBlueprintGrid({
                     {showOverheadRailCorridorAbove && (
                       <div
                         aria-hidden
+                        data-blueprint-rail-corridor="above"
                         className="shrink-0"
                         style={{
                           height: BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
