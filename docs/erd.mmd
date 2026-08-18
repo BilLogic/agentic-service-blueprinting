@@ -1,7 +1,16 @@
 %% Service Blueprint ERD
-%% Source of truth: supabase/migrations/20260716200000_template_schema.sql (2026-07-16)
+%% Source of truth: supabase/migrations/ (consolidated template schema 20260716200000
+%%   + derived layer 20260729120000/20260730090000/20260803001000
+%%   + authoring foundation/operations + optional tier recipe 20260818*).
 %% Enums: service_scenarios.view_type ∈ (single | side-by-side | integrated)
 %%        paths.path_type ∈ (happy | unhappy | exception | alternative)
+%%        origin (structure tables) ∈ (import | app); slices.origin ∈ (generated | customized | human)
+%%        cell_triggers.kind ∈ (trigger | needs)
+%%        slices.slice_type ∈ (journey | step | lane | cell | custom)
+%%        findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
+%%          status ∈ (open | resolved | dismissed)
+%%        evidence.kind ∈ (interview | survey | analytics | doc | meeting | decision | observation | other)
+%%        deleted_structure.kind ∈ (scenario | path | lane | step | cell)
 %% Integrity: cells.path_id must match layers.path_id AND (path_id, step_id) must exist in
 %%            path_steps (DB trigger cells_validate_path_match). Import order:
 %%            paths → steps → path_steps → layers → cells → cell_triggers.
@@ -9,6 +18,15 @@
 %%            customer_actions, frontstage_actions, backstage_actions, frontstage_tech,
 %%            backstage_tech, support_systems, visual, step_visual; extensible (org-defined
 %%            custom roles render as generic swimlanes); null = generic swimlane.
+%% Derived layer: slices/findings/evidence reference cells SOFTLY (uuid / uuid[] with paired
+%%            cell_keys, no FK) — scenario re-import deletes and recreates cells; the authored
+%%            cell_key is the identity that survives. A cell with zero evidence rows is an
+%%            ASSUMPTION (derived state, never stored). evidence_counts (view) exposes
+%%            cell_id → count publicly without content.
+%% Writes: structural shape goes through SECURITY DEFINER RPCs only (create/duplicate/rename/
+%%            delete operations); deletes archive their full payload into deleted_structure in
+%%            the same transaction. Every write RPC asserts is_service_account() in-body
+%%            (default true; the optional tier recipe swaps in a JWT app_metadata check).
 erDiagram
   service_lifecycles ||--o{ phases : "has many"
   phases ||--o{ service_scenarios : "has many"
@@ -23,6 +41,11 @@ erDiagram
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_triggers : "source"
   cells ||--o{ cell_triggers : "target"
+  service_lifecycles ||--o{ slices : "has many"
+  slices ||--o{ slice_items : "has many"
+  service_lifecycles ||--o{ findings : "has many"
+  service_lifecycles ||--o{ evidence : "has many"
+  service_lifecycles ||--o| propositions : "has 0..1"
 
   service_lifecycles {
     uuid id PK
@@ -39,6 +62,9 @@ erDiagram
     text description
     int order_position
     uuid loops_to_phase_id FK "optional self-reference"
+    text business_impact "spec: opex, NPS, brand, retention, growth"
+    text operational_requirements "spec: process / system / people / legal"
+    text origin "import | app"
   }
 
   service_scenarios {
@@ -48,6 +74,7 @@ erDiagram
     text description
     int order_position
     text view_type "single | side-by-side | integrated"
+    text origin "import | app"
   }
 
   paths {
@@ -57,18 +84,20 @@ erDiagram
     text description
     text note "optional, e.g. parallel-scenario context"
     text path_type "happy | unhappy | exception | alternative"
+    text origin "import | app"
   }
 
   steps {
     uuid id PK
     uuid service_scenario_id FK "columns are scenario-scoped, shared across paths"
     text name
+    text origin "import | app"
   }
 
   path_steps {
     uuid path_id PK, FK
     uuid step_id PK, FK
-    int column_position "unique per (path_id, column_position)"
+    int column_position "unique per (path_id, column_position), deferrable"
   }
 
   layers {
@@ -77,21 +106,110 @@ erDiagram
     text name "display label - free-form, any language"
     text layer_role "semantic role key; null = generic swimlane"
     int row_position
+    text owner_team "spec: team that staffs/owns this lane"
+    jsonb kpis "string array: metrics the lane team is measured on"
+    jsonb tools "string array: systems/tools the lane actors use"
+    text origin "import | app"
   }
 
   cells {
     uuid id PK
     uuid path_id FK
-    uuid layer_id FK "unique (layer_id, step_id)"
+    uuid layer_id FK "unique (layer_id, step_id, slot_position)"
     uuid step_id FK
+    int slot_position "ordering within one (layer, step) slot; 0 default"
     text content "Cell Label - primary grid text"
     text picture "optional image URL"
     text description "optional detail-panel text"
     jsonb links "array of {type, label, url?}"
+    text function "spec: role/responsibility/requirements"
+    text form "spec: communication/look/feel/sound"
+    jsonb value_props "array of {for, value}"
+    text owner "actual owning team/party"
+    text perceived_owner "who the customer believes owns this moment"
+    text cell_key "authored IR key; unique when set; null = not recoverable"
+    text origin "import | app"
   }
 
   cell_triggers {
     uuid id PK
-    uuid source_cell_id FK "unique pair; source != target"
+    uuid source_cell_id FK "unique (source, target, kind); source != target"
     uuid target_cell_id FK
+    text kind "trigger = temporal | needs = functional (panel only)"
+    text label "short edge label, e.g. a channel tag"
+    text note "why-line shown in the panel dependencies tab"
+  }
+
+  slices {
+    uuid id PK
+    uuid service_lifecycle_id FK
+    text slice_type "journey | step | lane | cell | custom"
+    text title
+    text description
+    text actor
+    text locale "default en"
+    text origin "generated | customized | human"
+    int position
+    uuid created_by "auth.uid() at insert"
+  }
+
+  slice_items {
+    uuid id PK
+    uuid slice_id FK "unique (slice_id, position), deferrable"
+    int position
+    uuid[] cell_ids "SOFT refs to cells - no FK, survive re-import"
+    text[] cell_keys "IR key-paths paired with cell_ids for recovery"
+    text caption
+    text narrative
+    jsonb illustration "{src, alt, source, updated_at}"
+    uuid created_by
+  }
+
+  findings {
+    uuid id PK
+    uuid service_lifecycle_id FK
+    uuid run_id "audit-run identity; intentionally FK-less"
+    text source "audit | whatif | import-sweep"
+    text check_name
+    text severity "info | warn | critical"
+    uuid[] cell_ids "SOFT refs, paired with cell_keys"
+    text[] cell_keys
+    text note
+    text fingerprint "dedupe identity; unique per lifecycle while open"
+    text status "open | resolved | dismissed; inserts must be open"
+  }
+
+  evidence {
+    uuid id PK
+    uuid service_lifecycle_id FK
+    uuid cell_id "SOFT ref; exactly one of cell_id / proposition_question_key"
+    text cell_key "paired with cell_id"
+    text proposition_question_key "understand | value | usability"
+    text kind "interview | survey | analytics | doc | ..."
+    text title
+    text ref
+    text excerpt
+    text note
+    date observed_at "date-only by design"
+    text added_by "agent name or participant-coded author"
+    uuid created_by
+  }
+
+  propositions {
+    uuid service_lifecycle_id PK, FK "one business-model record per lifecycle"
+    text funding
+    text pricing
+    text delivery_cost
+    text revenue_model
+    text partners
+  }
+
+  deleted_structure {
+    uuid id PK
+    timestamptz deleted_at
+    uuid deleted_by "auth.uid() at delete"
+    text kind "scenario | path | lane | step | cell"
+    text label "human name for the undo toast / recovery list"
+    jsonb payload "every deleted row, natural-keyed, dependency order"
+    jsonb affected_slices "[{slice_id, title, cell_keys}]"
   }

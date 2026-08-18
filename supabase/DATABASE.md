@@ -6,7 +6,7 @@ Postgres database managed by [Supabase](https://supabase.com/) for the **agentic
 | --- | --- |
 | **Engine** | PostgreSQL 17 |
 | **Primary schema** | `public` |
-| **Migrations** | `supabase/migrations/` (one consolidated schema migration) |
+| **Migrations** | `supabase/migrations/` (consolidated schema + derived-layer migrations) |
 | **Seed data** | `supabase/seed.sql` (generated sample content) |
 | **ERD diagram** | `docs/erd.mmd` |
 | **DDL snapshot** | `supabase/schema.reference.sql` |
@@ -55,7 +55,7 @@ in [`docs/erd.mmd`](../docs/erd.mmd).
 | Blueprint column | `steps` | canonical per `service_scenario` |
 | Path column order | `path_steps` | `column_position` per `(path_id, step_id)` |
 | Cell | `cells` | unique `(layer_id, step_id)` per path |
-| Cell dependency | `cell_triggers` | unique `(source_cell_id, target_cell_id)` |
+| Cell dependency | `cell_triggers` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not lifecycle phases. Phases live in `phases`.
 
@@ -143,6 +143,39 @@ readable.**
 | File | Description |
 | --- | --- |
 | `20260716200000_template_schema.sql` | Consolidated template schema: hierarchy + blueprint grid + `layer_role`, integrity trigger, `updated_at` triggers, read-only RLS, legacy `services` cleanup |
+| `20260729120000_derived_layer.sql` | Derived layer: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_triggers.kind` |
+| `20260730090000_derived_layer_grants_hardening.sql` | Explicit Data API grants, anon write-privilege revokes, pinned `search_path`, attribution columns, evidence `cell_key` pairing |
+| `20260803001000_slices_origin_allows_human.sql` | Adds `human` to the `slices.origin` vocabulary (in-app authored slices) |
+
+## Migration authoring notes
+
+Ops lessons this repo carries as rules for anyone adding migrations:
+
+- **REVOKE from PUBLIC on every new write function.** Postgres grants
+  `EXECUTE` to `PUBLIC` on function creation, so a freshly created
+  `SECURITY DEFINER` RPC is callable by every role until you say
+  otherwise. Pair every `create function` with
+  `revoke execute ... from public, anon;` and an explicit `grant execute`
+  to the roles that should call it — in the same migration.
+- **Migration files are committed the same day they are applied** to any
+  shared project. An applied-but-uncommitted migration makes the repo lie
+  about the shared schema; the next contributor's `db reset` or diff runs
+  against a state the migrations directory cannot reproduce.
+- **Undo paths couple to insert policies.** Migrations are append-only
+  (an undo is a new migration), and client-side undo is policy-coupled: a
+  revert that re-inserts a deleted row verbatim (evidence restore is the
+  canonical case) works only while the table's INSERT policy accepts
+  client-supplied ids and authorship columns. Tightening that policy —
+  e.g. adding `with check (created_by = auth.uid())` — silently breaks
+  the undo. If the policy must tighten, move the restore into a
+  `SECURITY DEFINER` RPC that re-checks authorization and preserves
+  authorship server-side, in the same change.
+- **RESTRICTIVE policies never bind SECURITY DEFINER RPCs.** Definer
+  functions run as the function owner and bypass RLS entirely, so a
+  restrictive tier policy on the table gives zero protection against
+  them. The guard must be asserted inside the function body — an
+  `is_service_account()`-style check raising an exception — in every
+  definer RPC that writes.
 
 ## Example query (path blueprint)
 
