@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Diamond, X } from 'lucide-react'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -209,10 +210,16 @@ export function CanvasDesignTools() {
         <Tooltip>
           <TooltipTrigger
             render={
-              <span className="pointer-events-auto flex shrink-0 cursor-help items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-3xs font-medium text-amber-700 dark:text-amber-400">
-                <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />
+              <Badge
+                variant="warning"
+                className="pointer-events-auto h-auto cursor-help gap-1 px-2 py-0.5 text-3xs"
+              >
+                <span
+                  className="size-1.5 rounded-full bg-warning-600"
+                  aria-hidden
+                />
                 preview — nothing saves
-              </span>
+              </Badge>
             }
           />
           <TooltipContent side="top" className="max-w-64 text-xs">

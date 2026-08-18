@@ -10,7 +10,7 @@ import { Check, Play } from 'lucide-react'
 import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
 import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
 import {
-  PendingCanvasLoadingSkeleton,
+  SliceHeaderBandSkeleton,
   SliceTabLoadingSkeleton,
 } from '@/components/editor/EditorLoadingSkeletons'
 import { NavbarZoomIndicator } from '@/components/editor/EditorZoomIndicator'
@@ -19,7 +19,6 @@ import { useMobileShell } from '@/hooks/useMobileShell'
 import { SliceEditSession } from '@/components/editor/SliceEditSession'
 import { SliceHeaderBand } from '@/components/editor/SliceHeaderBand'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
-import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { EditorDetailScope } from '@/contexts/EditorContext'
 import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'
 import { useCanvasMode } from '@/contexts/canvasModeContext'
@@ -34,6 +33,25 @@ import { cn } from '@/lib/utils'
  * the cell detail panel, navbar, canvas nav, zoom chrome, and any open
  * walkthrough modal.
  */
+/**
+ * The slice waterfall's two stages, in ONE vocabulary for the whole chain.
+ *
+ * The bar is handed from these phases to the embedded canvas's own copy,
+ * and the canvas used to relabel the first stage "Loading structure…" mid-
+ * load — same surface, same skeleton session, two names for the same work.
+ * `ServiceOverviewView` takes the first label as a prop so a slice keeps
+ * saying "slice" all the way through.
+ */
+const SLICE_FIRST_STAGE_LABEL = 'Loading slice…'
+const SLICE_LOAD_STAGES_INITIAL = [
+  { label: SLICE_FIRST_STAGE_LABEL, done: false },
+  { label: 'Loading blueprints…', done: false },
+]
+const SLICE_LOAD_STAGES_SCENARIO = [
+  { label: SLICE_FIRST_STAGE_LABEL, done: true },
+  { label: 'Loading blueprints…', done: false },
+]
+
 const FOCUS_CLICK_IGNORE =
   '[data-cell-detail-panel], [data-editor-navbar], [data-canvas-nav], [data-zoom-indicator], [data-annotation-toolbar], [data-visual-walkthrough-modal]'
 
@@ -148,18 +166,19 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
         loading
         holdKey={skeletonHoldKey}
         skeleton={
-          <div className="relative h-full" role="status" aria-label="Loading slice">
-            <SliceTabLoadingSkeleton />
+          <div className="h-full" role="status" aria-label="Loading slice">
             {/* Plan 2026-08-17-001 U3: the slice waterfall's stages, over
-                the same skeleton session the whole chain shares. */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <CanvasLoadProgress
-                stages={[
-                  { label: 'Loading slice…', done: false },
-                  { label: 'Loading blueprints…', done: false },
-                ]}
-              />
-            </div>
+                the same skeleton session the whole chain shares — and
+                inside the CANVAS rectangle, which is where it stays for
+                every phase below and for the embedded canvas after them. */}
+            <SliceTabLoadingSkeleton>
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <CanvasLoadProgress
+                  progressKey={skeletonHoldKey}
+                  stages={SLICE_LOAD_STAGES_INITIAL}
+                />
+              </div>
+            </SliceTabLoadingSkeleton>
           </div>
         }
         className="h-full min-h-0"
@@ -214,39 +233,36 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
     />
   )
 
-  // Stage 2 — the owning scenario is still resolving, so the canvas cannot
-  // mount yet. The header band paints immediately (the slice row is already
-  // cached from the sidebar) and the canvas area holds the surface's one
-  // skeleton, which the canvas below picks up unbroken once it mounts.
+  /*
+    Stage 2 — the owning scenario is still resolving, so the canvas cannot
+    mount yet.
+
+    The band stays a SKELETON here. It used to paint for real at this phase
+    (the slice row is already cached from the sidebar, so it could), which
+    made it the one piece of chrome that arrived before the canvas it
+    belongs to — a finished banner over a rectangle still showing a loading
+    bar. The band is canvas furniture like the toolbar: it waits, and both
+    arrive on the beat the board opens its first layer.
+  */
   if (!scenarioId) {
     return (
-      <div className="flex h-full min-h-0 min-w-0 flex-col">
-        {header}
-        <div
-          className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
-          style={{ backgroundColor: BLUEPRINT_THEME.viewportPad }}
-        >
-          <DeferredSkeleton
-            loading
-            holdKey={skeletonHoldKey}
-            skeleton={
-              <>
-                <PendingCanvasLoadingSkeleton />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <CanvasLoadProgress
-                    stages={[
-                      { label: 'Loading slice…', done: true },
-                      { label: 'Loading blueprints…', done: false },
-                    ]}
-                  />
-                </div>
-              </>
-            }
-          >
-            {null}
-          </DeferredSkeleton>
-        </div>
-      </div>
+      <DeferredSkeleton
+        loading
+        holdKey={skeletonHoldKey}
+        className="h-full min-h-0"
+        skeleton={
+          <SliceTabLoadingSkeleton>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <CanvasLoadProgress
+                progressKey={skeletonHoldKey}
+                stages={SLICE_LOAD_STAGES_SCENARIO}
+              />
+            </div>
+          </SliceTabLoadingSkeleton>
+        }
+      >
+        {null}
+      </DeferredSkeleton>
     )
   }
 
@@ -269,6 +285,8 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
               skeletonHoldKey={skeletonHoldKey}
               soloScenarioId={scenarioId}
               renderHeader={() => header}
+              renderHeaderSkeleton={() => <SliceHeaderBandSkeleton />}
+              firstStageLabel={SLICE_FIRST_STAGE_LABEL}
               // Reset View is mobile-only (no wheel, easy to lose the
               // canvas); desktop slice tabs carry no float at all.
               floatingChrome={

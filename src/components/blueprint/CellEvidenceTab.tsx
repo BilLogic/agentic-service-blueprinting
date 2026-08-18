@@ -57,7 +57,7 @@ function kindIcon(kind: string) {
 function EvidenceRow({ row }: { row: Evidence }) {
   const refHref = safeExternalHref(row.ref)
   return (
-    <li className="flex items-start gap-2 border-b border-border/35 py-2 last:border-0">
+    <li className="flex items-start gap-2 border-b border-muted py-2 last:border-0">
       {kindIcon(row.kind)}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="text-xs font-medium text-foreground">{row.title}</p>

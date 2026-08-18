@@ -320,6 +320,7 @@ export function BlueprintTriggerArrows({
 
   return (
     <svg
+      data-blueprint-arrows=""
       className={cn(
         'pointer-events-none absolute overflow-visible',
         layer === 'forward' ? 'z-[2]' : 'z-[30]',

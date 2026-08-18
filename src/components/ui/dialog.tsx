@@ -58,7 +58,7 @@ function DialogContent({
           // (different variant = no conflict), which is how small dialogs
           // like Rename session rendered 896px wide. Callers own their
           // width; the mobile cap below is the only default.
-          "fixed top-1/2 left-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl bg-card text-card-foreground shadow-lg ring-1 ring-foreground/10 transition duration-200 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
+          "fixed top-1/2 left-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl bg-card text-card-foreground shadow-lg ring-1 ring-border-overlay transition duration-200 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
           className,
         )}
         {...props}

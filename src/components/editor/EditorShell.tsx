@@ -29,6 +29,14 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCellDeepLink } from '@/hooks/useCellDeepLink'
 import { setSidebarCollapsedState } from '@/contexts/sidebarCollapsedContext'
+import { SKELETON_HOLD_MS } from '@/components/ui/deferred-skeleton'
+import {
+  CANVAS_REVEAL_CELLS,
+  CANVAS_REVEAL_DONE,
+  CANVAS_REVEAL_LANES,
+  CANVAS_REVEAL_PANELS,
+} from '@/contexts/canvasRevealContext'
+import { EditorSidebarBootSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import {
   tabKey,
   useViewState,
@@ -48,6 +56,7 @@ import { getSlideDisplayLabel } from '@/types/nav'
 import {
   MOTION_STRUCTURAL_EASE,
   MOTION_STRUCTURAL_MS,
+  SHELL_ENTRANCE_STEP_MS,
   prefersReducedMotion,
 } from '@/lib/motion'
 import { cn } from '@/lib/utils'
@@ -94,6 +103,8 @@ function DesktopEditorShell() {
   const {
     view,
     goHome,
+    goLanding,
+    enterCanvas,
     selectPhase,
     selectScenario,
     selectedPhaseId,
@@ -110,9 +121,6 @@ function DesktopEditorShell() {
   useCellDeepLink()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const isLanding = view === 'landing'
-  // Home reads as active only on the overview canvas itself, and only while
-  // no tab is covering it.
-  const isOverview = view === 'home' && activeTab === null
 
   const activeTabKind = activeTab?.kind ?? null
 
@@ -150,7 +158,115 @@ function DesktopEditorShell() {
   // collapse. It never unmounts, which is what keeps entering smooth.
   const presenting = activeTabKind === 'present' && !leavingPresent
 
-  const railOnly = presenting || sidebarCollapsed
+  // The cover page is a full-bleed reading surface: it has no phases to
+  // navigate to yet, so a sidebar beside it is chrome for a workspace the
+  // reader has not entered. It collapses like a presentation — the whole
+  // aside, rail included, and no pill either.
+  const railOnly = presenting || sidebarCollapsed || isLanding
+
+  /*
+    Entering the workspace from the cover, in two separated concerns.
+
+    WIDTH is not animated. The canvas load bar centers itself in the canvas
+    frame, and a 320 ms width ease — or a sidebar that pushes the canvas as
+    it arrives — would drag that bar across the screen for the whole first
+    third of the load, which is the one thing it must never do. The aside
+    takes its full width in the same commit the canvas mounts, so the frame
+    is fixed from the first painted frame.
+
+    PAINT is a ladder. With the width already reserved, the sidebar's three
+    parts fade in over space that is not moving: the loading bar first and
+    alone, then the rail, then the phases panel, then the agent dock, each
+    one `SHELL_ENTRANCE_STEP_MS` behind the last. The delays are CSS
+    (`--shell-entrance-*` below) rather than a chain of timers — one state
+    flip, and the stagger is declarative.
+
+    `pending` for exactly one frame: it is what gives the transitions a
+    from-state to run from. A boot that lands straight on the canvas (a
+    `?cell=` deep link) starts pending too, so the ladder is the same
+    whichever door was used.
+  */
+  const [entrance, setEntrance] = useState<'idle' | 'pending' | 'shown'>(() =>
+    isLanding ? 'idle' : 'pending',
+  )
+  /*
+    The sidebar's boot layer fires ONCE per entry, tracked as a small state
+    machine rather than a boolean.
+
+    The base canvas remounts whenever a tab stops covering it, and a remount
+    restarts its reveal at stage 0 — so keying the layer on the stage alone
+    dropped the full boot skeleton over an already populated sidebar every
+    time the reader came back from a slice tab. The stage says "this canvas
+    is staging"; this says "and the sidebar is staging with it", which is
+    true exactly once per entry from the cover.
+
+    `armed` is the state that earns the extra step. On the frame the reader
+    leaves the cover, the base canvas has not mounted yet, so the published
+    stage is still the previous surface's `done` — a plain latch would read
+    that stale value and retire the boot before it began. Armed waits to
+    OBSERVE a staging stage before it commits to one.
+
+    Declared ahead of the flip below because the flip writes it: a `const`
+    binding read above its declaration is a runtime ReferenceError, and this
+    one runs during render on the first frame of every entry.
+  */
+  const [boot, setBoot] = useState<'off' | 'armed' | 'staging'>(() =>
+    isLanding ? 'off' : 'armed',
+  )
+  const [lastLanding, setLastLanding] = useState(isLanding)
+  if (lastLanding !== isLanding) {
+    setLastLanding(isLanding)
+    // Back to the cover resets to idle, so the aside's width EASES closed
+    // (nothing is loading behind it); entering re-arms the ladder.
+    setEntrance(isLanding ? 'idle' : 'pending')
+    setBoot(isLanding ? 'off' : 'armed')
+  }
+  useEffect(() => {
+    if (entrance !== 'pending') return
+    const frame = requestAnimationFrame(() => setEntrance('shown'))
+    return () => cancelAnimationFrame(frame)
+  }, [entrance])
+
+  /*
+    The boot skeleton is an OPAQUE LAYER over the whole sidebar, not a
+    placeholder inside each section.
+
+    Two things were wrong with per-section skeletons. Only the row lists
+    were ever skeletoned, so the rail's icons, the PHASES and SESSIONS
+    headers and every control stayed painted and live over a screen that
+    was still loading. And each list ran its own swap, so the two halves of
+    the sidebar resolved on separate clocks — a top-to-bottom cascade that
+    says nothing, since neither list is waiting on the other.
+
+    One layer fixes both. Everything behind it is covered, and it lifts in a
+    single fade at stage 1 — the beat the canvas opens its phase lanes — so
+    the sidebar and the board resolve together, all at once.
+
+    Mounted one stage past the fade so the layer cannot be pulled while it
+    is still fading (the same tie the loading bar hit).
+  */
+  /*
+    Reported by the base canvas through `onRevealStage` — a prop, not a
+    module store. `setRevealStage` is a `useState` setter, so it is stable
+    across renders and does not defeat `memo(ServiceOverviewView)`.
+  */
+  const [revealStage, setRevealStage] = useState(CANVAS_REVEAL_DONE)
+  if (boot === 'armed' && revealStage < CANVAS_REVEAL_PANELS) setBoot('staging')
+  else if (boot === 'staging' && revealStage >= CANVAS_REVEAL_CELLS) {
+    setBoot('off')
+  }
+  /*
+    Opaque until the canvas opens its first layer, then fades with it.
+
+    The fade begins at stage 1 and the layer is not unmounted until stage 3 —
+    two stages, not one. The beats are 200/160/128 ms and the fade is one
+    `--motion-fade`, so unmounting at stage 2 would be a near-exact tie: a
+    frame of scheduling jitter either way and the layer vanishes mid-fade
+    instead of completing it. That is the same tie the loading bar hit, and
+    the cost of the extra stage is an invisible element at opacity 0.
+  */
+  const sidebarBooting = boot === 'staging' && revealStage < CANVAS_REVEAL_LANES
+  const sidebarBootMounted = boot === 'staging'
 
   useEffect(() => {
     // Entering and leaving presentation both resize the canvas container.
@@ -170,10 +286,10 @@ function DesktopEditorShell() {
     // would strand a presentation with no header and no Return — the band
     // must keep drawing itself when nothing else can carry it.
     setSidebarCollapsedState({
-      collapsed: railOnly && !presenting,
+      collapsed: railOnly && !presenting && !isLanding,
       expand: expandSidebar,
     })
-  }, [railOnly, presenting, expandSidebar])
+  }, [railOnly, presenting, isLanding, expandSidebar])
 
   // Hand the agent its navigation hands: open_phase / open_scenario tools
   // land on the same callbacks the sidebar rows use.
@@ -391,6 +507,22 @@ function DesktopEditorShell() {
     goHome()
   }
 
+  // Home (the icon at the top left) routes to the COVER page: the workspace
+  // tab beside it already returns to the base canvas, so pointing both at
+  // the overview left the cover unreachable once you had entered.
+  const goCover = () => {
+    activateTab(null)
+    goLanding()
+  }
+
+  // The workspace tab from the cover page: the same entry the cover's own
+  // button uses (`enterCanvas`, which suppresses the fit animation), not a
+  // second way in with different motion.
+  const goWorkspace = () => {
+    activateTab(null)
+    if (isLanding) enterCanvas()
+  }
+
   // Latest handlers for the registered shell commands (declared above);
   // assigned below everything they close over, inside an every-render
   // effect (refs are not written during render).
@@ -494,9 +626,9 @@ function DesktopEditorShell() {
       >
         {/* Full-width top nav: workspace identity, Home, open tabs. */}
         <TabStrip
-          isOverview={isOverview}
-          onHome={goOverview}
-          onBase={() => activateTab(null)}
+          isCover={isLanding}
+          onHome={goCover}
+          onBase={goWorkspace}
         />
 
         <div className="relative flex min-h-0 min-w-0 flex-1">
@@ -507,7 +639,8 @@ function DesktopEditorShell() {
             )}
             style={{
               width: railOnly ? 0 : asideWidth,
-              transitionProperty: resizing ? 'none' : 'width',
+              transitionProperty:
+                resizing || entrance === 'pending' ? 'none' : 'width',
               transitionDuration: `${MOTION_STRUCTURAL_MS}ms`,
               transitionTimingFunction: MOTION_STRUCTURAL_EASE,
             }}
@@ -533,6 +666,46 @@ function DesktopEditorShell() {
             >
               {sidebarBody}
             </div>
+            {/*
+              The boot layer. `bg-sidebar` over the aside's own background,
+              at the aside's full width so the rail is covered too.
+            */}
+            {sidebarBootMounted && !railOnly ? (
+              <div
+                className={cn(
+                  'absolute inset-y-0 left-0 z-10 bg-sidebar',
+                  'transition-opacity duration-(--motion-fade) ease-out',
+                  !sidebarBooting && 'pointer-events-none opacity-0',
+                )}
+                style={
+                  {
+                    width: asideWidth,
+                    // The entrance ladder's rungs. Delays are inline so the
+                    // TS constants stay the single source — nothing to
+                    // drift against a stylesheet.
+                    '--shell-entrance-rail': `${SKELETON_HOLD_MS}ms`,
+                    '--shell-entrance-panel': `${SKELETON_HOLD_MS + SHELL_ENTRANCE_STEP_MS}ms`,
+                    '--shell-entrance-agent': `${SKELETON_HOLD_MS + SHELL_ENTRANCE_STEP_MS * 2}ms`,
+                  } as CSSProperties
+                }
+                data-shell-entrance={entrance}
+                data-editor-sidebar-boot=""
+                /*
+                  Deliberately NOT a live region. The canvas's load bar is
+                  already `role="status"` for this same boot, and two status
+                  regions active in the same window announce one event twice.
+                  The bar is the better owner: it is the thing that actually
+                  reports progress.
+                */
+                aria-hidden
+              >
+                <EditorSidebarBootSkeleton
+                  showAgent={canAgent && agentDocked}
+                  dockRatio={agentPlacement.dockRatio}
+                />
+              </div>
+            ) : null}
+
             {/* Drag the aside's right edge to resize; width is remembered
                 per surface. Hidden while collapsed — there is no edge. */}
             {!railOnly ? (
@@ -567,7 +740,7 @@ function DesktopEditorShell() {
             while presenting (full-bleed; Return is the way back). Its
             toggle is the same single control the rail carries expanded.
           */}
-          {railOnly && !presenting ? (
+          {railOnly && !presenting && !isLanding ? (
             <div className="pointer-events-none absolute left-3 top-3 z-30">
               <FloatingSidebarPill onExpand={toggleSidebar} />
             </div>
@@ -591,6 +764,7 @@ function DesktopEditorShell() {
                   isLanding={isLanding}
                   leavingPresent={leavingPresent}
                   onReturn={exitPresentation}
+                  onRevealStage={setRevealStage}
                 />
               </div>
             </div>
@@ -606,11 +780,14 @@ function ActiveTabContent({
   isLanding,
   leavingPresent,
   onReturn,
+  onRevealStage,
 }: {
   tab: TabDescriptor | null
   isLanding: boolean
   leavingPresent: boolean
   onReturn: (sliceId: string) => void
+  /** Handed to the base canvas only — see `ServiceOverviewView`. */
+  onRevealStage: (stage: number) => void
 }) {
   if (tab === null) {
     // Base blueprint view — existing landing / home / detail behavior.
@@ -624,7 +801,9 @@ function ActiveTabContent({
           className="absolute inset-0 flex min-h-0 flex-col"
           data-editor-view
         >
-          <ServiceOverviewView />
+          {/* The one canvas that boots WITH the sidebar, so the one that
+              drives its boot layer — see `onRevealStage`. */}
+          <ServiceOverviewView onRevealStage={onRevealStage} />
         </div>
       </VisualWalkthroughShell>
     )

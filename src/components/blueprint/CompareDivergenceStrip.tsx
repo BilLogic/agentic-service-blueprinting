@@ -144,7 +144,7 @@ export function CompareDivergenceStrip({
     return (
       <div
         data-compare-divergence-strip
-        className="flex shrink-0 items-center gap-3 border-b border-border/60 px-3"
+        className="flex shrink-0 items-center gap-3 border-b border-muted px-3"
         style={{ height: COMPARE_STRIP_HEIGHT }}
       >
         <svg
@@ -177,7 +177,7 @@ export function CompareDivergenceStrip({
   return (
     <div
       data-compare-divergence-strip
-      className="flex shrink-0 items-center gap-3 border-b border-border/60 px-3"
+      className="flex shrink-0 items-center gap-3 border-b border-muted px-3"
       style={{ height: COMPARE_STRIP_HEIGHT }}
     >
       <div className="flex h-full min-w-0 flex-1 items-stretch">

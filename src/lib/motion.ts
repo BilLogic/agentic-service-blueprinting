@@ -26,6 +26,18 @@ export const MOTION_CAMERA_MS = 420
 export const MOTION_MICRO_MS = 150
 
 /**
+ * The step between rungs of the shell's entrance ladder — rail, then panel,
+ * then the agent dock, each one beat behind the last.
+ *
+ * Shorter than {@link MOTION_FADE_STAGGER_MS}, and deliberately so: 75 ms is
+ * the gap between an element leaving and its replacement arriving, where the
+ * eye needs to read a handover. This is three parts of ONE surface arriving,
+ * where the gap only has to be long enough to feel ordered — a ladder, not
+ * three separate events.
+ */
+export const SHELL_ENTRANCE_STEP_MS = 50
+
+/**
  * Read live rather than at mount: the OS setting can change mid-session and
  * every move should honor the current value.
  */

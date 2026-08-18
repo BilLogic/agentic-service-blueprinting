@@ -230,7 +230,7 @@ export function NavRow({
         aria-current={selected ? 'true' : undefined}
         className={cn(
           'min-w-0 flex-1 truncate rounded-md py-1.5 pr-2 text-left transition-colors focus-visible:outline-none',
-          size === 'md' ? 'text-[13px]' : 'text-xs',
+          size === 'md' ? 'text-sm' : 'text-xs',
           selected
             ? 'font-medium text-sidebar-selected-foreground'
             : 'text-sidebar-foreground/85 group-hover/nav-row:text-sidebar-accent-foreground',

@@ -28,7 +28,7 @@ export function EditorZoomIndicator({
         size="sm"
         aria-label="Reset view"
         onClick={onResetView}
-        className="pointer-events-auto h-8 shrink-0 gap-1.5 rounded-lg border-border/80 bg-card px-3 text-xs font-medium text-muted-foreground shadow-md hover:text-foreground hover:shadow-lg"
+        className="pointer-events-auto h-8 shrink-0 gap-1.5 rounded-lg border-border bg-card px-3 text-xs font-medium text-muted-foreground shadow-md hover:text-foreground hover:shadow-lg"
       >
         <RotateCcw className="size-3" aria-hidden />
         Reset View

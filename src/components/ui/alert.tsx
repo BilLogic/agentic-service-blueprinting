@@ -8,7 +8,12 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
+        // The icon is a filled chip in every variant — status variants take
+        // their role's fill, and `default` takes the INVERTED fill, which is
+        // upstream's own recipe (`[&>svg]:bg-foreground [&>svg]:text-background`).
+        // Without it `default` was the one alert whose icon was a bare glyph.
+        default:
+          "bg-card text-card-foreground *:[svg]:rounded-sm *:[svg]:bg-foreground *:[svg]:p-0.5 *:[svg]:text-contrast",
         // Supabase's own recipe: tint the surface and the border, keep the copy
         // at `--foreground`, and let the icon carry the status as a filled chip.
         // Step 600 is a fill weight, not a text weight — reading body copy off

@@ -49,8 +49,9 @@ export function WalkthroughPathSelect({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        data-blueprint-fill
         className={cn(
-          'inline-flex h-auto max-w-full cursor-pointer items-center gap-1.5 rounded-full border-0 px-2.5 py-1 text-xs font-semibold text-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring/50',
+          'inline-flex h-auto max-w-full cursor-pointer items-center gap-1.5 rounded-full border-0 px-2.5 py-1 text-xs font-semibold outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring/50',
           className,
         )}
         style={getPathBadgeStyle({

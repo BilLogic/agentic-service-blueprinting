@@ -42,7 +42,7 @@ export function SegmentedControl<V extends string>({
         }
       }}
       className={cn(
-        'shrink-0 gap-0.5 rounded-lg bg-black/[0.055] p-0.5 dark:bg-white/10',
+        'shrink-0 gap-0.5 rounded-lg bg-accent p-0.5',
         className,
       )}
       {...props}

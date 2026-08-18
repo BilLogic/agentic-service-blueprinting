@@ -22,7 +22,7 @@ const NAVBAR_TITLE_NAV_ENABLED = false
  * floating pill (description stays reachable via the badge tooltip).
  */
 const NAVBAR_TITLE_BADGE_CLASS =
-  'h-5 max-w-full border-transparent bg-transparent px-0 py-0.5 text-[13px] font-semibold text-foreground shadow-none'
+  'h-5 max-w-full border-transparent bg-transparent px-0 py-0.5 text-sm font-semibold text-foreground shadow-none'
 
 type NavbarSlideTitleNavProps = {
   label: string
@@ -110,7 +110,7 @@ export function NavbarSlideTitleNav({
                 onSelect={() => go(() => openDetail(main.id))}
               />
               {children.length > 0 ? (
-                <div className="mb-0.5 ml-2 flex flex-col border-l border-border/70 pl-2">
+                <div className="mb-0.5 ml-2 flex flex-col border-l border-muted pl-2">
                   {children.map((child) => (
                     <NavItem
                       key={child.id}
@@ -152,7 +152,7 @@ function NavItem({
         // theme and clamps to #FFFFFF, identical to this row's surround, so the
         // focus state was invisible (SC 2.4.7).
         'hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring',
-        nested ? 'text-xs' : 'text-[13px] font-medium',
+        nested ? 'text-xs' : 'text-sm font-medium',
         active ? 'text-foreground' : 'text-foreground/80',
       )}
       aria-current={active ? 'true' : undefined}

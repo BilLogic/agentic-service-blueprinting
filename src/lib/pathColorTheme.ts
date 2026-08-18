@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { PathType } from '@/types/database'
 
 export type PathColorInput = {
@@ -10,14 +11,21 @@ export type PathColorInput = {
  * pinned and its type is not one of the open-ended two.
  *
  * Radix step 1100, not the Tailwind v3 defaults these used to be (#10B981 and
- * friends). The step matters: `getPathBadgeStyle` renders white on this fill,
- * and the old values measured 2.0–2.9:1 against white — the amber one worst.
- * Step 11 is Radix's text weight; `palette.test.ts` measures every entry
- * against the stylesheet to keep that true.
+ * friends). The step is what makes these fills carriable: the old values
+ * measured 2.0–2.9:1 against the ink a badge puts on them — the amber one
+ * worst. Step 11 is Radix's text weight; `palette.test.ts` measures every
+ * entry's DERIVED ink (see `[data-blueprint-fill]` in blueprint.css) against
+ * the stylesheet to keep that true.
  *
- * `unhappy` is orange rather than amber for the same reason: amber's step 9/10
- * are near-yellow and unusable under white text, so the whole family would have
- * had to be read at a different step from every other path type.
+ * Historical note, since the reasoning below reads oddly otherwise: these
+ * were chosen when badges spelled `text-white` at eight call sites. The ink
+ * is derived from the fill now, so the constraint is no longer "legible under
+ * white" but "yields legible ink" — which these already satisfy.
+ *
+ * `unhappy` is orange rather than amber for the same reason: amber's step
+ * 9/10 are near-yellow and carry almost no contrast either way, so the whole
+ * family would have had to be read at a different step from every other path
+ * type.
  */
 export const PATH_TYPE_COLORS: Record<PathType, string> = {
   happy: 'var(--color-green-1100)',
@@ -219,14 +227,29 @@ export function getPathSectionBorderStyle(path: PathColorInput): {
   }
 }
 
-export function getPathBadgeStyle(path: PathColorInput): {
-  backgroundColor: string
-  color: string
-} {
+/**
+ * Style for a badge filled with a path's colour.
+ *
+ * Returns the FILL as a custom property, not as `background-color`, and no
+ * `color` at all: `[data-blueprint-fill]` in blueprint.css paints both halves
+ * and derives the ink from the fill (Supabase's `*-foreground` pattern). Every
+ * call site must carry `data-blueprint-fill` for this to apply — which is the
+ * point, since it is what makes the ink impossible to get wrong. `text-white`
+ * used to be spelled out at eight of them and measured 1.17–2.33:1 in dark
+ * mode; `palette.test.ts` measures the derived ink against every fill.
+ */
+export function getPathBadgeStyle(path: PathColorInput): CSSProperties {
   return {
-    backgroundColor: getPathColor(path),
-    color: 'var(--color-gray-100)',
-  }
+    [BLUEPRINT_FILL_PROPERTY]: getPathColor(path),
+  } as CSSProperties
+}
+
+/** The property `[data-blueprint-fill]` reads. One name, one owner. */
+export const BLUEPRINT_FILL_PROPERTY = '--background-blueprint-fill'
+
+/** Any solid fill (not just a path colour) plus its derived ink. */
+export function getBlueprintFillStyle(fill: string): CSSProperties {
+  return { [BLUEPRINT_FILL_PROPERTY]: fill } as CSSProperties
 }
 
 /** URL-safe marker suffix from a path color key. */

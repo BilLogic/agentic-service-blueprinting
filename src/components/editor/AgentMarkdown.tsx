@@ -87,11 +87,11 @@ export function AgentMarkdown({
             </th>
           ),
           td: ({ children }) => (
-            <td className="border-b border-border/50 px-1.5 py-1 align-top">
+            <td className="border-b border-muted px-1.5 py-1 align-top">
               {children}
             </td>
           ),
-          hr: () => <hr className="border-border/60" />,
+          hr: () => <hr className="border-muted" />,
         }}
       >
         {text}

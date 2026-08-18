@@ -3,6 +3,14 @@ import { cn } from '@/lib/utils'
 
 /** How long a surface may load before its skeleton is allowed to paint. */
 export const SKELETON_HOLD_MS = 250
+
+/**
+ * Shared session for the shell's boot surfaces (sidebar nav, and anything
+ * else that lands with it). Instances sharing a key share one hold and one
+ * fade, which is what keeps two halves of the same screen from arriving on
+ * separate clocks.
+ */
+export const EDITOR_BOOT_HOLD_KEY = 'editor-shell-boot'
 /** Fade-in for the skeleton, and for content that replaces a shown one. */
 const FADE_CLASS = 'animate-in fade-in duration-200'
 
@@ -45,6 +53,16 @@ type DeferredSkeletonProps = {
   delayMs?: number
   /** Applied to the single wrapper element (skeleton and content alike). */
   className?: string
+  /**
+   * Whether content that replaces a *seen* skeleton fades itself in.
+   *
+   * Default true — the right answer for a surface with no reveal of its
+   * own. Pass false when the incoming content choreographs its own entrance:
+   * two owners animating opacity over the same pixels is the bug this flag
+   * exists to prevent, and the wrapper's fade is invisible anyway when the
+   * content underneath starts at opacity 0.
+   */
+  fadeOnSwap?: boolean
 }
 
 /**
@@ -70,6 +88,7 @@ export function DeferredSkeleton({
   holdKey,
   delayMs = SKELETON_HOLD_MS,
   className,
+  fadeOnSwap = true,
 }: DeferredSkeletonProps) {
   const instanceId = useId()
   const key = holdKey ?? `deferred-skeleton:${instanceId}`
@@ -151,6 +170,8 @@ export function DeferredSkeleton({
   }
 
   return (
-    <div className={cn(className, state.shown && FADE_CLASS)}>{children}</div>
+    <div className={cn(className, state.shown && fadeOnSwap && FADE_CLASS)}>
+      {children}
+    </div>
   )
 }

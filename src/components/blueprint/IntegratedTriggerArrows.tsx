@@ -418,6 +418,7 @@ export function IntegratedTriggerArrows({
 
   return (
     <svg
+      data-blueprint-arrows=""
       className={cn(
         'pointer-events-none absolute overflow-visible',
         // z-0, UNDER the z-[1] cells: a run that crosses a cell tucks

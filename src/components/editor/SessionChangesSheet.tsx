@@ -548,7 +548,7 @@ export function SessionChangesSheet() {
           className="w-80 p-0 text-xs"
           data-session-sheet=""
         >
-          <div className="border-b border-border/60 px-3 py-2">
+          <div className="border-b border-muted px-3 py-2">
             <p className="font-medium text-foreground">
               {changes.length} change{changes.length === 1 ? '' : 's'}
             </p>
@@ -588,7 +588,7 @@ export function SessionChangesSheet() {
             replaces the whole row so there is never a live Save sitting beside
             a question about reverting.
           */}
-          <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
+          <div className="flex items-center gap-2 border-t border-muted px-3 py-2">
             {confirming === 'revert' ? (
               <>
                 <p className="min-w-0 flex-1 text-2xs text-foreground">
@@ -685,7 +685,7 @@ export function SessionChangesSheet() {
             run stopped early.
           */}
           {stillHere.length > 0 ? (
-            <div className="flex flex-col gap-1 border-t border-border/60 px-3 py-2">
+            <div className="flex flex-col gap-1 border-t border-muted px-3 py-2">
               {stillHere.map((item) => (
                 <p key={item.id} className="text-2xs text-destructive">
                   {item.kind === 'no-inverse'

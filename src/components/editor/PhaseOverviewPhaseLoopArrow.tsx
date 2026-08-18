@@ -136,6 +136,8 @@ export function PhaseOverviewPhaseLoopArrow({
 
   return (
     <svg
+      // Arrow layer (stage 4), same as every other connector.
+      data-blueprint-arrows=""
       className="pointer-events-none absolute left-0 top-0 z-[60] overflow-visible"
       width={geometry.width}
       height={geometry.height}

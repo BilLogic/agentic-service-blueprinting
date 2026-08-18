@@ -224,7 +224,7 @@ export function BlueprintColumnHandles({
               event.stopPropagation()
               pick.pickMany(cells, event.shiftKey ? 'toggle' : 'add')
             }}
-            className="pointer-events-auto absolute truncate rounded-md border border-dashed border-border/70 bg-card/90 px-2 py-1 text-2xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-primary hover:text-foreground"
+            className="pointer-events-auto absolute truncate rounded-md border border-dashed border-muted bg-card/90 px-2 py-1 text-2xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-primary hover:text-foreground"
             style={{ left: column.left, width: column.width, top: -32 }}
           >
             {steps[stepIndex]?.name ?? `Step ${stepIndex + 1}`}

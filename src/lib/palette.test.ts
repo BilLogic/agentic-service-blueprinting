@@ -342,15 +342,46 @@ describe('blueprint cells', () => {
   })
 })
 
+/**
+ * The ink `[data-blueprint-fill]` derives for a fill, mirrored in JS.
+ *
+ * The CSS is `oklch(from <fill> clamp(0.12, calc((0.62 - l) * 100), 0.99)
+ * calc(c * 0.08) h)` — Supabase's `*-foreground` formula. The clamp is a
+ * step function in practice: any fill below L 0.62 gets L 0.99 ink, anything
+ * above gets 0.12, because the multiplier is 100. Chroma drops to 8% so the
+ * ink is tinted rather than stark, and the hue rides along.
+ *
+ * Mirrored here rather than asserted against one hard-coded ink, because a
+ * hard-coded ink is exactly what this pairing replaced: `text-white` measured
+ * 1.17-2.33:1 in dark mode, and a test that only knew about one value could
+ * not have caught it.
+ */
+function derivedFillInk(fill: Rgb): Rgb {
+  const [l, c, h] = oklchFromSrgb(fill)
+  const inkL = Math.min(0.99, Math.max(0.12, (0.62 - l) * 100))
+  return oklch(inkL, c * 0.08, h)
+}
+
+/** Gamma-encoded sRGB -> OKLCH triple (the inverse `oklch()` above needs). */
+function oklchFromSrgb([r, g, b]: Rgb): [number, number, number] {
+  const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+  const [R, G, B] = [lin(r), lin(g), lin(b)]
+  const l_ = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B)
+  const m_ = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B)
+  const s_ = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B)
+  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_
+  const A = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_
+  const B2 = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
+  return [L, Math.hypot(A, B2), ((Math.atan2(B2, A) * 180) / Math.PI + 360) % 360]
+}
+
 describe('path badges', () => {
   const paths = Object.entries(PATH_TYPE_COLORS)
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
-    it.each(paths)('%s carries white text', (_type, token) => {
-      // `getPathBadgeStyle` renders `--color-gray-100` on this fill.
+    it.each(paths)('%s pairs with legible derived ink', (_type, token) => {
       const fill = resolve(token, theme)
-      const ink = resolve('--color-gray-100', theme)
-      expect(contrast(fill, ink)).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(fill, derivedFillInk(fill))).toBeGreaterThanOrEqual(4.5)
     })
   })
 
@@ -365,9 +396,18 @@ describe('path badges', () => {
         ),
       ),
     ]
-    it.each(open)('%s carries white text', (token) => {
-      const ink = resolve('--color-gray-100', theme)
-      expect(contrast(resolve(token, theme), ink)).toBeGreaterThanOrEqual(4.5)
+    it.each(open)('%s pairs with legible derived ink', (token) => {
+      const fill = resolve(token, theme)
+      expect(contrast(fill, derivedFillInk(fill))).toBeGreaterThanOrEqual(4.5)
+    })
+  })
+
+  describe.each(['light', 'dark'] as const)('%s divider tag', (theme) => {
+    // Not a path colour, but the same `[data-blueprint-fill]` rule paints it —
+    // and it was the worst of the `text-white` sites at 1.17:1 in dark mode.
+    it('pairs with legible derived ink', () => {
+      const fill = resolve('--color-slate-1200', theme)
+      expect(contrast(fill, derivedFillInk(fill))).toBeGreaterThanOrEqual(4.5)
     })
   })
 

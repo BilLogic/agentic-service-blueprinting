@@ -41,13 +41,62 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
   --color-annotation-selected: var(--annotation-selected);
+  /* Annotation chrome (see semantic.css): the bars that stay dark in both
+     themes, and the ink for a note drawn on the board. */
+  --color-field: var(--field);
+  --color-control-raised: var(--control-raised);
+  /* `--control` aliases `--control-raised`. Do NOT add `--color-control` — it
+     would collide with `border-control` and the legacy `bg-control` utility.
+     (Upstream carries this same warning.) */
 
+  --color-annotation-chrome: var(--background-annotation-chrome);
+  --color-annotation-plate-foreground: var(--foreground-annotation-plate);
+
+  /*
+   * Border-utility-only exposure, Supabase's preferred form: generates
+   * `border-annotation-plate` and nothing else, so the token cannot leak
+   * into a background or a text colour by accident.
+   */
+  /* `border-muted` — the soft divider rung. Note this is the BORDER role, not
+     the `--muted` surface: the `--border-color-*` namespace wins over
+     `--color-*` for border utilities, which is exactly why upstream registers
+     both namespaces. */
+  --border-color-overlay: var(--border-overlay);
+  --border-color-muted: var(--border-muted);
+  --border-color-control-hover: var(--border-control-hover);
+  --border-color-annotation-plate: var(--border-annotation-plate);
+
+
+  /*
+   * Text-utility-only namespace, upstream's form: `text-contrast` is the ink
+   * for an INVERTED fill (`bg-foreground`, and the tooltip that is one). Its
+   * value coincides with `--background` today — the page colour — which is why
+   * five call sites reached for `text-background` instead. They are not the
+   * same idea: `--background` is where the page sits, and this is what to
+   * write ON something that inverted it. Only one of them keeps working if the
+   * page surface ever gains elevation.
+   */
+  --text-color-contrast: var(--foreground-contrast);
 
   /* Status border tokens for tinted surfaces (border-destructive, border-warning…) */
   --color-border-destructive: var(--border-destructive);
   --color-border-warning: var(--border-warning);
   --color-border-info: var(--border-info);
   --color-border-success: var(--border-success);
+  /*
+   * `--color-border-*` generates EVERY utility (bg-, text-, ring-, and the
+   * functional `hairline-*`), which is why the annotation plate line needs
+   * an entry here — its inset-hairline and pressed-ring call sites are not
+   * border utilities. Supabase's note on this block is "this usage should be
+   * discouraged and deprecated": prefer `--border-color-*` below, and reach
+   * for this form only when the property genuinely is not a border.
+   */
+  /* `ring-border-overlay` and friends: a ring is not a border, which is the
+     case the all-utilities exposure exists for. */
+  --color-border-overlay: var(--border-overlay);
+  --color-border-muted: var(--border-muted);
+  --color-border-control-hover: var(--border-control-hover);
+  --color-border-annotation-plate: var(--border-annotation-plate);
   --color-border-brand: var(--border-brand);
 
   /* Stepped semantic ramps — per-theme HSL literals from themes/{light,dark}.css.
@@ -382,9 +431,19 @@
      for toolbars/menus floating over the canvas. */
   --shadow-floating: 0 8px 28px rgb(0 0 0 / 0.3);
 
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /*
+   * Additive, like the sm / md / xl rungs above (`--radius - 4px`, `- 2px`,
+   * `+ 4px`) — these were multipliers, which made the ladder uniform only at
+   * the current `--radius: 0.625rem`. Same values today (18 / 22 / 26px), one
+   * arithmetic sequence at any base: 6, 8, 10, 14, 18, 22, 26.
+   *
+   * Deliberately beyond Tailwind's fixed 16 / 24 / 32: a scale that tracks
+   * `--radius` is the same derivation philosophy as every other token here,
+   * and a 10px base wants tighter large rungs than a 16px one.
+   */
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
 /*

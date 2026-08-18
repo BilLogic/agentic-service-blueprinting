@@ -129,10 +129,41 @@
  * transition are touched, so the swipe-driven open transform (and with it
  * swipe-to-dismiss) is untouched.
  */
-[data-cell-detail-panel] {
-  --closed-transform: translate3d(10px, 0, 0) scale(0.98);
+[data-cell-detail-panel][data-cell-detail-posture='inspector'] {
+  /*
+    Translate and opacity only — no `scale(0.98)`.
+    A scale on a 320x665 panel that carries a border AND a shadow re-rasterizes
+    both on every frame, over a canvas that is often repainting at the same
+    time; the lift read as a shimmer at the edges rather than as a movement.
+    Translate and opacity are compositor-only, so the exit is the same gesture
+    for a fraction of the work. (Supabase's own drawer/sheet exits are pure
+    translate for the same reason.)
+  */
+  --closed-transform: translate3d(10px, 0, 0);
   transition-property: transform, opacity;
   transition-duration: var(--motion-fade);
+  transition-timing-function: var(--ease-structural);
+}
+
+/*
+ * The phone's posture is the other vocabulary entirely: a sheet, and a
+ * sheet RISES. The inspector rules above used to apply here too — the
+ * bottom sheet nudged 10px sideways and faded, which is why arriving and
+ * leaving both read as disorganised: the motion said "a card appeared
+ * next to something" while the shape said "a sheet came up from the
+ * bottom edge".
+ *
+ * So: travel the full sheet height (+2px, past the rounding seam the
+ * primitive also allows for), on the structural duration a whole surface
+ * earns, and no opacity at all — a sheet that fades is a sheet you can see
+ * the page through on the way up. Exit runs the same distance a hair
+ * quicker and eased *in*, the usual asymmetry: arriving is an event,
+ * leaving is not.
+ */
+[data-cell-detail-panel][data-cell-detail-posture='sheet'] {
+  --closed-transform: translate3d(0, calc(100% + 2px), 0);
+  transition-property: transform;
+  transition-duration: var(--motion-structural);
   transition-timing-function: var(--ease-structural);
 }
 
@@ -149,22 +180,31 @@
  */
 @starting-style {
   [data-cell-detail-panel] {
-    opacity: 0;
     transform: var(--closed-transform);
+  }
+
+  /* The inspector fades; the sheet only travels (see above). */
+  [data-cell-detail-panel][data-cell-detail-posture='inspector'] {
+    opacity: 0;
   }
 }
 
 /* base-ui's own starting flag, kept so the two entry paths say the same
    thing if the shell ever stays mounted across a close. */
-[data-cell-detail-panel][data-starting-style],
-[data-cell-detail-panel][data-ending-style] {
+[data-cell-detail-panel][data-cell-detail-posture='inspector'][data-starting-style],
+[data-cell-detail-panel][data-cell-detail-posture='inspector'][data-ending-style] {
   opacity: 0;
 }
 
 /* Leaving: shorter, and eased *in* so it clears out instead of trailing the
    long quintic tail the structural ease ends on. */
-[data-cell-detail-panel][data-ending-style] {
+[data-cell-detail-panel][data-cell-detail-posture='inspector'][data-ending-style] {
   transition-duration: var(--motion-micro);
+  transition-timing-function: ease-in;
+}
+
+[data-cell-detail-panel][data-cell-detail-posture='sheet'][data-ending-style] {
+  transition-duration: var(--motion-fade);
   transition-timing-function: ease-in;
 }
 
@@ -173,7 +213,49 @@
   transition-duration: 0s;
 }
 
+/*
+ * The shell's entrance ladder — how the sidebar assembles behind the canvas
+ * load bar.
+ *
+ * Entering the workspace from the cover, the aside takes its full WIDTH in
+ * one commit (EditorShell suppresses the transition) so the canvas frame,
+ * and the loading bar centered in it, never move. What is staged instead is
+ * PAINT: the bar has the screen to itself for one skeleton hold, then the
+ * rail, the phases panel and the agent dock fade in one step apart over
+ * space that is already reserved.
+ *
+ * Delays arrive as inline custom properties from EditorShell so the TS
+ * constants (SKELETON_HOLD_MS, SHELL_ENTRANCE_STEP_MS) stay the single
+ * source — there is no second copy here to drift out of step.
+ */
+[data-shell-entrance='pending'] [data-shell-entrance-part] {
+  opacity: 0;
+}
+
+[data-shell-entrance='shown'] [data-shell-entrance-part] {
+  transition: opacity var(--motion-fade) ease-out;
+}
+
+[data-shell-entrance='shown'] [data-shell-entrance-part='rail'] {
+  transition-delay: var(--shell-entrance-rail, 0ms);
+}
+
+[data-shell-entrance='shown'] [data-shell-entrance-part='panel'] {
+  transition-delay: var(--shell-entrance-panel, 0ms);
+}
+
+[data-shell-entrance='shown'] [data-shell-entrance-part='agent'] {
+  transition-delay: var(--shell-entrance-agent, 0ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* No ladder: the sidebar is simply there. */
+  [data-shell-entrance] [data-shell-entrance-part] {
+    opacity: 1;
+    transition: none;
+    transition-delay: 0s;
+  }
+
   [data-editor-content],
   [data-presentation-root],
   [data-presentation-root] [data-presentation-stage],

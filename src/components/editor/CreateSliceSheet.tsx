@@ -177,7 +177,7 @@ export function CreateSliceSheet({
         sideOffset={10}
         className="w-[26rem] p-0"
       >
-        <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
+        <div className="flex items-center gap-2 border-b border-muted px-3 py-2">
           {step === 'name' ? (
             <IconTooltip label="Back to screens" side="bottom">
               <Button
@@ -215,7 +215,7 @@ export function CreateSliceSheet({
             >
               <SliceScreenComposer screens={screens} onChange={setScreens} />
             </div>
-            <div className="flex items-center justify-end gap-2 border-t border-border/60 px-3 py-2">
+            <div className="flex items-center justify-end gap-2 border-t border-muted px-3 py-2">
               <Button
                 type="button"
                 size="sm"
@@ -275,7 +275,7 @@ export function CreateSliceSheet({
               ) : null}
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-border/60 px-3 py-2">
+            <div className="flex items-center justify-end gap-2 border-t border-muted px-3 py-2">
               <Button
                 type="button"
                 variant="ghost"

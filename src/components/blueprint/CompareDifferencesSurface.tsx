@@ -414,6 +414,7 @@ export function CompareDifferencesSurface({
                 ) : null}
                 <span
                   className="max-w-32 truncate rounded-full px-2 py-0.5 text-3xs font-medium leading-tight"
+                  data-blueprint-fill
                   style={getPathBadgeStyle(blueprint.path)}
                   title={blueprint.path.name}
                 >
@@ -509,7 +510,7 @@ export function CompareDifferencesSurface({
       ) : stepGroups.length === 1 && detailOnlySlots.length === 0 ? (
         /* Exactly one step, nothing else: flat table, no accordion chrome. */
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 border-b border-border/60 pb-1.5">
+          <div className="flex items-center gap-1.5 border-b border-muted pb-1.5">
             {groupHeader(
               stepGroups[0].headerLabel,
               filteredStepSlots(stepGroups[0]).length,

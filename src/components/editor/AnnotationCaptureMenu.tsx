@@ -127,7 +127,7 @@ export function AnnotationCaptureMenu() {
         </TooltipContent>
       </Tooltip>
 
-      <DropdownMenuContent align="center" side="top" className="text-xs">
+      <DropdownMenuContent align="center" side="top">
         <DropdownMenuItem onClick={download}>
           <Download className="size-3.5" aria-hidden />
           Save {annotations.length} mark{annotations.length === 1 ? '' : 's'}

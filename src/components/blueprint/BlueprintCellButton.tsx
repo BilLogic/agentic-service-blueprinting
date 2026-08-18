@@ -262,7 +262,11 @@ export function BlueprintCellButton({
           'min-h-0 h-full max-h-full overflow-hidden',
         !isInteractive && 'pointer-events-none cursor-default',
         (sliceSequence !== undefined || isPicked) && 'relative overflow-visible',
-        dimUnpicked && 'opacity-60 saturate-[.6] transition-[opacity,filter]',
+        // Opacity only — `filter` was transitioned here too, which puts a
+      // per-frame filtered re-raster on all ~660 unpicked cells for the whole
+      // 200 ms of a slice pick. Same rule blueprint.css states for the slice
+      // dim and CanvasPhaseSection now follows; saturation lands on frame one.
+      dimUnpicked && 'opacity-60 saturate-[.6] transition-opacity',
       )}
       style={surfaceStyle}
     >
@@ -281,7 +285,7 @@ export function BlueprintCellButton({
         <span
           aria-hidden
           data-slice-sequence-badge=""
-          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-foreground font-mono text-3xs font-semibold text-background tabular-nums shadow-sm"
+          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-foreground font-mono text-3xs font-semibold text-contrast tabular-nums shadow-sm"
         >
           {sliceSequence}
         </span>

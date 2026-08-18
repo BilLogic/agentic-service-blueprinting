@@ -279,16 +279,23 @@ function PanelDrawerShell({
       modal={false}
       disablePointerDismissal
       swipeDirection={mobile ? 'down' : 'right'}
+      // A bottom sheet says how to dismiss itself with a grab handle; the
+      // desktop inspector has its own ✕ and does not read as draggable.
+      showSwipeHandle={mobile}
     >
       <DrawerContent
         data-cell-detail-panel=""
+        // The posture the MOTION keys off (animations.css): a sheet rises
+        // from the bottom edge, an inspector lifts in beside the cell it
+        // came from. Two vocabularies, one component.
+        data-cell-detail-posture={mobile ? 'sheet' : 'inspector'}
         className={cn(
           mobile
-            ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border/80 bg-popover shadow-sm after:hidden [--drawer-inset:0px]'
+            ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border bg-popover shadow-sm after:hidden [--drawer-inset:0px]'
             : cn(
                 CELL_DETAIL_PANEL_TOP_CLASS,
                 CELL_DETAIL_PANEL_BOTTOM_CLASS,
-                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-2xl border border-border/80 bg-popover shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
+                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-2xl border border-border bg-popover shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
                 expanded
                   ? 'w-(--width-cell-panel-expanded)'
                   : 'w-(--width-cell-panel)',
@@ -385,6 +392,14 @@ function BlueprintCellDetailPanelBody() {
   )
   const [expanded, setExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState<PanelTab>('dependencies')
+  /*
+    Widen/narrow is a DESKTOP control: it trades canvas width for panel
+    width, and the phone's posture is a bottom sheet the full width of the
+    screen with nothing to trade. The agent command stays registered in
+    both postures (it just does nothing visible on a phone) — parity is
+    about what the agent can reach, not about which chrome is on screen.
+  */
+  const mobile = useMobileShell()
   /**
    * One-shot "← Back to Differences" chip: set when the ledger's ⇱ opens a
    * cell in Details, cleared when used — and whenever the panel leaves
@@ -435,7 +450,17 @@ function BlueprintCellDetailPanelBody() {
   const draft = draftCell ?? closing?.draft ?? null
   const activeSurface: BlueprintPanelSurface | null =
     panelState?.surface ?? closing?.surface ?? null
-  useCanvasTopOffset(panelState !== null)
+  /*
+    `closing !== null` too, not just open: the drawer's `top` comes from the
+    measured `--cell-detail-panel-top` variable, and this hook's cleanup
+    REMOVES that variable. Keyed on `panelState` alone, the cleanup ran the
+    instant a close began — while the exit animation still had ~150ms to
+    play — so `top` fell back to the un-measured default (~53px vs the ~94px
+    measured under the navbar) and the panel visibly teleported UP, then slid
+    out. The variable must outlive the panel by exactly as long as the exit
+    does, which is what `closing` measures.
+  */
+  useCanvasTopOffset(panelState !== null || closing !== null)
 
   /*
     The drawer's `open` is derived from `panelState`, full stop.
@@ -795,6 +820,25 @@ function BlueprintCellDetailPanelBody() {
 
   const handleClosed = () => setClosing(null)
 
+  const expandToggle = mobile ? null : (
+    <IconTooltip
+      label={expanded ? 'Narrow the panel' : 'Widen the panel'}
+      side="left"
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
+        aria-pressed={expanded}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        {expanded ? <PanelRightClose /> : <PanelRightOpen />}
+      </Button>
+    </IconTooltip>
+  )
+
   /*
     The Details │ Differences switcher — the two surfaces are true siblings
     of the whole panel, so their switch is TOP-LEVEL chrome, above every
@@ -802,7 +846,7 @@ function BlueprintCellDetailPanelBody() {
     compare the panel is exactly what it was before v3.
   */
   const surfaceSwitcher = comparing ? (
-    <div className="flex shrink-0 items-center border-b border-border/60 px-4 py-2">
+    <div className="flex shrink-0 items-center border-b border-muted px-4 py-2">
       <PanelSurfaceSwitcher
         value={activeSurface}
         onValueChange={setPanelSurface}
@@ -829,7 +873,7 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-border/60 px-4 py-2 text-left">
+        <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-muted px-4 py-2 text-left">
           <DrawerTitle className="sr-only">Path differences</DrawerTitle>
           <DrawerDescription className="sr-only">
             Every difference between the compared paths, grouped by step
@@ -845,22 +889,7 @@ function BlueprintCellDetailPanelBody() {
             </span>
           )}
           <div className="flex shrink-0 items-center gap-0.5">
-            <IconTooltip
-              label={expanded ? 'Narrow the panel' : 'Widen the panel'}
-              side="left"
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
-                aria-pressed={expanded}
-                onClick={() => setExpanded((value) => !value)}
-              >
-                {expanded ? <PanelRightClose /> : <PanelRightOpen />}
-              </Button>
-            </IconTooltip>
+            {expandToggle}
             <IconTooltip label="Close the difference ledger" side="left">
               <Button
                 type="button"
@@ -965,7 +994,7 @@ function BlueprintCellDetailPanelBody() {
         {/* The editor portals Create/Cancel here — panel-level footing. */}
         <div
           id={CELL_PANEL_FOOTER_ID}
-          className="shrink-0 border-t border-border/60 px-4 py-3 empty:hidden"
+          className="shrink-0 border-t border-muted px-4 py-3 empty:hidden"
         />
       </PanelDrawerShell>
     )
@@ -1360,22 +1389,7 @@ function BlueprintCellDetailPanelBody() {
             {cellBreadcrumb}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
-            <IconTooltip
-              label={expanded ? 'Narrow the panel' : 'Widen the panel'}
-              side="left"
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
-                aria-pressed={expanded}
-                onClick={() => setExpanded((value) => !value)}
-              >
-                {expanded ? <PanelRightClose /> : <PanelRightOpen />}
-              </Button>
-            </IconTooltip>
+            {expandToggle}
             <IconTooltip label="Close cell details" side="left">
               <Button
                 type="button"
@@ -1414,7 +1428,7 @@ function BlueprintCellDetailPanelBody() {
               >
                 <TabsList
                   variant="line"
-                  className="h-auto w-full justify-start gap-4 rounded-none border-b border-border/60 px-4 pb-0"
+                  className="h-auto w-full justify-start gap-4 rounded-none border-b border-muted px-4 pb-0"
                 >
                   {PANEL_TABS.map(({ value, label, icon: TabIcon }) => (
                     <TabsTrigger
@@ -1484,7 +1498,7 @@ function BlueprintCellDetailPanelBody() {
             {editingCell ? (
               <div
                 id={CELL_PANEL_FOOTER_ID}
-                className="shrink-0 border-t border-border/60 px-4 py-3 empty:hidden"
+                className="shrink-0 border-t border-muted px-4 py-3 empty:hidden"
               />
             ) : null}
             <CellInSlicesFooter cellId={pathEntry?.cellId ?? null} />
