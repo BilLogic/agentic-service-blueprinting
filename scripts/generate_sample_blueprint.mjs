@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 /**
  * Sample-content generator — the META-BLUEPRINT: the service blueprint OF
- * this template itself. The sample lifecycle maps an adopter's journey with
- * agentic service blueprinting (Discover → Adopt → Map → Operate, with
- * Operate looping back to Map), so the product demonstrates itself and every
- * cell doubles as true documentation of how the kit actually behaves.
+ * this template itself. The sample lifecycle maps the journey a team actually
+ * runs with the kit (Discover → Setup → Operate → Maintain, with Maintain
+ * looping back to Operate), so the product demonstrates itself and every cell
+ * doubles as true documentation of how the kit behaves.
+ *
+ * Phases carry the arc of the work; SCENARIO names carry the skill vocabulary
+ * (map, audit, ideate/what-if, slice), so the phase row never repeats what the
+ * scenarios already say.
  *
  * Emits BOTH template sample artifacts from one source of truth:
  *   - src/data/sampleBlueprint.ts  — the offline / no-DB fallback module
@@ -12,26 +16,39 @@
  *     phases → scenarios → paths/steps/layers/cells/triggers → demo slices)
  *
  * What the content deliberately exercises (the template's rendering smoke):
- *   - five scenarios across four phases, incl. the phase loop
- *     (Operate.loops_to_phase_id → Map) drawn on the overview canvas
- *   - one scenario with TWO genuinely divergent paths (no-database run vs
- *     Supabase run) shaped so the compare views show every verdict: fully
- *     shared columns (quiet), divergent columns, path-only cells, and
- *     shared slots inside divergent columns (striped wash in merged view)
- *   - every canonical layer_role, and lane orders that make all three divider
- *     lines draw — interaction and visibility everywhere, and INTERNAL
- *     interaction in Discover the kit and Keep it true, which is only drawn
- *     where a support lane follows the backstage-actions lane
- *   - pill lanes (newline multi-pill AND slot-sibling cells), a visual row,
- *     and a CJK lane display name (样例数据) as the non-ASCII smoke test
+ *   - four phases, six scenarios, incl. the phase loop
+ *     (Maintain.loops_to_phase_id → Operate) drawn on the overview canvas
+ *   - ONE lane roster, reused by every scenario, ordered so all three divider
+ *     lines draw exactly once on every board: customer_actions →
+ *     frontstage_tech → frontstage_actions → backstage_tech →
+ *     backstage_actions → support_systems, under a custom-role Stakeholders
+ *     swimlane. The adjacency rules are asserted below, not hoped for.
+ *   - TWO scenarios with two genuinely divergent paths each, shaped so the
+ *     compare views show every verdict: fully shared columns (quiet),
+ *     divergent columns, path-only cells, path-only STEPS (each Map path
+ *     omits the other's column), and shared slots inside divergent columns
+ *   - pill lanes (newline multi-pill AND slot-sibling cells), a visual row
+ *     carrying four REAL figures, and bilingual CJK (a lane name, a step name
+ *     and two cells) as the non-ASCII smoke test
  *   - the cell spec: differing owner / perceived_owner pairs (the case the
  *     docs call the interesting one) and FUNCTION / FORM / VALUE blocks, in
  *     BOTH artifacts, so a keyless clone renders them like a seeded database
- *   - trigger kinds: forward cross-layer, same-column, spine chains, cross-lane
- *     UPWARD arrows, backward in-lane loops (rework + re-audit), and panel-only
- *     `needs` dependencies with labels and notes
- *   - links to REAL repo paths, so cell detail panels point at the code
+ *   - trigger kinds: forward cross-layer, same-column, opt-in spine chains,
+ *     cross-lane UPWARD arrows, backward in-lane loops (rework + re-dispatch),
+ *     and panel-only `needs` dependencies with labels and notes
+ *   - links to REAL repo paths — every one is existsSync-checked at emission
  *   - three demo slices (journey + step + lane) over the new content
+ *
+ * Deliberate omissions, so they read as decisions and not oversights:
+ *   - `cell` and `custom` slices: three slices is the readability ceiling for
+ *     a first-open sidebar, and a single-cell demo teaches nothing the panel
+ *     does not.
+ *   - `evidence` rows and the lane spec columns (`kpis` / `tools` /
+ *     `owner_team`): both exist in the database but not in the offline
+ *     `BlueprintData` shape, so seeding them would make the two artifacts
+ *     disagree — and this generator's whole contract is that they cannot.
+ *   - slot siblings are app-side and seed-side only: `slot > 0` cells carry
+ *     no `cell_key`, and the IR an adopter authors has no slot concept.
  *
  * Deterministic UUIDs: f0000000-0000-4000-8000-<S><P><KK><AAAA><BBBB>
  *   S = scenario ordinal (0 = lifecycle-scoped), P = path ordinal
@@ -43,7 +60,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -75,9 +92,9 @@ const LIFECYCLE_ID = 'f0000000-0000-4000-8000-000000000010'
 
 const LIFECYCLE = {
   id: LIFECYCLE_ID,
-  name: 'Blueprint Kit Adoption',
+  name: 'Keeping a blueprint true',
   description:
-    'The service blueprint of this template itself — how a team discovers, adopts, maps with, and operates agentic service blueprinting. Replace it with your own service; until then it doubles as documentation.',
+    'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.',
 }
 
 /** Fixed timestamp for generated derived rows — deterministic output. */
@@ -85,42 +102,99 @@ const FIXTURE_TIMESTAMP = '2026-08-18T00:00:00+00:00'
 
 /** GitHub blob base for cell links — every path is verified to exist. */
 const REPO_URL = 'https://github.com/BilLogic/agentic-service-blueprinting/blob/main'
-const repoLink = (label, path) => ({ type: 'url', label, url: `${REPO_URL}/${path}` })
+const repoLink = (label, path) => {
+  // A rename must never leave a 404 on the board: the link is checked against
+  // the working tree at emission, not trusted.
+  if (!existsSync(join(REPO_ROOT, path))) {
+    throw new Error(`repoLink("${label}"): ${path} does not exist in the repo`)
+  }
+  return { type: 'url', label, url: `${REPO_URL}/${path}` }
+}
+
+/** Figures for the visual row — served from /cover/ by scripts/sync-cover-assets.mjs. */
+const figure = (name) => {
+  if (!existsSync(join(REPO_ROOT, 'docs', 'assets', name))) {
+    throw new Error(`figure("${name}"): docs/assets/${name} does not exist`)
+  }
+  return `/cover/${name}`
+}
 
 const PHASES = [
   {
     ordinal: 1,
     key: 'DISCOVER',
     name: 'Discover',
-    description: 'The adopter finds the kit and decides it is worth an afternoon.',
+    description:
+      'The evaluation before any commitment: find the kit, run it with no backend, and decide whether it fits the team.',
   },
   {
     ordinal: 2,
-    key: 'ADOPT',
-    name: 'Adopt',
-    description: 'The kit goes from repository to running app on the adopter’s machine.',
+    key: 'SETUP',
+    name: 'Setup',
+    description:
+      'The one-time work of getting a real service onto the board and signed off — the onboarding use.',
   },
   {
     ordinal: 3,
-    key: 'MAP',
-    name: 'Map',
-    description: 'sb:map turns the adopter’s own service into a validated, imported blueprint.',
-  },
-  {
-    ordinal: 4,
     key: 'OPERATE',
     name: 'Operate',
     description:
-      'The blueprint stays true through audits, what-ifs, slices, and agent sessions — and loops back to Map when the service changes.',
-    loopsToKey: 'MAP',
+      'The blueprint in daily use: check it against reality, trace a change through it, and cut the view an audience asked for.',
+  },
+  {
+    ordinal: 4,
+    key: 'MAINTAIN',
+    name: 'Maintain',
+    description:
+      'Upkeep of the artifact itself — the service moved, so the map is brought back in line, and the team resumes using it. Loops back to Operate.',
+    loopsToKey: 'OPERATE',
   },
 ]
 const phaseId = (ordinal) => fid(0, 0, KIND.phase, ordinal, 0)
 const phaseByKey = Object.fromEntries(PHASES.map((p) => [p.key, p]))
 
 /**
+ * ONE lane roster, reused by every scenario — the reader learns the cast once.
+ *
+ * The row order is load-bearing. Two rules from
+ * `references/layer-roles.md` ("Line-anchoring semantics") decide where the
+ * canonical divider lines land, and this order satisfies both on every board:
+ *   * the frontstage TECH lane sits directly ABOVE the frontstage ACTIONS
+ *     lane, so LINE OF VISIBILITY is drawn once, after the actions lane;
+ *   * the backstage ACTIONS lane sits directly above the support lane, which
+ *     is the only arrangement that draws LINE OF INTERNAL INTERACTION at all.
+ * `assertLaneRoster` below turns both into errors rather than review notes.
+ */
+const LANES = [
+  // A named custom role, not null: layer-roles.md asks for one whenever the
+  // lane means something. It renders as a generic swimlane and anchors no
+  // divider line. This is the lane that is deliberately quiet on three boards.
+  { row: 0, key: 'stakeholders', name: 'Stakeholders', role: 'stakeholders' },
+  // Bilingual CJK display name — lane labels are free-form in any language,
+  // and this is the template's non-ASCII rendering smoke test. It sits on the
+  // spine, so it is present on every board.
+  { row: 1, key: 'owner', name: '服务负责人 · Blueprint owner', role: 'customer_actions' },
+  { row: 2, key: 'surface', name: 'App & skill surface', role: 'frontstage_tech' },
+  { row: 3, key: 'claude', name: 'Claude in the IDE', role: 'frontstage_actions' },
+  { row: 4, key: 'scripts', name: 'Pipeline scripts', role: 'backstage_tech' },
+  { row: 5, key: 'agents', name: 'Subagent fleet', role: 'backstage_actions' },
+  { row: 6, key: 'refs', name: 'References & guardrails', role: 'support_systems' },
+]
+
+/**
+ * The one documented exception: `Map your service` carries a visual row on
+ * top, pushing the roster to rows 1–7. Four real figures, so the `visual`
+ * role is demonstrated on the one board where journey imagery earns a row —
+ * rather than an empty band on half of them.
+ */
+const MAP_LANES = [
+  { row: 0, key: 'figures', name: 'Journey figures', role: 'visual' },
+  ...LANES.map((lane) => ({ ...lane, row: lane.row + 1 })),
+]
+
+/**
  * Scenario cell spec:
- *   { lane, col, content, slot?, description?, links?, paths?,
+ *   { lane, col, content, slot?, picture?, description?, links?, paths?,
  *     owner?, perceivedOwner?, fn?, form?, valueProps? }
  * `content` is a string (present on every path) or a per-path-key record
  * (present only on the named paths; differing values = a divergent slot).
@@ -129,607 +203,297 @@ const phaseByKey = Object.fromEntries(PHASES.map((p) => [p.key, p]))
  * `owner`/`perceivedOwner` render as the owner pair in the panel, `fn`/`form`/
  * `valueProps` as its FUNCTION / FORM / VALUE block. They are emitted into both
  * artifacts, so a keyless clone shows the same spec a seeded database does.
+ *
+ * Scenario options: `spineChain: true` chains consecutive spine cells (only
+ * worth it where the spine really is a sequence); `primary: true` marks the
+ * scenario the compare demos and the journey slice hang off — exactly one.
+ * Path option: `skipSteps: [n]` omits scenario columns from that path, which
+ * is what "each path includes a subset of the steps" actually looks like.
  */
 const SCENARIOS = [
   // -------------------------------------------------------------------
-  // 1 · Discover the kit
+  // 1 · Find the kit and see what it does — Discover (the smallest board)
   // -------------------------------------------------------------------
   {
     ordinal: 1,
-    key: 'DISCOVER_KIT',
+    key: 'DISCOVER',
     phaseKey: 'DISCOVER',
-    name: 'Discover the kit',
+    name: 'Find the kit and see what it does',
     description:
-      'A first visit: the repository pitch, the live example, the model figures, and the decision to try it.',
+      'The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.',
     order: 1,
     viewType: 'single',
     navViewType: 'single',
-    spineLane: 'adopter',
+    spineLane: 'owner',
+    spineChain: true,
     paths: [
       {
         ordinal: 1,
-        key: 'VISIT',
-        name: 'First visit',
+        key: 'FIRSTLOOK',
+        name: 'A first look',
         path_type: 'happy',
-        description: 'Reading the repo end to end, from pitch to decision.',
+        description:
+          'Repository to running app to decision, with no account, no key, and no database anywhere.',
       },
     ],
     steps: [
-      'Land on the repository',
-      'Read the pitch',
-      'Open the live demo',
-      'Walk the model figures',
-      'Meet the four skills',
-      'Skim the guides',
-      'Weigh the fit',
-      'Decide to adopt',
+      'Land on the repo',
+      'Read what it claims',
+      'Open the sample board',
+      'Run it with nothing configured',
+      'Decide it fits',
     ],
-    // Lane order is load-bearing, and this scenario is the one that draws all
-    // THREE canonical divider lines. Two rules do the work
-    // (references/layer-roles.md, "Line-anchoring semantics"):
-    //   * the frontstage TECH lane sits ABOVE the frontstage ACTIONS lane, so
-    //     LINE OF VISIBILITY is drawn once, after the actions lane. Actions
-    //     above tech draws the line twice — both lanes anchor it.
-    //   * backstage actions sit directly above the support lane, which is the
-    //     only arrangement that draws LINE OF INTERNAL INTERACTION at all.
-    lanes: [
-      { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
-      { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
-      { row: 2, key: 'demo', name: 'Live demo', role: 'frontstage_tech' },
-      { row: 3, key: 'frontdoor', name: 'Repo front door', role: 'frontstage_actions' },
-      { row: 4, key: 'maintainers', name: 'Maintainers', role: 'backstage_actions' },
-      { row: 5, key: 'docs', name: 'README & guides', role: 'support_systems' },
-    ],
+    lanes: LANES,
     cells: [
-      { lane: 'visual', col: 1, content: '' },
-      { lane: 'visual', col: 3, content: '' },
-      { lane: 'visual', col: 5, content: '' },
-      { lane: 'visual', col: 8, content: '' },
+      { lane: 'stakeholders', col: 1, content: 'A colleague sends the link, usually with a service problem attached to it' },
+      { lane: 'stakeholders', col: 5, content: 'Hears what it would take: a repo, a plugin, and one service worth mapping' },
 
-      { lane: 'adopter', col: 1, content: 'Lands on the GitHub repository, usually from a link or a search' },
-      { lane: 'adopter', col: 2, content: 'Reads the README pitch: the blueprint stops being a poster and becomes a database' },
-      { lane: 'adopter', col: 3, content: 'Clicks through the example deployment and flips between path variants' },
-      { lane: 'adopter', col: 4, content: 'Follows the hierarchy figure from lifecycle to phase to scenario to path' },
-      { lane: 'adopter', col: 5, content: 'Reads what each of the four skills is for and where it ends' },
-      { lane: 'adopter', col: 6, content: 'Opens the guide that matches their role' },
-      { lane: 'adopter', col: 7, content: 'Checks the stack, the license, and what a deployment would expose' },
-      { lane: 'adopter', col: 8, content: 'Decides to clone the template and try it on a real service' },
+      { lane: 'owner', col: 1, content: 'Lands on the repository, usually from a link or a search' },
+      { lane: 'owner', col: 2, content: 'Reads the pitch: a blueprint stops being a poster and becomes a database' },
+      { lane: 'owner', col: 3, content: 'Opens the bundled sample board and flips between its paths' },
+      { lane: 'owner', col: 4, content: 'Runs npm install and npm run dev with no environment file at all' },
+      { lane: 'owner', col: 5, content: 'Checks the stack, the license, and what a public deployment would expose, then decides to map a real service' },
 
       {
-        lane: 'frontdoor', col: 2,
-        content: 'Positions the queryable blueprint against the static artifact it replaces',
-        // The cell spec (FUNCTION / FORM / VALUE) shown in the panel's overview.
-        fn: 'Answer “what is this and why would I use it?” before the reader scrolls, so nobody has to clone the kit to find out what it does.',
-        form: 'Prose on the repository landing page, opening with the poster-to-database contrast and a link to a live example.',
-        valueProps: [
-          { for: 'A first-time visitor', value: 'A decision in one screen instead of an afternoon.' },
-          { for: 'The maintainers', value: 'Fewer issues asking what the project is for.' },
-        ],
-        links: [repoLink('README — why a queryable blueprint', 'README.md')],
-      },
-      { lane: 'frontdoor', col: 3, content: 'Links the live example, with the note that nothing in the repo depends on it' },
-      { lane: 'frontdoor', col: 4, content: 'Names the four levels in order — lifecycle, phase, scenario, path — and what each one is for' },
-      { lane: 'frontdoor', col: 5, content: 'Summarizes each skill in one table row: what it is for, where it ends' },
-      { lane: 'frontdoor', col: 6, content: 'Points each role at one guide instead of asking anyone to read all four' },
-      { lane: 'frontdoor', col: 7, content: 'States the exposure note: deployed tables are publicly readable' },
-      { lane: 'frontdoor', col: 8, content: 'Says the sample content is meant to be replaced, and which script replaces it' },
-
-      {
-        lane: 'demo', col: 3,
-        content: 'Example deployment\nPhase overview canvas',
-        // The owner pair, deliberately DIFFERENT — the case the docs call the
-        // interesting one, and true here: a visitor reads the linked deployment
-        // as the product, when it is one team's example of the stock renderer.
-        owner: 'Kit maintainers',
-        perceivedOwner: 'A hosted product',
+        lane: 'surface', col: 3,
+        content: 'Cover page\nOverview canvas',
         description:
-          'The gap between the two owners is the point: nothing in this repository depends on that deployment, and an adopter deploys their own.',
-        links: [
-          {
-            type: 'tech_description',
-            label: 'Example deployment',
-            description:
-              'README links a deployment of the stock renderer, flagged as an example and not a dependency — nothing in this repo needs it.',
-          },
-        ],
+          'The cover is the landing view; its call to action drops the reader on the whole-lifecycle overview, so the phase names are the first words of the board they read.',
       },
-      { lane: 'demo', col: 4, content: 'Cell detail panel\nTrigger arrows\nDependency tab' },
-      { lane: 'demo', col: 8, content: 'Clone template\nFork' },
+      {
+        lane: 'surface', col: 4,
+        content: 'Vite dev server\nNo-DB mode',
+        // The owner pair, deliberately DIFFERENT — the case the docs call the
+        // interesting one, and true here: with no VITE_SUPABASE_* set, nothing
+        // is on the wire and the board is drawn from a module in the bundle.
+        owner: 'The bundled sample module',
+        perceivedOwner: 'A database somewhere',
+        description:
+          'With no VITE_SUPABASE_* variables the app never opens a connection: what renders is src/data/sampleBlueprint.ts, shipped inside the bundle.',
+        links: [repoLink('src/data/blueprintFallbacks.ts', 'src/data/blueprintFallbacks.ts')],
+      },
 
       {
-        lane: 'docs', col: 2,
+        lane: 'claude', col: 5,
+        content: 'Installs the repo as a Claude Code plugin: four skills, five agents, and the hooks load into the session',
+        links: [repoLink('.claude-plugin/plugin.json', '.claude-plugin/plugin.json')],
+      },
+
+      {
+        lane: 'scripts', col: 4,
+        content: 'generate_sample_blueprint.mjs',
+        description:
+          'The board a first look renders and the database seed come from one run of this script, so the two can never disagree.',
+        links: [repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs')],
+      },
+      {
+        lane: 'scripts', col: 5,
+        content: 'run_tests.sh\nagent-harness --smoke',
+        description:
+          'Both go green on a keyless clone — a reviewer can check the kit’s claims before configuring anything.',
+        links: [repoLink('scripts/tests/run_tests.sh', 'scripts/tests/run_tests.sh')],
+      },
+
+      // The Subagent fleet lane is silent on this board: nothing dispatches an
+      // agent while somebody is still deciding.
+
+      {
+        lane: 'refs', col: 2,
         content: 'README.md',
         links: [repoLink('README.md', 'README.md')],
       },
       {
-        lane: 'docs', col: 4,
-        content: 'guide/01 — the blueprint model\ndocs/assets figures',
+        lane: 'refs', col: 3,
+        content: 'guide/01 — the blueprint model',
         links: [repoLink('guide/01 — The blueprint model', 'docs/guide/01-the-blueprint-model.md')],
       },
       {
-        lane: 'docs', col: 6,
-        content: 'guide/02 — using it in practice\nguide/04 — operations',
-        links: [
-          repoLink('guide/02 — Using it in practice', 'docs/guide/02-using-it-in-practice.md'),
-          repoLink('guide/04 — Operations', 'docs/guide/04-operations.md'),
-        ],
-      },
-      {
-        lane: 'docs', col: 5,
-        content: 'skills/map\nskills/audit\nskills/whatif\nskills/slice',
-        description:
-          'Four skills, each with its own SKILL.md and references: map builds and imports a blueprint, audit checks it, whatif traces a change through it, slice presents part of it.',
-        links: [
-          repoLink('skills/map/SKILL.md', 'skills/map/SKILL.md'),
-          repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md'),
-          repoLink('skills/whatif/SKILL.md', 'skills/whatif/SKILL.md'),
-          repoLink('skills/slice/SKILL.md', 'skills/slice/SKILL.md'),
-        ],
-      },
-      {
-        lane: 'docs', col: 7,
-        content: 'LICENSE\nsupabase/DATABASE.md',
-        links: [repoLink('supabase/DATABASE.md', 'supabase/DATABASE.md')],
-      },
-      {
-        lane: 'docs', col: 8,
+        lane: 'refs', col: 5,
         content: 'AGENTS.md\nguide/03 — the plugin',
         description:
-          'What an adopter reads next: the repository conventions an agent follows, and how the kit ships as an installable plugin.',
+          'What a reader opens next: the conventions an agent follows in this repo, and how the kit ships as an installable plugin.',
         links: [
           repoLink('AGENTS.md', 'AGENTS.md'),
           repoLink('guide/03 — The plugin', 'docs/guide/03-the-plugin.md'),
         ],
       },
-
-      { lane: 'maintainers', col: 3, content: 'Keep the example deployment on the current renderer so the demo matches the code' },
-      {
-        lane: 'maintainers', col: 5,
-        content: 'Ship the four skills, their references, and the subagents they dispatch, in this same repository',
-        links: [repoLink('agents/ — the subagents the skills dispatch', 'agents/auditor.md')],
-      },
-      {
-        lane: 'maintainers', col: 7,
-        content: 'Record what shipped in CHANGELOG.md, release by release',
-        links: [repoLink('CHANGELOG.md', 'CHANGELOG.md')],
-      },
-      {
-        lane: 'maintainers', col: 8,
-        content: 'Keep the sample content honest: every cell in it is a true statement about the kit',
-        links: [
-          repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs'),
-        ],
-      },
     ],
     triggers: [
-      { from: ['frontdoor', 2], to: ['demo', 3], label: 'See it live' },
-      { from: ['adopter', 6], to: ['docs', 6] },
-      // Cross-lane UPWARD: the support lane answers back into the front door.
-      { from: ['docs', 5], to: ['frontdoor', 5], label: 'one row each' },
+      { from: ['stakeholders', 1], to: ['owner', 1], label: 'have a look at this' },
+      // Cross-lane UPWARD: the support lane answers back into the spine.
+      { from: ['refs', 2], to: ['owner', 2], label: 'the pitch' },
+      { from: ['surface', 3], to: ['owner', 3] },
+      { from: ['owner', 5], to: ['stakeholders', 5], label: 'what it would take' },
       {
-        from: ['adopter', 8], to: ['frontdoor', 7], kind: 'needs',
-        note: 'The decision to adopt depends on knowing what a public deployment exposes.',
+        from: ['owner', 4], to: ['scripts', 4], kind: 'needs',
+        note: 'A zero-config run has content only because the sample module is generated into the bundle.',
       },
       {
-        from: ['adopter', 4], to: ['docs', 4], kind: 'needs',
-        note: 'The hierarchy only reads as a hierarchy with the model figures next to it.',
+        from: ['owner', 5], to: ['scripts', 5], kind: 'needs',
+        note: 'Weighing the cost means running the suites, not reading the claim that they pass.',
       },
     ],
   },
 
   // -------------------------------------------------------------------
-  // 2 · Clone & first run — the divergent scenario (no-DB vs Supabase)
+  // 2 · Map your service — sb:map, two starting points, two paths
+  //     (name kept verbatim: the harness, findingFingerprint.test.ts, the
+  //     audit playbook and skills/audit/SKILL.md all pin this string)
   // -------------------------------------------------------------------
   {
     ordinal: 2,
-    key: 'FIRST_RUN',
-    phaseKey: 'ADOPT',
-    name: 'Clone & first run',
+    key: 'MAP_SERVICE',
+    phaseKey: 'SETUP',
+    name: 'Map your service',
     description:
-      'Two ways to a running app: the zero-config no-database run, and the same journey backed by a local Supabase stack.',
+      'The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.',
     order: 1,
     viewType: 'side-by-side',
     navViewType: 'stacked',
-    spineLane: 'adopter',
+    spineLane: 'owner',
+    primary: true,
     paths: [
       {
         ordinal: 1,
-        key: 'NODB',
-        name: 'No-database run',
+        key: 'DOCS',
+        name: 'From your documents',
         path_type: 'happy',
         description:
-          'Zero config: clone, install, run — the bundled sample content renders with no environment at all.',
+          'The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.',
+        // No crosswalk to translate — that column belongs to the other path.
+        skipSteps: [5],
       },
       {
         ordinal: 2,
-        key: 'SUPABASE',
-        name: 'Supabase run',
+        key: 'DIAGRAM',
+        name: 'From someone else’s diagram',
         path_type: 'alternative',
         description:
-          'The same first run backed by a local Supabase stack: migrations, seed, and live reads through the anon key.',
-      },
-    ],
-    steps: [
-      'Clone the repository',
-      'Install dependencies',
-      'Configure the environment',
-      'Prepare the database',
-      'Start the dev server',
-      'Open the app',
-      'Walk the sample content',
-      'Compare the sample paths',
-      'Open a demo slice',
-      'Run the test suite',
-      'Smoke the agent harness',
-      'Deploy a preview',
-    ],
-    lanes: [
-      { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
-      { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
-      { row: 2, key: 'appui', name: 'App UI', role: 'frontstage_tech' },
-      { row: 3, key: 'appfeedback', name: 'App feedback', role: 'frontstage_actions' },
-      { row: 4, key: 'datalayer', name: 'Data layer', role: 'backstage_actions' },
-      { row: 5, key: 'terminal', name: 'Terminal & scripts', role: 'backstage_tech' },
-      // CJK display name — deliberate: lane labels are free-form in any
-      // language, and this is the template's non-ASCII rendering smoke test.
-      { row: 6, key: 'fixtures', name: '样例数据 · Sample data', role: 'support_systems' },
-    ],
-    cells: [
-      { lane: 'visual', col: 1, content: '' },
-      { lane: 'visual', col: 6, content: '' },
-      { lane: 'visual', col: 8, content: '' },
-      { lane: 'visual', col: 12, content: '' },
-
-      { lane: 'adopter', col: 1, content: 'Clones BilLogic/agentic-service-blueprinting from GitHub' },
-      { lane: 'adopter', col: 2, content: 'Runs npm install' },
-      {
-        lane: 'adopter', col: 3,
-        content: {
-          NODB: 'Skips .env entirely — the first run needs no environment',
-          SUPABASE: 'Copies .env.example to .env and keeps it git-ignored',
-        },
-      },
-      {
-        lane: 'adopter', col: 4,
-        content: { SUPABASE: 'Runs npm run supabase:start, then npm run supabase:reset' },
-      },
-      { lane: 'adopter', col: 5, content: 'Runs npm run dev' },
-      { lane: 'adopter', col: 6, content: 'Opens localhost:5173 in the browser' },
-      {
-        lane: 'adopter', col: 7,
-        content: {
-          NODB: 'Walks the adoption lifecycle rendered from the bundled fixture',
-          SUPABASE: 'Walks the same adoption lifecycle, now served from Postgres',
-        },
-      },
-      { lane: 'adopter', col: 8, content: 'Flips Clone & first run between its two paths, stacked and merged' },
-      { lane: 'adopter', col: 9, content: 'Opens “The adopter’s first hour” and steps through its frames' },
-      { lane: 'adopter', col: 10, content: 'Runs npm test' },
-      { lane: 'adopter', col: 11, content: 'Runs node scripts/agent-harness/run.mjs --smoke' },
-      {
-        lane: 'adopter', col: 12,
-        content: {
-          NODB: 'Deploys dist/ to any static host — the fallback ships in the bundle',
-          SUPABASE: 'Sets VITE_SUPABASE_* at build time, then deploys dist/',
-        },
-      },
-
-      {
-        lane: 'appfeedback', col: 6,
-        content: {
-          NODB: 'Renders the sample content in no-DB mode, with nothing on the wire',
-          SUPABASE: 'Renders the same content from live reads through the anon key',
-        },
-      },
-      { lane: 'appfeedback', col: 7, content: 'Draws the overview canvas: four phases with the Operate → Map loop arrow' },
-      { lane: 'appfeedback', col: 8, content: 'Marks shared columns quiet and divergent columns with the striped wash' },
-      { lane: 'appfeedback', col: 9, content: 'Presents the slice as frames, each located on the blueprint' },
-      { lane: 'appfeedback', col: 10, content: 'Reports the suite green — the same one CI runs, no database required' },
-      { lane: 'appfeedback', col: 11, content: 'Reports the smoke case green, with the trace it judged' },
-
-      { lane: 'appui', col: 6, content: 'Landing page\nOverview canvas' },
-      // Slot siblings: one cell per touchpoint in the same (lane, step) slot.
-      {
-        lane: 'appui', col: 8, slot: 0,
-        content: 'Stacked compare',
-        links: [
-          {
-            type: 'tech_description',
-            label: 'Stacked compare',
-            description:
-              'Each path renders as its own band; the column highlight marks where the bands disagree.',
-          },
-        ],
-      },
-      {
-        lane: 'appui', col: 8, slot: 1,
-        content: 'Merged compare + ledger',
-        fn: 'Answer “where do these two paths actually differ?” in one grid, instead of asking the reader to diff two bands by eye.',
-        form: 'A single combined grid: shared cells drawn once over a striped wash and labelled with the paths that share them, differences listed beneath in the ledger.',
-        valueProps: [
-          { for: 'Anyone comparing paths', value: 'The differences are enumerated, not hunted for.' },
-        ],
-        links: [
-          {
-            type: 'tech_description',
-            label: 'Merged compare + ledger',
-            description:
-              'One combined grid per slot: shared cells draw once with member labels over a striped wash; the ledger lists every difference.',
-          },
-        ],
-      },
-      {
-        lane: 'appui', col: 8, slot: 2,
-        content: 'Path picker',
-        links: [
-          {
-            type: 'tech_description',
-            label: 'Path picker',
-            description:
-              'Flips the scenario between one path at a time and the stacked view. Three cells share this one slot — the slot-sibling mechanic tech lanes use for several touchpoints at the same moment.',
-          },
-        ],
-      },
-      { lane: 'appui', col: 7, content: 'Phase overview canvas\nScenario detail canvas\nCell detail panel' },
-      { lane: 'appui', col: 9, content: 'Slice focus view\nPresentation mode' },
-      { lane: 'appui', col: 12, content: 'Static build (dist/)' },
-
-      {
-        lane: 'datalayer', col: 3,
-        content: {
-          NODB: 'Detects missing VITE_SUPABASE_* and switches to the bundled fallback registry',
-          SUPABASE: 'Reads VITE_SUPABASE_URL and the anon key from the environment',
-        },
-      },
-      {
-        lane: 'datalayer', col: 4,
-        content: { SUPABASE: 'Applies every migration in supabase/migrations, then runs supabase/seed.sql' },
-        links: [repoLink('supabase/seed.sql', 'supabase/seed.sql')],
-      },
-      {
-        lane: 'datalayer', col: 6,
-        content: {
-          NODB: 'Resolves blueprints synchronously from src/data/blueprintFallbacks.ts',
-          SUPABASE: 'Fetches phases, paths, and cells over PostgREST',
-        },
-        links: [repoLink('src/data/blueprintFallbacks.ts', 'src/data/blueprintFallbacks.ts')],
-      },
-      {
-        lane: 'datalayer', col: 9,
-        content: {
-          NODB: 'Serves the demo slices from src/data/sliceFallbacks.ts',
-          SUPABASE: 'Reads slices and slice_items rows seeded by the same generator',
-        },
-        links: [repoLink('src/data/sliceFallbacks.ts', 'src/data/sliceFallbacks.ts')],
-      },
-      {
-        lane: 'datalayer', col: 7,
-        content: {
-          NODB: 'Answers cell-panel reads from the same bundled cell — owner pair and spec included',
-          SUPABASE: 'Fetches the owner pair and the spec columns per cell, on panel open',
-        },
-        description:
-          'The grid query carries only what the grid draws. Owner, perceived owner, function, form and value props are read one cell at a time, when a panel opens.',
-      },
-      {
-        lane: 'datalayer', col: 12,
-        content: {
-          NODB: 'Nothing to configure at build time — the fallback module is part of the bundle',
-          SUPABASE: 'The build bakes in the URL and anon key; the deployed tables are publicly readable',
-        },
-        description:
-          'The exposure note the README states: a deployed build is read-only (write policies are `to authenticated` and there is no sign-in), but everything it can read, a visitor can read.',
-      },
-
-      { lane: 'terminal', col: 1, content: 'git clone' },
-      { lane: 'terminal', col: 2, content: 'npm install' },
-      { lane: 'terminal', col: 3, content: { SUPABASE: 'cp .env.example .env' } },
-      { lane: 'terminal', col: 4, content: { SUPABASE: 'Supabase CLI\nDocker' } },
-      { lane: 'terminal', col: 5, content: 'Vite dev server' },
-      { lane: 'terminal', col: 10, content: 'Vitest — the same suite CI runs' },
-      {
-        lane: 'terminal', col: 11,
-        content: 'Agent harness (--smoke)',
-        links: [repoLink('scripts/agent-harness/run.mjs', 'scripts/agent-harness/run.mjs')],
-      },
-      {
-        lane: 'terminal', col: 12,
-        content: 'npm run build\nNetlify (or any static host)',
-        links: [repoLink('netlify.toml', 'netlify.toml')],
-      },
-
-      {
-        lane: 'fixtures', col: 6,
-        content: 'src/data/sampleBlueprint.ts\nsupabase/seed.sql',
-        description:
-          'One generator emits both artifacts, so the no-DB fallback and the database seed can never drift apart.',
-        // The second differing owner pair, and the one a new adopter most needs
-        // to read: what fills the board on a fresh clone is the kit's own
-        // sample, not their service — and it is meant to be replaced.
-        owner: 'Kit maintainers',
-        perceivedOwner: 'Your own service',
-        fn: 'Give a keyless clone something true to render, and give every adopter a worked example to replace.',
-        form: 'A generated TypeScript module and a matching SQL seed, id-identical, both written by one script.',
-        valueProps: [
-          { for: 'A new adopter', value: 'The app is never empty, and never lies about what it is showing.' },
-          { for: 'The kit', value: 'The sample is documentation that cannot rot silently — it is regenerated, not hand-written.' },
-        ],
-        links: [repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs')],
-      },
-      {
-        lane: 'fixtures', col: 8,
-        content: 'One cell spec → two paths',
-        description:
-          'A cell whose content is written per path key appears only on the paths that name it; a plain string appears on both. That single rule is what produces shared columns, divergent columns and path-only cells for the compare views to sort.',
-      },
-      { lane: 'fixtures', col: 9, content: 'Demo slices (journey + step + lane)' },
-      { lane: 'fixtures', col: 10, content: 'Fixture-pinned Vitest cases' },
-      {
-        lane: 'fixtures', col: 11,
-        content: 'app-surface.entry.ts',
-        description:
-          'The harness bundles this entry so it offers the agent the exact tool specs the app offers, over the exact sample content the app renders. No copies, so no drift.',
-        links: [repoLink('scripts/agent-harness/app-surface.entry.ts', 'scripts/agent-harness/app-surface.entry.ts')],
-      },
-    ],
-    triggers: [
-      { from: ['adopter', 4], to: ['terminal', 4], paths: ['SUPABASE'] },
-      { from: ['terminal', 5], to: ['appfeedback', 6], label: 'localhost:5173' },
-      { from: ['adopter', 10], to: ['terminal', 10] },
-      {
-        from: ['datalayer', 6], to: ['fixtures', 6], kind: 'needs', paths: ['NODB'],
-        note: 'The no-DB read resolves the generated fixture module; without it a keyless clone renders nothing.',
-      },
-      {
-        from: ['datalayer', 6], to: ['datalayer', 4], kind: 'needs', paths: ['SUPABASE'],
-        note: 'Live reads depend on the migrations and seed having been applied.',
-      },
-      // Cross-lane UPWARD: the fixture lane answers back into the panel read.
-      { from: ['fixtures', 6], to: ['datalayer', 7], paths: ['NODB'], label: 'same cell' },
-      {
-        from: ['adopter', 12], to: ['datalayer', 12], kind: 'needs',
-        note: 'What a deploy exposes is decided before the deploy, not after it.',
-      },
-    ],
-  },
-
-  // -------------------------------------------------------------------
-  // 3 · Map your service — the sb:map journey
-  // -------------------------------------------------------------------
-  {
-    ordinal: 3,
-    key: 'MAP_SERVICE',
-    phaseKey: 'MAP',
-    name: 'Map your service',
-    description:
-      'The sb:map pipeline: elicitation → draft → validation → adversarial review → per-scenario sign-off → import → deploy.',
-    order: 1,
-    viewType: 'single',
-    navViewType: 'single',
-    spineLane: 'adopter',
-    paths: [
-      {
-        ordinal: 1,
-        key: 'GUIDED',
-        name: 'Guided mapping',
-        path_type: 'happy',
-        description:
-          'A full pass from “map our service” to a deployed blueprint, every phase ending at a deterministic gate.',
+          'The translate route: a FigJam, Miro or spreadsheet export mapped onto layer roles through a crosswalk, with the diagram’s gaps left visible.',
+        // No document corpus to read — that column belongs to the other path.
+        skipSteps: [4],
       },
     ],
     steps: [
       'Invoke sb:map',
       'Route by what exists',
-      'Scope the service',
-      'Settle the spine',
+      'Scope and settle the spine',
       'Read the sources',
+      'Translate the crosswalk',
       'Draft the structure',
-      'Fill cells with provenance',
-      'Validate the blueprint file',
-      'Preview the render',
-      'Adversarial review',
-      'Resolve the findings',
-      'Sign off per scenario',
-      'Generate the fallbacks',
-      'Generate the seed',
+      'Validate and review',
+      '签署确认 · Sign off per scenario',
       'Import and verify',
       'Deploy',
     ],
-    lanes: [
-      { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
-      { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
-      { row: 2, key: 'preview', name: 'App preview', role: 'frontstage_tech' },
-      { row: 3, key: 'claude', name: 'Claude in the IDE', role: 'frontstage_actions' },
-      { row: 4, key: 'agents', name: 'Subagent fleet', role: 'backstage_actions' },
-      { row: 5, key: 'scripts', name: 'Pipeline scripts', role: 'backstage_tech' },
-      { row: 6, key: 'references', name: 'References', role: 'support_systems' },
-      { row: 7, key: 'hooks', name: 'Guardrail hooks', role: 'support_systems' },
-    ],
+    lanes: MAP_LANES,
     cells: [
-      { lane: 'visual', col: 1, content: '' },
-      { lane: 'visual', col: 6, content: '' },
-      { lane: 'visual', col: 9, content: '' },
-      { lane: 'visual', col: 12, content: '' },
-      { lane: 'visual', col: 16, content: '' },
+      { lane: 'figures', col: 1, content: 'How sb:map works', picture: figure('sb-map.svg') },
+      { lane: 'figures', col: 3, content: 'Ways into the blueprint', picture: figure('four-ways-in.svg') },
+      { lane: 'figures', col: 6, content: 'Inside a single path', picture: figure('blueprint-anatomy.svg') },
+      { lane: 'figures', col: 10, content: 'What a slice takes out of the board', picture: figure('slicing-model.svg') },
 
-      { lane: 'adopter', col: 1, content: 'Asks for a service to be mapped — from documents, a diagram, or nothing at all' },
-      { lane: 'adopter', col: 3, content: 'Answers the scoping question: one flow now, or the whole service' },
-      { lane: 'adopter', col: 4, content: 'Names whose journey runs along the spine' },
-      { lane: 'adopter', col: 6, content: 'Nods on the proposed step and lane outline before anything is built' },
-      { lane: 'adopter', col: 7, content: 'Answers per-lane questions as the cells fill in' },
-      { lane: 'adopter', col: 9, content: 'Reads the rendered draft in the browser' },
-      { lane: 'adopter', col: 11, content: 'Decides which review findings to accept' },
-      { lane: 'adopter', col: 12, content: 'Signs off each scenario against its content hash' },
-      { lane: 'adopter', col: 16, content: 'Shares the deployed URL with the team' },
+      // The Stakeholders lane is deliberately quiet on this board and the two
+      // that follow it: mapping is not a spectator sport. Silence is not a gap
+      // — skills/audit/references/check-gap-sweep.md says so in as many words.
 
-      { lane: 'claude', col: 1, content: 'Loads the sb:map skill and its elicitation protocol' },
-      { lane: 'claude', col: 2, content: 'Routes by what exists: co-create, ingest, translate, or resume' },
-      { lane: 'claude', col: 3, content: 'Right-sizes the scope before structuring anything' },
-      { lane: 'claude', col: 4, content: 'Settles the spine before drawing lanes' },
-      { lane: 'claude', col: 5, content: 'Dispatches document-readers instead of reading sources in its own context' },
-      { lane: 'claude', col: 6, content: 'Proposes the outline as plain text and waits for a nod' },
-      { lane: 'claude', col: 7, content: 'Writes cells with per-claim provenance, never inventing content' },
-      { lane: 'claude', col: 8, content: 'Runs the validator until it exits 0' },
-      { lane: 'claude', col: 10, content: 'Dispatches a fresh-context reviewer that never saw the drafting' },
-      { lane: 'claude', col: 11, content: 'Fixes accepted findings in the blueprint file' },
-      { lane: 'claude', col: 12, content: 'Computes the sign-off hash and records the approval' },
-      { lane: 'claude', col: 13, content: 'Generates the no-database fallback module and registers it' },
-      { lane: 'claude', col: 14, content: 'Generates the transactional seed' },
-      { lane: 'claude', col: 15, content: 'Imports through the service account and verifies by reading back' },
-      { lane: 'claude', col: 16, content: 'Deploys, then dispatches the render-checker over the live app' },
-
-      { lane: 'preview', col: 9, slot: 0, content: 'Vite dev server' },
+      { lane: 'owner', col: 1, content: 'Asks for a service to be mapped' },
       {
-        lane: 'preview', col: 9, slot: 1,
-        content: 'Overview canvas',
+        lane: 'owner', col: 2,
+        content: {
+          DOCS: 'Points at the folder of service documents to read',
+          DIAGRAM: 'Exports the existing diagram and hands over the file',
+        },
+      },
+      { lane: 'owner', col: 3, content: 'Answers the scoping question and names whose journey runs along the spine' },
+      { lane: 'owner', col: 4, content: { DOCS: 'Says which documents are in scope, and which are sensitive and excluded' } },
+      { lane: 'owner', col: 5, content: { DIAGRAM: 'Confirms the crosswalk: which column of the old diagram means which lane role' } },
+      { lane: 'owner', col: 6, content: 'Nods on the proposed step and lane outline before any cell is written' },
+      { lane: 'owner', col: 7, content: 'Decides which review findings to accept' },
+      { lane: 'owner', col: 8, content: '逐一签署 · Signs off each scenario against its content hash' },
+      { lane: 'owner', col: 10, content: 'Shares the deployed URL with the team' },
+
+      // Slot siblings on a tech lane: one cell per touchpoint at the same
+      // moment. They are app-side and seed-side only — slot > 0 carries no
+      // cell_key, and the IR an adopter authors has no slot concept.
+      { lane: 'surface', col: 7, slot: 0, content: 'sb:map preview' },
+      {
+        lane: 'surface', col: 7, slot: 1,
+        content: 'Cell detail panel',
         links: [
           {
             type: 'tech_description',
-            label: 'Overview canvas',
+            label: 'Cell detail panel',
             description:
-              'The birds-eye view: phases in order, the loop arrow where a phase feeds back, scenarios beneath their phase.',
+              'What one cell holds: summary, owner pair, function / form / value, links, and the dependency tab.',
           },
         ],
       },
-      { lane: 'preview', col: 9, slot: 2, content: 'Cell detail panel' },
-      { lane: 'preview', col: 15, content: 'Imported scenario, read back live' },
-      { lane: 'preview', col: 16, content: 'Deployed static build' },
+      { lane: 'surface', col: 7, slot: 2, content: 'Compare view' },
+      { lane: 'surface', col: 9, content: 'Imported scenario, read back live' },
 
+      { lane: 'claude', col: 1, content: 'Loads the sb:map skill and its elicitation protocol' },
       {
-        lane: 'agents', col: 5,
-        content: 'document-reader returns structure, keeping raw source text out of the main context',
-        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
-      },
-      {
-        lane: 'agents', col: 10,
-        content: 'blueprint-reviewer returns numbered findings with severities',
-        links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
-      },
-      {
-        lane: 'agents', col: 16,
-        content: 'render-checker walks every scenario and screenshots each view',
-        links: [repoLink('agents/render-checker.md', 'agents/render-checker.md')],
-      },
-
-      {
-        lane: 'scripts', col: 6,
-        content: 'blueprint/blueprint.json\nblueprint-workspace.json',
+        lane: 'claude', col: 2,
+        content: {
+          DOCS: 'Routes to ingest — prose and service docs exist, so it scaffolds the workspace, then ingests',
+          DIAGRAM: 'Routes to translate — a foreign structured blueprint exists, so it scaffolds, then builds a crosswalk',
+        },
         description:
-          'Where the blueprint lives before it is a database: the IR file the skills read and write, and the workspace-state file that tracks which scenarios are pending, drafted, signed off, or imported.',
+          'Entry-state detection is the first thing the skill does: nothing → co-create, docs → ingest, a foreign diagram → translate, an existing workspace → resume.',
+        links: [repoLink('skills/map/SKILL.md', 'skills/map/SKILL.md')],
+      },
+      { lane: 'claude', col: 3, content: 'Right-sizes the scope and settles the spine before drawing a single lane' },
+      { lane: 'claude', col: 4, content: { DOCS: 'Dispatches document-readers instead of reading the corpus in its own context' } },
+      { lane: 'claude', col: 5, content: { DIAGRAM: 'Maps the foreign vocabulary onto layer roles through crosswalk-schema.json' } },
+      {
+        lane: 'claude', col: 6,
+        content: {
+          DOCS: 'Writes cells with per-claim provenance, and refuses to invent a journey the documents do not describe',
+          DIAGRAM: 'Writes only what the source diagram states, and leaves its gaps visible rather than filling them',
+        },
+      },
+      { lane: 'claude', col: 7, content: 'Runs validate_ir.py until it exits 0, then dispatches a reviewer that never saw the drafting' },
+      { lane: 'claude', col: 8, content: 'Computes the sign-off hash and records the approval in the workspace file' },
+      { lane: 'claude', col: 9, content: 'Imports through the service account and verifies by reading the rows back' },
+      { lane: 'claude', col: 10, content: 'Deploys, then dispatches the render-checker over the live app' },
+
+      {
+        lane: 'scripts', col: 2,
+        content: 'blueprint-workspace.json',
+        description:
+          'The workspace-state file: which scenarios are pending, drafted, signed off, or imported, and the hash each sign-off was bound to.',
+        links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
+      },
+      {
+        lane: 'scripts', col: 4,
+        content: { DOCS: 'ingest-playbook.md' },
+        links: [repoLink('ingest-playbook.md', 'skills/map/references/ingest-playbook.md')],
+      },
+      {
+        lane: 'scripts', col: 5,
+        content: { DIAGRAM: 'crosswalk-schema.json\ntranslate-playbook.md' },
         links: [
-          repoLink('workspace-state.md', 'skills/map/references/workspace-state.md'),
-          repoLink('references/ir-schema.json', 'references/ir-schema.json'),
+          repoLink('crosswalk-schema.json', 'skills/map/references/crosswalk-schema.json'),
+          repoLink('translate-playbook.md', 'skills/map/references/translate-playbook.md'),
         ],
       },
       {
-        lane: 'scripts', col: 8,
+        lane: 'scripts', col: 6,
+        content: 'blueprint/blueprint.json',
+        description:
+          'Where the blueprint lives before it is a database: one intermediate-representation file the skills read and write.',
+        links: [repoLink('references/ir-schema.json', 'references/ir-schema.json')],
+      },
+      {
+        lane: 'scripts', col: 7,
         content: 'validate_ir.py (stdlib-only)',
         description:
-          'No dependencies to install: the validator runs on a stock Python 3. It exits non-zero on any error, and the drafting phase does not end until it exits 0.',
+          'No dependencies to install: the validator runs on a stock Python 3, and the drafting phase does not end until it exits 0.',
         links: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
       },
       {
-        lane: 'scripts', col: 12,
+        lane: 'scripts', col: 8,
         content: 'compute_signoff_hash.py',
         fn: 'Bind an approval to exactly the content that was approved, so a later edit cannot inherit yesterday’s sign-off.',
         form: 'A hash computed over one scenario’s content and recorded with the approval in the workspace file.',
@@ -737,95 +501,426 @@ const SCENARIOS = [
           { for: 'The person approving', value: 'What they signed is recoverable, not remembered.' },
           { for: 'The next session', value: 'A changed scenario shows as unsigned instead of quietly passing.' },
         ],
+        owner: 'The blueprint owner who signs',
+        perceivedOwner: 'The skill that computes the hash',
         links: [repoLink('scripts/compute_signoff_hash.py', 'scripts/compute_signoff_hash.py')],
       },
       {
-        lane: 'scripts', col: 13,
-        content: 'generate_fallbacks.py --register',
+        lane: 'scripts', col: 9,
+        content: 'generate_fallbacks.py --register\ngenerate_seed_sql.py',
         description:
-          'The script always writes the generated fallback module. --register additionally rewrites the two marker-delimited blocks in place — the registry in src/data/blueprintFallbacks.ts and the nav in src/types/nav.ts — so the app imports the new module. Without it the script prints those blocks for you to paste.',
-        links: [repoLink('scripts/generate_fallbacks.py', 'scripts/generate_fallbacks.py')],
+          'One blueprint file becomes both targets: a no-database data module registered into the app, and a transactional seed for Postgres.',
+        links: [
+          repoLink('scripts/generate_fallbacks.py', 'scripts/generate_fallbacks.py'),
+          repoLink('scripts/generate_seed_sql.py', 'scripts/generate_seed_sql.py'),
+        ],
       },
-      {
-        lane: 'scripts', col: 14,
-        content: 'generate_seed_sql.py',
-        links: [repoLink('scripts/generate_seed_sql.py', 'scripts/generate_seed_sql.py')],
-      },
-      { lane: 'scripts', col: 15, content: 'Supabase CLI\nPostgREST read-back' },
 
       {
-        lane: 'references', col: 1,
-        content: 'elicitation-protocol.md',
-        links: [repoLink('skills/map/references/elicitation-protocol.md', 'skills/map/references/elicitation-protocol.md')],
+        lane: 'agents', col: 4,
+        content: { DOCS: 'document-reader returns structure, keeping raw source text out of the main context' },
+        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
       },
       {
-        lane: 'references', col: 4,
-        content: 'lane-vocabulary.md\nlayer-roles.md',
+        lane: 'agents', col: 5,
+        content: { DIAGRAM: 'document-reader in foreign-blueprint mode returns lanes, columns and variants' },
+        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
+      },
+      {
+        lane: 'agents', col: 7,
+        content: 'blueprint-reviewer returns numbered findings with severities',
+        description:
+          'A fresh context that never saw the drafting catches what the drafting context is anchored on.',
+        links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
+      },
+      {
+        lane: 'agents', col: 10,
+        content: 'render-checker walks every scenario and view and screenshots each',
+        links: [repoLink('agents/render-checker.md', 'agents/render-checker.md')],
+      },
+
+      {
+        lane: 'refs', col: 1,
+        content: 'elicitation-protocol.md',
+        links: [repoLink('elicitation-protocol.md', 'skills/map/references/elicitation-protocol.md')],
+      },
+      {
+        lane: 'refs', col: 3,
+        content: 'layer-roles.md\nlane-vocabulary.md',
+        description:
+          'Rendering follows the semantic layer_role, never the display name — which is why lane labels are free-form, in any language.',
         links: [repoLink('references/layer-roles.md', 'references/layer-roles.md')],
       },
       {
-        lane: 'references', col: 6,
+        lane: 'refs', col: 6,
         content: 'data-model.md\nir-schema.json',
-        links: [repoLink('references/data-model.md', 'references/data-model.md')],
+        links: [
+          repoLink('references/data-model.md', 'references/data-model.md'),
+          repoLink('references/ir-schema.json', 'references/ir-schema.json'),
+        ],
       },
       {
-        lane: 'references', col: 16,
-        content: 'deploy-notes.md',
-        links: [repoLink('skills/map/references/deploy-notes.md', 'skills/map/references/deploy-notes.md')],
-      },
-
-      {
-        lane: 'hooks', col: 7,
+        lane: 'refs', col: 8,
         content: 'validate_ir_on_edit.py — re-validates the blueprint file on every edit',
         links: [repoLink('hooks/validate_ir_on_edit.py', 'hooks/validate_ir_on_edit.py')],
       },
       {
-        lane: 'hooks', col: 15,
+        lane: 'refs', col: 9,
         content: 'secret_guard.py — the service-role key never reaches disk or transcript',
-        owner: 'The adopter’s own machine',
+        owner: 'The blueprint owner’s own machine',
         perceivedOwner: 'The kit',
         description:
-          'The guard runs in the adopter’s harness, on their machine — the kit ships the hook, it does not hold the key.',
+          'The guard runs in the owner’s harness, on their machine — the kit ships the hook, it never holds the key.',
         links: [repoLink('hooks/secret_guard.py', 'hooks/secret_guard.py')],
+      },
+      {
+        lane: 'refs', col: 10,
+        content: 'deploy-notes.md',
+        links: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
       },
     ],
     triggers: [
-      { from: ['claude', 5], to: ['agents', 5] },
-      { from: ['claude', 10], to: ['agents', 10] },
-      // Cross-lane UPWARD: the reviewer's findings come back up to Claude.
-      { from: ['agents', 10], to: ['claude', 11], label: 'findings' },
-      { from: ['scripts', 6], to: ['claude', 7], label: 'the IR file' },
-      { from: ['adopter', 6], to: ['claude', 7], label: 'nod' },
+      { from: ['claude', 1], to: ['claude', 2] },
+      { from: ['claude', 4], to: ['agents', 4], paths: ['DOCS'] },
+      { from: ['claude', 5], to: ['scripts', 5], paths: ['DIAGRAM'] },
+      { from: ['agents', 5], to: ['claude', 6], label: 'structure', paths: ['DIAGRAM'] },
+      // Cross-lane UPWARD: the reviewer's findings come back up to the owner.
+      { from: ['agents', 7], to: ['owner', 7], label: 'findings' },
+      { from: ['owner', 6], to: ['claude', 6], label: 'nod' },
+      { from: ['claude', 8], to: ['claude', 9] },
+      { from: ['claude', 9], to: ['surface', 9], label: 'read back' },
       // Backward in-lane rework loop: accepted findings send the draft back.
       {
-        from: ['claude', 11], to: ['claude', 7], label: 'rework',
-        note: 'Accepted findings send the draft back to cell-filling before a re-validate.',
+        from: ['claude', 7], to: ['claude', 6], label: 'rework',
+        note: 'Accepted findings send the draft back to cell-writing before a re-validate.',
       },
       {
-        from: ['claude', 15], to: ['claude', 14], kind: 'needs',
-        note: 'The import consumes the generated seed.',
+        from: ['owner', 8], to: ['scripts', 8], kind: 'needs',
+        note: 'Sign-off is bound to a content hash, not to a feeling.',
       },
       {
-        from: ['adopter', 12], to: ['scripts', 12], kind: 'needs',
-        note: 'Sign-off is bound to a content hash, not a feeling.',
+        from: ['claude', 9], to: ['scripts', 9], kind: 'needs',
+        note: 'The import consumes the generated seed; the fallback module is registered in the same pass.',
+      },
+      {
+        from: ['agents', 4], to: ['scripts', 4], kind: 'needs', paths: ['DOCS'],
+        note: 'The reader follows the ingest playbook rather than improvising a reading order.',
       },
     ],
   },
 
   // -------------------------------------------------------------------
-  // 4 · Review & present — sb:slice for stakeholders
+  // 3 · Audit the check roster — sb:audit, happy vs a reopened finding
+  // -------------------------------------------------------------------
+  {
+    ordinal: 3,
+    key: 'AUDIT',
+    phaseKey: 'OPERATE',
+    name: 'Audit the check roster',
+    description:
+      'sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.',
+    order: 1,
+    viewType: 'side-by-side',
+    navViewType: 'stacked',
+    spineLane: 'owner',
+    paths: [
+      {
+        ordinal: 1,
+        key: 'TRIAGED',
+        name: 'Findings triaged',
+        path_type: 'happy',
+        description: 'Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.',
+      },
+      {
+        ordinal: 2,
+        key: 'REOPENS',
+        name: 'A critical finding reopens',
+        path_type: 'unhappy',
+        description:
+          'A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.',
+      },
+    ],
+    steps: [
+      'Name the scope',
+      'Export once',
+      'Dispatch the auditors',
+      'Collect and dedupe',
+      'Record the findings',
+      'Triage on the canvas',
+      'Re-run the roster',
+    ],
+    lanes: LANES,
+    cells: [
+      { lane: 'owner', col: 1, content: 'Names the scenario to audit and lets the whole roster run' },
+      { lane: 'owner', col: 5, content: 'Reads findings as rows to triage, not as a chat opinion to argue with' },
+      {
+        lane: 'owner', col: 6,
+        content: {
+          TRIAGED: 'Triages every finding: accept, dismiss, or resolve once the fix has landed',
+          REOPENS: 'Marks a critical finding resolved before the fix has actually landed',
+        },
+      },
+      {
+        lane: 'owner', col: 7,
+        content: {
+          TRIAGED: 'Sees the re-run report nothing new on the checks whose cells did not change',
+          REOPENS: 'Sees the finding reopen, because its fingerprint matched a resolved row',
+        },
+      },
+
+      { lane: 'surface', col: 5, content: 'Findings panel\nSeverity chips' },
+      {
+        lane: 'surface', col: 6,
+        content: 'Triage controls (accept / dismiss / resolve)',
+        // The pair check-perceived-owner exists to catch: people read the
+        // audit as the thing that closes findings. It never closes anything.
+        owner: 'Whoever triages',
+        perceivedOwner: 'The audit',
+        description:
+          'Humans may change only findings.status. The audit points and never fixes, and it may supersede only its own check’s open rows.',
+      },
+
+      { lane: 'claude', col: 1, content: 'Loads sb:audit and reads the audit playbook before executing any route' },
+      { lane: 'claude', col: 2, content: 'Exports the blueprint once — every auditor reads that same export' },
+      { lane: 'claude', col: 3, content: 'Dispatches one auditor per check, in parallel and blind' },
+      { lane: 'claude', col: 4, content: 'Dedupes by fingerprint: dismissed stays dismissed, resolved reopens, open updates in place' },
+      { lane: 'claude', col: 5, content: 'Writes findings under one run_id, superseding its own check’s previous open rows' },
+      {
+        lane: 'claude', col: 7,
+        content: {
+          TRIAGED: 'Re-runs and reports per-check counts, skipped checks, and failed checks — nothing silent',
+          REOPENS: 'Re-runs and reports the reopened finding: the audit never closes what it did not fix',
+        },
+      },
+
+      {
+        lane: 'scripts', col: 2,
+        content: 'audit_tools.py export',
+        fn: 'Run the roster as machinery rather than judgement: one blind auditor per check, output validated against a fixed findings shape.',
+        form: 'A stdlib-only Python module the skill calls, plus one read-only export of the blueprint that every auditor shares.',
+        valueProps: [
+          { for: 'The blueprint owner', value: 'Findings arrive as triageable rows, not as a chat opinion to argue with.' },
+          { for: 'The next run', value: 'Fingerprints dedupe repeats, so a re-audit surfaces what changed.' },
+        ],
+        links: [repoLink('audit_tools.py', 'skills/audit/scripts/audit_tools.py')],
+      },
+      {
+        lane: 'scripts', col: 4,
+        content: 'Fingerprint = check name + sha256 of the sorted cell keys + reason slug',
+        description:
+          'A duplicate fingerprint inside one incoming batch is a reported error, never a second insert; the partial unique index on open fingerprints is the backstop.',
+        links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
+      },
+      {
+        lane: 'scripts', col: 5,
+        content: 'findings table\naudit/findings-report.json',
+        description:
+          'Rows in the findings table when a database is reachable, and a JSON ledger when one is not — the audit still runs, straight against the blueprint files.',
+        links: [repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md')],
+      },
+      { lane: 'scripts', col: 7, content: 'Per-check atomic supersede\nOne run_id per run' },
+
+      {
+        lane: 'agents', col: 3,
+        content: 'auditor — one check doc and the export, never another check’s output',
+        description:
+          'Each check’s judgement stays uncontaminated because the auditor running it cannot see any other check or its findings.',
+        links: [repoLink('agents/auditor.md', 'agents/auditor.md')],
+      },
+      { lane: 'agents', col: 4, content: 'Each auditor’s output is validated against the findings-row shape before any dedupe' },
+      {
+        lane: 'agents', col: 7,
+        content: {
+          TRIAGED: 'The re-run’s auditors re-detect nothing on checks whose cells did not change',
+          REOPENS: 'The re-detected finding matches a resolved row, so it reopens instead of filing a duplicate',
+        },
+      },
+
+      {
+        lane: 'refs', col: 1,
+        content: 'audit-playbook.md',
+        description:
+          'Read before executing any route: run semantics, the fingerprint algorithm, triage rules, and the check-authoring template.',
+        links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
+      },
+      {
+        lane: 'refs', col: 3,
+        content: 'check-gap-sweep.md\ncheck-jargon-lint.md\ncheck-channel-conflict.md',
+        description:
+          'Three of the roster’s eight checks. The roster is the directory listing, not this list — a check file that exists runs, or is reported skipped.',
+        links: [
+          repoLink('check-gap-sweep.md', 'skills/audit/references/check-gap-sweep.md'),
+          repoLink('check-jargon-lint.md', 'skills/audit/references/check-jargon-lint.md'),
+        ],
+      },
+      {
+        lane: 'refs', col: 5,
+        content: 'check-perceived-owner.md\ncheck-value-ledger.md',
+        description:
+          'Wave-2 checks read the cell spec columns, and skip gracefully — reported, never silent — when those columns are empty.',
+        links: [
+          repoLink('check-perceived-owner.md', 'skills/audit/references/check-perceived-owner.md'),
+          repoLink('check-value-ledger.md', 'skills/audit/references/check-value-ledger.md'),
+        ],
+      },
+    ],
+    triggers: [
+      { from: ['claude', 2], to: ['scripts', 2] },
+      { from: ['claude', 3], to: ['agents', 3] },
+      // Cross-lane UPWARD: the auditors' findings surface into what the owner sees.
+      { from: ['agents', 4], to: ['surface', 5], label: 'findings' },
+      { from: ['surface', 5], to: ['owner', 5] },
+      { from: ['owner', 6], to: ['claude', 7], label: 'triaged' },
+      // The canonical backward loop, on the unhappy path only.
+      {
+        from: ['claude', 7], to: ['claude', 3], label: 're-dispatch', paths: ['REOPENS'],
+        note: 'A re-run is a full run: the roster goes out again, and supersede semantics make that safe.',
+      },
+      {
+        from: ['claude', 4], to: ['scripts', 4], kind: 'needs',
+        note: 'Dedupe is the fingerprint algorithm, not a judgement call about whether two findings feel alike.',
+      },
+      {
+        from: ['agents', 3], to: ['refs', 3], kind: 'needs',
+        note: 'An auditor is given exactly one check doc; the roster is the directory listing.',
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 4 · Ideate a change (what-if) — sb:whatif on a copy
   // -------------------------------------------------------------------
   {
     ordinal: 4,
-    key: 'PRESENT',
+    key: 'WHATIF',
     phaseKey: 'OPERATE',
-    name: 'Review & present',
+    name: 'Ideate a change (what-if)',
     description:
-      'sb:slice takes one stakeholder view out of the blueprint and carries it into presentation mode and PDF.',
-    order: 1,
+      'sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.',
+    order: 2,
     viewType: 'single',
     navViewType: 'single',
-    spineLane: 'stakeholder',
+    spineLane: 'owner',
+    paths: [
+      {
+        ordinal: 1,
+        key: 'TRACED',
+        name: 'Traced before it lands',
+        path_type: 'happy',
+        description:
+          'Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.',
+      },
+    ],
+    steps: [
+      'Frame the hypothetical',
+      'Copy to a variant',
+      'Trace the graph',
+      'Judge the consequences',
+      'Verify every claim',
+      'Record the comparison',
+      'Accept or drop it',
+    ],
+    lanes: LANES,
+    cells: [
+      { lane: 'owner', col: 1, content: 'Asks what would happen if a step were removed, automated, or moved out of sight' },
+      { lane: 'owner', col: 4, content: '先看影响 · Reads the affected-cell list before forming an opinion' },
+      { lane: 'owner', col: 7, content: 'Accepts the option, or drops it and leaves the blueprint exactly as it was' },
+
+      { lane: 'surface', col: 3, content: 'Dependency tab\nTrigger arrows' },
+      { lane: 'surface', col: 7, content: 'Nothing on the canvas changes until sb:map promotes an accepted change' },
+
+      { lane: 'claude', col: 1, content: 'Picks the operation: replay, restage, or prioritize' },
+      { lane: 'claude', col: 2, content: 'Copies the blueprint into whatif/<key>/ — the hypothetical never touches the base' },
+      { lane: 'claude', col: 3, content: 'Dispatches impact-tracer down trigger and needs edges' },
+      { lane: 'claude', col: 4, content: 'Judges the consequences against the operation it picked, not against a general opinion' },
+      { lane: 'claude', col: 5, content: 'Dispatches blueprint-reviewer in whatif-claim mode and cuts every claim that fails' },
+      { lane: 'claude', col: 6, content: 'Writes comparison.md with citations and zero verbatim excerpts' },
+      { lane: 'claude', col: 7, content: 'Emits a change request, then stops: promotion is a separate sb:map invocation' },
+
+      {
+        lane: 'scripts', col: 2,
+        content: 'validate_ir.py on the variant',
+        description:
+          'A hypothetical still has to be a legal blueprint, so the variant passes the same validator the real one does.',
+        links: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
+      },
+      {
+        lane: 'scripts', col: 3,
+        content: 'Visited set + depth cap',
+        description:
+          'Loops are legal in this data — a phase may feed back — so the walk has to survive a cyclic graph rather than assume a tree.',
+      },
+      {
+        lane: 'scripts', col: 6,
+        content: 'comparison.md\nchange-request-schema.json',
+        links: [repoLink('change-request-schema.json', 'skills/whatif/references/change-request-schema.json')],
+      },
+      { lane: 'scripts', col: 7, content: 'Recorded AND recomputed sign-off hashes must both match, or promotion refuses' },
+
+      {
+        lane: 'agents', col: 3,
+        content: 'impact-tracer returns affected cells, strained assumptions, and displaced demand',
+        fn: 'Answer “what else does this touch?” from the graph rather than from whoever remembers the service best.',
+        form: 'A read-only walk down trigger and needs edges from one named cell, returning a bounded list with a truncation flag.',
+        valueProps: [
+          { for: 'The blueprint owner', value: 'The blast radius of a change, before anyone estimates it.' },
+          { for: 'The reviewer', value: 'A claim list with cell keys attached, so every claim is checkable.' },
+        ],
+        links: [repoLink('agents/impact-tracer.md', 'agents/impact-tracer.md')],
+      },
+      {
+        lane: 'agents', col: 5,
+        content: 'blueprint-reviewer, whatif-claim mode: every surviving claim carries cell keys it confirmed exist',
+        links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
+      },
+
+      {
+        lane: 'refs', col: 1,
+        content: 'whatif-playbook.md',
+        links: [repoLink('whatif-playbook.md', 'skills/whatif/references/whatif-playbook.md')],
+      },
+      {
+        lane: 'refs', col: 6,
+        content: 'audit-playbook.md §2–§4 — findings mechanics, shared with the audit',
+        links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
+      },
+    ],
+    triggers: [
+      { from: ['claude', 1], to: ['claude', 2] },
+      { from: ['claude', 3], to: ['agents', 3] },
+      // Cross-lane UPWARD: the tracer's result comes back up to the owner.
+      { from: ['agents', 3], to: ['owner', 4], label: 'affected cells' },
+      { from: ['agents', 3], to: ['surface', 3] },
+      { from: ['claude', 5], to: ['agents', 5] },
+      {
+        from: ['claude', 6], to: ['agents', 3], kind: 'needs',
+        note: 'The comparison is written from the tracer’s result, never from memory of the service.',
+      },
+      {
+        from: ['claude', 7], to: ['agents', 5], kind: 'needs',
+        note: 'A change request carries only claims the reviewer confirmed.',
+      },
+      {
+        from: ['claude', 7], to: ['scripts', 7], kind: 'needs',
+        note: 'The staleness guard compares against the sign-off hashes captured when the variant was copied.',
+      },
+    ],
+  },
+
+  // -------------------------------------------------------------------
+  // 5 · Slice for an audience — sb:slice, whenever a room needs one view
+  // -------------------------------------------------------------------
+  {
+    ordinal: 5,
+    key: 'SLICE',
+    phaseKey: 'OPERATE',
+    name: 'Slice for an audience',
+    description:
+      'sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.',
+    order: 3,
+    viewType: 'single',
+    navViewType: 'single',
+    spineLane: 'owner',
     paths: [
       {
         ordinal: 1,
@@ -842,265 +937,276 @@ const SCENARIOS = [
       'Validate the slice',
       'Review the claims',
       'Import the slice',
-      'Enter presentation mode',
-      'Walk the frames',
+      'Present the frames',
       'Export to PDF',
     ],
-    lanes: [
-      { row: 0, key: 'stakeholder', name: 'Stakeholder', role: 'customer_actions' },
-      { row: 1, key: 'stage', name: 'Presentation surface', role: 'frontstage_tech' },
-      { row: 2, key: 'skill', name: 'sb:slice in the IDE', role: 'frontstage_actions' },
-      { row: 3, key: 'reviewer', name: 'Reviewer', role: 'backstage_actions' },
-      { row: 4, key: 'pipeline', name: 'Slice pipeline', role: 'backstage_tech' },
-      { row: 5, key: 'tables', name: 'Derived tables', role: 'support_systems' },
-    ],
+    lanes: LANES,
     cells: [
-      { lane: 'stakeholder', col: 1, content: 'Asks for just the part of the service that concerns their team' },
-      { lane: 'stakeholder', col: 3, content: 'Nods on the proposed frames, or names the cells they wanted instead' },
-      { lane: 'stakeholder', col: 5, content: 'Sees which claims the reviewer could not trace, before anything is presented' },
-      { lane: 'stakeholder', col: 7, content: 'Watches one frame at a time on the dark stage' },
-      { lane: 'stakeholder', col: 8, content: 'Follows the locator showing where each frame sits on the blueprint' },
-      { lane: 'stakeholder', col: 9, content: 'Takes the PDF away; the slice still points at the cells it quotes' },
+      { lane: 'stakeholders', col: 1, content: 'Asks for just the part of the service that concerns their team' },
+      { lane: 'stakeholders', col: 7, content: 'Watches one frame at a time, and follows the locator back to where it sits on the board' },
+      { lane: 'stakeholders', col: 8, content: 'Takes the PDF away; the slice still points at the cells it quotes' },
 
-      { lane: 'skill', col: 2, content: 'Picks one of five slice types: journey, step, lane, cell, or custom' },
-      { lane: 'skill', col: 3, content: 'Proposes member cells by name, in journey order, and waits for a nod' },
-      { lane: 'skill', col: 4, content: 'Runs the slice validator until it exits 0' },
-      { lane: 'skill', col: 5, content: 'Waits for the claim review before importing — a slice that quotes nothing is not shippable' },
-      { lane: 'skill', col: 6, content: 'Imports the slice; items carry cell ids paired with cell keys' },
-      { lane: 'skill', col: 7, content: 'Hands off to the app: the skill’s job ends at the import, presentation is the app’s' },
+      { lane: 'owner', col: 1, content: 'Relays the ask, and says which scenario it lives in' },
+      { lane: 'owner', col: 3, content: 'Nods on the proposed frames, or names the cells they wanted instead' },
+      { lane: 'owner', col: 5, content: 'Sees which claims the reviewer could not trace, before anything is presented' },
+      { lane: 'owner', col: 7, content: 'Presents the frames rather than a deck built beside the board' },
 
+      { lane: 'surface', col: 6, content: 'Slices sidebar\nFocus view' },
       {
-        lane: 'stage', col: 7,
-        content: 'Dark stage\nFilmstrip',
-        fn: 'Hold one frame at a time in front of a room, without losing the fact that every frame came from a cell on the board.',
-        form: 'A darkened full-bleed stage with a filmstrip of the remaining frames along the edge.',
+        lane: 'surface', col: 7,
+        content: 'Presentation mode\nFilmstrip\nBlueprint locator',
+        fn: 'Hold one frame at a time in front of a room without losing the fact that every frame came from a cell on the board.',
+        form: 'A darkened full-bleed stage, a filmstrip of the remaining frames, and a locator showing where the frame sits on the blueprint.',
         valueProps: [
-          { for: 'The stakeholder', value: 'Their part of the service, in their language, at their length.' },
+          { for: 'The audience', value: 'Their part of the service, in their language, at their length.' },
           { for: 'The blueprint owner', value: 'One artefact to present instead of a deck that drifts from the board.' },
         ],
       },
-      { lane: 'stage', col: 8, content: 'Blueprint locator' },
-      { lane: 'stage', col: 9, content: 'Print / PDF export' },
+      { lane: 'surface', col: 8, content: 'Print / PDF export' },
+
+      { lane: 'claude', col: 1, content: 'Asks which of the four questions the audience is really asking' },
+      { lane: 'claude', col: 2, content: 'Picks one of five slice types: journey, step, lane, cell, or custom' },
+      { lane: 'claude', col: 3, content: 'Proposes member cells by name, in journey order, and waits for a nod' },
+      { lane: 'claude', col: 4, content: 'Runs slice_tools.py validate until it exits 0' },
+      { lane: 'claude', col: 5, content: 'Waits for the claim review before importing — a slice that quotes nothing is not shippable' },
+      { lane: 'claude', col: 6, content: 'Imports through slice_tools.py and reads the rows back' },
+      { lane: 'claude', col: 7, content: 'Hands off to the app: the skill’s job ends at the import, presenting is the app’s' },
 
       {
-        lane: 'reviewer', col: 5,
-        content: 'blueprint-reviewer (slice mode) checks every claim traces to a cited cell',
+        lane: 'scripts', col: 2,
+        content: 'slice-templates.md',
         description:
-          'A fresh context that never saw the drafting: nothing invented, nothing quoted that no cell says.',
+          'The type decides the shape of the read: a journey follows one actor along the board, a step reads one column top to bottom, a lane follows one row across, a cell zooms in on one moment, custom is any hand-picked set.',
+        links: [repoLink('slice-templates.md', 'skills/slice/references/slice-templates.md')],
+      },
+      {
+        lane: 'scripts', col: 3,
+        content: 'slice_tools.py select',
+        description:
+          'Cell-id derivation lives in the script and must agree byte-for-byte with the blueprint import, or the slice points at rows that do not exist.',
+        links: [repoLink('slice_tools.py', 'skills/slice/scripts/slice_tools.py')],
+      },
+      {
+        lane: 'scripts', col: 4,
+        content: 'slice-schema.json',
+        links: [repoLink('slice-schema.json', 'skills/slice/references/slice-schema.json')],
+      },
+      {
+        lane: 'scripts', col: 6,
+        content: 'slices\nslice_items',
+        description:
+          'Slice items reference cells softly — uuid arrays paired with cell keys — so re-importing a scenario never cascades into a presentation.',
+        links: [repoLink('references/data-model.md', 'references/data-model.md')],
+      },
+
+      {
+        lane: 'agents', col: 5,
+        content: 'blueprint-reviewer, slice mode: every claim traces to a cited cell, nothing invented, nothing quoted',
         links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
       },
 
       {
-        lane: 'pipeline', col: 2,
-        content: 'Five slice types: journey / step / lane / cell / custom',
-        description:
-          'The type decides the shape of the read: a journey follows one actor along the board, a step reads one column top to bottom, a lane follows one row across, a cell zooms in on one moment, custom is any hand-picked set.',
-        links: [repoLink('skills/slice/SKILL.md', 'skills/slice/SKILL.md')],
+        lane: 'refs', col: 1,
+        content: 'slice-playbook.md',
+        links: [repoLink('slice-playbook.md', 'skills/slice/references/slice-playbook.md')],
       },
       {
-        lane: 'pipeline', col: 3,
-        content: 'slice_tools.py',
-        links: [repoLink('skills/slice/scripts/slice_tools.py', 'skills/slice/scripts/slice_tools.py')],
-      },
-      {
-        lane: 'pipeline', col: 4,
-        content: 'slice-schema.json',
-        links: [repoLink('skills/slice/references/slice-schema.json', 'skills/slice/references/slice-schema.json')],
-      },
-      { lane: 'pipeline', col: 6, content: 'slice_tools.py import\nRead-back verify' },
-
-      {
-        lane: 'tables', col: 6,
-        content: 'slices\nslice_items',
-        links: [
-          {
-            type: 'tech_description',
-            label: 'slice_items',
-            description:
-              'Slice items reference cells softly — uuid arrays paired with cell keys — so a scenario re-import never cascades into a presentation.',
-          },
-        ],
+        lane: 'refs', col: 7,
+        content: 'storyboard-prompts.md — optional imagery, only after the text path is complete',
+        links: [repoLink('storyboard-prompts.md', 'skills/slice/references/storyboard-prompts.md')],
       },
     ],
     triggers: [
-      { from: ['skill', 6], to: ['stage', 7] },
-      { from: ['skill', 4], to: ['pipeline', 4] },
-      // Cross-lane UPWARD: the reviewer's verdict comes back to the skill.
-      { from: ['reviewer', 5], to: ['skill', 6], label: 'clean' },
-      { from: ['pipeline', 2], to: ['skill', 2] },
+      { from: ['stakeholders', 1], to: ['owner', 1], label: 'show me my part' },
+      { from: ['claude', 2], to: ['claude', 3] },
+      { from: ['claude', 4], to: ['scripts', 4] },
+      { from: ['claude', 5], to: ['agents', 5] },
+      // Cross-lane UPWARD, the long one: the support lane's guidance and the
+      // imported rows both climb back to what the room actually looks at.
+      { from: ['agents', 5], to: ['owner', 5], label: 'untraceable claims' },
+      { from: ['refs', 7], to: ['stakeholders', 7], label: 'frames, not slides' },
+      { from: ['scripts', 6], to: ['surface', 7], label: 'rows the app reads' },
+      { from: ['owner', 3], to: ['claude', 4], label: 'nod' },
       {
-        from: ['skill', 6], to: ['skill', 4], kind: 'needs',
+        from: ['claude', 6], to: ['claude', 4], kind: 'needs',
         note: 'Only a validated slice is importable.',
       },
       {
-        from: ['skill', 6], to: ['reviewer', 5], kind: 'needs',
+        from: ['claude', 6], to: ['agents', 5], kind: 'needs',
         note: 'The import waits for the fresh-context claim review to come back clean.',
       },
     ],
   },
 
   // -------------------------------------------------------------------
-  // 5 · Keep it true — audit → whatif → fix → re-import, looping
+  // 6 · Keep it current — Maintain, the smallest board, and where the
+  //     lifecycle loop lands back into Operate
   // -------------------------------------------------------------------
   {
-    ordinal: 5,
-    key: 'STEWARD',
-    phaseKey: 'OPERATE',
-    name: 'Keep it true',
+    ordinal: 6,
+    key: 'KEEP',
+    phaseKey: 'MAINTAIN',
+    name: 'Keep it current',
     description:
-      'The stewardship loop: sb:audit finds drift, sb:whatif traces the fix, the re-import lands it — then the loop runs again.',
-    order: 2,
+      'The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.',
+    order: 1,
     viewType: 'single',
     navViewType: 'single',
-    spineLane: 'steward',
+    spineLane: 'owner',
+    spineChain: true,
     paths: [
       {
         ordinal: 1,
-        key: 'LOOP',
-        name: 'Stewardship loop',
+        key: 'UPDATE',
+        name: 'Update what changed',
         path_type: 'happy',
-        description: 'Audit finding → traced fix → re-import → re-audit; agent sessions answer from the result.',
+        description:
+          'The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.',
       },
     ],
     steps: [
-      'Notice drift',
-      'Run the audit roster',
-      'Triage the findings',
-      'Trace a proposed change',
-      'Decide the fix',
-      'Update the blueprint file',
-      'Re-validate',
+      'Notice the drift',
+      'Resume the workspace',
+      'Edit the scenario',
+      'Re-sign',
       'Re-import',
-      'Verify the render',
-      'Ask the agent',
-      'Answer from the blueprint',
     ],
-    // Like Discover the kit, ordered so the backstage-actions lane sits
-    // directly above the support lane and the LINE OF INTERNAL INTERACTION
-    // draws — the hand-off from the auditors to what they read.
-    lanes: [
-      { row: 0, key: 'steward', name: 'Steward', role: 'customer_actions' },
-      { row: 1, key: 'findingsui', name: 'Findings & agent surface', role: 'frontstage_tech' },
-      { row: 2, key: 'skills', name: 'sb:audit & sb:whatif', role: 'frontstage_actions' },
-      { row: 3, key: 'machinery', name: 'Audit machinery', role: 'backstage_tech' },
-      { row: 4, key: 'auditors', name: 'Auditor fleet', role: 'backstage_actions' },
-      { row: 5, key: 'checkdocs', name: 'Check docs & references', role: 'support_systems' },
-    ],
+    lanes: LANES,
     cells: [
-      { lane: 'steward', col: 1, content: 'Notices the service has drifted from what the blueprint says' },
-      { lane: 'steward', col: 2, content: 'Names the scenario to audit and lets the whole roster run' },
-      { lane: 'steward', col: 3, content: 'Triages each finding: accept, dismiss, or resolve' },
-      { lane: 'steward', col: 8, content: 'Watches the re-import report the unchanged scenarios as no-ops' },
-      { lane: 'steward', col: 5, content: 'Decides the fix on the traced copy, before anything moves' },
-      { lane: 'steward', col: 9, content: 'Checks the re-imported scenario renders as expected' },
-      { lane: 'steward', col: 10, content: 'Asks a question in chat instead of opening the canvas' },
+      { lane: 'stakeholders', col: 1, content: 'Says the board no longer matches the service they work in' },
+      { lane: 'stakeholders', col: 5, content: 'Goes back to reading, auditing, and slicing the board — the loop back into Operate' },
 
-      { lane: 'skills', col: 2, content: 'Runs the roster; findings land as triageable rows, not chat opinion' },
-      { lane: 'skills', col: 4, content: 'sb:whatif walks trigger and needs edges downstream from the change' },
-      { lane: 'skills', col: 6, content: 'Applies the accepted fixes to blueprint.json' },
-      { lane: 'skills', col: 7, content: 'Re-runs validate_ir.py until it exits 0' },
-      { lane: 'skills', col: 8, content: 'Re-imports; an unchanged scenario hashes to a no-op' },
-      { lane: 'skills', col: 11, content: 'Answers with links back to the exact cells it read' },
+      { lane: 'owner', col: 1, content: 'Confirms the drift is real and names the scenario it lives in' },
+      { lane: 'owner', col: 3, content: 'Says what actually changed, step by step' },
+      { lane: 'owner', col: 4, content: 'Re-signs only the scenarios whose content changed' },
+      { lane: 'owner', col: 5, content: 'Watches the unchanged scenarios report as no-ops' },
 
-      { lane: 'findingsui', col: 3, content: 'Findings list\nStatus chips (open / resolved / dismissed)' },
-      {
-        lane: 'findingsui', col: 10,
-        content: 'Agent panel\nProvider & key settings',
-        description:
-          'How the agent gets a key: you paste your own, for whichever provider you pick. It is kept in this browser’s localStorage and nowhere else — no key is built into the app and none is held by anyone but you.',
-        owner: 'You — bring your own key',
-        perceivedOwner: 'A backend this app runs',
-      },
-      { lane: 'findingsui', col: 11, content: 'Scenario navigation\nCell focus' },
+      { lane: 'surface', col: 5, content: 'Canvas, redrawn from the re-imported rows' },
+
+      { lane: 'claude', col: 2, content: 'Reads the workspace state and HANDOFF.md, verifies the recorded sign-off hash, and resumes' },
+      { lane: 'claude', col: 3, content: 'Edits the existing scenario in place instead of re-mapping the whole service' },
+      { lane: 'claude', col: 4, content: 'Recomputes the hash: a changed scenario shows as unsigned until it is re-signed' },
+      { lane: 'claude', col: 5, content: 'Re-imports; a scenario whose content hash is unchanged is a no-op' },
 
       {
-        lane: 'auditors', col: 2,
-        content: 'One auditor per check, seeing only that check’s doc and the export',
-        links: [repoLink('agents/auditor.md', 'agents/auditor.md')],
+        lane: 'scripts', col: 2,
+        content: 'blueprint-workspace.json\nHANDOFF.md',
+        links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
       },
       {
-        lane: 'auditors', col: 4,
-        content: 'impact-tracer returns affected cells and the assumptions the change breaks',
-        description:
-          'It walks trigger and needs edges downstream, terminating on cyclic graphs with a visited set and a depth cap — loops are legal here, so it has to survive them.',
-        links: [repoLink('agents/impact-tracer.md', 'agents/impact-tracer.md')],
+        lane: 'scripts', col: 4,
+        content: 'compute_signoff_hash.py',
+        links: [repoLink('scripts/compute_signoff_hash.py', 'scripts/compute_signoff_hash.py')],
+      },
+      {
+        lane: 'scripts', col: 5,
+        content: 'generate_seed_sql.py\ngenerate_fallbacks.py --register',
+        links: [repoLink('scripts/generate_seed_sql.py', 'scripts/generate_seed_sql.py')],
       },
 
       {
-        lane: 'machinery', col: 2,
-        content: 'audit_tools.py',
-        fn: 'Run the roster as machinery rather than judgement: one blind auditor per check, output validated against a fixed findings shape.',
-        form: 'A stdlib-only Python module the skill calls, plus one export of the blueprint that every auditor reads.',
-        valueProps: [
-          { for: 'The steward', value: 'Findings arrive as triageable rows, not as a chat opinion to argue with.' },
-          { for: 'The next run', value: 'Fingerprints dedupe repeats, so a re-audit surfaces what changed.' },
-        ],
-        links: [repoLink('skills/audit/scripts/audit_tools.py', 'skills/audit/scripts/audit_tools.py')],
-      },
-      { lane: 'machinery', col: 3, content: 'Finding fingerprints — check name + sorted cell keys, so re-runs dedupe' },
-      {
-        lane: 'machinery', col: 4,
-        content: 'Downstream graph walk\nVisited set + depth cap',
-      },
-      { lane: 'machinery', col: 8, content: 'Content-hash idempotence' },
-      {
-        lane: 'machinery', col: 10,
-        content: 'Fixed read/write tool surface\nlocalStorage key',
-        description:
-          'The agent has a fixed set of tools and no SQL: it answers from the same reads the app makes. With no database configured it reads the bundled sample content instead — the same content the canvas is drawing.',
-        links: [repoLink('src/lib/agent/role.md', 'src/lib/agent/role.md')],
+        lane: 'agents', col: 3,
+        content: 'document-reader, single-doc mode, when the change arrives as a document',
+        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
       },
 
       {
-        lane: 'checkdocs', col: 2,
-        content: 'check-gap-sweep.md\ncheck-jargon-lint.md\ncheck-channel-conflict.md',
-        description: 'Three of the roster’s eight checks; the audit playbook lists them all.',
-        links: [
-          repoLink('skills/audit/references/check-gap-sweep.md', 'skills/audit/references/check-gap-sweep.md'),
-          repoLink('references/audit-playbook.md', 'references/audit-playbook.md'),
-        ],
+        lane: 'refs', col: 2,
+        content: 'workspace-state.md',
+        links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
       },
       {
-        lane: 'checkdocs', col: 3,
-        content: 'findings table\naudit/findings-report.json',
-        description:
-          'Where findings go: rows in the findings table when a database is reachable, and audit/findings-report.json as the ledger when one is not — the audit still runs, straight against the IR files.',
-        links: [repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md')],
-      },
-      {
-        lane: 'checkdocs', col: 6,
-        content: 'ir-schema.json\ndata-model.md',
-        links: [
-          repoLink('references/ir-schema.json', 'references/ir-schema.json'),
-          repoLink('references/data-model.md', 'references/data-model.md'),
-        ],
-      },
-      {
-        lane: 'checkdocs', col: 10,
-        content: 'agent role.md\nskill references, read in-app',
-        description:
-          'The in-app agent reads the same reference docs the IDE skills read; read_reference is one of its tools.',
-        links: [repoLink('src/lib/agent/role.md', 'src/lib/agent/role.md')],
+        lane: 'refs', col: 3,
+        content: 'customization.md — how a workspace is upgraded when the kit moves under it',
+        links: [repoLink('references/customization.md', 'references/customization.md')],
       },
     ],
     triggers: [
-      { from: ['skills', 2], to: ['auditors', 2] },
-      { from: ['steward', 3], to: ['skills', 4] },
-      // Cross-lane UPWARD: the auditors' findings surface to the steward's view.
-      { from: ['auditors', 2], to: ['findingsui', 3], label: 'findings' },
-      { from: ['machinery', 10], to: ['findingsui', 10] },
-      // The canonical backward loop: re-import sends the steward back around.
+      { from: ['stakeholders', 1], to: ['owner', 1], label: 'this is wrong now' },
+      { from: ['claude', 2], to: ['claude', 3] },
+      { from: ['claude', 5], to: ['surface', 5], label: 'read back' },
+      // Cross-lane UPWARD: the reference the resume route depends on, and the
+      // hand-back to the people who will use the board again.
+      { from: ['refs', 2], to: ['claude', 2], label: 'resume rules' },
+      { from: ['surface', 5], to: ['stakeholders', 5], label: 'back in use' },
       {
-        from: ['skills', 8], to: ['skills', 2], label: 're-audit',
-        note: 'A re-import sends the loop back to the roster: audit, fix, import, verify — the Operate phase in miniature.',
+        from: ['claude', 4], to: ['scripts', 4], kind: 'needs',
+        note: 'Re-signing is a recomputed hash, so an edit cannot inherit the previous approval.',
       },
       {
-        from: ['skills', 8], to: ['skills', 7], kind: 'needs',
-        note: 'Only a re-validated file is re-importable.',
+        from: ['claude', 5], to: ['claude', 4], kind: 'needs',
+        note: 'Only a re-signed scenario is re-importable.',
       },
     ],
   },
 ]
+
+// ---------------------------------------------------------------------------
+// Structural assertions — the shape the fixture promises, enforced here so a
+// content edit cannot quietly cost the board a divider line or a stable
+// path identity.
+// ---------------------------------------------------------------------------
+
+function assertLaneRoster(scenario) {
+  const roles = scenario.lanes.map((lane) => lane.role)
+  const customerLanes = roles.filter((role) => role === 'customer_actions').length
+  if (customerLanes !== 1) {
+    throw new Error(
+      `scenario ${scenario.key}: ${customerLanes} customer_actions lanes — the interaction line must draw exactly once`,
+    )
+  }
+  roles.forEach((role, index) => {
+    if (role === 'frontstage_tech' && roles[index + 1] !== 'frontstage_actions') {
+      throw new Error(
+        `scenario ${scenario.key}: frontstage_tech at row ${index} is not immediately followed by frontstage_actions — the visibility line would draw twice`,
+      )
+    }
+    if (role === 'backstage_actions' && roles[index + 1] !== 'support_systems') {
+      throw new Error(
+        `scenario ${scenario.key}: backstage_actions at row ${index} is not immediately followed by support_systems — the internal-interaction line would never draw`,
+      )
+    }
+  })
+}
+
+function assertStructure(scenarios) {
+  const seenPathNames = new Map()
+  let primaries = 0
+  for (const scenario of scenarios) {
+    assertLaneRoster(scenario)
+    if (scenario.primary) primaries += 1
+    for (const path of scenario.paths) {
+      // Path identity is `path_type:name` (src/lib/pathColorTheme.ts), and the
+      // overview path filter keys its options on the same composite — two paths
+      // sharing it merge into one row. Uniqueness is a property, not a habit.
+      const key = `${path.path_type}:${path.name}`
+      if (seenPathNames.has(key)) {
+        throw new Error(
+          `path identity "${key}" is used by both ${seenPathNames.get(key)} and ${scenario.key} — path names must be unique across the lifecycle`,
+        )
+      }
+      seenPathNames.set(key, scenario.key)
+      if (/^happy\s*path$/i.test(path.name)) {
+        throw new Error(
+          `scenario ${scenario.key}: a path named "${path.name}" trips the name-keyed tier in src/lib/pathSelection.ts — keep that branch dormant`,
+        )
+      }
+      for (const col of path.skipSteps ?? []) {
+        if (col < 1 || col > scenario.steps.length) {
+          throw new Error(`scenario ${scenario.key} path ${path.key}: skipSteps column ${col} is out of range`)
+        }
+      }
+    }
+  }
+  if (primaries !== 1) {
+    throw new Error(
+      `exactly one scenario must carry primary: true (found ${primaries}) — SAMPLE_SCENARIO_ID derives from it`,
+    )
+  }
+}
+
+assertStructure(SCENARIOS)
+
 
 // ---------------------------------------------------------------------------
 // Build: specs → per-path BlueprintData
@@ -1112,10 +1218,15 @@ function laneByKey(scenario, key) {
   return lane
 }
 
-/** Cells of one scenario resolved onto one path (skipping absent per-path cells). */
+/**
+ * Cells of one scenario resolved onto one path — skipping per-path-absent
+ * content AND any column the path omits entirely (`skipSteps`).
+ */
 function resolveCellsForPath(scenario, path) {
+  const skipped = new Set(path.skipSteps ?? [])
   const resolved = []
   for (const spec of scenario.cells) {
+    if (skipped.has(spec.col)) continue
     const lane = laneByKey(scenario, spec.lane)
     const slot = spec.slot ?? 0
     let content
@@ -1139,6 +1250,14 @@ function buildScenario(scenario) {
 
   const blueprints = scenario.paths.map((path) => {
     const P = path.ordinal
+    // A path carries a SUBSET of the scenario's columns, renumbered so its own
+    // grid is contiguous — steps stay scenario-scoped rows, path_steps carries
+    // the per-path ordering. This is what "each path includes a subset of the
+    // steps" looks like in the data.
+    const skipped = new Set(path.skipSteps ?? [])
+    const pathSteps = steps
+      .filter((step) => !skipped.has(step.column_position))
+      .map((step, index) => ({ ...step, column_position: index + 1 }))
     const layers = scenario.lanes.map((lane) => ({
       id: fid(S, P, KIND.layer, lane.row, 0),
       name: lane.name,
@@ -1152,7 +1271,7 @@ function buildScenario(scenario) {
       layer_id: fid(S, P, KIND.layer, lane.row, 0),
       step_id: steps[col - 1].id,
       content,
-      picture: null,
+      picture: spec.picture ?? null,
       description: spec.description ?? null,
       links: spec.links ?? [],
       ...(slot > 0 ? { slot_position: slot } : {}),
@@ -1172,19 +1291,25 @@ function buildScenario(scenario) {
       fid(S, P, KIND.cell, laneByKey(scenario, laneKey).row, col)
 
     const triggerSpecs = []
-    // Forward chain along the customer spine (consecutive existing cells).
-    const spineCols = resolved
-      .filter((cell) => cell.lane.key === scenario.spineLane && cell.slot === 0)
-      .map((cell) => cell.col)
-      .sort((a, b) => a - b)
-    for (let i = 0; i < spineCols.length - 1; i += 1) {
-      triggerSpecs.push({
-        from: [scenario.spineLane, spineCols[i]],
-        to: [scenario.spineLane, spineCols[i + 1]],
-      })
+    // Forward chain along the customer spine, OPT-IN per scenario: a ten-arrow
+    // chain down one lane is a ruler, not a dependency graph, so only the
+    // scenarios whose spine really is a sequence ask for it.
+    if (scenario.spineChain) {
+      const spineCols = resolved
+        .filter((cell) => cell.lane.key === scenario.spineLane && cell.slot === 0)
+        .map((cell) => cell.col)
+        .sort((a, b) => a - b)
+      for (let i = 0; i < spineCols.length - 1; i += 1) {
+        triggerSpecs.push({
+          from: [scenario.spineLane, spineCols[i]],
+          to: [scenario.spineLane, spineCols[i + 1]],
+        })
+      }
     }
     for (const trig of scenario.triggers) {
       if (trig.paths && !trig.paths.includes(path.key)) continue
+      // A column this path omits takes its arrows with it.
+      if (skipped.has(trig.from[1]) || skipped.has(trig.to[1])) continue
       for (const [laneKey, col] of [trig.from, trig.to]) {
         if (!hasCell(laneKey, col)) {
           throw new Error(
@@ -1213,7 +1338,7 @@ function buildScenario(scenario) {
         path_type: path.path_type,
       },
       layers,
-      steps,
+      steps: pathSteps,
       cells,
       triggers,
     }
@@ -1262,12 +1387,14 @@ const cellKeyFor = (scenario, pathName, layerName, stepName) =>
 
 // ---------------------------------------------------------------------------
 // Demo slices — the derived layer's zero-config content. Three of the five
-// slice types, each earning its place: a JOURNEY slice narrating the adopter's
-// first hour, a STEP slice reading the import column down every lane (the
-// vertical read is the whole point — the guardrail lane is the interesting
-// one), and a LANE slice reading the terminal row across, which is the same
-// hour as a command list. All three sit on their scenario's DEFAULT path, so
-// opening one lights its cells up with no path change first. `cell` and
+// slice types, each earning its place: a JOURNEY slice reading the owner's
+// spine across the whole of Map your service, a STEP slice reading the import
+// column down every lane (the vertical read is the point — the guardrail lane
+// is the interesting one), and a LANE slice reading the subagent row across
+// the audit, which is the half of the service nobody watches. All three sit
+// on their scenario's DEFAULT (first-declared) path, so opening one lights
+// its cells up with no path change first, and the journey sits on the primary
+// scenario — both are asserted in src/lib/sliceCells.test.ts. `cell` and
 // `custom` are deliberately absent: a single-cell demo teaches nothing the
 // panel does not, and `custom` has no shape of its own to show.
 // ---------------------------------------------------------------------------
@@ -1312,10 +1439,10 @@ function buildDemoSlices() {
     slice: {
       id: journeyId,
       service_lifecycle_id: LIFECYCLE_ID,
-      title: 'The adopter’s first hour',
+      title: 'The map, end to end',
       description:
-        'From git clone to a green harness smoke, on the no-database path — the hour the template promises to anyone with npm.',
-      actor: 'Adopter',
+        'One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.',
+      actor: '服务负责人 · Blueprint owner',
       slice_type: 'journey',
       origin: 'generated',
       locale: 'en',
@@ -1323,50 +1450,30 @@ function buildDemoSlices() {
       ...timestamps,
     },
     items: [
-      item(1, journeyId, 1, 'Two commands and a checkout',
-        'The first hour starts with nothing installed and no account anywhere. A clone and an install are the whole setup — there is no signup step, no key to request, and nothing to provision before the next frame.',
+      item(1, journeyId, 1, 'An ask, and the fork it creates',
+        'Mapping starts as a sentence, not a project. What happens next is decided by what already exists: a folder of documents routes to ingest, a diagram exported from somewhere else routes to translate. The two routes are the two paths of this scenario, and they rejoin four columns later.',
         [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 1),
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 2),
+          demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 1),
+          demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 2),
         ]),
-      item(1, journeyId, 2, 'The environment step you get to skip',
-        'This is the fork in the road, and the reason this scenario has two paths. The no-database path skips .env entirely: the app detects the missing keys and switches to content bundled in the source tree. The Supabase path spends its next twenty minutes on migrations and a seed — and arrives at the same screen.',
+      item(1, journeyId, 2, 'The two questions asked before anything is built',
+        'Scope and spine, in that order, and both answered by a person. Right-sizing decides whether this is one flow or the whole service; the spine decides whose journey the top lane follows. Everything drawn afterwards inherits both answers, which is why they are not left to the drafting.',
+        [demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 3)]),
+      item(1, journeyId, 3, 'What the owner still has to say out loud',
+        'On the documents route the corpus is not simply handed over: somebody names what is in scope and what is sensitive and excluded. The subagents that read it never make that call, and the cells that result carry provenance back to the documents that survived it.',
         [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 3),
-          demoCellRef('FIRST_RUN', 'NODB', 'datalayer', 3),
+          demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 4),
+          demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 6),
         ]),
-      item(1, journeyId, 3, 'First light',
-        'One command, one browser tab, and the board is populated. Nothing is on the wire — what renders is the kit\u2019s own blueprint of itself, which is why the first thing an adopter reads is a true description of what they just installed.',
+      item(1, journeyId, 4, 'Two gates, one of them human',
+        'The validator is machinery and the reviewer is a fresh context, but accepting a finding is a judgement, and so is signing. The sign-off binds to a content hash rather than to a memory of having looked — a later edit shows the scenario as unsigned instead of quietly inheriting yesterday’s approval.',
         [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 5),
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 6),
-          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 6),
+          demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 7),
+          demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 8),
         ]),
-      item(1, journeyId, 4, 'What the board is actually showing',
-        'Worth stopping on, because it is the most common misreading of the first hour: this content belongs to the kit, not to you. The cell that says so carries an owner of “Kit maintainers” against a perceived owner of “Your own service” — the gap is the point, and replacing it is the job of the Map phase.',
-        [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 7),
-          demoCellRef('FIRST_RUN', 'NODB', 'fixtures', 6),
-        ]),
-      item(1, journeyId, 5, 'Two paths, side by side and merged',
-        'The compare surfaces are the reason a path is a first-class thing here rather than a note in a cell. Stacked keeps each path in its own band; merged folds them into one grid, washes the shared cells and lists every difference in the ledger beneath.',
-        [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 8),
-          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 8),
-        ]),
-      item(1, journeyId, 6, 'A slice, presented',
-        'The frame you are reading is itself the feature: a slice is a stakeholder-shaped subset of the board that still points at the cells it quotes. Nothing here is retyped, so nothing here can drift from the blueprint.',
-        [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 9),
-          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 9),
-        ]),
-      item(1, journeyId, 7, 'Proof, before you trust any of it',
-        'The hour ends the way an engineer wants it to end: the suite CI runs goes green on a fresh clone with no database, and the agent harness smoke passes against the same bundled content the canvas just drew.',
-        [
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 10),
-          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 11),
-          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 11),
-        ]),
+      item(1, journeyId, 5, 'The end of the errand, not the end of the work',
+        'A URL is where mapping stops and maintaining starts. The Maintain phase loops back to this one on the overview canvas, because the next time the service moves, some part of this board is drawn again.',
+        [demoCellRef('MAP_SERVICE', 'DOCS', 'owner', 10)]),
     ],
   }
 
@@ -1388,16 +1495,16 @@ function buildDemoSlices() {
     items: [
       item(2, stepId, 1, 'What happens in the open',
         'Claude writes the scenario through the service account and immediately reads it back, because a write that reports success and lands nothing is the failure mode this step exists to catch.',
-        [demoCellRef('MAP_SERVICE', 'GUIDED', 'claude', 15)]),
+        [demoCellRef('MAP_SERVICE', 'DOCS', 'claude', 9)]),
       item(2, stepId, 2, 'What runs underneath',
-        'The Supabase CLI applies the change and PostgREST serves the read-back. Neither is asked to be trusted: the verification is a second, independent read, not the first write’s own report.',
-        [demoCellRef('MAP_SERVICE', 'GUIDED', 'scripts', 15)]),
+        'One blueprint file becomes two targets in the same pass — a data module the keyless app imports, and a transactional seed for Postgres. Neither is asked to be trusted: the verification is a second, independent read, not the first write’s own report.',
+        [demoCellRef('MAP_SERVICE', 'DOCS', 'scripts', 9)]),
       item(2, stepId, 3, 'What the guardrail is doing while it happens',
-        'The interesting lane, and the reason to read this step vertically. A service-role key is in play for exactly this step, and a hook makes sure it never reaches disk or transcript. It runs on the adopter’s own machine — the kit ships the hook, it never holds the key.',
-        [demoCellRef('MAP_SERVICE', 'GUIDED', 'hooks', 15)]),
+        'The interesting lane, and the reason to read this step vertically. A service-role key is in play for exactly this step, and a hook makes sure it never reaches disk or transcript. It runs on the owner’s own machine — the kit ships the hook, it never holds the key.',
+        [demoCellRef('MAP_SERVICE', 'DOCS', 'refs', 9)]),
       item(2, stepId, 4, 'What you see at the end of it',
         'The imported scenario, read back live in the browser. Until this renders, the import is a claim.',
-        [demoCellRef('MAP_SERVICE', 'GUIDED', 'preview', 15)]),
+        [demoCellRef('MAP_SERVICE', 'DOCS', 'surface', 9)]),
     ],
   }
 
@@ -1406,10 +1513,10 @@ function buildDemoSlices() {
     slice: {
       id: laneId,
       service_lifecycle_id: LIFECYCLE_ID,
-      title: 'Every command the first hour asks you to type',
+      title: 'Everything that happens out of sight',
       description:
-        'One lane of Clone & first run — Terminal & scripts on the no-database path — read left to right: the whole first hour as a command list, for anyone who would rather read the shell than the story. The Supabase path adds an env copy and a local stack between the install and the dev server; nothing else on this lane changes.',
-      actor: 'Terminal & scripts',
+        'One lane of Audit the check roster — the subagent fleet, on the path where findings get triaged — read left to right: the half of the audit nobody watches, and the half that decides whether its verdicts can be trusted.',
+      actor: 'Subagent fleet',
       slice_type: 'lane',
       origin: 'generated',
       locale: 'en',
@@ -1417,24 +1524,15 @@ function buildDemoSlices() {
       ...timestamps,
     },
     items: [
-      item(3, laneId, 1, 'Get the code',
-        'A clone. Nothing here is specific to this kit, and nothing here needs an account.',
-        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 1)]),
-      item(3, laneId, 2, 'Get the dependencies',
-        'One install, from the lockfile in the repository. This is the last command before the app can run: on this path there is no env file to write and no database to stand up.',
-        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 2)]),
-      item(3, laneId, 3, 'Run it',
-        'The dev server, and the URL it prints. Everything on the canvas above this lane starts here — with no keys anywhere, the app resolves its content from the bundle instead of the network.',
-        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 5)]),
-      item(3, laneId, 4, 'Prove it',
-        'The suite CI runs, and the agent-harness smoke. Both go green on a keyless clone, which is the point: a reviewer can check the kit\u2019s claims before deciding to configure anything.',
-        [
-          demoCellRef('FIRST_RUN', 'NODB', 'terminal', 10),
-          demoCellRef('FIRST_RUN', 'NODB', 'terminal', 11),
-        ]),
-      item(3, laneId, 5, 'Ship it',
-        'A build and a static host. The deploy is read-only by construction — the write policies want an authenticated session, and the deployed app has no sign-in.',
-        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 12)]),
+      item(3, laneId, 1, 'One check each, and no peeking',
+        'The roster does not run as one long review. Each check goes out to its own fresh context holding exactly one check document and the shared export, which is what keeps a check’s judgement from being coloured by what another check already decided.',
+        [demoCellRef('AUDIT', 'TRIAGED', 'agents', 3)]),
+      item(3, laneId, 2, 'The shape is checked before the content is believed',
+        'An auditor that returns something malformed has failed its check — that is decided before any dedupe, so a broken run is reported as a failed check rather than absorbed as a quiet absence of findings.',
+        [demoCellRef('AUDIT', 'TRIAGED', 'agents', 4)]),
+      item(3, laneId, 3, 'Why running it again is the normal state',
+        'A re-run is a full run. On this path the checks whose cells did not move come back with nothing, which is the point: the noise floor is low enough that a new finding means something changed.',
+        [demoCellRef('AUDIT', 'TRIAGED', 'agents', 7)]),
     ],
   }
 
@@ -1486,14 +1584,21 @@ const header = `// GENERATED by scripts/generate_sample_blueprint.mjs — edit t
 //
 // The template's sample content is the META-BLUEPRINT: the service blueprint
 // of this template itself. One lifecycle (${LIFECYCLE.name}), four phases
-// (Discover → Adopt → Map → Operate, Operate looping back to Map), five
-// scenarios covering the kit's real flows — discovery, the zero-config vs
-// Supabase first run (two genuinely divergent paths), the sb:map pipeline,
-// sb:slice presentation, and the audit/whatif stewardship loop. Every cell
-// is a true statement about how the kit behaves, so the sample doubles as
+// (Discover → Setup → Operate → Maintain, Maintain looping back to Operate),
+// six
+// scenarios named for the skill journey — evaluating the kit, sb:map from two
+// starting points (two divergent paths, each omitting the other's column),
+// the sb:audit roster (happy vs a reopened finding), sb:whatif on a copy,
+// sb:slice for one audience, and the small update loop. Every cell is a true
+// statement about how the kit behaves, so the sample doubles as
 // documentation. Registered as the offline fallback content in
 // src/data/blueprintFallbacks.ts and src/types/nav.ts; the matching database
 // seed is generated into supabase/seed.sql.
+//
+// Two things live only in the database, deliberately: \`evidence\` rows (their
+// SELECT is restricted, so an offline reader could never see them) and
+// slot-sibling cells' identity (\`slot > 0\` carries no cell_key, and the IR an
+// adopter authors has no slot concept).
 //
 // Dimensions:
 ${totals
@@ -1536,6 +1641,8 @@ export type SampleScenario = {
   order_position: number
   /** Client-vocabulary view type for the offline nav. */
   view_type: 'single' | 'stacked'
+  /** Exactly one scenario is the compare/slice demo anchor — see SAMPLE_SCENARIO_ID. */
+  primary?: boolean
   path_ids: string[]
 }
 
@@ -1550,6 +1657,7 @@ ${built
         description: scenario.description,
         order_position: scenario.order,
         view_type: scenario.navViewType,
+        ...(scenario.primary ? { primary: true } : {}),
         path_ids: blueprints.map((bp) => bp.path.id),
       })},`,
   )
@@ -1627,11 +1735,11 @@ const seedParts = []
 seedParts.push(`-- GENERATED by scripts/generate_sample_blueprint.mjs — edit the generator, not this file.
 --
 -- Sample seed: the META-BLUEPRINT — the service blueprint of this template
--- itself. One '${LIFECYCLE.name}' lifecycle, four phases (Discover →
--- Adopt → Map → Operate, with Operate.loops_to_phase_id → Map), five
--- scenarios covering the kit's real flows, incl. one two-path scenario
--- (no-database run vs Supabase run) shaped for the compare views, and three
--- demo slices (journey / step / lane) over that content. Matches
+-- itself. One '${LIFECYCLE.name}' lifecycle, four phases (Discover → Setup
+-- → Operate → Maintain, with Maintain.loops_to_phase_id → Operate), six scenarios
+-- named for the skill journey, incl. two two-path scenarios shaped for the
+-- compare views (each Map path also omits a column the other keeps), and
+-- three demo slices (journey / step / lane) over that content. Matches
 -- src/data/sampleBlueprint.ts and src/types/nav.ts exactly. Idempotent:
 -- replaces the sample lifecycle.
 
@@ -1654,7 +1762,7 @@ ${sqlRows(
   ]),
 )};
 
--- The lifecycle loop: Operate feeds back into Map.
+-- The lifecycle loop: Maintain feeds back into Operate.
 ${PHASES.filter((phase) => phase.loopsToKey)
   .map(
     (phase) => `update public.phases

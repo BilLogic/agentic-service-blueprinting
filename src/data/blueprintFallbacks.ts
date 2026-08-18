@@ -1,8 +1,9 @@
 /**
  * Offline / no-DB fallback registry.
  *
- * The template ships a generated sample blueprint — several scenarios (see
- * src/data/sampleBlueprint.ts, produced by scripts/generate_sample_blueprint.mjs).
+ * The template ships a generated sample blueprint — six scenarios across
+ * three phases (see src/data/sampleBlueprint.ts, produced by
+ * scripts/generate_sample_blueprint.mjs).
  * The import pipeline (scripts/generate_fallbacks.py --register) replaces the
  * marker-delimited registry block below with generated content for a real
  * organization. All lookups are keyed by scenario / path UUIDs, so foreign
@@ -25,10 +26,21 @@ type FallbackPathListItem = {
 // by scripts/generate_sample_blueprint.mjs).
 import { SAMPLE_BLUEPRINTS_BY_SCENARIO, SAMPLE_SCENARIOS } from '@/data/sampleBlueprint'
 
-/** The template's primary sample scenario (the two-path compare demo). */
-export const SAMPLE_SCENARIO_ID = SAMPLE_SCENARIOS.find(
-  (scenario) => scenario.path_ids.length > 1,
-)!.id
+/**
+ * The template's primary sample scenario — the compare demo the journey slice
+ * and the multi-path tests hang off. The sample has more than one two-path
+ * scenario, so it is declared rather than guessed: the generator asserts
+ * exactly one `primary` and this throws with a real message if that breaks.
+ */
+const PRIMARY_SAMPLE_SCENARIO = SAMPLE_SCENARIOS.find(
+  (scenario) => scenario.primary,
+)
+if (!PRIMARY_SAMPLE_SCENARIO) {
+  throw new Error(
+    'no sample scenario is marked primary — regenerate with scripts/generate_sample_blueprint.mjs',
+  )
+}
+export const SAMPLE_SCENARIO_ID = PRIMARY_SAMPLE_SCENARIO.id
 
 const FALLBACK_BY_PATH: Record<string, BlueprintData> = Object.fromEntries(
   Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)
