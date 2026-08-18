@@ -27,9 +27,14 @@ generic swimlanes); no role is mandatory. Prefer creating a custom role over
 - `src/config.ts` — `ORG_NAME`: the workspace/product name in app chrome
   (sidebar wordmark, breadcrumbs). Change per instantiation.
 - `index.html` — browser tab title.
-- `src/index.css` — the design tokens (CSS custom properties for colors,
-  radii, fonts, light/dark). Restyle by editing tokens, not components;
-  the shadcn components read the tokens.
+- `src/styles/tokens.css` — the design tokens (CSS custom properties for
+  colors, radii, fonts, light/dark). The **BRAND SEAM** block at the top of
+  the file is the one block an adopter edits to rebrand the canvas: the
+  template ships hue-neutral (greyscale semantic tokens), and the only
+  chromatic family is the muted blue-grey used for the interactive phase
+  frames — swap those five values for your brand's tint family (keeping the
+  light → dark ordering) and the canvas follows. Restyle by editing tokens,
+  not components; the shadcn components read the tokens.
 - Tech pills use a neutral palette by default; link-driven tech metadata
   (`tech_description` links) carries per-tool copy and imagery.
 
@@ -65,7 +70,9 @@ one client's labels into the shared template.
 
 Set per scenario / per path **in the IR**, not in code: `view_type`
 (`single` | `side-by-side` | `integrated`) and `path_type` (`happy` |
-`unhappy` | `exception` | `alternative`). Side-by-side compares any two
+`unhappy` | `exception` | `alternative`). Note `integrated` is a legacy
+value — persisted rows coerce to the plain Stacked view on read
+(`src/lib/viewTypeVocabulary.ts`). Side-by-side compares any two
 labeled variants via `variant_label` — designed-vs-reality, before/after a
 redesign, or two stakeholders' conflicting accounts. There are no hardcoded
 scenario or path IDs left in the template; do not reintroduce any.

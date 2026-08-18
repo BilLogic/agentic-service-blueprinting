@@ -4,7 +4,16 @@ The template's blueprint data model. Source of truth:
 `supabase/migrations/20260716200000_template_schema.sql` plus the
 derived-layer migrations (`20260729120000_derived_layer.sql`,
 `20260730090000_derived_layer_grants_hardening.sql`,
-`20260803001000_slices_origin_allows_human.sql`) (snapshot:
+`20260803001000_slices_origin_allows_human.sql`) and the authoring
+migrations (`20260818000000_authoring_foundation.sql` — provenance
+`origin` columns, `cells.cell_key` identity, `slot_position`,
+`deleted_structure`, direct-column grants;
+`20260818001000_authoring_operations.sql` — the `SECURITY DEFINER` RPCs
+that are the only sanctioned write path for structure;
+`20260818002000_service_account_tier.sql` — OPTIONAL recipe splitting
+`authenticated` into service/regular tiers via RESTRICTIVE policies;
+`20260819000000_agent_surface.sql` — `agent_sessions`/`agent_messages`
+chat persistence plus the findings write path for in-app runs) (snapshot:
 `supabase/schema.reference.sql`, diagram: `docs/erd.mmd`). The IR
 (`references/ir-schema.json`) mirrors this shape one-to-one with locale maps
 and stable keys in place of UUIDs.
@@ -20,7 +29,7 @@ and stable keys in place of UUIDs.
 - Re-import semantics
 - Ordering fields
 - Working precedent
-- Canvas dialect: cell slots
+- Cell slots (`slot_position`)
 - Derived layer: slices, findings, evidence, propositions
 - Spec fields on IR-owned tables
 
@@ -53,11 +62,11 @@ erDiagram
   service_lifecycles { uuid id PK  text name  text description }
   phases { uuid id PK  uuid service_lifecycle_id FK  text name  text description  int order_position  uuid loops_to_phase_id FK "optional self-reference" }
   service_scenarios { uuid id PK  uuid phase_id FK  text name  text description  int order_position  text view_type "DB tokens: single | side-by-side | integrated (UI: single | stacked | merged)" }
-  paths { uuid id PK  uuid service_scenario_id FK  text name  text description  text note "optional, e.g. parallel-scenario context"  text path_type "happy | unhappy | exception | alternative | named" }
+  paths { uuid id PK  uuid service_scenario_id FK  text name  text description  text note "optional, e.g. parallel-scenario context"  text path_type "happy | unhappy | exception | alternative" }
   steps { uuid id PK  uuid service_scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int column_position "unique per (path_id, column_position)" }
   layers { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text layer_role "semantic role key; null = generic swimlane"  int row_position }
-  cells { uuid id PK  uuid path_id FK  uuid layer_id FK "unique (layer_id, step_id)"  uuid step_id FK  text content "Cell Label - primary grid text"  text picture "optional image URL"  text description "optional detail-panel text"  jsonb links "array of {type, label, url?, description?, picture?, pictures?}" }
+  cells { uuid id PK  uuid path_id FK  uuid layer_id FK "unique (layer_id, step_id, slot_position)"  uuid step_id FK  int slot_position "0 default; tech-lane touchpoints occupy 0..n"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text description "optional detail-panel text"  jsonb links "array of {type, label, url?, description?, picture?, pictures?}" }
   cell_triggers { uuid id PK  uuid source_cell_id FK "unique (source, target, kind); source != target"  uuid target_cell_id FK  text kind "trigger | needs"  text label "optional edge label, e.g. a channel tag"  text note "optional why-line (panel dependencies tab)" }
 ```
 
@@ -72,8 +81,9 @@ erDiagram
 | `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps` |
 | `path_steps` | Which steps a path uses and in what column order | `column_position` unique per path |
 | `layers` | Swimlanes, per PATH (each path carries its own layer rows) | `name` free-form any language; `layer_role` semantic key (see `references/layer-roles.md`) |
-| `cells` | Grid content at (layer × step) on a path | `unique (layer_id, step_id)`; `links` JSONB array; `content` newline-separated items render as pills on pill-role lanes; spec fields below |
+| `cells` | Grid content at (layer × step) on a path | `unique (layer_id, step_id, slot_position)` (slots below); `links` JSONB array; `content` newline-separated items render as pills on pill-role lanes; spec fields below |
 | `cell_triggers` | Directed cell → cell links | `kind` = `trigger` (temporal, canvas arrow) \| `needs` (functional dependency, panel only); optional `label`/`note`; unique `(source_cell_id, target_cell_id, kind)`, `source != target`, both cells on the same path |
+| `deleted_structure` | Delete-safety archive: every structural delete's payload, written in the same transaction as the cascade | `kind` (`scenario`\|`path`\|`lane`\|`step`\|`cell`), `label`, `payload` (natural-keyed rows in dependency order for replay-restore), `affected_slices`; readable by app roles, written only by the definer delete RPCs |
 
 ## Enums
 
@@ -87,7 +97,9 @@ erDiagram
     view on read. The UI's "Merged" canvas (the compared paths drawn as one
     combined blueprint) is session-only and is never written back as
     `integrated`
-- `paths.path_type`: `happy` \| `unhappy` \| `exception` \| `alternative` \| `named` (a labeled variant that is none of the canonical four)
+- `paths.path_type`: `happy` \| `unhappy` \| `exception` \| `alternative`
+  — the CHECK constraint allows exactly these four; a labeled variant that
+  is none of them is expressed via `variant_label`, not a fifth type
 - `cell_triggers.kind`: `trigger` \| `needs` — trigger is temporal (source
   sets off target, renders as a canvas arrow); needs is functional (source
   requires target, renders in the cell panel only)
@@ -135,19 +147,21 @@ harmless, duplicates are not (validator checks).
 deterministic IDs and correct insert order — it is the pattern the IR
 generators follow.
 
-## Canvas dialect: cell slots
+## Cell slots (`slot_position`)
 
-The canvas deployment splits tech-lane touchpoints into multiple cells
-per (lane, step) by adding a `cells.slot_position int not null default 0`
-column and widening the uniqueness constraint to
-`(layer_id, step_id, slot_position)`; rows predating the split default to
-slot 0, so nothing changes until a data migration populates siblings.
-Interactive upsert keeps its contract by always addressing slot 0 —
-siblings are created only by dedicated touchpoint operations. The plain
-template schema does not carry the column (`unique (layer_id, step_id)`
-stands); deployments scaffolded from it keep one cell per (lane, step).
-Tools and the IR never expose slot management directly — treat "the" cell
-of a slot as slot 0.
+`cells.slot_position int not null default 0` is a first-class column
+(since `20260818000000_authoring_foundation.sql`): a (lane, step) slot may
+hold several cells — one touchpoint per row in tech-role lanes — ordered
+by `slot_position`, with uniqueness widened to
+`(layer_id, step_id, slot_position)` (constraint
+`cells_layer_step_slot_unique`). The slot contract: single-cell slots sit
+at 0; tech-lane touchpoints occupy 0..n; the interactive `upsert_cell` RPC
+always addresses slot 0, so siblings are created only by dedicated
+touchpoint operations (and the migration's one-time split, where the
+original row keeps the first item — preserving its id, `cell_key`, arrows,
+slice references and evidence — and each further item becomes a sibling
+with the parent's key plus an ordinal suffix). Tools and the IR never
+expose slot management directly — treat "the" cell of a slot as slot 0.
 
 ## Derived layer: slices, findings, evidence, propositions
 

@@ -54,7 +54,7 @@ in [`docs/erd.mmd`](../docs/erd.mmd).
 | Blueprint row | `layers` | `row_position` (per path); `layer_role` semantic key |
 | Blueprint column | `steps` | canonical per `service_scenario` |
 | Path column order | `path_steps` | `column_position` per `(path_id, step_id)` |
-| Cell | `cells` | unique `(layer_id, step_id)` per path |
+| Cell | `cells` | unique `(layer_id, step_id, slot_position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
 | Cell dependency | `cell_triggers` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not lifecycle phases. Phases live in `phases`.
@@ -118,8 +118,12 @@ App types: `CellLink` and `BlueprintCell` in `src/types/blueprint.ts`. Parsing: 
 | Value | Behavior |
 | --- | --- |
 | `single` | One path blueprint at a time |
-| `side-by-side` | Compare paths in parallel columns |
-| `integrated` | Merge all paths at **runtime** (`mergeIntegratedBlueprint.ts`); each path is still stored separately |
+| `side-by-side` | Labeled variant comparison (UI: "Stacked") |
+| `integrated` | **Legacy value** — persisted rows coerce to the plain Stacked view on read (`src/lib/viewTypeVocabulary.ts`). The UI's "Merged" canvas is session-only and never written back as `integrated` |
+
+These are the STORED (DB) tokens; the client vocabulary is `single` \|
+`stacked` \| `merged`, mapped at the read/write seams in
+`src/lib/viewTypeVocabulary.ts`.
 
 ## Sample seed
 
@@ -133,10 +137,36 @@ never edit the emitted files by hand.
 
 ## Row Level Security
 
-All blueprint tables have RLS **enabled** with public `SELECT` policies. No
-write policies exist — writes go through the Supabase CLI (seeds/migrations)
-with your own credentials. **Anything you deploy with an anon key is publicly
-readable.**
+All blueprint tables have RLS **enabled** with public `SELECT` policies, and
+the `anon` role stays read-only: a deployed site can render everything but
+write nothing. **Anything you deploy with an anon key is publicly readable.**
+
+Writes are layered on top for signed-in sessions (`authenticated`):
+
+- **Structure goes through RPCs, not tables.** The authoring-operations
+  migration ships `SECURITY DEFINER` functions (create/duplicate/rename/
+  reorder/delete scenarios, paths, lanes, steps; `upsert_cell`;
+  dependencies) — each performs one complete, valid edit in one
+  transaction. No table-level `INSERT`/`DELETE` on structural tables is
+  granted to app roles.
+- **Ordinary text edits use column-scoped grants**: `cells.content/
+  description/links`, `layers.name/layer_role`, `steps.name`,
+  `paths.name/description/note/path_type`,
+  `service_scenarios.name/description/view_type`, plus the derived-layer
+  spec columns — writable directly by `authenticated` under permissive
+  update policies.
+- **Optional service-account tier** (`20260818002000`, a recipe you can
+  skip or delete): RESTRICTIVE policies AND an in-function
+  `is_service_account()` guard split `authenticated` into service accounts
+  (edit everything) and regular accounts (view + agent surfaces, no
+  blueprint writes). `anon` is untouched either way.
+- **Agent-surface tables** (`agent_sessions`, `agent_messages`) are
+  reachable only by `authenticated`; the same migration restores the
+  findings insert/update grants for in-app agent runs (still ANDed with
+  the tier's restrictive policies where applied).
+
+Seeds and migrations still go through the Supabase CLI with your own
+credentials.
 
 ## Migration history
 
@@ -146,6 +176,10 @@ readable.**
 | `20260729120000_derived_layer.sql` | Derived layer: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_triggers.kind` |
 | `20260730090000_derived_layer_grants_hardening.sql` | Explicit Data API grants, anon write-privilege revokes, pinned `search_path`, attribution columns, evidence `cell_key` pairing |
 | `20260803001000_slices_origin_allows_human.sql` | Adds `human` to the `slices.origin` vocabulary (in-app authored slices) |
+| `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.slot_position` (+ widened uniqueness), deferrable `path_steps` ordering, `deleted_structure` archive, direct-column grants for panel edits |
+| `20260818001000_authoring_operations.sql` | Authoring operations: the `SECURITY DEFINER` RPCs (create/duplicate/rename/reorder/delete structure, `upsert_cell`, dependencies) that are the only sanctioned write path for structural shape |
+| `20260818002000_service_account_tier.sql` | OPTIONAL recipe: splits `authenticated` into service accounts (edit everything) and regular accounts (view + agent surfaces) via RESTRICTIVE policies + `is_service_account()` |
+| `20260819000000_agent_surface.sql` | Agent surface: `agent_sessions`/`agent_messages` chat persistence (authenticated-only) and the findings insert/update grants for in-app agent runs |
 
 ## Migration authoring notes
 
@@ -221,7 +255,7 @@ const { data } = await supabase
 | --- | --- |
 | `src/lib/workflowQueries.ts` | Supabase nested selects |
 | `src/lib/normalizeBlueprint.ts` | Raw path row → `BlueprintData` |
-| `src/lib/mergeIntegratedBlueprint.ts` | Runtime integrated merge |
+| `src/lib/viewTypeVocabulary.ts` | DB ⇄ client view-type token maps (`integrated` → stacked on read) |
 | `src/hooks/useScenarioBlueprint.ts` | Load paths + blueprints per scenario |
 | `src/data/blueprintFallbacks.ts` | Offline/demo blueprint data |
 

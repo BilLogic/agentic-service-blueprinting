@@ -1,7 +1,7 @@
 ---
 title: "Derived layer — backend, schema, and IR pipeline"
 type: feat
-status: active
+status: completed
 date: 2026-07-29
 ---
 
