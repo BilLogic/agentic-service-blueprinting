@@ -12,8 +12,9 @@
 -- unused `services` catalog table (never dropped). Remove it if present.
 -- ---------------------------------------------------------------------------
 
-drop trigger if exists set_services_updated_at on public.services;
-drop policy if exists "services_select" on public.services;
+-- Note: only the table drop — DROP TRIGGER/POLICY IF EXISTS still 42P01s
+-- when the TABLE is absent, which aborted this whole migration on a fresh
+-- database. CASCADE removes the trigger and policies with the table.
 drop table if exists public.services cascade;
 
 -- ---------------------------------------------------------------------------
