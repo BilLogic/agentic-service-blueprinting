@@ -32,6 +32,15 @@ Rules that hold for every skill:
   `hooks/secret_guard.py` check runs automatically only in Claude Code —
   elsewhere, enforce it yourself.
 
+## Template app & vendored skills
+
+This repo also ships the blueprint template app (`src/`) and its eval
+harness (`scripts/agent-harness/`, `evals/`). The skills are dual-homed:
+`skills/` + `references/` are canonical; `src/lib/agent/skill/` is a
+vendored copy the app bundles. After editing skills or references, run
+`node scripts/sync-canvas-skills.mjs` — otherwise `npm test` fails on its
+`--check` drift guard.
+
 ## Workspaces
 
 A scaffolded blueprint workspace carries its own copies of `skills/`,
