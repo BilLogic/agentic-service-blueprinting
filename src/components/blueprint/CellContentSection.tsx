@@ -1,4 +1,3 @@
-import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCellContent } from '@/hooks/useCellContent'
 
 /**
@@ -9,14 +8,16 @@ import { useCellContent } from '@/hooks/useCellContent'
  * gap is a finding: the person on the other side thinks they are dealing with
  * someone other than whoever is accountable.
  *
+ * Read from the database when one is configured, otherwise from the bundled
+ * sample content — the pair is not a database-only feature.
+ *
  * Editing does not live here anymore: in Edit mode the panel swaps this
  * section for `CellPanelEditor`, one form with one Save for the whole cell.
  */
 export function CellContentSection({ cellId }: { cellId: string | null }) {
-  const { client, configured } = useSupabase()
-  const result = useCellContent(configured ? cellId : null)
+  const result = useCellContent(cellId)
 
-  if (!configured || !client || !cellId) return null
+  if (!cellId) return null
   if (result.status !== 'ready') return null
 
   const cell = result.data

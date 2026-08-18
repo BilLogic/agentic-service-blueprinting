@@ -114,10 +114,15 @@ const phaseByKey = Object.fromEntries(PHASES.map((p) => [p.key, p]))
 
 /**
  * Scenario cell spec:
- *   { lane, col, content, slot?, description?, links?, paths? }
+ *   { lane, col, content, slot?, description?, links?, paths?,
+ *     owner?, perceivedOwner?, fn?, form?, valueProps? }
  * `content` is a string (present on every path) or a per-path-key record
  * (present only on the named paths; differing values = a divergent slot).
  * `slot` > 0 emits a slot-sibling cell (tech lanes: one cell per touchpoint).
+ * The last five are the cell spec (`cells.owner` … `cells.value_props`):
+ * `owner`/`perceivedOwner` render as the owner pair in the panel, `fn`/`form`/
+ * `valueProps` as its FUNCTION / FORM / VALUE block. They are emitted into both
+ * artifacts, so a keyless clone shows the same spec a seeded database does.
  */
 const SCENARIOS = [
   // -------------------------------------------------------------------
@@ -153,13 +158,18 @@ const SCENARIOS = [
       'Weigh the fit',
       'Decide to adopt',
     ],
+    // Lane order matters: backstage actions sit directly above the support
+    // lane so this scenario draws all THREE canonical divider lines —
+    // interaction (after Adopter), visibility (after Repo front door), and
+    // internal interaction (after Maintainers, because a support_systems lane
+    // follows it). See references/layer-roles.md, "Line-anchoring semantics".
     lanes: [
       { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
       { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
       { row: 2, key: 'frontdoor', name: 'Repo front door', role: 'frontstage_actions' },
       { row: 3, key: 'demo', name: 'Live demo', role: 'frontstage_tech' },
-      { row: 4, key: 'docs', name: 'README & guides', role: 'support_systems' },
-      { row: 5, key: 'maintainers', name: 'Maintainers', role: 'backstage_actions' },
+      { row: 4, key: 'maintainers', name: 'Maintainers', role: 'backstage_actions' },
+      { row: 5, key: 'docs', name: 'README & guides', role: 'support_systems' },
     ],
     cells: [
       { lane: 'visual', col: 1, content: '' },
@@ -179,15 +189,32 @@ const SCENARIOS = [
       {
         lane: 'frontdoor', col: 2,
         content: 'Positions the queryable blueprint against the static artifact it replaces',
+        // The cell spec (FUNCTION / FORM / VALUE) shown in the panel's overview.
+        fn: 'Answer “what is this and why would I use it?” before the reader scrolls, so nobody has to clone the kit to find out what it does.',
+        form: 'Prose on the repository landing page, opening with the poster-to-database contrast and a link to a live example.',
+        valueProps: [
+          { for: 'A first-time visitor', value: 'A decision in one screen instead of an afternoon.' },
+          { for: 'The maintainers', value: 'Fewer issues asking what the project is for.' },
+        ],
         links: [repoLink('README — why a queryable blueprint', 'README.md')],
       },
       { lane: 'frontdoor', col: 3, content: 'Links the live example, with the note that nothing in the repo depends on it' },
+      { lane: 'frontdoor', col: 4, content: 'Names the four levels in order — lifecycle, phase, scenario, path — and what each one is for' },
       { lane: 'frontdoor', col: 5, content: 'Summarizes each skill in one table row: what it is for, where it ends' },
+      { lane: 'frontdoor', col: 6, content: 'Points each role at one guide instead of asking anyone to read all four' },
       { lane: 'frontdoor', col: 7, content: 'States the exposure note: deployed tables are publicly readable' },
+      { lane: 'frontdoor', col: 8, content: 'Says the sample content is meant to be replaced, and which script replaces it' },
 
       {
         lane: 'demo', col: 3,
         content: 'Example deployment\nPhase overview canvas',
+        // The owner pair, deliberately DIFFERENT — the case the docs call the
+        // interesting one, and true here: a visitor reads the linked deployment
+        // as the product, when it is one team's example of the stock renderer.
+        owner: 'Kit maintainers',
+        perceivedOwner: 'A hosted product',
+        description:
+          'The gap between the two owners is the point: nothing in this repository depends on that deployment, and an adopter deploys their own.',
         links: [
           {
             type: 'tech_description',
@@ -197,7 +224,8 @@ const SCENARIOS = [
           },
         ],
       },
-      { lane: 'demo', col: 4, content: 'Cell detail panel\nTrigger arrows' },
+      { lane: 'demo', col: 4, content: 'Cell detail panel\nTrigger arrows\nDependency tab' },
+      { lane: 'demo', col: 8, content: 'Clone template\nFork' },
 
       {
         lane: 'docs', col: 2,
@@ -218,23 +246,64 @@ const SCENARIOS = [
         ],
       },
       {
+        lane: 'docs', col: 5,
+        content: 'skills/map\nskills/audit\nskills/whatif\nskills/slice',
+        description:
+          'Four skills, each with its own SKILL.md and references: map builds and imports a blueprint, audit checks it, whatif traces a change through it, slice presents part of it.',
+        links: [
+          repoLink('skills/map/SKILL.md', 'skills/map/SKILL.md'),
+          repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md'),
+          repoLink('skills/whatif/SKILL.md', 'skills/whatif/SKILL.md'),
+          repoLink('skills/slice/SKILL.md', 'skills/slice/SKILL.md'),
+        ],
+      },
+      {
         lane: 'docs', col: 7,
         content: 'LICENSE\nsupabase/DATABASE.md',
         links: [repoLink('supabase/DATABASE.md', 'supabase/DATABASE.md')],
       },
+      {
+        lane: 'docs', col: 8,
+        content: 'AGENTS.md\nguide/03 — the plugin',
+        description:
+          'What an adopter reads next: the repository conventions an agent follows, and how the kit ships as an installable plugin.',
+        links: [
+          repoLink('AGENTS.md', 'AGENTS.md'),
+          repoLink('guide/03 — The plugin', 'docs/guide/03-the-plugin.md'),
+        ],
+      },
 
+      { lane: 'maintainers', col: 3, content: 'Keep the example deployment on the current renderer so the demo matches the code' },
+      {
+        lane: 'maintainers', col: 5,
+        content: 'Ship the four skills, their references, and the subagents they dispatch, in this same repository',
+        links: [repoLink('agents/ — the subagents the skills dispatch', 'agents/auditor.md')],
+      },
       {
         lane: 'maintainers', col: 7,
         content: 'Record what shipped in CHANGELOG.md, release by release',
         links: [repoLink('CHANGELOG.md', 'CHANGELOG.md')],
       },
+      {
+        lane: 'maintainers', col: 8,
+        content: 'Keep the sample content honest: every cell in it is a true statement about the kit',
+        links: [
+          repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs'),
+        ],
+      },
     ],
     triggers: [
       { from: ['frontdoor', 2], to: ['demo', 3], label: 'See it live' },
       { from: ['adopter', 6], to: ['docs', 6] },
+      // Cross-lane UPWARD: the support lane answers back into the front door.
+      { from: ['docs', 5], to: ['frontdoor', 5], label: 'one row each' },
       {
         from: ['adopter', 8], to: ['frontdoor', 7], kind: 'needs',
         note: 'The decision to adopt depends on knowing what a public deployment exposes.',
+      },
+      {
+        from: ['adopter', 4], to: ['docs', 4], kind: 'needs',
+        note: 'The hierarchy only reads as a hierarchy with the model figures next to it.',
       },
     ],
   },
@@ -883,6 +952,14 @@ function buildScenario(scenario) {
       description: spec.description ?? null,
       links: spec.links ?? [],
       ...(slot > 0 ? { slot_position: slot } : {}),
+      // Cell spec — emitted only where authored, so the fixture stays lean.
+      // `fn` in the spec, `function` on the row: the column is named for the
+      // service-blueprint canon (FUNCTION / FORM / VALUE).
+      ...(spec.owner ? { owner: spec.owner } : {}),
+      ...(spec.perceivedOwner ? { perceived_owner: spec.perceivedOwner } : {}),
+      ...(spec.fn ? { function: spec.fn } : {}),
+      ...(spec.form ? { form: spec.form } : {}),
+      ...(spec.valueProps ? { value_props: spec.valueProps } : {}),
     }))
 
     const hasCell = (laneKey, col) =>
@@ -1354,7 +1431,7 @@ ${sqlRows(
 )};
 `)
 
-seedParts.push(`insert into public.cells (id, path_id, layer_id, step_id, slot_position, content, picture, description, links, cell_key) values
+seedParts.push(`insert into public.cells (id, path_id, layer_id, step_id, slot_position, content, picture, description, links, owner, perceived_owner, function, form, value_props, cell_key) values
 ${sqlRows(
   allBlueprints.flatMap(({ scenario, bp }) => {
     const layerName = new Map(bp.layers.map((l) => [l.id, l.name]))
@@ -1371,6 +1448,11 @@ ${sqlRows(
         q(cell.picture),
         q(cell.description),
         `${q(JSON.stringify(cell.links))}::jsonb`,
+        q(cell.owner ?? null),
+        q(cell.perceived_owner ?? null),
+        q(cell.function ?? null),
+        q(cell.form ?? null),
+        `${q(JSON.stringify(cell.value_props ?? []))}::jsonb`,
         // Slot siblings carry no key — cell_key is unique and names the slot.
         slot > 0
           ? 'null'
