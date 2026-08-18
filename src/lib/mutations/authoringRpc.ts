@@ -32,9 +32,10 @@ async function invoke<T>(
   fn: string,
   args: Record<string, unknown>,
 ): Promise<T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the RPCs
-  // post-date the generated Database types; the wrapper signatures are the
-  // contract until types are regenerated against the applied migration.
+  // The RPCs post-date the generated Database types; the wrapper
+  // signatures are the contract until types are regenerated against the
+  // applied migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client.rpc as any)(fn, args)
   if (error) {
     throw new Error(error.message ?? String(error))

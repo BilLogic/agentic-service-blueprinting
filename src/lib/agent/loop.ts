@@ -146,7 +146,9 @@ export function stopAgent(sessionId: string): void {
 /** The event minus its view-only fields — what agent_messages stores. */
 function persistable(event: TranscriptEvent): TranscriptEvent {
   if (event.kind !== 'tool') return event
-  const { args: _args, result: _result, ...rest } = event
+  const rest = { ...event }
+  delete rest.args
+  delete rest.result
   return rest
 }
 
