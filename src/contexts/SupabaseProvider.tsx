@@ -17,9 +17,9 @@ import {
 import type { Database } from '../types/database'
 import { hasKey, useAgentSettings } from '../lib/agent/settings'
 import {
-  applyDevTierOverride,
-  useDevTierOverride,
-  type DevTierOverride,
+  applyDevSimulation,
+  useDevSimulation,
+  type DevSimulation,
 } from '../lib/devPortal'
 
 type SupabaseContextValue = {
@@ -65,8 +65,8 @@ type SupabaseContextValue = {
    */
   isSampleTrial: boolean
   /** Developer-portal tier simulation — client-side UI gating only. */
-  devTierOverride: DevTierOverride
-  /** The tier flags BEFORE the developer override, for honest readouts. */
+  devSimulation: DevSimulation
+  /** The write flag BEFORE the simulation, for the honest readout. */
   realCanWrite: boolean
 }
 
@@ -195,8 +195,8 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
    * this session's tier and touches no policy. RLS and the RPC grants are
    * unchanged and remain the authority — see lib/devPortal.ts.
    */
-  const devTierOverride = useDevTierOverride()
-  const canWrite = applyDevTierOverride(devTierOverride, realCanWrite)
+  const devSimulation = useDevSimulation()
+  const canWrite = applyDevSimulation(devSimulation, realCanWrite)
 
   const value = useMemo(
     () => ({
@@ -213,7 +213,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       canAgent:
         isSampleTrial || (configured && (session !== null || isDevAuthoring)),
       isSampleTrial,
-      devTierOverride,
+      devSimulation,
     }),
     [
       client,
@@ -226,7 +226,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       isEditPreview,
       isSampleTrial,
       isServiceAccount,
-      devTierOverride,
+      devSimulation,
     ],
   )
 
