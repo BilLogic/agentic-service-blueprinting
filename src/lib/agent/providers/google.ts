@@ -86,10 +86,14 @@ export const googleAdapter: AgentProviderAdapter = {
   id: 'google',
   async chat(input: ChatInput): Promise<ChatResult> {
     const response = await fetch(
-      `${BASE}/models/${encodeURIComponent(input.model)}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
+      `${BASE}/models/${encodeURIComponent(input.model)}:generateContent`,
       {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        // Key rides in a header, never the URL — URLs land in logs.
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': input.apiKey,
+        },
         signal: input.signal,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: input.system }] },
