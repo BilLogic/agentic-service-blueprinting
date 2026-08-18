@@ -547,7 +547,7 @@ function AgentChatView({
   onBack: () => void
 }) {
   const settings = useAgentSettings()
-  const { client, canWrite, canAgent } = useSupabase()
+  const { client, canAgentWrite, canAgent } = useSupabase()
   const keyed = hasKey(settings)
   // Drafts are per session, held outside the component — switching
   // conversations or re-docking the panel never eats what you were typing.
@@ -647,7 +647,9 @@ function AgentChatView({
       contextNote: '',
       text,
       skill,
-      allowWrites: canWrite,
+      // Tier-aware: a session whose JWT carries a non-service role gets the
+      // loop's scripted view-only refusals, not raw RLS errors.
+      allowWrites: canAgentWrite,
     })
   }
 

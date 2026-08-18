@@ -21,6 +21,15 @@ type SupabaseContextValue = {
    * refuse a non-service session server-side.
    */
   canWrite: boolean
+  /**
+   * The agent loop may hold the write tools. Derived from the JWT's
+   * app_metadata.role: no role claim means the tier recipe was never
+   * adopted, so every signed-in session writes; an explicit non-'service'
+   * role means the recipe IS in play and this session is a viewer — the
+   * loop then produces its scripted view-only refusals instead of raw RLS
+   * errors. UX gate only; the server stays the real enforcer.
+   */
+  canAgentWrite: boolean
   /** Agent persistence (sessions/transcripts in the DB) is possible. */
   canAgent: boolean
 }
@@ -64,17 +73,23 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     }
   }, [client])
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    const canWrite = configured && session !== null
+    // Contract: no role claim in the JWT = the tier recipe (20260818002000)
+    // was never adopted = every signed-in session writes. Any explicit role
+    // other than 'service' marks a viewer session under the recipe. This
+    // only shapes the agent's UX — RLS/RPCs enforce for real server-side.
+    const role = session?.user.app_metadata?.role as string | undefined
+    return {
       client,
       configured,
       session,
       isLoading,
-      canWrite: configured && session !== null,
+      canWrite,
+      canAgentWrite: canWrite && (role == null || role === 'service'),
       canAgent: configured && session !== null,
-    }),
-    [client, configured, session, isLoading],
-  )
+    }
+  }, [client, configured, session, isLoading])
 
   return (
     <SupabaseContext.Provider value={value}>
