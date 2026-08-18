@@ -81,8 +81,9 @@ scenario or path IDs left in the template; do not reintroduce any.
 
 Schema and frontend support unbounded layers/steps/paths — more actors just
 means more lanes. The validator emits **soft warnings** above ergonomic
-thresholds, never errors; the shipped sample content (3 paths × 12 lanes ×
-16 steps, custom roles, CJK) is the proof fixture.
+thresholds, never errors; the shipped sample content (8 paths across 6
+scenarios, one 7-lane roster, widest board 8 lanes × 10 steps, one custom
+role, bilingual CJK) is the proof fixture.
 
 ## Portfolio conventions (consultants / agencies)
 

@@ -357,8 +357,10 @@ pass "fallback-register (marker block rewritten; app type-checks against generat
 # --register also regenerates the offline nav (FALLBACK_NAV) from the IR lifecycle.
 grep -q "GENERATED-NAV:BEGIN" "$NAV" || fail "nav-register: NAV BEGIN marker lost"
 grep -q "GENERATED-NAV:END" "$NAV" || fail "nav-register: NAV END marker lost"
-# Generated form drops the sample-only import + phase-id consts.
-grep -q "SAMPLE_SCENARIO_ID" "$NAV" && fail "nav-register: sample import survived regeneration"
+# Generated form drops the sample-only import + phase-id consts. Grep the
+# import specifier, not the symbol: the symbol moved out of nav.ts long ago,
+# which made this check vacuous.
+grep -q "@/data/sampleBlueprint" "$NAV" && fail "nav-register: sample import survived regeneration"
 # Nav references the IR's scenario UUIDs (adapter parity with the generated module).
 python3 - "$NAV" "$GENERATED_TS" <<'PY'
 import re, sys

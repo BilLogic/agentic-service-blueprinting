@@ -129,11 +129,19 @@ These are the STORED (DB) tokens; the client vocabulary is `single` \|
 
 `supabase/seed.sql` is **generated** by `scripts/generate_sample_blueprint.mjs`
 alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
-`Sample Lifecycle` → `Discover`/`Deliver` phases (with a phase loop) → one
-`Sample Service` scenario with three paths (happy / alternative / exception),
-12 lanes (canonical + custom roles, CJK labels), and 16 shared steps. Sample
-UUIDs use the `f0000000-…` prefix. Re-run the generator after editing it —
-never edit the emitted files by hand.
+`Keeping a blueprint true` lifecycle → four phases (`Discover` → `Setup` →
+`Operate` → `Maintain`, with `Maintain.loops_to_phase_id` → `Operate`) → six
+scenarios carrying eight paths (happy / alternative / unhappy) on one 7-lane
+roster (canonical + one custom role, bilingual CJK labels), plus a visual row
+on `Map your service` and three demo slices. Sample UUIDs use the
+`f0000000-…` prefix. Re-run the generator after editing it — never edit the
+emitted files by hand.
+
+Two things exist in this schema but deliberately not in the sample: `evidence`
+rows (restricted `SELECT`, so an offline reader could never see them) and the
+lane spec columns `kpis` / `tools` / `owner_team`. Neither has a home in the
+offline `BlueprintData` shape, and the seed and the fallback module are
+required to hold the same content.
 
 ## Row Level Security
 

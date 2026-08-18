@@ -257,20 +257,6 @@ export const coverContent: CoverContent = {
         },
         {
           kind: 'skill',
-          id: 'skills-slice',
-          command: '/sb:slice',
-          purpose: 'Cut the view one stakeholder needs out of the whole.',
-          producesLabel: 'Produces',
-          produces: 'One slice per view, still citing the cells it quotes.',
-          figure: {
-            src: '/cover/sb-slice.svg',
-            alt: 'How sb:slice selects and orders cells into a stakeholder view',
-            width: 880,
-            height: 292,
-          },
-        },
-        {
-          kind: 'skill',
           id: 'skills-audit',
           command: '/sb:audit',
           purpose:
@@ -296,6 +282,20 @@ export const coverContent: CoverContent = {
           figure: {
             src: '/cover/sb-whatif.svg',
             alt: 'How sb:whatif traces a proposed change downstream on a copy',
+            width: 880,
+            height: 292,
+          },
+        },
+        {
+          kind: 'skill',
+          id: 'skills-slice',
+          command: '/sb:slice',
+          purpose: 'Cut the view one stakeholder needs out of the whole.',
+          producesLabel: 'Produces',
+          produces: 'One slice per view, still citing the cells it quotes.',
+          figure: {
+            src: '/cover/sb-slice.svg',
+            alt: 'How sb:slice selects and orders cells into a stakeholder view',
             width: 880,
             height: 292,
           },

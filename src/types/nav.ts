@@ -95,9 +95,9 @@ export function getOverviewPostToPreLoopTransition(
 
 // GENERATED-NAV:BEGIN — managed by scripts/generate_fallbacks.py --register.
 // Replaced wholesale on registration (from the IR lifecycle); do not hand-edit.
-// Default content is the template's meta-blueprint lifecycle: four phases
-// (Discover → Adopt → Map → Operate, Operate looping back to Map) wrapping
-// five sample scenarios, matching supabase/seed.sql when Supabase is not
+// Default content is the template's meta-blueprint lifecycle: three phases
+// (Discover → Setup → Maintain, Maintain looping back to Setup) wrapping six
+// sample scenarios, matching supabase/seed.sql when Supabase is not
 // configured.
 import { SAMPLE_PHASES, SAMPLE_SCENARIOS } from '@/data/sampleBlueprint'
 

@@ -5,6 +5,10 @@
 
 ## 1. The four skills
 
+They are listed here in the order a team meets them, which is the order the
+sample blueprint's own scenarios run in: map a service, audit what is on the
+board, trace a change through it, then cut the view an audience asked for.
+
 ### `sb:map`
 
 ![How to use sb:map](../assets/sb-map.svg)
@@ -18,14 +22,6 @@ crosswalk; an existing workspace resumes where it stopped.
 Its exit is not "looks done": a validated `blueprint/blueprint.json`, an
 adversarial review that came back clean, and a per-scenario sign-off bound
 to a content hash.
-
-### `sb:slice`
-
-![How to use sb:slice](../assets/sb-slice.svg)
-
-Takes one stakeholder view out of the blueprint as a document. Five types,
-each with a template. Exits when the slice validates and every claim in it
-traces to a cited cell.
 
 ### `sb:audit`
 
@@ -44,14 +40,22 @@ Takes a proposed change and traces it on a copy: which cells it reaches,
 which assumptions stop holding, where displaced demand lands. Exits with
 options, not edits. Accepting one promotes it through `sb:map`.
 
+### `sb:slice`
+
+![How to use sb:slice](../assets/sb-slice.svg)
+
+Takes one stakeholder view out of the blueprint as a document. Five types,
+each with a template. Exits when the slice validates and every claim in it
+traces to a cited cell.
+
 ## 2. The skills and the agents
 
 ![The skill set and agent fleet](../assets/skill-architecture.svg)
 
 Each skill carries its own `references/` and, where it needs them,
 `scripts/`. It links only the shared references its task needs rather than
-loading all of them: `sb:map` links six, `sb:slice` four, `sb:audit` six,
-`sb:whatif` five.
+loading all of them: `sb:map` links six, `sb:audit` six, `sb:whatif` five,
+`sb:slice` four.
 
 The heavy reading happens elsewhere. Five agents run in their own context
 and hand back a summary rather than their raw material:

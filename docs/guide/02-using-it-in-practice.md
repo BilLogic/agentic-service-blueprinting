@@ -5,6 +5,15 @@
 
 ## 1. Four situations
 
+In the order the skills come up once a service is mapped — check it, trace a
+change through it, cut a view from it — plus the comparison the app does on
+its own.
+
+**Checking the blueprint still describes reality.** Services change faster
+than the artefacts that describe them. `sb:audit` runs its roster and
+hands back findings to triage: gaps behind frontstage promises, channels
+that disagree, moments nobody owns.
+
 **Scoping a change.** Someone proposes removing a step. Before estimating,
 you want to know what else touches it. `sb:whatif` walks the dependency
 graph from that cell and returns the cells the change would reach and the
@@ -14,11 +23,6 @@ assumptions it would break, on a copy. Nothing moves until you accept it.
 service that concerns them, not all of it. `sb:slice` takes that view —
 one lane, one step, one journey — as a document that still points back at
 the cells it quotes, so it cannot quietly drift from the blueprint.
-
-**Checking the blueprint still describes reality.** Services change faster
-than the artefacts that describe them. `sb:audit` runs its roster and
-hands back findings to triage: gaps behind frontstage promises, channels
-that disagree, moments nobody owns.
 
 **Comparing designed against actual.** Two paths in one scenario, side by
 side, column by column. This is the service-design move of comparing the
