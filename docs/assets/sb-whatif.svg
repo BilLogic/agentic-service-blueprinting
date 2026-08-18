@@ -20,27 +20,26 @@
 
   <text x="24" y="10" class="rail">THE BLUEPRINT TODAY</text>
   <rect x="16" y="18" width="340" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+  <rect x="44" y="32" width="284" height="26" rx="13" fill="#ffffff" stroke="#d4b483"/>
+  <text x="186" y="49" class="sub" font-size="9" text-anchor="middle" fill="#6b7280">what if we removed this step?</text>
   <g opacity="0.7">
-    <rect x="44" y="52" width="284" height="35" fill="#e8f3ed"/>
-    <rect x="44" y="87" width="284" height="35" fill="#fdf1e3"/>
-    <rect x="44" y="122" width="284" height="35" fill="#fbe9f0"/>
-    <rect x="44" y="157" width="284" height="35" fill="#ecebf5"/>
-    <rect x="44" y="52" width="284" height="140" fill="none" stroke="#d4d4da"/>
-    <line x1="115" y1="52" x2="115" y2="192" stroke="#e2e4e9"/>
-    <line x1="186" y1="52" x2="186" y2="192" stroke="#e2e4e9"/>
-    <line x1="257" y1="52" x2="257" y2="192" stroke="#e2e4e9"/>
+    <rect x="44" y="72" width="284" height="35" fill="#e8f3ed"/>
+    <rect x="44" y="107" width="284" height="35" fill="#fdf1e3"/>
+    <rect x="44" y="142" width="284" height="35" fill="#fbe9f0"/>
+    <rect x="44" y="177" width="284" height="35" fill="#ecebf5"/>
+    <rect x="44" y="72" width="284" height="140" fill="none" stroke="#d4d4da"/>
+    <line x1="115" y1="72" x2="115" y2="212" stroke="#e2e4e9"/>
+    <line x1="186" y1="72" x2="186" y2="212" stroke="#e2e4e9"/>
+    <line x1="257" y1="72" x2="257" y2="212" stroke="#e2e4e9"/>
   </g>
-  <rect x="57.5" y="61.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="199.5" y="61.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="128.5" y="96.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="270.5" y="96.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="57.5" y="131.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="199.5" y="131.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="128.5" y="166.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="270.5" y="166.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="44" y="198" width="284" height="26" rx="13" fill="#ffffff" stroke="#d4b483"/>
-  <text x="186" y="215" class="sub" font-size="9" text-anchor="middle" fill="#6b7280">what if we drop the sign-up call?</text>
-
+  <rect x="57.5" y="81.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="199.5" y="81.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="128.5" y="116.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="270.5" y="116.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="57.5" y="151.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="199.5" y="151.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="128.5" y="186.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="270.5" y="186.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
   <path class="flow" d="M356,123 L518,123"/>
   <rect x="365" y="96" width="150" height="54" rx="14" fill="#fdf1e3" stroke="#d4b483" stroke-width="1.4"/>
   <text x="440" y="118" class="title mono" text-anchor="middle">sb:whatif</text>
@@ -57,7 +56,7 @@
   <rect x="584" y="56" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
   <rect x="599" y="66" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
   <rect x="584" y="66" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
-  <text x="628" y="58" class="chip" font-size="9.5">route it to chat support</text>
+  <text x="628" y="58" class="chip" font-size="9.5">move it to another channel</text>
   <text x="628" y="73" class="sub" font-size="9">7 cells reached, 2 assumptions break</text>
   <rect x="540" y="96" width="308" height="56" rx="8" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
   <rect x="552" y="107" width="60" height="34" fill="#ffffff" stroke="#d4d4da"/>
@@ -67,7 +66,7 @@
   <rect x="554" y="110" width="11" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
   <rect x="569" y="120" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
   <rect x="584" y="120" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
-  <text x="628" y="122" class="chip" font-size="9.5">let people book it themselves</text>
+  <text x="628" y="122" class="chip" font-size="9.5">let the customer do it themselves</text>
   <text x="628" y="137" class="sub" font-size="9">4 cells reached, 1 assumption breaks</text>
   <rect x="540" y="160" width="308" height="56" rx="8" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
   <rect x="552" y="171" width="60" height="34" fill="#ffffff" stroke="#d4d4da"/>
@@ -76,6 +75,6 @@
   <line x1="597" y1="171" x2="597" y2="205" stroke="#e2e4e9"/>
   <rect x="554" y="174" width="11" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
   <rect x="569" y="184" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
-  <text x="628" y="186" class="chip" font-size="9.5">keep it, for new accounts only</text>
+  <text x="628" y="186" class="chip" font-size="9.5">keep it for some customers only</text>
   <text x="628" y="201" class="sub" font-size="9">2 cells reached, nothing downstream</text>
 </svg>
