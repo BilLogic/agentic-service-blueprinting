@@ -16,17 +16,17 @@ import type { BlueprintData, BlueprintLayer } from '@/types/blueprint'
 type LayerRoleSource = { name: string; role?: string | null }
 
 /** Roles whose cells list multiple items as inline pills (newline-separated content). */
-export const PILL_CELL_LAYER_ROLES = [
+const PILL_CELL_LAYER_ROLES = [
   FRONTSTAGE_TECH_ROLE,
   BACKSTAGE_TECH_ROLE,
   SUPPORT_SYSTEMS_ROLE,
 ] as const
 
 /** Roles rendered as picture rows instead of text cells. */
-export const VISUAL_LAYER_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
+const VISUAL_LAYER_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
 
-export const VISUAL_ROW_MIN_HEIGHT = 132
-export const VISUAL_ROW_MIN_HEIGHT_COMPACT = 108
+const VISUAL_ROW_MIN_HEIGHT = 132
+const VISUAL_ROW_MIN_HEIGHT_COMPACT = 108
 
 /** Max height for the visual cell button inside a swimlane row (excludes shell padding). */
 export function getVisualCellButtonMaxHeight(compact = false): number {
@@ -236,7 +236,7 @@ export function layerHasWrapCorridorBelow(layer: BlueprintLayer): boolean {
   return shouldShowInteractionLineAfter(layer)
 }
 
-export function countInLaneLoopCorridorMargins(
+function countInLaneLoopCorridorMargins(
   layers: BlueprintLayer[],
   data?: BlueprintData,
 ): number {
@@ -246,7 +246,7 @@ export function countInLaneLoopCorridorMargins(
   ).length
 }
 
-export function countBlueprintDividerRows(layers: BlueprintLayer[]): number {
+function countBlueprintDividerRows(layers: BlueprintLayer[]): number {
   return layers.filter(
     (layer) =>
       shouldShowInteractionLineAfter(layer) ||
@@ -255,7 +255,7 @@ export function countBlueprintDividerRows(layers: BlueprintLayer[]): number {
   ).length
 }
 
-export function countBlueprintWrapCorridorMargins(
+function countBlueprintWrapCorridorMargins(
   layers: BlueprintLayer[],
 ): number {
   return layers.filter((layer) => layerHasWrapCorridorBelow(layer)).length
@@ -266,14 +266,6 @@ export const STEP_COLUMN_WIDTH = 220
 /** Visible space between step columns where trigger arrows are drawn. */
 export const STEP_COLUMN_GAP = 24
 
-export function getStepColumnLeft(stepIndex: number): number {
-  return LAYER_COLUMN_WIDTH + stepIndex * (STEP_COLUMN_WIDTH + STEP_COLUMN_GAP)
-}
-
-export function getStepColumnRight(stepIndex: number): number {
-  return getStepColumnLeft(stepIndex) + STEP_COLUMN_WIDTH
-}
-
 export function getStepColumnsWidth(stepCount: number): number {
   if (stepCount <= 0) return 0
   const gaps = Math.max(0, stepCount - 1)
@@ -283,29 +275,15 @@ export function getStepColumnsWidth(stepCount: number): number {
 export const BLUEPRINT_ROW_MIN_HEIGHT = 96
 /** Used only when fitVertically compresses rows into a fixed artboard. */
 export const BLUEPRINT_ROW_MIN_HEIGHT_COMPACT = 60
-export const BLUEPRINT_PADDING = 24
-export const BLUEPRINT_HEADER_HEIGHT = 48
+const BLUEPRINT_HEADER_HEIGHT = 48
 export const BLUEPRINT_HEADER_HEIGHT_COMPACT = 32
 /** Gap between swim lanes and dividers (0 — lane borders handle separation). */
 export const BLUEPRINT_LAYER_ROW_GAP = 0
-/** Padding around the grid body for arrow overlay bleed (matches ARROW_VIEWPORT_PAD). */
-export const BLUEPRINT_GRID_VIEWPORT_PAD = 13
-/** CanvasBlueprintArtboard inner wrapper (p-2). */
-export const BLUEPRINT_CANVAS_INNER_PADDING = 16
-/** mb-2 below the compact path header row. */
-export const BLUEPRINT_COMPACT_HEADER_GAP = 8
-/** Scroll container border (1px each side). */
-export const BLUEPRINT_CANVAS_SCROLL_BORDER = 2
 /** Safety margin for wrapped cell text on canvas artboards. */
 export const BLUEPRINT_ARTBOARD_HEIGHT_BUFFER = 32
-/** Safety margin for horizontal grid bleed on canvas artboards. */
-export const BLUEPRINT_ARTBOARD_WIDTH_BUFFER = 32
 
 /** Outer gutter around each cell (Tailwind p-3 ≈ 12px per side). */
-export const BLUEPRINT_CELL_GUTTER = 12
-/** Default cell inner content padding (px-4 py-3). */
-export const BLUEPRINT_CELL_INNER_X = 16
-export const BLUEPRINT_CELL_INNER_Y = 12
+const BLUEPRINT_CELL_GUTTER = 12
 
 const PILL_ITEM_HEIGHT = 44
 const PILL_ITEM_HEIGHT_COMPACT = 34
@@ -313,7 +291,7 @@ const PILL_STACK_GAP = 10
 const PILL_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
 
 /** Compare / service grid cell inner width (column minus horizontal shell padding). */
-export function getBlueprintCellInnerWidth(compact = false): number {
+function getBlueprintCellInnerWidth(compact = false): number {
   const shellPadX = compact ? 24 : 28
   return STEP_COLUMN_WIDTH - shellPadX
 }
@@ -349,7 +327,7 @@ function lineDisplayWidth(line: string): number {
 }
 
 /** Line count including soft-wrap at the blueprint column width. */
-export function getEffectiveLineCount(content: string, compact = false): number {
+function getEffectiveLineCount(content: string, compact = false): number {
   const innerWidth = getBlueprintCellInnerWidth(compact)
   const charWidth = compact ? 6.5 : 7
   const charsPerLine = Math.max(6, Math.floor(innerWidth / charWidth))
@@ -372,7 +350,7 @@ function getTextBlockMinHeight(lineCount: number, compact = false): number {
   return Math.max(base, wrappedHeight)
 }
 
-export function getMaxPillCountInLayer(
+function getMaxPillCountInLayer(
   data: BlueprintData,
   layerId: string,
 ): number {
@@ -385,7 +363,7 @@ export function getMaxPillCountInLayer(
   return max
 }
 
-export function getPillStackMinHeight(
+function getPillStackMinHeight(
   pillCount: number,
   compact = false,
 ): number {
@@ -410,31 +388,6 @@ function getMaxLineCountInLayer(
     }
   }
   return max
-}
-
-/** Minimum inner content height for a single cell (excludes compare shell padding). */
-export function getCellContentMinHeight(
-  layer: BlueprintLayer,
-  content: string | undefined,
-  compact = false,
-): number {
-  if (shouldUseVisualContent(layer)) {
-    return compact
-      ? VISUAL_ROW_MIN_HEIGHT_COMPACT
-      : VISUAL_ROW_MIN_HEIGHT
-  }
-
-  if (!content?.trim()) return 0
-
-  if (shouldUsePillCellContent(layer)) {
-    return getPillStackMinHeight(
-      parseCellContentItems(content).length,
-      compact,
-    )
-  }
-
-  const lineCount = Math.max(1, getEffectiveLineCount(content, compact))
-  return getTextBlockMinHeight(lineCount, compact)
 }
 
 function getDefaultCellMinHeight(
@@ -501,117 +454,6 @@ export function getBlueprintGridMinHeight(
   )
 }
 
-/** Gap between side-by-side blueprint grids on canvas. */
-export const BLUEPRINT_CANVAS_COMPARE_GAP = 24
-/** @deprecated Use BLUEPRINT_CANVAS_COMPARE_GAP */
-export const BLUEPRINT_CANVAS_STACK_GAP = BLUEPRINT_CANVAS_COMPARE_GAP
-/** PathMultiSelect fieldset + legend on canvas artboards. */
-export const BLUEPRINT_PATH_FILTER_HEIGHT = 72
-/** Scenario slide header in stack view (title, description, controls). */
-export const BLUEPRINT_SCENARIO_HEADER_HEIGHT = 220
-/** Compact scenario header on canvas artboards. */
-export const BLUEPRINT_SCENARIO_HEADER_HEIGHT_COMPACT = 200
-
-export type ArtboardSize = { width: number; height: number }
-
 export function getBlueprintGridMinWidth(stepCount: number): number {
   return LAYER_COLUMN_WIDTH + getStepColumnsWidth(stepCount)
-}
-
-/** Pixel width of a compact ServiceBlueprintGrid (excluding artboard wrapper padding). */
-export function getBlueprintCompactGridWidth(stepCount: number): number {
-  return (
-    getBlueprintGridMinWidth(stepCount) +
-    BLUEPRINT_GRID_VIEWPORT_PAD * 2 +
-    BLUEPRINT_CANVAS_SCROLL_BORDER
-  )
-}
-
-/** Pixel height of a compact ServiceBlueprintGrid (excluding artboard wrapper padding). */
-export function getBlueprintCompactGridHeight(data: BlueprintData): number {
-  const header = BLUEPRINT_HEADER_HEIGHT_COMPACT + BLUEPRINT_COMPACT_HEADER_GAP
-  const gridBody = getBlueprintGridMinHeight(data, {
-    compact: true,
-    includeHeader: false,
-  })
-  const scrollArea =
-    gridBody + BLUEPRINT_GRID_VIEWPORT_PAD * 2 + BLUEPRINT_CANVAS_SCROLL_BORDER
-
-  return header + scrollArea
-}
-
-/** Canvas artboard size sized to fit the full compact blueprint grid. */
-export function getBlueprintArtboardSize(data: BlueprintData): ArtboardSize {
-  const width =
-    getBlueprintCompactGridWidth(data.steps.length) +
-    BLUEPRINT_CANVAS_INNER_PADDING * 2 +
-    BLUEPRINT_ARTBOARD_WIDTH_BUFFER
-  const height = Math.max(
-    480,
-    getBlueprintCompactGridHeight(data) +
-      BLUEPRINT_CANVAS_INNER_PADDING * 2 +
-      BLUEPRINT_ARTBOARD_HEIGHT_BUFFER,
-  )
-  return { width, height }
-}
-
-/** Canvas artboard size for multiple side-by-side compact grids (path compare). */
-export function getStackedCanvasArtboardSize(
-  blueprints: BlueprintData[],
-  options?: {
-    includeScenarioHeader?: boolean
-    compact?: boolean
-  },
-): ArtboardSize {
-  if (blueprints.length === 0) {
-    return { width: 960, height: 540 }
-  }
-
-  const includeScenarioHeader = options?.includeScenarioHeader ?? false
-  const compact = options?.compact ?? false
-  const headerHeight = includeScenarioHeader
-    ? compact
-      ? BLUEPRINT_SCENARIO_HEADER_HEIGHT_COMPACT
-      : BLUEPRINT_SCENARIO_HEADER_HEIGHT
-    : 0
-  const gridWidths = blueprints.map(
-    (data) =>
-      getBlueprintCompactGridWidth(data.steps.length) +
-      BLUEPRINT_CANVAS_INNER_PADDING,
-  )
-  const gridHeights = blueprints.map(
-    (data) =>
-      getBlueprintCompactGridHeight(data) + BLUEPRINT_CANVAS_INNER_PADDING,
-  )
-
-  const width = Math.max(
-    ...blueprints.map(
-      (data) =>
-        getBlueprintCompactGridWidth(data.steps.length) +
-        BLUEPRINT_CANVAS_INNER_PADDING +
-        BLUEPRINT_ARTBOARD_WIDTH_BUFFER,
-    ),
-    compact && includeScenarioHeader ? 420 : 0,
-  )
-
-  const compareGapTotal =
-    Math.max(0, blueprints.length - 1) * BLUEPRINT_CANVAS_COMPARE_GAP
-  const stackedGridWidth =
-    gridWidths.reduce((sum, gridWidth) => sum + gridWidth, 0) + compareGapTotal
-
-  const totalWidth =
-    Math.max(width, stackedGridWidth) +
-    BLUEPRINT_CANVAS_INNER_PADDING +
-    BLUEPRINT_ARTBOARD_WIDTH_BUFFER
-
-  const filterHeight = headerHeight
-  const height = Math.max(
-    480,
-    filterHeight +
-      Math.max(...gridHeights) +
-      BLUEPRINT_CANVAS_INNER_PADDING * 2 +
-      BLUEPRINT_ARTBOARD_HEIGHT_BUFFER,
-  )
-
-  return { width: totalWidth, height }
 }

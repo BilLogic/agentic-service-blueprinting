@@ -1,5 +1,4 @@
 import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
-import { ORG_NAME } from '@/config'
 
 /** Home = birds-eye service overview; detail = single slide/scenario editor. */
 export type EditorView = 'home' | 'detail'
@@ -10,17 +9,6 @@ export type EditorView = 'home' | 'detail'
  * `src/lib/viewTypeVocabulary.ts`. `'merged'` is session-only, never persisted.
  */
 export type SlideViewType = 'single' | 'stacked' | 'merged'
-
-export const SLIDE_VIEW_TYPES: SlideViewType[] = ['single', 'stacked', 'merged']
-
-/** Options shown in the scenario view type control (merged is session-only). */
-export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = ['stacked']
-
-export const SLIDE_VIEW_TYPE_LABELS: Record<SlideViewType, string> = {
-  single: 'Single',
-  stacked: 'Stacked',
-  merged: 'Merged',
-}
 
 export type NavItem = {
   id: string
@@ -45,13 +33,6 @@ export function shouldShowOverviewPhaseFlowArrow(
   toPhase: NavItem | undefined,
 ): boolean {
   return Boolean(toPhase)
-}
-
-/** Lifecycle loop arrow between main phases on the overview canvas. */
-export function shouldShowOverviewPostToPreLoopArrow(
-  phases: NavItem[],
-): boolean {
-  return getOverviewPostToPreLoopTransition(phases) !== null
 }
 
 /**
@@ -155,26 +136,12 @@ export function showsBlueprintFilters(
   return false
 }
 
-export function isSideBySideBlueprintSlide(slide: NavItem): boolean {
-  return isSubslide(slide) && getSlideViewType(slide) === 'stacked'
-}
-
 export function getMainSlides(slides: NavItem[] = FALLBACK_NAV): NavItem[] {
   return slides.filter((s) => !s.parentId)
 }
 
 export function getSubslides(parentId: string, slides: NavItem[] = FALLBACK_NAV): NavItem[] {
   return slides.filter((s) => s.parentId === parentId)
-}
-
-/** Sidebar / filmstrip order: each main slide followed by its subslides. */
-export function getSlidesInNavOrder(slides: NavItem[] = FALLBACK_NAV): NavItem[] {
-  const ordered: NavItem[] = []
-  for (const main of getMainSlides(slides)) {
-    ordered.push(main)
-    ordered.push(...getSubslides(main.id, slides))
-  }
-  return ordered
 }
 
 export type SlideSequenceNav = {
@@ -275,55 +242,4 @@ export function getParentSlide(
 ): NavItem | undefined {
   if (!slide.parentId) return undefined
   return getSlideById(slide.parentId, slides)
-}
-
-export const WORKSPACE_BREADCRUMB_ID = '__workspace__'
-export const WORKSPACE_BREADCRUMB_LABEL = ORG_NAME
-
-/** Sidebar id for the service overview (home) nav item. */
-export const SERVICE_OVERVIEW_NAV_ID = '__service_overview__'
-
-export type SlideBreadcrumb = {
-  id: string
-  label: string
-}
-
-/** Breadcrumb trail from workspace root through parent phases to the active slide. */
-export function getSlideBreadcrumbs(
-  slide: NavItem,
-  slides: NavItem[] = FALLBACK_NAV,
-): SlideBreadcrumb[] {
-  const crumbs: SlideBreadcrumb[] = [
-    { id: WORKSPACE_BREADCRUMB_ID, label: WORKSPACE_BREADCRUMB_LABEL },
-  ]
-
-  const ancestors: NavItem[] = []
-  let parentId = slide.parentId
-  while (parentId) {
-    const parent = getSlideById(parentId, slides)
-    if (!parent) break
-    ancestors.unshift(parent)
-    parentId = parent.parentId
-  }
-
-  for (const ancestor of ancestors) {
-    crumbs.push({
-      id: ancestor.id,
-      label: getSlideDisplayLabel(ancestor, slides),
-    })
-  }
-
-  crumbs.push({
-    id: slide.id,
-    label: getSlideDisplayLabel(slide, slides),
-  })
-
-  return crumbs
-}
-
-/** Default navigation target when the workspace breadcrumb is selected: first main phase. */
-export function getWorkspaceBreadcrumbTarget(
-  slides: NavItem[] = FALLBACK_NAV,
-): string | undefined {
-  return getMainSlides(slides)[0]?.id
 }
