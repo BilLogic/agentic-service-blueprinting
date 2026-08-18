@@ -4,10 +4,17 @@ All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
 repository and version together (workspace plugin version = template version).
 
-## Unreleased
+## 0.4.0 — 2026-08-18
 
-Template app brought to parity with its production reference deployment.
+Template app brought to parity with its production reference deployment;
+dead visual-walkthrough machinery removed ahead of the release cut.
 
+- **Dead-code sweep**: the flag-gated visual-walkthrough playback feature
+  (constant-false since it shipped) is deleted — flag, context, shell,
+  modal, play button, row overlay — along with three never-imported
+  editor components and the dead exports in `src/types/nav.ts`,
+  `src/lib/slideLayout.ts`, and `src/lib/blueprintLayout.ts`. The live
+  step-picture helpers stay in `src/lib/visualWalkthrough.ts`.
 - **Schema parity migrations**: derived-layer tables (slices, slice cells,
   evidence, findings) and supporting indexes/policies now ship as
   migrations that apply cleanly to a fresh database; fixed the fresh-DB
