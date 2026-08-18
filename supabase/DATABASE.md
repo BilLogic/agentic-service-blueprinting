@@ -127,8 +127,8 @@ These are the STORED (DB) tokens; the client vocabulary is `single` \|
 
 ## Sample seed
 
-`supabase/seed.sql` is **generated** by `scripts/generate_scale_fixture.mjs`
-alongside the offline fallback module (`src/data/scaleFixture.ts`): one
+`supabase/seed.sql` is **generated** by `scripts/generate_sample_blueprint.mjs`
+alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
 `Sample Lifecycle` → `Discover`/`Deliver` phases (with a phase loop) → one
 `Sample Service` scenario with three paths (happy / alternative / exception),
 12 lanes (canonical + custom roles, CJK labels), and 16 shared steps. Sample
