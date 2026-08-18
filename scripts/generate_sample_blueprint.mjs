@@ -164,16 +164,19 @@ const SCENARIOS = [
       'Weigh the fit',
       'Decide to adopt',
     ],
-    // Lane order matters: backstage actions sit directly above the support
-    // lane so this scenario draws all THREE canonical divider lines —
-    // interaction (after Adopter), visibility (after Repo front door), and
-    // internal interaction (after Maintainers, because a support_systems lane
-    // follows it). See references/layer-roles.md, "Line-anchoring semantics".
+    // Lane order is load-bearing, and this scenario is the one that draws all
+    // THREE canonical divider lines. Two rules do the work
+    // (references/layer-roles.md, "Line-anchoring semantics"):
+    //   * the frontstage TECH lane sits ABOVE the frontstage ACTIONS lane, so
+    //     LINE OF VISIBILITY is drawn once, after the actions lane. Actions
+    //     above tech draws the line twice — both lanes anchor it.
+    //   * backstage actions sit directly above the support lane, which is the
+    //     only arrangement that draws LINE OF INTERNAL INTERACTION at all.
     lanes: [
       { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
       { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
-      { row: 2, key: 'frontdoor', name: 'Repo front door', role: 'frontstage_actions' },
-      { row: 3, key: 'demo', name: 'Live demo', role: 'frontstage_tech' },
+      { row: 2, key: 'demo', name: 'Live demo', role: 'frontstage_tech' },
+      { row: 3, key: 'frontdoor', name: 'Repo front door', role: 'frontstage_actions' },
       { row: 4, key: 'maintainers', name: 'Maintainers', role: 'backstage_actions' },
       { row: 5, key: 'docs', name: 'README & guides', role: 'support_systems' },
     ],
@@ -363,8 +366,8 @@ const SCENARIOS = [
     lanes: [
       { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
       { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
-      { row: 2, key: 'appfeedback', name: 'App feedback', role: 'frontstage_actions' },
-      { row: 3, key: 'appui', name: 'App UI', role: 'frontstage_tech' },
+      { row: 2, key: 'appui', name: 'App UI', role: 'frontstage_tech' },
+      { row: 3, key: 'appfeedback', name: 'App feedback', role: 'frontstage_actions' },
       { row: 4, key: 'datalayer', name: 'Data layer', role: 'backstage_actions' },
       { row: 5, key: 'terminal', name: 'Terminal & scripts', role: 'backstage_tech' },
       // CJK display name — deliberate: lane labels are free-form in any
@@ -635,8 +638,8 @@ const SCENARIOS = [
     lanes: [
       { row: 0, key: 'visual', name: 'Journey snapshots', role: 'visual' },
       { row: 1, key: 'adopter', name: 'Adopter', role: 'customer_actions' },
-      { row: 2, key: 'claude', name: 'Claude in the IDE', role: 'frontstage_actions' },
-      { row: 3, key: 'preview', name: 'App preview', role: 'frontstage_tech' },
+      { row: 2, key: 'preview', name: 'App preview', role: 'frontstage_tech' },
+      { row: 3, key: 'claude', name: 'Claude in the IDE', role: 'frontstage_actions' },
       { row: 4, key: 'agents', name: 'Subagent fleet', role: 'backstage_actions' },
       { row: 5, key: 'scripts', name: 'Pipeline scripts', role: 'backstage_tech' },
       { row: 6, key: 'references', name: 'References', role: 'support_systems' },
@@ -845,8 +848,8 @@ const SCENARIOS = [
     ],
     lanes: [
       { row: 0, key: 'stakeholder', name: 'Stakeholder', role: 'customer_actions' },
-      { row: 1, key: 'skill', name: 'sb:slice in the IDE', role: 'frontstage_actions' },
-      { row: 2, key: 'stage', name: 'Presentation surface', role: 'frontstage_tech' },
+      { row: 1, key: 'stage', name: 'Presentation surface', role: 'frontstage_tech' },
+      { row: 2, key: 'skill', name: 'sb:slice in the IDE', role: 'frontstage_actions' },
       { row: 3, key: 'reviewer', name: 'Reviewer', role: 'backstage_actions' },
       { row: 4, key: 'pipeline', name: 'Slice pipeline', role: 'backstage_tech' },
       { row: 5, key: 'tables', name: 'Derived tables', role: 'support_systems' },
@@ -972,13 +975,13 @@ const SCENARIOS = [
       'Ask the agent',
       'Answer from the blueprint',
     ],
-    // Like Discover the kit, this scenario is ordered so the backstage-actions
-    // lane sits directly above the support lane and the LINE OF INTERNAL
-    // INTERACTION draws — the hand-off from the auditors to what they read.
+    // Like Discover the kit, ordered so the backstage-actions lane sits
+    // directly above the support lane and the LINE OF INTERNAL INTERACTION
+    // draws — the hand-off from the auditors to what they read.
     lanes: [
       { row: 0, key: 'steward', name: 'Steward', role: 'customer_actions' },
-      { row: 1, key: 'skills', name: 'sb:audit & sb:whatif', role: 'frontstage_actions' },
-      { row: 2, key: 'findingsui', name: 'Findings & agent surface', role: 'frontstage_tech' },
+      { row: 1, key: 'findingsui', name: 'Findings & agent surface', role: 'frontstage_tech' },
+      { row: 2, key: 'skills', name: 'sb:audit & sb:whatif', role: 'frontstage_actions' },
       { row: 3, key: 'machinery', name: 'Audit machinery', role: 'backstage_tech' },
       { row: 4, key: 'auditors', name: 'Auditor fleet', role: 'backstage_actions' },
       { row: 5, key: 'checkdocs', name: 'Check docs & references', role: 'support_systems' },
@@ -1263,9 +1266,10 @@ const cellKeyFor = (scenario, pathName, layerName, stepName) =>
 // first hour, a STEP slice reading the import column down every lane (the
 // vertical read is the whole point — the guardrail lane is the interesting
 // one), and a LANE slice reading the terminal row across, which is the same
-// hour as a command list. `cell` and `custom` are deliberately absent: a
-// single-cell demo teaches nothing the panel does not, and `custom` has no
-// shape of its own to show.
+// hour as a command list. All three sit on their scenario's DEFAULT path, so
+// opening one lights its cells up with no path change first. `cell` and
+// `custom` are deliberately absent: a single-cell demo teaches nothing the
+// panel does not, and `custom` has no shape of its own to show.
 // ---------------------------------------------------------------------------
 
 function demoCellRef(scenarioKey, pathKey, laneKey, col) {
@@ -1404,7 +1408,7 @@ function buildDemoSlices() {
       service_lifecycle_id: LIFECYCLE_ID,
       title: 'Every command the first hour asks you to type',
       description:
-        'One lane of Clone & first run — Terminal & scripts — read left to right on the Supabase path: the whole hour as a command list, for anyone who would rather read the shell than the story.',
+        'One lane of Clone & first run — Terminal & scripts on the no-database path — read left to right: the whole first hour as a command list, for anyone who would rather read the shell than the story. The Supabase path adds an env copy and a local stack between the install and the dev server; nothing else on this lane changes.',
       actor: 'Terminal & scripts',
       slice_type: 'lane',
       origin: 'generated',
@@ -1413,30 +1417,24 @@ function buildDemoSlices() {
       ...timestamps,
     },
     items: [
-      item(3, laneId, 1, 'Get the code, get the deps',
-        'A clone and an install. Nothing here is specific to this kit — and on the no-database path, nothing after it is required either.',
-        [
-          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 1),
-          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 2),
-        ]),
-      item(3, laneId, 2, 'The database, if you want one',
-        'Copy the example env, start the local stack, reset it. This is the part the no-database path skips entirely — the reason the two paths are worth comparing rather than collapsing.',
-        [
-          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 3),
-          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 4),
-        ]),
+      item(3, laneId, 1, 'Get the code',
+        'A clone. Nothing here is specific to this kit, and nothing here needs an account.',
+        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 1)]),
+      item(3, laneId, 2, 'Get the dependencies',
+        'One install, from the lockfile in the repository. This is the last command before the app can run: on this path there is no env file to write and no database to stand up.',
+        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 2)]),
       item(3, laneId, 3, 'Run it',
-        'The dev server, and the URL it prints. Everything on the canvas above this lane starts here.',
-        [demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 5)]),
+        'The dev server, and the URL it prints. Everything on the canvas above this lane starts here — with no keys anywhere, the app resolves its content from the bundle instead of the network.',
+        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 5)]),
       item(3, laneId, 4, 'Prove it',
-        'The test suite and the agent harness. Both run without a database, so a reviewer can check the kit\u2019s claims before deciding to configure anything.',
+        'The suite CI runs, and the agent-harness smoke. Both go green on a keyless clone, which is the point: a reviewer can check the kit\u2019s claims before deciding to configure anything.',
         [
-          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 10),
-          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 11),
+          demoCellRef('FIRST_RUN', 'NODB', 'terminal', 10),
+          demoCellRef('FIRST_RUN', 'NODB', 'terminal', 11),
         ]),
       item(3, laneId, 5, 'Ship it',
-        'A build and a static host. The deploy is read-only by construction: the write policies want an authenticated session and the deployed app has no sign-in.',
-        [demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 12)]),
+        'A build and a static host. The deploy is read-only by construction — the write policies want an authenticated session, and the deployed app has no sign-in.',
+        [demoCellRef('FIRST_RUN', 'NODB', 'terminal', 12)]),
     ],
   }
 

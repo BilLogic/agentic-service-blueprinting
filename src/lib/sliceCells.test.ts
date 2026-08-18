@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  getBlueprintFallback,
-  getFallbackPathsForScenario,
-  SAMPLE_SCENARIO_ID,
-} from '@/data/blueprintFallbacks'
+import { getBlueprintFallback, SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
   findFallbackScenarioForCells,
@@ -130,17 +126,9 @@ describe('bundled demo slices', () => {
       const cellIds = items.flatMap((entry) => entry.cell_ids)
       const scenarioId = findFallbackScenarioForCells(cellIds)
       expect(scenarioId).not.toBeNull()
-      // Against the path the slice is actually about, not the scenario's
-      // first path: the lane slice reads the Supabase run of a two-path
-      // scenario, which is the same choice `pickBlueprintForCells` makes for
-      // the focus view.
-      const paths = getFallbackPathsForScenario(scenarioId!)
-      const blueprints = paths
-        .map((path) => getBlueprintFallback(scenarioId!, path.id, path.path_type))
-        .filter((data): data is BlueprintData => data !== null)
-      const fallback =
-        pickBlueprintForCells(blueprints, cellIds) ??
-        getBlueprintFallback(scenarioId!)
+      // The scenario's default path: every demo slice is authored on it, so
+      // opening one in the focus view needs no path change first.
+      const fallback = getBlueprintFallback(scenarioId!)
       expect(fallback).not.toBeNull()
       const resolution = resolveSliceCells(fallback, items)
       expect(resolution.missingCellIds).toEqual([])
