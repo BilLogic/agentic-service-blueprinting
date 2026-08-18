@@ -29,7 +29,7 @@ export function getPathTypeSectionBorderStyle(
   path?: Pick<PathColorInput, 'name'>,
 ): {
   borderColor: string
-  borderStyle: 'solid'
+  borderStyle: 'solid' | 'dashed'
   borderWidth: number
 } {
   if (path?.name) {
@@ -70,6 +70,28 @@ export const PATH_TYPE_BADGE_CLASSES: Record<PathType, string> = {
   unhappy: 'bg-amber-500 text-white',
   exception: 'bg-red-500 text-white',
   alternative: 'bg-blue-500 text-white',
+}
+
+const GENERIC_PATH_TYPE_NAMES = new Set([
+  'happy path',
+  'sad path',
+  'unhappy path',
+  'alternate path',
+  'alternative path',
+  'exception',
+  'exception path',
+])
+
+export function isGenericPathTypeName(name: string): boolean {
+  return GENERIC_PATH_TYPE_NAMES.has(name.trim().toLowerCase())
+}
+
+/** Overview frames: type badge only for generic archetype names. */
+export function shouldShowPathTypeBadge(path: {
+  name: string
+  path_type?: PathType
+}): boolean {
+  return isGenericPathTypeName(path.name)
 }
 
 /** Path-type suffix for compare labels — omitted when the name already implies the type. */

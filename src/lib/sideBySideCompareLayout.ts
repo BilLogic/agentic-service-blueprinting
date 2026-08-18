@@ -1,8 +1,6 @@
 import { ARROW_VIEWPORT_PAD } from '@/lib/blueprintArrowGeometry'
 import {
-  BLUEPRINT_CANVAS_INNER_PADDING,
   BLUEPRINT_ARTBOARD_HEIGHT_BUFFER,
-  BLUEPRINT_ARTBOARD_WIDTH_BUFFER,
   BLUEPRINT_DIVIDER_ROW_HEIGHT,
   BLUEPRINT_HEADER_HEIGHT_COMPACT,
   BLUEPRINT_LAYER_ROW_GAP,
@@ -15,56 +13,32 @@ import {
   VISIBILITY_LINE_LABEL,
   getLayerRowMinHeight,
   getStepColumnsWidth,
+  STEP_COLUMN_GAP,
   layerHasInLaneLoopCorridor,
   layerHasWrapCorridorBelow,
+  resolveBlueprintLayer,
   shouldShowInteractionLineAfter,
   shouldShowInternalInteractionLineAfter,
   shouldShowLaneDividerAfter,
   shouldShowVisibilityLineAfter,
-  type ArtboardSize,
 } from '@/lib/blueprintLayout'
 import {
   COMPARE_LAYER_COLLAPSED_HEIGHT,
   isBlueprintLayerCollapsed,
 } from '@/lib/blueprintLayerCollapse'
-import { deriveSourceBlueprintsFromIntegrated, mergeIntegratedBlueprint } from '@/lib/mergeIntegratedBlueprint'
-import { PATH_TYPE_SECTION_BORDER_WIDTH } from '@/lib/pathTypeTheme'
 import type { PathListItem } from '@/lib/pathSelection'
 import { itemsInSelectionOrder } from '@/lib/pathSelection'
 import type { BlueprintData, BlueprintLayer } from '@/types/blueprint'
 import type {
   IntegratedBlueprintCell,
-  IntegratedBlueprintData,
   IntegratedBlueprintStep,
   IntegratedBlueprintTrigger,
 } from '@/types/integratedBlueprint'
 import type { SlideViewType } from '@/types/nav'
 
-export type IntegratedLayoutOptions = {
-  fitVertically?: boolean
-  /** When set, row heights match side-by-side compare for the same paths. */
-  sourceBlueprints?: BlueprintData[]
-  selectedPathIds?: string[]
-}
-
-function resolveIntegratedSourceBlueprints(
-  data: IntegratedBlueprintData,
-  options?: IntegratedLayoutOptions,
-): BlueprintData[] {
-  let blueprints =
-    options?.sourceBlueprints && options.sourceBlueprints.length > 0
-      ? options.sourceBlueprints
-      : deriveSourceBlueprintsFromIntegrated(data)
-
-  if (options?.selectedPathIds && options.selectedPathIds.length > 0) {
-    const selected = new Set(options.selectedPathIds)
-    blueprints = blueprints.filter((blueprint) =>
-      selected.has(blueprint.path.id),
-    )
-  }
-
-  return blueprints
-}
+// Canonical-lane resolution lives in blueprintLayout (the generic corridor
+// rules use it too); compare components import it from here.
+export { resolveBlueprintLayer } from '@/lib/blueprintLayout'
 
 export type ComparePathArrowData = {
   triggers: IntegratedBlueprintTrigger[]
@@ -72,6 +46,7 @@ export type ComparePathArrowData = {
   steps: IntegratedBlueprintStep[]
 }
 
+/** One path's arrow inputs. */
 export function getComparePathArrowData(
   blueprint: BlueprintData,
 ): ComparePathArrowData {
@@ -107,12 +82,14 @@ export function getComparePathArrowData(
 
 export const COMPARE_CARD_GAP = 20
 export const COMPARE_CARD_PADDING_X = 12
-export const COMPARE_LABEL_WIDTH = 192
+// 208: room for two-word lane names ("Front Stage Actions") and the
+// canonical "LINE OF …" divider labels without clipping at the rail edge.
+export const COMPARE_LABEL_WIDTH = 208
 export const COMPARE_PANEL_PADDING = 24
 /** Extra inset on the right edge of the compare blueprint grid. */
 export const COMPARE_PANEL_PADDING_RIGHT = 40
 
-/** Gray padding around compare / integrated blueprint boards inside a panel. */
+/** Gray padding around compare blueprint boards inside a panel. */
 export function getCompareBoardWrapperPadding(): {
   paddingTop: number
   paddingBottom: number
@@ -132,8 +109,6 @@ export const COMPARE_PATH_SECTION_INSET = 8
 export const COMPARE_PATH_SECTION_BOTTOM_INSET = COMPARE_PATH_SECTION_TOP_INSET
 /** Space reserved above compare body rows for section title badges. */
 export const COMPARE_PATH_IDENTITY_HEIGHT = COMPARE_PATH_SECTION_TOP_INSET
-/** @deprecated Path info now lives in section frames, not a grid swim lane. */
-export const COMPARE_PATH_HEADER_HEIGHT = COMPARE_PATH_SECTION_TOP_INSET
 export const COMPARE_STEP_HEADER_HEIGHT = BLUEPRINT_HEADER_HEIGHT_COMPACT + 8
 export const COMPARE_MIN_PANEL_WIDTH = 720
 export const COMPARE_MIN_PANEL_HEIGHT = 480
@@ -141,20 +116,35 @@ export const COMPARE_RESIZE_HANDLE_SIZE = 16
 /** Extra scroll space so the resize handle and card shadow do not cover the last row. */
 export const COMPARE_PANEL_BOTTOM_INSET = COMPARE_RESIZE_HANDLE_SIZE + 16
 
+export type ComparePanelScrollChromeOptions = {
+  /**
+   * Locked / overview panels hide the resize handle — skip that inset so the
+   * gray scroll shell hugs the blueprint board instead of leaving empty chrome.
+   */
+  lockHeight?: boolean
+}
+
 /** Symmetric vertical inset inside compare scroll shells (resize handle + arrow bleed). */
-export function getComparePanelScrollInsetY(): number {
-  return (
-    COMPARE_PANEL_BOTTOM_INSET / 2 + BLUEPRINT_ARTBOARD_HEIGHT_BUFFER / 2
-  )
+export function getComparePanelScrollInsetY(
+  options?: ComparePanelScrollChromeOptions,
+): number {
+  const resizeInset = options?.lockHeight ? 0 : COMPARE_PANEL_BOTTOM_INSET / 2
+  const artboardInset = options?.lockHeight
+    ? 0
+    : BLUEPRINT_ARTBOARD_HEIGHT_BUFFER / 2
+  return resizeInset + artboardInset
 }
 
 /** Vertical padding inside the compare panel scroll shell (top + bottom). */
-export function getComparePanelScrollPaddingY(): number {
-  return ARROW_VIEWPORT_PAD * 2 + getComparePanelScrollInsetY() * 2
+export function getComparePanelScrollPaddingY(
+  options?: ComparePanelScrollChromeOptions,
+): number {
+  return ARROW_VIEWPORT_PAD * 2 + getComparePanelScrollInsetY(options) * 2
 }
 
 export type CompareRowHeightSpec = {
   height: number
+  wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
   kind?: 'path' | 'layer' | 'interaction' | 'visibility' | 'internalInteraction'
@@ -168,6 +158,7 @@ export type BlueprintLabelRowSpec = {
   kind: 'path' | 'layer' | 'interaction' | 'visibility' | 'internalInteraction'
   layer?: BlueprintLayer
   collapsed?: boolean
+  wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
   showDividerBelow?: boolean
@@ -178,6 +169,7 @@ type SwimlaneRowSpec = Pick<
   | 'height'
   | 'kind'
   | 'collapsed'
+  | 'wrapCorridorAbove'
   | 'wrapCorridorBelow'
   | 'inLaneLoopCorridorAbove'
 >
@@ -222,11 +214,12 @@ export function expandRowSpecsToSwimlaneBodyHeight<T extends CompareRowHeightSpe
 
 export function getPanelHeightFromSwimlaneBody(
   swimlaneBodyHeight: number,
+  options?: ComparePanelScrollChromeOptions,
 ): number {
   return (
     swimlaneBodyHeight +
     COMPARE_PANEL_PADDING * 2 +
-    getComparePanelScrollPaddingY()
+    getComparePanelScrollPaddingY(options)
   )
 }
 
@@ -245,15 +238,6 @@ export type ScenarioSwimlaneLayoutInput = {
   blueprintsByPathId: Map<string, BlueprintData>
   compact?: boolean
   collapsedLayerIds?: ReadonlySet<string>
-}
-
-function getScenarioBlueprints(
-  paths: PathListItem[],
-  blueprintsByPathId: Map<string, BlueprintData>,
-): BlueprintData[] {
-  return paths
-    .map((path) => blueprintsByPathId.get(path.id))
-    .filter((blueprint): blueprint is BlueprintData => blueprint !== undefined)
 }
 
 export function buildSideBySideLabelRowSpecs(
@@ -314,36 +298,25 @@ export function buildSideBySideLabelRowSpecs(
   return specs
 }
 
-/** Shared row specs for integrated and side-by-side scenario/phase panels. */
+/** Shared row specs for scenario/phase compare panels. */
 export function getScenarioSwimlaneRowSpecs(
   options: ScenarioSwimlaneLayoutInput,
 ): BlueprintLabelRowSpec[] {
   const {
     displayViewType,
-    paths,
     selectedPathIds,
     blueprintsByPathId,
     compact = false,
     collapsedLayerIds = new Set(),
   } = options
 
-  const allBlueprints = getScenarioBlueprints(paths, blueprintsByPathId)
-
-  if (displayViewType === 'integrated' && allBlueprints.length > 0) {
-    const integrated = mergeIntegratedBlueprint(allBlueprints, selectedPathIds)
-    if (integrated) {
-      return buildIntegratedLabelRowSpecs(
-        integrated.layers,
-        integrated,
-        compact,
-        collapsedLayerIds,
-        { sourceBlueprints: allBlueprints, selectedPathIds },
-      )
-    }
-  }
-
+  // 'merged' shares the compare row anatomy — overview rows render it as
+  // stacked anyway, and the focused stacked arrangement reuses these specs
+  // per band.
   const useCompareLayout =
-    (displayViewType === 'side-by-side' || displayViewType === 'single') &&
+    (displayViewType === 'stacked' ||
+      displayViewType === 'merged' ||
+      displayViewType === 'single') &&
     selectedPathIds.length > 0
 
   if (useCompareLayout) {
@@ -400,11 +373,13 @@ export function getCompareCellShellMinHeight(
 
 export function getCompareRowTrackHeight(row: {
   height: number
+  wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
 }): number {
   return (
     row.height +
+    (row.wrapCorridorAbove ? BLUEPRINT_WRAP_CORRIDOR_MARGIN : 0) +
     (row.wrapCorridorBelow ? BLUEPRINT_WRAP_CORRIDOR_MARGIN : 0) +
     (row.inLaneLoopCorridorAbove ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN : 0)
   )
@@ -424,14 +399,27 @@ export function getSharedLayerRowHeight(
   const shellPad = getCompareCellShellPaddingY(compact)
   const contentHeight = Math.max(
     ...blueprints.map((blueprint) =>
-      getLayerRowMinHeight(layer, blueprint, compact),
+      // Each path has its own layer uuids — measure against the path's own
+      // layer, or every path but the first is measured as empty and the row
+      // ends up shorter than what actually renders.
+      getLayerRowMinHeight(
+        resolveBlueprintLayer(layer, blueprint),
+        blueprint,
+        compact,
+      ),
     ),
   )
   return getCompareCellShellMinHeight(contentHeight + shellPad, compact)
 }
 
+/**
+ * Lane rows must be able to GROW: the row shells are `overflow-visible`, so
+ * an underestimated cell would paint OVER the next lane instead of clipping.
+ * `minmax(Npx, auto)` keeps the estimated floor; rows only diverge from it
+ * when content genuinely swells past it.
+ */
 export function getCompareRowTrackCss(row: CompareRowHeightSpec): string {
-  return `${getCompareRowTrackHeight(row)}px`
+  return `minmax(${getCompareRowTrackHeight(row)}px, auto)`
 }
 
 export function getCompareCardWidth(
@@ -526,27 +514,138 @@ export function getComparePanelHeight(
   )
 }
 
-export function getSideBySideCompareArtboardSize(
-  blueprints: BlueprintData[],
-  options?: { compact?: boolean },
-): ArtboardSize {
-  const compact = options?.compact ?? false
-  if (blueprints.length === 0) {
-    return { width: 960, height: 540 }
-  }
+/* ---------------------------------------------------------------------------
+ * Stacked arrangement (focused scenario view): one canonical step-column
+ * axis, one full band per path stacked top-to-bottom. Estimates only — the
+ * panel's measurement overrides once content renders.
+ * ------------------------------------------------------------------------ */
 
-  return {
-    width:
-      getCompareGridWidth(blueprints, compact) +
-      BLUEPRINT_CANVAS_INNER_PADDING * 2 +
-      BLUEPRINT_ARTBOARD_WIDTH_BUFFER,
-    height: Math.max(
-      480,
-      getCompareGridHeight(blueprints, compact) +
-        BLUEPRINT_CANVAS_INNER_PADDING * 2 +
-        BLUEPRINT_ARTBOARD_HEIGHT_BUFFER,
-    ),
-  }
+/** Vertical gap between stacked path bands — room for both bands' section
+ *  frame insets (20 + 20) plus the lower band's title badge overhang. */
+export const COMPARE_STACKED_BAND_GAP = 64
+/** Gap between the step-header row and the first band's rows. */
+export const COMPARE_STACKED_HEADER_GAP = 36
+
+/**
+ * Extra top inset that stretches a path frame from its normal top edge all
+ * the way up PAST the step-header row to the grid's first row line — the
+ * header row is inside the frame with no container of its own. Derivation:
+ * the band box starts `COMPARE_STACKED_HEADER_GAP` below the header row's
+ * bottom, the frame already reaches `COMPARE_PATH_SECTION_TOP_INSET` above
+ * the band box, and the header row itself is `COMPARE_STEP_HEADER_HEIGHT`
+ * tall.
+ */
+export const COMPARE_HEADER_WRAP_EXTRA_INSET =
+  COMPARE_STACKED_HEADER_GAP +
+  COMPARE_STEP_HEADER_HEIGHT -
+  COMPARE_PATH_SECTION_TOP_INSET
+
+/** One band's box height: its lane-row tracks plus the row gaps between them
+ *  (section-frame insets live in the band gaps, not the band box). */
+export function getStackedCompareBandBodyHeight(
+  rows: SwimlaneRowSpec[],
+): number {
+  const trackHeights = rows.reduce(
+    (sum, row) => sum + getCompareRowTrackHeight(row),
+    0,
+  )
+  return trackHeights + Math.max(0, rows.length - 1) * BLUEPRINT_LAYER_ROW_GAP
+}
+
+/** Stacked board width for a canonical column count: rail + step columns. */
+export function getStackedCompareGridWidth(columnCount: number): number {
+  return (
+    COMPARE_LABEL_WIDTH +
+    STEP_COLUMN_GAP +
+    getStepColumnsWidth(Math.max(1, columnCount)) +
+    COMPARE_PANEL_PADDING +
+    COMPARE_PANEL_PADDING_RIGHT
+  )
+}
+
+export function getStackedCompareGridHeight(
+  blueprints: BlueprintData[],
+  compact = false,
+  collapsedLayerIds: ReadonlySet<string> = new Set(),
+): number {
+  if (blueprints.length === 0) return COMPARE_MIN_PANEL_HEIGHT
+  const rows = buildSideBySideLabelRowSpecs(blueprints, compact, collapsedLayerIds)
+  const bandBody = getStackedCompareBandBodyHeight(rows)
+
+  return (
+    COMPARE_STEP_HEADER_HEIGHT +
+    COMPARE_STACKED_HEADER_GAP +
+    blueprints.length * bandBody +
+    Math.max(0, blueprints.length - 1) * COMPARE_STACKED_BAND_GAP +
+    COMPARE_PATH_SECTION_BOTTOM_INSET +
+    COMPARE_PANEL_PADDING * 2
+  )
+}
+
+export function getStackedComparePanelWidth(columnCount: number): number {
+  return (
+    getStackedCompareGridWidth(columnCount) +
+    ARROW_VIEWPORT_PAD * 2 +
+    (COMPARE_PANEL_PADDING_RIGHT - COMPARE_PANEL_PADDING)
+  )
+}
+
+export function getStackedComparePanelHeight(
+  blueprints: BlueprintData[],
+  compact = false,
+): number {
+  return (
+    getStackedCompareGridHeight(blueprints, compact) +
+    getComparePanelScrollPaddingY()
+  )
+}
+
+/* ---------------------------------------------------------------------------
+ * Merged arrangement (focused scenario view): ONE band on the same canonical
+ * step axis, whose slots swell vertically wherever the paths disagree.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Merged lane rows must GROW: a divergent slot stacks one cell per path
+ * inside a single row, so a fixed `Npx` track would clip the swell.
+ * `minmax(Npx, auto)` keeps the shared floor — a lane with no divergence
+ * measures exactly as it does in Stacked.
+ */
+export function getMergedCompareRowTrackCss(row: CompareRowHeightSpec): string {
+  return `minmax(${getCompareRowTrackHeight(row)}px, auto)`
+}
+
+/**
+ * Merged is about one band tall. The swell over divergent slots is
+ * deliberately NOT estimated: the panel measures rendered content and the
+ * measurement replaces this floor, and a hot estimate here would be dead
+ * gray space on a board that happens to agree everywhere.
+ */
+export function getMergedCompareGridHeight(
+  blueprints: BlueprintData[],
+  compact = false,
+  collapsedLayerIds: ReadonlySet<string> = new Set(),
+): number {
+  if (blueprints.length === 0) return COMPARE_MIN_PANEL_HEIGHT
+  const rows = buildSideBySideLabelRowSpecs(blueprints, compact, collapsedLayerIds)
+
+  return (
+    COMPARE_STEP_HEADER_HEIGHT +
+    COMPARE_STACKED_HEADER_GAP +
+    getStackedCompareBandBodyHeight(rows) +
+    COMPARE_PATH_SECTION_BOTTOM_INSET +
+    COMPARE_PANEL_PADDING * 2
+  )
+}
+
+export function getMergedComparePanelHeight(
+  blueprints: BlueprintData[],
+  compact = false,
+): number {
+  return (
+    getMergedCompareGridHeight(blueprints, compact) +
+    getComparePanelScrollPaddingY()
+  )
 }
 
 export function layerHasInteractionLine(layer: BlueprintLayer): boolean {
@@ -565,235 +664,4 @@ export function layerHasInternalInteractionLine(
   layers?: BlueprintLayer[],
 ): boolean {
   return shouldShowInternalInteractionLineAfter(layer, layers)
-}
-
-export function getIntegratedLayerRowHeight(
-  layer: BlueprintLayer,
-  data: IntegratedBlueprintData,
-  compact = false,
-  options?: IntegratedLayoutOptions,
-): number {
-  const sourceBlueprints = resolveIntegratedSourceBlueprints(data, options)
-  if (sourceBlueprints.length > 0) {
-    return getSharedLayerRowHeight(layer, sourceBlueprints, compact)
-  }
-
-  return getCompareCellShellMinHeight(
-    getCompareCellShellPaddingY(compact) +
-      (compact ? BLUEPRINT_ROW_MIN_HEIGHT : BLUEPRINT_ROW_MIN_HEIGHT - 16),
-    compact,
-  )
-}
-
-export function buildIntegratedLabelRowSpecs(
-  layers: BlueprintLayer[],
-  data: IntegratedBlueprintData,
-  compact = false,
-  collapsedLayerIds: ReadonlySet<string> = new Set(),
-  options?: IntegratedLayoutOptions,
-): BlueprintLabelRowSpec[] {
-  const specs: BlueprintLabelRowSpec[] = []
-  const sourceBlueprints = resolveIntegratedSourceBlueprints(data, options)
-
-  for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
-    const layer = layers[layerIndex]
-    const collapsed = isBlueprintLayerCollapsed(layer.id, collapsedLayerIds)
-
-    specs.push({
-      key: layer.id,
-      kind: 'layer',
-      layer,
-      label: layer.name,
-      collapsed,
-      height: collapsed
-        ? COMPARE_LAYER_COLLAPSED_HEIGHT
-        : getIntegratedLayerRowHeight(layer, data, compact, options),
-      wrapCorridorBelow: !collapsed && layerHasWrapCorridorBelow(layer),
-      inLaneLoopCorridorAbove:
-        !collapsed &&
-        layerHasInLaneLoopCorridor(
-          layer,
-          sourceBlueprints.length > 0 ? sourceBlueprints : [data],
-        ),
-      showDividerBelow: shouldShowLaneDividerAfter(layer, layerIndex, layers),
-    })
-
-    if (!collapsed && layerHasInteractionLine(layer)) {
-      specs.push({
-        key: `${layer.id}-interaction`,
-        kind: 'interaction',
-        label: INTERACTION_LINE_LABEL,
-        height: BLUEPRINT_DIVIDER_ROW_HEIGHT,
-      })
-    }
-
-    if (!collapsed && layerHasVisibilityLine(layer, layers)) {
-      specs.push({
-        key: `${layer.id}-visibility`,
-        kind: 'visibility',
-        label: VISIBILITY_LINE_LABEL,
-        height: BLUEPRINT_DIVIDER_ROW_HEIGHT,
-      })
-    }
-
-    if (!collapsed && layerHasInternalInteractionLine(layer, layers)) {
-      specs.push({
-        key: `${layer.id}-internal-interaction`,
-        kind: 'internalInteraction',
-        label: INTERNAL_INTERACTION_LINE_LABEL,
-        height: BLUEPRINT_DIVIDER_ROW_HEIGHT,
-      })
-    }
-  }
-
-  return specs
-}
-
-export function getIntegratedGridBodyHeight(
-  layers: BlueprintLayer[],
-  data: IntegratedBlueprintData,
-  compact = false,
-  collapsedLayerIds: ReadonlySet<string> = new Set(),
-  options?: IntegratedLayoutOptions,
-): number {
-  const rows = buildIntegratedLabelRowSpecs(
-    layers,
-    data,
-    compact,
-    collapsedLayerIds,
-    options,
-  )
-  const trackHeights = rows.reduce(
-    (sum, row) => sum + getCompareRowTrackHeight(row),
-    0,
-  )
-  const rowGaps = Math.max(0, rows.length - 1) * BLUEPRINT_LAYER_ROW_GAP
-
-  return (
-    COMPARE_PATH_SECTION_TOP_INSET +
-    trackHeights +
-    rowGaps +
-    COMPARE_PATH_SECTION_BOTTOM_INSET
-  )
-}
-
-export function getIntegratedPathNestWidthCompensation(pathCount: number): number {
-  return Math.max(0, pathCount - 1) * PATH_TYPE_SECTION_BORDER_WIDTH
-}
-
-export function getIntegratedContentCardWidth(
-  stepCount: number,
-  compact = false,
-  pathCount = 1,
-): number {
-  return (
-    getCompareCardWidth(stepCount, compact) +
-    getIntegratedPathNestWidthCompensation(pathCount)
-  )
-}
-
-export function getIntegratedGridMinWidth(
-  stepCount: number,
-  compact = false,
-  pathCount = 1,
-): number {
-  return (
-    COMPARE_LABEL_WIDTH +
-    COMPARE_CARD_GAP +
-    getIntegratedContentCardWidth(stepCount, compact, pathCount) +
-    COMPARE_PANEL_PADDING +
-    COMPARE_PANEL_PADDING_RIGHT
-  )
-}
-
-export function getIntegratedDividerBandWidth(
-  stepCount: number,
-  compact = false,
-  pathCount = 1,
-): number {
-  return (
-    COMPARE_LABEL_WIDTH +
-    COMPARE_CARD_GAP +
-    getIntegratedContentCardWidth(stepCount, compact, pathCount)
-  )
-}
-
-export function getIntegratedGridHeight(
-  layers: BlueprintLayer[],
-  data: IntegratedBlueprintData,
-  compact = false,
-  collapsedLayerIds: ReadonlySet<string> = new Set(),
-  options?: IntegratedLayoutOptions,
-): number {
-  return (
-    getIntegratedGridBodyHeight(
-      layers,
-      data,
-      compact,
-      collapsedLayerIds,
-      options,
-    ) +
-    COMPARE_PANEL_PADDING * 2
-  )
-}
-
-export function getIntegratedPanelWidth(
-  stepCount: number,
-  compact = false,
-  pathCount = 1,
-): number {
-  return (
-    getIntegratedGridMinWidth(stepCount, compact, pathCount) +
-    ARROW_VIEWPORT_PAD * 2 +
-    (COMPARE_PANEL_PADDING_RIGHT - COMPARE_PANEL_PADDING)
-  )
-}
-
-export function getIntegratedPanelHeight(
-  layers: BlueprintLayer[],
-  data: IntegratedBlueprintData,
-  compact = false,
-  collapsedLayerIds: ReadonlySet<string> = new Set(),
-  options?: IntegratedLayoutOptions,
-): number {
-  return (
-    getIntegratedGridHeight(
-      layers,
-      data,
-      compact,
-      collapsedLayerIds,
-      options,
-    ) + getComparePanelScrollPaddingY()
-  )
-}
-
-/** Canvas artboard size sized to fit a compact integrated blueprint grid. */
-export function getIntegratedCanvasArtboardSize(
-  data: IntegratedBlueprintData,
-  options?: {
-    compact?: boolean
-    collapsedLayerIds?: ReadonlySet<string>
-  },
-): ArtboardSize {
-  const compact = options?.compact ?? false
-  const layers = [...data.layers].sort((a, b) => a.row_position - b.row_position)
-  const panelHeight = getIntegratedPanelHeight(
-    layers,
-    data,
-    compact,
-    options?.collapsedLayerIds ?? new Set(),
-  )
-  const panelWidth = getIntegratedPanelWidth(
-    data.steps.length,
-    compact,
-    data.paths.length,
-  )
-
-  /** Matches Tailwind `p-3` on CanvasBlueprintArtboard. */
-  const canvasArtboardPadding = 24
-
-  return {
-    width: panelWidth + canvasArtboardPadding * 2,
-    height: Math.max(480, panelHeight + canvasArtboardPadding * 2),
-  }
 }
