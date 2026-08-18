@@ -141,11 +141,8 @@ async function loadAppSurface() {
 const surface = await loadAppSurface()
 const { TOOL_SPECS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES } = surface
 
-const FIXTURE_PATHS = [
-  surface.SCALE_TEST_HAPPY_PATH_FALLBACK,
-  surface.SCALE_TEST_ALTERNATIVE_PATH_FALLBACK,
-  surface.SCALE_TEST_EXCEPTION_PATH_FALLBACK,
-]
+/** Every sample blueprint, flat — cell lookups scan across scenarios. */
+const FIXTURE_PATHS = Object.values(surface.SAMPLE_BLUEPRINTS_BY_SCENARIO).flat()
 
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
@@ -195,10 +192,10 @@ function fixtureListScenarios() {
 }
 
 function fixtureGetBlueprint(scenarioId) {
-  if (scenarioId !== surface.SCALE_TEST_SCENARIO_ID)
-    return 'No paths in this scenario.'
+  const blueprints = surface.SAMPLE_BLUEPRINTS_BY_SCENARIO[scenarioId]
+  if (!blueprints?.length) return 'No paths in this scenario.'
   const sections = []
-  for (const blueprint of FIXTURE_PATHS) {
+  for (const blueprint of blueprints) {
     const { path, steps, layers, cells } = blueprint
     const lines = [
       `Path "${path.name}" (${path.id}, type ${path.path_type})`,
@@ -241,15 +238,15 @@ function fixtureGetCell(cellId) {
 }
 
 function fixtureListSlices() {
-  return surface.SCALE_TEST_DEMO_SLICES.map(
+  return surface.SAMPLE_DEMO_SLICES.map(
     (slice) => `"${slice.title}" (${slice.id}, type ${slice.slice_type})`,
   ).join('\n')
 }
 
 function fixtureGetSlice(sliceId) {
-  const slice = surface.SCALE_TEST_DEMO_SLICES.find((entry) => entry.id === sliceId)
+  const slice = surface.SAMPLE_DEMO_SLICES.find((entry) => entry.id === sliceId)
   if (!slice) throw new Error(`No slice with id ${sliceId}.`)
-  const items = surface.SCALE_TEST_DEMO_SLICE_ITEMS[sliceId] ?? []
+  const items = surface.SAMPLE_DEMO_SLICE_ITEMS[sliceId] ?? []
   const frames = [...items]
     .sort((a, b) => a.position - b.position)
     .map(
