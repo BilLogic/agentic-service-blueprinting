@@ -584,5 +584,158 @@ if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair 
 fi
 pass "slice-select-guard (unknown scenario and missing flag both error)"
 
+# ---------------------------------------------------------------------------
+# 7. Audit tools: fingerprint reason slug, intra-batch collision, ledger
+#    backstop (audit-playbook §2/§3 reference implementation)
+# ---------------------------------------------------------------------------
+
+AUDIT_TOOLS="$REPO_ROOT/skills/audit/scripts/audit_tools.py"
+
+# New fingerprint form: check ':' sha256(sorted cell_keys) ':' reason-slug —
+# sorted, so cell order never changes identity.
+FP="$(python3 "$AUDIT_TOOLS" fingerprint --check jargon-lint \
+  --cell-keys b/cell a/cell --reason uco-acronym)" \
+  || fail "audit-fingerprint-form: fingerprint failed"
+DIGEST="$(printf 'a/cell\nb/cell' | python3 -c 'import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())')"
+[ "$FP" = "jargon-lint:$DIGEST:uco-acronym" ] \
+  || fail "audit-fingerprint-form: expected 'jargon-lint:$DIGEST:uco-acronym', got '$FP'"
+# A cell-bearing finding without a reason slug is an error, never an
+# old-form (slugless) fingerprint.
+if python3 "$AUDIT_TOOLS" fingerprint --check jargon-lint --cell-keys a/cell \
+  > "$TMP/audit-noreason.out" 2>&1; then
+  fail "audit-fingerprint-reason: expected non-zero exit without --reason"
+fi
+grep -q "reason slug" "$TMP/audit-noreason.out" \
+  || fail "audit-fingerprint-reason: no reason-slug message"
+# Zero-cell scope form is unchanged.
+FP_SCOPE="$(python3 "$AUDIT_TOOLS" fingerprint --check gap-sweep \
+  --scope sample-service:orphan-step)"
+[ "$FP_SCOPE" = "gap-sweep:scope:sample-service:orphan-step" ] \
+  || fail "audit-fingerprint-scope: got '$FP_SCOPE'"
+pass "audit-fingerprint-form (reason slug in every fingerprint; slugless cell finding errors; scope form stable)"
+
+# The live-observed collision: two findings from ONE check over the SAME
+# cells. Distinct reason slugs -> two distinct fingerprints, two inserts.
+cat > "$TMP/audit-incoming.json" <<'JSON'
+[
+ {"check_name": "jargon-lint", "severity": "warn", "note": "UCO acronym",
+  "cell_keys": ["x/1", "x/2", "x/3"], "reason": "uco-acronym", "source": "audit"},
+ {"check_name": "jargon-lint", "severity": "info", "note": "perms wording",
+  "cell_keys": ["x/1", "x/2", "x/3"], "reason": "perms-wording", "source": "audit"}
+]
+JSON
+rm -f "$TMP/audit-ledger.json"
+python3 "$AUDIT_TOOLS" dedupe --ledger "$TMP/audit-ledger.json" \
+  --incoming "$TMP/audit-incoming.json" > "$TMP/audit-dedupe.out" \
+  || fail "audit-same-cells: dedupe failed on distinct-reason findings"
+[ "$(grep -c '^insert' "$TMP/audit-dedupe.out")" -eq 2 ] \
+  || fail "audit-same-cells: expected two inserts — $(cat "$TMP/audit-dedupe.out")"
+python3 "$AUDIT_TOOLS" report --ledger "$TMP/audit-ledger.json" \
+  --incoming "$TMP/audit-incoming.json" --run-id run-1 --apply > /dev/null \
+  || fail "audit-same-cells: report --apply failed"
+python3 - "$TMP/audit-ledger.json" <<'PY' || fail "audit-same-cells: ledger did not keep both rows open"
+import json, sys
+rows = json.load(open(sys.argv[1], encoding="utf-8"))["rows"]
+assert len(rows) == 2, f"expected 2 rows, got {len(rows)}"
+assert all(r["status"] == "open" for r in rows), "both rows must be open"
+assert len({r["fingerprint"] for r in rows}) == 2, "fingerprints must differ"
+PY
+pass "audit-same-cells (same check + same cells, distinct reasons -> two open rows, no collapse)"
+
+# A duplicate fingerprint WITHIN one incoming batch is a reported error,
+# not a second insert — for dedupe AND report, which must leave the ledger
+# untouched.
+cat > "$TMP/audit-dup.json" <<'JSON'
+[
+ {"check_name": "jargon-lint", "severity": "warn", "note": "first",
+  "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit"},
+ {"check_name": "jargon-lint", "severity": "info", "note": "second",
+  "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit"}
+]
+JSON
+if python3 "$AUDIT_TOOLS" dedupe --ledger "$TMP/audit-ledger.json" \
+  --incoming "$TMP/audit-dup.json" > "$TMP/audit-dup.out" 2>&1; then
+  fail "audit-batch-collision: dedupe accepted an intra-batch duplicate"
+fi
+grep -q "duplicate fingerprint within the incoming batch" "$TMP/audit-dup.out" \
+  || fail "audit-batch-collision: no intra-batch message — $(cat "$TMP/audit-dup.out")"
+cp "$TMP/audit-ledger.json" "$TMP/audit-ledger.before.json"
+if python3 "$AUDIT_TOOLS" report --ledger "$TMP/audit-ledger.json" \
+  --incoming "$TMP/audit-dup.json" --run-id run-2 --apply > /dev/null 2>&1; then
+  fail "audit-batch-collision: report --apply accepted an intra-batch duplicate"
+fi
+diff -q "$TMP/audit-ledger.json" "$TMP/audit-ledger.before.json" > /dev/null \
+  || fail "audit-batch-collision: report wrote the ledger despite the error"
+pass "audit-batch-collision (intra-batch duplicate fingerprint = reported error; ledger untouched)"
+
+# File-ledger backstop mirroring the DB partial unique index: report
+# --apply refuses to write two open rows with one fingerprint.
+cat > "$TMP/audit-corrupt-ledger.json" <<'JSON'
+{"rows": [
+ {"check_name": "jargon-lint", "severity": "warn", "note": "a",
+  "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit",
+  "fingerprint": "jargon-lint:deadbeef:same-slug", "status": "open", "run_id": "old-1"},
+ {"check_name": "jargon-lint", "severity": "info", "note": "b",
+  "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit",
+  "fingerprint": "jargon-lint:deadbeef:same-slug", "status": "open", "run_id": "old-2"}
+]}
+JSON
+cp "$TMP/audit-corrupt-ledger.json" "$TMP/audit-corrupt-ledger.before.json"
+printf '[]' > "$TMP/audit-empty.json"
+if python3 "$AUDIT_TOOLS" report --ledger "$TMP/audit-corrupt-ledger.json" \
+  --incoming "$TMP/audit-empty.json" --run-id run-3 --apply > "$TMP/audit-backstop.out" 2>&1; then
+  fail "audit-ledger-backstop: expected refusal on duplicate open fingerprints"
+fi
+grep -q "duplicate open fingerprints" "$TMP/audit-backstop.out" \
+  || fail "audit-ledger-backstop: no backstop message — $(cat "$TMP/audit-backstop.out")"
+diff -q "$TMP/audit-corrupt-ledger.json" "$TMP/audit-corrupt-ledger.before.json" > /dev/null \
+  || fail "audit-ledger-backstop: refused write still mutated the ledger"
+pass "audit-ledger-backstop (two open rows with one fingerprint refuse to be written)"
+
+# Migration: an old-form (slugless) open row stays a valid row and is left
+# alone — dedupe compares exact strings, so new-form incoming inserts
+# alongside it rather than colliding.
+cat > "$TMP/audit-old-ledger.json" <<'JSON'
+{"rows": [
+ {"check_name": "jargon-lint", "severity": "warn", "note": "old form",
+  "cell_keys": ["x/1", "x/2", "x/3"], "source": "audit",
+  "fingerprint": "jargon-lint:0123456789abcdef", "status": "open", "run_id": "old-1"}
+]}
+JSON
+python3 "$AUDIT_TOOLS" report --ledger "$TMP/audit-old-ledger.json" \
+  --incoming "$TMP/audit-incoming.json" --run-id run-4 --apply > /dev/null \
+  || fail "audit-migration: apply over an old-form ledger failed"
+python3 - "$TMP/audit-old-ledger.json" <<'PY' || fail "audit-migration: old-form row lost or matched"
+import json, sys
+rows = json.load(open(sys.argv[1], encoding="utf-8"))["rows"]
+assert len(rows) == 3, f"expected old row + 2 inserts, got {len(rows)}"
+assert any(r["fingerprint"] == "jargon-lint:0123456789abcdef" for r in rows), "old-form row must survive"
+PY
+pass "audit-migration (old-form fingerprints stay valid rows; new writes use the new form)"
+
+# export --scenario builds a filtered copy — the loaded IR must not lose
+# scenarios (regression: the filter used to mutate the dict in place).
+python3 - "$SAMPLE" "$REPO_ROOT" "$TMP" > /dev/null <<'PY' || fail "audit-export-copy: export filter mutated the loaded IR"
+import argparse, copy, importlib.util, json, sys
+sample, repo, tmp = sys.argv[1:4]
+spec = importlib.util.spec_from_file_location(
+    "audit_tools", f"{repo}/skills/audit/scripts/audit_tools.py")
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+# Hand cmd_export a shared, already-loaded dict: the scenario filter must
+# work on a copy, leaving the caller's dict byte-identical.
+shared = json.load(open(sample, encoding="utf-8"))
+snapshot = copy.deepcopy(shared)
+mod.load_ir = lambda path: shared
+args = argparse.Namespace(ir=sample, scenario="asset-repair", out=f"{tmp}/audit-export.json")
+assert mod.cmd_export(args) == 0, "scoped export failed"
+assert shared == snapshot, "cmd_export --scenario mutated the loaded IR in place"
+export = json.load(open(f"{tmp}/audit-export.json", encoding="utf-8"))
+scoped = [s["key"] for p in export["lifecycle"]["phases"] for s in p["scenarios"]]
+assert scoped == ["asset-repair"], f"scoped export wrong: {scoped}"
+PY
+pass "audit-export-copy (scenario filter copies; loaded IR and source stay intact)"
+
 echo
 echo "All $PASS_COUNT tests passed."

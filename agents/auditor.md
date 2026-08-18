@@ -43,7 +43,8 @@ Return ONLY this JSON (no prose around it):
     {
       "severity": "info" | "warn" | "critical",
       "cell_keys": ["<key>", "…"],
-      "scope": "<scenario-key>:<reason-slug> — ONLY for zero-cell findings; omit otherwise",
+      "reason": "<short reason slug naming WHY — required with cell_keys; it becomes part of the fingerprint>",
+      "scope": "<scope-key>:<reason-slug> — ONLY for zero-cell findings; omit otherwise",
       "note": "<what is wrong, citing keys/titles — no excerpts>"
     }
   ]
@@ -53,3 +54,29 @@ Return ONLY this JSON (no prose around it):
 `status: skipped` carries `skip_reason` and an empty findings array. An
 empty findings array with `status: completed` is a legitimate, good
 result — never pad it.
+
+**Findings-row shape (pinned).** The dispatching context maps each finding
+above into exactly this row shape — the same shape `audit_tools.py --help`
+documents for incoming findings and ledger rows — and validates your
+output against it before any `report --apply`:
+
+```json
+{
+  "check_name": "<name>",
+  "severity": "info" | "warn" | "critical",
+  "cell_keys": ["<qualified key>", "…"],
+  "reason": "<reason slug — required when cell_keys is non-empty>",
+  "scope": "<scope-key>:<reason-slug> or null — required when cell_keys is empty",
+  "note": "<text>",
+  "source": "audit" | "whatif",
+  "fingerprint": "<computed by audit_tools.py — never hand-written>",
+  "status": "open" | "resolved" | "dismissed",
+  "run_id": "<uuid>"
+}
+```
+
+**Qualified cell_keys convention.** Every cell_key is the fully qualified
+form `<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>` — the same
+convention slice-schema.json defines. IR cells carry only layer+step; the
+rest of the path comes from the cell's position in the export tree. Emit
+keys in this form, never bare `layer/step` pairs.

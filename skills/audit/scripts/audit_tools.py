@@ -10,7 +10,7 @@ and the no-DB findings-report substrate.
 
 Usage:
     python3 skills/audit/scripts/audit_tools.py fingerprint --check gap-sweep \
-        --cell-keys k1 k2 ...              # or --scope "sample-service:orphan-step"
+        --cell-keys k1 k2 ... --reason <slug>  # or --scope "sample-service:orphan-step"
     python3 skills/audit/scripts/audit_tools.py export <ir-file> [--scenario <key>] \
         --out audit/export-<scenario>.json
     python3 skills/audit/scripts/audit_tools.py dedupe --ledger audit/findings-report.json \
@@ -21,9 +21,25 @@ Usage:
 
 Stdlib only. Exit 0 on success; 1 on bad input.
 
+Fingerprint form (audit-playbook §2): EVERY finding carries a reason slug —
+    cell-bearing: check_name + ':' + sha256(sorted cell_keys) + ':' + <reason-slug>
+    zero-cell:    check_name + ':scope:' + <scope-key> + ':' + <reason-slug>
+(the zero-cell scope value already ends in its reason slug). Without the
+slug, two findings from one check over the same cells collide and dedupe
+silently destroys one of them.
+
+Migration note (existing ledgers): rows carrying old-form fingerprints
+(no reason slug) remain valid rows — dedupe compares exact fingerprint
+strings, so old rows simply never match new-form incoming findings and no
+ledger rewrite is needed. New writes always use the new form; per-check
+supersede retires the old-form open rows on the next completed run.
+
 Findings JSON shape (both incoming and ledger rows):
     {"check_name": str, "severity": "info|warn|critical", "note": str,
-     "cell_keys": [str, ...], "scope": str|null, "source": "audit|whatif",
+     "cell_keys": [str, ...],
+     "reason": str (short reason slug — required when cell_keys is non-empty),
+     "scope": str|null ("<scope-key>:<reason-slug>" — required when cell_keys is empty),
+     "source": "audit|whatif",
      "fingerprint": str (computed here — never hand-written),
      "status": "open|resolved|dismissed", "run_id": str}
 The ledger file is {"rows": [row, ...]}.
@@ -38,14 +54,22 @@ import sys
 from pathlib import Path
 
 
-def fingerprint(check_name: str, cell_keys: list[str], scope: str | None) -> str:
-    """audit-playbook §2, exactly. Scope form requires a reason slug so two
-    zero-cell findings from one check cannot collide."""
+def fingerprint(
+    check_name: str, cell_keys: list[str], scope: str | None, reason: str | None = None
+) -> str:
+    """audit-playbook §2, exactly. EVERY finding carries a reason slug so
+    two distinct findings from one check over the same cells (or the same
+    scope) cannot collide."""
     if cell_keys:
+        if not reason:
+            raise ValueError(
+                "cell-bearing finding needs a reason slug (--reason / \"reason\") — "
+                "without it, two findings from one check over the same cells collide"
+            )
         digest = hashlib.sha256("\n".join(sorted(cell_keys)).encode("utf-8")).hexdigest()
-        return f"{check_name}:{digest}"
+        return f"{check_name}:{digest}:{reason}"
     if not scope:
-        raise ValueError("zero-cell finding needs --scope 'scenario-key:reason-slug'")
+        raise ValueError("zero-cell finding needs --scope 'scope-key:reason-slug'")
     return f"{check_name}:scope:{scope}"
 
 
@@ -93,7 +117,7 @@ def _read_findings(path: Path) -> list[dict]:
 
 def cmd_fingerprint(args: argparse.Namespace) -> int:
     try:
-        print(fingerprint(args.check, args.cell_keys or [], args.scope))
+        print(fingerprint(args.check, args.cell_keys or [], args.scope, args.reason))
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -104,18 +128,21 @@ def cmd_export(args: argparse.Namespace) -> int:
     ir = load_ir(Path(args.ir))
     lifecycle = ir.get("lifecycle", {})
     if args.scenario:
+        # Build a filtered copy — never mutate the loaded IR in place (a
+        # caller holding the dict would silently lose scenarios).
+        phases = []
         for phase in lifecycle.get("phases", []):
-            phase["scenarios"] = [
+            scenarios = [
                 scenario
                 for scenario in phase.get("scenarios", [])
                 if scenario.get("key") == args.scenario
             ]
-        lifecycle["phases"] = [
-            phase for phase in lifecycle.get("phases", []) if phase.get("scenarios")
-        ]
-        if not lifecycle["phases"]:
+            if scenarios:
+                phases.append({**phase, "scenarios": scenarios})
+        if not phases:
             print(f"error: no scenario with key {args.scenario!r}", file=sys.stderr)
             return 1
+        lifecycle = {**lifecycle, "phases": phases}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
@@ -138,10 +165,21 @@ def _load_ledger(path: Path) -> dict:
 
 def _plan(ledger: dict, incoming: list[dict], run_id: str | None) -> list[tuple[str, dict]]:
     plan: list[tuple[str, dict]] = []
+    seen: set[str] = set()
     for finding in incoming:
         fp = fingerprint(
-            finding["check_name"], finding.get("cell_keys") or [], finding.get("scope")
+            finding["check_name"],
+            finding.get("cell_keys") or [],
+            finding.get("scope"),
+            finding.get("reason"),
         )
+        if fp in seen:
+            raise ValueError(
+                f"duplicate fingerprint within the incoming batch: {fp!r} — two "
+                "findings in one batch share a fingerprint; give each a distinct "
+                "reason slug (never plan two inserts for one identity)"
+            )
+        seen.add(fp)
         finding = {**finding, "fingerprint": fp}
         if run_id:
             finding["run_id"] = run_id
@@ -181,6 +219,17 @@ def cmd_report(args: argparse.Namespace) -> int:
                     break
         # drop: nothing lands — dismissed stays dismissed.
     if args.apply:
+        # File-ledger backstop, mirroring the DB partial unique index
+        # (findings_open_fingerprint_idx): never write two open rows with
+        # one fingerprint. A violation means the dedupe logic missed.
+        open_fps = [row["fingerprint"] for row in ledger["rows"] if row["status"] == "open"]
+        duplicates = sorted({fp for fp in open_fps if open_fps.count(fp) > 1})
+        if duplicates:
+            raise ValueError(
+                "refusing to write the ledger: duplicate open fingerprints "
+                f"{duplicates!r} — the open-fingerprint backstop (mirror of the DB "
+                "partial unique index) treats this as a dedupe miss, not an insert"
+            )
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
         ledger_path.write_text(
             json.dumps(ledger, ensure_ascii=False, indent=1), encoding="utf-8"
@@ -196,6 +245,7 @@ def main() -> int:
     p = sub.add_parser("fingerprint")
     p.add_argument("--check", required=True)
     p.add_argument("--cell-keys", nargs="*")
+    p.add_argument("--reason", help="reason slug — required with --cell-keys")
     p.add_argument("--scope")
     p.set_defaults(fn=cmd_fingerprint)
 
