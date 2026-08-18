@@ -1,5 +1,6 @@
+import { toClientViewType } from '@/lib/viewTypeVocabulary'
 import type { Phase, ServiceScenario } from '@/types/database'
-import type { NavItem, SlideViewType } from '@/types/nav'
+import type { NavItem } from '@/types/nav'
 
 export type ScenarioRow = Pick<
   ServiceScenario,
@@ -40,7 +41,9 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         label: scenario.name,
         description: scenario.description,
         parentId: phase.id,
-        viewType: scenario.view_type as SlideViewType,
+        // Read seam: raw DB tokens become client vocabulary here and nowhere
+        // else ('side-by-side'/'integrated' → 'stacked').
+        viewType: toClientViewType(scenario.view_type),
       })
     })
   })
