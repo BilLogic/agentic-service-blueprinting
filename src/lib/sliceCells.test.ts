@@ -99,9 +99,10 @@ describe('pickBlueprintForCells', () => {
 
 describe('bundled demo slices', () => {
   it('every demo slice resolves onto a registered sample scenario', () => {
-    // The meta-blueprint ships one journey slice (over the first-run
-    // scenario) and one step slice (over the mapping scenario) — each must
-    // land on exactly one registered fallback scenario.
+    // The meta-blueprint ships three demo slices — a journey over the
+    // first-run scenario, a step down the mapping scenario's import column,
+    // and a lane across the first-run terminal row — and each must land on
+    // exactly one registered fallback scenario.
     for (const slice of FALLBACK_SLICES) {
       const items = FALLBACK_SLICE_ITEMS[slice.id] ?? []
       const cellIds = items.flatMap((entry) => entry.cell_ids)
@@ -125,6 +126,8 @@ describe('bundled demo slices', () => {
       const cellIds = items.flatMap((entry) => entry.cell_ids)
       const scenarioId = findFallbackScenarioForCells(cellIds)
       expect(scenarioId).not.toBeNull()
+      // The scenario's default path: every demo slice is authored on it, so
+      // opening one in the focus view needs no path change first.
       const fallback = getBlueprintFallback(scenarioId!)
       expect(fallback).not.toBeNull()
       const resolution = resolveSliceCells(fallback, items)

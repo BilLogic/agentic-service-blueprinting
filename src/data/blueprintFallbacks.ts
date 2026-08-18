@@ -218,3 +218,27 @@ export function getFallbackBlueprintsForScenarios(
   }
   return map
 }
+
+/** Every fallback cell in the registry, by cell id — built once, lazily. */
+let FALLBACK_CELLS_BY_ID: Map<string, BlueprintData['cells'][number]> | null =
+  null
+
+/**
+ * One fallback cell by id, for panels that read a cell on its own rather than
+ * through the grid query (`useCellContent`). Without this a keyless clone shows
+ * the grid text but none of the cell spec — owner, perceived owner, function,
+ * form, value props — which is exactly the part the sample content is teaching.
+ */
+export function getFallbackCell(
+  cellId: string | null | undefined,
+): BlueprintData['cells'][number] | null {
+  if (!cellId) return null
+  if (!FALLBACK_CELLS_BY_ID) {
+    FALLBACK_CELLS_BY_ID = new Map(
+      Object.values(FALLBACK_BY_PATH).flatMap((data) =>
+        data.cells.map((cell) => [cell.id, cell] as const),
+      ),
+    )
+  }
+  return FALLBACK_CELLS_BY_ID.get(cellId) ?? null
+}

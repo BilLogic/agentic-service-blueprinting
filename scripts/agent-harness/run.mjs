@@ -226,6 +226,11 @@ function fixtureGetCell(cellId) {
     const fields = [
       ['content', cell.content],
       ['summary', cell.description],
+      ['owner', cell.owner],
+      ['perceived_owner', cell.perceived_owner],
+      ['function', cell.function],
+      ['form', cell.form],
+      ['value_props', cell.value_props?.length ? JSON.stringify(cell.value_props) : null],
       ['layer_id', cell.layer_id],
       ['step_id', cell.step_id],
     ]
@@ -235,6 +240,18 @@ function fixtureGetCell(cellId) {
       .join('\n')
   }
   throw new Error(`No cell with id ${cellId}.`)
+}
+
+/** Owner tags the offline fixture carries — the no-DB twin of realListOwnerTags. */
+function fixtureListOwnerTags() {
+  const tags = new Set()
+  for (const blueprint of FIXTURE_PATHS) {
+    for (const cell of blueprint.cells) {
+      if (cell.owner) tags.add(cell.owner)
+      if (cell.perceived_owner) tags.add(cell.perceived_owner)
+    }
+  }
+  return tags.size ? [...tags].sort().join(', ') : 'No owner tags in use yet.'
 }
 
 function fixtureListSlices() {
@@ -455,7 +472,7 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
         record.result = HAS_DB ? await realGetCell(args.cell_id) : fixtureGetCell(args.cell_id)
         return record.result
       case 'list_owner_tags':
-        record.result = HAS_DB ? await realListOwnerTags() : 'No owner tags in use yet.'
+        record.result = HAS_DB ? await realListOwnerTags() : fixtureListOwnerTags()
         return record.result
       case 'list_slices':
         record.result = HAS_DB ? await realListSlices() : fixtureListSlices()

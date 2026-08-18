@@ -51,6 +51,21 @@ export type BlueprintCell = {
    * rows predating the split never carry it — absent reads as 0.
    */
   slot_position?: number
+  /**
+   * Cell spec (`cells.owner` … `cells.value_props`), carried so the no-DB
+   * fallback can serve the cell panel's spec sections the same way a database
+   * read does. Optional on every cell: most cells set none of them, and rows
+   * predating the columns carry none.
+   */
+  owner?: string | null
+  /** Who the person on the other side believes owns this moment. */
+  perceived_owner?: string | null
+  /** Role / responsibility / requirements of this moment. */
+  function?: string | null
+  /** Communication, look, feel, sound of this moment. */
+  form?: string | null
+  /** Value delivered, as `{ for, value }` pairs. */
+  value_props?: { for: string; value: string }[]
 }
 
 export type BlueprintCellTrigger = {
