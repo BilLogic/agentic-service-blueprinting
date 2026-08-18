@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { phasesToSlides, type PhaseRow } from '@/lib/phasesToSlides'
 import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
@@ -20,104 +21,71 @@ const LIFECYCLE_PHASES_SELECT = `
   )
 `
 
+const EMPTY_PHASES: PhaseRow[] = []
+const EMPTY_SLIDES: NavItem[] = []
+
 /**
- * Load the phases (and nested scenarios) of one service lifecycle.
+ * Load the phases (and nested scenarios) of one service lifecycle, cached
+ * under the `lifecycle-phases:` prefix (invalidated by structural writes via
+ * `invalidateStructure`).
  *
  * With no explicit `lifecycleId`, the first lifecycle by `created_at` is used
  * — the common case is a single lifecycle per database. Pass an id to pin a
  * specific lifecycle in multi-lifecycle databases.
+ *
+ * A timeout or an empty database resolves to no phases with no error — the
+ * caller falls back to the bundled sample slides, same as a no-DB session.
  */
 export function useLifecyclePhases(lifecycleId?: string) {
   const { client, configured } = useSupabase()
-  const [phases, setPhases] = useState<PhaseRow[]>([])
-  const [slides, setSlides] = useState<NavItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const noDb = !configured || !client
 
-  useEffect(() => {
-    if (!configured || !client) {
-      setPhases([])
-      setSlides([])
-      setLoading(false)
-      setError(null)
-      return
-    }
+  const query = useQuery<PhaseRow[]>({
+    queryKey: [`lifecycle-phases:${lifecycleId ?? 'first'}`],
+    enabled: !noDb,
+    queryFn: async () => {
+      let resolvedLifecycleId = lifecycleId
+      if (!resolvedLifecycleId) {
+        const outcome = await raceSupabaseQuery(
+          client!
+            .from('service_lifecycles')
+            .select('id')
+            .order('created_at', { ascending: true })
+            .limit(1),
+        )
+        // Timeout degrades silently — the caller renders the sample slides.
+        if (outcome === 'timeout') return EMPTY_PHASES
+        if (outcome.error) throw new Error(outcome.error.message)
+        const first = (outcome.data ?? [])[0] as { id: string } | undefined
+        // Empty database — fall back to local sample slides upstream.
+        if (!first) return EMPTY_PHASES
+        resolvedLifecycleId = first.id
+      }
 
-    let cancelled = false
-    setLoading(true)
+      const outcome = await raceSupabaseQuery(
+        client!
+          .from('phases')
+          .select(LIFECYCLE_PHASES_SELECT)
+          .eq('service_lifecycle_id', resolvedLifecycleId)
+          .order('order_position', { ascending: true }),
+      )
+      if (outcome === 'timeout') return EMPTY_PHASES
+      if (outcome.error) throw new Error(outcome.error.message)
+      return (outcome.data ?? []) as PhaseRow[]
+    },
+  })
 
-    const fail = (message: string | null) => {
-      if (cancelled) return
-      setError(message)
-      setPhases([])
-      setSlides([])
-      setLoading(false)
-    }
-
-    const loadPhases = (resolvedLifecycleId: string) => {
-      const query = client
-        .from('phases')
-        .select(LIFECYCLE_PHASES_SELECT)
-        .eq('service_lifecycle_id', resolvedLifecycleId)
-        .order('order_position', { ascending: true })
-
-      void raceSupabaseQuery(query).then((result) => {
-        if (cancelled) return
-        if (result === 'timeout') {
-          fail(null)
-          return
-        }
-
-        const { data, error: err } = result
-        if (err) {
-          fail(err.message)
-        } else {
-          const rows = (data ?? []) as PhaseRow[]
-          setError(null)
-          setPhases(rows)
-          setSlides(phasesToSlides(rows))
-          setLoading(false)
-        }
-      })
-    }
-
-    if (lifecycleId) {
-      loadPhases(lifecycleId)
-    } else {
-      const lifecycleQuery = client
-        .from('service_lifecycles')
-        .select('id')
-        .order('created_at', { ascending: true })
-        .limit(1)
-
-      void raceSupabaseQuery(lifecycleQuery).then((result) => {
-        if (cancelled) return
-        if (result === 'timeout') {
-          fail(null)
-          return
-        }
-
-        const { data, error: err } = result
-        if (err) {
-          fail(err.message)
-          return
-        }
-
-        const first = (data ?? [])[0] as { id: string } | undefined
-        if (!first) {
-          // Empty database — fall back to local sample slides upstream.
-          fail(null)
-          return
-        }
-
-        loadPhases(first.id)
-      })
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [client, configured, lifecycleId])
+  const phases = noDb || query.error ? EMPTY_PHASES : (query.data ?? EMPTY_PHASES)
+  const slides = useMemo(
+    () => (phases.length > 0 ? phasesToSlides(phases) : EMPTY_SLIDES),
+    [phases],
+  )
+  const loading = !noDb && query.isPending
+  const error = query.error
+    ? query.error instanceof Error
+      ? query.error.message
+      : String(query.error)
+    : null
 
   return { phases, slides, loading, error, configured }
 }

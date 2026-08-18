@@ -1,27 +1,45 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
   mergePathsWithFallback,
 } from '@/data/blueprintFallbacks'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { queryClient } from '@/lib/queryClient'
+import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
 import { resolveBlueprintForScenario } from '@/lib/resolveBlueprint'
 import type { RawPath } from '@/lib/normalizeBlueprint'
 import type { PathListItem } from '@/lib/pathSelection'
-import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
 import type { BlueprintData } from '@/types/blueprint'
+import type { Database } from '@/types/database'
 
-type CanvasRawPath = RawPath & {
+export type CanvasRawPath = RawPath & {
   service_scenario_id: string
+}
+
+type CanvasBlueprintMaps = {
+  blueprintsByScenario: Map<string, BlueprintData>
+  pathsByScenario: Map<string, PathListItem[]>
+  blueprintsByPathId: Map<string, BlueprintData>
+  usingFallback: boolean
+}
+
+const EMPTY_MAPS: CanvasBlueprintMaps = {
+  blueprintsByScenario: new Map(),
+  pathsByScenario: new Map(),
+  blueprintsByPathId: new Map(),
+  usingFallback: false,
 }
 
 function pickPathForScenario(paths: CanvasRawPath[]): CanvasRawPath | null {
   if (paths.length === 0) return null
-  return paths.find((p) => p.path_type === 'happy') ?? paths[0]
+  return paths.find((p) => p.path_type === 'happy') ?? paths[0] ?? null
 }
 
-function buildFallbackMaps(scenarioIds: string[]) {
+function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
   const blueprintsByScenario = new Map<string, BlueprintData>()
   const pathsByScenario = new Map<string, PathListItem[]>()
   const blueprintsByPathId = new Map<string, BlueprintData>()
@@ -45,24 +63,167 @@ function buildFallbackMaps(scenarioIds: string[]) {
     }
   }
 
-  return { blueprintsByScenario, pathsByScenario, blueprintsByPathId }
+  return {
+    blueprintsByScenario,
+    pathsByScenario,
+    blueprintsByPathId,
+    usingFallback: blueprintsByScenario.size > 0,
+  }
 }
 
-export function useCanvasBlueprints(scenarioIds: string[]) {
-  const { client, configured } = useSupabase()
-  const [blueprintsByScenario, setBlueprintsByScenario] = useState<
-    Map<string, BlueprintData>
-  >(new Map())
-  const [pathsByScenario, setPathsByScenario] = useState<
-    Map<string, PathListItem[]>
-  >(new Map())
-  const [blueprintsByPathId, setBlueprintsByPathId] = useState<
-    Map<string, BlueprintData>
-  >(new Map())
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [usingFallback, setUsingFallback] = useState(false)
+/** Group fetched path rows into the per-scenario / per-path blueprint maps. */
+function deriveFromRows(
+  rows: CanvasRawPath[],
+  orderedScenarioIds: string[],
+  staticFallbacks: CanvasBlueprintMaps,
+): CanvasBlueprintMaps {
+  const grouped = new Map<string, CanvasRawPath[]>()
+  const byPathId = new Map<string, BlueprintData>()
+  let anyFallback = false
 
+  for (const row of rows) {
+    const list = grouped.get(row.service_scenario_id) ?? []
+    list.push(row)
+    grouped.set(row.service_scenario_id, list)
+
+    const resolved = resolveBlueprintForScenario(row.service_scenario_id, row)
+    if (resolved.blueprint) {
+      byPathId.set(row.id, resolved.blueprint)
+      if (resolved.source === 'fallback') anyFallback = true
+    }
+  }
+
+  const byScenario = new Map<string, BlueprintData>()
+  const pathsMap = new Map<string, PathListItem[]>()
+
+  for (const scenarioId of orderedScenarioIds) {
+    const scenarioPaths = grouped.get(scenarioId) ?? []
+    if (scenarioPaths.length > 0) {
+      pathsMap.set(
+        scenarioId,
+        mergePathsWithFallback(
+          scenarioId,
+          scenarioPaths.map((path) => ({
+            id: path.id,
+            name: path.name,
+            description: path.description ?? null,
+            note: path.note ?? null,
+            path_type: path.path_type,
+          })),
+        ),
+      )
+    } else {
+      const fallbackPaths = getFallbackPathsForScenario(scenarioId)
+      if (fallbackPaths.length > 0) {
+        pathsMap.set(scenarioId, fallbackPaths)
+      }
+    }
+
+    const chosen = pickPathForScenario(scenarioPaths)
+    const resolved = resolveBlueprintForScenario(scenarioId, chosen)
+    if (resolved.blueprint) {
+      byScenario.set(scenarioId, resolved.blueprint)
+      if (resolved.source === 'fallback') anyFallback = true
+    } else {
+      const fallback = getBlueprintFallback(scenarioId)
+      if (fallback) {
+        byScenario.set(scenarioId, fallback)
+        anyFallback = true
+      }
+    }
+  }
+
+  if (byScenario.size === 0 && staticFallbacks.blueprintsByScenario.size > 0) {
+    return { ...staticFallbacks, usingFallback: true }
+  }
+
+  return {
+    blueprintsByScenario: byScenario,
+    pathsByScenario:
+      pathsMap.size > 0 ? pathsMap : staticFallbacks.pathsByScenario,
+    blueprintsByPathId:
+      byPathId.size > 0 ? byPathId : staticFallbacks.blueprintsByPathId,
+    usingFallback:
+      anyFallback ||
+      (byScenario.size === 0 &&
+        staticFallbacks.blueprintsByScenario.size > 0),
+  }
+}
+
+export const SCENARIO_KEY_PREFIX = 'canvas-blueprints:scenario:'
+
+/** The cache key of one scenario's blueprint query. */
+export function scenarioBlueprintQueryKey(scenarioId: string): [string] {
+  return [`${SCENARIO_KEY_PREFIX}${scenarioId}`]
+}
+
+/**
+ * The one blueprint read this app makes: every path row (with layers, steps
+ * and cells) of a single scenario. Shared by the canvas hook below and
+ * `useScenarioBlueprint`, so both surfaces ride the same cache entry and one
+ * invalidation covers them both. Ordered by `created_at` so path order is
+ * deterministic wherever the rows land.
+ */
+export async function fetchScenarioBlueprintRows(
+  client: SupabaseClient<Database>,
+  scenarioId: string,
+): Promise<CanvasRawPath[]> {
+  const outcome = await raceSupabaseQuery(
+    (async () => {
+      const { data, error } = await client
+        .from('paths')
+        .select(PATH_BLUEPRINT_SELECT)
+        .eq('service_scenario_id', scenarioId)
+        .order('created_at', { ascending: true })
+      if (error) throw new Error(error.message)
+      return (data ?? []) as CanvasRawPath[]
+    })(),
+  )
+  if (outcome === 'timeout') throw new Error('The request timed out')
+  return outcome
+}
+
+/**
+ * Invalidate exactly the scenarios a write touched — one refetch, not a
+ * board-wide storm. Membership changes (create/delete/duplicate scenario)
+ * still go through `invalidateStructure()`'s bare 'canvas-blueprints'
+ * prefix, which these keys also match.
+ */
+export function invalidateCanvasBlueprintsForScenario(
+  scenarioId: string,
+): void {
+  void queryClient.invalidateQueries({
+    predicate: (query) =>
+      String(query.queryKey[0] ?? '') === `${SCENARIO_KEY_PREFIX}${scenarioId}`,
+  })
+}
+
+/**
+ * Path-scoped variant for callers that only know the path (e.g. a cell
+ * editor): match the one scenario query whose cached rows contain the path.
+ * A query with no cached data yet is counted as matching — stale to be safe.
+ */
+export function invalidateCanvasBlueprintsForPath(pathId: string): void {
+  void queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = String(query.queryKey[0] ?? '')
+      if (!key.startsWith(SCENARIO_KEY_PREFIX)) return false
+      const rows = query.state.data as CanvasRawPath[] | undefined
+      return rows === undefined || rows.some((row) => row.id === pathId)
+    },
+  })
+}
+
+/**
+ * Blueprints for a set of scenarios, fetched ONE QUERY PER SCENARIO so
+ * loading progress is measurable (each settle is one real tick), cache keys
+ * are stable under membership changes (adding a scenario adds one key; the
+ * rest stay warm), and a lost request degrades only its own scenario to the
+ * bundled fallback instead of the whole board. With no database configured,
+ * the same maps resolve synchronously from the bundled fallback module —
+ * components never see a second code path.
+ */
+export function useCanvasBlueprints(scenarioIds: string[]) {
   const idsKey = scenarioIds.slice().sort().join(',')
   const orderedScenarioIds = useMemo(
     () => (idsKey ? idsKey.split(',') : []),
@@ -70,158 +231,71 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
   )
   const staticFallbacks = useMemo(
     () => buildFallbackMaps(orderedScenarioIds),
-    [idsKey, orderedScenarioIds],
+    [orderedScenarioIds],
   )
 
-  useEffect(() => {
-    if (orderedScenarioIds.length === 0) {
-      setBlueprintsByScenario(new Map())
-      setPathsByScenario(new Map())
-      setBlueprintsByPathId(new Map())
-      setLoading(false)
-      setError(null)
-      setUsingFallback(false)
-      return
+  const { client, configured } = useSupabase()
+  const noDb = !configured || !client
+
+  const results = useQueries({
+    queries: orderedScenarioIds.map((scenarioId) => ({
+      queryKey: scenarioBlueprintQueryKey(scenarioId),
+      enabled: !noDb,
+      queryFn: () => fetchScenarioBlueprintRows(client!, scenarioId),
+    })),
+  })
+
+  const loadedCount = results.filter(
+    (result) => result.data !== undefined || result.error !== null,
+  ).length
+  const anyError = results.some((result) => result.error !== null)
+  const allSettled = noDb || loadedCount === results.length
+  const loading = orderedScenarioIds.length > 0 && !allSettled
+
+  // dataUpdatedAt, not a status string: after a mutation invalidates
+  // 'canvas-blueprints' the refetched queries come back with data still
+  // DEFINED, so a status-only key would never change and the canvas would
+  // keep rendering pre-edit rows until a reload.
+  const rowsKey = results
+    .map((result) => (result.error ? 'e' : String(result.dataUpdatedAt ?? 0)))
+    .join(',')
+  const derived = useMemo<CanvasBlueprintMaps>(() => {
+    if (orderedScenarioIds.length === 0) return EMPTY_MAPS
+    if (noDb || !allSettled) {
+      // Still on the wire → empty (the loading state owns the canvas); no DB
+      // at all → the static local fallbacks.
+      return noDb ? staticFallbacks : EMPTY_MAPS
     }
+    // Per-scenario degradation: a failed scenario contributes no rows, and
+    // deriveFromRows already falls back to the bundled fixture for a
+    // scenario with nothing — the other scenarios keep their fetched data
+    // instead of the whole board swapping to statics.
+    const rows = results.flatMap((result) => result.data ?? [])
+    return deriveFromRows(rows, orderedScenarioIds, staticFallbacks)
+    // rowsKey stands in for the results array's per-render identity churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedScenarioIds, noDb, allSettled, rowsKey, staticFallbacks])
 
-    if (!configured || !client) {
-      setBlueprintsByScenario(staticFallbacks.blueprintsByScenario)
-      setPathsByScenario(staticFallbacks.pathsByScenario)
-      setBlueprintsByPathId(staticFallbacks.blueprintsByPathId)
-      setUsingFallback(staticFallbacks.blueprintsByScenario.size > 0)
-      setLoading(false)
-      setError(null)
-      return
-    }
-
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    const query = client
-      .from('paths')
-      .select(PATH_BLUEPRINT_SELECT)
-      .in('service_scenario_id', orderedScenarioIds)
-
-    void raceSupabaseQuery(query).then((result) => {
-        if (cancelled) return
-
-        if (result === 'timeout') {
-          setBlueprintsByScenario(staticFallbacks.blueprintsByScenario)
-          setPathsByScenario(staticFallbacks.pathsByScenario)
-          setBlueprintsByPathId(staticFallbacks.blueprintsByPathId)
-          setUsingFallback(staticFallbacks.blueprintsByScenario.size > 0)
-          setError(null)
-          setLoading(false)
-          return
-        }
-
-        const { data, error: err } = result
-        if (err) {
-          setError(err.message)
-          setBlueprintsByScenario(staticFallbacks.blueprintsByScenario)
-          setPathsByScenario(staticFallbacks.pathsByScenario)
-          setBlueprintsByPathId(staticFallbacks.blueprintsByPathId)
-          setUsingFallback(staticFallbacks.blueprintsByScenario.size > 0)
-          setLoading(false)
-          return
-        }
-
-        const grouped = new Map<string, CanvasRawPath[]>()
-        const byPathId = new Map<string, BlueprintData>()
-        let anyFallback = false
-
-        for (const row of (data ?? []) as CanvasRawPath[]) {
-          const list = grouped.get(row.service_scenario_id) ?? []
-          list.push(row)
-          grouped.set(row.service_scenario_id, list)
-
-          const resolved = resolveBlueprintForScenario(
-            row.service_scenario_id,
-            row,
-          )
-          if (resolved.blueprint) {
-            byPathId.set(row.id, resolved.blueprint)
-            if (resolved.source === 'fallback') anyFallback = true
-          }
-        }
-
-        const byScenario = new Map<string, BlueprintData>()
-        const pathsMap = new Map<string, PathListItem[]>()
-
-        for (const scenarioId of orderedScenarioIds) {
-          const scenarioPaths = grouped.get(scenarioId) ?? []
-          if (scenarioPaths.length > 0) {
-            pathsMap.set(
-              scenarioId,
-              mergePathsWithFallback(
-                scenarioId,
-                scenarioPaths.map((path) => ({
-                  id: path.id,
-                  name: path.name,
-                  description: path.description ?? null,
-                  note: path.note ?? null,
-                  path_type: path.path_type,
-                })),
-              ),
-            )
-          } else {
-            const fallbackPaths = getFallbackPathsForScenario(scenarioId)
-            if (fallbackPaths.length > 0) {
-              pathsMap.set(scenarioId, fallbackPaths)
-            }
-          }
-
-          const chosen = pickPathForScenario(scenarioPaths)
-          const resolved = resolveBlueprintForScenario(scenarioId, chosen)
-          if (resolved.blueprint) {
-            byScenario.set(scenarioId, resolved.blueprint)
-            if (resolved.source === 'fallback') anyFallback = true
-          } else {
-            const fallback = getBlueprintFallback(scenarioId)
-            if (fallback) {
-              byScenario.set(scenarioId, fallback)
-              anyFallback = true
-            }
-          }
-        }
-
-        if (byScenario.size === 0 && staticFallbacks.blueprintsByScenario.size > 0) {
-          setBlueprintsByScenario(staticFallbacks.blueprintsByScenario)
-          setPathsByScenario(staticFallbacks.pathsByScenario)
-          setBlueprintsByPathId(staticFallbacks.blueprintsByPathId)
-          setUsingFallback(true)
-        } else {
-          setBlueprintsByScenario(byScenario)
-          setPathsByScenario(
-            pathsMap.size > 0 ? pathsMap : staticFallbacks.pathsByScenario,
-          )
-          setBlueprintsByPathId(
-            byPathId.size > 0 ? byPathId : staticFallbacks.blueprintsByPathId,
-          )
-          setUsingFallback(
-            anyFallback ||
-              (byScenario.size === 0 &&
-                staticFallbacks.blueprintsByScenario.size > 0),
-          )
-        }
-
-        setError(null)
-        setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [client, configured, idsKey, staticFallbacks])
+  const firstError = results.find((result) => result.error)?.error
+  const error = anyError
+    ? firstError instanceof Error
+      ? firstError.message
+      : String(firstError)
+    : null
 
   return {
-    blueprintsByScenario,
-    pathsByScenario,
-    blueprintsByPathId,
+    blueprintsByScenario: derived.blueprintsByScenario,
+    pathsByScenario: derived.pathsByScenario,
+    blueprintsByPathId: derived.blueprintsByPathId,
     loading,
     error,
     configured,
-    usingFallback,
+    usingFallback: derived.usingFallback || anyError,
+    /** Real network progress: settled scenario queries over total. A no-DB
+     *  session has nothing on the wire — it reports complete, so a progress
+     *  bar never parks below full while nothing is loading. */
+    progress: noDb
+      ? { loaded: results.length, total: results.length }
+      : { loaded: loadedCount, total: results.length },
   }
 }
