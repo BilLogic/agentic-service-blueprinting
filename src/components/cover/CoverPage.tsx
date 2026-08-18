@@ -2,33 +2,37 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { ORG_NAME } from '@/config'
-import { useCoverActions } from '@/components/cover/coverActions'
 import { CoverSections } from '@/components/cover/CoverSections'
 import { renderInline } from '@/components/cover/coverInline'
 import { CoverTabStrip } from '@/components/cover/CoverTabStrip'
-import type { CoverActions, CoverContent } from '@/components/cover/coverModel'
+import type { CoverContent } from '@/components/cover/coverModel'
+import { useEditor } from '@/contexts/EditorContext'
 
 /**
  * The cover page — the shell's landing view.
  *
  * Everything visible is data from a `CoverContent` module; the components
- * here own only layout, theme treatment, and the CTA state machine. Tab
- * state is local and unserialized: `?slice=` deep links resolve one way,
- * out of this page into app surfaces, never into a cover tab (plan §4.4 —
- * a second writer on the query string would race the slice resolution).
+ * here own only layout and theme treatment. Tab state is local and
+ * unserialized: `?slice=` deep links resolve one way, out of this page into
+ * app surfaces, never into a cover tab (plan §4.4 — a second writer on the
+ * query string would race the slice resolution).
+ *
+ * The header's single button is the page's only action. Nothing else here
+ * writes, fetches, or depends on a database, so the page is identical for a
+ * read-only visitor and in a zero-config workspace.
  */
 export function CoverPage({ content }: { content: CoverContent }) {
-  const actions = useCoverActions()
-  return <CoverPageView content={content} actions={actions} />
+  const { enterCanvas } = useEditor()
+  return <CoverPageView content={content} onOpenCanvas={enterCanvas} />
 }
 
-/** The provider-free surface — tests hand it a fabricated `actions`. */
+/** The provider-free surface — tests hand it a plain callback. */
 export function CoverPageView({
   content,
-  actions,
+  onOpenCanvas,
 }: {
   content: CoverContent
-  actions: CoverActions
+  onOpenCanvas: () => void
 }) {
   const [activeTab, setActiveTab] = useState(content.tabs[0]?.value ?? '')
 
@@ -45,7 +49,7 @@ export function CoverPageView({
             </h1>
             <Button
               type="button"
-              onClick={actions.openCanvas}
+              onClick={onOpenCanvas}
               className="h-9 shrink-0 px-3.5"
             >
               {content.primaryCtaLabel}
@@ -67,10 +71,11 @@ export function CoverPageView({
           {content.tabs.map((tab, index) => (
             <TabsContent key={tab.value} value={tab.value} className="mt-0">
               <CoverSections
+                intro={tab.intro}
                 sections={tab.sections}
-                actions={actions}
+                link={tab.link}
                 repoUrl={content.repoUrl}
-                sliceEmptyNote={content.sliceEmptyNote}
+                chip={content.chip}
                 eagerFigures={index === 0}
               />
             </TabsContent>

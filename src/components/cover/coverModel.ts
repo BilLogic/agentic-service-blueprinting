@@ -24,22 +24,36 @@ export type CoverFigure = {
   wide?: boolean
 }
 
-/** A CTA the page can offer. Link items resolve against `repoUrl` and
- * disappear when the deployment has not configured one. */
-export type CoverCtaItem =
-  | { kind: 'openCanvas'; label: string }
-  | { kind: 'openSlice'; label: string }
-  | { kind: 'presentSlice'; label: string }
-  | { kind: 'link'; label: string; docPath: string }
+/**
+ * Every section's figure is optional, and an absent one is a first-class
+ * state rather than a defect: a section whose figure has not been authored
+ * yet renders prose-only. No placeholder box, no broken `src` — the copy for
+ * those sections is written to stand on its own, and dropping the figure in
+ * later is a one-line edit to this deployment's content module.
+ */
+
+/** A quiet inline link out to the repository's guide. Rendered only when the
+ * deployment has configured a `repoUrl`; there is no button form. */
+export type CoverGuideLink = {
+  label: string
+  /** Repo-relative, e.g. `docs/guide/01-the-blueprint-model.md`. */
+  docPath: string
+}
 
 export type CoverSection =
   | {
       kind: 'prose'
       id: string
       heading?: string
-      /** Paragraphs may carry `**bold**` runs for terms on first definition. */
+      /** Paragraphs may carry `**bold**`, `*italic*`, and `` `code` `` runs. */
       paragraphs: string[]
       figure?: CoverFigure
+    }
+  | {
+      kind: 'figure'
+      id: string
+      heading?: string
+      figure: CoverFigure
     }
   | {
       kind: 'defs'
@@ -57,47 +71,40 @@ export type CoverSection =
       purpose: string
       producesLabel: string
       produces: string
-      figure: CoverFigure
+      figure?: CoverFigure
     }
-  | { kind: 'cta'; id: string; items: CoverCtaItem[] }
 
 export type CoverTab = {
   value: string
   label: string
+  /** One orienting sentence above the tab's first section. */
+  intro?: string
   sections: CoverSection[]
+  /** Appended after the last section, when `repoUrl` is set. */
+  link?: CoverGuideLink
 }
 
 export type CoverContent = {
   /** Falls back to `ORG_NAME` when absent — the usual case. */
   title?: string
   lede: string
+  /** The page's only button. */
   primaryCtaLabel: string
-  /** Repository host root; link CTAs are dropped when it is absent. */
+  /** Repository host root; guide links are dropped when it is absent. */
   repoUrl?: string
-  /** Shown in place of the slice CTAs when the workspace holds no slices. */
-  sliceEmptyNote: string
+  /** Labels for the click-to-copy command chips. */
+  chip: { copyLabel: string; copiedLabel: string }
+  /** Degraded-state sentences the surrounding app may show. */
+  states: { noSlices: string }
   tabs: CoverTab[]
 }
 
-/** What the shared components need from the app to make their CTAs work. */
-export type CoverSliceState =
-  | { status: 'loading' }
-  | { status: 'ready'; sliceId: string }
-  | { status: 'empty' }
-
-export type CoverActions = {
-  openCanvas: () => void
-  openSlice: (sliceId: string) => void
-  presentSlice: (sliceId: string) => void
-  slice: CoverSliceState
-}
-
-/** Every figure referenced anywhere in a content tree, in reading order. */
+/** Every figure actually referenced in a content tree, in reading order.
+ * Sections with an empty figure slot contribute nothing. */
 export function coverFigures(content: CoverContent): CoverFigure[] {
   const figures: CoverFigure[] = []
   for (const tab of content.tabs) {
     for (const section of tab.sections) {
-      if (section.kind === 'cta') continue
       if (section.figure) figures.push(section.figure)
     }
   }

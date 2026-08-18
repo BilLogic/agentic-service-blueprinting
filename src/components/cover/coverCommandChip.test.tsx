@@ -17,7 +17,7 @@ describe('CoverCommandChip', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
-    render(<CoverCommandChip command="/sb:map" />)
+    render(<CoverCommandChip command="/sb:map" copyLabel="Copy" copiedLabel="Copied" />)
     await act(async () => {
       screen.getByRole('button', { name: 'Copy /sb:map' }).click()
     })
@@ -29,7 +29,7 @@ describe('CoverCommandChip', () => {
     const writeText = vi.fn().mockRejectedValue(new Error('denied'))
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
-    render(<CoverCommandChip command="/sb:audit" />)
+    render(<CoverCommandChip command="/sb:audit" copyLabel="Copy" copiedLabel="Copied" />)
     await act(async () => {
       screen.getByRole('button', { name: 'Copy /sb:audit' }).click()
     })
@@ -37,7 +37,7 @@ describe('CoverCommandChip', () => {
   })
 
   it('no clipboard API at all (plain http) is a no-op', () => {
-    render(<CoverCommandChip command="/sb:whatif" />)
+    render(<CoverCommandChip command="/sb:whatif" copyLabel="Copy" copiedLabel="Copied" />)
     expect(() =>
       screen.getByRole('button', { name: 'Copy /sb:whatif' }).click(),
     ).not.toThrow()

@@ -2,19 +2,24 @@ import { Fragment, type ReactNode } from 'react'
 
 /**
  * Inline emphasis for content-module prose: `**term**` for a term on first
- * definition, `` `code` `` for an invocation or filename. Two markers, not a
- * markdown engine — the copy is authored, not user input, and anything richer
- * belongs in the section grammar, not in a string.
+ * definition, `*word*` for the lighter stress the copy uses once or twice,
+ * and `` `code` `` for an invocation or filename. Three markers, not a
+ * markdown engine — the copy is authored, not user input, and anything
+ * richer belongs in the section grammar rather than inside a string.
  */
 export function renderInline(text: string): ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+  // `**` alternates first, so a bold run is never mistaken for two italics.
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
   return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
       return (
         <strong key={index} className="font-semibold text-foreground">
           {part.slice(2, -2)}
         </strong>
       )
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={index}>{part.slice(1, -1)}</em>
     }
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
       return (

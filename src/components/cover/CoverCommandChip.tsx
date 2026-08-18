@@ -7,9 +7,18 @@ import { cn } from '@/lib/utils'
  *
  * The skills run in Claude Code, not in this app, so the useful affordance is
  * getting the exact command onto the clipboard — a button that pretended to
- * run something here would be worse than no button.
+ * run something here would be worse than no button. Both labels come from the
+ * content module; the component supplies only the composition.
  */
-export function CoverCommandChip({ command }: { command: string }) {
+export function CoverCommandChip({
+  command,
+  copyLabel,
+  copiedLabel,
+}: {
+  command: string
+  copyLabel: string
+  copiedLabel: string
+}) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -40,7 +49,7 @@ export function CoverCommandChip({ command }: { command: string }) {
     <button
       type="button"
       onClick={copy}
-      aria-label={`Copy ${command}`}
+      aria-label={`${copyLabel} ${command}`}
       className={cn(
         'inline-flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1',
         'font-mono text-sm text-foreground transition-colors duration-(--motion-structural) ease-structural',
@@ -53,7 +62,10 @@ export function CoverCommandChip({ command }: { command: string }) {
       ) : (
         <Copy aria-hidden className="size-3.5 text-muted-foreground" />
       )}
-      <span className="sr-only">{copied ? 'Copied' : ''}</span>
+      {/* Announced on success only — the resting chip already reads its command. */}
+      <span aria-live="polite" className="sr-only">
+        {copied ? copiedLabel : ''}
+      </span>
     </button>
   )
 }
