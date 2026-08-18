@@ -54,7 +54,9 @@
                     "key": "field-tech",
                     "display_name": { "en": "现场技术员", "zh": "现场技术员" },
                     "role": null,
-                    "row": 1
+                    "row": 1,
+                    "kpis": ["mean-time-to-repair", "first-visit fix rate"],
+                    "tools": ["FieldOps app", "Spare-parts van stock"]
                   },
                   {
                     "key": "frontstage-tech",
@@ -91,7 +93,15 @@
                         "url": "https://example.com/sop/intake"
                       }
                     ],
-                    "provenance": { "source": "docs/session-guide.md", "section": "Repair intake" }
+                    "provenance": { "source": "docs/session-guide.md", "section": "Repair intake" },
+                    "function": "Capture the fault with enough detail to triage without a call-back",
+                    "form": "Mobile web form with photo upload; confirmation SMS",
+                    "owner": "city-311",
+                    "perceived_owner": "the city's repair crew",
+                    "value_props": [
+                      { "for": "citizen", "value": "Fault logged without waiting on hold" },
+                      { "for": "operations", "value": "Structured intake feeds triage automatically" }
+                    ]
                   },
                   {
                     "layer": "citizen",
@@ -251,7 +261,8 @@
                   {
                     "layer": "backstage-tech",
                     "step": "triage",
-                    "content": { "en": "Paper Ledger", "zh": "纸质台账" }
+                    "content": { "en": "Paper Ledger", "zh": "纸质台账" },
+                    "owner": "maintenance-contractor"
                   },
                   {
                     "layer": "backstage-tech",

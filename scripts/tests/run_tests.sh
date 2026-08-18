@@ -211,6 +211,109 @@ fi
 pass "seed-invalid-ir (invalid IR generates nothing — target untouched)"
 
 # ---------------------------------------------------------------------------
+# 4b. Schema parity: cell_key, slot_position, spec fields, trigger kind,
+#     derived-row reporting (authoring_foundation + derived_layer migrations)
+# ---------------------------------------------------------------------------
+
+# cell_key: emitted for every cell, deterministic, collision-free, and
+# byte-identical to BOTH the UUIDv5 input and the slice tooling's convention
+# (lifecycle/phase/scenario/path/layer/step).
+python3 - "$REPO_ROOT" "$SAMPLE" "$TMP/seed.en.sql" <<'PY' \
+  || fail "seed-cell-key: cell_key emission broke parity"
+import json, sys
+repo, sample, seed_path = sys.argv[1:4]
+sys.path.insert(0, f"{repo}/scripts")
+sys.path.insert(0, f"{repo}/skills/slice/scripts")
+from generate_seed_sql import build_model, entity_uuid
+import slice_tools
+
+doc = json.load(open(sample, encoding="utf-8"))
+model = build_model(doc, "en")
+keys = []
+for sc in model["scenarios"]:
+    for p in sc["paths"]:
+        for c in p["cells"]:
+            keys.append(c["cell_key"])
+            # The stored key IS the UUIDv5 input: id must re-derive from it.
+            assert entity_uuid("en", "cell", c["cell_key"]) == c["id"], \
+                f"cell_key does not re-derive the cell id: {c['cell_key']}"
+            assert c["cell_key"].startswith(sc["qualified_key"] + "/"), \
+                f"cell_key missing scenario prefix: {c['cell_key']}"
+assert len(keys) == len(set(keys)), "cell_key collision on the sample IR"
+
+# Convention parity with the slice tooling (the consumer of these keys).
+index = slice_tools.index_ir(doc)
+k = slice_tools.cell_key(index, "operate/asset-repair", "as-designed", "citizen", "report")
+assert k in keys, f"slice_tools convention diverged: {k}"
+
+# And every key is actually written into the seed SQL's cells insert.
+seed = open(seed_path, encoding="utf-8").read()
+assert "cell_key" in seed.split("insert into public.cells ", 1)[1].split(") values", 1)[0], \
+    "cells insert has no cell_key column"
+for key in keys:
+    assert f"'{key}'" in seed, f"cell_key missing from seed SQL: {key}"
+PY
+pass "seed-cell-key (deterministic, collision-free, uuid- and slice-tooling parity)"
+
+# Spec fields: pass through when the IR carries them; default when absent.
+python3 - "$TMP/seed.en.sql" <<'PY' || fail "seed-spec-fields: spec-field passthrough broken"
+import sys
+seed = open(sys.argv[1], encoding="utf-8").read()
+
+cells_stmt = seed.split("insert into public.cells ", 1)[1].split(";\n", 1)[0]
+cols = cells_stmt.split(") values", 1)[0]
+for col in ("slot_position", "cell_key", "function", "form", "value_props", "owner", "perceived_owner"):
+    assert col in cols, f"cells insert missing column {col}"
+
+# Values from the sample IR's spec-annotated cells (citizen/report as-designed
+# carries all five; backstage-tech/triage as-done carries owner only).
+assert "Capture the fault with enough detail" in seed, "function value missing"
+assert "Mobile web form with photo upload" in seed, "form value missing"
+assert "'city-311'" in seed, "owner value missing"
+assert "the city''s repair crew" in seed, "perceived_owner value missing (or quote-doubling broken)"
+assert '"for": "citizen"' in seed and "Fault logged without waiting on hold" in seed, \
+    "value_props jsonb missing"
+assert "'maintenance-contractor'" in seed, "partial spec cell (owner only) missing"
+# Cells without spec fields fall back to null / empty jsonb array defaults.
+assert ", null, null, '[]'::jsonb, null, null)" in seed, \
+    "spec-less cells should emit null/null/[]/null/null"
+
+layers_stmt = seed.split("insert into public.layers ", 1)[1].split(";\n", 1)[0]
+assert "kpis" in layers_stmt and "tools" in layers_stmt, "layers insert missing kpis/tools"
+assert "mean-time-to-repair" in layers_stmt, "layer kpis value missing"
+assert "FieldOps app" in layers_stmt, "layer tools value missing"
+PY
+pass "seed-spec-fields (cells + layers wave-2 fields pass through; absent -> defaults)"
+
+# Trigger kind: every IR trigger is temporal — kind='trigger' emitted explicitly.
+python3 - "$TMP/seed.en.sql" <<'PY' || fail "seed-trigger-kind: kind emission broken"
+import sys
+seed = open(sys.argv[1], encoding="utf-8").read()
+stmt = seed.split("insert into public.cell_triggers ", 1)[1].split(";\n", 1)[0]
+assert "kind" in stmt.split(") values", 1)[0], "cell_triggers insert missing kind column"
+rows = [r for r in stmt.split(") values", 1)[1].splitlines() if r.strip().startswith("(")]
+assert rows and all("'trigger'" in r for r in rows), "every trigger row must emit kind='trigger'"
+assert "'needs'" not in stmt, "IR cannot author needs edges — none may be emitted"
+PY
+pass "seed-trigger-kind (cell_triggers emit kind='trigger'; no needs edges from IR)"
+
+# --verify: cell_key checks fail loudly; derived rows are reported, never failed.
+python3 - "$TMP/seed.en.verify.sql" <<'PY' || fail "verify-derived-report: verify script coverage broken"
+import sys
+verify = open(sys.argv[1], encoding="utf-8").read()
+assert "cell_key" in verify, "verify has no cell_key checks"
+assert "missing the authored cell_key prefix" in verify, "verify missing cell_key prefix check"
+assert "cell_key mismatch" in verify, "verify missing cell_key spot-check"
+# Derived-layer section: present, guarded, and notice-only.
+for table in ("slice_items", "findings", "evidence", "slices", "propositions"):
+    assert f"to_regclass('public.{table}')" in verify, f"derived report missing {table}"
+derived = verify.split("to_regclass", 1)[1]
+assert "raise notice" in derived, "derived section must report via notice"
+assert "raise exception" not in derived, "derived rows must never fail verification"
+PY
+pass "verify-derived-report (cell_key verified; derived rows reported, not failed)"
+
+# ---------------------------------------------------------------------------
 # 5. Fallback TS module: generate, type-check, determinism, --register
 # ---------------------------------------------------------------------------
 

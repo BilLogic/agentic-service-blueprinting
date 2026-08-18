@@ -38,6 +38,17 @@ escaped), so CJK text, quotes, backticks, and newlines in content are safe.
 Verify with `npx tsc -p tsconfig.app.json` after generation — the adapter
 contract's read-back step for this adapter.
 
+Schema-parity note (2026-08-17): the DB schema now carries cell_key,
+slot_position, spec fields (cells function/form/owner/perceived_owner/
+value_props; layers kpis/tools) and cell_triggers.kind — and
+generate_seed_sql.py emits all of them. This module deliberately does NOT:
+the app's fallback types (src/types/blueprint.ts BlueprintCell /
+BlueprintCellTrigger, consumed via src/data/blueprintFallbacks.ts) do not
+carry those fields yet, and TypeScript's excess-property check would reject
+object literals with extra keys. When the Phase-2 frontend port teaches
+BlueprintData those fields, extend blueprint_data_for_path() here — the
+model already computes them (build_model is shared with the seed generator).
+
 Stdlib only. Validation runs first via scripts/validate_ir.py (same dir);
 a failing IR generates nothing (the module is replaced wholesale and only
 written if generation fully succeeds).
@@ -82,6 +93,10 @@ def indent_block(text: str, prefix: str) -> str:
 
 
 def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
+    """Project the shared model onto BlueprintData. Field lists are EXPLICIT
+    on purpose: the model rows also carry cell_key and the spec fields for the
+    seed generator, which the app's fallback types do not consume yet (see the
+    schema-parity note in the module docstring)."""
     step_by_id = {step["id"]: step for step in scenario["steps"]}
     return {
         "path": {
