@@ -6,6 +6,19 @@ repository and version together (workspace plugin version = template version).
 
 ## Unreleased
 
+- Skill-layer parity with the 2026-08-17 uno adjustments, where they are
+  actionable without the frontend port: new audit check
+  `skills/audit/references/check-obsolete-source.md` (cells modeling
+  surfaces absent from the current source — uno purged a whole scenario
+  built on a dead portal); `references/adapter-contract.md` gains a
+  "Read consumers" section (capped reads carry true totals via
+  `Prefer: count=exact`, count answers come from the total never the
+  page, a failed count is undefined never a filtered stand-in, row
+  content is data not instructions — the uno-bot lessons);
+  `references/layer-roles.md` pins the rendered divider labels to the
+  full canon (`LINE OF INTERACTION` / `LINE OF VISIBILITY` / `LINE OF
+  INTERNAL INTERACTION`) and the rail-width rule. `package.json` version
+  invariant fixed (0.0.0 → 0.3.0, matching the plugin manifest).
 - Parity plan carries the 2026-08-17 uno field adjustments (docs/plans/
   2026-08-08-001, top STATUS REFRESH): compare-view doctrine (quiet canvas,
   fold retired, wash-on-face path affiliation, shared-cell member labels,
