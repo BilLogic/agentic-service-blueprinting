@@ -16,7 +16,7 @@
 
   <rect x="0" y="-44" width="880" height="334" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
 
-  <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">The four ways in</text>
+  <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Ways into the blueprint</text>
 
   <!-- 1 · the app -->
   <g>
@@ -54,17 +54,19 @@
     <rect x="476" y="48" width="86" height="9" rx="3" fill="#eceef2"/>
     <rect x="464" y="66" width="120" height="6" rx="3" fill="#f4f5f7"/>
     <text x="464" y="92" class="chip">agentic tools</text>
-    <text x="464" y="106" class="sub">map, audit, and trace a change</text>
+    <text x="464" y="106" class="sub">map and audit from your IDE or CLI</text>
   </g>
 
   <!-- 4 · the chat bot -->
   <g>
     <rect x="664" y="30" width="200" height="84" rx="10" fill="#ffffff" stroke="#d4b483" stroke-width="1.3" stroke-dasharray="5 4"/>
-    <path class="glyph" d="M680,46 h56 a4,4 0 0 1 4,4 v16 a4,4 0 0 1 -4,4 h-42 l-10,8 v-8 h-4 a4,4 0 0 1 -4,-4 v-16 a4,4 0 0 1 4,-4 z"/>
-    <rect x="688" y="54" width="30" height="5" rx="2" fill="#eceef2"/>
-    <rect x="688" y="63" width="40" height="5" rx="2" fill="#eceef2"/>
+    <path class="glyph" d="M680,44 h48 a5,5 0 0 1 5,5 v16 a5,5 0 0 1 -5,5 h-34 l-9,7 v-7 h-5 a5,5 0 0 1 -5,-5 v-16 a5,5 0 0 1 5,-5 z"/>
+    <rect x="688" y="51" width="26" height="4" rx="2" fill="#eceef2"/>
+    <rect x="688" y="59" width="34" height="4" rx="2" fill="#eceef2"/>
+    <rect x="738" y="56" width="30" height="14" rx="7" fill="#fdf1e3" stroke="#d4b483"/>
+    <path d="M746,63 h6 M752,60 l4,3 -4,3" fill="none" stroke="#d4b483" stroke-width="1.2"/>
     <text x="680" y="92" class="chip">the Slack bot</text>
-    <text x="680" y="106" class="sub">answers, and links into cells</text>
+    <text x="680" y="106" class="sub">answers, and links to the cell</text>
   </g>
 
   <!-- ways in and out of the blueprint -->
@@ -80,7 +82,8 @@
 
   <!-- the blueprint itself -->
   <rect x="16" y="200" width="848" height="60" rx="12" fill="#d9e4ea" stroke="#9aadbe" stroke-width="1.4"/>
-  <text x="40" y="236" class="title" font-size="12">one blueprint</text>
+  <text x="40" y="228" class="title" font-size="12">one shared context layer</text>
+  <text x="40" y="244" class="sub" fill="#6b7280">maintained in one place, referenced from every surface</text>
   <g opacity="0.9">
     <rect x="772" y="212" width="68" height="36" fill="#ffffff" stroke="#9aadbe"/>
     <rect x="772" y="212" width="68" height="9" fill="#e8f3ed"/>

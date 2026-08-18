@@ -20,61 +20,59 @@
 
   <text x="24" y="10" class="rail">THE BLUEPRINT</text>
   <rect x="16" y="18" width="340" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
+  <rect x="44" y="32" width="284" height="26" rx="13" fill="#ffffff" stroke="#d4b483"/>
+  <text x="186" y="49" class="sub" font-size="8.5" text-anchor="middle" fill="#6b7280">what is missing, conflicting, or unowned here?</text>
   <g opacity="0.7">
-    <rect x="44" y="52" width="284" height="35" fill="#e8f3ed"/>
-    <rect x="44" y="87" width="284" height="35" fill="#fdf1e3"/>
-    <rect x="44" y="122" width="284" height="35" fill="#fbe9f0"/>
-    <rect x="44" y="157" width="284" height="35" fill="#ecebf5"/>
-    <rect x="44" y="52" width="284" height="140" fill="none" stroke="#d4d4da"/>
-    <line x1="115" y1="52" x2="115" y2="192" stroke="#e2e4e9"/>
-    <line x1="186" y1="52" x2="186" y2="192" stroke="#e2e4e9"/>
-    <line x1="257" y1="52" x2="257" y2="192" stroke="#e2e4e9"/>
+    <rect x="44" y="72" width="284" height="35" fill="#e8f3ed"/>
+    <rect x="44" y="107" width="284" height="35" fill="#fdf1e3"/>
+    <rect x="44" y="142" width="284" height="35" fill="#fbe9f0"/>
+    <rect x="44" y="177" width="284" height="35" fill="#ecebf5"/>
+    <rect x="44" y="72" width="284" height="140" fill="none" stroke="#d4d4da"/>
+    <line x1="115" y1="72" x2="115" y2="212" stroke="#e2e4e9"/>
+    <line x1="186" y1="72" x2="186" y2="212" stroke="#e2e4e9"/>
+    <line x1="257" y1="72" x2="257" y2="212" stroke="#e2e4e9"/>
   </g>
-  <rect x="57.5" y="61.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="199.5" y="61.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="128.5" y="96.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="270.5" y="96.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="57.5" y="131.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="199.5" y="131.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="128.5" y="166.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
-  <rect x="270.5" y="166.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="57.5" y="81.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="199.5" y="81.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="128.5" y="116.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="270.5" y="116.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="57.5" y="151.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="199.5" y="151.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="128.5" y="186.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
+  <rect x="270.5" y="186.625" width="44" height="15.75" rx="2" fill="#ffffff" stroke="#d4d4da"/>
   <path class="flow" d="M356,123 L518,123"/>
   <rect x="365" y="96" width="150" height="54" rx="14" fill="#fdf1e3" stroke="#d4b483" stroke-width="1.4"/>
   <text x="440" y="118" class="title mono" text-anchor="middle">sb:audit</text>
   <text x="440" y="134" class="sub" text-anchor="middle" fill="#6b7280">check it still holds</text>
 
-  <text x="532" y="10" class="rail">SEVEN CHECKS, ONE PILE OF FINDINGS</text>
+  <text x="532" y="10" class="rail">WHAT EACH CHECK CAME BACK WITH</text>
   <rect x="524" y="18" width="340" height="210" rx="10" fill="#ffffff" stroke="#c9ccd4" stroke-width="1.3"/>
-  <rect x="540" y="32" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="588" y="45" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">gap sweep</text>
-  <rect x="646" y="32" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="694" y="45" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">channel conflict</text>
-  <rect x="752" y="32" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="800" y="45" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">perceived owner</text>
-  <rect x="540" y="56" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="588" y="69" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">value ledger</text>
-  <rect x="646" y="56" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="694" y="69" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">fee visibility</text>
-  <rect x="752" y="56" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="800" y="69" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">kpi alignment</text>
-  <rect x="646" y="80" width="96" height="19" rx="4" fill="#ffffff" stroke="#e6d3b8"/>
-  <text x="694" y="93" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">jargon lint</text>
-  <path class="spoke" d="M548,110 H840 M548,110 L686,128 M840,110 L702,128"/>
-  <path class="flow" d="M694,128 V140"/>
-  <rect x="548" y="148" width="292" height="20" rx="5" fill="#fafbfc" stroke="#d4d4da"/>
-  <circle cx="561" cy="158" r="3" fill="#f2cfdf"/>
-  <text x="571" y="161" class="chip" font-size="8.5">the app and the call script disagree</text>
-  <rect x="802" y="151" width="32" height="14" rx="7" fill="#fbe9f0" stroke="#f2cfdf"/>
-  <text x="818" y="161" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">open</text>
-  <rect x="548" y="172" width="292" height="20" rx="5" fill="#fafbfc" stroke="#d4d4da"/>
-  <circle cx="561" cy="182" r="3" fill="#f2cfdf"/>
-  <text x="571" y="185" class="chip" font-size="8.5">nothing backstage behind the sms step</text>
-  <rect x="802" y="175" width="32" height="14" rx="7" fill="#fbe9f0" stroke="#f2cfdf"/>
-  <text x="818" y="185" class="sub" font-size="8" text-anchor="middle" fill="#6b7280">open</text>
-  <rect x="548" y="196" width="292" height="20" rx="5" fill="#fafbfc" stroke="#d4d4da"/>
-  <circle cx="561" cy="206" r="3" fill="#d4d4da"/>
-  <text x="571" y="209" class="chip" font-size="8.5">the customer thanks the wrong team</text>
-  <rect x="790" y="199" width="44" height="14" rx="7" fill="#cfe6d9" stroke="#9dbfa9"/>
-  <text x="812" y="209" class="sub" font-size="8" text-anchor="middle" fill="#4f5f52">resolved</text>
-  <text x="694" y="222" class="sub" font-size="12" text-anchor="middle" fill="#c9ccd4">···</text>
+  <text x="540" y="46" class="sub" font-size="8.5" fill="#6b7280">gap sweep</text>
+  <line x1="630" y1="42" x2="646" y2="42" stroke="#e2e4e9"/>
+  <rect x="646" y="32" width="202" height="20" rx="5" fill="#fbe9f0" stroke="#f2cfdf"/>
+  <text x="656" y="45" class="chip" font-size="8">a step with nothing behind it</text>
+  <text x="540" y="73" class="sub" font-size="8.5" fill="#6b7280">channel conflict</text>
+  <line x1="630" y1="69" x2="646" y2="69" stroke="#e2e4e9"/>
+  <rect x="646" y="59" width="202" height="20" rx="5" fill="#fbe9f0" stroke="#f2cfdf"/>
+  <text x="656" y="72" class="chip" font-size="8">two channels say different things</text>
+  <text x="540" y="100" class="sub" font-size="8.5" fill="#6b7280">perceived owner</text>
+  <line x1="630" y1="96" x2="646" y2="96" stroke="#e2e4e9"/>
+  <rect x="646" y="86" width="202" height="20" rx="5" fill="#fbe9f0" stroke="#f2cfdf"/>
+  <text x="656" y="99" class="chip" font-size="8">credit goes to the wrong team</text>
+  <text x="540" y="127" class="sub" font-size="8.5" fill="#6b7280">value ledger</text>
+  <line x1="630" y1="123" x2="646" y2="123" stroke="#e2e4e9"/>
+  <circle cx="656" cy="123" r="6" fill="#e8f3ed" stroke="#9dbfa9"/>
+  <path d="M653,123 L655,125.5 L659.5,120" fill="none" stroke="#4f5f52" stroke-width="1.3"/>
+  <text x="540" y="154" class="sub" font-size="8.5" fill="#6b7280">fee visibility</text>
+  <line x1="630" y1="150" x2="646" y2="150" stroke="#e2e4e9"/>
+  <circle cx="656" cy="150" r="6" fill="#e8f3ed" stroke="#9dbfa9"/>
+  <path d="M653,150 L655,152.5 L659.5,147" fill="none" stroke="#4f5f52" stroke-width="1.3"/>
+  <text x="540" y="181" class="sub" font-size="8.5" fill="#6b7280">kpi alignment</text>
+  <line x1="630" y1="177" x2="646" y2="177" stroke="#e2e4e9"/>
+  <circle cx="656" cy="177" r="6" fill="#e8f3ed" stroke="#9dbfa9"/>
+  <path d="M653,177 L655,179.5 L659.5,174" fill="none" stroke="#4f5f52" stroke-width="1.3"/>
+  <text x="540" y="208" class="sub" font-size="8.5" fill="#6b7280">jargon lint</text>
+  <line x1="630" y1="204" x2="646" y2="204" stroke="#e2e4e9"/>
+  <circle cx="656" cy="204" r="6" fill="#e8f3ed" stroke="#9dbfa9"/>
+  <path d="M653,204 L655,206.5 L659.5,201" fill="none" stroke="#4f5f52" stroke-width="1.3"/>
 </svg>
