@@ -81,6 +81,11 @@ export function sampleGetCompareDiff(
   return formatCompareDiff(sampleBlueprintsFor(scenarioId), pathIds)
 }
 
+/**
+ * The same field roster `read.ts` selects from `cells` — the sample content
+ * carries the cell spec (owner, perceived owner, function, form, value
+ * props), so the keyless answer is the DB answer minus the database.
+ */
 export function sampleGetCell(cellId: string): string {
   for (const blueprint of allSampleBlueprints()) {
     const cell = blueprint.cells.find((entry) => entry.id === cellId)
@@ -88,8 +93,14 @@ export function sampleGetCell(cellId: string): string {
     return formatFields([
       ['content', cell.content],
       ['summary', cell.description],
+      ['owner', cell.owner],
+      ['perceived_owner', cell.perceived_owner],
+      ['function', cell.function],
+      ['form', cell.form],
+      ['value_props', cell.value_props?.length ? JSON.stringify(cell.value_props) : null],
       ['layer_id', cell.layer_id],
       ['step_id', cell.step_id],
+      ['slot_position', cell.slot_position],
     ])
   }
   return `No cell with id ${cellId}.`
@@ -106,11 +117,13 @@ export function sampleGetSlice(sliceId: string): string {
 }
 
 /**
- * The sample blueprint carries no owner tags — `BlueprintCell` (the shape the
- * fallback modules ship) has no owner columns at all, because the canvas
- * renders owners from the database only. Saying so is the honest answer, and
- * it is the same sentence a live-but-untagged database would produce.
+ * The tag vocabulary the sample content actually uses, gathered the way
+ * `listOwnerTags` gathers it from the database: every cell's `owner` and
+ * `perceived_owner`, deduped and sorted. A sample with no tags produces the
+ * same sentence a live-but-untagged database produces.
  */
 export function sampleListOwnerTags(): string {
-  return formatOwnerTags([])
+  return formatOwnerTags(
+    allSampleBlueprints().flatMap((blueprint) => blueprint.cells),
+  )
 }

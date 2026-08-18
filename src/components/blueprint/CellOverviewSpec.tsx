@@ -1,4 +1,3 @@
-import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCellSpec } from '@/hooks/useCellSpec'
 import { parseValueProps } from '@/lib/valueProps'
 
@@ -20,16 +19,16 @@ type CellOverviewSpecProps = {
 
 /**
  * FUNCTION / FORM / VALUE spec block in the panel's inline overview,
- * read-only. Sections render only when authored; without a database (or for
- * fallback-only cells) the block stays hidden entirely.
+ * read-only. Sections render only when authored — from the database when one
+ * is configured, otherwise from the bundled sample content, so a keyless clone
+ * sees the same block. A cell in neither renders nothing at all.
  *
  * Editing lives in `CellPanelEditor` — the panel's one form, one Save.
  */
 export function CellOverviewSpec({ cellId }: CellOverviewSpecProps) {
-  const { client, configured } = useSupabase()
-  const specResult = useCellSpec(configured ? cellId : null)
+  const specResult = useCellSpec(cellId)
 
-  if (!configured || !client || !cellId) return null
+  if (!cellId) return null
   // Nothing is rendered while the query is in flight — not even a reserved
   // placeholder. Most cells have no spec at all, so reserving space meant the
   // block (and everything below it, including the tab row) grew for ~250 ms

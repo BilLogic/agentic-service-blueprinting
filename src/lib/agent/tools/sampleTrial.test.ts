@@ -3,9 +3,15 @@ import { dispatchTool } from '@/lib/agent/tools/registry'
 import {
   sampleGetBlueprint,
   sampleGetCell,
+  sampleGetSlice,
+  sampleListOwnerTags,
   sampleListScenarios,
   sampleListSlices,
 } from '@/lib/agent/tools/sampleRead'
+import {
+  SAMPLE_BLUEPRINTS_BY_SCENARIO,
+  SAMPLE_DEMO_SLICES,
+} from '@/data/sampleBlueprint'
 import {
   SAMPLE_TRIAL_TOOL_NAMES,
   TOOL_SPECS,
@@ -48,25 +54,57 @@ describe('the sample-trial tool roster', () => {
 })
 
 describe('sample reads resolve from the bundled fallbacks', () => {
-  it('lists the sample phase and scenario with ids', () => {
+  it('lists every sample phase and every sample scenario with ids', () => {
     const text = sampleListScenarios()
-    expect(text).toContain('Phase "Discover"')
-    expect(text).toContain('Scenario "Sample Service"')
+    for (const scenarioId of Object.keys(SAMPLE_BLUEPRINTS_BY_SCENARIO))
+      expect(text).toContain(scenarioId)
   })
 
-  it('renders the sample grid with lanes, steps and cell ids', () => {
-    const scenarioId = /Scenario "Sample Service" \(([^)]+)\)/.exec(
-      sampleListScenarios(),
-    )?.[1]
-    expect(scenarioId).toBeTruthy()
-    const grid = sampleGetBlueprint(scenarioId!)
-    expect(grid).toContain('Path "Happy Path"')
-    expect(grid).toMatch(/Steps: \d+\. "/)
-    expect(grid).toContain('Lane "')
+  it('renders a grid for EVERY scenario, not just the first', () => {
+    for (const [scenarioId, blueprints] of Object.entries(
+      SAMPLE_BLUEPRINTS_BY_SCENARIO,
+    )) {
+      const grid = sampleGetBlueprint(scenarioId)
+      expect(grid).toMatch(/Steps: \d+\. "/)
+      expect(grid).toContain('Lane "')
+      // Every path in the scenario, so a two-path scenario reads as two.
+      for (const blueprint of blueprints)
+        expect(grid).toContain(`(${blueprint.path.id},`)
+    }
+  })
 
-    const cellId = /\[step \d+\] "[^"]*" \(([^)]+)\)/.exec(grid)?.[1]
-    expect(cellId).toBeTruthy()
-    expect(sampleGetCell(cellId!)).toContain('layer_id:')
+  it('reads a cell from any scenario, not only the first', () => {
+    for (const blueprints of Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)) {
+      const cellId = blueprints[0]!.cells[0]!.id
+      expect(sampleGetCell(cellId)).toContain('layer_id:')
+    }
+  })
+
+  it('serves the cell spec — owner pair, function, form, value props', () => {
+    const spec = Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)
+      .flat()
+      .flatMap((blueprint) => blueprint.cells)
+      .find((cell) => cell.owner && cell.function && cell.value_props?.length)
+    expect(spec).toBeTruthy()
+    const text = sampleGetCell(spec!.id)
+    expect(text).toContain(`owner: ${spec!.owner}`)
+    expect(text).toContain(`perceived_owner: ${spec!.perceived_owner}`)
+    expect(text).toContain('function:')
+    expect(text).toContain('form:')
+    expect(text).toContain('value_props: [')
+  })
+
+  it('lists the owner tags the sample actually uses', () => {
+    const expected = new Set<string>()
+    for (const blueprint of Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO).flat())
+      for (const cell of blueprint.cells) {
+        if (cell.owner) expected.add(cell.owner)
+        if (cell.perceived_owner) expected.add(cell.perceived_owner)
+      }
+    expect(expected.size).toBeGreaterThan(0)
+    const text = sampleListOwnerTags()
+    expect(text).not.toBe('No owner tags in use yet.')
+    for (const tag of expected) expect(text).toContain(tag)
   })
 
   it('answers for an unknown scenario or cell instead of throwing', () => {
@@ -74,15 +112,22 @@ describe('sample reads resolve from the bundled fallbacks', () => {
     expect(sampleGetCell('nope')).toBe('No cell with id nope.')
   })
 
-  it('lists the demo slices', () => {
-    expect(sampleListSlices()).not.toBe('No slices yet.')
+  it('lists every demo slice and reads each one back with frames', () => {
+    const list = sampleListSlices()
+    expect(SAMPLE_DEMO_SLICES.length).toBeGreaterThan(0)
+    for (const slice of SAMPLE_DEMO_SLICES) {
+      expect(list).toContain(slice.id)
+      const detail = sampleGetSlice(slice.id)
+      expect(detail).toContain(`slice "${slice.title}"`)
+      expect(detail).toContain('frame 1:')
+    }
   })
 })
 
 describe('trial dispatch never reaches a database', () => {
   it('answers reads from the sample with a null client', async () => {
     const text = await dispatchTool(null, 'session', 'list_scenarios', {})
-    expect(text).toContain('Sample Service')
+    expect(text).toContain(Object.keys(SAMPLE_BLUEPRINTS_BY_SCENARIO)[0]!)
   })
 
   it('refuses an off-roster write in words, not a raw error', async () => {

@@ -8,7 +8,8 @@ import {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
 } from '@/lib/layoutTokens'
-import { Homepage } from '@/components/editor/Homepage'
+import { CoverPage } from '@/components/cover/CoverPage'
+import { coverContent } from '@/content/coverContent'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
   FloatingSidebarPill,
@@ -614,7 +615,7 @@ function ActiveTabContent({
   if (tab === null) {
     // Base blueprint view — existing landing / home / detail behavior.
     return isLanding ? (
-      <Homepage />
+      <CoverPage content={coverContent} />
     ) : (
       // No provider here: the base surface's mode is the shell's, so the
       // sidebar and this canvas are always in the same one.
