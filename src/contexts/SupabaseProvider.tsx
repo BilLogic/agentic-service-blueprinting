@@ -15,6 +15,12 @@ import {
   isSupabaseConfigured,
 } from '../lib/supabase'
 import type { Database } from '../types/database'
+import { hasKey, useAgentSettings } from '../lib/agent/settings'
+import {
+  applyDevTierOverride,
+  useDevTierOverride,
+  type DevTierOverride,
+} from '../lib/devPortal'
 
 type SupabaseContextValue = {
   client: SupabaseClient<Database> | null
@@ -47,6 +53,21 @@ type SupabaseContextValue = {
   isServiceAccount: boolean
   /** Any signed-in session may open the agent (viewers chat read-only). */
   canAgent: boolean
+  /**
+   * Does the agent get WRITE tools this send? `canWrite` minus the
+   * no-database trial, where there is no database to write to and the write
+   * specs are never registered.
+   */
+  canAgentWrite: boolean
+  /**
+   * No Supabase configured, but the user has an agent key: the panel opens
+   * read-only against the bundled sample blueprint.
+   */
+  isSampleTrial: boolean
+  /** Developer-portal tier simulation — client-side UI gating only. */
+  devTierOverride: DevTierOverride
+  /** The tier flags BEFORE the developer override, for honest readouts. */
+  realCanWrite: boolean
 }
 
 const SupabaseContext = createContext<SupabaseContextValue | null>(null)
@@ -155,30 +176,57 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     (session !== null && (sessionRole == null || sessionRole === 'service')) ||
     isDevAuthoring
 
+  const realCanWrite =
+    configured &&
+    ((session !== null && isServiceAccount) || isDevAuthoring || isEditPreview)
+
+  /*
+   * No-database trial. With nothing configured, the canvas already renders
+   * the bundled sample blueprint — the agent used to be the one surface that
+   * simply did not exist there, even though its read tools can answer from
+   * that same sample (the eval harness runs exactly that way). A provider key
+   * is the whole entry condition; the panel opens read-only.
+   */
+  const agentSettings = useAgentSettings()
+  const isSampleTrial = !configured && hasKey(agentSettings)
+
+  /*
+   * Developer portal. Client-side ONLY: it moves what the UI believes about
+   * this session's tier and touches no policy. RLS and the RPC grants are
+   * unchanged and remain the authority — see lib/devPortal.ts.
+   */
+  const devTierOverride = useDevTierOverride()
+  const canWrite = applyDevTierOverride(devTierOverride, realCanWrite)
+
   const value = useMemo(
     () => ({
       client,
       configured,
       session,
       isLoading,
-      canWrite:
-        configured &&
-        ((session !== null && isServiceAccount) ||
-          isDevAuthoring ||
-          isEditPreview),
+      canWrite,
+      realCanWrite,
+      canAgentWrite: canWrite && !isSampleTrial,
       isDevAuthoring,
       isEditPreview,
       isServiceAccount,
-      canAgent: configured && (session !== null || isDevAuthoring),
+      canAgent:
+        isSampleTrial || (configured && (session !== null || isDevAuthoring)),
+      isSampleTrial,
+      devTierOverride,
     }),
     [
       client,
       configured,
       session,
       isLoading,
+      canWrite,
+      realCanWrite,
       isDevAuthoring,
       isEditPreview,
+      isSampleTrial,
       isServiceAccount,
+      devTierOverride,
     ],
   )
 

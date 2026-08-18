@@ -12,6 +12,7 @@ import type {
 import { dispatchTool } from '@/lib/agent/tools/registry'
 import {
   MOBILE_READ_TOOL_NAMES,
+  SAMPLE_TRIAL_TOOL_NAMES,
   TOOL_SPECS,
   WRITE_TOOL_NAMES,
 } from '@/lib/agent/tools/specs'
@@ -318,7 +319,12 @@ const MAX_ROUNDS = 12
  * the human hits Stop. Whatever landed stays — revertible from the sheet.
  */
 export async function sendToAgent(input: {
-  client: Client
+  /**
+   * `null` = the no-database TRIAL: no Supabase is configured, so the read
+   * tools answer from the bundled sample blueprint and no write tool is
+   * registered at all.
+   */
+  client: Client | null
   sessionId: string
   settings: AgentSettings
   contextNote: string
@@ -382,6 +388,10 @@ export async function sendToAgent(input: {
   // no longer matches. UX gate only; the server-side RPC tier enforcement
   // is the real wall.
   let mobileReading = isMobileViewport()
+  // No database, no writes — not "refused writes", ABSENT ones. The roster
+  // is the sample-trial whitelist, and the paragraph below tells the model
+  // what it is looking at so it stops trying to author.
+  const sampleTrial = client === null
   // The stable system prefix (role + adapter + skill — everything before
   // the live context) is byte-identical across this send's rounds; its
   // length lets caching providers put a cache breakpoint there.
@@ -402,9 +412,14 @@ export async function sendToAgent(input: {
           // The mobile paragraph subsumes the tier one — and they disagree
           // about annotations (viewer tier has annotate_cells; the mobile
           // roster does not), so only one may speak per send.
-          (allowWrites || mobileReading
+          // The sample-trial paragraph subsumes the tier one too — with no
+          // database there is no tier to be outside of.
+          (allowWrites || mobileReading || sampleTrial
             ? ''
             : '\n\n--- session tier ---\nThis session is VIEW-ONLY (not a service account): you have no write tools. Navigate, read, annotate, and answer with citations; when the user wants an edit, describe the exact change for a service account to make — never imply you made it.') +
+          (sampleTrial
+            ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the kit\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
+            : '') +
           (mobileReading
             ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'
             : ''),
@@ -413,9 +428,11 @@ export async function sendToAgent(input: {
         // One pass: mobile's whitelist already contains zero write tools
         // (pinned by mobileRoster.test.ts), so it subsumes the tier filter.
         tools: TOOL_SPECS.filter((spec) =>
-          mobileReading
-            ? MOBILE_READ_TOOL_NAMES.has(spec.name)
-            : allowWrites || !WRITE_TOOL_NAMES.has(spec.name),
+          sampleTrial
+            ? SAMPLE_TRIAL_TOOL_NAMES.has(spec.name)
+            : mobileReading
+              ? MOBILE_READ_TOOL_NAMES.has(spec.name)
+              : allowWrites || !WRITE_TOOL_NAMES.has(spec.name),
         ),
         apiKey,
         model: modelFor(settings),
@@ -471,6 +488,17 @@ export async function sendToAgent(input: {
           }
           run.messages.push(results)
           throw new DOMException('stopped', 'AbortError')
+        }
+        if (sampleTrial && !SAMPLE_TRIAL_TOOL_NAMES.has(call.name)) {
+          results.parts.push({
+            type: 'tool_result',
+            toolCallId: call.id,
+            name: call.name,
+            result:
+              'No database is connected — this session reads the bundled sample blueprint and has no write tools. Describe the change instead; authoring needs a connected database.',
+            isError: true,
+          })
+          continue
         }
         if (mobileReading && !MOBILE_READ_TOOL_NAMES.has(call.name)) {
           results.parts.push({

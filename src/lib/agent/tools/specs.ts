@@ -41,6 +41,33 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
   'list_findings',
 ])
 
+/**
+ * The no-database TRIAL roster — the only tools registered when the kit runs
+ * with no Supabase configured and the user has supplied a provider key. Every
+ * entry resolves from the bundled sample blueprint (`tools/sampleRead.ts`) or
+ * from the browser itself; nothing here touches a database, and no write tool
+ * is present — absent, not refused.
+ *
+ * A whitelist rather than a write-filter, for the same reason the mobile
+ * roster is one: a tool added later defaults to ABSENT in the trial until
+ * someone deliberately puts it here and gives it a sample-data answer.
+ */
+export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
+  'read_reference',
+  'list_scenarios',
+  'get_blueprint',
+  'get_compare_diff',
+  'get_cell',
+  'list_slices',
+  'get_slice',
+  'list_owner_tags',
+  'get_ui_state',
+  'open_phase',
+  'open_scenario',
+  'focus_cell',
+  'open_cell_panel',
+])
+
 /** The tools that mutate data — the loop enforces batch etiquette on these. */
 export const WRITE_TOOL_NAMES = new Set([
   'add_step',
