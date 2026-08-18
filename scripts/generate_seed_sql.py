@@ -26,6 +26,34 @@ script (adapter contract op 6): per-scenario row counts for every table plus
 content spot-checks, raising an exception on any mismatch (so `psql -f`/
 `supabase db execute` fails loudly).
 
+Schema coverage (migrations 20260729120000_derived_layer +
+20260818000000_authoring_foundation are the schema truth):
+
+  * cells carry `cell_key` — the authored qualified key
+    `<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>`, byte-identical to
+    the string this script already hashes into the cell's UUIDv5 and to the
+    keys skills/slice/scripts/slice_tools.py writes into
+    `slice_items.cell_keys`. Stored, not derived: only the import pipeline
+    knows the authored keys (see the cells.cell_key column comment).
+  * cells carry `slot_position`. The IR identifies a cell by its
+    (path, layer, step) triple, so it CANNOT express two cells in one slot —
+    imported cells are always slot_position 0. Slot siblings are an app-side
+    concept (`upsert_cell` mints them with '-2'/'-3' key suffixes).
+  * Wave-2 spec fields pass through when the IR carries them: cells
+    function/form/owner/perceived_owner/value_props; layers kpis/tools.
+    Absent IR fields emit null / '[]'::jsonb, matching the column defaults.
+    (layers.owner_team, phases.business_impact/operational_requirements and
+    cell_triggers label/note have NO IR shape yet — columns stay default.)
+  * cell_triggers emit `kind` explicitly as 'trigger': every IR trigger is a
+    temporal edge. The IR cannot author kind='needs' edges yet.
+  * DERIVED TABLES ARE NEVER SEEDED. slices/slice_items/findings/evidence/
+    propositions are runtime outputs of the sb:* skills, not IR-authored
+    content — there is deliberately no IR shape for them. Seeds cannot break
+    them either: derived tables reference cells softly (uuid[]/text[], no FK),
+    so the scenario-replace delete cannot cascade into them. The --verify
+    script REPORTS derived rows touching the seeded scenarios (notice, never
+    an exception) so a re-import shows what user-authored content it orphaned.
+
 Stdlib only. Validation runs first via scripts/validate_ir.py (same dir);
 a failing IR generates nothing.
 """
@@ -172,6 +200,10 @@ def build_model(doc: dict, locale: str) -> dict:
                             "name": text(layer["display_name"]),
                             "role": layer.get("role"),
                             "row": layer["row"],
+                            # Wave-2 lane spec fields (locale-independent
+                            # string arrays); absent -> [] = column default.
+                            "kpis": layer.get("kpis") or [],
+                            "tools": layer.get("tools") or [],
                         }
                     )
 
@@ -189,12 +221,28 @@ def build_model(doc: dict, locale: str) -> dict:
                     cells.append(
                         {
                             "id": ce_id,
+                            # The authored key, stored verbatim in
+                            # cells.cell_key: the SAME qualified-key string
+                            # hashed into the UUIDv5 above and used by
+                            # slice_tools.cell_key() — lifecycle/phase/
+                            # scenario/path/layer/step. Locale-independent
+                            # (IR keys are ASCII slugs by schema; the NFC
+                            # normalization in entity_uuid is a no-op here).
+                            "cell_key": ce_q,
                             "layer_id": layer_ids[cell["layer"]],
                             "step_id": step_ids[cell["step"]],
                             "content": text(cell.get("content")) or "",
                             "picture": cell.get("picture"),
                             "description": text(cell.get("description")),
                             "links": localize_links(cell.get("links"), locale, locales),
+                            # Wave-2 spec fields (locale-independent strings /
+                            # {for, value} array); absent -> null / [] =
+                            # column defaults.
+                            "function": cell.get("function"),
+                            "form": cell.get("form"),
+                            "owner": cell.get("owner"),
+                            "perceived_owner": cell.get("perceived_owner"),
+                            "value_props": cell.get("value_props") or [],
                         }
                     )
 
@@ -229,6 +277,10 @@ def build_model(doc: dict, locale: str) -> dict:
             model["scenarios"].append(
                 {
                     "id": sc_id,
+                    # Qualified key (lifecycle/phase/scenario): the prefix of
+                    # every cell_key under this scenario — --verify uses it to
+                    # report derived rows referencing the seeded scenario.
+                    "qualified_key": sc_q,
                     "key": scenario["key"],
                     "phase_id": ph_id,
                     "name": text(scenario["name"]),
@@ -332,10 +384,14 @@ insert into public.path_steps (path_id, step_id, column_position) values
     ]
 )};
 
-insert into public.layers (id, path_id, name, layer_role, row_position) values
+insert into public.layers (id, path_id, name, layer_role, row_position, kpis, tools) values
 {values_rows(
     [
-        [q(l['id']), q(p['id']), q(l['name']), q(l['role']), str(l['row'])]
+        [
+            q(l['id']), q(p['id']), q(l['name']), q(l['role']), str(l['row']),
+            q(json.dumps(l['kpis'], ensure_ascii=False)) + '::jsonb',
+            q(json.dumps(l['tools'], ensure_ascii=False)) + '::jsonb',
+        ]
         for p in scenario['paths']
         for l in p['layers']
     ]
@@ -343,30 +399,40 @@ insert into public.layers (id, path_id, name, layer_role, row_position) values
 """
         )
 
+        # slot_position is always 0: the IR's (path, layer, step) cell identity
+        # cannot express slot siblings (see module docstring). origin stays at
+        # its 'import' column default — these rows ARE the import pipeline's.
         cell_rows = [
             [
-                q(c["id"]), q(p["id"]), q(c["layer_id"]), q(c["step_id"]),
+                q(c["id"]), q(p["id"]), q(c["layer_id"]), q(c["step_id"]), "0",
                 q(c["content"]), q(c["picture"]), q(c["description"]),
                 q(json.dumps(c["links"], ensure_ascii=False)) + "::jsonb",
+                q(c["cell_key"]),
+                q(c["function"]), q(c["form"]),
+                q(json.dumps(c["value_props"], ensure_ascii=False)) + "::jsonb",
+                q(c["owner"]), q(c["perceived_owner"]),
             ]
             for p in scenario["paths"]
             for c in p["cells"]
         ]
         if cell_rows:
             parts.append(
-                "insert into public.cells (id, path_id, layer_id, step_id, content, picture, description, links) values\n"
+                "insert into public.cells (id, path_id, layer_id, step_id, slot_position, content, picture, description, links, cell_key, function, form, value_props, owner, perceived_owner) values\n"
                 + values_rows(cell_rows)
                 + ";\n"
             )
 
+        # kind is emitted explicitly even though 'trigger' is the column
+        # default: every IR trigger is a temporal edge (the IR has no shape
+        # for kind='needs' / label / note yet — those columns stay default).
         trigger_rows = [
-            [q(t["id"]), q(t["source_cell_id"]), q(t["target_cell_id"])]
+            [q(t["id"]), q(t["source_cell_id"]), q(t["target_cell_id"]), q("trigger")]
             for p in scenario["paths"]
             for t in p["triggers"]
         ]
         if trigger_rows:
             parts.append(
-                "\ninsert into public.cell_triggers (id, source_cell_id, target_cell_id) values\n"
+                "\ninsert into public.cell_triggers (id, source_cell_id, target_cell_id, kind) values\n"
                 + values_rows(trigger_rows)
                 + ";\n"
             )
@@ -424,6 +490,19 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
                 "  end if;"
             )
 
+        # Every imported cell must carry its authored cell_key (slice recovery
+        # depends on it), and each key embeds this scenario's qualified prefix.
+        prefix = scenario["qualified_key"]
+        checks.append(
+            "  select count(*) into n from public.cells c "
+            "join public.paths p on p.id = c.path_id\n"
+            f"  where p.service_scenario_id = {sid}\n"
+            f"    and (c.cell_key is null or c.cell_key not like {q(prefix + '/%')});\n"
+            "  if n <> 0 then\n"
+            f"    raise exception 'scenario {label}: % cell(s) missing the authored cell_key prefix {prefix}/', n;\n"
+            "  end if;"
+        )
+
         # Content spot-checks: scenario name, each path name, and the first
         # non-empty cell content per path.
         checks.append(
@@ -447,15 +526,61 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
                     f"    raise exception 'scenario {label}: path {p['key']} spot-check cell content mismatch — got %', t;\n"
                     "  end if;"
                 )
+                checks.append(
+                    f"  select cell_key into t from public.cells where id = {q(spot['id'])};\n"
+                    f"  if t is distinct from {q(spot['cell_key'])} then\n"
+                    f"    raise exception 'scenario {label}: path {p['key']} spot-check cell_key mismatch — got %', t;\n"
+                    "  end if;"
+                )
 
-    body = "\n".join(checks)
+    # Derived-layer report (never a failure): slices/findings/evidence/
+    # propositions are user- and skill-authored at runtime, NOT seeded, and
+    # they soft-reference cells — so rows referencing a just-replaced scenario
+    # are legitimate (that is the recovery design), but worth surfacing after
+    # a re-import. Guarded by to_regclass so the verify script still runs
+    # against a database without the derived-layer migration.
+    lc_id = q(model["lifecycle"]["id"])
+    derived = []
+    for scenario in model["scenarios"]:
+        pat = q(scenario["qualified_key"] + "/%")
+        label = scenario["key"]
+        derived.append(
+            "  if to_regclass('public.slice_items') is not null then\n"
+            "    select count(*) into n from public.slice_items si\n"
+            f"    where exists (select 1 from unnest(si.cell_keys) k where k like {pat});\n"
+            f"    raise notice 'derived (reported, not verified): % slice_items reference scenario {label}', n;\n"
+            "  end if;\n"
+            "  if to_regclass('public.findings') is not null then\n"
+            "    select count(*) into n from public.findings f\n"
+            f"    where exists (select 1 from unnest(f.cell_keys) k where k like {pat});\n"
+            f"    raise notice 'derived (reported, not verified): % findings reference scenario {label}', n;\n"
+            "  end if;\n"
+            "  if to_regclass('public.evidence') is not null then\n"
+            f"    select count(*) into n from public.evidence where cell_key like {pat};\n"
+            f"    raise notice 'derived (reported, not verified): % evidence rows reference scenario {label}', n;\n"
+            "  end if;"
+        )
+    derived.append(
+        "  if to_regclass('public.slices') is not null then\n"
+        f"    select count(*) into n from public.slices where service_lifecycle_id = {lc_id};\n"
+        "    raise notice 'derived (reported, not verified): % slices on this lifecycle', n;\n"
+        "  end if;\n"
+        "  if to_regclass('public.propositions') is not null then\n"
+        f"    select count(*) into n from public.propositions where service_lifecycle_id = {lc_id};\n"
+        "    raise notice 'derived (reported, not verified): % propositions rows on this lifecycle', n;\n"
+        "  end if;"
+    )
+
+    body = "\n".join(checks + derived)
     scenario_list = ", ".join(s["key"] for s in model["scenarios"])
     return f"""-- GENERATED by scripts/generate_seed_sql.py --verify — read-back verification.
 --
 -- Source IR: {ir_name} (locale: {model['locale']})
 -- Run AFTER the seed commits. Verifies per-scenario row counts for every
--- table plus content spot-checks for: {scenario_list}.
+-- table plus content and cell_key spot-checks for: {scenario_list}.
 -- Any mismatch raises an exception, so psql/supabase execution fails loudly.
+-- Derived-layer rows (slices/findings/evidence/propositions) are REPORTED via
+-- notices, never failed: they are runtime skill/user output, not seed output.
 
 do $$
 declare
