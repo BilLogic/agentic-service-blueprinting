@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
 import {
@@ -88,6 +88,17 @@ describe('invalidateCanvasBlueprintsForPath', () => {
  * nothing is on the wire.
  */
 describe('useCanvasBlueprints (no database configured)', () => {
+  // An adopter's real .env is loaded into import.meta.env by Vite for
+  // vitest too — stub it empty so "no database configured" is true in
+  // ANY workspace, not just an env-less checkout (dogfood friction #24).
+  beforeAll(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', '')
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', '')
+  })
+  afterAll(() => {
+    vi.unstubAllEnvs()
+  })
+
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <SupabaseProvider>{children}</SupabaseProvider>
