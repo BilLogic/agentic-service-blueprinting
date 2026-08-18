@@ -10,7 +10,7 @@ and the no-DB findings-report substrate.
 
 Usage:
     python3 skills/audit/scripts/audit_tools.py fingerprint --check gap-sweep \
-        --cell-keys k1 k2 ...              # or --scope "warm-up:orphan-step"
+        --cell-keys k1 k2 ...              # or --scope "sample-service:orphan-step"
     python3 skills/audit/scripts/audit_tools.py export <ir-file> [--scenario <key>] \
         --out audit/export-<scenario>.json
     python3 skills/audit/scripts/audit_tools.py dedupe --ledger audit/findings-report.json \

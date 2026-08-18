@@ -33,21 +33,21 @@ function makeRegistration(slideId: string): CompareReviewRegistration {
  */
 describe('compareReviewStore registration handoff', () => {
   it('re-registering the same scenario keeps the active step', () => {
-    const unregisterFirst = registerCompareReview(makeRegistration('warm-up'))
+    const unregisterFirst = registerCompareReview(makeRegistration('sample'))
     setCompareActiveStep('col-3')
 
     unregisterFirst()
-    const unregisterSecond = registerCompareReview(makeRegistration('warm-up'))
+    const unregisterSecond = registerCompareReview(makeRegistration('sample'))
     // The cleanup nulls the cursor, and the same-scenario re-register must
     // not treat that as a scenario change (lastRegisteredSlideId, not the
     // live registration, is the judge).
-    expect(getCompareReviewState().registration?.slideId).toBe('warm-up')
+    expect(getCompareReviewState().registration?.slideId).toBe('sample')
 
     unregisterSecond()
   })
 
   it('resets the active step when a different scenario registers', () => {
-    const unregisterFirst = registerCompareReview(makeRegistration('warm-up'))
+    const unregisterFirst = registerCompareReview(makeRegistration('sample'))
     setCompareActiveStep('col-3')
     unregisterFirst()
 

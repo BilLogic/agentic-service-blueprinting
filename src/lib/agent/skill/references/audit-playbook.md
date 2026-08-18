@@ -36,7 +36,7 @@ hard rules; this file carries the mechanics.
   rest. Prefer flipping undetected-this-run rows to `resolved` over
   deleting them — resolution history is signal. A check that failed or was
   skipped touches nothing.
-- **Scoped runs** ("audit Warm-Up only"): the cell universe is that
+- **Scoped runs** ("audit Sample Service only"): the cell universe is that
   scenario's keys. Supersede is then ALSO scoped — only previous findings
   whose `cell_keys` all fall inside the scope are eligible; a scoped run
   must never resolve a finding it could not have re-detected.
@@ -79,7 +79,7 @@ that disagree on a separator split the finding history).
   scope key instead of cell keys, WITH a short reason slug so two distinct
   zero-cell findings from one check cannot collide:
   `check_name + ':scope:' + scenario_key + ':' + <reason-slug>`
-  (e.g. `gap-sweep:scope:warm-up:orphan-step-cooldown`).
+  (e.g. `gap-sweep:scope:sample-service:orphan-step-inspection`).
 - The DB backstop: `findings_open_fingerprint_idx` — unique on
   `(service_lifecycle_id, fingerprint) where status = 'open'`. An insert
   conflict means the dedupe logic missed; treat it as update-in-place,
@@ -143,7 +143,7 @@ then add it to the roster.
 
 ## §6 Canvas note
 
-Inside the uno-blueprint canvas agent the audit is fully live — the
+Inside this template's in-app canvas agent the audit is fully live — the
 `/sb:audit` row of `references/canvas-adapter.md` is the ONLY canonical
 canvas translation (tools, dedupe wiring, pacing, cell-id fingerprints).
 Read that row; nothing here overrides it.

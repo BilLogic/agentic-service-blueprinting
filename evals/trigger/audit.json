@@ -1,7 +1,7 @@
 [
   {"query": "sanity check my blueprint — anything inconsistent or missing?", "should_trigger": true},
-  {"query": "run the checks on the Warm-Up scenario again, we edited a bunch of cells yesterday", "should_trigger": true},
-  {"query": "is there jargon in our customer-facing steps that a parent wouldnt understand?", "should_trigger": true},
+  {"query": "run the checks on the Sample Service scenario again, we edited a bunch of cells yesterday", "should_trigger": true},
+  {"query": "is there jargon in our customer-facing steps that a resident wouldnt understand?", "should_trigger": true},
   {"query": "health check the whole board — which steps have no owner?", "should_trigger": true},
   {"query": "that jargon finding about 'engagement telemetry' is actually fine, dismiss it", "should_trigger": true},
   {"query": "do any of our fees show up invisibly? like charges the customer never sees coming in the journey", "should_trigger": true},

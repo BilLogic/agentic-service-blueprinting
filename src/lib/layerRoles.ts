@@ -4,7 +4,7 @@
  * language; its `layer_role` carries the rendering semantics (pill cells,
  * visual rows, divider-line anchoring). The vocabulary is extensible:
  * org-defined custom roles render as generic swimlanes, as does a null role
- * (e.g. actor lanes such as Student or Regular Tutor).
+ * (e.g. actor lanes such as "现场技术员" or "Field Crew").
  */
 export const CUSTOMER_ACTIONS_ROLE = 'customer_actions'
 export const FRONTSTAGE_ACTIONS_ROLE = 'frontstage_actions'
@@ -31,13 +31,11 @@ export type CanonicalLayerRole = (typeof CANONICAL_LAYER_ROLES)[number]
 /**
  * Legacy magic-name → role mapping for content that predates `layer_role`
  * (DB rows without the backfill and all hand-written TS fallbacks, which
- * carry no role). 'Regular Tutor' is the spine actor of the PLUS blueprints —
- * it plays the customer-actions role, so the interaction line draws after it.
+ * carry no role).
  */
 export const LEGACY_NAME_TO_ROLE: Readonly<Record<string, CanonicalLayerRole>> =
   {
     'Customer Actions': CUSTOMER_ACTIONS_ROLE,
-    'Regular Tutor': CUSTOMER_ACTIONS_ROLE,
     'Front Stage Actions': FRONTSTAGE_ACTIONS_ROLE,
     'Frontstage Actions': FRONTSTAGE_ACTIONS_ROLE,
     'Back Stage Actions': BACKSTAGE_ACTIONS_ROLE,

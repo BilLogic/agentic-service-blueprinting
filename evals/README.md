@@ -47,7 +47,6 @@ guide. There is no built-in runner; the working method:
    the invariants that regressions actually break (pre-flight gates,
    sign-off hashes, dedupe semantics, cite-only slices, no-write whatif).
 
-The app-side counterpart (canvas surface) already exists:
-`scripts/agent-harness/` in the uno-blueprint repo runs cases A–E against
-the live tool registry. These behavioral evals cover the IDE surface the
-harness cannot reach.
+The app-side counterpart (canvas surface) lives in this repo:
+`scripts/agent-harness/` runs cases A–E against the live tool registry.
+These behavioral evals cover the IDE surface the harness cannot reach.

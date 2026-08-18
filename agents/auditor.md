@@ -22,7 +22,7 @@ Rules that bind you regardless of the check:
 - **Cells by key, never invented.** Every cell_key you emit must exist in
   the export. If a finding is about absence (zero cells to cite),
   emit a `scope` instead of cell_keys, in the form
-  `<scenario-key>:<reason-slug>` (e.g. `warm-up:orphan-step-cooldown`) —
+  `<scenario-key>:<reason-slug>` (e.g. `sample-service:orphan-step-inspection`) —
   pick a short slug that names the reason, and never invent a
   lookalike cell key.
 - **No verbatim excerpts** in notes: cite keys and titles; never paste

@@ -1,7 +1,7 @@
 [
-  {"query": "pull out just the tutor's journey from the blueprint to show at standup", "should_trigger": true},
+  {"query": "pull out just the field technician's journey from the blueprint to show at standup", "should_trigger": true},
   {"query": "what does everyone do at check-in? give me one view across all the lanes for that moment", "should_trigger": true},
-  {"query": "make a storyboard of the warm-up scenario, the client responds better to pictures", "should_trigger": true},
+  {"query": "make a storyboard of the sample-service scenario, the client responds better to pictures", "should_trigger": true},
   {"query": "what does the support team own end to end in this service?", "should_trigger": true},
   {"query": "turn this blueprint into something i can actually show the exec team without losing them", "should_trigger": true},
   {"query": "regenerate the customer journey slice, we edited three cells it cites", "should_trigger": true},
@@ -9,7 +9,7 @@
   {"query": "client-ready lane spec for operations please, they're onboarding a new manager", "should_trigger": true},
   {"query": "how do i slice this array in typescript without mutating it?", "should_trigger": false},
   {"query": "we dont have a blueprint yet — build one from our process docs first", "should_trigger": false},
-  {"query": "whats inconsistent in the tutor lane? some cells look contradictory", "should_trigger": false},
+  {"query": "whats inconsistent in the technician lane? some cells look contradictory", "should_trigger": false},
   {"query": "make a powerpoint about our company vision for the all-hands", "should_trigger": false},
   {"query": "crop this screenshot to just the header area", "should_trigger": false},
   {"query": "what if we cut the follow-up step — who picks up the slack?", "should_trigger": false},

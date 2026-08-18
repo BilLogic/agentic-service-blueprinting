@@ -20,8 +20,8 @@ Prompts go to a third-party image model. Strip, every time:
 - Emails, phone numbers, URLs, ticket ids, account numbers
 - Anything lifted verbatim from evidence or interview notes
 
-Describe a **persona archetype**: "a first-time tutor in their twenties,
-working from a home desk". Never the interviewee. If a frame's narrative
+Describe a **persona archetype**: "a first-week field technician in their twenties,
+working out of a service van". Never the interviewee. If a frame's narrative
 cannot be turned into a prompt without naming someone, the prompt is wrong,
 not the rule.
 
@@ -80,7 +80,7 @@ produces a muddled image.
 
 Before the **first** upload for a slice, show the user the character
 reference and at least one frame. Generated people carry the model's biases —
-who it draws as a tutor, a customer, a nurse. That judgment is the user's to
+who it draws as a technician, a customer, a nurse. That judgment is the user's to
 make, once per slice, before the images become the artifact everyone sees.
 
 Re-generations of an already-approved slice do not re-trigger the gate unless
