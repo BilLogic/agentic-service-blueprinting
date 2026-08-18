@@ -1,7 +1,21 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import {
+  countCompareDifferences,
+  deriveCompareStepGroups,
+  deriveCompareZones,
+  getDetailOnlyCompareSlots,
+  isDetailOnlyCompareSlot,
+} from '@/lib/compareLedger'
+import { buildCompareModel, type CompareBlueprints, type CompareSlot } from '@/lib/compareSlots'
 import { normalizeBlueprint, type RawPath } from '@/lib/normalizeBlueprint'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
+import {
+  DELETION_NOUNS,
+  readDeletionImpact,
+  type DeletableKind,
+} from '@/lib/deletionSafety'
+import type { BlueprintData } from '@/types/blueprint'
 import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 import canvasAdapter from '@/lib/agent/skill/references/canvas-adapter.md?raw'
 import dataModel from '@/lib/agent/skill/references/data-model.md?raw'
@@ -31,10 +45,9 @@ type Client = SupabaseClient<Database>
  */
 
 /**
- * The same reference files the IDE skills read from this repo's skills/ +
- * references/ trees, served as a tool. One progressive-disclosure
- * mechanism, two consumers: editing a file at the canonical path upgrades
- * both (vendored here by scripts/sync-canvas-skills.mjs).
+ * The same reference files the IDE skills read from disk, served as a tool.
+ * One progressive-disclosure mechanism, two consumers: editing a file in
+ * the plugin repo upgrades both (vendored here by scripts/sync-agent-skill).
  */
 const REFERENCES: Record<string, string> = {
   'canvas-adapter': canvasAdapter,
@@ -147,6 +160,100 @@ export async function getBlueprint(
   return sections.join('\n\n')
 }
 
+function compareSlotLine(
+  slot: CompareSlot,
+  blueprints: readonly BlueprintData[],
+): string {
+  const fields =
+    slot.differingFields.length > 0
+      ? ` (fields: ${slot.differingFields.join(', ')})`
+      : ''
+  const perPath = blueprints
+    .map((blueprint) => {
+      const entry = slot.perPath[blueprint.path.id]
+      if (!entry?.present) return `${blueprint.path.name}: —`
+      const quoted = entry.contents.map((content) => `"${content}"`).join(' + ')
+      return `${blueprint.path.name}: ${quoted} (${entry.cellIds.join(', ')})`
+    })
+    .join(' | ')
+  return `  [${slot.verdict}] lane "${slot.laneLabel}" @ step "${slot.columnLabel}"${fields}: ${perPath}`
+}
+
+/**
+ * Headless compare: fetches the scenario's blueprints through the same
+ * query the panel uses, runs `buildCompareModel`, and serializes slots /
+ * step groups / columns as compact text. This grounds every other compare
+ * argument the agent can pass — step numbers for jump_divergence, lane and
+ * step names for differences_filter, cell ids for focus/annotate.
+ */
+export async function getCompareDiff(
+  client: Client,
+  scenarioId: string,
+  pathIds?: string[],
+): Promise<string> {
+  const { data, error } = await client
+    .from('paths')
+    .select(PATH_BLUEPRINT_SELECT)
+    .eq('service_scenario_id', scenarioId)
+  if (error) throw new Error(error.message)
+  const rows = (data ?? []) as unknown as RawPath[]
+  if (rows.length === 0) return 'No paths in this scenario.'
+
+  let blueprints = rows.map((raw) => normalizeBlueprint(raw))
+  if (pathIds && pathIds.length > 0) {
+    const wanted = blueprints.filter((blueprint) =>
+      pathIds.includes(blueprint.path.id),
+    )
+    // Keep the caller's order — column insertion follows the first path.
+    blueprints = pathIds
+      .map((id) => wanted.find((blueprint) => blueprint.path.id === id))
+      .filter((blueprint): blueprint is BlueprintData => Boolean(blueprint))
+  }
+  if (blueprints.length < 2)
+    return `Comparison needs at least two paths; this scenario ${
+      pathIds && pathIds.length > 0 ? 'selection' : ''
+    } resolves to ${blueprints.length}. Path ids here: ${rows
+      .map((raw) => (raw as { id?: string }).id)
+      .join(', ')}.`
+
+  const model = buildCompareModel(blueprints as CompareBlueprints)
+  const zones = deriveCompareZones(model)
+  const stepGroups = deriveCompareStepGroups(model)
+  const detailOnly = getDetailOnlyCompareSlots(model)
+
+  const lines: string[] = [
+    `Comparing ${blueprints
+      .map((blueprint) => `"${blueprint.path.name}" (${blueprint.path.id})`)
+      .join(' vs ')}`,
+    `Canonical columns: ${model.columns
+      .map((column, index) => `${index + 1}."${column.label}" ${column.verdict}`)
+      .join(' | ')}`,
+    `${countCompareDifferences(model)} differences · ${zones.length} zones · ${detailOnly.length} detail-only`,
+  ]
+  // Grouped by STEP — the ledger's grain and jump_divergence's argument;
+  // each group names the divergence zone (run) it sits in, which is the
+  // grain the strip draws.
+  for (const group of stepGroups) {
+    lines.push(
+      `${group.headerLabel} (zone ${group.zoneIndex}, ${group.slots.length} difference${
+        group.slots.length === 1 ? '' : 's'
+      }):`,
+    )
+    for (const slot of group.slots) lines.push(compareSlotLine(slot, blueprints))
+  }
+  if (detailOnly.length > 0) {
+    lines.push(`Detail-only differences (${detailOnly.length}) — no canvas step:`)
+    for (const slot of detailOnly) lines.push(compareSlotLine(slot, blueprints))
+  }
+  const shared = model.slots.filter(
+    (slot) => slot.verdict === 'shared' && !isDetailOnlyCompareSlot(slot),
+  ).length
+  lines.push(
+    `${shared} shared slots. Note: triggers/needs edges are not compared.`,
+  )
+  return lines.join('\n')
+}
+
 export async function getCell(client: Client, cellId: string): Promise<string> {
   const { data, error } = await client
     .from('cells')
@@ -187,25 +294,6 @@ export async function listSlices(client: Client): Promise<string> {
     .join('\n')
 }
 
-export async function getSlice(client: Client, sliceId: string): Promise<string> {
-  const { data, error } = await client
-    .from('slices')
-    .select(
-      'id, title, description, slice_type, actor, origin, updated_at, slice_items(id, position, caption, narrative, cell_ids)',
-    )
-    .eq('id', sliceId)
-    .maybeSingle()
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error(`No slice with id ${sliceId}.`)
-  const frames = [...(data.slice_items ?? [])]
-    .sort((a, b) => a.position - b.position)
-    .map(
-      (frame, index) =>
-        `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.caption ? ` caption "${frame.caption}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
-    )
-  return `slice "${data.title}" (${data.id}) type=${data.slice_type}${data.actor ? ` actor=${data.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
-}
-
 /** The tag vocabulary — read this before writing any owner value. */
 export async function listOwnerTags(client: Client): Promise<string> {
   const { data, error } = await client
@@ -222,43 +310,44 @@ export async function listOwnerTags(client: Client): Promise<string> {
   return [...tags].sort().join(', ')
 }
 
-const FINDINGS_PAGE = 100
-
 /**
- * The capped read carries the TRUE TOTAL (adapter-contract "Read
- * consumers"): PostgREST's count=exact rides the same request, the result
- * names the total, and the model is instructed to answer count questions
- * from it — never from the page. A failed count is absent, never a
- * stand-in: a confident wrong number is worse than no number.
+ * What a delete would cost, in the words the confirm dialog uses.
+ *
+ * The agent cannot delete anything — no delete is on the allow-list, by
+ * design — but it was also unable to SAY what a delete would cost, which made
+ * "what happens if I remove this path?" a question it had to decline or guess
+ * at. The impact RPCs are side-effect-free reads (that is what this branch
+ * proves), so answering is free.
+ *
+ * `readDeletionImpact` is the very function `DeleteStructureDialog` calls, and
+ * the facts/warnings/reassurances are rendered VERBATIM. Deliberately not
+ * paraphrased: the warning about slices undo cannot restore, and the qualified
+ * archive reassurance beside it, were written word by word to not overstate
+ * what comes back. An agent rewording them in its own voice is exactly how the
+ * "nothing is destroyed" over-promise gets reintroduced on a second surface.
  */
-export async function listFindings(
+export async function getDeletionImpact(
   client: Client,
-  statusFilter: string,
+  kind: DeletableKind,
+  targetId: string,
 ): Promise<string> {
-  let query = client
-    .from('findings')
-    .select('id, source, check_name, severity, note, status, cell_ids, created_at', {
-      count: 'exact',
-    })
-    .order('created_at', { ascending: false })
-    .limit(FINDINGS_PAGE)
-  if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-  const { data, error, count } = await query
-  if (error) throw new Error(error.message)
-  if (!data || data.length === 0)
-    return statusFilter === 'all'
-      ? 'No findings recorded yet.'
-      : `No ${statusFilter} findings.`
-  const label = statusFilter === 'all' ? 'findings' : `${statusFilter} findings`
-  const header =
-    typeof count === 'number'
-      ? `${count} ${label} total; listing ${Math.min(data.length, count)}. Answer count questions from the TOTAL, not by counting the rows below.`
-      : `Listing ${data.length} ${label} (total unavailable — do not state a total).`
-  return [
-    header,
-    ...data.map(
-      (row) =>
-        `${row.id} [${row.severity}] ${row.check_name} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.note ? ` — ${row.note}` : ''}`,
+  const summary = await readDeletionImpact(client, kind, targetId)
+  const lines = [
+    `Deleting this ${DELETION_NOUNS[kind]} would destroy:`,
+    ...summary.facts.map(
+      (fact) => `  ${fact.count} ${fact.noun}${fact.count === 1 ? '' : 's'}`,
     ),
-  ].join('\n')
+  ]
+  // Verbatim, one per line, under headings that say which kind of sentence
+  // each is — a warning read as a reassurance is the failure mode here.
+  if (summary.warnings.length > 0) {
+    lines.push('Warnings:', ...summary.warnings.map((line) => `  ${line}`))
+  }
+  if (summary.reassurances.length > 0) {
+    lines.push('What survives:', ...summary.reassurances.map((line) => `  ${line}`))
+  }
+  lines.push(
+    'Relay these sentences as they are. You cannot perform this delete — only the human can, in the desktop app\'s confirm dialog, by typing the name.',
+  )
+  return lines.join('\n')
 }

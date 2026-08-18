@@ -75,8 +75,8 @@ function findSkillByToken(token: string): AgentSkillCommand | undefined {
 }
 
 /**
- * A draft that *starts* with a slash names a skill: "/sb:audit the sample"
- * (or the bare alias "/audit the sample"). Returns the command and the
+ * A draft that *starts* with a slash names a skill: "/sb:audit the intake"
+ * (or the bare alias "/audit the intake"). Returns the command and the
  * remainder, or null when the token matches no skill (the text then sends
  * as-is — no surprise swallowing).
  */

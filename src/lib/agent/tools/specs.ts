@@ -3,41 +3,42 @@ import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 
 /**
  * The static allow-list — the agent's entire reach. Each write dispatches
- * onto the SAME mutation wrappers a future editor UI calls (src/lib/
- * mutations/), so RLS, validation and cache invalidation come free; there
- * is no dynamic dispatch, no table name as an argument, no free SQL. A
- * request for anything else is a refusal, not an attempt. Deliberately
- * absent: every delete.
- *
- * Tool descriptions are the rule carriers: each binding invariant lives in
- * the description of the tool it governs, so the model reads the rule at
- * the moment it matters and the eval harness offers byte-identical
- * declarations (it bundles this file directly).
+ * onto the SAME wrapper the UI calls, so RLS, validation, session logging
+ * and revert capture come free; there is no dynamic dispatch, no table
+ * name as an argument, no free SQL. A request for anything else is a
+ * refusal, not an attempt. Deliberately absent: every delete.
  */
 
 const str = (description: string) => ({ type: 'string', description })
 
 /**
  * The mobile reading roster — the ONLY tools offered while the mobile shell
- * is up, for every tier. Mobile is view-only by decision: navigation,
- * reading, and Q&A; no writes. A whitelist rather than a write-filter so a
- * future tool defaults to ABSENT on mobile until someone deliberately adds
- * it here. UX gate only — the server-side RPC tier enforcement is the real
- * wall.
+ * is up, for every tier including service accounts. Mobile is view-only by
+ * decision (2026-08-08 plan): navigation, reading, and Q&A; no writes, no
+ * canvas-mode switch, no annotation marks, no desktop-surface ui_commands.
+ * A whitelist rather than a write-filter so a future tool defaults to
+ * ABSENT on mobile until someone deliberately adds it here.
+ *
+ * This is a UX gate, not the security boundary — the server-side RPC tier
+ * enforcement stays the real wall.
  */
 export const MOBILE_READ_TOOL_NAMES = new Set([
   'read_reference',
   'list_scenarios',
   'get_blueprint',
+  'get_compare_diff',
   'get_cell',
   'list_slices',
   'get_slice',
   'list_owner_tags',
-  'list_findings',
   'get_ui_state',
+  'get_change_history',
   'open_phase',
   'open_scenario',
   'focus_cell',
+  'open_cell_panel',
+  'get_deletion_impact',
+  'list_findings',
 ])
 
 /** The tools that mutate data — the loop enforces batch etiquette on these. */
@@ -87,9 +88,26 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'get_cell',
+    name: 'get_compare_diff',
     description:
-      'One cell in full: content, summary, owners, function/form/value, position.',
+      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (description/links) group. Read before driving the compare UI or answering \"what differs\". Triggers/needs edges are not compared.",
+    parameters: {
+      type: 'object',
+      properties: {
+        scenario_id: str('Scenario id from list_scenarios'),
+        path_ids: {
+          type: 'array',
+          description:
+            'Optional subset (2+) of the scenario\'s path ids, in comparison order; omit to compare every path',
+          items: { type: 'string' },
+        },
+      },
+      required: ['scenario_id'],
+    },
+  },
+  {
+    name: 'get_cell',
+    description: 'One cell in full: content, summary, owners, function/form/value, position.',
     parameters: {
       type: 'object',
       properties: { cell_id: str('Cell id') },
@@ -118,25 +136,21 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: { type: 'object', properties: {} },
   },
   {
-    name: 'list_findings',
+    name: 'get_ui_state',
     description:
-      'The findings ledger: audit/whatif findings with status, capped at 100 rows. The result STATES THE TRUE TOTAL — answer any count question from that total, never by counting the listed rows. Read before recording (see what is already open) and when the human asks to triage.',
+      'What the user is looking at RIGHT NOW: view level, selected phase/scenario, active tab, open cell panel, Design-mode selection. Call after navigating, or whenever "this/here/what I selected" needs grounding. When the user asks what they are looking at, relay EVERY line — view level included, not just the selection.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_change_history',
+    description:
+      "This session's edit history — every change made in this browser session (human and agent), newest first. When reporting it, distinguish user edits from agent edits and remind the user rows are revertible from the change sheet.",
     parameters: {
       type: 'object',
       properties: {
-        status: {
-          type: 'string',
-          enum: ['open', 'resolved', 'dismissed', 'all'],
-          description: 'Filter; default open',
-        },
+        limit: { type: 'number', description: 'Max entries (default 30)' },
       },
     },
-  },
-  {
-    name: 'get_ui_state',
-    description:
-      'What the user is looking at RIGHT NOW: view level, selected phase/scenario, active tab. Call after navigating, or whenever "this/here/what I selected" needs grounding. When the user asks what they are looking at, relay EVERY line — view level included, not just the selection.',
-    parameters: { type: 'object', properties: {} },
   },
   {
     name: 'open_phase',
@@ -151,7 +165,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'open_scenario',
     description:
-      "Navigate the user's canvas to a scenario. Open the scenario before focus_cell.",
+      'Navigate the user\'s canvas to a scenario. Open the scenario before focus_cell.',
     parameters: {
       type: 'object',
       properties: { scenario_id: str('Scenario id from list_scenarios') },
@@ -161,11 +175,80 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'focus_cell',
     description:
-      "Scroll the open scenario's canvas to a specific cell — use to point at evidence when answering questions. The cell's scenario must be open first (open_scenario).",
+      'Scroll the open scenario\'s canvas to a specific cell — use to point at evidence when answering questions. The cell\'s scenario must be open first (open_scenario).',
     parameters: {
       type: 'object',
       properties: { cell_id: str('Cell id') },
       required: ['cell_id'],
+    },
+  },
+  {
+    name: 'list_ui_commands',
+    description:
+      'The LIVE list of UI controls you can drive right now (panel tabs, zoom, compare toggle, presentation, undo, …). Commands appear/disappear with the surfaces that own them — list before ui_command when unsure what exists.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'ui_command',
+    description:
+      'Fire a UI control by name (from list_ui_commands), with an optional arg. Interface only, EXCEPT the ones the list marks "[changes data]" — those count against your write batch. Notable [changes data] commands: undo_last_change (reverts whatever is newest, INCLUDING the human\'s own edit if theirs came last — say whose change you are undoing before firing it), revert_my_changes (only your own edits from this session; prefer it whenever the user says "undo what you did"), and keep_all_changes (clears the change sheet and with it every revert in the session — nothing can be taken back afterwards). Reverting the whole session is human-only; revert_all_changes exists to say so.',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: str('Command name from list_ui_commands'),
+        arg: str('Argument where the command takes one; omit otherwise'),
+      },
+      required: ['command'],
+    },
+  },
+  {
+    name: 'open_cell_panel',
+    description:
+      "Open the cell detail side panel on the user's screen — the same panel a click opens. The cell's scenario must be open first (open_scenario).",
+    parameters: {
+      type: 'object',
+      properties: { cell_id: str('Cell id') },
+      required: ['cell_id'],
+    },
+  },
+  {
+    name: 'set_canvas_mode',
+    description:
+      "Switch the user's canvas between 'view' (reading) and 'design' (authoring) mode — same switch as the toolbar's.",
+    parameters: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', enum: ['view', 'design'], description: 'Target mode' },
+      },
+      required: ['mode'],
+    },
+  },
+  {
+    name: 'set_sidebar',
+    description: 'Collapse or expand the sidebar (more canvas vs more navigation).',
+    parameters: {
+      type: 'object',
+      properties: {
+        collapsed: { type: 'boolean', description: 'true = collapse' },
+      },
+      required: ['collapsed'],
+    },
+  },
+  {
+    name: 'annotate_cells',
+    description:
+      'Draw ephemeral annotation boxes around cells on the open canvas (optional short text note above them) — use to point at things visually, like a human with a marker. Marks are scratch-layer only: never saved, cleared on reload.',
+    parameters: {
+      type: 'object',
+      properties: {
+        cell_ids: {
+          type: 'array',
+          description: 'Cells to box (must be on the open scenario)',
+          items: { type: 'string' },
+        },
+        note: str('Optional short label drawn above the boxes; omit for none'),
+      },
+      required: ['cell_ids'],
     },
   },
   {
@@ -200,7 +283,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'create_path',
     description:
-      "Add a path to a scenario — alternative/unhappy/exception. lane_source_path_id copies the sibling's lane stack (preferred).",
+      'Add a path to a scenario — alternative/unhappy/exception. lane_source_path_id copies the sibling\'s lane stack (preferred).',
     parameters: {
       type: 'object',
       properties: {
@@ -234,14 +317,31 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'duplicate_scenario',
     description:
-      'Copy a WHOLE scenario into the same phase — its columns, every path, every lane, every cell, and every arrow with both ends inside it. One call, two arguments, but it writes far more rows than that suggests: duplicating a multi-path scenario is hundreds of inserts. Say roughly how big the source is and get a nod first. The UI names copies "X (copy)" — use the same form unless the human asks for a different name. Copied cells get no cell_key, so slice recovery keys on the copies are the ids themselves.',
+      'Copy a WHOLE scenario into the same phase — its columns, every path, every lane, every cell, and every arrow with both ends inside it. One call, two arguments, but it writes far more rows than that suggests: duplicating a 5-path scenario is hundreds of inserts. Say roughly how big the source is and get a nod first. Fully revertible (its inverse deletes the copy). The UI names copies "X (copy)" — use the same form unless the human asks for a different name, so the sidebar reads consistently however the copy was made. Copied cells get no cell_key, so they cannot be bound into a slice until one is authored.',
     parameters: {
       type: 'object',
       properties: {
         source_scenario_id: str('Scenario id from list_scenarios'),
-        name: str('Name for the copy; the convention is "<source name> (copy)"'),
+        name: str('Name for the copy; the UI convention is "<source name> (copy)"'),
       },
       required: ['source_scenario_id', 'name'],
+    },
+  },
+  {
+    name: 'get_deletion_impact',
+    description:
+      'What deleting something would destroy — cell and arrow counts, which slices lose frames, which of those undo cannot put back, and what survives. A pure read: it deletes nothing, and no delete tool exists for you. Use it to answer "what happens if I remove this?" BEFORE the human opens the confirm dialog. Relay the warning and reassurance sentences VERBATIM; they are worded to not overstate what comes back.',
+    parameters: {
+      type: 'object',
+      properties: {
+        kind: {
+          type: 'string',
+          enum: ['scenario', 'path', 'slice'],
+          description: 'What is being deleted. Only these three kinds are supported.',
+        },
+        target_id: str('Id of the scenario, path, or slice'),
+      },
+      required: ['kind', 'target_id'],
     },
   },
   {
@@ -286,7 +386,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'replace_slice_frames',
     description:
-      'Replace a slice\'s frames wholesale — THE tool for reordering, resequencing, merging cells into one screen, or splitting them apart. Read the slice first; pass the complete new frame list (each frame: cells in order + optional caption/narrative). When a reorder instruction is positionally ambiguous (e.g. "move the last one up, then merge 2 and 3" — original numbering or after the move?), confirm which you mean before writing. Re-read the slice afterwards to confirm the frame count matches what you intended.',
+      "Replace a slice's frames wholesale — THE tool for reordering, resequencing, merging cells into one screen, or splitting them apart. Read the slice first; pass the complete new frame list (each frame: cells in order + optional caption/narrative). When a reorder instruction is positionally ambiguous (e.g. \"move the last one up, then merge 2 and 3\" — original numbering or after the move?), confirm which you mean before writing. Re-read the slice afterwards to confirm the frame count matches what you intended.",
     parameters: {
       type: 'object',
       properties: {
@@ -352,7 +452,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         path_id: str('Path id'),
         layer_id: str('Lane id from get_blueprint (parameter named layer_id for historical reasons)'),
         step_id: str('Step id (from get_blueprint)'),
-        content: str('The cell text — a journey moment, not a system capability, max 120 characters (the canvas reads at a glance; put detail in the summary). Good: "Crew photographs the repaired fixture". Bad: "Evidence management module".'),
+        content: str('The cell text — a journey moment, not a system capability, max 120 characters (the canvas reads at a glance; put detail in the summary). Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".'),
       },
       required: ['path_id', 'layer_id', 'step_id', 'content'],
     },
@@ -360,7 +460,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'update_cell_content',
     description:
-      'Edit a cell: text, summary (the tl;dr — never a copy of the text), owner and perceived_owner (existing tags — see list_owner_tags). Reads the current values first internally, so only pass fields you mean to change. Fields cannot be CLEARED through this tool — an empty string means keep; ask the human to clear a field instead.',
+      'Edit a cell: text, summary (the tl;dr — never a copy of the text), owner and perceived_owner (existing tags — see list_owner_tags). Reads the current values first internally, so only pass fields you mean to change. Fields cannot be CLEARED through this tool — an empty string means keep; ask the human to clear a field in the panel.',
     parameters: {
       type: 'object',
       properties: {
@@ -421,9 +521,24 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
+    name: 'list_findings',
+    description:
+      'The findings ledger: audit/whatif findings with status. Read before recording (see what is already open) and when the human asks to triage.',
+    parameters: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['open', 'resolved', 'dismissed', 'all'],
+          description: 'Filter; default open',
+        },
+      },
+    },
+  },
+  {
     name: 'record_finding',
     description:
-      'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_name + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Sample Service").',
+      'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_name + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
     parameters: {
       type: 'object',
       properties: {
@@ -436,7 +551,7 @@ export const TOOL_SPECS: ToolSpec[] = [
           description: 'Cells the finding is about; omit only for zero-cell findings',
           items: { type: 'string' },
         },
-        scope: str('Zero-cell fingerprint scope, required when cell_ids is empty. Include a short reason slug so two zero-cell findings from one check cannot collide, e.g. "scenario:Sample Service:orphan-step-settlement"'),
+        scope: str('Zero-cell fingerprint scope, required when cell_ids is empty. Include a short reason slug so two zero-cell findings from one check cannot collide, e.g. "scenario:Intake Call:orphan-step-cooldown"'),
         run_id: str('The run identity returned by the first record_finding of this run'),
       },
       required: ['source', 'check_name', 'severity', 'note'],

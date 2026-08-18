@@ -7,10 +7,10 @@ import {
 
 /**
  * Agent sessions. localStorage is the always-there layer; when the session
- * is authenticated, every mutation also writes through to agent_sessions
- * and `hydrateAgentSessions` merges the DB list in on boot — so sessions
- * survive reloads and browsers, and zero-config visitors lose nothing they
- * ever had.
+ * is authenticated (local dev), every mutation also writes through to
+ * agent_sessions and `hydrateAgentSessions` merges the DB list in on boot —
+ * so sessions survive reloads and browsers, and read-only visitors lose
+ * nothing they ever had.
  */
 
 export type AgentSession = {
@@ -18,9 +18,11 @@ export type AgentSession = {
   title: string
   createdAt: string
   updatedAt: string
+  /** Ledger entries stamped with this session — wired when tool loop lands. */
+  changeCount: number
 }
 
-const STORAGE_KEY = 'asb-agent-sessions'
+const STORAGE_KEY = 'sb-agent-sessions'
 
 function read(): AgentSession[] {
   try {
@@ -41,7 +43,7 @@ function write(next: AgentSession[]) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   } catch {
-    // Session-only fallback is fine for the localStorage layer.
+    // Session-only fallback is fine for a prototype store.
   }
   listeners.forEach((listener) => listener())
 }
@@ -56,12 +58,13 @@ export function useAgentSessions(): AgentSession[] {
   )
 }
 
-// Hydration state, so the sessions list can show skeleton rows instead of
-// flashing "no sessions". Two facts, because the gap they cover differs:
-// `hydrating` is the DB merge on the wire; `hydratedOnce` covers the window
-// BEFORE the merge even starts (auth/client still resolving) — the panel
-// mounts, hydrate has not been called yet, and the list must still read as
-// loading through that whole first pass.
+// Hydration state, so the sessions list can show skeleton rows (the same
+// loading/empty distinction the sidebar's lists make) instead of flashing
+// "no sessions". Two facts, because the gap they cover differs:
+// `hydrating` is the DB merge on the wire; `hydratedOnce` covers the
+// window BEFORE the merge even starts (auth/client still resolving), which
+// is where the "still no skeleton" report came from — the panel mounted,
+// hydrate had not been called yet, and the flag read false.
 let hydrating = false
 let hydratedOnce = false
 const hydrationListeners = new Set<() => void>()
@@ -95,6 +98,7 @@ export function createAgentSession(title = 'New session'): AgentSession {
     title,
     createdAt: now,
     updatedAt: now,
+    changeCount: 0,
   }
   // Newest first — the list renders in store order.
   write([session, ...snapshot])

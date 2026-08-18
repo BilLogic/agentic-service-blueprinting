@@ -8,34 +8,28 @@ type Client = SupabaseClient<Database>
 /**
  * Best-effort DB persistence for agent sessions and transcripts.
  *
- * A signed-in session lands everything in agent_sessions / agent_messages
- * so conversations survive reloads and browsers. Anonymous / zero-config
- * deployments have NO policies on these tables — every call fails or
- * no-ops quietly and the panel keeps working from its in-memory /
- * localStorage stores. That degradation is deliberate: the agent surface
- * is additive, never a boot dependency.
- *
- * The attach SIGNAL matters as much as the client: a transcript hydrate
- * that fires before persistence attaches must park and replay when the
- * client arrives (loop.ts pendingHydrates), not burn its one attempt —
- * that ordering gap is exactly where "opened a persisted session, saw
- * Ready instead of the transcript" came from.
+ * Local dev runs authenticated (the dev authoring user), so everything here
+ * lands in agent_sessions / agent_messages and survives reloads. The
+ * deployed read-only site runs as anon, which has NO policies on these
+ * tables — every call fails quietly and the panel keeps working from its
+ * in-memory/localStorage stores. That degradation is deliberate: the agent
+ * surface never exists without write access anyway.
  */
 
 let attached: Client | null = null
 const attachListeners = new Set<() => void>()
 
 export function attachAgentPersistence(client: Client | null) {
+  const cameOnline = attached === null && client !== null
   attached = client
-  if (client) attachListeners.forEach((listener) => listener())
+  // Child effects run before the parent effect that attaches, so hydrators
+  // that fired too early wait on this signal instead of a client they will
+  // never see change.
+  if (cameOnline) attachListeners.forEach((listener) => listener())
 }
 
-export function isAgentPersistenceAttached(): boolean {
-  return attached !== null
-}
-
-/** Fired every time a client attaches — parked hydrates replay on it. */
-export function onAgentPersistenceAttach(listener: () => void): () => void {
+/** Fires whenever persistence goes from detached to attached. */
+export function onAgentPersistenceAttached(listener: () => void): () => void {
   attachListeners.add(listener)
   return () => attachListeners.delete(listener)
 }
@@ -74,6 +68,7 @@ export async function loadPersistedSessions(): Promise<AgentSession[] | null> {
     title: row.title,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    changeCount: 0,
   }))
 }
 
@@ -95,6 +90,12 @@ export function persistEvent(
       { onConflict: 'session_id,seq' },
     )
     .then(() => undefined)
+}
+
+/** Whether a client is attached — hydrators check this BEFORE burning
+ *  their once-per-page-load attempt on a load that cannot succeed. */
+export function isAgentPersistenceAttached(): boolean {
+  return attached !== null
 }
 
 export async function loadPersistedEvents(

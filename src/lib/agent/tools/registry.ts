@@ -11,36 +11,48 @@ import {
   renamePath,
   setCellDependency,
   upsertCell,
-} from '@/lib/mutations/authoringRpc'
-import {
-  checkCellContentLength,
-  updateCellContent,
-  updateCellSpec,
-  type CellContentUpdate,
-} from '@/lib/mutations/cellMutations'
+} from '@/lib/authoringRpc'
 import {
   createSlice,
   replaceSliceFrames,
   updateSliceMeta,
-  type SliceType,
-} from '@/lib/mutations/sliceMutations'
+} from '@/lib/sliceMutations'
+import type { SliceType } from '@/lib/sliceValidation'
+import { asUpdatedAtToken } from '@/lib/optimisticConcurrency'
+import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
 import {
-  recordFinding,
-  setFindingStatus,
-  type FindingSeverity,
-} from '@/lib/mutations/findingMutations'
-import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
+  agentUiCommandMutates,
+  listAgentUiCommands,
+  runAgentUiCommand,
+} from '@/lib/agent/uiCommands'
 import {
+  describeChange,
+  sessionSnapshot,
+  setAgentAttribution,
+} from '@/lib/authoringSession'
+import {
+  updateCellContent,
+  type CellContentUpdate,
+} from '@/lib/cellContentMutations'
+import { updateCellSpec } from '@/lib/cellSpecMutations'
+import { checkCellContentLength } from '@/lib/cellContentLimits'
+import { findingFingerprint } from '@/lib/findingFingerprint'
+import { invalidateQueries } from '@/hooks/useSupabaseQuery'
+import {
+  agentAnnotateCells,
   agentFocusCell,
+  agentOpenCellPanel,
   agentOpenPhase,
   agentOpenScenario,
+  agentSetSidebar,
   collectAgentUiContext,
 } from '@/lib/agent/uiBridge'
+import type { DeletableKind } from '@/lib/deletionSafety'
 import {
   getBlueprint,
   getCell,
-  getSlice,
-  listFindings,
+  getCompareDiff,
+  getDeletionImpact,
   listOwnerTags,
   listScenarios,
   listSlices,
@@ -67,23 +79,6 @@ async function lifecycleId(client: Client): Promise<string> {
   return data.id
 }
 
-/**
- * Tools whose writes change blueprint STRUCTURE (phases/scenarios/paths/
- * lanes/steps). These invalidate through `invalidateStructure()` — the
- * documented complete set of caches a structural write can stale — rather
- * than the wholesale empty-prefix invalidation cell-level tools use.
- */
-const STRUCTURAL_TOOLS = new Set([
-  'create_phase',
-  'create_scenario',
-  'create_path',
-  'add_step',
-  'add_lane',
-  'duplicate_path',
-  'duplicate_scenario',
-  'rename_path',
-])
-
 function s(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key]
   return typeof value === 'string' && value.trim() !== '' ? value : undefined
@@ -96,14 +91,13 @@ function need(args: Record<string, unknown>, key: string): string {
 }
 
 /**
- * Execute one tool call. Returns the text the model sees. Every write
- * dispatches through the src/lib/mutations/ wrappers (the same seam a
- * future editor UI shares), and the query cache is invalidated afterwards
- * so the canvas repaints live.
+ * Execute one tool call. Returns the text the model sees. Writes are
+ * attributed to the agent session for the ledger's ✦ badge, and the query
+ * cache is invalidated so the canvas repaints live.
  */
 export async function dispatchTool(
   client: Client,
-  _agentSessionId: string,
+  agentSessionId: string,
   name: string,
   args: Record<string, unknown>,
 ): Promise<string> {
@@ -114,31 +108,142 @@ export async function dispatchTool(
       return listScenarios(client)
     case 'get_blueprint':
       return getBlueprint(client, need(args, 'scenario_id'))
+    case 'get_compare_diff': {
+      const pathIds = Array.isArray(args.path_ids)
+        ? args.path_ids.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : undefined
+      return getCompareDiff(client, need(args, 'scenario_id'), pathIds)
+    }
     case 'get_cell':
       return getCell(client, need(args, 'cell_id'))
+    case 'get_deletion_impact': {
+      const kind = s(args, 'kind')
+      // Validated against the UI's vocabulary, not the RPC's: `lane` and
+      // `step` are answerable server-side but their counts do not match what
+      // their delete removes, so quoting them would put a wrong number in
+      // front of a human about to delete. See `deletionSafety.ts`.
+      if (kind !== 'scenario' && kind !== 'path' && kind !== 'slice') {
+        throw new Error(
+          'kind must be scenario, path, or slice — lane and step impacts do not match their deletes and are not offered.',
+        )
+      }
+      return getDeletionImpact(client, kind as DeletableKind, need(args, 'target_id'))
+    }
     case 'list_slices':
       return listSlices(client)
-    case 'get_slice':
-      return getSlice(client, need(args, 'slice_id'))
     case 'list_owner_tags':
       return listOwnerTags(client)
-    case 'list_findings':
-      return listFindings(client, s(args, 'status') ?? 'open')
     case 'get_ui_state': {
       const context = collectAgentUiContext()
       return context || 'No UI state is being reported right now.'
     }
-    // UI navigation: drives the interface, changes no data.
+    case 'get_change_history': {
+      const limit =
+        typeof args.limit === 'number' && args.limit > 0 ? args.limit : 30
+      const entries = [...sessionSnapshot()].reverse().slice(0, limit)
+      if (entries.length === 0)
+        return 'No changes recorded in this browser session yet.'
+      return entries
+        .map((entry) => {
+          const who =
+            entry.author === 'agent'
+              ? `agent${entry.agentSessionId === agentSessionId ? ' (this session)' : ''}`
+              : 'user'
+          const when = new Date(entry.at).toISOString().slice(11, 19)
+          return `[${when} UTC] ${who}: ${describeChange(entry)}${entry.revert ? '' : ' (not revertible)'}`
+        })
+        .join('\n')
+    }
+    case 'get_slice': {
+      const sliceId = need(args, 'slice_id')
+      const { data, error } = await client
+        .from('slices')
+        .select('id, title, description, slice_type, actor, origin, slice_items(id, position, caption, narrative, cell_ids)')
+        .eq('id', sliceId)
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error(`No slice with id ${sliceId}.`)
+      const frames = [...(data.slice_items ?? [])]
+        .sort((a, b) => a.position - b.position)
+        .map(
+          (frame, index) =>
+            `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.caption ? ` caption "${frame.caption}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
+        )
+      return `slice "${data.title}" (${data.id}) type=${data.slice_type}${data.actor ? ` actor=${data.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
+    }
+    case 'list_findings': {
+      const filter = s(args, 'status') ?? 'open'
+      let query = client
+        .from('findings')
+        .select('id, source, check_name, severity, note, status, cell_ids, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (filter !== 'all')
+        query = query.eq('status', filter)
+      const { data, error } = await query
+      if (error) throw new Error(error.message)
+      if (!data || data.length === 0)
+        return filter === 'all'
+          ? 'No findings recorded yet.'
+          : `No ${filter} findings.`
+      return data
+        .map(
+          (row) =>
+            `${row.id} [${row.severity}] ${row.check_name} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.note ? ` — ${row.note}` : ''}`,
+        )
+        .join('\n')
+    }
+    // UI control + navigation: drives the interface, changes no data — no
+    // attribution, no ledger entry. Same gestures the human has.
     case 'open_phase':
       return agentOpenPhase(need(args, 'phase_id'))
     case 'open_scenario':
       return agentOpenScenario(need(args, 'scenario_id'))
     case 'focus_cell':
       return agentFocusCell(need(args, 'cell_id'))
+    case 'list_ui_commands':
+      return listAgentUiCommands()
+    case 'ui_command': {
+      const command = need(args, 'command')
+      // A command the registry marks `[changes data]` runs under the same
+      // attribution as a write tool. Two reasons, both discovered by the
+      // scoped revert: it is how `revert_my_changes` knows which entries are
+      // its own, and a mutating command that repainted nothing left the canvas
+      // showing state the database no longer had. The non-mutating majority
+      // stays outside, where an interface command belongs.
+      if (!agentUiCommandMutates(command)) {
+        return await runAgentUiCommand(command, s(args, 'arg'))
+      }
+      setAgentAttribution(agentSessionId)
+      try {
+        return await runAgentUiCommand(command, s(args, 'arg'))
+      } finally {
+        setAgentAttribution(null)
+        invalidateQueries('')
+      }
+    }
+    case 'open_cell_panel':
+      return agentOpenCellPanel(need(args, 'cell_id'))
+    case 'set_canvas_mode': {
+      const mode = args.mode === 'design' ? 'design' : 'view'
+      setSharedCanvasMode(mode)
+      return `Canvas mode is now ${mode}.`
+    }
+    case 'set_sidebar':
+      return agentSetSidebar(args.collapsed === true)
+    case 'annotate_cells': {
+      const ids = Array.isArray(args.cell_ids)
+        ? args.cell_ids.filter((value): value is string => typeof value === 'string')
+        : []
+      if (ids.length === 0) throw new Error('cell_ids must be a non-empty array.')
+      return agentAnnotateCells(ids, s(args, 'note'))
+    }
   }
 
-  // Everything below writes; invalidate on the way out (success or not —
-  // a failed multi-row write may still have landed rows).
+  // Everything below writes.
+  setAgentAttribution(agentSessionId)
   try {
     switch (name) {
       case 'add_step': {
@@ -163,8 +268,10 @@ export async function dispatchTool(
         const layerId = need(args, 'layer_id')
         const stepId = need(args, 'step_id')
         // Occupancy guard: the RPC upserts, so a second call on the same
-        // slot would silently OVERWRITE the cell. Creation tool means
-        // creation only; edits go through update_cell_content.
+        // slot would silently OVERWRITE the cell — and the recorded revert
+        // for a "create" is a delete, so a human undoing the agent's edit
+        // would destroy a pre-existing cell. Creation tool means creation
+        // only; edits go through update_cell_content.
         const { data: occupied, error: occupiedError } = await client
           .from('cells')
           .select('id')
@@ -208,12 +315,17 @@ export async function dispatchTool(
           owner: data.owner ?? '',
           perceivedOwner: data.perceived_owner ?? '',
         }
-        await updateCellContent(client, cellId, {
-          content: s(args, 'content') ?? previous.content,
-          description: s(args, 'summary') ?? previous.description,
-          owner: s(args, 'owner') ?? previous.owner,
-          perceivedOwner: s(args, 'perceived_owner') ?? previous.perceivedOwner,
-        })
+        await updateCellContent(
+          client,
+          cellId,
+          {
+            content: s(args, 'content') ?? previous.content,
+            description: s(args, 'summary') ?? previous.description,
+            owner: s(args, 'owner') ?? previous.owner,
+            perceivedOwner: s(args, 'perceived_owner') ?? previous.perceivedOwner,
+          },
+          previous,
+        )
         return 'Cell updated.'
       }
       case 'update_cell_spec': {
@@ -230,16 +342,26 @@ export async function dispatchTool(
               (entry) => ({ for: entry.for ?? '', value: entry.value ?? '' }),
             )
           : []
+        const previous = {
+          function: data.function ?? '',
+          form: data.form ?? '',
+          valueProps: prevProps,
+        }
         const nextProps = Array.isArray(args.value_props)
           ? (args.value_props as Array<{ for?: string; value?: string }>).map(
               (entry) => ({ for: entry.for ?? '', value: entry.value ?? '' }),
             )
-          : prevProps
-        await updateCellSpec(client, cellId, {
-          function: s(args, 'function') ?? (data.function ?? ''),
-          form: s(args, 'form') ?? (data.form ?? ''),
-          valueProps: nextProps,
-        })
+          : previous.valueProps
+        await updateCellSpec(
+          client,
+          cellId,
+          {
+            function: s(args, 'function') ?? previous.function,
+            form: s(args, 'form') ?? previous.form,
+            valueProps: nextProps,
+          },
+          previous,
+        )
         return 'Cell spec updated.'
       }
       case 'set_cell_dependency': {
@@ -301,7 +423,7 @@ export async function dispatchTool(
           sourceScenarioId: need(args, 'source_scenario_id'),
           name: need(args, 'name'),
         })
-        return `Duplicated the scenario (${id}). Re-read it for the copy's own path, lane, step and cell ids — none of them are the source's.`
+        return `Duplicated the blueprint (${id}). Re-read it for the copy's own path, lane, step and cell ids — none of them are the source's, and the copied cells have no cell_key.`
       }
       case 'create_slice': {
         const cellIds = Array.isArray(args.cell_ids)
@@ -311,12 +433,11 @@ export async function dispatchTool(
           : []
         if (cellIds.length === 0)
           throw new Error('cell_ids must be a non-empty array of existing cell ids.')
-        const requestedType = s(args, 'slice_type') as SliceType | undefined
         const slice = await createSlice(client, {
           lifecycleId: await lifecycleId(client),
           title: need(args, 'title'),
           description: s(args, 'description') ?? '',
-          sliceType: requestedType ?? 'custom',
+          sliceType: need(args, 'slice_type') as SliceType,
           actor: s(args, 'actor') ?? '',
           cellIds,
         })
@@ -331,18 +452,13 @@ export async function dispatchTool(
           .maybeSingle()
         if (error) throw new Error(error.message)
         if (!data) throw new Error(`No slice with id ${sliceId}.`)
-        const outcome = await updateSliceMeta(
-          client,
-          sliceId,
-          data.updated_at,
-          {
-            title: s(args, 'title') ?? data.title,
-            description: s(args, 'description') ?? data.description ?? '',
-            sliceType: (s(args, 'slice_type') ?? data.slice_type) as SliceType,
-            actor: s(args, 'actor') ?? data.actor ?? '',
-          },
-          data.origin,
-        )
+        const outcome = await updateSliceMeta(client, sliceId, asUpdatedAtToken(data.updated_at), {
+          title: s(args, 'title') ?? data.title,
+          description: s(args, 'description') ?? data.description ?? '',
+          sliceType: (s(args, 'slice_type') ?? data.slice_type) as SliceType,
+          actor: s(args, 'actor') ?? data.actor ?? '',
+          origin: data.origin,
+        })
         if (outcome.status === 'conflict')
           throw new Error('The slice changed since you read it — re-read and retry.')
         return 'Slice updated.'
@@ -381,44 +497,66 @@ export async function dispatchTool(
           : []
         const scope = s(args, 'scope')
         if (cellIds.length === 0 && !scope)
-          throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Sample Service").')
+          throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
         const runId = s(args, 'run_id') ?? crypto.randomUUID()
-        const outcome = await recordFinding(client, {
-          lifecycleId: await lifecycleId(client),
-          source,
-          checkName,
-          severity: severityArg as FindingSeverity,
-          note,
-          cellIds,
-          scope,
-          runId,
-        })
-        switch (outcome) {
-          case 'updated-open':
-            return `An open finding already had this fingerprint — updated it in place (dedupe). run_id ${runId}; reuse it for the rest of this run.`
-          case 'stayed-dismissed':
-            return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. run_id ${runId}; reuse it for the rest of this run.`
-          case 'reopened':
-            return `Recorded ${severityArg} finding for ${checkName} (a resolved twin existed — this reopens the issue). run_id ${runId}; reuse it for the rest of this run.`
-          default:
-            return `Recorded ${severityArg} finding for ${checkName}. run_id ${runId}; reuse it for the rest of this run.`
+        const fingerprint = await findingFingerprint(checkName, cellIds, scope)
+        const lifecycle = await lifecycleId(client)
+        const { data: existing, error: readError } = await client
+          .from('findings')
+          .select('id, status')
+          .eq('service_lifecycle_id', lifecycle)
+          .eq('fingerprint', fingerprint)
+          .order('updated_at', { ascending: false })
+        if (readError) throw new Error(readError.message)
+        const open = existing?.find((row) => row.status === 'open')
+        const dismissed = existing?.find((row) => row.status === 'dismissed')
+        if (open) {
+          const { error } = await client
+            .from('findings')
+            .update({ severity: severityArg, note, run_id: runId, cell_ids: cellIds, cell_keys: cellIds, source })
+            .eq('id', open.id)
+          if (error) throw new Error(error.message)
+          return `An open finding already had this fingerprint — updated it in place (dedupe). run_id ${runId}; reuse it for the rest of this run.`
         }
+        if (dismissed)
+          return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. run_id ${runId}; reuse it for the rest of this run.`
+        const { error: insertError } = await client.from('findings').insert({
+          service_lifecycle_id: lifecycle,
+          run_id: runId,
+          source,
+          check_name: checkName,
+          severity: severityArg,
+          note,
+          cell_ids: cellIds,
+          cell_keys: cellIds,
+          fingerprint,
+        })
+        if (insertError) throw new Error(insertError.message)
+        const reopened = existing && existing.length > 0
+        return `Recorded ${severityArg} finding for ${checkName}${reopened ? ' (a resolved twin existed — this reopens the issue)' : ''}. run_id ${runId}; reuse it for the rest of this run.`
       }
       case 'set_finding_status': {
         const status = s(args, 'status')
         if (status !== 'open' && status !== 'resolved' && status !== 'dismissed')
           throw new Error('status must be open, resolved, or dismissed.')
-        await setFindingStatus(client, need(args, 'finding_id'), status)
+        const findingId = need(args, 'finding_id')
+        const { data, error } = await client
+          .from('findings')
+          .update({ status })
+          .eq('id', findingId)
+          .select('id')
+        if (error) throw new Error(error.message)
+        if (!data || data.length === 0)
+          throw new Error(`No finding with id ${findingId}.`)
         return `Finding is now ${status}.`
       }
       default:
         return `Tool "${name}" is not on the allow-list. Available tools are fixed; deletes do not exist here — removal is human-only.`
     }
   } finally {
-    // The canvas reads through the shared query cache. Structural tools go
-    // through the STRUCTURE_KEYS contract; cell-level tools keep the empty
-    // prefix (matches every key), so the grids refetch and repaint either way.
-    if (STRUCTURAL_TOOLS.has(name)) invalidateStructure()
-    else invalidateQueries('')
+    setAgentAttribution(null)
+    // The canvas reads through the shared query cache; empty prefix
+    // matches every key, so the grids refetch and repaint after a write.
+    invalidateQueries('')
   }
 }

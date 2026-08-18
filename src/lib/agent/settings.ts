@@ -45,7 +45,7 @@ export type AgentSettings = {
   keys: Partial<Record<AgentProviderId, string>>
 }
 
-const STORAGE_KEY = 'asb-agent-settings'
+const STORAGE_KEY = 'sb-agent-settings'
 
 const EMPTY: AgentSettings = { provider: 'google', models: {}, keys: {} }
 
