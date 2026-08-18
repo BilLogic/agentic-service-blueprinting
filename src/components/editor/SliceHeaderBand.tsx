@@ -82,7 +82,7 @@ export function SliceHeaderBand({
               as the stored value it is, on a real filled chip. */}
           <Badge
             variant="secondary"
-            className="shrink-0 border-border/60 bg-foreground/5 font-mono text-muted-foreground"
+            className="shrink-0 border-muted bg-foreground/5 font-mono text-muted-foreground"
           >
             {detail.slice.slice_type}
           </Badge>

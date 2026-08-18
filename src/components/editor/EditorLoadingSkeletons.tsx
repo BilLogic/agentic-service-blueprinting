@@ -1,3 +1,4 @@
+import { EDITOR_RAIL_WIDTH_CLASS } from '@/components/editor/EditorRail'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import {
@@ -56,6 +57,17 @@ export type OverviewSkeletonPhase = {
   id: string
   /** Scenarios in this phase — one placeholder artboard each. */
   scenarioCount: number
+  /**
+   * The real panel size for this phase, once its blueprints have landed.
+   *
+   * `getBlueprintArtboardSize` computes a panel from step and layer counts
+   * with fixed constants, so this is the finished size rather than an
+   * estimate — and the camera pre-fits against these rectangles. Absent
+   * while the blueprints are still in flight; the flat fallback below is
+   * only for that window.
+   */
+  panelWidth?: number
+  panelHeight?: number
 }
 
 /**
@@ -113,9 +125,10 @@ export function ServiceOverviewCanvasSkeleton({
           key={phase.id}
           style={{
             width:
-              Math.max(1, phase.scenarioCount) * SKELETON_PANEL_WIDTH +
+              Math.max(1, phase.scenarioCount) *
+                (phase.panelWidth ?? SKELETON_PANEL_WIDTH) +
               (Math.max(1, phase.scenarioCount) - 1) * OVERVIEW_SCENARIO_GAP,
-            height: COMPARE_MIN_PANEL_HEIGHT,
+            height: phase.panelHeight ?? COMPARE_MIN_PANEL_HEIGHT,
             marginBottom:
               phaseIndex < rows.length - 1 ? OVERVIEW_PHASE_ROW_GAP : undefined,
           }}
@@ -159,18 +172,34 @@ export function SliceHeaderBandSkeleton() {
   return (
     <div
       aria-hidden
+      // The real band's own container classes (SliceHeaderBand), so the
+      // header/content boundary sits at the same pixel in both states.
       className="flex w-full shrink-0 items-center gap-3 border-b border-border bg-sidebar px-4 py-2"
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-44 max-w-full" />
-          <Skeleton className="h-5 w-14 rounded-full" />
+        {/*
+          Title row: an `h2 text-sm font-semibold` line box (20px) beside a
+          `Badge` — which is a real chip with its own height and radius, not
+          a bar. Skeletoning the badge as a plain rectangle was what made
+          this band read as an empty container rather than as chrome with
+          content in it.
+        */}
+        <div className="flex min-w-0 items-center gap-2">
+          <Skeleton className="h-5 w-48 max-w-full rounded" />
+          <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
         </div>
-        <div className="mt-0.5 flex items-center">
-          <Skeleton className="h-4 w-64 max-w-full" />
+        {/* Caption row: `text-xs` line box (16px), inset by the 2px the
+            real row carries. */}
+        <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
+          <Skeleton className="h-4 w-72 max-w-full rounded" />
         </div>
       </div>
-      <Skeleton className="h-7 w-24 shrink-0" />
+      {/* Primary action — `size="sm"` is h-8, and it has an icon before its
+          label, so the skeleton carries both rather than one flat pill. */}
+      <div className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border px-3">
+        <Skeleton className="size-3 shrink-0 rounded-sm" />
+        <Skeleton className="h-3.5 w-14" />
+      </div>
     </div>
   )
 }
@@ -182,7 +211,21 @@ export function SliceHeaderBandSkeleton() {
  * held by PendingCanvasLoadingSkeleton — the later stages (scenario →
  * blueprints) share the tab's hold key and inherit one unbroken placeholder.
  */
-export function SliceTabLoadingSkeleton() {
+export function SliceTabLoadingSkeleton({
+  children,
+}: {
+  /**
+   * Rendered inside the CANVAS rectangle, not over the whole tab — the
+   * progress bar's home for every phase of the slice waterfall.
+   *
+   * It used to be centred over band + canvas at the first phase and over
+   * the canvas alone at the next, so it slid up by half a band height
+   * partway through a load. One rectangle for the whole chain is the same
+   * rule the workspace canvas follows: the bar is the one thing on screen,
+   * and it must never move while it is the one thing on screen.
+   */
+  children?: React.ReactNode
+}) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
       <SliceHeaderBandSkeleton />
@@ -191,6 +234,7 @@ export function SliceTabLoadingSkeleton() {
         style={{ backgroundColor: BLUEPRINT_THEME.viewportPad }}
       >
         <PendingCanvasLoadingSkeleton />
+        {children}
       </div>
     </div>
   )
@@ -255,6 +299,185 @@ export function SlicePresentationLoadingSkeleton() {
 }
 
 /** Slices list placeholder (drawer/sidebar) — mirrors PathsLoadingRows. */
+/**
+ * Row-label widths for the boot skeleton. Not decoration: a column of
+ * identical bars reads as a progress meter, a ragged one reads as a list.
+ */
+const PHASE_SKELETON_ROWS = [
+  '5.5rem',
+  '6rem',
+  '5.25rem',
+  '5rem',
+  '5.75rem',
+  '9rem',
+] as const
+const SESSION_TODAY_SKELETON_ROWS = ['6rem'] as const
+const SESSION_EARLIER_SKELETON_ROWS = [
+  '11rem',
+  '6rem',
+  '10rem',
+  '6rem',
+  '6rem',
+] as const
+
+/**
+ * One collapsible nav section — header plus rows — at the real component's
+ * measured geometry, so nothing moves when the boot layer lifts.
+ *
+ * The numbers are `SidebarNav`'s: a 29px header (a 16px chevron slot at
+ * `pl-1`, then the title's line box), and 32px rows whose label starts 24px
+ * in, past the chevron column. Both the phases nav and the agent's session
+ * groups are built from this same section, which is why one shape serves
+ * both — the old hand-drawn placeholder matched neither.
+ */
+function BootNavSectionSkeleton({ rows }: { rows: readonly string[] }) {
+  return (
+    <div>
+      <div className="flex h-[29px] items-center gap-1 px-1">
+        <Skeleton className="size-4 shrink-0 rounded-sm" />
+        <Skeleton className="h-2.5 w-12" />
+      </div>
+      <div className="flex flex-col gap-0.5 pb-1">
+        {rows.map((width, index) => (
+          <div key={index} className="flex h-8 items-center pl-6">
+            <Skeleton className="h-4 rounded-sm" style={{ width }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** A rail icon: the 16px glyph, centred in its real hit area. */
+function BootRailIconSkeleton({ hit }: { hit: string }) {
+  return (
+    <div className={cn('flex shrink-0 items-center justify-center', hit)}>
+      <Skeleton className="size-4 rounded-sm" />
+    </div>
+  )
+}
+
+/**
+ * The whole sidebar while the canvas stages behind its loading bar.
+ *
+ * An OVERLAY, not a per-section placeholder. The sidebar used to skeleton
+ * only its two row lists, which left the rail's icons, the PHASES and
+ * SESSIONS headers, the section chevrons and every control painted and
+ * live over a screen that was still loading — a half-built panel beside a
+ * progress bar. And because each list ran its own swap, the two halves
+ * resolved on their own clocks. One opaque layer over the real sidebar
+ * fixes both by construction: everything behind it is covered, and it
+ * lifts in a single fade, so every part of the sidebar resolves on exactly
+ * the same beat as the canvas's first layer.
+ *
+ * Every box here is the real component's, measured: the rail's paddings and
+ * its 24/36/28px hit areas, `SidebarContent`'s `px-2 pt-1 pb-1`, the dock's
+ * 24px grab bar and 36px sessions header, and the dock's own height ratio.
+ * A skeleton at invented proportions makes the swap read as a jump, which
+ * is exactly what the first cut of this did.
+ *
+ * The three regions carry the shell's entrance rungs (see EditorShell), so
+ * the skeleton itself arrives as a ladder: rail, panel, dock.
+ */
+export function EditorSidebarBootSkeleton({
+  showAgent,
+  dockRatio,
+}: {
+  /** Whether the agent dock has a region in this sidebar. */
+  showAgent: boolean
+  /** The dock's share of the panel column, so the seam lands where it will. */
+  dockRatio: number
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-row" aria-hidden>
+      <div
+        data-shell-entrance-part="rail"
+        className={cn(
+          'flex h-full shrink-0 flex-col items-center gap-1',
+          'border-r border-muted px-1.5 py-2',
+          EDITOR_RAIL_WIDTH_CLASS,
+        )}
+      >
+        <BootRailIconSkeleton hit="size-6" />
+        <div className="my-0.5 h-px w-6 shrink-0 bg-border/60" />
+        <BootRailIconSkeleton hit="size-9" />
+        <BootRailIconSkeleton hit="size-9" />
+        <div className="flex-1" />
+        {showAgent ? <BootRailIconSkeleton hit="size-9" /> : null}
+        <div className="my-0.5 h-px w-6 shrink-0 bg-border/60" />
+        <BootRailIconSkeleton hit="size-7" />
+        <BootRailIconSkeleton hit="size-9" />
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          data-shell-entrance-part="panel"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pt-1 pb-1"
+        >
+          <BootNavSectionSkeleton rows={PHASE_SKELETON_ROWS} />
+        </div>
+
+        {showAgent ? (
+          <>
+            {/* AgentDockDivider's own 4px, then the dock at its real share. */}
+            <div className="h-1 shrink-0" />
+            <div
+              data-shell-entrance-part="agent"
+              className="flex min-h-0 shrink-0 flex-col overflow-hidden border-t border-muted"
+              style={{ height: `${dockRatio * 100}%` }}
+            >
+              {/* Grab bar: grip, title, close. */}
+              <div className="flex h-6 shrink-0 items-center gap-1 border-b border-muted pl-1.5 pr-2">
+                <Skeleton className="size-3 shrink-0 rounded-sm" />
+                <Skeleton className="h-2.5 w-10" />
+                <div className="flex-1" />
+                <div className="flex size-6 shrink-0 items-center justify-center">
+                  <Skeleton className="size-3 rounded-sm" />
+                </div>
+              </div>
+              {/* Sessions header: title, filter, new. */}
+              <div className="flex h-9 shrink-0 items-center gap-1 px-2">
+                <Skeleton className="ml-1 h-2.5 w-12" />
+                <div className="flex-1" />
+                <div className="flex size-6 shrink-0 items-center justify-center">
+                  <Skeleton className="size-3.5 rounded-sm" />
+                </div>
+                <div className="flex size-6 shrink-0 items-center justify-center">
+                  <Skeleton className="size-3.5 rounded-sm" />
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden px-2 pb-2">
+                <BootNavSectionSkeleton rows={SESSION_TODAY_SKELETON_ROWS} />
+                <BootNavSectionSkeleton rows={SESSION_EARLIER_SKELETON_ROWS} />
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The agent panel's session list while it hydrates.
+ *
+ * Extracted from AgentPanel so it can go through `DeferredSkeleton` on the
+ * shared boot session like every other sidebar surface: the list used to be
+ * a bare `hydrating ? … : …` ternary, which meant it painted its rows the
+ * moment the DB merge landed regardless of what the rest of the screen was
+ * doing.
+ */
+export function AgentSessionsLoadingSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 pl-6 pr-2 pt-2" aria-hidden>
+      <Skeleton className="h-3.5 w-40" />
+      <Skeleton className="h-3.5 w-28" />
+      <Skeleton className="h-3.5 w-36" />
+      <Skeleton className="h-3.5 w-32" />
+    </div>
+  )
+}
+
 export function SliceListLoadingSkeleton() {
   return (
     <div className="flex flex-col gap-0.5 px-2" aria-hidden>
@@ -282,7 +505,7 @@ export function SlideNavLoadingSkeleton({
             style={{ width: `${72 + ((i * 11) % 28)}%` }}
           />
           {i % 2 === 0 ? (
-            <div className="ml-3 flex flex-col gap-1 border-l border-border/50 pl-2">
+            <div className="ml-3 flex flex-col gap-1 border-l border-muted pl-2">
               <Skeleton className="h-6 w-[85%] rounded-md" />
               <Skeleton className="h-6 w-[70%] rounded-md" />
             </div>

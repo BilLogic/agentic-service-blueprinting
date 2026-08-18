@@ -466,7 +466,7 @@ function PresentationFilmstrip({
                           // size-10 squares, exactly the raw buttons' hit area.
                           'size-10 shrink-0 rounded-md border font-mono text-xs font-semibold tabular-nums',
                           active
-                            ? 'border-foreground bg-foreground text-background hover:bg-foreground hover:text-background dark:hover:bg-foreground'
+                            ? 'border-foreground bg-foreground text-contrast hover:bg-foreground hover:text-contrast dark:hover:bg-foreground'
                             : 'border-border bg-muted text-muted-foreground hover:bg-accent hover:text-foreground dark:hover:bg-accent',
                           !cell && 'border-dashed opacity-60',
                         )}

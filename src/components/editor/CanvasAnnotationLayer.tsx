@@ -219,8 +219,8 @@ function ColorSwatch({
         className={cn(
           'relative size-6 shrink-0 rounded-full border transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
           empty
-            ? 'border-border bg-[linear-gradient(45deg,#d4d4d8_25%,transparent_25%,transparent_75%,#d4d4d8_75%),linear-gradient(45deg,#d4d4d8_25%,#fafafa_25%,#fafafa_75%,#d4d4d8_75%)] bg-[length:6px_6px] bg-[position:0_0,3px_3px]'
-            : 'border-black/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]',
+            ? 'swatch-empty-light border-border'
+            : 'hairline-border-annotation-plate border-annotation-plate',
           selected && 'scale-110 ring-2 ring-foreground/80 ring-offset-1',
         )}
         style={empty ? undefined : { backgroundColor: color }}
@@ -229,7 +229,7 @@ function ColorSwatch({
           <Check
             className={cn(
               'absolute inset-0 m-auto size-3 stroke-[2.5]',
-              empty || isLight ? 'text-neutral-800' : 'text-white',
+              empty || isLight ? 'text-annotation-plate-foreground' : 'text-white',
             )}
             aria-hidden
           />
@@ -329,7 +329,7 @@ const SHAPE_TOOLBAR_ICON_BUTTON_CLASS =
   'flex size-8 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
 
 const SHAPE_TOOLBAR_MENU_CLASS =
-  'border-0 bg-neutral-900 text-white shadow-floating ring-1 ring-white/10'
+  'border-0 bg-annotation-chrome text-white shadow-floating ring-1 ring-white/10'
 
 const SHAPE_TOOLBAR_ITEM_CLASS =
   'gap-2 text-white focus:bg-white/10 focus:text-white data-[highlighted]:bg-white/10 data-[highlighted]:text-white'
@@ -340,7 +340,8 @@ function ShapeToolbarDivider() {
 
 /**
  * `IconTooltip` on this file's own dark plane. These bars float over the
- * canvas in neutral-900, so the popup and its arrow (`**:` selectors) are
+ * canvas on the frozen `annotation-chrome` surface, so the popup and its
+ * arrow (`**:` selectors) are
  * repainted to match — the one place in the app that overrides the tooltip
  * surface, and the reason `IconTooltip` takes a className at all.
  */
@@ -356,7 +357,7 @@ function ShapeToolbarTooltip({
       label={label}
       side="top"
       sideOffset={8}
-      className="rounded-md bg-neutral-900 px-2.5 py-1.5 font-medium text-white shadow-floating **:!bg-neutral-900 **:!fill-neutral-900"
+      className="rounded-md bg-annotation-chrome px-2.5 py-1.5 font-medium text-white shadow-floating **:!bg-annotation-chrome **:!fill-annotation-chrome"
     >
       {children}
     </IconTooltip>
@@ -385,7 +386,7 @@ function ShapeStyleBar({
     <div
       data-annotation-editable=""
       data-annotation-chrome=""
-      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-neutral-900 px-1.5 shadow-floating"
+      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-annotation-chrome px-1.5 shadow-floating"
       style={chromeAnchorStyle(shape.x, shape.y, shape.width, zoom)}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.preventDefault()}
@@ -441,8 +442,7 @@ function ShapeStyleBar({
             <span
               className={cn(
                 'size-4 rounded-full border border-white/30',
-                !fillPreview &&
-                  'bg-[linear-gradient(45deg,#a3a3a3_25%,transparent_25%,transparent_75%,#a3a3a3_75%),linear-gradient(45deg,#a3a3a3_25%,#404040_25%,#404040_75%,#a3a3a3_75%)] bg-[length:6px_6px] bg-[position:0_0,3px_3px]',
+                !fillPreview && 'swatch-empty-dark',
               )}
               style={fillPreview ? { backgroundColor: fillPreview } : undefined}
               aria-hidden
@@ -611,7 +611,7 @@ function StickyStyleBar({
     <div
       data-annotation-editable=""
       data-annotation-chrome=""
-      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-neutral-900 px-1.5 shadow-floating"
+      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-annotation-chrome px-1.5 shadow-floating"
       style={chromeAnchorStyle(sticky.x, sticky.y, sticky.width, zoom)}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.preventDefault()}
@@ -780,7 +780,7 @@ function TextStyleBar({
     <div
       data-annotation-editable=""
       data-annotation-chrome=""
-      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-neutral-900 px-1.5 shadow-floating"
+      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-annotation-chrome px-1.5 shadow-floating"
       style={chromeAnchorStyle(text.x, text.y, width, zoom)}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.preventDefault()}
@@ -1147,7 +1147,7 @@ function StickyAnnotationNode({
           canInteract ? 'pointer-events-auto' : 'pointer-events-none',
           showChrome
             ? 'border-2 border-annotation-selected'
-            : 'border border-black/15',
+            : 'border border-annotation-plate',
           canDrag && !editing && 'cursor-grab active:cursor-grabbing',
         )}
         style={{
@@ -1181,7 +1181,7 @@ function StickyAnnotationNode({
           placeholder="Sticky note…"
           readOnly={!editing}
           className={cn(
-            'size-full resize-none border-0 font-sans leading-snug text-neutral-900 outline-none placeholder:text-neutral-900/45',
+            'size-full resize-none border-0 font-sans leading-snug text-annotation-plate-foreground outline-none placeholder:text-annotation-plate-foreground/45',
             editing || selected
               ? 'pointer-events-auto cursor-text'
               : 'pointer-events-none cursor-inherit',
@@ -1305,7 +1305,7 @@ function TextAnnotationNode({
               annotation.strike && 'line-through',
               showChrome
                 ? 'border-0 bg-transparent text-inherit'
-                : 'rounded border border-border/60 bg-card/95 text-foreground shadow-sm focus:border-ring',
+                : 'rounded border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
             )}
             style={{ fontSize: annotation.fontSize }}
             onChange={(e) => onUpdate({ text: e.target.value })}

@@ -151,8 +151,13 @@ const TABLIST_FADE_RIGHT =
  * Tab strip above the shell main area. Holds Home plus the slice / present
  * tabs (the base blueprint view is not a tab), and always renders: Home lives
  * here rather than in the sidebar so it never competes with the disclosure
- * chevrons, and so the way back to the overview stays in the same place
- * whether the sidebar is open, collapsed or presenting.
+ * chevrons, and so the way back stays in the same place whether the sidebar
+ * is open, collapsed or presenting.
+ *
+ * Home routes to the COVER page, not to the overview canvas. The workspace
+ * tab beside it already activates the base view, and the overview is one
+ * Escape (or double-click) away once you are on it — so Home was the second
+ * control for a destination that already had one, and the cover had none.
  *
  * It also resolves URL deep links once the slice list settles (pending intent
  * — never applied before the data exists), seeds the base view from one, and
@@ -160,14 +165,14 @@ const TABLIST_FADE_RIGHT =
  * "Delete slice…" for writers.
  */
 export function TabStrip({
-  isOverview,
+  isCover,
   onHome,
   onBase,
 }: {
-  /** The overview canvas is the current view, with no tab covering it. */
-  isOverview: boolean
+  /** The cover page is the current view. */
+  isCover: boolean
   onHome: () => void
-  /** Activate the base blueprint view (deactivate any tab). */
+  /** Activate the base blueprint view — entering the workspace from the cover. */
   onBase: () => void
 }) {
   const {
@@ -282,6 +287,8 @@ export function TabStrip({
     availableSlices(slices).map((slice) => [slice.id, slice.title]),
   )
 
+  const workspaceActive = activeKey === null && !isCover
+
   const labelFor = (tab: TabDescriptor): string => {
     switch (tab.kind) {
       case 'slice':
@@ -301,7 +308,7 @@ export function TabStrip({
             start exactly where the sidebar panel starts. */}
         <div className="flex w-12 shrink-0 items-center justify-center">
           <HomeNavButton
-            isActive={isOverview}
+            isActive={isCover}
             onClick={onHome}
             size="icon-sm"
           />
@@ -326,11 +333,16 @@ export function TabStrip({
           {/* The workspace is a PERMANENT tab, not a title: same chrome as
               slice tabs, active whenever no tab covers the base view, and —
               deliberately — no close button. It replaces the old clickable
-              heading, which read as a bug. */}
+              heading, which read as a bug.
+
+              Not active on the cover page, even though no tab covers that
+              either: Home owns the cover now, and two lit controls for two
+              different screens is the bug this whole strip exists to avoid.
+              Clicking it from the cover enters the workspace. */}
           <div
             className={cn(
               'flex shrink-0 items-center rounded-md border text-xs',
-              activeKey === null
+              workspaceActive
                 ? 'border-border bg-background shadow-sm'
                 : 'border-transparent hover:bg-accent',
             )}
@@ -338,12 +350,17 @@ export function TabStrip({
             <button
               type="button"
               role="tab"
-              aria-selected={activeKey === null}
+              aria-selected={workspaceActive}
+              // Tabbable on `activeKey`, not on `workspaceActive`. A roving
+              // tablist needs exactly one stop, and on the cover page NO tab
+              // is active — so keying focus to the visual state left the whole
+              // strip unreachable by keyboard (and its arrow-key handler with
+              // it). Selection and focusability are different questions.
               tabIndex={activeKey === null ? 0 : -1}
               onClick={onBase}
               className={cn(
                 'max-w-56 truncate px-2.5 py-1 font-medium',
-                activeKey === null ? 'text-foreground' : 'text-muted-foreground',
+                workspaceActive ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
               {ORG_NAME}

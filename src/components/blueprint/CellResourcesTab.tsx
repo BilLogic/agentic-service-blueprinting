@@ -80,7 +80,7 @@ export function CellResourcesTab({ cellId, links, figmaUrl }: CellResourcesTabPr
   return (
     <ul className="flex flex-col">
       {rows.filter((row) => safeExternalHref(row.url)).map((row) => (
-        <li key={row.id} className="border-b border-border/35 last:border-0">
+        <li key={row.id} className="border-b border-muted last:border-0">
           <a
             href={safeExternalHref(row.url) ?? undefined}
             target="_blank"

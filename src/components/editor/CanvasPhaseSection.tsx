@@ -159,7 +159,25 @@ export function CanvasPhaseSection({
     <section
       ref={sectionRef}
       className={cn(
-        'relative inline-flex w-max flex-col items-start transition-[opacity,filter] duration-(--motion-fade) ease-out',
+        /*
+          OPACITY only, on the camera's own duration and ease.
+
+          This transitioned `filter` too — desaturating an entire phase
+          section, hundreds of cells, every frame of the ease, at the exact
+          moment the camera is animating the whole board. That is a
+          full-board repaint per frame competing with the navigation, and it
+          was the residual stutter. `blueprint.css` already documents the
+          rule for the slice dim ("transitioning a filter repaints every
+          non-member cell on every frame"); the navigation dim simply never
+          learned it. Saturation now lands on frame one, under a section
+          still near-opaque, so the pair still reads as one event.
+
+          Duration and ease are the CAMERA's, not the fade's: the dim and
+          the fly-to are one gesture, and a 200 ms dim under a 420 ms glide
+          finished less than halfway through the move.
+        */
+        'relative inline-flex w-max flex-col items-start',
+        'transition-opacity duration-(--motion-camera) ease-structural',
         dimmed &&
           'opacity-30 saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
         navigable &&

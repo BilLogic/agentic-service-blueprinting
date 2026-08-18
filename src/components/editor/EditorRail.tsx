@@ -103,7 +103,7 @@ export function EditorRail({
       <nav
         aria-label="Sidebar surfaces"
         className={cn(
-          'flex h-full shrink-0 flex-col items-center gap-1 border-r border-border/60 px-1.5 py-2',
+          'flex h-full shrink-0 flex-col items-center gap-1 border-r border-muted px-1.5 py-2',
           EDITOR_RAIL_WIDTH_CLASS,
         )}
         data-editor-rail

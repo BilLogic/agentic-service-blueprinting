@@ -1,27 +1,100 @@
-/* Standalone utilities. Mirrors packages/config/css/utilities.css. */
+/*
+ * Standalone utilities. Mirrors packages/config/css/utilities.css.
+ *
+ * `@utility`, not `@layer utilities { .class }` — Tailwind v4's own form, and
+ * the one Supabase's file uses for all nineteen of its entries. It is not
+ * cosmetic: an `@utility` participates in the variant machinery (so
+ * `hover:`/`dark:` compose with it) and sorts with the rest of the utility
+ * layer, where a hand-written class in the layer gets neither.
+ *
+ * Plain `@layer utilities` rules below are the ones that are NOT utilities —
+ * a rule keyed on a document-level attribute has no class to modify.
+ */
 
-@layer utilities {
+@utility delayed-appear {
   /* Loading indicators that hold back ~300ms so fast loads show nothing. */
-  .delayed-appear {
-    opacity: 0;
-    animation: delayed-appear 200ms ease-out 300ms forwards;
-  }
+  opacity: 0;
+  animation: delayed-appear var(--motion-fade) ease-out 300ms forwards;
+}
 
-  @keyframes delayed-appear {
-    to {
-      opacity: 1;
-    }
+@keyframes delayed-appear {
+  to {
+    opacity: 1;
   }
+}
 
-  .blueprint-scroll {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .blueprint-scroll::-webkit-scrollbar {
+@utility blueprint-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
     display: none;
   }
+}
 
+/*
+ * A 1px inset line in any registered colour token.
+ *
+ * Supabase ships `highlight-*` (inset top edge) and `subhighlight-*` (inset
+ * bottom edge) built exactly this way — `box-shadow: inset … --value(--color-*)`
+ * — and no all-four-edges sibling, which is the one a plate needs. Same
+ * mechanism, so a call site never writes `shadow-[inset_0_0_0_1px_var(…)]`
+ * and never writes a raw colour into a shadow.
+ */
+@utility hairline-* {
+  box-shadow: inset 0 0 0 1px --value(--color-*);
+}
+
+/*
+ * "No fill" swatches — the transparency checkerboard.
+ *
+ * A texture, not a role, so it has no semantic token and lived as four raw
+ * hex literals inline in a 200-character class string (once per plane). Built
+ * off the designers' literal `--colors-*` export instead: mode-invariant by
+ * construction, which is what a swatch drawn on annotation chrome needs.
+ *
+ * Two fixed utilities rather than one functional `swatch-empty-*`: a checker
+ * needs TWO colours and `--value(--color-*)` passes one. Supabase's own
+ * two-tone textures (`bg-grid-*`) take a single colour for the same reason.
+ */
+:root {
+  /* The checker geometry, once. Each utility supplies the two stops. */
+  --swatch-checker-image: linear-gradient(
+      45deg,
+      var(--swatch-checker-a) 25%,
+      transparent 25%,
+      transparent 75%,
+      var(--swatch-checker-a) 75%
+    ),
+    linear-gradient(
+      45deg,
+      var(--swatch-checker-a) 25%,
+      var(--swatch-checker-b) 25%,
+      var(--swatch-checker-b) 75%,
+      var(--swatch-checker-a) 75%
+    );
+}
+
+@utility swatch-empty-light {
+  --swatch-checker-a: hsl(var(--colors-gray-light-800));
+  --swatch-checker-b: hsl(var(--colors-gray-light-100));
+  background-image: var(--swatch-checker-image);
+  background-size: 6px 6px;
+  background-position:
+    0 0,
+    3px 3px;
+}
+
+@utility swatch-empty-dark {
+  --swatch-checker-a: hsl(var(--colors-gray-dark-1100));
+  --swatch-checker-b: hsl(var(--colors-gray-dark-800));
+  background-image: var(--swatch-checker-image);
+  background-size: 6px 6px;
+  background-position:
+    0 0,
+    3px 3px;
+}
+
+@layer utilities {
   /* Hide the system cursor while the pen tool is active. */
   html[data-pen-tool] [data-zoom-pan-viewport],
   html[data-pen-tool] [data-canvas-annotation-layer],

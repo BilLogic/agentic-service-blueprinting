@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { PathDescriptionTooltip } from '@/components/blueprint/PathDescriptionTooltip'
 import { Badge } from '@/components/ui/badge'
-import { PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
+import { getBlueprintFillStyle, PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
 import { PATH_TYPE_LABELS, PATH_TYPE_SHORT_LABELS } from '@/lib/pathTypeTheme'
 import { cn } from '@/lib/utils'
 import type { PathType } from '@/types/database'
@@ -33,8 +33,9 @@ export function PathTypeBadge({
       side={side}
     >
       <Badge
+        data-blueprint-fill
         className={cn(
-          'h-auto max-w-full cursor-default border-transparent px-2.5 py-1 font-semibold text-white',
+          'h-auto max-w-full cursor-default border-transparent px-2.5 py-1 font-semibold',
           compact ? 'text-xs' : 'text-sm',
           className,
         )}
@@ -44,7 +45,10 @@ export function PathTypeBadge({
         // going through `getPathColor` would need a name, and a fabricated one
         // misses PATH_COLOR_REGISTRY and falls into the hash branch for
         // `alternative` and `named`.
-        style={{ backgroundColor: PATH_TYPE_COLORS[pathType], ...style }}
+        style={{
+          ...getBlueprintFillStyle(PATH_TYPE_COLORS[pathType]),
+          ...style,
+        }}
       >
         <span className="truncate leading-none tracking-tight">{label}</span>
       </Badge>

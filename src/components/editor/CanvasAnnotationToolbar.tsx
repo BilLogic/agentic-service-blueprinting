@@ -176,7 +176,7 @@ function DrawSubpanel() {
       data-annotation-toolbar=""
       role="toolbar"
       aria-label="Pen and eraser options"
-      className="pointer-events-none flex items-center gap-0.5 rounded-full border border-border/70 bg-card px-1.5 py-1 shadow-md"
+      className="pointer-events-none flex items-center gap-0.5 rounded-full border border-muted bg-card px-1.5 py-1 shadow-md"
     >
       {DRAW_SUBPANEL_TOOLS.map((item) => (
         <ToolButton
@@ -230,7 +230,7 @@ function DrawSubpanel() {
               disabled={penOptionsDisabled}
               onClick={() => setPenColor(swatch)}
               className={cn(
-                'tap-target-24 size-4 shrink-0 rounded-full border border-black/10 transition-transform hover:scale-110',
+                'tap-target-24 size-4 shrink-0 rounded-full border border-annotation-plate transition-transform hover:scale-110',
                 penColor.toUpperCase() === swatch.toUpperCase() &&
                   !penOptionsDisabled &&
                   'ring-2 ring-primary ring-offset-1',
@@ -292,7 +292,7 @@ export function CanvasAnnotationToolbar() {
 
       <div
         data-annotation-toolbar=""
-        className="flex items-center gap-0.5 rounded-full border border-border/70 bg-card/95 px-1.5 py-1 shadow-md backdrop-blur-sm"
+        className="flex items-center gap-0.5 rounded-full border border-muted bg-card/95 px-1.5 py-1 shadow-md backdrop-blur-sm"
       >
         {/* Select holds the first slot in both modes — the one tool that means
             "do nothing special" should never move under the cursor. */}
@@ -456,7 +456,7 @@ function CanvasModeSwitch({
                 // Square icon-only slots, Figma's bottom bar exactly — and a
                 // hairline ring on the raised square so it holds its edge
                 // against the toolbar's busier neighbours.
-                className="size-6 p-0 aria-pressed:ring-1 aria-pressed:ring-black/5"
+                className="size-6 p-0 aria-pressed:ring-1 aria-pressed:ring-border-annotation-plate"
               >
                 <Icon className="size-3.5" aria-hidden />
               </SegmentedControlItem>
@@ -466,7 +466,7 @@ function CanvasModeSwitch({
             {/* The mode's name first, because that is what the icon stands
                 for and the reason the tooltip was waited for. */}
             <span className="font-medium">{label}</span>
-            <span className="text-background/70">
+            <span className="text-contrast/70">
               {value === 'view'
                 ? 'Read, navigate and mark up'
                 : 'Author — cells become selectable'}

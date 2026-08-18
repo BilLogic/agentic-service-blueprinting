@@ -32,13 +32,14 @@ export function DevTierOverrideBadge() {
   const { devSimulation } = useSupabase()
   if (!devSimulation.on) return null
   return (
-    <span
+    <Badge
+      variant="warning"
       data-dev-tier-badge={devSimulation.tier}
-      className="shrink-0 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-3xs font-medium text-violet-1100"
+      className="h-auto shrink-0 px-1.5 py-0.5 text-3xs"
       title="Developer portal: the UI is simulating a tier. Your real account is unchanged, and the server still decides every write."
     >
       simulating {devSimulation.tier}
-    </span>
+    </Badge>
   )
 }
 
@@ -91,7 +92,7 @@ export function DevPortalSection() {
 
   return (
     <div className="flex flex-col gap-2" data-dev-portal>
-      <div className="my-0.5 border-t border-border/60" />
+      <div className="my-0.5 border-t border-muted" />
 
       <div className="flex items-center gap-1">
         <p className="text-xs font-medium text-foreground">For developers</p>

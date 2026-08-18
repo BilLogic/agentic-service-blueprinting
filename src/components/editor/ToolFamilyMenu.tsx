@@ -88,7 +88,7 @@ export function ToolFamilyMenu({
       className={cn(
         'size-7 shrink-0 p-0 text-muted-foreground hover:text-foreground',
         inFamily
-          ? 'rounded-md text-foreground hover:bg-violet-100'
+          ? 'rounded-md text-foreground hover:bg-muted'
           : 'rounded-r-none',
       )}
     >
@@ -101,7 +101,7 @@ export function ToolFamilyMenu({
       <div
         className={cn(
           'pointer-events-auto flex shrink-0 items-center rounded-md',
-          inFamily && 'bg-violet-100',
+          inFamily && 'bg-muted',
         )}
       >
         <Tooltip>
@@ -136,7 +136,7 @@ export function ToolFamilyMenu({
         )}
       </div>
 
-      <DropdownMenuContent align="center" side="top" className="min-w-40 text-xs">
+      <DropdownMenuContent align="center" side="top" className="min-w-40">
         {tools.map((tool) => {
           const Icon = tool.icon
           return (

@@ -242,6 +242,74 @@
    * blueprint.css always set, so the fallback in
    * `var(--ring-blueprint-cell-soft, var(--ring))` is unreachable. `--ring` only ever sits on app chrome.
    */
+  /*
+   * The soft rung, below `--border`.
+   *
+   * Supabase names border strengths and never modifies them inline — across
+   * 1972 of their components there are 101 `border-default`, 76
+   * `border-strong`, 66 `border-overlay`, 56 `border-muted`, 43
+   * `border-control-hover` and about ten alpha modifiers in total. We had the
+   * inverse: `border-border` plus 43 hand-tuned alphas (`/35`, `/50`, `/60`,
+   * `/70`, `/80`), each one a strength nobody could name.
+   *
+   * They all wanted the same two things — a divider softer than the default
+   * edge, or the default edge itself. This is the softer one, in their formula
+   * shape and tuned to land on the alpha the 28 `/60` sites already had, so
+   * the dominant case is pixel-identical.
+   */
+  /*
+   * The edge of a floating surface — popover, dialog, menu, card, drawer.
+   *
+   * Ten design-system components were drawing this as `ring-1
+   * ring-foreground/10`: the right geometry (a ring does not grow the box) with
+   * a hand-rolled alpha for a strength that has a name upstream, where
+   * `border-overlay` is the third-most-used border role (66 call sites).
+   * Formula verbatim from their semantic.css — stronger than `--border`,
+   * because an edge that separates a raised plane from the page has more work
+   * to do than a divider inside one.
+   */
+  --border-overlay: oklch(
+    from var(--foreground) l calc(c * 0.5) h /
+      calc(4% + 34% * var(--contrast-border))
+  );
+
+  --border-muted: oklch(
+    from var(--foreground) l calc(c * 0.54) h /
+      calc(1.2% + 12% * var(--contrast-border))
+  );
+
+  /*
+   * Ported from Supabase's semantic.css, whose formulas these are verbatim —
+   * the ladder went `--border` → `--input` here and stopped, so anything
+   * needing a hover border or a control plate had to invent an alpha.
+   *
+   * Shared interactive border for control chrome (inputs, selects, default /
+   * dashed Button, radio cards). Pairs with rest `--input`; stronger than a
+   * plain border, softer than a full muted-foreground stroke.
+   */
+  --border-control-hover: oklch(
+    from var(--foreground) l calc(c * 0.5) h /
+      calc(12% + 58% * var(--contrast-border))
+  );
+
+  /*
+   * Control plates, as alpha overlays relative to the LOCAL plate (page,
+   * sheet, card) rather than solids off `--background`: a page-relative solid
+   * sits between canvas and popover and vanishes against the light theme's
+   * near-white ceiling.
+   *
+   * `--field` is a soft always-sink via black; `--field-alpha` is a theme
+   * input (dark.css digs harder, 0.12 vs 0.015) because one absolute opacity
+   * is obvious on a light plate and invisible on a dark one. `--control-raised`
+   * is the opposite — a soft white lift, so a select reads button-like instead
+   * of as a stark well. Borders carry most of the hover chrome.
+   */
+  --field-alpha: 0.015;
+  --field: oklch(0 0 0 / var(--field-alpha));
+  --control-raised: oklch(1 0 0 / calc(var(--muted-alpha) * 0.65));
+  /* Alias, exactly as upstream: one name for the plate, one for its role. */
+  --control: var(--control-raised);
+
   --ring: oklch(from var(--primary) var(--ring-lightness) calc(c * 1.3) h);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
@@ -383,6 +451,40 @@
    * value here — so this stays put when the presentation stage flips to `.dark`.
    */
   --annotation-selected: var(--color-blue-900);
+
+  /*
+   * Annotation chrome — the one surface that does NOT follow the theme.
+   *
+   * The shape/text/sticky toolbars are dark bars in both modes (Figma's
+   * vocabulary): they float over a board whose cells are already carrying
+   * every hue in the palette, so a bar that flipped with the theme would
+   * read as one more coloured plane. That put them on Tailwind's *default*
+   * `neutral` ramp — a ramp this design system does not contain, reached for
+   * precisely because every semantic surface token inverts.
+   *
+   * Named here instead, off the designers' literal `--colors-*` export in
+   * global.css, which is mode-invariant by construction. Values land on the
+   * Tailwind steps they replace, so this was a rename: gray-dark-300
+   * (13.7% L) for neutral-900, gray-dark-100 for the note ink.
+   *
+   * NOT `--foreground-contrast`, which is Supabase's ink for an inverted
+   * fill: that one inverts with the theme by design, so it would turn this
+   * ink light-on-light in dark mode.
+   */
+  --background-annotation-chrome: hsl(var(--colors-gray-dark-300));
+  /* Ink for a note drawn ON the board, not on the dark bar — the note's own
+     fill comes from the annotation palette, so its ink is fixed too. */
+  --foreground-annotation-plate: hsl(var(--colors-gray-dark-100));
+  /*
+   * The hairline separating a note from the board under it.
+   *
+   * A member of the border ladder above, and stated the way Supabase states
+   * every one of theirs — an alpha, not a colour, so it works over any fill
+   * it lands on. Not derived from `--foreground` like `--border` / `--input`
+   * are: those track the theme, and this line has to hold against a note
+   * whose fill does not.
+   */
+  --border-annotation-plate: hsl(var(--colors-black) / 0.1);
 
   /* --- Charts (neutral ramp along the tone span) ----------------------- */
   --chart-1: oklch(

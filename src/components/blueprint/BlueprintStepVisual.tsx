@@ -104,7 +104,7 @@ export function BlueprintStepVisual({
     return (
       <div
         className={cn(
-          'flex w-full items-stretch justify-center gap-2 rounded-xl p-3 ring-1 ring-border/60',
+          'flex w-full items-stretch justify-center gap-2 rounded-xl p-3 ring-1 ring-border-muted',
           'h-[min(16rem,35vh)] min-h-[12.5rem]',
           className,
         )}

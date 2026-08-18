@@ -3,6 +3,10 @@ import { resolve } from 'node:path'
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import {
+  CANVAS_REVEAL_ARROWS,
+  CANVAS_REVEAL_DONE,
+} from '@/contexts/canvasRevealContext'
+import {
   MOTION_CAMERA_MS,
   MOTION_FADE_MS,
   MOTION_FADE_STAGGER_MS,
@@ -64,4 +68,45 @@ test('every keyframe animation is disabled under reduced motion', () => {
       `${sel} is covered by the reduced-motion block`,
     )
   }
+})
+
+/**
+ * The reveal's stage ladder exists in TypeScript (canvasRevealContext) and
+ * in blueprint.css as `[data-canvas-reveal='N']`. Nothing else links them:
+ * inserting a stage means correct edits in both, and three-of-four correct
+ * edits leave the suite green while a layer reveals on the wrong beat.
+ */
+const blueprintCss = readFileSync(
+  resolve(__dirname, '../styles/blueprint.css'),
+  'utf-8',
+)
+
+test('reveal stages match between canvasRevealContext and blueprint.css', () => {
+  const stages = [
+    ...blueprintCss.matchAll(/\[data-canvas-reveal='(\d+)'\]/g),
+  ].map((match) => Number(match[1]))
+  assert.ok(stages.length > 0, 'blueprint.css keys rules on reveal stages')
+  // The attribute is removed at DONE, so the highest stage any rule can
+  // match is the last layer.
+  assert.equal(Math.max(...stages), CANVAS_REVEAL_ARROWS)
+  assert.equal(CANVAS_REVEAL_ARROWS + 1, CANVAS_REVEAL_DONE)
+})
+
+/**
+ * Each reveal beat runs inside the chain's per-stage watchdog. The beats are
+ * CSS (`--reveal-beat-*`, derived from `--motion-fade`); the watchdog is TS.
+ * If a beat ever grew past it, the watchdog would advance the chain out from
+ * under a layer still animating — and nothing else would notice.
+ */
+test('every reveal beat fits inside the stage watchdog', () => {
+  const beats = [
+    ...blueprintCss.matchAll(
+      /--reveal-beat-\d+:\s*(?:var\(--motion-fade\)|calc\(var\(--motion-fade\)\s*\*\s*([\d.]+)\))/g,
+    ),
+  ].map((match) => MOTION_FADE_MS * (match[1] ? Number(match[1]) : 1))
+  assert.equal(beats.length, 4, 'four beats, each derived from --motion-fade')
+  assert.ok(
+    Math.max(...beats) < MOTION_STRUCTURAL_MS * 2,
+    'longest beat must finish before the stage watchdog fires',
+  )
 })

@@ -35,7 +35,7 @@ export function MobilePathSelector({
       <span
         aria-label={`Path: ${active.name}`}
         className={cn(
-          'flex h-8 max-w-40 items-center rounded-full border border-border/60 bg-transparent',
+          'flex h-8 max-w-40 items-center rounded-full border border-muted bg-transparent',
           'px-2.5 text-xs text-muted-foreground',
         )}
       >

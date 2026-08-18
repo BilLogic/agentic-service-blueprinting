@@ -24,6 +24,11 @@ export function PhaseSectionFlowArrow({
       viewBox={`0 0 ${CONNECTOR_WIDTH} ${height}`}
       className="overflow-visible"
       data-phase-section-flow-arrow=""
+      // Joins the reveal's arrow layer (stage 4) — a connector between
+      // phases is a trigger line like any other, and it was surfacing
+      // during the structural stages, drawing lines to panels that had not
+      // arrived yet.
+      data-blueprint-arrows=""
       aria-hidden
     >
       <path

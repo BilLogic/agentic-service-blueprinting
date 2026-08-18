@@ -134,10 +134,10 @@ export function VisualWalkthroughModal() {
       {session ? (
         <DialogContent
           data-visual-walkthrough-modal=""
-          className="flex h-[min(85vh,36rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border/80 p-0 shadow-sm sm:max-w-5xl"
+          className="flex h-[min(85vh,36rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border p-0 shadow-sm sm:max-w-5xl"
           aria-label="Visual walkthrough"
         >
-          <DialogHeader className="shrink-0 flex-row items-center gap-2 border-b border-border/60 px-5 py-3.5 pr-14 text-left">
+          <DialogHeader className="shrink-0 flex-row items-center gap-2 border-b border-muted px-5 py-3.5 pr-14 text-left">
             <div className="min-w-0 flex-1">
               <DialogTitle className="sr-only">Visual walkthrough</DialogTitle>
               <DialogDescription className="sr-only">
@@ -217,7 +217,7 @@ export function VisualWalkthroughModal() {
             </Carousel>
           </div>
 
-          <DialogFooter className="shrink-0 justify-center gap-3 border-t border-border/60 px-5 py-3 sm:justify-center">
+          <DialogFooter className="shrink-0 justify-center gap-3 border-t border-muted px-5 py-3 sm:justify-center">
             <div
               className="flex items-center gap-1.5"
               role="tablist"

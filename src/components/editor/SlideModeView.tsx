@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { SlideNavLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
+import {
+  DeferredSkeleton,
+  EDITOR_BOOT_HOLD_KEY,
+} from '@/components/ui/deferred-skeleton'
 import { useEditor } from '@/contexts/EditorContext'
 import { NavRowAction, NavSection } from '@/components/editor/SidebarNav'
 import { CreatePhaseDialog } from '@/components/editor/CreatePhaseDialog'
@@ -111,9 +115,23 @@ export function SlideModeSidebarNav({
                 </AlertDescription>
               </Alert>
             )}
-            {slidesLoading ? (
-              <SlideNavLoadingSkeleton />
-            ) : (
+            {/*
+              Same loading contract as every other surface, rather than a
+              bare ternary: the 250 ms hold means a warm query shows no
+              skeleton at all, and a cold one fades its rows in instead of
+              popping them.
+
+              This covers a SLOW QUERY only. The boot case — entering the
+              workspace from the cover, where this used to slide in already
+              full of rows while the canvas was still behind its loading
+              bar — belongs to the sidebar's boot layer in EditorShell,
+              which covers this whole panel and lifts with the canvas.
+            */}
+            <DeferredSkeleton
+              loading={slidesLoading}
+              holdKey={EDITOR_BOOT_HOLD_KEY}
+              skeleton={<SlideNavLoadingSkeleton />}
+            >
               <SlideNav
                 slides={slides}
                 selectedPhaseId={selectedPhaseId}
@@ -126,7 +144,7 @@ export function SlideModeSidebarNav({
                 onSetExpanded={setPhaseExpanded}
                 onAddScenario={authoring ? setScenarioPhaseId : undefined}
               />
-            )}
+            </DeferredSkeleton>
           </NavSection>
 
           {/* The PATHS section moved to the canvas top bar as the compact

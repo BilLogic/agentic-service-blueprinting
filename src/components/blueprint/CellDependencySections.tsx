@@ -89,7 +89,7 @@ function DependencyRow({
   const clearPreview = () => detail?.setPreviewHover(null)
 
   return (
-    <li className="group border-b border-border/35 last:border-0">
+    <li className="group border-b border-muted last:border-0">
       <div className="flex flex-col gap-0.5 px-2 py-1.5 text-xs leading-snug transition-colors group-hover:bg-accent group-focus-within:bg-accent">
         <button
           type="button"

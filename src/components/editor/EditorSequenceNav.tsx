@@ -65,12 +65,17 @@ function SequenceNavPreview({
       data-canvas-nav=""
       className={cn(
         'pointer-events-auto absolute bottom-3 z-30 h-auto max-w-40 gap-1.5 py-1.5',
-        // Frozen board palette, not app chrome: the nav floats over the
-        // always-light canvas, so it stays white in dark mode and its hover
-        // stays on the neutral ramp — `hover:bg-accent` would flip dark here.
-        'border-border/80 bg-white text-foreground shadow-sm',
-        'hover:bg-neutral-100 hover:text-foreground',
-        'dark:bg-white dark:text-foreground dark:hover:bg-neutral-200',
+        /*
+          Ordinary elevated chrome. This used to pin itself white in both
+          themes ("the nav floats over the always-light canvas") on Tailwind's
+          default `neutral` ramp — a premise that has been stale since the
+          board moved onto the semantic tokens and started following the
+          theme with the rest of the app (see `blueprintTheme.ts`, and its
+          deleted `canvasDark` / `labelRailDark` keys). A white pill on the
+          dark board was the visible cost.
+        */
+        'border-border bg-card text-foreground shadow-sm',
+        'hover:bg-accent hover:text-foreground',
         isPrev ? 'left-3' : 'right-3',
       )}
     >

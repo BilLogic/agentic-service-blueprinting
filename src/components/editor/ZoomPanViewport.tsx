@@ -1,5 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
-import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
+import {
+  SEMANTIC_ZOOM_THRESHOLD,
+  useZoomPanViewport,
+} from '@/hooks/useZoomPanViewport'
 import { CanvasAnnotationLayer } from '@/components/editor/CanvasAnnotationLayer'
 import { CanvasAnnotationToolbar } from '@/components/editor/CanvasAnnotationToolbar'
 import { CanvasSelectionProvider } from '@/components/editor/CanvasSelectionProvider'
@@ -20,6 +23,8 @@ type ZoomPanViewportProps = {
   panIgnoreSelector?: string
   fitSelector?: string
   maxFitZoom?: number
+  minFitZoom?: number
+  semanticZoomThreshold?: number
   fitMargin?: number
   fitTopInset?: number
   fitBottomInset?: number
@@ -52,6 +57,8 @@ function ZoomPanViewportInner({
   panIgnoreSelector,
   fitSelector,
   maxFitZoom,
+  minFitZoom,
+  semanticZoomThreshold = SEMANTIC_ZOOM_THRESHOLD,
   fitMargin,
   fitTopInset,
   fitBottomInset,
@@ -79,6 +86,8 @@ function ZoomPanViewportInner({
     panEnabled: !isAnnotating,
     fitSelector,
     maxFitZoom,
+    minFitZoom,
+    semanticZoomThreshold,
     fitMargin,
     fitTopInset,
     fitBottomInset,
@@ -120,8 +129,10 @@ function ZoomPanViewportInner({
       className={cn('relative min-h-0 flex-1', className)}
       data-zoom-pan-root
       // Cell-corner overlays (slice sequence badges) scale with the canvas;
-      // below this zoom they are illegible specks, so CSS hides them.
-      data-canvas-zoom-far={zoom < 0.25 ? '' : undefined}
+      // below this zoom they are illegible specks, so CSS hides them. Same
+      // threshold the cells' own text uses — one "too far out to read"
+      // line, not two that disagree by surface.
+      data-canvas-zoom-far={zoom < semanticZoomThreshold ? '' : undefined}
     >
       <div
         ref={containerRef}

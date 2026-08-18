@@ -14,7 +14,7 @@ export function AgentTrialBanner() {
   return (
     <div
       data-agent-trial-banner
-      className="shrink-0 border-b border-border/60 bg-muted/40 px-3 py-1.5 text-2xs leading-snug text-muted-foreground"
+      className="shrink-0 border-b border-muted bg-muted/40 px-3 py-1.5 text-2xs leading-snug text-muted-foreground"
     >
       <span className="font-medium text-foreground">Sample data, read-only.</span>{' '}
       Connect a database to author.{' '}

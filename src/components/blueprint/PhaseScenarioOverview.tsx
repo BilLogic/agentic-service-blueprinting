@@ -61,7 +61,21 @@ function PhaseScenarioConnector({ width }: { width: number }) {
       style={{ width }}
       aria-hidden
     >
-      <svg width={width} height={24} className="overflow-visible">
+      {/*
+        The reveal's arrow layer (stage 4). This connector was the one
+        untagged link on the board: it draws BETWEEN scenario panels, so it
+        sits in the phase's flex row rather than inside either panel's
+        blueprint, and it was surfacing with the lanes at stage 1 — an arrow
+        pointing at two panels that had not arrived yet. Not a z-order
+        problem: the reveal is opacity-driven, and this element simply never
+        carried the attribute the reveal keys on.
+      */}
+      <svg
+        data-blueprint-arrows=""
+        width={width}
+        height={24}
+        className="overflow-visible"
+      >
         <defs>
           <marker
             id={markerId}

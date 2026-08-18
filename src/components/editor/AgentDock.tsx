@@ -61,7 +61,7 @@ function AgentDockChrome({
         className={cn(
           // pr-2 + a size-6 close box below: the ✕ shares one right edge
           // with the sessions header's `+` (icon-xs, size-6, in a px-2 row).
-          'group/agent-grab flex h-6 shrink-0 cursor-grab touch-none items-center gap-1 border-b border-border/60 pl-1.5 pr-2 active:cursor-grabbing',
+          'group/agent-grab flex h-6 shrink-0 cursor-grab touch-none items-center gap-1 border-b border-muted pl-1.5 pr-2 active:cursor-grabbing',
           floating ? 'bg-muted/40' : 'bg-transparent',
         )}
       >
@@ -282,7 +282,7 @@ export function AgentDock({ visible }: { visible: boolean }) {
     return (
       <div
         ref={windowRef}
-        className="flex min-h-0 flex-col border-t border-border/60"
+        className="flex min-h-0 flex-col border-t border-muted"
         style={{ height: `${placement.dockRatio * 100}%` }}
         data-agent-dock="docked"
       >

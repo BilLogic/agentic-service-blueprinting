@@ -14,6 +14,20 @@ const badgeVariants = cva(
           "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
         destructive:
           "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        /*
+          Supabase's own badge formula for this role, verbatim from their
+          `shadcn/ui/badge.tsx`: `bg-warning/10 text-warning-600 border
+          border-warning-500`. Added because two call sites were hand-rolling a
+          tinted amber chip straight off the PRIMITIVE amber ramp — a tier-1
+          leak that also had to restate its own dark mode.
+
+          The ink is step 600, not `text-warning`. That is the whole trick: the
+          mid role colour (oklch L 0.68) on its own 10% wash measures ~2.3:1,
+          while step 600 measures ~3.4:1 — still under AA for body copy, and
+          what Supabase ships. It replaces a chip that measured ~1.9:1.
+        */
+        warning:
+          "border border-warning-500 bg-warning/10 text-warning-600 focus-visible:ring-warning-500/40 [a]:hover:bg-warning/20",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:

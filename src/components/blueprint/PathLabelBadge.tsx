@@ -43,8 +43,10 @@ export function PathLabelBadge({
 
   const badge = (
     <Badge
+      // Fill AND its derived ink come from this one attribute (blueprint.css).
+      data-blueprint-fill
       className={cn(
-        'max-w-full cursor-default border-transparent font-semibold text-white',
+        'max-w-full cursor-default border-transparent font-semibold',
         onRemove ? 'gap-0.5 pl-1' : 'gap-1',
         compact ? 'h-5 px-2 py-0.5 text-xs' : 'h-auto px-2.5 py-1 text-sm',
         className,
@@ -59,8 +61,10 @@ export function PathLabelBadge({
           type="button"
           className={cn(
             'inline-flex size-3 shrink-0 items-center justify-center rounded-sm',
-            'text-white transition-colors hover:bg-white/20',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70',
+            // Inherit the badge's paired ink, and wash the hover with it —
+            // a fixed white/20 is invisible on the light fills dark mode uses.
+            'transition-colors hover:bg-current/20',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current/70',
           )}
           aria-label={`Remove ${name}`}
           onClick={handleRemove}

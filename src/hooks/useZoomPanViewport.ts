@@ -12,7 +12,7 @@ import {
   pulseBlueprintCells,
   type FocusCellsResult,
 } from '@/lib/canvasFocusCells'
-import { prefersReducedMotion } from '@/lib/motion'
+import { MOTION_CAMERA_MS, prefersReducedMotion } from '@/lib/motion'
 import {
   BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN,
   BLUEPRINT_VIEWPORT_FIT_TOP_INSET,
@@ -40,6 +40,16 @@ type UseZoomPanViewportOptions = {
   fitSelector?: string
   /** Cap for programmatic fit zoom (overview stays ≤1; focus can zoom in). */
   maxFitZoom?: number
+  /**
+   * Floor for programmatic fit zoom. A board wider than the viewport fits
+   * by zooming out, and past a point that framing is worthless — on a
+   * phone the whole-phase fit lands around 0.2, below the semantic tier,
+   * so the "default view" arrived as a wall of grey blocks. With a floor
+   * the camera stops zooming out at a legible scale and anchors the
+   * target's top-left corner instead: the reader starts at the beginning
+   * of the journey and pans, rather than at an unreadable everything.
+   */
+  minFitZoom?: number
   /** Uniform margin around the fit target (px). */
   fitMargin?: number
   /** Extra top inset on top of fitMargin (px). */
@@ -56,6 +66,13 @@ type UseZoomPanViewportOptions = {
   refitDebounceMs?: number
   /** Never react to container/content resizes (viewport owns its own framing). */
   suppressResizeRefit?: boolean
+  /**
+   * Zoom below which cells drop their text for the blocks tier. Lower it
+   * on high-density screens: the phone was hiding every blurb the moment
+   * the reader pinched out past 0.25, which reads as a board with nothing
+   * on it rather than as a map. See `SEMANTIC_ZOOM_THRESHOLD`.
+   */
+  semanticZoomThreshold?: number
 }
 
 /**
@@ -72,7 +89,14 @@ type UseZoomPanViewportOptions = {
 // cell text was still legible enough to skim, which read as content being
 // withheld — users saw "skeletons" on a loaded board. Below 0.25 the text
 // really is smudge.
-const SEMANTIC_ZOOM_THRESHOLD = 0.25
+//
+// A DEFAULT, not a constant: what counts as smudge depends on the screen.
+// A phone renders at 3 device pixels per CSS pixel, so 12px type at 0.15
+// zoom still lands ~5 device pixels tall — enough to tell a full cell from
+// an empty one and to catch a word — where the same scale on a 1x desktop
+// display is genuinely nothing. Surfaces pass their own; see
+// `semanticZoomThreshold`.
+export const SEMANTIC_ZOOM_THRESHOLD = 0.25
 
 /** How far a pending touch may wander before it stops being a tap and
  * becomes a board drag. */
@@ -85,31 +109,66 @@ const TOUCH_PAN_SLOP = 10
 // stays inside its own row's gap — 16× reached into the previous phase's
 // panels, which broke the badge's group affiliation exactly when zoomed
 // out far enough to need it.
+// Floored at 1 so the badge never shrinks below its authored size — above
+// zoom 0.95 the boost is inert and the badge scales with the board like
+// everything else.
 const semanticLabelBoost = (zoom: number) =>
-  Math.min(10, 0.95 / Math.max(zoom, 0.01))
+  Math.min(10, Math.max(1, 0.95 / Math.max(zoom, 0.01)))
 
 function applyTransformToElement(
   el: HTMLElement,
   pan: { x: number; y: number },
   zoom: number,
+  semanticThreshold: number,
+  /**
+   * Zoom the TIER decision reads — the destination zoom during an animated
+   * fit, the live zoom everywhere else. Deciding the tier from the live zoom
+   * meant a navigation ease crossed the threshold mid-flight, and the
+   * hundreds of cell-content fades that flip triggers all began on that
+   * mid-ease frame — a style/paint burst in the busiest stretch of the
+   * animation, felt as the glide glitching. Stamped from the destination,
+   * the flip (and its fade) fires on frame one, where the ease is slowest
+   * and the change reads as the response to the click.
+   */
+  tierZoom: number = zoom,
 ) {
   el.style.transform = `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`
-  const blocks = zoom < SEMANTIC_ZOOM_THRESHOLD
+  const blocks = tierZoom < semanticThreshold
   const wasBlocks = el.dataset.semanticTier === 'blocks'
   if (blocks !== wasBlocks) {
     if (blocks) el.dataset.semanticTier = 'blocks'
     else delete el.dataset.semanticTier
   }
-  // The boost only exists inside the blocks tier — outside it, skip the
-  // style write entirely so a mouse pan stays a single transform write per
-  // frame ("never cost a React render" extends to redundant style churn).
-  if (blocks) {
-    el.style.setProperty(
-      '--semantic-label-boost',
-      semanticLabelBoost(zoom).toFixed(3),
-    )
-  } else if (wasBlocks) {
-    el.style.removeProperty('--semantic-label-boost')
+  /*
+    Stamped at EVERY zoom, not only inside the blocks tier. When the boost
+    existed only past the tier boundary, crossing 0.25 mid-ease snapped the
+    badge from board-scale straight to a 3.8x counter-scale in one frame — a
+    label lunging at the reader in the middle of the zoom. Continuous, the
+    badge tracks the camera: it rides the board down to 95% of its authored
+    size, then holds that on-screen size as the zoom drops further, every
+    frame of the ease.
+
+    Written ONTO THE BADGES, and only when it changes. It used to be one
+    custom property on this element — the board's root — which reads as one
+    cheap style write and is not: custom properties inherit, that one is
+    read by a rule deep in the subtree, so every write re-resolved computed
+    style for thousands of elements. Once per frame of every pinch and every
+    navigation ease, on top of the raster the changing scale already costs.
+    The rule now reads an inline `scale` on the dozen badges that consume
+    it, and the string guard means a pan (constant zoom) writes nothing at
+    all.
+
+    The `querySelectorAll` is deliberate rather than cached: it runs only on
+    frames where the zoom actually changed, an attribute selector takes the
+    engine's fast path, and a cache would need an invalidation signal the
+    board does not currently offer. Sub-millisecond against a full-subtree
+    style recalc measured in tens.
+  */
+  const nextBoost = semanticLabelBoost(zoom).toFixed(3)
+  if (nextBoost !== el.dataset.semanticLabelBoost) {
+    el.dataset.semanticLabelBoost = nextBoost
+    const badges = el.querySelectorAll<HTMLElement>('[data-phase-title-badge]')
+    for (const badge of badges) badge.style.scale = nextBoost
   }
 }
 
@@ -203,14 +262,16 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     panEnabled = true,
     fitSelector = CANVAS_FIT_SELECTOR,
     maxFitZoom = 1,
+    minFitZoom = MIN_ZOOM,
     fitMargin = BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN,
     fitTopInset = BLUEPRINT_VIEWPORT_FIT_TOP_INSET,
     fitBottomInset = 0,
     animateFit = false,
-    fitDurationMs = 420,
+    fitDurationMs = MOTION_CAMERA_MS,
     refitOnResize = true,
     refitDebounceMs = 200,
     suppressResizeRefit = false,
+    semanticZoomThreshold = SEMANTIC_ZOOM_THRESHOLD,
   } = options
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -221,6 +282,17 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
   const transformRef = useRef({ pan: { x: 0, y: 0 }, zoom: 1 })
   const pendingFitRef = useRef(false)
+  /**
+   * Whether the fit `pendingFitRef` still owes should ANIMATE. The resize
+   * observer used to run an owed fit with `animate: false` unconditionally —
+   * correct for a first mount (nothing to ease from), wrong for a navigation:
+   * a phase→scenario click changes layout in the same commit that schedules
+   * the fit, so the observer fired before the two-frame rAF path did and the
+   * 420ms ease was silently replaced with a hard cut. That was the "super
+   * abrupt" navigation. The intent is captured where the fit is scheduled;
+   * every executor honours it.
+   */
+  const pendingFitAnimateRef = useRef(false)
   const userAdjustedViewRef = useRef(false)
   const fitAnimationRef = useRef<number | null>(null)
   /**
@@ -229,6 +301,33 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * (pan 0,0 / zoom 1) that every fresh mount starts at.
    */
   const hasFittedRef = useRef(false)
+  /**
+   * Latest semantic threshold, so the post-fit badge re-stamp can read it
+   * without making `fitToView` depend on (and re-create itself for) a prop
+   * that changes nothing about how a fit is computed.
+   */
+  const semanticThresholdRef = useRef(semanticZoomThreshold)
+  useEffect(() => {
+    semanticThresholdRef.current = semanticZoomThreshold
+  }, [semanticZoomThreshold])
+  /**
+   * The content's layout size when the camera last framed it.
+   *
+   * A fit measures whatever has laid out by the time it runs — two frames
+   * after the resetKey changes, with a 150 ms backstop — and a six-phase board
+   * with images is still growing then. The resize path afterwards only ever
+   * re-CENTRED, which preserves the zoom that intermediate size produced, so
+   * nothing corrected it: measured 0.1498 against a correct fit of 0.0617,
+   * i.e. the board rendering 2.4x too big for the viewport, at a different
+   * wrong value on every load. That is the "random landing".
+   *
+   * Comparing against this tells a *late layout* (refit) apart from a *window
+   * drag* (recentre, because the zoom is the reader's). Layout size, not
+   * `getBoundingClientRect`, so the camera's own transform cannot feed back.
+   */
+  const fittedContentSizeRef = useRef<{ width: number; height: number } | null>(
+    null,
+  )
   /**
    * Latest `animateFit`, kept in a ref so `fitToView` stays identity-stable
    * across renders — otherwise flipping the prop would re-run the fit
@@ -253,18 +352,26 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       nextPan: { x: number; y: number },
       nextZoom: number,
       syncReact = false,
+      /** See `applyTransformToElement` — animated fits pass their target. */
+      tierZoom?: number,
     ) => {
       transformRef.current = { pan: nextPan, zoom: nextZoom }
       const el = contentRef.current
       if (el) {
-        applyTransformToElement(el, nextPan, nextZoom)
+        applyTransformToElement(
+          el,
+          nextPan,
+          nextZoom,
+          semanticZoomThreshold,
+          tierZoom,
+        )
       }
       if (syncReact) {
         setPan(nextPan)
         setZoom(nextZoom)
       }
     },
-    [],
+    [semanticZoomThreshold],
   )
 
   const animateTransform = useCallback(
@@ -283,6 +390,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           },
           from.zoom + (nextZoom - from.zoom) * e,
           t === 1,
+          // The tier commits to the destination from frame one.
+          nextZoom,
         )
         if (t < 1) {
           fitAnimationRef.current = requestAnimationFrame(step)
@@ -372,26 +481,63 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       const fitHeight = Math.max(el.clientHeight - insets.top - insets.bottom, 1)
       if (bounds.width <= 0 || bounds.height <= 0) return null
 
-      const nextZoom =
-        forcedZoom ??
-        clampZoom(
-          Math.min(fitWidth / bounds.width, fitHeight / bounds.height, maxFitZoom),
-        )
+      const trueFit = Math.min(
+        fitWidth / bounds.width,
+        fitHeight / bounds.height,
+        maxFitZoom,
+      )
+      const nextZoom = forcedZoom ?? clampZoom(Math.max(trueFit, minFitZoom))
+      /**
+       * The floor won: the target cannot fit at the floor, and the camera
+       * is sitting at it. Stated in terms of the floor rather than "does it
+       * overflow" so a resize recentring (`forcedZoom`) at the same floored
+       * zoom keeps the same framing — while a reader who has zoomed PAST
+       * the floor overflows for their own reasons and keeps centring.
+       */
+      const floored = trueFit < minFitZoom && nextZoom <= minFitZoom + 1e-6
 
       const targetCenterX = bounds.left + bounds.width / 2
       const targetCenterY = bounds.top + bounds.height / 2
       const viewportCenterX = insets.left + fitWidth / 2
       const viewportCenterY = insets.top + fitHeight / 2
 
+      /*
+        Centre what fits; anchor what the FLOOR pushed off screen.
+
+        An axis the target overflows has no meaningful centre — centring it
+        drops the camera in the middle of the board with both edges off
+        screen. Anchoring that axis to the viewport's inset corner starts
+        the reader at the target's beginning instead.
+
+        Only when the floor caused the overflow. A viewport with no floor
+        configured (every desktop canvas) never reaches this branch, and
+        neither does a reader who has zoomed in past it — that overflow is
+        their own doing, and yanking their view to a corner on the next
+        resize would be the surprise.
+      */
+      const overflowsX = floored && bounds.width * nextZoom > fitWidth + 0.5
+      const overflowsY = floored && bounds.height * nextZoom > fitHeight + 0.5
+
       return {
         pan: {
-          x: viewportCenterX - targetCenterX * nextZoom,
-          y: viewportCenterY - targetCenterY * nextZoom,
+          x: overflowsX
+            ? insets.left - bounds.left * nextZoom
+            : viewportCenterX - targetCenterX * nextZoom,
+          y: overflowsY
+            ? insets.top - bounds.top * nextZoom
+            : viewportCenterY - targetCenterY * nextZoom,
         },
         zoom: nextZoom,
       }
     },
-    [fitBottomInset, fitMargin, fitSelector, fitTopInset, maxFitZoom],
+    [
+      fitBottomInset,
+      fitMargin,
+      fitSelector,
+      fitTopInset,
+      maxFitZoom,
+      minFitZoom,
+    ],
   )
 
   /** Frames the fit target. Returns false when geometry wasn't measurable. */
@@ -406,6 +552,35 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         animateTransform(next.pan, next.zoom)
       } else {
         commitTransform(next.pan, next.zoom, true)
+      }
+      const content = contentRef.current
+      if (content) {
+        fittedContentSizeRef.current = {
+          width: content.offsetWidth,
+          height: content.offsetHeight,
+        }
+        /*
+          Re-stamp the badges one frame on, unconditionally.
+
+          The boost write is guarded on the VALUE changing — right for a pan,
+          wrong across a fit: the badges mount WITH the board, after the write
+          that set this zoom's value, so they would keep the scale they were
+          born with (1) for as long as the camera then held still. Which is
+          the counter-scale silently not happening, and nothing on screen
+          says so. One frame later the board has laid out and the forced
+          re-stamp finds them.
+        */
+        requestAnimationFrame(() => {
+          const el = contentRef.current
+          if (!el) return
+          delete el.dataset.semanticLabelBoost
+          applyTransformToElement(
+            el,
+            transformRef.current.pan,
+            transformRef.current.zoom,
+            semanticThresholdRef.current,
+          )
+        })
       }
       return true
     },
@@ -460,6 +635,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     // Captured now, not read at fit time: a one-shot skip flag may be
     // cleared between scheduling this fit and the frame it runs on.
     const animate = animateFitRef.current
+    pendingFitAnimateRef.current = animate
     let frame1 = 0
     let frame2 = 0
     const runFit = () => runPendingFit(animate)
@@ -521,7 +697,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       // policy question. This is how Edit mode ended up permanently at
       // identity zoom over an empty corner.
       if (pendingFitRef.current) {
-        runPendingFit(false)
+        runPendingFit(pendingFitAnimateRef.current)
         return
       }
 
@@ -530,14 +706,71 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         // the chrome window closes before a 200 ms debounce would elapse.
         if (suppressResizeRefit || isCanvasResizeRefitSuppressed()) return
         window.clearTimeout(debounceTimer)
-        // Re-center only. A resize is not a navigation, so it must not
-        // discard the zoom level the viewport is currently at.
-        debounceTimer = window.setTimeout(recenterToView, refitDebounceMs)
+        /*
+          The content laid out further than the fit ever saw, on a camera the
+          reader has not touched: re-FIT, do not re-centre. Re-centring keeps
+          the zoom, and here the zoom is exactly what is wrong.
+
+          Anything else — a window drag, chrome opening — still re-centres: a
+          resize is not a navigation, and discarding the zoom the reader chose
+          is the bug that branch exists to prevent.
+        */
+        const content = contentRef.current
+        const fitted = fittedContentSizeRef.current
+        const grewSinceFit =
+          content !== null &&
+          fitted !== null &&
+          (Math.abs(content.offsetWidth - fitted.width) > 1 ||
+            Math.abs(content.offsetHeight - fitted.height) > 1)
+        /*
+          NEVER while a fit ease is still in flight.
+
+          A scenario focus grows its content mid-navigation, so this
+          correction used to land ~200ms into the 420ms navigation ease,
+          cancel it, and start a fresh ease from a moving camera — an
+          easeInOut restart begins at zero velocity, so the visible result is
+          the zoom braking hard partway through and setting off again. That
+          is the "abrupt" phase→scenario transition. Waiting for the ease to
+          land turns the pair into two clean glides in sequence.
+        */
+        /*
+          Bounded. The poll waits out a fit ease, and a backgrounded tab
+          stops `requestAnimationFrame` — so `fitAnimationRef` never clears
+          and an unbounded poll spins at the throttled rate until unmount.
+          Past the deadline the correction matters more than the ease it
+          would interrupt, so it goes through.
+        */
+        let refitPolls = 0
+        const maxRefitPolls = Math.ceil((fitDurationMs * 2) / 50)
+        const refitWhenIdle = () => {
+          if (fitAnimationRef.current !== null && refitPolls < maxRefitPolls) {
+            refitPolls += 1
+            // Never snap mid-ease — wait the glide out on a short poll.
+            debounceTimer = window.setTimeout(refitWhenIdle, 50)
+            return
+          }
+          /*
+            INSTANT, never animated. An animated correction was the visible
+            "zoom out from a focused view" on landing: the swap fit framed a
+            board that had not finished laying out, and the correction then
+            GLIDED to the true fit in front of the reader — a camera move
+            nobody asked for. The landing choreography holds everything but
+            the bare frames invisible until layout has been quiet, so this
+            snap happens against structure only; and a navigation whose
+            content grew corrects in the same frame its ease lands rather
+            than starting a second glide.
+          */
+          fitToView({ animate: false })
+        }
+        debounceTimer = window.setTimeout(
+          grewSinceFit ? refitWhenIdle : recenterToView,
+          refitDebounceMs,
+        )
         return
       }
       // Not a refit: the fit scheduled by the last resetKey is still
       // waiting on content that has only now laid out.
-      runPendingFit(false)
+      runPendingFit(pendingFitAnimateRef.current)
     }
 
     const observer = new ResizeObserver(onResize)
@@ -551,6 +784,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     }
   }, [
     fitToView,
+    fitDurationMs,
     recenterToView,
     resetKey,
     refitOnResize,
@@ -661,6 +895,39 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     return () =>
       window.removeEventListener('wheel', onWheel, { capture: true })
   }, [cancelFitAnimation, commitTransform, syncZoomToReact, zoomAtPoint])
+
+  /**
+   * Safari's own pinch, swallowed.
+   *
+   * WebKit ships non-standard `gesture*` events alongside the pointer
+   * stream, and on iOS an unprevented `gesturestart` is a *page* zoom —
+   * the visual viewport rescaling the whole app while the canvas sits
+   * still, which is what "pinch does not work" looks like on a phone.
+   * `touch-action: none` does not cover them. Preventing the default is
+   * the entire job: the pinch itself is already handled by the pointer map
+   * below, so these listeners must never also apply a transform.
+   *
+   * Bound on the window in capture and filtered by containment, for the
+   * same three reasons the wheel listener is (see above) — chiefly that a
+   * listener attached from a ref read once may never attach at all.
+   */
+  useEffect(() => {
+    const swallow = (event: Event) => {
+      const el = containerRef.current
+      const target = event.target
+      if (!el || !(target instanceof Node) || !el.contains(target)) return
+      event.preventDefault()
+    }
+    const options = { passive: false, capture: true } as const
+    window.addEventListener('gesturestart', swallow, options)
+    window.addEventListener('gesturechange', swallow, options)
+    window.addEventListener('gestureend', swallow, options)
+    return () => {
+      window.removeEventListener('gesturestart', swallow, { capture: true })
+      window.removeEventListener('gesturechange', swallow, { capture: true })
+      window.removeEventListener('gestureend', swallow, { capture: true })
+    }
+  }, [])
 
   /**
    * Touch gestures ride the SAME Pointer Events as mouse pan — no parallel

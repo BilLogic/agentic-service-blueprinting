@@ -21,12 +21,37 @@ import { cn } from '@/lib/utils'
  * `role="status"` + the sr-only "Loading…", and a second announcement per
  * tick would be noise.
  */
+/**
+ * Highest percent a surface has shown, by progress key.
+ *
+ * A bar can outlive the component that draws it: the slice waterfall hands
+ * one from its own phases to the embedded canvas, and each phase is a
+ * separate mount. The two measure different things — the phases count
+ * stages, the canvas counts settled requests — so the handoff could drop
+ * the bar from 50% to ~20% as the denominator changed under it. The
+ * instance-local creep cannot help, because the instance is exactly what
+ * changed.
+ *
+ * A floor per surface makes the bar monotonic across the whole chain. It is
+ * not a lie: every value it holds was truthfully reported by some stage of
+ * the same load, and a bar that runs backwards is the less honest of the
+ * two readings.
+ */
+const progressFloors = new Map<string, number>()
+
 export function CanvasLoadProgress({
   stages,
   units,
   className,
+  progressKey,
 }: {
   stages: CanvasLoadStage[]
+  /**
+   * Surface identity, shared by every mount of one load (the skeleton's
+   * `holdKey`). Makes the bar monotonic across a hand-off; omit for a
+   * self-contained surface.
+   */
+  progressKey?: string
   /**
    * Real work-unit counts (settled requests / issued requests). When given,
    * the bar's width comes from these instead of the coarse stage fraction —
@@ -35,9 +60,12 @@ export function CanvasLoadProgress({
   units?: { loaded: number; total: number }
   className?: string
 }) {
-  const percent = units
+  const measured = units
     ? loadProgressUnitPercent(units.loaded, units.total)
     : loadProgressPercent(stages)
+  const floor = progressKey ? (progressFloors.get(progressKey) ?? 0) : 0
+  const percent = Math.max(measured, floor)
+  if (progressKey) progressFloors.set(progressKey, percent)
   const complete = percent >= 100
 
   /*
@@ -52,6 +80,14 @@ export function CanvasLoadProgress({
   useEffect(() => {
     percentRef.current = percent
   }, [percent])
+  // The floor is per LOAD, not per app lifetime: drop it when the bar
+  // completes so the next load of the same surface starts from zero.
+  useEffect(() => {
+    if (!complete || !progressKey) return
+    return () => {
+      progressFloors.delete(progressKey)
+    }
+  }, [complete, progressKey])
   const [creep, setCreep] = useState(0)
   useEffect(() => {
     if (complete) return
@@ -79,12 +115,12 @@ export function CanvasLoadProgress({
         className,
       )}
     >
-      <div className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-card/80">
+      <div className="flex size-10 items-center justify-center rounded-xl border border-muted bg-card/80">
         <Diamond className="size-4 text-muted-foreground" />
       </div>
       <div className="h-0.5 w-40 overflow-hidden rounded-full bg-border">
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-400 ease-out motion-reduce:transition-none"
+          className="h-full rounded-full bg-primary transition-[width] duration-(--motion-camera) ease-out motion-reduce:transition-none"
           style={{ width: `${display}%` }}
         />
       </div>

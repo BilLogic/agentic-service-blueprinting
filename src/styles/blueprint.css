@@ -66,7 +66,11 @@
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
     background-color: var(--color-slate-600);
     border-color: var(--color-slate-800);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    /* Tailwind's scale via @apply, not a hand-mixed rgba: this design system
+       registers no `--shadow-*` tokens (Supabase registers none either), so
+       the scale IS the vocabulary — and a hover rule keyed on data attributes
+       has no class list to put `shadow-md` in. */
+    @apply shadow-md;
     --background-blueprint-panel-label-rail: var(--color-slate-600);
     --background-blueprint-panel-canvas: var(--color-slate-300);
     --background-blueprint-panel-section: var(--color-slate-300);
@@ -100,7 +104,7 @@
   [data-slice-focus] [data-blueprint-cell-anchor][data-slice-member] {
     outline: 2px solid var(--ring-blueprint-cell, var(--ring));
     outline-offset: 1px;
-    box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+    @apply shadow-md;
   }
 
   /* While focused, non-member cells drop hard toward the canvas (the slice
@@ -158,14 +162,18 @@
 
   [data-blueprint-cell-emphasis='connected'] {
     position: relative;
-    box-shadow:
-      inset 0 0 0 1px
-        color-mix(
-          in srgb,
-          var(--ring-blueprint-cell-soft, var(--ring)) 42%,
-          transparent
-        ),
-      0 3px 8px rgb(0 0 0 / 0.1);
+    /*
+      `inset-ring` + `shadow`, not one hand-written box-shadow list: Tailwind
+      composes its ring / inset-ring / shadow layers into a single
+      `box-shadow`, so the token-derived ring and the elevation stay
+      independent instead of one raw list owning both.
+    */
+    @apply inset-ring shadow-sm;
+    --tw-inset-ring-color: color-mix(
+      in srgb,
+      var(--ring-blueprint-cell-soft, var(--ring)) 42%,
+      transparent
+    );
   }
 
   [data-blueprint-cell-emphasis='connected']::after {
@@ -195,7 +203,7 @@
     [data-phase-frame] {
     background-color: var(--color-slate-800);
     border-color: var(--color-slate-900);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    @apply shadow-md;
   }
 
   [data-canvas-phase-interactive]:hover:not([data-canvas-focus-active]):not(
@@ -472,6 +480,35 @@
   }
 
   /*
+   * A SOLID blueprint fill and the ink that pairs with it — path badges,
+   * divider tags, scenario title badges, the walkthrough pill.
+   *
+   * The ink is DERIVED from the fill, using Supabase's `--warning-foreground`
+   * formula verbatim: past L 0.62 it flips to near-black, below it to
+   * near-white, carrying 8% of the fill's chroma so it reads as tinted rather
+   * than stark. That is the whole point of a `*-foreground` pairing — the ink
+   * cannot be wrong for its fill, because it is a function of it.
+   *
+   * What this replaces: eight call sites writing `text-white`. Both the fill
+   * ramps and the ink flip with the theme, so in dark mode white sat on a
+   * BRIGHT fill — measured 2.22:1 on green-1100, 2.33:1 on orange-1100, and
+   * 1.17:1 on the divider tag's slate-1200. A hard-coded `--color-gray-100`
+   * would fix those numbers but keeps a second thing to remember; a
+   * derivation cannot drift from the fill it belongs to.
+   *
+   * Set the fill as the custom property, not as `background-color`, so the
+   * one rule owns both halves:
+   *   <span data-blueprint-fill style={{ '--background-blueprint-fill': fill }}>
+   */
+  [data-blueprint-fill] {
+    background-color: var(--background-blueprint-fill);
+    color: oklch(
+      from var(--background-blueprint-fill)
+        clamp(0.12, calc((0.62 - l) * 100), 0.99) calc(c * 0.08) h
+    );
+  }
+
+  /*
    * SEMANTIC ZOOM — the blocks tier. Below the threshold (stamped as
    * data-semantic-tier by the camera's transform writer, never by React)
    * cell text is smudge, so cells render as flat blocks and the phase
@@ -479,6 +516,15 @@
    * overview reads as a table of contents — journey length, density per
    * phase — instead of a shrunken page. The `scale` property composes
    * with the badge's inline translate, so no transform fight.
+   */
+  /*
+   * The tier flip is INSTANT — deliberately. A fade was tried and reverted:
+   * transitioning opacity on every cell's content meant ~700 simultaneous
+   * per-element animations launching inside a camera ease, and that style
+   * burst WAS a visible stutter. What actually removed the mid-zoom pop is
+   * the destination-tier stamping in `useZoomPanViewport`: an animated fit
+   * decides the tier from its TARGET zoom on frame one, so the flip lands
+   * with the click, in the ease's slowest frame — a response, not a glitch.
    */
   [data-semantic-tier='blocks'] [data-blueprint-cell] > * {
     visibility: hidden;
@@ -489,8 +535,28 @@
     border-color: transparent;
   }
 
-  [data-semantic-tier='blocks'] [data-phase-title-badge] {
-    scale: var(--semantic-label-boost, 1);
+  /*
+   * Not gated on the blocks tier: the boost variable is now continuous with
+   * zoom (stamped by the transform writer at every frame, inert at 1 above
+   * zoom 0.95), so gating the *rule* on the tier would reintroduce the very
+   * cliff the continuous value removes — the badge snapping to 3.8x the
+   * instant the tier flips. Ungated, the counter-scale tracks the ease
+   * frame-by-frame: dramatic nowhere, correct everywhere.
+   */
+  /*
+   * The scale is written by the transform writer ONTO THESE ELEMENTS, not
+   * inherited from an ancestor custom property.
+   *
+   * It was `scale: var(--semantic-label-boost, 1)` with the variable set on
+   * `[data-zoom-pan-content]` — the ancestor of the whole board. Custom
+   * properties inherit, and this one is genuinely read down here, so every
+   * write invalidated computed style for the entire subtree: thousands of
+   * elements re-resolving the cascade on EVERY frame of every pinch and
+   * every navigation ease, competing with the raster the changing
+   * `scale()` already forces. Writing to the dozen badges that actually
+   * consume it is the same picture at a fraction of the cost.
+   */
+  [data-zoom-pan-content] [data-phase-title-badge] {
     transform-origin: left bottom;
     /* The badge component's own transition-all animated this scale at the
        tier boundary — a visible "growing label" effect nobody asked for
@@ -507,5 +573,217 @@
       background-color: CanvasText;
       border-color: CanvasText;
     }
+  }
+}
+
+@layer utilities {
+  /*
+   * TOUCH: the canvas owns the gesture, so the OS must not.
+   *
+   * `touch-action: none` (set on the viewport in ZoomPanViewport) keeps the
+   * browser off the pointer stream, but it does not stop WebKit's *text*
+   * gestures. A finger that lands on a cell — every cell is text — starts a
+   * native selection drag, and the selection takes the stream: the board
+   * goes dead exactly where there is something to read, while a drag from
+   * empty board space pans fine. The callout menu on a long press is the
+   * same failure with a menu on top.
+   *
+   * Coarse pointers only. On a mouse the same rule would cost text
+   * selection inside cells for no gain — a mouse drag is already a pan
+   * there, and nothing about a cursor hijacks the pointer stream.
+   */
+  @media (pointer: coarse) {
+    [data-zoom-pan-viewport] {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      overscroll-behavior: contain;
+    }
+  }
+}
+
+@layer utilities {
+  /*
+   * PROGRESSIVE REVEAL — the landing choreography (ServiceOverviewView owns
+   * the staging and its stability gate; this is only what each stage hides).
+   *
+   * Stage 0 hides the BOARD ITSELF. This is the whole trick: content must
+   * mount to lay out, layout takes time to settle, and the camera cannot be
+   * right until it has — so the only way the reader never sees a camera
+   * adjustment is for nothing to be on screen while it works. The loading
+   * bar leaves, the canvas holds one quiet beat, and the reveal opens on a
+   * board whose framing is already final:
+   *
+   *   0  nothing — the camera's working room
+   *   1  phase frames + lane structure fade in
+   *   2  scenario panels rise in
+   *   3  cells fade in
+   *   4  trigger arrows fade in
+   *
+   * The attribute is REMOVED at stage 5, so none of this matches afterwards:
+   * the cells' own transition-property list and the panels' hover
+   * transitions both come back.
+   */
+  /*
+   * `--motion-micro` and a short-tailed ease for the LAYERS.
+   *
+   * The chain is event-driven: each layer opens when the one before it
+   * reports `transitionend`. That makes every duration here SERIAL, not
+   * parallel — the sequence costs the sum of its beats, so a per-layer
+   * number that looks modest in isolation is a quarter of the whole
+   * disclosure. At `--motion-fade` the four layers plus the board ran close
+   * to a second, which reads as a performance rather than a screen loading.
+   *
+   * The ease matters as much as the length. `--ease-structural` is a quint
+   * with a very long tail, so the final third of every layer crawled and
+   * the handoff landed late. `ease-out` ends decisively, which is what lets
+   * the next layer read as continuing the same gesture rather than starting
+   * a new one — so each beat carries it.
+   *
+   * The EASE-IN is one level up, in the cadence: see `--reveal-beat-*`.
+   */
+  /*
+   * `[data-blueprint-cell]` as well as `[data-blueprint-cell-anchor]`.
+   *
+   * The two are not the same set and neither contains the other. The
+   * anchor is on `BlueprintCellButton`, but the tech lane's `pills` variant
+   * (`ServiceBlueprintGrid`) is a cell CONTAINER — `data-blueprint-cell`,
+   * no anchor — and 135 of this board's 663 cells are those. Keyed on the
+   * anchor alone they were never staged, so they surfaced at stage 2 with
+   * the scenario panel while the other 528 waited for stage 3: "some cells
+   * get disclosed as the scenario container gets displayed". The reverse
+   * gap exists too — a cell button with no id carries the anchor and no
+   * `data-blueprint-cell` — so it takes both, not a swap.
+   *
+   * Deliberately NOT solved by adding the anchor to the pills container:
+   * `data-blueprint-cell-anchor` is also the marquee's hit-test selector
+   * and the column handles' geometry probe, and widening it there would
+   * change selection behaviour to fix an animation.
+   */
+  [data-canvas-reveal]
+    :is(
+      [data-phase-scenario-panel],
+      [data-blueprint-cell-anchor],
+      [data-blueprint-cell],
+      [data-blueprint-arrows]
+    ) {
+    transition:
+      opacity var(--reveal-beat-1) ease-out,
+      transform var(--reveal-beat-1) ease-out;
+  }
+
+  /*
+   * THE CADENCE IS THE EASE-IN — the four beats are sub-steps of one
+   * motion, not four motions.
+   *
+   * Easing each beat individually says nothing about the sequence: four
+   * identical curves in a row is a metronome however they are shaped. The
+   * acceleration has to live in the RELATIONSHIP between the beats, so each
+   * one runs shorter than the last and the disclosure gathers pace the way
+   * a single ease-in does — a deliberate opening, then structure arriving
+   * faster and faster until the arrows land almost as one gesture with the
+   * cells.
+   *
+   * Geometric, at 0.8 per step, so the shape is one number rather than four
+   * tuned constants, and every beat derives from `--motion-fade` — no raw
+   * durations to drift against the motion vocabulary. 200 / 160 / 128 /
+   * 102 ms, ~590 ms end to end, all of it well inside the chain's
+   * watchdog (2 × `--motion-structural`).
+   */
+  [data-canvas-reveal] {
+    --reveal-beat-1: var(--motion-fade);
+    --reveal-beat-2: calc(var(--motion-fade) * 0.8);
+    --reveal-beat-3: calc(var(--motion-fade) * 0.64);
+    --reveal-beat-4: calc(var(--motion-fade) * 0.512);
+  }
+
+  [data-canvas-reveal='2'] [data-phase-scenario-panel] {
+    transition-duration: var(--reveal-beat-2);
+  }
+
+  [data-canvas-reveal='3']
+    :is([data-blueprint-cell-anchor], [data-blueprint-cell]) {
+    transition-duration: var(--reveal-beat-3);
+  }
+
+  [data-canvas-reveal='4'] [data-blueprint-arrows] {
+    transition-duration: var(--reveal-beat-4);
+  }
+
+  /*
+   * `visibility`, not opacity alone. Opacity is an animatable property, so
+   * the board could paint for the frame between mounting and the rule
+   * settling — which is exactly the reported symptom: lane blocks appearing
+   * over the loading bar for a moment and vanishing again. Visibility is not
+   * animatable and applies immediately, so stage 0 cannot paint at all. The
+   * delayed-`0s` idiom hands it back at stage 1 without cancelling the fade
+   * (same pattern the semantic tier uses for cell content).
+   */
+  [data-canvas-reveal='0'] {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /*
+   * The board's own arrival — the first and longest beat of the cadence,
+   * the deliberate opening the other three accelerate away from.
+   * `--motion-fade` rather than `--motion-structural` for the serial-cost
+   * reason above: this is not one beat among four, it is the front of the
+   * queue everything else waits behind.
+   *
+   * This is also the rule that governs the root — a bare `[data-canvas-reveal]`
+   * transition would be overridden here from stage 1 onward, so there is
+   * deliberately only one place the board's duration is written.
+   */
+  [data-canvas-reveal]:not([data-canvas-reveal='0']) {
+    visibility: visible;
+    transition:
+      opacity var(--reveal-beat-1) ease-out,
+      visibility 0s linear;
+  }
+
+  [data-canvas-reveal='0'] [data-phase-scenario-panel],
+  [data-canvas-reveal='1'] [data-phase-scenario-panel] {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  /*
+   * Canvas chrome — the annotation toolbar and its neighbours — is furniture
+   * OF the canvas, so it arrives with the canvas rather than floating over
+   * the loading bar while the board is still staging. It lives outside the
+   * revealed subtree (ZoomPanViewport renders it as a sibling), so it is
+   * keyed off the same attribute from the canvas root instead.
+   */
+  [data-canvas-reveal-chrome='pending']
+    :is([data-annotation-toolbar], [data-zoom-indicator], [data-canvas-nav]) {
+    opacity: 0;
+  }
+
+  [data-canvas-reveal-chrome]
+    :is([data-annotation-toolbar], [data-zoom-indicator], [data-canvas-nav]) {
+    transition: opacity var(--motion-fade) ease-out;
+  }
+
+  [data-canvas-reveal='0']
+    :is(
+      [data-blueprint-cell-anchor],
+      [data-blueprint-cell],
+      [data-blueprint-arrows]
+    ),
+  [data-canvas-reveal='1']
+    :is(
+      [data-blueprint-cell-anchor],
+      [data-blueprint-cell],
+      [data-blueprint-arrows]
+    ),
+  [data-canvas-reveal='2']
+    :is(
+      [data-blueprint-cell-anchor],
+      [data-blueprint-cell],
+      [data-blueprint-arrows]
+    ),
+  [data-canvas-reveal='3'] [data-blueprint-arrows] {
+    opacity: 0;
   }
 }

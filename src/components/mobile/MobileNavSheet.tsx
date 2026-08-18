@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Diamond, LayoutGrid } from 'lucide-react'
+import { Diamond, LayoutGrid, Settings } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
 import { NavChildren, NavRow, NavSection } from '@/components/editor/SidebarNav'
 import { SliceListLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import { ThemeToggle } from '@/components/editor/ThemeToggle'
@@ -31,7 +32,7 @@ import type { Slice } from '@/types/database'
  * Doctrine unchanged from Phase 2: this component only reports WHAT was
  * tapped. What a tap means for the visible view is the shell's decision.
  */
-export type MobileNavSurface = 'blueprints' | 'slices'
+export type MobileNavSurface = 'blueprints' | 'slices' | 'settings'
 
 const RAIL_SURFACES: Array<{
   id: MobileNavSurface
@@ -164,7 +165,7 @@ export function MobileNavSheet({
         {/* The rail: surface radio on top, utilities at the foot. */}
         <nav
           aria-label="Sidebar surfaces"
-          className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-border/60 px-1.5 py-2"
+          className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-muted px-1.5 py-2"
         >
           {RAIL_SURFACES.map(({ id, label, icon: Icon }) => (
             <button
@@ -184,6 +185,27 @@ export function MobileNavSheet({
             </button>
           ))}
           <div className="flex-1" aria-hidden />
+          {/*
+            The phone's front door. Sign-in used to live only in the desktop
+            rail's ⚙, so on a phone the deployed site had no route to a
+            session at all — and with no session there is no agent, which is
+            why the ✦ button looked "missing" rather than gated. Same
+            component as the desktop popover, so the two cannot drift.
+          */}
+          <button
+            type="button"
+            aria-label="Settings"
+            aria-pressed={surface === 'settings'}
+            onClick={() => onSurfaceChange('settings')}
+            className={cn(
+              'relative flex size-11 items-center justify-center rounded-md',
+              surface === 'settings'
+                ? 'bg-sidebar-selected text-sidebar-selected-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-selected-rail'
+                : 'text-sidebar-foreground/60',
+            )}
+          >
+            <Settings className="size-4" aria-hidden />
+          </button>
           {/* size-11 = the 44px touch floor (plan Phase 5). */}
           <ThemeToggle size="icon-sm" className="size-11" />
         </nav>
@@ -191,12 +213,18 @@ export function MobileNavSheet({
         <div className="flex min-w-0 flex-1 flex-col">
           <SheetHeader className="border-b border-border px-4 py-3">
             <SheetTitle className="text-sm">
-              {surface === 'slices' ? 'Slices' : 'Blueprints'}
+              {surface === 'slices'
+                ? 'Slices'
+                : surface === 'settings'
+                  ? 'Settings'
+                  : 'Blueprints'}
             </SheetTitle>
           </SheetHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-            {surface === 'slices' ? (
+            {surface === 'settings' ? (
+              <AgentSettingsFields active={open} />
+            ) : surface === 'slices' ? (
               <SliceGroups
                 slices={slices}
                 loading={slicesLoading}

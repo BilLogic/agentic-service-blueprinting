@@ -39,12 +39,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import {
   InputGroup,
@@ -107,6 +101,11 @@ function AgentMarkdown(props: { text: string; className?: string }) {
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { NavSection } from '@/components/editor/SidebarNav'
 import { Badge } from '@/components/ui/badge'
+import { AgentSessionsLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
+import {
+  DeferredSkeleton,
+  EDITOR_BOOT_HOLD_KEY,
+} from '@/components/ui/deferred-skeleton'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Collapsible,
@@ -156,7 +155,6 @@ import {
   skillMatchesQuery,
   type AgentSkillCommand,
 } from '@/lib/agent/skills'
-import { listModels } from '@/lib/agent/providers/models'
 import {
   createAgentSession,
   deleteAgentSession,
@@ -167,18 +165,15 @@ import {
   type AgentSession,
 } from '@/lib/agent/sessions'
 import {
-  AGENT_PROVIDERS,
-  MODEL_OPTIONS,
   hasKey,
   modelFor,
   openAgentSettings,
-  saveAgentSettings,
   setAgentSettingsOpen,
   useAgentSettings,
   useAgentSettingsOpen,
 } from '@/lib/agent/settings'
+import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
 import { AgentTrialBanner } from '@/components/editor/AgentTrialBanner'
-import { DevPortalSection } from '@/components/editor/DevPortal'
 import { cn } from '@/lib/utils'
 
 /**
@@ -309,7 +304,7 @@ function SessionRow({
     >
       {/* No per-row glyph: a column of identical ✦ marks says nothing the
           SESSIONS header hasn't already said. */}
-      <span className="min-w-0 flex-1 truncate text-[13px] text-sidebar-foreground/85 group-hover/session:text-sidebar-accent-foreground">
+      <span className="min-w-0 flex-1 truncate text-sm text-sidebar-foreground/85 group-hover/session:text-sidebar-accent-foreground">
         {session.title}
       </span>
       {changeCount > 0 ? (
@@ -448,17 +443,25 @@ function AgentSessionsView({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {hydrating ? (
-          // The DB merge is the list's source of truth, so until the first
-          // merge lands the WHOLE list is a loading state — the localStorage
-          // cache underneath may be missing sessions from other browsers.
-          <div className="flex flex-col gap-3 pl-6 pr-2 pt-2" aria-hidden>
-            <Skeleton className="h-3.5 w-40" />
-            <Skeleton className="h-3.5 w-28" />
-            <Skeleton className="h-3.5 w-36" />
-            <Skeleton className="h-3.5 w-32" />
-          </div>
-        ) : sessions.length === 0 ? (
+        {/*
+          Same loading contract as the phases nav, on the same boot session.
+
+          The DB merge is the list's source of truth, so until the first
+          merge lands the WHOLE list is a loading state — the localStorage
+          cache underneath may be missing sessions from other browsers. What
+          changed is the packaging: this was a bare ternary, so it painted
+          its rows the instant the merge landed rather than holding and
+          fading like every other surface. The BOOT case is not handled
+          here — the sidebar's boot layer in EditorShell covers this panel
+          whole and lifts with the canvas, so nothing in the sidebar can
+          resolve ahead of the board.
+        */}
+        <DeferredSkeleton
+          loading={hydrating}
+          holdKey={EDITOR_BOOT_HOLD_KEY}
+          skeleton={<AgentSessionsLoadingSkeleton />}
+        >
+          {sessions.length === 0 ? (
           <p className="px-1.5 pt-2 text-xs text-muted-foreground">
             No sessions yet. A session is one conversation plus the changes
             it made.
@@ -495,7 +498,8 @@ function AgentSessionsView({
               </NavSection>
             ) : null}
           </>
-        )}
+          )}
+        </DeferredSkeleton>
       </div>
 
       <RenameSessionDialog
@@ -914,7 +918,7 @@ function AgentChatView({
     <div className="flex min-h-0 flex-1 flex-col" data-agent-panel="chat">
       {/* Header: back + title + change count. Nothing else — the
           transcript owns the rest of the height. */}
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border/60 px-2">
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-muted px-2">
         <IconTooltip label="Back to sessions" side="bottom">
           <Button
             type="button"
@@ -1421,110 +1425,8 @@ function DeleteSessionDialog({
  * still the authority; this UI only starts a session.
  */
 export function AgentSettingsRailButton() {
-  const settings = useAgentSettings()
-  const { client, configured, session, canAgent } = useSupabase()
-  // With no backend there is no session to gain, and the key field is the
-  // trial's only door — so the agent block shows for an unconfigured build
-  // too, or the trial could never be started from inside the app.
-  const showAgentSettings = canAgent || !configured
-  const [keyDraft, setKeyDraft] = useState('')
-  const [emailDraft, setEmailDraft] = useState('')
-  const [passwordDraft, setPasswordDraft] = useState('')
-  const [authBusy, setAuthBusy] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-
-  const signIn = () => {
-    if (!client || authBusy) return
-    const email = emailDraft.trim()
-    if (!email || !passwordDraft) return
-    setAuthBusy(true)
-    setAuthError(null)
-    void client.auth
-      .signInWithPassword({ email, password: passwordDraft })
-      .then(({ error }) => {
-        setAuthBusy(false)
-        if (error) {
-          setAuthError(error.message)
-          return
-        }
-        setEmailDraft('')
-        setPasswordDraft('')
-      })
-  }
-
-  // Magic link: sign in without a password at all. The right fit for this
-  // app's hand-created admin accounts — there is no sign-up flow and no
-  // set-password screen, so a mailed link that lands already authenticated
-  // beats a recovery flow with nowhere to type a new password.
-  // `shouldCreateUser: false` keeps it from quietly minting accounts.
-  // Requires the project's Site URL / redirect allowlist to include this
-  // origin — a link mailed to the default localhost Site URL goes nowhere.
-  const [linkSent, setLinkSent] = useState(false)
-  const sendMagicLink = () => {
-    if (!client || authBusy) return
-    const email = emailDraft.trim()
-    if (!email) return
-    setAuthBusy(true)
-    setAuthError(null)
-    void client.auth
-      .signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: window.location.origin,
-        },
-      })
-      .then(({ error }) => {
-        setAuthBusy(false)
-        if (error) {
-          setAuthError(error.message)
-          return
-        }
-        setLinkSent(true)
-      })
-  }
-
-  const signOut = () => {
-    if (!client || authBusy) return
-    setAuthBusy(true)
-    void client.auth.signOut().then(() => {
-      setAuthBusy(false)
-      setAuthError(null)
-    })
-  }
   const open = useAgentSettingsOpen()
   const setOpen = setAgentSettingsOpen
-  // Live model list from the provider's own list-models endpoint — current
-  // by construction. The curated MODEL_OPTIONS list is only the no-key
-  // fallback. null = not fetched (no key / failed / loading).
-  const [liveModels, setLiveModels] = useState<{
-    provider: string
-    models: string[]
-  } | null>(null)
-  const provider = settings.provider
-  const savedKeyForFetch = settings.keys[provider]
-  useEffect(() => {
-    if (!open || !savedKeyForFetch) return
-    const controller = new AbortController()
-    listModels(provider, savedKeyForFetch, controller.signal)
-      .then((models) => {
-        if (!controller.signal.aborted && models.length > 0)
-          setLiveModels({ provider, models })
-      })
-      .catch(() => {
-        // Fallback list stays; a failed listing is not worth an error state.
-      })
-    return () => controller.abort()
-  }, [open, provider, savedKeyForFetch])
-  // Stale fetches self-invalidate by provider tag — no reset effect needed.
-  const modelChoices =
-    liveModels && liveModels.provider === provider
-      ? liveModels.models
-      : MODEL_OPTIONS[provider]
-  const providerLabel =
-    AGENT_PROVIDERS.find((entry) => entry.id === settings.provider)?.label ??
-    settings.provider
-  const savedKey = settings.keys[settings.provider]
 
   return (
     <TooltipProvider delay={300}>
@@ -1550,187 +1452,7 @@ export function AgentSettingsRailButton() {
           </TooltipContent>
         </Tooltip>
         <PopoverContent side="right" align="end" className="w-72 p-3">
-          <div className="flex flex-col gap-2.5">
-            {/* Show/hide the chat is the rail's ✦ toggle — settings hold
-                settings, not surface toggles. */}
-            <p className="text-xs font-medium text-foreground">Admin</p>
-            {!configured ? (
-              <p className="text-3xs leading-snug text-muted-foreground">
-                No database configured — there is no account to sign in to.
-                The canvas is showing the kit’s bundled sample blueprint.
-              </p>
-            ) : session ? (
-              <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-2xs text-muted-foreground">
-                  {session.user.email ?? 'Signed in'}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  disabled={authBusy}
-                  onClick={signOut}
-                >
-                  Sign out
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Input
-                  type="email"
-                  value={emailDraft}
-                  onChange={(event) => setEmailDraft(event.target.value)}
-                  placeholder="admin@…"
-                  className="h-7 text-xs"
-                  aria-label="Admin email"
-                  autoComplete="email"
-                />
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="password"
-                    value={passwordDraft}
-                    onChange={(event) => setPasswordDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') signIn()
-                    }}
-                    placeholder="Password"
-                    className="h-7 flex-1 text-xs"
-                    aria-label="Admin password"
-                    autoComplete="current-password"
-                  />
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs"
-                    disabled={
-                      authBusy || emailDraft.trim() === '' || passwordDraft === ''
-                    }
-                    onClick={signIn}
-                  >
-                    Sign in
-                  </Button>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 justify-start px-1 text-xs text-muted-foreground"
-                  disabled={authBusy || emailDraft.trim() === ''}
-                  onClick={sendMagicLink}
-                >
-                  Email me a sign-in link instead
-                </Button>
-                {authError ? (
-                  <p className="text-3xs leading-snug text-destructive">
-                    {authError}
-                  </p>
-                ) : linkSent ? (
-                  <p className="text-3xs leading-snug text-muted-foreground">
-                    Link sent — check that inbox, then open it on this device.
-                  </p>
-                ) : (
-                  <p className="text-3xs leading-snug text-muted-foreground">
-                    Signing in unlocks editing and the agent on this device.
-                  </p>
-                )}
-              </>
-            )}
-
-            {showAgentSettings ? (
-              <>
-            <div className="my-0.5 border-t border-border/60" />
-            <p className="text-xs font-medium text-foreground">Agent</p>
-
-            <div className="flex items-center gap-2">
-              <span className="w-16 shrink-0 text-2xs text-muted-foreground">
-                Provider
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button variant="outline" size="sm" className="h-7 flex-1 justify-start text-xs">
-                      {providerLabel}
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="start">
-                  {AGENT_PROVIDERS.map((entry) => (
-                    <DropdownMenuItem
-                      key={entry.id}
-                      onClick={() => {
-                        saveAgentSettings({ provider: entry.id })
-                        setKeyDraft('')
-                      }}
-                    >
-                      {entry.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="w-16 shrink-0 text-2xs text-muted-foreground">
-                Model
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 flex-1 justify-start font-mono text-xs"
-                    >
-                      {modelFor(settings)}
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
-                  {modelChoices.map((model) => (
-                    <DropdownMenuItem
-                      key={model}
-                      onClick={() =>
-                        saveAgentSettings({
-                          models: { [settings.provider]: model },
-                        })
-                      }
-                    >
-                      <span className="font-mono text-xs">{model}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="w-16 shrink-0 text-2xs text-muted-foreground">
-                API key
-              </span>
-              <Input
-                type="password"
-                value={keyDraft}
-                onChange={(event) => setKeyDraft(event.target.value)}
-                placeholder={savedKey ? '••••••••  saved' : 'Paste key'}
-                className="h-7 flex-1 text-xs"
-                aria-label="API key"
-              />
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                disabled={keyDraft.trim() === ''}
-                onClick={() => {
-                  saveAgentSettings({
-                    keys: { [settings.provider]: keyDraft.trim() },
-                  })
-                  setKeyDraft('')
-                }}
-              >
-                Save
-              </Button>
-            </div>
-              </>
-            ) : null}
-
-            <DevPortalSection />
-          </div>
+          <AgentSettingsFields active={open} />
         </PopoverContent>
       </Popover>
     </TooltipProvider>

@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { PATH_TYPE_COLORS } from '@/lib/pathTypeTheme'
+import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { PathType } from '@/types/database'
 
@@ -47,11 +48,12 @@ export function ScenarioTitleBadge({
 
   return (
     <Badge
+      data-blueprint-fill={pathAccent ? '' : undefined}
       data-scenario-panel-title-badge={panelTone ? '' : undefined}
       data-phase-title-badge={phaseTone ? '' : undefined}
       className={cn(
         'h-auto max-w-full cursor-default gap-1 overflow-visible border-transparent',
-        pathType && 'font-semibold text-white',
+        pathType && 'font-semibold',
         (panelTone || phaseTone) && 'font-semibold',
         className,
       )}
@@ -59,7 +61,7 @@ export function ScenarioTitleBadge({
         ...style,
         ...(pathAccent
           ? {
-              backgroundColor: pathAccent,
+              ...getBlueprintFillStyle(pathAccent),
               borderColor: pathAccent,
             }
           : undefined),

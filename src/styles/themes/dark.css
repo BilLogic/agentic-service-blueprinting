@@ -23,6 +23,8 @@
   --surface: 0.19;
   --elevation-step: 0.025;
   --contrast: 0.5;
+  /* The light default (0.015) disappears on dark plates; dig harder. */
+  --field-alpha: 0.12;
   --foreground-lightness: 0.95;
   --muted-foreground-level: 0.8;
   --tertiary-foreground-level: 0.65;
