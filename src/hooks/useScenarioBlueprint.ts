@@ -13,7 +13,6 @@ import {
   type CanvasRawPath,
 } from '@/hooks/useCanvasBlueprints'
 import { resolveBlueprintForScenario, type BlueprintSource } from '@/lib/resolveBlueprint'
-import { mergeIntegratedBlueprint } from '@/lib/mergeIntegratedBlueprint'
 import type { PathListItem } from '@/lib/pathSelection'
 import { itemsInSelectionOrder } from '@/lib/pathSelection'
 import type { BlueprintData } from '@/types/blueprint'
@@ -167,11 +166,6 @@ export function useScenarioBlueprint(serviceScenarioId: string | undefined) {
     [selectedPathIds, blueprintsByPathId],
   )
 
-  const integratedBlueprint = useMemo(
-    () => mergeIntegratedBlueprint(allBlueprints, selectedPathIds),
-    [allBlueprints, selectedPathIds],
-  )
-
   const blueprint = blueprints[0] ?? null
 
   const selectedPath = useMemo(
@@ -188,7 +182,6 @@ export function useScenarioBlueprint(serviceScenarioId: string | undefined) {
     blueprint,
     blueprints,
     allBlueprints,
-    integratedBlueprint,
     source,
     loading,
     error,

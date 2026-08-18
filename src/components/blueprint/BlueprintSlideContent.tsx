@@ -54,7 +54,6 @@ export function BlueprintSlideContent({
     togglePathSelection,
     blueprints,
     allBlueprints,
-    integratedBlueprint,
     loading,
     error,
     configured,
@@ -76,14 +75,13 @@ export function BlueprintSlideContent({
     null
   const displayViewType =
     phaseBlueprintFilters?.viewType ?? getScenarioDisplayViewType(slide)
-  const useIntegratedLayout =
-    displayViewType === 'integrated' && paths.length > 0
   const useSideBySideLayout =
-    displayViewType === 'side-by-side' && selectedPathIds.length > 0
+    (displayViewType === 'stacked' || displayViewType === 'merged') &&
+    selectedPathIds.length > 0
   const useSinglePathLayout =
     displayViewType === 'single' && selectedPathIds.length > 0
   const noPathsSelected =
-    !useIntegratedLayout && paths.length > 0 && selectedPathIds.length === 0
+    paths.length > 0 && selectedPathIds.length === 0
 
   const handleTogglePath = (pathId: string) => {
     togglePathSelection(pathId)
@@ -94,9 +92,6 @@ export function BlueprintSlideContent({
     : useSideBySideLayout || useSinglePathLayout
       ? blueprints
       : []
-
-  const showIntegratedGrid =
-    useIntegratedLayout && integratedBlueprint !== null
 
   if (!isSubslide(slide) && !hasDirectBlueprint) {
     const phaseScenarios = getSubslides(slide.id, slides)
@@ -212,7 +207,7 @@ export function BlueprintSlideContent({
     )
   }
 
-  if (loading && !showIntegratedGrid && visibleBlueprints.length === 0) {
+  if (loading && visibleBlueprints.length === 0) {
     return (
       <div {...canvasFitAttrs} className="inline-flex w-max min-w-full flex-col">
         {header}
@@ -224,7 +219,7 @@ export function BlueprintSlideContent({
     )
   }
 
-  if (error && !showIntegratedGrid && visibleBlueprints.length === 0) {
+  if (error && visibleBlueprints.length === 0) {
     return (
       <div {...canvasFitAttrs} className="inline-flex w-max min-w-full flex-col">
         {header}
@@ -236,7 +231,7 @@ export function BlueprintSlideContent({
     )
   }
 
-  if (!showIntegratedGrid && visibleBlueprints.length === 0) {
+  if (visibleBlueprints.length === 0) {
     return (
       <div {...canvasFitAttrs} className="inline-flex w-max min-w-full flex-col">
         {header}
