@@ -19,3 +19,17 @@ export {
   SCALE_TEST_DEMO_SLICE_ITEMS,
 } from '@/data/scaleFixture'
 export { FALLBACK_NAV } from '@/types/nav'
+/**
+ * The app's own sample-data readers — the same functions the no-database
+ * agent trial serves in the browser. The harness used to reimplement these
+ * against the fixture and drifted from `read.ts` line by line; now there is
+ * one implementation and the harness's keyless run exercises it.
+ */
+export {
+  sampleGetBlueprint,
+  sampleGetCell,
+  sampleGetSlice,
+  sampleListOwnerTags,
+  sampleListScenarios,
+  sampleListSlices,
+} from '@/lib/agent/tools/sampleRead'

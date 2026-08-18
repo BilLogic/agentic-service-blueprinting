@@ -1,13 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import {
-  countCompareDifferences,
-  deriveCompareStepGroups,
-  deriveCompareZones,
-  getDetailOnlyCompareSlots,
-  isDetailOnlyCompareSlot,
-} from '@/lib/compareLedger'
-import { buildCompareModel, type CompareBlueprints, type CompareSlot } from '@/lib/compareSlots'
+  formatBlueprints,
+  formatCompareDiff,
+  formatFields,
+  formatOwnerTags,
+  formatScenarioList,
+  formatSliceList,
+} from '@/lib/agent/tools/format'
 import { normalizeBlueprint, type RawPath } from '@/lib/normalizeBlueprint'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
 import {
@@ -15,7 +15,6 @@ import {
   readDeletionImpact,
   type DeletableKind,
 } from '@/lib/deletionSafety'
-import type { BlueprintData } from '@/types/blueprint'
 import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 import canvasAdapter from '@/lib/agent/skill/references/canvas-adapter.md?raw'
 import dataModel from '@/lib/agent/skill/references/data-model.md?raw'
@@ -99,19 +98,19 @@ export async function listScenarios(client: Client): Promise<string> {
     .order('order_position')
   if (error) throw new Error(error.message)
 
-  const lines: string[] = []
-  for (const phase of data ?? []) {
-    lines.push(`Phase "${phase.name}" (${phase.id})`)
-    const scenarios = [...(phase.service_scenarios ?? [])].sort(
-      (a, b) => (a.order_position ?? 0) - (b.order_position ?? 0),
-    )
-    for (const scenario of scenarios) {
-      lines.push(
-        `  Scenario "${scenario.name}" (${scenario.id})${scenario.description ? ` — ${scenario.description}` : ''}`,
-      )
-    }
-  }
-  return lines.join('\n') || 'No phases found.'
+  return formatScenarioList(
+    (data ?? []).map((phase) => ({
+      id: phase.id,
+      name: phase.name,
+      scenarios: [...(phase.service_scenarios ?? [])]
+        .sort((a, b) => (a.order_position ?? 0) - (b.order_position ?? 0))
+        .map((scenario) => ({
+          id: scenario.id,
+          name: scenario.name,
+          description: scenario.description,
+        })),
+    })),
+  )
 }
 
 export async function getBlueprint(
@@ -125,66 +124,12 @@ export async function getBlueprint(
   if (error) throw new Error(error.message)
   const rows = (data ?? []) as unknown as RawPath[]
   if (rows.length === 0) return 'No paths in this scenario.'
-
-  const sections: string[] = []
-  for (const raw of rows) {
-    const blueprint = normalizeBlueprint(raw)
-    const { path, steps, layers, cells } = blueprint
-    const lines: string[] = [
-      `Path "${path.name}" (${path.id}, type ${path.path_type})`,
-      `Steps: ${steps
-        .map((step) => `${step.column_position}. "${step.name}" (${step.id})`)
-        .join(' | ')}`,
-    ]
-    for (const layer of layers) {
-      lines.push(
-        `Lane "${layer.name}" (${layer.id}${layer.role ? `, role ${layer.role}` : ''}):`,
-      )
-      const byStep = new Map<string, typeof cells>()
-      for (const cell of cells) {
-        if (cell.layer_id !== layer.id) continue
-        const list = byStep.get(cell.step_id) ?? []
-        list.push(cell)
-        byStep.set(cell.step_id, list)
-      }
-      for (const step of steps) {
-        for (const cell of byStep.get(step.id) ?? []) {
-          lines.push(
-            `  [step ${step.column_position}] "${cell.content}" (${cell.id})`,
-          )
-        }
-      }
-    }
-    sections.push(lines.join('\n'))
-  }
-  return sections.join('\n\n')
-}
-
-function compareSlotLine(
-  slot: CompareSlot,
-  blueprints: readonly BlueprintData[],
-): string {
-  const fields =
-    slot.differingFields.length > 0
-      ? ` (fields: ${slot.differingFields.join(', ')})`
-      : ''
-  const perPath = blueprints
-    .map((blueprint) => {
-      const entry = slot.perPath[blueprint.path.id]
-      if (!entry?.present) return `${blueprint.path.name}: —`
-      const quoted = entry.contents.map((content) => `"${content}"`).join(' + ')
-      return `${blueprint.path.name}: ${quoted} (${entry.cellIds.join(', ')})`
-    })
-    .join(' | ')
-  return `  [${slot.verdict}] lane "${slot.laneLabel}" @ step "${slot.columnLabel}"${fields}: ${perPath}`
+  return formatBlueprints(rows.map((raw) => normalizeBlueprint(raw)))
 }
 
 /**
- * Headless compare: fetches the scenario's blueprints through the same
- * query the panel uses, runs `buildCompareModel`, and serializes slots /
- * step groups / columns as compact text. This grounds every other compare
- * argument the agent can pass — step numbers for jump_divergence, lane and
- * step names for differences_filter, cell ids for focus/annotate.
+ * Headless compare. The fetch is here; the serialization lives in
+ * `format.ts`, shared with the sample-data reads.
  */
 export async function getCompareDiff(
   client: Client,
@@ -198,60 +143,10 @@ export async function getCompareDiff(
   if (error) throw new Error(error.message)
   const rows = (data ?? []) as unknown as RawPath[]
   if (rows.length === 0) return 'No paths in this scenario.'
-
-  let blueprints = rows.map((raw) => normalizeBlueprint(raw))
-  if (pathIds && pathIds.length > 0) {
-    const wanted = blueprints.filter((blueprint) =>
-      pathIds.includes(blueprint.path.id),
-    )
-    // Keep the caller's order — column insertion follows the first path.
-    blueprints = pathIds
-      .map((id) => wanted.find((blueprint) => blueprint.path.id === id))
-      .filter((blueprint): blueprint is BlueprintData => Boolean(blueprint))
-  }
-  if (blueprints.length < 2)
-    return `Comparison needs at least two paths; this scenario ${
-      pathIds && pathIds.length > 0 ? 'selection' : ''
-    } resolves to ${blueprints.length}. Path ids here: ${rows
-      .map((raw) => (raw as { id?: string }).id)
-      .join(', ')}.`
-
-  const model = buildCompareModel(blueprints as CompareBlueprints)
-  const zones = deriveCompareZones(model)
-  const stepGroups = deriveCompareStepGroups(model)
-  const detailOnly = getDetailOnlyCompareSlots(model)
-
-  const lines: string[] = [
-    `Comparing ${blueprints
-      .map((blueprint) => `"${blueprint.path.name}" (${blueprint.path.id})`)
-      .join(' vs ')}`,
-    `Canonical columns: ${model.columns
-      .map((column, index) => `${index + 1}."${column.label}" ${column.verdict}`)
-      .join(' | ')}`,
-    `${countCompareDifferences(model)} differences · ${zones.length} zones · ${detailOnly.length} detail-only`,
-  ]
-  // Grouped by STEP — the ledger's grain and jump_divergence's argument;
-  // each group names the divergence zone (run) it sits in, which is the
-  // grain the strip draws.
-  for (const group of stepGroups) {
-    lines.push(
-      `${group.headerLabel} (zone ${group.zoneIndex}, ${group.slots.length} difference${
-        group.slots.length === 1 ? '' : 's'
-      }):`,
-    )
-    for (const slot of group.slots) lines.push(compareSlotLine(slot, blueprints))
-  }
-  if (detailOnly.length > 0) {
-    lines.push(`Detail-only differences (${detailOnly.length}) — no canvas step:`)
-    for (const slot of detailOnly) lines.push(compareSlotLine(slot, blueprints))
-  }
-  const shared = model.slots.filter(
-    (slot) => slot.verdict === 'shared' && !isDetailOnlyCompareSlot(slot),
-  ).length
-  lines.push(
-    `${shared} shared slots. Note: triggers/needs edges are not compared.`,
+  return formatCompareDiff(
+    rows.map((raw) => normalizeBlueprint(raw)),
+    pathIds,
   )
-  return lines.join('\n')
 }
 
 export async function getCell(client: Client, cellId: string): Promise<string> {
@@ -276,10 +171,7 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
     ['step_id', data.step_id],
     ['slot_position', data.slot_position],
   ]
-  return fields
-    .filter(([, value]) => value !== null && value !== undefined && value !== '')
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join('\n')
+  return formatFields(fields)
 }
 
 export async function listSlices(client: Client): Promise<string> {
@@ -288,10 +180,7 @@ export async function listSlices(client: Client): Promise<string> {
     .select('id, title, slice_type')
     .order('slice_type')
   if (error) throw new Error(error.message)
-  if (!data || data.length === 0) return 'No slices yet.'
-  return data
-    .map((slice) => `"${slice.title}" (${slice.id}, type ${slice.slice_type})`)
-    .join('\n')
+  return formatSliceList(data ?? [])
 }
 
 /** The tag vocabulary — read this before writing any owner value. */
@@ -301,13 +190,7 @@ export async function listOwnerTags(client: Client): Promise<string> {
     .select('owner, perceived_owner')
     .or('owner.not.is.null,perceived_owner.not.is.null')
   if (error) throw new Error(error.message)
-  const tags = new Set<string>()
-  for (const row of data ?? []) {
-    if (row.owner) tags.add(row.owner)
-    if (row.perceived_owner) tags.add(row.perceived_owner)
-  }
-  if (tags.size === 0) return 'No owner tags in use yet.'
-  return [...tags].sort().join(', ')
+  return formatOwnerTags(data ?? [])
 }
 
 /**
