@@ -1,13 +1,20 @@
 ---
 title: Docs information architecture — post-migration structure, per-doc outlines, README narrative
 type: plan
-status: draft-for-review
+status: executed-2026-08-17
 date: 2026-08-08
 revised: 2026-08-08 (round 2 — Bill: soften the thesis, define See-it-live, clean up the arc, simplify the tree)
 relates:
   - docs/plans/2026-08-08-001-plan-migration-v2-uno-parity.md (Phase 4 executes this)
   - docs/plans/2026-08-08-002-plan-docs-asset-revamp.md (the figures this IA houses)
 ---
+
+> **Executed 2026-08-17.** README rewritten against this plan and the four
+> guides created at `docs/guide/`. Deltas from the plan, all deliberate:
+> the four `sb:` figures live in guide/03 rather than the README (the
+> revised progressive-disclosure note), `skill-architecture` re-embeds
+> downward from README into guide/03, and the demo-video section stays as
+> placeholders until the recordings exist.
 
 # Docs IA — the end state after Migration v2
 

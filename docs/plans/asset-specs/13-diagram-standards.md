@@ -197,6 +197,15 @@ Fixed meanings — a tint used decoratively is a defect:
 - Skill figures: about 12 text elements total. The pre-fix `sb-audit` had
   26 of our own words; that was the disease.
 
+### §8.1 The skill-figure skeleton
+
+All four `sb:` figures are generated from one template, not placed by hand:
+left panel `16,18,340×210`, pill `365,96,150×54` centred on 440, right panel
+`524,18,340×210`, margins 16, gaps 9. The three that take a blueprint as
+input (`slice`, `audit`, `whatif`) carry an identical left panel: a prompt
+pill at `44,32,284×26` over the same grid at `44,72,284×140`. Only the
+question changes, so the set reads as one family.
+
 ### §9 Process
 
 1. One figure at a time, rendered and screenshotted before review.
@@ -221,12 +230,12 @@ rect; the failures are copy and concept.
 | F3 | `blueprint-anatomy.svg` | 0 | 27 | compliant; shipped figure, legend removed |
 | F4 | `cell-anatomy.svg` | 0 | 48 (10 callouts, one per field) | **compliant** — the canvas with one cell selected, projected into the panel below it; free-text values are placeholder bars, breadcrumb is structural (`Phase › ⋯ › Path › Step 4`); 6 callouts in F3's idiom; panel verified against `BlueprintCellDetailPanel.tsx`, including sentence-case field labels |
 | F5 | `slicing-model.svg` | 0 | 16 | **compliant** — the five cuts lead as parallel thumbnails; below them the same slice on the canvas and in presentation, linked by the play control; type keys verified against `slice-schema.json`, both surfaces against `SliceView.tsx` / `SlicePresentation.tsx` |
-| F6 | `four-ways-in.svg` | 0 | 13 | **compliant** — titled `The four ways in`; four plain cards named for what they are; amber stroke marks agent-capable, dashed marks read-only, arrow pairs carry read/write (labelled once, on the first pair) |
+| F6 | `four-ways-in.svg` | 0 | 14 | **compliant** — titled `Ways into the blueprint`; the bar is named `one shared context layer`, maintained in one place and referenced from every surface; amber stroke marks agent-capable, dashed marks read-only, arrow pairs carry read/write |
 | F7 | `skill-architecture.svg` | 0 | 46 | **compliant** — redrawn: three even columns (skills · shared references · agents); one container per shared doc; per-doc links drawn as one rail per skill, verified against each SKILL.md; docs ordered so every skill's set is contiguous; arrowheads reserved for the spawn relation |
-| F8 | `sb-map.svg` | 0 | 10 | **compliant** — output is now drawn: one file glyph carrying `blueprint.json` with a green validator check, opening into the rendered blueprint. The two label lines ("one validated file", "no database required") were telling and are gone |
-| F9 | `sb-slice.svg` | 0 | 10 | **compliant** — five documents, each previewing the shape it holds (ordered moments · a column · a strip · one cell plus spec · an irregular set); no "cut" anywhere |
-| F10 | `sb-audit.svg` | 0 | 22 | **compliant** — the real roster is the subject: seven named checks, blueprint fanning into each, findings labelled with the check that raised them. Over the 12-element guide, justified: the check names are the value proposition |
-| F11 | `sb-whatif.svg` | 0 | 12 | **compliant** — left is the blueprint as it stands, not a changed one; the question sits in the middle; three dashed futures branch out, each showing how far the change reaches |
+| F8 | `sb-map.svg` | 0 | 14 | **compliant** — one validated file opening into the real hierarchy: phases, then that phase's scenarios, then one scenario's stacked paths |
+| F9 | `sb-slice.svg` | 0 | 10 | **compliant** — five documents in a pentagon, each previewing the shape it holds; prompt above the blueprint sets the angle |
+| F10 | `sb-audit.svg` | 0 | 19 | **compliant** — the roster is the result: seven checks, three returning a finding, four returning a clean tick. Three funnel treatments were drawn and this one won because it is the only one where a passing check is visible |
+| F11 | `sb-whatif.svg` | 0 | 12 | **compliant** — blueprint as it stands plus the prompt, three dashed futures branching out with their reach drawn |
 | — | `why-now-a.svg`, `why-now-b.svg` | 2 each | 14 / 21 | **delete** — superseded prototypes |
 
 ### Cleanup order
