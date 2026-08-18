@@ -8,7 +8,9 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client"],
+    // `node` is here for the token tests, which read tokens.css off disk to
+    // check that the stylesheet and its consumers still agree.
+    "types": ["vite/client", "node"],
     "skipLibCheck": true,
 
     /* Bundler mode */
