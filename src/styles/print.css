@@ -1,0 +1,106 @@
+/* ---------------------------------------------------------------------------
+ * Print / PDF export (Cmd+P → Save as PDF).
+ * Goal: while viewing a blueprint, printing yields the per-path blueprint grid
+ * at natural scale on a white page — no app chrome, no zoom/pan transform.
+ * ------------------------------------------------------------------------- */
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  /* Force light theme tokens so dark mode still prints dark-on-white. */
+  :root,
+  .dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --border: oklch(0.922 0 0);
+  }
+
+  /* Preserve lane fills, badges, and divider colors in the PDF. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* --- Hide app chrome ---------------------------------------------------
+   * Sidebar, collapsed-sidebar rail, zoom indicator, prev/next slide nav,
+   * sticky slide header (title + path filters), cell detail side panel,
+   * walkthrough modal, and per-element opt-outs (play buttons, collapse
+   * toggles).
+   */
+  [data-editor-shell] > aside,
+  [data-editor-chrome],
+  [data-zoom-indicator],
+  [data-canvas-nav],
+  [data-slide-canvas] > [data-slide-sticky-header],
+  [data-cell-detail-panel],
+  [data-visual-walkthrough-modal],
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* The inactive stacked view (home vs. detail) is opacity-0/aria-hidden on
+   * screen; remove it entirely so only the visible view prints. */
+  [data-editor-view][aria-hidden='true'] {
+    display: none !important;
+  }
+
+  /* --- Unlock the fixed-viewport layout so content flows across pages --- */
+  [data-editor-shell] {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  [data-editor-shell] > main,
+  [data-editor-view],
+  [data-slide-canvas],
+  [data-zoom-pan-root],
+  [data-zoom-pan-viewport],
+  [data-zoom-pan-content] {
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Neutralize the zoom/pan transform (inline translate3d + scale) so the
+   * grid prints at natural scale from the top-left. */
+  [data-zoom-pan-content] {
+    transform: none !important;
+  }
+
+  [data-zoom-pan-viewport] {
+    background: #fff !important;
+  }
+
+  /* Grid scroll containers clip on screen; let them overflow onto pages. */
+  .blueprint-scroll {
+    overflow: visible !important;
+  }
+
+  /* Page breaks: keep a swimlane row (and each grid cell) on one page. */
+  [data-blueprint-row],
+  [data-blueprint-cell-anchor] {
+    break-inside: avoid;
+  }
+
+  /* Visual-row screenshots must fit their cells / the page. */
+  img {
+    max-width: 100% !important;
+  }
+}
