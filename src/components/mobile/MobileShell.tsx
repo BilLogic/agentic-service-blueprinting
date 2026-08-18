@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
 import { BlueprintSlideContent } from '@/components/blueprint/BlueprintSlideContent'
-import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
 import { ZoomPanViewport } from '@/components/editor/ZoomPanViewport'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
@@ -204,26 +203,24 @@ export function MobileShell() {
             />
           </div>
         ) : (
-          <VisualWalkthroughShell>
-            <div
-              className="absolute inset-0 flex min-h-0 flex-col"
-              data-editor-view
-            >
-              {scenario ? (
-                <MobileScenarioCanvas
-                  key={scenario.id}
-                  scenario={scenario}
-                  slides={slides}
-                  scenarioBlueprint={scenarioBlueprint}
-                />
-              ) : (
-                /* The shell's own top bar already names the view, so the
-                   docked filter header is suppressed — two bars saying the
-                   same thing read as clutter. */
-                <ServiceOverviewView renderHeader={() => null} />
-              )}
-            </div>
-          </VisualWalkthroughShell>
+          <div
+            className="absolute inset-0 flex min-h-0 flex-col"
+            data-editor-view
+          >
+            {scenario ? (
+              <MobileScenarioCanvas
+                key={scenario.id}
+                scenario={scenario}
+                slides={slides}
+                scenarioBlueprint={scenarioBlueprint}
+              />
+            ) : (
+              /* The shell's own top bar already names the view, so the
+                 docked filter header is suppressed — two bars saying the
+                 same thing read as clutter. */
+              <ServiceOverviewView renderHeader={() => null} />
+            )}
+          </div>
         )}
       </main>
 

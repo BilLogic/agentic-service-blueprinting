@@ -12,7 +12,6 @@ import {
   EDITOR_SIDEBAR_COLLAPSED_WIDTH_CLASS,
   EDITOR_SIDEBAR_WIDTH_CLASS,
 } from '@/components/editor/EditorSidebarRail'
-import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
 import { SlideModeMain, SlideModeSidebarNav } from '@/components/editor/SlideModeView'
 import { SlicePresentation } from '@/components/editor/SlicePresentation'
 import { SliceView } from '@/components/editor/SliceView'
@@ -312,7 +311,7 @@ function DesktopEditorShell() {
         <MissingSliceNotice />
         <div className="relative min-h-0 min-w-0 flex-1">
           {activeTab === null ? (
-            <VisualWalkthroughShell>
+            <>
               <div
                 className={cn(
                   'absolute inset-0 flex min-h-0 flex-col transition-opacity duration-300 ease-in-out',
@@ -333,7 +332,7 @@ function DesktopEditorShell() {
               >
                 <ServiceOverviewView />
               </div>
-            </VisualWalkthroughShell>
+            </>
           ) : (
             <div key={contentKey} className="absolute inset-0" data-editor-view>
               {activeTab.kind === 'slice' ? (

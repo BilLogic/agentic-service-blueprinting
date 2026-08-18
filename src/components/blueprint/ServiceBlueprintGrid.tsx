@@ -17,7 +17,6 @@ import {
 } from '@/lib/sideBySideCompareLayout'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
-import { VisualRowPlayOverlay } from '@/components/blueprint/VisualRowPlayOverlay'
 import { useCollapsedBlueprintLayers } from '@/hooks/useCollapsedBlueprintLayers'
 import {
   BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
@@ -76,7 +75,6 @@ type ServiceBlueprintGridProps = {
   fitVertically?: boolean
   scenarioName?: string
   phaseName?: string
-  walkthroughBlueprints?: BlueprintData[]
   /** When set, scenario title sits on the gray panel; path frame shows path type. */
   headerTitleLabel?: string
   headerTitleDescription?: string | null
@@ -92,7 +90,6 @@ export function ServiceBlueprintGrid({
   fitVertically = false,
   scenarioName,
   phaseName,
-  walkthroughBlueprints,
   headerTitleLabel,
   showPathTypeBadge = false,
   fixedSwimlaneBodyHeight,
@@ -271,7 +268,6 @@ export function ServiceBlueprintGrid({
                       blueprint={data}
                       scenarioName={scenarioName}
               phaseName={phaseName}
-                      walkthroughBlueprints={walkthroughBlueprints}
                     />
                     {showWrapCorridorBelow && (
                       <div
@@ -376,7 +372,6 @@ function BlueprintSwimLane({
   blueprint,
   scenarioName,
   phaseName,
-  walkthroughBlueprints,
 }: {
   layer: BlueprintData['layers'][number]
   laneStyle: BlueprintLayerStyle
@@ -394,7 +389,6 @@ function BlueprintSwimLane({
   blueprint: BlueprintData
   scenarioName?: string
   phaseName?: string
-  walkthroughBlueprints?: BlueprintData[]
 }) {
   const layerId = layer.id
   const layerName = layer.name
@@ -517,10 +511,6 @@ function BlueprintSwimLane({
                 rowMinHeight={rowMinHeight}
                 flushBottom={flushBottom}
                 visualPictures={visualPictures}
-                blueprint={isVisualLayer ? blueprint : undefined}
-                walkthroughBlueprints={
-                  isVisualLayer ? walkthroughBlueprints : undefined
-                }
                 selectionContext={
                   scenarioName && (cell?.id || isVisualLayer)
                     ? {
@@ -601,8 +591,6 @@ function BlueprintCellBlock({
   flushBottom,
   selectionContext,
   visualPictures,
-  blueprint,
-  walkthroughBlueprints,
 }: {
   stepIndex: number
   cellId?: string
@@ -616,8 +604,6 @@ function BlueprintCellBlock({
   flushBottom?: boolean
   selectionContext?: BlueprintCellSelectionContext
   visualPictures?: Array<{ picture: string; label: string }>
-  blueprint?: BlueprintData
-  walkthroughBlueprints?: BlueprintData[]
 }) {
   const shellPadding = cn(
     compact ? 'px-3' : 'px-3.5',
@@ -664,13 +650,6 @@ function BlueprintCellBlock({
           stepIndex={stepIndex}
           className="flex-1"
         />
-        {blueprint ? (
-          <VisualRowPlayOverlay
-            stepIndex={stepIndex}
-            blueprint={blueprint}
-            walkthroughBlueprints={walkthroughBlueprints}
-          />
-        ) : null}
       </div>
     ) : variant === 'pills' ? (
       <div

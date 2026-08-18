@@ -9,7 +9,6 @@ import {
 } from '@/components/blueprint/BlueprintLabelRail'
 import { ComparePathSectionFrame } from '@/components/blueprint/ComparePathSectionFrame'
 import { IntegratedTriggerArrows } from '@/components/blueprint/IntegratedTriggerArrows'
-import { BlueprintVisualPlayButton } from '@/components/blueprint/BlueprintVisualPlayButton'
 import {
   BLUEPRINT_LAYER_ROW_GAP,
   STEP_COLUMN_GAP,
@@ -36,12 +35,7 @@ import {
 } from '@/lib/sideBySideCompareLayout'
 import { cn } from '@/lib/utils'
 import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
-import { buildVisualWalkthroughSession } from '@/lib/visualWalkthrough'
 import type { BlueprintData, BlueprintStep } from '@/types/blueprint'
-
-/** Left gutter on the white board so the play control clears Visual cells. */
-const VISUAL_PLAY_GUTTER = 28
 
 /**
  * How one band is placed inside its parent grid.
@@ -109,15 +103,6 @@ export function BlueprintPathBand({
   // A fresh array literal here re-runs the overlay's whole observer setup on
   // every render, and `observe()` fires immediately — which renders again.
   const arrowPaths = useMemo(() => [blueprint.path], [blueprint.path])
-  const showPlay =
-    isBlueprintVisualWalkthroughEnabled() &&
-    buildVisualWalkthroughSession(blueprint).steps.length > 0
-  // The stacked arrangement cannot shift cells right for the play control —
-  // cells must stay on the canonical column tracks — so the control hangs in
-  // the rail gap instead (see CompareLayerRow).
-  const playGutter =
-    showPlay && arrangement.kind === 'column' ? VISUAL_PLAY_GUTTER : 0
-
   const placementStyle =
     arrangement.kind === 'column'
       ? {
@@ -226,8 +211,6 @@ export function BlueprintPathBand({
           scenarioName={scenarioName}
           phaseName={phaseName}
           fillSwimlaneHeight={fillSwimlaneHeight}
-          playGutter={playGutter}
-          showPlay={showPlay}
           stackedTracks={
             arrangement.kind === 'row' ? arrangement.tracks : undefined
           }
@@ -255,8 +238,6 @@ function CompareCardRow({
   scenarioName,
   phaseName,
   fillSwimlaneHeight = false,
-  playGutter = 0,
-  showPlay = false,
   stackedTracks,
 }: {
   row: BlueprintLabelRowSpec
@@ -267,8 +248,6 @@ function CompareCardRow({
   scenarioName?: string
   phaseName?: string
   fillSwimlaneHeight?: boolean
-  playGutter?: number
-  showPlay?: boolean
   stackedTracks?: readonly CompareGridTrack[]
 }) {
   return (
@@ -286,8 +265,6 @@ function CompareCardRow({
           scenarioName={scenarioName}
           phaseName={phaseName}
           fillSwimlaneHeight={fillSwimlaneHeight}
-          playGutter={playGutter}
-          showPlay={showPlay}
           stackedTracks={stackedTracks}
         />
       ) : null}
@@ -303,8 +280,6 @@ function CompareLayerRow({
   scenarioName,
   phaseName,
   fillSwimlaneHeight = false,
-  playGutter = 0,
-  showPlay = false,
   stackedTracks,
 }: {
   blueprint: BlueprintData
@@ -314,8 +289,6 @@ function CompareLayerRow({
   scenarioName?: string
   phaseName?: string
   fillSwimlaneHeight?: boolean
-  playGutter?: number
-  showPlay?: boolean
   stackedTracks?: readonly CompareGridTrack[]
 }) {
   const blueprintLayer = useMemo(
@@ -338,8 +311,6 @@ function CompareLayerRow({
   )
   const flushBottom = layerPrecedesBlueprintDivider(layer, layers)
   const isVisualLayer = shouldUseVisualContent(layer)
-  const renderPlay =
-    showPlay && isVisualLayer && (playGutter > 0 || stackedTracks !== undefined)
 
   const renderStepCell = (step: BlueprintStep, stepIndex: number) => {
     const cell = getCellAt(cellLookup, blueprintLayer.id, step.id)
@@ -407,20 +378,6 @@ function CompareLayerRow({
     )
   }
 
-  const playButton = renderPlay ? (
-    <div
-      className="pointer-events-auto absolute z-50"
-      style={{
-        // Stacked bands keep cells on the canonical tracks, so the play
-        // control hangs in the rail gap to their left instead of a gutter.
-        left: stackedTracks ? -(STEP_COLUMN_GAP + 2) : 6,
-        top: compact ? 10 : 14,
-      }}
-    >
-      <BlueprintVisualPlayButton blueprint={blueprint} />
-    </div>
-  ) : null
-
   if (stackedTracks) {
     // Stacked arrangement: same fixed cell widths and gaps as the canonical
     // column tracks, so a flex row lines up with the parent grid exactly.
@@ -437,7 +394,6 @@ function CompareLayerRow({
         )}
         style={{ backgroundColor: 'transparent' }}
       >
-        {playButton}
         {stackedTracks.map((track, trackIndex) => {
           const gapSpacer = (stepIndex?: number) =>
             trackIndex < stackedTracks.length - 1 ? (
@@ -486,12 +442,8 @@ function CompareLayerRow({
         'relative flex items-stretch rounded-sm',
         fillSwimlaneHeight ? 'h-full min-h-0 w-full' : 'shrink-0',
       )}
-      style={{
-        backgroundColor: 'transparent',
-        paddingLeft: playGutter || undefined,
-      }}
+      style={{ backgroundColor: 'transparent' }}
     >
-      {playButton}
       {blueprint.steps.map((step, stepIndex) => (
         <Fragment key={`${layer.id}-${step.id}`}>
           {renderStepCell(step, stepIndex)}
