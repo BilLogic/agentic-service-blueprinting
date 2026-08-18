@@ -1,11 +1,14 @@
 ---
 title: "Slices frontend — tabs, focus/presentation, cell panel v2, findings, compare"
 type: feat
-status: active
+status: completed
 date: 2026-07-29
 ---
 
 # Slices frontend experience
+
+> Shipped. Phase 5's compare view landed in its evolved Compare v3 form
+> (stacked bands + ledger + strip; merged grid) rather than as drafted here.
 
 ## Enhancement Summary (deepened 2026-07-29)
 

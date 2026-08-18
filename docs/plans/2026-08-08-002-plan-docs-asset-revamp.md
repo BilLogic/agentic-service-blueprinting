@@ -1,7 +1,7 @@
 ---
 title: Docs asset revamp — the four SVGs (+ ERD) catch up to the four-skill reality
 type: plan
-status: draft-for-review
+status: completed
 date: 2026-08-08
 scope: documentation assets only — no code, no schema, no README prose beyond captions/alt text
 relates: docs/plans/2026-08-08-001-plan-migration-v2-uno-parity.md (Phase 4 item 2, pulled forward)

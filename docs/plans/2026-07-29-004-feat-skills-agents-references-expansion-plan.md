@@ -1,7 +1,7 @@
 ---
 title: "Skills, agents, and references expansion — slice/audit/whatif, deferred map rename"
 type: feat
-status: active
+status: completed
 date: 2026-07-29
 ---
 
