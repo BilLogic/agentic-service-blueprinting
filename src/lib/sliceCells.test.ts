@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { getBlueprintFallback, SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
+import {
+  getBlueprintFallback,
+  getFallbackPathsForScenario,
+  SAMPLE_SCENARIO_ID,
+} from '@/data/blueprintFallbacks'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
   findFallbackScenarioForCells,
@@ -99,9 +103,10 @@ describe('pickBlueprintForCells', () => {
 
 describe('bundled demo slices', () => {
   it('every demo slice resolves onto a registered sample scenario', () => {
-    // The meta-blueprint ships one journey slice (over the first-run
-    // scenario) and one step slice (over the mapping scenario) — each must
-    // land on exactly one registered fallback scenario.
+    // The meta-blueprint ships three demo slices — a journey over the
+    // first-run scenario, a step down the mapping scenario's import column,
+    // and a lane across the first-run terminal row — and each must land on
+    // exactly one registered fallback scenario.
     for (const slice of FALLBACK_SLICES) {
       const items = FALLBACK_SLICE_ITEMS[slice.id] ?? []
       const cellIds = items.flatMap((entry) => entry.cell_ids)
@@ -125,7 +130,17 @@ describe('bundled demo slices', () => {
       const cellIds = items.flatMap((entry) => entry.cell_ids)
       const scenarioId = findFallbackScenarioForCells(cellIds)
       expect(scenarioId).not.toBeNull()
-      const fallback = getBlueprintFallback(scenarioId!)
+      // Against the path the slice is actually about, not the scenario's
+      // first path: the lane slice reads the Supabase run of a two-path
+      // scenario, which is the same choice `pickBlueprintForCells` makes for
+      // the focus view.
+      const paths = getFallbackPathsForScenario(scenarioId!)
+      const blueprints = paths
+        .map((path) => getBlueprintFallback(scenarioId!, path.id, path.path_type))
+        .filter((data): data is BlueprintData => data !== null)
+      const fallback =
+        pickBlueprintForCells(blueprints, cellIds) ??
+        getBlueprintFallback(scenarioId!)
       expect(fallback).not.toBeNull()
       const resolution = resolveSliceCells(fallback, items)
       expect(resolution.missingCellIds).toEqual([])

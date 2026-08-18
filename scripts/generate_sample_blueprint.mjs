@@ -18,14 +18,20 @@
  *     Supabase run) shaped so the compare views show every verdict: fully
  *     shared columns (quiet), divergent columns, path-only cells, and
  *     shared slots inside divergent columns (striped wash in merged view)
- *   - every canonical layer_role, so all three divider lines render, plus
- *     pill lanes (newline multi-pill AND slot-sibling cells), a visual row,
+ *   - every canonical layer_role, and lane orders that make all three divider
+ *     lines draw — interaction and visibility everywhere, and INTERNAL
+ *     interaction in Discover the kit and Keep it true, which is only drawn
+ *     where a support lane follows the backstage-actions lane
+ *   - pill lanes (newline multi-pill AND slot-sibling cells), a visual row,
  *     and a CJK lane display name (样例数据) as the non-ASCII smoke test
- *   - trigger kinds: forward cross-layer, same-column, spine chains,
- *     backward in-lane loops (rework + re-audit), and panel-only `needs`
- *     dependencies with labels and notes
+ *   - the cell spec: differing owner / perceived_owner pairs (the case the
+ *     docs call the interesting one) and FUNCTION / FORM / VALUE blocks, in
+ *     BOTH artifacts, so a keyless clone renders them like a seeded database
+ *   - trigger kinds: forward cross-layer, same-column, spine chains, cross-lane
+ *     UPWARD arrows, backward in-lane loops (rework + re-audit), and panel-only
+ *     `needs` dependencies with labels and notes
  *   - links to REAL repo paths, so cell detail panels point at the code
- *   - two demo slices (journey + step) over the new content
+ *   - three demo slices (journey + step + lane) over the new content
  *
  * Deterministic UUIDs: f0000000-0000-4000-8000-<S><P><KK><AAAA><BBBB>
  *   S = scenario ordinal (0 = lifecycle-scoped), P = path ordinal
@@ -1252,8 +1258,14 @@ const cellKeyFor = (scenario, pathName, layerName, stepName) =>
   ].join('/')
 
 // ---------------------------------------------------------------------------
-// Demo slices — the derived layer's zero-config content: a journey slice
-// over the first-run happy path and a step slice at the sign-off moment.
+// Demo slices — the derived layer's zero-config content. Three of the five
+// slice types, each earning its place: a JOURNEY slice narrating the adopter's
+// first hour, a STEP slice reading the import column down every lane (the
+// vertical read is the whole point — the guardrail lane is the interesting
+// one), and a LANE slice reading the terminal row across, which is the same
+// hour as a command list. `cell` and `custom` are deliberately absent: a
+// single-cell demo teaches nothing the panel does not, and `custom` has no
+// shape of its own to show.
 // ---------------------------------------------------------------------------
 
 function demoCellRef(scenarioKey, pathKey, laneKey, col) {
@@ -1307,18 +1319,50 @@ function buildDemoSlices() {
       ...timestamps,
     },
     items: [
-      item(1, journeyId, 1, 'Clone and install', 'Two commands stand between the repository and a working checkout.', [
-        demoCellRef('FIRST_RUN', 'NODB', 'adopter', 1),
-        demoCellRef('FIRST_RUN', 'NODB', 'adopter', 2),
-      ]),
-      item(1, journeyId, 2, 'First light', 'With no environment at all, the dev server renders the bundled sample content.', [
-        demoCellRef('FIRST_RUN', 'NODB', 'adopter', 5),
-        demoCellRef('FIRST_RUN', 'NODB', 'adopter', 6),
-      ]),
-      item(1, journeyId, 3, 'Prove it works', 'The test suite and the agent-harness smoke run green on a fresh clone.', [
-        demoCellRef('FIRST_RUN', 'NODB', 'adopter', 10),
-        demoCellRef('FIRST_RUN', 'NODB', 'adopter', 11),
-      ]),
+      item(1, journeyId, 1, 'Two commands and a checkout',
+        'The first hour starts with nothing installed and no account anywhere. A clone and an install are the whole setup — there is no signup step, no key to request, and nothing to provision before the next frame.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 1),
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 2),
+        ]),
+      item(1, journeyId, 2, 'The environment step you get to skip',
+        'This is the fork in the road, and the reason this scenario has two paths. The no-database path skips .env entirely: the app detects the missing keys and switches to content bundled in the source tree. The Supabase path spends its next twenty minutes on migrations and a seed — and arrives at the same screen.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 3),
+          demoCellRef('FIRST_RUN', 'NODB', 'datalayer', 3),
+        ]),
+      item(1, journeyId, 3, 'First light',
+        'One command, one browser tab, and the board is populated. Nothing is on the wire — what renders is the kit\u2019s own blueprint of itself, which is why the first thing an adopter reads is a true description of what they just installed.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 5),
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 6),
+          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 6),
+        ]),
+      item(1, journeyId, 4, 'What the board is actually showing',
+        'Worth stopping on, because it is the most common misreading of the first hour: this content belongs to the kit, not to you. The cell that says so carries an owner of “Kit maintainers” against a perceived owner of “Your own service” — the gap is the point, and replacing it is the job of the Map phase.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 7),
+          demoCellRef('FIRST_RUN', 'NODB', 'fixtures', 6),
+        ]),
+      item(1, journeyId, 5, 'Two paths, side by side and merged',
+        'The compare surfaces are the reason a path is a first-class thing here rather than a note in a cell. Stacked keeps each path in its own band; merged folds them into one grid, washes the shared cells and lists every difference in the ledger beneath.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 8),
+          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 8),
+        ]),
+      item(1, journeyId, 6, 'A slice, presented',
+        'The frame you are reading is itself the feature: a slice is a stakeholder-shaped subset of the board that still points at the cells it quotes. Nothing here is retyped, so nothing here can drift from the blueprint.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 9),
+          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 9),
+        ]),
+      item(1, journeyId, 7, 'Proof, before you trust any of it',
+        'The hour ends the way an engineer wants it to end: the suite CI runs goes green on a fresh clone with no database, and the agent harness smoke passes against the same bundled content the canvas just drew.',
+        [
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 10),
+          demoCellRef('FIRST_RUN', 'NODB', 'adopter', 11),
+          demoCellRef('FIRST_RUN', 'NODB', 'appfeedback', 11),
+        ]),
     ],
   }
 
@@ -1327,9 +1371,9 @@ function buildDemoSlices() {
     slice: {
       id: stepId,
       service_lifecycle_id: LIFECYCLE_ID,
-      title: 'The sign-off moment',
+      title: 'The import moment, read top to bottom',
       description:
-        'One step of Map your service read vertically: who approves a scenario, and what binds the approval.',
+        'One column of Map your service — “Import and verify” — read down every lane at once: the step where a file in a repo becomes rows in a database, and the step with the most that can go quietly wrong.',
       actor: null,
       slice_type: 'step',
       origin: 'generated',
@@ -1338,17 +1382,65 @@ function buildDemoSlices() {
       ...timestamps,
     },
     items: [
-      item(2, stepId, 1, 'Who approves', 'The adopter signs off each scenario; Claude records the approval against a hash, not a feeling.', [
-        demoCellRef('MAP_SERVICE', 'GUIDED', 'adopter', 12),
-        demoCellRef('MAP_SERVICE', 'GUIDED', 'claude', 12),
-      ]),
-      item(2, stepId, 2, 'What binds it', 'compute_signoff_hash.py turns the scenario content into the hash the approval records.', [
-        demoCellRef('MAP_SERVICE', 'GUIDED', 'scripts', 12),
-      ]),
+      item(2, stepId, 1, 'What happens in the open',
+        'Claude writes the scenario through the service account and immediately reads it back, because a write that reports success and lands nothing is the failure mode this step exists to catch.',
+        [demoCellRef('MAP_SERVICE', 'GUIDED', 'claude', 15)]),
+      item(2, stepId, 2, 'What runs underneath',
+        'The Supabase CLI applies the change and PostgREST serves the read-back. Neither is asked to be trusted: the verification is a second, independent read, not the first write’s own report.',
+        [demoCellRef('MAP_SERVICE', 'GUIDED', 'scripts', 15)]),
+      item(2, stepId, 3, 'What the guardrail is doing while it happens',
+        'The interesting lane, and the reason to read this step vertically. A service-role key is in play for exactly this step, and a hook makes sure it never reaches disk or transcript. It runs on the adopter’s own machine — the kit ships the hook, it never holds the key.',
+        [demoCellRef('MAP_SERVICE', 'GUIDED', 'hooks', 15)]),
+      item(2, stepId, 4, 'What you see at the end of it',
+        'The imported scenario, read back live in the browser. Until this renders, the import is a claim.',
+        [demoCellRef('MAP_SERVICE', 'GUIDED', 'preview', 15)]),
     ],
   }
 
-  return [journey, step]
+  const laneId = fid(0, 0, KIND.slice, 3, 0)
+  const lane = {
+    slice: {
+      id: laneId,
+      service_lifecycle_id: LIFECYCLE_ID,
+      title: 'Every command the first hour asks you to type',
+      description:
+        'One lane of Clone & first run — Terminal & scripts — read left to right on the Supabase path: the whole hour as a command list, for anyone who would rather read the shell than the story.',
+      actor: 'Terminal & scripts',
+      slice_type: 'lane',
+      origin: 'generated',
+      locale: 'en',
+      position: 3,
+      ...timestamps,
+    },
+    items: [
+      item(3, laneId, 1, 'Get the code, get the deps',
+        'A clone and an install. Nothing here is specific to this kit — and on the no-database path, nothing after it is required either.',
+        [
+          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 1),
+          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 2),
+        ]),
+      item(3, laneId, 2, 'The database, if you want one',
+        'Copy the example env, start the local stack, reset it. This is the part the no-database path skips entirely — the reason the two paths are worth comparing rather than collapsing.',
+        [
+          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 3),
+          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 4),
+        ]),
+      item(3, laneId, 3, 'Run it',
+        'The dev server, and the URL it prints. Everything on the canvas above this lane starts here.',
+        [demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 5)]),
+      item(3, laneId, 4, 'Prove it',
+        'The test suite and the agent harness. Both run without a database, so a reviewer can check the kit\u2019s claims before deciding to configure anything.',
+        [
+          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 10),
+          demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 11),
+        ]),
+      item(3, laneId, 5, 'Ship it',
+        'A build and a static host. The deploy is read-only by construction: the write policies want an authenticated session and the deployed app has no sign-in.',
+        [demoCellRef('FIRST_RUN', 'SUPABASE', 'terminal', 12)]),
+    ],
+  }
+
+  return [journey, step, lane]
 }
 
 const demoSlices = buildDemoSlices()
@@ -1540,7 +1632,8 @@ seedParts.push(`-- GENERATED by scripts/generate_sample_blueprint.mjs — edit t
 -- itself. One '${LIFECYCLE.name}' lifecycle, four phases (Discover →
 -- Adopt → Map → Operate, with Operate.loops_to_phase_id → Map), five
 -- scenarios covering the kit's real flows, incl. one two-path scenario
--- (no-database run vs Supabase run) shaped for the compare views. Matches
+-- (no-database run vs Supabase run) shaped for the compare views, and three
+-- demo slices (journey / step / lane) over that content. Matches
 -- src/data/sampleBlueprint.ts and src/types/nav.ts exactly. Idempotent:
 -- replaces the sample lifecycle.
 
