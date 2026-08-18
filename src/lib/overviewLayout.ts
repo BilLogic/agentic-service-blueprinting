@@ -3,8 +3,11 @@
 /** Horizontal gap between scenario blueprint panels in a phase row. */
 export const OVERVIEW_SCENARIO_GAP = 192
 
-/** Vertical gap between phase rows (excluding section insets). */
-export const OVERVIEW_PHASE_ROW_GAP = 228
+/** Vertical gap between phase rows (excluding section insets). Generous:
+ *  zoomed out, tight rows read as one undifferentiated wall and the phase
+ *  badges (which counter-scale in the semantic blocks tier) collide with
+ *  the row above. */
+export const OVERVIEW_PHASE_ROW_GAP = 320
 
 /** Phase section frame padding on the service overview. */
 export const OVERVIEW_PHASE_SECTION_INSET = 24
