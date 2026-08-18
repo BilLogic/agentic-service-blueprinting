@@ -141,9 +141,6 @@ async function loadAppSurface() {
 const surface = await loadAppSurface()
 const { TOOL_SPECS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES } = surface
 
-/** Every sample blueprint, flat — cell lookups scan across scenarios. */
-const FIXTURE_PATHS = Object.values(surface.SAMPLE_BLUEPRINTS_BY_SCENARIO).flat()
-
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
 // ---------------------------------------------------------------------------
@@ -171,107 +168,17 @@ function buildSystem(skillId, contextNote) {
 }
 
 // ---------------------------------------------------------------------------
-// Fixture-backed read implementations (same compact text shape as
-// src/lib/agent/tools/read.ts).
+// Fixture-backed reads: the app's own sample readers, imported from the
+// bundled surface (src/lib/agent/tools/sampleRead.ts) — not a copy of them.
 // ---------------------------------------------------------------------------
-function fixtureListScenarios() {
-  const phases = surface.FALLBACK_NAV.filter((item) => !item.parentId)
-  return phases
-    .map((phase) => {
-      const scenarios = surface.FALLBACK_NAV.filter(
-        (item) => item.parentId === phase.id,
-      )
-        .map(
-          (scenario) =>
-            `  Scenario "${scenario.label}" (${scenario.id})${scenario.description ? ` — ${scenario.description}` : ''}`,
-        )
-        .join('\n')
-      return `Phase "${phase.label}" (${phase.id})${scenarios ? `\n${scenarios}` : ''}`
-    })
-    .join('\n')
-}
-
-function fixtureGetBlueprint(scenarioId) {
-  const blueprints = surface.SAMPLE_BLUEPRINTS_BY_SCENARIO[scenarioId]
-  if (!blueprints?.length) return 'No paths in this scenario.'
-  const sections = []
-  for (const blueprint of blueprints) {
-    const { path, steps, layers, cells } = blueprint
-    const lines = [
-      `Path "${path.name}" (${path.id}, type ${path.path_type})`,
-      `Steps: ${steps
-        .map((step) => `${step.column_position}. "${step.name}" (${step.id})`)
-        .join(' | ')}`,
-    ]
-    for (const layer of layers) {
-      lines.push(
-        `Lane "${layer.name}" (${layer.id}${layer.role ? `, role ${layer.role}` : ''}):`,
-      )
-      for (const step of steps) {
-        for (const cell of cells) {
-          if (cell.layer_id !== layer.id || cell.step_id !== step.id) continue
-          lines.push(`  [step ${step.column_position}] "${cell.content}" (${cell.id})`)
-        }
-      }
-    }
-    sections.push(lines.join('\n'))
-  }
-  return sections.join('\n\n')
-}
-
-function fixtureGetCell(cellId) {
-  for (const blueprint of FIXTURE_PATHS) {
-    const cell = blueprint.cells.find((entry) => entry.id === cellId)
-    if (!cell) continue
-    const fields = [
-      ['content', cell.content],
-      ['summary', cell.description],
-      ['owner', cell.owner],
-      ['perceived_owner', cell.perceived_owner],
-      ['function', cell.function],
-      ['form', cell.form],
-      ['value_props', cell.value_props?.length ? JSON.stringify(cell.value_props) : null],
-      ['layer_id', cell.layer_id],
-      ['step_id', cell.step_id],
-    ]
-    return fields
-      .filter(([, value]) => value)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n')
-  }
-  throw new Error(`No cell with id ${cellId}.`)
-}
-
-/** Owner tags the offline fixture carries — the no-DB twin of realListOwnerTags. */
-function fixtureListOwnerTags() {
-  const tags = new Set()
-  for (const blueprint of FIXTURE_PATHS) {
-    for (const cell of blueprint.cells) {
-      if (cell.owner) tags.add(cell.owner)
-      if (cell.perceived_owner) tags.add(cell.perceived_owner)
-    }
-  }
-  return tags.size ? [...tags].sort().join(', ') : 'No owner tags in use yet.'
-}
-
-function fixtureListSlices() {
-  return surface.SAMPLE_DEMO_SLICES.map(
-    (slice) => `"${slice.title}" (${slice.id}, type ${slice.slice_type})`,
-  ).join('\n')
-}
-
-function fixtureGetSlice(sliceId) {
-  const slice = surface.SAMPLE_DEMO_SLICES.find((entry) => entry.id === sliceId)
-  if (!slice) throw new Error(`No slice with id ${sliceId}.`)
-  const items = surface.SAMPLE_DEMO_SLICE_ITEMS[sliceId] ?? []
-  const frames = [...items]
-    .sort((a, b) => a.position - b.position)
-    .map(
-      (frame, index) =>
-        `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.caption ? ` caption "${frame.caption}"` : ''}`,
-    )
-  return `slice "${slice.title}" (${slice.id}) type=${slice.slice_type}${slice.actor ? ` actor=${slice.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
-}
+const {
+  sampleGetBlueprint,
+  sampleGetCell,
+  sampleGetSlice,
+  sampleListOwnerTags,
+  sampleListScenarios,
+  sampleListSlices,
+} = surface
 
 // ---------------------------------------------------------------------------
 // Real (PostgREST) read implementations.
@@ -461,26 +368,26 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
         )
         return record.result
       case 'list_scenarios':
-        record.result = HAS_DB ? await realListScenarios() : fixtureListScenarios()
+        record.result = HAS_DB ? await realListScenarios() : sampleListScenarios()
         return record.result
       case 'get_blueprint':
         record.result = HAS_DB
           ? await realGetBlueprint(args.scenario_id)
-          : fixtureGetBlueprint(args.scenario_id)
+          : sampleGetBlueprint(args.scenario_id)
         return record.result
       case 'get_cell':
-        record.result = HAS_DB ? await realGetCell(args.cell_id) : fixtureGetCell(args.cell_id)
+        record.result = HAS_DB ? await realGetCell(args.cell_id) : sampleGetCell(args.cell_id)
         return record.result
       case 'list_owner_tags':
-        record.result = HAS_DB ? await realListOwnerTags() : fixtureListOwnerTags()
+        record.result = HAS_DB ? await realListOwnerTags() : sampleListOwnerTags()
         return record.result
       case 'list_slices':
-        record.result = HAS_DB ? await realListSlices() : fixtureListSlices()
+        record.result = HAS_DB ? await realListSlices() : sampleListSlices()
         return record.result
       case 'get_slice':
         record.result = HAS_DB
           ? await realGetSlice(args.slice_id)
-          : fixtureGetSlice(args.slice_id)
+          : sampleGetSlice(args.slice_id)
         return record.result
       case 'list_findings': {
         const filter = typeof args.status === 'string' ? args.status : 'open'
