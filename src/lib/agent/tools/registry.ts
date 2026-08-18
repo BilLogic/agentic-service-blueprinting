@@ -29,7 +29,7 @@ import {
   setFindingStatus,
   type FindingSeverity,
 } from '@/lib/mutations/findingMutations'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
+import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import {
   agentFocusCell,
   agentOpenPhase,
@@ -66,6 +66,23 @@ async function lifecycleId(client: Client): Promise<string> {
   cachedLifecycleId = data.id
   return data.id
 }
+
+/**
+ * Tools whose writes change blueprint STRUCTURE (phases/scenarios/paths/
+ * lanes/steps). These invalidate through `invalidateStructure()` — the
+ * documented complete set of caches a structural write can stale — rather
+ * than the wholesale empty-prefix invalidation cell-level tools use.
+ */
+const STRUCTURAL_TOOLS = new Set([
+  'create_phase',
+  'create_scenario',
+  'create_path',
+  'add_step',
+  'add_lane',
+  'duplicate_path',
+  'duplicate_scenario',
+  'rename_path',
+])
 
 function s(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key]
@@ -398,8 +415,10 @@ export async function dispatchTool(
         return `Tool "${name}" is not on the allow-list. Available tools are fixed; deletes do not exist here — removal is human-only.`
     }
   } finally {
-    // The canvas reads through the shared query cache; empty prefix
-    // matches every key, so the grids refetch and repaint after a write.
-    invalidateQueries('')
+    // The canvas reads through the shared query cache. Structural tools go
+    // through the STRUCTURE_KEYS contract; cell-level tools keep the empty
+    // prefix (matches every key), so the grids refetch and repaint either way.
+    if (STRUCTURAL_TOOLS.has(name)) invalidateStructure()
+    else invalidateQueries('')
   }
 }

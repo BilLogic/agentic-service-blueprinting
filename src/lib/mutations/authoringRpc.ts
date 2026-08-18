@@ -26,35 +26,40 @@ export type CreatedScenario = { scenario_id: string; path_id: string }
 
 export type DependencyKind = 'trigger' | 'needs'
 
-/** One place where a PostgREST failure becomes an Error. */
-async function invoke<T>(
+type Functions = Database['public']['Functions']
+
+/**
+ * One place where a PostgREST failure becomes an Error. `fn` and `args` are
+ * checked against the generated Functions types. Optional RPC args all
+ * default to NULL server-side, so callers omit them (`?? undefined`) rather
+ * than passing explicit nulls the generated Args types do not admit — same
+ * semantics, checked signature. Wrappers whose RPC declares a Json return
+ * (create_scenario) narrow it themselves.
+ */
+async function invoke<Fn extends keyof Functions & string>(
   client: Client,
-  fn: string,
-  args: Record<string, unknown>,
-): Promise<T> {
-  // The RPCs post-date the generated Database types; the wrapper
-  // signatures are the contract until types are regenerated against the
-  // applied migration.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (client.rpc as any)(fn, args)
+  fn: Fn,
+  args: Functions[Fn]['Args'],
+): Promise<Functions[Fn]['Returns']> {
+  const { data, error } = await client.rpc(fn, args)
   if (error) {
     throw new Error(error.message ?? String(error))
   }
-  return data as T
+  return data as Functions[Fn]['Returns']
 }
 
 export function createPhase(
   client: Client,
   input: { lifecycleId: string; name: string; description?: string | null },
 ): Promise<string> {
-  return invoke<string>(client, 'create_phase', {
+  return invoke(client, 'create_phase', {
     lifecycle_id: input.lifecycleId,
     name: input.name,
-    description: input.description ?? null,
+    description: input.description ?? undefined,
   })
 }
 
-export function createScenario(
+export async function createScenario(
   client: Client,
   input: {
     phaseId: string
@@ -64,22 +69,24 @@ export function createScenario(
     pathName?: string
   },
 ): Promise<CreatedScenario> {
-  return invoke<CreatedScenario>(client, 'create_scenario', {
+  const data = await invoke(client, 'create_scenario', {
     phase_id: input.phaseId,
     name: input.name,
     view_type: 'single',
-    lane_source_path_id: input.laneSourcePathId ?? null,
+    lane_source_path_id: input.laneSourcePathId ?? undefined,
     lane_set: [],
     step_count: input.stepCount ?? 5,
     path_name: input.pathName ?? 'Happy Path',
   })
+  // Declared Json; the RPC body always returns this exact object shape.
+  return data as CreatedScenario
 }
 
 export function duplicateScenario(
   client: Client,
   input: { sourceScenarioId: string; name: string },
 ): Promise<string> {
-  return invoke<string>(client, 'duplicate_scenario', {
+  return invoke(client, 'duplicate_scenario', {
     source_scenario_id: input.sourceScenarioId,
     name: input.name,
   })
@@ -94,11 +101,11 @@ export function createPath(
     laneSourcePathId?: string | null
   },
 ): Promise<string> {
-  return invoke<string>(client, 'create_path', {
+  return invoke(client, 'create_path', {
     scenario_id: input.scenarioId,
     name: input.name,
     path_type: input.pathType ?? 'alternative',
-    lane_source_path_id: input.laneSourcePathId ?? null,
+    lane_source_path_id: input.laneSourcePathId ?? undefined,
   })
 }
 
@@ -111,7 +118,7 @@ export function duplicatePath(
     copyCells?: boolean
   },
 ): Promise<string> {
-  return invoke<string>(client, 'duplicate_path', {
+  return invoke(client, 'duplicate_path', {
     source_path_id: input.sourcePathId,
     name: input.name,
     path_type: input.pathType ?? 'alternative',
@@ -124,7 +131,7 @@ export function renamePath(
   client: Client,
   input: { pathId: string; name: string },
 ): Promise<void> {
-  return invoke<void>(client, 'rename_path', {
+  return invoke(client, 'rename_path', {
     path_id: input.pathId,
     new_name: input.name,
   })
@@ -135,10 +142,10 @@ export function addStep(
   client: Client,
   input: { pathId: string; name: string; atPosition?: number },
 ): Promise<string> {
-  return invoke<string>(client, 'add_step', {
+  return invoke(client, 'add_step', {
     path_id: input.pathId,
     name: input.name,
-    at_position: input.atPosition ?? null,
+    at_position: input.atPosition ?? undefined,
   })
 }
 
@@ -155,11 +162,11 @@ export async function addLane(
     atRow?: number
   },
 ): Promise<string[]> {
-  const created = await invoke<string[] | null>(client, 'add_lane', {
+  const created = await invoke(client, 'add_lane', {
     scenario_id: input.scenarioId,
     name: input.name,
-    layer_role: input.layerRole ?? null,
-    at_row: input.atRow ?? null,
+    layer_role: input.layerRole ?? undefined,
+    at_row: input.atRow ?? undefined,
   })
   return created ?? []
 }
@@ -168,7 +175,7 @@ export function upsertCell(
   client: Client,
   input: { pathId: string; layerId: string; stepId: string; content: string },
 ): Promise<string> {
-  return invoke<string>(client, 'upsert_cell', {
+  return invoke(client, 'upsert_cell', {
     path_id: input.pathId,
     layer_id: input.layerId,
     step_id: input.stepId,
@@ -185,11 +192,10 @@ export function setCellDependency(
     label?: string | null
   },
 ): Promise<string> {
-  return invoke<string>(client, 'set_cell_dependency', {
+  return invoke(client, 'set_cell_dependency', {
     source_cell_id: input.sourceCellId,
     target_cell_id: input.targetCellId,
     kind: input.kind ?? 'trigger',
-    label: input.label ?? null,
-    note: null,
+    label: input.label ?? undefined,
   })
 }
