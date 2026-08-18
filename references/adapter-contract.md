@@ -21,6 +21,15 @@ selects using `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, so live-DB mode
 requires Supabase or a **PostgREST-compatible read API**. A bare Postgres
 host can receive writes but cannot serve the app.
 
+**⚠ Derived layer without a DB (normative)**: a no-DB adopter's
+findings/slices store IS the ledger files that
+`skills/audit/scripts/audit_tools.py` `export` / `report --apply` read and
+write (`{"rows": [...]}` JSON carrying the same fingerprint/dedupe
+semantics as the `findings` table). This is the substrate, not a degraded
+mode — skills persist derived output there, and no separate store exists
+to provision. The derived-layer tables are the Supabase adapter's
+rendering of the same contract.
+
 ## ⚠ REQUIRED operations
 
 An adapter must implement all of these:
