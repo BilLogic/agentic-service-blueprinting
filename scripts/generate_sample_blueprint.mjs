@@ -388,10 +388,10 @@ const SCENARIOS = [
     ],
     lanes: MAP_LANES,
     cells: [
-      { lane: 'figures', col: 1, content: 'How sb:map works', picture: figure('sb-map.svg') },
-      { lane: 'figures', col: 3, content: 'Ways into the blueprint', picture: figure('four-ways-in.svg') },
-      { lane: 'figures', col: 6, content: 'Inside a single path', picture: figure('blueprint-anatomy.svg') },
-      { lane: 'figures', col: 10, content: 'What a slice takes out of the board', picture: figure('slicing-model.svg') },
+      // The visual row draws NOTHING of its own: src/lib/visualWalkthrough.ts
+      // collects the pictures hanging off the OTHER lanes' cells at the same
+      // column and lays them out in the visual lane. So the four figures are
+      // attached below, to the cells whose moment they actually illustrate.
 
       // The Stakeholders lane is deliberately quiet on this board and the two
       // that follow it: mapping is not a spectator sport. Silence is not a gap
@@ -432,7 +432,12 @@ const SCENARIOS = [
       { lane: 'surface', col: 7, slot: 2, content: 'Compare view' },
       { lane: 'surface', col: 9, content: 'Imported scenario, read back live' },
 
-      { lane: 'claude', col: 1, content: 'Loads the sb:map skill and its elicitation protocol' },
+      {
+        lane: 'claude', col: 1,
+        content: 'Loads the sb:map skill and its elicitation protocol',
+        // Journey figure for this column — the visual row picks it up.
+        picture: figure('sb-map.svg'),
+      },
       {
         lane: 'claude', col: 2,
         content: {
@@ -547,6 +552,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 3,
         content: 'layer-roles.md\nlane-vocabulary.md',
+        picture: figure('data-model-hierarchy.svg'),
         description:
           'Rendering follows the semantic layer_role, never the display name — which is why lane labels are free-form, in any language.',
         links: [repoLink('references/layer-roles.md', 'references/layer-roles.md')],
@@ -554,6 +560,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 6,
         content: 'data-model.md\nir-schema.json',
+        picture: figure('blueprint-anatomy.svg'),
         links: [
           repoLink('references/data-model.md', 'references/data-model.md'),
           repoLink('references/ir-schema.json', 'references/ir-schema.json'),
@@ -576,6 +583,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 10,
         content: 'deploy-notes.md',
+        picture: figure('four-ways-in.svg'),
         links: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
       },
     ],
