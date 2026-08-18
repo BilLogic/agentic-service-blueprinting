@@ -1,0 +1,101 @@
+/*
+ * Light theme dials. Structure ported from uno-blueprint
+ * (packages/ui/build/css/themes/light.css lineage); values are this
+ * template's own — see the BRAND SEAM note below.
+ *
+ * Imported BEFORE themes/dark.css: `:root` and `.dark` have equal specificity,
+ * so when `.dark` sits on the root element the later import must win.
+ */
+:root,
+.light {
+  --helpers-os-appearance: Light;
+
+  --radius: 0.625rem;
+
+  /* -------------------------------------------------------------------------
+   * BRAND SEAM — the block an adopter edits to rebrand the app chrome.
+   * (The canvas half of the seam — the phase/panel chrome — lives at the top
+   * of blueprint.css, next to its consumer.)
+   *
+   * The template ships hue-neutral: every chroma dial below is 0, so the
+   * whole semantic layer renders greyscale and `--hue` is visually moot.
+   * It is pinned to 159 — the `--brand-hue-reference` in semantic.css — so
+   * the status-hue harmony pull is exactly zero and warning/destructive/
+   * info/success sit on their category anchors (amber/red/violet/green).
+   *
+   * To rebrand: set `--hue` to your brand's OKLCH hue, raise `--chroma`
+   * (surfaces) and `--primary-chroma` (the filled control) to taste, and
+   * replace the greyscale `--brand-*` ramp below with your tint family.
+   * Status hues will lean toward the brand automatically.
+   * ---------------------------------------------------------------------- */
+  --hue: 159;
+  --chroma: 0;
+  /*
+   * Pure-white canvas. Raised surfaces round up against L=1, so in light mode
+   * elevation is carried by the translucent `--muted` / `--accent` /
+   * `--tertiary` overlays rather than by the surface ladder. The step is
+   * tuned so the muted overlay composites to the template's historical
+   * oklch(0.97 0 0) fill on white.
+   */
+  --surface: 1;
+  --elevation-step: 0.03;
+  --contrast: 0.5;
+  --foreground-lightness: 0.145;
+  /* 0.52 lands muted-foreground on the template's oklch(0.556) exactly at
+   * contrast 0.5; tertiary sits one legibility tier lighter. */
+  --muted-foreground-level: 0.52;
+  --tertiary-foreground-level: 0.42;
+
+  /*
+   * The filled control. Neutral brand: near-black fill, chroma 0. A branded
+   * fork raises `--primary-chroma` and (usually) `--primary-lightness`; the
+   * derivations in semantic.css (border, foreground flip, ring) follow.
+   */
+  --primary-lightness: 0.205;
+  --primary-chroma: 0;
+  /* Focus ring / selection chrome lightness (mid-grey on white). */
+  --ring-lightness: 0.708;
+
+  /*
+   * Expressive fills run darker than the dark-theme anchors so they hold
+   * contrast against the white surface. Lightness is mode-aware; chroma is
+   * the shared `--expressive-chroma` except where a role overrides it —
+   * destructive keeps the template's saturated red.
+   */
+  --warning-lightness: 0.68;
+  --destructive-lightness: 0.577;
+  --destructive-chroma: 0.245;
+  --info-lightness: 0.54;
+  --success-lightness: 0.55;
+
+  /*
+   * Stepped numeric scales — per-theme HSL literals, mapped to utilities in
+   * theme.css and consumed by colors.css via `hsl(var(--brand-N))`.
+   *
+   * Neutral brand ramp: the lightness curve of the uno/Supabase ramp with
+   * saturation removed. 400 is the anchor step; 500/600/link run dark enough
+   * to serve as text and links on the white canvas. A rebrand swaps these
+   * for a tint family with the same light → dark ordering.
+   */
+  --brand-link: 0deg 0% 26%;
+  --brand-default: 0deg 0% 49.5%;
+  --brand-600: 0deg 0% 24%;
+  --brand-500: 0deg 0% 41.1%;
+  --brand-400: 0deg 0% 72.4%;
+  --brand-300: 0deg 0% 86.5%;
+  --brand-200: 0deg 0% 93.1%;
+
+  /* Warning / destructive tint ramps (status, not brand — kept saturated):
+     200 = subtle surface, 500 = border, 600 = text. */
+  --warning-600: 30.3deg 80.3% 47.8%;
+  --warning-500: 36.3deg 85.7% 67.1%;
+  --warning-400: 41.9deg 100% 81.8%;
+  --warning-300: 44.3deg 100% 91.8%;
+  --warning-200: 40deg 81.8% 97.8%;
+  --destructive-default: 10.2deg 77.9% 53.9%;
+  --destructive-600: 9.9deg 82% 43.5%;
+  --destructive-500: 10.4deg 77.1% 79.4%;
+  --destructive-400: 7.1deg 91.3% 91%;
+  --destructive-300: 7.1deg 100% 96.7%;
+  --destructive-200: 0deg 100% 99.4%;
+}

@@ -1,19 +1,50 @@
 /*
- * Blueprint canvas chrome — scroll behaviour, interactive overview panels,
- * and cell emphasis states. Colours resolve through the canvas tokens
- * defined in tokens.css (brand seam + neutral panel chrome).
+ * Blueprint canvas chrome — interactive overview panels and cell emphasis
+ * states. (Scroll utilities live in utilities.css.) Colours resolve through
+ * the canvas tokens declared below.
  */
 
+:root {
+  /* -------------------------------------------------------------------------
+   * BRAND SEAM (canvas half) — the one block an adopter edits to rebrand the
+   * canvas. The app-chrome half of the seam is the dial block in
+   * themes/light.css.
+   *
+   * The template ships hue-neutral: the semantic layer is greyscale and the
+   * only chromatic family in the app is this muted blue-grey used for the
+   * interactive phase frames on the overview canvas. Swap these five values
+   * for your brand's tint family (keep the light → dark ordering: frame fill
+   * lightest, accent/border mid, hover states one step darker) and the
+   * canvas follows. The greys further down are deliberately colourless and
+   * rarely need to change.
+   *
+   * Light-theme-only on purpose: the canvas paints its own surfaces in both
+   * themes, exactly like uno's frozen blueprint palette.
+   * ---------------------------------------------------------------------- */
+  --canvas-phase-frame: #d9e4ea;
+  --canvas-phase-accent: #b6c7d2;
+  --canvas-phase-frame-hover: #c5d6e0;
+  --canvas-phase-accent-hover: #9aadbe;
+  --canvas-phase-badge-foreground: #1c1c1e;
+
+  /* Neutral canvas-panel chrome (scenario panels, badges, hover states). */
+  --canvas-panel-bg: #e8e8ed;
+  --canvas-panel-border: #d4d4da;
+  --canvas-panel-badge: #c2c2c8;
+  --canvas-panel-badge-foreground: #2c2c2e;
+  --canvas-panel-bg-hover: #dddfe4;
+  --canvas-panel-border-hover: #babac4;
+  --canvas-panel-badge-hover: #b0b0b8;
+  --canvas-panel-surface-hover: #f4f4f7;
+  --canvas-raise-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  /* Semantic-zoom blocks-tier cell fill. A canvas token, not var(--border):
+     the canvas paints itself light in both themes, and the dark theme's
+     translucent near-white border would vanish on it. The value is the
+     light theme's historical border grey. */
+  --canvas-cell-block: oklch(0.922 0 0);
+}
+
 @layer utilities {
-  .blueprint-scroll {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .blueprint-scroll::-webkit-scrollbar {
-    display: none;
-  }
-
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
   [data-phase-scenario-panel] {
     background-color: var(--canvas-panel-bg);
@@ -194,7 +225,7 @@
   }
 
   [data-semantic-tier='blocks'] [data-blueprint-cell] {
-    background-color: var(--border);
+    background-color: var(--canvas-cell-block);
     border-color: transparent;
   }
 
