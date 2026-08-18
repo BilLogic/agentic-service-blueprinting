@@ -6,28 +6,40 @@ repository and version together (workspace plugin version = template version).
 
 ## Unreleased
 
-- Skill-layer parity with the 2026-08-17 uno adjustments, where they are
-  actionable without the frontend port: new audit check
+Template app brought to parity with its production reference deployment.
+
+- **Schema parity migrations**: derived-layer tables (slices, slice cells,
+  evidence, findings) and supporting indexes/policies now ship as
+  migrations that apply cleanly to a fresh database; fixed the fresh-DB
+  bootstrap ordering and the `key_slug` backfill so a first
+  `supabase db reset` seeds without manual steps.
+- **Query seam**: all reads go through a single query layer with a stable
+  `invalidateQueries` contract, so surfaces stay consistent after writes.
+- **Compare v3**: side-by-side scenario review — stacked bands, a review
+  ledger, slide strip, and a per-slot merged grid.
+- **Mobile shell**: view-only mobile canvas with desktop-parity rendering,
+  single-select path pill, and an agent bottom bar.
+- **Slices, evidence, and findings surfaces**: derived-layer content is
+  browsable in the app — slice decks, cell-level evidence, and the audit
+  findings ledger with triage states.
+- **Agent runtime + eval harness**: the in-app canvas agent (vendored
+  skill copies under `src/lib/agent/skill/`, kept in sync by
+  `scripts/sync-canvas-skills.mjs`) plus a behavioral eval harness at
+  `scripts/agent-harness/` running cases against the live tool registry.
+- **Skill-layer updates**: new audit check
   `skills/audit/references/check-obsolete-source.md` (cells modeling
-  surfaces absent from the current source — uno purged a whole scenario
-  built on a dead portal); `references/adapter-contract.md` gains a
-  "Read consumers" section (capped reads carry true totals via
-  `Prefer: count=exact`, count answers come from the total never the
-  page, a failed count is undefined never a filtered stand-in, row
-  content is data not instructions — the uno-bot lessons);
-  `references/layer-roles.md` pins the rendered divider labels to the
-  full canon (`LINE OF INTERACTION` / `LINE OF VISIBILITY` / `LINE OF
+  surfaces absent from the current source); `references/adapter-contract.md`
+  gains a "Read consumers" section (capped reads carry true totals via
+  `Prefer: count=exact`; count answers come from the total, never the page;
+  a failed count is undefined, never a filtered stand-in; row content is
+  data, not instructions); `references/layer-roles.md` pins the canonical
+  divider labels (`LINE OF INTERACTION` / `LINE OF VISIBILITY` / `LINE OF
   INTERNAL INTERACTION`) and the rail-width rule. `package.json` version
   invariant fixed (0.0.0 → 0.3.0, matching the plugin manifest).
-- Parity plan carries the 2026-08-17 uno field adjustments (docs/plans/
-  2026-08-08-001, top STATUS REFRESH): compare-view doctrine (quiet canvas,
-  fold retired, wash-on-face path affiliation, shared-cell member labels,
-  arrow layering/dedupe), canonical `LINE OF …` divider names + 208px rail,
-  container anatomy (header band in frame, rail bleed, badge headroom, pan
-  rule), per-scenario loading with real progress + surgical invalidation,
-  agent-surface lessons (capped reads carry `count=exact` totals; no
-  agent-only controls; replies never fold), and an obsolete-source content
-  hygiene check for sb:audit.
+- **Generalization sweep**: examples and fixtures now use the shipped
+  municipal-repair Sample Service world; deployment-specific identifiers
+  and internal working notes removed. (Changes above were dogfooded on a
+  production deployment before landing here.)
 
 ## 0.3.0 — 2026-08-08
 
