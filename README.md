@@ -4,7 +4,7 @@ Turn a service blueprint from a static artifact into an operational source of tr
 
 This repo is that idea, working end to end — two things in one:
 
-1. **The `sb` Claude Code plugin** — four skills. `sb:map` builds a blueprint from whatever you have: documents, a working session, or a diagram exported from somewhere else. `sb:slice` takes a stakeholder view out of it. `sb:audit` runs a roster of consistency checks. `sb:whatif` traces a proposed change before anyone commits to it.
+1. **The `sb` Claude Code plugin** — four skills, in the order a team meets them. `sb:map` builds a blueprint from whatever you have: documents, a working session, or a diagram exported from somewhere else. `sb:audit` runs a roster of consistency checks over it. `sb:whatif` traces a proposed change before anyone commits to it. `sb:slice` takes the view one audience needs out of it.
 2. **An org-agnostic frontend and backend template** that `sb:map` deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
 
 ## Why a queryable blueprint
@@ -51,9 +51,9 @@ The pipeline in one line:
 | Skill | What it is for | Where it ends |
 | --- | --- | --- |
 | [`sb:map`](./skills/map/SKILL.md) | create a blueprint, import documents, translate a foreign diagram, resume an existing workspace | a validated `blueprint/blueprint.json`, signed off per scenario |
-| [`sb:slice`](./skills/slice/SKILL.md) | take a stakeholder view out of the blueprint: `journey`, `step`, `lane`, `cell`, `custom` | a slice document that still points at the cells it quotes |
 | [`sb:audit`](./skills/audit/SKILL.md) | run the check roster over a blueprint | findings you triage, nothing changed for you |
 | [`sb:whatif`](./skills/whatif/SKILL.md) | trace a proposed change before anyone commits to it | the cells it would reach, on a copy |
+| [`sb:slice`](./skills/slice/SKILL.md) | take a stakeholder view out of the blueprint: `journey`, `step`, `lane`, `cell`, `custom` | a slice document that still points at the cells it quotes |
 
 Each is walked, with its own figure, in [guide/03 — The plugin](./docs/guide/03-the-plugin.md).
 
