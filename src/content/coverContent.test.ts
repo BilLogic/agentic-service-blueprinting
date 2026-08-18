@@ -8,14 +8,10 @@ import { coverContent } from '@/content/coverContent'
 
 // Pins the template skin's content contract (plan §6 U3): generalized copy
 // only, every rendered figure accounted for in the sync manifest and on
-// disk, descriptive alt text everywhere, and the two unauthored figure slots
-// left genuinely empty rather than pointed at a file that does not exist.
+// disk, descriptive alt text everywhere, and the defs tables carrying the
+// terms their figures actually show.
 
 const ASSETS_DIR = fileURLToPath(new URL('../../docs/assets', import.meta.url))
-
-/** The two figures Bill has not authored yet. Their sections render
- * prose-only until the files land; nothing may reference them meanwhile. */
-const PENDING_FIGURES = ['when-to-use.svg', 'slice-concept.svg']
 
 /** Deployment vocabulary that must never reach the template skin. `PLUS` is
  * matched case-sensitively — the ordinary word "plus" is legitimate copy. */
@@ -87,34 +83,52 @@ describe('coverContent', () => {
     }
   })
 
-  it('references neither pending figure — the two slots stay empty', () => {
-    const referenced = coverFigures(coverContent).map((figure) => figure.src)
-    for (const name of PENDING_FIGURES) {
-      expect(referenced.join(' ')).not.toContain(name)
-      expect(COVER_ASSET_MANIFEST).not.toContain(name)
-    }
-  })
-
-  it('the two sections awaiting a figure carry their prose instead', () => {
+  it('places each figure on the section its drawing belongs to', () => {
     const sections = coverContent.tabs.flatMap((tab) => tab.sections)
-    for (const id of ['overview-when', 'slices-view']) {
-      const section = sections.find((candidate) => candidate.id === id)
-      expect(section, `missing section ${id}`).toBeDefined()
-      expect(section?.figure).toBeUndefined()
-      // Prose-only means the section still says something on its own.
-      const body =
-        section?.kind === 'prose'
-          ? section.paragraphs.join(' ')
-          : section?.kind === 'defs'
-            ? [section.intro ?? '', ...section.items.map((i) => i.definition)].join(' ')
-            : ''
-      expect(body.length).toBeGreaterThan(80)
+    const figureOf = (id: string) =>
+      sections.find((candidate) => candidate.id === id)?.figure?.src
+
+    // The figures are authored truth; these three slots were the last empty
+    // ones and the copy around them reads off the drawings.
+    expect(figureOf('overview-when')).toBe('/cover/when-to-use.svg')
+    // "From path to presentation" illustrates presenting, not the definition.
+    expect(figureOf('slices-view')).toBeUndefined()
+    expect(figureOf('slices-reading')).toBe('/cover/slice-concept.svg')
+    expect(figureOf('slices-types')).toBe('/cover/slicing-model.svg')
+  })
+
+  it("the Overview defs list carries the four categories the figure shows", () => {
+    const section = coverContent.tabs
+      .flatMap((tab) => tab.sections)
+      .find((candidate) => candidate.id === 'overview-when')
+    expect(section?.kind).toBe('defs')
+    if (section?.kind !== 'defs') return
+    expect(section.items.map((item) => item.term)).toEqual([
+      'Onboarding',
+      'Stakeholder Alignment',
+      'Decision Evaluation',
+      'Context Management',
+    ])
+    // Each definition expands on the figure's caption rather than repeating it.
+    for (const item of section.items) {
+      expect(item.definition.length).toBeGreaterThan(60)
     }
   })
 
-  it('gives every tab a guide link into the repo docs', () => {
+  it('every defs list has a header row for its two columns', () => {
+    for (const tab of coverContent.tabs) {
+      for (const section of tab.sections) {
+        if (section.kind !== 'defs') continue
+        expect(section.columns.term.length).toBeGreaterThan(0)
+        expect(section.columns.definition.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('gives every tab a guide link into the repo docs, labelled the same way', () => {
     for (const tab of coverContent.tabs) {
       expect(tab.link?.docPath).toMatch(/^docs\/guide\/.+\.md$/)
+      expect(tab.link?.label).toBe('Learn more →')
     }
   })
 })

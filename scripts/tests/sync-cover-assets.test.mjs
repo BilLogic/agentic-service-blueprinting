@@ -26,10 +26,10 @@ afterEach(() => {
 })
 
 describe('sync-cover-assets', () => {
-  it('copies all eleven manifest figures into the destination', () => {
+  it('copies all thirteen manifest figures into the destination', () => {
     const dest = tempDir('cover-dest-')
     const count = syncCoverAssets(ASSETS_DIR, dest)
-    expect(count).toBe(11)
+    expect(count).toBe(13)
     expect(readdirSync(dest).sort()).toEqual([...COVER_ASSET_MANIFEST].sort())
   })
 
@@ -45,12 +45,13 @@ describe('sync-cover-assets', () => {
 })
 
 describe('sync-cover-assets manifest scope', () => {
-  it('omits figures that are not authored yet, so their absence is not a build failure', () => {
-    // `when-to-use.svg` and `slice-concept.svg` are still to be drawn. The
-    // manifest lists only what the cover page actually references, so the
-    // sync succeeds while those two slots render prose-only.
-    for (const pending of ['when-to-use.svg', 'slice-concept.svg']) {
-      expect(COVER_ASSET_MANIFEST).not.toContain(pending)
+  it('carries every figure the cover page now references, the late three included', () => {
+    for (const landed of [
+      'when-to-use.svg',
+      'slice-concept.svg',
+      'slicing-model.svg',
+    ]) {
+      expect(COVER_ASSET_MANIFEST).toContain(landed)
     }
     const dest = tempDir('cover-dest-')
     expect(() => syncCoverAssets(ASSETS_DIR, dest)).not.toThrow()

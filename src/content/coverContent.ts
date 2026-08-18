@@ -10,11 +10,11 @@ import type { CoverContent } from '@/components/cover/coverModel'
  * authored once in `docs/assets/` and copied to `public/cover/` by
  * `scripts/sync-cover-assets.mjs` at predev/prebuild.
  *
- * Two figures are not authored yet, so their sections carry no `figure` and
- * render prose-only — the copy for both stands on its own. Each pending slot
- * is marked PENDING FIGURE below with the alt text already written; landing
- * one is a matter of adding the basename to COVER_ASSET_MANIFEST and
- * replacing the marked `figure: undefined` with the real object.
+ * A section's `figure` is optional and an absent one is a first-class state:
+ * the section renders prose-only, with no placeholder standing in for it.
+ *
+ * Where a figure exists it is the authored truth and the copy follows it —
+ * the terms, their order, and the count all read off the drawing.
  *
  * Voice: matches `docs/guide/` — declarative, present tense, terms bolded on
  * first definition, no marketing adjectives. Copy is approved as written;
@@ -22,7 +22,7 @@ import type { CoverContent } from '@/components/cover/coverModel'
  */
 export const coverContent: CoverContent = {
   // `title` omitted on purpose: the header falls back to ORG_NAME, which is
-  // the template default "Service Blueprint".
+  // the template default "Agentic Service Blueprint".
   lede: 'A structured map of how this service is delivered — every phase, every scenario, every path variant, down to what one actor does at one moment. It is data, not a diagram: agents read it, slices are cut from it, and changes are traced through it before anyone commits.',
   primaryCtaLabel: 'Open the blueprint',
   repoUrl: 'https://github.com/BilLogic/agentic-service-blueprinting',
@@ -53,42 +53,38 @@ export const coverContent: CoverContent = {
         {
           kind: 'defs',
           id: 'overview-when',
-          heading: 'When to reach for it',
-          columns: { term: 'Use', definition: 'What the blueprint gives you' },
+          heading: 'How teams use it',
           intro:
-            'Five moments where the blueprint is the shortest path to an answer. They are alternatives, not a sequence — most teams start with one and grow into the rest.',
+            'Four uses where the blueprint is the shortest path to an answer. They are alternatives, not a sequence — most teams start with one and grow into the rest.',
+          columns: { term: 'Use', definition: 'What the blueprint gives you' },
           items: [
             {
               term: 'Onboarding',
               definition:
-                'Show how the service actually works, lane by lane, instead of describing it.',
+                'Someone new reads the whole service — every lane, every phase — before they own any part of it.',
             },
             {
-              term: 'Comparing variants',
+              term: 'Stakeholder Alignment',
               definition:
-                'Hold the happy path against the exception on one step axis and read the difference.',
+                'Each audience is given the one view that concerns them, cut from the same source, so no two rooms are reading different pictures.',
             },
             {
-              term: 'Stakeholder reviews',
+              term: 'Decision Evaluation',
               definition:
-                'Present a slice frame by frame — the blueprint carries the narrative, so there is no deck to keep in sync.',
+                'A proposed change is traced through the dependency graph first, so what it would break is known before anyone commits to it.',
             },
             {
-              term: 'Change decisions',
+              term: 'Context Management',
               definition:
-                'Trace a proposal through the dependency graph before anyone commits to it.',
-            },
-            {
-              term: 'Drift checks',
-              definition:
-                'Run the audit roster when the service has shifted under the map.',
+                'The audit roster names what has stopped holding since the service last moved, so the map is corrected rather than quietly abandoned.',
             },
           ],
-          // PENDING FIGURE — `when-to-use.svg`, alt text already approved:
-          // 'Five moments a team reaches for the blueprint: onboarding,
-          //  comparing variants, stakeholder reviews, change decisions,
-          //  drift checks'
-          figure: undefined,
+          figure: {
+            src: '/cover/when-to-use.svg',
+            alt: 'How teams use the blueprint — onboarding, stakeholder alignment, decision evaluation, and context management',
+            width: 880,
+            height: 406,
+          },
         },
         {
           kind: 'prose',
@@ -107,7 +103,7 @@ export const coverContent: CoverContent = {
         },
       ],
       link: {
-        label: 'Using it in practice →',
+        label: 'Learn more →',
         docPath: 'docs/guide/02-using-it-in-practice.md',
       },
     },
@@ -164,7 +160,7 @@ export const coverContent: CoverContent = {
         },
       ],
       link: {
-        label: 'The blueprint model →',
+        label: 'Learn more →',
         docPath: 'docs/guide/01-the-blueprint-model.md',
       },
     },
@@ -180,10 +176,6 @@ export const coverContent: CoverContent = {
             'A blueprint is complete by design, which makes it the wrong thing to put in front of any one person. A **slice** is a standing view cut from it: an ordered set of cells with a caption and a narrative, built for one audience and one question.',
             'A slice quotes cells rather than copying them — it keeps naming its sources. That is the difference between a view and a snapshot: when the cells move, the slice does not quietly go on claiming the old thing.',
           ],
-          // PENDING FIGURE — `slice-concept.svg`, alt text already approved:
-          // 'A slice cut from the whole blueprint, its frames still pointing
-          //  back at the cells they quote'
-          figure: undefined,
         },
         {
           kind: 'defs',
@@ -202,9 +194,9 @@ export const coverContent: CoverContent = {
           ],
           figure: {
             src: '/cover/slicing-model.svg',
-            alt: 'The five slice types and how a slice is presented frame by frame',
+            alt: 'The five slice types and what each one selects out of a path',
             width: 880,
-            height: 474,
+            height: 214,
           },
         },
         {
@@ -215,10 +207,16 @@ export const coverContent: CoverContent = {
             'A slice opens as its own tab beside the blueprint, so a reader can move between the view and the board it came from. The same slice runs frame by frame in presentation mode when the audience is a room rather than a person.',
             'Both states are addressable: a slice link carries its id, and a presented one carries the frame. Send someone the frame you are looking at.',
           ],
+          figure: {
+            src: '/cover/slice-concept.svg',
+            alt: 'One path becoming a presentation — the cells a slice quotes, ordered into frames',
+            width: 880,
+            height: 364,
+          },
         },
       ],
       link: {
-        label: 'The blueprint model →',
+        label: 'Learn more →',
         docPath: 'docs/guide/01-the-blueprint-model.md',
       },
     },
@@ -310,7 +308,7 @@ export const coverContent: CoverContent = {
           ],
         },
       ],
-      link: { label: 'The plugin →', docPath: 'docs/guide/03-the-plugin.md' },
+      link: { label: 'Learn more →', docPath: 'docs/guide/03-the-plugin.md' },
     },
   ],
 }

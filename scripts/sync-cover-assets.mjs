@@ -27,7 +27,9 @@ export const COVER_ASSET_MANIFEST = [
   'sb-slice.svg',
   'sb-whatif.svg',
   'skill-architecture.svg',
+  'slice-concept.svg',
   'slicing-model.svg',
+  'when-to-use.svg',
   'why-now.svg',
 ]
 
