@@ -1,0 +1,37 @@
+/*
+ * Base element rules — defaults every component inherits (borders, body
+ * background, pointer cursors on interactive elements, app font).
+ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    /* Required by shadcn Base UI drawer overlay on iOS Safari */
+    position: relative;
+    @apply bg-background text-foreground;
+  }
+  :where(
+    a[href],
+    button:not(:disabled),
+    select:not(:disabled),
+    summary,
+    label[for],
+    input[type='button']:not(:disabled),
+    input[type='submit']:not(:disabled),
+    input[type='reset']:not(:disabled),
+    input[type='checkbox']:not(:disabled),
+    input[type='radio']:not(:disabled),
+    input[type='range']:not(:disabled),
+    input[type='file']:not(:disabled),
+    [role='button']:not([aria-disabled='true']),
+    [role='link']:not([aria-disabled='true']),
+    [data-blueprint-cell-interactive]
+  ) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
+}
