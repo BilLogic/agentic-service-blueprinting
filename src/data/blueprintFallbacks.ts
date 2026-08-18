@@ -1,8 +1,8 @@
 /**
  * Offline / no-DB fallback registry.
  *
- * The template ships one generated sample scenario (the scale fixture in
- * src/data/scaleFixture.ts, produced by scripts/generate_scale_fixture.mjs).
+ * The template ships a generated sample blueprint — several scenarios (see
+ * src/data/sampleBlueprint.ts, produced by scripts/generate_sample_blueprint.mjs).
  * The import pipeline (scripts/generate_fallbacks.py --register) replaces the
  * marker-delimited registry block below with generated content for a real
  * organization. All lookups are keyed by scenario / path UUIDs, so foreign
@@ -21,40 +21,41 @@ type FallbackPathListItem = {
 // GENERATED-BLUEPRINT-REGISTRY:BEGIN — managed by scripts/generate_fallbacks.py --register.
 // Everything between the BEGIN/END markers is replaced wholesale on
 // registration; do not hand-edit. Default content wires the template's
-// sample scale fixture.
-import {
-  SCALE_TEST_ALTERNATIVE_PATH_FALLBACK,
-  SCALE_TEST_ALTERNATIVE_PATH_ID,
-  SCALE_TEST_EXCEPTION_PATH_FALLBACK,
-  SCALE_TEST_EXCEPTION_PATH_ID,
-  SCALE_TEST_HAPPY_PATH_FALLBACK,
-  SCALE_TEST_HAPPY_PATH_ID,
-  SCALE_TEST_PATH_FALLBACKS,
-  SCALE_TEST_SCENARIO_ID,
-} from '@/data/scaleFixture'
+// meta-blueprint sample (the blueprint OF this template itself, generated
+// by scripts/generate_sample_blueprint.mjs).
+import { SAMPLE_BLUEPRINTS_BY_SCENARIO, SAMPLE_SCENARIOS } from '@/data/sampleBlueprint'
 
-/** The template's sample scenario (rendered offline without a database). */
-export const SAMPLE_SCENARIO_ID = SCALE_TEST_SCENARIO_ID
+/** The template's primary sample scenario (the two-path compare demo). */
+export const SAMPLE_SCENARIO_ID = SAMPLE_SCENARIOS.find(
+  (scenario) => scenario.path_ids.length > 1,
+)!.id
 
-const FALLBACK_BY_PATH: Record<string, BlueprintData> = {
-  [SCALE_TEST_HAPPY_PATH_ID]: SCALE_TEST_HAPPY_PATH_FALLBACK,
-  [SCALE_TEST_ALTERNATIVE_PATH_ID]: SCALE_TEST_ALTERNATIVE_PATH_FALLBACK,
-  [SCALE_TEST_EXCEPTION_PATH_ID]: SCALE_TEST_EXCEPTION_PATH_FALLBACK,
-}
+const FALLBACK_BY_PATH: Record<string, BlueprintData> = Object.fromEntries(
+  Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)
+    .flat()
+    .map((fallback) => [fallback.path.id, fallback]),
+)
 
-const FALLBACK_PATHS_BY_SCENARIO: Record<string, FallbackPathListItem[]> = {
-  [SCALE_TEST_SCENARIO_ID]: SCALE_TEST_PATH_FALLBACKS.map((fallback) => ({
-    id: fallback.path.id,
-    name: fallback.path.name,
-    description: fallback.path.description,
-    note: fallback.path.note,
-    path_type: fallback.path.path_type,
-  })),
-}
+const FALLBACK_PATHS_BY_SCENARIO: Record<string, FallbackPathListItem[]> =
+  Object.fromEntries(
+    Object.entries(SAMPLE_BLUEPRINTS_BY_SCENARIO).map(([scenarioId, fallbacks]) => [
+      scenarioId,
+      fallbacks.map((fallback) => ({
+        id: fallback.path.id,
+        name: fallback.path.name,
+        description: fallback.path.description,
+        note: fallback.path.note,
+        path_type: fallback.path.path_type,
+      })),
+    ]),
+  )
 
-const FALLBACK_BY_SCENARIO: Record<string, BlueprintData> = {
-  [SCALE_TEST_SCENARIO_ID]: SCALE_TEST_HAPPY_PATH_FALLBACK,
-}
+const FALLBACK_BY_SCENARIO: Record<string, BlueprintData> = Object.fromEntries(
+  Object.entries(SAMPLE_BLUEPRINTS_BY_SCENARIO).map(([scenarioId, fallbacks]) => [
+    scenarioId,
+    fallbacks[0]!,
+  ]),
+)
 
 /** Paths hidden from pickers/grids until ready in the UI (template: none). */
 const UI_HIDDEN_PATH_IDS_BY_SCENARIO: Record<string, readonly string[]> = {}
@@ -216,4 +217,28 @@ export function getFallbackBlueprintsForScenarios(
     if (data) map.set(id, data)
   }
   return map
+}
+
+/** Every fallback cell in the registry, by cell id — built once, lazily. */
+let FALLBACK_CELLS_BY_ID: Map<string, BlueprintData['cells'][number]> | null =
+  null
+
+/**
+ * One fallback cell by id, for panels that read a cell on its own rather than
+ * through the grid query (`useCellContent`). Without this a keyless clone shows
+ * the grid text but none of the cell spec — owner, perceived owner, function,
+ * form, value props — which is exactly the part the sample content is teaching.
+ */
+export function getFallbackCell(
+  cellId: string | null | undefined,
+): BlueprintData['cells'][number] | null {
+  if (!cellId) return null
+  if (!FALLBACK_CELLS_BY_ID) {
+    FALLBACK_CELLS_BY_ID = new Map(
+      Object.values(FALLBACK_BY_PATH).flatMap((data) =>
+        data.cells.map((cell) => [cell.id, cell] as const),
+      ),
+    )
+  }
+  return FALLBACK_CELLS_BY_ID.get(cellId) ?? null
 }

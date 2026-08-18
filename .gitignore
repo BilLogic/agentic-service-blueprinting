@@ -35,3 +35,4 @@ scripts/__pycache__/
 # ignore is the fix, not the deletion.
 .tmp_*
 *.scratch.*
+scripts/agent-harness/transcripts/

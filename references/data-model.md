@@ -142,7 +142,7 @@ harmless, duplicates are not (validator checks).
 
 ## Working precedent
 
-`scripts/generate_scale_fixture.mjs` generates the template's sample content
+`scripts/generate_sample_blueprint.mjs` generates the template's sample content
 (TS fallback module + `supabase/seed.sql`) from one source of truth with
 deterministic IDs and correct insert order — it is the pattern the IR
 generators follow.

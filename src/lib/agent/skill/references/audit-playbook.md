@@ -36,7 +36,7 @@ hard rules; this file carries the mechanics.
   rest. Prefer flipping undetected-this-run rows to `resolved` over
   deleting them — resolution history is signal. A check that failed or was
   skipped touches nothing.
-- **Scoped runs** ("audit Sample Service only"): the cell universe is that
+- **Scoped runs** ("audit Map your service only"): the cell universe is that
   scenario's keys. Supersede is then ALSO scoped — only previous findings
   whose `cell_keys` all fall inside the scope are eligible; a scoped run
   must never resolve a finding it could not have re-detected.
