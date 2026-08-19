@@ -1,17 +1,24 @@
 import type { CoverFigure as CoverFigureModel } from '@/components/cover/coverModel'
+import { COVER_MEASURE } from '@/components/cover/coverMeasure'
 import { cn } from '@/lib/utils'
 
 /**
- * The figure plate.
+ * A cover figure.
  *
- * Every cover figure is authored light — panel fills, text, and strokes are
- * literal hex values inside the file, and an `<img>` seals page CSS out of
- * them. So the plate is deliberately light in both themes: in dark mode it
- * reads as a printed plate in a dark book, which is a convention, rather than
- * as a panel that forgot to theme itself.
+ * No plate, no border, no padding — deliberately. Every figure is authored
+ * with a full-bleed rounded background rect across its whole viewBox
+ * (`fill="#fafbfc" rx="14"`), so the artwork already IS its own container.
+ * Wrapping it in a second bordered, padded, white box drew a frame around a
+ * frame, which is what made the page read as boxes inside boxes.
  *
- * Not `dark:invert` — that destroys the lane colours the figures encode. Not
- * an opacity dim either, which drops the smallest labels below AA.
+ * That self-plate is also what makes dark mode work without any treatment
+ * here: the figures are authored light — panel fills, text and strokes are
+ * literal hex inside the file, and an `<img>` seals page CSS out of them —
+ * so they read as printed plates in a dark book, which is a convention,
+ * rather than as panels that forgot to theme themselves.
+ *
+ * Not `dark:invert` — that destroys the lane colours the figures encode.
+ * Not an opacity dim either, which drops the smallest labels below AA.
  */
 export function CoverFigure({
   figure,
@@ -33,8 +40,11 @@ export function CoverFigure({
       decoding="async"
       data-cover-figure
       className={cn(
-        'h-auto w-full max-w-3xl rounded-xl border border-border bg-white object-contain p-3 sm:p-4',
-        'dark:ring-1 dark:ring-white/10',
+        // One measure with the prose and the tables — see COVER_MEASURE.
+        // This was `max-w-3xl` against the prose's `max-w-2xl`, so every
+        // figure overhung the column it belonged to and the page zig-zagged.
+        'h-auto w-full object-contain',
+        COVER_MEASURE,
         className,
       )}
     />

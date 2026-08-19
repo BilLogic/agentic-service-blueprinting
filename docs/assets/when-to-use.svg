@@ -11,7 +11,7 @@
     <marker id="aLink" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#b6bac2"/></marker>
   </defs>
 
-  <rect x="0" y="-40" width="880" height="406" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+  <rect x="0" y="-40" width="880" height="406" rx="14" fill="#eef1f5" stroke="#e2e4e9"/>
 
   <text x="16" y="-14" font-size="15" font-weight="700" fill="#273036">How teams use the blueprint</text>
 

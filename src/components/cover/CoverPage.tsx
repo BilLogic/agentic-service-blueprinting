@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { ORG_NAME } from '@/config'
+import { cn } from '@/lib/utils'
+import { COVER_MEASURE } from '@/components/cover/coverMeasure'
 import { CoverSections } from '@/components/cover/CoverSections'
 import { renderInline } from '@/components/cover/coverInline'
 import { CoverTabStrip } from '@/components/cover/CoverTabStrip'
@@ -41,23 +43,44 @@ export function CoverPageView({
       className="relative flex h-full min-h-0 flex-col overflow-y-auto bg-background"
       data-cover-page
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-col px-8 py-10 sm:px-10 sm:py-12 lg:py-14">
-        <header className="flex flex-col gap-3 pb-10">
-          <div className="flex items-start justify-between gap-4">
+      <div
+        // The page shell: the gutter the whole page sits in, deliberately
+        // wider than COVER_MEASURE, which bounds the CONTENT inside it.
+        data-cover-shell
+        className="mx-auto flex w-full max-w-5xl flex-col px-8 py-10 sm:px-10 sm:py-12 lg:py-14"
+      >
+        {/*
+          Title, then the sentence that explains it, THEN the way in.
+
+          The button used to sit on the title's baseline, opposite the
+          heading — which put the page's only action level with the words
+          before the reader had been told what they were opening, and left
+          it stranded in whitespace beside a one-line title. Reading order
+          and visual order now agree: what this is, what it does, how to
+          enter. It also stops the action jumping position between a short
+          title and a long one.
+        */}
+        <header className="flex flex-col items-start gap-5 pb-10">
+          <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.25rem] sm:leading-tight">
               {content.title ?? ORG_NAME}
             </h1>
-            <Button
-              type="button"
-              onClick={onOpenCanvas}
-              className="h-9 shrink-0 px-3.5"
+            <p
+              className={cn(
+                'text-base leading-relaxed text-muted-foreground',
+                COVER_MEASURE,
+              )}
             >
-              {content.primaryCtaLabel}
-            </Button>
+              {renderInline(content.lede)}
+            </p>
           </div>
-          <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
-            {renderInline(content.lede)}
-          </p>
+          <Button
+            type="button"
+            onClick={onOpenCanvas}
+            className="h-9 shrink-0 px-3.5"
+          >
+            {content.primaryCtaLabel}
+          </Button>
         </header>
 
         <Tabs
