@@ -12,10 +12,12 @@
 @plugin '@tailwindcss/forms';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-/* The face the sans stack in theme.css names first — variable, so it is one
- * file across its whole weight axis. (BRAND SEAM: swap this import and the
- * --font-sans default in theme.css together.) */
-@import '@fontsource-variable/geist';
+/* The two faces theme.css names first — variable, so each is one file
+ * across its whole weight axis. A fork that wants a different typeface
+ * swaps these imports and the matching --font-sans/--font-mono defaults in
+ * theme.css together. */
+@import '@fontsource-variable/ubuntu-sans';
+@import '@fontsource-variable/source-code-pro';
 
 /*
  * Define the semantic system first, then override its core inputs per theme.

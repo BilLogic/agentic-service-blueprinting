@@ -366,10 +366,11 @@
    * swap the face; unset, the defaults apply.
    *
    * The default is the one thing that differs from theirs, and it has to:
-   * their default is Circular, which is a licensed face we cannot ship. The
-   * template's face is Geist (BRAND SEAM), loaded from
-   * `@fontsource-variable/geist` in the entry — variable, so the whole weight
-   * axis comes in one file. Swap the import and this default together.
+   * their default is Circular, which is a licensed face we cannot ship.
+   * Ubuntu Sans is the default here, loaded from
+   * `@fontsource-variable/ubuntu-sans` in the entry — variable, so the whole
+   * weight axis comes in one file. A fork that wants a different face swaps
+   * the import and this default together.
    *
    * No heading font, no type-scale overrides, no weight overrides: Supabase
    * defines none, and headings are this stack at a heavier weight.
@@ -394,13 +395,11 @@
    * the mono side) cannot cycle.
    */
   --font-sans:
-    var(--app-font-sans, 'Geist Variable'), Geist, 'Helvetica Neue', Helvetica,
-    Arial, sans-serif;
-  /*
-   * No mono seam filled: the template loads no mono face, so `--font-mono`
-   * stays Tailwind's system-mono default. A branded fork adds its face to
-   * the entry and declares the stack here, in the same shape as --font-sans.
-   */
+    var(--app-font-sans, 'Ubuntu Sans Variable'), 'Ubuntu Sans', Ubuntu,
+    'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono:
+    var(--font-source-code-pro, 'Source Code Pro Variable'), 'Source Code Pro',
+    'Office Code Pro', Menlo, monospace;
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
