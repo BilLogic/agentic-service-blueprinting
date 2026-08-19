@@ -51,8 +51,24 @@ function Portrait({
   heading?: string
   children: ReactNode
 }) {
+  /*
+    Text first, image trailing — not the reverse.
+
+    Every other section on the page — prose, defs, skills — starts its
+    heading flush at the column's left edge. Leading with the image here
+    pushed the heading and paragraphs in by the image's width instead, so
+    scanning down the page the reading column jumped left-right-left
+    between section types: an optical stutter, not a deliberate rhythm.
+    Trailing the image keeps one left edge for every heading on the page,
+    and reads better regardless — text before its supporting picture is the
+    ordinary reading order, sighted or not.
+  */
   return (
     <div className={cn('flex items-start gap-4 sm:gap-5', COVER_MEASURE)}>
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {heading ? <SectionHeading>{heading}</SectionHeading> : null}
+        {children}
+      </div>
       <img
         src={image.src}
         alt={image.alt}
@@ -65,10 +81,6 @@ function Portrait({
             : 'size-32 rounded-xl border border-border bg-white object-contain p-1 sm:size-40',
         )}
       />
-      <div className="flex min-w-0 flex-col gap-2">
-        {heading ? <SectionHeading>{heading}</SectionHeading> : null}
-        {children}
-      </div>
     </div>
   )
 }
@@ -179,19 +191,32 @@ function SkillPanel({
   chip: { copyLabel: string; copiedLabel: string }
   eager: boolean
 }) {
+  /*
+    Title, description, illustration — then the copy action, below the
+    figure rather than riding on the title. The chip used to double as the
+    heading, which put a click-to-copy control at the top of the panel
+    where a reader's eye lands first, ahead of any reason to copy it: you
+    do not know you want the command until you have read what it does and
+    seen the diagram. The plain-text heading now answers "what is this",
+    and the button at the bottom answers "take it with you" once the panel
+    has made its case.
+  */
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="flex flex-wrap items-center gap-3">
-        <CoverCommandChip
-          command={section.command}
-          copyLabel={chip.copyLabel}
-          copiedLabel={chip.copiedLabel}
-        />
+      <h3 className="font-mono text-lg font-semibold tracking-tight text-foreground">
+        {section.command}
       </h3>
       <Paragraph>{renderInline(section.description)}</Paragraph>
       {section.figure ? (
         <CoverFigure figure={section.figure} eager={eager} />
       ) : null}
+      <div>
+        <CoverCommandChip
+          command={section.command}
+          copyLabel={chip.copyLabel}
+          copiedLabel={chip.copiedLabel}
+        />
+      </div>
     </div>
   )
 }

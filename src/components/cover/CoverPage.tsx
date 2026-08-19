@@ -19,9 +19,11 @@ import { useEditor } from '@/contexts/EditorContext'
  * app surfaces, never into a cover tab (plan §4.4 — a second writer on the
  * query string would race the slice resolution).
  *
- * The header's single button is the page's only action. Nothing else here
- * writes, fetches, or depends on a database, so the page is identical for a
- * read-only visitor and in a zero-config workspace.
+ * The header's button is the page's only NAVIGATING action — the one way
+ * to leave the cover. Figures are click-to-expand, which is a second class
+ * of button, deliberately: it never writes, fetches, or navigates, so the
+ * page stays identical for a read-only visitor and in a zero-config
+ * workspace whether or not a reader ever opens one.
  */
 export function CoverPage({ content }: { content: CoverContent }) {
   const { enterCanvas } = useEditor()

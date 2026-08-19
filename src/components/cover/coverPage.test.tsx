@@ -96,12 +96,21 @@ describe('CoverPageView', () => {
     expect(onOpenCanvas).toHaveBeenCalledTimes(1)
   })
 
-  it('offers no other button on the page — the header action stands alone', () => {
+  it('offers no other NAVIGATING button on the page — the header action stands alone', () => {
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
+    /*
+      "The only button" stopped being literally true once figures became
+      click-to-expand — that is a second class of button by design, and a
+      legitimate one: it never navigates, writes, or leaves the page, it
+      opens the same image larger. What still has to hold is the ORIGINAL
+      guarantee this test protects: nothing on the page competes with
+      "Open the blueprint" as a way to LEAVE the cover. Tab triggers were
+      already excluded on the same reasoning; figure triggers join them.
+    */
     const buttons = screen
       .getAllByRole('button')
-      // Tab triggers are buttons by role; they are not page actions.
       .filter((button) => button.getAttribute('role') !== 'tab')
+      .filter((button) => !button.getAttribute('aria-label')?.startsWith('Expand:'))
     expect(buttons.map((button) => button.textContent)).toEqual([
       'Open the blueprint',
     ])
@@ -168,8 +177,12 @@ describe('CoverPageView', () => {
       not share an edge. Both are the same defect — a width written twice —
       so the fix is one token and this is the test that keeps it one.
     */
-    const img = screen.getByRole('img', { name: 'What the first figure shows' })
-    expect(img.className).toContain(COVER_MEASURE)
+    // COVER_MEASURE now lives on the figure's click-to-expand trigger, not
+    // the bare <img> — the button is the sized element, the image fills it.
+    const figureTrigger = screen.getByRole('button', {
+      name: 'Expand: What the first figure shows',
+    })
+    expect(figureTrigger.className).toContain(COVER_MEASURE)
 
     const lede = container.querySelector('header p')
     expect(lede?.className).toContain(COVER_MEASURE)
@@ -229,8 +242,11 @@ describe('CoverPageView', () => {
     const plate = screen.getByRole('img', {
       name: 'What the first figure shows',
     })
-    // Prose above, figure below, in one column.
-    expect(plate.parentElement?.className).toContain('flex-col')
+    // Prose above, figure below, in one column. The image's own parent is
+    // now its click-to-expand trigger button, so the stacking check looks
+    // one level further up, at the section container that actually lays
+    // prose and figure out vertically.
+    expect(plate.parentElement?.parentElement?.className).toContain('flex-col')
   })
 
   it('renders the guide link as quiet inline text when repoUrl is set', () => {
