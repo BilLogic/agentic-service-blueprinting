@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { CoverCommandChip } from '@/components/cover/CoverCommandChip'
 import { CoverFigure } from '@/components/cover/CoverFigure'
@@ -5,6 +6,7 @@ import { renderInline } from '@/components/cover/coverInline'
 import type {
   CoverFigure as CoverFigureModel,
   CoverGuideLink,
+  CoverPortraitImage,
   CoverSection,
 } from '@/components/cover/coverModel'
 import { COVER_MEASURE } from '@/components/cover/coverMeasure'
@@ -34,6 +36,43 @@ function Paragraph({ children }: { children: ReactNode }) {
  * An absent figure is the ordinary empty-slot case: the prose renders alone,
  * with nothing standing in for the missing plate.
  */
+/**
+ * Image beside text — a logomark or a framed illustration next to a
+ * heading. `badge` and `framed` are the two treatments the deployments that
+ * carry this section actually use; see CoverPortraitImage for why they
+ * differ.
+ */
+function Portrait({
+  image,
+  heading,
+  children,
+}: {
+  image: CoverPortraitImage
+  heading?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={cn('flex items-start gap-4 sm:gap-5', COVER_MEASURE)}>
+      <img
+        src={image.src}
+        alt={image.alt}
+        loading="lazy"
+        decoding="async"
+        className={cn(
+          'shrink-0 object-cover',
+          image.size === 'badge'
+            ? 'size-16 rounded-2xl sm:size-20'
+            : 'size-32 rounded-xl border border-border bg-white object-contain p-1 sm:size-40',
+        )}
+      />
+      <div className="flex min-w-0 flex-col gap-2">
+        {heading ? <SectionHeading>{heading}</SectionHeading> : null}
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function FigureStack({
   figure,
   eager,
@@ -127,6 +166,93 @@ function GuideLink({ link, repoUrl }: { link: CoverGuideLink; repoUrl: string })
   )
 }
 
+/** One skill's title, description, and illustration — nothing else. Shared
+ * by the tabbed group below and by any lone `skill` section that is not
+ * grouped into one (schema completeness; the content this repo ships always
+ * groups them). */
+function SkillPanel({
+  section,
+  chip,
+  eager,
+}: {
+  section: Extract<CoverSection, { kind: 'skill' }>
+  chip: { copyLabel: string; copiedLabel: string }
+  eager: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="flex flex-wrap items-center gap-3">
+        <CoverCommandChip
+          command={section.command}
+          copyLabel={chip.copyLabel}
+          copiedLabel={chip.copiedLabel}
+        />
+      </h3>
+      <Paragraph>{renderInline(section.description)}</Paragraph>
+      {section.figure ? (
+        <CoverFigure figure={section.figure} eager={eager} />
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * The four skills as a secondary navigation, not a stacked list.
+ *
+ * Deliberately NOT styled like `CoverTabStrip` — an underlined row reading
+ * as a second, competing set of top-level tabs would make the page look
+ * like it has two navigation systems fighting for the same rank. This is a
+ * segmented control instead: a pill row on a recessed track, which reads as
+ * "a control that belongs to the section below it" rather than "another way
+ * to leave this page."
+ */
+function SkillTabs({
+  sections,
+  chip,
+  eagerFirst,
+}: {
+  sections: Extract<CoverSection, { kind: 'skill' }>[]
+  chip: { copyLabel: string; copiedLabel: string }
+  eagerFirst: boolean
+}) {
+  const [active, setActive] = useState(0)
+  const current = sections[Math.min(active, sections.length - 1)]
+  if (!current) return null
+
+  return (
+    <section className="flex flex-col gap-6">
+      <div
+        role="tablist"
+        aria-label="Skills"
+        className="flex w-fit flex-wrap gap-1 rounded-full bg-muted p-1"
+      >
+        {sections.map((section, index) => (
+          <button
+            key={section.id}
+            type="button"
+            role="tab"
+            aria-selected={index === active}
+            onClick={() => setActive(index)}
+            className={cn(
+              'rounded-full px-3.5 py-1.5 font-mono text-sm transition-colors duration-(--motion-structural) ease-structural',
+              index === active
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {section.command}
+          </button>
+        ))}
+      </div>
+      <SkillPanel
+        section={current}
+        chip={chip}
+        eager={eagerFirst && active === 0}
+      />
+    </section>
+  )
+}
+
 export function CoverSections({
   intro,
   sections,
@@ -145,6 +271,19 @@ export function CoverSections({
 }) {
   let figuresSeen = 0
 
+  /*
+    Skills are grouped and rendered once, via the tab control below, rather
+    than stacked in place — four named things in a row read better as one
+    switcher than as four sections of equal weight. Everything else keeps
+    its original order and rendering; only the skill sections leave the
+    stack.
+  */
+  const otherSections = sections.filter((section) => section.kind !== 'skill')
+  const skillSections = sections.filter(
+    (section): section is Extract<CoverSection, { kind: 'skill' }> =>
+      section.kind === 'skill',
+  )
+
   return (
     <div className="flex flex-col gap-10">
       {intro ? (
@@ -158,8 +297,12 @@ export function CoverSections({
         </p>
       ) : null}
 
-      {sections.map((section) => {
-        const eager = eagerFigures && section.figure ? figuresSeen++ === 0 : false
+      {otherSections.map((section) => {
+        // Portraits are never the eager figure: they are small and never
+        // the first thing on a tab in practice, so `in` alone (no read of
+        // `.image`) keeps this a plain existence check, same as `.figure`.
+        const hasImage = ('figure' in section && section.figure) || 'image' in section
+        const eager = eagerFigures && hasImage ? figuresSeen++ === 0 : false
 
         switch (section.kind) {
           case 'prose':
@@ -205,52 +348,30 @@ export function CoverSections({
                 ) : null}
               </section>
             )
-          case 'skill':
-            /*
-              A skill is a NAMED THING in a list of four, and it used to
-              render without a heading of any kind — a chip, a paragraph, a
-              figure, a produces line, all at the same weight as the prose
-              sections around it. The four skills dissolved into one flat
-              run, and nothing on the page said where one ended and the next
-              began.
-
-              The command is the skill's name, so it becomes the heading:
-              `h3`, same rung as every other section title, with the chip
-              carrying it so it stays click-to-copy. The rule above each
-              block is what does the segmenting — cheaper than a card, and
-              it does not box a page whose whole layout is a single column.
-            */
+          case 'portrait':
             return (
-              <section
-                key={section.id}
-                className="flex flex-col gap-3 border-t border-border pt-8 first:border-t-0 first:pt-0"
-              >
-                <h3 className="flex flex-wrap items-center gap-3">
-                  <CoverCommandChip
-                    command={section.command}
-                    copyLabel={chip.copyLabel}
-                    copiedLabel={chip.copiedLabel}
-                  />
-                </h3>
-                <Paragraph>{renderInline(section.purpose)}</Paragraph>
-                {section.figure ? (
-                  <CoverFigure figure={section.figure} eager={eager} />
-                ) : null}
-                <p
-                  className={cn(
-                    'text-sm leading-relaxed text-muted-foreground sm:text-base',
-                    COVER_MEASURE,
-                  )}
-                >
-                  <span className="font-semibold text-foreground">
-                    {section.producesLabel}
-                  </span>{' '}
-                  — {renderInline(section.produces)}
-                </p>
+              <section key={section.id}>
+                <Portrait image={section.image} heading={section.heading}>
+                  {section.paragraphs.map((paragraph, index) => (
+                    <Paragraph key={index}>{renderInline(paragraph)}</Paragraph>
+                  ))}
+                </Portrait>
               </section>
             )
+          // No `case 'skill'` here: `otherSections` above is filtered to
+          // exclude it, and TS proves the exclusion, so a skill section
+          // never reaches this switch. It always renders through
+          // `SkillTabs` below instead.
         }
       })}
+
+      {skillSections.length > 0 ? (
+        <SkillTabs
+          sections={skillSections}
+          chip={chip}
+          eagerFirst={eagerFigures && figuresSeen === 0}
+        />
+      ) : null}
 
       {link && repoUrl ? <GuideLink link={link} repoUrl={repoUrl} /> : null}
     </div>
