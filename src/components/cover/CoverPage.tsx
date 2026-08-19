@@ -44,10 +44,24 @@ export function CoverPageView({
       data-cover-page
     >
       <div
-        // The page shell: the gutter the whole page sits in, deliberately
-        // wider than COVER_MEASURE, which bounds the CONTENT inside it.
+        /*
+          The shell used to run to `max-w-5xl` while every block inside it
+          — prose, tables, figures — capped at the narrower COVER_MEASURE.
+          A wider outer box with narrower inner content left the readable
+          column sitting flush against the shell's left edge: centered as a
+          BOX, but the text inside it read as pushed left, with a dead
+          margin on the right that grew with viewport width.
+
+          One width now. `data-cover-shell` still marks this as the shell
+          rather than a content block — the exemption in coverPage.test.tsx
+          is about layout role, not about the two ever needing to differ
+          again.
+        */
         data-cover-shell
-        className="mx-auto flex w-full max-w-5xl flex-col px-8 py-10 sm:px-10 sm:py-12 lg:py-14"
+        className={cn(
+          'mx-auto flex w-full flex-col px-8 py-10 sm:px-10 sm:py-12 lg:py-14',
+          COVER_MEASURE,
+        )}
       >
         {/*
           Title, then the sentence that explains it, THEN the way in.

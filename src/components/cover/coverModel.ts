@@ -35,6 +35,25 @@ export type CoverGuideLink = {
   docPath: string
 }
 
+/**
+ * A small figure beside text — a logomark, an avatar, a portrait. The
+ * distinct type from `CoverFigure` matters: that one is a wide diagram
+ * plate, sized from its own viewBox and rendered at `COVER_MEASURE`. This
+ * one is a fixed, small square meant to sit next to a heading, and blowing
+ * it up to the page measure would blur a logomark or let a character
+ * illustration dominate a page otherwise made of technical diagrams.
+ */
+export type CoverPortraitImage = {
+  src: string
+  alt: string
+  /** `badge` — a small mark (~80px), no border, no white ground: for a
+   * logomark or icon that already reads on any background. `framed` — a
+   * larger square (~200px) with a border and a white card behind it: for an
+   * illustration authored for its own light ground, the same convention
+   * `CoverFigure` uses for full diagrams. */
+  size: 'badge' | 'framed'
+}
+
 export type CoverSection =
   | {
       kind: 'prose'
@@ -61,13 +80,26 @@ export type CoverSection =
       figure?: CoverFigure
     }
   | {
+      kind: 'portrait'
+      id: string
+      heading?: string
+      /** Paragraphs may carry `**bold**`, `*italic*`, and `` `code` `` runs. */
+      paragraphs: string[]
+      image: CoverPortraitImage
+    }
+  | {
       kind: 'skill'
       id: string
-      /** The invocation, e.g. `/sb:map`. Rendered as a click-to-copy chip. */
+      /** The invocation, e.g. `/sb:map`. Rendered as a click-to-copy chip and
+       * doubling as the panel's title. */
       command: string
-      purpose: string
-      producesLabel: string
-      produces: string
+      /** What the skill does AND what it leaves behind, as one paragraph.
+       * This used to be two fields — `purpose` and a separate `produces`
+       * line below the figure — which put a skill's output on its own
+       * visual rung underneath the illustration instead of reading as part
+       * of what the skill is. One field, one sentence the author folds the
+       * output into. */
+      description: string
       figure?: CoverFigure
     }
 
@@ -96,14 +128,21 @@ export type CoverContent = {
   tabs: CoverTab[]
 }
 
-/** Every figure actually referenced in a content tree, in reading order.
- * Sections with an empty figure slot contribute nothing. */
-export function coverFigures(content: CoverContent): CoverFigure[] {
-  const figures: CoverFigure[] = []
+/**
+ * Every image actually referenced in a content tree, in reading order —
+ * wide figures and portrait images alike, since both resolve to a `src` on
+ * disk and the asset-existence tests want to walk both without caring which
+ * kind they are. Sections with no image slot filled contribute nothing.
+ */
+export function coverFigures(
+  content: CoverContent,
+): Array<{ src: string; alt: string }> {
+  const images: Array<{ src: string; alt: string }> = []
   for (const tab of content.tabs) {
     for (const section of tab.sections) {
-      if (section.figure) figures.push(section.figure)
+      if ('figure' in section && section.figure) images.push(section.figure)
+      if ('image' in section && section.image) images.push(section.image)
     }
   }
-  return figures
+  return images
 }

@@ -57,22 +57,34 @@ describe('coverContent', () => {
     expect(coverContent.chip.copyLabel).toBe('Copy')
   })
 
-  it('every figure has non-empty alt text describing what it shows', () => {
-    const figures = coverFigures(coverContent)
+  it('every image has non-empty alt text describing what it shows', () => {
+    const images = coverFigures(coverContent)
+    expect(images.length).toBeGreaterThan(0)
+    for (const image of images) {
+      expect(image.alt.trim().length).toBeGreaterThan(10)
+      // Alt describes the image, not the file.
+      expect(image.alt).not.toMatch(/\.(svg|png|jpe?g)/i)
+    }
+  })
+
+  it('every wide figure carries its viewBox dimensions', () => {
+    // Portrait images are fixed-size by CSS (badge/framed), not by their own
+    // dimensions, so this is scoped to the `figure` slot, not every image.
+    const figures = coverContent.tabs
+      .flatMap((tab) => tab.sections)
+      .flatMap((section) => ('figure' in section && section.figure ? [section.figure] : []))
     expect(figures.length).toBeGreaterThan(0)
     for (const figure of figures) {
-      expect(figure.alt.trim().length).toBeGreaterThan(10)
-      // Alt describes the figure, not the file.
-      expect(figure.alt).not.toMatch(/\.svg/i)
       expect(figure.width).toBeGreaterThan(0)
       expect(figure.height).toBeGreaterThan(0)
     }
   })
 
-  it('every rendered figure src is /cover/<name> with <name> in the sync manifest', () => {
-    for (const figure of coverFigures(coverContent)) {
-      const match = /^\/cover\/([^/]+)$/.exec(figure.src)
-      expect(match, `unexpected src shape: ${figure.src}`).not.toBeNull()
+  it('every rendered SVG figure src is /cover/<name> with <name> in the sync manifest', () => {
+    for (const image of coverFigures(coverContent)) {
+      if (!image.src.endsWith('.svg')) continue
+      const match = /^\/cover\/([^/]+)$/.exec(image.src)
+      expect(match, `unexpected src shape: ${image.src}`).not.toBeNull()
       expect(COVER_ASSET_MANIFEST).toContain(match?.[1])
     }
   })
@@ -85,8 +97,11 @@ describe('coverContent', () => {
 
   it('places each figure on the section its drawing belongs to', () => {
     const sections = coverContent.tabs.flatMap((tab) => tab.sections)
-    const figureOf = (id: string) =>
-      sections.find((candidate) => candidate.id === id)?.figure?.src
+    const figureOf = (id: string) => {
+      const section = sections.find((candidate) => candidate.id === id)
+      if (!section) return undefined
+      return 'figure' in section ? section.figure?.src : undefined
+    }
 
     // The figures are authored truth; these three slots were the last empty
     // ones and the copy around them reads off the drawings.

@@ -67,9 +67,7 @@ const content = (over: Partial<CoverContent> = {}): CoverContent => ({
           kind: 'skill',
           id: 's1',
           command: '/sb:map',
-          purpose: 'Second body.',
-          producesLabel: 'Produces',
-          produces: 'A validated blueprint file.',
+          description: 'Second body. Produces a validated blueprint file.',
         },
         {
           kind: 'defs',
@@ -131,7 +129,7 @@ describe('CoverPageView', () => {
     expect(screen.queryByText('Second body.')).toBeNull()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Second tab' }))
-    expect(screen.getByText('Second body.')).toBeDefined()
+    expect(screen.getByText(/Second body\./)).toBeDefined()
     expect(screen.queryByText('First body.')).toBeNull()
     expect(
       screen
@@ -197,9 +195,10 @@ describe('CoverPageView', () => {
     // The skill section on tab two also has no figure, and still renders.
     fireEvent.click(screen.getByRole('tab', { name: 'Second tab' }))
     expect(screen.queryAllByRole('img')).toHaveLength(0)
-    // The Produces line splits its label and body across nodes; read the panel.
+    // What the skill produces is folded into its description now, not a
+    // separate labeled line below the figure.
     expect(screen.getByRole('tabpanel').textContent).toContain(
-      'Produces — A validated blueprint file.',
+      'Produces a validated blueprint file.',
     )
   })
 
