@@ -77,6 +77,8 @@ type ScenarioBlueprintPanelProps = {
   dimmed?: boolean
   /** When true, this panel is the camera focus target — no hover chrome. */
   focusActive?: boolean
+  /** See `ResizableComparePanel`. */
+  excludeFromRowHeight?: boolean
 }
 
 /** One scenario's blueprint inside a compare panel — title badge, filters and grid. */
@@ -96,6 +98,7 @@ export function ScenarioBlueprintPanel({
   displayViewType: displayViewTypeProp,
   dimmed = false,
   focusActive = false,
+  excludeFromRowHeight = false,
 }: ScenarioBlueprintPanelProps) {
   const { getScenarioDisplayViewType } = useEditor()
   const internalScrollRef = useRef<HTMLDivElement>(null)
@@ -371,19 +374,20 @@ export function ScenarioBlueprintPanel({
     : undefined
   const showPathTypeBadge = Boolean(sectionTitleLabel)
 
+  // The chrome this panel will actually have — a locked panel has no resize
+  // handle, and an estimate that budgets one is dead gray space.
+  const scrollChrome = { lockHeight: lockPanelHeight }
   const panelHeight =
     lockedPanelHeight ??
     (fixedSwimlaneBodyHeight !== undefined
-      ? getPanelHeightFromSwimlaneBody(fixedSwimlaneBodyHeight, {
-          lockHeight: lockPanelHeight,
-        })
+      ? getPanelHeightFromSwimlaneBody(fixedSwimlaneBodyHeight, scrollChrome)
       : mergedModel !== null
         ? // Merged is about one band tall; the swell over divergent slots
           // comes from the panel's measurement, not from this floor.
-          getMergedComparePanelHeight(visibleBlueprints)
+          getMergedComparePanelHeight(visibleBlueprints, false, scrollChrome)
         : useStackedArrangement
-          ? getStackedComparePanelHeight(visibleBlueprints)
-          : getComparePanelHeight(visibleBlueprints))
+          ? getStackedComparePanelHeight(visibleBlueprints, false, scrollChrome)
+          : getComparePanelHeight(visibleBlueprints, false, scrollChrome))
 
   const fillSwimlaneHeight = fixedSwimlaneBodyHeight !== undefined
 
@@ -400,6 +404,7 @@ export function ScenarioBlueprintPanel({
       : getComparePanelWidth(visibleBlueprints),
     defaultHeight: panelHeight,
     lockHeight: lockPanelHeight,
+    excludeFromRowHeight,
     onNavigate,
     navigateLabel: onNavigate ? `Open ${scenarioName} scenario` : undefined,
     panelTitleLabel: sectionTitleLabel,

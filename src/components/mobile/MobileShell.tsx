@@ -123,6 +123,17 @@ export function MobileShell() {
     [phases, slides],
   )
 
+  /*
+    The one scenario the canvas draws. A phase selection with no scenario
+    resolves to the phase's first, because the phone must never render a
+    whole phase row — see the note beside `ServiceOverviewView` below.
+  */
+  const soloScenarioId = useMemo(() => {
+    if (selectedScenarioId) return selectedScenarioId
+    if (!selectedPhaseId) return null
+    return scenariosByPhase.get(selectedPhaseId)?.[0]?.id ?? null
+  }, [selectedScenarioId, selectedPhaseId, scenariosByPhase])
+
   const scenario = slides.find((slide) => slide.id === selectedScenarioId)
   const phase = slides.find((slide) => slide.id === selectedPhaseId)
   // Slice surfaces come from the shared tab store: a `slice` tab is the
@@ -334,7 +345,22 @@ export function MobileShell() {
                       sticky phase header is suppressed — the shell's own
                       top bar already names the selection, and two bars
                       saying the same thing read as clutter. */}
+                  {/* Scoped to ONE SCENARIO, not to a phase.
+
+                      A phone has no phase lane and no canvas navigation —
+                      the drawer is the only way to move — so a sibling
+                      scenario on the board is a destination the shell
+                      cannot properly take you to, drawn at a size the
+                      device pays for. A phase row is several full boards;
+                      rendering the set on a phone is what takes the
+                      renderer down.
+
+                      `soloScenarioId` wins over `soloPhaseId` inside
+                      ServiceOverviewView, so a phase-only selection
+                      resolves to that phase's first scenario rather than
+                      falling back to the whole row. */}
                   <ServiceOverviewView
+                    soloScenarioId={soloScenarioId ?? undefined}
                     soloPhaseId={selectedPhaseId ?? undefined}
                     renderHeader={() => null}
                   />

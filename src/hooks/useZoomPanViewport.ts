@@ -930,6 +930,54 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   }, [])
 
   /**
+   * The gesture is claimed OUTRIGHT, not merely declared.
+   *
+   * `touch-action: none` is a *declaration* the compositor consults before
+   * it decides whether a touch belongs to the page or to the browser, and
+   * the board is the one place where that consultation is unreliable:
+   * `[data-zoom-pan-content]` carries a transform, so it is a composited
+   * layer, and WebKit does not dependably resolve the property across that
+   * boundary (blueprint.css says the same thing from the CSS side). When it
+   * resolves to `auto`, the browser takes the touch and answers with
+   * `pointercancel` — a finger on empty canvas pans, the identical finger on
+   * a cell does nothing, and two fingers zoom the PAGE instead of the board.
+   * That asymmetry is the whole bug report.
+   *
+   * `preventDefault` is not a declaration; it is the answer to a question
+   * already asked, on an event the browser has already delivered, and no
+   * layer boundary sits between the two. Belt and braces with the CSS: the
+   * declaration keeps the compositor from ever starting the gesture on the
+   * fast path, this keeps it from finishing one it started anyway.
+   *
+   * Both listeners are non-passive — `preventDefault` on a passive listener
+   * is a no-op with a console warning — and both are scoped to the viewport
+   * element, so nothing outside the canvas loses native scrolling. The cell
+   * detail sheet is portalled out of this subtree and is unaffected.
+   *
+   * `touchstart` is prevented only for the SECOND finger. Preventing the
+   * first would suppress the synthesized click that a tap depends on;
+   * multi-touch synthesizes no click, and preventing it there is what stops
+   * WebKit's page pinch-zoom, which `touch-action` cannot reach at all.
+   */
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const claimPinch = (event: TouchEvent) => {
+      if (event.touches.length >= 2 && event.cancelable) event.preventDefault()
+    }
+    const claimMove = (event: TouchEvent) => {
+      if (event.cancelable) event.preventDefault()
+    }
+    const options = { passive: false } as const
+    el.addEventListener('touchstart', claimPinch, options)
+    el.addEventListener('touchmove', claimMove, options)
+    return () => {
+      el.removeEventListener('touchstart', claimPinch)
+      el.removeEventListener('touchmove', claimMove)
+    }
+  }, [])
+
+  /**
    * Touch gestures ride the SAME Pointer Events as mouse pan — no parallel
    * TouchEvent code path. Every touch pointer is tracked in a map; one
    * finger pans (same rules as a mouse drag), and the moment a second

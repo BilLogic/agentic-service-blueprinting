@@ -233,6 +233,8 @@ export type ScenarioSwimlaneLayoutInput = {
   paths: PathListItem[]
   selectedPathIds: string[]
   blueprintsByPathId: Map<string, BlueprintData>
+  /** The scroll chrome the panel will have; see `getStackedComparePanelHeight`. */
+  scrollChrome?: ComparePanelScrollChromeOptions
   compact?: boolean
   collapsedLayerIds?: ReadonlySet<string>
 }
@@ -348,7 +350,7 @@ export function getScenarioBlueprintPanelHeight(
 ): number {
   const swimlaneBodyHeight = getScenarioSwimlaneBodyHeight(options)
   if (swimlaneBodyHeight > 0) {
-    return getPanelHeightFromSwimlaneBody(swimlaneBodyHeight)
+    return getPanelHeightFromSwimlaneBody(swimlaneBodyHeight, options.scrollChrome)
   }
 
   return COMPARE_MIN_PANEL_HEIGHT
@@ -622,9 +624,12 @@ export function getComparePanelWidth(
 export function getComparePanelHeight(
   blueprints: BlueprintData[],
   compact = false,
+  /** See the note on `getStackedComparePanelHeight`. */
+  scrollChrome?: ComparePanelScrollChromeOptions,
 ): number {
   return (
-    getCompareGridHeight(blueprints, compact) + getComparePanelScrollPaddingY()
+    getCompareGridHeight(blueprints, compact) +
+    getComparePanelScrollPaddingY(scrollChrome)
   )
 }
 
@@ -707,10 +712,20 @@ export function getStackedComparePanelWidth(columnCount: number): number {
 export function getStackedComparePanelHeight(
   blueprints: BlueprintData[],
   compact = false,
+  /*
+    The scroll chrome this panel will actually have. Defaulting it (rather
+    than taking it) put 64px of dead gray under every board in an aligned
+    phase row: those panels are height-locked and have no resize handle, so
+    `getComparePanelScrollPaddingY()` with no options budgeted them a handle
+    inset and an artboard buffer that never render. The measuring pass
+    corrects it now either way, but a placeholder wrong by a constant still
+    costs one bad pre-paint frame.
+  */
+  scrollChrome?: ComparePanelScrollChromeOptions,
 ): number {
   return (
     getStackedCompareGridHeight(blueprints, compact) +
-    getComparePanelScrollPaddingY()
+    getComparePanelScrollPaddingY(scrollChrome)
   )
 }
 
@@ -755,10 +770,12 @@ export function getMergedCompareGridHeight(
 export function getMergedComparePanelHeight(
   blueprints: BlueprintData[],
   compact = false,
+  /** See the note on `getStackedComparePanelHeight`. */
+  scrollChrome?: ComparePanelScrollChromeOptions,
 ): number {
   return (
     getMergedCompareGridHeight(blueprints, compact) +
-    getComparePanelScrollPaddingY()
+    getComparePanelScrollPaddingY(scrollChrome)
   )
 }
 

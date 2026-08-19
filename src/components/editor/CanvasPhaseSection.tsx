@@ -148,7 +148,12 @@ export function CanvasPhaseSection({
   // `navigable` also gates the data-canvas-phase-interactive pan-ignore
   // marker below: in focus mode the click affordance is gone, and a drag
   // inside the board must PAN, not die on that attribute.
-  const navigable = interactive && !focusActive
+  // No handler, no affordance. A surface that renders `role="button"`, a
+  // pointer cursor and an aria-label, then does nothing when tapped, is
+  // worse than an inert one — and mobile deliberately passes no handler,
+  // because every move between scenarios and phases there belongs to the
+  // drawer (see `disableCanvasNavigation`).
+  const navigable = interactive && !focusActive && Boolean(onNavigate)
 
   const handleSectionClick = (event: MouseEvent<HTMLElement>) => {
     if (!navigable || isBlueprintPanelTarget(event.target)) return
