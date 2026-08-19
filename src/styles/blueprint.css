@@ -600,6 +600,33 @@
       overscroll-behavior: contain;
     }
   }
+
+  /*
+   * ...AND THE GESTURE ITSELF, all the way down.
+   *
+   * `touch-action` is not inherited. It was set on the viewport only, so
+   * every element of the board computed `auto` — and the board hangs inside
+   * `[data-zoom-pan-content]`, which carries a transform and is therefore a
+   * composited layer. WebKit does not reliably resolve an ancestor's `none`
+   * across that boundary: a finger landing on a cell was treated as a native
+   * pan/zoom, which cancels the pointer stream the canvas listens to. Panning
+   * and pinching worked on empty canvas (the finger lands on the viewport,
+   * which does carry `none`) and did nothing at all inside a path board.
+   *
+   * Chromium walks the ancestor chain correctly and never showed this, which
+   * is why it survived verification — the browser pane is Chromium.
+   *
+   * The blanket descendant selector is safe here BECAUSE the board holds no
+   * scrollable region: the canvas pans instead of scrolling, so there is no
+   * gesture inside it that belongs to the browser. Anything that does need
+   * native scrolling (the cell detail sheet) is portalled out of this
+   * subtree. Not scoped to `pointer: coarse` — `touch-action` is inert for
+   * mouse input, and a touchscreen laptop needs it too.
+   */
+  [data-zoom-pan-content],
+  [data-zoom-pan-content] * {
+    touch-action: none;
+  }
 }
 
 @layer utilities {

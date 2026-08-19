@@ -146,7 +146,20 @@ function ZoomPanViewportInner({
       >
         <div
           ref={contentRef}
-          className="absolute left-0 top-0 origin-top-left"
+          /*
+           * `touch-none` here as well as on the viewport, and again on every
+           * descendant in blueprint.css. `touch-action` is not inherited,
+           * and this element is TRANSFORMED — a composited layer boundary
+           * that WebKit does not reliably look past when it resolves an
+           * ancestor's `none`. A finger on empty canvas lands on the
+           * viewport and pans; a finger on a cell lands inside here, where
+           * Safari saw `auto`, took the gesture natively, and cancelled the
+           * pointer stream the app was listening to. The board went dead
+           * exactly where there is something to touch. Chromium walks the
+           * ancestor chain correctly, which is why this passed every check
+           * run in a Chromium pane.
+           */
+          className="absolute left-0 top-0 origin-top-left touch-none"
           style={{ backfaceVisibility: 'hidden' }}
           data-zoom-pan-content
         >
