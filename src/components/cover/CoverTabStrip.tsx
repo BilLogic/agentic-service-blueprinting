@@ -98,14 +98,40 @@ export function CoverTabStrip({
         'relative h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b border-border p-0',
         // Hide any scrollbar the platform still paints; the fade is the signal.
         '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        // This is the one horizontally-scrolling surface on an otherwise
-        // vertically-scrolling page. A trackpad's "vertical" scroll gesture
-        // carries a small deltaX along with deltaY from ordinary hand
-        // movement; without containment, a browser can spend that stray
-        // deltaX walking the strip's own scroll position while the page
-        // scrolls past it, which reads as the tab labels twitching
-        // sideways mid-scroll rather than as clean vertical motion. `-x`
-        // only: the page's own vertical scroll must still chain normally.
+        /*
+          CONFIRMED bug, not the earlier `overscroll-x-contain` guess (kept
+          below — it is still correct, just not what was reported).
+
+          The shared indicator below renders `absolute bottom-[-1px] h-0.5`
+          — 2px straddling the border line under the strip. An absolutely
+          positioned child that extends past its container's padding edge
+          enlarges that container's SCROLLABLE overflow region even though
+          it does not affect normal-flow layout height, so `scrollHeight`
+          measured 33px against a 31px `clientHeight`: a real 2px of
+          vertical overflow, not a visual illusion.
+
+          Setting `overflow-x-auto` and leaving `overflow-y` unset does not
+          leave the Y axis `visible`, either — CSS forces the two axes to
+          compute together: if one of `overflow-x`/`overflow-y` is set to
+          anything but `visible` and the other computes to `visible`, the
+          `visible` one is forced to `auto` too. So this strip was
+          FUNCTIONALLY scrollable by 2px on an axis nobody intended to
+          expose, invisibly (the hidden scrollbar above hides it from view,
+          not from the pointer). A wheel gesture's stray vertical component
+          landing on this element could be spent on that 2px instead of
+          passing through to the page, which reads as the strip jittering
+          in place while the page's own scroll hitches — exactly the
+          reported "scroll shifts the bar" symptom.
+
+          `overflow-y-hidden` closes the axis outright rather than letting
+          the interop rule reopen it.
+        */
+        'overflow-y-hidden',
+        // Real, and still correct once the axis above is closed: a
+        // trackpad's "vertical" gesture carries a small stray deltaX from
+        // ordinary hand movement, and this is the one horizontally-
+        // scrolling surface on an otherwise vertically-scrolling page.
+        // `-x` only — the page's own vertical scroll must still chain.
         'overscroll-x-contain',
         overflow.start && overflow.end && MASK_BOTH,
         overflow.start && !overflow.end && MASK_START,

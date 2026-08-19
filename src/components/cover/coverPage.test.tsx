@@ -116,6 +116,27 @@ describe('CoverPageView', () => {
     ])
   })
 
+  it('closes the vertical overflow axis on the tab strip', () => {
+    /*
+      Regression pin for a confirmed bug, not a defensive guess: the shared
+      active-tab indicator renders `absolute bottom-[-1px] h-0.5`, which
+      enlarges the strip's SCROLLABLE overflow region by ~2px even though it
+      never affects normal-flow layout height. Combined with a CSS interop
+      rule — setting only `overflow-x` non-`visible` forces the other axis
+      to compute as `auto` too, rather than staying `visible` — the strip
+      was functionally scrollable on an axis nobody intended to expose. A
+      stray vertical wheel delta landing there could be spent on that 2px
+      instead of passing through to the page, which read as the tab row
+      jittering while the page's own scroll hitched.
+
+      jsdom does not run real layout, so `scrollHeight`/`clientHeight` are
+      not meaningful here — this pins the one thing that actually prevents
+      the regression: the explicit class that closes the axis.
+    */
+    render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
+    expect(screen.getByRole('tablist').className).toContain('overflow-y-hidden')
+  })
+
   it('exposes the WAI-ARIA tabs pattern with exactly one selected trigger', () => {
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
     expect(screen.getByRole('tablist')).toBeDefined()
