@@ -52,20 +52,18 @@ function Portrait({
   children: ReactNode
 }) {
   /*
-    Text first, image trailing — not the reverse.
-
-    Every other section on the page — prose, defs, skills — starts its
-    heading flush at the column's left edge. Leading with the image here
-    pushed the heading and paragraphs in by the image's width instead, so
-    scanning down the page the reading column jumped left-right-left
-    between section types: an optical stutter, not a deliberate rhythm.
-    Trailing the image keeps one left edge for every heading on the page,
-    and reads better regardless — text before its supporting picture is the
-    ordinary reading order, sighted or not.
+    Stacked, not side by side. Text first, then the image below it — the
+    same order `FigureStack` already uses for the page's wide diagrams, so
+    a portrait now follows the one convention every section on the page
+    shares instead of inventing a second layout rule (side-by-side rows
+    were tried first for this section specifically, and dropped: even with
+    the image trailing rather than leading, a row split the section's width
+    unevenly next to every other block on the page, which read as its own
+    small layout system rather than a continuation of the page's).
   */
   return (
-    <div className={cn('flex items-start gap-4 sm:gap-5', COVER_MEASURE)}>
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+    <div className={cn('flex flex-col gap-4', COVER_MEASURE)}>
+      <div className="flex min-w-0 flex-col gap-2">
         {heading ? <SectionHeading>{heading}</SectionHeading> : null}
         {children}
       </div>
