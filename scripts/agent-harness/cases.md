@@ -7,7 +7,7 @@ GEMINI_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY found wins).
 Every case targets the SHIPPED SAMPLE FIXTURE — the META-BLUEPRINT: the
 service blueprint of this template itself. Six scenarios across four
 phases (Discover → Setup → Operate → Maintain), all on one 7-lane roster:
-Stakeholders, 服务负责人 · Blueprint owner, App & skill surface, Claude in
+Stakeholders, Blueprint owner, App & skill surface, Claude in
 the IDE, Pipeline scripts, Subagent fleet, References & guardrails. Most
 cases hit "Map your service" (the sb:map pipeline, phase Setup; the one
 board that adds a visual row, so 8 lanes; 10 scenario columns, of which
@@ -53,7 +53,7 @@ tier/mobile injections.
 - **B2 navigate-then-ground** — "take me to Audit the check roster, list
   the Findings triaged lanes". [T] navigates and reads; no UUID leak. [J]
   lanes match the read — 7 of them, and the bilingual CJK spine lane
-  服务负责人 · Blueprint owner survives intact; markdown shape.
+  lane names reproduced as given; markdown shape.
 - **B3 count-from-total** — mocked capped list_findings: 23 total,
   20 listed. [T] reads findings; the reply states 23; the reply never
   presents the page size as the count. [J] count answered from the TOTAL
