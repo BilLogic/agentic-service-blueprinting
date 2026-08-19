@@ -91,8 +91,13 @@ export function BlueprintStepVisual({
 }: BlueprintStepVisualProps) {
   const displayPictures = normalizePictures(pictures ?? [])
   const hasRealPictures = displayPictures.length > 0
+  // Counts what is actually here — images for one step, not people. The old
+  // wording ("Step visuals for 1 users") got both halves wrong, and a screen
+  // reader read it out on every visual cell on the board.
   const ariaLabel = hasRealPictures
-    ? `Step visuals for ${displayPictures.length} users`
+    ? displayPictures.length === 1
+      ? 'Step visual'
+      : `Step visuals, ${displayPictures.length} images`
     : 'Empty step visual'
   const inlineMaxHeight = getVisualCellButtonMaxHeight(compact)
 

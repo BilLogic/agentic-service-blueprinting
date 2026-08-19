@@ -116,25 +116,39 @@ describe('CoverPageView', () => {
     ])
   })
 
-  it('closes the vertical overflow axis on the tab strip', () => {
+  it('keeps the active-tab indicator out of the scrolling tab list', () => {
     /*
-      Regression pin for a confirmed bug, not a defensive guess: the shared
-      active-tab indicator renders `absolute bottom-[-1px] h-0.5`, which
-      enlarges the strip's SCROLLABLE overflow region by ~2px even though it
-      never affects normal-flow layout height. Combined with a CSS interop
-      rule — setting only `overflow-x` non-`visible` forces the other axis
-      to compute as `auto` too, rather than staying `visible` — the strip
-      was functionally scrollable on an axis nobody intended to expose. A
-      stray vertical wheel delta landing there could be spent on that 2px
-      instead of passing through to the page, which read as the tab row
-      jittering while the page's own scroll hitched.
+      Regression pin for two confirmed bugs with one cause. The shared
+      active-tab indicator renders `absolute bottom-[-1px] h-0.5`, hanging
+      1px past its container's padding edge. Anything that hangs past a
+      scroll container's padding edge enlarges that container's SCROLLABLE
+      overflow region without touching normal-flow layout height — and a
+      CSS interop rule means setting only `overflow-x` non-`visible` forces
+      the other axis to compute as `auto` rather than staying `visible`.
 
-      jsdom does not run real layout, so `scrollHeight`/`clientHeight` are
-      not meaningful here — this pins the one thing that actually prevents
-      the regression: the explicit class that closes the axis.
+      So with the indicator INSIDE the list: measured `scrollHeight` 33 vs
+      `clientHeight` 31 — the strip was functionally scrollable on an axis
+      nobody intended to expose, and a stray vertical wheel delta landing
+      there got spent on that 2px instead of passing through to the page.
+      Closing the axis with `overflow-y-hidden` stopped the jitter but
+      clipped the indicator itself to 1px of its 2px, which read as a
+      cut-off underline.
+
+      Hosting the indicator on the non-scrolling frame fixes both: nothing
+      bleeds past the list's padding box, so there is no phantom axis to
+      close, and the indicator is free to straddle the border in full.
+      jsdom does not run layout, so this pins the structure that makes the
+      geometry impossible rather than the geometry itself.
     */
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
-    expect(screen.getByRole('tablist').className).toContain('overflow-y-hidden')
+    const list = screen.getByRole('tablist')
+    const frame = list.closest('[data-cover-tab-frame]')
+    expect(frame).not.toBeNull()
+
+    const indicator = frame?.querySelector('span[aria-hidden]')
+    expect(indicator).not.toBeNull()
+    expect(list.contains(indicator!)).toBe(false)
+    expect(list.className).toContain('overflow-y-hidden')
   })
 
   it('exposes the WAI-ARIA tabs pattern with exactly one selected trigger', () => {

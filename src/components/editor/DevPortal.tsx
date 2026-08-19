@@ -7,9 +7,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { cn } from '@/lib/utils'
 import {
-  describeAgentTrial,
-  describeRealTier,
   setDevSimulatedTier,
   setDevSimulationOn,
   type DevSimulatedTier,
@@ -44,13 +43,16 @@ export function DevTierOverrideBadge() {
 }
 
 /** A row's ⓘ. The caveats live here, not in the popover as prose. */
-function InfoHint({ label }: { label: string }) {
+function InfoHint({ label, className }: { label: string; className?: string }) {
   return (
     <IconTooltip label={label} side="top">
       <button
         type="button"
         aria-label={label}
-        className="shrink-0 rounded-sm p-0.5 text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        className={cn(
+          'shrink-0 rounded-sm p-0.5 text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+          className,
+        )}
       >
         <Info className="size-3" aria-hidden />
       </button>
@@ -58,8 +60,7 @@ function InfoHint({ label }: { label: string }) {
   )
 }
 
-const ROW_LABEL = 'w-16 shrink-0 text-2xs text-muted-foreground'
-const ROW_BADGE = 'h-5 px-1.5 text-2xs font-normal'
+const ROW_LABEL = 'w-20 shrink-0 text-2xs text-muted-foreground'
 
 /**
  * Settings → "For developers".
@@ -67,28 +68,15 @@ const ROW_BADGE = 'h-5 px-1.5 text-2xs font-normal'
  * Someone building on the kit needs to see both tiers without provisioning
  * two accounts. This flips what the CLIENT believes; the server is untouched.
  *
- * Three labelled rows in the popover's own register — what the session
- * really is, the simulation, the no-database trial — and nothing else
- * visible. Every caveat that used to be a paragraph is now behind the ⓘ on
- * the row it qualifies, which is where someone goes looking for it.
+ * Two controls, because there are exactly two decisions: is the simulation
+ * running, and which tier does it play. Everything else this section used to
+ * report — what the real session is, whether the no-database agent trial is
+ * active — was status, not control. It is derivable from the workspace badges
+ * and the agent panel, and reading it here made a settings popover into a
+ * dashboard. The caveats stay, behind the ⓘ on the row each one qualifies.
  */
 export function DevPortalSection() {
-  const {
-    configured,
-    session,
-    isServiceAccount,
-    isDevAuthoring,
-    devSimulation,
-    realCanWrite,
-    isSampleTrial,
-  } = useSupabase()
-  const tier = describeRealTier({
-    configured,
-    signedIn: session !== null,
-    isServiceAccount,
-    isDevAuthoring,
-  })
-  const trial = describeAgentTrial({ isSampleTrial, configured })
+  const { devSimulation } = useSupabase()
 
   return (
     <div className="flex flex-col gap-2" data-dev-portal>
@@ -100,25 +88,6 @@ export function DevPortalSection() {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className={ROW_LABEL}>Session</span>
-        <Badge
-          variant="secondary"
-          className={ROW_BADGE}
-          data-real-tier={tier.id}
-        >
-          {tier.label}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={ROW_BADGE}
-          data-real-can-write={realCanWrite}
-        >
-          {realCanWrite ? 'can edit' : 'read-only'}
-        </Badge>
-        <InfoHint label={tier.detail} />
-      </div>
-
-      <div className="flex items-center gap-2">
         <span className={ROW_LABEL}>Simulate</span>
         <Switch
           checked={devSimulation.on}
@@ -126,13 +95,21 @@ export function DevPortalSection() {
           aria-label="Simulate a permission tier"
           data-dev-simulate
         />
+        <InfoHint
+          label="Off means the UI reflects your real account. On plays the tier below instead — in this browser only."
+          className="ml-auto"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className={ROW_LABEL}>User type</span>
         <SegmentedControl
           value={devSimulation.tier}
           onValueChange={setDevSimulatedTier}
           disabled={!devSimulation.on}
           aria-label="Simulated tier"
           data-dev-simulated-tier
-          className="ml-auto data-disabled:opacity-50"
+          className="data-disabled:opacity-50"
         >
           {(['regular', 'admin'] as const).map((id) => (
             <SegmentedControlItem key={id} value={id}>
@@ -140,15 +117,10 @@ export function DevPortalSection() {
             </SegmentedControlItem>
           ))}
         </SegmentedControl>
-        <InfoHint label="Admin shows the editing surfaces and the agent's write tools; Regular hides them. Interface only — the server still decides every write." />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className={ROW_LABEL}>Agent trial</span>
-        <Badge variant="secondary" className={ROW_BADGE} data-agent-trial={trial.id}>
-          {trial.label}
-        </Badge>
-        <InfoHint label={trial.detail} />
+        <InfoHint
+          label="Admin shows the editing surfaces and the agent's write tools; Regular hides them. Interface only — the server still decides every write."
+          className="ml-auto"
+        />
       </div>
     </div>
   )

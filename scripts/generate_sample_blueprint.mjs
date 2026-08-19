@@ -27,9 +27,15 @@
  *     compare views show every verdict: fully shared columns (quiet),
  *     divergent columns, path-only cells, path-only STEPS (each Map path
  *     omits the other's column), and shared slots inside divergent columns
- *   - pill lanes (newline multi-pill AND slot-sibling cells), a visual row
- *     carrying four REAL figures, and bilingual CJK (a lane name, a step name
- *     and two cells) as the non-ASCII smoke test
+ *   - pill lanes (newline multi-pill AND slot-sibling cells) and a visual row
+ *     carrying four REAL figures
+ *
+ * The sample content is English-only, deliberately. Non-ASCII rendering is a
+ * real guarantee and is tested — against `scripts/tests/sample-ir.json`, a
+ * fixture whose whole job is to be bilingual — not demonstrated here, where a
+ * CJK lane label in an otherwise English kit reads to an adopter as leftover
+ * contamination from someone else's deployment. See the note on the spine
+ * lane below.
  *   - the cell spec: differing owner / perceived_owner pairs (the case the
  *     docs call the interesting one) and FUNCTION / FORM / VALUE blocks, in
  *     BOTH artifacts, so a keyless clone renders them like a seeded database
@@ -980,7 +986,7 @@ const SCENARIOS = [
         form: 'A darkened full-bleed stage, a filmstrip of the remaining frames, and a locator showing where the frame sits on the blueprint.',
         valueProps: [
           { for: 'The audience', value: 'Their part of the service, in their language, at their length.' },
-          { for: 'The blueprint owner', value: 'One artefact to present instead of a deck that drifts from the board.' },
+          { for: 'The blueprint owner', value: 'One artifact to present instead of a deck that drifts from the board.' },
         ],
       },
       { lane: 'surface', col: 8, content: 'Print / PDF export' },
