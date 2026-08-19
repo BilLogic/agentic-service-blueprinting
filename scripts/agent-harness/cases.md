@@ -52,8 +52,8 @@ tier/mobile injections.
   markdown shape. *(smoke)*
 - **B2 navigate-then-ground** — "take me to Audit the check roster, list
   the Findings triaged lanes". [T] navigates and reads; no UUID leak. [J]
-  lanes match the read — 7 of them, and the bilingual CJK spine lane
-  lane names reproduced as given; markdown shape.
+  lanes match the read — 7 of them, with lane names reproduced as given
+  rather than paraphrased or re-titled; markdown shape.
 - **B3 count-from-total** — mocked capped list_findings: 23 total,
   20 listed. [T] reads findings; the reply states 23; the reply never
   presents the page size as the count. [J] count answered from the TOTAL

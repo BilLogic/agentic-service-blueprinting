@@ -14,8 +14,6 @@ import {
 import { saveAgentSettings } from '@/lib/agent/settings'
 import {
   applyDevSimulation,
-  describeAgentTrial,
-  describeRealTier,
   parseStoredSimulation,
   setDevSimulation,
   setDevSimulatedTier,
@@ -156,44 +154,6 @@ describe('the simulation persists', () => {
   })
 })
 
-describe('describeRealTier reads the session honestly', () => {
-  it('names each tier', () => {
-    const facts = {
-      configured: true,
-      signedIn: false,
-      isServiceAccount: false,
-      isDevAuthoring: false,
-    }
-    expect(
-      describeRealTier({ ...facts, configured: false }).id,
-    ).toBe('no-backend')
-    expect(describeRealTier(facts).id).toBe('anon')
-    expect(describeRealTier({ ...facts, signedIn: true }).id).toBe(
-      'signed-in-viewer',
-    )
-    expect(
-      describeRealTier({ ...facts, signedIn: true, isServiceAccount: true }).id,
-    ).toBe('signed-in-admin')
-    expect(describeRealTier({ ...facts, isDevAuthoring: true }).id).toBe(
-      'dev-service-key',
-    )
-  })
-})
-
-describe('describeAgentTrial names the three conditions', () => {
-  it('reads active, not-needed, and available', () => {
-    expect(
-      describeAgentTrial({ isSampleTrial: true, configured: false }).id,
-    ).toBe('active')
-    expect(
-      describeAgentTrial({ isSampleTrial: false, configured: true }).id,
-    ).toBe('not-needed')
-    expect(
-      describeAgentTrial({ isSampleTrial: false, configured: false }).id,
-    ).toBe('available')
-  })
-})
-
 describe('the simulation moves the write flags and nothing else', () => {
   it('simulating admin grants only the UI write flags', () => {
     const before = readContext()
@@ -284,16 +244,19 @@ describe('the portal section is controls, not prose', () => {
     expect(screen.queryByText('Viewer')).toBeNull()
   })
 
-  it('reads the real session out as a badge, not a sentence', () => {
+  it('is the two decisions and nothing else', () => {
     renderSection()
-    expect(
-      document.querySelector('[data-real-tier="no-backend"]'),
-    ).not.toBeNull()
-    expect(
-      document.querySelector('[data-real-can-write="false"]'),
-    ).not.toBeNull()
-    // The caveats live behind the ⓘ buttons, not in visible copy.
     const portal = document.querySelector('[data-dev-portal]')
+    // Status this section used to report — what the real session is, and
+    // whether the no-database agent trial is running — is derivable from the
+    // workspace badges and the agent panel. Reading it back here turned a
+    // settings popover into a dashboard.
+    expect(document.querySelector('[data-real-tier]')).toBeNull()
+    expect(document.querySelector('[data-real-can-write]')).toBeNull()
+    expect(document.querySelector('[data-agent-trial]')).toBeNull()
+    expect(document.querySelector('[data-dev-simulate]')).not.toBeNull()
+    expect(document.querySelector('[data-dev-simulated-tier]')).not.toBeNull()
+    // The caveats live behind the ⓘ buttons, not in visible copy.
     expect(portal?.textContent).not.toContain('Row-level security')
   })
 

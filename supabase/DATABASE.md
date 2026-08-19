@@ -132,7 +132,7 @@ alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
 `Keeping a blueprint true` lifecycle → four phases (`Discover` → `Setup` →
 `Operate` → `Maintain`, with `Maintain.loops_to_phase_id` → `Operate`) → six
 scenarios carrying eight paths (happy / alternative / unhappy) on one 7-lane
-roster (canonical + one custom role, bilingual CJK labels), plus a visual row
+roster (canonical + one custom role), plus a visual row
 on `Map your service` and three demo slices. Sample UUIDs use the
 `f0000000-…` prefix. Re-run the generator after editing it — never edit the
 emitted files by hand.
