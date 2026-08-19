@@ -7,6 +7,7 @@ import type {
   CoverGuideLink,
   CoverSection,
 } from '@/components/cover/coverModel'
+import { COVER_MEASURE } from '@/components/cover/coverMeasure'
 import { cn } from '@/lib/utils'
 
 function SectionHeading({ children }: { children: ReactNode }) {
@@ -44,7 +45,9 @@ function FigureStack({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex max-w-2xl min-w-0 flex-col gap-2">{children}</div>
+      <div className={cn('flex min-w-0 flex-col gap-2', COVER_MEASURE)}>
+        {children}
+      </div>
       {figure ? <CoverFigure figure={figure} eager={eager} /> : null}
     </div>
   )
@@ -63,7 +66,12 @@ function DefsTable({
   items: { term: string; definition: string }[]
 }) {
   return (
-    <div className="max-w-2xl overflow-x-auto rounded-lg border border-border">
+    <div
+      className={cn(
+        'overflow-x-auto rounded-lg border border-border',
+        COVER_MEASURE,
+      )}
+    >
       <table className="w-full border-collapse text-left text-sm sm:text-base">
         <thead>
           <tr className="bg-muted/50">
@@ -140,7 +148,12 @@ export function CoverSections({
   return (
     <div className="flex flex-col gap-10">
       {intro ? (
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p
+          className={cn(
+            'text-sm leading-relaxed text-muted-foreground sm:text-base',
+            COVER_MEASURE,
+          )}
+        >
           {renderInline(intro)}
         </p>
       ) : null}
@@ -175,7 +188,9 @@ export function CoverSections({
             return (
               <section key={section.id} className="flex flex-col gap-6">
                 <div className="flex flex-col gap-4">
-                  <div className="flex max-w-2xl min-w-0 flex-col gap-2">
+                  <div
+                    className={cn('flex min-w-0 flex-col gap-2', COVER_MEASURE)}
+                  >
                     {section.heading ? (
                       <SectionHeading>{section.heading}</SectionHeading>
                     ) : null}
@@ -191,20 +206,42 @@ export function CoverSections({
               </section>
             )
           case 'skill':
+            /*
+              A skill is a NAMED THING in a list of four, and it used to
+              render without a heading of any kind — a chip, a paragraph, a
+              figure, a produces line, all at the same weight as the prose
+              sections around it. The four skills dissolved into one flat
+              run, and nothing on the page said where one ended and the next
+              began.
+
+              The command is the skill's name, so it becomes the heading:
+              `h3`, same rung as every other section title, with the chip
+              carrying it so it stays click-to-copy. The rule above each
+              block is what does the segmenting — cheaper than a card, and
+              it does not box a page whose whole layout is a single column.
+            */
             return (
-              <section key={section.id} className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-3">
+              <section
+                key={section.id}
+                className="flex flex-col gap-3 border-t border-border pt-8 first:border-t-0 first:pt-0"
+              >
+                <h3 className="flex flex-wrap items-center gap-3">
                   <CoverCommandChip
                     command={section.command}
                     copyLabel={chip.copyLabel}
                     copiedLabel={chip.copiedLabel}
                   />
-                </div>
+                </h3>
                 <Paragraph>{renderInline(section.purpose)}</Paragraph>
                 {section.figure ? (
                   <CoverFigure figure={section.figure} eager={eager} />
                 ) : null}
-                <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                <p
+                  className={cn(
+                    'text-sm leading-relaxed text-muted-foreground sm:text-base',
+                    COVER_MEASURE,
+                  )}
+                >
                   <span className="font-semibold text-foreground">
                     {section.producesLabel}
                   </span>{' '}

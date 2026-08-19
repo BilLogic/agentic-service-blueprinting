@@ -14,7 +14,7 @@
     </marker>
   </defs>
 
-  <rect x="0" y="-44" width="880" height="334" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+  <rect x="0" y="-44" width="880" height="334" rx="14" fill="#eef1f5" stroke="#e2e4e9"/>
 
   <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Ways into the blueprint</text>
 

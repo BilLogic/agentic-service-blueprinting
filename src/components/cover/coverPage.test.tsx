@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { COVER_MEASURE } from '@/components/cover/coverMeasure'
 import { CoverPageView } from '@/components/cover/CoverPage'
 import type { CoverContent } from '@/components/cover/coverModel'
 
@@ -139,15 +140,48 @@ describe('CoverPageView', () => {
     ).toBe('true')
   })
 
-  it('renders every figure with alt text on the light plate in both themes', () => {
+  it('renders a figure bare — the artwork is its own plate', () => {
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
     const img = screen.getByRole('img', { name: 'What the first figure shows' })
-    // The plate is deliberately light in both themes — the figures are
-    // authored light and an <img> seals page CSS out of them.
-    expect(img.className).toContain('bg-white')
-    expect(img.className).toContain('dark:ring-1')
+    /*
+      Every figure is authored with a full-bleed rounded background rect
+      across its whole viewBox, so it already IS a plate. A border, padding
+      and a white background here drew a frame around a frame — the page
+      read as boxes inside boxes. That self-plate is also what carries dark
+      mode, since the figures are authored light and an <img> seals page CSS
+      out of them.
+    */
+    for (const duplicated of ['bg-white', 'border', 'rounded', 'p-3', 'ring']) {
+      expect(img.className, duplicated).not.toContain(duplicated)
+    }
     expect(img.getAttribute('width')).toBe('880')
     expect(img.getAttribute('height')).toBe('400')
+  })
+
+  it('holds every block to one measure, so the column edge never moves', () => {
+    const { container } = render(
+      <CoverPageView content={content()} onOpenCanvas={vi.fn()} />,
+    )
+    /*
+      Two separate misalignments lived here. Figures sat at `max-w-3xl`
+      against the prose's `max-w-2xl`, overhanging by 6rem so the page
+      zig-zagged at every image; and the header's lede was `max-w-3xl`
+      against `max-w-2xl` content, so the title block and the tab body did
+      not share an edge. Both are the same defect — a width written twice —
+      so the fix is one token and this is the test that keeps it one.
+    */
+    const img = screen.getByRole('img', { name: 'What the first figure shows' })
+    expect(img.className).toContain(COVER_MEASURE)
+
+    const lede = container.querySelector('header p')
+    expect(lede?.className).toContain(COVER_MEASURE)
+
+    // And no CONTENT block restates a width of its own. The page shell is
+    // exempt by name: it is the gutter the content sits in, not a block.
+    for (const el of container.querySelectorAll('[class*="max-w-"]')) {
+      if (el.hasAttribute('data-cover-shell')) continue
+      expect(el.className, el.tagName).toContain(COVER_MEASURE)
+    }
   })
 
   it('a section with an empty figure slot renders prose-only — no img, no placeholder', () => {

@@ -91,9 +91,9 @@ describe('coverContent', () => {
     // The figures are authored truth; these three slots were the last empty
     // ones and the copy around them reads off the drawings.
     expect(figureOf('overview-when')).toBe('/cover/when-to-use.svg')
-    // "From path to presentation" illustrates presenting, not the definition.
-    expect(figureOf('slices-view')).toBeUndefined()
-    expect(figureOf('slices-reading')).toBe('/cover/slice-concept.svg')
+    // The definition and the presenting behaviour are one opening section
+    // now, and "From path to presentation" belongs to it.
+    expect(figureOf('slices-intro')).toBe('/cover/slice-concept.svg')
     expect(figureOf('slices-types')).toBe('/cover/slicing-model.svg')
   })
 

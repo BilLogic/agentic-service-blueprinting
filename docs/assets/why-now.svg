@@ -15,7 +15,7 @@
     <marker id="tA" markerWidth="6" markerHeight="6" refX="4.5" refY="2.2" orient="auto"><path d="M0,0 L5,2.2 L0,4.4 Z" fill="#d4b483"/></marker>
   </defs>
 
-  <rect x="0" y="-44" width="880" height="376" rx="14" fill="#fafbfc" stroke="#e2e4e9"/>
+  <rect x="0" y="-44" width="880" height="376" rx="14" fill="#eef1f5" stroke="#e2e4e9"/>
   <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Why teams need a service blueprint</text>
 
   <!-- ==================== LEFT ==================== -->
