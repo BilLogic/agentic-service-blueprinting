@@ -170,10 +170,23 @@ const LANES = [
   // lane means something. It renders as a generic swimlane and anchors no
   // divider line. This is the lane that is deliberately quiet on three boards.
   { row: 0, key: 'stakeholders', name: 'Stakeholders', role: 'stakeholders' },
-  // Bilingual CJK display name — lane labels are free-form in any language,
-  // and this is the template's non-ASCII rendering smoke test. It sits on the
-  // spine, so it is present on every board.
-  { row: 1, key: 'owner', name: '服务负责人 · Blueprint owner', role: 'customer_actions' },
+  /*
+    The spine lane, present on every board.
+
+    This carried a bilingual CJK display name ('服务负责人 · Blueprint
+    owner') as the template's non-ASCII rendering smoke test. Removed: this
+    is the sample blueprint an adopter meets on first run and on the cover
+    page, and a Chinese lane label in an otherwise English kit reads as
+    leftover contamination from another deployment rather than as a
+    deliberate i18n demonstration — which is exactly how it was reported.
+
+    The non-ASCII guarantee is NOT lost with it. `scripts/tests/run_tests.sh`
+    covers the same ground against its own dedicated fixture ('现场技术员'),
+    where the CJK is the point of the test rather than incidental furniture
+    in someone's first look at the product, and the `key_slug` migration
+    carries its own non-ASCII handling and comments.
+  */
+  { row: 1, key: 'owner', name: 'Blueprint owner', role: 'customer_actions' },
   { row: 2, key: 'surface', name: 'App & skill surface', role: 'frontstage_tech' },
   { row: 3, key: 'claude', name: 'Claude in the IDE', role: 'frontstage_actions' },
   { row: 4, key: 'scripts', name: 'Pipeline scripts', role: 'backstage_tech' },
@@ -382,7 +395,7 @@ const SCENARIOS = [
       'Translate the crosswalk',
       'Draft the structure',
       'Validate and review',
-      '签署确认 · Sign off per scenario',
+      'Sign off per scenario',
       'Import and verify',
       'Deploy',
     ],
@@ -410,7 +423,7 @@ const SCENARIOS = [
       { lane: 'owner', col: 5, content: { DIAGRAM: 'Confirms the crosswalk: which column of the old diagram means which lane role' } },
       { lane: 'owner', col: 6, content: 'Nods on the proposed step and lane outline before any cell is written' },
       { lane: 'owner', col: 7, content: 'Decides which review findings to accept' },
-      { lane: 'owner', col: 8, content: '逐一签署 · Signs off each scenario against its content hash' },
+      { lane: 'owner', col: 8, content: 'Signs off each scenario against its content hash' },
       { lane: 'owner', col: 10, content: 'Shares the deployed URL with the team' },
 
       // Slot siblings on a tech lane: one cell per touchpoint at the same
@@ -831,7 +844,7 @@ const SCENARIOS = [
     lanes: LANES,
     cells: [
       { lane: 'owner', col: 1, content: 'Asks what would happen if a step were removed, automated, or moved out of sight' },
-      { lane: 'owner', col: 4, content: '先看影响 · Reads the affected-cell list before forming an opinion' },
+      { lane: 'owner', col: 4, content: 'Reads the affected-cell list before forming an opinion' },
       { lane: 'owner', col: 7, content: 'Accepts the option, or drops it and leaves the blueprint exactly as it was' },
 
       { lane: 'surface', col: 3, content: 'Dependency tab\nTrigger arrows' },
@@ -1450,7 +1463,7 @@ function buildDemoSlices() {
       title: 'The map, end to end',
       description:
         'One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.',
-      actor: '服务负责人 · Blueprint owner',
+      actor: 'Blueprint owner',
       slice_type: 'journey',
       origin: 'generated',
       locale: 'en',

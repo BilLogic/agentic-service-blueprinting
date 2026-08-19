@@ -10,7 +10,7 @@
  * Every case is written against the SHIPPED SAMPLE FIXTURE — the
  * META-BLUEPRINT: the service blueprint of this template itself. Six
  * scenarios across four phases (Discover → Setup → Operate → Maintain), all
- * on ONE 7-lane roster: Stakeholders, 服务负责人 · Blueprint owner, App &
+ * on ONE 7-lane roster: Stakeholders, Blueprint owner, App &
  * skill surface, Claude in the IDE, Pipeline scripts, Subagent fleet,
  * References & guardrails. The cases mostly target "Map your service" (the
  * sb:map pipeline in phase Setup; the one board that adds a visual row, so
@@ -259,7 +259,7 @@ Active tab: base blueprint view (no slice tab)`,
       noUuidInReply(0),
     ],
     judgeLines: [
-      { id: 'lanes-match-data', text: 'The lane names in the answer match the lanes returned by get_blueprint in the trace (this board has 7, including the bilingual CJK spine lane 服务负责人 · Blueprint owner — the CJK part must not be dropped or transliterated away).' },
+      { id: 'lanes-match-data', text: 'The lane names in the answer match the lanes returned by get_blueprint in the trace (this board has 7), reproduced as given rather than paraphrased or re-titled.' },
       { id: 'markdown-shape', text: 'Compact, well-shaped markdown.' },
     ],
   },

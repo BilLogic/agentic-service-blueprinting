@@ -74,7 +74,7 @@ export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-110000000000","name":"A first look","description":"Repository to running app to decision, with no account, no key, and no database anywhere.","note":null,"path_type":"happy"},
   layers: [
     {"id":"f0000000-0000-4000-8000-110100000000","name":"Stakeholders","role":"stakeholders","row_position":0},
-    {"id":"f0000000-0000-4000-8000-110100010000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":1},
+    {"id":"f0000000-0000-4000-8000-110100010000","name":"Blueprint owner","role":"customer_actions","row_position":1},
     {"id":"f0000000-0000-4000-8000-110100020000","name":"App & skill surface","role":"frontstage_tech","row_position":2},
     {"id":"f0000000-0000-4000-8000-110100030000","name":"Claude in the IDE","role":"frontstage_actions","row_position":3},
     {"id":"f0000000-0000-4000-8000-110100040000","name":"Pipeline scripts","role":"backstage_tech","row_position":4},
@@ -124,7 +124,7 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
   layers: [
     {"id":"f0000000-0000-4000-8000-210100000000","name":"Journey figures","role":"visual","row_position":0},
     {"id":"f0000000-0000-4000-8000-210100010000","name":"Stakeholders","role":"stakeholders","row_position":1},
-    {"id":"f0000000-0000-4000-8000-210100020000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":2},
+    {"id":"f0000000-0000-4000-8000-210100020000","name":"Blueprint owner","role":"customer_actions","row_position":2},
     {"id":"f0000000-0000-4000-8000-210100030000","name":"App & skill surface","role":"frontstage_tech","row_position":3},
     {"id":"f0000000-0000-4000-8000-210100040000","name":"Claude in the IDE","role":"frontstage_actions","row_position":4},
     {"id":"f0000000-0000-4000-8000-210100050000","name":"Pipeline scripts","role":"backstage_tech","row_position":5},
@@ -138,7 +138,7 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-200200040000","name":"Read the sources","column_position":4},
     {"id":"f0000000-0000-4000-8000-200200060000","name":"Draft the structure","column_position":5},
     {"id":"f0000000-0000-4000-8000-200200070000","name":"Validate and review","column_position":6},
-    {"id":"f0000000-0000-4000-8000-200200080000","name":"签署确认 · Sign off per scenario","column_position":7},
+    {"id":"f0000000-0000-4000-8000-200200080000","name":"Sign off per scenario","column_position":7},
     {"id":"f0000000-0000-4000-8000-200200090000","name":"Import and verify","column_position":8},
     {"id":"f0000000-0000-4000-8000-200200100000","name":"Deploy","column_position":9},
   ],
@@ -149,7 +149,7 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-210300020004","layer_id":"f0000000-0000-4000-8000-210100020000","step_id":"f0000000-0000-4000-8000-200200040000","content":"Says which documents are in scope, and which are sensitive and excluded","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-210300020006","layer_id":"f0000000-0000-4000-8000-210100020000","step_id":"f0000000-0000-4000-8000-200200060000","content":"Nods on the proposed step and lane outline before any cell is written","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-210300020007","layer_id":"f0000000-0000-4000-8000-210100020000","step_id":"f0000000-0000-4000-8000-200200070000","content":"Decides which review findings to accept","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-210300020008","layer_id":"f0000000-0000-4000-8000-210100020000","step_id":"f0000000-0000-4000-8000-200200080000","content":"逐一签署 · Signs off each scenario against its content hash","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-210300020008","layer_id":"f0000000-0000-4000-8000-210100020000","step_id":"f0000000-0000-4000-8000-200200080000","content":"Signs off each scenario against its content hash","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-210300020010","layer_id":"f0000000-0000-4000-8000-210100020000","step_id":"f0000000-0000-4000-8000-200200100000","content":"Shares the deployed URL with the team","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-210300030007","layer_id":"f0000000-0000-4000-8000-210100030000","step_id":"f0000000-0000-4000-8000-200200070000","content":"sb:map preview","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-210300030107","layer_id":"f0000000-0000-4000-8000-210100030000","step_id":"f0000000-0000-4000-8000-200200070000","content":"Cell detail panel","picture":null,"description":null,"links":[{"type":"tech_description","label":"Cell detail panel","description":"What one cell holds: summary, owner pair, function / form / value, links, and the dependency tab."}],"slot_position":1},
@@ -199,7 +199,7 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
   layers: [
     {"id":"f0000000-0000-4000-8000-220100000000","name":"Journey figures","role":"visual","row_position":0},
     {"id":"f0000000-0000-4000-8000-220100010000","name":"Stakeholders","role":"stakeholders","row_position":1},
-    {"id":"f0000000-0000-4000-8000-220100020000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":2},
+    {"id":"f0000000-0000-4000-8000-220100020000","name":"Blueprint owner","role":"customer_actions","row_position":2},
     {"id":"f0000000-0000-4000-8000-220100030000","name":"App & skill surface","role":"frontstage_tech","row_position":3},
     {"id":"f0000000-0000-4000-8000-220100040000","name":"Claude in the IDE","role":"frontstage_actions","row_position":4},
     {"id":"f0000000-0000-4000-8000-220100050000","name":"Pipeline scripts","role":"backstage_tech","row_position":5},
@@ -213,7 +213,7 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-200200050000","name":"Translate the crosswalk","column_position":4},
     {"id":"f0000000-0000-4000-8000-200200060000","name":"Draft the structure","column_position":5},
     {"id":"f0000000-0000-4000-8000-200200070000","name":"Validate and review","column_position":6},
-    {"id":"f0000000-0000-4000-8000-200200080000","name":"签署确认 · Sign off per scenario","column_position":7},
+    {"id":"f0000000-0000-4000-8000-200200080000","name":"Sign off per scenario","column_position":7},
     {"id":"f0000000-0000-4000-8000-200200090000","name":"Import and verify","column_position":8},
     {"id":"f0000000-0000-4000-8000-200200100000","name":"Deploy","column_position":9},
   ],
@@ -224,7 +224,7 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-220300020005","layer_id":"f0000000-0000-4000-8000-220100020000","step_id":"f0000000-0000-4000-8000-200200050000","content":"Confirms the crosswalk: which column of the old diagram means which lane role","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-220300020006","layer_id":"f0000000-0000-4000-8000-220100020000","step_id":"f0000000-0000-4000-8000-200200060000","content":"Nods on the proposed step and lane outline before any cell is written","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-220300020007","layer_id":"f0000000-0000-4000-8000-220100020000","step_id":"f0000000-0000-4000-8000-200200070000","content":"Decides which review findings to accept","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-220300020008","layer_id":"f0000000-0000-4000-8000-220100020000","step_id":"f0000000-0000-4000-8000-200200080000","content":"逐一签署 · Signs off each scenario against its content hash","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-220300020008","layer_id":"f0000000-0000-4000-8000-220100020000","step_id":"f0000000-0000-4000-8000-200200080000","content":"Signs off each scenario against its content hash","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-220300020010","layer_id":"f0000000-0000-4000-8000-220100020000","step_id":"f0000000-0000-4000-8000-200200100000","content":"Shares the deployed URL with the team","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-220300030007","layer_id":"f0000000-0000-4000-8000-220100030000","step_id":"f0000000-0000-4000-8000-200200070000","content":"sb:map preview","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-220300030107","layer_id":"f0000000-0000-4000-8000-220100030000","step_id":"f0000000-0000-4000-8000-200200070000","content":"Cell detail panel","picture":null,"description":null,"links":[{"type":"tech_description","label":"Cell detail panel","description":"What one cell holds: summary, owner pair, function / form / value, links, and the dependency tab."}],"slot_position":1},
@@ -273,7 +273,7 @@ export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-310000000000","name":"Findings triaged","description":"Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.","note":null,"path_type":"happy"},
   layers: [
     {"id":"f0000000-0000-4000-8000-310100000000","name":"Stakeholders","role":"stakeholders","row_position":0},
-    {"id":"f0000000-0000-4000-8000-310100010000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":1},
+    {"id":"f0000000-0000-4000-8000-310100010000","name":"Blueprint owner","role":"customer_actions","row_position":1},
     {"id":"f0000000-0000-4000-8000-310100020000","name":"App & skill surface","role":"frontstage_tech","row_position":2},
     {"id":"f0000000-0000-4000-8000-310100030000","name":"Claude in the IDE","role":"frontstage_actions","row_position":3},
     {"id":"f0000000-0000-4000-8000-310100040000","name":"Pipeline scripts","role":"backstage_tech","row_position":4},
@@ -328,7 +328,7 @@ export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-320000000000","name":"A critical finding reopens","description":"A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.","note":null,"path_type":"unhappy"},
   layers: [
     {"id":"f0000000-0000-4000-8000-320100000000","name":"Stakeholders","role":"stakeholders","row_position":0},
-    {"id":"f0000000-0000-4000-8000-320100010000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":1},
+    {"id":"f0000000-0000-4000-8000-320100010000","name":"Blueprint owner","role":"customer_actions","row_position":1},
     {"id":"f0000000-0000-4000-8000-320100020000","name":"App & skill surface","role":"frontstage_tech","row_position":2},
     {"id":"f0000000-0000-4000-8000-320100030000","name":"Claude in the IDE","role":"frontstage_actions","row_position":3},
     {"id":"f0000000-0000-4000-8000-320100040000","name":"Pipeline scripts","role":"backstage_tech","row_position":4},
@@ -384,7 +384,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-410000000000","name":"Traced before it lands","description":"Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.","note":null,"path_type":"happy"},
   layers: [
     {"id":"f0000000-0000-4000-8000-410100000000","name":"Stakeholders","role":"stakeholders","row_position":0},
-    {"id":"f0000000-0000-4000-8000-410100010000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":1},
+    {"id":"f0000000-0000-4000-8000-410100010000","name":"Blueprint owner","role":"customer_actions","row_position":1},
     {"id":"f0000000-0000-4000-8000-410100020000","name":"App & skill surface","role":"frontstage_tech","row_position":2},
     {"id":"f0000000-0000-4000-8000-410100030000","name":"Claude in the IDE","role":"frontstage_actions","row_position":3},
     {"id":"f0000000-0000-4000-8000-410100040000","name":"Pipeline scripts","role":"backstage_tech","row_position":4},
@@ -402,7 +402,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
   ],
   cells: [
     {"id":"f0000000-0000-4000-8000-410300010001","layer_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200010000","content":"Asks what would happen if a step were removed, automated, or moved out of sight","picture":null,"description":null,"links":[]},
-    {"id":"f0000000-0000-4000-8000-410300010004","layer_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200040000","content":"先看影响 · Reads the affected-cell list before forming an opinion","picture":null,"description":null,"links":[]},
+    {"id":"f0000000-0000-4000-8000-410300010004","layer_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200040000","content":"Reads the affected-cell list before forming an opinion","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-410300010007","layer_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200070000","content":"Accepts the option, or drops it and leaves the blueprint exactly as it was","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-410300020003","layer_id":"f0000000-0000-4000-8000-410100020000","step_id":"f0000000-0000-4000-8000-400200030000","content":"Dependency tab\nTrigger arrows","picture":null,"description":null,"links":[]},
     {"id":"f0000000-0000-4000-8000-410300020007","layer_id":"f0000000-0000-4000-8000-410100020000","step_id":"f0000000-0000-4000-8000-400200070000","content":"Nothing on the canvas changes until sb:map promotes an accepted change","picture":null,"description":null,"links":[]},
@@ -438,7 +438,7 @@ export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-510000000000","name":"Stakeholder readout","description":"From “show me my part” to a presented, exportable slice that still points at its cells.","note":null,"path_type":"happy"},
   layers: [
     {"id":"f0000000-0000-4000-8000-510100000000","name":"Stakeholders","role":"stakeholders","row_position":0},
-    {"id":"f0000000-0000-4000-8000-510100010000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":1},
+    {"id":"f0000000-0000-4000-8000-510100010000","name":"Blueprint owner","role":"customer_actions","row_position":1},
     {"id":"f0000000-0000-4000-8000-510100020000","name":"App & skill surface","role":"frontstage_tech","row_position":2},
     {"id":"f0000000-0000-4000-8000-510100030000","name":"Claude in the IDE","role":"frontstage_actions","row_position":3},
     {"id":"f0000000-0000-4000-8000-510100040000","name":"Pipeline scripts","role":"backstage_tech","row_position":4},
@@ -499,7 +499,7 @@ export const SAMPLE_KEEP_UPDATE_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-610000000000","name":"Update what changed","description":"The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.","note":null,"path_type":"happy"},
   layers: [
     {"id":"f0000000-0000-4000-8000-610100000000","name":"Stakeholders","role":"stakeholders","row_position":0},
-    {"id":"f0000000-0000-4000-8000-610100010000","name":"服务负责人 · Blueprint owner","role":"customer_actions","row_position":1},
+    {"id":"f0000000-0000-4000-8000-610100010000","name":"Blueprint owner","role":"customer_actions","row_position":1},
     {"id":"f0000000-0000-4000-8000-610100020000","name":"App & skill surface","role":"frontstage_tech","row_position":2},
     {"id":"f0000000-0000-4000-8000-610100030000","name":"Claude in the IDE","role":"frontstage_actions","row_position":3},
     {"id":"f0000000-0000-4000-8000-610100040000","name":"Pipeline scripts","role":"backstage_tech","row_position":4},
@@ -576,7 +576,7 @@ export const SAMPLE_BLUEPRINTS_BY_SCENARIO: Record<string, BlueprintData[]> = {
  * the database rows, so the read hooks fall back to them verbatim.
  */
 export const SAMPLE_DEMO_SLICES: Slice[] = [
-  {"id":"f0000000-0000-4000-8000-000500010000","service_lifecycle_id":"f0000000-0000-4000-8000-000000000010","title":"The map, end to end","description":"One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.","actor":"服务负责人 · Blueprint owner","slice_type":"journey","origin":"generated","locale":"en","position":1,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
+  {"id":"f0000000-0000-4000-8000-000500010000","service_lifecycle_id":"f0000000-0000-4000-8000-000000000010","title":"The map, end to end","description":"One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.","actor":"Blueprint owner","slice_type":"journey","origin":"generated","locale":"en","position":1,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
   {"id":"f0000000-0000-4000-8000-000500020000","service_lifecycle_id":"f0000000-0000-4000-8000-000000000010","title":"The import moment, read top to bottom","description":"One column of Map your service — “Import and verify” — read down every lane at once: the step where a file in a repo becomes rows in a database, and the step with the most that can go quietly wrong.","actor":null,"slice_type":"step","origin":"generated","locale":"en","position":2,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
   {"id":"f0000000-0000-4000-8000-000500030000","service_lifecycle_id":"f0000000-0000-4000-8000-000000000010","title":"Everything that happens out of sight","description":"One lane of Audit the check roster — the subagent fleet, on the path where findings get triaged — read left to right: the half of the audit nobody watches, and the half that decides whether its verdicts can be trusted.","actor":"Subagent fleet","slice_type":"lane","origin":"generated","locale":"en","position":3,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
 ]
