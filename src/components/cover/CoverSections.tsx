@@ -74,11 +74,22 @@ function Portrait({
         alt={image.alt}
         loading="lazy"
         decoding="async"
+        /*
+          One size for both variants — this used to be size-16/20 for
+          `badge` against size-32/40 for `framed`, so a logomark and an
+          illustration sat on the same tab at twice the scale of each other
+          with no reason a reader could see for the difference. `badge` and
+          `framed` still mean different TREATMENTS (no border vs bordered
+          white card, cover vs contain) — that distinction is real, since one
+          asset reads on any ground and the other was authored for its own
+          light one. Size was never part of what the two names meant; it was
+          just left unset per variant and drifted.
+        */
         className={cn(
-          'shrink-0 object-cover',
+          'size-20 shrink-0 object-cover sm:size-24',
           image.size === 'badge'
-            ? 'size-16 rounded-2xl sm:size-20'
-            : 'size-32 rounded-xl border border-border bg-white object-contain p-1 sm:size-40',
+            ? 'rounded-2xl'
+            : 'rounded-xl border border-border bg-white object-contain p-1',
         )}
       />
     </div>
@@ -108,6 +119,13 @@ function FigureStack({
  * A defs list is a two-column table, not a loose run of pairs: a header row
  * on a muted ground, bordered rows, and the term column carrying the weight.
  * Every colour is a token, so both themes follow the same rules.
+ *
+ * One type rung below the page's prose (`text-xs sm:text-sm`, not
+ * `text-sm sm:text-base`). A table is denser than a paragraph — two columns,
+ * a header row, five-plus data rows in view at once — and running it at
+ * paragraph size read heavier than the prose around it despite carrying
+ * less per row. The rung below is still comfortably above the 3xs/2xs chip
+ * sizes elsewhere on the page; it is one step, not a jump to caption text.
  */
 function DefsTable({
   columns,
@@ -123,7 +141,7 @@ function DefsTable({
         COVER_MEASURE,
       )}
     >
-      <table className="w-full border-collapse text-left text-sm sm:text-base">
+      <table className="w-full border-collapse text-left text-xs sm:text-sm">
         <thead>
           <tr className="bg-muted/50">
             <th

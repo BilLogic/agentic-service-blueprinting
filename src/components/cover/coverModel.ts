@@ -46,11 +46,11 @@ export type CoverGuideLink = {
 export type CoverPortraitImage = {
   src: string
   alt: string
-  /** `badge` — a small mark (~80px), no border, no white ground: for a
-   * logomark or icon that already reads on any background. `framed` — a
-   * larger square (~200px) with a border and a white card behind it: for an
-   * illustration authored for its own light ground, the same convention
-   * `CoverFigure` uses for full diagrams. */
+  /** Same box size, two treatments. `badge` — no border, no white ground:
+   * for a logomark or icon that already reads on any background. `framed` —
+   * a border and a white card behind it: for an illustration authored for
+   * its own light ground, the same convention `CoverFigure` uses for full
+   * diagrams. */
   size: 'badge' | 'framed'
 }
 
