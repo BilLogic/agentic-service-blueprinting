@@ -52,21 +52,19 @@ function Portrait({
   children: ReactNode
 }) {
   /*
-    Stacked, not side by side. Text first, then the image below it — the
-    same order `FigureStack` already uses for the page's wide diagrams, so
-    a portrait now follows the one convention every section on the page
-    shares instead of inventing a second layout rule (side-by-side rows
-    were tried first for this section specifically, and dropped: even with
-    the image trailing rather than leading, a row split the section's width
-    unevenly next to every other block on the page, which read as its own
-    small layout system rather than a continuation of the page's).
+    Stacked, not side by side — side-by-side rows were tried twice and
+    dropped both times, since a row split the section's width unevenly
+    against every other block on the page, reading as its own small layout
+    system rather than a continuation of the page's.
+
+    Title, then the image, then the text. The heading now renders on its
+    own, ahead of the image, rather than sharing a wrapper with the
+    paragraphs that follow it — a portrait names what it is before it shows
+    it, the same order a labeled photo reads in print.
   */
   return (
     <div className={cn('flex flex-col gap-4', COVER_MEASURE)}>
-      <div className="flex min-w-0 flex-col gap-2">
-        {heading ? <SectionHeading>{heading}</SectionHeading> : null}
-        {children}
-      </div>
+      {heading ? <SectionHeading>{heading}</SectionHeading> : null}
       <img
         src={image.src}
         alt={image.alt}
@@ -90,6 +88,7 @@ function Portrait({
             : 'rounded-xl border border-border bg-white object-contain p-1',
         )}
       />
+      <div className="flex min-w-0 flex-col gap-2">{children}</div>
     </div>
   )
 }

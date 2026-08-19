@@ -98,6 +98,15 @@ export function CoverTabStrip({
         'relative h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b border-border p-0',
         // Hide any scrollbar the platform still paints; the fade is the signal.
         '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        // This is the one horizontally-scrolling surface on an otherwise
+        // vertically-scrolling page. A trackpad's "vertical" scroll gesture
+        // carries a small deltaX along with deltaY from ordinary hand
+        // movement; without containment, a browser can spend that stray
+        // deltaX walking the strip's own scroll position while the page
+        // scrolls past it, which reads as the tab labels twitching
+        // sideways mid-scroll rather than as clean vertical motion. `-x`
+        // only: the page's own vertical scroll must still chain normally.
+        'overscroll-x-contain',
         overflow.start && overflow.end && MASK_BOTH,
         overflow.start && !overflow.end && MASK_START,
         !overflow.start && overflow.end && MASK_END,
