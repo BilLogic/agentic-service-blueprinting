@@ -1,0 +1,63 @@
+name: CI
+
+# `pull_request`, never `pull_request_target`.
+#
+# That distinction is the whole security story for a public repo. A
+# `pull_request` run from a fork gets a read-only token and no access to
+# secrets, and it checks out the fork's code — which is untrusted, and is
+# treated as such. `pull_request_target` runs in the BASE repo's context
+# with secrets available; combined with checking out the PR head it hands
+# an attacker code execution with your token. Do not switch this trigger.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege at the top level. A job that genuinely needs more must
+# raise it for itself, so the diff shows the escalation.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` honours the lockfile exactly; `npm install` would let a
+      # PR's package.json pull a version the lockfile never pinned.
+      - run: npm ci
+
+      # `tsc -b`, not a bare `tsc --noEmit`: tsconfig.json uses `files: []`
+      # with project references, so a bare run typechecks NOTHING and exits
+      # 0. This gate would be decorative without the -b.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  blueprint-pipeline:
+    name: blueprint round-trip
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: bash scripts/tests/run_tests.sh
