@@ -27,7 +27,7 @@ import type { CoverContent } from '@/components/cover/coverModel'
 export const coverContent: CoverContent = {
   // `title` omitted on purpose: the header falls back to ORG_NAME, which is
   // the template default "Agentic Service Blueprint".
-  lede: 'A structured map of how this service is delivered — every phase, every scenario, every path variant, down to what one actor does at one moment. It is data, not a diagram: agents read it, slices are cut from it, and changes are traced through it before anyone commits.',
+  lede: 'A structured map of how this service is delivered — every phase, every scenario, every path variant, down to what one actor does at one moment. It is data, not a diagram: agents query it, slices come out of it, and a change is traced through it before anyone commits.',
   primaryCtaLabel: 'Open the blueprint',
   repoUrl: 'https://github.com/BilLogic/agentic-service-blueprinting',
   chip: { copyLabel: 'Copy', copiedLabel: 'Copied' },
@@ -75,7 +75,7 @@ export const coverContent: CoverContent = {
             {
               term: 'Decision Evaluation',
               definition:
-                'A proposed change is traced through the dependency graph first, so what it would break is known before anyone commits to it.',
+                'A proposed change is traced through the dependency graph first, so what it would break is visible before anyone commits to it.',
             },
             {
               term: 'Context Management',
@@ -178,7 +178,7 @@ export const coverContent: CoverContent = {
           paragraphs: [
             'A blueprint is complete by design, which makes it the wrong thing to put in front of any one person. A **slice** is a standing view cut from it: an ordered set of cells with a caption and a narrative, built for one audience and one question.',
             'A slice quotes cells rather than copying them — it keeps naming its sources. That is the difference between a view and a snapshot: when the cells move, the slice does not go on asserting the old thing.',
-            'It opens as its own tab beside the blueprint, so a reader can move between the view and the board it came from, and it runs frame by frame in presentation mode when the audience is a room rather than a person. Both states are addressable — a slice link carries its id, a presented one carries the frame — so you can send someone exactly what you are looking at.',
+            'It opens as its own tab beside the blueprint, so a reader can move between the view and the board it came from. In presentation mode it runs frame by frame, for when the audience is a room rather than a person. Both states are addressable — a slice link carries its id, a presented one carries the frame — so you can send someone exactly what you are looking at.',
           ],
           figure: {
             src: '/cover/slice-concept.svg',
@@ -224,7 +224,7 @@ export const coverContent: CoverContent = {
           id: 'skills-set',
           heading: 'The skill set',
           paragraphs: [
-            'The blueprint is maintained by four Claude Code skills rather than by hand. Each carries its own playbooks and scripts and links only the shared references its task needs, and each ends at a deterministic gate — a validator exit, a sign-off, a read-back that matches — rather than at "looks done".',
+            'Four Claude Code skills maintain the blueprint, rather than anyone keeping it up by hand. Each carries its own playbooks and scripts and links only the shared references its task needs, and each ends at a deterministic gate — a validator exit, a sign-off, a read-back that matches — rather than at "looks done".',
             'The heavy reading happens in fresh-context agents that return a summary instead of their raw material. That is deliberate: a context that never saw the drafting catches what the drafting context is anchored on.',
           ],
           figure: {
@@ -290,7 +290,7 @@ export const coverContent: CoverContent = {
           kind: 'prose',
           id: 'skills-outro',
           paragraphs: [
-            'These run where you write code, not in this page — install the repo as a plugin and ask for what you want.',
+            'These run where you write code, not on this page — install the repo as a plugin and ask for what you want.',
           ],
         },
       ],
