@@ -1,3 +1,5 @@
+import type { CameraTransitionResult } from '@/lib/cameraTransition'
+
 /**
  * The single cell-focus pipeline's bridge: `useZoomPanViewport` owns the
  * camera (fly + pulse), but its callers — the portalled difference-ledger
@@ -7,8 +9,15 @@
  * so a re-mounted viewport is never driven through a stale closure.
  */
 
+/**
+ * How a fly-to's camera move ended. Mirrors `CameraTransitionResult['kind']`
+ * — spelled out longhand here, and the two drifted apart the moment one of
+ * them gained a case.
+ */
+export type FocusCellsCompletion = CameraTransitionResult['kind']
+
 export type FocusCellsResult =
-  | { kind: 'flown'; completion: 'completed' | 'cancelled' | 'superseded' }
+  | { kind: 'flown'; completion: FocusCellsCompletion }
   | { kind: 'miss'; missing: string[] }
 
 export type FocusCellsFn = (

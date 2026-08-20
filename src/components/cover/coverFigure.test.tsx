@@ -3,12 +3,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CoverFigure } from '@/components/cover/CoverFigure'
 
-// Pins the lightbox contract: no separate close button (everything that
-// isn't the diagram closes it on click), a plain pointer cursor on the
-// thumbnail (the corner hint is the only "this expands" signal, not a
-// second one from the cursor), and the two-step zoom on the opened image
-// (fit -> full size -> fit again), each step swapping its own cursor and
-// aria-label.
+// Pins the lightbox contract: no separate close button, a plain pointer
+// cursor on the thumbnail (the corner hint is the only "this expands"
+// signal, not a second one from the cursor), and ONE state in the popup —
+// fit to viewport, every click closes, the diagram included. The opened
+// image used to carry a second zoom step; these tests are what stop it
+// coming back by accident.
 
 afterEach(cleanup)
 
@@ -43,39 +43,65 @@ describe('CoverFigure', () => {
     expect(closeButtons[0]?.getAttribute('tabIndex')).toBe('-1')
   })
 
-  it('the open image starts fit-to-viewport, zoom-in cursor, and expands on click', () => {
+  it('the open image is fit-to-viewport with no second zoom step', () => {
     render(<CoverFigure figure={figure} />)
     fireEvent.click(screen.getByRole('button', { name: 'Expand: An example diagram' }))
 
-    const opened = screen.getByRole('img', { name: 'View at full size' })
-    expect(opened.className).toContain('cursor-zoom-in')
+    const opened = screen.getByRole('img', { name: 'An example diagram' })
+    expect(opened.className).toContain('max-h-full')
+    expect(opened.className).not.toContain('cursor-zoom-in')
+    expect(opened.className).not.toContain('cursor-zoom-out')
+    // Nothing to click into: the fit/full-size pair is gone, labels and all.
+    expect(screen.queryByRole('img', { name: 'View at full size' })).toBeNull()
+    expect(screen.queryByRole('img', { name: 'Shrink to fit' })).toBeNull()
+  })
+
+  it('closes on a click on the diagram itself', () => {
+    render(<CoverFigure figure={figure} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Expand: An example diagram' }))
+
+    // The diagram is hit-testable and closes through its own handler. It is
+    // deliberately NOT `pointer-events-none` — inert would mean it could not
+    // be right-clicked, and these are reference diagrams worth saving.
+    const opened = screen.getByRole('img', { name: 'An example diagram' })
+    expect(opened.className).not.toContain('pointer-events-none')
 
     fireEvent.click(opened)
-    const expanded = screen.getByRole('img', { name: 'Shrink to fit' })
-    expect(expanded.className).toContain('cursor-zoom-out')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('clicking the expanded image shrinks it back rather than closing the popup', () => {
+  it('closes on a click that misses the diagram', () => {
     render(<CoverFigure figure={figure} />)
     fireEvent.click(screen.getByRole('button', { name: 'Expand: An example diagram' }))
-    fireEvent.click(screen.getByRole('img', { name: 'View at full size' }))
-    fireEvent.click(screen.getByRole('img', { name: 'Shrink to fit' }))
 
-    // Still open, and back to the fit state — a click on the image toggles
-    // its own zoom step and must not fall through to the close catcher
-    // sitting behind it.
-    expect(screen.getByRole('dialog')).toBeDefined()
-    expect(screen.getByRole('img', { name: 'View at full size' })).toBeDefined()
+    const catcher = screen.getByRole('button', { name: 'Close' })
+    // The other half of "every click closes": the catcher has to actually
+    // cover the popup. jsdom does not hit-test, so its geometry can only be
+    // pinned by the class that produces it.
+    expect(catcher.className).toContain('inset-0')
+
+    fireEvent.click(catcher)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('every reopen starts fit, not wherever the last visit left off', () => {
+  it('closes on Escape, which is the only keyboard exit', () => {
     render(<CoverFigure figure={figure} />)
     fireEvent.click(screen.getByRole('button', { name: 'Expand: An example diagram' }))
-    fireEvent.click(screen.getByRole('img', { name: 'View at full size' })) // expand
+
+    // Nothing in the popup is tabbable by design — the close catcher is
+    // `tabIndex={-1}` so it never draws a focus ring around the whole
+    // surface. That makes Escape load-bearing rather than incidental.
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('reopens cleanly after being closed', () => {
+    render(<CoverFigure figure={figure} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Expand: An example diagram' }))
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand: An example diagram' }))
-    expect(screen.getByRole('img', { name: 'View at full size' })).toBeDefined()
+    expect(screen.getByRole('img', { name: 'An example diagram' })).toBeDefined()
   })
 })

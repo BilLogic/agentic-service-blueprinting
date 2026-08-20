@@ -601,6 +601,56 @@
   }
 
   /*
+   * Phases opt out of rendering while they are off screen.
+   *
+   * The tier change is the most expensive thing this canvas does — a
+   * whole-board style recalculation, ~65 ms across roughly 700 elements —
+   * and it is spent on invalidation rather than on the rules themselves.
+   * Measured: with every tier rule neutralised the flip still costs 66 ms of
+   * the 71 it costs with them, so the ~5 ms the rules contribute is not where
+   * the money is. Ten attempts at making the rules cheaper — `will-change`,
+   * `:has()` removal, dropping the skeleton pseudo-elements, cutting cell
+   * content, cutting arrows, re-expressing the whole tier as inherited custom
+   * properties — measured null for exactly that reason.
+   *
+   * What DOES move it is having fewer elements in style scope. Taking half
+   * the board out took the flip from 62 ms to 39. `content-visibility: auto`
+   * does that on the browser's terms: a phase that is off screen is skipped
+   * entirely, and skipped elements are not restyled.
+   *
+   * The camera crosses the legibility threshold at roughly zoom 0.25, where
+   * about a third of the board is on screen — so most of it is skippable at
+   * exactly the moment the bill arrives. Measured on the real board: 63 ms to
+   * 24 ms, a 62% cut, at a zoom where phases are off screen. At the overview,
+   * where the whole board is visible, there is nothing to skip and it costs
+   * 2 ms more — which is the correct shape, since the overview never crosses.
+   *
+   * NOT `content-visibility: hidden`, which was tried and was worse: it skips
+   * unconditionally and then pays to un-skip. And the phase, not the cell —
+   * six containment boundaries rather than five hundred.
+   *
+   * The camera FITS BY MEASURING, so the risk here is silent: a skipped phase
+   * reporting the wrong size would corrupt every fit that follows. Verified
+   * before landing — board, all six phases and 120 cells drift by 0 px, and a
+   * full navigation tour produces fit zooms identical to four decimal places
+   * with this on and off. `auto` in `contain-intrinsic-size` is what makes
+   * that true: each phase remembers the size it last rendered at.
+   *
+   * The sharper version of that worry is `focusCells`, which measures a cell
+   * that — by definition of a fly-to — usually sits in a phase that is off
+   * screen and therefore skipped. Also checked, including the case with no
+   * remembered size to fall back on: a phase inserted fresh while the camera
+   * was already elsewhere, so it had never rendered in this mount. A cell
+   * inside it measures identically either way, 0 px of drift. Chromium forces
+   * layout into skipped content for a script layout query, as the spec
+   * requires, so nothing here needs to defend against it.
+   */
+  [data-phase-id] {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1px auto 1px;
+  }
+
+  /*
    * SEMANTIC ZOOM — the blocks tier. Below the threshold (stamped as
    * data-semantic-tier by the camera's transform writer, never by React)
    * cell text is smudge, so cells render as flat blocks and the phase
@@ -610,13 +660,23 @@
    * with the badge's inline translate, so no transform fight.
    */
   /*
-   * The tier flip is INSTANT — deliberately. A fade was tried and reverted:
-   * transitioning opacity on every cell's content meant ~700 simultaneous
-   * per-element animations launching inside a camera ease, and that style
-   * burst WAS a visible stutter. What actually removed the mid-zoom pop is
-   * the destination-tier stamping in `useZoomPanViewport`: an animated fit
-   * decides the tier from its TARGET zoom on frame one, so the flip lands
-   * with the click, in the ease's slowest frame — a response, not a glitch.
+   * The tier change is INSTANT — a switch, not a fade and not a wipe.
+   *
+   * A fade was tried and reverted: transitioning opacity on every cell's
+   * content meant ~700 simultaneous per-element animations launching inside a
+   * camera ease, and that style burst WAS a visible stutter.
+   *
+   * A staggered `visibility` wipe was then tried, and it worked — the board
+   * read as one edge sweeping left to right, at no per-frame paint cost. It
+   * was removed for what it cost around the edges rather than for how it
+   * looked: 528 transitions declared on the board, a whole-board style
+   * recalculation to write the per-column step, and a measurably longer worst
+   * frame during the very restyle the change already pays for.
+   *
+   * What removes the mid-zoom pop is not the wipe but WHEN the change lands —
+   * see `cameraTierChanges`. The camera changes the detail at the moment cell
+   * text stops or starts being readable, which is derived per move rather
+   * than fixed, so the switch falls where the eye expects it.
    */
   [data-semantic-tier='blocks'] [data-blueprint-cell-anchor] > * {
     visibility: hidden;

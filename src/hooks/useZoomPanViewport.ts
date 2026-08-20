@@ -12,8 +12,12 @@ import {
 } from '@/lib/canvasKeyboardState'
 import { isEditableKeyboardTarget } from '@/lib/keyboardTarget'
 import {
+  CAMERA_TRAVEL_MAX_STRETCH,
+  cameraTransitionDurationMs,
+  cameraTravelOctaves,
   createCameraTransitionClock,
-  easeCameraTransition,
+  cameraEaseFor,
+  cameraTierChanges,
   interpolateCameraTransform,
   transformCameraAroundPoint,
   type CameraTransitionResult,
@@ -21,6 +25,7 @@ import {
 import { isCanvasResizeRefitSuppressed } from '@/lib/canvasChromeResize'
 import {
   pulseBlueprintCells,
+  type FocusCellsCompletion,
   type FocusCellsResult,
 } from '@/lib/canvasFocusCells'
 import { MOTION_CAMERA_MS, prefersReducedMotion } from '@/lib/motion'
@@ -139,20 +144,19 @@ function applyTransformToElement(
   pan: { x: number; y: number },
   zoom: number,
   semanticThreshold: number,
-  /**
-   * Zoom the TIER decision reads — the destination zoom during an animated
-   * fit, the live zoom everywhere else. Deciding the tier from the live zoom
-   * meant a navigation ease crossed the threshold mid-flight, and the
-   * hundreds of cell-content fades that flip triggers all began on that
-   * mid-ease frame — a style/paint burst in the busiest stretch of the
-   * animation, felt as the glide glitching. Stamped from the destination,
-   * the flip (and its fade) fires on frame one, where the ease is slowest
-   * and the change reads as the response to the click.
-   */
-  tierZoom: number = zoom,
 ) {
   el.style.transform = `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`
-  const blocks = tierZoom < semanticThreshold
+  /*
+    The tier is read from the zoom being RENDERED, and from nothing else.
+    A caller used to be able to override it, so that an animated fit could
+    hold the origin's tier while travelling and release the destination's on
+    the frame it settled. That is no longer how the flip is timed — it lands
+    at the legibility crossing now, which is exactly the frame this
+    comparison turns over — so the override said the same thing as the live
+    zoom on every frame, and cost a second, redundant write of the transform
+    on the crossing frame to say it.
+  */
+  const blocks = zoom < semanticThreshold
   const wasBlocks = el.dataset.semanticTier === 'blocks'
   if (blocks !== wasBlocks) {
     if (blocks) el.dataset.semanticTier = 'blocks'
@@ -183,12 +187,33 @@ function applyTransformToElement(
     board does not currently offer. Sub-millisecond against a full-subtree
     style recalc measured in tens.
   */
+  stampBadgeBoost(el, zoom)
+}
+
+/**
+ * Counter-scale the phase title badges so they hold a constant on-screen
+ * size — see the reasoning above `applyTransformToElement`.
+ *
+ * Its own function because it has its own caller: `fitToView` re-stamps the
+ * badges a frame after a fit, and that caller must not touch the transform
+ * or the semantic tier. It used to reach `applyTransformToElement` for this,
+ * and so wrote the tier as collateral, from the LIVE zoom — mid-navigation
+ * that is the view being left, not either end of the move. The board went
+ * text -> blocks -> text on one crossing navigation: the middle write hides
+ * every cell's content and shows it again inside the transition, at a cost
+ * of 54-81 ms of whole-board style recalculation, for a value nothing asked
+ * for.
+ *
+ * The guard is on the VALUE, so a pan (constant zoom) writes nothing.
+ * `semanticLabelBoost` clamps to [1, 10], so above zoom 0.95 and below 0.095
+ * the string is constant and this costs a comparison.
+ */
+function stampBadgeBoost(el: HTMLElement, zoom: number) {
   const nextBoost = semanticLabelBoost(zoom).toFixed(3)
-  if (nextBoost !== el.dataset.semanticLabelBoost) {
-    el.dataset.semanticLabelBoost = nextBoost
-    const badges = el.querySelectorAll<HTMLElement>('[data-phase-title-badge]')
-    for (const badge of badges) badge.style.scale = nextBoost
-  }
+  if (nextBoost === el.dataset.semanticLabelBoost) return
+  el.dataset.semanticLabelBoost = nextBoost
+  const badges = el.querySelectorAll<HTMLElement>('[data-phase-title-badge]')
+  for (const badge of badges) badge.style.scale = nextBoost
 }
 
 function measureFitBounds(
@@ -418,8 +443,6 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       nextPan: { x: number; y: number },
       nextZoom: number,
       syncReact = false,
-      /** See `applyTransformToElement` — animated fits pass their target. */
-      tierZoom?: number,
     ) => {
       transformRef.current = { pan: nextPan, zoom: nextZoom }
       const el = contentRef.current
@@ -429,7 +452,6 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           nextPan,
           nextZoom,
           semanticThresholdRef.current,
-          tierZoom,
         )
       }
       if (syncReact) {
@@ -479,7 +501,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       // centre.
       const initialViewport = readViewport()
       if (initialViewport.width <= 0 || initialViewport.height <= 0) {
-        commitTransform(nextPan, nextZoom, true, nextZoom)
+        commitTransform(nextPan, nextZoom, true)
         return Promise.resolve<CameraTransitionResult>({
           kind: 'completed',
           transform: target,
@@ -487,7 +509,68 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
 
       fitAnimationTargetRef.current = target
-      const progressAt = createCameraTransitionClock(fitDurationMs)
+
+      /*
+        The detail changes ONCE, at the moment cell text stops or starts
+        being readable — see `cameraTierChanges`, which owns whether it
+        changes at all, and the loop below, which owns when.
+
+        This used to be two hand-picked constants, 0.10 out and 0.88 in, and
+        no pair of numbers could have been right. The crossing moves with
+        the phase, the window and the direction: on this board a narrow
+        phase crosses 93% of the way through a zoom-in while a wide one
+        never crosses at all, and widening the window by 160px flips which
+        of those is true. A move whose tier does not change now writes
+        nothing, which is most sibling navigation.
+
+        The change still costs a whole-board style recalculation — 81 ms
+        into the text tier, 54 ms out of it, on 6565 nodes, against 0.2 ms
+        for the transform write an ordinary frame does — and still hands
+        that cost to `clock.absorb`, so the stall spends a late frame
+        instead of a lost stretch of the journey.
+
+        The board also still travels on the CHEAPER tier for most of every
+        move, which used to be arranged by pinning the tier to
+        `min(from, to)`. It now falls out of the rule for free: the crossing
+        is early in a departure and late in an arrival, so the expensive tier
+        is on screen for the shorter half either way.
+      */
+
+      /*
+        The clock runs LONGER for a move that goes further, so every camera
+        move travels at the same perceived rate — see `cameraTravelOctaves`.
+        Same ease, same interpolation, same curve; only the duration
+        changes. A single navigation step comes out exactly where it was.
+
+        Without this, `MOTION_CAMERA_MS` was the whole answer: overview to a
+        phase and overview to a scenario both got 420 ms despite the second
+        covering roughly twice the perceptual distance, so it ran at twice
+        the speed.
+      */
+      const durationMs = cameraTransitionDurationMs(
+        fitDurationMs,
+        cameraTravelOctaves(from, target, initialViewport),
+      )
+      const progressAt = createCameraTransitionClock(durationMs)
+
+      /* Graded by direction: a push in and a pull out are not one event. */
+      const ease = cameraEaseFor(from.zoom, nextZoom)
+
+      /*
+        ONE move, ONE threshold. The ref is rewritten whenever the surface
+        changes — a phone shell reads 0.15, a multi-path comparison 0.12,
+        everything else 0.25 — and it can change under a move in flight: drag
+        a window across the phone breakpoint mid-navigation and it does.
+        Read live on some lines and frozen on others, the crossing test and
+        the latch that guards it would disagree about which move this is.
+      */
+      const threshold = semanticThresholdRef.current
+
+      /*
+        False for every move that leaves the tier alone — which is most of
+        them — and then nothing below runs at all.
+      */
+      let tierWritePending = cameraTierChanges(from.zoom, nextZoom, threshold)
 
       return new Promise((resolve) => {
         fitAnimationResolveRef.current = resolve
@@ -500,9 +583,38 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
             viewport.width > 0 && viewport.height > 0
               ? viewport
               : initialViewport,
-            easeCameraTransition(t),
+            ease(t),
           )
-          commitTransform(next.pan, next.zoom, t === 1, nextZoom)
+          commitTransform(next.pan, next.zoom, t === 1)
+
+          /*
+            `commitTransform` has just written the tier, because the tier is
+            read from the zoom it renders. On the frame that zoom crosses the
+            threshold, that write costs a whole-board style recalculation —
+            81 ms into the text tier, 54 ms out of it, on 6565 nodes, against
+            0.2 ms for an ordinary frame's transform. All this does is force
+            that recalculation to finish now and tell the clock what it cost,
+            so the move lands late rather than losing a stretch of its
+            journey — see `CameraTransitionClock.absorb`.
+
+            The element is read live rather than captured at move start. A
+            captured one can be replaced mid-move, and then this forces
+            layout on a detached node, which costs nothing, and reports
+            nothing to the clock, while the real recalculation lands on a
+            later frame charged in full to the ease. Silent, and exactly the
+            failure the billing exists to prevent.
+          */
+          const tierEl = contentRef.current
+          if (
+            tierWritePending &&
+            tierEl &&
+            cameraTierChanges(from.zoom, next.zoom, threshold)
+          ) {
+            tierWritePending = false
+            const spent = performance.now()
+            void tierEl.offsetHeight
+            progressAt.absorb(performance.now() - spent)
+          }
           if (t < 1) {
             fitAnimationRef.current = requestAnimationFrame(step)
             return
@@ -747,13 +859,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         requestAnimationFrame(() => {
           const el = contentRef.current
           if (!el) return
+          // Badges ONLY. This deliberately does not go through
+          // `applyTransformToElement`: the camera is not moving here, and a
+          // re-stamp that also wrote the tier described the live zoom,
+          // which mid-navigation is neither end of the move.
           delete el.dataset.semanticLabelBoost
-          applyTransformToElement(
-            el,
-            transformRef.current.pan,
-            transformRef.current.zoom,
-            semanticThresholdRef.current,
-          )
+          stampBadgeBoost(el, transformRef.current.zoom)
         })
       }
       return true
@@ -766,6 +877,13 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * of a fit so a window drag never throws away the zoom the user chose.
    */
   const recenterToView = useCallback(() => {
+    /*
+      Never mid-ease. This commits with `syncReact` on, so a resize landing
+      partway through a navigation cost a full canvas re-render for a
+      transform the next frame overwrites — and it commits from the
+      live zoom, which mid-flight is neither end of the move. The ease is already going where this wants to go.
+    */
+    if (fitAnimationRef.current !== null) return
     const current = transformRef.current
     const next = computeFitTransform(current.zoom)
     if (!next || isSameTransform(current, next)) return
@@ -836,7 +954,23 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     let lastSize: { width: number; height: number } | null = null
     let lastTarget: HTMLElement | null = null
 
+    /*
+      Releasing the guard belongs to `stop`, not to the success path.
+
+      `runFit` used to lower `fitSettlingRef` only when the fit was actually
+      consumed. A target that measures 0x0 makes `runPendingFit` decline, so
+      both terminal paths — the poll cap and the backstop — left the guard
+      RAISED with nothing else scheduled. The resize observer's owed-fit
+      branch checks that guard and returns early, so the camera was inert
+      for the life of the view: exactly the "Edit mode stuck at identity
+      zoom over an empty corner" failure that branch exists to prevent.
+
+      The comment below still holds — the guard must stay up while the loop
+      is watching. It just has to come down when the loop stops watching,
+      however it stops.
+    */
     const stop = () => {
+      fitSettlingRef.current = false
       cancelAnimationFrame(frame)
       window.clearTimeout(timeout)
     }
@@ -854,7 +988,6 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     const runFit = () => {
       runPendingFit(animate)
       if (pendingFitRef.current) return false
-      fitSettlingRef.current = false
       stop()
       return true
     }
@@ -912,10 +1045,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     // permanent per-frame forced layout for the life of the view.
     const timeout = window.setTimeout(runFit, 250)
 
-    return () => {
-      fitSettlingRef.current = false
-      stop()
-    }
+    // `stop` lowers the settling guard as well as clearing the timers.
+    return stop
   }, [resetKey, fitSelector, runPendingFit])
 
   useEffect(() => {
@@ -1009,11 +1140,28 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           Past the deadline the correction matters more than the ease it
           would interrupt, so it goes through.
         */
-        let refitPolls = 0
-        const maxRefitPolls = Math.ceil((fitDurationMs * 2) / 50)
+        /*
+          A WALL-CLOCK deadline, not a poll count.
+
+          This was `ceil(fitDurationMs * 2 / 50)` polls, which is 850 ms of
+          grace only if the polls are 50 ms apart. The comment above says
+          the bound exists because a backgrounded tab stops
+          `requestAnimationFrame` — but a backgrounded tab also clamps
+          `setTimeout` to a second or more, so in the one situation the
+          bound was written for it stretched to something like 17 seconds.
+          The escape hatch went missing exactly when it was needed.
+
+          Two eases long, at the LONGEST an ease can now be — see
+          `CAMERA_TRAVEL_MAX_STRETCH`, since a move's duration now scales
+          with its distance.
+        */
+        const refitDeadline =
+          performance.now() + fitDurationMs * CAMERA_TRAVEL_MAX_STRETCH * 2
         const refitWhenIdle = () => {
-          if (fitAnimationRef.current !== null && refitPolls < maxRefitPolls) {
-            refitPolls += 1
+          if (
+            fitAnimationRef.current !== null &&
+            performance.now() < refitDeadline
+          ) {
             // Never snap mid-ease — wait the glide out on a short poll.
             debounceTimer = window.setTimeout(refitWhenIdle, 50)
             return
@@ -1031,8 +1179,30 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           */
           fitToView({ animate: false })
         }
+        /*
+          Same poll, same deadline, for the same reason. Recentring used to
+          simply RETURN when it landed mid-ease, which reads as "the ease is
+          already going where this wants to go" — and is only true while the
+          viewport has not changed. A resize is this path's only caller, so
+          the premise is false exactly when it is invoked: the ease settles on
+          a target computed against the OLD viewport, and because the
+          interpolation returns its destination exactly at progress 1, the
+          live-viewport reading that saves every intermediate frame does not
+          save the last one. The board lands off centre and nothing corrects
+          it until the next resize.
+        */
+        const recenterWhenIdle = () => {
+          if (
+            fitAnimationRef.current !== null &&
+            performance.now() < refitDeadline
+          ) {
+            debounceTimer = window.setTimeout(recenterWhenIdle, 50)
+            return
+          }
+          recenterToView()
+        }
         debounceTimer = window.setTimeout(
-          grewSinceFit ? refitWhenIdle : recenterToView,
+          grewSinceFit ? refitWhenIdle : recenterWhenIdle,
           refitDebounceMs,
         )
         return
@@ -1598,6 +1768,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
 
       focusGenerationRef.current += 1
+      const generation = focusGenerationRef.current
       const found: HTMLElement[] = []
       const missing: string[] = []
       for (const cellId of cellIds) {
@@ -1633,10 +1804,31 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
 
       const animate = (opts?.animate ?? true) && !prefersReducedMotion()
-      let completion: 'completed' | 'cancelled' | 'superseded' = 'completed'
+      let completion: FocusCellsCompletion = 'completed'
       if (animate) completion = (await animateTransform(nextPan, nextZoom)).kind
       else commitTransform(nextPan, nextZoom, true)
 
+      /*
+        Two ways this fly-to can be stale by the time its camera move
+        resolves, and they need different questions asked.
+
+        A LATER fly-to superseding this one bumps the generation, so the
+        counter catches it — without that, two sets of cells flash for one
+        request.
+
+        A move that was CANCELLED does not touch the generation, and cannot:
+        the unmount path is an effect cleanup, and mutating a ref there makes
+        every other write to it a lint error. It reports itself instead. A
+        cancelled move means a pointerdown took over or the viewport went
+        away, and in both cases the cells to pulse are either somewhere the
+        reader has moved on from or detached from the document — where the
+        pulse would still write attributes, force a reflow per cell, and
+        leave a 1300 ms timeout pinning all of them.
+      */
+      if (focusGenerationRef.current !== generation) {
+        return { kind: 'flown', completion }
+      }
+      if (completion !== 'completed') return { kind: 'flown', completion }
       pulseBlueprintCells(found)
       return { kind: 'flown', completion }
     },
