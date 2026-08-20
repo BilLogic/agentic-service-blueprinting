@@ -3,10 +3,6 @@ import { ResizableComparePanel } from '@/components/blueprint/ResizableComparePa
 import { ServiceBlueprintGrid } from '@/components/blueprint/ServiceBlueprintGrid'
 import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
-import {
-  CompareDivergenceStrip,
-  COMPARE_STRIP_HEIGHT,
-} from '@/components/blueprint/CompareDivergenceStrip'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
@@ -476,22 +472,9 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
   }
 
   if (useSideBySideLayout) {
-    // KIT FEATURE (not in uno): the divergence strip docks above the board.
-    // Hidden for Merged — the merged band carries its own divergence wash.
-    const stripVisible = compareModel !== null && mergedModel === null
     return (
       <ResizableComparePanel
         {...comparePanelProps}
-        chromeBar={
-          stripVisible ? (
-            <CompareDivergenceStrip
-              model={compareModel}
-              blueprints={visibleBlueprints}
-              slideId={slide.id}
-            />
-          ) : undefined
-        }
-        chromeBarHeight={stripVisible ? COMPARE_STRIP_HEIGHT : 0}
         fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
       >
         {mergedModel !== null ? (

@@ -1,4 +1,4 @@
-import { scrollBlueprintCellIntoView } from '@/lib/blueprintCellConnections'
+import { resolveActiveFocusCells } from '@/lib/canvasFocusCells'
 
 /**
  * The agent's hands on the UI itself — camera and navigation, not data.
@@ -31,16 +31,35 @@ export function registerAgentUiBridge(next: AgentUiBridge): () => void {
   }
 }
 
-export function agentOpenPhase(phaseId: string): string {
-  if (!bridge) return 'UI navigation is not available right now.'
-  bridge.selectPhase(phaseId)
-  return 'Opened the phase on the canvas.'
+async function waitForNavigation(id: string): Promise<boolean> {
+  const deadline = performance.now() + 1800
+  while (performance.now() < deadline) {
+    const context = collectAgentUiContext()
+    const selected = context.includes(`(${id})`)
+    const cameraSettled =
+      document.hidden ||
+      !context.includes('Canvas camera:') ||
+      context.includes(', idle')
+    if (selected && cameraSettled) return true
+    await new Promise((done) => setTimeout(done, 25))
+  }
+  return false
 }
 
-export function agentOpenScenario(scenarioId: string): string {
+export async function agentOpenPhase(phaseId: string): Promise<string> {
+  if (!bridge) return 'UI navigation is not available right now.'
+  bridge.selectPhase(phaseId)
+  return (await waitForNavigation(phaseId))
+    ? 'Opened the phase and settled its canvas camera.'
+    : 'Phase navigation started, but the selected phase and settled camera were not verified before timeout.'
+}
+
+export async function agentOpenScenario(scenarioId: string): Promise<string> {
   if (!bridge) return 'UI navigation is not available right now.'
   bridge.selectScenario(scenarioId)
-  return 'Opened the scenario on the canvas.'
+  return (await waitForNavigation(scenarioId))
+    ? 'Opened the scenario and settled its canvas camera.'
+    : 'Scenario navigation started, but the selected scenario and settled camera were not verified before timeout.'
 }
 
 export function openAgentSurface(): boolean {
@@ -49,11 +68,16 @@ export function openAgentSurface(): boolean {
   return true
 }
 
-export function agentFocusCell(cellId: string): string {
-  // Works only when the cell is mounted on the current canvas — the tool
-  // description tells the model to open the scenario first.
-  scrollBlueprintCellIntoView(cellId)
-  return 'Scrolled the canvas to the cell (it must be on the open scenario to be visible).'
+export async function agentFocusCell(cellId: string): Promise<string> {
+  const focus = resolveActiveFocusCells()
+  if (!focus)
+    return 'No active canvas camera is available right now — open the scenario first.'
+  const result = await focus([cellId])
+  if (result.kind === 'miss')
+    return 'That cell is not on the active canvas — open its scenario first, then retry.'
+  if (result.completion !== 'completed')
+    return `The camera focus was ${result.completion}; the cell was not claimed as landed.`
+  return 'Focused the active canvas camera on the cell.'
 }
 
 export function agentSetSidebar(collapsed: boolean): string {
@@ -78,12 +102,13 @@ export function agentSetSidebar(collapsed: boolean): string {
  * something and hiding it instead is the worst possible reading of the tool.
  */
 export async function agentOpenCellPanel(cellId: string): Promise<string> {
+  const focusResult = await agentFocusCell(cellId)
+  if (!focusResult.startsWith('Focused')) return focusResult
   const el = document.querySelector<HTMLElement>(
     `[data-blueprint-cell="${CSS.escape(cellId)}"][data-blueprint-cell-interactive]`,
   )
   if (!el)
     return 'That cell is not clickable on the current canvas — open its scenario first (open_scenario), then retry.'
-  scrollBlueprintCellIntoView(cellId)
   // ⌘-click is the grammar's "open detail, touch nothing" gesture — it works
   // identically in view and design mode (a bare click PICKS when a picker is
   // armed, and dblclick deliberately does nothing).
@@ -97,7 +122,14 @@ export async function agentOpenCellPanel(cellId: string): Promise<string> {
   // be open on the ledger with no selection — they would false-positive.
   // (Headless panes defer the open past document.hidden — don't false-fail
   // there.)
-  await new Promise((done) => setTimeout(done, 250))
+  const deadline = performance.now() + 1000
+  while (
+    !document.hidden &&
+    !hasAgentUiContext('cell-panel') &&
+    performance.now() < deadline
+  ) {
+    await new Promise((done) => setTimeout(done, 25))
+  }
   if (document.hidden || hasAgentUiContext('cell-panel'))
     return 'Opened the cell detail panel.'
   return 'The click landed but the panel did not open. Likely causes: the hand (pan) tool is active — ask the user to switch tools — or the cell sits in a dimmed phase under focus mode. The panel is NOT open; do not claim it is.'

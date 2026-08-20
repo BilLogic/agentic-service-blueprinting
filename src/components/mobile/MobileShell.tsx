@@ -229,7 +229,7 @@ export function MobileShell() {
 
   // What the shell knows about the phone's screen, for get_ui_state.
   const shellContext = [
-    'Mobile shell (view-only): the shared canvas, scoped to the selected phase',
+    'Mobile shell (view-only): the shared canvas, scoped to ONE scenario — sibling scenarios in the same phase are not drawn, and the drawer is the only way to move between them',
     scenario
       ? `Selected scenario: "${getSlideDisplayLabel(scenario, slides)}" (${scenario.id})`
       : `Selected scenario: none${view === 'home' ? ' (overview)' : ''}`,
@@ -340,26 +340,26 @@ export function MobileShell() {
                   className="absolute inset-0 flex min-h-0 flex-col"
                   data-editor-view
                 >
-                  {/* Scoped to the selected phase: a phone renders one
-                      stretch of the service, never the whole board. The
-                      sticky phase header is suppressed — the shell's own
-                      top bar already names the selection, and two bars
-                      saying the same thing read as clutter. */}
                   {/* Scoped to ONE SCENARIO, not to a phase.
 
                       A phone has no phase lane and no canvas navigation —
                       the drawer is the only way to move — so a sibling
                       scenario on the board is a destination the shell
                       cannot properly take you to, drawn at a size the
-                      device pays for. A phase row is several full boards;
-                      rendering the set on a phone is what takes the
-                      renderer down.
+                      device pays for. A phase row is up to seven full
+                      boards; rendering the set on a phone is what took the
+                      renderer down. One selection, one board.
 
                       `soloScenarioId` wins over `soloPhaseId` inside
-                      ServiceOverviewView, so a phase-only selection
+                      ServiceOverviewView, so a phase-only selection (the
+                      agent bridge and boot links can still produce one)
                       resolves to that phase's first scenario rather than
-                      falling back to the whole row. */}
-                  <ServiceOverviewView
+                      falling back to the whole row.
+
+                      The sticky phase header is suppressed — the shell's
+                      own top bar already names the selection, and two bars
+                      saying the same thing read as clutter. */}
+                                    <ServiceOverviewView
                     soloScenarioId={soloScenarioId ?? undefined}
                     soloPhaseId={selectedPhaseId ?? undefined}
                     renderHeader={() => null}

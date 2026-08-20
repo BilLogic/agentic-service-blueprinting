@@ -396,8 +396,13 @@ export function useEditor() {
 }
 
 /**
- * The selected scenario, or null when there is no editor above — so a
- * component can watch navigation without requiring the provider.
+ * The base view's selected scenario, or null outside an EditorProvider.
+ *
+ * For consumers that REACT to navigation without owning it — today the path
+ * selection store, which collapses a multi-path comparison back to the
+ * default when the reader moves to a different scenario. Null-safe because
+ * that store also mounts in tests and surfaces with no editor above it,
+ * where "no navigation is happening" is the correct reading.
  */
 export function useSelectedScenarioIdOptional(): string | null {
   const context = useContext(EditorContext)

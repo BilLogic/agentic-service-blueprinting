@@ -254,7 +254,7 @@ function FilterChip({
  * group with nothing after it renders flat — accordion chrome around one
  * group is furniture. Opening a group flies the camera to that step's cells:
  * accordion + fly is ONE gesture, through the shared active-step cursor the
- * divergence strip reads too.
+ * compare navigation reads too.
  *
  * Counts: exactly one per group, at the END of its header row, post-filter.
  * There is no total anywhere on this surface — the menubar Diff pill owns
@@ -306,7 +306,7 @@ export function CompareDifferencesSurface({
       setCompareActiveStep(null)
       return
     }
-    // The one step-activation gesture — same path the strip and
+    // The one step-activation gesture — same path the agent command and
     // `jump_divergence` take, so the cursor never forks.
     void jumpToCompareStep(group, registration.slideId)
   }
@@ -389,7 +389,7 @@ export function CompareDifferencesSurface({
   )
 
   // Controlled accordion: the store owns the active step (shared with the
-  // strip and jump_divergence); `detailOpen` is surface-local. One at a time.
+  // jump_divergence); `detailOpen` is surface-local. One at a time.
   const accordionValue: string[] =
     activeStepKey !== null && stepGroups.some((g) => g.columnKey === activeStepKey)
       ? [`step-${activeStepKey}`]

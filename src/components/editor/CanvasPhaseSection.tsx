@@ -164,35 +164,7 @@ export function CanvasPhaseSection({
     <section
       ref={sectionRef}
       className={cn(
-        /*
-          OPACITY only, on the camera's own duration and ease.
-
-          This transitioned `filter` too — desaturating an entire phase
-          section, hundreds of cells, every frame of the ease, at the exact
-          moment the camera is animating the whole board. That is a
-          full-board repaint per frame competing with the navigation, and it
-          was the residual stutter. `blueprint.css` already documents the
-          rule for the slice dim ("transitioning a filter repaints every
-          non-member cell on every frame"); the navigation dim simply never
-          learned it. Saturation now lands on frame one, under a section
-          still near-opaque, so the pair still reads as one event.
-
-          Duration and ease are the CAMERA's, not the fade's: the dim and
-          the fly-to are one gesture, and a 200 ms dim under a 420 ms glide
-          finished less than halfway through the move.
-        */
         'relative inline-flex w-max flex-col items-start',
-        'transition-opacity duration-(--motion-camera) ease-structural',
-        // Opacity is NOT set here. A phase-level `opacity-30` composites the
-        // whole subtree into one translucent layer, so a hovered scenario can
-        // change fill and shadow but can never become clearer than its dimmed
-        // ancestor. blueprint.css dims the phase frame, badge and scenario
-        // wrappers independently instead — see "Nested focus hierarchy" —
-        // which keeps the phase-space hover preview and lets a nested
-        // scenario lift on its own. Saturation and the pointer-events guard
-        // stay: they are not compositing decisions.
-        dimmed &&
-          'saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
         navigable &&
           'cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         className,
@@ -255,7 +227,9 @@ export function CanvasPhaseSection({
       <div className="relative flex flex-col gap-4">{children}</div>
       {showFlowArrow ? (
         <div
-          className="pointer-events-none absolute z-50 -translate-x-1/2"
+          // Structural connector: above the phase frame, below the z-30
+          // title badges and far below the z-60 annotation surface.
+          className="pointer-events-none absolute z-20 -translate-x-1/2"
           style={{
             left: 'var(--phase-flow-arrow-left, 50%)',
             top: `calc(100% + ${sectionBottomInset}px)`,

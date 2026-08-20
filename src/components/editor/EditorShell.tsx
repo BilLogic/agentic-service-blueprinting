@@ -372,10 +372,10 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'activate_base_tab',
-        description: 'Bring the base blueprint view forward (deactivate any slice tab).',
+        description: 'Return to the base blueprint tab and its zoomed-out overview.',
         run: () => {
           commands.current.activateBase()
-          return 'Base blueprint view is active.'
+          return 'Base blueprint overview is active.'
         },
       }),
       registerAgentUiCommand({
@@ -515,12 +515,13 @@ function DesktopEditorShell() {
     goLanding()
   }
 
-  // The workspace tab from the cover page: the same entry the cover's own
-  // button uses (`enterCanvas`, which suppresses the fit animation), not a
-  // second way in with different motion.
+  // The workspace tab always means the blueprint's starting view. From the
+  // cover it enters without a boot swoop; from any canvas level it uses the
+  // same animated overview return as Home, Escape, and the breadcrumb.
   const goWorkspace = () => {
     activateTab(null)
     if (isLanding) enterCanvas()
+    else goHome()
   }
 
   // Latest handlers for the registered shell commands (declared above);
@@ -528,7 +529,7 @@ function DesktopEditorShell() {
   // effect (refs are not written during render).
   const shellCommands: ShellCommands = {
     goOverview,
-    activateBase: () => activateTab(null),
+    activateBase: goWorkspace,
     openSliceTab: (sliceId, present) =>
       openTab({ kind: present ? 'present' : 'slice', sliceId }),
     closeSliceTab: (sliceId) => {
