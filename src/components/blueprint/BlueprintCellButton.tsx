@@ -49,6 +49,7 @@ type BlueprintCellButtonProps = {
   sliceSequenceBadge?: boolean
   children: ReactNode
   'aria-label'?: string
+  'aria-describedby'?: string
   'data-blueprint-tech-pill'?: string
 }
 
@@ -73,6 +74,7 @@ export function BlueprintCellButton({
   sliceSequenceBadge = true,
   children,
   'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedBy,
   'data-blueprint-tech-pill': techPillLabel,
 }: BlueprintCellButtonProps) {
   const detail = useBlueprintCellDetailOptional()
@@ -247,6 +249,7 @@ export function BlueprintCellButton({
       data-step-index={stepIndex}
       {...(techPillLabel ? { 'data-blueprint-tech-pill': techPillLabel } : {})}
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
       aria-pressed={isInteractive ? isActive : undefined}
       data-blueprint-cell-emphasis={emphasis}
       {...(isSliceMember ? { 'data-slice-member': '' } : {})}

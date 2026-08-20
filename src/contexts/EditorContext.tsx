@@ -396,6 +396,20 @@ export function useEditor() {
 }
 
 /**
+ * The base view's selected scenario, or null outside an EditorProvider.
+ *
+ * For consumers that REACT to navigation without owning it — today the path
+ * selection store, which collapses a multi-path comparison back to the
+ * default when the reader moves to a different scenario. Null-safe because
+ * that store also mounts in tests and surfaces with no editor above it,
+ * where "no navigation is happening" is the correct reading.
+ */
+export function useSelectedScenarioIdOptional(): string | null {
+  const context = useContext(EditorContext)
+  return context?.selectedScenarioId ?? null
+}
+
+/**
  * True while the canvas is focused on one scenario — the only place the
  * grid's structural affordances (insert handles, empty-cell `+`) belong.
  * At the overview, twenty blueprints render at 6% zoom; an insert handle

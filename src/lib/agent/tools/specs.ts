@@ -117,7 +117,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_compare_diff',
     description:
-      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (description/links) group. Read before driving the compare UI or answering \"what differs\". Triggers/needs edges are not compared.",
+      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its logical divergence zone, every differing slot with per-path quotes and cell ids, and the detail-only (description/links) group. Read before driving the compare UI or answering \"what differs\". Triggers/needs edges are not compared.",
     parameters: {
       type: 'object',
       properties: {
@@ -479,7 +479,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         path_id: str('Path id'),
         layer_id: str('Lane id from get_blueprint (parameter named layer_id for historical reasons)'),
         step_id: str('Step id (from get_blueprint)'),
-        content: str('The cell text — a journey moment, not a system capability, max 120 characters (the canvas reads at a glance; put detail in the summary). Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".'),
+        content: str('The complete cell text — a journey moment, not a system capability. Aim for 80 characters; above 100 returns a non-blocking review warning because the canvas preview clamps to four lines. Put supporting detail in summary. Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".'),
       },
       required: ['path_id', 'layer_id', 'step_id', 'content'],
     },
@@ -492,7 +492,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       type: 'object',
       properties: {
         cell_id: str('Cell id'),
-        content: str('New cell text, max 120 characters (detail belongs in summary); omit to keep'),
+        content: str('New complete cell text; aim for 80 characters (above 100 returns a non-blocking review warning; detail belongs in summary); omit to keep'),
         summary: str('New summary; omit to keep'),
         owner: str('Owner tag; omit to keep'),
         perceived_owner: str('Perceived-owner tag; omit to keep'),

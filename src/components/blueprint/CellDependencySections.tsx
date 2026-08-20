@@ -149,6 +149,7 @@ function DependencyRow({
                   item={item}
                   compact
                   asSpan
+                  inline
                   className="!w-fit max-w-full !px-2 !py-0.5 !text-3xs !font-normal leading-none text-foreground/75"
                 />
               </button>
@@ -308,6 +309,7 @@ export function CellDependencySections({
                     item={entry.item}
                     compact
                     asSpan
+                    inline
                     className="!w-fit max-w-full !px-2 !py-0.5 !text-3xs !font-normal leading-none text-foreground/75"
                   />
                 </button>

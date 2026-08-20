@@ -1,13 +1,14 @@
 /*
  * Motion tokens — the CSS half of the vocabulary in src/lib/motion.ts.
- * Same five numbers, one per motion class; scripts/tests/motion-tokens
- * pins the two files together so they cannot drift apart silently.
- * `--ease-structural` is a Tailwind @theme key, so `ease-structural` is a
- * utility; durations are plain vars because Tailwind v4 has no duration
+ * Same five numbers, one per motion class; the motion drift test pins the
+ * TypeScript and CSS files together so they cannot drift apart silently.
+ * The `--ease-*` Tailwind theme keys become `ease-*` utilities; durations
+ * are plain vars because Tailwind v4 has no duration
  * namespace — consume them as `duration-(--motion-structural)`.
  */
 @theme {
   --ease-structural: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-camera: cubic-bezier(0.37, 0, 0.63, 1);
 }
 
 :root {

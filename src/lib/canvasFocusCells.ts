@@ -8,15 +8,16 @@
  */
 
 export type FocusCellsResult =
-  | { kind: 'flown' }
+  | { kind: 'flown'; completion: 'completed' | 'cancelled' | 'superseded' }
   | { kind: 'miss'; missing: string[] }
 
 export type FocusCellsFn = (
   cellIds: string[],
   opts?: { animate?: boolean },
-) => FocusCellsResult
+) => FocusCellsResult | Promise<FocusCellsResult>
 
 const registry = new Map<string, FocusCellsFn>()
+let activeFocusCells: FocusCellsFn | null = null
 
 export function registerFocusCells(
   key: string,
@@ -31,6 +32,17 @@ export function registerFocusCells(
 /** Null when no viewport currently serves that scenario. */
 export function resolveFocusCells(key: string): FocusCellsFn | null {
   return registry.get(key) ?? null
+}
+
+export function registerActiveFocusCells(focusCells: FocusCellsFn): () => void {
+  activeFocusCells = focusCells
+  return () => {
+    if (activeFocusCells === focusCells) activeFocusCells = null
+  }
+}
+
+export function resolveActiveFocusCells(): FocusCellsFn | null {
+  return activeFocusCells
 }
 
 const PULSE_ATTRIBUTE = 'data-blueprint-cell-pulse'

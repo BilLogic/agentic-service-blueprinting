@@ -31,6 +31,11 @@ const VIEWPORT_TSX = readFileSync(
   'utf8',
 )
 
+const CAMERA_HOOK = readFileSync(
+  fileURLToPath(new URL('../hooks/useZoomPanViewport.ts', import.meta.url)),
+  'utf8',
+)
+
 describe('canvas touch contract', () => {
   it('kills native touch handling on the whole board subtree, not just the viewport', () => {
     const rule = CSS.replace(/\s+/g, ' ')
@@ -54,5 +59,31 @@ describe('canvas touch contract', () => {
     // steal from the one above; both have to stay dead.
     expect(CSS).toContain('-webkit-touch-callout: none')
     expect(CSS).toContain('-webkit-user-select: none')
+  })
+
+  it('claims the gesture outright, not only by declaring touch-action', () => {
+    /*
+      `touch-action` is consulted by the compositor BEFORE the touch is
+      delivered, and it is exactly that consultation that is unreliable
+      across the transformed content layer. `preventDefault` needs no such
+      resolution: the event is already in hand.
+
+      Non-passive is the whole point — `preventDefault` on a passive
+      listener does nothing but log a warning — so the option object is
+      pinned too. `touchstart` is claimed only from the second finger:
+      preventing the first would suppress the click a tap depends on, while
+      multi-touch synthesizes no click and is where WebKit's page pinch-zoom
+      starts, which `touch-action` cannot reach at all.
+    */
+    expect(CAMERA_HOOK).toContain(
+      "el.addEventListener('touchmove', claimMove, options)",
+    )
+    expect(CAMERA_HOOK).toContain(
+      "el.addEventListener('touchstart', claimPinch, options)",
+    )
+    expect(CAMERA_HOOK).toContain('const options = { passive: false } as const')
+    expect(CAMERA_HOOK).toContain(
+      'if (event.touches.length >= 2 && event.cancelable) event.preventDefault()',
+    )
   })
 })

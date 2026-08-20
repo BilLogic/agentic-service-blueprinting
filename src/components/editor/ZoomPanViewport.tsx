@@ -9,7 +9,11 @@ import { CanvasSelectionProvider } from '@/components/editor/CanvasSelectionProv
 import { CanvasPenCursor } from '@/components/editor/CanvasPenCursor'
 import { EditorSequenceNav } from '@/components/editor/EditorSequenceNav'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
-import { registerFocusCells } from '@/lib/canvasFocusCells'
+import {
+  registerActiveFocusCells,
+  registerFocusCells,
+} from '@/lib/canvasFocusCells'
+import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { CanvasAnnotationProvider } from '@/contexts/CanvasAnnotationProvider'
 import { usePublishCanvasZoomChrome } from '@/contexts/CanvasZoomChromeContext'
 import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
@@ -36,7 +40,7 @@ type ZoomPanViewportProps = {
   /**
    * Registers this viewport's `focusCells` in the module registry under
    * this key (the focused scenario's slide id) — the fly-to-cell pipeline
-   * for the difference ledger, the divergence strip and agent commands.
+   * for the difference ledger and agent commands.
    */
   focusCellsKey?: string
 }
@@ -74,11 +78,15 @@ function ZoomPanViewportInner({
     contentRef,
     zoom,
     isPanning,
+    isSpaceHeld,
     pointerHandlers,
     zoomIn,
     zoomOut,
     fitToView,
     focusCells,
+    panBy,
+    cancelCamera,
+    getCameraState,
   } = useZoomPanViewport({
     resetKey,
     panIgnoreSelector,
@@ -105,20 +113,71 @@ function ZoomPanViewportInner({
     return registerFocusCells(focusCellsKey, focusCells)
   }, [focusCells, focusCellsKey])
 
+  useEffect(() => registerActiveFocusCells(focusCells), [focusCells])
+
   // Agent parity: camera controls (otherwise keyboard-only ⌘+/⌘−/⌘0).
   useEffect(() => {
-    return registerAgentUiCommand({
-      name: 'zoom',
-      description:
-        'Zoom the canvas camera. arg: in | out | fit (fit the current focus)',
-      run: (arg) => {
-        if (arg === 'in') zoomIn()
-        else if (arg === 'out') zoomOut()
-        else fitToView({ animate: true })
-        return `Camera: ${arg === 'in' || arg === 'out' ? `zoomed ${arg}` : 'fit to view'}.`
-      },
-    })
-  }, [zoomIn, zoomOut, fitToView])
+    const waitForCamera = async () => {
+      const deadline = performance.now() + 1000
+      while (getCameraState().moving && performance.now() < deadline) {
+        await new Promise((done) => setTimeout(done, 16))
+      }
+      return getCameraState().moving ? 'timed out while moving' : 'completed'
+    }
+    const unregister = [
+      registerAgentUiCommand({
+        name: 'zoom',
+        description:
+          'Zoom the active canvas camera. arg: in | out | fit (fit the current focus)',
+        run: async (arg) => {
+          if (arg === 'in') zoomIn()
+          else if (arg === 'out') zoomOut()
+          else {
+            fitToView({ animate: true })
+            const outcome = await waitForCamera()
+            return `Camera fit ${outcome}.`
+          }
+          return `Camera: zoomed ${arg}.`
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'canvas_camera',
+        description:
+          'Control the active canvas camera. arg: pan <dx> <dy> (screen px) | zoom_in | zoom_out | fit | cancel',
+        run: async (arg) => {
+          const input = arg?.trim() ?? ''
+          if (input === 'zoom_in') zoomIn()
+          else if (input === 'zoom_out') zoomOut()
+          else if (input === 'fit') {
+            fitToView({ animate: true })
+            return `Camera fit ${await waitForCamera()}.`
+          }
+          else if (input === 'cancel') cancelCamera()
+          else if (input.startsWith('pan ')) {
+            const [, rawX, rawY] = input.split(/\s+/)
+            const dx = Number(rawX)
+            const dy = Number(rawY)
+            if (!Number.isFinite(dx) || !Number.isFinite(dy))
+              return 'Camera unchanged. Use: pan <dx> <dy> with finite screen-pixel numbers.'
+            panBy(dx, dy)
+          } else {
+            return 'Camera unchanged. arg must be pan <dx> <dy>, zoom_in, zoom_out, fit, or cancel.'
+          }
+          return `Camera command completed: ${input}.`
+        },
+      }),
+    ]
+    return () => unregister.forEach((remove) => remove())
+  }, [cancelCamera, fitToView, getCameraState, panBy, zoomIn, zoomOut])
+
+  useEffect(
+    () =>
+      registerAgentUiContext('canvas-camera', () => {
+        const camera = getCameraState()
+        return `Canvas camera: ${Math.round(camera.zoom * 100)}%, ${camera.moving ? 'moving' : 'idle'}${focusCellsKey ? `, active scenario ${focusCellsKey}` : ''}.`
+      }),
+    [focusCellsKey, getCameraState],
+  )
 
   return (
     // The mode provider is mounted per *surface* (EditorShell for the base
@@ -126,7 +185,10 @@ function ZoomPanViewportInner({
     // know the mode above its viewport to swap in the editor.
     <CanvasSelectionProvider>
     <div
-      className={cn('relative min-h-0 flex-1', className)}
+      // Bound every canvas-local z-index to this surface. The transformed
+      // world, screen-space chrome, and annotation tools keep their internal
+      // order without competing with the editor shell or portalled dialogs.
+      className={cn('relative isolate min-h-0 flex-1', className)}
       data-zoom-pan-root
       // Cell-corner overlays (slice sequence badges) scale with the canvas;
       // below this zoom they are illegible specks, so CSS hides them. Same
@@ -138,10 +200,12 @@ function ZoomPanViewportInner({
         ref={containerRef}
         className={cn(
           'absolute inset-0 overflow-hidden touch-none',
+          (isPanning || isSpaceHeld) && 'cursor-grab',
           isPanning && 'cursor-grabbing',
         )}
         style={{ backgroundColor: BLUEPRINT_THEME.viewportPad }}
         data-zoom-pan-viewport
+        data-canvas-space-pan={isSpaceHeld ? '' : undefined}
         {...pointerHandlers}
       >
         <div

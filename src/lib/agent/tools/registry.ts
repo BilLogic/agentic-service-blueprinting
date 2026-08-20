@@ -35,7 +35,7 @@ import {
   type CellContentUpdate,
 } from '@/lib/cellContentMutations'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
-import { checkCellContentLength } from '@/lib/cellContentLimits'
+import { getCellContentLengthGuidance } from '@/lib/cellContentLimits'
 import { findingFingerprint } from '@/lib/findingFingerprint'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import {
@@ -299,23 +299,22 @@ export async function dispatchTool(
             `A cell already exists at that slot (${occupied[0].id}) — upsert_cell only creates. Use update_cell_content to edit the existing cell.`,
           )
         const newContent = need(args, 'content')
-        const lengthProblem = checkCellContentLength(newContent)
-        if (lengthProblem) throw new Error(lengthProblem)
+        const lengthGuidance = getCellContentLengthGuidance(newContent)
         const id = await upsertCell(client, {
           pathId: need(args, 'path_id'),
           layerId,
           stepId,
           content: newContent,
         })
-        return `Created cell (${id}).`
+        return `Created cell (${id}).${lengthGuidance.message ? ` ${lengthGuidance.message}` : ''}`
       }
       case 'update_cell_content': {
         const cellId = need(args, 'cell_id')
         const nextContent = s(args, 'content')
-        if (nextContent !== undefined) {
-          const lengthProblem = checkCellContentLength(nextContent)
-          if (lengthProblem) throw new Error(lengthProblem)
-        }
+        const lengthGuidance =
+          nextContent === undefined
+            ? null
+            : getCellContentLengthGuidance(nextContent)
         const { data, error } = await client
           .from('cells')
           .select('content, description, owner, perceived_owner')
@@ -340,7 +339,7 @@ export async function dispatchTool(
           },
           previous,
         )
-        return 'Cell updated.'
+        return `Cell updated.${lengthGuidance?.message ? ` ${lengthGuidance.message}` : ''}`
       }
       case 'update_cell_spec': {
         const cellId = need(args, 'cell_id')

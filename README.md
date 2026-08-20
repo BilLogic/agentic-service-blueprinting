@@ -1,6 +1,6 @@
 # Agentic Service Blueprinting
 
-Turn a service blueprint from a static artifact into an operational source of truth: structured, queryable data that agents consult continuously. **It stops being a poster and becomes a database.**
+**A service blueprint stops being a poster and becomes a database.** Structured, queryable data an agent consults continuously — instead of a diagram someone opens twice a year.
 
 This repo is that idea, working end to end — two things in one:
 
@@ -11,14 +11,16 @@ This repo is that idea, working end to end — two things in one:
 
 ![Why teams need a service blueprint — the same service before and after it has a reader that opens it constantly](./docs/assets/why-now.svg)
 
-Service blueprints have traditionally been strategic artifacts rather than day-to-day reference tools. Partly because they are expensive to use: interpreting one takes facilitation, workshops, and built-up context, so teams engage with them occasionally, not daily. Agents change that constraint. An agent can consult the blueprint continuously, grounding each recommendation in the full journey and checking proposed changes against the wider service, without adding work for the team.
+Service blueprints have always been worth having and have always gone stale. They were strategic artifacts — commissioned, workshopped, opened a few times a year — because reading one took facilitation and context you had to rebuild every time. The map decayed quietly, and nothing in the week depended on it enough to force a correction.
+
+Agents change that. An agent can consult the blueprint continuously, grounding each recommendation in the full journey and checking proposed changes against the wider service, without adding work for the team.
 
 What that buys you:
 
-- **It gives agents the service context they are otherwise missing.** Most context-engineering approaches hand the agent piles of documents that each describe part of the product. The blueprint gives it a coherent model of the whole service: the user journey, frontstage and backstage activity, supporting systems, and the relationships between them.
+- **It gives agents the service context they are otherwise missing.** Most setups hand an agent a pile of documents, each describing part of the product. The blueprint gives it a coherent model of the whole service: the user journey, frontstage and backstage activity, supporting systems, and the relationships between them.
 - **It improves everyday product work.** With that context, an agent writes clearer PRDs, scopes projects more precisely, locates where a change sits within the service, and reasons about downstream effects.
 - **It creates a shared lens for people and agents.** The blueprint does more than add facts — it pushes the agent to reason through a service-design frame, and grounds the team's own thinking in that same frame.
-- **It makes the blueprint continuously used.** Because the agent depends on it daily, the team has a practical reason to keep it accurate. Operational use strengthens its value as a strategic artifact rather than replacing it.
+- **It gives the team a reason to keep it current.** Because the agent depends on it daily, keeping it accurate has a practical reason rather than a virtuous one. Daily use doesn't replace the strategic artifact — it's what keeps it true.
 
 ## See it live
 
@@ -118,7 +120,7 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 
 ### Bring your own backend
 
-Supabase-native, backend-portable. The app and the skills run Supabase out of the box; for any other backend the repo ships the implementable spec — [references/adapter-contract.md](./references/adapter-contract.md) — the portable schema ([supabase/schema.reference.sql](./supabase/schema.reference.sql) + [docs/erd.mmd](./docs/erd.mmd)), and the no-DB fallback generator ([scripts/generate_fallbacks.py](./scripts/generate_fallbacks.py)) as the working proof of a second target.
+The app and the skills run on Supabase out of the box. For any other backend, the repo ships what you would need to write an adapter: the contract ([references/adapter-contract.md](./references/adapter-contract.md)), the portable schema ([supabase/schema.reference.sql](./supabase/schema.reference.sql) + [docs/erd.mmd](./docs/erd.mmd)), and the no-DB fallback generator ([scripts/generate_fallbacks.py](./scripts/generate_fallbacks.py)) as a worked example of a second target.
 
 ### Deploy
 

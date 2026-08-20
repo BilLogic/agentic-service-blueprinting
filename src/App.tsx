@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
+import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { EditorProvider } from '@/contexts/EditorContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
@@ -24,6 +25,7 @@ function App() {
           <EditorProvider>
             <ViewStateProvider>
               <PathSelectionProvider>
+                <ScenarioPathSelectionReset />
                 <TooltipProvider delay={200}>
                   <EditorErrorBoundary>
                     <EditorShell />

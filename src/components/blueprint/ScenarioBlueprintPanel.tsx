@@ -1,13 +1,8 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { ResizableComparePanel } from '@/components/blueprint/ResizableComparePanel'
 import { ServiceBlueprintGrid } from '@/components/blueprint/ServiceBlueprintGrid'
 import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
-import { SideBySideCompareGrid } from '@/components/blueprint/SideBySideCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
-import {
-  CompareDivergenceStrip,
-  COMPARE_STRIP_HEIGHT,
-} from '@/components/blueprint/CompareDivergenceStrip'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
@@ -77,10 +72,29 @@ type ScenarioBlueprintPanelProps = {
   dimmed?: boolean
   /** When true, this panel is the camera focus target — no hover chrome. */
   focusActive?: boolean
+  /** See `ResizableComparePanel`. */
+  excludeFromRowHeight?: boolean
+}
+
+type ScenarioBlueprintPanelBodyProps = ScenarioBlueprintPanelProps & {
+  getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType
 }
 
 /** One scenario's blueprint inside a compare panel — title badge, filters and grid. */
 export function ScenarioBlueprintPanel({
+  ...props
+}: ScenarioBlueprintPanelProps) {
+  const { getScenarioDisplayViewType } = useEditor()
+  return (
+    <ScenarioBlueprintPanelBody
+      {...props}
+      getScenarioDisplayViewType={getScenarioDisplayViewType}
+    />
+  )
+}
+
+/** Heavy panel body isolated from the combined navigation context. */
+export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBody({
   slide,
   slides,
   paths,
@@ -96,8 +110,9 @@ export function ScenarioBlueprintPanel({
   displayViewType: displayViewTypeProp,
   dimmed = false,
   focusActive = false,
-}: ScenarioBlueprintPanelProps) {
-  const { getScenarioDisplayViewType } = useEditor()
+  excludeFromRowHeight = false,
+  getScenarioDisplayViewType,
+}: ScenarioBlueprintPanelBodyProps) {
   const internalScrollRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = scrollContainerRefProp ?? internalScrollRef
 
@@ -120,17 +135,6 @@ export function ScenarioBlueprintPanel({
     selectedPathIds.length > 0
   const useSinglePathLayout =
     displayViewType === 'single' && selectedPathIds.length > 0
-  /*
-    Two arrangements of the same path bands. Overview rows render under a
-    shared-row-height contract (locked heights, phase-uniform view type) and
-    keep the horizontal layout; the focused scenario view — no overview
-    constraints — stacks the bands vertically on one canonical step axis.
-  */
-  const isOverviewConstrained =
-    lockedPanelHeight !== undefined ||
-    fixedSwimlaneBodyHeight !== undefined ||
-    displayViewTypeProp !== undefined
-  const useStackedArrangement = useSideBySideLayout && !isOverviewConstrained
 
   const visibleBlueprints = useMemo(
     () =>
@@ -154,11 +158,11 @@ export function ScenarioBlueprintPanel({
     flash divergences.
   */
   const compareModel = useMemo(() => {
-    if (!useStackedArrangement) return null
+    if (!useSideBySideLayout) return null
     if (visibleBlueprints.length < 2) return null
     if (visibleBlueprints.length !== selectedPathIds.length) return null
     return buildCompareModel(visibleBlueprints as CompareBlueprints)
-  }, [selectedPathIds.length, useStackedArrangement, visibleBlueprints])
+  }, [selectedPathIds.length, useSideBySideLayout, visibleBlueprints])
 
   /*
     Merged = ONE COMBINED BLUEPRINT (Phase 4b). `MergedCompareGrid` renders
@@ -200,7 +204,10 @@ export function ScenarioBlueprintPanel({
     line register alongside.
   */
   useEffect(() => {
-    if (!compareModel) return
+    // Multiple compare-capable panels remain mounted in overview/phase views.
+    // Only the explicitly focused scenario may own singleton agent commands
+    // and the portalled review store; mount order is not active ownership.
+    if (!compareModel || !focusActive) return
     const unregisterStore = registerCompareReview({
       slideId: slide.id,
       scenarioName,
@@ -255,7 +262,7 @@ export function ScenarioBlueprintPanel({
     const unregisterJump = registerAgentUiCommand({
       name: 'jump_divergence',
       description:
-        "Fly the camera to a divergent STEP of the compared paths and mark it active (the ledger opens that step's group; in Stacked the strip highlights it too). arg: next | prev | <step number> — the canonical step number the ledger shows as \"Step N\".",
+        "Fly the camera to a divergent STEP of the compared paths and mark it active (the ledger opens that step's group). arg: next | prev | <step number> — the canonical step number the ledger shows as \"Step N\".",
       run: async (arg) => {
         const state = getCompareReviewState()
         const registration = state.registration
@@ -290,9 +297,9 @@ export function ScenarioBlueprintPanel({
         return `${group.headerLabel} — divergent step ${targetIndex + 1} of ${stepGroups.length}, ${group.slots.length} difference${
           group.slots.length === 1 ? '' : 's'
         }${
-          outcome?.kind === 'flown'
+          outcome?.kind === 'flown' && outcome.completion === 'completed'
             ? ' — camera flown to it.'
-            : ' — marked active, but its cells are not on the current canvas.'
+            : ` — marked active, but the camera ${outcome?.kind === 'flown' ? outcome.completion : 'could not resolve its cells'}.`
         }`
       },
     })
@@ -346,6 +353,7 @@ export function ScenarioBlueprintPanel({
   }, [
     compareModel,
     displayViewType,
+    focusActive,
     phaseName,
     scenarioName,
     slide.id,
@@ -357,12 +365,11 @@ export function ScenarioBlueprintPanel({
     single path or a half-loaded pair has nothing to merge and falls back to
     the stacked bands (which read fine with one band).
   */
-  const mergedModel =
-    useStackedArrangement && displayViewType === 'merged' ? compareModel : null
+  const mergedModel = displayViewType === 'merged' ? compareModel : null
 
-  // Arrangement is part of the key: switching stacked bands ⇄ overview row
-  // re-measures instead of keeping the other arrangement's size.
-  const compareFitContentKey = `${slide.id}:${selectedPathIds.join(',')}:${displayViewType}:${useStackedArrangement ? 'bands' : 'row'}:${paths.length}`
+  // View mode owns arrangement; camera focus only changes the viewport
+  // transform. This key therefore stays stable across overview ⇄ focus.
+  const compareFitContentKey = `${slide.id}:${selectedPathIds.join(',')}:${displayViewType}:${paths.length}`
   const stackedColumnCount =
     compareModel?.columns.length ??
     visibleBlueprints.reduce((sum, blueprint) => sum + blueprint.steps.length, 0)
@@ -371,19 +378,20 @@ export function ScenarioBlueprintPanel({
     : undefined
   const showPathTypeBadge = Boolean(sectionTitleLabel)
 
+  // The chrome this panel will actually have — a locked panel has no resize
+  // handle, and an estimate that budgets one is dead gray space.
+  const scrollChrome = { lockHeight: lockPanelHeight }
   const panelHeight =
     lockedPanelHeight ??
     (fixedSwimlaneBodyHeight !== undefined
-      ? getPanelHeightFromSwimlaneBody(fixedSwimlaneBodyHeight, {
-          lockHeight: lockPanelHeight,
-        })
+      ? getPanelHeightFromSwimlaneBody(fixedSwimlaneBodyHeight, scrollChrome)
       : mergedModel !== null
         ? // Merged is about one band tall; the swell over divergent slots
           // comes from the panel's measurement, not from this floor.
-          getMergedComparePanelHeight(visibleBlueprints)
-        : useStackedArrangement
-          ? getStackedComparePanelHeight(visibleBlueprints)
-          : getComparePanelHeight(visibleBlueprints))
+          getMergedComparePanelHeight(visibleBlueprints, false, scrollChrome)
+        : useSideBySideLayout
+          ? getStackedComparePanelHeight(visibleBlueprints, false, scrollChrome)
+          : getComparePanelHeight(visibleBlueprints, false, scrollChrome))
 
   const fillSwimlaneHeight = fixedSwimlaneBodyHeight !== undefined
 
@@ -391,15 +399,16 @@ export function ScenarioBlueprintPanel({
     // Compare-grid estimates run hot (the height one predates
     // classification collapsing stacked slots). A floor set from a hot
     // estimate is dead gray space — the measured content rules instead.
-    minWidth: useStackedArrangement
+    minWidth: useSideBySideLayout
       ? getStackedComparePanelWidth(stackedColumnCount)
       : getComparePanelWidth(visibleBlueprints),
     minHeight: panelHeight,
-    defaultWidth: useStackedArrangement
+    defaultWidth: useSideBySideLayout
       ? getStackedComparePanelWidth(stackedColumnCount)
       : getComparePanelWidth(visibleBlueprints),
     defaultHeight: panelHeight,
     lockHeight: lockPanelHeight,
+    excludeFromRowHeight,
     onNavigate,
     navigateLabel: onNavigate ? `Open ${scenarioName} scenario` : undefined,
     panelTitleLabel: sectionTitleLabel,
@@ -418,7 +427,7 @@ export function ScenarioBlueprintPanel({
   // — a band-by-band trickle would reshuffle canonical columns per arrival.
   const stackedStillLoading =
     loading &&
-    useStackedArrangement &&
+    useSideBySideLayout &&
     selectedPathIds.length >= 2 &&
     visibleBlueprints.length < selectedPathIds.length
 
@@ -463,23 +472,9 @@ export function ScenarioBlueprintPanel({
   }
 
   if (useSideBySideLayout) {
-    // Strip in STACKED only: merged already reads as one combined board
-    // (labels + wash carry divergence); the zone strip on top of it was
-    // chrome without a job.
-    const stripVisible = compareModel !== null && displayViewType !== 'merged'
     return (
       <ResizableComparePanel
         {...comparePanelProps}
-        chromeBar={
-          stripVisible ? (
-            <CompareDivergenceStrip
-              model={compareModel}
-              blueprints={visibleBlueprints}
-              slideId={slide.id}
-            />
-          ) : undefined
-        }
-        chromeBarHeight={stripVisible ? COMPARE_STRIP_HEIGHT : 0}
         fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
       >
         {mergedModel !== null ? (
@@ -490,7 +485,7 @@ export function ScenarioBlueprintPanel({
             scenarioName={scenarioName}
             phaseName={phaseName}
           />
-        ) : useStackedArrangement ? (
+        ) : (
           <StackedCompareGrid
             blueprints={visibleBlueprints}
             model={compareModel}
@@ -498,16 +493,6 @@ export function ScenarioBlueprintPanel({
             scenarioName={scenarioName}
             phaseName={phaseName}
             sectionTitleLabel={sectionTitleLabel}
-          />
-        ) : (
-          <SideBySideCompareGrid
-            blueprints={visibleBlueprints}
-            scrollContainerRef={scrollContainerRef}
-            scenarioName={scenarioName}
-            phaseName={phaseName}
-            sectionTitleLabel={sectionTitleLabel}
-            fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
-            fillSwimlaneHeight={fillSwimlaneHeight}
           />
         )}
       </ResizableComparePanel>
@@ -526,7 +511,7 @@ export function ScenarioBlueprintPanel({
             data={data}
             className="shrink-0"
             scenarioName={scenarioName}
-          phaseName={phaseName}
+            phaseName={phaseName}
             headerTitleLabel={sectionTitleLabel}
             headerTitleDescription={sectionTitleDescription}
             showPathTypeBadge={showPathTypeBadge}
@@ -537,4 +522,4 @@ export function ScenarioBlueprintPanel({
       </div>
     </ResizableComparePanel>
   )
-}
+})

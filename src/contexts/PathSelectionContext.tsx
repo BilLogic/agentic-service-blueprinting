@@ -41,6 +41,11 @@ type PathSelectionContextValue = {
   defaultPathKeys: string[]
   /** Restore that default: the way back from "no paths selected". */
   restoreDefaultPathKeys: () => void
+  /**
+   * Restore the default only when the selection has diverged from it —
+   * the navigation-safe variant (no state churn on the happy path).
+   */
+  collapseToDefaultPathKeys: () => void
   selections: Record<string, string[]>
   getSelectedPathIds: (scenarioId: string) => string[]
   /** Toggle by path identity — updates every known scenario that has that path. */
@@ -75,6 +80,28 @@ function toggleKeyInList(
     return keys.filter((key) => key !== pathKey)
   }
   return [...keys, pathKey]
+}
+
+/** Same selection as sets — order is presentation, not identity. */
+function sameKeySet(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  const set = new Set(a)
+  return b.every((key) => set.has(key))
+}
+
+/**
+ * Does this navigation collapse the path selection? Exactly the
+ * scenario-to-scenario move — never first entry (overview or deep link,
+ * `null` → id), never leaving to the overview (id → `null`), never a
+ * re-selection of the same scenario. Consumed by
+ * ScenarioPathSelectionReset; lives here so the decision is importable
+ * without that component's editor-context module graph.
+ */
+export function isScenarioSwitch(
+  previous: string | null,
+  next: string | null,
+): boolean {
+  return previous !== null && next !== null && previous !== next
 }
 
 /**
@@ -291,6 +318,26 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  /**
+   * Collapse the selection back to the happy-path default, unless it is
+   * already there — the no-op matters, because the caller is a navigation
+   * effect and an unconditional reset would churn every derived selection
+   * (and everything downstream of it) on ordinary happy-path navigation.
+   */
+  const collapseToDefaultPathKeys = useCallback(() => {
+    setState((prev) => {
+      const defaults = defaultPathKeysFromCatalog(prev.catalog)
+      if (defaults.length === 0) return prev
+      const current = prev.activePathKeys ?? defaults
+      if (sameKeySet(current, defaults)) return prev
+      return {
+        ...prev,
+        activePathKeys: defaults,
+        selections: deriveSelections(prev.catalog, defaults),
+      }
+    })
+  }, [])
+
   // Agent parity: the PATHS filter checkboxes. Reads the live catalog via
   // a ref so registration stays stable.
   const catalogRef = useRef(state.catalog)
@@ -346,6 +393,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
       togglePathSelection,
       setSelectedPathIds,
       restoreDefaultPathKeys,
+      collapseToDefaultPathKeys,
       syncScenarioPaths,
     }
   }, [
@@ -357,6 +405,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
     togglePathSelection,
     setSelectedPathIds,
     restoreDefaultPathKeys,
+    collapseToDefaultPathKeys,
     syncScenarioPaths,
   ])
 
@@ -468,3 +517,4 @@ export function usePathSelection(
 
   return { selectedPathIds, setSelectedPathIds, togglePathSelection }
 }
+

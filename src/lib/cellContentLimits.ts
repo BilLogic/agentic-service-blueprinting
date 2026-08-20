@@ -1,20 +1,31 @@
-/**
- * The cell-content budget (todo 026): a canvas cell is read at a glance, and
- * the lane grid's row rhythm assumes ~5-6 wrapped lines. 120 characters is
- * that geometry backed out (158px text box, text-sm at 22.75px lines,
- * ~21 chars/line), it matches TITLE_MAX for slices, and the whole corpus
- * already fits (the 2026-08-16 copy sweep's cell-voice convention enforces
- * the same number editorially). Detail beyond the cap belongs in
- * `description`, which the panel scrolls.
- */
-export const CELL_CONTENT_MAX = 120
+/** Canvas-copy guidance. These are editorial signals, never storage limits. */
+export const CELL_CONTENT_TARGET = 80
+export const CELL_CONTENT_WARNING = 100
+export const TECH_PILL_LABEL_TARGET = 32
+export const TECH_PILL_LABEL_WARNING = 48
 
-/** Returns an actionable refusal when content exceeds the budget. */
-export function checkCellContentLength(content: string): string | null {
-  if (content.length <= CELL_CONTENT_MAX) return null
-  return (
-    `Cell content is ${content.length} characters — the cap is ${CELL_CONTENT_MAX}. ` +
-    'A cell is read at a glance on the canvas; keep the complete predicate in content ' +
-    'and move supporting detail (statistics, caveats, evidence) into the description.'
-  )
+export type CellContentLengthGuidance = {
+  target: number
+  warning: number
+  overWarning: boolean
+  message: string | null
+}
+
+/**
+ * The canvas clamps previews, so canonical content never needs truncating.
+ * Return a soft, actionable warning while allowing humans and agents to keep
+ * the complete predicate. Supporting detail still belongs in Summary.
+ */
+export function getCellContentLengthGuidance(
+  content: string,
+): CellContentLengthGuidance {
+  const overWarning = content.length > CELL_CONTENT_WARNING
+  return {
+    target: CELL_CONTENT_TARGET,
+    warning: CELL_CONTENT_WARNING,
+    overWarning,
+    message: overWarning
+      ? `Cell text is ${content.length} characters; ${CELL_CONTENT_TARGET} is the canvas target and ${CELL_CONTENT_WARNING} is the review threshold. It was preserved in full—consider moving supporting detail into Summary.`
+      : null,
+  }
 }

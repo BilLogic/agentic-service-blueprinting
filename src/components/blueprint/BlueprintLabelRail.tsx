@@ -266,7 +266,8 @@ export function BlueprintLabelRow({
             <button
               type="button"
               onClick={selectLane}
-              className="group/lane min-w-0 flex-1 cursor-pointer rounded-sm text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words underline-offset-4 hover:underline"
+              data-blueprint-row-header=""
+              className="group/lane relative min-w-0 flex-1 cursor-pointer rounded-sm text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words underline-offset-4 hover:underline"
               style={{ color: labelColor }}
             >
               {row.label}
@@ -274,7 +275,8 @@ export function BlueprintLabelRow({
           </IconTooltip>
         ) : (
           <span
-            className="min-w-0 flex-1 text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words"
+            data-blueprint-row-header=""
+            className="relative min-w-0 flex-1 text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words"
             style={{ color: labelColor }}
           >
             {row.label}

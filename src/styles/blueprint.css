@@ -62,6 +62,67 @@
     border-color: var(--color-slate-800);
   }
 
+  /*
+   * Nested focus hierarchy.
+   *
+   * The old phase-level `opacity-30` composited the whole subtree into one
+   * translucent layer. A hovered scenario could change fill and shadow, but
+   * it could never become clearer than its dimmed ancestor. Dim the phase
+   * frame, badge, and scenario wrappers independently instead: phase-space
+   * hover can still preview the group, while a nested scenario can lift on
+   * its own without visually selecting its siblings.
+   */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    > [data-phase-frame],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    > [data-phase-title-badge],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id] {
+    opacity: 0.3;
+    transition-property: opacity;
+    transition-duration: var(--motion-camera);
+    transition-timing-function: var(--ease-camera);
+  }
+
+  /* Phase-background hover previews the whole group, as before. A scenario
+     hover/focus opts out below so the group does not compete with the target. */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has(
+          [data-phase-scenario-panel]:is(:hover, :focus-within)
+        )
+    )
+    > [data-phase-frame],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has(
+          [data-phase-scenario-panel]:is(:hover, :focus-within)
+        )
+    )
+    > [data-phase-title-badge],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has(
+          [data-phase-scenario-panel]:is(:hover, :focus-within)
+        )
+    )
+    [data-focus-slide-id] {
+    opacity: 0.7;
+  }
+
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id]:has(> [data-phase-scenario-panel]:hover),
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id]:has(> [data-phase-scenario-panel]:focus-within) {
+    opacity: 1;
+  }
+
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
     background-color: var(--color-slate-600);
@@ -96,6 +157,37 @@
   [data-blueprint-cell-anchor] {
     transition-property: box-shadow, transform, opacity, background-color;
     transition-duration: var(--motion-micro);
+  }
+
+  /*
+   * MERGED MEMBERSHIP — a cell keeps its native lane/touchpoint fill and
+   * rounded silhouette. The path encoding is a thin perimeter laid over that
+   * face. A conic gradient divides the perimeter into one equal arc per path;
+   * a single-path cell naturally resolves to one solid outline. Unlike the
+   * retired top rail, this reads on pills without flattening their corners,
+   * and unlike a whole-cell wash it never competes with lane semantics.
+   */
+  .compare-membership-outline {
+    position: relative;
+  }
+
+  .compare-membership-outline::before {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    padding: 2px;
+    border-radius: inherit;
+    background: var(--background-compare-membership-outline);
+    content: '';
+    pointer-events: none;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
   }
 
   /* Slice focus — member rings persist whether or not the dim is up. Ring
@@ -526,13 +618,45 @@
    * decides the tier from its TARGET zoom on frame one, so the flip lands
    * with the click, in the ease's slowest frame — a response, not a glitch.
    */
-  [data-semantic-tier='blocks'] [data-blueprint-cell] > * {
+  [data-semantic-tier='blocks'] [data-blueprint-cell-anchor] > * {
     visibility: hidden;
   }
 
-  [data-semantic-tier='blocks'] [data-blueprint-cell] {
+  [data-semantic-tier='blocks'] [data-blueprint-cell-anchor] {
     background-color: var(--border);
     border-color: transparent;
+  }
+
+  /* Axis labels keep their boxes at every tier. At overview scale the words
+     become neutral skeleton bars instead of unmounting with one grid and
+     remounting with another during the camera fit. */
+  [data-semantic-tier='blocks']
+    [data-blueprint-column-header]
+    > span,
+  [data-semantic-tier='blocks'] [data-blueprint-row-header] {
+    color: transparent !important;
+  }
+
+  [data-semantic-tier='blocks']
+    [data-blueprint-column-header]
+    > span::after,
+  [data-semantic-tier='blocks'] [data-blueprint-row-header]::after {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: min(72%, 96px);
+    height: 0.65em;
+    border-radius: 999px;
+    background-color: var(--border);
+    content: '';
+    transform: translateY(-50%);
+  }
+
+  [data-semantic-tier='blocks']
+    [data-blueprint-column-header]
+    > span::after {
+    left: 14%;
+    width: 72%;
   }
 
   /*
@@ -569,9 +693,20 @@
      would vanish at the blocks tier. Restate the blocks with the system
      ink so the density map survives High Contrast. */
   @media (forced-colors: active) {
-    [data-semantic-tier='blocks'] [data-blueprint-cell] {
+    .compare-membership-outline::before {
+      background: CanvasText !important;
+    }
+
+    [data-semantic-tier='blocks'] [data-blueprint-cell-anchor] {
       background-color: CanvasText;
       border-color: CanvasText;
+    }
+
+    [data-semantic-tier='blocks']
+      [data-blueprint-column-header]
+      > span::after,
+    [data-semantic-tier='blocks'] [data-blueprint-row-header]::after {
+      background-color: CanvasText;
     }
   }
 }

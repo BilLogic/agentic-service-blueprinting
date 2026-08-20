@@ -7,7 +7,7 @@ import {
 } from '@/components/blueprint/BlueprintLabelRail'
 import {
   CompareCellBlock,
-  type CompareCellPathRail,
+  type CompareCellPathMembership,
 } from '@/components/blueprint/CompareCellBlock'
 import { CompareLaneRowShell } from '@/components/blueprint/CompareLaneRowShell'
 import { CompareStepHeaderRow } from '@/components/blueprint/CompareTrackDecorations'
@@ -25,7 +25,6 @@ import {
   type BlueprintCellVariant,
 } from '@/lib/blueprintLayout'
 import {
-  blueprintPanelLabelRailColor,
   blueprintPanelSectionFillColor,
   getBlueprintLayerStyle,
   getBlueprintLayerZone,
@@ -34,7 +33,6 @@ import {
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
   assembleMergedSlot,
-  buildComparePathShortLabels,
   buildMergedArrowRemap,
   remapMergedPathTriggers,
   type MergedSlotAssembly,
@@ -47,7 +45,7 @@ import {
   type CompareModel,
 } from '@/lib/compareSlots'
 import {
-  COMPARE_HEADER_WRAP_EXTRA_INSET,
+  COMPARE_LABEL_WIDTH,
   COMPARE_PATH_SECTION_BOTTOM_INSET,
   COMPARE_PATH_SECTION_INSET,
   COMPARE_PATH_SECTION_TOP_INSET,
@@ -87,7 +85,7 @@ type MergedPathRuntime = {
   cellById: Map<string, BlueprintCell>
   stepById: Map<string, BlueprintStep>
   stepIndexById: Map<string, number>
-  rail: CompareCellPathRail
+  membership: CompareCellPathMembership
 }
 
 /**
@@ -96,10 +94,10 @@ type MergedPathRuntime = {
  * the stacked bands use), and per SLOT (lane × canonical column):
  *
  * - the paths agree ⇒ ONE cell, drawn exactly like a normal blueprint cell,
- *   with no path rail: it belongs to every path
+ *   with every member path represented on its rounded outline
  * - the paths disagree, or only some have anything ⇒ each present path's
  *   cell(s) stack vertically inside that one slot, each carrying a
- *   path-coloured (colour + dash) rail and the path's short label
+ *   path-coloured rounded outline; full names are disclosed on hover/focus
  *
  * The slot grows only where the paths disagree, and that vertical swell IS
  * the diff signal — no extra paint beyond the column tint. Every sub-cell
@@ -136,9 +134,6 @@ export function MergedCompareGrid({
   )
 
   const runtimeByPathId = useMemo(() => {
-    const shortLabels = buildComparePathShortLabels(
-      blueprints.map((blueprint) => blueprint.path),
-    )
     return new Map<string, MergedPathRuntime>(
       blueprints.map((blueprint) => {
         const { path } = blueprint
@@ -151,9 +146,8 @@ export function MergedCompareGrid({
             stepIndexById: new Map(
               blueprint.steps.map((step, index) => [step.id, index]),
             ),
-            rail: {
+            membership: {
               color: getPathColor(path),
-              label: shortLabels.get(path.id) ?? path.name.slice(0, 2),
               pathName: path.name,
             },
           },
@@ -252,7 +246,11 @@ export function MergedCompareGrid({
       // semantics between one remapped pair both survive. They live on
       // the RAW blueprint triggers, so look them up by id.
       const rawById = new Map(blueprint.triggers.map((raw) => [raw.id, raw]))
-      const remapped = remapMergedPathTriggers(data.triggers, remap, index === 0)
+      const remapped = remapMergedPathTriggers(
+        data.triggers,
+        remap,
+        index === 0,
+      )
       const triggers = remapped.filter((trigger) => {
         const raw = rawById.get(trigger.id)
         const key = [
@@ -298,8 +296,7 @@ export function MergedCompareGrid({
           }}
         >
           <MergedSectionFrame blueprints={blueprints} compact={compact} />
-          {tracks.map(() => null
-          )}
+          {tracks.map(() => null)}
           {/* One lane rail for the whole comparison — the point of merging. */}
           <BlueprintStickyLabelBackdrop
             rowCount={rows.length}
@@ -419,54 +416,37 @@ function MergedSectionFrame({
   blueprints: BlueprintData[]
   compact?: boolean
 }) {
-  const shortLabels = buildComparePathShortLabels(
-    blueprints.map((blueprint) => blueprint.path),
-  )
   return (
     <>
-      {/* The merged board is ONE frame, so — like a single-path board —
-          the step-header row lives inside it: no container of its own
-          (plan 2026-08-17-002 U1). */}
+      {/* Axis labels stay outside the data boundary in every arrangement. */}
       <div
         aria-hidden
         className="pointer-events-none absolute rounded-xl border-2 border-border"
         style={{
-          top: -COMPARE_PATH_SECTION_TOP_INSET - COMPARE_HEADER_WRAP_EXTRA_INSET,
-          left: -COMPARE_PATH_SECTION_INSET,
+          top: -COMPARE_PATH_SECTION_TOP_INSET,
+          left:
+            COMPARE_LABEL_WIDTH + STEP_COLUMN_GAP - COMPARE_PATH_SECTION_INSET,
           right: -COMPARE_PATH_SECTION_INSET,
           bottom: -COMPARE_PATH_SECTION_BOTTOM_INSET,
           backgroundColor: blueprintPanelSectionFillColor(),
         }}
       />
-      {/* Header band — same treatment as the single-path frame: the
-          lane-rail's horizontal counterpart, one tint lighter, held 3px
-          inside the frame edges so the border stays untouched. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute rounded-t-[9px]"
-        style={{
-          top:
-            -COMPARE_PATH_SECTION_TOP_INSET -
-            COMPARE_HEADER_WRAP_EXTRA_INSET +
-            3,
-          left: -COMPARE_PATH_SECTION_INSET + 3,
-          right: -COMPARE_PATH_SECTION_INSET + 3,
-          height: COMPARE_STEP_HEADER_HEIGHT - 3,
-          backgroundColor: `color-mix(in oklab, ${blueprintPanelLabelRailColor()} 45%, transparent)`,
-        }}
-      />
       <div
         className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-1.5"
         style={{
-          top: -COMPARE_PATH_SECTION_TOP_INSET - COMPARE_HEADER_WRAP_EXTRA_INSET,
-          left: COMPARE_PATH_SECTION_INSET + 2,
+          top: -COMPARE_PATH_SECTION_TOP_INSET,
+          left:
+            COMPARE_LABEL_WIDTH +
+            STEP_COLUMN_GAP +
+            COMPARE_PATH_SECTION_INSET +
+            2,
           transform: 'translateY(-50%)',
         }}
       >
         {blueprints.map(({ path }) => (
           <PathLabelBadge
             key={path.id}
-            name={`${shortLabels.get(path.id) ?? ''} ${path.name}`.trim()}
+            name={path.name}
             description={path.description}
             pathType={path.path_type}
             compact={compact}
@@ -532,17 +512,16 @@ function MergedLaneRow({
             : assembly.kind === 'shared'
               ? [assembly.representative]
               : assembly.subCells
-        // Every drawn cell names its member paths — a fully-shared cell
-        // carries ALL the labels (the clear "shared by both" statement),
-        // while only strict-subset cells additionally wear the wash.
-        const withWash = assembly?.kind === 'split'
-        const railsFor = (
+        const membershipFor = (
           subCell: MergedSubCell,
-        ): CompareCellPathRail[] | undefined => {
-          const rails = subCell.pathIds
-            .map((pathId) => runtimeByPathId.get(pathId)?.rail)
-            .filter((rail): rail is CompareCellPathRail => rail !== undefined)
-          return rails.length > 0 ? rails : undefined
+        ): CompareCellPathMembership[] | undefined => {
+          const memberships = subCell.pathIds
+            .map((pathId) => runtimeByPathId.get(pathId)?.membership)
+            .filter(
+              (membership): membership is CompareCellPathMembership =>
+                membership !== undefined,
+            )
+          return memberships.length > 0 ? memberships : undefined
         }
 
         return (
@@ -552,7 +531,10 @@ function MergedLaneRow({
                 aria-hidden
                 data-compare-column-spacer=""
                 className="shrink-0"
-                style={{ width: STEP_COLUMN_WIDTH, minWidth: STEP_COLUMN_WIDTH }}
+                style={{
+                  width: STEP_COLUMN_WIDTH,
+                  minWidth: STEP_COLUMN_WIDTH,
+                }}
               />
             ) : subCells.length === 1 ? (
               <MergedSubCellBlock
@@ -564,8 +546,7 @@ function MergedLaneRow({
                 variant={variant}
                 compact={compact}
                 flushBottom={flushBottom}
-                pathRails={railsFor(subCells[0])}
-                pathWash={withWash}
+                pathMembership={membershipFor(subCells[0])}
                 scenarioName={scenarioName}
                 phaseName={phaseName}
               />
@@ -582,8 +563,7 @@ function MergedLaneRow({
                     variant={variant}
                     compact={compact}
                     flushBottom={flushBottom}
-                    pathRails={railsFor(subCell)}
-                    pathWash={withWash}
+                    pathMembership={membershipFor(subCell)}
                     scenarioName={scenarioName}
                     phaseName={phaseName}
                   />
@@ -608,8 +588,7 @@ function MergedSubCellBlock({
   variant,
   compact,
   flushBottom,
-  pathRails,
-  pathWash = true,
+  pathMembership,
   scenarioName,
   phaseName,
 }: {
@@ -622,9 +601,8 @@ function MergedSubCellBlock({
   variant: BlueprintCellVariant
   compact?: boolean
   flushBottom?: boolean
-  /** One entry per member path of this sub-cell (label; wash if pathWash). */
-  pathRails?: readonly CompareCellPathRail[]
-  pathWash?: boolean
+  /** One entry per member path of this rendered sub-cell. */
+  pathMembership?: readonly CompareCellPathMembership[]
   scenarioName?: string
   phaseName?: string
 }) {
@@ -668,8 +646,7 @@ function MergedSubCellBlock({
       flushBottom={flushBottom}
       visualPictures={visualPictures}
       slotCells={variant === 'pills' ? cells : undefined}
-      pathRails={pathRails}
-      pathWash={pathWash}
+      pathMembership={pathMembership}
       selectionContext={
         scenarioName && cellId
           ? {

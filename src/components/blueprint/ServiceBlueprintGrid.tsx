@@ -8,6 +8,7 @@ import {
   BlueprintDividerRow,
 } from '@/components/blueprint/BlueprintLabelRail'
 import { BlueprintTriggerArrows } from '@/components/blueprint/BlueprintTriggerArrows'
+import { ServiceStepHeaderRow } from '@/components/blueprint/CompareTrackDecorations'
 import { CanvasEmptyState } from '@/components/editor/CanvasEmptyState'
 import {
   ComparePathSectionFrame,
@@ -16,6 +17,7 @@ import {
 import {
   COMPARE_PATH_SECTION_BOTTOM_INSET,
   COMPARE_PATH_SECTION_TOP_INSET,
+  COMPARE_STEP_HEADER_HEIGHT,
 } from '@/lib/sideBySideCompareLayout'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
@@ -25,6 +27,8 @@ import {
   BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
   BLUEPRINT_ROW_MIN_HEIGHT,
+  NARRATIVE_CELL_HEIGHT,
+  NARRATIVE_CELL_HEIGHT_COMPACT,
   INTERACTION_LINE_LABEL,
   INTERNAL_INTERACTION_LINE_LABEL,
   LAYER_COLUMN_WIDTH,
@@ -159,7 +163,7 @@ export function ServiceBlueprintGrid({
   const gridMinWidth = getBlueprintGridMinWidth(steps.length)
 
   const scrollMinHeight =
-    gridBodyMinHeight + ARROW_VIEWPORT_PAD * 2
+    gridBodyMinHeight + COMPARE_STEP_HEADER_HEIGHT + ARROW_VIEWPORT_PAD * 2
 
   return (
     <div
@@ -216,6 +220,7 @@ export function ServiceBlueprintGrid({
             padding: ARROW_VIEWPORT_PAD,
           }}
         >
+          <ServiceStepHeaderRow steps={steps} playGutter={playGutter} />
           <div
             ref={gridBodyRef}
             className="relative flex shrink-0 flex-col gap-0 overflow-visible"
@@ -230,6 +235,7 @@ export function ServiceBlueprintGrid({
               showTitle={showPathTypeBadge}
               showPathTypeBadge={showPathTypeBadge}
               variant="service"
+              excludeLabelRail
             />
             <div
               className="pointer-events-none absolute top-0 bottom-0 z-[1]"
@@ -496,8 +502,9 @@ function BlueprintSwimLane({
         >
         {isVisualLayer ? (
           <span
+            data-blueprint-row-header=""
             className={cn(
-              'min-w-0 flex-1 text-left font-bold leading-snug tracking-tight whitespace-normal break-words',
+              'relative min-w-0 flex-1 text-left font-bold leading-snug tracking-tight whitespace-normal break-words',
               compact ? 'text-xs' : 'text-sm',
             )}
             style={{ color: laneStyle.label }}
@@ -506,8 +513,9 @@ function BlueprintSwimLane({
           </span>
         ) : (
           <span
+            data-blueprint-row-header=""
             className={cn(
-              'min-w-0 flex-1 text-left font-bold leading-snug tracking-tight whitespace-normal break-words',
+              'relative min-w-0 flex-1 text-left font-bold leading-snug tracking-tight whitespace-normal break-words',
               compact ? 'text-xs' : 'text-sm',
             )}
             style={{ color: laneStyle.label }}
@@ -752,7 +760,7 @@ function BlueprintCellBlock({
 
   const innerContent =
     variant === 'visual' ? (
-      <div className="relative flex h-full min-h-0 max-h-full w-full flex-1 overflow-hidden">
+      <div className="relative flex h-full min-h-0 max-h-full w-full flex-1 items-center justify-center overflow-hidden">
         <BlueprintStepVisual
           compact={compact}
           fill={laneStyle.lane}
@@ -764,7 +772,6 @@ function BlueprintCellBlock({
           }
           cellId={cellId}
           stepIndex={stepIndex}
-          className="flex-1"
         />
       </div>
     ) : variant === 'pills' ? (
@@ -817,10 +824,22 @@ function BlueprintCellBlock({
         cellId={cellId}
         stepIndex={stepIndex}
         className={cn(
-          fitVertically && 'min-h-0 overflow-y-auto blueprint-scroll',
+          'flex-none overflow-hidden',
+          compact ? 'h-24 min-h-24 max-h-24' : 'h-32 min-h-32 max-h-32',
         )}
+        style={{
+          height: compact
+            ? NARRATIVE_CELL_HEIGHT_COMPACT
+            : NARRATIVE_CELL_HEIGHT,
+          minHeight: compact
+            ? NARRATIVE_CELL_HEIGHT_COMPACT
+            : NARRATIVE_CELL_HEIGHT,
+          maxHeight: compact
+            ? NARRATIVE_CELL_HEIGHT_COMPACT
+            : NARRATIVE_CELL_HEIGHT,
+        }}
       >
-        <p className="m-auto w-full whitespace-pre-wrap">{content}</p>
+        <p className="m-auto line-clamp-4 w-full whitespace-pre-wrap">{content}</p>
       </BlueprintCellButton>
     )
 

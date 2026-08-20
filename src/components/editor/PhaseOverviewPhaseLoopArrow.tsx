@@ -138,7 +138,10 @@ export function PhaseOverviewPhaseLoopArrow({
     <svg
       // Arrow layer (stage 4), same as every other connector.
       data-blueprint-arrows=""
-      className="pointer-events-none absolute left-0 top-0 z-[60] overflow-visible"
+      // Structural connector: above board content, but below title badges,
+      // edit chrome, and the z-60 annotation surface. Sharing z-60 with
+      // annotations made their ordering depend on DOM order.
+      className="pointer-events-none absolute left-0 top-0 z-20 overflow-visible"
       width={geometry.width}
       height={geometry.height}
       viewBox={`0 0 ${geometry.width} ${geometry.height}`}

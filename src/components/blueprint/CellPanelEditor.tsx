@@ -17,10 +17,17 @@ import { useCellSpec } from '@/hooks/useCellSpec'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { upsertCell } from '@/lib/authoringRpc'
-import { CELL_CONTENT_MAX } from '@/lib/cellContentLimits'
+import {
+  CELL_CONTENT_TARGET,
+  CELL_CONTENT_WARNING,
+  TECH_PILL_LABEL_TARGET,
+  TECH_PILL_LABEL_WARNING,
+} from '@/lib/cellContentLimits'
+import { parseCellContentItems } from '@/lib/parseCellContent'
 import { updateCellContent } from '@/lib/cellContentMutations'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseValueProps, type ValueProp } from '@/lib/valueProps'
+import { cn } from '@/lib/utils'
 
 /**
  * The one place the panel's Save and Cancel live: a host element pinned to
@@ -102,12 +109,15 @@ type FormState = {
 export function CellPanelEditor({
   cellId,
   draft,
+  layerName,
   fallbackDescription = '',
   onDone,
 }: {
   /** Existing cell to edit; null when creating from a draft target. */
   cellId: string | null
   draft?: DraftCellTarget
+  /** Selects narrative-copy versus technology-label guidance. */
+  layerName?: string
   /**
    * What the panel displays as this cell's description when the column is
    * empty (tech cells keep prose in `links`). Seeded into the field so the
@@ -156,6 +166,7 @@ export function CellPanelEditor({
         key={cellId}
         cellId={cellId}
         draft={undefined}
+        layerName={layerName}
         baseline={baseline}
         seededDescription={content.description ?? fallbackDescription}
         onDone={onDone}
@@ -169,6 +180,7 @@ export function CellPanelEditor({
       key={`${draft.layerId}:${draft.stepId}`}
       cellId={null}
       draft={draft}
+      layerName={layerName ?? draft.layerName}
       baseline={{
         text: '',
         description: '',
@@ -187,12 +199,14 @@ export function CellPanelEditor({
 function CellPanelEditorForm({
   cellId,
   draft,
+  layerName,
   baseline: baselineProp,
   seededDescription,
   onDone,
 }: {
   cellId: string | null
   draft: DraftCellTarget | undefined
+  layerName: string | undefined
   baseline: FormState
   seededDescription: string
   onDone: () => void
@@ -244,6 +258,21 @@ function CellPanelEditorForm({
     setForm((current) => ({ ...current, [key]: value }))
 
   const blocked = !form.text.trim()
+  const isTechCell =
+    layerName === 'Front Stage Tech' || layerName === 'Back Stage Tech'
+  const techItems = isTechCell ? parseCellContentItems(form.text) : []
+  const longestTechItem = techItems.reduce(
+    (longest, item) => Math.max(longest, item.length),
+    0,
+  )
+  const contentTarget = isTechCell
+    ? TECH_PILL_LABEL_TARGET
+    : CELL_CONTENT_TARGET
+  const contentWarning = isTechCell
+    ? TECH_PILL_LABEL_WARNING
+    : CELL_CONTENT_WARNING
+  const measuredLength = isTechCell ? longestTechItem : form.text.length
+  const overContentWarning = measuredLength > contentWarning
 
   const effectiveDescription = descriptionTouched
     ? form.description
@@ -366,13 +395,19 @@ function CellPanelEditorForm({
         <Input
           value={form.text}
           autoFocus={cellId === null}
-          // The cell-content budget (todo 026): a cell is read at a glance,
-          // and the lane grid's row rhythm assumes ~5-6 wrapped lines.
-          // Detail belongs in Summary. Same cap the agent write path
-          // enforces (cellContentLimits.ts).
-          maxLength={CELL_CONTENT_MAX}
           onChange={(event) => set('text', event.target.value)}
         />
+        <p
+          className={cn(
+            'text-3xs',
+            overContentWarning ? 'text-warning-600' : 'text-muted-foreground',
+          )}
+          data-cell-content-guidance=""
+        >
+          {isTechCell
+            ? `${measuredLength} characters in the longest pill · ${contentTarget} recommended per label${overContentWarning ? ` · review above ${contentWarning}` : ''}`
+            : `${measuredLength} characters · ${contentTarget} recommended${overContentWarning ? ` · review above ${contentWarning}` : ''}`}
+        </p>
       </Field>
 
       {/* "Summary", not "Description": it is the tl;dr that consolidates

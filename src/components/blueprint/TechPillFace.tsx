@@ -4,6 +4,10 @@ import {
   blueprintCellButtonClassName,
   blueprintToneAttrs,
 } from '@/lib/blueprintCellStyle'
+import {
+  PILL_ITEM_HEIGHT,
+  PILL_ITEM_HEIGHT_COMPACT,
+} from '@/lib/blueprintLayout'
 import { getTouchpointTone } from '@/lib/techPillColors'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
@@ -15,6 +19,9 @@ type TechPillFaceProps = {
   style?: CSSProperties
   opacity?: number
   asSpan?: boolean
+  /** Compact prose/list treatment; canvas pills keep deterministic height. */
+  inline?: boolean
+  'aria-describedby'?: string
 }
 
 /**
@@ -28,13 +35,26 @@ export function TechPillFace({
   style: styleProp,
   opacity,
   asSpan = false,
+  inline = false,
+  'aria-describedby': ariaDescribedBy,
 }: TechPillFaceProps) {
   const tone = getTouchpointTone(item)
+  const fixedHeight = compact ? PILL_ITEM_HEIGHT_COMPACT : PILL_ITEM_HEIGHT
+  const resolvedStyle = {
+    ...(!inline
+      ? {
+          height: fixedHeight,
+          minHeight: fixedHeight,
+          maxHeight: fixedHeight,
+        }
+      : undefined),
+    ...styleProp,
+  } as CSSProperties
 
   if (asSpan) {
     const style = {
       ...(opacity != null && opacity < 1 ? { opacity } : undefined),
-      ...styleProp,
+      ...resolvedStyle,
     } as CSSProperties
 
     return (
@@ -46,9 +66,12 @@ export function TechPillFace({
           className,
         )}
         style={style}
+        title={item}
+        aria-label={item}
+        aria-describedby={ariaDescribedBy}
         {...blueprintToneAttrs(tone)}
       >
-        {item}
+        <span className="line-clamp-2 break-words">{item}</span>
       </span>
     )
   }
@@ -61,9 +84,13 @@ export function TechPillFace({
       compact={compact}
       opacity={opacity}
       className={cn('min-w-0 shrink-0 break-words', className)}
-      style={styleProp}
+      style={resolvedStyle}
+      aria-label={item}
+      aria-describedby={ariaDescribedBy}
     >
-      {item}
+      <span className="line-clamp-2 break-words" title={item}>
+        {item}
+      </span>
     </BlueprintCellButton>
   )
 }

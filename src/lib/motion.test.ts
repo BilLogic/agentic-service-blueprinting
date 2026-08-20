@@ -7,6 +7,7 @@ import {
   CANVAS_REVEAL_DONE,
 } from '@/contexts/canvasRevealContext'
 import {
+  MOTION_CAMERA_EASE,
   MOTION_CAMERA_MS,
   MOTION_FADE_MS,
   MOTION_FADE_STAGGER_MS,
@@ -46,6 +47,13 @@ test('structural ease matches between motion.ts and the @theme key', () => {
   assert.equal(
     cssToken('--ease-structural').replace(/\s+/g, ' '),
     MOTION_STRUCTURAL_EASE.replace(/\s+/g, ' '),
+  )
+})
+
+test('camera ease matches between motion.ts and the @theme key', () => {
+  assert.equal(
+    cssToken('--ease-camera').replace(/\s+/g, ' '),
+    MOTION_CAMERA_EASE.replace(/\s+/g, ' '),
   )
 })
 
