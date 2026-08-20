@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CAMERA_TRAVEL_MAX_STRETCH,
+  CAMERA_TRAVEL_REFERENCE_OCTAVES,
+  cameraTransitionDurationMs,
+  cameraTravelOctaves,
   createCameraTransitionClock,
   easeCameraTransition,
   interpolateCameraTransform,
@@ -127,5 +131,90 @@ describe('camera transition', () => {
 
     expect(next.pan.x + world.x * next.zoom).toBeCloseTo(currentMidpoint.x)
     expect(next.pan.y + world.y * next.zoom).toBeCloseTo(currentMidpoint.y)
+  })
+})
+
+describe('distance-scaled duration', () => {
+  /*
+    The numbers below are measured off this app's own fits at an 849x818
+    viewport: the overview lands at zoom 0.05, a focused phase at 0.0507, a
+    focused scenario at 0.396. What the eye reported — one step glides, two
+    steps at once reads as a cut — is that last pair being 2.99 octaves
+    apart and getting the same 420 ms as everything else.
+  */
+  const VIEWPORT = { width: 849, height: 818 }
+  /*
+    A camera looking at `world` at `zoom`. Building these from a raw `pan`
+    would make every "zoom only" case a large pan as well — the world point
+    under a fixed pan slides right across the board as the scale changes —
+    and the travel numbers below would be measuring the wrong thing.
+  */
+  const at = (zoom: number, world = { x: 0, y: 0 }) => ({
+    pan: {
+      x: VIEWPORT.width / 2 - world.x * zoom,
+      y: VIEWPORT.height / 2 - world.y * zoom,
+    },
+    zoom,
+  })
+
+  it('leaves a move that does not travel at the base duration', () => {
+    const travel = cameraTravelOctaves(at(0.2), at(0.2), VIEWPORT)
+    expect(travel).toBe(0)
+    expect(cameraTransitionDurationMs(420, travel)).toBe(420)
+  })
+
+  it('leaves one navigation step exactly as it was', () => {
+    // Half the reference is still short; the clamp holds it at the base.
+    expect(cameraTransitionDurationMs(420, 0.75)).toBe(420)
+    // And the reference itself is the boundary, not something past it.
+    expect(
+      cameraTransitionDurationMs(420, CAMERA_TRAVEL_REFERENCE_OCTAVES),
+    ).toBe(420)
+  })
+
+  it('gives a move that skips a level proportionally longer', () => {
+    const overviewToDetail = cameraTravelOctaves(at(0.05), at(0.396), VIEWPORT)
+    expect(overviewToDetail).toBeCloseTo(2.99, 2)
+    // Just under the ceiling — the real move this was written for is the
+    // one that sets the cap's scale, not one the cap has to rescue.
+    expect(cameraTransitionDurationMs(420, overviewToDetail)).toBeCloseTo(
+      836,
+      0,
+    )
+    expect(cameraTransitionDurationMs(420, overviewToDetail)).toBeLessThan(
+      420 * CAMERA_TRAVEL_MAX_STRETCH,
+    )
+  })
+
+  it('never shortens a duration, however small the move', () => {
+    for (const travel of [0, 0.01, 0.1, 1, CAMERA_TRAVEL_REFERENCE_OCTAVES]) {
+      expect(cameraTransitionDurationMs(420, travel)).toBe(420)
+    }
+  })
+
+  it('counts pan as travel even when the scale does not change', () => {
+    const still = cameraTravelOctaves(at(0.2), at(0.2), VIEWPORT)
+    const crossBoard = cameraTravelOctaves(
+      at(0.2),
+      at(0.2, { x: -2000, y: -1500 }),
+      VIEWPORT,
+    )
+    expect(still).toBe(0)
+    expect(crossBoard).toBeGreaterThan(still)
+  })
+
+  it('costs the same in both directions', () => {
+    expect(cameraTravelOctaves(at(0.396), at(0.05), VIEWPORT)).toBeCloseTo(
+      cameraTravelOctaves(at(0.05), at(0.396), VIEWPORT),
+      10,
+    )
+  })
+
+  it('falls back on degenerate input rather than poisoning the clock', () => {
+    expect(cameraTravelOctaves(at(Number.NaN), at(0.2), VIEWPORT)).toBe(0)
+    expect(cameraTransitionDurationMs(420, Number.NaN)).toBe(420)
+    expect(cameraTransitionDurationMs(Number.NaN, 3)).toBe(
+      420 * CAMERA_TRAVEL_MAX_STRETCH,
+    )
   })
 })

@@ -134,3 +134,94 @@ export function interpolateCameraTransform(
     zoom,
   }
 }
+
+/**
+ * How much perceptual ground a camera move covers, in OCTAVES.
+ *
+ * One octave is one doubling (or halving) of scale. Screen-space pan is
+ * converted into the same unit — one viewport diagonal of travel counts as
+ * one octave — so a move that both zooms and crosses the board is measured
+ * as the sum of what the eye has to follow, not as whichever half is larger.
+ *
+ * This exists because the camera used to spend the SAME 420 ms on every
+ * move, however far it went. Measured on this board (849x818 viewport):
+ * overview fits at zoom 0.05 and a focused scenario at 0.396 — 2.99 octaves
+ * apart, while a neighbouring step is roughly half that. Equal time for
+ * double the distance is double the speed, and that is exactly the report:
+ * a one-level move glides, and the move that skips a level feels like a cut
+ * even though it runs the identical ease.
+ *
+ * The pan term uses the same world CENTRES `interpolateCameraTransform`
+ * interpolates, at the geometric mean of the two scales — the scale the
+ * midpoint of the move is actually seen at, and the one the geometric
+ * interpolation spends the most time near.
+ */
+export function cameraTravelOctaves(
+  from: CameraTransform,
+  to: CameraTransform,
+  viewport: { width: number; height: number },
+): number {
+  const fromZoom = Math.max(0.0001, from.zoom)
+  const toZoom = Math.max(0.0001, to.zoom)
+  const width = Math.max(1, viewport.width)
+  const height = Math.max(1, viewport.height)
+
+  const scaleOctaves = Math.abs(Math.log2(toZoom / fromZoom))
+
+  const fromCenter = {
+    x: (width / 2 - from.pan.x) / fromZoom,
+    y: (height / 2 - from.pan.y) / fromZoom,
+  }
+  const toCenter = {
+    x: (width / 2 - to.pan.x) / toZoom,
+    y: (height / 2 - to.pan.y) / toZoom,
+  }
+  const meanZoom = Math.sqrt(fromZoom * toZoom)
+  const panOctaves =
+    (Math.hypot(toCenter.x - fromCenter.x, toCenter.y - fromCenter.y) *
+      meanZoom) /
+    Math.hypot(width, height)
+
+  const total = scaleOctaves + panOctaves
+  return Number.isFinite(total) ? total : 0
+}
+
+/**
+ * The travel a camera move covers in the BASE duration. Beyond this it
+ * takes proportionally longer, so the perceived rate stays put.
+ *
+ * 1.5 octaves is one step of this app's navigation ladder — overview to a
+ * phase, or a phase to a focused scenario. Those are the moves reported as
+ * correct, so they are the ones that must come out unchanged, and anchoring
+ * here is what guarantees it.
+ */
+export const CAMERA_TRAVEL_REFERENCE_OCTAVES = 1.5
+
+/**
+ * Ceiling on the stretch. A constant rate with no cap would let a move
+ * across the whole board run for seconds; past roughly a second a camera
+ * stops reading as smooth and starts reading as slow. Two levels at once
+ * lands right on this cap, which is the case this was written for.
+ */
+export const CAMERA_TRAVEL_MAX_STRETCH = 2
+
+/**
+ * Base duration stretched by distance — never shortened.
+ *
+ * The lower clamp is deliberate. Constant rate would also make SHORT moves
+ * quicker, and short moves are the ones already reported as feeling right;
+ * speeding them up to satisfy the formula would trade a real complaint for
+ * a new one. This only ever slows the long moves down to match them.
+ */
+export function cameraTransitionDurationMs(
+  baseMs: number,
+  travelOctaves: number,
+): number {
+  const base = Number.isFinite(baseMs) ? Math.max(1, baseMs) : 420
+  const travel = Number.isFinite(travelOctaves) ? Math.max(0, travelOctaves) : 0
+  const stretch = Math.min(
+    CAMERA_TRAVEL_MAX_STRETCH,
+    Math.max(1, travel / CAMERA_TRAVEL_REFERENCE_OCTAVES),
+  )
+  return base * stretch
+}
