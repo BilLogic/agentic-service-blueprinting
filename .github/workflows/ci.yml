@@ -2,6 +2,13 @@
 #
 # Every guard in here already existed as a script somebody could remember to
 # run. A guard nobody runs is not a guard, so they run on every pull request.
+#
+# `pull_request`, never `pull_request_target`. That distinction is the whole
+# security story for a public repo: a `pull_request` run from a fork gets a
+# read-only token and no secrets, and it checks out the fork's code — which
+# is untrusted, and is treated as such. `pull_request_target` runs in the
+# BASE repo's context with secrets available; combined with checking out the
+# PR head, it hands an attacker code execution with this repo's token.
 name: CI
 
 on:
@@ -10,11 +17,23 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least privilege at the top level. A job that genuinely needs more has to
+# raise it for itself, so the diff shows the escalation.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -77,6 +96,7 @@ jobs:
   # takes — every migration, in order — still lands where the halves land.
   portable-core:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:17
@@ -95,6 +115,8 @@ jobs:
       PGDATABASE: postgres
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
