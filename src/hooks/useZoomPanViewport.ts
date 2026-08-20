@@ -12,9 +12,6 @@ import {
 } from '@/lib/canvasKeyboardState'
 import { isEditableKeyboardTarget } from '@/lib/keyboardTarget'
 import {
-  CAMERA_TRAVEL_MAX_STRETCH,
-  cameraTransitionDurationMs,
-  cameraTravelOctaves,
   createCameraTransitionClock,
   easeCameraTransition,
   interpolateCameraTransform,
@@ -490,19 +487,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
 
       fitAnimationTargetRef.current = target
-      /*
-        Duration scales with how far the camera is going, so every move
-        travels at the same perceived rate — see `cameraTravelOctaves`. A
-        single navigation step is unchanged; the move that skips a level
-        gets the time it needs instead of covering twice the ground in the
-        same 420 ms and reading as a cut.
-      */
-      const progressAt = createCameraTransitionClock(
-        cameraTransitionDurationMs(
-          fitDurationMs,
-          cameraTravelOctaves(from, target, initialViewport),
-        ),
-      )
+      const progressAt = createCameraTransitionClock(fitDurationMs)
 
       return new Promise((resolve) => {
         fitAnimationResolveRef.current = resolve
@@ -1025,12 +1010,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           would interrupt, so it goes through.
         */
         let refitPolls = 0
-        // Two eases long, at the LONGEST an ease can now be — see
-        // `CAMERA_TRAVEL_MAX_STRETCH`. Sized off the base alone, this
-        // window closed while a stretched ease was still running.
-        const maxRefitPolls = Math.ceil(
-          (fitDurationMs * CAMERA_TRAVEL_MAX_STRETCH * 2) / 50,
-        )
+        const maxRefitPolls = Math.ceil((fitDurationMs * 2) / 50)
         const refitWhenIdle = () => {
           if (fitAnimationRef.current !== null && refitPolls < maxRefitPolls) {
             refitPolls += 1
