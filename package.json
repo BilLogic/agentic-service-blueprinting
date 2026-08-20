@@ -8,6 +8,7 @@
     "dev": "vite",
     "prebuild": "node scripts/sync-cover-assets.mjs",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "node scripts/sync-canvas-skills.mjs --check && vitest run",
     "preview": "vite preview",
