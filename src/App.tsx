@@ -4,6 +4,7 @@ import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { EditorProvider } from '@/contexts/EditorContext'
+import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
@@ -24,6 +25,7 @@ function App() {
           <EditorProvider>
             <ViewStateProvider>
               <PathSelectionProvider>
+                <ScenarioPathSelectionReset />
                 <TooltipProvider delay={200}>
                   <EditorErrorBoundary>
                     <EditorShell />

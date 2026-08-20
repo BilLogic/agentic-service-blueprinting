@@ -183,8 +183,16 @@ export function CanvasPhaseSection({
         */
         'relative inline-flex w-max flex-col items-start',
         'transition-opacity duration-(--motion-camera) ease-structural',
+        // Opacity is NOT set here. A phase-level `opacity-30` composites the
+        // whole subtree into one translucent layer, so a hovered scenario can
+        // change fill and shadow but can never become clearer than its dimmed
+        // ancestor. blueprint.css dims the phase frame, badge and scenario
+        // wrappers independently instead — see "Nested focus hierarchy" —
+        // which keeps the phase-space hover preview and lets a nested
+        // scenario lift on its own. Saturation and the pointer-events guard
+        // stay: they are not compositing decisions.
         dimmed &&
-          'opacity-30 saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
+          'saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
         navigable &&
           'cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         className,

@@ -1,6 +1,7 @@
 import {
   Fragment,
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -10,7 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
-import { PhaseScenarioOverview } from '@/components/blueprint/PhaseScenarioOverview'
+import { PhaseScenarioOverviewBody } from '@/components/blueprint/PhaseScenarioOverview'
 import { CanvasPhaseSection } from '@/components/editor/CanvasPhaseSection'
 import { OverviewPhaseRowDivider } from '@/components/editor/OverviewPhaseRowDivider'
 import {
@@ -47,6 +48,11 @@ import {
   getCanvasFocusSelector,
 } from '@/lib/canvasFocus'
 import {
+  getFocusedComparisonCameraKey,
+  getMinFitZoom,
+  getSemanticZoomThreshold,
+} from '@/lib/canvasCameraPolicy'
+import {
   OVERVIEW_CANVAS_PADDING_X,
   OVERVIEW_CANVAS_PADDING_Y,
 } from '@/lib/overviewLayout'
@@ -75,24 +81,6 @@ import {
   prefersReducedMotion,
 } from '@/lib/motion'
 import type { PathListItem } from '@/lib/pathSelection'
-/**
- * Floor for the phone's fit-to-view zoom — 3x the phone's own semantic
- * threshold below, so the frame the reader lands on always has cell text in
- * it with room to pinch out before the text goes. Roughly half a phase board
- * across on a 390px screen.
- */
-const MOBILE_MIN_FIT_ZOOM = 0.45
-
-/**
- * Where the phone's cells give up their text. Lower than the desktop 0.25
- * because a phone has ~3 device pixels per CSS pixel: at 0.15 the blurbs
- * are small but still ink on the screen, and a reader who pinches out to
- * see where they are keeps something to read. At 0.25 the whole board went
- * blank the moment they zoomed out at all, which reads as "this blueprint
- * has no content" rather than "you are too far out".
- */
-const MOBILE_SEMANTIC_ZOOM_THRESHOLD = 0.15
-
 /**
  * Which element's `transitionend` is allowed to close each reveal stage.
  *
@@ -172,8 +160,10 @@ type ServicePhaseSectionProps = {
   focusActive?: boolean
   /** Slice-tab scope: mount only this scenario's artboard within the phase. */
   onlyScenarioId?: string | null
-  /** OPTIONAL: mobile passes nothing — the drawer owns navigation there. */
+  /** Both OPTIONAL: mobile passes neither — see `disableCanvasNavigation`. */
   onOpenPhase?: (phaseId: string) => void
+  openScenario?: (scenarioId: string) => void
+  getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType
 }
 
 function ServicePhaseSection({
@@ -184,6 +174,8 @@ function ServicePhaseSection({
   getSelectedPathIds,
   displayViewType,
   onOpenPhase,
+  openScenario,
+  getScenarioDisplayViewType,
   showFlowArrow = false,
   isFlowArrowAnchor = false,
   isLoopArrowFrom = false,
@@ -212,7 +204,7 @@ function ServicePhaseSection({
       focusActive={focusActive}
       onNavigate={onOpenPhase ? () => onOpenPhase(phase.id) : undefined}
     >
-      <PhaseScenarioOverview
+      <PhaseScenarioOverviewBody
         phase={phase}
         slides={slides}
         variant="overview"
@@ -224,6 +216,8 @@ function ServicePhaseSection({
         focusedScenarioId={focusedScenarioId}
         onlyScenarioId={onlyScenarioId}
         loading={false}
+        openDetail={openScenario}
+        getScenarioDisplayViewType={getScenarioDisplayViewType}
       />
     </CanvasPhaseSection>
   )
@@ -334,11 +328,21 @@ function ServiceOverviewViewImpl({
     () => (soloPhase ? [soloPhase] : allPhases),
     [allPhases, soloPhase],
   )
-  const scenarioIds = soloScenarioId
-    ? [soloScenarioId]
-    : soloPhase
-      ? getSubslides(soloPhase.id, slides).map((scenario) => scenario.id)
-      : slides.filter((slide) => isSubslide(slide)).map((slide) => slide.id)
+  // Stable scope identity is load-bearing for render isolation: rebuilding
+  // this array on every navigation recreates path-selection callbacks, which
+  // defeats memoization and reconciles every heavy phase body before the
+  // camera can draw its first frame.
+  const scenarioIds = useMemo(
+    () =>
+      soloScenarioId
+        ? [soloScenarioId]
+        : soloPhase
+          ? getSubslides(soloPhase.id, slides).map((scenario) => scenario.id)
+          : slides
+              .filter((slide) => isSubslide(slide))
+              .map((slide) => slide.id),
+    [slides, soloPhase, soloScenarioId],
+  )
   const isDetail = view === 'detail'
   const focusedScenarioId =
     isDetail && isSubslide(activeSlide) ? activeSlide.id : null
@@ -347,6 +351,54 @@ function ServiceOverviewViewImpl({
       ? getParentSlide(activeSlide, slides)?.id
       : activeSlide.id
     : null
+
+  /*
+    ONE camera writer per navigation.
+
+    This used to start an ease imperatively here, before React reconciled,
+    so the camera moved while the transition rendered. The problem was never
+    the timing — it was that the pre-flight and the fit that follows it
+    compute DIFFERENT destinations, so the `isSameTransform` skip in
+    `fitToView` (which exists to make the second one a no-op) could never
+    fire. The pre-flight closes over the overview's fit parameters
+    (`maxFitZoom: 1`, margin 48, no insets) while the settled fit uses the
+    focused view's (`MAX_ZOOM`, margin 20, 56px insets), and navigating also
+    mounts the sticky header, which changes the container's height. No amount
+    of care about panel geometry could make those two agree. Every click
+    therefore ran a 420 ms glide superseded partway by a second 420 ms glide,
+    and a sine ease restarted from a moving camera departs at zero velocity:
+    glide, brake, glide.
+
+    `createCameraTransitionClock` already solves the latency this was for —
+    it starts the ease's clock on the first frame the browser can draw, so
+    reconciliation cannot eat the animation. One writer, one ease.
+  */
+  const openCanvasDetail = useCallback(
+    (slideId: string) => {
+      startTransition(() => openDetail(slideId))
+    },
+    [openDetail],
+  )
+
+  /*
+    THE CANVAS DOES NOT NAVIGATE ON A PHONE.
+
+    Every move between scenarios and between phases belongs to the drawer
+    there. Scoping the mobile canvas to one scenario already removes the
+    siblings you could tap, but that is a statement about what is currently
+    rendered, and this is a statement about what a tap MEANS — the two want
+    to be separate, because it is the second one that survives someone
+    widening the scope later. It also covers the phase frame, which is a
+    navigation target of its own and is not a scenario at all.
+
+    Undefined rather than a no-op: `navigable` in `ResizableComparePanel` and
+    `CanvasPhaseSection` is gated on the handler existing, so this makes the
+    surfaces genuinely inert — no `role="button"`, no pointer cursor, no
+    aria-label promising a destination — instead of buttons that swallow
+    taps. Panning and pinching over them are unaffected; the pan handler
+    never consulted these.
+  */
+  const canvasNavigate = mobileShell ? undefined : openCanvasDetail
 
   const {
     pathsByScenario,
@@ -395,10 +447,13 @@ function ServiceOverviewViewImpl({
   // read. Floored, the camera frames the board's top-left at a legible
   // scale and the reader pans from there. Desktop keeps the true fit: a
   // laptop can hold a whole phase at a readable size.
-  const minFitZoom = mobileShell ? MOBILE_MIN_FIT_ZOOM : undefined
-  const semanticZoomThreshold = mobileShell
-    ? MOBILE_SEMANTIC_ZOOM_THRESHOLD
-    : undefined
+  const cameraSurface = {
+    mobileShell,
+    isDetail,
+    selectedPathCount: overviewSelectedPathIds.length,
+  }
+  const minFitZoom = getMinFitZoom(cameraSurface)
+  const semanticZoomThreshold = getSemanticZoomThreshold(cameraSurface)
 
   /*
     Skeleton geometry — real phase count and real scenarios per phase from
@@ -445,12 +500,19 @@ function ServiceOverviewViewImpl({
     [blueprintsByPathId, pathsByScenario, phases, slides, soloScenarioId],
   )
 
-  // Camera key. Deliberately excludes the selected path ids: toggling a path
-  // is a filter, not a navigation, and having it here threw away the user's
-  // pan/zoom on every checkbox. `focusNonce` bumps on each nav click so
-  // re-selecting the row you are already on recenters after panning away.
+  // Camera key. Path selection is stable in overview, where it behaves like a
+  // filter. Inside a focused scenario it changes the comparison's geometry,
+  // so it becomes an explicit camera-layout event: the viewport eases to the
+  // new fitted frame instead of letting ResizeObserver snap there afterward.
+  // `focusNonce` bumps on each nav click so re-selecting the current row also
+  // recenters after panning away.
+  const focusedComparisonCameraKey = getFocusedComparisonCameraKey({
+    isFocusedScenario: isSubslide(activeSlide),
+    selectedPathIds: overviewSelectedPathIds,
+    displayViewType: getScenarioDisplayViewType(activeSlide),
+  })
   const fitKey = overviewReady
-    ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}`
+    ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}:${focusedComparisonCameraKey}`
     : `service-canvas:loading:${skeletonPhases.map((phase) => phase.scenarioCount).join('-') || 'unknown'}`
 
   // The cell-detail panel clears its selection when this changes, so it must
@@ -753,13 +815,7 @@ function ServiceOverviewViewImpl({
       paths: scopedPaths,
       selectedPathIds: scopedSelectedPathIds,
     }
-  }, [
-    activeSlide,
-    isDetail,
-    overviewSelectedPathIds,
-    pathsByScenario,
-    slides,
-  ])
+  }, [activeSlide, isDetail, overviewSelectedPathIds, pathsByScenario, slides])
 
   // The viewport below has already scheduled this fit with animation
   // suppressed (child effects run before parent effects), so release the
@@ -1005,16 +1061,11 @@ function ServiceOverviewViewImpl({
                             blueprintsByPathId={blueprintsByPathId}
                             getSelectedPathIds={resolveSelectedPathIds}
                             displayViewType={overviewViewType}
-                            /*
-                              The phase frame is a navigation target in its
-                              own right, and it is not a scenario — so
-                              scoping the mobile canvas to one scenario does
-                              not cover it. On a phone every move between
-                              phases belongs to the drawer, and no handler
-                              means the frame is inert rather than a button
-                              that swallows taps.
-                            */
-                            onOpenPhase={mobileShell ? undefined : openDetail}
+                            onOpenPhase={canvasNavigate}
+                            openScenario={canvasNavigate}
+                            getScenarioDisplayViewType={
+                              getScenarioDisplayViewType
+                            }
                             dimmed={dimPhase}
                             focusActive={phaseIsFocused}
                             focusedScenarioId={
@@ -1031,7 +1082,9 @@ function ServiceOverviewViewImpl({
                             isLoopArrowFrom={
                               phase.id === postToPreLoop?.fromPhaseId
                             }
-                            isLoopArrowTo={phase.id === postToPreLoop?.toPhaseId}
+                            isLoopArrowTo={
+                              phase.id === postToPreLoop?.toPhaseId
+                            }
                           />
                         </Fragment>
                       )
@@ -1068,7 +1121,9 @@ function ServiceOverviewViewImpl({
               <div
                 role={revealStage < CANVAS_REVEAL_LANES ? 'status' : undefined}
                 aria-label={
-                  revealStage < CANVAS_REVEAL_LANES ? 'Loading canvas' : undefined
+                  revealStage < CANVAS_REVEAL_LANES
+                    ? 'Loading canvas'
+                    : undefined
                 }
                 className={cn(
                   'pointer-events-none absolute inset-0 z-20 flex items-center justify-center',

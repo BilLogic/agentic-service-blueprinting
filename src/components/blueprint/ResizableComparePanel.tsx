@@ -112,10 +112,22 @@ export function ResizableComparePanel({
   const measuredContentHeight = measuredContent.height
   const [userSize, setUserSize] = useState({ width: 0, height: 0 })
 
+  /** Teardown for an in-flight corner drag, so unmount can end it. */
+  const releaseDragRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => releaseDragRef.current?.(), [])
+
   useEffect(() => {
     if (lockHeight) return
+    // A fresh object never bails React's `Object.is` check, so this used to
+    // re-render every unlocked panel on the board on every content-key
+    // change — one paint after the layout effect below had already measured,
+    // landing inside the camera's settle window N times over.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset of the user's drag-resize when the fit key or defaults change; part of the panel's measurement flow
-    setUserSize({ width: 0, height: 0 })
+    setUserSize((current) =>
+      current.width === 0 && current.height === 0
+        ? current
+        : { width: 0, height: 0 },
+    )
   }, [fitContentKey, defaultWidth, defaultHeight, lockHeight])
 
   useEffect(() => {
@@ -125,9 +137,14 @@ export function ResizableComparePanel({
     const measure = () => {
       // Layout size only. `scrollHeight` also counts arrow overlays and path
       // frames that bleed past the board, which would pad the panel with gray.
-      setMeasuredContent({
-        width: element.offsetWidth,
-        height: element.offsetHeight,
+      setMeasuredContent((current) => {
+        const width = element.offsetWidth
+        const height = element.offsetHeight
+        // Bail on an unchanged measurement: this runs on every content key
+        // change and a needless state write would re-render the whole board.
+        return current.width === width && current.height === height
+          ? current
+          : { width, height }
       })
     }
 
@@ -208,7 +225,9 @@ export function ResizableComparePanel({
     (e: React.PointerEvent<HTMLButtonElement>) => {
       e.preventDefault()
       e.stopPropagation()
-      e.currentTarget.setPointerCapture(e.pointerId)
+      const target = e.currentTarget
+      const pointerId = e.pointerId
+      target.setPointerCapture(pointerId)
       resizeStart.current = {
         x: e.clientX,
         y: e.clientY,
@@ -217,6 +236,10 @@ export function ResizableComparePanel({
       }
 
       const onMove = (moveEvent: PointerEvent) => {
+        // Id-filtered: a second finger landing anywhere on the page also
+        // emits pointermove, and an unfiltered handler drove the drag from
+        // whichever pointer moved last.
+        if (moveEvent.pointerId !== pointerId) return
         setUserSize({
           width: Math.max(
             resolvedMinWidth,
@@ -231,16 +254,35 @@ export function ResizableComparePanel({
         })
       }
 
-      const target = e.currentTarget
-
-      const onUp = (upEvent: PointerEvent) => {
-        target.releasePointerCapture(upEvent.pointerId)
+      const endDrag = () => {
+        try {
+          target.releasePointerCapture(pointerId)
+        } catch {
+          // Already released, or never captured — this THROWS NotFoundError,
+          // and the teardown below is the part that matters and must not be
+          // skipped for it. Unguarded, a stranded pointermove listener kept
+          // resizing the panel for the rest of the session.
+        }
         window.removeEventListener('pointermove', onMove)
-        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointerup', onPointerEnd)
+        window.removeEventListener('pointercancel', onPointerEnd)
+        releaseDragRef.current = null
       }
 
+      const onPointerEnd = (endEvent: PointerEvent) => {
+        if (endEvent.pointerId !== pointerId) return
+        endDrag()
+      }
+
+      // Unmount mid-drag never fires a pointer event; the effect above calls
+      // this instead.
+      releaseDragRef.current?.()
+      releaseDragRef.current = endDrag
+
       window.addEventListener('pointermove', onMove)
-      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointerup', onPointerEnd)
+      // An OS-cancelled stream (edge swipe, alert) fires no pointerup at all.
+      window.addEventListener('pointercancel', onPointerEnd)
     },
     [resolvedMinHeight, resolvedMinWidth, size.height, size.width],
   )

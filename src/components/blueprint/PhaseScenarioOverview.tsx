@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useId, useMemo, useRef } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo, useRef } from 'react'
 import {
   getScenarioSwimlaneBodyHeight,
   ScenarioBlueprintPanel,
@@ -6,7 +6,6 @@ import {
 import { CanvasEmptyState } from '@/components/editor/CanvasEmptyState'
 import { useEditor } from '@/contexts/EditorContext'
 import { useAlignedPhaseRowPanelHeight } from '@/hooks/useAlignedPhaseRowPanelHeight'
-import { useMobileShell } from '@/hooks/useMobileShell'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
 import { defaultSelectedPathIds } from '@/lib/pathSelection'
 import type { PathListItem } from '@/lib/pathSelection'
@@ -51,6 +50,12 @@ type PhaseScenarioOverviewProps = {
   dimAllScenarios?: boolean
   /** Slice-tab scope: mount only this scenario's artboard. */
   onlyScenarioId?: string | null
+}
+
+type PhaseScenarioOverviewBodyProps = PhaseScenarioOverviewProps & {
+  getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType
+  /** OPTIONAL: mobile passes nothing — the drawer owns navigation there. */
+  openDetail?: (scenarioId: string) => void
 }
 
 function PhaseScenarioConnector({ width }: { width: number }) {
@@ -104,7 +109,29 @@ function PhaseScenarioConnector({ width }: { width: number }) {
 }
 
 /** A phase frame on the overview canvas: its scenario panels plus the flow arrows between them. */
+/** A phase frame on the overview canvas: its scenario panels plus the flow arrows between them. */
 export function PhaseScenarioOverview({
+  ...props
+}: PhaseScenarioOverviewProps) {
+  const { getScenarioDisplayViewType, openDetail } = useEditor()
+  return (
+    <PhaseScenarioOverviewBody
+      {...props}
+      getScenarioDisplayViewType={getScenarioDisplayViewType}
+      openDetail={openDetail}
+    />
+  )
+}
+
+/**
+ * Heavy board body with its navigation dependencies passed as STABLE props.
+ *
+ * Reading them from context inside the body meant every context change
+ * reconciled every phase board on the canvas — which lands in the same commit
+ * as the camera ease, the worst possible moment for it. Memoised here, with
+ * the two context values hoisted into the wrapper above.
+ */
+export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody({
   phase,
   slides,
   className,
@@ -118,24 +145,9 @@ export function PhaseScenarioOverview({
   focusedScenarioId = null,
   dimAllScenarios = false,
   onlyScenarioId = null,
-}: PhaseScenarioOverviewProps) {
-  const { getScenarioDisplayViewType, openDetail } = useEditor()
-  /*
-    THE CANVAS DOES NOT NAVIGATE ON A PHONE.
-
-    Every move between scenarios and between phases belongs to the drawer
-    there. Scoping the mobile canvas to one scenario removes the siblings
-    there are to tap, but that is a statement about what is currently
-    RENDERED; this is a statement about what a tap MEANS, and it is the one
-    that survives someone widening the scope later.
-
-    Undefined rather than a no-op: `navigable` in `ResizableComparePanel` is
-    gated on the handler existing, so the panel is genuinely inert — no
-    `role="button"`, no pointer cursor, no aria-label promising a
-    destination — instead of a button that swallows taps. Panning and
-    pinching over it are unaffected.
-  */
-  const canvasNavigates = !useMobileShell()
+  getScenarioDisplayViewType,
+  openDetail,
+}: PhaseScenarioOverviewBodyProps) {
   const isOverview = variant === 'overview'
 
   /*
@@ -309,6 +321,28 @@ export function PhaseScenarioOverview({
           }),
     [focusedSwimlaneBodyFloor],
   )
+
+  /*
+    One stable navigate handler per scenario.
+
+    `ScenarioBlueprintPanel` is memoised, and an inline
+    `() => openDetail(scenario.id)` is a new identity on every render — so
+    every panel and all of its cells re-rendered whenever anything above them
+    changed, including the row-height measurement settling. That lands in the
+    same commit as the camera ease, which is the worst possible moment for it.
+
+    No opener means no navigation: the Map stays empty, every panel gets
+    `onNavigate === undefined`, and `navigable` is false — inert, not a dead
+    button. That is how the phone gets a canvas that cannot navigate.
+  */
+  const navigateByScenario = useMemo(() => {
+    const handlers = new Map<string, () => void>()
+    if (!openDetail) return handlers
+    for (const scenario of scenarios) {
+      handlers.set(scenario.id, () => openDetail(scenario.id))
+    }
+    return handlers
+  }, [scenarios, openDetail])
 
   const rowRef = useRef<HTMLDivElement>(null)
   const selectedPathsMeasureKey = scenarios
@@ -484,9 +518,7 @@ export function PhaseScenarioOverview({
               excludeFromRowHeight={
                 isFocusedScenario && focusedScenarioExpanded
               }
-              onNavigate={
-                canvasNavigates ? () => openDetail(scenario.id) : undefined
-              }
+              onNavigate={navigateByScenario.get(scenario.id)}
               dimmed={
                 dimAllScenarios ||
                 (focusedScenarioId !== null &&
@@ -501,4 +533,4 @@ export function PhaseScenarioOverview({
       })}
     </div>
   )
-}
+})

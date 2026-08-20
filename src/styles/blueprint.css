@@ -62,6 +62,67 @@
     border-color: var(--color-slate-800);
   }
 
+  /*
+   * Nested focus hierarchy.
+   *
+   * The old phase-level `opacity-30` composited the whole subtree into one
+   * translucent layer. A hovered scenario could change fill and shadow, but
+   * it could never become clearer than its dimmed ancestor. Dim the phase
+   * frame, badge, and scenario wrappers independently instead: phase-space
+   * hover can still preview the group, while a nested scenario can lift on
+   * its own without visually selecting its siblings.
+   */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    > [data-phase-frame],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    > [data-phase-title-badge],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id] {
+    opacity: 0.3;
+    transition-property: opacity;
+    transition-duration: var(--motion-camera);
+    transition-timing-function: var(--ease-camera);
+  }
+
+  /* Phase-background hover previews the whole group, as before. A scenario
+     hover/focus opts out below so the group does not compete with the target. */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has(
+          [data-phase-scenario-panel]:is(:hover, :focus-within)
+        )
+    )
+    > [data-phase-frame],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has(
+          [data-phase-scenario-panel]:is(:hover, :focus-within)
+        )
+    )
+    > [data-phase-title-badge],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has(
+          [data-phase-scenario-panel]:is(:hover, :focus-within)
+        )
+    )
+    [data-focus-slide-id] {
+    opacity: 0.7;
+  }
+
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id]:has(> [data-phase-scenario-panel]:hover),
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id]:has(> [data-phase-scenario-panel]:focus-within) {
+    opacity: 1;
+  }
+
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
     background-color: var(--color-slate-600);

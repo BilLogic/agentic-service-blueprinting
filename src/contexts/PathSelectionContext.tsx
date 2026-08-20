@@ -468,3 +468,21 @@ export function usePathSelection(
 
   return { selectedPathIds, setSelectedPathIds, togglePathSelection }
 }
+
+/**
+ * Is this navigation a move BETWEEN scenarios?
+ *
+ * Only a scenario-to-scenario move collapses a comparison. Entering the
+ * first scenario from the overview keeps whatever filter was set there — an
+ * overview selection is a filter, and focusing is not a reason to lose it —
+ * and a deep-link seed lands as a first entry (null -> id) for the same
+ * reason.
+ *
+ * Pure and exported so it can be tested without the provider.
+ */
+export function isScenarioSwitch(
+  previous: string | null,
+  next: string | null,
+): boolean {
+  return previous !== null && next !== null && previous !== next
+}

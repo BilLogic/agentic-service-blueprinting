@@ -396,6 +396,15 @@ export function useEditor() {
 }
 
 /**
+ * The selected scenario, or null when there is no editor above — so a
+ * component can watch navigation without requiring the provider.
+ */
+export function useSelectedScenarioIdOptional(): string | null {
+  const context = useContext(EditorContext)
+  return context?.selectedScenarioId ?? null
+}
+
+/**
  * True while the canvas is focused on one scenario — the only place the
  * grid's structural affordances (insert handles, empty-cell `+`) belong.
  * At the overview, twenty blueprints render at 6% zoom; an insert handle

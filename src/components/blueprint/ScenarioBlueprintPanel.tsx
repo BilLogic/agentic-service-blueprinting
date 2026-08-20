@@ -129,10 +129,22 @@ export function ScenarioBlueprintPanel({
     keep the horizontal layout; the focused scenario view — no overview
     constraints — stacks the bands vertically on one canonical step axis.
   */
-  const isOverviewConstrained =
-    lockedPanelHeight !== undefined ||
-    fixedSwimlaneBodyHeight !== undefined ||
-    displayViewTypeProp !== undefined
+  /*
+    ARRANGEMENT IS NOT GEOMETRY.
+
+    This used to include `lockedPanelHeight` and `fixedSwimlaneBodyHeight`,
+    so being handed a shared row height ALSO decided which arrangement the
+    board rendered. That coupling is what forced the focused scenario to opt
+    out of the row lock to keep its stacked arrangement — and a panel that
+    resizes because it became focused guarantees a second camera ease
+    superseding the first (see the note beside the panel props in
+    PhaseScenarioOverview).
+
+    Keyed on the view-type prop alone, the focused panel can take the row's
+    height like everyone else and still render its own arrangement. Height is
+    geometry; arrangement is rendering; only the second belongs here.
+  */
+  const isOverviewConstrained = displayViewTypeProp !== undefined
   const useStackedArrangement = useSideBySideLayout && !isOverviewConstrained
 
   const visibleBlueprints = useMemo(
