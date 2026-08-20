@@ -134,56 +134,20 @@ const MAX_SETTLE_POLLS = 20
 const semanticLabelBoost = (zoom: number) =>
   Math.min(10, Math.max(1, 0.95 / Math.max(zoom, 0.01)))
 
-/**
- * The zoom a MOVING camera should decide its semantic tier from: the lower
- * of where it is leaving and where it is going.
- *
- * The tier is a rendering decision (cells as text, or cells as flat
- * blocks), and a camera in motion should make it once for the whole
- * journey — never mid-flight, and never differently depending on which way
- * it is travelling. Reading the DESTINATION alone did the first part and
- * not the second, which is exactly what a zoom-in and a zoom-out feeling
- * like different animations comes from:
- *
- *   zooming IN  (blocks → text) stamped the text tier on frame one, so
- *     every frame of a 420ms ease rasterized the full board's text at a
- *     scale that changes every frame — the most expensive thing this
- *     canvas can be asked to draw, sustained across the entire glide.
- *   zooming OUT (text → blocks) stamped blocks on frame one, so the detail
- *     vanished before the camera had moved at all: a cut, not a
- *     transition.
- *
- * Taking the MINIMUM makes both directions render the cheap tier while the
- * board is in motion, and lets the destination tier land when it stops.
- * Detail resolves as the camera arrives, which is what every map and
- * canvas app does, and the two directions become symmetric because they
- * now animate the same thing.
- *
- * Note what this deliberately does NOT change: when both ends sit on the
- * same side of the threshold the minimum is on that side too, so a
- * transition that never crosses is byte-for-byte what it was. That covers
- * overview→phase, the case that already felt right.
- */
-export function tierZoomForTravel(fromZoom: number, toZoom: number): number {
-  return Math.min(fromZoom, toZoom)
-}
-
 function applyTransformToElement(
   el: HTMLElement,
   pan: { x: number; y: number },
   zoom: number,
   semanticThreshold: number,
   /**
-   * Zoom the TIER decision reads — see `tierZoomForTravel` for what an
-   * animated fit passes, and the live zoom everywhere else.
-   *
-   * Deciding it from the LIVE zoom meant a navigation ease crossed the
-   * threshold mid-flight and the whole board changed tier on whichever
-   * frame happened to cross it — a style/paint burst in the busiest
-   * stretch of the animation, felt as the glide glitching. That much was
-   * fixed by reading the destination instead. What the destination alone
-   * could not fix is that it made the two directions behave differently,
-   * which is the second half of the same problem.
+   * Zoom the TIER decision reads — the destination zoom during an animated
+   * fit, the live zoom everywhere else. Deciding the tier from the live zoom
+   * meant a navigation ease crossed the threshold mid-flight, and the
+   * hundreds of cell-content fades that flip triggers all began on that
+   * mid-ease frame — a style/paint burst in the busiest stretch of the
+   * animation, felt as the glide glitching. Stamped from the destination,
+   * the flip (and its fade) fires on frame one, where the ease is slowest
+   * and the change reads as the response to the click.
    */
   tierZoom: number = zoom,
 ) {
@@ -538,13 +502,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
               : initialViewport,
             easeCameraTransition(t),
           )
-          // Cheaper tier for the whole journey, destination tier on arrival.
-          commitTransform(
-            next.pan,
-            next.zoom,
-            t === 1,
-            t === 1 ? nextZoom : tierZoomForTravel(from.zoom, nextZoom),
-          )
+          commitTransform(next.pan, next.zoom, t === 1, nextZoom)
           if (t < 1) {
             fitAnimationRef.current = requestAnimationFrame(step)
             return
