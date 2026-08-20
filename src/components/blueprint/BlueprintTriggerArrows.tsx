@@ -323,7 +323,10 @@ export function BlueprintTriggerArrows({
       data-blueprint-arrows=""
       className={cn(
         'pointer-events-none absolute overflow-visible',
-        layer === 'forward' ? 'z-[2]' : 'z-[30]',
+        // Keep the connector hierarchy identical to IntegratedTriggerArrows:
+        // ordinary runs tuck below the z-[1] cells, while wrap runs stay
+        // elevated because they travel through the empty outer corridors.
+        layer === 'forward' ? 'z-0' : 'z-[30]',
       )}
       style={svgStyle}
       overflow="visible"

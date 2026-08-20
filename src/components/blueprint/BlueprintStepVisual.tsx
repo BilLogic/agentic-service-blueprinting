@@ -22,6 +22,7 @@ type BlueprintStepVisualProps = {
   pictures?: readonly string[] | readonly BlueprintStepVisualPicture[]
   /** Larger walkthrough/presentation layout — images scale to fit without clipping. */
   presentation?: boolean
+  'aria-describedby'?: string
 }
 
 function normalizePictures(
@@ -61,7 +62,7 @@ function VisualPictureStrip({
               loading="lazy"
               decoding="async"
               className={cn(
-                'max-h-full max-w-full rounded-sm object-contain object-center',
+                'h-full w-full rounded-sm object-contain object-center',
                 hasEmbeddedVisualFrame(entry.picture) && 'scale-[1.08]',
               )}
             />
@@ -88,6 +89,7 @@ export function BlueprintStepVisual({
   opacity,
   pictures,
   presentation = false,
+  'aria-describedby': ariaDescribedBy,
 }: BlueprintStepVisualProps) {
   const displayPictures = normalizePictures(pictures ?? [])
   const hasRealPictures = displayPictures.length > 0
@@ -128,7 +130,7 @@ export function BlueprintStepVisual({
       compact={compact}
       variant="visual"
       className={cn(
-        'h-full min-h-0 max-h-full w-full overflow-hidden',
+        'aspect-[4/3] h-auto min-h-0 max-h-full w-full max-w-full flex-none overflow-hidden',
         'items-stretch justify-stretch p-1',
         className,
       )}
@@ -141,6 +143,7 @@ export function BlueprintStepVisual({
       stepIndex={stepIndex}
       opacity={opacity}
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
     >
       <VisualPictureStrip pictures={displayPictures} />
     </BlueprintCellButton>

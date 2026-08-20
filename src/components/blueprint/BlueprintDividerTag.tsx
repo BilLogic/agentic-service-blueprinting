@@ -20,8 +20,9 @@ export function BlueprintDividerRailLabel({
 }) {
   return (
     <span
+      data-blueprint-row-header=""
       className={cn(
-        'shrink-0 font-medium uppercase leading-none tracking-[0.08em]',
+        'relative shrink-0 font-medium uppercase leading-none tracking-[0.08em]',
         compact ? 'text-3xs' : 'text-2xs',
       )}
       style={{ color: BLUEPRINT_THEME.dividerLabel }}

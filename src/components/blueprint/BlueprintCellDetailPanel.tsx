@@ -534,7 +534,7 @@ function BlueprintCellDetailPanelBody() {
   }, [clearSelection, isOpen])
 
   // Mirror "the ledger is showing" into the compare store so surfaces with
-  // no React path to this panel (get_ui_state, the strip) can read it.
+  // no React path to this panel (get_ui_state, compare navigation) can read it.
   const ledgerShowing = panelState?.surface === 'differences'
   useEffect(() => {
     setCompareLedgerOpen(ledgerShowing)
@@ -989,7 +989,12 @@ function BlueprintCellDetailPanelBody() {
           >
             {draft.layerName}
           </span>
-          <CellPanelEditor cellId={null} draft={draft} onDone={clearSelection} />
+          <CellPanelEditor
+            cellId={null}
+            draft={draft}
+            layerName={draft.layerName}
+            onDone={clearSelection}
+          />
         </div>
         {/* The editor portals Create/Cancel here — panel-level footing. */}
         <div
@@ -1202,6 +1207,7 @@ function BlueprintCellDetailPanelBody() {
     <TechPillFace
       item={techDetailLabel!}
       compact
+      inline
       className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
     />
   ) : null
@@ -1339,6 +1345,7 @@ function BlueprintCellDetailPanelBody() {
       {editingCell ? (
         <CellPanelEditor
           cellId={resolvedCellId}
+          layerName={selection.layerName}
           // Never seed the field with the title wearing a description's
           // clothes — only prose that actually says more than the cell text.
           fallbackDescription={

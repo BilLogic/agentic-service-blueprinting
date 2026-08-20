@@ -25,8 +25,9 @@ export const PILL_CELL_LAYER_ROLES = [
 /** Roles rendered as picture rows instead of text cells. */
 export const VISUAL_LAYER_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
 
-export const VISUAL_ROW_MIN_HEIGHT = 132
-export const VISUAL_ROW_MIN_HEIGHT_COMPACT = 108
+/** 192px inner face at 4:3 plus the service/compare shell's vertical padding. */
+export const VISUAL_ROW_MIN_HEIGHT = 176
+export const VISUAL_ROW_MIN_HEIGHT_COMPACT = 168
 
 /** Max height for the visual cell button inside a swimlane row (excludes shell padding). */
 export function getVisualCellButtonMaxHeight(compact = false): number {
@@ -351,113 +352,15 @@ export const BLUEPRINT_ARTBOARD_WIDTH_BUFFER = 32
 
 /** Outer gutter around each cell (Tailwind p-3 ≈ 12px per side). */
 export const BLUEPRINT_CELL_GUTTER = 12
-/** Default cell inner content padding (px-4 py-3). */
-export const BLUEPRINT_CELL_INNER_X = 16
-export const BLUEPRINT_CELL_INNER_Y = 12
 
-const PILL_ITEM_HEIGHT = 44
-const PILL_ITEM_HEIGHT_COMPACT = 34
+/** Stable canvas face for narrative cells; complete prose lives in detail. */
+export const NARRATIVE_CELL_HEIGHT = 128
+export const NARRATIVE_CELL_HEIGHT_COMPACT = 96
+/** Stable technology face; two label lines fit without changing row geometry. */
+export const PILL_ITEM_HEIGHT = 52
+export const PILL_ITEM_HEIGHT_COMPACT = 42
 const PILL_STACK_GAP = 10
 const PILL_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
-
-/** Compare / service grid cell inner width — the box TEXT actually wraps
- * in: column minus the shell's padding AND the cell button's own chrome
- * (its `px-4` + borders). Counting only the shell (todo 026) overstated
- * the text box by ~34px, so the line-count estimate undershot and tall
- * cells overflowed their fixed row tracks. */
-export function getBlueprintCellInnerWidth(compact = false): number {
-  const shellPadX = compact ? 24 : 28
-  const buttonChromeX = compact ? 26 : 34
-  return STEP_COLUMN_WIDTH - shellPadX - buttonChromeX
-}
-
-/** East-Asian full-width codepoints render ~2× the width of a Latin glyph.
- * Counting them as 1 char makes the line-count estimate undershoot for CJK
- * content, so tall cells overflow their fixed row track and collide with the
- * divider line below. */
-function isWideCodePoint(cp: number): boolean {
-  return (
-    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
-    (cp >= 0x2e80 && cp <= 0x303e) || // CJK radicals, Kangxi, CJK punctuation
-    (cp >= 0x3041 && cp <= 0x33ff) || // Hiragana, Katakana, CJK symbols
-    (cp >= 0x3400 && cp <= 0x4dbf) || // CJK Ext A
-    (cp >= 0x4e00 && cp <= 0x9fff) || // CJK Unified
-    (cp >= 0xa000 && cp <= 0xa4cf) || // Yi
-    (cp >= 0xac00 && cp <= 0xd7a3) || // Hangul Syllables
-    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
-    (cp >= 0xfe30 && cp <= 0xfe4f) || // CJK Compatibility Forms
-    (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth Forms
-    (cp >= 0xffe0 && cp <= 0xffe6) ||
-    (cp >= 0x20000 && cp <= 0x3fffd) // CJK Ext B+
-  )
-}
-
-/** Display width of a line in half-width units (CJK glyphs count as 2). */
-function lineDisplayWidth(line: string): number {
-  let width = 0
-  for (const ch of line) {
-    width += isWideCodePoint(ch.codePointAt(0) ?? 0) ? 2 : 1
-  }
-  return width
-}
-
-/** Greedy word-wrap simulation: words move to the next line whole, so a
- * paragraph costs 15-20% more lines than `chars ÷ chars-per-line` claims —
- * the naive division was one of the three undershoots that let tall cells
- * cross their lane band (todo 026). Words longer than a line fill whole
- * lines, matching the browser's overflow-wrap behaviour. */
-function countWrappedLines(line: string, charsPerLine: number): number {
-  const words = line.split(/\s+/).filter(Boolean)
-  if (words.length === 0) return 1
-  let lines = 1
-  let used = 0
-  for (const word of words) {
-    let width = lineDisplayWidth(word)
-    const separator = used > 0 ? 1 : 0
-    if (used + separator + width <= charsPerLine) {
-      used += separator + width
-      continue
-    }
-    lines += 1
-    while (width > charsPerLine) {
-      width -= charsPerLine
-      lines += 1
-    }
-    used = width
-  }
-  return lines
-}
-
-/** Line count including soft-wrap at the blueprint column width. */
-export function getEffectiveLineCount(content: string, compact = false): number {
-  const innerWidth = getBlueprintCellInnerWidth(compact)
-  // 8px average glyph (space included) for text-sm — deliberately a shade
-  // conservative: the estimate is a FLOOR under overflow-visible rows, and
-  // an undershoot bleeds into the lane below while an overshoot just airs
-  // the row out (todo 026, measured against the real 257-char worst case).
-  const charWidth = compact ? 6.5 : 8
-  const charsPerLine = Math.max(6, Math.floor(innerWidth / charWidth))
-
-  return content.split('\n').reduce((total, line) => {
-    if (line.length === 0) return total + 1
-    return total + countWrappedLines(line, charsPerLine)
-  }, 0)
-}
-
-function getTextBlockMinHeight(lineCount: number, compact = false): number {
-  const base = compact ? BLUEPRINT_ROW_MIN_HEIGHT : BLUEPRINT_ROW_MIN_HEIGHT - 16
-  if (lineCount <= 1) return base
-
-  // Non-compact cells render text-sm at leading-relaxed: 14px × 1.625 =
-  // 22.75px per line, not the 20px this assumed (todo 026 — the second
-  // half of the undershoot that let tall cells cross their lane band).
-  const lineHeight = compact ? 14 : 22.75
-  const innerPadding = compact ? 20 : 24
-  const wrappedHeight =
-    BLUEPRINT_CELL_GUTTER * 2 + innerPadding + lineCount * lineHeight
-
-  return Math.max(base, wrappedHeight)
-}
 
 export function getMaxPillCountInLayer(
   data: BlueprintData,
@@ -491,20 +394,6 @@ export function getPillStackMinHeight(
   )
 }
 
-function getMaxLineCountInLayer(
-  data: BlueprintData,
-  layerId: string,
-  compact = false,
-): number {
-  let max = 1
-  for (const cell of data.cells) {
-    if (cell.layer_id === layerId && cell.content?.trim()) {
-      max = Math.max(max, getEffectiveLineCount(cell.content, compact))
-    }
-  }
-  return max
-}
-
 /** Minimum inner content height for a single cell (excludes compare shell padding). */
 export function getCellContentMinHeight(
   layer: BlueprintLayer,
@@ -526,18 +415,19 @@ export function getCellContentMinHeight(
     )
   }
 
-  const lineCount = Math.max(1, getEffectiveLineCount(content, compact))
-  return getTextBlockMinHeight(lineCount, compact)
+  return compact ? NARRATIVE_CELL_HEIGHT_COMPACT : NARRATIVE_CELL_HEIGHT
 }
 
 function getDefaultCellMinHeight(
-  layer: BlueprintLayer,
-  data: BlueprintData,
+  _layer: BlueprintLayer,
+  _data: BlueprintData,
   compact = false,
 ): number {
-  const base = compact ? BLUEPRINT_ROW_MIN_HEIGHT : BLUEPRINT_ROW_MIN_HEIGHT - 16
-  const lineCount = getMaxLineCountInLayer(data, layer.id, compact)
-  return Math.max(base, getTextBlockMinHeight(lineCount, compact))
+  const faceHeight = compact
+    ? NARRATIVE_CELL_HEIGHT_COMPACT
+    : NARRATIVE_CELL_HEIGHT
+  const shellPadding = compact ? 24 : 32
+  return faceHeight + shellPadding
 }
 
 export function getLayerRowMinHeight(

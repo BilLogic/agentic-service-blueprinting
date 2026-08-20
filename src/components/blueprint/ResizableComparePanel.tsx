@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -62,13 +63,16 @@ type ResizableComparePanelProps = {
    * Set only for a focused scenario whose path selection is expanded past
    * its default — the one case the exclusion exists for, where a comparison
    * opened inside a focused panel would otherwise reach every dimmed
-   * neighbour through the row's `Math.max`. Focus ALONE must not set it:
-   * excluding a panel changes the row height, and a row height that moves on
-   * focus is a geometry change the camera pays for.
+   * neighbour through the row's `Math.max` (six untouched panels once grew
+   * from 2218px to 4250px each). Focus ALONE must not set it: excluding a
+   * panel changes the row height, and a row height that moves on focus is a
+   * geometry change the camera pays for.
    *
-   * A distinct attribute rather than a reading of `data-canvas-focus-active`,
-   * because that attribute is also set on the phase SECTION — a `closest()`
-   * for it matched every panel in a focused row, not the focused one.
+   * This is a distinct attribute rather than a reading of
+   * `data-canvas-focus-active` because that attribute is also set on the
+   * phase SECTION. A `closest()` for it matched every panel in a focused
+   * row, not the focused one — which silently disabled the row measurement
+   * entirely and dropped the row to its estimate.
    */
   excludeFromRowHeight?: boolean
   className?: string
@@ -130,7 +134,25 @@ export function ResizableComparePanel({
     )
   }, [fitContentKey, defaultWidth, defaultHeight, lockHeight])
 
-  useEffect(() => {
+  /*
+    The first measurement after a content change runs BEFORE paint.
+
+    `targetHeight` below is a `Math.max` of the estimate and the last
+    measurement, so the panel answers growth in the commit that causes it
+    (the estimate rises immediately) but could only answer SHRINKAGE once a
+    new measurement arrived — until then the stale, larger measurement kept
+    winning the max. As a passive effect that measurement landed a paint
+    late, which is why the two directions did not behave alike: adding a
+    path resized the panel at once, removing one left it at the old size for
+    a frame and then snapped. The camera fit, which waits for this size to
+    settle, inherited the asymmetry exactly.
+
+    A layout effect measures and re-renders inside the same frame as the
+    commit, so both directions are one visual step. The ResizeObserver stays
+    asynchronous — it is for growth that happens later (images, fonts), not
+    for the change we already know about.
+  */
+  useLayoutEffect(() => {
     const element = contentMeasureRef.current
     if (!element) return
 
@@ -235,6 +257,22 @@ export function ResizableComparePanel({
         height: size.height,
       }
 
+      /*
+        The drag is bound to ONE pointer id, and its teardown is idempotent
+        and reachable from three directions.
+
+        Every listener here used to be unfiltered, so any pointerup from any
+        pointer ran the teardown — and `releasePointerCapture` THROWS
+        `NotFoundError` for an id this button never captured, which skipped
+        both `removeEventListener` calls that followed it. Put a second
+        finger on the board mid-drag (the viewport turns it into a pinch and
+        captures it), lift that finger first, and `onMove` stays on `window`
+        for the rest of the session holding a stale `resizeStart`: the panel
+        then resizes itself on any later mouse move, with no button held.
+        `pointercancel` (an OS edge swipe, the notification shade) and an
+        unmount mid-drag stranded it the same way, by never firing a
+        pointerup at all.
+      */
       const onMove = (moveEvent: PointerEvent) => {
         // Id-filtered: a second finger landing anywhere on the page also
         // emits pointermove, and an unfiltered handler drove the drag from
@@ -348,9 +386,9 @@ export function ResizableComparePanel({
   return (
     <div
       className={cn(
-        'relative shrink-0 transition-[opacity,filter] duration-(--motion-fade) ease-out',
-        dimmed &&
-          'opacity-30 saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
+        'relative shrink-0 transition-opacity duration-(--motion-camera) ease-camera',
+        dimmed && 'opacity-30',
+        dimmed && navigable && 'hover:opacity-70 focus-within:opacity-70',
         className,
       )}
       data-focus-slide-id={focusSlideId}
@@ -423,9 +461,28 @@ export function ResizableComparePanel({
       {chromeBar}
       <div
         ref={scrollContainerRef}
-        className={cn(
-          'min-h-0 flex-1 overflow-hidden',
-        )}
+        /*
+          The board is ALWAYS top-aligned in its panel. Never centred.
+
+          A height-locked panel belongs to a phase row, and the whole point
+          of that row is that its boards are read across: the step header
+          row and the lane rail have to sit at the same height in every
+          panel or the row stops being one readable object. Centring each
+          board inside its own container independently is precisely what
+          breaks that — the shorter boards drift down and their headers no
+          longer line up with their neighbours'.
+
+          There was a `justify-center` here guarded on
+          `contentFitsWithPadding && !lockHeight`, and since that flag is
+          itself defined as `lockHeight && …`, the condition was never true.
+          I removed the contradiction and let the centring apply, which is
+          how the headers came adrift and how the padding above each board
+          started changing as the measurement settled (the flag flips while
+          it does). The condition was dead in the direction that was right;
+          there is no case where centring is correct, so it is gone rather
+          than re-guarded.
+        */
+        className={cn('min-h-0 flex-1 overflow-hidden')}
         style={{
           paddingTop: ARROW_VIEWPORT_PAD + scrollInsetY,
           paddingLeft: ARROW_VIEWPORT_PAD,

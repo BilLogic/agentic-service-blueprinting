@@ -1,3 +1,9 @@
+import {
+  LAYER_COLUMN_WIDTH,
+  STEP_COLUMN_GAP,
+  STEP_COLUMN_WIDTH,
+} from '@/lib/blueprintLayout'
+import { COMPARE_STEP_HEADER_HEIGHT } from '@/lib/sideBySideCompareLayout'
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 
 /**
@@ -18,6 +24,7 @@ export function CompareStepHeaderRow({
       {tracks.map((track, trackIndex) => (
         <div
           key={track.key}
+          data-blueprint-column-header=""
           // `relative z-[1]`: when a path frame extends up to wrap this
           // row (single-path stacked, merged), the frame's opaque fill is
           // an absolutely-positioned later sibling — without a stacking
@@ -26,7 +33,7 @@ export function CompareStepHeaderRow({
           style={{ gridColumn: trackIndex + 2, gridRow: 1 }}
         >
           <span
-            className="truncate text-xs font-medium text-muted-foreground"
+            className="relative truncate text-xs font-medium text-muted-foreground"
             title={track.label}
           >
             {track.label}
@@ -34,5 +41,51 @@ export function CompareStepHeaderRow({
         </div>
       ))}
     </>
+  )
+}
+
+/** Single-path equivalent of the compare step axis; geometry never depends on focus. */
+export function ServiceStepHeaderRow({
+  steps,
+  playGutter = 0,
+}: {
+  steps: readonly { id: string; name: string }[]
+  playGutter?: number
+}) {
+  return (
+    <div
+      className="flex shrink-0 items-stretch"
+      style={{ height: COMPARE_STEP_HEADER_HEIGHT }}
+      data-blueprint-column-header-row=""
+    >
+      <div
+        aria-hidden
+        className="shrink-0"
+        style={{ width: LAYER_COLUMN_WIDTH + playGutter }}
+      />
+      {steps.map((step, index) => (
+        <div key={step.id} className="flex shrink-0 items-end justify-center">
+          <div
+            data-blueprint-column-header=""
+            className="relative flex min-w-0 items-end justify-center overflow-hidden rounded-md px-2 pb-1.5"
+            style={{ width: STEP_COLUMN_WIDTH }}
+          >
+            <span
+              className="relative truncate text-xs font-medium text-muted-foreground"
+              title={step.name}
+            >
+              {step.name}
+            </span>
+          </div>
+          {index < steps.length - 1 ? (
+            <div
+              aria-hidden
+              className="shrink-0"
+              style={{ width: STEP_COLUMN_GAP }}
+            />
+          ) : null}
+        </div>
+      ))}
+    </div>
   )
 }

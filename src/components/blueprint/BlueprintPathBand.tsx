@@ -29,10 +29,6 @@ import {
 } from '@/lib/blueprintTheme'
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
-  COMPARE_PATH_SECTION_BOTTOM_INSET,
-  COMPARE_PATH_SECTION_INSET,
-  COMPARE_PATH_SECTION_TOP_INSET,
-  COMPARE_STACKED_HEADER_GAP,
   type BlueprintLabelRowSpec,
   getComparePathArrowData,
   resolveBlueprintLayer,
@@ -79,8 +75,6 @@ type BlueprintPathBandProps = {
   phaseName?: string
   showPathTypeBadge?: boolean
   fillSwimlaneHeight?: boolean
-  /** Extend the section frame upward to wrap the step-header row (px). */
-  frameExtraTopInset?: number
 }
 
 /**
@@ -95,7 +89,6 @@ export function BlueprintPathBand({
   rows,
   arrangement,
   compact,
-  frameExtraTopInset,
   scrollContainerRef,
   scenarioName,
   phaseName,
@@ -164,28 +157,13 @@ export function BlueprintPathBand({
         blueprint={blueprint}
         compact={compact}
         showPathTypeBadge={showPathTypeBadge}
-        extraTopInset={frameExtraTopInset}
+        excludeLabelRail={arrangement.kind === 'row'}
       />
       {arrangement.kind === 'row' ? (
         <>
           {/* The label rail re-emits per band: every band names its own
               lanes, in DOM order matching the path order. */}
-          {/* Bleed the rail to the frame's own edges: up through the gap
-              under the header (wrapped frames) or the plain top inset, and
-              down through the bottom inset — no white L-gaps inside the
-              frame. */}
-          <BlueprintStickyLabelBackdrop
-            rowCount={rows.length}
-            bleedTop={
-              frameExtraTopInset
-                ? COMPARE_STACKED_HEADER_GAP
-                : COMPARE_PATH_SECTION_TOP_INSET - 3
-            }
-            // Inset minus the frame's border (≤3px): the rail meets the
-            // border's inner edge, never paints over it.
-            bleedBottom={COMPARE_PATH_SECTION_BOTTOM_INSET - 3}
-            bleedLeft={COMPARE_PATH_SECTION_INSET - 3}
-          />
+          <BlueprintStickyLabelBackdrop rowCount={rows.length} />
           {rows.map((row, rowIndex) =>
             row.kind === 'interaction' ||
             row.kind === 'visibility' ||

@@ -1,7 +1,8 @@
 import { Fragment, memo, useCallback, useId, useMemo, useRef } from 'react'
 import {
+  getScenarioBlueprintPanelHeight,
   getScenarioSwimlaneBodyHeight,
-  ScenarioBlueprintPanel,
+  ScenarioBlueprintPanelBody,
 } from '@/components/blueprint/ScenarioBlueprintPanel'
 import { CanvasEmptyState } from '@/components/editor/CanvasEmptyState'
 import { useEditor } from '@/contexts/EditorContext'
@@ -12,6 +13,7 @@ import type { PathListItem } from '@/lib/pathSelection'
 import { COMPARE_MIN_PANEL_HEIGHT, getPanelHeightFromSwimlaneBody } from '@/lib/sideBySideCompareLayout'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { OVERVIEW_SCENARIO_GAP } from '@/lib/overviewLayout'
+import { resolveScenarioPanelHeight } from '@/lib/phaseRowPanelHeight'
 import { SUBSLIDE_GAP } from '@/lib/slideLayout'
 import {
   getSlideDisplayLabel,
@@ -156,8 +158,8 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
     for *one* scenario, and a phase-level 'stacked' silently clobbering
     it is exactly how a toggle looks broken while its state is correct.
 
-    'merged' coerces to 'stacked' here: it is a focused-scenario mode, and
-    overview rows render only the horizontal arrangement.
+    The resolved mode is passed through at every camera level. Overview and
+    focus must render the same grid; navigation changes framing, not topology.
   */
   const resolveViewType = useCallback(
     (scenario: NavItem): SlideViewType => {
@@ -166,7 +168,7 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
         perScenario !== 'stacked'
           ? perScenario
           : (displayViewTypeProp ?? perScenario)
-      return resolved === 'merged' ? 'stacked' : resolved
+      return resolved
     },
     [displayViewTypeProp, getScenarioDisplayViewType],
   )
@@ -248,7 +250,16 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
       })
     })
 
-    return Math.max(0, ...heights)
+    // Undefined, not 0 — and zero is reachable two ways, not one. The row
+    // can be empty (its only scenario is the focused one), and it can be
+    // non-empty but measure zero throughout, which happens when none of this
+    // phase's path keys match the global selection (see the cross-scenario
+    // naming note in PathSelectionContext). Either way a shared body height
+    // of zero would pin a panel flat rather than say "there is nothing to
+    // align to" — and `sharedPanelHeight` below has always guarded `> 0`, so
+    // anything less here makes the two memos disagree about what zero means.
+    const tallest = Math.max(0, ...heights)
+    return tallest > 0 ? tallest : undefined
   }, [
     alignPanelHeights,
     rowHeightScenarios,
@@ -259,20 +270,33 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
   ])
 
   const sharedPanelHeight = useMemo(() => {
-    if (!alignPanelHeights || sharedSwimlaneBodyHeight === undefined) {
-      return undefined
-    }
-
-    // No selected paths (or no content) — keep the row empty, don't force a
-    // minimum gray panel height.
-    if (sharedSwimlaneBodyHeight === 0) {
-      return undefined
-    }
-
-    return getPanelHeightFromSwimlaneBody(sharedSwimlaneBodyHeight, {
-      lockHeight: true,
+    if (!alignPanelHeights) return undefined
+    const heights = rowHeightScenarios.map((scenario) => {
+      const paths = pathsByScenario.get(scenario.id) ?? []
+      const selectedPathIds = getSelectedPathIdsProp
+        ? getSelectedPathIdsProp(scenario.id, paths)
+        : defaultSelectedPathIds(paths)
+      return getScenarioBlueprintPanelHeight({
+        displayViewType: resolveViewType(scenario),
+        paths,
+        selectedPathIds,
+        blueprintsByPathId,
+        // Aligned row panels are height-locked: no resize handle, so no
+        // handle chrome in the placeholder either.
+        scrollChrome: { lockHeight: alignPanelHeights },
+      })
     })
-  }, [alignPanelHeights, sharedSwimlaneBodyHeight])
+    const height = Math.max(0, ...heights)
+    return height > 0 ? height : undefined
+  }, [
+    alignPanelHeights,
+    rowHeightScenarios,
+    pathsByScenario,
+    blueprintsByPathId,
+    getSelectedPathIdsProp,
+    resolveViewType,
+  ])
+
 
   /*
     The focused panel's OWN floor, so that excluding it above cannot shrink
@@ -370,12 +394,6 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
     focusedScenarioExpanded && focusedScenarioId === scenarioId
       ? focusedPanelHeight
       : rowPanelHeight
-  const swimlaneBodyFor = (scenarioId: string) =>
-    focusedScenarioExpanded &&
-    focusedScenarioId === scenarioId &&
-    focusedSwimlaneBodyFloor !== undefined
-      ? Math.max(sharedSwimlaneBodyHeight ?? 0, focusedSwimlaneBodyFloor)
-      : sharedSwimlaneBodyHeight
 
   if (scenarios.length === 0) {
     // Scenario creation lives on the phase row's `+` in the sidebar (the row
@@ -472,17 +490,12 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
     >
       {visibleScenarioSelections.map(({ scenario, paths, selectedPathIds }, index) => {
         const label = getSlideDisplayLabel(scenario, slides)
-        /*
-          The focused scenario leaves the overview's shared-row contract:
-          without the locked height / phase-uniform view type it becomes the
-          FOCUSED SCENARIO VIEW, where compared paths stack as vertical
-          bands. Its dimmed siblings keep the horizontal row layout.
-        */
+        const scenarioViewType = resolveViewType(scenario)
         const isFocusedScenario = focusedScenarioId === scenario.id
 
         return (
           <Fragment key={scenario.id}>
-            <ScenarioBlueprintPanel
+            <ScenarioBlueprintPanelBody
               slide={scenario}
               slides={slides}
               paths={paths}
@@ -503,18 +516,22 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
                 restarting from a moving camera drops to zero velocity,
                 which is the lurch.
 
-                `displayViewType` deliberately keeps its focus branch: this
-                kit coerces 'merged' to 'stacked' for overview rows (see
-                `resolveViewType`), so a focused merged scenario still needs
-                the panel's own resolution. That is a rendering policy, not
-                a geometry one.
+                Every scenario takes the same `displayViewType` resolution,
+                focused or not — the arrangement no longer forks on focus,
+                so there is nothing for a focus branch to protect.
               */
               lockedPanelHeight={panelHeightFor(scenario.id)}
-              fixedSwimlaneBodyHeight={swimlaneBodyFor(scenario.id)}
-              lockPanelHeight={alignPanelHeights}
-              displayViewType={
-                isFocusedScenario ? undefined : resolveViewType(scenario)
+              fixedSwimlaneBodyHeight={
+                scenarioViewType === 'single'
+                  ? resolveScenarioPanelHeight({
+                      rowPanelHeight: sharedSwimlaneBodyHeight,
+                      ownHeightFloor: focusedSwimlaneBodyFloor,
+                      isFocused: isFocusedScenario && focusedScenarioExpanded,
+                    })
+                  : undefined
               }
+              lockPanelHeight={alignPanelHeights}
+              displayViewType={scenarioViewType}
               excludeFromRowHeight={
                 isFocusedScenario && focusedScenarioExpanded
               }
@@ -525,6 +542,7 @@ export const PhaseScenarioOverviewBody = memo(function PhaseScenarioOverviewBody
                   focusedScenarioId !== scenario.id)
               }
               focusActive={focusedScenarioId === scenario.id}
+              getScenarioDisplayViewType={getScenarioDisplayViewType}
             />
 
             {renderScenarioSeparator(index, visibleScenarioSelections.length)}
