@@ -1,16 +1,16 @@
-# Layer Roles
+# Lane Roles
 
 The semantic contract between blueprint content and rendering. Source of
-truth: `src/lib/layerRoles.ts` (vocabulary + legacy shim) and
+truth: `src/lib/laneRoles.ts` (vocabulary + legacy shim) and
 `src/lib/blueprintLayout.ts` (rendering + divider-line rules).
 
 ## The split: display name vs role
 
-A layer has two identities:
+A lane has two identities:
 
-- `display_name` (`layers.name`) — free-form label in **any language**
-  ("现场技术员", "Field Crew", "Compliance Review").
-- `role` (`layers.layer_role`) — a stable semantic key that drives rendering.
+- `display_name` (`lanes.name`) — free-form label in **any language**
+  ("现场技术员", "Field Technician", "Compliance Review").
+- `role` (`lanes.lane_role`) — a stable semantic key that drives rendering.
   `null`/absent = plain generic swimlane.
 
 Never infer semantics from the display name. That was the old magic-name
@@ -41,13 +41,6 @@ positions:
 - **Internal interaction line**: after `backstage_actions` only when a
   `support_systems` lane comes next (marks the hand-off to support).
 
-Rendered labels use the service-blueprint canon in full — `LINE OF
-INTERACTION` / `LINE OF VISIBILITY` / `LINE OF INTERNAL INTERACTION` —
-never shortened forms ("internal interaction" alone reads as a lane, not
-a boundary). The lane-label rail must be sized for the longest canonical
-divider label, not just the lane names (uno settled on 208px after 192px
-clipped them).
-
 No role present → no line. That is valid: an internal-ops blueprint with no
 customer lane renders as plain swimlanes with no interaction line.
 **No role is a mandatory spine** — assign `customer_actions` to whichever
@@ -67,22 +60,22 @@ elicitation), or to none.
 ## Custom roles
 
 The vocabulary is extensible. Org-defined roles (e.g. `physical_evidence`,
-`compliance_review`, `partner_ops`) are legal `layer_role` values and render
+`compliance_review`, `partner_ops`) are legal `lane_role` values and render
 as generic swimlanes — same as `null`, but the role key preserves the
 org's semantic intent in data, keeps crosswalks reusable, and lets future
 template versions attach rendering to it. Prefer a named custom role over
 `null` whenever the lane means something.
 
 All layout logic is role-agnostic where it can be: e.g. backward in-lane
-loop corridors are computed from trigger geometry for ANY lane, custom
+loop corridors are computed from dependency geometry for ANY lane, custom
 roles included (`blueprintLayerHasBackwardInLaneLoop`).
 
 ## Legacy name shim
 
-Content that predates `layer_role` (rows with null role) is resolved through
-`LEGACY_NAME_TO_ROLE` in `src/lib/layerRoles.ts`: exact display names like
-`'Front Stage Tech'`, `'Customer Actions'`, `'Visual'` map to roles at
-render time. The shim is for legacy data
+Content that predates `lane_role` (rows with null role) is resolved through
+`LEGACY_NAME_TO_ROLE` in `src/lib/laneRoles.ts`: exact display names like
+`'Front Stage Tech'`, `'Customer Actions'`, `'Visual'` map to roles at render
+time; a deployment adds its own spine actors to that map. The shim is for legacy data
 only — **new IR must always set `role` explicitly** and never rely on
 name matching. The validator warns on near-miss names that look like they
 wanted a role (`'Frontstage Tech'`, `'前台技术'` → "did you mean

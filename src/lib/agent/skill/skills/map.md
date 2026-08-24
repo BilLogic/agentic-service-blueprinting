@@ -72,7 +72,7 @@ these, which are where the system actually breaks**:
 
 - ⚠ **REQUIRED — validate before import.** Run `scripts/validate_ir.py` and
   require exit 0 before any adapter runs. It catches what the DB trigger
-  would abort mid-import (cells without path_steps, cross-path triggers,
+  would abort mid-import (cells without path_steps, cross-path dependencies,
   duplicate columns, unknown roles).
 - ⚠ **REQUIRED — never import unsigned IR.** The sign-off content hash in
   `blueprint-workspace.json` must match the current IR file; on mismatch,
@@ -128,7 +128,7 @@ definition needed.
 | Executing a phase | `skills/map/references/ingest-playbook.md` / `cocreate-playbook.md` / `translate-playbook.md` / `review-import-playbook.md` |
 | Running the co-creation conversation | `skills/map/references/elicitation-protocol.md` (question script + right-sizing branches) |
 | Writing or checking IR structure | `references/ir-schema.json`; model background in `references/data-model.md` |
-| Assigning swimlane roles / divider lines | `references/layer-roles.md` |
+| Assigning swimlane roles / divider lines | `references/lane-roles.md` |
 | Drafting multiple phases consistently (customer spine per phase, shared actor labels) | `references/lane-vocabulary.md` |
 | Building a translation mapping | `skills/map/references/crosswalk-schema.json` |
 | Anything touching an import target | `references/adapter-contract.md` |

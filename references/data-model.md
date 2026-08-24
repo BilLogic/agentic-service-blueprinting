@@ -6,7 +6,7 @@ derived-layer migrations (`20260729120000_derived_layer.sql`,
 `20260730090000_derived_layer_grants_hardening.sql`,
 `20260803001000_slices_origin_allows_human.sql`) and the authoring
 migrations (`20260818000000_authoring_foundation.sql` — provenance
-`origin` columns, `cells.cell_key` identity, `slot_position`,
+`origin` columns, `cells.cell_key` identity, `position`,
 `deleted_structure`, direct-column grants;
 `20260818001000_authoring_operations.sql` — the `SECURITY DEFINER` RPCs
 that are the only sanctioned write path for structure;
@@ -29,14 +29,14 @@ and stable keys in place of UUIDs.
 - Re-import semantics
 - Ordering fields
 - Working precedent
-- Cell slots (`slot_position`)
+- Cell slots (`position`)
 - Derived layer: slices, findings, evidence, propositions
 - Spec fields on IR-owned tables
 
 ## Hierarchy
 
 ```
-service_lifecycles → phases → service_scenarios → paths → {layers, cells, cell_triggers}
+services → phases → scenarios → paths → {lanes, cells, cell_dependencies}
                                                 → steps (scenario-scoped)
                                         paths ⇄ steps via path_steps (column order)
 ```
@@ -45,70 +45,78 @@ service_lifecycles → phases → service_scenarios → paths → {layers, cells
 
 ```mermaid
 erDiagram
-  service_lifecycles ||--o{ phases : "has many"
-  phases ||--o{ service_scenarios : "has many"
+  services ||--o{ phases : "has many"
+  phases ||--o{ scenarios : "has many"
   phases |o--o| phases : "loops_to_phase_id"
-  service_scenarios ||--o{ paths : "has many"
-  service_scenarios ||--o{ steps : "has many"
+  scenarios ||--o{ paths : "has many"
+  scenarios ||--o{ steps : "has many"
   paths ||--o{ path_steps : "has many"
   steps ||--o{ path_steps : "has many"
-  paths ||--o{ layers : "has many"
+  paths ||--o{ lanes : "has many"
   paths ||--o{ cells : "has many"
-  layers ||--o{ cells : "has many"
+  lanes ||--o{ cells : "has many"
   steps ||--o{ cells : "has many"
-  cells ||--o{ cell_triggers : "source"
-  cells ||--o{ cell_triggers : "target"
+  cells ||--o{ cell_dependencies : "source"
+  cells ||--o{ cell_dependencies : "target"
 
-  service_lifecycles { uuid id PK  text name  text description }
-  phases { uuid id PK  uuid service_lifecycle_id FK  text name  text description  int order_position  uuid loops_to_phase_id FK "optional self-reference" }
-  service_scenarios { uuid id PK  uuid phase_id FK  text name  text description  int order_position  text view_type "DB tokens: single | side-by-side | integrated (UI: single | stacked | merged)" }
-  paths { uuid id PK  uuid service_scenario_id FK  text name  text description  text note "optional, e.g. parallel-scenario context"  text path_type "happy | unhappy | exception | alternative" }
-  steps { uuid id PK  uuid service_scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
-  path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int column_position "unique per (path_id, column_position)" }
-  layers { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text layer_role "semantic role key; null = generic swimlane"  int row_position }
-  cells { uuid id PK  uuid path_id FK  uuid layer_id FK "unique (layer_id, step_id, slot_position)"  uuid step_id FK  int slot_position "0 default; tech-lane touchpoints occupy 0..n"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text description "optional detail-panel text"  jsonb links "array of {type, label, url?, description?, picture?, pictures?}" }
-  cell_triggers { uuid id PK  uuid source_cell_id FK "unique (source, target, kind); source != target"  uuid target_cell_id FK  text kind "trigger | needs"  text label "optional edge label, e.g. a channel tag"  text note "optional why-line (panel dependencies tab)" }
+  services { uuid id PK  text name  text summary }
+  business_model { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
+  phases { uuid id PK  uuid service_id FK  text name  text summary  text business_impact  text operational_requirements  int position  uuid loops_to_phase_id FK "optional self-reference" }
+  scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text view_type "single | stacked — merged is session-only, never stored" }
+  paths { uuid id PK  uuid scenario_id FK  text name "the CONDITION that routes you here, never the activity — the scenario already said that"  text summary "when this route applies"  text note "the author's aside: open questions, provenance, working state"  text path_type "happy | variant | exception"  entity_status status }
+  steps { uuid id PK  uuid scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
+  path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int position "unique per (path_id, position)" }
+  lanes { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text lane_role "semantic role key; null = generic swimlane"  int position  text owner_team "from the closed list in lane-vocabulary.md; NULL on actor and storyboard lanes"  text kpis  text tools  uuid stakeholder_id FK }
+  stakeholders { uuid id PK  uuid service_id FK  text name  text kind "recipient | staff | partner | provider | team"  uuid parent_id FK "sub-teams roll up, e.g. Marketing to Design"  text note  text aliases }
+  cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status  jsonb links "array of {type, label, url?, description?, picture?, pictures?}" }
+  cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "leads_to = makes the other happen, drawn | enables = must already be true, never drawn"  text label  text note }
 ```
 
 ## Tables in brief
 
 | Table | Purpose | Notes |
 | --- | --- | --- |
-| `service_lifecycles` | Top container (one per blueprint deployment, usually) | |
-| `phases` | Lifecycle stages, ordered by `order_position` | `loops_to_phase_id` self-reference renders the lifecycle loop |
-| `service_scenarios` | The unit users navigate; owns steps and paths | `view_type` enum below |
+| `services` | Top container (one per blueprint deployment, usually) | |
+| `phases` | Service stages, ordered by `position` | `loops_to_phase_id` self-reference renders the lifecycle loop |
+| `scenarios` | The unit users navigate; owns steps and paths | `view_type` enum below |
 | `paths` | A journey variant within a scenario | `path_type` enum below; optional `note` |
 | `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps` |
-| `path_steps` | Which steps a path uses and in what column order | `column_position` unique per path |
-| `layers` | Swimlanes, per PATH (each path carries its own layer rows) | `name` free-form any language; `layer_role` semantic key (see `references/layer-roles.md`) |
-| `cells` | Grid content at (layer × step) on a path | `unique (layer_id, step_id, slot_position)` (slots below); `links` JSONB array; `content` newline-separated items render as pills on pill-role lanes; spec fields below |
-| `cell_triggers` | Directed cell → cell links | `kind` = `trigger` (temporal, canvas arrow) \| `needs` (functional dependency, panel only); optional `label`/`note`; unique `(source_cell_id, target_cell_id, kind)`, `source != target`, both cells on the same path |
-| `deleted_structure` | Delete-safety archive: every structural delete's payload, written in the same transaction as the cascade | `kind` (`scenario`\|`path`\|`lane`\|`step`\|`cell`), `label`, `payload` (natural-keyed rows in dependency order for replay-restore), `affected_slices`; readable by app roles, written only by the definer delete RPCs |
+| `path_steps` | Which steps a path uses and in what column order | `position` unique per path |
+| `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
+| `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `links` JSONB array; `content` newline-separated items render as pills on pill-role lanes |
+| `cell_dependencies` | Directed arrows cell → cell. `kind` is `leads_to` (this cell makes the other happen — drawn) or `enables` (the other must already be true — recorded, never drawn). Not inverses: "follows" is `leads_to` read from the other end, and a precondition causes nothing | Unique pair, `source != target`, both cells must be on the same path |
 
 ## Enums
 
-- `service_scenarios.view_type`: `single` \| `side-by-side` \| `integrated`
-  — these are the STORED (DB) tokens; the UI vocabulary is `single` \|
-  `stacked` \| `merged`, mapped in `src/lib/viewTypeVocabulary.ts`
+- `scenarios.view_type`: `single` \| `stacked` — ONE vocabulary. The
+  stored token is the token the UI names. (It used to store
+  `single | side-by-side | integrated` with a translation module; all rows held
+  `side-by-side` and the other two were unused, so the translation was deleted.)
   - `single`: one path at a time (path picker)
-  - `side-by-side` (UI: "Stacked"): labeled variant comparison — any two
-    labeled variants ("as designed" vs "reality" is just the default labeling)
-  - `integrated`: legacy value; persisted rows coerce to the plain Stacked
-    view on read. The UI's "Merged" canvas (the compared paths drawn as one
-    combined blueprint) is session-only and is never written back as
-    `integrated`
-- `paths.path_type`: `happy` \| `unhappy` \| `exception` \| `alternative`
-  — the CHECK constraint allows exactly these four; a labeled variant that
-  is none of them is expressed via `variant_label`, not a fifth type
-- `cell_triggers.kind`: `trigger` \| `needs` — trigger is temporal (source
-  sets off target, renders as a canvas arrow); needs is functional (source
-  requires target, renders in the cell panel only)
+  - `stacked`: labeled variant comparison — any two labeled variants
+    ("as designed" vs "reality" is just the default labeling)
+  - **`merged` is not storable.** The Merged canvas (compared paths drawn as
+    one combined blueprint) is a per-session display chosen in the compare
+    control. The CHECK constraint rejects it, and `create_scenario` refuses it
+    by name with a hint rather than coercing it
+- `paths.path_type`: `happy` \| `variant` \| `exception`. Exactly one `happy`
+  per scenario — the route things take when nothing intervenes. An `exception`
+  is a route taken because something went wrong; a `variant` is a different but
+  equally valid way through. Colour follows type (`happy` green, `exception`
+  red), so **the name must carry the condition**, not the type: `Under 12
+  hours`, not `Late call-off path`. A scenario with only one route names it
+  `Standard`.
+- `status` (the `entity_status` domain, shared by `cells.status` and
+  `paths.status`): `proposed` \| `planned` \| `built` \| `live` \| `at_risk` \|
+  `deprecated`. Anything other than `live` is not what happens today — say so
+  when you report it. This replaced a `maturity` column and a family of
+  `(Planned)` title prefixes; if you see either, the board is stale.
 
 ## Integrity trigger (why import order matters)
 
 The DB trigger `cells_validate_path_match` enforces, on every cell insert:
 
-1. `cells.path_id` must equal its layer's `layers.path_id`, and
+1. `cells.path_id` must equal its lane's `lanes.path_id`, and
 2. `(path_id, step_id)` must already exist in `path_steps`.
 
 A cell referencing a step the path never registered **aborts the import
@@ -118,42 +126,42 @@ before any adapter runs.
 ## ⚠ REQUIRED: import order
 
 ```
-paths → steps → path_steps → layers → cells → cell_triggers
+paths → steps → path_steps → lanes → cells → cell_dependencies
 ```
 
-(with `service_lifecycles → phases → service_scenarios` before all of the
+(with `services → phases → scenarios` before all of the
 above). Any other order violates FKs or the integrity trigger.
 
 ## Re-import semantics
 
 Scenario-scoped **delete-and-reinsert in one transaction**: delete the
-scenario's paths/steps (FK cascades remove path_steps, layers, cells,
-triggers), then insert fresh rows in the order above. Never
+scenario's paths/steps (FK cascades remove path_steps, lanes, cells,
+dependencies), then insert fresh rows in the order above. Never
 `on conflict do update` — rows removed from the IR must not survive as
 orphans. IDs are UUIDv5 from IR keys + locale (NFC-normalized), so identical
 IR re-imports produce identical rows. See `references/adapter-contract.md`.
 
 ## Ordering fields
 
-All sibling order is explicit integers: `phases.order_position`,
-`service_scenarios.order_position`, `path_steps.column_position` (per path),
-`layers.row_position` (per path). The frontend sorts by these — gaps are
+All sibling order is explicit integers: `phases.position`,
+`scenarios.position`, `path_steps.position` (per path),
+`lanes.position` (per path). The frontend sorts by these — gaps are
 harmless, duplicates are not (validator checks).
 
 ## Working precedent
 
-`scripts/generate_sample_blueprint.mjs` generates the template's sample content
+`scripts/generate_scale_fixture.mjs` generates the template's sample content
 (TS fallback module + `supabase/seed.sql`) from one source of truth with
 deterministic IDs and correct insert order — it is the pattern the IR
 generators follow.
 
-## Cell slots (`slot_position`)
+## Cell slots (`position`)
 
-`cells.slot_position int not null default 0` is a first-class column
+`cells.position int not null default 0` is a first-class column
 (since `20260818000000_authoring_foundation.sql`): a (lane, step) slot may
 hold several cells — one touchpoint per row in tech-role lanes — ordered
-by `slot_position`, with uniqueness widened to
-`(layer_id, step_id, slot_position)` (constraint
+by `position`, with uniqueness widened to
+`(lane_id, step_id, position)` (constraint
 `cells_layer_step_slot_unique`). The slot contract: single-cell slots sit
 at 0; tech-lane touchpoints occupy 0..n; the interactive `upsert_cell` RPC
 always addresses slot 0, so siblings are created only by dedicated
@@ -174,7 +182,7 @@ Design invariants: derived tables reference cells SOFTLY — `cell_ids
 uuid[]` paired 1:1 with `cell_keys text[]` (IR key-paths for orphan
 recovery), no FK — so the importer's scenario-scoped delete-and-reinsert
 never cascades into user-authored rows. The hard FK each table does carry
-is `service_lifecycle_id` (cascade): lifecycles are upserted, never
+is `service_id` (cascade): services are upserted, never
 deleted, by the importer, and for `evidence` that FK is the
 retention/deletion story for interview excerpts.
 "Assumption" is a derived state — a cell with zero evidence rows —
@@ -186,10 +194,10 @@ deliberately never stored.
 | `slice_items` | One frame of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider frame), `caption`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
 | `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_name`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_name + sorted-cell_keys hash + reason slug — audit-playbook §2) |
 | `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); restricted SELECT — excerpts may hold interview content |
-| `propositions` | One business-model record per lifecycle (PK = `service_lifecycle_id`) | `funding`, `pricing`, `delivery_cost`, `revenue_model`, `partners`; restricted SELECT |
+| `propositions` | One business-model record per service (PK = `service_id`) | `funding`, `pricing`, `delivery_cost`, `revenue_model`, `partners`; restricted SELECT |
 
 **Findings dedupe is DB-backed**: the partial unique index
-`findings_open_fingerprint_idx` on `(service_lifecycle_id, fingerprint)
+`findings_open_fingerprint_idx` on `(service_id, fingerprint)
 where status = 'open'` allows at most one OPEN finding per fingerprint.
 Skill-side rule it backstops: open updates in place, dismissed stays
 dismissed, resolved reopens as a new row (a reopen collision surfaces as
@@ -209,5 +217,5 @@ columns stay import-owned):
   (communication/look/feel — what it must convey), `value_props` (JSONB
   array of `{for, value}`), `owner`, `perceived_owner` (mismatch =
   deception risk)
-- `layers`: `owner_team`, `kpis` (string array), `tools` (string array)
+- `lanes`: `owner_team`, `kpis` (string array), `tools` (string array)
 - `phases`: `business_impact`, `operational_requirements`

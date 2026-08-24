@@ -30,7 +30,7 @@ const VENDORED_SKILLS = resolve(ROOT, 'src/lib/agent/skill/skills')
 // adapter translates their binding rules.
 const FILES = [
   'references/canvas-adapter.md',
-  'references/layer-roles.md',
+  'references/lane-roles.md',
   'references/lane-vocabulary.md',
   'references/data-model.md',
   'references/audit-playbook.md',

@@ -8,8 +8,8 @@ Which customer-facing texts use words the customer would never say?
 ## Read
 Cells in lanes whose role is customer_actions or frontstage_* only. The
 lane vocabulary (references/lane-vocabulary.md) tells you which actor
-reads each lane. Layer roles resolve PER PATH (`paths[].layers[]`) — the
-same layer key can carry different roles in different scenarios/paths, so
+reads each lane. Lane roles resolve PER PATH (`paths[].lanes[]`) — the
+same lane key can carry different roles in different scenarios/paths, so
 never resolve a role from the key alone.
 
 ## Finding shape
