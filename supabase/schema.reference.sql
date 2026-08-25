@@ -8,6 +8,7 @@
 --   20260818001000_authoring_operations.sql   (the write RPC surface)
 --   20260818002000_service_account_tier.sql   (OPTIONAL tier recipe)
 --   20260819000000_agent_surface.sql          (agent transcripts + findings grants)
+--   21000101000000_schema_version_is_a_table.sql (the version, interrogable)
 -- This file shows the post-migration shape as plain CREATEs for reading;
 -- it is never executed. It is CHECKED, though: `npm run check:portable-core`
 -- compares it against what the migrations actually build, offline via the
@@ -30,6 +31,16 @@
 --     is_service_account()'s JWT reading. This half is how *Supabase*
 --     enforces the contract; another host re-expresses it with its own
 --     auth and authorization primitives, keeping the semantics.
+
+-- What shape this database carries, so a target can be asked rather than
+-- assumed. Exactly one row. See references/adapter-contract.md § 2.
+create table public.schema_version (
+  singleton boolean primary key default true,
+  version text not null,
+  applied_at timestamptz not null default now(),
+  constraint schema_version_is_singleton check (singleton),
+  constraint schema_version_format check (version ~ '^\d{4}\.\d{2}\.\d{2}$')
+);
 
 -- Hierarchy
 create table public.service_lifecycles (

@@ -230,6 +230,14 @@ export type ConformanceLevel = 'transactional' | 'idempotent'
 export type Backend = {
   name: string
   capabilities: BackendCapabilities
+  /**
+   * What shape this target carries — asked, not assumed.
+   *
+   * @guarantee read
+   * @roundTrips 1
+   * @see schemaVersion.ts for the supported list and the mismatch error.
+   */
+  schemaVersion(): Promise<string>
   blueprints: BlueprintRepository
   slices: SliceRepository
   findings: FindingRepository

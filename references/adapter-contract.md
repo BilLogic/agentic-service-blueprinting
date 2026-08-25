@@ -82,6 +82,19 @@ Connector setup mechanics and the session-reload requirement live in
 ### 2. Schema provisioning
 Ensure the target carries the template schema at a compatible
 `schema_version`, including the `cells_validate_path_match` trigger function.
+
+**Ask the target; do not assume.** The version lives in the database, in
+`public.schema_version` — one row, `select version from public.schema_version`
+(Supabase: `/rest/v1/schema_version?select=version`). No-DB: the generated
+module carries it. An adapter answers it through `Backend.schemaVersion()`
+(`src/lib/backend/ports.ts`), and the conformance case `read/schema-version`
+fails a target this template cannot speak, naming the version found and the
+versions supported — `src/lib/backend/schemaVersion.ts` holds the list.
+
+Until that table existed this clause compared a file against a file: the value
+was in the IR and in `blueprint-workspace.json` and nowhere a live target could
+be interrogated, which is the one thing the clause is for.
+
 Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `schema.reference.sql` is the read-friendly mirror)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
 No-DB: provisioning is a no-op (the template app ships the types).

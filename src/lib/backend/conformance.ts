@@ -20,6 +20,7 @@ import type {
   SliceDraft,
 } from './ports'
 import { levelsFor } from './levels'
+import { SUPPORTED_SCHEMA_VERSIONS, isSchemaVersionSupported } from './schemaVersion'
 
 /** Which part of the contract a case belongs to. */
 export type CaseKind = 'read' | 'identity' | 'write' | ConformanceLevel
@@ -90,6 +91,24 @@ function draft(title: string, scenarioId: string): SliceDraft {
 }
 
 export const CONFORMANCE_CASES: ConformanceCase[] = [
+  {
+    id: 'read/schema-version',
+    kind: 'read',
+    title: 'the target says what schema it carries, and this template speaks it',
+    async run(backend) {
+      const found = await backend.schemaVersion()
+      require(
+        typeof found === 'string' && found.length > 0,
+        `schemaVersion() returned ${String(found)}`,
+      )
+      // Names both sides. A bare "incompatible" sends the reader to the
+      // migrations directory to guess which one is missing.
+      require(
+        isSchemaVersionSupported(found),
+        `the target carries ${found}; this template speaks ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}`,
+      )
+    },
+  },
   {
     id: 'read/phases',
     kind: 'read',

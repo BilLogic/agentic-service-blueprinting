@@ -20,6 +20,7 @@ import {
   SAMPLE_SCENARIOS,
 } from '@/data/sampleBlueprint'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
+import { TEMPLATE_SCHEMA_VERSION } from '../schemaVersion'
 import type {
   Backend,
   PathSummary,
@@ -92,6 +93,7 @@ export function createFixtureBackend(): Backend {
   return {
     name: 'bundled fixture',
     capabilities: { writes: null, blueprintRoundTrips: 0 },
+    schemaVersion: async () => TEMPLATE_SCHEMA_VERSION,
 
     blueprints: {
       async listPhases() {

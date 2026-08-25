@@ -8,7 +8,7 @@
  *   npm run supabase:types
  *   npm run supabase:types:local
  *
- * Generated against the full 8-migration chain; the hand-written aliases at
+ * Generated against the full migration chain; the hand-written aliases at
  * the bottom of the file (PathType, Cell, Finding, …) survive regeneration —
  * re-append them if the generator output replaces this file wholesale.
  */
@@ -602,6 +602,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      schema_version: {
+        Row: {
+          applied_at: string
+          singleton: boolean
+          version: string
+        }
+        Insert: {
+          applied_at?: string
+          singleton?: boolean
+          version: string
+        }
+        Update: {
+          applied_at?: string
+          singleton?: boolean
+          version?: string
+        }
+        Relationships: []
       }
       service_account_emails: {
         Row: {
