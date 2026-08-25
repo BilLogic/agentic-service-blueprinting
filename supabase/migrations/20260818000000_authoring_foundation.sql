@@ -1,13 +1,10 @@
 -- Blueprint authoring foundation (part 1 of 2): provenance, cell identity,
 -- delete-safety, direct-column grants, and read-surface fixes.
 --
--- Consolidated port from the uno-blueprint proving ground. Sources (uno
--- supabase/migrations/): 20260731000000_blueprint_authoring_foundation,
--- 20260731003000_create_phase (the phases.origin column only),
--- 20260803000000_evidence_read_for_viewers, 20260804000000_cells_slot_position
--- (the DDL only), 20260804001000_split_tech_touchpoints,
--- 20260806180000_advisor_hardening (the evidence_counts view fix only).
--- Each object is ported once, in its FINAL corrected form.
+-- Consolidated from a proving-ground deployment, where the authoring
+-- foundation and its follow-up fixes landed one migration at a time. Each
+-- object appears ONCE here, in its FINAL corrected form — the fixes are
+-- folded in, not replayed.
 --
 -- Part 2 (20260818001000) adds the RPCs that are the only sanctioned write
 -- path for structure. Nothing here grants table-level INSERT or DELETE: the

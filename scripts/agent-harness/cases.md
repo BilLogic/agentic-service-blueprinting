@@ -57,7 +57,7 @@ tier/mobile injections.
 - **B3 count-from-total** — mocked capped list_findings: 23 total,
   20 listed. [T] reads findings; the reply states 23; the reply never
   presents the page size as the count. [J] count answered from the TOTAL
-  (AC "Read consumers" — the uno-bot "5 of 14" defect, pinned).
+  (AC "Read consumers" — the "5 of 14" capped-read defect, pinned).
   *(smoke)*
 
 ## C. Write discipline

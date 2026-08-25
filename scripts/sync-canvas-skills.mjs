@@ -5,12 +5,10 @@
  * check for CI: `--check` exits 1 when the vendored bytes differ from the
  * source instead of copying.
  *
- * This inverts uno-blueprint's scripts/sync-agent-skill.mjs: there the
- * plugin repo was a sibling checkout; here the repo IS the canonical
- * source, so the sync is purely internal — one repo, one copy discipline.
- * The app bundles the vendored copy via ?raw imports and serves it through
- * the read_reference tool; the vendored dir stays flat because
- * read_reference serves files by bare name.
+ * The repo IS the canonical source, so the sync is purely internal — one
+ * repo, one copy discipline. The app bundles the vendored copy via ?raw
+ * imports and serves it through the read_reference tool; the vendored dir
+ * stays flat because read_reference serves files by bare name.
  *
  *   node scripts/sync-canvas-skills.mjs           # copy source → vendored
  *   node scripts/sync-canvas-skills.mjs --check   # CI drift guard (exit 1)

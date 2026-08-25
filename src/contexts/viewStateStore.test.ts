@@ -6,7 +6,7 @@ import {
   type ViewState,
 } from '@/contexts/viewStateStore'
 
-// Reducer tests for the slice tab store (ported shape from uno-blueprint):
+// Reducer tests for the slice tab store:
 // boot deep links are held as pendingUrlState and only applied against the
 // loaded slice list; closing the active tab activates its left neighbor;
 // a dead deep link surfaces as a dismissible missing-slice notice.
