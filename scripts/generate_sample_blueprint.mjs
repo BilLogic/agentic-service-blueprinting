@@ -163,7 +163,7 @@ const phaseByKey = Object.fromEntries(PHASES.map((p) => [p.key, p]))
  * ONE lane roster, reused by every scenario — the reader learns the cast once.
  *
  * The row order is load-bearing. Two rules from
- * `references/layer-roles.md` ("Line-anchoring semantics") decide where the
+ * `references/lane-roles.md` ("Line-anchoring semantics") decide where the
  * canonical divider lines land, and this order satisfies both on every board:
  *   * the frontstage TECH lane sits directly ABOVE the frontstage ACTIONS
  *     lane, so LINE OF VISIBILITY is drawn once, after the actions lane;
@@ -172,7 +172,7 @@ const phaseByKey = Object.fromEntries(PHASES.map((p) => [p.key, p]))
  * `assertLaneRoster` below turns both into errors rather than review notes.
  */
 const LANES = [
-  // A named custom role, not null: layer-roles.md asks for one whenever the
+  // A named custom role, not null: lane-roles.md asks for one whenever the
   // lane means something. It renders as a generic swimlane and anchors no
   // divider line. This is the lane that is deliberately quiet on three boards.
   { row: 0, key: 'stakeholders', name: 'Stakeholders', role: 'stakeholders' },
@@ -570,11 +570,11 @@ const SCENARIOS = [
       },
       {
         lane: 'refs', col: 3,
-        content: 'layer-roles.md\nlane-vocabulary.md',
+        content: 'lane-roles.md\nlane-vocabulary.md',
         picture: figure('data-model-hierarchy.svg'),
         description:
           'Rendering follows the semantic layer_role, never the display name — which is why lane labels are free-form, in any language.',
-        links: [repoLink('references/layer-roles.md', 'references/layer-roles.md')],
+        links: [repoLink('references/lane-roles.md', 'references/lane-roles.md')],
       },
       {
         lane: 'refs', col: 6,

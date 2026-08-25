@@ -21,7 +21,7 @@ are cut by the dispatcher, not hedged). No other lens applies — a whatif
 review judges traceability, not blueprint quality.
 
 Ground yourself first: read the IR, `references/ir-schema.json`,
-`references/layer-roles.md`, `references/lane-vocabulary.md` (for multi-phase
+`references/lane-roles.md`, `references/lane-vocabulary.md` (for multi-phase
 consistency), and any source documents the IR's `provenance` fields point at
 (spot-check, don't re-read the corpus). If
 `scripts/validate_ir.py` exists, run it — but your job starts where the

@@ -40,7 +40,7 @@
   <!-- ==================== column 2: one container per shared doc ==================== -->
   <g>
     <rect x="322" y="30" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4d4da"/>
-    <text x="338" y="50" class="doc mono">layer-roles.md</text>
+    <text x="338" y="50" class="doc mono">lane-roles.md</text>
     <text x="338" y="65" class="sub" font-size="8">which lane is which</text>
 
     <rect x="322" y="89" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4d4da"/>

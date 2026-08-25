@@ -21,7 +21,7 @@ import dataModel from '@/lib/agent/skill/references/data-model.md?raw'
 import elicitationProtocol from '@/lib/agent/skill/references/elicitation-protocol.md?raw'
 import cocreatePlaybook from '@/lib/agent/skill/references/cocreate-playbook.md?raw'
 import laneVocabulary from '@/lib/agent/skill/references/lane-vocabulary.md?raw'
-import layerRoles from '@/lib/agent/skill/references/layer-roles.md?raw'
+import laneRoles from '@/lib/agent/skill/references/lane-roles.md?raw'
 import auditPlaybook from '@/lib/agent/skill/references/audit-playbook.md?raw'
 import whatifPlaybook from '@/lib/agent/skill/references/whatif-playbook.md?raw'
 import checkGapSweep from '@/lib/agent/skill/references/check-gap-sweep.md?raw'
@@ -50,7 +50,7 @@ type Client = SupabaseClient<Database>
  */
 const REFERENCES: Record<string, string> = {
   'canvas-adapter': canvasAdapter,
-  'layer-roles': layerRoles,
+  'lane-roles': laneRoles,
   'lane-vocabulary': laneVocabulary,
   'elicitation-protocol': elicitationProtocol,
   'cocreate-playbook': cocreatePlaybook,

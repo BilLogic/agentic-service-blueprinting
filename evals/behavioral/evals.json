@@ -113,7 +113,7 @@
       "query": "Should the refund approval step be customer-visible?",
       "expected_behavior": [
         "Restages the moment across the visibility line rather than replaying the whole scenario",
-        "Weighs frontstage/backstage consequences using layer-roles semantics",
+        "Weighs frontstage/backstage consequences using lane-roles semantics",
         "Delivers a recommendation with cited cells, not a blueprint edit"
       ]
     },

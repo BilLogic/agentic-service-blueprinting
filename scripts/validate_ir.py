@@ -51,7 +51,7 @@ import unicodedata
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Vocabulary (mirrors references/ir-schema.json + references/layer-roles.md)
+# Vocabulary (mirrors references/ir-schema.json + references/lane-roles.md)
 # ---------------------------------------------------------------------------
 
 CANONICAL_ROLES = (
@@ -66,7 +66,7 @@ CANONICAL_ROLES = (
 )
 
 # Small CJK display-name shim map for the "did you mean role …?" warning on
-# role-less layers (see references/layer-roles.md, legacy name shim).
+# role-less layers (see references/lane-roles.md, legacy name shim).
 CJK_NAME_TO_ROLE = {
     "前台技术": "frontstage_tech",
     "后台技术": "backstage_tech",
@@ -348,7 +348,7 @@ def validate_layer(layer, jp: str, rep: Report, locales: list, rows_seen: dict):
             # A role far from every canonical role is a legal custom role: silent.
     else:
         # Role-less layer: warn when the display name looks like it wanted a
-        # canonical role (the legacy magic-name contract — see layer-roles.md).
+        # canonical role (the legacy magic-name contract — see lane-roles.md).
         display = layer.get("display_name")
         if isinstance(display, dict):
             for locale, text in display.items():

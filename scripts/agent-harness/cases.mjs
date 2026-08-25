@@ -298,7 +298,7 @@ Active tab: base blueprint view (no slice tab)`,
     turns: ['Add a Quality Assurance lane to the Map your service scenario.', 'yes, add it.'],
     // --smoke: exercises fixture/DB reads + dry-run write plumbing keyless.
     smokeCalls: [
-      ['read_reference', { name: 'layer-roles' }],
+      ['read_reference', { name: 'lane-roles' }],
       ['list_scenarios', {}],
       ['add_lane', { scenario_id: 'smoke', name: 'Quality Assurance' }],
     ],
@@ -312,7 +312,7 @@ Active tab: base blueprint view (no slice tab)`,
           if (firstWrite === -1) return 'never wrote the lane'
           const refBefore = trace.slice(0, firstWrite).some((t) => t.name === 'read_reference')
           const readBefore = trace.slice(0, firstWrite).some((t) => t.name === 'get_blueprint' || t.name === 'list_scenarios')
-          if (!refBefore) return 'no read_reference before the write (layer-roles / lane-vocabulary)'
+          if (!refBefore) return 'no read_reference before the write (lane-roles / lane-vocabulary)'
           if (!readBefore) return 'no blueprint read before the write'
           return true
         },
@@ -325,7 +325,7 @@ Active tab: base blueprint view (no slice tab)`,
     ],
     judgeLines: [
       { id: 'narrates-batch', text: 'The narration before the write batch is short (about one line); the agent does not ask permission per cell. (CA etiquette)' },
-      { id: 'coinage-stated', text: 'If an unusual layer_role was coined, the agent says so explicitly; otherwise it reuses existing vocabulary. (add_lane description + layer-roles)' },
+      { id: 'coinage-stated', text: 'If an unusual layer_role was coined, the agent says so explicitly; otherwise it reuses existing vocabulary. (add_lane description + lane-roles)' },
     ],
   },
   {
