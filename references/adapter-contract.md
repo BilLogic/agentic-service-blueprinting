@@ -14,12 +14,45 @@ an adapter is this contract's acceptance test.
 | Supabase (`scripts/generate_seed_sql.py` + CLI/MCP) | Run a transactional seed against a local or hosted project (per locale) | Requires the live-DB read path below |
 
 Present these as **co-equal options and ask** — never default-assume
-Supabase (⚠ REQUIRED, see SKILL.md hard rules).
+Supabase (⚠ REQUIRED, see SKILL.md hard rules). Without a configured
+project the app runs the no-DB adapter, so **no-DB is the first run**:
+zero configuration, Supabase opted into.
 
-**Live-DB honesty note**: the frontend reads via PostgREST-style embedded
-selects using `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, so live-DB mode
-requires Supabase or a **PostgREST-compatible read API**. A bare Postgres
-host can receive writes but cannot serve the app.
+**Same IR in, same render out — checked, not claimed.** Both v1 adapters
+project one shared model through one shared field list
+(`generate_seed_sql.seed_cell_fields` / `seed_trigger_fields`), and
+`scripts/adapter_parity.py` runs an IR through both and compares every
+field. It exists because the sentence was false for months while nothing
+failed: each generator wrote its own field list by hand, they drifted, and
+the no-DB side quietly stopped carrying `cell_key`, `slot_position`, every
+cell spec field, and the edge `kind` — losing an adopter their cell specs
+on the adapter this contract calls "not a degraded mode".
+
+One thing is outside the projection on **both** adapters, which is parity by
+absence rather than by accident: `cell_triggers` `label`/`note`, which the IR
+has no shape to author.
+
+Lane `kpis`/`tools` were listed here too, and were not: the SQL adapter
+carried both and the no-DB one carried neither. The check had the same hole —
+it compared cells and edges and not lanes — so a claim about parity was itself
+the next thing to drift. Every aggregate is compared now.
+
+**Read-only without a database (normative).** The no-DB adapter serves; it
+does not accept live authoring — `canAgentWrite` is false without a
+configured project. An adopter with no database authors by editing the IR
+and regenerating, and the derived layer lands in the ledger files below. A
+browser-local write path was considered and rejected: it would be a second
+implementation of the authoring semantics whose divergence would surface
+only in the demo.
+
+**What live mode actually requires**: the app reads and writes through the
+repository interfaces in `src/lib/backend/ports.ts` — domain operations like
+`getBlueprint(pathId)` and `createSlice(draft)`. Any store that can answer
+them can serve this app. The Supabase adapter answers them with PostgREST
+embedded selects; that is one implementation, not the requirement.
+
+This paragraph used to say that a host without a PostgREST-compatible read
+API "cannot serve the app". That was our coupling written down as physics.
 
 **⚠ Derived layer without a DB (normative)**: a no-DB adopter's
 findings/slices store IS the ledger files that
@@ -126,13 +159,60 @@ confident count before them):
 
 ## Live backend surface (beyond import)
 
-Importing is the floor; **serving the app live** is a larger surface. A
-backend replacing Supabase must provide everything below, or the app's
-authoring, agent, and derived-layer features silently break. (Read-only
-serving needs only the PostgREST-style embedded selects from the honesty
-note above — including **column-form FK hints**: the blueprint read embeds
-`cell_triggers!source_cell_id`, so the read API must disambiguate a
-multi-FK embed by column name.)
+Importing is the floor; **serving the app live** is a larger surface. It is
+defined by the repository interfaces in `src/lib/backend/ports.ts`, one per
+aggregate — blueprints, slices, findings — plus an identity port. Each
+operation declares what a caller may assume of it: `read`, `atomic`
+(all-or-nothing), or `converging` (repeating it lands in the same place).
+Round-trip expectations are declared too, so a backend without joins conforms
+visibly rather than by turning one screen into ninety requests nobody notices
+until the bill arrives.
+
+Identity is a **separate port** answering one question — *what may this
+session do?* — in three tiers (`anon`, `authoring`, `service`). It never
+exposes a token or a claim name, so an adopter can run Supabase auth, their
+own OIDC, or a single-user desktop build without either side learning about
+the other. It is a UI-level answer; the backend still enforces it.
+
+### Two conformance levels
+
+**Transactional** — every `atomic` operation is all-or-nothing; a rejected
+write leaves nothing behind. Supabase conforms here through its RPCs.
+Firestore can, within its transaction limits.
+
+**Idempotent** — `atomic` operations may tear, in exchange for two duties:
+re-running a request converges, and `repairSlices()` resolves every torn state
+a write can leave. Notion has no transactions at all and conforms here. The
+cost is real and stated rather than hidden: an interrupted write can leave a
+slice with no frames until a repair pass runs.
+
+This is the decision that makes "any backend" true rather than a marketing
+line. A contract that demanded transactions would be the Supabase requirement
+again, wearing a different word.
+
+### Proving an implementation
+
+`src/lib/backend/conformance.ts` is the suite — framework-free, so an adopter
+runs it from their own runner against their own store. It reports every case,
+skipping none silently: a read-only backend's write cases come back `skipped`
+with a reason, so "did not apply" is distinguishable from "was not run".
+
+Passing it today: the bundled fixture (`adapters/fixture.ts`, reads only) and
+an in-memory store (`adapters/memory.ts`, which runs at either level in about
+two hundred lines — the shortest honest answer to "what does implementing this
+involve"). **The Supabase adapter is not written yet**: its call sites still
+talk to PostgREST directly, and it becomes the second reference implementation
+when the seam reaches them. Until then the suite is proved against two
+adapters that are not databases, which is worth knowing when reading its
+green.
+
+⚠️ The suite writes. Point it at a scratch project.
+
+### How the Supabase adapter renders it
+
+Everything below is how *this* adapter answers the operations above. It is
+useful as a worked example and as documentation of the deployed system. It is
+not the contract.
 
 ### 1. The authoring RPC roster
 

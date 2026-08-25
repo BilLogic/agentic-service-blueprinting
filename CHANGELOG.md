@@ -2,7 +2,17 @@
 
 All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
-repository and version together (workspace plugin version = template version).
+repository and one version number, checked by
+`npm run check:version` across `package.json`, `.claude-plugin/plugin.json`
+and this file's top heading.
+
+**Semver is scoped to the plugin contract** — the identifier layer recorded in
+[`identifiers.json`](./identifiers.json): skill names, reference filenames,
+schema filenames, agent names, hook events, agent tool names. A rename there is
+a major, because a consumer resolves those by name at runtime with nothing to
+catch a break. Refactoring the template app is not, however much of it moves: a
+consumer forks that surface and takes our changes as a visible merge conflict.
+Entries below flag identifier changes under **### Plugin contract**.
 
 ## 0.4.0 — 2026-08-18
 

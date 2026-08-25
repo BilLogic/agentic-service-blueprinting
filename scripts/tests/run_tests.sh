@@ -739,5 +739,64 @@ assert scoped == ["asset-repair"], f"scoped export wrong: {scoped}"
 PY
 pass "audit-export-copy (scenario filter copies; loaded IR and source stay intact)"
 
+# --- adapter parity ---------------------------------------------------------
+# The adapter contract calls the no-DB adapter "not a degraded mode". These two
+# cases are the difference between that being a claim and being a fact: the
+# sample IR must come out of both adapters carrying the same fields, AND the
+# check must be able to fail — a parity check that cannot go red is a comment.
+
+python3 "$REPO_ROOT/scripts/adapter_parity.py" "$SAMPLE" > /dev/null \
+  || fail "adapter-parity: the two v1 adapters disagree on the sample IR"
+pass "adapter-parity (SQL and no-DB adapters carry the same fields)"
+
+python3 - "$SAMPLE" "$REPO_ROOT" <<'PY' || fail "adapter-parity: drift went undetected"
+import pathlib, sys
+sample, repo = sys.argv[1:3]
+sys.path.insert(0, f"{repo}/scripts")
+import adapter_parity, generate_seed_sql
+
+# Teach the SQL adapter a column the no-DB adapter never learns — exactly the
+# drift that lost cell_key and the cell spec fields — and require a complaint.
+original = generate_seed_sql.seed_cell_fields
+def wider(cell, path):
+    row = original(cell, path)
+    row["status"] = "draft"
+    return row
+generate_seed_sql.seed_cell_fields = adapter_parity.seed_cell_fields = wider
+
+problems = adapter_parity.check(pathlib.Path(sample), None)
+assert problems, "a field on one adapter and not the other must be reported"
+assert any("status" in line for line in problems), f"wrong complaint: {problems[:1]}"
+PY
+pass "adapter-parity-negative (a field on one adapter only is reported)"
+
+python3 - "$SAMPLE" "$REPO_ROOT" <<'PY' || fail "adapter-parity: a lane-only field went undetected"
+import pathlib, sys
+sample, repo = sys.argv[1:3]
+sys.path.insert(0, f"{repo}/scripts")
+import adapter_parity, generate_fallbacks
+
+# The state this check shipped in, before review caught it: lanes projected by
+# hand, without kpis/tools, while the SQL adapter wrote both. The harness
+# compared cells and edges only and reported agreement.
+original = generate_fallbacks.blueprint_data_for_path
+def without_lane_spec(scenario, path):
+    data = original(scenario, path)
+    data["layers"] = [
+        {k: v for k, v in lane.items() if k not in ("kpis", "tools")}
+        for lane in data["layers"]
+    ]
+    return data
+generate_fallbacks.blueprint_data_for_path = without_lane_spec
+adapter_parity.blueprint_data_for_path = without_lane_spec
+
+problems = adapter_parity.check(pathlib.Path(sample), None)
+assert problems, "a lane field on one adapter only must be reported"
+assert any("kpis" in line for line in problems), f"wrong complaint: {problems[:1]}"
+assert any(line.startswith(f"{sample} [en]: lane ") for line in problems), \
+    "the complaint must name the aggregate that drifted"
+PY
+pass "adapter-parity-lanes (a lane field on one adapter only is reported)"
+
 echo
 echo "All $PASS_COUNT tests passed."

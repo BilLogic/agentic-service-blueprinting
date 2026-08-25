@@ -15,6 +15,12 @@ export type BlueprintLayer = {
   /** Semantic role key (`layers.layer_role`); null/absent = generic swimlane. */
   role?: string | null
   row_position: number
+  /**
+   * Lane spec (`layers.kpis` / `layers.tools`), carried so a no-DB build
+   * serves what a database read serves. Optional: most lanes set neither.
+   */
+  kpis?: string[]
+  tools?: string[]
 }
 
 export type BlueprintStep = {
@@ -38,6 +44,12 @@ export type CellLink = {
 
 export type BlueprintCell = {
   id: string
+  /**
+   * The authored qualified key (`cells.cell_key`) — lifecycle/phase/scenario/
+   * path/lane/step. The same string the cell's UUIDv5 is derived from, so a
+   * no-DB build can answer "which authored cell is this?" without a database.
+   */
+  cell_key?: string
   layer_id: string
   step_id: string
   /** Cell Label — primary text shown in the blueprint grid. */
