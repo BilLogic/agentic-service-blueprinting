@@ -45,6 +45,18 @@ language sql stable as $$ select '{}'::jsonb $$;
 create or replace function auth.role() returns text
 language sql stable as $$ select null::text $$;
 
+-- GoTrue's account table, to the extent the migrations touch it. The tier
+-- recipe hangs a BEFORE INSERT trigger on it to stamp app_metadata for
+-- allowlisted emails, so the trigger needs somewhere to attach and the two
+-- columns it reads and writes. Everything else GoTrue stores is irrelevant
+-- here — this proves the trigger installs, never that it authenticates.
+create table if not exists auth.users (
+  id uuid primary key default gen_random_uuid(),
+  email text,
+  raw_app_meta_data jsonb,
+  created_at timestamptz not null default now()
+);
+
 -- Supabase Storage, to the extent the migrations touch it: one bucket row to
 -- update, one object table to attach policies to.
 create schema if not exists storage;
