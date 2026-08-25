@@ -32,11 +32,8 @@ comment on column public.schema_version.version is
 -- The shape as it stands before the vocabulary migrations in this band.
 insert into public.schema_version (version) values ('2026.07.16');
 
--- ---------------------------------------------------------------------------
--- SUPABASE RECIPE from here. Another host re-expresses these with its own
--- primitives: the version is world-readable and nobody but a migration writes
--- it.
--- ---------------------------------------------------------------------------
+-- @recipe — another host re-expresses these with its own primitives: the
+-- version is world-readable and nobody but a migration writes it.
 
 alter table public.schema_version enable row level security;
 

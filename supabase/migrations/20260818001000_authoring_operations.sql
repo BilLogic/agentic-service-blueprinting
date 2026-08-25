@@ -74,7 +74,11 @@ begin
   end if;
 end $$;
 
+-- @recipe — the seam is core; naming the Supabase roles that may read it
+-- is not.
 grant execute on function public.is_service_account() to anon, authenticated;
+
+-- @core
 
 -- ---------------------------------------------------------------------------
 -- Helpers (read-only; deliberately open to anon — they are stable/immutable,
@@ -1538,52 +1542,82 @@ begin
 end;
 $$;
 
+-- @core
 -- ---------------------------------------------------------------------------
--- Grants.
+-- Grants, part 1: the PUBLIC default, revoked.
+--
+-- This half is portable Postgres and belongs to every backend. Postgres
+-- grants EXECUTE to PUBLIC at CREATE time, and these are definer functions
+-- that bypass row security: without the revoke, anyone who can reach the
+-- database can call delete_scenario. Naming a role instead would leave the
+-- PUBLIC grant standing and change nothing.
+-- ---------------------------------------------------------------------------
+
+revoke execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) from public;
+revoke execute on function public.duplicate_scenario(uuid, text) from public;
+revoke execute on function public.create_phase(uuid, text, text) from public;
+revoke execute on function public.create_path(uuid, text, text, uuid) from public;
+revoke execute on function public.duplicate_path(uuid, text, text, boolean, boolean) from public;
+revoke execute on function public.add_step(uuid, text, int) from public;
+revoke execute on function public.add_lane(uuid, text, text, int) from public;
+revoke execute on function public.reorder_steps(uuid, uuid[]) from public;
+revoke execute on function public.set_path_steps(uuid, uuid[]) from public;
+revoke execute on function public.reorder_lanes(uuid, text[]) from public;
+revoke execute on function public.upsert_cell(uuid, uuid, uuid, text) from public;
+revoke execute on function public.set_cell_dependency(uuid, uuid, text, text, text) from public;
+revoke execute on function public.clear_cell_dependency(uuid) from public;
+revoke execute on function public.rename_phase(uuid, text) from public;
+revoke execute on function public.rename_scenario(uuid, text) from public;
+revoke execute on function public.rename_path(uuid, text) from public;
+revoke execute on function public.rename_owner_tag(text, text) from public;
+revoke execute on function public.delete_scenario(uuid) from public;
+revoke execute on function public.delete_path(uuid) from public;
+revoke execute on function public.remove_step(uuid, uuid) from public;
+revoke execute on function public.remove_lane(uuid, text) from public;
+revoke execute on function public.remove_lanes(uuid[]) from public;
+revoke execute on function public.delete_cell(uuid) from public;
+
+-- @recipe — Grants, part 2: the Supabase roles.
 --
 -- Read helpers stay open to anon on purpose: stable/immutable, no writes,
 -- and they only describe data already readable through the SELECT policies.
---
--- Every write: REVOKE FROM PUBLIC is the operative statement — Postgres
--- grants EXECUTE to PUBLIC by default at CREATE time, and these are definer
--- functions. Revoking from anon alone would leave the PUBLIC grant in place
--- and change nothing. The grant then names the one role supposed to hold it.
--- ---------------------------------------------------------------------------
+-- The writes are revoked from anon and granted to `authenticated`, which
+-- names the one role supposed to hold them. Another host substitutes its own
+-- caller classes here; the PUBLIC revoke above stands either way.
 
+-- Read helpers: open to anon.
 grant execute on function public.key_slug(text) to anon, authenticated;
 grant execute on function public.cell_natural_key(uuid) to anon, authenticated;
 grant execute on function public.mint_cell_key(uuid, uuid, uuid) to anon, authenticated;
 grant execute on function public.slices_referencing(uuid[]) to anon, authenticated;
 grant execute on function public.deletion_impact(text, uuid) to anon, authenticated;
 
--- Writes: structure ---------------------------------------------------------
-revoke execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) from public, anon;
-revoke execute on function public.duplicate_scenario(uuid, text) from public, anon;
-revoke execute on function public.create_phase(uuid, text, text) from public, anon;
-revoke execute on function public.create_path(uuid, text, text, uuid) from public, anon;
-revoke execute on function public.duplicate_path(uuid, text, text, boolean, boolean) from public, anon;
-revoke execute on function public.add_step(uuid, text, int) from public, anon;
-revoke execute on function public.add_lane(uuid, text, text, int) from public, anon;
-revoke execute on function public.reorder_steps(uuid, uuid[]) from public, anon;
-revoke execute on function public.set_path_steps(uuid, uuid[]) from public, anon;
-revoke execute on function public.reorder_lanes(uuid, text[]) from public, anon;
-revoke execute on function public.upsert_cell(uuid, uuid, uuid, text) from public, anon;
-revoke execute on function public.set_cell_dependency(uuid, uuid, text, text, text) from public, anon;
-revoke execute on function public.clear_cell_dependency(uuid) from public, anon;
-revoke execute on function public.rename_phase(uuid, text) from public, anon;
-revoke execute on function public.rename_scenario(uuid, text) from public, anon;
-revoke execute on function public.rename_path(uuid, text) from public, anon;
-revoke execute on function public.rename_owner_tag(text, text) from public, anon;
+-- Writes: anon loses what PUBLIC already lost …
+revoke execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) from anon;
+revoke execute on function public.duplicate_scenario(uuid, text) from anon;
+revoke execute on function public.create_phase(uuid, text, text) from anon;
+revoke execute on function public.create_path(uuid, text, text, uuid) from anon;
+revoke execute on function public.duplicate_path(uuid, text, text, boolean, boolean) from anon;
+revoke execute on function public.add_step(uuid, text, int) from anon;
+revoke execute on function public.add_lane(uuid, text, text, int) from anon;
+revoke execute on function public.reorder_steps(uuid, uuid[]) from anon;
+revoke execute on function public.set_path_steps(uuid, uuid[]) from anon;
+revoke execute on function public.reorder_lanes(uuid, text[]) from anon;
+revoke execute on function public.upsert_cell(uuid, uuid, uuid, text) from anon;
+revoke execute on function public.set_cell_dependency(uuid, uuid, text, text, text) from anon;
+revoke execute on function public.clear_cell_dependency(uuid) from anon;
+revoke execute on function public.rename_phase(uuid, text) from anon;
+revoke execute on function public.rename_scenario(uuid, text) from anon;
+revoke execute on function public.rename_path(uuid, text) from anon;
+revoke execute on function public.rename_owner_tag(text, text) from anon;
+revoke execute on function public.delete_scenario(uuid) from anon;
+revoke execute on function public.delete_path(uuid) from anon;
+revoke execute on function public.remove_step(uuid, uuid) from anon;
+revoke execute on function public.remove_lane(uuid, text) from anon;
+revoke execute on function public.remove_lanes(uuid[]) from anon;
+revoke execute on function public.delete_cell(uuid) from anon;
 
--- Writes: deletion ----------------------------------------------------------
-revoke execute on function public.delete_scenario(uuid) from public, anon;
-revoke execute on function public.delete_path(uuid) from public, anon;
-revoke execute on function public.remove_step(uuid, uuid) from public, anon;
-revoke execute on function public.remove_lane(uuid, text) from public, anon;
-revoke execute on function public.remove_lanes(uuid[]) from public, anon;
-revoke execute on function public.delete_cell(uuid) from public, anon;
-
--- Re-grant to the role that is supposed to have them.
+-- … and `authenticated` is named as the role that holds them.
 grant execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) to authenticated;
 grant execute on function public.duplicate_scenario(uuid, text) to authenticated;
 grant execute on function public.create_phase(uuid, text, text) to authenticated;
@@ -1607,3 +1641,5 @@ grant execute on function public.remove_step(uuid, uuid) to authenticated;
 grant execute on function public.remove_lane(uuid, text) to authenticated;
 grant execute on function public.remove_lanes(uuid[]) to authenticated;
 grant execute on function public.delete_cell(uuid) to authenticated;
+
+-- @core

@@ -1,9 +1,13 @@
 -- The smallest thing that lets stock Postgres run the Supabase recipe.
 --
--- `schema.reference.sql` has always claimed a PORTABLE POSTGRES CORE that
--- "runs on any Postgres". Nothing ever ran it on any Postgres. This file is
--- what makes that claim executable: a plain `postgres:17` container, this
--- shim, then every migration in order.
+-- The package has always claimed a PORTABLE POSTGRES CORE that "runs on any
+-- Postgres". That half now runs on a plain `postgres:17` with nothing in
+-- front of it — no shim, no roles, no auth schema — because it is generated
+-- from the migrations' partition marks and carries none of this.
+--
+-- This file is for the OTHER half. The Supabase recipe names primitives a
+-- stock Postgres does not have, so CI stands these in before applying it, and
+-- before replaying the full migration chain.
 --
 -- ⚠️ NOT part of the portable core, and not something an adopter installs.
 -- It is a CI harness. It supplies the three role names the grants mention and

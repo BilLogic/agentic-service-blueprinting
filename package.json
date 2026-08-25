@@ -14,7 +14,7 @@
     "check:manifest": "node scripts/generate-identifier-manifest.mjs --check",
     "check:version": "node scripts/check-version-agreement.mjs",
     "check:parity": "python3 scripts/adapter_parity.py",
-    "check:portable-core": "node scripts/check-portable-core.mjs --from-types",
+    "check:portable-core": "node scripts/generate-portable-core.mjs --check",
     "check:band": "node scripts/check-migration-band.mjs",
     "check:target": "node scripts/check-target-schema.mjs",
     "test:ir": "bash scripts/tests/run_tests.sh",
@@ -28,7 +28,8 @@
     "setup:env": "cp -n .env.example .env 2>/dev/null || cp .env.example .env",
     "sync:canvas-skills": "node scripts/sync-canvas-skills.mjs",
     "agent:harness": "node scripts/agent-harness/run.mjs",
-    "agent:harness:smoke": "node scripts/agent-harness/run.mjs --smoke"
+    "agent:harness:smoke": "node scripts/agent-harness/run.mjs --smoke",
+    "generate:portable-core": "node scripts/generate-portable-core.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

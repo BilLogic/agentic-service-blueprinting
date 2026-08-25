@@ -100,7 +100,7 @@ configured project and distinguishes *never migrated* from *stale*. Supabase:
 the desync repair, for a fork whose history diverged before the reserved
 timestamp band existed, is `supabase/DATABASE.md` § Migration desync.
 
-Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `schema.reference.sql` is the read-friendly mirror)
+Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `supabase/generated/portable-core.generated.sql` is the whole portable half, generated from the migrations)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
 No-DB: provisioning is a no-op (the template app ships the types).
 
@@ -235,9 +235,9 @@ not the contract.
 ### 1. The authoring RPC roster
 
 Structural writes never touch tables — the app calls `POST /rpc/<fn>` for
-each function in the signature block at the end of
-[`supabase/schema.reference.sql`](../supabase/schema.reference.sql)
-(bodies in `supabase/migrations/20260818001000_authoring_operations.sql`;
+each function in
+[`supabase/generated/portable-core.generated.sql`](../supabase/generated/portable-core.generated.sql)
+(source in `supabase/migrations/20260818001000_authoring_operations.sql`;
 client wrappers in `src/lib/mutations/authoringRpc.ts`). The roster:
 
 - **Read helpers** (open to anon): `key_slug`, `cell_natural_key`,
@@ -256,7 +256,7 @@ client wrappers in `src/lib/mutations/authoringRpc.ts`). The roster:
 
 Each RPC performs one complete, valid edit in one transaction and asserts
 the write-tier guard in its own body. Signatures — argument names, types,
-and return shapes — in the schema.reference.sql block are **normative**:
+and return shapes — as the generated portable core carries them — are **normative**:
 the generated `Database['public']['Functions']` types are the client's
 compile-time contract.
 

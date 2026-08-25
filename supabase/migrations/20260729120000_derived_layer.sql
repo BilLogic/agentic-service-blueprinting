@@ -79,7 +79,7 @@ create table public.slices (
   origin text not null default 'generated'
     constraint slices_origin_check check (origin in ('generated','customized')),
   position int not null default 0,
-  created_by uuid default auth.uid(),
+  created_by uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -164,7 +164,7 @@ create table public.evidence (
   note text,
   observed_at date,
   added_by text,
-  created_by uuid default auth.uid(),
+  created_by uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint evidence_exactly_one_target
@@ -225,9 +225,15 @@ create trigger set_propositions_updated_at
   before update on public.propositions
   for each row execute function public.set_updated_at();
 
+-- @recipe — RLS, the role grants, and the storage bucket the app uploads to.
 -- ============================================================
 -- 4. RLS + grants
 -- ============================================================
+-- Attribution stamps the caller. On another host it is that host's
+-- request-scoped identity; the COLUMN is core, the value it takes is not.
+alter table public.slices   alter column created_by set default auth.uid();
+alter table public.evidence alter column created_by set default auth.uid();
+
 -- REQUIRED companion (deploy step, not SQL): disable public sign-ups in Auth settings
 -- and use shouldCreateUser:false in the frontend — otherwise "authenticated" means
 -- anyone on the internet. TO authenticated is authentication, not authorization:
