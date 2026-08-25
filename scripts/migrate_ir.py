@@ -1,0 +1,361 @@
+#!/usr/bin/env python3
+"""Carry a Service Blueprint IR forward across schema-version bumps.
+
+Usage:
+    python3 scripts/migrate_ir.py <ir-file> [--to <version>] \\
+        [--workspace <blueprint-workspace.json>] [--write] [--json]
+
+Exit codes:
+    0 — the IR is already at the target version, or a migration path exists
+        (and was applied, with --write)
+    1 — the file could not be read, or no migration path reaches the target
+
+The IR states the shape it was authored against in its own `schema_version`
+field, and `scripts/validate_ir.py` refuses a file that is not at the version
+this template speaks. This script is the other half of that refusal: the
+named way to move a file the refusal is about.
+
+⚠ THE VERSIONING RULE: every schema_version bump ships its migration in the
+same change. A version that lands in the enum in `references/ir-schema.json`
+without a step here is a bump that tells consumers they are out of date and
+gives them nothing to run — and consumers have hand-signed-off data riding on
+the IR, so re-authoring is not an available answer.
+
+Migrations are chained: a file two bumps behind is carried through both steps
+in IR order, so a step only ever has to know about its own predecessor.
+
+## Sign-off hashes
+
+Sign-off binds to a SHA-256 of a scenario's subtree (see
+scripts/compute_signoff_hash.py and skills/map/references/workspace-state.md).
+Renaming a field inside a scenario changes that subtree, so a recorded hash
+does NOT survive a bump that touches scenario content — the 2026.07.16 →
+2026.08.25 bump renames `description` → `summary`, `layers` → `lanes` and
+`layer` → `lane`, all of which live under a scenario.
+
+Rather than silently de-sign every scenario an org already approved, `--workspace`
+re-anchors the recorded hashes: for each scenario whose stored `content_hash`
+equals its PRE-migration hash, the stored hash is replaced with its
+POST-migration hash and `signed_at`/`signed_by` are kept. That is sound
+precisely because a migration step is a mechanical rename of a field NAME —
+no authored value moves — and unsound the moment a step starts editing
+content, so a step that does must say so and this script refuses to
+re-anchor it (`content_preserving = False`).
+
+A stored hash that matches NEITHER side was already stale before the
+migration ran: the scenario was hand-edited after it was signed. Those are
+reported and left alone — repairing them is a re-review, not a rename.
+
+`targets[*].last_import.content_hash` is deliberately untouched. The upgrade
+recipe (references/customization.md) re-imports after a bump anyway, and a
+last-import record is a claim about what a target actually holds; rewriting
+it would be a lie about a database this script cannot see.
+
+Stdlib only, like every script in this directory. Loads via
+validate_ir.load_ir (JSON native; YAML only if PyYAML is importable).
+"""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import compute_signoff_hash  # noqa: E402
+import validate_ir  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Steps
+# ---------------------------------------------------------------------------
+
+
+def rename(obj, old: str, new: str) -> None:
+    """Rename a key in place, preserving its position among its siblings.
+
+    `obj[new] = obj.pop(old)` would move the field to the end of the object,
+    which is a diff on every line between it and the end of the file for a
+    format humans hand-edit and review.
+    """
+    if not isinstance(obj, dict) or old not in obj:
+        return
+    items = [(new if k == old else k, v) for k, v in obj.items()]
+    obj.clear()
+    obj.update(items)
+
+
+def to_2026_08_25(doc: dict) -> None:
+    """2026.07.16 → 2026.08.25 — the lane-vocabulary renames.
+
+    Ten renames landed in the database (see the migrations in the
+    21000101000000–21000109000000 band); five of them are visible in the IR:
+
+        $.lifecycle                 → $.service
+        <path>.layers               → lanes
+        <cell>.layer, <cellref>.layer → lane
+        description                 → summary, on service, phase, scenario,
+                                      path and cell
+
+    `description` on a LINK payload is deliberately not renamed: a link's
+    description is prose about the link, and the schema still calls it
+    `description`. That is why this walks the tree by shape instead of
+    rewriting the text of the file — a global rename would take the links
+    with it.
+    """
+    rename(doc, "lifecycle", "service")
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    rename(service, "description", "summary")
+    for phase in service.get("phases", []) or []:
+        rename(phase, "description", "summary")
+        for scenario in phase.get("scenarios", []) or []:
+            rename(scenario, "description", "summary")
+            for path in scenario.get("paths", []) or []:
+                rename(path, "description", "summary")
+                rename(path, "layers", "lanes")
+                for cell in path.get("cells", []) or []:
+                    rename(cell, "description", "summary")
+                    rename(cell, "layer", "lane")
+                for trigger in path.get("triggers", []) or []:
+                    if isinstance(trigger, dict):
+                        rename(trigger.get("source"), "layer", "lane")
+                        rename(trigger.get("target"), "layer", "lane")
+
+
+class Step:
+    """One version-to-version hop.
+
+    `content_preserving` is the sign-off contract: True means the step renames
+    field names only, so a signed scenario's authored content is byte-identical
+    afterwards and its recorded hash may be re-anchored. A step that edits,
+    drops or synthesizes authored VALUES must set it False — then sign-off is
+    a human decision again and this script will not make it silently.
+    """
+
+    def __init__(self, from_version: str, to_version: str, summary: str,
+                 apply, content_preserving: bool = True) -> None:
+        self.from_version = from_version
+        self.to_version = to_version
+        self.summary = summary
+        self.apply = apply
+        self.content_preserving = content_preserving
+
+
+STEPS = (
+    Step(
+        "2026.07.16",
+        "2026.08.25",
+        "lane vocabulary: lifecycle→service, layers→lanes, layer→lane, "
+        "description→summary",
+        to_2026_08_25,
+    ),
+)
+
+
+def current_version() -> str | None:
+    """The version this template speaks — the newest in the schema's enum."""
+    known = validate_ir.supported_schema_versions()
+    return known[0] if known else None
+
+
+def migration_path(from_version: str, to_version: str) -> list | None:
+    """The steps carrying from_version to to_version, or None if none do."""
+    if from_version == to_version:
+        return []
+    by_from = {step.from_version: step for step in STEPS}
+    chain: list = []
+    version = from_version
+    seen = {version}
+    while version != to_version:
+        step = by_from.get(version)
+        if step is None or step.to_version in seen:
+            return None
+        chain.append(step)
+        version = step.to_version
+        seen.add(version)
+    return chain
+
+
+# ---------------------------------------------------------------------------
+# Documents
+# ---------------------------------------------------------------------------
+
+
+def iter_scenarios(doc: dict):
+    """Yield (key, scenario) under either root name, so a PRE-migration file
+    can be hashed with the same code as a POST-migration one."""
+    root = doc.get("service")
+    if not isinstance(root, dict):
+        root = doc.get("lifecycle")
+    if not isinstance(root, dict):
+        return
+    for phase in root.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if isinstance(scenario, dict) and "key" in scenario:
+                yield scenario["key"], scenario
+
+
+def scenario_hashes(doc: dict) -> dict:
+    return {
+        key: compute_signoff_hash.scenario_content_hash(scenario)
+        for key, scenario in iter_scenarios(doc)
+    }
+
+
+def migrate_document(doc: dict, chain: list) -> dict:
+    """Apply a chain of steps to a copy of doc, returning the migrated copy."""
+    migrated = copy.deepcopy(doc)
+    for step in chain:
+        step.apply(migrated)
+        migrated["schema_version"] = step.to_version
+    return migrated
+
+
+def reanchor_workspace(workspace: dict, before: dict, after: dict,
+                       to_version: str) -> list:
+    """Move each signed scenario's recorded hash onto its migrated subtree.
+
+    Mutates `workspace`. Returns one report line per scenario it looked at.
+    """
+    notes: list = []
+    workspace["schema_version"] = to_version
+    scenarios = workspace.get("scenarios")
+    if not isinstance(scenarios, dict):
+        return notes
+    for key, entry in scenarios.items():
+        if not isinstance(entry, dict):
+            continue
+        recorded = entry.get("content_hash")
+        if not recorded:
+            continue
+        if key not in before:
+            notes.append(f"  {key}: signed, but absent from the IR — left alone")
+            continue
+        if recorded == after[key]:
+            notes.append(f"  {key}: already anchored to the migrated subtree")
+        elif recorded == before[key]:
+            entry["content_hash"] = after[key]
+            notes.append(f"  {key}: re-anchored {recorded} -> {after[key]}")
+        else:
+            notes.append(
+                f"  {key}: recorded hash matches neither the pre- nor the "
+                "post-migration subtree — it was already stale before this "
+                "migration (hand-edited after sign-off). Left alone; re-review "
+                "and re-sign this scenario."
+            )
+    return notes
+
+
+def write_json(path: Path, doc: dict) -> None:
+    path.write_text(
+        json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Carry a Service Blueprint IR forward across schema-version bumps."
+    )
+    parser.add_argument("ir_file", help="IR file (.json native; .yaml if PyYAML is installed)")
+    parser.add_argument("--to", dest="to_version", default=None,
+                        help="target schema_version (default: the version this template speaks)")
+    parser.add_argument("--workspace", default=None,
+                        help="blueprint-workspace.json — re-anchors its sign-off hashes")
+    parser.add_argument("--write", action="store_true",
+                        help="write the migrated files (default: report the plan only)")
+    parser.add_argument("--json", action="store_true",
+                        help="print the migrated IR to stdout instead of writing it")
+    args = parser.parse_args(argv)
+
+    ir_path = Path(args.ir_file)
+    doc, load_error = validate_ir.load_ir(ir_path)
+    if load_error is not None:
+        print(f"ERROR: {load_error}", file=sys.stderr)
+        return 1
+    if not isinstance(doc, dict):
+        print(f"ERROR: {ir_path} is not an IR document (root is not an object)", file=sys.stderr)
+        return 1
+
+    target = args.to_version or current_version()
+    if target is None:
+        print("ERROR: references/ir-schema.json declares no schema_version enum, "
+              "so there is no target to migrate to", file=sys.stderr)
+        return 1
+
+    from_version = doc.get("schema_version")
+    if not isinstance(from_version, str):
+        print(f"ERROR: {ir_path} has no string 'schema_version', so there is no "
+              "version to migrate FROM. Add the version the file was authored "
+              "against and run this again.", file=sys.stderr)
+        return 1
+
+    chain = migration_path(from_version, target)
+    if chain is None:
+        known = " -> ".join(f"{s.from_version} -> {s.to_version}" for s in STEPS) or "(none)"
+        print(f"ERROR: no migration carries {from_version!r} to {target!r}. "
+              f"Steps this template ships: {known}. Check out the template "
+              "revision that wrote this file, or re-author against "
+              f"{target!r}.", file=sys.stderr)
+        return 1
+
+    # With --json the migrated IR is the stdout payload, so the human report
+    # moves to stderr and the command stays pipeable.
+    report = sys.stderr if args.json else sys.stdout
+
+    if not chain:
+        print(f"migrate_ir: {ir_path} is already at {target} — nothing to do", file=report)
+        return 0
+
+    before = scenario_hashes(doc)
+    migrated = migrate_document(doc, chain)
+    after = scenario_hashes(migrated)
+
+    print(f"migrate_ir: {ir_path}  {from_version} -> {target}", file=report)
+    for step in chain:
+        print(f"  step {step.from_version} -> {step.to_version}: {step.summary}", file=report)
+
+    workspace_path = Path(args.workspace) if args.workspace else None
+    workspace = None
+    if workspace_path is not None:
+        workspace, ws_error = validate_ir.load_ir(workspace_path)
+        if ws_error is not None:
+            print(f"ERROR: {ws_error}", file=sys.stderr)
+            return 1
+        if not all(step.content_preserving for step in chain):
+            print("ERROR: a step in this chain edits authored content, so a "
+                  "recorded sign-off hash cannot be moved onto it mechanically. "
+                  "Re-review and re-sign the affected scenarios by hand.",
+                  file=sys.stderr)
+            return 1
+        print(f"sign-off hashes in {workspace_path}:", file=report)
+        for line in reanchor_workspace(workspace, before, after, target):
+            print(line, file=report)
+
+    if args.json:
+        print(json.dumps(migrated, ensure_ascii=False, indent=2))
+        return 0
+
+    if not args.write:
+        print("\nDry run — nothing written. Re-run with --write to apply.", file=report)
+        return 0
+
+    write_json(ir_path, migrated)
+    print(f"\nwrote {ir_path}", file=report)
+    if workspace is not None and workspace_path is not None:
+        write_json(workspace_path, workspace)
+        print(f"wrote {workspace_path}", file=report)
+    print(f"Now run: python3 scripts/validate_ir.py {ir_path}", file=report)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
