@@ -14,7 +14,31 @@ an adapter is this contract's acceptance test.
 | Supabase (`scripts/generate_seed_sql.py` + CLI/MCP) | Run a transactional seed against a local or hosted project (per locale) | Requires the live-DB read path below |
 
 Present these as **co-equal options and ask** — never default-assume
-Supabase (⚠ REQUIRED, see SKILL.md hard rules).
+Supabase (⚠ REQUIRED, see SKILL.md hard rules). Without a configured
+project the app runs the no-DB adapter, so **no-DB is the first run**:
+zero configuration, Supabase opted into.
+
+**Same IR in, same render out — checked, not claimed.** Both v1 adapters
+project one shared model through one shared field list
+(`generate_seed_sql.seed_cell_fields` / `seed_trigger_fields`), and
+`scripts/adapter_parity.py` runs an IR through both and compares every
+field. It exists because the sentence was false for months while nothing
+failed: each generator wrote its own field list by hand, they drifted, and
+the no-DB side quietly stopped carrying `cell_key`, `slot_position`, every
+cell spec field, and the edge `kind` — losing an adopter their cell specs
+on the adapter this contract calls "not a degraded mode".
+
+Two things are outside the projection on **both** adapters, which is parity
+by absence rather than by accident: lane `kpis`/`tools`, and
+`cell_triggers` `label`/`note`, which the IR has no shape to author.
+
+**Read-only without a database (normative).** The no-DB adapter serves; it
+does not accept live authoring — `canAgentWrite` is false without a
+configured project. An adopter with no database authors by editing the IR
+and regenerating, and the derived layer lands in the ledger files below. A
+browser-local write path was considered and rejected: it would be a second
+implementation of the authoring semantics whose divergence would surface
+only in the demo.
 
 **Live-DB honesty note**: the frontend reads via PostgREST-style embedded
 selects using `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, so live-DB mode

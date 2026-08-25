@@ -134,6 +134,82 @@ def values_rows(rows) -> str:
 
 
 # ---------------------------------------------------------------------------
+# The projection both v1 adapters share
+# ---------------------------------------------------------------------------
+#
+# The adapter contract says the SQL adapter and the no-DB adapter are
+# behaviourally identical: same IR in, same render out. That claim used to live
+# in a docstring while the two generators each wrote out their own field list by
+# hand — and they drifted, silently, in the direction that costs an adopter
+# their cell specs.
+#
+# So the field list is written once, here, and both generators read it.
+# scripts/adapter_parity.py compares what they produce rather than trusting the
+# sentence. A field added below reaches the database and the no-DB module in the
+# same change, or the parity check fails.
+
+#: Columns whose Python value is JSON-encoded and cast to jsonb.
+JSONB_FIELDS = frozenset({"links", "value_props"})
+#: Columns emitted as a bare SQL literal (numbers), never quoted.
+RAW_FIELDS = frozenset({"slot_position"})
+
+
+def seed_cell_fields(cell: dict, path: dict) -> dict:
+    """One cell as `cells` column -> value.
+
+    `slot_position` is always 0: the IR identifies a cell by (path, lane, step)
+    and so cannot express slot siblings. `origin` stays at its 'import' column
+    default — these rows ARE the import pipeline's.
+    """
+    return {
+        "id": cell["id"],
+        "path_id": path["id"],
+        "layer_id": cell["layer_id"],
+        "step_id": cell["step_id"],
+        "slot_position": 0,
+        "content": cell["content"],
+        "picture": cell["picture"],
+        "description": cell["description"],
+        "links": cell["links"],
+        "cell_key": cell["cell_key"],
+        "function": cell["function"],
+        "form": cell["form"],
+        "value_props": cell["value_props"],
+        "owner": cell["owner"],
+        "perceived_owner": cell["perceived_owner"],
+    }
+
+
+def seed_trigger_fields(trigger: dict) -> dict:
+    """One edge as `cell_triggers` column -> value.
+
+    `kind` is emitted explicitly even though 'trigger' is the column default:
+    every IR edge is a temporal one, because the IR has no shape for
+    kind='needs', nor for label or note. Those columns stay at their defaults
+    on both adapters, which is parity by absence rather than by accident.
+    """
+    return {
+        "id": trigger["id"],
+        "source_cell_id": trigger["source_cell_id"],
+        "target_cell_id": trigger["target_cell_id"],
+        "kind": "trigger",
+    }
+
+
+def sql_row(fields: dict) -> list:
+    """Column values as SQL literals, in the order the insert names them."""
+    out = []
+    for column, value in fields.items():
+        if column in JSONB_FIELDS:
+            out.append(sql_quote(json.dumps(value, ensure_ascii=False)) + "::jsonb")
+        elif column in RAW_FIELDS:
+            out.append(str(value))
+        else:
+            out.append(sql_quote(value))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # IR -> flat, id-resolved model (per locale)
 # ---------------------------------------------------------------------------
 
@@ -399,41 +475,25 @@ insert into public.layers (id, path_id, name, layer_role, row_position, kpis, to
 """
         )
 
-        # slot_position is always 0: the IR's (path, layer, step) cell identity
-        # cannot express slot siblings (see module docstring). origin stays at
-        # its 'import' column default — these rows ARE the import pipeline's.
-        cell_rows = [
-            [
-                q(c["id"]), q(p["id"]), q(c["layer_id"]), q(c["step_id"]), "0",
-                q(c["content"]), q(c["picture"]), q(c["description"]),
-                q(json.dumps(c["links"], ensure_ascii=False)) + "::jsonb",
-                q(c["cell_key"]),
-                q(c["function"]), q(c["form"]),
-                q(json.dumps(c["value_props"], ensure_ascii=False)) + "::jsonb",
-                q(c["owner"]), q(c["perceived_owner"]),
-            ]
-            for p in scenario["paths"]
-            for c in p["cells"]
+        # Columns come from the projection itself, so the insert cannot name a
+        # field list the projection no longer produces.
+        cell_fields = [
+            seed_cell_fields(c, p) for p in scenario["paths"] for c in p["cells"]
         ]
-        if cell_rows:
+        if cell_fields:
             parts.append(
-                "insert into public.cells (id, path_id, layer_id, step_id, slot_position, content, picture, description, links, cell_key, function, form, value_props, owner, perceived_owner) values\n"
-                + values_rows(cell_rows)
+                f"insert into public.cells ({', '.join(cell_fields[0])}) values\n"
+                + values_rows([sql_row(fields) for fields in cell_fields])
                 + ";\n"
             )
 
-        # kind is emitted explicitly even though 'trigger' is the column
-        # default: every IR trigger is a temporal edge (the IR has no shape
-        # for kind='needs' / label / note yet — those columns stay default).
-        trigger_rows = [
-            [q(t["id"]), q(t["source_cell_id"]), q(t["target_cell_id"]), q("trigger")]
-            for p in scenario["paths"]
-            for t in p["triggers"]
+        trigger_fields = [
+            seed_trigger_fields(t) for p in scenario["paths"] for t in p["triggers"]
         ]
-        if trigger_rows:
+        if trigger_fields:
             parts.append(
-                "\ninsert into public.cell_triggers (id, source_cell_id, target_cell_id, kind) values\n"
-                + values_rows(trigger_rows)
+                f"\ninsert into public.cell_triggers ({', '.join(trigger_fields[0])}) values\n"
+                + values_rows([sql_row(fields) for fields in trigger_fields])
                 + ";\n"
             )
 

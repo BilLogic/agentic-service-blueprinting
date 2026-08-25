@@ -38,6 +38,12 @@ export type CellLink = {
 
 export type BlueprintCell = {
   id: string
+  /**
+   * The authored qualified key (`cells.cell_key`) — lifecycle/phase/scenario/
+   * path/lane/step. The same string the cell's UUIDv5 is derived from, so a
+   * no-DB build can answer "which authored cell is this?" without a database.
+   */
+  cell_key?: string
   layer_id: string
   step_id: string
   /** Cell Label — primary text shown in the blueprint grid. */

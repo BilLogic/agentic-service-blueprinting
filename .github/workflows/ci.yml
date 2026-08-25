@@ -23,6 +23,10 @@ jobs:
       # The plugin contract's identifier layer, and the one version number.
       - run: npm run check:manifest
       - run: npm run check:version
+      # The two v1 adapters carry the same fields, and the IR round-trip
+      # suite — which until now existed as a script nobody ran.
+      - run: npm run check:parity
+      - run: npm run test:ir
       # The vendored rulebook against its source, then the suite.
       - run: npm test
       - run: npm run lint

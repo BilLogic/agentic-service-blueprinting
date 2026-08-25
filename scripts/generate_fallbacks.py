@@ -38,16 +38,18 @@ escaped), so CJK text, quotes, backticks, and newlines in content are safe.
 Verify with `npx tsc -p tsconfig.app.json` after generation — the adapter
 contract's read-back step for this adapter.
 
-Schema-parity note (2026-08-17): the DB schema now carries cell_key,
-slot_position, spec fields (cells function/form/owner/perceived_owner/
-value_props; layers kpis/tools) and cell_triggers.kind — and
-generate_seed_sql.py emits all of them. This module deliberately does NOT:
-the app's fallback types (src/types/blueprint.ts BlueprintCell /
-BlueprintCellTrigger, consumed via src/data/blueprintFallbacks.ts) do not
-carry those fields yet, and TypeScript's excess-property check would reject
-object literals with extra keys. When the Phase-2 frontend port teaches
-BlueprintData those fields, extend blueprint_data_for_path() here — the
-model already computes them (build_model is shared with the seed generator).
+Parity: this adapter and the SQL one project the SAME model through the SAME
+field functions (generate_seed_sql.seed_cell_fields / seed_trigger_fields), so
+a field reaches the database and this module in one change. It did not always:
+between 2026-08-17 and this note the field lists were written out twice by
+hand, they drifted, and the drift lost cell_key, slot_position, the cell spec
+fields and cell_triggers.kind — silently, and only on the adapter an adopter
+with no database is told is "not a degraded mode". scripts/adapter_parity.py
+now checks the claim instead of asserting it.
+
+Still outside the projection on BOTH adapters, which is parity by absence:
+lanes kpis/tools (no fallback consumer), and cell_triggers label/note (no IR
+shape to author them from).
 
 Stdlib only. Validation runs first via scripts/validate_ir.py (same dir);
 a failing IR generates nothing (the module is replaced wholesale and only
@@ -63,7 +65,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import validate_ir  # noqa: E402
-from generate_seed_sql import build_model  # noqa: E402
+from generate_seed_sql import (  # noqa: E402
+    build_model,
+    seed_cell_fields,
+    seed_trigger_fields,
+)
+
+#: Columns the SQL adapter stores that the nested fallback shape implies.
+IMPLIED_BY_NESTING = frozenset({"path_id"})
 
 MARKER_BEGIN = "GENERATED-BLUEPRINT-REGISTRY:BEGIN"
 MARKER_END = "GENERATED-BLUEPRINT-REGISTRY:END"
@@ -93,10 +102,13 @@ def indent_block(text: str, prefix: str) -> str:
 
 
 def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
-    """Project the shared model onto BlueprintData. Field lists are EXPLICIT
-    on purpose: the model rows also carry cell_key and the spec fields for the
-    seed generator, which the app's fallback types do not consume yet (see the
-    schema-parity note in the module docstring)."""
+    """Project the shared model onto BlueprintData.
+
+    Cells and edges are projected through generate_seed_sql's own field
+    functions, so this adapter carries exactly what the SQL adapter writes.
+    `path_id` is the only column dropped, and only because the fallback shape
+    nests cells under their path already.
+    """
     step_by_id = {step["id"]: step for step in scenario["steps"]}
     return {
         "path": {
@@ -126,24 +138,13 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
         ],
         "cells": [
             {
-                "id": cell["id"],
-                "layer_id": cell["layer_id"],
-                "step_id": cell["step_id"],
-                "content": cell["content"],
-                "picture": cell["picture"],
-                "description": cell["description"],
-                "links": cell["links"],
+                key: value
+                for key, value in seed_cell_fields(cell, path).items()
+                if key not in IMPLIED_BY_NESTING
             }
             for cell in path["cells"]
         ],
-        "triggers": [
-            {
-                "id": trigger["id"],
-                "source_cell_id": trigger["source_cell_id"],
-                "target_cell_id": trigger["target_cell_id"],
-            }
-            for trigger in path["triggers"]
-        ],
+        "triggers": [seed_trigger_fields(trigger) for trigger in path["triggers"]],
     }
 
 
