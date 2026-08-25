@@ -10,7 +10,7 @@ nothing here relaxes one.
 
 | Skill-world operation | Here |
 |---|---|
-| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `duplicate_scenario`, `create_step`, `create_lane`, `create_stakeholder`, `update_stakeholder`, `upsert_cell`, `update_cell`, `create_cell_dependency`, `update_path`, `create_evidence`, `update_evidence`, `create_slice`, `update_slice`, `replace_slice_frames`, `create_finding`, `update_finding` — plus `ui_command`'s few commands marked "[changes data]". That is the FULL write surface; nothing else writes. Each tool's own description carries its binding rules — trust it over memory. |
+| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `duplicate_scenario`, `rename_path`, `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `create_slice`, `update_slice`, `replace_slice_frames`, `record_finding`, `set_finding_status` — plus `ui_command`'s few commands marked "[changes data]". That is the FULL write surface; nothing else writes. Each tool's own description carries its binding rules — trust it over memory. |
 | Save / rework a slice | `create_slice`, `update_slice`, `replace_slice_frames` |
 | Drive the interface | `open_phase`, `open_scenario`, `focus_cell`, `open_cell_panel`, `set_canvas_mode` (view/design), `set_sidebar`, `annotate_cells` (ephemeral marker boxes + note) — the same gestures the human has; none of these touch data |
 | Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
@@ -31,13 +31,13 @@ nothing here relaxes one.
    not the audit. Each doc's Non-findings section is binding — a finding
    it excludes is invalid (an empty lane alone is not a gap unless you
    cite the contradicting content).
-3. **Record as you go**: findings land via `create_finding` the moment a
+3. **Record as you go**: findings land via `record_finding` the moment a
    check completes — deferring all recording to the end risks running
    out of tool rounds and delivering chat-only opinion, which is a
    failed audit. Reuse the run_id the first call returns for the whole
    run.
 4. **Report**: per-check counts, skipped checks with reasons.
-5. **Triage** = `update_finding`; the ledger = `list_findings`.
+5. **Triage** = `set_finding_status`; the ledger = `list_findings`.
 
 Canvas findings cite cells by id (written as the cell_keys), so canvas
 and IDE fingerprints are separate dedupe spaces.

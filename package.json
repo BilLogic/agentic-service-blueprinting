@@ -29,7 +29,8 @@
     "sync:canvas-skills": "node scripts/sync-canvas-skills.mjs",
     "agent:harness": "node scripts/agent-harness/run.mjs",
     "agent:harness:smoke": "node scripts/agent-harness/run.mjs --smoke",
-    "generate:portable-core": "node scripts/generate-portable-core.mjs"
+    "generate:portable-core": "node scripts/generate-portable-core.mjs",
+    "check:write-surface": "node scripts/check-write-surface.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
