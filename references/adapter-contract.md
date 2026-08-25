@@ -95,6 +95,11 @@ Until that table existed this clause compared a file against a file: the value
 was in the IR and in `blueprint-workspace.json` and nowhere a live target could
 be interrogated, which is the one thing the clause is for.
 
+**Runnable form**: `npm run check:target` performs exactly this check against a
+configured project and distinguishes *never migrated* from *stale*. Supabase:
+the desync repair, for a fork whose history diverged before the reserved
+timestamp band existed, is `supabase/DATABASE.md` § Migration desync.
+
 Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `schema.reference.sql` is the read-friendly mirror)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
 No-DB: provisioning is a no-op (the template app ships the types).

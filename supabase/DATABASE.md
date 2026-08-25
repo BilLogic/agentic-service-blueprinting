@@ -127,6 +127,20 @@ These are the STORED (DB) tokens; the client vocabulary is `single` \|
 
 ## Sample seed
 
+**The seed is the META-BLUEPRINT: the service blueprint of this template
+itself.** Not filler, and not a demo to delete before starting — a first
+blueprint that explains the tool it ships with. Replace it with your own
+service; until then it doubles as the documentation.
+
+It earns the default three times over. A reader's first blueprint is an
+explanation of what a blueprint is. It exercises the compare views,
+`loops_to_phase_id`, and three slice kinds, so a broken renderer shows up on
+first run rather than after someone imports real content. And **one generator
+feeds both adapters** — `scripts/generate_sample_blueprint.mjs` emits the SQL
+seed and the no-DB fallback module from the same source, so the no-DB path
+serves the same content a seeded database does. That is why "no database" is a
+supported mode here and not a degraded one.
+
 `supabase/seed.sql` is **generated** by `scripts/generate_sample_blueprint.mjs`
 alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
 `Keeping a blueprint true` service → four phases (`Discover` → `Setup` →
@@ -234,6 +248,119 @@ name; that list only ever shrinks.
    Use the time field when several land in one release.
 2. Write the real authoring date in the file header.
 3. `npm run check:band`.
+
+## Did the migration run
+
+**The failure this answers**: the app starts, every container reports healthy,
+and the database was never migrated. That is the shared failure signature of
+every comparable self-hosted project, and a healthy process says nothing about
+the schema behind it. Worse here than elsewhere: without a configured project
+this app runs its no-DB adapter and renders perfectly, so a misconfigured
+target looks exactly like a working one.
+
+So the question gets an answer rather than an inference:
+
+```bash
+npm run check:target
+```
+
+It asks the live target for `public.schema_version` over the same Data API and
+anon key the app uses, and distinguishes three things a rendering page cannot:
+
+| Outcome | What it means | What to do |
+| --- | --- | --- |
+| `the target carries schema_version …` | Reachable, migrated, compatible | Nothing |
+| `has no public.schema_version — it has never been migrated` | The Data API answers, the schema was never applied | `supabase db push`, or `npm run supabase:reset` locally |
+| `carries X; this checkout speaks Y` | Migrated, wrong shape | Apply the pending migrations, or check out the revision matching the target |
+
+Reads `.env`, then the environment, then `--url` / `--key`. It is **not** in CI:
+CI has no target, and a check that needs a live database is a check that would
+be skipped and then trusted.
+
+For the per-migration view — which versions are applied on the remote and which
+are still local — the CLI answers directly:
+
+```bash
+supabase migration list --linked
+```
+
+## Migration desync: the repair
+
+**Who needs this**: forks created before the reserved band existed, whose local
+history and the remote's `supabase_migrations.schema_migrations` have diverged.
+Inside the band it cannot recur — an upstream migration always sorts after
+everything already applied, so a pull can only append.
+
+The symptom is `supabase db push` refusing:
+
+> Found local migration files to be inserted before the last migration on remote database
+
+That is the desync, not a permissions problem and not a broken migration. It
+means a local file carries a version earlier than one the remote has already
+applied — a pull of upstream work stamped before the fork's own.
+
+**1. See the two histories.**
+
+```bash
+supabase migration list --linked
+```
+
+`Local` and `Remote` columns; a version in one and not the other is the
+divergence. Read it before changing anything — the repair below edits migration
+history, and the two directions are not interchangeable.
+
+**2. If the local files are simply pending, apply them out of order.**
+
+An upstream migration stamped before one the fork already applied is still
+*correct* — nothing upstream depends on anything a fork built, which is a rule
+here and not a coincidence. So the ordinary case needs no history surgery:
+
+```bash
+supabase db push --dry-run --include-all   # read what it would apply
+supabase db push --include-all
+```
+
+`--include-all` applies every local migration the remote's history table does
+not list, regardless of where it sorts. Use `--dry-run` first; if the list
+contains anything you do not recognise, stop and do step 3 instead.
+
+**3. If the histories genuinely disagree, repair them — per divergent version,
+whichever is true.**
+
+- The remote **already has the schema** that migration builds (typical when the
+  fork applied it under a different filename, or applied it by hand):
+
+  ```bash
+  supabase migration repair --status applied <version>
+  ```
+
+- The remote **does not** have it and should get it on the next push:
+
+  ```bash
+  supabase migration repair --status reverted <version>
+  ```
+
+`repair` writes `supabase_migrations.schema_migrations` and touches no table of
+yours. Getting the direction wrong is what makes it dangerous: marking a
+migration `applied` that never ran leaves the schema missing whatever it built,
+and nothing will try again.
+
+**4. Push, then verify against the target rather than the exit code.**
+
+```bash
+supabase db push
+npm run check:target
+```
+
+**5. Take the band from here on.** Upstream migrations land in
+`21000101000000`–`21991231235959` and always sort last, so once local and remote
+agree, a pull cannot reintroduce this.
+
+**If the histories are too tangled to reconcile by hand**, the escape hatch is
+`supabase db pull` — it writes the remote's actual schema into a new local
+migration, which makes the remote authoritative and the divergence moot. The
+cost is a migration file that is a snapshot rather than a change, so do it once
+and say so in the file header.
 
 ## Migration authoring notes
 

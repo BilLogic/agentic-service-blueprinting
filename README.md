@@ -114,6 +114,8 @@ npm run dev
 
 Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted project: `supabase link`, `supabase db push`, then `supabase db query --file supabase/seed.sql --linked`, and set `.env` from **Settings → API**.
 
+Then `npm run check:target` — it asks the database which schema it carries. Run it once: the app falls back to bundled content when it cannot reach a project, so "the page renders" does not mean the migration ran.
+
 > **Exposure note:** all tables carry public `SELECT` policies (read-only anon access). Anything you deploy is publicly readable — don't load client-sensitive content into a public deployment.
 
 ### Bring your own backend
@@ -126,7 +128,17 @@ Supabase-native, backend-portable. The app and the skills run Supabase out of th
 
 **What you get to copy**: the portable schema ([supabase/schema.reference.sql](./supabase/schema.reference.sql) + [docs/erd.mmd](./docs/erd.mmd)), checked in CI against a stock Postgres; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and two working implementations of the interfaces to read.
 
-**What we don't provide**: an adapter for your backend, hosting, or auth. The identity port asks one question — what tier is this session — and leaves how you answer it to you.
+**What we don't provide** — stated as a boundary rather than a list of apologies, so you know where your work starts:
+
+- **No auth beyond the anon / authenticated split.** The identity port asks one question — what tier is this session — and leaves how you answer it to you. Supabase Auth is the shipped recipe, not the requirement.
+- **No multi-tenancy.** One blueprint workspace per database. There is no tenant column, and RLS does not scope by one.
+- **No backup or restore.** Your host's problem, and the reason `supabase/migrations/` is append-only: an undo is a new migration.
+- **No migration ops beyond the shipped chain.** `db push` and `db reset` are supported; anything past that — branching, squashing, multi-environment promotion — is yours. The one operational failure we do own is desync, with a runbook: [supabase/DATABASE.md § Migration desync](./supabase/DATABASE.md).
+- **No adapter for your backend, and no hosting.**
+
+**What answers "is it actually wired up"**: `npm run check:target` asks the live database which schema it carries and tells you whether it was never migrated, is stale, or is fine — [supabase/DATABASE.md § Did the migration run](./supabase/DATABASE.md). Worth running once: without a configured project the app falls back to bundled content and renders perfectly, so a misconfigured target looks exactly like a working one.
+
+**What you start from**: `supabase/seed.sql` is the **META-BLUEPRINT** — the service blueprint of this template itself, not filler. One generator emits it and the no-DB fallback module from the same source, so both adapters serve the same content. Replace it with your own service; until then it doubles as the documentation.
 
 ### Deploy
 
@@ -155,6 +167,7 @@ Supabase-native, backend-portable. The app and the skills run Supabase out of th
 | `python3 scripts/compute_signoff_hash.py <blueprint.json>` | Per-scenario sign-off content hashes |
 | `python3 skills/audit/scripts/audit_tools.py` | Helpers the audit checks run on |
 | `python3 skills/slice/scripts/slice_tools.py` | Helpers for composing and validating a slice |
+| `npm run check:target` | Ask the configured database which schema it carries |
 | `npm test` | Vitest suite for the app |
 | `bash scripts/tests/run_tests.sh` | Round-trip test suite for the blueprint pipeline |
 
