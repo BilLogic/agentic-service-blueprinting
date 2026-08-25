@@ -7,8 +7,12 @@
 --   20260818000000_authoring_foundation.sql   (provenance, cell_key, slots, delete archive)
 --   20260818001000_authoring_operations.sql   (the write RPC surface)
 --   20260818002000_service_account_tier.sql   (OPTIONAL tier recipe)
+--   20260819000000_agent_surface.sql          (agent transcripts + findings grants)
 -- This file shows the post-migration shape as plain CREATEs for reading;
--- it is never executed. (Snapshot refreshed 2026-08-18.)
+-- it is never executed. It is CHECKED, though: `npm run check:portable-core`
+-- compares it against what the migrations actually build, offline via the
+-- generated types and in CI against a stock Postgres. It went two migrations
+-- stale before that check existed.
 --
 -- Portability partition. Everything in this schema is one of two things:
 --   PORTABLE POSTGRES CORE — the tables, constraints, checks, triggers,
@@ -274,6 +278,31 @@ create table public.service_account_emails (
   email text primary key,
   note text,
   created_at timestamptz not null default now()
+);
+
+-- Agent surface (20260819000000). The in-app agent panel's transcript store,
+-- private to its author: `created_by` defaults to the caller so the app never
+-- sets it, and RLS filters every read to the caller's own rows. Reachable by
+-- authenticated sessions only — an anon deployment never sees this surface and
+-- persistence degrades to browser storage.
+create table public.agent_sessions (
+  id uuid primary key,
+  title text not null default 'New session',
+  created_by uuid not null default auth.uid(),   -- SUPABASE RECIPE: the default
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- seq is bigint because the app writes a per-boot epoch base, so two tabs on
+-- one session land in disjoint ranges rather than upserting over each other.
+create table public.agent_messages (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.agent_sessions (id) on delete cascade,
+  seq bigint not null,
+  kind text not null check (kind in ('user', 'assistant', 'tool', 'status')),
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  unique (session_id, seq)
 );
 
 -- ---------------------------------------------------------------------------

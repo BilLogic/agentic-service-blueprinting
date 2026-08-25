@@ -26,8 +26,56 @@ jobs:
       # The two v1 adapters carry the same fields, and the IR round-trip
       # suite — which until now existed as a script nobody ran.
       - run: npm run check:parity
+      - run: npm run check:portable-core
       - run: npm run test:ir
       # The vendored rulebook against its source, then the suite.
       - run: npm test
       - run: npm run lint
       - run: npm run build
+
+  # "The portable core runs on any Postgres" has been written in
+  # schema.reference.sql since the file existed, and had never been executed.
+  # This is that sentence, run: a plain Postgres, a shim supplying only the
+  # role names and auth.* helpers the Supabase recipe calls, and every
+  # migration replayed in order. If a migration reaches for something only
+  # Supabase provides, it fails here rather than in an adopter's project.
+  portable-core:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Supabase shim (CI harness, not the portable core)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/portable/supabase-shim.sql
+      - name: Replay every migration in order
+        run: |
+          set -euo pipefail
+          for file in supabase/migrations/*.sql; do
+            echo "--- $file"
+            psql -v ON_ERROR_STOP=1 -f "$file"
+          done
+      - name: Inventory what was actually built
+        run: psql -At -F $'\t' -f supabase/portable/inventory.sql > /tmp/inventory.tsv
+      - name: Compare it against schema.reference.sql
+        run: node scripts/check-portable-core.mjs /tmp/inventory.tsv

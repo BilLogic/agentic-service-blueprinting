@@ -14,6 +14,7 @@
     "check:manifest": "node scripts/generate-identifier-manifest.mjs --check",
     "check:version": "node scripts/check-version-agreement.mjs",
     "check:parity": "python3 scripts/adapter_parity.py",
+    "check:portable-core": "node scripts/check-portable-core.mjs --from-types",
     "test:ir": "bash scripts/tests/run_tests.sh",
     "version": "changeset version && node scripts/check-version-agreement.mjs --write",
     "preview": "vite preview",
