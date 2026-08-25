@@ -40,10 +40,14 @@ browser-local write path was considered and rejected: it would be a second
 implementation of the authoring semantics whose divergence would surface
 only in the demo.
 
-**Live-DB honesty note**: the frontend reads via PostgREST-style embedded
-selects using `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`, so live-DB mode
-requires Supabase or a **PostgREST-compatible read API**. A bare Postgres
-host can receive writes but cannot serve the app.
+**What live mode actually requires**: the app reads and writes through the
+repository interfaces in `src/lib/backend/ports.ts` — domain operations like
+`getBlueprint(pathId)` and `createSlice(draft)`. Any store that can answer
+them can serve this app. The Supabase adapter answers them with PostgREST
+embedded selects; that is one implementation, not the requirement.
+
+This paragraph used to say that a host without a PostgREST-compatible read
+API "cannot serve the app". That was our coupling written down as physics.
 
 **⚠ Derived layer without a DB (normative)**: a no-DB adopter's
 findings/slices store IS the ledger files that
@@ -150,13 +154,55 @@ confident count before them):
 
 ## Live backend surface (beyond import)
 
-Importing is the floor; **serving the app live** is a larger surface. A
-backend replacing Supabase must provide everything below, or the app's
-authoring, agent, and derived-layer features silently break. (Read-only
-serving needs only the PostgREST-style embedded selects from the honesty
-note above — including **column-form FK hints**: the blueprint read embeds
-`cell_triggers!source_cell_id`, so the read API must disambiguate a
-multi-FK embed by column name.)
+Importing is the floor; **serving the app live** is a larger surface. It is
+defined by the repository interfaces in `src/lib/backend/ports.ts`, one per
+aggregate — blueprints, slices, findings — plus an identity port. Each
+operation declares what a caller may assume of it: `read`, `atomic`
+(all-or-nothing), or `converging` (repeating it lands in the same place).
+Round-trip expectations are declared too, so a backend without joins conforms
+visibly rather than by turning one screen into ninety requests nobody notices
+until the bill arrives.
+
+Identity is a **separate port** answering one question — *what may this
+session do?* — in three tiers (`anon`, `authoring`, `service`). It never
+exposes a token or a claim name, so an adopter can run Supabase auth, their
+own OIDC, or a single-user desktop build without either side learning about
+the other. It is a UI-level answer; the backend still enforces it.
+
+### Two conformance levels
+
+**Transactional** — every `atomic` operation is all-or-nothing; a rejected
+write leaves nothing behind. Supabase conforms here through its RPCs.
+Firestore can, within its transaction limits.
+
+**Idempotent** — `atomic` operations may tear, in exchange for two duties:
+re-running a request converges, and `repairSlices()` resolves every torn state
+a write can leave. Notion has no transactions at all and conforms here. The
+cost is real and stated rather than hidden: an interrupted write can leave a
+slice with no frames until a repair pass runs.
+
+This is the decision that makes "any backend" true rather than a marketing
+line. A contract that demanded transactions would be the Supabase requirement
+again, wearing a different word.
+
+### Proving an implementation
+
+`src/lib/backend/conformance.ts` is the suite — framework-free, so an adopter
+runs it from their own runner against their own store. It reports every case,
+skipping none silently: a read-only backend's write cases come back `skipped`
+with a reason, so "did not apply" is distinguishable from "was not run". Two
+reference implementations pass it in this repo: the bundled fixture
+(`adapters/fixture.ts`, reads only) and an in-memory store
+(`adapters/memory.ts`, which runs at either level and is about two hundred
+lines — the shortest honest answer to "what does implementing this involve").
+
+⚠️ The suite writes. Point it at a scratch project.
+
+### How the Supabase adapter renders it
+
+Everything below is how *this* adapter answers the operations above. It is
+useful as a worked example and as documentation of the deployed system. It is
+not the contract.
 
 ### 1. The authoring RPC roster
 
