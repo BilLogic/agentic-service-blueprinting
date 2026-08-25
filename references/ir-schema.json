@@ -357,7 +357,7 @@
             "null"
           ],
           "pattern": "^[a-z0-9][a-z0-9_]*$",
-          "description": "Semantic role key (layers.layer_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. Org-defined custom roles and null both render as generic swimlanes. See references/layer-roles.md."
+          "description": "Semantic role key (layers.layer_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. Org-defined custom roles and null both render as generic swimlanes. See references/lane-roles.md."
         },
         "row": {
           "type": "integer",

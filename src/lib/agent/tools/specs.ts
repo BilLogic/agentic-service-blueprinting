@@ -92,10 +92,10 @@ export const WRITE_TOOL_NAMES = new Set([
 export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'read_reference',
-    description: `Read a rulebook reference before acting on its topic. Available: ${REFERENCE_NAMES.filter((n) => n !== 'canvas-adapter').join(', ')}. Read layer-roles and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`,
+    description: `Read a rulebook reference before acting on its topic. Available: ${REFERENCE_NAMES.filter((n) => n !== 'canvas-adapter').join(', ')}. Read lane-roles and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`,
     parameters: {
       type: 'object',
-      properties: { name: str('Reference name, e.g. "layer-roles"') },
+      properties: { name: str('Reference name, e.g. "lane-roles"') },
       required: ['name'],
     },
   },
@@ -455,7 +455,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'add_lane',
     description:
-      'Add a lane to EVERY path of a scenario. Read layer-roles and lane-vocabulary first; lane labels are byte-identical for the same actor group across scenarios.',
+      'Add a lane to EVERY path of a scenario. Read lane-roles and lane-vocabulary first; lane labels are byte-identical for the same actor group across scenarios.',
     parameters: {
       type: 'object',
       properties: {

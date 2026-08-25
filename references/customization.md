@@ -17,7 +17,7 @@ schema-version compat check in the upgrade recipe.
 ## Layer roles
 
 The canonical vocabulary + org-defined custom roles are documented in
-`references/layer-roles.md`. Customization summary: display names are
+`references/lane-roles.md`. Customization summary: display names are
 free-form in any language; custom roles are just strings (they render as
 generic swimlanes); no role is mandatory. Prefer creating a custom role over
 `null` when the lane has org-specific meaning — it keeps semantics in data.

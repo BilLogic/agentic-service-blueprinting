@@ -71,7 +71,7 @@ For each scenario the user picked:
    - Set `provenance` on every cell extracted from a doc.
    - Set `needs_review: true` wherever confidence is low — flags, not guesses
      presented as facts.
-   - Assign layer roles explicitly (`references/layer-roles.md`); ask
+   - Assign layer roles explicitly (`references/lane-roles.md`); ask
      "whose journey is the spine?" if ambiguous.
    - Locale maps for all text; keep source-language text verbatim where the
      doc provides it, don't machine-round-trip.

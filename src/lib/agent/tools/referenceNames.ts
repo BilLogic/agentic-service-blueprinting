@@ -12,7 +12,7 @@
  */
 export const REFERENCE_NAMES: readonly string[] = [
   'canvas-adapter',
-  'layer-roles',
+  'lane-roles',
   'lane-vocabulary',
   'elicitation-protocol',
   'cocreate-playbook',
