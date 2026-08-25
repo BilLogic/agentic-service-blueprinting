@@ -1,4 +1,4 @@
-import type { BlueprintLayer } from '@/types/blueprint'
+import type { BlueprintLane } from '@/types/blueprint'
 import {
   BLUEPRINT_CELL_BORDER_COLOR,
   type BlueprintLaneRole,
@@ -130,7 +130,7 @@ export function blueprintPanelDividerBgColor(
  * reasonable conclusion that the board was off-palette. The names are gone.
  */
 
-export type BlueprintLayerStyle = {
+export type BlueprintLaneStyle = {
   /** What this lane is. blueprint.css turns the role into its steps. */
   lane: BlueprintLaneRole
   laneLabel: BlueprintLaneRole
@@ -155,25 +155,25 @@ export type BlueprintLabelSection =
   | 'backstage'
 
 export function getBlueprintLabelSection(
-  layer: BlueprintLayer,
-  layers: BlueprintLayer[],
+  lane: BlueprintLane,
+  lanes: BlueprintLane[],
 ): BlueprintLabelSection {
-  if (isBackstageBlueprintLayer(layer, layers)) {
+  if (isBackstageBlueprintLane(lane, lanes)) {
     return 'backstage'
   }
 
-  const layerIndex = layers.findIndex((entry) => entry.id === layer.id)
-  const interactionAfterIndex = layers.findIndex((entry) =>
+  const laneIndex = lanes.findIndex((entry) => entry.id === lane.id)
+  const interactionAfterIndex = lanes.findIndex((entry) =>
     shouldShowInteractionLineAfter(entry),
   )
-  const visibilityAfterIndex = layers.findIndex((entry) =>
-    shouldShowVisibilityLineAfter(entry, layers),
+  const visibilityAfterIndex = lanes.findIndex((entry) =>
+    shouldShowVisibilityLineAfter(entry, lanes),
   )
 
   if (
     interactionAfterIndex !== -1 &&
-    layerIndex > interactionAfterIndex &&
-    (visibilityAfterIndex === -1 || layerIndex <= visibilityAfterIndex)
+    laneIndex > interactionAfterIndex &&
+    (visibilityAfterIndex === -1 || laneIndex <= visibilityAfterIndex)
   ) {
     return 'customerFacing'
   }
@@ -197,7 +197,7 @@ export function getBlueprintLabelTextColor(
 function cellStyleFromFill(
   fill: BlueprintLaneRole,
   label: string = BLUEPRINT_LABEL_TEXT.frontstage,
-): BlueprintLayerStyle {
+): BlueprintLaneStyle {
   return {
     lane: fill,
     laneLabel: fill,
@@ -207,7 +207,7 @@ function cellStyleFromFill(
   }
 }
 
-const LAYER_STYLES: Record<string, BlueprintLayerStyle> = {
+const LANE_STYLES: Record<string, BlueprintLaneStyle> = {
   Visual: cellStyleFromFill('visual'),
   'Step Visual': cellStyleFromFill('visual'),
   'Front Stage Tech': cellStyleFromFill('frontstage-tech',
@@ -248,20 +248,20 @@ const LAYER_STYLES: Record<string, BlueprintLayerStyle> = {
   ),
 }
 
-const FRONTSTAGE_FALLBACK: BlueprintLayerStyle = cellStyleFromFill('support',
+const FRONTSTAGE_FALLBACK: BlueprintLaneStyle = cellStyleFromFill('support',
   BLUEPRINT_LABEL_TEXT.frontstage,
 )
 
-const BACKSTAGE_FALLBACK: BlueprintLayerStyle = cellStyleFromFill('support',
+const BACKSTAGE_FALLBACK: BlueprintLaneStyle = cellStyleFromFill('support',
   BLUEPRINT_LABEL_TEXT.backstage,
 )
 
 /**
- * Canonical cell fills keyed by `layer_role` — the intentional coloring system.
+ * Canonical cell fills keyed by `lane_role` — the intentional coloring system.
  * Roles are locale-independent, so non-English lane labels still color correctly
- * (name-keyed `LAYER_STYLES` above is the legacy fallback for pre-role content).
+ * (name-keyed `LANE_STYLES` above is the legacy fallback for pre-role content).
  */
-const ROLE_STYLES: Record<string, BlueprintLayerStyle> = {
+const ROLE_STYLES: Record<string, BlueprintLaneStyle> = {
   visual: cellStyleFromFill('visual'),
   step_visual: cellStyleFromFill('visual'),
   journey_stage: cellStyleFromFill('visual'),
@@ -288,14 +288,14 @@ const ROLE_STYLES: Record<string, BlueprintLayerStyle> = {
 
 export type BlueprintZone = 'frontstage' | 'backstage'
 
-export function getBlueprintLayerStyle(
-  layerName: string,
+export function getBlueprintLaneStyle(
+  laneName: string,
   zone: BlueprintZone,
   role?: string | null,
-): BlueprintLayerStyle {
+): BlueprintLaneStyle {
   return (
     (role ? ROLE_STYLES[role] : undefined) ??
-    LAYER_STYLES[layerName] ??
+    LANE_STYLES[laneName] ??
     (zone === 'backstage' ? BACKSTAGE_FALLBACK : FRONTSTAGE_FALLBACK)
   )
 }
@@ -306,21 +306,21 @@ export function getBlueprintZoneColor(zone: BlueprintZone): string {
     : FRONTSTAGE_FALLBACK.accent
 }
 
-export function isBackstageBlueprintLayer(
-  layer: BlueprintLayer,
-  layers: BlueprintLayer[],
+export function isBackstageBlueprintLane(
+  lane: BlueprintLane,
+  lanes: BlueprintLane[],
 ): boolean {
-  const visibilityAfterIndex = layers.findIndex((entry) =>
-    shouldShowVisibilityLineAfter(entry, layers),
+  const visibilityAfterIndex = lanes.findIndex((entry) =>
+    shouldShowVisibilityLineAfter(entry, lanes),
   )
   if (visibilityAfterIndex === -1) return false
-  const layerIndex = layers.findIndex((entry) => entry.id === layer.id)
-  return layerIndex > visibilityAfterIndex
+  const laneIndex = lanes.findIndex((entry) => entry.id === lane.id)
+  return laneIndex > visibilityAfterIndex
 }
 
-export function getBlueprintLayerZone(
-  layer: BlueprintLayer,
-  layers: BlueprintLayer[],
+export function getBlueprintLaneZone(
+  lane: BlueprintLane,
+  lanes: BlueprintLane[],
 ): BlueprintZone {
-  return isBackstageBlueprintLayer(layer, layers) ? 'backstage' : 'frontstage'
+  return isBackstageBlueprintLane(lane, lanes) ? 'backstage' : 'frontstage'
 }

@@ -57,7 +57,7 @@ export type SliceCellPlacement = {
   cellId: string
   /** 1-based sequence number across the slice; dangling cells are skipped. */
   order: number
-  layerId: string
+  laneId: string
   stepIndex: number
   /** Index of the owning frame in position-sorted slice items. */
   itemIndex: number
@@ -108,7 +108,7 @@ export function resolveSliceCells(
       placements.push({
         cellId,
         order,
-        layerId: cell.layer_id,
+        laneId: cell.lane_id,
         stepIndex,
         itemIndex,
       })
@@ -139,14 +139,14 @@ export function resolveSliceFramePictures(
   if (!blueprint) return []
 
   const cellById = new Map(blueprint.cells.map((cell) => [cell.id, cell]))
-  const visualLayerIds = new Set(
-    blueprint.layers
-      .filter((layer) => shouldUseVisualContent(layer))
-      .map((layer) => layer.id),
+  const visualLaneIds = new Set(
+    blueprint.lanes
+      .filter((lane) => shouldUseVisualContent(lane))
+      .map((lane) => lane.id),
   )
   const visualCellByStepId = new Map(
     blueprint.cells
-      .filter((cell) => visualLayerIds.has(cell.layer_id))
+      .filter((cell) => visualLaneIds.has(cell.lane_id))
       .map((cell) => [cell.step_id, cell]),
   )
 

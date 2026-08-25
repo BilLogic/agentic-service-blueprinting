@@ -11,7 +11,7 @@ export type BlueprintStepTechEntry = {
   id: string
   cellId: string
   item: string
-  layerName: string
+  laneName: string
   stepIndex: number
 }
 
@@ -28,15 +28,15 @@ export function getBlueprintStepTechItems(
   const stepIndex = blueprint.steps.findIndex((step) => step.id === stepId)
   if (stepIndex < 0) return []
 
-  const pillLayers = blueprint.layers
-    .filter((layer) => shouldUsePillCellContent(layer))
-    .sort((a, b) => a.row_position - b.row_position)
+  const pillLanes = blueprint.lanes
+    .filter((lane) => shouldUsePillCellContent(lane))
+    .sort((a, b) => a.position - b.position)
 
   const entries: BlueprintStepTechEntry[] = []
 
-  for (const layer of pillLayers) {
+  for (const lane of pillLanes) {
     const cell = blueprint.cells.find(
-      (entry) => entry.layer_id === layer.id && entry.step_id === stepId,
+      (entry) => entry.lane_id === lane.id && entry.step_id === stepId,
     )
     if (!cell) continue
 
@@ -53,7 +53,7 @@ export function getBlueprintStepTechItems(
         id: `${cell.id}:${item}`,
         cellId: cell.id,
         item,
-        layerName: layer.name,
+        laneName: lane.name,
         stepIndex,
       })
     }
@@ -74,10 +74,10 @@ export function buildTechPillSelectionForItem(
   )
   if (!cell) return null
 
-  const layer = blueprint.layers.find((entry) => entry.id === cell.layer_id)
+  const lane = blueprint.lanes.find((entry) => entry.id === cell.lane_id)
   const stepIndex = blueprint.steps.findIndex((entry) => entry.id === cell.step_id)
   const step = blueprint.steps[stepIndex]
-  if (!layer || !step || stepIndex < 0) return null
+  if (!lane || !step || stepIndex < 0) return null
 
   if (!getTechPillItems(cell.content).includes(techItem)) return null
 
@@ -85,18 +85,18 @@ export function buildTechPillSelectionForItem(
     {
       scenarioName,
       phaseName,
-      layerName: layer.name,
+      laneName: lane.name,
       stepId: step.id,
       stepName: step.name,
       stepIndex,
       cellId: cell.id,
       cellContent: cell.content,
       cellPicture: cell.picture,
-      cellDescription: cell.description,
+      cellSummary: cell.summary,
       cellLinks: cell.links,
       pathId: blueprint.path.id,
       pathName: blueprint.path.name,
-      pathDescription: blueprint.path.description,
+      pathSummary: blueprint.path.summary,
       pathType: blueprint.path.path_type,
     },
     techItem,

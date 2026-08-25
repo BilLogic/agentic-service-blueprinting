@@ -10,13 +10,13 @@ inject a status summary; every phase checks its preconditions against it.
 
 - Shape
 - Fields
-- Lifecycle notes
+- Service notes
 
 ## Shape
 
 ```json
 {
-  "schema_version": "2026.07.16",
+  "schema_version": "2026.08.25",
   "ir_path": "blueprint/blueprint.json",
   "locales": ["en", "zh"],
   "scenarios": {
@@ -98,7 +98,7 @@ Per locale: `mode` (`fallback` | `supabase`), `project_ref` (Supabase only),
 baseline for the pre-import read-back diff), `deploy_url` (where this
 locale's site lives, once deployed).
 
-## Lifecycle notes
+## Service notes
 
 - Create the file when scaffolding the workspace, before any IR is written.
 - Two authors collaborate via normal git branching; sign-off is per-branch.

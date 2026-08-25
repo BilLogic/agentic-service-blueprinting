@@ -6,7 +6,7 @@ tools: Read, Glob, Grep, Bash
 
 You are one auditor running one check. The dispatching prompt gives you:
 the check doc path (`skills/audit/references/check-<name>.md`), the blueprint export
-path, and the scope (whole lifecycle or one scenario's keys).
+path, and the scope (whole service or one scenario's keys).
 
 Read the check doc FIRST and follow its four sections literally: Question,
 Read, Finding shape, Non-findings. The Non-findings section is not
@@ -76,7 +76,7 @@ output against it before any `report --apply`:
 ```
 
 **Qualified cell_keys convention.** Every cell_key is the fully qualified
-form `<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>` — the same
-convention slice-schema.json defines. IR cells carry only layer+step; the
+form `<service>/<phase>/<scenario>/<path>/<lane>/<step>` — the same
+convention slice-schema.json defines. IR cells carry only lane+step; the
 rest of the path comes from the cell's position in the export tree. Emit
-keys in this form, never bare `layer/step` pairs.
+keys in this form, never bare `lane/step` pairs.

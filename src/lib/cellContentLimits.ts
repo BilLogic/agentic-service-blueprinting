@@ -5,7 +5,7 @@
  * ~21 chars/line), it matches TITLE_MAX for slices, and the whole corpus
  * already fits (the 2026-08-16 copy sweep's cell-voice convention enforces
  * the same number editorially). Detail beyond the cap belongs in
- * `description`, which the panel scrolls.
+ * `summary`, which the panel scrolls.
  */
 export const CELL_CONTENT_MAX = 120
 
@@ -15,6 +15,6 @@ export function checkCellContentLength(content: string): string | null {
   return (
     `Cell content is ${content.length} characters — the cap is ${CELL_CONTENT_MAX}. ` +
     'A cell is read at a glance on the canvas; keep the complete predicate in content ' +
-    'and move supporting detail (statistics, caveats, evidence) into the description.'
+    'and move supporting detail (statistics, caveats, evidence) into the summary.'
   )
 }

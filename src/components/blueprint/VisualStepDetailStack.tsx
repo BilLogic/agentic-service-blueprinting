@@ -28,7 +28,7 @@ export function VisualStepDetailStack({
   }
 
   if (orientation === 'horizontal') {
-    // Shared rows keep image tops, titles, and descriptions aligned across users.
+    // Shared rows keep image tops, titles, and summaries aligned across users.
     const gridStyle = {
       gridTemplateColumns: `repeat(${entries.length}, minmax(0, 1fr))`,
       gridTemplateRows: 'minmax(0, 1fr) auto auto',
@@ -41,7 +41,7 @@ export function VisualStepDetailStack({
       >
         {entries.map((entry, index) => (
           <div
-            key={`picture-${entry.layerName}`}
+            key={`picture-${entry.laneName}`}
             className="relative min-h-0 w-full overflow-hidden rounded-lg bg-muted/20"
             style={{ gridColumn: index + 1, gridRow: 1 }}
           >
@@ -60,7 +60,7 @@ export function VisualStepDetailStack({
 
         {entries.map((entry, index) => (
           <p
-            key={`label-${entry.layerName}`}
+            key={`label-${entry.laneName}`}
             className="self-start text-xs font-semibold leading-snug text-foreground/90"
             style={{ gridColumn: index + 1, gridRow: 2 }}
           >
@@ -70,12 +70,12 @@ export function VisualStepDetailStack({
 
         {entries.map((entry, index) => (
           <p
-            key={`description-${entry.layerName}`}
+            key={`summary-${entry.laneName}`}
             className="line-clamp-3 self-start overflow-hidden text-sm leading-relaxed whitespace-pre-wrap text-foreground"
             style={{ gridColumn: index + 1, gridRow: 3 }}
           >
-            {entry.description || (
-              <span className="text-muted-foreground">No description</span>
+            {entry.summary || (
+              <span className="text-muted-foreground">No summary</span>
             )}
           </p>
         ))}
@@ -86,7 +86,7 @@ export function VisualStepDetailStack({
   return (
     <div className={cn('flex flex-col gap-5', className)}>
       {entries.map((entry) => (
-        <div key={entry.layerName} className="flex flex-col gap-2.5">
+        <div key={entry.laneName} className="flex flex-col gap-2.5">
           <div className={PICTURE_FRAME_CLASS}>
             <img
               src={entry.picture}
@@ -103,8 +103,8 @@ export function VisualStepDetailStack({
             {entry.label}
           </p>
           <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-            {entry.description || (
-              <span className="text-muted-foreground">No description</span>
+            {entry.summary || (
+              <span className="text-muted-foreground">No summary</span>
             )}
           </p>
         </div>

@@ -96,11 +96,11 @@ export const coverContent: CoverContent = {
           heading: 'Where you reach it from',
           paragraphs: [
             'Four ways to work the same blueprint. The app is where people read, compare, and present. The in-app agent drafts changes in place, using the same write path the interface uses. Agentic tools reach the same rows from an IDE or a terminal — that is where the four skills run. A chat bot answers questions and links back to the exact cell it read.',
-            'All four sit on one shared context layer, so what any surface reads is what the others wrote. Who may do what follows from the account a surface signs in with, not from which surface it is.',
+            'All four sit on one shared context lane, so what any surface reads is what the others wrote. Who may do what follows from the account a surface signs in with, not from which surface it is.',
           ],
           figure: {
             src: '/cover/four-ways-in.svg',
-            alt: 'Four ways into the blueprint — the app, the in-app agent, agentic tools, and a chat bot — over one shared context layer',
+            alt: 'Four ways into the blueprint — the app, the in-app agent, agentic tools, and a chat bot — over one shared context lane',
             width: 880,
             height: 334,
           },
@@ -120,12 +120,12 @@ export const coverContent: CoverContent = {
           id: 'blueprints-organized',
           heading: 'How a blueprint is organized',
           paragraphs: [
-            'A **lifecycle** holds ordered **phases**, and a phase may loop back to an earlier one — which is how renewals and repeat visits are modeled without duplicating the journey. A phase holds **scenarios**: the distinct situations someone can be in. A scenario holds **paths** — variants of that same situation, the one that goes well and the ones where something does not.',
+            'A **service** holds ordered **phases**, and a phase may loop back to an earlier one — which is how renewals and repeat visits are modeled without duplicating the journey. A phase holds **scenarios**: the distinct situations someone can be in. A scenario holds **paths** — variants of that same situation, the one that goes well and the ones where something does not.',
             'Every path is a grid. That is the next level down.',
           ],
           figure: {
             src: '/cover/data-model-hierarchy.svg',
-            alt: 'How a blueprint is organized — lifecycle to phase to scenario to path',
+            alt: 'How a blueprint is organized — service to phase to scenario to path',
             width: 880,
             height: 634,
           },
@@ -238,7 +238,7 @@ export const coverContent: CoverContent = {
           kind: 'skill',
           id: 'skills-map',
           command: '/sb:map',
-          description:
+          summary:
             "Builds a blueprint from what you already have — documents, a working session, or someone else's diagram — and produces a validated blueprint file, signed off scenario by scenario and imported into the workspace.",
           figure: {
             src: '/cover/sb-map.svg',
@@ -251,7 +251,7 @@ export const coverContent: CoverContent = {
           kind: 'skill',
           id: 'skills-audit',
           command: '/sb:audit',
-          description:
+          summary:
             'Runs the check roster to find what is missing, conflicting, or unowned, and produces findings for triage — the audit writes no changes of its own.',
           figure: {
             src: '/cover/sb-audit.svg',
@@ -264,7 +264,7 @@ export const coverContent: CoverContent = {
           kind: 'skill',
           id: 'skills-whatif',
           command: '/sb:whatif',
-          description:
+          summary:
             'Traces a proposed change through the dependency graph before anyone commits, producing the cells it would reach and the assumptions it would break — worked on a copy, never the live blueprint.',
           figure: {
             src: '/cover/sb-whatif.svg',
@@ -277,7 +277,7 @@ export const coverContent: CoverContent = {
           kind: 'skill',
           id: 'skills-slice',
           command: '/sb:slice',
-          description:
+          summary:
             'Cuts the view one stakeholder needs out of the whole, producing one slice per view that still cites the cells it quotes.',
           figure: {
             src: '/cover/sb-slice.svg',

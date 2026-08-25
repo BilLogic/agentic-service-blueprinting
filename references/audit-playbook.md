@@ -82,7 +82,7 @@ that disagree on a separator split the finding history).
 
 - Sorted, so cell order never changes identity.
 - `cell_keys` use the qualified key convention
-  `<lifecycle>/<phase>/<scenario>/<path>/<lane>/<step>` (the same
+  `<service>/<phase>/<scenario>/<path>/<lane>/<step>` (the same
   convention slice-schema.json defines; IR cells carry lane+step — the
   rest of the path comes from their position in the tree). On a live
   canvas, cell ids stand in for keys (separate dedupe space, by design).

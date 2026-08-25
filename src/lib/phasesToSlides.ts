@@ -1,24 +1,24 @@
 import { toClientViewType } from '@/lib/viewTypeVocabulary'
-import type { Phase, ServiceScenario } from '@/types/database'
+import type { Phase, Scenario } from '@/types/database'
 import type { NavItem } from '@/types/nav'
 
 export type ScenarioRow = Pick<
-  ServiceScenario,
-  'id' | 'name' | 'description' | 'order_position' | 'phase_id' | 'view_type'
+  Scenario,
+  'id' | 'name' | 'summary' | 'position' | 'phase_id' | 'view_type'
 >
 
 export type PhaseRow = Pick<
   Phase,
-  'id' | 'name' | 'description' | 'order_position' | 'loops_to_phase_id'
+  'id' | 'name' | 'summary' | 'position' | 'loops_to_phase_id'
 > & {
-  service_scenarios?: ScenarioRow[]
+  scenarios?: ScenarioRow[]
 }
 
 /** Map phases and nested scenarios to editor slides (scenarios = subsides under their phase). */
 export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
   const slides: NavItem[] = []
   const sortedPhases = [...phases].sort(
-    (a, b) => a.order_position - b.order_position,
+    (a, b) => a.position - b.position,
   )
 
   sortedPhases.forEach((phase, phaseIndex) => {
@@ -26,12 +26,12 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
       id: phase.id,
       index: phaseIndex + 1,
       label: phase.name,
-      description: phase.description,
+      summary: phase.summary,
       loopToId: phase.loops_to_phase_id ?? undefined,
     })
 
-    const scenarios = [...(phase.service_scenarios ?? [])].sort(
-      (a, b) => a.order_position - b.order_position,
+    const scenarios = [...(phase.scenarios ?? [])].sort(
+      (a, b) => a.position - b.position,
     )
 
     scenarios.forEach((scenario, scenarioIndex) => {
@@ -39,7 +39,7 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         id: scenario.id,
         index: scenarioIndex + 1,
         label: scenario.name,
-        description: scenario.description,
+        summary: scenario.summary,
         parentId: phase.id,
         // Read seam: DB tokens become client vocabulary here (and only here);
         // unknown values fall back to 'single' instead of leaking through.

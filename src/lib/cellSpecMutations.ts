@@ -18,7 +18,7 @@ export type CellSpecUpdate = {
  * These are the only cell columns the app may write: `function`, `form`, and
  * `value_props` carry a column-level grant precisely so the panel can edit
  * them without opening the blueprint's structural content to the same path.
- * Content, layer, step and path stay the import pipeline's business.
+ * Content, lane, step and path stay the import pipeline's business.
  *
  * Empty strings are stored as `null` rather than `''` so "not specified"
  * has one representation — the read path hides a section when its field is

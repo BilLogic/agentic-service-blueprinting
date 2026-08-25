@@ -1,6 +1,6 @@
 /* Target-size helpers. Mirrors config/tailwind-plugins/hit-area.css. */
 
-@layer utilities {
+@lane utilities {
   /*
    * WCAG 2.2 SC 2.5.8 (Target Size, Minimum): grow a small control's pointer
    * target to 24×24 without touching layout. The visible glyph keeps its size —

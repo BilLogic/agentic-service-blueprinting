@@ -42,7 +42,7 @@ export const BLUEPRINT_MENUBAR_FLAT_CLASS =
 export const BLUEPRINT_MENUBAR_TITLE_CLASS =
   'relative z-10 flex h-full min-w-0 max-w-[calc(100%-9rem)] items-center gap-2.5 px-1'
 
-export const BLUEPRINT_MENUBAR_DESCRIPTION_CLASS =
+export const BLUEPRINT_MENUBAR_SUMMARY_CLASS =
   'min-w-0 truncate text-xs text-muted-foreground'
 
 export const BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS =

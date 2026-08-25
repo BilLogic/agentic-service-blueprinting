@@ -16,7 +16,7 @@ const nav = (over: Partial<NavItem> & { id: string; label: string }): NavItem =>
   ({
     parentId: null,
     index: 0,
-    description: '',
+    summary: '',
     ...over,
   }) as NavItem
 

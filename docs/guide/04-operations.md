@@ -31,7 +31,7 @@ The schema migrations live in
 attribute-level ERD at [`docs/erd.mmd`](../erd.mmd).
 
 Import order is enforced by the `cells_validate_path_match` trigger:
-`paths → steps → path_steps → layers → cells → cell_triggers`.
+`paths → steps → path_steps → lanes → cells → cell_dependencies`.
 
 ## 3. Changing a live blueprint
 
@@ -40,7 +40,7 @@ same content hash re-imported is a no-op, which is what makes re-running an
 import safe after a failed deploy.
 
 Slices survive re-import because they refer to cells by key. Findings carry their own
-lifecycle — `open`, `resolved`, `dismissed` — so triage is not lost when the
+service — `open`, `resolved`, `dismissed` — so triage is not lost when the
 blueprint underneath them moves.
 
 ## 4. Deploying

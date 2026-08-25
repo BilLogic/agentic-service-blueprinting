@@ -72,11 +72,11 @@ describe('invalidateCanvasBlueprintsForPath', () => {
   })
 
   it('never touches keys outside the scenario prefix', () => {
-    queryClient.setQueryData(['lifecycle-phases:first'], [])
+    queryClient.setQueryData(['service-phases:first'], [])
     invalidateCanvasBlueprintsForPath('p1')
     const query = queryClient
       .getQueryCache()
-      .find({ queryKey: ['lifecycle-phases:first'] })
+      .find({ queryKey: ['service-phases:first'] })
     expect(query?.state.isInvalidated).toBe(false)
   })
 })

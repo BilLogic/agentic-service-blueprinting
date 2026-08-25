@@ -30,7 +30,7 @@ import type { BlueprintData } from '@/types/blueprint'
 export type ScenarioListPhase = {
   id: string
   name: string
-  scenarios: Array<{ id: string; name: string; description?: string | null }>
+  scenarios: Array<{ id: string; name: string; summary?: string | null }>
 }
 
 export function formatScenarioList(phases: ScenarioListPhase[]): string {
@@ -39,7 +39,7 @@ export function formatScenarioList(phases: ScenarioListPhase[]): string {
     lines.push(`Phase "${phase.name}" (${phase.id})`)
     for (const scenario of phase.scenarios) {
       lines.push(
-        `  Scenario "${scenario.name}" (${scenario.id})${scenario.description ? ` — ${scenario.description}` : ''}`,
+        `  Scenario "${scenario.name}" (${scenario.id})${scenario.summary ? ` — ${scenario.summary}` : ''}`,
       )
     }
   }
@@ -49,20 +49,20 @@ export function formatScenarioList(phases: ScenarioListPhase[]): string {
 /** One section per path: header, step row, then lane-by-lane cell lines. */
 export function formatBlueprints(blueprints: readonly BlueprintData[]): string {
   const sections: string[] = []
-  for (const { path, steps, layers, cells } of blueprints) {
+  for (const { path, steps, lanes, cells } of blueprints) {
     const lines: string[] = [
       `Path "${path.name}" (${path.id}, type ${path.path_type})`,
       `Steps: ${steps
-        .map((step) => `${step.column_position}. "${step.name}" (${step.id})`)
+        .map((step) => `${step.position}. "${step.name}" (${step.id})`)
         .join(' | ')}`,
     ]
-    for (const layer of layers) {
+    for (const lane of lanes) {
       lines.push(
-        `Lane "${layer.name}" (${layer.id}${layer.role ? `, role ${layer.role}` : ''}):`,
+        `Lane "${lane.name}" (${lane.id}${lane.role ? `, role ${lane.role}` : ''}):`,
       )
       const byStep = new Map<string, typeof cells>()
       for (const cell of cells) {
-        if (cell.layer_id !== layer.id) continue
+        if (cell.lane_id !== lane.id) continue
         const list = byStep.get(cell.step_id) ?? []
         list.push(cell)
         byStep.set(cell.step_id, list)
@@ -70,7 +70,7 @@ export function formatBlueprints(blueprints: readonly BlueprintData[]): string {
       for (const step of steps) {
         for (const cell of byStep.get(step.id) ?? []) {
           lines.push(
-            `  [step ${step.column_position}] "${cell.content}" (${cell.id})`,
+            `  [step ${step.position}] "${cell.content}" (${cell.id})`,
           )
         }
       }

@@ -2,26 +2,26 @@ import { Minus, Plus } from 'lucide-react'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { cn } from '@/lib/utils'
 
-type LayerCollapseToggleProps = {
-  layerName: string
+type LaneCollapseToggleProps = {
+  laneName: string
   collapsed: boolean
   onToggle: () => void
   className?: string
 }
 
 /** Expand/collapse control for a swim lane, shown in the label rail. */
-export function LayerCollapseToggle({
-  layerName,
+export function LaneCollapseToggle({
+  laneName,
   collapsed,
   onToggle,
   className,
-}: LayerCollapseToggleProps) {
+}: LaneCollapseToggleProps) {
   return (
     <IconTooltip
       label={
         collapsed
-          ? `Expand the ${layerName} lane`
-          : `Collapse the ${layerName} lane`
+          ? `Expand the ${laneName} lane`
+          : `Collapse the ${laneName} lane`
       }
     >
       <button
@@ -33,7 +33,7 @@ export function LayerCollapseToggle({
         data-print-hide
         aria-expanded={!collapsed}
         aria-label={
-          collapsed ? `Expand ${layerName} layer` : `Collapse ${layerName} layer`
+          collapsed ? `Expand ${laneName} lane` : `Collapse ${laneName} lane`
         }
         onClick={(e) => {
           e.stopPropagation()

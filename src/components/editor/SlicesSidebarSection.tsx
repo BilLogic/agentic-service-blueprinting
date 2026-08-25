@@ -116,7 +116,7 @@ function SliceRow({
 }
 
 /**
- * Slices sidebar mode — the lifecycle's slices grouped by `slice_type` into
+ * Slices sidebar mode — the service's slices grouped by `slice_type` into
  * accordion sections (JOURNEY / STEP / LANE / CELL / CUSTOM; only non-empty
  * groups render, all open by default). Click (or the context menu) opens the
  * slice tab; writers can delete from the context menu.

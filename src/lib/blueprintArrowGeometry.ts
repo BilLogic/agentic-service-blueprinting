@@ -42,7 +42,7 @@ export const ARROW_DETOUR_CLEARANCE = 8
 /** Target shorter than this fraction of source height → align to target center. */
 export const ARROW_TARGET_MUCH_SMALLER_RATIO = 0.65
 
-function isCrossLayerForwardTrigger(
+function isCrossLaneForwardTrigger(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
 ): boolean {
@@ -51,8 +51,8 @@ function isCrossLayerForwardTrigger(
   if (sourceStep === null || targetStep === null) return false
   if (targetStep <= sourceStep) return false
 
-  const sourceRow = getLayerRow(sourceEl)
-  const targetRow = getLayerRow(targetEl)
+  const sourceRow = getLaneRow(sourceEl)
+  const targetRow = getLaneRow(targetEl)
   return Boolean(sourceRow && targetRow && sourceRow !== targetRow)
 }
 
@@ -79,7 +79,7 @@ function isHorizontalRunClear(
 }
 
 /**
- * Forward cross-column connector between different layer rows: exit the source
+ * Forward cross-column connector between different lane rows: exit the source
  * horizontally, travel in a column gap, then rise or drop into the target.
  *
  * The long horizontal leg is the one that can strike a card, and which side it
@@ -89,7 +89,7 @@ function isHorizontalRunClear(
  * entirely and crosses in the strip above the target lane. Travelling far along
  * a lane at a card's own centre line is never assumed.
  */
-export function buildCrossLayerForwardArrowPath(
+export function buildCrossLaneForwardArrowPath(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
@@ -161,7 +161,7 @@ export function buildCrossLayerForwardArrowPath(
   )
 }
 
-function getLayerRow(el: HTMLElement): HTMLElement | null {
+function getLaneRow(el: HTMLElement): HTMLElement | null {
   return el.closest('[data-blueprint-row]')
 }
 
@@ -216,10 +216,10 @@ export function getPreTargetGapCenterX(
   const targetIdx = parseStepIndex(targetEl)
   if (targetIdx === null || targetIdx <= 0) return null
 
-  const layerRow = getLayerRow(sourceEl)
-  if (!layerRow) return null
+  const laneRow = getLaneRow(sourceEl)
+  if (!laneRow) return null
 
-  const leftEl = layerRow.querySelector<HTMLElement>(
+  const leftEl = laneRow.querySelector<HTMLElement>(
     `[data-blueprint-cell][data-step-index="${targetIdx - 1}"]`,
   )
 
@@ -324,11 +324,11 @@ export function getSameRowObstructingCells(
   const hi = Math.max(sourceIdx, targetIdx) - 1
   if (lo > hi) return []
 
-  const layerRow = getLayerRow(sourceEl)
-  if (!layerRow) return []
+  const laneRow = getLaneRow(sourceEl)
+  if (!laneRow) return []
 
   const obstructing: HTMLElement[] = []
-  layerRow.querySelectorAll<HTMLElement>('[data-blueprint-cell]').forEach((el) => {
+  laneRow.querySelectorAll<HTMLElement>('[data-blueprint-cell]').forEach((el) => {
     const idx = parseStepIndex(el)
     if (idx === null || idx < lo || idx > hi) return
     obstructing.push(el)
@@ -778,7 +778,7 @@ let activeMeasurementPass: MeasurementPass | null = null
  * Wrapping an update in a pass makes each element measured exactly once for the
  * duration. Safe because a pass only ever reads layout — nothing inside mutates
  * the DOM, so no cached box can go stale mid-pass. Passes nest (the two arrow
- * layers each run their own) and a pass that sees a different root than the one
+ * lanes each run their own) and a pass that sees a different root than the one
  * it started on drops its caches rather than mixing two coordinate spaces.
  */
 export function runArrowMeasurementPass<T>(run: () => T): T {
@@ -917,7 +917,7 @@ export const IN_LANE_LOOP_TOP_INSET = 8
  * loop back over the cells it came from, which the corridor at the top of the
  * row is reserved for. Both facts come off the DOM — one lane row, target step
  * column earlier than the source's — which is exactly the rule
- * `layerHasInLaneLoopCorridor` applies to the data when it reserves that
+ * `laneHasInLaneLoopCorridor` applies to the data when it reserves that
  * corridor. The two must stay in step: an arrow routed through a corridor the
  * layout did not reserve would be drawn over the lane above.
  */
@@ -931,8 +931,8 @@ export function isInLaneWrapTrigger(
     return false
   }
 
-  const sourceRow = getLayerRow(sourceEl)
-  const targetRow = getLayerRow(targetEl)
+  const sourceRow = getLaneRow(sourceEl)
+  const targetRow = getLaneRow(targetEl)
   return Boolean(sourceRow && targetRow && sourceRow === targetRow)
 }
 
@@ -942,7 +942,7 @@ export function getInLaneLoopRouteY(
   targetEl: HTMLElement,
   root: HTMLElement,
 ): number {
-  const row = getLayerRow(sourceEl)
+  const row = getLaneRow(sourceEl)
   if (row) {
     const loopCorridor = row.querySelector<HTMLElement>(
       '[data-blueprint-loop-corridor="above"]',
@@ -1024,7 +1024,7 @@ function getLaneContentBottom(
  */
 function getLaneContentTop(cellEl: HTMLElement, root: HTMLElement): number {
   const box = getCellContentBox(cellEl, root)
-  const row = getLayerRow(cellEl)
+  const row = getLaneRow(cellEl)
   let top = box.top
   if (!row) return top
   for (const el of queryBlueprintCells(row, root)) {
@@ -1125,7 +1125,7 @@ export function getWrapCorridorBounds(
   }
 }
 
-/** Y center of the corridor between a layer row and the interaction line. */
+/** Y center of the corridor between a lane row and the interaction line. */
 export function getWrapCorridorY(
   sourceEl: HTMLElement,
   root: HTMLElement,
@@ -1335,8 +1335,8 @@ export function buildBidirectionalArrowPath(
   const stepB = parseStepIndex(cellBEl)
   if (stepA === null || stepB === null || stepA !== stepB) return ''
 
-  const rowA = getLayerRow(cellAEl)
-  const rowB = getLayerRow(cellBEl)
+  const rowA = getLaneRow(cellAEl)
+  const rowB = getLaneRow(cellBEl)
   if (!rowA || !rowB || rowA === rowB) return ''
 
   return buildBidirectionalVerticalArrowPath(cellAEl, cellBEl, root)
@@ -1354,7 +1354,7 @@ export const OVERHEAD_RAIL_CLEARANCE = 10
  * An adjacent hop (`targetStep === sourceStep + 1`) skips nothing and stays in
  * the column gap between the two cards.
  *
- * This is the DOM-side twin of `layerHasOverheadArrowCorridor`, which reserves
+ * This is the DOM-side twin of `laneHasOverheadArrowCorridor`, which reserves
  * the corridor from the data by the identical rule. Change one and the other
  * has to move with it, or the rail gets drawn through the lane above.
  */
@@ -1367,8 +1367,8 @@ export function isOverheadRailTrigger(
   if (sourceStep === null || targetStep === null) return false
   if (targetStep < sourceStep + 2) return false
 
-  const sourceRow = getLayerRow(sourceEl)
-  const targetRow = getLayerRow(targetEl)
+  const sourceRow = getLaneRow(sourceEl)
+  const targetRow = getLaneRow(targetEl)
   return Boolean(sourceRow && targetRow && sourceRow === targetRow)
 }
 
@@ -1394,7 +1394,7 @@ function getOverheadRailCorridorBox(
   cellEl: HTMLElement,
   root: HTMLElement,
 ): LayoutBox | null {
-  const row = getLayerRow(cellEl)
+  const row = getLaneRow(cellEl)
   if (!row) return null
 
   const inside = row.querySelector<HTMLElement>(
@@ -2085,7 +2085,7 @@ export function buildArrowPath(
     sourceStep !== null &&
     targetStep !== null &&
     targetStep === sourceStep + 1 &&
-    getLayerRow(sourceEl) === getLayerRow(targetEl)
+    getLaneRow(sourceEl) === getLaneRow(targetEl)
   ) {
     return buildAdjacentColumnGapArrowPath(sourceEl, targetEl, root)
   }
@@ -2094,8 +2094,8 @@ export function buildArrowPath(
     return buildOverheadRailPath(sourceEl, targetEl, root)
   }
 
-  if (isCrossLayerForwardTrigger(sourceEl, targetEl)) {
-    return buildCrossLayerForwardArrowPath(sourceEl, targetEl, root)
+  if (isCrossLaneForwardTrigger(sourceEl, targetEl)) {
+    return buildCrossLaneForwardArrowPath(sourceEl, targetEl, root)
   }
 
   if (getSameRowObstructingCells(sourceEl, targetEl).length > 0) {

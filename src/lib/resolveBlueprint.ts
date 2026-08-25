@@ -5,9 +5,9 @@ import {
 import { applyBlueprintDisplayFilters } from '@/lib/applyBlueprintDisplayFilters'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 import {
-  deduplicateBlueprintLayers,
+  deduplicateBlueprintLanes,
   normalizeBlueprint,
-  sortBlueprintLayers,
+  sortBlueprintLanes,
   type RawPath,
 } from '@/lib/normalizeBlueprint'
 import type { BlueprintData } from '@/types/blueprint'
@@ -16,7 +16,7 @@ import type { CellLink } from '@/types/blueprint'
 export type BlueprintSource = 'database' | 'fallback' | null
 
 export function isBlueprintEmpty(data: BlueprintData): boolean {
-  return data.layers.length === 0
+  return data.lanes.length === 0
 }
 
 /** DB value wins when non-empty; fallback only fills empty/null fields. */
@@ -90,7 +90,7 @@ function fillMissingCellLinks(
  * - Field values already present in the DB (non-empty after trim) are kept.
  * - Fallback values only fill DB fields that are null/empty (a placeholder
  *   step visual counts as empty when the fallback has a real picture).
- * - Fallback layers/cells/steps/triggers/links that are entirely missing from
+ * - Fallback lanes/cells/steps/triggers/links that are entirely missing from
  *   the DB are appended; nothing in the DB is removed or repositioned.
  */
 function mergeMissingBlueprintContent(
@@ -101,26 +101,26 @@ function mergeMissingBlueprintContent(
   const fallback = getBlueprintFallback(scenarioId, pathId ?? data.path.id)
   if (!fallback) return data
 
-  const layerIds = new Set(data.layers.map((layer) => layer.id))
-  const layerIdByName = new Map(
-    data.layers.map((layer) => [layer.name, layer.id]),
+  const laneIds = new Set(data.lanes.map((lane) => lane.id))
+  const laneIdByName = new Map(
+    data.lanes.map((lane) => [lane.name, lane.id]),
   )
-  const fallbackLayerIdRemap = new Map<string, string>()
-  const layers = [...data.layers]
-  for (const layer of fallback.layers) {
-    if (layerIds.has(layer.id)) continue
+  const fallbackLaneIdRemap = new Map<string, string>()
+  const lanes = [...data.lanes]
+  for (const lane of fallback.lanes) {
+    if (laneIds.has(lane.id)) continue
 
-    const existingLayerId = layerIdByName.get(layer.name)
-    if (existingLayerId) {
-      fallbackLayerIdRemap.set(layer.id, existingLayerId)
+    const existingLaneId = laneIdByName.get(lane.name)
+    if (existingLaneId) {
+      fallbackLaneIdRemap.set(lane.id, existingLaneId)
       continue
     }
 
-    layers.push(layer)
-    layerIds.add(layer.id)
-    layerIdByName.set(layer.name, layer.id)
+    lanes.push(lane)
+    laneIds.add(lane.id)
+    laneIdByName.set(lane.name, lane.id)
   }
-  layers.sort((a, b) => a.row_position - b.row_position)
+  lanes.sort((a, b) => a.position - b.position)
 
   const fallbackCellById = new Map(
     fallback.cells.map((cell) => [cell.id, cell]),
@@ -147,8 +147,8 @@ function mergeMissingBlueprintContent(
       }
     }
 
-    if (fallbackCell.description?.trim() && !cell.description?.trim()) {
-      next = { ...next, description: fallbackCell.description }
+    if (fallbackCell.summary?.trim() && !cell.summary?.trim()) {
+      next = { ...next, summary: fallbackCell.summary }
       changed = true
     }
 
@@ -169,9 +169,9 @@ function mergeMissingBlueprintContent(
   for (const cell of fallback.cells) {
     if (cellIds.has(cell.id)) continue
 
-    const layerId =
-      fallbackLayerIdRemap.get(cell.layer_id) ?? cell.layer_id
-    cells.push({ ...cell, layer_id: layerId })
+    const laneId =
+      fallbackLaneIdRemap.get(cell.lane_id) ?? cell.lane_id
+    cells.push({ ...cell, lane_id: laneId })
     cellIds.add(cell.id)
   }
 
@@ -182,7 +182,7 @@ function mergeMissingBlueprintContent(
       steps.push(step)
     }
   }
-  steps.sort((a, b) => a.column_position - b.column_position)
+  steps.sort((a, b) => a.position - b.position)
 
   const triggerKeys = new Set(
     data.triggers.map(
@@ -200,23 +200,23 @@ function mergeMissingBlueprintContent(
 
   const changed =
     cellsChanged ||
-    layers.length !== data.layers.length ||
+    lanes.length !== data.lanes.length ||
     cells.length !== data.cells.length ||
     steps.length !== data.steps.length ||
     triggers.length !== data.triggers.length
 
   const merged = changed
-    ? { ...data, layers, cells, steps, triggers }
+    ? { ...data, lanes, cells, steps, triggers }
     : data
 
-  return deduplicateBlueprintLayers(merged)
+  return deduplicateBlueprintLanes(merged)
 }
 
 function sortBlueprintSteps(data: BlueprintData): BlueprintData {
   return {
     ...data,
     steps: [...data.steps].sort(
-      (a, b) => a.column_position - b.column_position,
+      (a, b) => a.position - b.position,
     ),
   }
 }
@@ -237,7 +237,7 @@ export function resolveBlueprintForScenario(
         pathId,
         merged.path.path_type,
       )
-      // DB-wins path metadata: fallback only fills empty name/description/note.
+      // DB-wins path metadata: fallback only fills empty name/summary/note.
       const blueprint = rawFallback
         ? {
             ...merged,
@@ -246,9 +246,9 @@ export function resolveBlueprintForScenario(
               name: merged.path.name.trim()
                 ? merged.path.name
                 : rawFallback.path.name,
-              description: preferNonEmpty(
-                merged.path.description,
-                rawFallback.path.description,
+              summary: preferNonEmpty(
+                merged.path.summary,
+                rawFallback.path.summary,
               ),
               note: preferNonEmpty(merged.path.note, rawFallback.path.note),
             },
@@ -258,7 +258,7 @@ export function resolveBlueprintForScenario(
       return {
         blueprint: applyBlueprintDisplayFilters(
           sortBlueprintSteps(
-            sortBlueprintLayers(blueprint),
+            sortBlueprintLanes(blueprint),
           ),
           scenarioId,
           pathId,
@@ -272,7 +272,7 @@ export function resolveBlueprintForScenario(
     return {
       blueprint: applyBlueprintDisplayFilters(
         sortBlueprintSteps(
-          sortBlueprintLayers(deduplicateBlueprintLayers(fallback)),
+          sortBlueprintLanes(deduplicateBlueprintLanes(fallback)),
         ),
         scenarioId,
         rawPath?.id ?? fallback.path.id,

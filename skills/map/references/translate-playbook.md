@@ -4,7 +4,7 @@ For when the org **already has a structured blueprint** that doesn't match
 this template: different lane structures, FigJam/Miro boards, spreadsheet
 blueprints, classic Shostack format. The move is a reviewed **crosswalk
 mapping** — their vocabulary onto our data model — not forcing their
-vocabulary into ours. Customize layers/roles to fit them.
+vocabulary into ours. Customize lanes/roles to fit them.
 
 ## Supported inputs (v1)
 
@@ -24,12 +24,12 @@ Do not interpret yet — extraction first, mapping second.
 Write a crosswalk file in the workspace `blueprint/` dir conforming to
 `skills/map/references/crosswalk-schema.json`:
 
-- **Lanes → layers/roles.** Map to canonical roles where semantics match
+- **Lanes → lanes/roles.** Map to canonical roles where semantics match
   (their "Customer" → `customer_actions`); create **org-defined custom
   roles** where they don't (Shostack's *physical evidence* → a custom
   `physical_evidence` role rendering as a generic lane). Keep THEIR display
   names — that's the point of the display-name/role split.
-- **N:1 merges**: several source lanes may map to one target layer; each
+- **N:1 merges**: several source lanes may map to one target lane; each
   mapping gets a `merge_note` explaining how cell content combines.
 - **Columns → steps**, in order.
 - **Variants/branches/boards → paths** with a `path_type` each; a

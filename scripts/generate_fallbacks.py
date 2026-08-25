@@ -23,7 +23,7 @@ marker-delimited block:
     the generated module (transactional: the registry is only rewritten after
     the generated module has been written successfully; re-running is
     idempotent). It ALSO regenerates the offline nav list (FALLBACK_NAV) in
-    src/types/nav.ts from the IR lifecycle, between its own markers:
+    src/types/nav.ts from the IR service, between its own markers:
 
         // GENERATED-NAV:BEGIN …
         // GENERATED-NAV:END
@@ -42,13 +42,13 @@ Parity: this adapter and the SQL one project the SAME model through the SAME
 field functions (generate_seed_sql.seed_cell_fields / seed_trigger_fields), so
 a field reaches the database and this module in one change. It did not always:
 between 2026-08-17 and this note the field lists were written out twice by
-hand, they drifted, and the drift lost cell_key, slot_position, the cell spec
-fields and cell_triggers.kind — silently, and only on the adapter an adopter
+hand, they drifted, and the drift lost cell_key, position, the cell spec
+fields and cell_dependencies.kind — silently, and only on the adapter an adopter
 with no database is told is "not a degraded mode". scripts/adapter_parity.py
 now checks the claim instead of asserting it.
 
 Still outside the projection on BOTH adapters, which is parity by absence:
-cell_triggers label/note, which the IR has no shape to author. Lanes were on
+cell_dependencies label/note, which the IR has no shape to author. Lanes were on
 that list too, wrongly — the SQL adapter carried kpis and tools all along and
 the no-DB one did not, which is how a sentence about parity ended up being the
 next thing to drift.
@@ -78,11 +78,11 @@ from generate_seed_sql import (  # noqa: E402
 IMPLIED_BY_NESTING = frozenset({"path_id"})
 
 #: The one place the two adapters disagree on a NAME rather than a value. The
-#: app's BlueprintLayer has called it `role` since before the column did, and
+#: app's BlueprintLane has called it `role` since before the column did, and
 #: renaming a field every component reads to match a column nobody reads would
 #: be the wrong way round. Declared here so adapter_parity.py can compare
 #: through it instead of reporting a difference that is only spelling.
-FALLBACK_FIELD_NAMES = {"layer_role": "role"}
+FALLBACK_FIELD_NAMES = {"lane_role": "role"}
 
 
 def project(fields: dict) -> dict:
@@ -133,17 +133,17 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
         "path": {
             "id": path["id"],
             "name": path["name"],
-            "description": path["description"],
+            "summary": path["summary"],
             "note": path["note"],
             "path_type": path["path_type"],
         },
-        "layers": [project(seed_lane_fields(layer, path)) for layer in path["layers"]],
-        # Steps in this path's column order (array index = column_position).
+        "lanes": [project(seed_lane_fields(lane, path)) for lane in path["lanes"]],
+        # Steps in this path's column order (array index = position).
         "steps": [
             {
                 "id": ps["step_id"],
                 "name": step_by_id[ps["step_id"]]["name"],
-                "column_position": ps["column_position"],
+                "position": ps["position"],
             }
             for ps in path["path_steps"]
         ],
@@ -232,7 +232,7 @@ for (const [scenarioId, fallbacks] of Object.entries(
   FALLBACK_PATHS_BY_SCENARIO[scenarioId] = fallbacks.map((fallback) => ({{
     id: fallback.path.id,
     name: fallback.path.name,
-    description: fallback.path.description,
+    summary: fallback.path.summary,
     note: fallback.path.note,
     path_type: fallback.path.path_type,
   }}))
@@ -276,7 +276,7 @@ def rewrite_marker_block(
 
 
 def nav_items(model: dict) -> list:
-    """The offline nav list (FALLBACK_NAV) derived from the IR lifecycle: one
+    """The offline nav list (FALLBACK_NAV) derived from the IR service: one
     entry per phase, each followed by its scenarios (subslides). Positional
     ordering only — mirrors the DB-backed nav the app builds from phases +
     scenarios, so fallback nav never drifts from the blueprint data."""
@@ -288,8 +288,8 @@ def nav_items(model: dict) -> list:
     items = []
     for phase in sorted(model["phases"], key=lambda p: p["order"]):
         item = {"id": phase["id"], "index": phase["order"], "label": phase["name"]}
-        if phase.get("description"):
-            item["description"] = phase["description"]
+        if phase.get("summary"):
+            item["summary"] = phase["summary"]
         if phase.get("loops_to"):
             loop_id = phase_id_by_key.get(phase["loops_to"])
             if loop_id:
@@ -311,8 +311,8 @@ def nav_items(model: dict) -> list:
                     "integrated": "stacked",
                 }.get(scenario["view_type"], "single"),
             }
-            if scenario.get("description"):
-                sub["description"] = scenario["description"]
+            if scenario.get("summary"):
+                sub["summary"] = scenario["summary"]
             items.append(sub)
     return items
 
@@ -320,7 +320,7 @@ def nav_items(model: dict) -> list:
 def nav_block(model: dict) -> str:
     return f"""// {NAV_MARKER_BEGIN} — managed by scripts/generate_fallbacks.py --register.
 // Replaced wholesale on registration; do not hand-edit. Offline nav derived
-// from the IR lifecycle (phases + their scenarios) for locale {model['locale']}.
+// from the IR service (phases + their scenarios) for locale {model['locale']}.
 export const FALLBACK_NAV: NavItem[] = {ts_literal(nav_items(model))}
 // {NAV_MARKER_END}"""
 

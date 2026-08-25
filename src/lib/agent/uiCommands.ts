@@ -13,7 +13,7 @@
 export type AgentUiCommand = {
   name: string
   /** Shown to the model verbatim — say what it does and what `arg` means. */
-  description: string
+  summary: string
   /**
    * True when firing this command CHANGES DATA rather than just the view.
    * Undo is the case that matters: it reverts through the same delete RPCs
@@ -40,7 +40,7 @@ export function listAgentUiCommands(): string {
   return [...commands.values()]
     .map(
       (command) =>
-        `${command.name} — ${command.description}${command.mutates ? ' [changes data]' : ''}`,
+        `${command.name} — ${command.summary}${command.mutates ? ' [changes data]' : ''}`,
     )
     .sort()
     .join('\n')

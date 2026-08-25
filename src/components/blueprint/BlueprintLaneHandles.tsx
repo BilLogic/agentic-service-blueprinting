@@ -78,13 +78,13 @@ export function BlueprintLaneHandles({
     }
 
     const rows = Array.from(
-      body.querySelectorAll<HTMLElement>('[data-blueprint-row][data-layer-id]'),
+      body.querySelectorAll<HTMLElement>('[data-blueprint-row][data-lane-id]'),
     )
     if (rows.length === 0) return
 
     const bodyBox = body.getBoundingClientRect()
     // Client rects are camera-SCALED, but this overlay renders inside the
-    // scaled layer in layout px — divide the deltas back down or every
+    // scaled lane in layout px — divide the deltas back down or every
     // boundary drifts by (scale − 1) · y, worst at the bottom lanes (the
     // same un-projection the annotation layer needed).
     const scale = body.offsetWidth > 0 ? bodyBox.width / body.offsetWidth : 1

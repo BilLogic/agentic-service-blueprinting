@@ -69,7 +69,7 @@ export function CellDependencyEditor({
   const refresh = () => {
     // Arrows are drawn from the grid read, so the canvas has to re-read —
     // invalidating a panel-local query would leave the line on screen.
-    invalidateQueries('lifecycle-phases')
+    invalidateQueries('service-phases')
   }
 
   const handleAdd = async () => {

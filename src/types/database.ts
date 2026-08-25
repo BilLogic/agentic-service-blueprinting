@@ -8,7 +8,7 @@
  *   npm run supabase:types
  *   npm run supabase:types:local
  *
- * Generated against the full 8-migration chain; the hand-written aliases at
+ * Generated against the full migration chain; the hand-written aliases at
  * the bottom of the file (PathType, Cell, Finding, …) survive regeneration —
  * re-append them if the generator output replaces this file wholesale.
  */
@@ -88,7 +88,7 @@ export type Database = {
         }
         Relationships: []
       }
-      cell_triggers: {
+      cell_dependencies: {
         Row: {
           created_at: string
           id: string
@@ -121,14 +121,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "cell_triggers_source_cell_id_fkey"
+            foreignKeyName: "cell_dependencies_source_cell_id_fkey"
             columns: ["source_cell_id"]
             isOneToOne: false
             referencedRelation: "cells"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "cell_triggers_target_cell_id_fkey"
+            foreignKeyName: "cell_dependencies_target_cell_id_fkey"
             columns: ["target_cell_id"]
             isOneToOne: false
             referencedRelation: "cells"
@@ -141,18 +141,18 @@ export type Database = {
           cell_key: string | null
           content: string
           created_at: string
-          description: string | null
+          summary: string | null
           form: string | null
           function: string | null
           id: string
-          layer_id: string
+          lane_id: string
           links: Json
           origin: string
           owner: string | null
           path_id: string
           perceived_owner: string | null
           picture: string | null
-          slot_position: number
+          position: number
           step_id: string
           updated_at: string
           value_props: Json
@@ -161,18 +161,18 @@ export type Database = {
           cell_key?: string | null
           content?: string
           created_at?: string
-          description?: string | null
+          summary?: string | null
           form?: string | null
           function?: string | null
           id?: string
-          layer_id: string
+          lane_id: string
           links?: Json
           origin?: string
           owner?: string | null
           path_id: string
           perceived_owner?: string | null
           picture?: string | null
-          slot_position?: number
+          position?: number
           step_id: string
           updated_at?: string
           value_props?: Json
@@ -181,28 +181,28 @@ export type Database = {
           cell_key?: string | null
           content?: string
           created_at?: string
-          description?: string | null
+          summary?: string | null
           form?: string | null
           function?: string | null
           id?: string
-          layer_id?: string
+          lane_id?: string
           links?: Json
           origin?: string
           owner?: string | null
           path_id?: string
           perceived_owner?: string | null
           picture?: string | null
-          slot_position?: number
+          position?: number
           step_id?: string
           updated_at?: string
           value_props?: Json
         }
         Relationships: [
           {
-            foreignKeyName: "cells_layer_id_fkey"
-            columns: ["layer_id"]
+            foreignKeyName: "cells_lane_id_fkey"
+            columns: ["lane_id"]
             isOneToOne: false
-            referencedRelation: "layers"
+            referencedRelation: "lanes"
             referencedColumns: ["id"]
           },
           {
@@ -265,7 +265,7 @@ export type Database = {
           observed_at: string | null
           proposition_question_key: string | null
           ref: string | null
-          service_lifecycle_id: string
+          service_id: string
           title: string
           updated_at: string
         }
@@ -282,7 +282,7 @@ export type Database = {
           observed_at?: string | null
           proposition_question_key?: string | null
           ref?: string | null
-          service_lifecycle_id: string
+          service_id: string
           title: string
           updated_at?: string
         }
@@ -299,16 +299,16 @@ export type Database = {
           observed_at?: string | null
           proposition_question_key?: string | null
           ref?: string | null
-          service_lifecycle_id?: string
+          service_id?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "evidence_service_lifecycle_id_fkey"
-            columns: ["service_lifecycle_id"]
+            foreignKeyName: "evidence_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "service_lifecycles"
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -323,7 +323,7 @@ export type Database = {
           id: string
           note: string | null
           run_id: string
-          service_lifecycle_id: string
+          service_id: string
           severity: string
           source: string
           status: string
@@ -338,7 +338,7 @@ export type Database = {
           id?: string
           note?: string | null
           run_id: string
-          service_lifecycle_id: string
+          service_id: string
           severity: string
           source: string
           status?: string
@@ -353,7 +353,7 @@ export type Database = {
           id?: string
           note?: string | null
           run_id?: string
-          service_lifecycle_id?: string
+          service_id?: string
           severity?: string
           source?: string
           status?: string
@@ -361,25 +361,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "findings_service_lifecycle_id_fkey"
-            columns: ["service_lifecycle_id"]
+            foreignKeyName: "findings_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "service_lifecycles"
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
       }
-      layers: {
+      lanes: {
         Row: {
           created_at: string
           id: string
           kpis: Json
-          layer_role: string | null
+          lane_role: string | null
           name: string
           origin: string
           owner_team: string | null
           path_id: string
-          row_position: number
+          position: number
           tools: Json
           updated_at: string
         }
@@ -387,12 +387,12 @@ export type Database = {
           created_at?: string
           id?: string
           kpis?: Json
-          layer_role?: string | null
+          lane_role?: string | null
           name: string
           origin?: string
           owner_team?: string | null
           path_id: string
-          row_position?: number
+          position?: number
           tools?: Json
           updated_at?: string
         }
@@ -400,18 +400,18 @@ export type Database = {
           created_at?: string
           id?: string
           kpis?: Json
-          layer_role?: string | null
+          lane_role?: string | null
           name?: string
           origin?: string
           owner_team?: string | null
           path_id?: string
-          row_position?: number
+          position?: number
           tools?: Json
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "layers_path_id_fkey"
+            foreignKeyName: "lanes_path_id_fkey"
             columns: ["path_id"]
             isOneToOne: false
             referencedRelation: "paths"
@@ -421,21 +421,21 @@ export type Database = {
       }
       path_steps: {
         Row: {
-          column_position: number
+          position: number
           created_at: string
           path_id: string
           step_id: string
           updated_at: string
         }
         Insert: {
-          column_position?: number
+          position?: number
           created_at?: string
           path_id: string
           step_id: string
           updated_at?: string
         }
         Update: {
-          column_position?: number
+          position?: number
           created_at?: string
           path_id?: string
           step_id?: string
@@ -461,43 +461,43 @@ export type Database = {
       paths: {
         Row: {
           created_at: string
-          description: string | null
+          summary: string | null
           id: string
           name: string
           note: string | null
           origin: string
           path_type: string
-          service_scenario_id: string
+          scenario_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           name: string
           note?: string | null
           origin?: string
           path_type: string
-          service_scenario_id: string
+          scenario_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           name?: string
           note?: string | null
           origin?: string
           path_type?: string
-          service_scenario_id?: string
+          scenario_id?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "paths_service_scenario_id_fkey"
-            columns: ["service_scenario_id"]
+            foreignKeyName: "paths_scenario_id_fkey"
+            columns: ["scenario_id"]
             isOneToOne: false
-            referencedRelation: "service_scenarios"
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
         ]
@@ -506,40 +506,40 @@ export type Database = {
         Row: {
           business_impact: string | null
           created_at: string
-          description: string | null
+          summary: string | null
           id: string
           loops_to_phase_id: string | null
           name: string
           operational_requirements: string | null
-          order_position: number
+          position: number
           origin: string
-          service_lifecycle_id: string
+          service_id: string
           updated_at: string
         }
         Insert: {
           business_impact?: string | null
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           loops_to_phase_id?: string | null
           name: string
           operational_requirements?: string | null
-          order_position?: number
+          position?: number
           origin?: string
-          service_lifecycle_id: string
+          service_id: string
           updated_at?: string
         }
         Update: {
           business_impact?: string | null
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           loops_to_phase_id?: string | null
           name?: string
           operational_requirements?: string | null
-          order_position?: number
+          position?: number
           origin?: string
-          service_lifecycle_id?: string
+          service_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -551,10 +551,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "phases_service_lifecycle_id_fkey"
-            columns: ["service_lifecycle_id"]
+            foreignKeyName: "phases_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "service_lifecycles"
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -568,7 +568,7 @@ export type Database = {
           partners: string | null
           pricing: string | null
           revenue_model: string | null
-          service_lifecycle_id: string
+          service_id: string
           updated_at: string
         }
         Insert: {
@@ -579,7 +579,7 @@ export type Database = {
           partners?: string | null
           pricing?: string | null
           revenue_model?: string | null
-          service_lifecycle_id: string
+          service_id: string
           updated_at?: string
         }
         Update: {
@@ -590,18 +590,36 @@ export type Database = {
           partners?: string | null
           pricing?: string | null
           revenue_model?: string | null
-          service_lifecycle_id?: string
+          service_id?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "propositions_service_lifecycle_id_fkey"
-            columns: ["service_lifecycle_id"]
+            foreignKeyName: "propositions_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: true
-            referencedRelation: "service_lifecycles"
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
+      }
+      schema_version: {
+        Row: {
+          applied_at: string
+          singleton: boolean
+          version: string
+        }
+        Insert: {
+          applied_at?: string
+          singleton?: boolean
+          version: string
+        }
+        Update: {
+          applied_at?: string
+          singleton?: boolean
+          version?: string
+        }
+        Relationships: []
       }
       service_account_emails: {
         Row: {
@@ -621,37 +639,37 @@ export type Database = {
         }
         Relationships: []
       }
-      service_lifecycles: {
+      services: {
         Row: {
           created_at: string
-          description: string | null
+          summary: string | null
           id: string
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           name?: string
           updated_at?: string
         }
         Relationships: []
       }
-      service_scenarios: {
+      scenarios: {
         Row: {
           created_at: string
-          description: string | null
+          summary: string | null
           id: string
           name: string
-          order_position: number
+          position: number
           origin: string
           phase_id: string
           updated_at: string
@@ -659,10 +677,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           name: string
-          order_position?: number
+          position?: number
           origin?: string
           phase_id: string
           updated_at?: string
@@ -670,10 +688,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          description?: string | null
+          summary?: string | null
           id?: string
           name?: string
-          order_position?: number
+          position?: number
           origin?: string
           phase_id?: string
           updated_at?: string
@@ -681,7 +699,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "service_scenarios_phase_id_fkey"
+            foreignKeyName: "scenarios_phase_id_fkey"
             columns: ["phase_id"]
             isOneToOne: false
             referencedRelation: "phases"
@@ -749,7 +767,7 @@ export type Database = {
           locale: string
           origin: string
           position: number
-          service_lifecycle_id: string
+          service_id: string
           slice_type: string
           title: string
           updated_at: string
@@ -763,7 +781,7 @@ export type Database = {
           locale?: string
           origin?: string
           position?: number
-          service_lifecycle_id: string
+          service_id: string
           slice_type: string
           title: string
           updated_at?: string
@@ -777,17 +795,17 @@ export type Database = {
           locale?: string
           origin?: string
           position?: number
-          service_lifecycle_id?: string
+          service_id?: string
           slice_type?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "slices_service_lifecycle_id_fkey"
-            columns: ["service_lifecycle_id"]
+            foreignKeyName: "slices_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "service_lifecycles"
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -798,7 +816,7 @@ export type Database = {
           id: string
           name: string
           origin: string
-          service_scenario_id: string
+          scenario_id: string
           updated_at: string
         }
         Insert: {
@@ -806,7 +824,7 @@ export type Database = {
           id?: string
           name: string
           origin?: string
-          service_scenario_id: string
+          scenario_id: string
           updated_at?: string
         }
         Update: {
@@ -814,15 +832,15 @@ export type Database = {
           id?: string
           name?: string
           origin?: string
-          service_scenario_id?: string
+          scenario_id?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "steps_service_scenario_id_fkey"
-            columns: ["service_scenario_id"]
+            foreignKeyName: "steps_scenario_id_fkey"
+            columns: ["scenario_id"]
             isOneToOne: false
-            referencedRelation: "service_scenarios"
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
         ]
@@ -840,8 +858,8 @@ export type Database = {
     Functions: {
       add_lane: {
         Args: {
-          at_row?: number
-          layer_role?: string
+          at_position?: number
+          lane_role?: string
           name: string
           scenario_id: string
         }
@@ -866,7 +884,7 @@ export type Database = {
         Returns: string
       }
       create_phase: {
-        Args: { description?: string; lifecycle_id: string; name: string }
+        Args: { summary?: string; service_id: string; name: string }
         Returns: string
       }
       create_scenario: {
@@ -905,7 +923,7 @@ export type Database = {
       is_service_account: { Args: never; Returns: boolean }
       key_slug: { Args: { value: string }; Returns: string }
       mint_cell_key: {
-        Args: { layer_id: string; path_id: string; step_id: string }
+        Args: { lane_id: string; path_id: string; step_id: string }
         Returns: string
       }
       remove_lane: {
@@ -959,7 +977,7 @@ export type Database = {
       upsert_cell: {
         Args: {
           content: string
-          layer_id: string
+          lane_id: string
           path_id: string
           step_id: string
         }
@@ -1106,13 +1124,13 @@ export const Constants = {
 export type PathType = 'happy' | 'unhappy' | 'exception' | 'alternative'
 
 export type Cell = Database['public']['Tables']['cells']['Row']
-export type CellTrigger = Database['public']['Tables']['cell_triggers']['Row']
-export type Layer = Database['public']['Tables']['layers']['Row']
+export type CellDependency = Database['public']['Tables']['cell_dependencies']['Row']
+export type Lane = Database['public']['Tables']['lanes']['Row']
 export type Path = Database['public']['Tables']['paths']['Row']
 export type PathStep = Database['public']['Tables']['path_steps']['Row']
 export type Phase = Database['public']['Tables']['phases']['Row']
-export type ServiceLifecycle = Database['public']['Tables']['service_lifecycles']['Row']
-export type ServiceScenario = Database['public']['Tables']['service_scenarios']['Row']
+export type Service = Database['public']['Tables']['services']['Row']
+export type Scenario = Database['public']['Tables']['scenarios']['Row']
 export type Step = Database['public']['Tables']['steps']['Row']
 
 export type Slice = Database['public']['Tables']['slices']['Row']

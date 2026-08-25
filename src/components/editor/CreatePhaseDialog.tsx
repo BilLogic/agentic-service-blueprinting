@@ -23,18 +23,18 @@ import { createPhase } from '@/lib/authoringRpc'
  * with its own consequences, and it is not what "add a phase" means. This
  * appends, which is always safe.
  *
- * Only a name is asked for. The description shows under the phase title and is
+ * Only a name is asked for. The summary shows under the phase title and is
  * worth having, but it is the kind of sentence that gets written properly on
  * the second pass; demanding it up front is how placeholder text ends up in a
  * blueprint.
  */
 export function CreatePhaseDialog({
-  lifecycleId,
+  serviceId,
   open,
   onOpenChange,
   onCreated,
 }: {
-  lifecycleId: string | null
+  serviceId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: (phaseId: string) => void
@@ -45,14 +45,14 @@ export function CreatePhaseDialog({
   const [error, setError] = useState<string | null>(null)
 
   const trimmed = name.trim()
-  const ready = trimmed.length > 0 && !busy && client !== null && lifecycleId !== null
+  const ready = trimmed.length > 0 && !busy && client !== null && serviceId !== null
 
   const handleCreate = async () => {
-    if (!client || !lifecycleId || !ready) return
+    if (!client || !serviceId || !ready) return
     setBusy(true)
     setError(null)
     try {
-      const phaseId = await createPhase(client, { lifecycleId, name: trimmed })
+      const phaseId = await createPhase(client, { serviceId, name: trimmed })
       invalidateStructure()
       setName('')
       onOpenChange(false)

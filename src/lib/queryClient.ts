@@ -60,7 +60,7 @@ export function invalidateQueries(prefix: string): void {
  * not apply to, so the whole set is cheap enough to always send.
  */
 const STRUCTURE_KEYS = [
-  'lifecycle-phases',
+  'service-phases',
   'canvas-blueprints',
   'scenario-paths',
   'lane-sources',

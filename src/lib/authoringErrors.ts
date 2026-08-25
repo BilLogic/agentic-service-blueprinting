@@ -37,11 +37,11 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
       'That column is not part of this version yet. Add the column to the version before putting a cell in it.',
   },
   {
-    match: 'cells.path_id must match layers.path_id',
+    match: 'cells.path_id must match lanes.path_id',
     message: 'That lane belongs to a different version of this journey.',
   },
   {
-    match: 'cells: layer_id does not exist',
+    match: 'cells: lane_id does not exist',
     message: 'That lane no longer exists — it may have been deleted in another tab.',
   },
   {
@@ -49,7 +49,7 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
     message: 'Two columns ended up in the same position. Reload and try the move again.',
   },
   {
-    match: 'layers_path_row_unique',
+    match: 'lanes_path_row_unique',
     message: 'Two lanes ended up in the same position. Reload and try the move again.',
   },
   {

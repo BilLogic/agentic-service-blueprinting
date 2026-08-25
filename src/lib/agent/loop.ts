@@ -54,7 +54,7 @@ const ADAPTERS: Record<string, AgentProviderAdapter> = {
  * adapter (the plugin rulebook's app translation), with the deeper
  * references behind the read_reference tool — the runtime version of the
  * skills' progressive disclosure. Full four-skill routing (loading
- * skills/map or skills/slice SKILL.md per task) layers on here once the
+ * skills/map or skills/slice SKILL.md per task) lanes on here once the
  * sync script vendors them; the adapter is written to make that a drop-in.
  */
 const ROLE = roleDoc.trimEnd()

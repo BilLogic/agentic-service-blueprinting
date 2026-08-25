@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 /**
  * What the collapsed sidebar's floating pill says, and who told it.
  *
- * Collapsing used to leave TWO chrome layers stacked: the pill floated
+ * Collapsing used to leave TWO chrome lanes stacked: the pill floated
  * over the canvas's own navbar (the phase menubar, the slice header
  * band). The fix is not to dock the pill — it is to let the pill BE the
  * navbar while collapsed. The navbars hand it their identity (and their

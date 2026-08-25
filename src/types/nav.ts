@@ -37,14 +37,14 @@ export type NavItem = {
   /** Scenario blueprint layout; defaults to single-path view. */
   viewType?: SlideViewType
   /** Short scenario summary shown under the slide title. */
-  description?: string | null
+  summary?: string | null
 }
 
 /**
  * The service overview draws a flow arrow between consecutive main phases.
  * Purely positional — no phase-ID or display-label heuristics, so it works
  * for any org's ids and any language. A missing `toPhase` is the last phase
- * in the lifecycle, which has nothing to point at.
+ * in the service, which has nothing to point at.
  */
 export function shouldShowOverviewPhaseFlowArrow(
   _fromPhase: NavItem,
@@ -65,7 +65,7 @@ export function isOverviewFlowArrowAnchorPhase(
   return getMainSlides(slides)[0]?.id === phase.id
 }
 
-/** Lifecycle loop arrow between main phases on the overview canvas. */
+/** Service loop arrow between main phases on the overview canvas. */
 export function shouldShowOverviewPostToPreLoopArrow(
   phases: NavItem[],
 ): boolean {
@@ -94,8 +94,8 @@ export function getOverviewPostToPreLoopTransition(
 }
 
 // GENERATED-NAV:BEGIN — managed by scripts/generate_fallbacks.py --register.
-// Replaced wholesale on registration (from the IR lifecycle); do not hand-edit.
-// Default content is the template's meta-blueprint lifecycle: three phases
+// Replaced wholesale on registration (from the IR service); do not hand-edit.
+// Default content is the template's meta-blueprint service: three phases
 // (Discover → Setup → Maintain, Maintain looping back to Setup) wrapping six
 // sample scenarios, matching supabase/seed.sql when Supabase is not
 // configured.
@@ -105,20 +105,20 @@ export const FALLBACK_NAV: NavItem[] = [
   ...SAMPLE_PHASES.map(
     (phase): NavItem => ({
       id: phase.id,
-      index: phase.order_position,
+      index: phase.position,
       label: phase.name,
-      description: phase.description,
+      summary: phase.summary,
       ...(phase.loops_to_phase_id ? { loopToId: phase.loops_to_phase_id } : {}),
     }),
   ),
   ...SAMPLE_SCENARIOS.map(
     (scenario): NavItem => ({
       id: scenario.id,
-      index: scenario.order_position,
+      index: scenario.position,
       label: scenario.name,
       parentId: scenario.phase_id,
       viewType: scenario.view_type,
-      description: scenario.description,
+      summary: scenario.summary,
     }),
   ),
 ]

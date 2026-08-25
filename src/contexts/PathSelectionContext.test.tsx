@@ -13,7 +13,7 @@ function path(
   name: string,
   path_type: PathListItem['path_type'] = 'happy',
 ): PathListItem {
-  return { id, name, description: null, note: null, path_type }
+  return { id, name, summary: null, note: null, path_type }
 }
 
 /** The template's own sample shape: a differently-named happy path per scenario. */

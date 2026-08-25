@@ -2,18 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/ir-schema.json",
   "title": "Service Blueprint IR",
-  "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): lifecycle -> phases -> scenarios -> paths -> layers/steps/cells/triggers. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (lifecycle/phase/scenario/path/layer/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, layer, step) key triple; triggers by their source->target cell pair. Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
+  "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): service -> phases -> scenarios -> paths -> lanes/steps/cells/triggers. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (service/phase/scenario/path/lane/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, lane, step) key triple; triggers by their source->target cell pair. Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
   "type": "object",
   "required": [
     "schema_version",
     "locales",
-    "lifecycle"
+    "service"
   ],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
       "type": "string",
-      "description": "Template schema version this IR was authored against. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md)."
+      "enum": [
+        "2026.08.25",
+        "2026.07.16"
+      ],
+      "description": "Template schema version this IR was authored against, newest first. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). A version leaves this list when the migration that carries it forward stops existing."
     },
     "locales": {
       "type": "array",
@@ -24,8 +28,8 @@
       "uniqueItems": true,
       "description": "Locales this blueprint is authored in. Every localeText field should cover all declared locales; the validator flags gaps. One generated artifact set and one deploy target per locale."
     },
-    "lifecycle": {
-      "$ref": "#/$defs/lifecycle"
+    "service": {
+      "$ref": "#/$defs/service"
     }
   },
   "$defs": {
@@ -70,19 +74,19 @@
     "cellRef": {
       "type": "object",
       "required": [
-        "layer",
+        "lane",
         "step"
       ],
       "additionalProperties": false,
       "properties": {
-        "layer": {
+        "lane": {
           "$ref": "#/$defs/key"
         },
         "step": {
           "$ref": "#/$defs/key"
         }
       },
-      "description": "Reference to a cell on the same path by its (layer, step) key pair."
+      "description": "Reference to a cell on the same path by its (lane, step) key pair."
     },
     "link": {
       "type": "object",
@@ -139,7 +143,7 @@
         }
       ]
     },
-    "lifecycle": {
+    "service": {
       "type": "object",
       "required": [
         "key",
@@ -154,7 +158,7 @@
         "name": {
           "$ref": "#/$defs/localeText"
         },
-        "description": {
+        "summary": {
           "$ref": "#/$defs/localeText"
         },
         "phases": {
@@ -182,13 +186,13 @@
         "name": {
           "$ref": "#/$defs/localeText"
         },
-        "description": {
+        "summary": {
           "$ref": "#/$defs/localeText"
         },
         "order": {
           "type": "integer",
           "minimum": 0,
-          "description": "order_position within the lifecycle."
+          "description": "position within the service."
         },
         "loops_to": {
           "$ref": "#/$defs/key",
@@ -220,7 +224,7 @@
         "name": {
           "$ref": "#/$defs/localeText"
         },
-        "description": {
+        "summary": {
           "$ref": "#/$defs/localeText"
         },
         "order": {
@@ -274,7 +278,7 @@
         "key",
         "name",
         "path_type",
-        "layers",
+        "lanes",
         "path_steps",
         "cells"
       ],
@@ -286,7 +290,7 @@
         "name": {
           "$ref": "#/$defs/localeText"
         },
-        "description": {
+        "summary": {
           "$ref": "#/$defs/localeText"
         },
         "note": {
@@ -305,11 +309,11 @@
           "$ref": "#/$defs/localeText",
           "description": "Label for this path as a comparison variant in side-by-side view (e.g. 'as designed' vs 'as actually done'). Any two labeled variants compare — designed-vs-reality is just the default labeling."
         },
-        "layers": {
+        "lanes": {
           "type": "array",
           "minItems": 1,
           "items": {
-            "$ref": "#/$defs/layer"
+            "$ref": "#/$defs/lane"
           }
         },
         "path_steps": {
@@ -319,7 +323,7 @@
           "items": {
             "$ref": "#/$defs/key"
           },
-          "description": "Scenario step keys in column order for THIS path (array index = column_position). Every cell's step must appear here — the DB trigger aborts imports otherwise."
+          "description": "Scenario step keys in column order for THIS path (array index = position). Every cell's step must appear here — the DB trigger aborts imports otherwise."
         },
         "cells": {
           "type": "array",
@@ -335,7 +339,7 @@
         }
       }
     },
-    "layer": {
+    "lane": {
       "type": "object",
       "required": [
         "key",
@@ -349,7 +353,7 @@
         },
         "display_name": {
           "$ref": "#/$defs/localeText",
-          "description": "Free-form swimlane label in any language (layers.name in the DB)."
+          "description": "Free-form swimlane label in any language (lanes.name in the DB)."
         },
         "role": {
           "type": [
@@ -357,12 +361,12 @@
             "null"
           ],
           "pattern": "^[a-z0-9][a-z0-9_]*$",
-          "description": "Semantic role key (layers.layer_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. Org-defined custom roles and null both render as generic swimlanes. See references/lane-roles.md."
+          "description": "Semantic role key (lanes.lane_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. Org-defined custom roles and null both render as generic swimlanes. See references/lane-roles.md."
         },
         "row": {
           "type": "integer",
           "minimum": 0,
-          "description": "row_position, top to bottom."
+          "description": "position, top to bottom."
         },
         "kpis": {
           "type": "array",
@@ -383,12 +387,12 @@
     "cell": {
       "type": "object",
       "required": [
-        "layer",
+        "lane",
         "step"
       ],
       "additionalProperties": false,
       "properties": {
-        "layer": {
+        "lane": {
           "$ref": "#/$defs/key"
         },
         "step": {
@@ -398,7 +402,7 @@
           "$ref": "#/$defs/localeText",
           "description": "Cell label, the primary grid text. Newline-separated items render as pills on pill-role lanes. Omit (or empty strings) for visual-row picture cells."
         },
-        "description": {
+        "summary": {
           "$ref": "#/$defs/localeText",
           "description": "Detail-panel text."
         },

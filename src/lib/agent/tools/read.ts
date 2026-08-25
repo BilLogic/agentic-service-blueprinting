@@ -93,21 +93,21 @@ export async function listScenarios(client: Client): Promise<string> {
   const { data, error } = await client
     .from('phases')
     .select(
-      'id, name, order_position, service_scenarios (id, name, description, order_position)',
+      'id, name, position, scenarios (id, name, summary, position)',
     )
-    .order('order_position')
+    .order('position')
   if (error) throw new Error(error.message)
 
   return formatScenarioList(
     (data ?? []).map((phase) => ({
       id: phase.id,
       name: phase.name,
-      scenarios: [...(phase.service_scenarios ?? [])]
-        .sort((a, b) => (a.order_position ?? 0) - (b.order_position ?? 0))
+      scenarios: [...(phase.scenarios ?? [])]
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
         .map((scenario) => ({
           id: scenario.id,
           name: scenario.name,
-          description: scenario.description,
+          summary: scenario.summary,
         })),
     })),
   )
@@ -120,7 +120,7 @@ export async function getBlueprint(
   const { data, error } = await client
     .from('paths')
     .select(PATH_BLUEPRINT_SELECT)
-    .eq('service_scenario_id', scenarioId)
+    .eq('scenario_id', scenarioId)
   if (error) throw new Error(error.message)
   const rows = (data ?? []) as unknown as RawPath[]
   if (rows.length === 0) return 'No paths in this scenario.'
@@ -139,7 +139,7 @@ export async function getCompareDiff(
   const { data, error } = await client
     .from('paths')
     .select(PATH_BLUEPRINT_SELECT)
-    .eq('service_scenario_id', scenarioId)
+    .eq('scenario_id', scenarioId)
   if (error) throw new Error(error.message)
   const rows = (data ?? []) as unknown as RawPath[]
   if (rows.length === 0) return 'No paths in this scenario.'
@@ -153,7 +153,7 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
   const { data, error } = await client
     .from('cells')
     .select(
-      'id, content, description, owner, perceived_owner, function, form, value_props, layer_id, step_id, slot_position',
+      'id, content, summary, owner, perceived_owner, function, form, value_props, lane_id, step_id, position',
     )
     .eq('id', cellId)
     .maybeSingle()
@@ -161,15 +161,15 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
   if (!data) return `No cell with id ${cellId}.`
   const fields: Array<[string, unknown]> = [
     ['content', data.content],
-    ['summary', data.description],
+    ['summary', data.summary],
     ['owner', data.owner],
     ['perceived_owner', data.perceived_owner],
     ['function', data.function],
     ['form', data.form],
     ['value_props', data.value_props ? JSON.stringify(data.value_props) : null],
-    ['layer_id', data.layer_id],
+    ['lane_id', data.lane_id],
     ['step_id', data.step_id],
-    ['slot_position', data.slot_position],
+    ['position', data.position],
   ]
   return formatFields(fields)
 }

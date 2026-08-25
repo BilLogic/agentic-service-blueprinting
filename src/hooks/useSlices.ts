@@ -3,7 +3,7 @@ import {
   FALLBACK_SLICE_ITEMS,
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import { findFirstLifecycleId } from '@/lib/lifecycle'
+import { findFirstServiceId } from '@/lib/service'
 import type { Slice, SliceItem } from '@/types/database'
 
 /** Slim frame projection carried on the list — powers client-side
@@ -24,24 +24,24 @@ const slicesFallback = (): SliceListEntry[] =>
   }))
 
 /**
- * All slices for one service lifecycle, ordered by position, each carrying
- * its frames' cell ids. With no explicit `lifecycleId`, the first lifecycle
- * by `created_at` is used — the same resolution as `useLifecyclePhases`.
+ * All slices for one service service, ordered by position, each carrying
+ * its frames' cell ids. With no explicit `serviceId`, the first service
+ * by `created_at` is used — the same resolution as `useServicePhases`.
  */
-export function useSlices(lifecycleId?: string): QueryResult<SliceListEntry[]> {
+export function useSlices(serviceId?: string): QueryResult<SliceListEntry[]> {
   return useSupabaseQuery<SliceListEntry[]>(
-    `slices:${lifecycleId ?? 'first'}`,
+    `slices:${serviceId ?? 'first'}`,
     async (client) => {
-      let resolvedLifecycleId = lifecycleId
-      if (!resolvedLifecycleId) {
-        resolvedLifecycleId = (await findFirstLifecycleId(client)) ?? undefined
-        if (!resolvedLifecycleId) return []
+      let resolvedServiceId = serviceId
+      if (!resolvedServiceId) {
+        resolvedServiceId = (await findFirstServiceId(client)) ?? undefined
+        if (!resolvedServiceId) return []
       }
 
       const { data, error } = await client
         .from('slices')
         .select('*, slice_items (id, position, cell_ids)')
-        .eq('service_lifecycle_id', resolvedLifecycleId)
+        .eq('service_id', resolvedServiceId)
         .order('position', { ascending: true })
       if (error) throw new Error(error.message)
       return data ?? []

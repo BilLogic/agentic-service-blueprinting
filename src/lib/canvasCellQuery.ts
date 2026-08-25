@@ -3,7 +3,7 @@
  *
  * Bulk selection (a lane, a column, select-all) needs the cells in **grid
  * reading order**, and the DOM already holds that ordering exactly: lane rows
- * carry `data-layer-id`, cells carry `data-step-index`, and both are laid out
+ * carry `data-lane-id`, cells carry `data-step-index`, and both are laid out
  * in the order they are read.
  *
  * Deriving it here rather than threading cell arrays down through the grid
@@ -43,12 +43,12 @@ function toIds(elements: Element[]): string[] {
 }
 
 /** One lane, left to right — the order the lane is read in. */
-export function cellsInLane(layerId: string): string[] {
+export function cellsInLane(laneId: string): string[] {
   const root = canvasRoot()
   if (!root) return []
   return toIds(
     Array.from(
-      root.querySelectorAll(`[data-blueprint-row][data-layer-id="${CSS.escape(layerId)}"] ${CELL_SELECTOR}`),
+      root.querySelectorAll(`[data-blueprint-row][data-lane-id="${CSS.escape(laneId)}"] ${CELL_SELECTOR}`),
     ),
   )
 }
@@ -108,10 +108,10 @@ export function describeCell(id: string): { label: string; lane: string } {
     .forEach((badge) => badge.remove())
 
   const label = (clone.textContent ?? '').trim().replace(/\s+/g, ' ')
-  const row = element.closest('[data-blueprint-row][data-layer-name]')
+  const row = element.closest('[data-blueprint-row][data-lane-name]')
 
   return {
     label: label.length > 0 ? label : 'Untitled cell',
-    lane: row?.getAttribute('data-layer-name') ?? '',
+    lane: row?.getAttribute('data-lane-name') ?? '',
   }
 }

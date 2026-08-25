@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
  * The token-discipline rule, enforced.
  *
  * `docs/engineering/standards.md` states it plainly — components consume the
- * SEMANTIC layer, never the primitive ramps ("`text-warning`, not
+ * SEMANTIC lane, never the primitive ramps ("`text-warning`, not
  * `text-amber-1100`"), and no raw colour values where a token exists. Both
  * halves are convention, not types, and both had drifted: four components had
  * picked steps straight off the amber and violet ramps, three more were on
@@ -45,7 +45,7 @@ const PRIMITIVE_RAMPS = [
 
 /**
  * Ramps Tailwind ships and this design system does not unset — so they
- * resolve, silently, to colours that belong to no layer at all. The frozen
+ * resolve, silently, to colours that belong to no lane at all. The frozen
  * canvas/annotation surfaces are what kept reaching for these; they have
  * named tokens now (`--background-canvas-chrome`, `--background-annotation-chrome`).
  */
@@ -79,7 +79,7 @@ function code(source: string): string {
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
-test('components take colour from the semantic layer, not the primitive ramps', () => {
+test('components take colour from the semantic lane, not the primitive ramps', () => {
   const ramps = [...PRIMITIVE_RAMPS, ...FOREIGN_RAMPS].join('|')
   const pattern = new RegExp(
     `\\b(?:${UTILITY_PREFIXES})-(?:${ramps})-[0-9]{2,4}\\b`,

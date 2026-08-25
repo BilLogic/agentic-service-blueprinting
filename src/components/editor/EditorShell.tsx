@@ -190,11 +190,11 @@ function DesktopEditorShell() {
     isLanding ? 'idle' : 'pending',
   )
   /*
-    The sidebar's boot layer fires ONCE per entry, tracked as a small state
+    The sidebar's boot lane fires ONCE per entry, tracked as a small state
     machine rather than a boolean.
 
     The base canvas remounts whenever a tab stops covering it, and a remount
-    restarts its reveal at stage 0 — so keying the layer on the stage alone
+    restarts its reveal at stage 0 — so keying the lane on the stage alone
     dropped the full boot skeleton over an already populated sidebar every
     time the reader came back from a slice tab. The stage says "this canvas
     is staging"; this says "and the sidebar is staging with it", which is
@@ -228,7 +228,7 @@ function DesktopEditorShell() {
   }, [entrance])
 
   /*
-    The boot skeleton is an OPAQUE LAYER over the whole sidebar, not a
+    The boot skeleton is an OPAQUE LANE over the whole sidebar, not a
     placeholder inside each section.
 
     Two things were wrong with per-section skeletons. Only the row lists
@@ -238,11 +238,11 @@ function DesktopEditorShell() {
     the sidebar resolved on separate clocks — a top-to-bottom cascade that
     says nothing, since neither list is waiting on the other.
 
-    One layer fixes both. Everything behind it is covered, and it lifts in a
+    One lane fixes both. Everything behind it is covered, and it lifts in a
     single fade at stage 1 — the beat the canvas opens its phase lanes — so
     the sidebar and the board resolve together, all at once.
 
-    Mounted one stage past the fade so the layer cannot be pulled while it
+    Mounted one stage past the fade so the lane cannot be pulled while it
     is still fading (the same tie the loading bar hit).
   */
   /*
@@ -256,12 +256,12 @@ function DesktopEditorShell() {
     setBoot('off')
   }
   /*
-    Opaque until the canvas opens its first layer, then fades with it.
+    Opaque until the canvas opens its first lane, then fades with it.
 
-    The fade begins at stage 1 and the layer is not unmounted until stage 3 —
+    The fade begins at stage 1 and the lane is not unmounted until stage 3 —
     two stages, not one. The beats are 200/160/128 ms and the fade is one
     `--motion-fade`, so unmounting at stage 2 would be a near-exact tie: a
-    frame of scheduling jitter either way and the layer vanishes mid-fade
+    frame of scheduling jitter either way and the lane vanishes mid-fade
     instead of completing it. That is the same tie the loading bar hit, and
     the cost of the extra stage is an invisible element at opacity 0.
   */
@@ -364,7 +364,7 @@ function DesktopEditorShell() {
     const unregister = [
       registerAgentUiCommand({
         name: 'go_overview',
-        description: 'Back to the zoomed-out overview of all phases (Home).',
+        summary: 'Back to the zoomed-out overview of all phases (Home).',
         run: () => {
           commands.current.goOverview()
           return 'On the overview.'
@@ -372,7 +372,7 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'activate_base_tab',
-        description: 'Bring the base blueprint view forward (deactivate any slice tab).',
+        summary: 'Bring the base blueprint view forward (deactivate any slice tab).',
         run: () => {
           commands.current.activateBase()
           return 'Base blueprint view is active.'
@@ -380,7 +380,7 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'open_slice_tab',
-        description: 'Open a slice in a tab. arg: slice id (list_slices).',
+        summary: 'Open a slice in a tab. arg: slice id (list_slices).',
         run: (arg) => {
           if (!arg) throw new Error('arg required: slice id')
           commands.current.openSliceTab(arg, false)
@@ -389,7 +389,7 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'present_slice',
-        description: 'Start presenting a slice full-bleed. arg: slice id.',
+        summary: 'Start presenting a slice full-bleed. arg: slice id.',
         run: (arg) => {
           if (!arg) throw new Error('arg required: slice id')
           commands.current.openSliceTab(arg, true)
@@ -398,12 +398,12 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'exit_presentation',
-        description: 'Leave the running presentation back onto its slice tab.',
+        summary: 'Leave the running presentation back onto its slice tab.',
         run: () => commands.current.exitPresent(),
       }),
       registerAgentUiCommand({
         name: 'close_slice_tab',
-        description: 'Close a slice\'s open tab(s). arg: slice id.',
+        summary: 'Close a slice\'s open tab(s). arg: slice id.',
         run: (arg) => {
           if (!arg) throw new Error('arg required: slice id')
           commands.current.closeSliceTab(arg)
@@ -412,7 +412,7 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'toggle_phase_expanded',
-        description: "Expand/collapse a phase's accordion in the sidebar. arg: phase id.",
+        summary: "Expand/collapse a phase's accordion in the sidebar. arg: phase id.",
         run: (arg) => {
           if (!arg) throw new Error('arg required: phase id')
           commands.current.togglePhase(arg)
@@ -421,7 +421,7 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'set_scenario_view',
-        description: 'Switch the SELECTED scenario between its two displays. arg: stacked | merged (needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also applies the reading preset — shared steps fold and the difference ledger opens; returning to stacked unfolds. Legacy aliases accepted: side-by-side = stacked, integrated = merged.',
+        summary: 'Switch the SELECTED scenario between its two displays. arg: stacked | merged (needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also applies the reading preset — shared steps fold and the difference ledger opens; returning to stacked unfolds. Legacy aliases accepted: side-by-side = stacked, integrated = merged.',
         run: (arg) =>
           // 'side-by-side'/'integrated' are the pre-v3 tokens, kept as
           // documented aliases so older prompts and transcripts still work.
@@ -667,7 +667,7 @@ function DesktopEditorShell() {
               {sidebarBody}
             </div>
             {/*
-              The boot layer. `bg-sidebar` over the aside's own background,
+              The boot lane. `bg-sidebar` over the aside's own background,
               at the aside's full width so the rail is covered too.
             */}
             {sidebarBootMounted && !railOnly ? (
@@ -802,7 +802,7 @@ function ActiveTabContent({
           data-editor-view
         >
           {/* The one canvas that boots WITH the sidebar, so the one that
-              drives its boot layer — see `onRevealStage`. */}
+              drives its boot lane — see `onRevealStage`. */}
           <ServiceOverviewView onRevealStage={onRevealStage} />
         </div>
       </VisualWalkthroughShell>

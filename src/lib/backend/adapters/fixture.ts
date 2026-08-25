@@ -20,6 +20,7 @@ import {
   SAMPLE_SCENARIOS,
 } from '@/data/sampleBlueprint'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
+import { TEMPLATE_SCHEMA_VERSION } from '../schemaVersion'
 import type {
   Backend,
   PathSummary,
@@ -37,15 +38,15 @@ function phases(): PhaseSummary[] {
   return SAMPLE_PHASES.map((phase) => ({
     id: phase.id,
     name: phase.name,
-    description: phase.description,
-    position: phase.order_position,
+    summary: phase.summary,
+    position: phase.position,
     loopsToPhaseId: phase.loops_to_phase_id,
     scenarios: SAMPLE_SCENARIOS.filter((scenario) => scenario.phase_id === phase.id)
       .map((scenario) => ({
         id: scenario.id,
         name: scenario.name,
-        description: scenario.description,
-        position: scenario.order_position,
+        summary: scenario.summary,
+        position: scenario.position,
       }))
       .sort((a, b) => a.position - b.position),
   })).sort((a, b) => a.position - b.position)
@@ -56,7 +57,7 @@ function pathsFor(scenarioId: string): PathSummary[] {
     id: path.id,
     scenarioId,
     name: path.name,
-    description: path.description,
+    summary: path.summary,
     note: path.note,
     pathType: path.path_type,
   }))
@@ -79,7 +80,7 @@ function scenarioOfPath(pathId: string): string | null {
 function sliceSummary(slice: (typeof FALLBACK_SLICES)[number]): SliceSummary {
   return {
     id: slice.id,
-    // The fixture's demo slices hang off the lifecycle rather than a single
+    // The fixture's demo slices hang off the service rather than a single
     // scenario, and the seam does not invent an owner they do not have.
     scenarioId: null,
     title: slice.title,
@@ -92,6 +93,7 @@ export function createFixtureBackend(): Backend {
   return {
     name: 'bundled fixture',
     capabilities: { writes: null, blueprintRoundTrips: 0 },
+    schemaVersion: async () => TEMPLATE_SCHEMA_VERSION,
 
     blueprints: {
       async listPhases() {

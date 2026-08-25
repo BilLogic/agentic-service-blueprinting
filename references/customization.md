@@ -7,14 +7,14 @@ schema-version compat check in the upgrade recipe.
 
 ## Contents
 
-- Layer roles
+- Lane roles
 - Theming & branding
 - View types & path types
 - Scale
 - Portfolio conventions (consultants / agencies)
 - Template upgrade recipe (⚠ compat check required)
 
-## Layer roles
+## Lane roles
 
 The canonical vocabulary + org-defined custom roles are documented in
 `references/lane-roles.md`. Customization summary: display names are
@@ -79,7 +79,7 @@ scenario or path IDs left in the template; do not reintroduce any.
 
 ## Scale
 
-Schema and frontend support unbounded layers/steps/paths — more actors just
+Schema and frontend support unbounded lanes/steps/paths — more actors just
 means more lanes. The validator emits **soft warnings** above ergonomic
 thresholds, never errors; the shipped sample content (8 paths across 6
 scenarios, one 7-lane roster, widest board 8 lanes × 10 steps, one custom
@@ -108,7 +108,7 @@ version together; `blueprint-workspace.json` records the workspace's
 1. **Check compat first**: compare the workspace `schema_version` with the
    new template's. Same → skip to step 4.
 2. Read the template CHANGELOG between the two versions for schema and
-   layer-role vocabulary changes.
+   lane-role vocabulary changes.
 3. Pull the new template into the workspace clone (git merge from the
    template remote, or re-clone + copy `blueprint/`, `.env`, `HANDOFF.md`,
    `blueprint-workspace.json` forward). Resolve conflicts in favor of the

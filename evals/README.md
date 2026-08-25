@@ -1,6 +1,6 @@
 # Skill evals
 
-Two eval layers, per the Agent Skills best-practices guide ("build
+Two eval lanes, per the Agent Skills best-practices guide ("build
 evaluations first") and the skill-creator's description-optimization flow.
 
 ## trigger/ — does the right skill fire?

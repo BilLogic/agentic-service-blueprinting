@@ -13,7 +13,7 @@ of calling it directly — that also copies the new number into
 `.claude-plugin/plugin.json`, which is the version a consumer's plugin install
 actually reads.
 
-**Semver here is scoped to the plugin contract**, the identifier layer in
+**Semver here is scoped to the plugin contract**, the identifier lane in
 `identifiers.json`: skill names, reference filenames, schema filenames, agent
 names, hook events, agent tool names. A rename there is a major. Refactoring
 the template app is not, however much of it moves — a consumer forks that

@@ -11,7 +11,7 @@ type CellSpec = {
   lane: string
   step: string
   content: string
-  description?: string
+  summary?: string
   id?: string
 }
 
@@ -29,35 +29,35 @@ function makeBlueprint(
 ): BlueprintData {
   const laneNames =
     options.lanes ?? [...new Set(cells.map((cell) => cell.lane))]
-  const layers = laneNames.map((name, index) => ({
+  const lanes = laneNames.map((name, index) => ({
     id: `${pathId}-lane-${name}`,
     name,
-    row_position: index,
+    position: index,
   }))
   const stepRows = steps.map((name, index) => ({
     id: `${pathId}-step-${index}`,
     name,
-    column_position: index,
+    position: index,
   }))
   const stepIdByName = new Map(stepRows.map((step) => [step.name, step.id]))
   const blueprintCells: BlueprintCell[] = cells.map((cell) => ({
     id: cell.id ?? nextId(`${pathId}-cell`),
-    layer_id: `${pathId}-lane-${cell.lane}`,
+    lane_id: `${pathId}-lane-${cell.lane}`,
     step_id: stepIdByName.get(cell.step) ?? '',
     content: cell.content,
     picture: null,
-    description: cell.description ?? null,
+    summary: cell.summary ?? null,
     links: [],
   }))
   return {
     path: {
       id: pathId,
       name: pathId,
-      description: null,
+      summary: null,
       note: null,
       path_type: 'happy',
     },
-    layers,
+    lanes,
     steps: stepRows,
     cells: blueprintCells,
     triggers: (options.triggers ?? []).map((trigger, index) => ({
@@ -150,10 +150,10 @@ describe('buildCompareModel — alignment and verdicts', () => {
     ]
     const b = makeBlueprint('b', ['Check', 'Check'], [])
     b.cells = [
-      { ...a.cells[0], id: 'b-check-1', layer_id: 'b-lane-FS', step_id: b.steps[0].id, content: 'First check' },
-      { ...a.cells[0], id: 'b-check-2', layer_id: 'b-lane-FS', step_id: b.steps[1].id, content: 'Different second' },
+      { ...a.cells[0], id: 'b-check-1', lane_id: 'b-lane-FS', step_id: b.steps[0].id, content: 'First check' },
+      { ...a.cells[0], id: 'b-check-2', lane_id: 'b-lane-FS', step_id: b.steps[1].id, content: 'Different second' },
     ]
-    b.layers = [{ id: 'b-lane-FS', name: 'FS', row_position: 0 }]
+    b.lanes = [{ id: 'b-lane-FS', name: 'FS', position: 0 }]
 
     const model = buildCompareModel(pair(a, b))
     const verdicts = new Map(
@@ -200,36 +200,36 @@ describe('buildCompareModel — alignment and verdicts', () => {
 })
 
 describe('buildCompareModel — fields and multisets', () => {
-  it('reports description-only differences as divergent with differingFields', () => {
+  it('reports summary-only differences as divergent with differingFields', () => {
     const a = makeBlueprint(
       'a',
       ['Pay'],
-      [{ lane: 'FS', step: 'Pay', content: 'Pay', description: 'via card' }],
+      [{ lane: 'FS', step: 'Pay', content: 'Pay', summary: 'via card' }],
     )
     const b = makeBlueprint(
       'b',
       ['Pay'],
-      [{ lane: 'FS', step: 'Pay', content: 'Pay', description: 'via invoice' }],
+      [{ lane: 'FS', step: 'Pay', content: 'Pay', summary: 'via invoice' }],
     )
     const model = buildCompareModel(pair(a, b))
     const slot = model.slots[0]
     expect(slot.verdict).toBe('divergent')
-    expect(slot.differingFields).toEqual(['description'])
+    expect(slot.differingFields).toEqual(['summary'])
   })
 
   it('keeps detail-only divergence off the canvas: column shared, no fork (V7)', () => {
     const a = makeBlueprint(
       'a',
       ['Pay'],
-      [{ lane: 'FS', step: 'Pay', content: 'Pay', description: 'via card' }],
+      [{ lane: 'FS', step: 'Pay', content: 'Pay', summary: 'via card' }],
     )
     const b = makeBlueprint(
       'b',
       ['Pay'],
-      [{ lane: 'FS', step: 'Pay', content: 'Pay', description: 'via invoice' }],
+      [{ lane: 'FS', step: 'Pay', content: 'Pay', summary: 'via invoice' }],
     )
     const model = buildCompareModel(pair(a, b))
-    // Fork condition is content-or-presence: a description-only difference
+    // Fork condition is content-or-presence: a summary-only difference
     // must not tint the column or split a run — it is ledger-only.
     expect(model.columns[0].verdict).toBe('shared')
     expect(model.runs).toEqual([{ kind: 'shared', columnKeys: ['pay#0'] }])
@@ -309,7 +309,7 @@ describe('buildCompareModel — columns, runs, ordering', () => {
       const delta = order.indexOf(colX) - order.indexOf(colY)
       return delta !== 0 ? delta : 0
     }))
-    // FS row (row_position 0) precedes BS within the divergent column.
+    // FS row (position 0) precedes BS within the divergent column.
     const three = model.slots.filter((slot) => slot.columnKey === 'three#0')
     expect(three.map((slot) => slot.laneKey)).toEqual(['fs', 'bs'])
   })

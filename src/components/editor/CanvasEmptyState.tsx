@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 type CanvasEmptyStateProps = {
   className?: string
   title?: string
-  description?: string
+  summary?: string
   /**
    * `canvas` — full viewport placeholder (no paths selected).
    * `panel` — inside a scenario compare card.
@@ -42,7 +42,7 @@ function RestoreDefaultPathsButton() {
 export function CanvasEmptyState({
   className,
   title = 'No paths selected',
-  description = 'Pick one under Paths in the sidebar.',
+  summary = 'Pick one under Paths in the sidebar.',
   variant = 'canvas',
   showRestoreAction,
 }: CanvasEmptyStateProps) {
@@ -91,7 +91,7 @@ export function CanvasEmptyState({
               : 'max-w-[18rem] text-2xs leading-snug',
           )}
         >
-          {description}
+          {summary}
         </p>
         {(showRestoreAction ?? isCanvas) ? <RestoreDefaultPathsButton /> : null}
       </div>

@@ -162,7 +162,7 @@ export function getPathDashArray(path: PathColorInput): string | undefined {
 }
 
 /**
- * Same, from the `${type}:${name}` key the arrow layers already carry on each
+ * Same, from the `${type}:${name}` key the arrow lanes already carry on each
  * segment. Bare `'happy'` (no colon) is the legacy default-path key.
  */
 export function getPathDashArrayFromKey(colorKey: string): string | undefined {
@@ -268,7 +268,7 @@ const PATH_WASH_PERCENT = 16
 
 /**
  * The merged view's path-affiliation wash, as a `background-image` so it
- * layers OVER the cell face's own `background-color` and is clipped by its
+ * lanes OVER the cell face's own `background-color` and is clipped by its
  * border radius — the reason the earlier absolutely-positioned tint box
  * read as a second, misaligned card. One colour paints flat; N colours
  * (a subset-shared cell) paint N equal vertical stripes.

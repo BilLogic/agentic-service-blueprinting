@@ -179,7 +179,7 @@ function useUndoHotkey(changes: ChangeEntry[]) {
     const unregister = [
       registerAgentUiCommand({
         name: 'undo_last_change',
-        description:
+        summary:
           "Undo the newest revertible change of this session (same as ⌘Z). One at a time. Note this reverts whatever is newest — INCLUDING the human's own edit if theirs came last; say whose change you are undoing before firing it.",
         // Reverting a creation runs delete_cell / delete_scenario /
         // delete_path. That is data, not interface — so it counts as a
@@ -208,7 +208,7 @@ function useUndoHotkey(changes: ChangeEntry[]) {
       }),
       registerAgentUiCommand({
         name: 'keep_all_changes',
-        description:
+        summary:
           "Accept the session's changes (clears the change sheet). This DISCARDS every captured revert — after it, nothing in the session can be taken back. Refused when the session holds destructive changes; those need the human's own confirm.",
         // It writes no rows, which is why this was unmarked — and why the
         // omission mattered. Clearing the ledger is the only thing standing
@@ -227,14 +227,14 @@ function useUndoHotkey(changes: ChangeEntry[]) {
       }),
       registerAgentUiCommand({
         name: 'revert_my_changes',
-        description:
+        summary:
           "Take back the changes YOU made in this agent session, newest first, leaving the human's own edits and other sessions' edits alone. Reports what it took back and names anything it could not, with the reason. Prefer this over firing undo_last_change repeatedly — that walks the whole session including the human's edits, in no guaranteed order, and reports nothing.",
         mutates: true,
         run: () => revertAgentSession(client),
       }),
       registerAgentUiCommand({
         name: 'revert_all_changes',
-        description:
+        summary:
           "WITHHELD, and listed here so you can see that it is: reverting the WHOLE session — the human's own edits included — is a human-only control (Revert all, in the Changes sheet). Firing this explains that and does nothing. Use revert_my_changes for your own edits.",
         run: () =>
           'Reverting the whole session is human-only: it would take back the human’s own edits as well as yours, and that decision is theirs to make in the Changes sheet (the Revert all button, which asks first). Nothing was changed. revert_my_changes takes back only what you did — tell the user that is what you can offer.',

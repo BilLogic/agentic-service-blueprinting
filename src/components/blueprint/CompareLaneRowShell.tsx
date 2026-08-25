@@ -9,12 +9,12 @@ import type { ReactNode } from 'react'
 
 /**
  * One lane row's grid cell: the swimlane data attributes canvas queries rely
- * on (`data-blueprint-swimlane`, `data-layer-id`/`-name`), the arrow
+ * on (`data-blueprint-swimlane`, `data-lane-id`/`-name`), the arrow
  * corridors, and the divider-row treatment. Row anatomy is a property of the
  * LANE, not of any path, so the stacked bands and the merged grid share this
  * shell and only differ in the cells they put inside it.
  *
- * `children` renders only for an expanded layer row — a collapsed lane or a
+ * `children` renders only for an expanded lane row — a collapsed lane or a
  * divider keeps its track height with inert filler.
  */
 export function CompareLaneRowShell({
@@ -33,7 +33,7 @@ export function CompareLaneRowShell({
     row.kind === 'interaction' ||
     row.kind === 'visibility' ||
     row.kind === 'internalInteraction'
-  const isLayerRow = row.kind === 'layer'
+  const isLaneRow = row.kind === 'lane'
   const corridorAbove = row.wrapCorridorAbove
     ? BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN
     : 0
@@ -46,14 +46,14 @@ export function CompareLaneRowShell({
 
   return (
     <div
-      {...(isLayerRow && row.layer
+      {...(isLaneRow && row.lane
         ? {
             'data-blueprint-swimlane': '',
             'data-blueprint-row': '',
-            'data-layer-id': row.layer.id,
+            'data-lane-id': row.lane.id,
             // Lets a picked cell name its lane without the selection
             // carrying the whole blueprint (see lib/canvasCellQuery).
-            'data-layer-name': row.layer.name,
+            'data-lane-name': row.lane.name,
           }
         : {})}
       {...(isDivider
@@ -65,7 +65,7 @@ export function CompareLaneRowShell({
       className={cn(
         'flex h-full min-h-0 flex-col',
         isDivider && 'relative z-[1] overflow-hidden bg-transparent',
-        isLayerRow && 'overflow-visible',
+        isLaneRow && 'overflow-visible',
       )}
       style={{
         gridRow: rowIndex + 1,
@@ -98,7 +98,7 @@ export function CompareLaneRowShell({
             style={{ height: inLaneLoopCorridorAbove }}
           />
         )}
-        {isLayerRow && row.layer && !row.collapsed ? (
+        {isLaneRow && row.lane && !row.collapsed ? (
           children
         ) : (
           <div className="h-full" aria-hidden />

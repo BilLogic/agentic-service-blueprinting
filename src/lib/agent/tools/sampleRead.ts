@@ -62,7 +62,7 @@ export function sampleListScenarios(): string {
       ).map((scenario) => ({
         id: scenario.id,
         name: scenario.label,
-        description: scenario.description,
+        summary: scenario.summary,
       })),
     })),
   )
@@ -92,15 +92,15 @@ export function sampleGetCell(cellId: string): string {
     if (!cell) continue
     return formatFields([
       ['content', cell.content],
-      ['summary', cell.description],
+      ['summary', cell.summary],
       ['owner', cell.owner],
       ['perceived_owner', cell.perceived_owner],
       ['function', cell.function],
       ['form', cell.form],
       ['value_props', cell.value_props?.length ? JSON.stringify(cell.value_props) : null],
-      ['layer_id', cell.layer_id],
+      ['lane_id', cell.lane_id],
       ['step_id', cell.step_id],
-      ['slot_position', cell.slot_position],
+      ['position', cell.position],
     ])
   }
   return `No cell with id ${cellId}.`

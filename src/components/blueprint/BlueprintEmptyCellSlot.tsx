@@ -22,9 +22,9 @@ import { cn } from '@/lib/utils'
  */
 export function BlueprintEmptyCellSlot({
   pathId,
-  layerId,
+  laneId,
   stepId,
-  layerName,
+  laneName,
   stepName,
   stepIndex,
   scenarioName,
@@ -34,9 +34,9 @@ export function BlueprintEmptyCellSlot({
   selfStretch = false,
 }: {
   pathId: string
-  layerId: string
+  laneId: string
   stepId: string
-  layerName: string
+  laneName: string
   stepName: string
   stepIndex: number
   scenarioName?: string
@@ -78,9 +78,9 @@ export function BlueprintEmptyCellSlot({
           event.stopPropagation()
           detail.openDraftCell({
             pathId,
-            layerId,
+            laneId,
             stepId,
-            layerName,
+            laneName,
             stepName,
             stepIndex,
             scenarioName,

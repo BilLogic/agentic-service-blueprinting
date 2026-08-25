@@ -25,7 +25,7 @@ import type { Database } from '@/types/database'
  * actually TRUE of the delete that follows, and `lane` and `step` are not in
  * it:
  *
- *   * `deletion_impact('lane', id)` counts the cells of ONE `layers` row, but
+ *   * `deletion_impact('lane', id)` counts the cells of ONE `lanes` row, but
  *     `remove_lane(scenario_id, lane_name)` deletes every same-named lane
  *     across every path of the scenario. A 12-cell dialog would precede a
  *     36-cell delete — it undercounts.

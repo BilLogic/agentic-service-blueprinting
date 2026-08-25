@@ -2,7 +2,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react'
 import {
   BlueprintDividerRailLabelLine,
 } from '@/components/blueprint/BlueprintDividerTag'
-import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
+import { LaneCollapseToggle } from '@/components/blueprint/LaneCollapseToggle'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import {
   BLUEPRINT_DIVIDER_ROW_HEIGHT,
@@ -12,8 +12,8 @@ import {
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
 } from '@/lib/blueprintLayout'
 import {
-  BLUEPRINT_LAYER_COLLAPSE_ENABLED,
-} from '@/lib/blueprintLayerCollapse'
+  BLUEPRINT_LANE_COLLAPSE_ENABLED,
+} from '@/lib/blueprintLaneCollapse'
 import {
   COMPARE_LABEL_WIDTH,
   type BlueprintLabelRowSpec,
@@ -25,7 +25,7 @@ import {
   getBlueprintLabelTextColor,
 } from '@/lib/blueprintTheme'
 import { cn } from '@/lib/utils'
-import type { BlueprintLayer } from '@/types/blueprint'
+import type { BlueprintLane } from '@/types/blueprint'
 import type { CSSProperties } from 'react'
 
 export type { BlueprintLabelRowSpec }
@@ -64,7 +64,7 @@ export function BlueprintStickyLabelBackdrop({
         marginTop: bleedTop > 0 ? -bleedTop : undefined,
         marginBottom: bleedBottom > 0 ? -bleedBottom : undefined,
         // The frame's inner corner is rounded; a square gray corner poking
-        // into it reads as a layering bug.
+        // into it reads as a laneing bug.
         borderBottomLeftRadius: bleedLeft > 0 && bleedBottom > 0 ? 9 : undefined,
         backgroundColor: blueprintPanelLabelRailColor(),
       }}
@@ -166,19 +166,19 @@ import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { cellsInLane } from '@/lib/canvasCellQuery'
 
-/** One row of the left label column — a layer name plus its collapse toggle. */
+/** One row of the left label column — a lane name plus its collapse toggle. */
 export function BlueprintLabelRow({
   row,
-  layers,
+  lanes,
   style,
   compact,
-  onToggleLayer,
+  onToggleLane,
 }: {
   row: BlueprintLabelRowSpec
-  layers: BlueprintLayer[]
+  lanes: BlueprintLane[]
   style?: CSSProperties
   compact?: boolean
-  onToggleLayer?: (layerId: string) => void
+  onToggleLane?: (laneId: string) => void
 }) {
   // Hooks first: this component returns early for divider rows, and a hook
   // after that return would run in a different order between row kinds.
@@ -188,7 +188,7 @@ export function BlueprintLabelRow({
   // View, so reading the blueprint is untouched.
   const canvasMode = useCanvasModeValue()
   const pick = useCellPick()
-  const laneId = row.kind === 'layer' ? (row.layer?.id ?? null) : null
+  const laneId = row.kind === 'lane' ? (row.lane?.id ?? null) : null
   const laneSelectable =
     canvasMode === 'design' && pick !== null && laneId !== null
   const selectLane = (event: ReactMouseEvent<HTMLElement>) => {
@@ -218,8 +218,8 @@ export function BlueprintLabelRow({
     : 0
 
   const labelColor =
-    row.layer != null
-      ? getBlueprintLabelTextColor(getBlueprintLabelSection(row.layer, layers))
+    row.lane != null
+      ? getBlueprintLabelTextColor(getBlueprintLabelSection(row.lane, lanes))
       : BLUEPRINT_THEME.headerText
 
   return (
@@ -280,14 +280,14 @@ export function BlueprintLabelRow({
             {row.label}
           </span>
         )}
-        {BLUEPRINT_LAYER_COLLAPSE_ENABLED &&
-          row.kind === 'layer' &&
-          row.layer &&
-          onToggleLayer && (
-            <LayerCollapseToggle
-              layerName={row.label}
+        {BLUEPRINT_LANE_COLLAPSE_ENABLED &&
+          row.kind === 'lane' &&
+          row.lane &&
+          onToggleLane && (
+            <LaneCollapseToggle
+              laneName={row.label}
               collapsed={row.collapsed ?? false}
-              onToggle={() => onToggleLayer(row.layer!.id)}
+              onToggle={() => onToggleLane(row.lane!.id)}
               className="size-6 shrink-0"
             />
           )}

@@ -9,8 +9,8 @@ export type BlueprintCellConnectionKind = 'interaction' | 'connection'
 export type BlueprintCellConnection = {
   triggerId: string
   cellId: string
-  layerName: string
-  layerRowPosition: number
+  laneName: string
+  lanePosition: number
   stepName: string
   stepIndex: number
   kind: BlueprintCellConnectionKind
@@ -35,8 +35,8 @@ function findCell(blueprint: BlueprintData, cellId: string): BlueprintCell | und
   return blueprint.cells.find((cell) => cell.id === resolvedId)
 }
 
-function resolveLayer(blueprint: BlueprintData, layerId: string) {
-  return blueprint.layers.find((layer) => layer.id === layerId)
+function resolveLane(blueprint: BlueprintData, laneId: string) {
+  return blueprint.lanes.find((lane) => lane.id === laneId)
 }
 
 function resolveStepName(blueprint: BlueprintData, stepId: string): string {
@@ -65,17 +65,17 @@ function toConnection(
   const stepIndex = resolveStepIndex(blueprint, cell.step_id)
   if (stepIndex < 0) return null
 
-  const layer = resolveLayer(blueprint, cell.layer_id)
-  const layerName = layer?.name ?? 'Unknown layer'
-  const layerRowPosition = layer?.row_position ?? -1
-  const isTech = layer ? shouldUsePillCellContent(layer) : false
+  const lane = resolveLane(blueprint, cell.lane_id)
+  const laneName = lane?.name ?? 'Unknown lane'
+  const lanePosition = lane?.position ?? -1
+  const isTech = lane ? shouldUsePillCellContent(lane) : false
   const techItems = isTech ? getTechPillItems(cell.content) : []
 
   return {
     triggerId: trigger.id,
     cellId,
-    layerName,
-    layerRowPosition,
+    laneName,
+    lanePosition,
     stepName: resolveStepName(blueprint, cell.step_id),
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
@@ -228,27 +228,27 @@ export type DirectedFlowInteraction = BlueprintCellConnection & {
   direction: FlowInteractionDirection
 }
 
-export function getSelectedCellLayerRowPosition(
+export function getSelectedCellLanePosition(
   blueprint: BlueprintData,
   cellId: string,
 ): number {
   const cell = findCell(blueprint, cellId)
   if (!cell) return -1
-  return resolveLayer(blueprint, cell.layer_id)?.row_position ?? -1
+  return resolveLane(blueprint, cell.lane_id)?.position ?? -1
 }
 
 function interactionDirectionFromRows(
-  linkedRowPosition: number,
-  selectedRowPosition: number,
+  linkedPosition: number,
+  selectedPosition: number,
 ): 'up' | 'down' {
-  if (linkedRowPosition < selectedRowPosition) return 'up'
+  if (linkedPosition < selectedPosition) return 'up'
   return 'down'
 }
 
 export function getDirectedInteractions(
   incoming: BlueprintCellConnection[],
   outgoing: BlueprintCellConnection[],
-  selectedLayerRowPosition: number,
+  selectedLanePosition: number,
 ): DirectedFlowInteraction[] {
   const byCellId = new Map<string, BlueprintCellConnection>()
 
@@ -262,8 +262,8 @@ export function getDirectedInteractions(
   return [...byCellId.values()].map((connection) => ({
     ...connection,
     direction: interactionDirectionFromRows(
-      connection.layerRowPosition,
-      selectedLayerRowPosition,
+      connection.lanePosition,
+      selectedLanePosition,
     ),
   }))
 }
@@ -287,26 +287,26 @@ export function buildBlueprintCellSelectionForId(
   const cell = findCell(blueprint, cellId)
   if (!cell) return null
 
-  const layer = blueprint.layers.find((entry) => entry.id === cell.layer_id)
+  const lane = blueprint.lanes.find((entry) => entry.id === cell.lane_id)
   const stepIndex = blueprint.steps.findIndex((entry) => entry.id === cell.step_id)
   const step = blueprint.steps[stepIndex]
-  if (!layer || !step || stepIndex < 0) return null
+  if (!lane || !step || stepIndex < 0) return null
 
   return buildBlueprintCellSelection({
     scenarioName,
     phaseName,
-    layerName: layer.name,
+    laneName: lane.name,
     stepId: step.id,
     stepName: step.name,
     stepIndex,
     cellId: cell.id,
     cellContent: cell.content,
     cellPicture: cell.picture,
-    cellDescription: cell.description,
+    cellSummary: cell.summary,
     cellLinks: cell.links,
     pathId: blueprint.path.id,
     pathName: blueprint.path.name,
-    pathDescription: blueprint.path.description,
+    pathSummary: blueprint.path.summary,
     pathType: blueprint.path.path_type,
   })
 }

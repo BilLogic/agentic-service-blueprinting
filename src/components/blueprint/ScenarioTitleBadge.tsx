@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEvent } from 'react'
 import { Info } from 'lucide-react'
-import { PathDescriptionTooltip } from '@/components/blueprint/PathDescriptionTooltip'
+import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { Badge } from '@/components/ui/badge'
 import {
   Tooltip,
@@ -14,7 +14,7 @@ import type { PathType } from '@/types/database'
 
 type ScenarioTitleBadgeProps = {
   name: string
-  description?: string | null
+  summary?: string | null
   className?: string
   style?: CSSProperties
   side?: 'top' | 'bottom' | 'left' | 'right'
@@ -26,10 +26,10 @@ type ScenarioTitleBadgeProps = {
   infoTooltip?: string | null
 }
 
-/** Default scenario badge with name + description tooltip (phase overview). */
+/** Default scenario badge with name + summary tooltip (phase overview). */
 export function ScenarioTitleBadge({
   name,
-  description,
+  summary,
   className,
   style,
   side = 'top',
@@ -91,8 +91,8 @@ export function ScenarioTitleBadge({
           </TooltipContent>
         </Tooltip>
       ) : null}
-      <PathDescriptionTooltip
-        description={description}
+      <PathSummaryTooltip
+        summary={summary}
         pathName={name}
         showNameInTooltip
         side={side}
@@ -108,7 +108,7 @@ export function ScenarioTitleBadge({
         >
           {name}
         </span>
-      </PathDescriptionTooltip>
+      </PathSummaryTooltip>
     </Badge>
   )
 }

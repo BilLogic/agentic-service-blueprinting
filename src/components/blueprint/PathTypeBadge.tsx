@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { PathDescriptionTooltip } from '@/components/blueprint/PathDescriptionTooltip'
+import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { Badge } from '@/components/ui/badge'
 import { getBlueprintFillStyle, PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
 import { PATH_TYPE_LABELS, PATH_TYPE_SHORT_LABELS } from '@/lib/pathTypeTheme'
@@ -8,7 +8,7 @@ import type { PathType } from '@/types/database'
 
 type PathTypeBadgeProps = {
   pathType: PathType
-  description?: string | null
+  summary?: string | null
   compact?: boolean
   className?: string
   style?: CSSProperties
@@ -18,7 +18,7 @@ type PathTypeBadgeProps = {
 /** Compact badge showing path type (Happy, Unhappy, etc.) on overview path frames. */
 export function PathTypeBadge({
   pathType,
-  description,
+  summary,
   compact = false,
   className,
   style,
@@ -27,8 +27,8 @@ export function PathTypeBadge({
   const label = PATH_TYPE_SHORT_LABELS[pathType]
 
   return (
-    <PathDescriptionTooltip
-      description={description}
+    <PathSummaryTooltip
+      summary={summary}
       pathName={PATH_TYPE_LABELS[pathType]}
       side={side}
     >
@@ -52,6 +52,6 @@ export function PathTypeBadge({
       >
         <span className="truncate leading-none tracking-tight">{label}</span>
       </Badge>
-    </PathDescriptionTooltip>
+    </PathSummaryTooltip>
   )
 }

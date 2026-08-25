@@ -27,6 +27,7 @@
  * conformance suite and nothing else.
  */
 import type { BlueprintData } from '@/types/blueprint'
+import { TEMPLATE_SCHEMA_VERSION } from '../schemaVersion'
 import type {
   Backend,
   ConformanceLevel,
@@ -91,6 +92,7 @@ export function createMemoryBackend(
   return {
     name: `memory (${level})`,
     capabilities: { writes: level },
+    schemaVersion: async () => TEMPLATE_SCHEMA_VERSION,
 
     blueprints: {
       async listPhases() {

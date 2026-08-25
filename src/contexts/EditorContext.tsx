@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { useLifecyclePhases } from '@/hooks/useLifecyclePhases'
+import { useServicePhases } from '@/hooks/useServicePhases'
 import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
 import {
   FALLBACK_NAV,
@@ -325,7 +325,7 @@ type EditorProviderProps = {
 }
 
 export function EditorProvider({ children }: EditorProviderProps) {
-  const { slides: dbSlides, loading, error, configured } = useLifecyclePhases()
+  const { slides: dbSlides, loading, error, configured } = useServicePhases()
 
   const slides = useMemo(() => {
     if (dbSlides.length === 0) return FALLBACK_NAV

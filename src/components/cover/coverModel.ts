@@ -99,7 +99,7 @@ export type CoverSection =
        * visual rung underneath the illustration instead of reading as part
        * of what the skill is. One field, one sentence the author folds the
        * output into. */
-      description: string
+      summary: string
       figure?: CoverFigure
     }
 

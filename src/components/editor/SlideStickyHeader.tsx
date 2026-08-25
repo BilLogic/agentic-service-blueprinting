@@ -23,22 +23,22 @@ import { cn } from '@/lib/utils'
 type SlideHeaderContentProps = {
   slide: NavItem
   slides: NavItem[]
-  /** Paths still inform the description fallback; filtering lives in the sidebar. */
+  /** Paths still inform the summary fallback; filtering lives in the sidebar. */
   paths: PathOption[]
   selectedPathIds: string[]
-  /** When true, title and description share one row inside a menubar. */
-  inlineDescription?: boolean
+  /** When true, title and summary share one row inside a menubar. */
+  inlineSummary?: boolean
 }
 
-function resolveScenarioDescription(
+function resolveScenarioSummary(
   slide: NavItem,
   paths: PathOption[],
   selectedPathIds: string[],
 ): string | null | undefined {
-  if (slide.description?.trim()) return slide.description
+  if (slide.summary?.trim()) return slide.summary
 
   const selectedPath = paths.find((path) => selectedPathIds.includes(path.id))
-  return selectedPath?.description ?? paths[0]?.description ?? null
+  return selectedPath?.summary ?? paths[0]?.summary ?? null
 }
 
 function SlideHeaderContent({
@@ -46,9 +46,9 @@ function SlideHeaderContent({
   slides,
   paths,
   selectedPathIds,
-  inlineDescription = false,
+  inlineSummary = false,
 }: SlideHeaderContentProps) {
-  if (inlineDescription) {
+  if (inlineSummary) {
     return (
       <PhaseMenubarHeader
         slide={slide}
@@ -62,10 +62,10 @@ function SlideHeaderContent({
   const label = getSlideDisplayLabel(slide, slides)
   const isScenario = isSubslide(slide)
 
-  const description = isScenario
-    ? resolveScenarioDescription(slide, paths, selectedPathIds)
-    : slide.description ??
-      paths[0]?.description ??
+  const summary = isScenario
+    ? resolveScenarioSummary(slide, paths, selectedPathIds)
+    : slide.summary ??
+      paths[0]?.summary ??
       'Scenarios in this phase and how they connect.'
 
   return (
@@ -82,9 +82,9 @@ function SlideHeaderContent({
               {label}
             </h1>
           </div>
-          {description ? (
+          {summary ? (
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              {description}
+              {summary}
             </p>
           ) : null}
         </div>
@@ -103,7 +103,7 @@ export function SlideStickyHeader({
   ...contentProps
 }: SlideStickyHeaderProps) {
   // Collapsed: the floating pill carries this header's identity instead —
-  // one chrome layer at any width. Path filters and the zoom readout are
+  // one chrome lane at any width. Path filters and the zoom readout are
   // deliberately not folded in; they come back when the sidebar does.
   const { collapsed } = useSidebarCollapsedState()
   useCollapsedNavSummary(

@@ -193,7 +193,7 @@ function GuideLink({ link, repoUrl }: { link: CoverGuideLink; repoUrl: string })
   )
 }
 
-/** One skill's title, description, and illustration — nothing else. Shared
+/** One skill's title, summary, and illustration — nothing else. Shared
  * by the tabbed group below and by any lone `skill` section that is not
  * grouped into one (schema completeness; the content this repo ships always
  * groups them). */
@@ -207,7 +207,7 @@ function SkillPanel({
   eager: boolean
 }) {
   /*
-    Title, description, illustration — then the copy action, below the
+    Title, summary, illustration — then the copy action, below the
     figure rather than riding on the title. The chip used to double as the
     heading, which put a click-to-copy control at the top of the panel
     where a reader's eye lands first, ahead of any reason to copy it: you
@@ -221,7 +221,7 @@ function SkillPanel({
       <h3 className="font-mono text-lg font-semibold tracking-tight text-foreground">
         {section.command}
       </h3>
-      <Paragraph>{renderInline(section.description)}</Paragraph>
+      <Paragraph>{renderInline(section.summary)}</Paragraph>
       {section.figure ? (
         <CoverFigure figure={section.figure} eager={eager} />
       ) : null}

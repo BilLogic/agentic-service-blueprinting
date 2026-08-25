@@ -77,7 +77,7 @@ function VisualPictureStrip({
   )
 }
 
-/** Visual-layer cell: the screenshots for a step, laid out inside a cell face. */
+/** Visual-lane cell: the screenshots for a step, laid out inside a cell face. */
 export function BlueprintStepVisual({
   compact = false,
   className,

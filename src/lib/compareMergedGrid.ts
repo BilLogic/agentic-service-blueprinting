@@ -67,7 +67,7 @@ export type MergedSlotAssembly =
  * One path's candidate for a slot. `signature` is the MERGE signature —
  * the canvas fork condition is "content differs OR presence differs", so
  * callers pass the content-only signature: a detail-only difference (V7,
- * description/links only) must not fork the canvas, it lives in the ledger.
+ * summary/links only) must not fork the canvas, it lives in the ledger.
  */
 export type MergedSlotCandidate = MergedSubCellMember & {
   readonly signature: string

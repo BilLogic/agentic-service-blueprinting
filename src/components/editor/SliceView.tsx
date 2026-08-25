@@ -242,7 +242,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
     made it the one piece of chrome that arrived before the canvas it
     belongs to — a finished banner over a rectangle still showing a loading
     bar. The band is canvas furniture like the toolbar: it waits, and both
-    arrive on the beat the board opens its first layer.
+    arrive on the beat the board opens its first lane.
   */
   if (!scenarioId) {
     return (

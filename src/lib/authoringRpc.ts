@@ -65,8 +65,8 @@ export type DeletionImpact = {
 
 export type LaneSetEntry = {
   name: string
-  layer_role: string | null
-  row_position: number
+  lane_role: string | null
+  position: number
 }
 
 export type DependencyKind = 'trigger' | 'needs'
@@ -240,12 +240,12 @@ function deriveRevert(
  */
 export function createPhase(
   client: Client,
-  input: { lifecycleId: string; name: string; description?: string | null },
+  input: { serviceId: string; name: string; summary?: string | null },
 ): Promise<string> {
   return call<string>(client, 'create_phase', {
-    lifecycle_id: input.lifecycleId,
+    service_id: input.serviceId,
     name: input.name,
-    description: input.description ?? null,
+    summary: input.summary ?? null,
   })
 }
 
@@ -363,7 +363,7 @@ export function addStep(
  * Add a lane to **every version** of a blueprint. `atRow` inserts; omitted
  * appends.
  *
- * Scenario-scoped, not version-scoped: the call creates one `layers` row per
+ * Scenario-scoped, not version-scoped: the call creates one `lanes` row per
  * version, and adding a lane to one version alone would misalign the rows in
  * the side-by-side view. Re-read the grid afterwards.
  *
@@ -377,15 +377,15 @@ export async function addLane(
   input: {
     scenarioId: string
     name: string
-    layerRole?: string | null
+    laneRole?: string | null
     atRow?: number
   },
 ): Promise<string[]> {
   const created = await call<string[] | null>(client, 'add_lane', {
     scenario_id: input.scenarioId,
     name: input.name,
-    layer_role: input.layerRole ?? null,
-    at_row: input.atRow ?? null,
+    lane_role: input.laneRole ?? null,
+    at_position: input.atRow ?? null,
   })
   return created ?? []
 }
@@ -399,11 +399,11 @@ export async function addLane(
  */
 export function upsertCell(
   client: Client,
-  input: { pathId: string; layerId: string; stepId: string; content: string },
+  input: { pathId: string; laneId: string; stepId: string; content: string },
 ): Promise<string> {
   return call<string>(client, 'upsert_cell', {
     path_id: input.pathId,
-    layer_id: input.layerId,
+    lane_id: input.laneId,
     step_id: input.stepId,
     content: input.content,
   })

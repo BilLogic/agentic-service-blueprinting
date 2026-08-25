@@ -76,7 +76,7 @@ describe('sample reads resolve from the bundled fallbacks', () => {
   it('reads a cell from any scenario, not only the first', () => {
     for (const blueprints of Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)) {
       const cellId = blueprints[0]!.cells[0]!.id
-      expect(sampleGetCell(cellId)).toContain('layer_id:')
+      expect(sampleGetCell(cellId)).toContain('lane_id:')
     }
   })
 
@@ -133,7 +133,7 @@ describe('trial dispatch never reaches a database', () => {
   it('refuses an off-roster write in words, not a raw error', async () => {
     const text = await dispatchTool(null, 'session', 'upsert_cell', {
       path_id: 'p',
-      layer_id: 'l',
+      lane_id: 'l',
       step_id: 's',
       content: 'x',
     })

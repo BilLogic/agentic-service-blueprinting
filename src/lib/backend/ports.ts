@@ -42,7 +42,7 @@ export type Guarantee =
 export type PhaseSummary = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   position: number
   /** Set when this phase loops back to an earlier one. */
   loopsToPhaseId: string | null
@@ -52,7 +52,7 @@ export type PhaseSummary = {
 export type ScenarioSummary = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   position: number
 }
 
@@ -61,7 +61,7 @@ export type PathSummary = {
   id: string
   scenarioId: string
   name: string
-  description: string | null
+  summary: string | null
   note: string | null
   pathType: string
 }
@@ -230,6 +230,14 @@ export type ConformanceLevel = 'transactional' | 'idempotent'
 export type Backend = {
   name: string
   capabilities: BackendCapabilities
+  /**
+   * What shape this target carries — asked, not assumed.
+   *
+   * @guarantee read
+   * @roundTrips 1
+   * @see schemaVersion.ts for the supported list and the mismatch error.
+   */
+  schemaVersion(): Promise<string>
   blueprints: BlueprintRepository
   slices: SliceRepository
   findings: FindingRepository

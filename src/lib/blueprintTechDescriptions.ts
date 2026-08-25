@@ -92,7 +92,7 @@ export function resolveTechCellDetailLabel(
 /** Detail panel body copy for a tech pill or single-tech cell. */
 export function resolveTechCellDetailText(
   techItem: string | undefined,
-  cell: Pick<BlueprintCell, 'content' | 'description' | 'links'>,
+  cell: Pick<BlueprintCell, 'content' | 'summary' | 'links'>,
 ): string {
   const content = cell.content.trim()
 
@@ -100,10 +100,10 @@ export function resolveTechCellDetailText(
     const fromLinks = getTechDescriptionFromLinks(cell.links, techItem)
     if (fromLinks) return fromLinks
 
-    if (cell.description?.trim()) {
+    if (cell.summary?.trim()) {
       const items = parseCellContentItems(cell.content)
       if (items.includes(techItem)) {
-        return cell.description.trim()
+        return cell.summary.trim()
       }
     }
 
@@ -121,8 +121,8 @@ export function resolveTechCellDetailText(
     if (fromLinks) return fromLinks
   }
 
-  if (cell.description?.trim()) {
-    return cell.description.trim()
+  if (cell.summary?.trim()) {
+    return cell.summary.trim()
   }
 
   return content

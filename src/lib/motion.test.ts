@@ -74,7 +74,7 @@ test('every keyframe animation is disabled under reduced motion', () => {
  * The reveal's stage ladder exists in TypeScript (canvasRevealContext) and
  * in blueprint.css as `[data-canvas-reveal='N']`. Nothing else links them:
  * inserting a stage means correct edits in both, and three-of-four correct
- * edits leave the suite green while a layer reveals on the wrong beat.
+ * edits leave the suite green while a lane reveals on the wrong beat.
  */
 const blueprintCss = readFileSync(
   resolve(__dirname, '../styles/blueprint.css'),
@@ -87,7 +87,7 @@ test('reveal stages match between canvasRevealContext and blueprint.css', () => 
   ].map((match) => Number(match[1]))
   assert.ok(stages.length > 0, 'blueprint.css keys rules on reveal stages')
   // The attribute is removed at DONE, so the highest stage any rule can
-  // match is the last layer.
+  // match is the last lane.
   assert.equal(Math.max(...stages), CANVAS_REVEAL_ARROWS)
   assert.equal(CANVAS_REVEAL_ARROWS + 1, CANVAS_REVEAL_DONE)
 })
@@ -96,7 +96,7 @@ test('reveal stages match between canvasRevealContext and blueprint.css', () => 
  * Each reveal beat runs inside the chain's per-stage watchdog. The beats are
  * CSS (`--reveal-beat-*`, derived from `--motion-fade`); the watchdog is TS.
  * If a beat ever grew past it, the watchdog would advance the chain out from
- * under a layer still animating — and nothing else would notice.
+ * under a lane still animating — and nothing else would notice.
  */
 test('every reveal beat fits inside the stage watchdog', () => {
   const beats = [

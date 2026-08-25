@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/BilLogic/agentic-service-blueprinting/skills/map/references/crosswalk-schema.json",
   "title": "Blueprint Crosswalk",
-  "description": "Reviewable, reusable mapping from a foreign blueprint's structure (their swimlanes/columns/variants) onto the template data model (roles/layers/steps/paths). Built during translation (skills/map/references/translate-playbook.md) and presented for user approval BEFORE any IR is generated. Invariant: every source element is either mapped or listed in `unmapped` with a reason — nothing is ever silently dropped.",
+  "description": "Reviewable, reusable mapping from a foreign blueprint's structure (their swimlanes/columns/variants) onto the template data model (roles/lanes/steps/paths). Built during translation (skills/map/references/translate-playbook.md) and presented for user approval BEFORE any IR is generated. Invariant: every source element is either mapped or listed in `unmapped` with a reason — nothing is ever silently dropped.",
   "type": "object",
   "required": ["source", "scenario", "lanes", "columns", "unmapped"],
   "additionalProperties": false,
@@ -24,7 +24,7 @@
     "lanes": {
       "type": "array",
       "items": { "$ref": "#/$defs/laneMapping" },
-      "description": "Source swimlanes/rows -> target layers. N:1 merges are expressed as multiple lane mappings sharing one target_layer (set merge_note on each)."
+      "description": "Source swimlanes/rows -> target lanes. N:1 merges are expressed as multiple lane mappings sharing one target_lane (set merge_note on each)."
     },
     "columns": {
       "type": "array",
@@ -45,21 +45,21 @@
   "$defs": {
     "laneMapping": {
       "type": "object",
-      "required": ["source_lane", "target_layer"],
+      "required": ["source_lane", "target_lane"],
       "additionalProperties": false,
       "properties": {
         "source_lane": { "type": "string", "description": "The foreign lane's label, verbatim." },
-        "target_layer": { "type": "string", "description": "Target layer key in the IR." },
+        "target_lane": { "type": "string", "description": "Target lane key in the IR." },
         "target_role": {
           "type": ["string", "null"],
-          "description": "Semantic role for the target layer (canonical or org-defined custom, e.g. Shostack's physical evidence -> a custom physical_evidence role). null = generic swimlane."
+          "description": "Semantic role for the target lane (canonical or org-defined custom, e.g. Shostack's physical evidence -> a custom physical_evidence role). null = generic swimlane."
         },
         "target_display_name": {
           "type": "object",
           "additionalProperties": { "type": "string" },
-          "description": "Locale map for the target layer's display label. Keep the org's own vocabulary — customize our layers to fit them, not the reverse."
+          "description": "Locale map for the target lane's display label. Keep the org's own vocabulary — customize our lanes to fit them, not the reverse."
         },
-        "merge_note": { "type": "string", "description": "Present when several source lanes merge into one target layer (N:1): how cell content is combined and why." },
+        "merge_note": { "type": "string", "description": "Present when several source lanes merge into one target lane (N:1): how cell content is combined and why." },
         "note": { "type": "string" }
       }
     },

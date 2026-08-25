@@ -24,12 +24,12 @@ project one shared model through one shared field list
 `scripts/adapter_parity.py` runs an IR through both and compares every
 field. It exists because the sentence was false for months while nothing
 failed: each generator wrote its own field list by hand, they drifted, and
-the no-DB side quietly stopped carrying `cell_key`, `slot_position`, every
+the no-DB side quietly stopped carrying `cell_key`, `position`, every
 cell spec field, and the edge `kind` — losing an adopter their cell specs
 on the adapter this contract calls "not a degraded mode".
 
 One thing is outside the projection on **both** adapters, which is parity by
-absence rather than by accident: `cell_triggers` `label`/`note`, which the IR
+absence rather than by accident: `cell_dependencies` `label`/`note`, which the IR
 has no shape to author.
 
 Lane `kpis`/`tools` were listed here too, and were not: the SQL adapter
@@ -82,6 +82,24 @@ Connector setup mechanics and the session-reload requirement live in
 ### 2. Schema provisioning
 Ensure the target carries the template schema at a compatible
 `schema_version`, including the `cells_validate_path_match` trigger function.
+
+**Ask the target; do not assume.** The version lives in the database, in
+`public.schema_version` — one row, `select version from public.schema_version`
+(Supabase: `/rest/v1/schema_version?select=version`). No-DB: the generated
+module carries it. An adapter answers it through `Backend.schemaVersion()`
+(`src/lib/backend/ports.ts`), and the conformance case `read/schema-version`
+fails a target this template cannot speak, naming the version found and the
+versions supported — `src/lib/backend/schemaVersion.ts` holds the list.
+
+Until that table existed this clause compared a file against a file: the value
+was in the IR and in `blueprint-workspace.json` and nowhere a live target could
+be interrogated, which is the one thing the clause is for.
+
+**Runnable form**: `npm run check:target` performs exactly this check against a
+configured project and distinguishes *never migrated* from *stale*. Supabase:
+the desync repair, for a fork whose history diverged before the reserved
+timestamp band existed, is `supabase/DATABASE.md` § Migration desync.
+
 Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `schema.reference.sql` is the read-friendly mirror)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
 No-DB: provisioning is a no-op (the template app ships the types).
@@ -89,8 +107,8 @@ No-DB: provisioning is a no-op (the template app ships the types).
 ### 3. Transactional scenario-replace import
 All-or-nothing per import. Scenario-scoped **delete-and-reinsert inside one
 transaction**: delete the scenario's rows (FK cascades handle children),
-insert in dependency order `paths → steps → path_steps → layers → cells →
-cell_triggers` (see `references/data-model.md`). A deliberately-invalid IR
+insert in dependency order `paths → steps → path_steps → lanes → cells →
+cell_dependencies` (see `references/data-model.md`). A deliberately-invalid IR
 must leave the target untouched. Never `on conflict do update` — removed IR
 rows must not survive as orphans. No-DB equivalent: the generated module is
 replaced wholesale and only written if generation fully succeeds.
@@ -110,7 +128,7 @@ documented as unsupported; this diff is the safety net, not an endorsement.
 
 ### 6. Read-back verification after import
 After the transaction commits, read the target back and verify: row counts
-per table match the IR (paths, steps, path_steps, layers, cells, triggers per
+per table match the IR (paths, steps, path_steps, lanes, cells, triggers per
 scenario) plus spot-check content equality. No-DB equivalent: `tsc --noEmit`
 passes and the generated module's exported counts match the IR. **Import is
 not "done" until read-back matches** — this is the phase's deterministic exit
@@ -248,8 +266,8 @@ Non-structural edits go straight at tables and must be honored with the
 same scoping the Supabase grants encode (see `supabase/DATABASE.md` § Row
 Level Security):
 
-- **Column-scoped UPDATE** on `cells`, `layers`, `steps`, `paths`,
-  `service_scenarios` (panel text edits and spec fields — never ids,
+- **Column-scoped UPDATE** on `cells`, `lanes`, `steps`, `paths`,
+  `scenarios` (panel text edits and spec fields — never ids,
   positions, or FK columns).
 - **INSERT + column-scoped UPDATE** on `findings` (inserts arrive with
   `status = 'open'`; updates touch `status, note, severity, run_id,
@@ -294,10 +312,10 @@ that budget.
 
 `recordFinding` (`src/lib/mutations/findingMutations.ts`) is
 read-then-write, not upsert: it reads existing rows by
-`(service_lifecycle_id, fingerprint)`, updates an open row in place,
+`(service_id, fingerprint)`, updates an open row in place,
 skips a dismissed one, and inserts a fresh `open` row otherwise. The
 schema's **open-fingerprint partial unique index**
-(`findings_open_fingerprint_idx` on `(service_lifecycle_id, fingerprint)
+(`findings_open_fingerprint_idx` on `(service_id, fingerprint)
 where status = 'open'`) is the backstop that makes the race harmless —
 two concurrent recorders cannot create two open rows for one
 fingerprint. A backend must enforce exactly that partial uniqueness:

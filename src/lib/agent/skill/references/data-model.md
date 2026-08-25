@@ -77,7 +77,7 @@ erDiagram
 | Table | Purpose | Notes |
 | --- | --- | --- |
 | `services` | Top container (one per blueprint deployment, usually) | |
-| `phases` | Service stages, ordered by `position` | `loops_to_phase_id` self-reference renders the lifecycle loop |
+| `phases` | Service stages, ordered by `position` | `loops_to_phase_id` self-reference renders the service loop |
 | `scenarios` | The unit users navigate; owns steps and paths | `view_type` enum below |
 | `paths` | A journey variant within a scenario | `path_type` enum below; optional `note` |
 | `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps` |
@@ -162,7 +162,7 @@ generators follow.
 hold several cells — one touchpoint per row in tech-role lanes — ordered
 by `position`, with uniqueness widened to
 `(lane_id, step_id, position)` (constraint
-`cells_layer_step_slot_unique`). The slot contract: single-cell slots sit
+`cells_lane_step_slot_unique`). The slot contract: single-cell slots sit
 at 0; tech-lane touchpoints occupy 0..n; the interactive `upsert_cell` RPC
 always addresses slot 0, so siblings are created only by dedicated
 touchpoint operations (and the migration's one-time split, where the

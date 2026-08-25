@@ -22,12 +22,12 @@ export function useScenarioPaths(scenarioId: string | null) {
     async (client) => {
       const { data, error } = await client
         .from('paths')
-        .select('id,name,service_scenario:service_scenarios(name)')
-        .eq('service_scenario_id', scenarioId ?? '')
+        .select('id,name,scenario:scenarios(name)')
+        .eq('scenario_id', scenarioId ?? '')
         .order('name')
       if (error) throw new Error(error.message)
       const rows = data ?? []
-      const scenario = rows[0]?.service_scenario as { name?: string } | null
+      const scenario = rows[0]?.scenario as { name?: string } | null
       return {
         scenarioName: scenario?.name ?? 'this scenario',
         versions: rows.map((row) => ({

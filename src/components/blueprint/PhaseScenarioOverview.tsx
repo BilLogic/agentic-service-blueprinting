@@ -62,7 +62,7 @@ function PhaseScenarioConnector({ width }: { width: number }) {
       aria-hidden
     >
       {/*
-        The reveal's arrow layer (stage 4). This connector was the one
+        The reveal's arrow lane (stage 4). This connector was the one
         untagged link on the board: it draws BETWEEN scenario panels, so it
         sits in the phase's flex row rather than inside either panel's
         blueprint, and it was surfacing with the lanes at stage 1 — an arrow
@@ -245,7 +245,7 @@ export function PhaseScenarioOverview({
         <CanvasEmptyState
           variant="phase"
           title="No scenarios in this phase yet"
-          description="Add one with the + on this phase's row in the sidebar (Edit mode)."
+          summary="Add one with the + on this phase's row in the sidebar (Edit mode)."
         />
       </div>
     )
@@ -302,7 +302,7 @@ export function PhaseScenarioOverview({
         <CanvasEmptyState
           variant="phase"
           title="No selected paths in this phase"
-          description="The selected path only exists in another phase or scenario."
+          summary="The selected path only exists in another phase or scenario."
         />
       </div>
     )

@@ -135,7 +135,7 @@ export function BlueprintCellDetailProvider({
       const cells = selection.paths
         .map((entry) => `${entry.pathName}: ${entry.cellId}`)
         .join('; ')
-      return `Cell panel open: "${selection.paths[0]?.content ?? selection.stepName}" — layer "${selection.layerName}", step "${selection.stepName}" (#${selection.stepIndex}), scenario "${selection.scenarioName}". Cell ids by path: ${cells}`
+      return `Cell panel open: "${selection.paths[0]?.content ?? selection.stepName}" — lane "${selection.laneName}", step "${selection.stepName}" (#${selection.stepIndex}), scenario "${selection.scenarioName}". Cell ids by path: ${cells}`
     })
   }, [selection])
 
@@ -198,7 +198,7 @@ export function BlueprintCellDetailProvider({
     const unregister: Array<() => void> = [
       registerAgentUiCommand({
         name: 'panel_surface',
-        description:
+        summary:
           "Switch the open floating panel's surface. arg: details | differences",
         run: (arg) => {
           const { panelState: current, selection: liveSelection } =
@@ -222,7 +222,7 @@ export function BlueprintCellDetailProvider({
       unregister.push(
         registerAgentUiCommand({
           name: 'differences_open',
-          description:
+          summary:
             'Open the difference ledger (the Differences surface of the floating panel) enumerating every difference between the compared paths.',
           run: () => {
             setPanelState({ surface: 'differences' })
@@ -231,7 +231,7 @@ export function BlueprintCellDetailProvider({
         }),
         registerAgentUiCommand({
           name: 'differences_close',
-          description:
+          summary:
             'Close the difference ledger — falls back to cell details when a cell is selected, otherwise closes the panel.',
           run: () => {
             const { panelState: current, selection: liveSelection } =
@@ -260,7 +260,7 @@ export function BlueprintCellDetailProvider({
     }
 
     const skipHighlightZone = shouldUseVisualContent({
-      name: selection.layerName,
+      name: selection.laneName,
     })
 
     for (const path of selection.paths) {
@@ -289,15 +289,15 @@ export function BlueprintCellDetailProvider({
 
       // The dependency table also includes technology in the selected step,
       // even when no explicit trigger connects it to the active cell.
-      const techLayerIds = new Set(
-        blueprint.layers
-          .filter((layer) => shouldUsePillCellContent(layer))
-          .map((layer) => layer.id),
+      const techLaneIds = new Set(
+        blueprint.lanes
+          .filter((lane) => shouldUsePillCellContent(lane))
+          .map((lane) => lane.id),
       )
       for (const cell of blueprint.cells) {
         if (
           cell.step_id !== selection.stepId ||
-          !techLayerIds.has(cell.layer_id)
+          !techLaneIds.has(cell.lane_id)
         ) {
           continue
         }

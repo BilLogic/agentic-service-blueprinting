@@ -85,7 +85,7 @@ export function CanvasDesignTools() {
     if (!gathering) return
     return registerAgentUiCommand({
       name: 'open_make_slice',
-      description:
+      summary:
         'Open the Make slice sheet over the current Design-mode selection (select_cells first). Prefer create_slice when you already know the member cells — this hands the flow to the human.',
       run: () => {
         if (pickedCountRef.current === 0) {

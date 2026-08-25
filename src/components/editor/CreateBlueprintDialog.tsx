@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, invalidateStructure } from '@/hooks/useSupabaseQuery'
-import { useLifecyclePhases } from '@/hooks/useLifecyclePhases'
+import { useServicePhases } from '@/hooks/useServicePhases'
 import { createScenario } from '@/lib/authoringRpc'
 import { clientToDbViewType } from '@/lib/viewTypeVocabulary'
 import {
@@ -49,16 +49,16 @@ function useLaneSources() {
       const { data, error } = await client
         .from('paths')
         .select(
-          'id,name,layers(id),service_scenario:service_scenarios(name,phase:phases(name))',
+          'id,name,lanes(id),scenario:scenarios(name,phase:phases(name))',
         )
       if (error) throw new Error(error.message)
       return (data ?? [])
         .map((row) => {
-          const scenario = row.service_scenario as {
+          const scenario = row.scenario as {
             name?: string
             phase?: { name?: string } | null
           } | null
-          const lanes = (row.layers as unknown[] | null) ?? []
+          const lanes = (row.lanes as unknown[] | null) ?? []
           return {
             pathId: row.id as string,
             label: [scenario?.phase?.name, scenario?.name, row.name as string]
@@ -111,7 +111,7 @@ export function CreateBlueprintDialog({
   fixedPhaseId?: string | null
 }) {
   const { client } = useSupabase()
-  const phases = useLifecyclePhases()
+  const phases = useServicePhases()
   const laneSources = useLaneSources()
   const [draft, setDraft] = useState<DraftBlueprint>(EMPTY_DRAFT)
   const [busy, setBusy] = useState(false)

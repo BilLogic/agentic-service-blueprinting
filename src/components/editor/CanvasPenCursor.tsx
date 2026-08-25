@@ -19,7 +19,7 @@ type CursorTool = keyof typeof TOOL_HOTSPOT
 
 /**
  * Fixed-position tool cursor portaled to document.body so zoom, overflow, and
- * layer hit-testing cannot clip or detach it from the pointer.
+ * lane hit-testing cannot clip or detach it from the pointer.
  */
 export function CanvasPenCursor() {
   const { tool, penColor } = useCanvasAnnotations()

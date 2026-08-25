@@ -3,7 +3,7 @@ import { collectOverviewPathOptions } from '@/lib/overviewPathFilters'
 import type { PathListItem } from '@/lib/pathSelection'
 
 function path(id: string, name: string, path_type: PathListItem['path_type']) {
-  return { id, name, description: null, note: null, path_type }
+  return { id, name, summary: null, note: null, path_type }
 }
 
 describe('collectOverviewPathOptions', () => {
