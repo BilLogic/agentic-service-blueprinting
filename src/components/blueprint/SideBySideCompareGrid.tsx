@@ -6,14 +6,14 @@ import {
   BlueprintStickyLabelBackdrop,
   BlueprintSwimLaneDivider,
 } from '@/components/blueprint/BlueprintLabelRail'
-import { useCollapsedBlueprintLayers } from '@/hooks/useCollapsedBlueprintLayers'
-import { BLUEPRINT_LAYER_ROW_GAP } from '@/lib/blueprintLayout'
+import { useCollapsedBlueprintLanes } from '@/hooks/useCollapsedBlueprintLanes'
+import { BLUEPRINT_LANE_ROW_GAP } from '@/lib/blueprintLayout'
 import {
   COMPARE_CARD_GAP,
   COMPARE_LABEL_WIDTH,
   getCompareBoardWrapperPadding,
   buildSideBySideLabelRowSpecs,
-  getCanonicalLayers,
+  getCanonicalLanes,
   getCompareCardWidth,
   expandRowSpecsToSwimlaneBodyHeight,
   getCompareRowTrackCss,
@@ -32,7 +32,7 @@ type SideBySideCompareGridProps = {
   phaseName?: string
   /** When set, scenario title sits on the gray panel edge; path frames show path type. */
   sectionTitleLabel?: string
-  sectionTitleDescription?: string | null
+  sectionTitleSummary?: string | null
   /** Shared swimlane board height for phase overview alignment. */
   fixedSwimlaneBodyHeight?: number
   fillSwimlaneHeight?: boolean
@@ -44,7 +44,7 @@ type SideBySideCompareGridProps = {
  * just one possible labeling, not an assumption. Column order follows the
  * caller's `blueprints` array (path-selection activation order upstream; see
  * `itemsInSelectionOrder`), and each column is labeled with its own path's
- * `name` and `description` (`PathLabelBadge`) with `path_type` driving only
+ * `name` and `summary` (`PathLabelBadge`) with `path_type` driving only
  * the frame styling. No path ids, path names, or fixed variant pairs are
  * hardcoded here or in `sideBySideCompareLayout.ts`.
  *
@@ -63,14 +63,14 @@ export function SideBySideCompareGrid({
   fixedSwimlaneBodyHeight,
   fillSwimlaneHeight = false,
 }: SideBySideCompareGridProps) {
-  const { collapsedLayerIds, toggleLayer } = useCollapsedBlueprintLayers()
-  const layers = useMemo(() => getCanonicalLayers(blueprints), [blueprints])
+  const { collapsedLaneIds, toggleLane } = useCollapsedBlueprintLanes()
+  const lanes = useMemo(() => getCanonicalLanes(blueprints), [blueprints])
 
   const rows = useMemo(() => {
     const specs = buildSideBySideLabelRowSpecs(
       blueprints,
       compact,
-      collapsedLayerIds,
+      collapsedLaneIds,
     )
 
     if (fixedSwimlaneBodyHeight !== undefined) {
@@ -78,7 +78,7 @@ export function SideBySideCompareGrid({
     }
 
     return specs
-  }, [blueprints, collapsedLayerIds, compact, fixedSwimlaneBodyHeight])
+  }, [blueprints, collapsedLaneIds, compact, fixedSwimlaneBodyHeight])
 
   const bodyRowTrackSizes = useMemo(
     () =>
@@ -122,7 +122,7 @@ export function SideBySideCompareGrid({
           gridTemplateColumns,
           gridTemplateRows: bodyRowTrackSizes,
           columnGap: COMPARE_CARD_GAP,
-          rowGap: BLUEPRINT_LAYER_ROW_GAP,
+          rowGap: BLUEPRINT_LANE_ROW_GAP,
           paddingTop: COMPARE_PATH_SECTION_TOP_INSET,
           paddingBottom: COMPARE_PATH_SECTION_BOTTOM_INSET,
         }}
@@ -148,9 +148,9 @@ export function SideBySideCompareGrid({
             <Fragment key={`label-${row.key}`}>
               <BlueprintLabelRow
                 row={row}
-                layers={layers}
+                lanes={lanes}
                 compact={compact}
-                onToggleLayer={toggleLayer}
+                onToggleLane={toggleLane}
                 style={{ gridColumn: 1, gridRow: rowIndex + 1 }}
               />
               {row.showDividerBelow ? (
@@ -163,7 +163,7 @@ export function SideBySideCompareGrid({
           <BlueprintPathBand
             key={blueprint.path.id}
             blueprint={blueprint}
-            layers={layers}
+            lanes={lanes}
             rows={rows}
             // The grid reserves column 1 for the label rail.
             arrangement={{

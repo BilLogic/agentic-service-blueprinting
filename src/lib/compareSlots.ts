@@ -22,7 +22,7 @@ import type { BlueprintData } from '@/types/blueprint'
  * whose names token-overlap strongly (2-path compare only).
  */
 
-export const COMPARE_FIELDS = ['content', 'description', 'links'] as const
+export const COMPARE_FIELDS = ['content', 'summary', 'links'] as const
 export type CompareField = (typeof COMPARE_FIELDS)[number]
 
 /** Moves here from types/integratedBlueprint (which re-exports during migration). */
@@ -86,7 +86,7 @@ export type CompareBlueprints = [BlueprintData, BlueprintData, ...BlueprintData[
 
 /**
  * Taxonomy V7 — a divergence with no canvas zone: every path present,
- * content identical, only description/links differ. Slot verdict stays
+ * content identical, only summary/links differ. Slot verdict stays
  * `divergent` (the ledger's "Detail-only differences" group and the `[≠ N]`
  * count include it), but the CANVAS must not mark it: the fork condition is
  * "content differs OR presence differs", so column verdicts and runs treat
@@ -160,7 +160,7 @@ function buildColumnSeeds(blueprints: readonly BlueprintData[]): ColumnSeed[] {
     const seen = new Map<string, number>()
     let lastMatchedIndex = -1
     const orderedSteps = [...blueprint.steps].sort(
-      (a, b) => a.column_position - b.column_position,
+      (a, b) => a.position - b.position,
     )
     for (const step of orderedSteps) {
       const name = normalizeCompareName(step.name)
@@ -236,21 +236,21 @@ export function buildCompareModel(blueprints: CompareBlueprints): CompareModel {
   const columnIndexByKey = new Map(columnSeeds.map((seed, index) => [seed.key, index]))
 
   // Lane axis: union of lanes across paths by normalized name, ordered by
-  // first appearance (row_position within each path).
+  // first appearance (position within each path).
   type LaneSeed = { key: string; label: string }
   const laneSeeds: LaneSeed[] = []
   const laneIndexByKey = new Map<string, number>()
-  const laneKeyByPathLayer = new Map<string, string>()
+  const laneKeyByPathLane = new Map<string, string>()
   for (const blueprint of blueprints) {
-    const orderedLayers = [...blueprint.layers].sort(
-      (a, b) => a.row_position - b.row_position,
+    const orderedLanes = [...blueprint.lanes].sort(
+      (a, b) => a.position - b.position,
     )
-    for (const layer of orderedLayers) {
-      const key = normalizeCompareName(layer.name)
-      laneKeyByPathLayer.set(`${blueprint.path.id}:${layer.id}`, key)
+    for (const lane of orderedLanes) {
+      const key = normalizeCompareName(lane.name)
+      laneKeyByPathLane.set(`${blueprint.path.id}:${lane.id}`, key)
       if (!laneIndexByKey.has(key)) {
         laneIndexByKey.set(key, laneSeeds.length)
-        laneSeeds.push({ key, label: layer.name.trim() })
+        laneSeeds.push({ key, label: lane.name.trim() })
       }
     }
   }
@@ -269,7 +269,7 @@ export function buildCompareModel(blueprints: CompareBlueprints): CompareModel {
   for (const blueprint of blueprints) {
     for (const cell of blueprint.cells) {
       const columnKey = columnKeyByPathStep.get(`${blueprint.path.id}:${cell.step_id}`)
-      const laneKey = laneKeyByPathLayer.get(`${blueprint.path.id}:${cell.layer_id}`)
+      const laneKey = laneKeyByPathLane.get(`${blueprint.path.id}:${cell.lane_id}`)
       if (!columnKey || !laneKey) continue
       const slotKey = makeSlotKey(laneKey, columnKey)
       let perPath = slotCells.get(slotKey)
@@ -306,8 +306,8 @@ export function buildCompareModel(blueprints: CompareBlueprints): CompareModel {
       ]
       const fieldSignatures: Record<CompareField, string> = {
         content: multisetSignature(cells.map((cell) => cell.content.trim())),
-        description: multisetSignature(
-          cells.map((cell) => (cell.description ?? '').trim()),
+        summary: multisetSignature(
+          cells.map((cell) => (cell.summary ?? '').trim()),
         ),
         links: multisetSignature(cells.map(linkSignature)),
       }

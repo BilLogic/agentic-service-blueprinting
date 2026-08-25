@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
  * section headers, the phase rows inside them, and the slice type groups, so
  * every twisty in the sidebar looks and behaves the same.
  *
- * Three rules, taken from Figma's layer tree:
+ * Three rules, taken from Figma's lane tree:
  *
  * 1. **The chevron sits to the left of the label**, in a fixed-width slot.
  *    Rows with no children render the slot empty, so labels at the same depth

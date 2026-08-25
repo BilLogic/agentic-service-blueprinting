@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sample-content generator — the META-BLUEPRINT: the service blueprint OF
- * this template itself. The sample lifecycle maps the journey a team actually
+ * this template itself. The sample service maps the journey a team actually
  * runs with the kit (Discover → Setup → Operate → Maintain, with Maintain
  * looping back to Operate), so the product demonstrates itself and every cell
  * doubles as true documentation of how the kit behaves.
@@ -12,8 +12,8 @@
  *
  * Emits BOTH template sample artifacts from one source of truth:
  *   - src/data/sampleBlueprint.ts  — the offline / no-DB fallback module
- *   - supabase/seed.sql         — the equivalent database seed (lifecycle →
- *     phases → scenarios → paths/steps/layers/cells/triggers → demo slices)
+ *   - supabase/seed.sql         — the equivalent database seed (service →
+ *     phases → scenarios → paths/steps/lanes/cells/triggers → demo slices)
  *
  * What the content deliberately exercises (the template's rendering smoke):
  *   - four phases, six scenarios, incl. the phase loop
@@ -39,7 +39,7 @@
  *   - the cell spec: differing owner / perceived_owner pairs (the case the
  *     docs call the interesting one) and FUNCTION / FORM / VALUE blocks, in
  *     BOTH artifacts, so a keyless clone renders them like a seeded database
- *   - trigger kinds: forward cross-layer, same-column, opt-in spine chains,
+ *   - trigger kinds: forward cross-lane, same-column, opt-in spine chains,
  *     cross-lane UPWARD arrows, backward in-lane loops (rework + re-dispatch),
  *     and panel-only `needs` dependencies with labels and notes
  *   - links to REAL repo paths — every one is existsSync-checked at emission
@@ -57,8 +57,8 @@
  *     no `cell_key`, and the IR an adopter authors has no slot concept.
  *
  * Deterministic UUIDs: f0000000-0000-4000-8000-<S><P><KK><AAAA><BBBB>
- *   S = scenario ordinal (0 = lifecycle-scoped), P = path ordinal
- *   (0 = scenario-scoped), KK = kind (00 path, 01 layer, 02 step, 03 cell,
+ *   S = scenario ordinal (0 = service-scoped), P = path ordinal
+ *   (0 = scenario-scoped), KK = kind (00 path, 01 lane, 02 step, 03 cell,
  *   04 trigger, 05 slice, 06 slice item, 07 phase),
  *   AAAA/BBBB = row/column-and-slot (or index) slots.
  *
@@ -79,7 +79,7 @@ const pad4 = (n) => String(n).padStart(4, '0')
 
 const KIND = {
   path: 0,
-  layer: 1,
+  lane: 1,
   step: 2,
   cell: 3,
   trigger: 4,
@@ -93,13 +93,13 @@ function fid(scenarioOrdinal, pathOrdinal, kind, a = 0, b = 0) {
   return `f0000000-0000-4000-8000-${scenarioOrdinal}${pathOrdinal}${pad2(kind)}${pad4(a)}${pad4(b)}`
 }
 
-/** The sample lifecycle (also used by the SQL seed emission below). */
-const LIFECYCLE_ID = 'f0000000-0000-4000-8000-000000000010'
+/** The sample service (also used by the SQL seed emission below). */
+const SERVICE_ID = 'f0000000-0000-4000-8000-000000000010'
 
-const LIFECYCLE = {
-  id: LIFECYCLE_ID,
+const SERVICE = {
+  id: SERVICE_ID,
   name: 'Keeping a blueprint true',
-  description:
+  summary:
     'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.',
 }
 
@@ -130,28 +130,28 @@ const PHASES = [
     ordinal: 1,
     key: 'DISCOVER',
     name: 'Discover',
-    description:
+    summary:
       'The evaluation before any commitment: find the kit, run it with no backend, and decide whether it fits the team.',
   },
   {
     ordinal: 2,
     key: 'SETUP',
     name: 'Setup',
-    description:
+    summary:
       'The one-time work of getting a real service onto the board and signed off — the onboarding use.',
   },
   {
     ordinal: 3,
     key: 'OPERATE',
     name: 'Operate',
-    description:
+    summary:
       'The blueprint in daily use: check it against reality, trace a change through it, and cut the view an audience asked for.',
   },
   {
     ordinal: 4,
     key: 'MAINTAIN',
     name: 'Maintain',
-    description:
+    summary:
       'Upkeep of the artifact itself — the service moved, so the map is brought back in line, and the team resumes using it. Loops back to Operate.',
     loopsToKey: 'OPERATE',
   },
@@ -213,7 +213,7 @@ const MAP_LANES = [
 
 /**
  * Scenario cell spec:
- *   { lane, col, content, slot?, picture?, description?, links?, paths?,
+ *   { lane, col, content, slot?, picture?, summary?, links?, paths?,
  *     owner?, perceivedOwner?, fn?, form?, valueProps? }
  * `content` is a string (present on every path) or a per-path-key record
  * (present only on the named paths; differing values = a divergent slot).
@@ -238,7 +238,7 @@ const SCENARIOS = [
     key: 'DISCOVER',
     phaseKey: 'DISCOVER',
     name: 'Find the kit and see what it does',
-    description:
+    summary:
       'The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.',
     order: 1,
     viewType: 'single',
@@ -251,7 +251,7 @@ const SCENARIOS = [
         key: 'FIRSTLOOK',
         name: 'A first look',
         path_type: 'happy',
-        description:
+        summary:
           'Repository to running app to decision, with no account, no key, and no database anywhere.',
       },
     ],
@@ -276,8 +276,8 @@ const SCENARIOS = [
       {
         lane: 'surface', col: 3,
         content: 'Cover page\nOverview canvas',
-        description:
-          'The cover is the landing view; its call to action drops the reader on the whole-lifecycle overview, so the phase names are the first words of the board they read.',
+        summary:
+          'The cover is the landing view; its call to action drops the reader on the whole-service overview, so the phase names are the first words of the board they read.',
       },
       {
         lane: 'surface', col: 4,
@@ -287,7 +287,7 @@ const SCENARIOS = [
         // is on the wire and the board is drawn from a module in the bundle.
         owner: 'The bundled sample module',
         perceivedOwner: 'A database somewhere',
-        description:
+        summary:
           'With no VITE_SUPABASE_* variables the app never opens a connection: what renders is src/data/sampleBlueprint.ts, shipped inside the bundle.',
         links: [repoLink('src/data/blueprintFallbacks.ts', 'src/data/blueprintFallbacks.ts')],
       },
@@ -301,14 +301,14 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 4,
         content: 'generate_sample_blueprint.mjs',
-        description:
+        summary:
           'The board a first look renders and the database seed come from one run of this script, so the two can never disagree.',
         links: [repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs')],
       },
       {
         lane: 'scripts', col: 5,
         content: 'run_tests.sh\nagent-harness --smoke',
-        description:
+        summary:
           'Both go green on a keyless clone — a reviewer can check the kit’s claims before configuring anything.',
         links: [repoLink('scripts/tests/run_tests.sh', 'scripts/tests/run_tests.sh')],
       },
@@ -329,7 +329,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 5,
         content: 'AGENTS.md\nguide/03 — the plugin',
-        description:
+        summary:
           'What a reader opens next: the conventions an agent follows in this repo, and how the kit ships as an installable plugin.',
         links: [
           repoLink('AGENTS.md', 'AGENTS.md'),
@@ -364,7 +364,7 @@ const SCENARIOS = [
     key: 'MAP_SERVICE',
     phaseKey: 'SETUP',
     name: 'Map your service',
-    description:
+    summary:
       'The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.',
     order: 1,
     viewType: 'side-by-side',
@@ -377,7 +377,7 @@ const SCENARIOS = [
         key: 'DOCS',
         name: 'From your documents',
         path_type: 'happy',
-        description:
+        summary:
           'The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.',
         // No crosswalk to translate — that column belongs to the other path.
         skipSteps: [5],
@@ -387,8 +387,8 @@ const SCENARIOS = [
         key: 'DIAGRAM',
         name: 'From someone else’s diagram',
         path_type: 'alternative',
-        description:
-          'The translate route: a FigJam, Miro or spreadsheet export mapped onto layer roles through a crosswalk, with the diagram’s gaps left visible.',
+        summary:
+          'The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.',
         // No document corpus to read — that column belongs to the other path.
         skipSteps: [4],
       },
@@ -463,13 +463,13 @@ const SCENARIOS = [
           DOCS: 'Routes to ingest — prose and service docs exist, so it scaffolds the workspace, then ingests',
           DIAGRAM: 'Routes to translate — a foreign structured blueprint exists, so it scaffolds, then builds a crosswalk',
         },
-        description:
+        summary:
           'Entry-state detection is the first thing the skill does: nothing → co-create, docs → ingest, a foreign diagram → translate, an existing workspace → resume.',
         links: [repoLink('skills/map/SKILL.md', 'skills/map/SKILL.md')],
       },
       { lane: 'claude', col: 3, content: 'Right-sizes the scope and settles the spine before drawing a single lane' },
       { lane: 'claude', col: 4, content: { DOCS: 'Dispatches document-readers instead of reading the corpus in its own context' } },
-      { lane: 'claude', col: 5, content: { DIAGRAM: 'Maps the foreign vocabulary onto layer roles through crosswalk-schema.json' } },
+      { lane: 'claude', col: 5, content: { DIAGRAM: 'Maps the foreign vocabulary onto lane roles through crosswalk-schema.json' } },
       {
         lane: 'claude', col: 6,
         content: {
@@ -485,7 +485,7 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 2,
         content: 'blueprint-workspace.json',
-        description:
+        summary:
           'The workspace-state file: which scenarios are pending, drafted, signed off, or imported, and the hash each sign-off was bound to.',
         links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
       },
@@ -505,14 +505,14 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 6,
         content: 'blueprint/blueprint.json',
-        description:
+        summary:
           'Where the blueprint lives before it is a database: one intermediate-representation file the skills read and write.',
         links: [repoLink('references/ir-schema.json', 'references/ir-schema.json')],
       },
       {
         lane: 'scripts', col: 7,
         content: 'validate_ir.py (stdlib-only)',
-        description:
+        summary:
           'No dependencies to install: the validator runs on a stock Python 3, and the drafting phase does not end until it exits 0.',
         links: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
       },
@@ -532,7 +532,7 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 9,
         content: 'generate_fallbacks.py --register\ngenerate_seed_sql.py',
-        description:
+        summary:
           'One blueprint file becomes both targets: a no-database data module registered into the app, and a transactional seed for Postgres.',
         links: [
           repoLink('scripts/generate_fallbacks.py', 'scripts/generate_fallbacks.py'),
@@ -553,7 +553,7 @@ const SCENARIOS = [
       {
         lane: 'agents', col: 7,
         content: 'blueprint-reviewer returns numbered findings with severities',
-        description:
+        summary:
           'A fresh context that never saw the drafting catches what the drafting context is anchored on.',
         links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
       },
@@ -572,8 +572,8 @@ const SCENARIOS = [
         lane: 'refs', col: 3,
         content: 'lane-roles.md\nlane-vocabulary.md',
         picture: figure('data-model-hierarchy.svg'),
-        description:
-          'Rendering follows the semantic layer_role, never the display name — which is why lane labels are free-form, in any language.',
+        summary:
+          'Rendering follows the semantic lane_role, never the display name — which is why lane labels are free-form, in any language.',
         links: [repoLink('references/lane-roles.md', 'references/lane-roles.md')],
       },
       {
@@ -595,7 +595,7 @@ const SCENARIOS = [
         content: 'secret_guard.py — the service-role key never reaches disk or transcript',
         owner: 'The blueprint owner’s own machine',
         perceivedOwner: 'The kit',
-        description:
+        summary:
           'The guard runs in the owner’s harness, on their machine — the kit ships the hook, it never holds the key.',
         links: [repoLink('hooks/secret_guard.py', 'hooks/secret_guard.py')],
       },
@@ -644,7 +644,7 @@ const SCENARIOS = [
     key: 'AUDIT',
     phaseKey: 'OPERATE',
     name: 'Audit the check roster',
-    description:
+    summary:
       'sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.',
     order: 1,
     viewType: 'side-by-side',
@@ -656,14 +656,14 @@ const SCENARIOS = [
         key: 'TRIAGED',
         name: 'Findings triaged',
         path_type: 'happy',
-        description: 'Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.',
+        summary: 'Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.',
       },
       {
         ordinal: 2,
         key: 'REOPENS',
         name: 'A critical finding reopens',
         path_type: 'unhappy',
-        description:
+        summary:
           'A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.',
       },
     ],
@@ -703,7 +703,7 @@ const SCENARIOS = [
         // audit as the thing that closes findings. It never closes anything.
         owner: 'Whoever triages',
         perceivedOwner: 'The audit',
-        description:
+        summary:
           'Humans may change only findings.status. The audit points and never fixes, and it may supersede only its own check’s open rows.',
       },
 
@@ -734,14 +734,14 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 4,
         content: 'Fingerprint = check name + sha256 of the sorted cell keys + reason slug',
-        description:
+        summary:
           'A duplicate fingerprint inside one incoming batch is a reported error, never a second insert; the partial unique index on open fingerprints is the backstop.',
         links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
       },
       {
         lane: 'scripts', col: 5,
         content: 'findings table\naudit/findings-report.json',
-        description:
+        summary:
           'Rows in the findings table when a database is reachable, and a JSON ledger when one is not — the audit still runs, straight against the blueprint files.',
         links: [repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md')],
       },
@@ -750,7 +750,7 @@ const SCENARIOS = [
       {
         lane: 'agents', col: 3,
         content: 'auditor — one check doc and the export, never another check’s output',
-        description:
+        summary:
           'Each check’s judgement stays uncontaminated because the auditor running it cannot see any other check or its findings.',
         links: [repoLink('agents/auditor.md', 'agents/auditor.md')],
       },
@@ -766,14 +766,14 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 1,
         content: 'audit-playbook.md',
-        description:
+        summary:
           'Read before executing any route: run semantics, the fingerprint algorithm, triage rules, and the check-authoring template.',
         links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
       },
       {
         lane: 'refs', col: 3,
         content: 'check-gap-sweep.md\ncheck-jargon-lint.md\ncheck-channel-conflict.md',
-        description:
+        summary:
           'Three of the roster’s eight checks. The roster is the directory listing, not this list — a check file that exists runs, or is reported skipped.',
         links: [
           repoLink('check-gap-sweep.md', 'skills/audit/references/check-gap-sweep.md'),
@@ -783,7 +783,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 5,
         content: 'check-perceived-owner.md\ncheck-value-ledger.md',
-        description:
+        summary:
           'Wave-2 checks read the cell spec columns, and skip gracefully — reported, never silent — when those columns are empty.',
         links: [
           repoLink('check-perceived-owner.md', 'skills/audit/references/check-perceived-owner.md'),
@@ -822,7 +822,7 @@ const SCENARIOS = [
     key: 'WHATIF',
     phaseKey: 'OPERATE',
     name: 'Ideate a change (what-if)',
-    description:
+    summary:
       'sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.',
     order: 2,
     viewType: 'single',
@@ -834,7 +834,7 @@ const SCENARIOS = [
         key: 'TRACED',
         name: 'Traced before it lands',
         path_type: 'happy',
-        description:
+        summary:
           'Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.',
       },
     ],
@@ -867,14 +867,14 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 2,
         content: 'validate_ir.py on the variant',
-        description:
+        summary:
           'A hypothetical still has to be a legal blueprint, so the variant passes the same validator the real one does.',
         links: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
       },
       {
         lane: 'scripts', col: 3,
         content: 'Visited set + depth cap',
-        description:
+        summary:
           'Loops are legal in this data — a phase may feed back — so the walk has to survive a cyclic graph rather than assume a tree.',
       },
       {
@@ -942,7 +942,7 @@ const SCENARIOS = [
     key: 'SLICE',
     phaseKey: 'OPERATE',
     name: 'Slice for an audience',
-    description:
+    summary:
       'sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.',
     order: 3,
     viewType: 'single',
@@ -954,7 +954,7 @@ const SCENARIOS = [
         key: 'READOUT',
         name: 'Stakeholder readout',
         path_type: 'happy',
-        description: 'From “show me my part” to a presented, exportable slice that still points at its cells.',
+        summary: 'From “show me my part” to a presented, exportable slice that still points at its cells.',
       },
     ],
     steps: [
@@ -1002,14 +1002,14 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 2,
         content: 'slice-templates.md',
-        description:
+        summary:
           'The type decides the shape of the read: a journey follows one actor along the board, a step reads one column top to bottom, a lane follows one row across, a cell zooms in on one moment, custom is any hand-picked set.',
         links: [repoLink('slice-templates.md', 'skills/slice/references/slice-templates.md')],
       },
       {
         lane: 'scripts', col: 3,
         content: 'slice_tools.py select',
-        description:
+        summary:
           'Cell-id derivation lives in the script and must agree byte-for-byte with the blueprint import, or the slice points at rows that do not exist.',
         links: [repoLink('slice_tools.py', 'skills/slice/scripts/slice_tools.py')],
       },
@@ -1021,7 +1021,7 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 6,
         content: 'slices\nslice_items',
-        description:
+        summary:
           'Slice items reference cells softly — uuid arrays paired with cell keys — so re-importing a scenario never cascades into a presentation.',
         links: [repoLink('references/data-model.md', 'references/data-model.md')],
       },
@@ -1067,14 +1067,14 @@ const SCENARIOS = [
 
   // -------------------------------------------------------------------
   // 6 · Keep it current — Maintain, the smallest board, and where the
-  //     lifecycle loop lands back into Operate
+  //     service loop lands back into Operate
   // -------------------------------------------------------------------
   {
     ordinal: 6,
     key: 'KEEP',
     phaseKey: 'MAINTAIN',
     name: 'Keep it current',
-    description:
+    summary:
       'The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.',
     order: 1,
     viewType: 'single',
@@ -1087,7 +1087,7 @@ const SCENARIOS = [
         key: 'UPDATE',
         name: 'Update what changed',
         path_type: 'happy',
-        description:
+        summary:
           'The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.',
       },
     ],
@@ -1209,7 +1209,7 @@ function assertStructure(scenarios) {
       const key = `${path.path_type}:${path.name}`
       if (seenPathNames.has(key)) {
         throw new Error(
-          `path identity "${key}" is used by both ${seenPathNames.get(key)} and ${scenario.key} — path names must be unique across the lifecycle`,
+          `path identity "${key}" is used by both ${seenPathNames.get(key)} and ${scenario.key} — path names must be unique across the service`,
         )
       }
       seenPathNames.set(key, scenario.key)
@@ -1272,7 +1272,7 @@ function buildScenario(scenario) {
   const steps = scenario.steps.map((name, index) => ({
     id: fid(S, 0, KIND.step, index + 1, 0),
     name,
-    column_position: index + 1,
+    position: index + 1,
   }))
 
   const blueprints = scenario.paths.map((path) => {
@@ -1283,25 +1283,25 @@ function buildScenario(scenario) {
     // steps" looks like in the data.
     const skipped = new Set(path.skipSteps ?? [])
     const pathSteps = steps
-      .filter((step) => !skipped.has(step.column_position))
-      .map((step, index) => ({ ...step, column_position: index + 1 }))
-    const layers = scenario.lanes.map((lane) => ({
-      id: fid(S, P, KIND.layer, lane.row, 0),
+      .filter((step) => !skipped.has(step.position))
+      .map((step, index) => ({ ...step, position: index + 1 }))
+    const lanes = scenario.lanes.map((lane) => ({
+      id: fid(S, P, KIND.lane, lane.row, 0),
       name: lane.name,
       role: lane.role === 'visual' ? 'visual' : lane.role,
-      row_position: lane.row,
+      position: lane.row,
     }))
 
     const resolved = resolveCellsForPath(scenario, path)
     const cells = resolved.map(({ lane, col, slot, content, spec }) => ({
       id: fid(S, P, KIND.cell, lane.row, slot * 100 + col),
-      layer_id: fid(S, P, KIND.layer, lane.row, 0),
+      lane_id: fid(S, P, KIND.lane, lane.row, 0),
       step_id: steps[col - 1].id,
       content,
       picture: spec.picture ?? null,
-      description: spec.description ?? null,
+      summary: spec.summary ?? null,
       links: spec.links ?? [],
-      ...(slot > 0 ? { slot_position: slot } : {}),
+      ...(slot > 0 ? { position: slot } : {}),
       // Cell spec — emitted only where authored, so the fixture stays lean.
       // `fn` in the spec, `function` on the row: the column is named for the
       // service-blueprint canon (FUNCTION / FORM / VALUE).
@@ -1360,11 +1360,11 @@ function buildScenario(scenario) {
       path: {
         id: fid(S, P, KIND.path, 0, 0),
         name: path.name,
-        description: path.description,
+        summary: path.summary,
         note: null,
         path_type: path.path_type,
       },
-      layers,
+      lanes,
       steps: pathSteps,
       cells,
       triggers,
@@ -1378,8 +1378,8 @@ const built = SCENARIOS.map(buildScenario)
 const scenarioById = new Map(built.map((entry) => [entry.scenario.key, entry]))
 
 // ---------------------------------------------------------------------------
-// Cell keys — the IMPORT key convention (6 segments: lifecycle/phase/
-// scenario/path/layer/step), matching scripts/generate_seed_sql.py and
+// Cell keys — the IMPORT key convention (6 segments: service/phase/
+// scenario/path/lane/step), matching scripts/generate_seed_sql.py and
 // slice_tools.cell_key(). App-minted keys (`mint_cell_key`) use their own
 // form; the two never collide because seeds and app-created cells are
 // distinct rows. Slot-sibling cells (slot > 0) carry NO key: the 6-segment
@@ -1402,13 +1402,13 @@ const keySlug = (value) => {
   return slug !== '' ? slug : `x${createHash('md5').update(raw).digest('hex').slice(0, 8)}`
 }
 
-const cellKeyFor = (scenario, pathName, layerName, stepName) =>
+const cellKeyFor = (scenario, pathName, laneName, stepName) =>
   [
-    keySlug(LIFECYCLE.name),
+    keySlug(SERVICE.name),
     keySlug(phaseByKey[scenario.phaseKey].name),
     keySlug(scenario.name),
     keySlug(pathName),
-    keySlug(layerName),
+    keySlug(laneName),
     keySlug(stepName),
   ].join('/')
 
@@ -1465,7 +1465,7 @@ function buildDemoSlices() {
   const journey = {
     slice: {
       id: journeyId,
-      service_lifecycle_id: LIFECYCLE_ID,
+      service_id: SERVICE_ID,
       title: 'The map, end to end',
       description:
         'One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.',
@@ -1508,7 +1508,7 @@ function buildDemoSlices() {
   const step = {
     slice: {
       id: stepId,
-      service_lifecycle_id: LIFECYCLE_ID,
+      service_id: SERVICE_ID,
       title: 'The import moment, read top to bottom',
       description:
         'One column of Map your service — “Import and verify” — read down every lane at once: the step where a file in a repo becomes rows in a database, and the step with the most that can go quietly wrong.',
@@ -1539,7 +1539,7 @@ function buildDemoSlices() {
   const lane = {
     slice: {
       id: laneId,
-      service_lifecycle_id: LIFECYCLE_ID,
+      service_id: SERVICE_ID,
       title: 'Everything that happens out of sight',
       description:
         'One lane of Audit the check roster — the subagent fleet, on the path where findings get triaged — read left to right: the half of the audit nobody watches, and the half that decides whether its verdicts can be trusted.',
@@ -1579,8 +1579,8 @@ function emitList(items, indent) {
 function emitBlueprint(exportName, blueprint) {
   return `export const ${exportName}: BlueprintData = {
   path: ${JSON.stringify(blueprint.path)},
-  layers: [
-${emitList(blueprint.layers, '    ')}
+  lanes: [
+${emitList(blueprint.lanes, '    ')}
   ],
   steps: [
 ${emitList(blueprint.steps, '    ')}
@@ -1598,7 +1598,7 @@ ${emitList(blueprint.triggers, '    ')}
 const totals = built.flatMap(({ scenario, blueprints }) =>
   blueprints.map((bp) => ({
     label: `${scenario.name} · ${bp.path.name}`,
-    layers: bp.layers.length,
+    lanes: bp.lanes.length,
     steps: bp.steps.length,
     cells: bp.cells.length,
     triggers: bp.triggers.length,
@@ -1610,7 +1610,7 @@ const exportKeyFor = (scenario, path) => `SAMPLE_${scenario.key}_${path.key}`
 const header = `// GENERATED by scripts/generate_sample_blueprint.mjs — edit the generator, not this file.
 //
 // The template's sample content is the META-BLUEPRINT: the service blueprint
-// of this template itself. One lifecycle (${LIFECYCLE.name}), four phases
+// of this template itself. One service (${SERVICE.name}), four phases
 // (Discover → Setup → Operate → Maintain, Maintain looping back to Operate),
 // six
 // scenarios named for the skill journey — evaluating the kit, sb:map from two
@@ -1631,20 +1631,20 @@ const header = `// GENERATED by scripts/generate_sample_blueprint.mjs — edit t
 ${totals
   .map(
     (t) =>
-      `//   ${t.label}: ${t.layers} lanes, ${t.steps} steps, ${t.cells} cells, ${t.triggers} triggers`,
+      `//   ${t.label}: ${t.lanes} lanes, ${t.steps} steps, ${t.cells} cells, ${t.triggers} triggers`,
   )
   .join('\n')}
 
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slice, SliceItem } from '@/types/database'
 
-export const SAMPLE_LIFECYCLE_ID = '${LIFECYCLE_ID}'
+export const SAMPLE_SERVICE_ID = '${SERVICE_ID}'
 
 export type SamplePhase = {
   id: string
   name: string
-  description: string
-  order_position: number
+  summary: string
+  position: number
   loops_to_phase_id: string | null
 }
 
@@ -1653,8 +1653,8 @@ ${PHASES.map((phase) =>
   `  ${JSON.stringify({
     id: phaseId(phase.ordinal),
     name: phase.name,
-    description: phase.description,
-    order_position: phase.ordinal,
+    summary: phase.summary,
+    position: phase.ordinal,
     loops_to_phase_id: phase.loopsToKey ? phaseId(phaseByKey[phase.loopsToKey].ordinal) : null,
   })},`,
 ).join('\n')}
@@ -1664,8 +1664,8 @@ export type SampleScenario = {
   id: string
   phase_id: string
   name: string
-  description: string
-  order_position: number
+  summary: string
+  position: number
   /** Client-vocabulary view type for the offline nav. */
   view_type: 'single' | 'stacked'
   /** Exactly one scenario is the compare/slice demo anchor — see SAMPLE_SCENARIO_ID. */
@@ -1681,8 +1681,8 @@ ${built
         id,
         phase_id: phaseId(phaseByKey[scenario.phaseKey].ordinal),
         name: scenario.name,
-        description: scenario.description,
-        order_position: scenario.order,
+        summary: scenario.summary,
+        position: scenario.order,
         view_type: scenario.navViewType,
         ...(scenario.primary ? { primary: true } : {}),
         path_ids: blueprints.map((bp) => bp.path.id),
@@ -1762,34 +1762,34 @@ const seedParts = []
 seedParts.push(`-- GENERATED by scripts/generate_sample_blueprint.mjs — edit the generator, not this file.
 --
 -- Sample seed: the META-BLUEPRINT — the service blueprint of this template
--- itself. One '${LIFECYCLE.name}' lifecycle, four phases (Discover → Setup
+-- itself. One '${SERVICE.name}' service, four phases (Discover → Setup
 -- → Operate → Maintain, with Maintain.loops_to_phase_id → Operate), six scenarios
 -- named for the skill journey, incl. two two-path scenarios shaped for the
 -- compare views (each Map path also omits a column the other keeps), and
 -- three demo slices (journey / step / lane) over that content. Matches
 -- src/data/sampleBlueprint.ts and src/types/nav.ts exactly. Idempotent:
--- replaces the sample lifecycle.
+-- replaces the sample service.
 
 begin;
 
--- Lifecycle-replace: drop the prior sample lifecycle (cascades to all children).
-delete from public.service_lifecycles where id = ${q(LIFECYCLE_ID)};
+-- Service-replace: drop the prior sample service (cascades to all children).
+delete from public.services where id = ${q(SERVICE_ID)};
 
-insert into public.service_lifecycles (id, name, description) values
-  (${q(LIFECYCLE_ID)}, ${q(LIFECYCLE.name)}, ${q(LIFECYCLE.description)});
+insert into public.services (id, name, summary) values
+  (${q(SERVICE_ID)}, ${q(SERVICE.name)}, ${q(SERVICE.summary)});
 
-insert into public.phases (id, service_lifecycle_id, name, description, order_position) values
+insert into public.phases (id, service_id, name, summary, position) values
 ${sqlRows(
   PHASES.map((phase) => [
     q(phaseId(phase.ordinal)),
-    q(LIFECYCLE_ID),
+    q(SERVICE_ID),
     q(phase.name),
-    q(phase.description),
+    q(phase.summary),
     String(phase.ordinal),
   ]),
 )};
 
--- The lifecycle loop: Maintain feeds back into Operate.
+-- The service loop: Maintain feeds back into Operate.
 ${PHASES.filter((phase) => phase.loopsToKey)
   .map(
     (phase) => `update public.phases
@@ -1798,76 +1798,76 @@ where id = ${q(phaseId(phase.ordinal))};`,
   )
   .join('\n')}
 
-insert into public.service_scenarios (id, phase_id, name, description, order_position, view_type) values
+insert into public.scenarios (id, phase_id, name, summary, position, view_type) values
 ${sqlRows(
   built.map(({ scenario, id }) => [
     q(id),
     q(phaseId(phaseByKey[scenario.phaseKey].ordinal)),
     q(scenario.name),
-    q(scenario.description),
+    q(scenario.summary),
     String(scenario.order),
     q(scenario.viewType),
   ]),
 )};
 `)
 
-seedParts.push(`insert into public.paths (id, service_scenario_id, name, description, note, path_type) values
+seedParts.push(`insert into public.paths (id, scenario_id, name, summary, note, path_type) values
 ${sqlRows(
   allBlueprints.map(({ scenarioId, bp }) => [
     q(bp.path.id),
     q(scenarioId),
     q(bp.path.name),
-    q(bp.path.description),
+    q(bp.path.summary),
     q(bp.path.note),
     q(bp.path.path_type),
   ]),
 )};
 `)
 
-seedParts.push(`insert into public.steps (id, service_scenario_id, name) values
+seedParts.push(`insert into public.steps (id, scenario_id, name) values
 ${sqlRows(
   built.flatMap(({ id, steps }) => steps.map((step) => [q(step.id), q(id), q(step.name)])),
 )};
 `)
 
-seedParts.push(`insert into public.path_steps (path_id, step_id, column_position) values
+seedParts.push(`insert into public.path_steps (path_id, step_id, position) values
 ${sqlRows(
   allBlueprints.flatMap(({ bp }) =>
-    bp.steps.map((step) => [q(bp.path.id), q(step.id), String(step.column_position)]),
+    bp.steps.map((step) => [q(bp.path.id), q(step.id), String(step.position)]),
   ),
 )};
 `)
 
-seedParts.push(`insert into public.layers (id, path_id, name, layer_role, row_position) values
+seedParts.push(`insert into public.lanes (id, path_id, name, lane_role, position) values
 ${sqlRows(
   allBlueprints.flatMap(({ bp }) =>
-    bp.layers.map((layer) => [
-      q(layer.id),
+    bp.lanes.map((lane) => [
+      q(lane.id),
       q(bp.path.id),
-      q(layer.name),
-      q(layer.role),
-      String(layer.row_position),
+      q(lane.name),
+      q(lane.role),
+      String(lane.position),
     ]),
   ),
 )};
 `)
 
-seedParts.push(`insert into public.cells (id, path_id, layer_id, step_id, slot_position, content, picture, description, links, owner, perceived_owner, function, form, value_props, cell_key) values
+seedParts.push(`insert into public.cells (id, path_id, lane_id, step_id, position, content, picture, summary, links, owner, perceived_owner, function, form, value_props, cell_key) values
 ${sqlRows(
   allBlueprints.flatMap(({ scenario, bp }) => {
-    const layerName = new Map(bp.layers.map((l) => [l.id, l.name]))
+    const laneName = new Map(bp.lanes.map((l) => [l.id, l.name]))
     const stepName = new Map(bp.steps.map((s) => [s.id, s.name]))
     return bp.cells.map((cell) => {
-      const slot = cell.slot_position ?? 0
+      const slot = cell.position ?? 0
       return [
         q(cell.id),
         q(bp.path.id),
-        q(cell.layer_id),
+        q(cell.lane_id),
         q(cell.step_id),
         String(slot),
         q(cell.content),
         q(cell.picture),
-        q(cell.description),
+        q(cell.summary),
         `${q(JSON.stringify(cell.links))}::jsonb`,
         q(cell.owner ?? null),
         q(cell.perceived_owner ?? null),
@@ -1881,7 +1881,7 @@ ${sqlRows(
               cellKeyFor(
                 scenario,
                 bp.path.name,
-                layerName.get(cell.layer_id),
+                laneName.get(cell.lane_id),
                 stepName.get(cell.step_id),
               ),
             ),
@@ -1891,7 +1891,7 @@ ${sqlRows(
 )};
 `)
 
-seedParts.push(`insert into public.cell_triggers (id, source_cell_id, target_cell_id, kind, label, note) values
+seedParts.push(`insert into public.cell_dependencies (id, source_cell_id, target_cell_id, kind, label, note) values
 ${sqlRows(
   allBlueprints.flatMap(({ bp }) =>
     bp.triggers.map((trigger) => [
@@ -1908,11 +1908,11 @@ ${sqlRows(
 
 // Derived layer: the same demo slices the TS fixture ships, so a seeded
 // database and a no-DB session read identical content.
-seedParts.push(`insert into public.slices (id, service_lifecycle_id, slice_type, title, description, actor, locale, origin, position) values
+seedParts.push(`insert into public.slices (id, service_id, slice_type, title, description, actor, locale, origin, position) values
 ${sqlRows(
   demoSlices.map(({ slice }) => [
     q(slice.id),
-    q(slice.service_lifecycle_id),
+    q(slice.service_id),
     q(slice.slice_type),
     q(slice.title),
     q(slice.description),
@@ -1950,5 +1950,5 @@ writeFileSync(SEED_OUT_PATH, seedParts.join('\n'))
 console.log(`Wrote ${OUT_PATH}`)
 console.log(`Wrote ${SEED_OUT_PATH}`)
 for (const t of totals) {
-  console.log(`  ${t.label}: ${t.layers} lanes, ${t.steps} steps, ${t.cells} cells, ${t.triggers} triggers`)
+  console.log(`  ${t.label}: ${t.lanes} lanes, ${t.steps} steps, ${t.cells} cells, ${t.triggers} triggers`)
 }

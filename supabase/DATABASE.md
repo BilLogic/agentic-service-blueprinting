@@ -26,49 +26,49 @@ fallback content in `src/data/` — no database required.
 
 ```mermaid
 erDiagram
-  service_lifecycles ||--o{ phases : "1:n"
-  phases ||--o{ service_scenarios : "1:n"
-  service_scenarios ||--o{ paths : "1:n"
-  service_scenarios ||--o{ steps : "1:n"
+  services ||--o{ phases : "1:n"
+  phases ||--o{ scenarios : "1:n"
+  scenarios ||--o{ paths : "1:n"
+  scenarios ||--o{ steps : "1:n"
   paths ||--o{ path_steps : "1:n"
   steps ||--o{ path_steps : "1:n"
-  paths ||--o{ layers : "1:n"
+  paths ||--o{ lanes : "1:n"
   paths ||--o{ cells : "1:n"
-  layers ||--o{ cells : "1:n"
+  lanes ||--o{ cells : "1:n"
   steps ||--o{ cells : "1:n"
-  cells ||--o{ cell_triggers : "source"
-  cells ||--o{ cell_triggers : "target"
+  cells ||--o{ cell_dependencies : "source"
+  cells ||--o{ cell_dependencies : "target"
 ```
 
-The full attribute-level ERD (with enums and the `layer_role` vocabulary) is
+The full attribute-level ERD (with enums and the `lane_role` vocabulary) is
 in [`docs/erd.mmd`](../docs/erd.mmd).
 
 ## Hierarchy
 
 | Level | Table | Ordering |
 | --- | --- | --- |
-| Service Lifecycle | `service_lifecycles` | — |
-| Phase | `phases` | `order_position`; optional `loops_to_phase_id` |
-| Service Scenario | `service_scenarios` | `order_position`; `view_type` for layout |
+| Service Service | `services` | — |
+| Phase | `phases` | `position`; optional `loops_to_phase_id` |
+| Service Scenario | `scenarios` | `position`; `view_type` for layout |
 | Path | `paths` | `path_type`: happy, unhappy, exception, alternative; optional `note` for path-level context |
-| Blueprint row | `layers` | `row_position` (per path); `layer_role` semantic key |
-| Blueprint column | `steps` | canonical per `service_scenario` |
-| Path column order | `path_steps` | `column_position` per `(path_id, step_id)` |
-| Cell | `cells` | unique `(layer_id, step_id, slot_position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
-| Cell dependency | `cell_triggers` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
+| Blueprint row | `lanes` | `position` (per path); `lane_role` semantic key |
+| Blueprint column | `steps` | canonical per `scenario` |
+| Path column order | `path_steps` | `position` per `(path_id, step_id)` |
+| Cell | `cells` | unique `(lane_id, step_id, position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
+| Cell dependency | `cell_dependencies` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
 
-**Naming note:** DB table `steps` are blueprint **columns** (journey moments), not lifecycle phases. Phases live in `phases`.
+**Naming note:** DB table `steps` are blueprint **columns** (journey moments), not service phases. Phases live in `phases`.
 
-**Cascade deletes:** Deleting a lifecycle removes phases, scenarios, paths, layers, steps, path_steps, cells, and triggers. Deleting a phase removes its descendants.
+**Cascade deletes:** Deleting a service removes phases, scenarios, paths, lanes, steps, path_steps, cells, and triggers. Deleting a phase removes its descendants.
 
-**Path integrity:** `cells.path_id` must match `layers.path_id`, and `cells.step_id` must appear in `path_steps` for that path (trigger `cells_validate_path_match`). Import order: `paths → steps → path_steps → layers → cells → cell_triggers`.
+**Path integrity:** `cells.path_id` must match `lanes.path_id`, and `cells.step_id` must appear in `path_steps` for that path (trigger `cells_validate_path_match`). Import order: `paths → steps → path_steps → lanes → cells → cell_dependencies`.
 
-**Shared steps:** Multiple paths under the same scenario can reference the same `steps.id` via `path_steps` with different `column_position` values. See [`references/data-model.md`](../references/data-model.md).
+**Shared steps:** Multiple paths under the same scenario can reference the same `steps.id` via `path_steps` with different `position` values. See [`references/data-model.md`](../references/data-model.md).
 
-## Layers (`layer_role`)
+## Lanes (`lane_role`)
 
-A layer's display name (`layers.name`) is free-form in any language; the
-semantic key `layers.layer_role` drives rendering (pill cells, visual rows,
+A lane's display name (`lanes.name`) is free-form in any language; the
+semantic key `lanes.lane_role` drives rendering (pill cells, visual rows,
 divider-line anchoring):
 
 | Role | Rendering |
@@ -80,17 +80,17 @@ divider-line anchoring):
 | `visual`, `step_visual` | Picture rows |
 | any other value / `null` | Generic swimlane (actor lanes, org-defined custom roles) |
 
-Frontend contract: `src/lib/layerRoles.ts`.
+Frontend contract: `src/lib/laneRoles.ts`.
 
 ## Cells
 
-Each cell sits at a **layer × step** intersection for one path.
+Each cell sits at a **lane × step** intersection for one path.
 
 | Column | Required | Description |
 | --- | --- | --- |
 | `content` | yes (default `''`) | **Cell Label** — primary text shown in the blueprint grid |
 | `picture` | no | Optional image URL or storage reference |
-| `description` | no | Optional longer description (detail panel; not the grid label) |
+| `summary` | no | Optional longer summary (detail panel; not the grid label) |
 | `links` | no (default `[]`) | JSON array of link objects |
 
 **Links shape** (JSONB array):
@@ -113,7 +113,7 @@ Each cell sits at a **layer × step** intersection for one path.
 
 App types: `CellLink` and `BlueprintCell` in `src/types/blueprint.ts`. Parsing: `normalizeCellLinks()` in `src/lib/cellMetadata.ts`.
 
-## View modes (`service_scenarios.view_type`)
+## View modes (`scenarios.view_type`)
 
 | Value | Behavior |
 | --- | --- |
@@ -129,7 +129,7 @@ These are the STORED (DB) tokens; the client vocabulary is `single` \|
 
 `supabase/seed.sql` is **generated** by `scripts/generate_sample_blueprint.mjs`
 alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
-`Keeping a blueprint true` lifecycle → four phases (`Discover` → `Setup` →
+`Keeping a blueprint true` service → four phases (`Discover` → `Setup` →
 `Operate` → `Maintain`, with `Maintain.loops_to_phase_id` → `Operate`) → six
 scenarios carrying eight paths (happy / alternative / unhappy) on one 7-lane
 roster (canonical + one custom role), plus a visual row
@@ -149,7 +149,7 @@ All blueprint tables have RLS **enabled** with public `SELECT` policies, and
 the `anon` role stays read-only: a deployed site can render everything but
 write nothing. **Anything you deploy with an anon key is publicly readable.**
 
-Writes are layered on top for signed-in sessions (`authenticated`):
+Writes are laneed on top for signed-in sessions (`authenticated`):
 
 - **Structure goes through RPCs, not tables.** The authoring-operations
   migration ships `SECURITY DEFINER` functions (create/duplicate/rename/
@@ -158,9 +158,9 @@ Writes are layered on top for signed-in sessions (`authenticated`):
   transaction. No table-level `INSERT`/`DELETE` on structural tables is
   granted to app roles.
 - **Ordinary text edits use column-scoped grants**: `cells.content/
-  description/links`, `layers.name/layer_role`, `steps.name`,
-  `paths.name/description/note/path_type`,
-  `service_scenarios.name/description/view_type`, plus the derived-layer
+  summary/links`, `lanes.name/lane_role`, `steps.name`,
+  `paths.name/summary/note/path_type`,
+  `scenarios.name/summary/view_type`, plus the derived-layer
   spec columns — writable directly by `authenticated` under permissive
   update policies.
 - **Optional service-account tier** (`20260818002000`, a recipe you can
@@ -180,15 +180,23 @@ credentials.
 
 | File | Description |
 | --- | --- |
-| `20260716200000_template_schema.sql` | Consolidated template schema: hierarchy + blueprint grid + `layer_role`, integrity trigger, `updated_at` triggers, read-only RLS, legacy `services` cleanup |
-| `20260729120000_derived_layer.sql` | Derived layer: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_triggers.kind` |
+| `20260716200000_template_schema.sql` | Consolidated template schema: hierarchy + blueprint grid + `lane_role`, integrity trigger, `updated_at` triggers, read-only RLS, legacy `services` cleanup |
+| `20260729120000_derived_layer.sql` | Derived layer: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_dependencies.kind` |
 | `20260730090000_derived_layer_grants_hardening.sql` | Explicit Data API grants, anon write-privilege revokes, pinned `search_path`, attribution columns, evidence `cell_key` pairing |
 | `20260803001000_slices_origin_allows_human.sql` | Adds `human` to the `slices.origin` vocabulary (in-app authored slices) |
-| `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.slot_position` (+ widened uniqueness), deferrable `path_steps` ordering, `deleted_structure` archive, direct-column grants for panel edits |
+| `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.position` (+ widened uniqueness), deferrable `path_steps` ordering, `deleted_structure` archive, direct-column grants for panel edits |
 | `20260818001000_authoring_operations.sql` | Authoring operations: the `SECURITY DEFINER` RPCs (create/duplicate/rename/reorder/delete structure, `upsert_cell`, dependencies) that are the only sanctioned write path for structural shape |
 | `20260818002000_service_account_tier.sql` | OPTIONAL recipe: splits `authenticated` into service accounts (edit everything) and regular accounts (view + agent surfaces) via RESTRICTIVE policies + `is_service_account()` |
 | `20260819000000_agent_surface.sql` | Agent surface: `agent_sessions`/`agent_messages` chat persistence (authenticated-only) and the findings insert/update grants for in-app agent runs |
 | `21000101000000_schema_version_is_a_table.sql` | `schema_version`: one row naming the shape this database carries, so the adapter contract's compatibility check can interrogate a live target |
+| `21000102000000_a_rewriter_for_function_bodies.sql` | Scaffolding for the vocabulary series: rewrites plpgsql bodies a rename left naming the old identifier (restoring ACLs when a signature change forces a drop), renames dependent objects from the catalog, and asserts the old word is gone. Dropped by `21000109000000` |
+| `21000103000000_cell_triggers_are_cell_dependencies.sql` | `cell_triggers` → `cell_dependencies`; `kind` keeps (`trigger`, `needs`) |
+| `21000104000000_layers_are_lanes.sql` | `layers` → `lanes`, `layers.layer_role` → `lanes.lane_role`, `cells.layer_id` → `cells.lane_id` |
+| `21000105000000_position_columns_one_name.sql` | `row_position` · `column_position` · `slot_position` · `order_position` → `position`; `add_lane(at_row)` → `add_lane(at_position)` |
+| `21000106000000_service_lifecycles_are_services.sql` | `service_lifecycles` → `services`, `service_lifecycle_id` → `service_id` on phases, slices, findings, evidence, propositions |
+| `21000107000000_service_scenarios_are_scenarios.sql` | `service_scenarios` → `scenarios`, `service_scenario_id` → `scenario_id` on paths and steps |
+| `21000108000000_description_is_a_summary.sql` | `description` → `summary` on services, phases, scenarios, paths, cells; `slices.description` keeps its name |
+| `21000109000000_the_lane_vocabulary_is_a_schema_version.sql` | `schema_version` → `2026.08.25`; drops the series' scaffolding |
 
 ## Reserved migration timestamp band
 
@@ -266,28 +274,28 @@ const { data } = await supabase
     id,
     name,
     path_type,
-    service_scenarios (
+    scenarios (
       id,
       name,
       phases (
         id,
         name,
-        order_position,
-        service_lifecycles ( id, name )
+        position,
+        services ( id, name )
       )
     ),
-    layers ( id, name, layer_role, row_position ),
+    lanes ( id, name, lane_role, position ),
     path_steps (
-      column_position,
+      position,
       steps ( id, name )
     ),
     cells (
       id,
       content,
       picture,
-      description,
+      summary,
       links,
-      layer_id,
+      lane_id,
       step_id
     )
   `)

@@ -34,7 +34,7 @@ export function buildCompareGridTracks(
   if (!model) {
     return blueprints.flatMap((blueprint) =>
       [...blueprint.steps]
-        .sort((a, b) => a.column_position - b.column_position)
+        .sort((a, b) => a.position - b.position)
         .map(
           (step): CompareGridTrack => ({
             kind: 'column',

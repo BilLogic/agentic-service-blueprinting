@@ -9,7 +9,7 @@ Why this is a script rather than skill prose: the cell-id derivation has to
 agree byte-for-byte with `generate_seed_sql.py`, or a slice points at rows
 that do not exist. The rule is:
 
-    cell_key = <lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>
+    cell_key = <service>/<phase>/<scenario>/<path>/<lane>/<step>
     cell_id  = uuid5(NAMESPACE, NFC(f"{locale}:cell:{cell_key}"))
 
 `slice_items` stores **both**: `cell_ids` for the join the frontend actually
@@ -70,26 +70,26 @@ def index_ir(doc: dict) -> dict:
     """Flatten the IR into lookups keyed the way slices reference things.
 
     Returns scenarios keyed `<phase>/<scenario>`, each carrying its steps in
-    order, its paths, and every cell under `<path>/<layer>/<step>`.
+    order, its paths, and every cell under `<path>/<lane>/<step>`.
     """
-    lifecycle = doc["lifecycle"]
-    lifecycle_key = lifecycle["key"]
+    service = doc["service"]
+    service_key = service["key"]
     scenarios: dict[str, dict] = {}
 
-    for phase in lifecycle.get("phases", []):
+    for phase in service.get("phases", []):
         for scenario in phase.get("scenarios", []):
             scenario_key = f"{phase['key']}/{scenario['key']}"
             steps = {step["key"]: step for step in scenario["steps"]}
             paths = {}
 
             for path in scenario["paths"]:
-                layers = {layer["key"]: layer for layer in path["layers"]}
+                lanes = {lane["key"]: lane for lane in path["lanes"]}
                 cells = {}
                 for cell in path["cells"]:
-                    cells[(cell["layer"], cell["step"])] = cell
+                    cells[(cell["lane"], cell["step"])] = cell
                 paths[path["key"]] = {
                     "raw": path,
-                    "layers": layers,
+                    "lanes": lanes,
                     # Column order is the path's own; a step the path never
                     # registered has no column and cannot be selected.
                     "step_order": list(path["path_steps"]),
@@ -102,28 +102,28 @@ def index_ir(doc: dict) -> dict:
                 "phase": phase,
                 "steps": steps,
                 "paths": paths,
-                "prefix": f"{lifecycle_key}/{scenario_key}",
+                "prefix": f"{service_key}/{scenario_key}",
             }
 
-    return {"lifecycle_key": lifecycle_key, "scenarios": scenarios, "locales": doc["locales"]}
+    return {"service_key": service_key, "scenarios": scenarios, "locales": doc["locales"]}
 
 
-def cell_key(index: dict, scenario_key: str, path_key: str, layer_key: str, step_key: str) -> str:
+def cell_key(index: dict, scenario_key: str, path_key: str, lane_key: str, step_key: str) -> str:
     """The qualified key that `generate_seed_sql.py` hashes into a cell id."""
     prefix = index["scenarios"][scenario_key]["prefix"]
-    return f"{prefix}/{path_key}/{layer_key}/{step_key}"
+    return f"{prefix}/{path_key}/{lane_key}/{step_key}"
 
 
 def cell_id(locale: str, key: str) -> str:
     return entity_uuid(locale, "cell", key)
 
 
-def slice_id(locale: str, lifecycle_key: str, key: str) -> str:
-    return entity_uuid(locale, "slice", f"{lifecycle_key}/{key}")
+def slice_id(locale: str, service_key: str, key: str) -> str:
+    return entity_uuid(locale, "slice", f"{service_key}/{key}")
 
 
-def slice_item_id(locale: str, lifecycle_key: str, key: str, position: int) -> str:
-    return entity_uuid(locale, "slice_item", f"{lifecycle_key}/{key}#{position}")
+def slice_item_id(locale: str, service_key: str, key: str, position: int) -> str:
+    return entity_uuid(locale, "slice_item", f"{service_key}/{key}#{position}")
 
 
 # ---------------------------------------------------------------------------
@@ -135,21 +135,21 @@ def _ordered_steps(path: dict) -> list[str]:
     return list(path["step_order"])
 
 
-def select_lane(index: dict, scenario_key: str, path_key: str, layer_key: str) -> list[list[str]]:
+def select_lane(index: dict, scenario_key: str, path_key: str, lane_key: str) -> list[list[str]]:
     """A lane read left to right: one frame per step the lane actually fills.
 
-    Empty (layer, step) intersections are skipped rather than framed blank —
+    Empty (lane, step) intersections are skipped rather than framed blank —
     a lane is usually sparse, and blank frames read as missing content.
     """
     scenario = index["scenarios"][scenario_key]
     path = scenario["paths"][path_key]
-    if layer_key not in path["layers"]:
-        raise SliceError(f"layer '{layer_key}' is not on path '{path_key}'")
+    if lane_key not in path["lanes"]:
+        raise SliceError(f"lane '{lane_key}' is not on path '{path_key}'")
 
     frames = []
     for step_key in _ordered_steps(path):
-        if (layer_key, step_key) in path["cells"]:
-            frames.append([cell_key(index, scenario_key, path_key, layer_key, step_key)])
+        if (lane_key, step_key) in path["cells"]:
+            frames.append([cell_key(index, scenario_key, path_key, lane_key, step_key)])
     return frames
 
 
@@ -164,27 +164,27 @@ def select_step(index: dict, scenario_key: str, path_key: str, step_key: str) ->
     if step_key not in _ordered_steps(path):
         raise SliceError(f"step '{step_key}' is not a column on path '{path_key}'")
 
-    layers = sorted(path["layers"].values(), key=lambda layer: layer["row"])
+    lanes = sorted(path["lanes"].values(), key=lambda lane: lane["row"])
     keys = [
-        cell_key(index, scenario_key, path_key, layer["key"], step_key)
-        for layer in layers
-        if (layer["key"], step_key) in path["cells"]
+        cell_key(index, scenario_key, path_key, lane["key"], step_key)
+        for lane in lanes
+        if (lane["key"], step_key) in path["cells"]
     ]
     return [keys] if keys else []
 
 
-def select_cell(index: dict, scenario_key: str, path_key: str, layer_key: str, step_key: str) -> list[list[str]]:
+def select_cell(index: dict, scenario_key: str, path_key: str, lane_key: str, step_key: str) -> list[list[str]]:
     scenario = index["scenarios"][scenario_key]
     path = scenario["paths"][path_key]
-    if (layer_key, step_key) not in path["cells"]:
-        raise SliceError(f"no cell at ({layer_key}, {step_key}) on path '{path_key}'")
-    return [[cell_key(index, scenario_key, path_key, layer_key, step_key)]]
+    if (lane_key, step_key) not in path["cells"]:
+        raise SliceError(f"no cell at ({lane_key}, {step_key}) on path '{path_key}'")
+    return [[cell_key(index, scenario_key, path_key, lane_key, step_key)]]
 
 
-def select_journey(index: dict, scenario_key: str, path_key: str, layer_key: str) -> list[list[str]]:
+def select_journey(index: dict, scenario_key: str, path_key: str, lane_key: str) -> list[list[str]]:
     """An actor's experience: their own cells plus what they touch.
 
-    "What they touch" is taken from `cell_triggers` — the arrows the blueprint
+    "What they touch" is taken from `cell_dependencies` — the arrows the blueprint
     already draws — rather than from a guess about which lanes are adjacent.
     A journey that claimed an interaction the blueprint does not record would
     be an invention, and inventions are the failure mode this whole system is
@@ -195,22 +195,22 @@ def select_journey(index: dict, scenario_key: str, path_key: str, layer_key: str
     """
     scenario = index["scenarios"][scenario_key]
     path = scenario["paths"][path_key]
-    if layer_key not in path["layers"]:
-        raise SliceError(f"layer '{layer_key}' is not on path '{path_key}'")
+    if lane_key not in path["lanes"]:
+        raise SliceError(f"lane '{lane_key}' is not on path '{path_key}'")
 
     # Adjacency over the path's arrows, undirected: being triggered *by* the
     # actor and triggering *them* are both contact.
     touching: dict[tuple[str, str], set[tuple[str, str]]] = {}
     for trigger in path["triggers"]:
-        source = (trigger["source"]["layer"], trigger["source"]["step"])
-        target = (trigger["target"]["layer"], trigger["target"]["step"])
+        source = (trigger["source"]["lane"], trigger["source"]["step"])
+        target = (trigger["target"]["lane"], trigger["target"]["step"])
         touching.setdefault(source, set()).add(target)
         touching.setdefault(target, set()).add(source)
 
-    rows = {layer["key"]: layer["row"] for layer in path["layers"].values()}
+    rows = {lane["key"]: lane["row"] for lane in path["lanes"].values()}
     frames = []
     for step_key in _ordered_steps(path):
-        anchor = (layer_key, step_key)
+        anchor = (lane_key, step_key)
         if anchor not in path["cells"]:
             continue
         companions = sorted(
@@ -224,17 +224,17 @@ def select_journey(index: dict, scenario_key: str, path_key: str, layer_key: str
 
 
 def select_custom(index: dict, scenario_key: str, path_key: str, cells: list[str]) -> list[list[str]]:
-    """User-listed `layer:step` pairs, in the order given — one frame each."""
+    """User-listed `lane:step` pairs, in the order given — one frame each."""
     scenario = index["scenarios"][scenario_key]
     path = scenario["paths"][path_key]
     frames = []
     for entry in cells:
         if ":" not in entry:
-            raise SliceError(f"custom cell '{entry}' must be written 'layer:step'")
-        layer_key, step_key = entry.split(":", 1)
-        if (layer_key, step_key) not in path["cells"]:
-            raise SliceError(f"no cell at ({layer_key}, {step_key}) on path '{path_key}'")
-        frames.append([cell_key(index, scenario_key, path_key, layer_key, step_key)])
+            raise SliceError(f"custom cell '{entry}' must be written 'lane:step'")
+        lane_key, step_key = entry.split(":", 1)
+        if (lane_key, step_key) not in path["cells"]:
+            raise SliceError(f"no cell at ({lane_key}, {step_key}) on path '{path_key}'")
+        frames.append([cell_key(index, scenario_key, path_key, lane_key, step_key)])
     return frames
 
 
@@ -252,8 +252,8 @@ def validate_slices(index: dict, doc: dict) -> list[str]:
     known_keys = set()
     for scenario_key, scenario in index["scenarios"].items():
         for path_key, path in scenario["paths"].items():
-            for layer_key, step_key in path["cells"]:
-                known_keys.add(cell_key(index, scenario_key, path_key, layer_key, step_key))
+            for lane_key, step_key in path["cells"]:
+                known_keys.add(cell_key(index, scenario_key, path_key, lane_key, step_key))
 
     seen_slice_keys = set()
     for position, entry in enumerate(doc.get("slices", [])):
@@ -296,7 +296,7 @@ def validate_slices(index: dict, doc: dict) -> list[str]:
                         f"slice {label} frame {frame_index}: cell appears twice — {key}"
                     )
                 seen_cells.add(key)
-                # <lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>
+                # <service>/<phase>/<scenario>/<path>/<lane>/<step>
                 scenarios_touched.add("/".join(key.split("/")[:3]))
 
         if len(scenarios_touched) > 1:
@@ -326,13 +326,13 @@ def sql_array(values: list[str], cast: str) -> str:
     return f"array[{inner}]::{cast}"
 
 
-def emit_sql(index: dict, doc: dict, locale: str, lifecycle_id: str) -> str:
+def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
     """Transactional replace, per slice — same semantics as scenario import.
 
     Deleting the slice row cascades its items, so a regenerated slice never
     leaves stale frames behind.
     """
-    lifecycle_key = index["lifecycle_key"]
+    service_key = index["service_key"]
     locales = index["locales"]
     lines = [
         "-- Generated by skills/slice/scripts/slice_tools.py — do not edit by hand.",
@@ -342,15 +342,15 @@ def emit_sql(index: dict, doc: dict, locale: str, lifecycle_id: str) -> str:
     ]
 
     for entry in doc["slices"]:
-        sid = slice_id(locale, lifecycle_key, entry["key"])
+        sid = slice_id(locale, service_key, entry["key"])
         title = pick_text(entry["title"], locale, locales)
         description = pick_text(entry.get("description"), locale, locales)
         lines.append(f"-- slice: {entry['key']} ({entry['type']})")
         lines.append(f"delete from public.slices where id = {sql_quote(sid)};")
         lines.append(
             "insert into public.slices "
-            "(id, service_lifecycle_id, slice_type, title, description, actor, locale, origin, position) values ("
-            f"{sql_quote(sid)}, {sql_quote(lifecycle_id)}, {sql_quote(entry['type'])}, "
+            "(id, service_id, slice_type, title, description, actor, locale, origin, position) values ("
+            f"{sql_quote(sid)}, {sql_quote(service_id)}, {sql_quote(entry['type'])}, "
             f"{sql_quote(title)}, {sql_quote(description)}, {sql_quote(entry.get('actor'))}, "
             f"{sql_quote(locale)}, {sql_quote(entry.get('origin', 'generated'))}, {int(entry.get('order', 0))});"
         )
@@ -364,7 +364,7 @@ def emit_sql(index: dict, doc: dict, locale: str, lifecycle_id: str) -> str:
             lines.append(
                 "insert into public.slice_items "
                 "(id, slice_id, position, cell_ids, cell_keys, caption, narrative, illustration) values ("
-                f"{sql_quote(slice_item_id(locale, lifecycle_key, entry['key'], position))}, "
+                f"{sql_quote(slice_item_id(locale, service_key, entry['key'], position))}, "
                 f"{sql_quote(sid)}, {position}, {sql_array(ids, 'uuid[]')}, "
                 f"{sql_array(keys, 'text[]')}, {sql_quote(caption)}, {sql_quote(narrative)}, "
                 + (f"{sql_quote(json.dumps(illustration, ensure_ascii=False))}::jsonb" if illustration else "null")
@@ -405,8 +405,8 @@ def emit_doc(index: dict, doc: dict, locale: str) -> str:
                 out.append(narrative)
                 out.append("")
             for key in frame["cells"]:
-                path_key, layer_key, step_key = key.split("/")[3:6]
-                out.append(f"- `{layer_key}` @ `{step_key}` — `{key}`")
+                path_key, lane_key, step_key = key.split("/")[3:6]
+                out.append(f"- `{lane_key}` @ `{step_key}` — `{key}`")
             out.append("")
 
     return "\n".join(out)
@@ -429,20 +429,20 @@ def build_skeleton(args, index: dict) -> dict:
         raise SliceError(f"unknown path '{path_key}' in scenario '{scenario_key}'")
 
     if args.type == "lane":
-        frames = select_lane(index, scenario_key, path_key, _require(args.layer, "--layer"))
+        frames = select_lane(index, scenario_key, path_key, _require(args.lane, "--lane"))
     elif args.type == "step":
         frames = select_step(index, scenario_key, path_key, _require(args.step, "--step"))
     elif args.type == "cell":
         frames = select_cell(
-            index, scenario_key, path_key, _require(args.layer, "--layer"), _require(args.step, "--step")
+            index, scenario_key, path_key, _require(args.lane, "--lane"), _require(args.step, "--step")
         )
     elif args.type == "journey":
-        frames = select_journey(index, scenario_key, path_key, _require(args.layer, "--layer"))
+        frames = select_journey(index, scenario_key, path_key, _require(args.lane, "--lane"))
     else:
         frames = select_custom(index, scenario_key, path_key, args.cell or [])
 
     if not frames:
-        raise SliceError("selection matched no cells — check the layer/step keys")
+        raise SliceError("selection matched no cells — check the lane/step keys")
 
     steps = index["scenarios"][scenario_key]["steps"]
     skeleton_frames = []
@@ -486,10 +486,10 @@ def main() -> int:
     select.add_argument("--path", help="defaults to the scenario's first path")
     select.add_argument("--type", required=True, choices=SLICE_TYPES)
     select.add_argument("--key", required=True, help="stable slice key")
-    select.add_argument("--layer", help="lane key (journey, lane, cell)")
+    select.add_argument("--lane", help="lane key (journey, lane, cell)")
     select.add_argument("--step", help="step key (step, cell)")
     select.add_argument("--actor", help="actor label recorded on the slice")
-    select.add_argument("--cell", action="append", help="custom: 'layer:step', repeatable")
+    select.add_argument("--cell", action="append", help="custom: 'lane:step', repeatable")
 
     for name, helptext in (
         ("validate", "check a slice file against the IR"),
@@ -502,7 +502,7 @@ def main() -> int:
         if name != "validate":
             command.add_argument("--locale", required=True)
         if name == "sql":
-            command.add_argument("--lifecycle-id", required=True, help="target service_lifecycles.id")
+            command.add_argument("--service-id", required=True, help="target services.id")
 
     args = parser.parse_args()
 
@@ -524,7 +524,7 @@ def main() -> int:
             count = sum(len(entry["frames"]) for entry in doc["slices"])
             print(f"ok: {len(doc['slices'])} slice(s), {count} frame(s)")
         elif args.command == "sql":
-            print(emit_sql(index, doc, args.locale, args.lifecycle_id))
+            print(emit_sql(index, doc, args.locale, args.service_id))
         else:
             print(emit_doc(index, doc, args.locale))
         return 0

@@ -1,7 +1,7 @@
 /**
- * Semantic layer roles — the stable contract between blueprint content and
- * rendering. A layer's display name (`layers.name`) is free-form in any
- * language; its `layer_role` carries the rendering semantics (pill cells,
+ * Semantic lane roles — the stable contract between blueprint content and
+ * rendering. A lane's display name (`lanes.name`) is free-form in any
+ * language; its `lane_role` carries the rendering semantics (pill cells,
  * visual rows, divider-line anchoring). The vocabulary is extensible:
  * org-defined custom roles render as generic swimlanes, as does a null role
  * (e.g. actor lanes such as "现场技术员" or "Field Crew").
@@ -15,7 +15,7 @@ export const SUPPORT_SYSTEMS_ROLE = 'support_systems'
 export const VISUAL_ROLE = 'visual'
 export const STEP_VISUAL_ROLE = 'step_visual'
 
-export const CANONICAL_LAYER_ROLES = [
+export const CANONICAL_LANE_ROLES = [
   CUSTOMER_ACTIONS_ROLE,
   FRONTSTAGE_ACTIONS_ROLE,
   BACKSTAGE_ACTIONS_ROLE,
@@ -26,14 +26,14 @@ export const CANONICAL_LAYER_ROLES = [
   STEP_VISUAL_ROLE,
 ] as const
 
-export type CanonicalLayerRole = (typeof CANONICAL_LAYER_ROLES)[number]
+export type CanonicalLaneRole = (typeof CANONICAL_LANE_ROLES)[number]
 
 /**
- * Legacy magic-name → role mapping for content that predates `layer_role`
+ * Legacy magic-name → role mapping for content that predates `lane_role`
  * (DB rows without the backfill and all hand-written TS fallbacks, which
  * carry no role).
  */
-export const LEGACY_NAME_TO_ROLE: Readonly<Record<string, CanonicalLayerRole>> =
+export const LEGACY_NAME_TO_ROLE: Readonly<Record<string, CanonicalLaneRole>> =
   {
     'Customer Actions': CUSTOMER_ACTIONS_ROLE,
     'Front Stage Actions': FRONTSTAGE_ACTIONS_ROLE,
@@ -47,10 +47,10 @@ export const LEGACY_NAME_TO_ROLE: Readonly<Record<string, CanonicalLayerRole>> =
     'Step Visual': STEP_VISUAL_ROLE,
   }
 
-/** Resolve a layer's semantic role: explicit role, else legacy name, else none. */
-export function getLayerRole(layer: {
+/** Resolve a lane's semantic role: explicit role, else legacy name, else none. */
+export function getLaneRole(lane: {
   name: string
   role?: string | null
 }): string | null {
-  return layer.role ?? LEGACY_NAME_TO_ROLE[layer.name] ?? null
+  return lane.role ?? LEGACY_NAME_TO_ROLE[lane.name] ?? null
 }

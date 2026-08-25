@@ -14,7 +14,7 @@ import type { BlueprintData } from '@/types/blueprint'
 type FallbackPathListItem = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   note: string | null
   path_type: BlueprintData['path']['path_type']
 }
@@ -55,7 +55,7 @@ const FALLBACK_PATHS_BY_SCENARIO: Record<string, FallbackPathListItem[]> =
       fallbacks.map((fallback) => ({
         id: fallback.path.id,
         name: fallback.path.name,
-        description: fallback.path.description,
+        summary: fallback.path.summary,
         note: fallback.path.note,
         path_type: fallback.path.path_type,
       })),
@@ -99,7 +99,7 @@ export function mergePathsWithFallback<
   T extends {
     id: string
     name: string
-    description: string | null
+    summary: string | null
     note: string | null
     path_type: BlueprintData['path']['path_type']
   },
@@ -118,7 +118,7 @@ export function mergePathsWithFallback<
       merged.set(fallbackPath.id, {
         ...existing,
         name: existing.name.trim() ? existing.name : fallbackPath.name,
-        description: existing.description ?? fallbackPath.description,
+        summary: existing.summary ?? fallbackPath.summary,
         note: existing.note ?? fallbackPath.note,
       })
     } else {
@@ -157,7 +157,7 @@ function withPathIdentity(
   path: {
     id: string
     name: string
-    description?: string | null
+    summary?: string | null
     note?: string | null
     path_type: BlueprintData['path']['path_type']
   },
@@ -168,7 +168,7 @@ function withPathIdentity(
       ...data.path,
       id: path.id,
       name: path.name,
-      description: path.description ?? data.path.description,
+      summary: path.summary ?? data.path.summary,
       note: path.note ?? data.path.note,
       path_type: path.path_type,
     },

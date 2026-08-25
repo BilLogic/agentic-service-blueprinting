@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEvent } from 'react'
 import { X } from 'lucide-react'
-import { PathDescriptionTooltip } from '@/components/blueprint/PathDescriptionTooltip'
+import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { Badge } from '@/components/ui/badge'
 import { getPathBadgeStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
@@ -8,7 +8,7 @@ import type { PathType } from '@/types/database'
 
 type PathLabelBadgeProps = {
   name: string
-  description: string | null | undefined
+  summary: string | null | undefined
   pathType: PathType
   compact?: boolean
   className?: string
@@ -17,16 +17,16 @@ type PathLabelBadgeProps = {
   /** When set, shows a dismiss control that removes this path from the active set. */
   onRemove?: () => void
   /**
-   * Path descriptions are scenario-specific — set false on overview/phase chrome.
+   * Path summaries are scenario-specific — set false on overview/phase chrome.
    * Defaults to true.
    */
   showTooltip?: boolean
 }
 
-/** Path name pill with shadcn Badge styling, path-type color, and description tooltip. */
+/** Path name pill with shadcn Badge styling, path-type color, and summary tooltip. */
 export function PathLabelBadge({
   name,
-  description,
+  summary,
   pathType,
   compact = false,
   className,
@@ -80,12 +80,12 @@ export function PathLabelBadge({
   if (!showTooltip) return badge
 
   return (
-    <PathDescriptionTooltip
-      description={description}
+    <PathSummaryTooltip
+      summary={summary}
       pathName={name}
       side={side}
     >
       {badge}
-    </PathDescriptionTooltip>
+    </PathSummaryTooltip>
   )
 }

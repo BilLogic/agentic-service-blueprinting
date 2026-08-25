@@ -47,7 +47,7 @@ type ResizableComparePanelProps = {
   navigateLabel?: string
   /** Scenario title on the gray panel top edge (service overview). */
   panelTitleLabel?: string
-  panelTitleDescription?: string | null
+  panelTitleSummary?: string | null
   /** Optional info note shown inside the panel title badge. */
   panelTitleInfoTooltip?: string | null
   /** Anchor id for canvas camera focus framing. */
@@ -78,7 +78,7 @@ export function ResizableComparePanel({
   onNavigate,
   navigateLabel,
   panelTitleLabel,
-  panelTitleDescription,
+  panelTitleSummary,
   panelTitleInfoTooltip,
   focusSlideId,
   dimmed = false,
@@ -283,7 +283,7 @@ export function ResizableComparePanel({
       {panelTitleLabel ? (
         <ScenarioTitleBadge
           name={panelTitleLabel}
-          description={panelTitleDescription}
+          summary={panelTitleSummary}
           infoTooltip={panelTitleInfoTooltip}
           tone="panel"
           className="pointer-events-auto absolute z-30 max-w-[min(calc(100%-3rem),28rem)]"

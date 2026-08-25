@@ -7,7 +7,7 @@
  * called `auditor`, the canvas agent calls `read_reference { name: 'data-model' }`,
  * a hook fires by event. None of it type-checks. Renaming any of it breaks a
  * consumer at runtime with no compile error and no test failure — which is
- * exactly how a rename shipped once already (`layer-roles` -> `lane-roles`
+ * exactly how a rename shipped once already (`lane-roles` -> `lane-roles`
  * left fourteen stale pointers, one of them an unbuildable `?raw` import).
  *
  * So the names are generated from the tree, committed, and diffed in test.

@@ -16,7 +16,7 @@ import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
 import type { BlueprintData } from '@/types/blueprint'
 
 type CanvasRawPath = RawPath & {
-  service_scenario_id: string
+  scenario_id: string
 }
 
 type CanvasBlueprintMaps = {
@@ -81,11 +81,11 @@ function deriveFromRows(
   let anyFallback = false
 
   for (const row of rows) {
-    const list = grouped.get(row.service_scenario_id) ?? []
+    const list = grouped.get(row.scenario_id) ?? []
     list.push(row)
-    grouped.set(row.service_scenario_id, list)
+    grouped.set(row.scenario_id, list)
 
-    const resolved = resolveBlueprintForScenario(row.service_scenario_id, row)
+    const resolved = resolveBlueprintForScenario(row.scenario_id, row)
     if (resolved.blueprint) {
       byPathId.set(row.id, resolved.blueprint)
       if (resolved.source === 'fallback') anyFallback = true
@@ -105,7 +105,7 @@ function deriveFromRows(
           scenarioPaths.map((path) => ({
             id: path.id,
             name: path.name,
-            description: path.description ?? null,
+            summary: path.summary ?? null,
             note: path.note ?? null,
             path_type: path.path_type,
           })),
@@ -219,7 +219,7 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
             const { data, error } = await client!
               .from('paths')
               .select(PATH_BLUEPRINT_SELECT)
-              .eq('service_scenario_id', scenarioId)
+              .eq('scenario_id', scenarioId)
             if (error) throw new Error(error.message)
             return (data ?? []) as CanvasRawPath[]
           })(),

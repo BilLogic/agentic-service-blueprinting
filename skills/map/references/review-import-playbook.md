@@ -17,7 +17,7 @@ Render each drafted scenario as a **markdown grid** (lanes as rows, steps as
 columns, cell labels in the grid) in chat — non-technical users can't edit
 the raw IR JSON safely, so the preview IS their editing surface.
 
-- **Paginate above ~8 layers or ~12 steps** — a 10×20 grid in one message is
+- **Paginate above ~8 lanes or ~12 steps** — a 10×20 grid in one message is
   unreadable. Split by lane groups or step ranges and label each page.
 - Show path-by-path; call out triggers as a short list under the grid.
 - Surface every `needs_review: true` cell explicitly with its provenance —
@@ -104,7 +104,7 @@ One artifact set and one target per locale:
 ### 8. Read-back verification
 
 Read the target back: per-scenario row counts (paths, steps, path_steps,
-layers, cells, triggers) match the IR + content spot-checks. Record
+lanes, cells, triggers) match the IR + content spot-checks. Record
 `last_import` (hash + timestamp) per locale in the workspace state and mark
 scenarios `imported`. Optionally dispatch `render-checker` against the
 running app now, or defer to the present/deploy step.

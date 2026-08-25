@@ -3,7 +3,7 @@ import type { PathType } from '@/types/database'
 export type PathListItem = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   note: string | null
   path_type: PathType
 }

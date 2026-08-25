@@ -13,7 +13,7 @@ import { SliceScreenComposer } from '@/components/editor/SliceScreenComposer'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { findFirstLifecycleId } from '@/lib/lifecycle'
+import { findFirstServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceType'
 import { validateDraftSlice, type DraftFrame } from '@/lib/sliceValidation'
@@ -123,12 +123,12 @@ export function CreateSliceSheet({
     setBusy(true)
     setError(null)
     try {
-      const lifecycleId = await findFirstLifecycleId(client)
-      if (!lifecycleId) {
-        throw new Error('No service lifecycle found to attach this slice to.')
+      const serviceId = await findFirstServiceId(client)
+      if (!serviceId) {
+        throw new Error('No service service found to attach this slice to.')
       }
       const slice = await createSlice(client, {
-        lifecycleId,
+        serviceId,
         title,
         description,
         sliceType,

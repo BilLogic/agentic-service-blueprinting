@@ -54,7 +54,7 @@ type IntegratedTriggerArrowsProps = {
   paths?: IntegratedPathRef[]
   contentRef: RefObject<HTMLElement | null>
   scrollContainerRef: RefObject<HTMLElement | null>
-  layer: ArrowLayer
+  lane: ArrowLayer
 }
 
 type SimpleSegment = {
@@ -126,7 +126,7 @@ function resolveSegmentStyle(
 }
 
 /**
- * Arrow overlay for a path band: a forward layer and a wrap layer, plus the
+ * Arrow overlay for a path band: a forward lane and a wrap lane, plus the
  * merged overhead-rail routes, which are grouped across triggers rather than
  * drawn one at a time.
  */
@@ -135,7 +135,7 @@ export function IntegratedTriggerArrows({
   paths = [],
   contentRef,
   scrollContainerRef,
-  layer,
+  lane,
 }: IntegratedTriggerArrowsProps) {
   const [simpleSegments, setSimpleSegments] = useState<SimpleSegment[]>([])
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -292,8 +292,8 @@ export function IntegratedTriggerArrows({
         if (!cellAEl || !cellBEl) continue
 
         const wrap = isWrapTrigger(cellAEl, cellBEl)
-        if (layer === 'forward' && wrap) continue
-        if (layer === 'wrap' && !wrap) continue
+        if (lane === 'forward' && wrap) continue
+        if (lane === 'wrap' && !wrap) continue
 
         const d = buildBidirectionalArrowPath(cellAEl, cellBEl, content)
         if (!d) continue
@@ -315,8 +315,8 @@ export function IntegratedTriggerArrows({
         if (!sourceEl || !targetEl) continue
 
         const wrap = isWrapTrigger(sourceEl, targetEl)
-        if (layer === 'forward' && wrap) continue
-        if (layer === 'wrap' && !wrap) continue
+        if (lane === 'forward' && wrap) continue
+        if (lane === 'wrap' && !wrap) continue
 
         const d = buildArrowPath(sourceEl, targetEl, content)
         if (!d) continue
@@ -339,7 +339,7 @@ export function IntegratedTriggerArrows({
       serializeSegments(prev) === nextKey ? prev : nextSimple,
     )
     measureSize()
-  }, [contentRef, layer, measureSize, pathById, triggers])
+  }, [contentRef, lane, measureSize, pathById, triggers])
 
   useEffect(() => {
     updateArrows()
@@ -423,9 +423,9 @@ export function IntegratedTriggerArrows({
         'pointer-events-none absolute overflow-visible',
         // z-0, UNDER the z-[1] cells: a run that crosses a cell tucks
         // behind it instead of striking through its face — lines are
-        // always behind the blocks. The wrap layer stays above: it rides
+        // always behind the blocks. The wrap lane stays above: it rides
         // the empty corridors outside the rows by construction.
-        layer === 'forward' ? 'z-0' : 'z-[30]',
+        lane === 'forward' ? 'z-0' : 'z-[30]',
       )}
       style={svgStyle}
       overflow="visible"

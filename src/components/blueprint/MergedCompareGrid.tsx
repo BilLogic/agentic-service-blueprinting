@@ -15,11 +15,11 @@ import { IntegratedTriggerArrows } from '@/components/blueprint/IntegratedTrigge
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { useCompareGridAxis } from '@/hooks/useCompareGridAxis'
 import {
-  BLUEPRINT_LAYER_ROW_GAP,
+  BLUEPRINT_LANE_ROW_GAP,
   STEP_COLUMN_GAP,
   STEP_COLUMN_WIDTH,
   hasBlueprintCellContent,
-  layerPrecedesBlueprintDivider,
+  lanePrecedesBlueprintDivider,
   shouldUsePillCellContent,
   shouldUseVisualContent,
   type BlueprintCellVariant,
@@ -27,9 +27,9 @@ import {
 import {
   blueprintPanelLabelRailColor,
   blueprintPanelSectionFillColor,
-  getBlueprintLayerStyle,
-  getBlueprintLayerZone,
-  type BlueprintLayerStyle,
+  getBlueprintLaneStyle,
+  getBlueprintLaneZone,
+  type BlueprintLaneStyle,
 } from '@/lib/blueprintTheme'
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
@@ -56,7 +56,7 @@ import {
   getComparePathArrowData,
   getCompareBoardWrapperPadding,
   getMergedCompareRowTrackCss,
-  resolveBlueprintLayer,
+  resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
 import { getPathColor } from '@/lib/pathColorTheme'
 import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
@@ -64,7 +64,7 @@ import { cn } from '@/lib/utils'
 import type {
   BlueprintCell,
   BlueprintData,
-  BlueprintLayer,
+  BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
 
@@ -122,7 +122,7 @@ export function MergedCompareGrid({
   const bandRef = useRef<HTMLDivElement>(null)
   const fallbackScrollRef = useRef<HTMLDivElement>(null)
   const resolvedScrollRef = scrollContainerRef ?? fallbackScrollRef
-  const { layers, rows, toggleLayer, tracks, gridTemplateColumns } =
+  const { lanes, rows, toggleLane, tracks, gridTemplateColumns } =
     useCompareGridAxis(model, blueprints, compact)
 
   const rowTrackCss = useMemo(
@@ -172,10 +172,10 @@ export function MergedCompareGrid({
     const slotByKey = new Map(model.slots.map((slot) => [slot.slotKey, slot]))
     const byKey = new Map<string, MergedSlotAssembly>()
     for (const row of rows) {
-      if (row.kind !== 'layer' || !row.layer || row.collapsed) continue
-      const layer = row.layer
-      const laneKey = normalizeCompareName(layer.name)
-      const variant = resolveMergedCellVariant(layer)
+      if (row.kind !== 'lane' || !row.lane || row.collapsed) continue
+      const lane = row.lane
+      const laneKey = normalizeCompareName(lane.name)
+      const variant = resolveMergedCellVariant(lane)
       for (const track of tracks) {
         if (track.kind !== 'column') continue
         const slot = slotByKey.get(makeSlotKey(laneKey, track.key))
@@ -187,7 +187,7 @@ export function MergedCompareGrid({
           const entry = slot?.perPath[pathId]
           const cellIds = entry?.present ? entry.cellIds : undefined
           if (variant === 'visual') {
-            // A visual lane's face comes from the walkthrough layers' pictures,
+            // A visual lane's face comes from the walkthrough lanes' pictures,
             // not from its own cell text, so it merges on the picture set.
             const pictures = resolveVisualStepPictureEntries(
               runtime.blueprint,
@@ -223,7 +223,7 @@ export function MergedCompareGrid({
           })
         }
         byKey.set(
-          mergedSlotKey(layer.id, track.key),
+          mergedSlotKey(lane.id, track.key),
           assembleMergedSlot(pathIds, candidates),
         )
       }
@@ -293,7 +293,7 @@ export function MergedCompareGrid({
             gridTemplateRows: rowTrackCss,
             // Do NOT rely on gap inheritance into the subgrid — explicit here.
             columnGap: STEP_COLUMN_GAP,
-            rowGap: BLUEPRINT_LAYER_ROW_GAP,
+            rowGap: BLUEPRINT_LANE_ROW_GAP,
             marginTop: COMPARE_STACKED_HEADER_GAP,
           }}
         >
@@ -327,9 +327,9 @@ export function MergedCompareGrid({
               <Fragment key={`rail-${row.key}`}>
                 <BlueprintLabelRow
                   row={row}
-                  layers={layers}
+                  lanes={lanes}
                   compact={compact}
-                  onToggleLayer={toggleLayer}
+                  onToggleLane={toggleLane}
                   style={{
                     gridColumn: 1,
                     gridRow: rowIndex + 1,
@@ -346,7 +346,7 @@ export function MergedCompareGrid({
           {arrowDataByPath.map((data) => (
             <IntegratedTriggerArrows
               key={`forward-${data.path.id}`}
-              layer="forward"
+              lane="forward"
               triggers={data.triggers}
               cells={data.cells}
               steps={data.steps}
@@ -362,10 +362,10 @@ export function MergedCompareGrid({
               rowIndex={rowIndex}
               cellTracksOnly
             >
-              {row.layer ? (
+              {row.lane ? (
                 <MergedLaneRow
-                  layer={row.layer}
-                  layers={layers}
+                  lane={row.lane}
+                  lanes={lanes}
                   tracks={tracks}
                   assemblyByKey={assemblyByKey}
                   runtimeByPathId={runtimeByPathId}
@@ -379,7 +379,7 @@ export function MergedCompareGrid({
           {arrowDataByPath.map((data) => (
             <IntegratedTriggerArrows
               key={`wrap-${data.path.id}`}
-              layer="wrap"
+              lane="wrap"
               triggers={data.triggers}
               cells={data.cells}
               steps={data.steps}
@@ -395,14 +395,14 @@ export function MergedCompareGrid({
 }
 
 /** Lane × track — the merged grid's DOM-side slot identity. */
-function mergedSlotKey(layerId: string, trackKey: string): string {
-  return `${layerId}\u0000${trackKey}`
+function mergedSlotKey(laneId: string, trackKey: string): string {
+  return `${laneId}\u0000${trackKey}`
 }
 
-function resolveMergedCellVariant(layer: BlueprintLayer): BlueprintCellVariant {
-  return shouldUseVisualContent(layer)
+function resolveMergedCellVariant(lane: BlueprintLane): BlueprintCellVariant {
+  return shouldUseVisualContent(lane)
     ? 'visual'
-    : shouldUsePillCellContent(layer)
+    : shouldUsePillCellContent(lane)
       ? 'pills'
       : 'default'
 }
@@ -467,7 +467,7 @@ function MergedSectionFrame({
           <PathLabelBadge
             key={path.id}
             name={`${shortLabels.get(path.id) ?? ''} ${path.name}`.trim()}
-            description={path.description}
+            summary={path.summary}
             pathType={path.path_type}
             compact={compact}
           />
@@ -479,8 +479,8 @@ function MergedSectionFrame({
 
 /** One lane, merged: the same slot sequence as a stacked band's lane row. */
 function MergedLaneRow({
-  layer,
-  layers,
+  lane,
+  lanes,
   tracks,
   assemblyByKey,
   runtimeByPathId,
@@ -488,8 +488,8 @@ function MergedLaneRow({
   scenarioName,
   phaseName,
 }: {
-  layer: BlueprintLayer
-  layers: BlueprintLayer[]
+  lane: BlueprintLane
+  lanes: BlueprintLane[]
   tracks: readonly CompareGridTrack[]
   assemblyByKey: ReadonlyMap<string, MergedSlotAssembly>
   runtimeByPathId: ReadonlyMap<string, MergedPathRuntime>
@@ -497,13 +497,13 @@ function MergedLaneRow({
   scenarioName?: string
   phaseName?: string
 }) {
-  const laneStyle = getBlueprintLayerStyle(
-    layer.name,
-    getBlueprintLayerZone(layer, layers),
-    layer.role,
+  const laneStyle = getBlueprintLaneStyle(
+    lane.name,
+    getBlueprintLaneZone(lane, lanes),
+    lane.role,
   )
-  const variant = resolveMergedCellVariant(layer)
-  const flushBottom = layerPrecedesBlueprintDivider(layer, layers)
+  const variant = resolveMergedCellVariant(lane)
+  const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
 
   return (
     <div className="relative flex items-stretch rounded-sm">
@@ -525,7 +525,7 @@ function MergedLaneRow({
           />
         )
 
-        const assembly = assemblyByKey.get(mergedSlotKey(layer.id, track.key))
+        const assembly = assemblyByKey.get(mergedSlotKey(lane.id, track.key))
         const subCells: readonly MergedSubCell[] =
           assembly === undefined || assembly.kind === 'empty'
             ? []
@@ -559,7 +559,7 @@ function MergedLaneRow({
                 subCell={subCells[0]}
                 runtime={runtimeByPathId.get(subCells[0].pathId)}
                 columnIndex={trackIndex}
-                layer={layer}
+                lane={lane}
                 laneStyle={laneStyle}
                 variant={variant}
                 compact={compact}
@@ -577,7 +577,7 @@ function MergedLaneRow({
                     subCell={subCell}
                     runtime={runtimeByPathId.get(subCell.pathId)}
                     columnIndex={trackIndex}
-                    layer={layer}
+                    lane={lane}
                     laneStyle={laneStyle}
                     variant={variant}
                     compact={compact}
@@ -603,7 +603,7 @@ function MergedSubCellBlock({
   subCell,
   runtime,
   columnIndex,
-  layer,
+  lane,
   laneStyle,
   variant,
   compact,
@@ -617,8 +617,8 @@ function MergedSubCellBlock({
   runtime: MergedPathRuntime | undefined
   /** Canonical track index — the LAYOUT column, see `stepIndex` below. */
   columnIndex: number
-  layer: BlueprintLayer
-  laneStyle: BlueprintLayerStyle
+  lane: BlueprintLane
+  laneStyle: BlueprintLaneStyle
   variant: BlueprintCellVariant
   compact?: boolean
   flushBottom?: boolean
@@ -676,20 +676,20 @@ function MergedSubCellBlock({
               scenarioName,
               phaseName,
               // The canonical lane name — lanes are reconciled across paths
-              // by normalized name, and this path's own layer is the one the
+              // by normalized name, and this path's own lane is the one the
               // cell actually lives in.
-              layerName: resolveBlueprintLayer(layer, blueprint).name,
+              laneName: resolveBlueprintLane(lane, blueprint).name,
               stepId: subCell.stepId,
               stepName: step.name,
               stepIndex: pathStepIndex,
               cellId,
               cellContent: cell?.content ?? '',
               cellPicture: cell?.picture ?? null,
-              cellDescription: cell?.description ?? null,
+              cellSummary: cell?.summary ?? null,
               cellLinks: cell?.links,
               pathId: blueprint.path.id,
               pathName: blueprint.path.name,
-              pathDescription: blueprint.path.description,
+              pathSummary: blueprint.path.summary,
               pathType: blueprint.path.path_type,
             }
           : undefined

@@ -4,10 +4,10 @@ import {
   getCellContentMinHeight,
   getEffectiveLineCount,
 } from '@/lib/blueprintLayout'
-import type { BlueprintLayer } from '@/types/blueprint'
+import type { BlueprintLane } from '@/types/blueprint'
 
 // A plain act lane: text content, no visual/pill treatment.
-const ACT_LANE = { id: 'l1', name: 'Field Crew', role: null } as BlueprintLayer
+const ACT_LANE = { id: 'l1', name: 'Field Crew', role: null } as BlueprintLane
 
 // Pins the todo-026 estimator floor: the height estimate must be >= the
 // real wrapped height for the worst string that ever shipped (257 chars —

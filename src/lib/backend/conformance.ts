@@ -144,10 +144,10 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
       const blueprint = await backend.blueprints.getBlueprint(fixture.pathId)
       require(blueprint !== null, `path ${fixture.pathId} did not resolve`)
       require(blueprint.cells.length > 0, 'blueprint has no cells to check')
-      const lanes = new Set(blueprint.layers.map((lane) => lane.id))
+      const lanes = new Set(blueprint.lanes.map((lane) => lane.id))
       const steps = new Set(blueprint.steps.map((step) => step.id))
       for (const cell of blueprint.cells) {
-        require(lanes.has(cell.layer_id), `cell ${cell.id} names a lane not in the blueprint`)
+        require(lanes.has(cell.lane_id), `cell ${cell.id} names a lane not in the blueprint`)
         require(steps.has(cell.step_id), `cell ${cell.id} names a step not in the blueprint`)
       }
       const cells = new Set(blueprint.cells.map((cell) => cell.id))

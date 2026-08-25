@@ -31,26 +31,26 @@ import { cn } from '@/lib/utils'
 type PhaseMenubarHeaderProps = {
   slide: NavItem
   slides: NavItem[]
-  /** Paths still inform the description fallback; filtering lives in the sidebar. */
+  /** Paths still inform the summary fallback; filtering lives in the sidebar. */
   paths?: PathOption[]
   selectedPathIds?: string[]
   className?: string
 }
 
-function resolveHeaderDescription(
+function resolveHeaderSummary(
   slide: NavItem,
   paths: PathOption[],
   selectedPathIds: string[],
 ): string | null | undefined {
   if (isSubslide(slide)) {
-    if (slide.description?.trim()) return slide.description
+    if (slide.summary?.trim()) return slide.summary
 
     const selectedPath = paths.find((path) => selectedPathIds.includes(path.id))
-    return selectedPath?.description ?? paths[0]?.description ?? null
+    return selectedPath?.summary ?? paths[0]?.summary ?? null
   }
 
   return (
-    slide.description ?? 'Scenarios in this phase and how they connect.'
+    slide.summary ?? 'Scenarios in this phase and how they connect.'
   )
 }
 
@@ -200,7 +200,7 @@ export function PhaseMenubarHeader({
   className,
 }: PhaseMenubarHeaderProps) {
   const label = getSlideDisplayLabel(slide, slides)
-  const description = resolveHeaderDescription(slide, paths, selectedPathIds)
+  const summary = resolveHeaderSummary(slide, paths, selectedPathIds)
 
   return (
     <Menubar
@@ -213,7 +213,7 @@ export function PhaseMenubarHeader({
       <div className={BLUEPRINT_MENUBAR_TITLE_CLASS}>
         <NavbarSlideTitleNav
           label={label}
-          description={description}
+          summary={summary}
           className="shrink-0"
         />
       </div>

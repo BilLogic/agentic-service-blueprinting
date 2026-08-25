@@ -254,7 +254,7 @@ export function ScenarioBlueprintPanel({
     })
     const unregisterJump = registerAgentUiCommand({
       name: 'jump_divergence',
-      description:
+      summary:
         "Fly the camera to a divergent STEP of the compared paths and mark it active (the ledger opens that step's group; in Stacked the strip highlights it too). arg: next | prev | <step number> — the canonical step number the ledger shows as \"Step N\".",
       run: async (arg) => {
         const state = getCompareReviewState()
@@ -298,7 +298,7 @@ export function ScenarioBlueprintPanel({
     })
     const unregisterFilter = registerAgentUiCommand({
       name: 'differences_filter',
-      description:
+      summary:
         'Filter the difference ledger. arg grammar: lane:"Front Stage" verdict:divergent step:"Pay" — space-separated, multi-select per key; verdicts: divergent | only; steps are matched by step name; empty arg clears the filter.',
       run: (arg) => {
         const input = arg?.trim() ?? ''
@@ -366,8 +366,8 @@ export function ScenarioBlueprintPanel({
   const stackedColumnCount =
     compareModel?.columns.length ??
     visibleBlueprints.reduce((sum, blueprint) => sum + blueprint.steps.length, 0)
-  const sectionTitleDescription = sectionTitleLabel
-    ? slide.description
+  const sectionTitleSummary = sectionTitleLabel
+    ? slide.summary
     : undefined
   const showPathTypeBadge = Boolean(sectionTitleLabel)
 
@@ -403,7 +403,7 @@ export function ScenarioBlueprintPanel({
     onNavigate,
     navigateLabel: onNavigate ? `Open ${scenarioName} scenario` : undefined,
     panelTitleLabel: sectionTitleLabel,
-    panelTitleDescription: sectionTitleDescription,
+    panelTitleSummary: sectionTitleSummary,
     // No note fed here by default. The prop is the seam a fork uses to hang
     // a per-scenario aside on the panel title (e.g. "runs in parallel with
     // …"); the template has nowhere to store one, so it stays empty.
@@ -528,7 +528,7 @@ export function ScenarioBlueprintPanel({
             scenarioName={scenarioName}
           phaseName={phaseName}
             headerTitleLabel={sectionTitleLabel}
-            headerTitleDescription={sectionTitleDescription}
+            headerTitleSummary={sectionTitleSummary}
             showPathTypeBadge={showPathTypeBadge}
             fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
             fillSwimlaneHeight={fillSwimlaneHeight}

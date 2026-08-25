@@ -14,18 +14,18 @@ import { ComparePathSectionFrame } from '@/components/blueprint/ComparePathSecti
 import { IntegratedTriggerArrows } from '@/components/blueprint/IntegratedTriggerArrows'
 import { BlueprintVisualPlayButton } from '@/components/blueprint/BlueprintVisualPlayButton'
 import {
-  BLUEPRINT_LAYER_ROW_GAP,
+  BLUEPRINT_LANE_ROW_GAP,
   STEP_COLUMN_GAP,
   STEP_COLUMN_WIDTH,
   hasBlueprintCellContent,
-  layerPrecedesBlueprintDivider,
+  lanePrecedesBlueprintDivider,
   shouldUsePillCellContent,
   shouldUseVisualContent,
 } from '@/lib/blueprintLayout'
 import { buildCellLookup, getCellAt, getCellsAt } from '@/lib/normalizeBlueprint'
 import {
-  getBlueprintLayerStyle,
-  getBlueprintLayerZone,
+  getBlueprintLaneStyle,
+  getBlueprintLaneZone,
 } from '@/lib/blueprintTheme'
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
@@ -35,7 +35,7 @@ import {
   COMPARE_STACKED_HEADER_GAP,
   type BlueprintLabelRowSpec,
   getComparePathArrowData,
-  resolveBlueprintLayer,
+  resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
 import { cn } from '@/lib/utils'
 import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
@@ -65,12 +65,12 @@ export type PathBandArrangement =
       tracks: readonly CompareGridTrack[]
       rowTrackCss: string
       marginTop?: number
-      onToggleLayer?: (layerId: string) => void
+      onToggleLane?: (laneId: string) => void
     }
 
 type BlueprintPathBandProps = {
   blueprint: BlueprintData
-  layers: BlueprintData['layers']
+  lanes: BlueprintData['lanes']
   rows: BlueprintLabelRowSpec[]
   arrangement: PathBandArrangement
   compact?: boolean
@@ -91,7 +91,7 @@ type BlueprintPathBandProps = {
  */
 export function BlueprintPathBand({
   blueprint,
-  layers,
+  lanes,
   rows,
   arrangement,
   compact,
@@ -117,7 +117,7 @@ export function BlueprintPathBand({
     buildVisualWalkthroughSession(blueprint).steps.length > 0
   // The stacked arrangement cannot shift cells right for the play control —
   // cells must stay on the canonical column tracks — so the control hangs in
-  // the rail gap instead (see CompareLayerRow).
+  // the rail gap instead (see CompareLaneRow).
   const playGutter =
     showPlay && arrangement.kind === 'column' ? VISUAL_PLAY_GUTTER : 0
 
@@ -135,7 +135,7 @@ export function BlueprintPathBand({
           gridTemplateRows: arrangement.rowTrackCss,
           // Do NOT rely on gap inheritance into the subgrid — explicit here.
           columnGap: STEP_COLUMN_GAP,
-          rowGap: BLUEPRINT_LAYER_ROW_GAP,
+          rowGap: BLUEPRINT_LANE_ROW_GAP,
           marginTop: arrangement.marginTop,
         }
 
@@ -206,9 +206,9 @@ export function BlueprintPathBand({
               <Fragment key={`rail-${row.key}`}>
                 <BlueprintLabelRow
                   row={row}
-                  layers={layers}
+                  lanes={lanes}
                   compact={compact}
-                  onToggleLayer={arrangement.onToggleLayer}
+                  onToggleLane={arrangement.onToggleLane}
                   style={{
                     gridColumn: 1,
                     gridRow: rowIndex + 1,
@@ -225,7 +225,7 @@ export function BlueprintPathBand({
         </>
       ) : null}
       <IntegratedTriggerArrows
-        layer="forward"
+        lane="forward"
         triggers={arrowData.triggers}
         cells={arrowData.cells}
         steps={arrowData.steps}
@@ -239,7 +239,7 @@ export function BlueprintPathBand({
           row={row}
           rowIndex={rowIndex}
           blueprint={blueprint}
-          layers={layers}
+          lanes={lanes}
           compact={compact}
           scenarioName={scenarioName}
           phaseName={phaseName}
@@ -252,7 +252,7 @@ export function BlueprintPathBand({
         />
       ))}
       <IntegratedTriggerArrows
-        layer="wrap"
+        lane="wrap"
         triggers={arrowData.triggers}
         cells={arrowData.cells}
         steps={arrowData.steps}
@@ -268,7 +268,7 @@ function CompareCardRow({
   row,
   rowIndex,
   blueprint,
-  layers,
+  lanes,
   compact,
   scenarioName,
   phaseName,
@@ -280,7 +280,7 @@ function CompareCardRow({
   row: BlueprintLabelRowSpec
   rowIndex: number
   blueprint: BlueprintData
-  layers: BlueprintData['layers']
+  lanes: BlueprintData['lanes']
   compact?: boolean
   scenarioName?: string
   phaseName?: string
@@ -295,11 +295,11 @@ function CompareCardRow({
       rowIndex={rowIndex}
       cellTracksOnly={stackedTracks !== undefined}
     >
-      {row.layer ? (
-        <CompareLayerRow
+      {row.lane ? (
+        <CompareLaneRow
           blueprint={blueprint}
-          layer={row.layer}
-          layers={layers}
+          lane={row.lane}
+          lanes={lanes}
           compact={compact}
           scenarioName={scenarioName}
           phaseName={phaseName}
@@ -313,10 +313,10 @@ function CompareCardRow({
   )
 }
 
-function CompareLayerRow({
+function CompareLaneRow({
   blueprint,
-  layer,
-  layers,
+  lane,
+  lanes,
   compact,
   scenarioName,
   phaseName,
@@ -326,8 +326,8 @@ function CompareLayerRow({
   stackedTracks,
 }: {
   blueprint: BlueprintData
-  layer: BlueprintData['layers'][number]
-  layers: BlueprintData['layers']
+  lane: BlueprintData['lanes'][number]
+  lanes: BlueprintData['lanes']
   compact?: boolean
   scenarioName?: string
   phaseName?: string
@@ -336,9 +336,9 @@ function CompareLayerRow({
   showPlay?: boolean
   stackedTracks?: readonly CompareGridTrack[]
 }) {
-  const blueprintLayer = useMemo(
-    () => resolveBlueprintLayer(layer, blueprint),
-    [blueprint, layer],
+  const blueprintLane = useMemo(
+    () => resolveBlueprintLane(lane, blueprint),
+    [blueprint, lane],
   )
   const cellLookup = useMemo(
     () => buildCellLookup(blueprint.cells),
@@ -348,30 +348,30 @@ function CompareLayerRow({
     () => new Map(blueprint.steps.map((step, index) => [step.id, index])),
     [blueprint.steps],
   )
-  const isPillLayer = shouldUsePillCellContent(layer)
-  const laneStyle = getBlueprintLayerStyle(
-    layer.name,
-    getBlueprintLayerZone(layer, layers),
-    layer.role,
+  const isPillLane = shouldUsePillCellContent(lane)
+  const laneStyle = getBlueprintLaneStyle(
+    lane.name,
+    getBlueprintLaneZone(lane, lanes),
+    lane.role,
   )
-  const flushBottom = layerPrecedesBlueprintDivider(layer, layers)
-  const isVisualLayer = shouldUseVisualContent(layer)
+  const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
+  const isVisualLane = shouldUseVisualContent(lane)
   const renderPlay =
-    showPlay && isVisualLayer && (playGutter > 0 || stackedTracks !== undefined)
+    showPlay && isVisualLane && (playGutter > 0 || stackedTracks !== undefined)
 
   const renderStepCell = (step: BlueprintStep, stepIndex: number) => {
-    const cell = getCellAt(cellLookup, blueprintLayer.id, step.id)
+    const cell = getCellAt(cellLookup, blueprintLane.id, step.id)
     // Tech slots hold one cell per touchpoint since the split.
-    const slotCells = isPillLayer
-      ? getCellsAt(cellLookup, blueprintLayer.id, step.id)
+    const slotCells = isPillLane
+      ? getCellsAt(cellLookup, blueprintLane.id, step.id)
       : undefined
-    const variant = isVisualLayer ? 'visual' : isPillLayer ? 'pills' : 'default'
-    const visualPictures = isVisualLayer
+    const variant = isVisualLane ? 'visual' : isPillLane ? 'pills' : 'default'
+    const visualPictures = isVisualLane
       ? resolveVisualStepPictureEntries(blueprint, step.id)
       : undefined
-    const showCell = isVisualLayer
+    const showCell = isVisualLane
       ? (visualPictures?.length ?? 0) > 0
-      : isPillLayer
+      : isPillLane
         ? (slotCells ?? []).some((entry) =>
             hasBlueprintCellContent(entry.content, variant),
           )
@@ -383,9 +383,9 @@ function CompareLayerRow({
       return (
         <BlueprintEmptyCellSlot
           pathId={blueprint.path.id}
-          layerId={blueprintLayer.id}
+          laneId={blueprintLane.id}
           stepId={step.id}
-          layerName={layer.name}
+          laneName={lane.name}
           stepName={step.name}
           stepIndex={stepIndex}
           scenarioName={scenarioName}
@@ -398,7 +398,7 @@ function CompareLayerRow({
 
     return (
       <CompareCellBlock
-        cellId={cell?.id ?? (isVisualLayer ? `visual-${step.id}` : undefined)}
+        cellId={cell?.id ?? (isVisualLane ? `visual-${step.id}` : undefined)}
         stepIndex={stepIndex}
         content={cell?.content}
         laneStyle={laneStyle}
@@ -408,22 +408,22 @@ function CompareLayerRow({
         visualPictures={visualPictures}
         slotCells={slotCells}
         selectionContext={
-          scenarioName && (cell?.id || isVisualLayer)
+          scenarioName && (cell?.id || isVisualLane)
             ? {
                 scenarioName,
                 phaseName,
-                layerName: layer.name,
+                laneName: lane.name,
                 stepId: step.id,
                 stepName: step.name,
                 stepIndex,
                 cellId: cell?.id ?? `visual-${step.id}`,
                 cellContent: cell?.content ?? '',
                 cellPicture: cell?.picture ?? null,
-                cellDescription: cell?.description ?? null,
+                cellSummary: cell?.summary ?? null,
                 cellLinks: cell?.links,
                 pathId: blueprint.path.id,
                 pathName: blueprint.path.name,
-                pathDescription: blueprint.path.description,
+                pathSummary: blueprint.path.summary,
                 pathType: blueprint.path.path_type,
               }
             : undefined
@@ -522,7 +522,7 @@ function CompareLayerRow({
     >
       {playButton}
       {blueprint.steps.map((step, stepIndex) => (
-        <Fragment key={`${layer.id}-${step.id}`}>
+        <Fragment key={`${lane.id}-${step.id}`}>
           {renderStepCell(step, stepIndex)}
           {stepIndex < blueprint.steps.length - 1 && (
             <div

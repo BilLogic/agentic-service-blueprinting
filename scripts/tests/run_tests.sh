@@ -78,17 +78,17 @@ python3 - "$SAMPLE" "$TMP" <<'PY'
 import json, sys
 sample_path, tmp = sys.argv[1], sys.argv[2]
 base = json.load(open(sample_path, encoding="utf-8"))
-scenario = lambda d: d["lifecycle"]["phases"][0]["scenarios"][0]
+scenario = lambda d: d["service"]["phases"][0]["scenarios"][0]
 
 # bad1: cell referencing a scenario step absent from the path's path_steps
 # ('archive' is not on as-done) — the DB-trigger preview case.
 bad = json.loads(json.dumps(base))
 scenario(bad)["paths"][1]["cells"].append(
-    {"layer": "compliance", "step": "archive", "content": {"en": "x", "zh": "x"}}
+    {"lane": "compliance", "step": "archive", "content": {"en": "x", "zh": "x"}}
 )
 json.dump(bad, open(f"{tmp}/bad1.json", "w", encoding="utf-8"), ensure_ascii=False)
 
-# bad2: duplicate step in path_steps (duplicate column_position).
+# bad2: duplicate step in path_steps (duplicate position).
 bad = json.loads(json.dumps(base))
 scenario(bad)["paths"][0]["path_steps"].append("report")
 json.dump(bad, open(f"{tmp}/bad2.json", "w", encoding="utf-8"), ensure_ascii=False)
@@ -98,8 +98,8 @@ json.dump(bad, open(f"{tmp}/bad2.json", "w", encoding="utf-8"), ensure_ascii=Fal
 bad = json.loads(json.dumps(base))
 scenario(bad)["paths"][0]["triggers"].append(
     {
-        "source": {"layer": "citizen", "step": "report"},
-        "target": {"layer": "field-tech", "step": "verify"},
+        "source": {"lane": "citizen", "step": "report"},
+        "target": {"lane": "field-tech", "step": "verify"},
     }
 )
 json.dump(bad, open(f"{tmp}/bad3.json", "w", encoding="utf-8"), ensure_ascii=False)
@@ -116,8 +116,19 @@ expect_invalid() {
 }
 
 expect_invalid "validator-bad1 (cell step missing from path_steps)" "$TMP/bad1.json" "cells_validate_path_match"
-expect_invalid "validator-bad2 (duplicate column_position in path_steps)" "$TMP/bad2.json" "duplicate step 'report' in path_steps"
+expect_invalid "validator-bad2 (duplicate position in path_steps)" "$TMP/bad2.json" "duplicate step 'report' in path_steps"
 expect_invalid "validator-bad3 (cross-path trigger)" "$TMP/bad3.json" "cross-path triggers are invalid"
+
+# The version field was checked for being a STRING and nothing else, so an IR
+# authored against a shape the database does not have validated cleanly.
+python3 - "$SAMPLE" "$TMP" <<'PY'
+import json, sys
+tmp = sys.argv[2]
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+doc["schema_version"] = "1999.01.01"
+json.dump(doc, open(f"{tmp}/bad-version.json", "w", encoding="utf-8"), ensure_ascii=False)
+PY
+expect_invalid "validator-schema-version (unknown version rejected by name)" "$TMP/bad-version.json" "unknown schema_version"
 
 # ---------------------------------------------------------------------------
 # 3. YAML branch: native JSON always works; YAML needs PyYAML (clear message)
@@ -156,7 +167,7 @@ pass "seed-generate (en + zh + --verify companions)"
 python3 - "$TMP/seed.en.sql" "$TMP/seed.zh.sql" <<'PY'
 import re, sys
 
-TABLE_ORDER = ["paths", "steps", "path_steps", "layers", "cells", "cell_triggers"]
+TABLE_ORDER = ["paths", "steps", "path_steps", "lanes", "cells", "cell_dependencies"]
 
 for path in sys.argv[1:]:
     sql = open(path, encoding="utf-8").read()
@@ -175,13 +186,13 @@ for path in sys.argv[1:]:
     assert quotes % 2 == 0, f"{path}: unbalanced single quotes ({quotes})"
 
     # Scenario-replace before any scenario-child insert; dependency order.
-    delete_pos = body.index("delete from public.service_scenarios")
+    delete_pos = body.index("delete from public.scenarios")
     positions = [body.index(f"insert into public.{t} ") for t in TABLE_ORDER]
     assert delete_pos < min(positions), f"{path}: delete must precede child inserts"
-    assert positions == sorted(positions), f"{path}: insert order violates paths->steps->path_steps->layers->cells->cell_triggers"
+    assert positions == sorted(positions), f"{path}: insert order violates paths->steps->path_steps->lanes->cells->cell_dependencies"
 
-    # Lifecycle/phases are upserts; scenario children are plain inserts.
-    assert body.count("on conflict (id) do update") == 2, f"{path}: lifecycle+phases must be the only upserts"
+    # Service/phases are upserts; scenario children are plain inserts.
+    assert body.count("on conflict (id) do update") == 2, f"{path}: service+phases must be the only upserts"
 
 en = open(sys.argv[1], encoding="utf-8").read()
 zh = open(sys.argv[2], encoding="utf-8").read()
@@ -194,7 +205,7 @@ uuid_re = re.compile(r"'[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 assert not (set(uuid_re.findall(en)) & set(uuid_re.findall(zh))), "en/zh UUID sets overlap"
 
 verify = open(sys.argv[1].replace(".sql", ".verify.sql"), encoding="utf-8").read()
-for needle in ("do $$", "path_steps", "cell_triggers", "raise exception"):
+for needle in ("do $$", "path_steps", "cell_dependencies", "raise exception"):
     assert needle in verify, f"verify sql missing {needle!r}"
 PY
 pass "seed-assertions (wrapper, balanced quotes, insert order, locale content, verify checks)"
@@ -211,13 +222,13 @@ fi
 pass "seed-invalid-ir (invalid IR generates nothing — target untouched)"
 
 # ---------------------------------------------------------------------------
-# 4b. Schema parity: cell_key, slot_position, spec fields, trigger kind,
+# 4b. Schema parity: cell_key, position, spec fields, trigger kind,
 #     derived-row reporting (authoring_foundation + derived_layer migrations)
 # ---------------------------------------------------------------------------
 
 # cell_key: emitted for every cell, deterministic, collision-free, and
 # byte-identical to BOTH the UUIDv5 input and the slice tooling's convention
-# (lifecycle/phase/scenario/path/layer/step).
+# (service/phase/scenario/path/lane/step).
 python3 - "$REPO_ROOT" "$SAMPLE" "$TMP/seed.en.sql" <<'PY' \
   || fail "seed-cell-key: cell_key emission broke parity"
 import json, sys
@@ -262,7 +273,7 @@ seed = open(sys.argv[1], encoding="utf-8").read()
 
 cells_stmt = seed.split("insert into public.cells ", 1)[1].split(";\n", 1)[0]
 cols = cells_stmt.split(") values", 1)[0]
-for col in ("slot_position", "cell_key", "function", "form", "value_props", "owner", "perceived_owner"):
+for col in ("position", "cell_key", "function", "form", "value_props", "owner", "perceived_owner"):
     assert col in cols, f"cells insert missing column {col}"
 
 # Values from the sample IR's spec-annotated cells (citizen/report as-designed
@@ -278,24 +289,24 @@ assert "'maintenance-contractor'" in seed, "partial spec cell (owner only) missi
 assert ", null, null, '[]'::jsonb, null, null)" in seed, \
     "spec-less cells should emit null/null/[]/null/null"
 
-layers_stmt = seed.split("insert into public.layers ", 1)[1].split(";\n", 1)[0]
-assert "kpis" in layers_stmt and "tools" in layers_stmt, "layers insert missing kpis/tools"
-assert "mean-time-to-repair" in layers_stmt, "layer kpis value missing"
-assert "FieldOps app" in layers_stmt, "layer tools value missing"
+lanes_stmt = seed.split("insert into public.lanes ", 1)[1].split(";\n", 1)[0]
+assert "kpis" in lanes_stmt and "tools" in lanes_stmt, "lanes insert missing kpis/tools"
+assert "mean-time-to-repair" in lanes_stmt, "lane kpis value missing"
+assert "FieldOps app" in lanes_stmt, "lane tools value missing"
 PY
-pass "seed-spec-fields (cells + layers wave-2 fields pass through; absent -> defaults)"
+pass "seed-spec-fields (cells + lanes wave-2 fields pass through; absent -> defaults)"
 
 # Trigger kind: every IR trigger is temporal — kind='trigger' emitted explicitly.
 python3 - "$TMP/seed.en.sql" <<'PY' || fail "seed-trigger-kind: kind emission broken"
 import sys
 seed = open(sys.argv[1], encoding="utf-8").read()
-stmt = seed.split("insert into public.cell_triggers ", 1)[1].split(";\n", 1)[0]
-assert "kind" in stmt.split(") values", 1)[0], "cell_triggers insert missing kind column"
+stmt = seed.split("insert into public.cell_dependencies ", 1)[1].split(";\n", 1)[0]
+assert "kind" in stmt.split(") values", 1)[0], "cell_dependencies insert missing kind column"
 rows = [r for r in stmt.split(") values", 1)[1].splitlines() if r.strip().startswith("(")]
 assert rows and all("'trigger'" in r for r in rows), "every trigger row must emit kind='trigger'"
 assert "'needs'" not in stmt, "IR cannot author needs edges — none may be emitted"
 PY
-pass "seed-trigger-kind (cell_triggers emit kind='trigger'; no needs edges from IR)"
+pass "seed-trigger-kind (cell_dependencies emit kind='trigger'; no needs edges from IR)"
 
 # --verify: cell_key checks fail loudly; derived rows are reported, never failed.
 python3 - "$TMP/seed.en.verify.sql" <<'PY' || fail "verify-derived-report: verify script coverage broken"
@@ -354,7 +365,7 @@ npx tsc -p tsconfig.app.json > "$TMP/tsc2.out" 2>&1 \
   || fail "fallback-register-tsc: type-check failed after --register — $(tail -20 "$TMP/tsc2.out")"
 pass "fallback-register (marker block rewritten; app type-checks against generated registry)"
 
-# --register also regenerates the offline nav (FALLBACK_NAV) from the IR lifecycle.
+# --register also regenerates the offline nav (FALLBACK_NAV) from the IR service.
 grep -q "GENERATED-NAV:BEGIN" "$NAV" || fail "nav-register: NAV BEGIN marker lost"
 grep -q "GENERATED-NAV:END" "$NAV" || fail "nav-register: NAV END marker lost"
 # Generated form drops the sample-only import + phase-id consts. Grep the
@@ -374,7 +385,7 @@ scenario_ids = set(uuid_re.findall(mod))
 # phase ids won't appear in the blueprint module; require at least the scenarios present.
 assert nav_ids & scenario_ids, f"nav shares no ids with the generated module: {sorted(nav_ids)[:3]}"
 PY
-pass "nav-register (FALLBACK_NAV regenerated from the IR lifecycle; markers kept)"
+pass "nav-register (FALLBACK_NAV regenerated from the IR service; markers kept)"
 
 # Idempotent re-register (registry + nav).
 python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$GENERATED_TS" --register > /dev/null
@@ -420,7 +431,7 @@ import json, subprocess, sys, tempfile, os
 ir, gen = sys.argv[1], sys.argv[2]
 base = subprocess.run([sys.executable, gen, ir], capture_output=True, text=True).stdout
 doc = json.load(open(ir, encoding="utf-8"))
-sc = doc["lifecycle"]["phases"][0]["scenarios"][0]
+sc = doc["service"]["phases"][0]["scenarios"][0]
 name = sc["name"]
 if isinstance(name, dict):
     k = next(iter(name)); name[k] = name[k] + " EDIT"
@@ -451,7 +462,7 @@ SLICE_FILE="$TMP/slices.json"
 
 # select -> validate -> sql -> doc round trip.
 python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
-  --type journey --layer citizen --key citizen-repair --actor "Citizen" > "$SLICE_FILE" \
+  --type journey --lane citizen --key citizen-repair --actor "Citizen" > "$SLICE_FILE" \
   || fail "slice-select: journey selection failed"
 python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$SLICE_FILE" > /dev/null \
   || fail "slice-validate: generated skeleton did not validate"
@@ -461,7 +472,7 @@ pass "slice-select (journey skeleton validates)"
 # this is the whole contract between the derived layer and the blueprint.
 python3 "$SEED_GEN" "$SAMPLE" --locale en --out "$TMP/seed-slice-check.sql" > /dev/null
 python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$SLICE_FILE" --locale en \
-  --lifecycle-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-en.sql" \
+  --service-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-en.sql" \
   || fail "slice-sql: emission failed"
 python3 - "$TMP/slice-en.sql" "$TMP/seed-slice-check.sql" <<'PY' \
   || fail "slice-idmatch: a slice cell id is absent from the seed SQL"
@@ -483,7 +494,7 @@ pass "slice-sql (transactional replace)"
 
 # Locales diverge (per-locale artifacts), keys do not.
 python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$SLICE_FILE" --locale zh \
-  --lifecycle-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-zh.sql"
+  --service-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-zh.sql"
 if diff -q "$TMP/slice-en.sql" "$TMP/slice-zh.sql" > /dev/null; then
   fail "slice-locale: en and zh emitted identical SQL"
 fi
@@ -491,7 +502,7 @@ pass "slice-locale (per-locale ids and text diverge)"
 
 # Determinism: same inputs, same bytes.
 python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$SLICE_FILE" --locale en \
-  --lifecycle-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-en-2.sql"
+  --service-id 11111111-1111-4111-8111-111111111111 > "$TMP/slice-en-2.sql"
 diff -q "$TMP/slice-en.sql" "$TMP/slice-en-2.sql" > /dev/null \
   || fail "slice-determinism: two runs produced different SQL"
 pass "slice-determinism (re-run is byte-identical)"
@@ -523,7 +534,7 @@ pass "slice-validate-bad (unresolvable key and duplicate cell both reported)"
 
 # Emitters refuse an invalid slice file — no half-written import artifacts.
 if python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$TMP/slice-bad.json" --locale en \
-  --lifecycle-id 11111111-1111-4111-8111-111111111111 > /dev/null 2>&1; then
+  --service-id 11111111-1111-4111-8111-111111111111 > /dev/null 2>&1; then
   fail "slice-sql-guard: emitted SQL for an invalid slice file"
 fi
 pass "slice-sql-guard (invalid slice file produces no SQL)"
@@ -535,16 +546,16 @@ import json, sys
 ir = json.load(open(sys.argv[1], encoding="utf-8"))
 doc = json.load(open(sys.argv[2], encoding="utf-8"))
 entry = doc["slices"][0]
-scenario = ir["lifecycle"]["phases"][0]["scenarios"][0]
+scenario = ir["service"]["phases"][0]["scenarios"][0]
 path = next(p for p in scenario["paths"] if p["key"] == entry["path"])
 linked = set()
 for trigger in path.get("triggers", []):
     for end in ("source", "target"):
-        linked.add((trigger[end]["layer"], trigger[end]["step"]))
+        linked.add((trigger[end]["lane"], trigger[end]["step"]))
 for frame in entry["frames"]:
     for key in frame["cells"][1:]:
-        layer, step = key.split("/")[4:6]
-        if (layer, step) not in linked:
+        lane, step = key.split("/")[4:6]
+        if (lane, step) not in linked:
             print(f"uncited companion: {key}", file=sys.stderr)
             sys.exit(1)
 PY
@@ -564,7 +575,7 @@ for frame in doc["slices"][0]["frames"]:
             sys.exit(1)
 PY
 python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
-  --type lane --layer field-tech --key field-tech-lane > "$TMP/slice-lane.json"
+  --type lane --lane field-tech --key field-tech-lane > "$TMP/slice-lane.json"
 python3 - "$TMP/slice-lane.json" <<'PY' || fail "slice-lane: frame contains a foreign lane"
 import json, sys
 doc = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -577,12 +588,12 @@ pass "slice-step/lane (selections stay inside their column and row)"
 
 # Unknown scenario / missing required flag are errors, not empty output.
 if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario nope/nope --type lane \
-  --layer citizen --key x > /dev/null 2>&1; then
+  --lane citizen --key x > /dev/null 2>&1; then
   fail "slice-select-guard: expected non-zero exit for an unknown scenario"
 fi
 if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
   --type lane --key x > /dev/null 2>&1; then
-  fail "slice-select-guard: expected non-zero exit for a missing --layer"
+  fail "slice-select-guard: expected non-zero exit for a missing --lane"
 fi
 pass "slice-select-guard (unknown scenario and missing flag both error)"
 
@@ -734,7 +745,7 @@ args = argparse.Namespace(ir=sample, scenario="asset-repair", out=f"{tmp}/audit-
 assert mod.cmd_export(args) == 0, "scoped export failed"
 assert shared == snapshot, "cmd_export --scenario mutated the loaded IR in place"
 export = json.load(open(f"{tmp}/audit-export.json", encoding="utf-8"))
-scoped = [s["key"] for p in export["lifecycle"]["phases"] for s in p["scenarios"]]
+scoped = [s["key"] for p in export["service"]["phases"] for s in p["scenarios"]]
 assert scoped == ["asset-repair"], f"scoped export wrong: {scoped}"
 PY
 pass "audit-export-copy (scenario filter copies; loaded IR and source stay intact)"
@@ -782,9 +793,9 @@ import adapter_parity, generate_fallbacks
 original = generate_fallbacks.blueprint_data_for_path
 def without_lane_spec(scenario, path):
     data = original(scenario, path)
-    data["layers"] = [
+    data["lanes"] = [
         {k: v for k, v in lane.items() if k not in ("kpis", "tools")}
-        for lane in data["layers"]
+        for lane in data["lanes"]
     ]
     return data
 generate_fallbacks.blueprint_data_for_path = without_lane_spec

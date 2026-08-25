@@ -6,7 +6,7 @@ import {
 } from '@/lib/agent/persistence'
 
 /**
- * Agent sessions. localStorage is the always-there layer; when the session
+ * Agent sessions. localStorage is the always-there lane; when the session
  * is authenticated (local dev), every mutation also writes through to
  * agent_sessions and `hydrateAgentSessions` merges the DB list in on boot —
  * so sessions survive reloads and browsers, and read-only visitors lose

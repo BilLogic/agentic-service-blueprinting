@@ -5,7 +5,7 @@
  * Almost nothing here is consumed by the app, and that is true of Supabase's
  * copy too: `--borderradius-lg` and `--colors-slate-light-*` appear in their
  * repository only in this generated file. Components take colour from the
- * semantic layer and spacing from Tailwind's scale. Keeping the export in place
+ * semantic lane and spacing from Tailwind's scale. Keeping the export in place
  * means a designer's token and an engineer's token still have one name.
  */
 :root {

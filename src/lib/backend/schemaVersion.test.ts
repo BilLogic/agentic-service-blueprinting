@@ -7,6 +7,7 @@
  * different revision, and one number cannot tell them which.
  */
 import { describe, expect, test } from 'vitest'
+import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createFixtureBackend } from './adapters/fixture'
 import { runConformance } from './conformance'
@@ -22,6 +23,17 @@ describe('schema version', () => {
   test('the version this checkout builds is one it speaks', () => {
     expect(isSchemaVersionSupported(TEMPLATE_SCHEMA_VERSION)).toBe(true)
     expect(SUPPORTED_SCHEMA_VERSIONS[0]).toBe(TEMPLATE_SCHEMA_VERSION)
+  })
+
+  test('the schema enum and this list are the same list', () => {
+    // references/ir-schema.json is the one source: scripts/validate_ir.py reads
+    // it to reject an unknown version by name, and a second copy of a version
+    // list is a second thing to forget.
+    const schema = JSON.parse(
+      readFileSync(new URL('../../../references/ir-schema.json', import.meta.url), 'utf8'),
+    )
+    assert(Array.isArray(schema.properties.schema_version.enum))
+    expect(schema.properties.schema_version.enum).toEqual([...SUPPORTED_SCHEMA_VERSIONS])
   })
 
   test('the migration seeds a version this checkout speaks', () => {

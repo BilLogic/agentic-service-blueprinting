@@ -117,7 +117,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_compare_diff',
     description:
-      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (description/links) group. Read before driving the compare UI or answering \"what differs\". Triggers/needs edges are not compared.",
+      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (summary/links) group. Read before driving the compare UI or answering \"what differs\". Triggers/needs edges are not compared.",
     parameters: {
       type: 'object',
       properties: {
@@ -281,12 +281,12 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'create_phase',
     description:
-      'Create a new phase in the service lifecycle. Propose the structure as text and get a nod first.',
+      'Create a new phase in the service. Propose the structure as text and get a nod first.',
     parameters: {
       type: 'object',
       properties: {
         name: str('Phase name'),
-        description: str('One-line description; omit for none'),
+        summary: str('One-line summary; omit for none'),
       },
       required: ['name'],
     },
@@ -461,10 +461,10 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         scenario_id: str('Scenario id'),
         name: str('Lane label'),
-        layer_role: str(
+        lane_role: str(
           'Semantic role (e.g. frontstage_actions, backstage_tech); omit if none fits',
         ),
-        at_row: { type: 'number', description: 'Insert row (1-based); omit to append' },
+        at_position: { type: 'number', description: 'Insert row (1-based); omit to append' },
       },
       required: ['scenario_id', 'name'],
     },
@@ -477,11 +477,11 @@ export const TOOL_SPECS: ToolSpec[] = [
       type: 'object',
       properties: {
         path_id: str('Path id'),
-        layer_id: str('Lane id from get_blueprint (parameter named layer_id for historical reasons)'),
+        lane_id: str('Lane id from get_blueprint'),
         step_id: str('Step id (from get_blueprint)'),
         content: str('The cell text — a journey moment, not a system capability, max 120 characters (the canvas reads at a glance; put detail in the summary). Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".'),
       },
-      required: ['path_id', 'layer_id', 'step_id', 'content'],
+      required: ['path_id', 'lane_id', 'step_id', 'content'],
     },
   },
   {

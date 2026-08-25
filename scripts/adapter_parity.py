@@ -7,7 +7,7 @@ Usage:
 references/adapter-contract.md names two adapters — the SQL one and the no-DB
 one — and says the second is "not a degraded mode". That sentence was untrue
 for months in the direction that costs an adopter the most: the no-DB adapter
-dropped cell_key, slot_position, every cell spec field, and the edge kind,
+dropped cell_key, position, every cell spec field, and the edge kind,
 because each generator wrote out its own field list by hand. Nothing failed. A
 reader following a normative contract simply lost their cell specs.
 
@@ -53,7 +53,7 @@ def sql_adapter_rows(model: dict) -> dict:
     rows = {"lane": {}, "cell": {}, "edge": {}}
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
-            for lane in path["layers"]:
+            for lane in path["lanes"]:
                 rows["lane"][lane["id"]] = seed_lane_fields(lane, path)
             for cell in path["cells"]:
                 rows["cell"][cell["id"]] = seed_cell_fields(cell, path)
@@ -68,7 +68,7 @@ def fallback_adapter_rows(model: dict) -> dict:
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
             data = blueprint_data_for_path(scenario, path)
-            for kind, key in (("lane", "layers"), ("cell", "cells"), ("edge", "triggers")):
+            for kind, key in (("lane", "lanes"), ("cell", "cells"), ("edge", "triggers")):
                 for row in data[key]:
                     rows[kind][row["id"]] = row
     return rows

@@ -7,7 +7,7 @@
 
 ![How a blueprint is organized](../assets/data-model-hierarchy.svg)
 
-A **lifecycle** holds ordered **phases**. A phase can loop back to an
+A **service** holds ordered **phases**. A phase can loop back to an
 earlier one (`loops_to_phase_id`), which is how renewals and repeat visits
 are modelled without duplicating the journey.
 
@@ -27,11 +27,11 @@ meaningful rather than approximate.
 ![Inside a single path](../assets/blueprint-anatomy.svg)
 
 Lanes are rows, one actor each. Steps are columns, time running left to
-right. Rendering is driven by `layers.layer_role`, a semantic key, never by
+right. Rendering is driven by `lanes.lane_role`, a semantic key, never by
 the lane's display name — so lane labels are free-form, in any language,
 and a blueprint in Chinese renders exactly like one in English.
 
-| `layer_role` | Row |
+| `lane_role` | Row |
 | --- | --- |
 | `customer_actions` | what the customer does |
 | `frontstage_actions` | what staff do in view of the customer |
@@ -80,7 +80,7 @@ Five ways to slice, from `slice-schema.json`:
 | --- | --- |
 | `journey` | one actor's path, summarized |
 | `step` | one step, top to bottom across every lane |
-| `lane` | one lane, left to right across the lifecycle |
+| `lane` | one lane, left to right across the service |
 | `cell` | one cell, in full |
 | `custom` | whatever the question needs |
 

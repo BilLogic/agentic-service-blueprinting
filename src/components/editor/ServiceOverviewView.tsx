@@ -99,7 +99,7 @@ const MOBILE_SEMANTIC_ZOOM_THRESHOLD = 0.15
  * The chain is event-driven and `transitionend` bubbles, so without this the
  * handler on the board root treats any opacity transition in the subtree as
  * its cue — including every hover the board carries. Keyed by the stage
- * being waited out, so stage N only listens to the layer stage N opened.
+ * being waited out, so stage N only listens to the lane stage N opened.
  */
 const REVEAL_ROOT_SOURCE = ':scope'
 const REVEAL_STAGE_SOURCE: Record<number, string | undefined> = {
@@ -114,7 +114,7 @@ const OVERVIEW_PAN_IGNORE =
   // section/overview wrappers) used to be here too, which made every drag
   // that started inside a path board a dead drag: empty board space must
   // pan like the rest of the canvas.
-  "button, a, input, textarea, select, label, [role='button'], [data-slide-sticky-header], [data-zoom-indicator], [data-annotation-toolbar], [data-canvas-annotation-layer], [data-canvas-phase-interactive], [data-phase-menubar-header], [data-path-description-trigger], [data-cell-detail-panel], [data-blueprint-cell-interactive], [data-slot='menubar'], [data-slot='menubar-trigger'], [data-canvas-nav]"
+  "button, a, input, textarea, select, label, [role='button'], [data-slide-sticky-header], [data-zoom-indicator], [data-annotation-toolbar], [data-canvas-annotation-layer], [data-canvas-phase-interactive], [data-phase-menubar-header], [data-path-summary-trigger], [data-cell-detail-panel], [data-blueprint-cell-interactive], [data-slot='menubar'], [data-slot='menubar-trigger'], [data-canvas-nav]"
 
 function CanvasFocusEscapeHandler() {
   const { view, goHome } = useEditor()
@@ -193,14 +193,14 @@ function ServicePhaseSection({
   onlyScenarioId = null,
 }: ServicePhaseSectionProps) {
   const label = getSlideDisplayLabel(phase, slides)
-  const description =
-    phase.description ?? 'Scenarios in this phase and how they connect.'
+  const summary =
+    phase.summary ?? 'Scenarios in this phase and how they connect.'
 
   return (
     <CanvasPhaseSection
       title={label}
       ordinal={phase.index}
-      description={description}
+      summary={summary}
       phaseId={phase.id}
       variant="overview"
       showFlowArrow={showFlowArrow}
@@ -237,7 +237,7 @@ type ServiceOverviewViewProps = {
   skeletonHoldKey?: string
   /**
    * Slice-tab scope: only this scenario's artboard (inside its own phase
-   * frame) mounts — neighboring scenarios/phases, lifecycle arrows, and the
+   * frame) mounts — neighboring scenarios/phases, service arrows, and the
    * prev/next sequence nav all stay out of the canvas. Zoom/pan unchanged.
    */
   soloScenarioId?: string
@@ -255,7 +255,7 @@ type ServiceOverviewViewProps = {
   renderHeader?: () => ReactNode
   /**
    * Placeholder for `renderHeader`, held until the board opens its first
-   * layer. An embedding band is canvas furniture like the annotation
+   * lane. An embedding band is canvas furniture like the annotation
    * toolbar: it must not paint finished over a canvas that is still behind
    * a loading bar, which is what a slice tab's band used to do.
    */
@@ -271,7 +271,7 @@ type ServiceOverviewViewProps = {
   floatingChrome?: ReactNode
   /**
    * Report this canvas's reveal stage to whatever must arrive with it —
-   * today the shell's sidebar boot layer.
+   * today the shell's sidebar boot lane.
    *
    * Only the shell's BASE canvas passes one: it is the only mount that
    * shares a boot with the sidebar. A slice tab or the phone shell mounting
@@ -407,7 +407,7 @@ function ServiceOverviewViewImpl({
     The camera pre-fits against these frames, so how close they are to the
     finished board is exactly how far the camera has to move afterwards. A
     scenario panel's size is not a guess: `getBlueprintArtboardSize` derives
-    it from the blueprint's step count and layer/divider/corridor counts,
+    it from the blueprint's step count and lane/divider/corridor counts,
     all fixed constants. The estimator used to ignore that and assume a flat
     640 x min-height per scenario, which on a real board was ~2.4x off — and
     that error IS the corrective zoom the reveal was built to hide.
@@ -510,7 +510,7 @@ function ServiceOverviewViewImpl({
   const [revealStage, setRevealStage] = useState(0)
   /**
    * The bar's own dissolve, which STARTS the chain. Everything after it is
-   * driven by the previous layer finishing, not by a clock.
+   * driven by the previous lane finishing, not by a clock.
    */
   const [barDissolving, setBarDissolving] = useState(false)
   const revealStartedRef = useRef(false)
@@ -522,7 +522,7 @@ function ServiceOverviewViewImpl({
    * the same frame and each bubbles a `transitionend`, but every handler in
    * that burst closes over the same `revealStage` and so calls `setState`
    * with an identical value, which React bails out of on its own. What this
-   * saves is ~600 no-op state calls per layer on a full board; what it does
+   * saves is ~600 no-op state calls per lane on a full board; what it does
    * not do is make a late event from an earlier stage harmless, because
    * such an event carries the stage it was captured at and is refused by
    * the same comparison.
@@ -530,7 +530,7 @@ function ServiceOverviewViewImpl({
   const advancedRef = useRef(-1)
   /*
    * Publish the stage for the surfaces outside this canvas that have to
-   * arrive with it — today the sidebar's boot layer.
+   * arrive with it — today the sidebar's boot lane.
    *
    * OPT-IN, and only the shell's base canvas opts in. Every mount used to
    * publish, and this component also backs slice tabs and the phone shell:
@@ -572,11 +572,11 @@ function ServiceOverviewViewImpl({
   }, [])
 
   /*
-   * EVENT-CHAINED, not timed. Each layer opens because the previous one
+   * EVENT-CHAINED, not timed. Each lane opens because the previous one
    * finished — `transitionend` bubbling from the board root — so the
    * sequence cannot drift when a frame is slow or a stage is heavier than
-   * its budget, and no two layers can ever animate at once. Timers survive
-   * only as a watchdog: if a layer has nothing to animate (a board with no
+   * its budget, and no two lanes can ever animate at once. Timers survive
+   * only as a watchdog: if a lane has nothing to animate (a board with no
    * arrows, a cancelled transition) its event never arrives, and the chain
    * must not stall there.
    */
@@ -593,7 +593,7 @@ function ServiceOverviewViewImpl({
       unmounts the board and nulls `overviewEl`), the re-run hit the latch,
       returned early, and rescheduled nothing. `barDissolving` was already
       true, so no property changed and no `transitionend` ever came. The
-      board stayed `visibility: hidden` forever, and the shell's boot layer —
+      board stayed `visibility: hidden` forever, and the shell's boot lane —
       keyed on `revealStage < 1` — stayed opaque over the sidebar with
       `role="status"` announcing "Loading the workspace". A dead app, one
       stray refetch away, recoverable only by reload.
@@ -662,7 +662,7 @@ function ServiceOverviewViewImpl({
       observer.disconnect()
       // Only the bar dissolves here. Stage 1 waits for it to finish (the
       // bar's own `onTransitionEnd`), and every stage after that waits for
-      // the layer before it.
+      // the lane before it.
       setBarDissolving(true)
       // Watchdog for the handoff itself: if the bar never transitions (it
       // was never shown on a warm load, so there is nothing to fade), the
@@ -821,7 +821,7 @@ function ServiceOverviewViewImpl({
               same beat the chain advances on, so it lands exactly on the
               handover. It waited until stage 4 in the first cut, which read
               as the toolbar being an afterthought bolted on at the end;
-              starting it with the first layer makes the canvas and its
+              starting it with the first lane makes the canvas and its
               controls one arriving surface. What it must never do is float
               over the loading bar, which stage 0 still prevents.
             */
@@ -934,11 +934,11 @@ function ServiceOverviewViewImpl({
                     data-canvas-reveal={
                       revealStage < CANVAS_REVEAL_DONE ? revealStage : undefined
                     }
-                    // Each layer's fade completing is what opens the next.
+                    // Each lane's fade completing is what opens the next.
                     // `transitionend` bubbles, so one handler on the root
                     // hears the board, the panels, the cells and the arrows.
                     /*
-                      The sender must be the layer we are waiting on.
+                      The sender must be the lane we are waiting on.
 
                       `transitionend` bubbles — that is what makes one
                       handler enough — but it also means this hears EVERY
@@ -956,7 +956,7 @@ function ServiceOverviewViewImpl({
                       over the sidebar I had just clicked.
 
                       One `matches()` per event closes it. Anything hovering
-                      is on a party line; only the layer this stage opened
+                      is on a party line; only the lane this stage opened
                       may advance it.
                     */
                     onTransitionEnd={(event) => {

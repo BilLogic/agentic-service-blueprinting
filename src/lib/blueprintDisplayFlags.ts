@@ -8,7 +8,7 @@
  */
 
 /** Visual swimlane rows on the blueprint grid. */
-export const BLUEPRINT_VISUAL_LAYER_UI_ENABLED = true
+export const BLUEPRINT_VISUAL_LANE_UI_ENABLED = true
 
 /** Cell click → detail side panel. */
 export const BLUEPRINT_CELL_DETAIL_UI_ENABLED = true
@@ -20,10 +20,10 @@ export const BLUEPRINT_CELL_DETAIL_UI_ENABLED = true
 // earns it; the flag is the single switch every grid reads.
 export const BLUEPRINT_VISUAL_WALKTHROUGH_ENABLED = false
 
-export function isBlueprintVisualLayerEnabled(
+export function isBlueprintVisualLaneEnabled(
   _scenarioId?: string | null,
 ): boolean {
-  return BLUEPRINT_VISUAL_LAYER_UI_ENABLED
+  return BLUEPRINT_VISUAL_LANE_UI_ENABLED
 }
 
 export function isBlueprintCellDetailEnabled(

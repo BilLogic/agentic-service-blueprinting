@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ARROW_CHEVRON_SIZE,
-  buildCrossLayerForwardArrowPath,
+  buildCrossLaneForwardArrowPath,
   buildOverheadRailPath,
   buildWrapArrowPath,
   buildWrapColumnLeg,
@@ -61,8 +61,8 @@ class Grid {
   row(id: string, top: number, height: number, railCorridor = 0): this {
     const row = document.createElement('div')
     row.dataset.blueprintRow = ''
-    row.dataset.layerId = id
-    row.dataset.layerName = id
+    row.dataset.laneId = id
+    row.dataset.laneName = id
     place(row, { left: 0, top, width: 2000, height })
 
     if (railCorridor > 0) {
@@ -292,7 +292,7 @@ describe('cross-lane forward', () => {
   it('drops late when the source row is clear across the skip', () => {
     const grid = crossGrid({ sourceRowFilled: false, targetRowFilled: true })
     const path = route(() =>
-      buildCrossLayerForwardArrowPath(
+      buildCrossLaneForwardArrowPath(
         grid.find('upper', 0),
         grid.find('lower', 2),
         grid.root,
@@ -312,7 +312,7 @@ describe('cross-lane forward', () => {
     const grid = crossGrid({ sourceRowFilled: true, targetRowFilled: false })
     expect(
       route(() =>
-        buildCrossLayerForwardArrowPath(
+        buildCrossLaneForwardArrowPath(
           grid.find('upper', 0),
           grid.find('lower', 2),
           grid.root,
@@ -329,7 +329,7 @@ describe('cross-lane forward', () => {
   it('crosses above the target lane when both rows are occupied', () => {
     const grid = crossGrid({ sourceRowFilled: true, targetRowFilled: true })
     const path = route(() =>
-      buildCrossLayerForwardArrowPath(
+      buildCrossLaneForwardArrowPath(
         grid.find('upper', 0),
         grid.find('lower', 2),
         grid.root,

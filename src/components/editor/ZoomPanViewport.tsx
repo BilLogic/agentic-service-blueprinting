@@ -41,7 +41,7 @@ type ZoomPanViewportProps = {
   focusCellsKey?: string
 }
 
-/** Zoom/pan canvas wrapper. Provides the annotation context its layer and toolbar both read. */
+/** Zoom/pan canvas wrapper. Provides the annotation context its lane and toolbar both read. */
 export function ZoomPanViewport(props: ZoomPanViewportProps) {
   return (
     <CanvasAnnotationProvider>
@@ -109,7 +109,7 @@ function ZoomPanViewportInner({
   useEffect(() => {
     return registerAgentUiCommand({
       name: 'zoom',
-      description:
+      summary:
         'Zoom the canvas camera. arg: in | out | fit (fit the current focus)',
       run: (arg) => {
         if (arg === 'in') zoomIn()
@@ -149,7 +149,7 @@ function ZoomPanViewportInner({
           /*
            * `touch-none` here as well as on the viewport, and again on every
            * descendant in blueprint.css. `touch-action` is not inherited,
-           * and this element is TRANSFORMED — a composited layer boundary
+           * and this element is TRANSFORMED — a composited lane boundary
            * that WebKit does not reliably look past when it resolves an
            * ancestor's `none`. A finger on empty canvas lands on the
            * viewport and pans; a finger on a cell lands inside here, where

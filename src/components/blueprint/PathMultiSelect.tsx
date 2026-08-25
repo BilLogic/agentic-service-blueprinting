@@ -1,4 +1,4 @@
-import { PathDescriptionTooltip } from '@/components/blueprint/PathDescriptionTooltip'
+import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { PathTypeColorKey } from '@/components/blueprint/PathTypeColorKey'
 import { filterToolbarButtonClass } from '@/lib/filterToolbarButton'
 import { cn } from '@/lib/utils'
@@ -13,7 +13,7 @@ export type PathOption = {
    */
   id: string
   name: string
-  description: string | null
+  summary: string | null
   path_type: PathType
   /**
    * The real path uuids folded into this option, in the order they were
@@ -103,13 +103,13 @@ function PathNotionPill({
       aria-label={pathLabel}
     >
       <PathTypeColorKey type={path.path_type} name={path.name} />
-      <PathDescriptionTooltip
-        description={path.description}
+      <PathSummaryTooltip
+        summary={path.summary}
         pathName={path.name}
         side="top"
       >
         <span>{pathLabel}</span>
-      </PathDescriptionTooltip>
+      </PathSummaryTooltip>
     </button>
   )
 }
@@ -135,13 +135,13 @@ export function PathToolbarButton({
       aria-label={pathLabel}
     >
       <PathTypeColorKey type={path.path_type} name={path.name} />
-      <PathDescriptionTooltip
-        description={path.description}
+      <PathSummaryTooltip
+        summary={path.summary}
         pathName={path.name}
         side="top"
       >
         <span>{pathLabel}</span>
-      </PathDescriptionTooltip>
+      </PathSummaryTooltip>
     </button>
   )
 }
@@ -193,13 +193,13 @@ function PathCheckbox({
         aria-label={pathLabel}
       />
       <PathTypeColorKey type={path.path_type} name={path.name} />
-      <PathDescriptionTooltip
-        description={path.description}
+      <PathSummaryTooltip
+        summary={path.summary}
         pathName={path.name}
         side="top"
       >
         <span className="min-w-0 cursor-default text-left">{pathLabel}</span>
-      </PathDescriptionTooltip>
+      </PathSummaryTooltip>
     </label>
   )
 }

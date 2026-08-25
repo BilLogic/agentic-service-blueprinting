@@ -24,12 +24,12 @@ export function useSliceScenarioId(
 
       const { data, error } = await client
         .from('cells')
-        .select('id, paths(service_scenario_id)')
+        .select('id, paths(scenario_id)')
         .in('id', [...cellIds])
       if (error) throw new Error(error.message)
 
       const scenarioId = (data ?? []).find((row) => row.paths !== null)?.paths
-        ?.service_scenario_id
+        ?.scenario_id
       if (scenarioId) return scenarioId
 
       // Cells may live only in the local fallback content.

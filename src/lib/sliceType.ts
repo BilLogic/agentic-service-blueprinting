@@ -23,10 +23,10 @@ export function readCellPosition(cellId: string): CellPosition {
   // The step is on the cell; the lane is on the row that holds it. That is
   // already how `canvasCellQuery` reads the grid, and following the same path
   // means one place is wrong if the markup changes rather than two.
-  const row = element?.closest('[data-blueprint-row][data-layer-id]')
+  const row = element?.closest('[data-blueprint-row][data-lane-id]')
   return {
     step: element?.getAttribute('data-step-index') ?? null,
-    lane: row?.getAttribute('data-layer-id') ?? null,
+    lane: row?.getAttribute('data-lane-id') ?? null,
   }
 }
 

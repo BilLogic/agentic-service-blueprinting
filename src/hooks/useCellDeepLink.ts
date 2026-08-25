@@ -57,12 +57,12 @@ export function useCellDeepLink(): void {
     async (client) => {
       const { data, error } = await client
         .from('cells')
-        .select('id, paths(service_scenario_id)')
+        .select('id, paths(scenario_id)')
         .eq('id', cellId as string)
         .maybeSingle()
       if (error) throw new Error(error.message)
 
-      const scenarioId = data?.paths?.service_scenario_id
+      const scenarioId = data?.paths?.scenario_id
       if (scenarioId) return scenarioId
 
       // Cells may exist only in the local fallback content (no-DB mode, or a

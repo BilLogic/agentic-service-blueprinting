@@ -54,7 +54,7 @@ export function StackedCompareGrid({
   phaseName,
   sectionTitleLabel,
 }: StackedCompareGridProps) {
-  const { layers, rows, toggleLayer, tracks, gridTemplateColumns } =
+  const { lanes, rows, toggleLane, tracks, gridTemplateColumns } =
     useCompareGridAxis(model, blueprints, compact)
 
   const rowTrackCss = useMemo(
@@ -90,7 +90,7 @@ export function StackedCompareGrid({
           <Fragment key={blueprint.path.id}>
             <BlueprintPathBand
               blueprint={blueprint}
-              layers={layers}
+              lanes={lanes}
               rows={rows}
               // Single-path boards: the step-header row is a fact about
               // THIS path's columns, so the frame wraps it (plan
@@ -110,7 +110,7 @@ export function StackedCompareGrid({
                   bandIndex === 0
                     ? COMPARE_STACKED_HEADER_GAP
                     : COMPARE_STACKED_BAND_GAP,
-                onToggleLayer: toggleLayer,
+                onToggleLane: toggleLane,
               }}
               compact={compact}
               scrollContainerRef={scrollContainerRef}

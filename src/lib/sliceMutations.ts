@@ -88,7 +88,7 @@ export async function deleteSlice(
 }
 
 export type NewSlice = {
-  lifecycleId: string
+  serviceId: string
   title: string
   description: string
   sliceType: SliceType
@@ -119,7 +119,7 @@ export async function createSlice(
   const { data, error } = await client
     .from('slices')
     .insert({
-      service_lifecycle_id: input.lifecycleId,
+      service_id: input.serviceId,
       title: input.title.trim(),
       description: input.description.trim() || null,
       slice_type: input.sliceType,
@@ -251,7 +251,7 @@ export async function duplicateSlice(
   const { data: copy, error: insertError } = await client
     .from('slices')
     .insert({
-      service_lifecycle_id: source.service_lifecycle_id,
+      service_id: source.service_id,
       title: `${source.title} copy`,
       description: source.description,
       slice_type: source.slice_type,

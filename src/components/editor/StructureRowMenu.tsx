@@ -38,7 +38,7 @@ import {
   renameScenario,
 } from '@/lib/authoringRpc'
 import { deletionReadiness } from '@/lib/deletionSafety'
-import { findFirstLifecycleId } from '@/lib/lifecycle'
+import { findFirstServiceId } from '@/lib/service'
 
 export type StructureKind = 'phase' | 'scenario' | 'path'
 
@@ -307,19 +307,19 @@ function SiblingCreateDialog({
 /**
  * A phase belongs to a service, and there is exactly one in this workspace —
  * resolved the same way the sidebar header's `+` resolves it, through the
- * module-level cache in `findFirstLifecycleId`, so opening the menu on a
+ * module-level cache in `findFirstServiceId`, so opening the menu on a
  * phase row costs at most one query per session.
  */
 function NewSiblingPhaseDialog({ onClose }: { onClose: () => void }) {
   const { client } = useSupabase()
-  const [lifecycleId, setLifecycleId] = useState<string | null>(null)
+  const [serviceId, setServiceId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!client) return
     let cancelled = false
-    void findFirstLifecycleId(client)
+    void findFirstServiceId(client)
       .then((id) => {
-        if (!cancelled) setLifecycleId(id)
+        if (!cancelled) setServiceId(id)
       })
       .catch(() => {
         // The dialog's own Create button stays disabled without a service,
@@ -332,7 +332,7 @@ function NewSiblingPhaseDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <CreatePhaseDialog
-      lifecycleId={lifecycleId}
+      serviceId={serviceId}
       open
       onOpenChange={(open) => {
         if (!open) onClose()

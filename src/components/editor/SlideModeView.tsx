@@ -11,7 +11,7 @@ import { CreatePhaseDialog } from '@/components/editor/CreatePhaseDialog'
 import { CreateBlueprintDialog } from '@/components/editor/CreateBlueprintDialog'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { findFirstLifecycleId } from '@/lib/lifecycle'
+import { findFirstServiceId } from '@/lib/service'
 import { SlicesSidebarSection } from '@/components/editor/SlicesSidebarSection'
 import { SlideNav } from '@/components/editor/SlideNav'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -49,18 +49,18 @@ export function SlideModeSidebarNav({
   const [scenarioPhaseId, setScenarioPhaseId] = useState<string | null>(null)
 
   // The service a new phase would belong to. Resolved once and cached at
-  // module level by `findFirstLifecycleId`, so this is a state read rather
+  // module level by `findFirstServiceId`, so this is a state read rather
   // than a query in the common case.
-  const [lifecycleId, setLifecycleId] = useState<string | null>(null)
+  const [serviceId, setServiceId] = useState<string | null>(null)
   useEffect(() => {
     if (!client || !canWrite) return
     let cancelled = false
-    void findFirstLifecycleId(client)
+    void findFirstServiceId(client)
       .then((id) => {
-        if (!cancelled) setLifecycleId(id)
+        if (!cancelled) setServiceId(id)
       })
       .catch(() => {
-        // A missing lifecycle simply means no `+` on the section header;
+        // A missing service simply means no `+` on the section header;
         // the rest of the sidebar is unaffected.
       })
     return () => {
@@ -94,7 +94,7 @@ export function SlideModeSidebarNav({
             open={phasesOpen}
             onOpenChange={setPhasesOpen}
             trailing={
-              authoring && lifecycleId ? (
+              authoring && serviceId ? (
                 <NavRowAction
                   label="New phase"
                   onClick={() => {
@@ -124,7 +124,7 @@ export function SlideModeSidebarNav({
               This covers a SLOW QUERY only. The boot case — entering the
               workspace from the cover, where this used to slide in already
               full of rows while the canvas was still behind its loading
-              bar — belongs to the sidebar's boot layer in EditorShell,
+              bar — belongs to the sidebar's boot lane in EditorShell,
               which covers this whole panel and lifts with the canvas.
             */}
             <DeferredSkeleton
@@ -152,7 +152,7 @@ export function SlideModeSidebarNav({
               owner for "which paths am I reading". */}
 
           <CreatePhaseDialog
-            lifecycleId={lifecycleId}
+            serviceId={serviceId}
             open={phaseDialogOpen}
             onOpenChange={setPhaseDialogOpen}
             onCreated={selectPhase}

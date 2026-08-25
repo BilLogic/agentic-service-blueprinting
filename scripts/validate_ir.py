@@ -21,25 +21,25 @@ package is deliberately not required):
   Structure   — required fields, types, enums (view_type/path_type/link
                 type), key/locale/role patterns, locale-map shape,
                 additionalProperties: false.
-  Integrity   — every cell's (path, layer, step) references exist; a cell's
+  Integrity   — every cell's (path, lane, step) references exist; a cell's
                 step must be in that path's path_steps (previewing the DB
                 cells_validate_path_match trigger, which would otherwise
                 abort mid-import); no duplicate steps in path_steps
-                (duplicate column_position); triggers reference existing
+                (duplicate position); triggers reference existing
                 cells on the SAME path (cross-path triggers are invalid);
                 source != target; unique keys at every level;
                 phase.loops_to resolves.
-  Warnings    — unknown layer roles near a canonical role ("did you
+  Warnings    — unknown lane roles near a canonical role ("did you
                 mean…?" via edit distance; genuinely custom roles are legal
-                and pass silently); role-less layers whose display name
+                and pass silently); role-less lanes whose display name
                 looks like it wanted a canonical role (legacy-name shim
                 candidates, incl. a small CJK map); locale-coverage gaps in
-                localeText fields; scale soft-warnings (>20 layers or
+                localeText fields; scale soft-warnings (>20 lanes or
                 >30 steps per path) — never caps.
 
 Diagnostics are human-readable, one per line, with file:jsonpath locations:
 
-    ERROR sample-ir.json:$.lifecycle.phases[0].scenarios[0].paths[1].cells[3] — …
+    ERROR sample-ir.json:$.service.phases[0].scenarios[0].paths[1].cells[3] — …
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ CANONICAL_ROLES = (
 )
 
 # Small CJK display-name shim map for the "did you mean role …?" warning on
-# role-less layers (see references/lane-roles.md, legacy name shim).
+# role-less lanes (see references/lane-roles.md, legacy name shim).
 CJK_NAME_TO_ROLE = {
     "前台技术": "frontstage_tech",
     "后台技术": "backstage_tech",
@@ -85,7 +85,7 @@ KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 LOCALE_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
 ROLE_RE = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 
-SCALE_MAX_LAYERS = 20
+SCALE_MAX_LANES = 20
 SCALE_MAX_STEPS = 30
 
 
@@ -287,20 +287,20 @@ def check_link(link, jp: str, rep: Report, locales: list) -> None:
 
 
 def check_cell_ref(ref, jp: str, rep: Report):
-    """Return (layer_key, step_key) or None."""
+    """Return (lane_key, step_key) or None."""
     if not isinstance(ref, dict):
-        rep.error(jp, f"cell reference must be an object {{layer, step}}, got {type_name(ref)}")
+        rep.error(jp, f"cell reference must be an object {{lane, step}}, got {type_name(ref)}")
         return None
-    check_extra_keys(ref, {"layer", "step"}, jp, rep)
-    layer = check_key(ref.get("layer"), f"{jp}.layer", rep) if "layer" in ref else None
+    check_extra_keys(ref, {"lane", "step"}, jp, rep)
+    lane = check_key(ref.get("lane"), f"{jp}.lane", rep) if "lane" in ref else None
     step = check_key(ref.get("step"), f"{jp}.step", rep) if "step" in ref else None
-    if "layer" not in ref:
-        rep.error(jp, "missing required field 'layer'")
+    if "lane" not in ref:
+        rep.error(jp, "missing required field 'lane'")
     if "step" not in ref:
         rep.error(jp, "missing required field 'step'")
-    if layer is None or step is None:
+    if lane is None or step is None:
         return None
-    return layer, step
+    return lane, step
 
 
 def check_unique(kind: str, key, seen: dict, jp: str, rep: Report) -> None:
@@ -317,24 +317,24 @@ def check_unique(kind: str, key, seen: dict, jp: str, rep: Report) -> None:
 # ---------------------------------------------------------------------------
 
 
-def validate_layer(layer, jp: str, rep: Report, locales: list, rows_seen: dict):
-    if not isinstance(layer, dict):
-        rep.error(jp, f"layer must be an object, got {type_name(layer)}")
+def validate_lane(lane, jp: str, rep: Report, locales: list, rows_seen: dict):
+    if not isinstance(lane, dict):
+        rep.error(jp, f"lane must be an object, got {type_name(lane)}")
         return None
     check_extra_keys(
-        layer, {"key", "display_name", "role", "row", "kpis", "tools"}, jp, rep
+        lane, {"key", "display_name", "role", "row", "kpis", "tools"}, jp, rep
     )
-    key = check_key(layer.get("key"), f"{jp}.key", rep) if "key" in layer else rep.error(jp, "missing required field 'key'")
-    check_locale_text(layer.get("display_name"), f"{jp}.display_name", rep, locales, True, "display_name")
-    row = check_int(layer, "row", jp, rep, required=True)
+    key = check_key(lane.get("key"), f"{jp}.key", rep) if "key" in lane else rep.error(jp, "missing required field 'key'")
+    check_locale_text(lane.get("display_name"), f"{jp}.display_name", rep, locales, True, "display_name")
+    row = check_int(lane, "row", jp, rep, required=True)
     if row is not None:
         if row in rows_seen:
-            rep.warn(f"{jp}.row", f"duplicate row {row} on this path (also used by layer '{rows_seen[row]}')")
+            rep.warn(f"{jp}.row", f"duplicate row {row} on this path (also used by lane '{rows_seen[row]}')")
         else:
-            rows_seen[row] = layer.get("key")
+            rows_seen[row] = lane.get("key")
 
-    role = layer.get("role")
-    if "role" in layer and role is not None:
+    role = lane.get("role")
+    if "role" in lane and role is not None:
         if not isinstance(role, str) or not ROLE_RE.match(role):
             rep.error(f"{jp}.role", f"role '{role}' does not match ^[a-z0-9][a-z0-9_]*$")
         elif role not in CANONICAL_ROLES:
@@ -347,9 +347,9 @@ def validate_layer(layer, jp: str, rep: Report, locales: list, rows_seen: dict):
                 )
             # A role far from every canonical role is a legal custom role: silent.
     else:
-        # Role-less layer: warn when the display name looks like it wanted a
+        # Role-less lane: warn when the display name looks like it wanted a
         # canonical role (the legacy magic-name contract — see lane-roles.md).
-        display = layer.get("display_name")
+        display = lane.get("display_name")
         if isinstance(display, dict):
             for locale, text in display.items():
                 if not isinstance(text, str):
@@ -365,7 +365,7 @@ def validate_layer(layer, jp: str, rep: Report, locales: list, rows_seen: dict):
                 if candidate:
                     rep.warn(
                         f"{jp}.display_name.{locale}",
-                        f"layer '{layer.get('key')}' has no role but its display name "
+                        f"lane '{lane.get('key')}' has no role but its display name "
                         f"'{text}' looks like it wanted one — did you mean role: {candidate}? "
                         "(new IR must set roles explicitly; display-name matching is a legacy shim)",
                     )
@@ -379,21 +379,21 @@ def validate_cell(cell, jp: str, rep: Report, locales: list):
         return None
     check_extra_keys(
         cell,
-        {"layer", "step", "content", "description", "picture", "links",
+        {"lane", "step", "content", "summary", "picture", "links",
          "provenance", "needs_review", "evidence", "attribution",
          # Spec fields — audit wave 2 reads these; optional everywhere.
          "function", "form", "owner", "perceived_owner", "value_props"},
         jp, rep,
     )
-    for field in ("layer", "step"):
+    for field in ("lane", "step"):
         if field not in cell:
             rep.error(jp, f"missing required field '{field}'")
-    layer = check_key(cell.get("layer"), f"{jp}.layer", rep) if "layer" in cell else None
+    lane = check_key(cell.get("lane"), f"{jp}.lane", rep) if "lane" in cell else None
     step = check_key(cell.get("step"), f"{jp}.step", rep) if "step" in cell else None
     if "content" in cell:
         check_locale_text(cell["content"], f"{jp}.content", rep, locales, False, "content")
-    if "description" in cell:
-        check_locale_text(cell["description"], f"{jp}.description", rep, locales, False, "description")
+    if "summary" in cell:
+        check_locale_text(cell["summary"], f"{jp}.summary", rep, locales, False, "summary")
     if "picture" in cell and not isinstance(cell["picture"], str):
         rep.error(f"{jp}.picture", "'picture' must be a string")
     if "links" in cell:
@@ -420,8 +420,8 @@ def validate_cell(cell, jp: str, rep: Report, locales: list):
             rep.error(f"{jp}.evidence", "'evidence' must be an array of strings")
     if "attribution" in cell and not isinstance(cell["attribution"], str):
         rep.error(f"{jp}.attribution", "'attribution' must be a string")
-    if layer and step:
-        return layer, step
+    if lane and step:
+        return lane, step
     return None
 
 
@@ -432,8 +432,8 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         return
     check_extra_keys(
         path,
-        {"key", "name", "description", "note", "path_type", "variant_label",
-         "layers", "path_steps", "cells", "triggers"},
+        {"key", "name", "summary", "note", "path_type", "variant_label",
+         "lanes", "path_steps", "cells", "triggers"},
         jp, rep,
     )
     path_key = check_key(path.get("key"), f"{jp}.key", rep) if "key" in path else None
@@ -441,26 +441,26 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         rep.error(jp, "missing required field 'key'")
     check_unique("path", path_key, paths_seen, f"{jp}.key", rep)
     check_locale_text(path.get("name"), f"{jp}.name", rep, locales, True, "name")
-    for optional in ("description", "note", "variant_label"):
+    for optional in ("summary", "note", "variant_label"):
         if optional in path:
             check_locale_text(path[optional], f"{jp}.{optional}", rep, locales, False, optional)
     check_enum(path, "path_type", PATH_TYPES, jp, rep)
 
-    # Layers -----------------------------------------------------------------
-    layer_keys: set = set()
-    layers = path.get("layers")
-    if not isinstance(layers, list) or not layers:
-        rep.error(f"{jp}.layers", "'layers' must be a non-empty array")
-        layers = []
-    layers_seen: dict = {}
+    # Lanes -----------------------------------------------------------------
+    lane_keys: set = set()
+    lanes = path.get("lanes")
+    if not isinstance(lanes, list) or not lanes:
+        rep.error(f"{jp}.lanes", "'lanes' must be a non-empty array")
+        lanes = []
+    lanes_seen: dict = {}
     rows_seen: dict = {}
-    for i, layer in enumerate(layers):
-        key = validate_layer(layer, f"{jp}.layers[{i}]", rep, locales, rows_seen)
-        check_unique("layer", key, layers_seen, f"{jp}.layers[{i}].key", rep)
+    for i, lane in enumerate(lanes):
+        key = validate_lane(lane, f"{jp}.lanes[{i}]", rep, locales, rows_seen)
+        check_unique("lane", key, lanes_seen, f"{jp}.lanes[{i}].key", rep)
         if key:
-            layer_keys.add(key)
-    if len(layers) > SCALE_MAX_LAYERS:
-        rep.warn(f"{jp}.layers", f"path '{path_key}' has {len(layers)} layers (> {SCALE_MAX_LAYERS}) — renders, but consider splitting the scenario (soft warning, never a cap)")
+            lane_keys.add(key)
+    if len(lanes) > SCALE_MAX_LANES:
+        rep.warn(f"{jp}.lanes", f"path '{path_key}' has {len(lanes)} lanes (> {SCALE_MAX_LANES}) — renders, but consider splitting the scenario (soft warning, never a cap)")
 
     # path_steps ---------------------------------------------------------------
     path_step_keys: list = []
@@ -476,8 +476,8 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         if key in seen_steps:
             rep.error(
                 f"{jp}.path_steps[{i}]",
-                f"duplicate step '{key}' in path_steps (column_position {i} duplicates "
-                f"column_position {seen_steps[key]}; array index = column_position, so each step may appear once)",
+                f"duplicate step '{key}' in path_steps (position {i} duplicates "
+                f"position {seen_steps[key]}; array index = position, so each step may appear once)",
             )
             continue
         seen_steps[key] = i
@@ -501,20 +501,20 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         pair = validate_cell(cell, f"{jp}.cells[{i}]", rep, locales)
         if pair is None:
             continue
-        layer_key, step_key = pair
+        lane_key, step_key = pair
         cjp = f"{jp}.cells[{i}]"
         if pair in cell_pairs:
-            rep.error(cjp, f"duplicate cell (layer '{layer_key}', step '{step_key}') — first declared at {cell_pairs[pair]}")
+            rep.error(cjp, f"duplicate cell (lane '{lane_key}', step '{step_key}') — first declared at {cell_pairs[pair]}")
             continue
         cell_pairs[pair] = cjp
-        if layer_key not in layer_keys:
-            rep.error(f"{cjp}.layer", f"cell references unknown layer '{layer_key}' on path '{path_key}'")
+        if lane_key not in lane_keys:
+            rep.error(f"{cjp}.lane", f"cell references unknown lane '{lane_key}' on path '{path_key}'")
         if step_key not in scenario_step_keys:
             rep.error(f"{cjp}.step", f"cell references unknown scenario step '{step_key}'")
         elif step_key not in path_step_set:
             rep.error(
                 f"{cjp}.step",
-                f"cell (layer '{layer_key}', step '{step_key}') references step '{step_key}' "
+                f"cell (lane '{lane_key}', step '{step_key}') references step '{step_key}' "
                 f"which is not in path '{path_key}' path_steps — the DB cells_validate_path_match "
                 "trigger would abort this import mid-transaction",
             )
@@ -539,17 +539,17 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         if source is None or target is None:
             continue
         if source == target:
-            rep.error(tjp, f"trigger source equals target (layer '{source[0]}', step '{source[1]}') — self-triggers are invalid")
+            rep.error(tjp, f"trigger source equals target (lane '{source[0]}', step '{source[1]}') — self-triggers are invalid")
             continue
         if (source, target) in trigger_pairs:
             rep.error(tjp, f"duplicate trigger {source} -> {target} — first declared at {trigger_pairs[(source, target)]}")
         else:
             trigger_pairs[(source, target)] = tjp
-        for end_name, (layer_key, step_key) in (("source", source), ("target", target)):
-            if (layer_key, step_key) not in cell_pairs:
+        for end_name, (lane_key, step_key) in (("source", source), ("target", target)):
+            if (lane_key, step_key) not in cell_pairs:
                 rep.error(
                     f"{tjp}.{end_name}",
-                    f"trigger {end_name} references cell (layer '{layer_key}', step '{step_key}') "
+                    f"trigger {end_name} references cell (lane '{lane_key}', step '{step_key}') "
                     f"which does not exist on path '{path_key}' — triggers must connect two cells "
                     "on the SAME path (cross-path triggers are invalid)",
                 )
@@ -559,14 +559,14 @@ def validate_scenario(scenario, jp: str, rep: Report, locales: list, scenarios_s
     if not isinstance(scenario, dict):
         rep.error(jp, f"scenario must be an object, got {type_name(scenario)}")
         return
-    check_extra_keys(scenario, {"key", "name", "description", "order", "view_type", "steps", "paths"}, jp, rep)
+    check_extra_keys(scenario, {"key", "name", "summary", "order", "view_type", "steps", "paths"}, jp, rep)
     key = check_key(scenario.get("key"), f"{jp}.key", rep) if "key" in scenario else None
     if "key" not in scenario:
         rep.error(jp, "missing required field 'key'")
     check_unique("scenario", key, scenarios_seen, f"{jp}.key", rep)
     check_locale_text(scenario.get("name"), f"{jp}.name", rep, locales, True, "name")
-    if "description" in scenario:
-        check_locale_text(scenario["description"], f"{jp}.description", rep, locales, False, "description")
+    if "summary" in scenario:
+        check_locale_text(scenario["summary"], f"{jp}.summary", rep, locales, False, "summary")
     check_int(scenario, "order", jp, rep, required=True)
     check_enum(scenario, "view_type", VIEW_TYPES, jp, rep)
 
@@ -599,16 +599,47 @@ def validate_scenario(scenario, jp: str, rep: Report, locales: list, scenarios_s
         validate_path(path, f"{jp}.paths[{i}]", rep, locales, step_keys, paths_seen)
 
 
+IR_SCHEMA = Path(__file__).resolve().parent.parent / "references" / "ir-schema.json"
+
+
+def supported_schema_versions() -> list:
+    """The versions this template speaks, from the schema that declares them.
+
+    Checking only that the field is a STRING was the whole check for as long as
+    the field existed, so an IR authored against a shape the database does not
+    have validated cleanly and failed on the first column that had moved. The
+    list lives in references/ir-schema.json rather than here, because a second
+    copy of a version list is a second thing to forget.
+
+    An unreadable or enum-less schema returns [] and the check is skipped: a
+    validator that cannot run without its sibling file would be a worse failure
+    than the one it is closing.
+    """
+    try:
+        schema = json.loads(IR_SCHEMA.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return list(schema.get("properties", {}).get("schema_version", {}).get("enum", []))
+
+
 def validate_document(doc, rep: Report) -> None:
     if not isinstance(doc, dict):
         rep.error("$", f"IR root must be an object, got {type_name(doc)}")
         return
-    check_extra_keys(doc, {"schema_version", "locales", "lifecycle"}, "$", rep)
+    check_extra_keys(doc, {"schema_version", "locales", "service"}, "$", rep)
 
     if "schema_version" not in doc:
         rep.error("$", "missing required field 'schema_version'")
     elif not isinstance(doc["schema_version"], str):
         rep.error("$.schema_version", f"'schema_version' must be a string, got {type_name(doc['schema_version'])}")
+    else:
+        known = supported_schema_versions()
+        if known and doc["schema_version"] not in known:
+            rep.error(
+                "$.schema_version",
+                f"unknown schema_version {doc['schema_version']!r}; this template speaks "
+                + ", ".join(known),
+            )
 
     locales: list = []
     if "locales" not in doc:
@@ -625,24 +656,24 @@ def validate_document(doc, rep: Report) -> None:
             check_unique("locale", locale, seen, ljp, rep)
             locales.append(locale)
 
-    lifecycle = doc.get("lifecycle")
-    if lifecycle is None:
-        rep.error("$", "missing required field 'lifecycle'")
+    service = doc.get("service")
+    if service is None:
+        rep.error("$", "missing required field 'service'")
         return
-    jp = "$.lifecycle"
-    if not isinstance(lifecycle, dict):
-        rep.error(jp, f"'lifecycle' must be an object, got {type_name(lifecycle)}")
+    jp = "$.service"
+    if not isinstance(service, dict):
+        rep.error(jp, f"'service' must be an object, got {type_name(service)}")
         return
-    check_extra_keys(lifecycle, {"key", "name", "description", "phases"}, jp, rep)
-    if "key" not in lifecycle:
+    check_extra_keys(service, {"key", "name", "summary", "phases"}, jp, rep)
+    if "key" not in service:
         rep.error(jp, "missing required field 'key'")
     else:
-        check_key(lifecycle["key"], f"{jp}.key", rep)
-    check_locale_text(lifecycle.get("name"), f"{jp}.name", rep, locales, True, "name")
-    if "description" in lifecycle:
-        check_locale_text(lifecycle["description"], f"{jp}.description", rep, locales, False, "description")
+        check_key(service["key"], f"{jp}.key", rep)
+    check_locale_text(service.get("name"), f"{jp}.name", rep, locales, True, "name")
+    if "summary" in service:
+        check_locale_text(service["summary"], f"{jp}.summary", rep, locales, False, "summary")
 
-    phases = lifecycle.get("phases")
+    phases = service.get("phases")
     if not isinstance(phases, list) or not phases:
         rep.error(f"{jp}.phases", "'phases' must be a non-empty array")
         return
@@ -655,7 +686,7 @@ def validate_document(doc, rep: Report) -> None:
         if not isinstance(phase, dict):
             rep.error(pjp, f"phase must be an object, got {type_name(phase)}")
             continue
-        check_extra_keys(phase, {"key", "name", "description", "order", "loops_to", "scenarios"}, pjp, rep)
+        check_extra_keys(phase, {"key", "name", "summary", "order", "loops_to", "scenarios"}, pjp, rep)
         phase_key = check_key(phase.get("key"), f"{pjp}.key", rep) if "key" in phase else None
         if "key" not in phase:
             rep.error(pjp, "missing required field 'key'")
@@ -663,8 +694,8 @@ def validate_document(doc, rep: Report) -> None:
         if phase_key:
             phase_keys.add(phase_key)
         check_locale_text(phase.get("name"), f"{pjp}.name", rep, locales, True, "name")
-        if "description" in phase:
-            check_locale_text(phase["description"], f"{pjp}.description", rep, locales, False, "description")
+        if "summary" in phase:
+            check_locale_text(phase["summary"], f"{pjp}.summary", rep, locales, False, "summary")
         check_int(phase, "order", pjp, rep, required=True)
         if "loops_to" in phase:
             loop_key = check_key(phase["loops_to"], f"{pjp}.loops_to", rep)

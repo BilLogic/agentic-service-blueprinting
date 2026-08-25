@@ -31,7 +31,7 @@ validator stops: it proves the IR is well-formed; you probe whether it is
 ## Review lenses
 
 **Referential gaps** (beyond what the validator mechanically catches):
-- Steps declared but unused by any path; layers with no cells at all;
+- Steps declared but unused by any path; lanes with no cells at all;
   paths whose `path_steps` skip steps their narrative clearly needs.
 - Triggers that reference plausible-but-wrong cells (right lane, wrong
   column); triggers missing where the content says "which kicks off…".
@@ -116,7 +116,7 @@ persona drift; MINOR = caption phrasing, ordering, polish.
 
 ## Findings
 1. [BLOCKER|MAJOR|MINOR] <one-line finding>
-   - Where: <scenario/path/layer/step or file:line>
+   - Where: <scenario/path/lane/step or file:line>
    - Why it matters / what to do
 ...
 

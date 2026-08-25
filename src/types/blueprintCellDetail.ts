@@ -5,11 +5,11 @@ export type BlueprintCellPathEntry = {
   cellId: string
   pathId: string
   pathName: string
-  pathDescription?: string | null
+  pathSummary?: string | null
   pathType: PathType
   content: string
   picture?: string | null
-  description?: string | null
+  summary?: string | null
   links?: CellLink[]
 }
 
@@ -26,9 +26,9 @@ export type BlueprintPanelSurface = 'details' | 'differences'
 
 export type BlueprintCellSelection = {
   scenarioName: string
-  /** Parent lifecycle phase label when known (e.g. Pre-Session). */
+  /** Parent service phase label when known (e.g. Pre-Session). */
   phaseName?: string
-  layerName: string
+  laneName: string
   stepId: string
   stepName: string
   stepIndex: number

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 type ScenarioSlideHeaderProps = {
   title: string
-  description?: string | null
+  summary?: string | null
   phaseLabel?: string
   paths?: PathOption[]
   selectedPathIds?: string[]
@@ -16,10 +16,10 @@ type ScenarioSlideHeaderProps = {
   className?: string
 }
 
-/** Sticky header above a scenario grid: title badge, description tooltip and path filters. */
+/** Sticky header above a scenario grid: title badge, summary tooltip and path filters. */
 export function ScenarioSlideHeader({
   title,
-  description,
+  summary,
   phaseLabel,
   paths = [],
   selectedPathIds = [],
@@ -46,9 +46,9 @@ export function ScenarioSlideHeader({
             {title}
           </h1>
         </div>
-        {description && (
+        {summary && (
           <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            {description}
+            {summary}
           </p>
         )}
 
@@ -105,14 +105,14 @@ export function ScenarioSlideHeader({
             {title}
           </h1>
         </div>
-        {description && (
+        {summary && (
           <p
             className={cn(
               'mt-2 max-w-3xl text-muted-foreground',
               compact ? 'text-xs leading-relaxed' : 'text-base leading-relaxed',
             )}
           >
-            {description}
+            {summary}
           </p>
         )}
       </div>

@@ -42,7 +42,7 @@ export type Guarantee =
 export type PhaseSummary = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   position: number
   /** Set when this phase loops back to an earlier one. */
   loopsToPhaseId: string | null
@@ -52,7 +52,7 @@ export type PhaseSummary = {
 export type ScenarioSummary = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   position: number
 }
 
@@ -61,7 +61,7 @@ export type PathSummary = {
   id: string
   scenarioId: string
   name: string
-  description: string | null
+  summary: string | null
   note: string | null
   pathType: string
 }

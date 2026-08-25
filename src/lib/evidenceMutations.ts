@@ -20,7 +20,7 @@ export type EvidenceKind =
   | 'other'
 
 export type EvidenceDraft = {
-  serviceLifecycleId: string
+  serviceId: string
   cellId: string
   /** IR key-path placeholder until the map skill mints real ones. */
   cellKey: string
@@ -54,7 +54,7 @@ export async function addEvidence(
   const { data, error } = await client
     .from('evidence')
     .insert({
-      service_lifecycle_id: draft.serviceLifecycleId,
+      service_id: draft.serviceId,
       cell_id: draft.cellId,
       cell_key: draft.cellKey,
       kind: draft.kind,

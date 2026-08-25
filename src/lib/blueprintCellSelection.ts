@@ -6,18 +6,18 @@ import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 export type BlueprintCellSelectionContext = {
   scenarioName: string
   phaseName?: string
-  layerName: string
+  laneName: string
   stepId: string
   stepName: string
   stepIndex: number
   cellId: string
   cellContent: string
   cellPicture?: string | null
-  cellDescription?: string | null
+  cellSummary?: string | null
   cellLinks?: CellLink[]
   pathId: string
   pathName: string
-  pathDescription?: string | null
+  pathSummary?: string | null
   pathType: PathType
 }
 
@@ -27,7 +27,7 @@ export function buildBlueprintCellSelection(
   return {
     scenarioName: context.scenarioName,
     phaseName: context.phaseName,
-    layerName: context.layerName,
+    laneName: context.laneName,
     stepId: context.stepId,
     stepName: context.stepName,
     stepIndex: context.stepIndex,
@@ -36,11 +36,11 @@ export function buildBlueprintCellSelection(
         cellId: context.cellId,
         pathId: context.pathId,
         pathName: context.pathName,
-        pathDescription: context.pathDescription ?? null,
+        pathSummary: context.pathSummary ?? null,
         pathType: context.pathType,
         content: context.cellContent,
         picture: context.cellPicture ?? null,
-        description: context.cellDescription ?? null,
+        summary: context.cellSummary ?? null,
         links: context.cellLinks ?? [],
       },
     ],
@@ -54,7 +54,7 @@ export function buildTechPillSelection(
   return {
     scenarioName: context.scenarioName,
     phaseName: context.phaseName,
-    layerName: context.layerName,
+    laneName: context.laneName,
     stepId: context.stepId,
     stepName: context.stepName,
     stepIndex: context.stepIndex,
@@ -64,11 +64,11 @@ export function buildTechPillSelection(
         cellId: context.cellId,
         pathId: context.pathId,
         pathName: context.pathName,
-        pathDescription: context.pathDescription ?? null,
+        pathSummary: context.pathSummary ?? null,
         pathType: context.pathType,
         content: techItem,
         picture: context.cellPicture ?? null,
-        description: context.cellDescription ?? null,
+        summary: context.cellSummary ?? null,
         links: context.cellLinks ?? [],
       },
     ],
@@ -85,7 +85,7 @@ export function isSameBlueprintCellSelection(
 ): boolean {
   if (!current) return false
   if (current.scenarioName !== next.scenarioName) return false
-  if (current.layerName !== next.layerName) return false
+  if (current.laneName !== next.laneName) return false
   if (current.stepName !== next.stepName) return false
   if (current.stepIndex !== next.stepIndex) return false
   if ((current.techItem ?? null) !== (next.techItem ?? null)) return false

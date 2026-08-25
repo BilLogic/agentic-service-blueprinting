@@ -142,7 +142,7 @@ function CellResourcesEditor({
         links,
         resources.filter((resource) => resource.url.trim()),
       )
-      invalidateQueries('lifecycle-phases')
+      invalidateQueries('service-phases')
       invalidateQueries(`cell-content:${cellId}`)
       setSaved(true)
     } catch (saveError) {

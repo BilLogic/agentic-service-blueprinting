@@ -27,8 +27,8 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // Lane vocabulary: lanes, cell_dependencies, services, scenarios, position,
   // summary.
   '2026.08.25',
-  // The original template shape: layers, cell_triggers, service_lifecycles,
-  // service_scenarios, {row,column,slot,order}_position, description.
+  // The original template shape: lanes, cell_dependencies, services,
+  // scenarios, {row,column,slot,order}_position, summary.
   '2026.07.16',
 ]
 

@@ -13,10 +13,10 @@ transactional scenario-replace semantics:
   * everything runs inside a single BEGIN; ... COMMIT; transaction — a failing
     statement aborts the whole import and leaves the target untouched;
   * scenario-scoped delete-and-reinsert: each scenario in the IR is deleted by
-    its UUIDv5 id (FK cascades remove paths/steps/path_steps/layers/cells/
+    its UUIDv5 id (FK cascades remove paths/steps/path_steps/lanes/cells/
     triggers), then reinserted in dependency order
-    paths -> steps -> path_steps -> layers -> cells -> cell_triggers;
-  * lifecycle/phases are shared across scenarios and therefore UPSERTED
+    paths -> steps -> path_steps -> lanes -> cells -> cell_dependencies;
+  * service/phases are shared across scenarios and therefore UPSERTED
     (`on conflict (id) do update`), never deleted;
   * IDs are UUIDv5 from stable IR keys + locale (NFC-normalized), so
     re-running the same seed is idempotent by construction.
@@ -30,21 +30,21 @@ Schema coverage (migrations 20260729120000_derived_layer +
 20260818000000_authoring_foundation are the schema truth):
 
   * cells carry `cell_key` — the authored qualified key
-    `<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>`, byte-identical to
+    `<service>/<phase>/<scenario>/<path>/<lane>/<step>`, byte-identical to
     the string this script already hashes into the cell's UUIDv5 and to the
     keys skills/slice/scripts/slice_tools.py writes into
     `slice_items.cell_keys`. Stored, not derived: only the import pipeline
     knows the authored keys (see the cells.cell_key column comment).
-  * cells carry `slot_position`. The IR identifies a cell by its
-    (path, layer, step) triple, so it CANNOT express two cells in one slot —
-    imported cells are always slot_position 0. Slot siblings are an app-side
+  * cells carry `position`. The IR identifies a cell by its
+    (path, lane, step) triple, so it CANNOT express two cells in one slot —
+    imported cells are always position 0. Slot siblings are an app-side
     concept (`upsert_cell` mints them with '-2'/'-3' key suffixes).
   * Wave-2 spec fields pass through when the IR carries them: cells
-    function/form/owner/perceived_owner/value_props; layers kpis/tools.
+    function/form/owner/perceived_owner/value_props; lanes kpis/tools.
     Absent IR fields emit null / '[]'::jsonb, matching the column defaults.
-    (layers.owner_team, phases.business_impact/operational_requirements and
-    cell_triggers label/note have NO IR shape yet — columns stay default.)
-  * cell_triggers emit `kind` explicitly as 'trigger': every IR trigger is a
+    (lanes.owner_team, phases.business_impact/operational_requirements and
+    cell_dependencies label/note have NO IR shape yet — columns stay default.)
+  * cell_dependencies emit `kind` explicitly as 'trigger': every IR trigger is a
     temporal edge. The IR cannot author kind='needs' edges yet.
   * DERIVED TABLES ARE NEVER SEEDED. slices/slice_items/findings/evidence/
     propositions are runtime outputs of the sb:* skills, not IR-authored
@@ -151,25 +151,25 @@ def values_rows(rows) -> str:
 #: Columns whose Python value is JSON-encoded and cast to jsonb.
 JSONB_FIELDS = frozenset({"links", "value_props", "kpis", "tools"})
 #: Columns emitted as a bare SQL literal (numbers), never quoted.
-RAW_FIELDS = frozenset({"slot_position", "row_position"})
+RAW_FIELDS = frozenset({"position", "position"})
 
 
 def seed_cell_fields(cell: dict, path: dict) -> dict:
     """One cell as `cells` column -> value.
 
-    `slot_position` is always 0: the IR identifies a cell by (path, lane, step)
+    `position` is always 0: the IR identifies a cell by (path, lane, step)
     and so cannot express slot siblings. `origin` stays at its 'import' column
     default — these rows ARE the import pipeline's.
     """
     return {
         "id": cell["id"],
         "path_id": path["id"],
-        "layer_id": cell["layer_id"],
+        "lane_id": cell["lane_id"],
         "step_id": cell["step_id"],
-        "slot_position": 0,
+        "position": 0,
         "content": cell["content"],
         "picture": cell["picture"],
-        "description": cell["description"],
+        "summary": cell["summary"],
         "links": cell["links"],
         "cell_key": cell["cell_key"],
         "function": cell["function"],
@@ -181,7 +181,7 @@ def seed_cell_fields(cell: dict, path: dict) -> dict:
 
 
 def seed_lane_fields(lane: dict, path: dict) -> dict:
-    """One lane as `layers` column -> value.
+    """One lane as `lanes` column -> value.
 
     Lanes were left out of the shared projection when cells and edges got it,
     and the omission immediately produced a false sentence: the contract said
@@ -193,15 +193,15 @@ def seed_lane_fields(lane: dict, path: dict) -> dict:
         "id": lane["id"],
         "path_id": path["id"],
         "name": lane["name"],
-        "layer_role": lane["role"],
-        "row_position": lane["row"],
+        "lane_role": lane["role"],
+        "position": lane["row"],
         "kpis": lane["kpis"],
         "tools": lane["tools"],
     }
 
 
 def seed_trigger_fields(trigger: dict) -> dict:
-    """One edge as `cell_triggers` column -> value.
+    """One edge as `cell_dependencies` column -> value.
 
     `kind` is emitted explicitly even though 'trigger' is the column default:
     every IR edge is a temporal one, because the IR has no shape for
@@ -236,7 +236,7 @@ def sql_row(fields: dict) -> list:
 
 def build_model(doc: dict, locale: str) -> dict:
     locales = doc["locales"]
-    lc = doc["lifecycle"]
+    lc = doc["service"]
     lc_q = lc["key"]
 
     def text(m):
@@ -244,11 +244,11 @@ def build_model(doc: dict, locale: str) -> dict:
 
     model = {
         "locale": locale,
-        "lifecycle": {
-            "id": entity_uuid(locale, "lifecycle", lc_q),
+        "service": {
+            "id": entity_uuid(locale, "service", lc_q),
             "key": lc["key"],
             "name": text(lc["name"]),
-            "description": text(lc.get("description")),
+            "summary": text(lc.get("summary")),
         },
         "phases": [],
         "scenarios": [],
@@ -264,7 +264,7 @@ def build_model(doc: dict, locale: str) -> dict:
                 "id": ph_id,
                 "key": phase["key"],
                 "name": text(phase["name"]),
-                "description": text(phase.get("description")),
+                "summary": text(phase.get("summary")),
                 "order": phase["order"],
                 "loops_to": phase.get("loops_to"),
             }
@@ -284,52 +284,52 @@ def build_model(doc: dict, locale: str) -> dict:
             for path in scenario["paths"]:
                 pa_q = f"{sc_q}/{path['key']}"
                 pa_id = entity_uuid(locale, "path", pa_q)
-                layer_ids = {}
-                layers = []
-                for layer in path["layers"]:
-                    la_id = entity_uuid(locale, "layer", f"{pa_q}/{layer['key']}")
-                    layer_ids[layer["key"]] = la_id
-                    layers.append(
+                lane_ids = {}
+                lanes = []
+                for lane in path["lanes"]:
+                    la_id = entity_uuid(locale, "lane", f"{pa_q}/{lane['key']}")
+                    lane_ids[lane["key"]] = la_id
+                    lanes.append(
                         {
                             "id": la_id,
-                            "key": layer["key"],
-                            "name": text(layer["display_name"]),
-                            "role": layer.get("role"),
-                            "row": layer["row"],
+                            "key": lane["key"],
+                            "name": text(lane["display_name"]),
+                            "role": lane.get("role"),
+                            "row": lane["row"],
                             # Wave-2 lane spec fields (locale-independent
                             # string arrays); absent -> [] = column default.
-                            "kpis": layer.get("kpis") or [],
-                            "tools": layer.get("tools") or [],
+                            "kpis": lane.get("kpis") or [],
+                            "tools": lane.get("tools") or [],
                         }
                     )
 
                 path_steps = [
-                    {"step_id": step_ids[key], "column_position": index}
+                    {"step_id": step_ids[key], "position": index}
                     for index, key in enumerate(path["path_steps"])
                 ]
 
                 cells = []
                 cell_ids = {}
                 for cell in path["cells"]:
-                    ce_q = f"{pa_q}/{cell['layer']}/{cell['step']}"
+                    ce_q = f"{pa_q}/{cell['lane']}/{cell['step']}"
                     ce_id = entity_uuid(locale, "cell", ce_q)
-                    cell_ids[(cell["layer"], cell["step"])] = ce_id
+                    cell_ids[(cell["lane"], cell["step"])] = ce_id
                     cells.append(
                         {
                             "id": ce_id,
                             # The authored key, stored verbatim in
                             # cells.cell_key: the SAME qualified-key string
                             # hashed into the UUIDv5 above and used by
-                            # slice_tools.cell_key() — lifecycle/phase/
-                            # scenario/path/layer/step. Locale-independent
+                            # slice_tools.cell_key() — service/phase/
+                            # scenario/path/lane/step. Locale-independent
                             # (IR keys are ASCII slugs by schema; the NFC
                             # normalization in entity_uuid is a no-op here).
                             "cell_key": ce_q,
-                            "layer_id": layer_ids[cell["layer"]],
+                            "lane_id": lane_ids[cell["lane"]],
                             "step_id": step_ids[cell["step"]],
                             "content": text(cell.get("content")) or "",
                             "picture": cell.get("picture"),
-                            "description": text(cell.get("description")),
+                            "summary": text(cell.get("summary")),
                             "links": localize_links(cell.get("links"), locale, locales),
                             # Wave-2 spec fields (locale-independent strings /
                             # {for, value} array); absent -> null / [] =
@@ -344,8 +344,8 @@ def build_model(doc: dict, locale: str) -> dict:
 
                 triggers = []
                 for trigger in path.get("triggers", []):
-                    src = (trigger["source"]["layer"], trigger["source"]["step"])
-                    tgt = (trigger["target"]["layer"], trigger["target"]["step"])
+                    src = (trigger["source"]["lane"], trigger["source"]["step"])
+                    tgt = (trigger["target"]["lane"], trigger["target"]["step"])
                     tr_q = f"{pa_q}/{src[0]}/{src[1]}->{tgt[0]}/{tgt[1]}"
                     triggers.append(
                         {
@@ -360,10 +360,10 @@ def build_model(doc: dict, locale: str) -> dict:
                         "id": pa_id,
                         "key": path["key"],
                         "name": text(path["name"]),
-                        "description": text(path.get("description")),
+                        "summary": text(path.get("summary")),
                         "note": text(path.get("note")),
                         "path_type": path["path_type"],
-                        "layers": layers,
+                        "lanes": lanes,
                         "path_steps": path_steps,
                         "cells": cells,
                         "triggers": triggers,
@@ -373,14 +373,14 @@ def build_model(doc: dict, locale: str) -> dict:
             model["scenarios"].append(
                 {
                     "id": sc_id,
-                    # Qualified key (lifecycle/phase/scenario): the prefix of
+                    # Qualified key (service/phase/scenario): the prefix of
                     # every cell_key under this scenario — --verify uses it to
                     # report derived rows referencing the seeded scenario.
                     "qualified_key": sc_q,
                     "key": scenario["key"],
                     "phase_id": ph_id,
                     "name": text(scenario["name"]),
-                    "description": text(scenario.get("description")),
+                    "summary": text(scenario.get("summary")),
                     "order": scenario["order"],
                     "view_type": scenario["view_type"],
                     "steps": steps,
@@ -399,7 +399,7 @@ def build_model(doc: dict, locale: str) -> dict:
 
 def emit_seed_sql(model: dict, ir_name: str) -> str:
     q = sql_quote
-    lc = model["lifecycle"]
+    lc = model["service"]
     parts = []
     parts.append(
         f"""-- GENERATED by scripts/generate_seed_sql.py — edit the IR and regenerate; do not hand-edit.
@@ -411,34 +411,34 @@ def emit_seed_sql(model: dict, ir_name: str) -> str:
 -- Adapter-contract semantics (references/adapter-contract.md):
 --   * single transaction — a failing statement leaves the target untouched;
 --   * scenario-replace: delete each scenario by UUIDv5 id (cascades remove
---     children), reinsert paths -> steps -> path_steps -> layers -> cells ->
---     cell_triggers;
---   * lifecycle/phases are shared across scenarios: upserted, not replaced;
+--     children), reinsert paths -> steps -> path_steps -> lanes -> cells ->
+--     cell_dependencies;
+--   * service/phases are shared across scenarios: upserted, not replaced;
 --   * UUIDv5 ids from IR keys + locale => idempotent re-import.
 
 begin;
 
--- Lifecycle (shared, upserted) ------------------------------------------------
+-- Service (shared, upserted) ------------------------------------------------
 
-insert into public.service_lifecycles (id, name, description) values
-  ({q(lc['id'])}, {q(lc['name'])}, {q(lc['description'])})
+insert into public.services (id, name, summary) values
+  ({q(lc['id'])}, {q(lc['name'])}, {q(lc['summary'])})
 on conflict (id) do update
-  set name = excluded.name, description = excluded.description;
+  set name = excluded.name, summary = excluded.summary;
 
 -- Phases (shared, upserted; loops_to applied after all phases exist) ----------
 
-insert into public.phases (id, service_lifecycle_id, name, description, order_position) values
+insert into public.phases (id, service_id, name, summary, position) values
 {values_rows(
     [
-        [q(ph['id']), q(lc['id']), q(ph['name']), q(ph['description']), str(ph['order'])]
+        [q(ph['id']), q(lc['id']), q(ph['name']), q(ph['summary']), str(ph['order'])]
         for ph in model['phases']
     ]
 )}
 on conflict (id) do update
-  set service_lifecycle_id = excluded.service_lifecycle_id,
+  set service_id = excluded.service_id,
       name = excluded.name,
-      description = excluded.description,
-      order_position = excluded.order_position;
+      summary = excluded.summary,
+      position = excluded.position;
 """
     )
 
@@ -452,40 +452,40 @@ on conflict (id) do update
         parts.append(
             f"""
 -- Scenario '{scenario['key']}' ({scenario['id']}) --------------------------------
--- Scenario-replace: delete (cascades to paths, steps, path_steps, layers,
--- cells, cell_triggers), then reinsert in dependency order.
+-- Scenario-replace: delete (cascades to paths, steps, path_steps, lanes,
+-- cells, cell_dependencies), then reinsert in dependency order.
 
-delete from public.service_scenarios where id = {q(scenario['id'])};
+delete from public.scenarios where id = {q(scenario['id'])};
 
-insert into public.service_scenarios (id, phase_id, name, description, order_position, view_type) values
-  ({q(scenario['id'])}, {q(scenario['phase_id'])}, {q(scenario['name'])}, {q(scenario['description'])}, {scenario['order']}, {q(scenario['view_type'])});
+insert into public.scenarios (id, phase_id, name, summary, position, view_type) values
+  ({q(scenario['id'])}, {q(scenario['phase_id'])}, {q(scenario['name'])}, {q(scenario['summary'])}, {scenario['order']}, {q(scenario['view_type'])});
 
-insert into public.paths (id, service_scenario_id, name, description, note, path_type) values
+insert into public.paths (id, scenario_id, name, summary, note, path_type) values
 {values_rows(
     [
-        [q(p['id']), q(scenario['id']), q(p['name']), q(p['description']), q(p['note']), q(p['path_type'])]
+        [q(p['id']), q(scenario['id']), q(p['name']), q(p['summary']), q(p['note']), q(p['path_type'])]
         for p in scenario['paths']
     ]
 )};
 
-insert into public.steps (id, service_scenario_id, name) values
+insert into public.steps (id, scenario_id, name) values
 {values_rows([[q(s['id']), q(scenario['id']), q(s['name'])] for s in scenario['steps']])};
 
-insert into public.path_steps (path_id, step_id, column_position) values
+insert into public.path_steps (path_id, step_id, position) values
 {values_rows(
     [
-        [q(p['id']), q(ps['step_id']), str(ps['column_position'])]
+        [q(p['id']), q(ps['step_id']), str(ps['position'])]
         for p in scenario['paths']
         for ps in p['path_steps']
     ]
 )};
 
-insert into public.layers ({', '.join(seed_lane_fields(scenario['paths'][0]['layers'][0], scenario['paths'][0]))}) values
+insert into public.lanes ({', '.join(seed_lane_fields(scenario['paths'][0]['lanes'][0], scenario['paths'][0]))}) values
 {values_rows(
     [
         sql_row(seed_lane_fields(l, p))
         for p in scenario['paths']
-        for l in p['layers']
+        for l in p['lanes']
     ]
 )};
 """
@@ -508,7 +508,7 @@ insert into public.layers ({', '.join(seed_lane_fields(scenario['paths'][0]['lay
         ]
         if trigger_fields:
             parts.append(
-                f"\ninsert into public.cell_triggers ({', '.join(trigger_fields[0])}) values\n"
+                f"\ninsert into public.cell_dependencies ({', '.join(trigger_fields[0])}) values\n"
                 + values_rows([sql_row(fields) for fields in trigger_fields])
                 + ";\n"
             )
@@ -529,31 +529,31 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
             "paths": len(scenario["paths"]),
             "steps": len(scenario["steps"]),
             "path_steps": sum(len(p["path_steps"]) for p in scenario["paths"]),
-            "layers": sum(len(p["layers"]) for p in scenario["paths"]),
+            "lanes": sum(len(p["lanes"]) for p in scenario["paths"]),
             "cells": sum(len(p["cells"]) for p in scenario["paths"]),
-            "cell_triggers": sum(len(p["triggers"]) for p in scenario["paths"]),
+            "cell_dependencies": sum(len(p["triggers"]) for p in scenario["paths"]),
         }
         counts = {
-            "scenario rows": f"select count(*) from public.service_scenarios where id = {sid}",
-            "paths": f"select count(*) from public.paths where service_scenario_id = {sid}",
-            "steps": f"select count(*) from public.steps where service_scenario_id = {sid}",
+            "scenario rows": f"select count(*) from public.scenarios where id = {sid}",
+            "paths": f"select count(*) from public.paths where scenario_id = {sid}",
+            "steps": f"select count(*) from public.steps where scenario_id = {sid}",
             "path_steps": (
                 "select count(*) from public.path_steps ps join public.paths p "
-                f"on p.id = ps.path_id where p.service_scenario_id = {sid}"
+                f"on p.id = ps.path_id where p.scenario_id = {sid}"
             ),
-            "layers": (
-                "select count(*) from public.layers l join public.paths p "
-                f"on p.id = l.path_id where p.service_scenario_id = {sid}"
+            "lanes": (
+                "select count(*) from public.lanes l join public.paths p "
+                f"on p.id = l.path_id where p.scenario_id = {sid}"
             ),
             "cells": (
                 "select count(*) from public.cells c join public.paths p "
-                f"on p.id = c.path_id where p.service_scenario_id = {sid}"
+                f"on p.id = c.path_id where p.scenario_id = {sid}"
             ),
-            "cell_triggers": (
-                "select count(*) from public.cell_triggers t "
+            "cell_dependencies": (
+                "select count(*) from public.cell_dependencies t "
                 "join public.cells c on c.id = t.source_cell_id "
                 "join public.paths p on p.id = c.path_id "
-                f"where p.service_scenario_id = {sid}"
+                f"where p.scenario_id = {sid}"
             ),
         }
         expected_full = {"scenario rows": 1, **expected}
@@ -572,7 +572,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
         checks.append(
             "  select count(*) into n from public.cells c "
             "join public.paths p on p.id = c.path_id\n"
-            f"  where p.service_scenario_id = {sid}\n"
+            f"  where p.scenario_id = {sid}\n"
             f"    and (c.cell_key is null or c.cell_key not like {q(prefix + '/%')});\n"
             "  if n <> 0 then\n"
             f"    raise exception 'scenario {label}: % cell(s) missing the authored cell_key prefix {prefix}/', n;\n"
@@ -582,7 +582,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
         # Content spot-checks: scenario name, each path name, and the first
         # non-empty cell content per path.
         checks.append(
-            f"  select name into t from public.service_scenarios where id = {sid};\n"
+            f"  select name into t from public.scenarios where id = {sid};\n"
             f"  if t is distinct from {q(scenario['name'])} then\n"
             f"    raise exception 'scenario {label}: name mismatch — got %', t;\n"
             "  end if;"
@@ -615,7 +615,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
     # are legitimate (that is the recovery design), but worth surfacing after
     # a re-import. Guarded by to_regclass so the verify script still runs
     # against a database without the derived-layer migration.
-    lc_id = q(model["lifecycle"]["id"])
+    lc_id = q(model["service"]["id"])
     derived = []
     for scenario in model["scenarios"]:
         pat = q(scenario["qualified_key"] + "/%")
@@ -638,12 +638,12 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
         )
     derived.append(
         "  if to_regclass('public.slices') is not null then\n"
-        f"    select count(*) into n from public.slices where service_lifecycle_id = {lc_id};\n"
-        "    raise notice 'derived (reported, not verified): % slices on this lifecycle', n;\n"
+        f"    select count(*) into n from public.slices where service_id = {lc_id};\n"
+        "    raise notice 'derived (reported, not verified): % slices on this service', n;\n"
         "  end if;\n"
         "  if to_regclass('public.propositions') is not null then\n"
-        f"    select count(*) into n from public.propositions where service_lifecycle_id = {lc_id};\n"
-        "    raise notice 'derived (reported, not verified): % propositions rows on this lifecycle', n;\n"
+        f"    select count(*) into n from public.propositions where service_id = {lc_id};\n"
+        "    raise notice 'derived (reported, not verified): % propositions rows on this service', n;\n"
         "  end if;"
     )
 

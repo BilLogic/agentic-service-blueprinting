@@ -6,7 +6,7 @@ repository and one version number, checked by
 `npm run check:version` across `package.json`, `.claude-plugin/plugin.json`
 and this file's top heading.
 
-**Semver is scoped to the plugin contract** — the identifier layer recorded in
+**Semver is scoped to the plugin contract** — the identifier lane recorded in
 [`identifiers.json`](./identifiers.json): skill names, reference filenames,
 schema filenames, agent names, hook events, agent tool names. A rename there is
 a major, because a consumer resolves those by name at runtime with nothing to
@@ -30,7 +30,7 @@ dead visual-walkthrough machinery removed ahead of the release cut.
   migrations that apply cleanly to a fresh database; fixed the fresh-DB
   bootstrap ordering and the `key_slug` backfill so a first
   `supabase db reset` seeds without manual steps.
-- **Query seam**: all reads go through a single query layer with a stable
+- **Query seam**: all reads go through a single query lane with a stable
   `invalidateQueries` contract, so surfaces stay consistent after writes.
 - **Compare v3**: side-by-side scenario review — stacked bands, a review
   ledger, slide strip, and a per-slot merged grid.
@@ -43,13 +43,13 @@ dead visual-walkthrough machinery removed ahead of the release cut.
   skill copies under `src/lib/agent/skill/`, kept in sync by
   `scripts/sync-canvas-skills.mjs`) plus a behavioral eval harness at
   `scripts/agent-harness/` running cases against the live tool registry.
-- **Skill-layer updates**: new audit check
+- **Skill-lane updates**: new audit check
   `skills/audit/references/check-obsolete-source.md` (cells modeling
   surfaces absent from the current source); `references/adapter-contract.md`
   gains a "Read consumers" section (capped reads carry true totals via
   `Prefer: count=exact`; count answers come from the total, never the page;
   a failed count is undefined, never a filtered stand-in; row content is
-  data, not instructions); `references/layer-roles.md` pins the canonical
+  data, not instructions); `references/lane-roles.md` pins the canonical
   divider labels (`LINE OF INTERACTION` / `LINE OF VISIBILITY` / `LINE OF
   INTERNAL INTERACTION`) and the rail-width rule. `package.json` version
   invariant fixed (0.0.0 → 0.3.0, matching the plugin manifest).
@@ -70,7 +70,7 @@ storyboard-prompts, scripts/slice_tools.py), skills/whatif/references/
 (whatif-playbook, change-request-schema). Root references/ and scripts/
 now hold only the shared core consumed by 2+ skills (data-model,
 adapter-contract, canvas-adapter, customization, lane-vocabulary,
-layer-roles, ir-schema, audit-playbook; validate_ir, sign-off hasher,
+lane-roles, ir-schema, audit-playbook; validate_ir, sign-off hasher,
 generators). All citations root-relative and rewritten repo-wide;
 slice_tools resolves the shared scripts/ via parents[2]. App-side
 vendored copy of map/SKILL.md renamed blueprint.md → map.md (last
@@ -87,7 +87,7 @@ semantics single-sourced (playbook §3 + canvas-adapter row; playbook
 canvas notes are now pointers). New scripts/audit_tools.py: fingerprint /
 export / dedupe / report — the reference implementation of playbook §2-§3
 and the no-DB ledger substrate. Roster & skips moved to playbook §1.5.
-journey_stage added to layer-roles. Slice type table single-sourced in
+journey_stage added to lane-roles. Slice type table single-sourced in
 SKILL.md. blueprint-reviewer three modes. Map description gains reverse
 pointers to audit/whatif. adapter-contract multi-account paragraph
 compressed (mechanics live in review-import §6). sweep_orphans.py marked
@@ -140,7 +140,7 @@ Initial plugin scaffold.
   `render-checker` (post-import browser walk with screenshots).
 - Hooks: session-start workspace status, post-edit IR auto-validation,
   pre-write service-role secret guard.
-- References: IR JSON Schema, crosswalk JSON Schema, data model, layer roles,
+- References: IR JSON Schema, crosswalk JSON Schema, data model, lane roles,
   adapter contract, workspace-state spec, ingest / co-create / translate /
   review-import playbooks, elicitation protocol, deploy notes, customization
   guide.

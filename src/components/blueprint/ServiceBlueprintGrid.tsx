@@ -18,8 +18,8 @@ import {
   COMPARE_PATH_SECTION_TOP_INSET,
 } from '@/lib/sideBySideCompareLayout'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
-import { LayerCollapseToggle } from '@/components/blueprint/LayerCollapseToggle'
-import { useCollapsedBlueprintLayers } from '@/hooks/useCollapsedBlueprintLayers'
+import { LaneCollapseToggle } from '@/components/blueprint/LaneCollapseToggle'
+import { useCollapsedBlueprintLanes } from '@/hooks/useCollapsedBlueprintLanes'
 import {
   BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
   BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
@@ -27,7 +27,7 @@ import {
   BLUEPRINT_ROW_MIN_HEIGHT,
   INTERACTION_LINE_LABEL,
   INTERNAL_INTERACTION_LINE_LABEL,
-  LAYER_COLUMN_WIDTH,
+  LANE_COLUMN_WIDTH,
   STEP_COLUMN_GAP,
   STEP_COLUMN_WIDTH,
   VISUAL_PLAY_GUTTER,
@@ -35,12 +35,12 @@ import {
   VISIBILITY_LINE_LABEL,
   getBlueprintGridMinHeight,
   getBlueprintGridMinWidth,
-  getLayerRowMinHeight,
+  getLaneRowMinHeight,
   getVisualCellButtonMaxHeight,
-  layerHasInLaneLoopCorridor,
-  layerHasOverheadArrowCorridor,
-  layerHasWrapCorridorBelow,
-  layerPrecedesBlueprintDivider,
+  laneHasInLaneLoopCorridor,
+  laneHasOverheadArrowCorridor,
+  laneHasWrapCorridorBelow,
+  lanePrecedesBlueprintDivider,
   shouldShowInteractionLineAfter,
   shouldShowInternalInteractionLineAfter,
   shouldShowLaneDividerAfter,
@@ -56,14 +56,14 @@ import {
   blueprintPanelCanvasColor,
   blueprintPanelDividerBgColor,
   blueprintPanelLabelRailColor,
-  getBlueprintLayerStyle,
-  getBlueprintLayerZone,
-  type BlueprintLayerStyle,
+  getBlueprintLaneStyle,
+  getBlueprintLaneZone,
+  type BlueprintLaneStyle,
 } from '@/lib/blueprintTheme'
 import {
-  BLUEPRINT_LAYER_COLLAPSE_ENABLED,
-  BLUEPRINT_LAYER_COLLAPSED_HEIGHT,
-} from '@/lib/blueprintLayerCollapse'
+  BLUEPRINT_LANE_COLLAPSE_ENABLED,
+  BLUEPRINT_LANE_COLLAPSED_HEIGHT,
+} from '@/lib/blueprintLaneCollapse'
 import { cn } from '@/lib/utils'
 import {
   buildBlueprintCellSelection,
@@ -85,7 +85,7 @@ type ServiceBlueprintGridProps = {
   phaseName?: string
   /** When set, scenario title sits on the gray panel; path frame shows path type. */
   headerTitleLabel?: string
-  headerTitleDescription?: string | null
+  headerTitleSummary?: string | null
   showPathTypeBadge?: boolean
   fixedSwimlaneBodyHeight?: number
   fillSwimlaneHeight?: boolean
@@ -112,14 +112,14 @@ export function ServiceBlueprintGrid({
   showEmptyCells = false,
 }: ServiceBlueprintGridProps) {
   const { path, steps, triggers } = data
-  const layers = useMemo(
+  const lanes = useMemo(
     () =>
-      [...data.layers].sort((a, b) => a.row_position - b.row_position),
-    [data.layers],
+      [...data.lanes].sort((a, b) => a.position - b.position),
+    [data.lanes],
   )
   const gridBodyRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const { toggleLayer, isLayerCollapsed } = useCollapsedBlueprintLayers()
+  const { toggleLane, isLaneCollapsed } = useCollapsedBlueprintLanes()
   const cellLookup = useMemo(() => buildCellLookup(data.cells), [data.cells])
   const showPlay =
     isBlueprintVisualWalkthroughEnabled() &&
@@ -148,10 +148,10 @@ export function ServiceBlueprintGrid({
     return fixedSwimlaneBodyHeight - compareInset + serviceInset
   }, [fixedSwimlaneBodyHeight, naturalGridBodyMinHeight])
 
-  if (steps.length === 0 && layers.length === 0) {
+  if (steps.length === 0 && lanes.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        This path has no layers or steps yet.
+        This path has no lanes or steps yet.
       </p>
     )
   }
@@ -176,7 +176,7 @@ export function ServiceBlueprintGrid({
         >
           <PathLabelBadge
             name={path.name}
-            description={path.description}
+            summary={path.summary}
             pathType={path.path_type}
             className="text-base"
           />
@@ -187,7 +187,7 @@ export function ServiceBlueprintGrid({
         <div className="mb-2 flex shrink-0 items-center gap-2 px-1">
           <PathLabelBadge
             name={path.name}
-            description={path.description}
+            summary={path.summary}
             pathType={path.path_type}
             compact
           />
@@ -234,48 +234,48 @@ export function ServiceBlueprintGrid({
             <div
               className="pointer-events-none absolute top-0 bottom-0 z-[1]"
               style={{
-                left: LAYER_COLUMN_WIDTH,
+                left: LANE_COLUMN_WIDTH,
                 width: 1,
                 backgroundColor: BLUEPRINT_THEME.laneDivider,
               }}
               aria-hidden
             />
             <BlueprintTriggerArrows
-              layer="forward"
+              lane="forward"
               triggers={triggers}
               contentRef={gridBodyRef}
               scrollContainerRef={scrollContainerRef}
               pathType={path.path_type}
               pathName={path.name}
             />
-            {layers.map((layer, layerIndex) => {
-              const collapsed = isLayerCollapsed(layer.id)
-              const isPillLayer = shouldUsePillCellContent(layer)
+            {lanes.map((lane, laneIndex) => {
+              const collapsed = isLaneCollapsed(lane.id)
+              const isPillLane = shouldUsePillCellContent(lane)
               const rowMinHeight = collapsed
-                ? BLUEPRINT_LAYER_COLLAPSED_HEIGHT
-                : getLayerRowMinHeight(layer, data, compact, {
+                ? BLUEPRINT_LANE_COLLAPSED_HEIGHT
+                : getLaneRowMinHeight(lane, data, compact, {
                     fitVertically: fillSwimlaneHeight,
                   })
-              const zone = getBlueprintLayerZone(layer, layers)
-              const laneStyle = getBlueprintLayerStyle(layer.name, zone, layer.role)
+              const zone = getBlueprintLaneZone(lane, lanes)
+              const laneStyle = getBlueprintLaneStyle(lane.name, zone, lane.role)
               const showLaneDivider = shouldShowLaneDividerAfter(
-                layer,
-                layerIndex,
-                layers,
+                lane,
+                laneIndex,
+                lanes,
               )
 
-              const flushBottom = layerPrecedesBlueprintDivider(layer, layers)
+              const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
               const showOverheadRailCorridorAbove =
-                !collapsed && layerHasOverheadArrowCorridor(layer, data)
+                !collapsed && laneHasOverheadArrowCorridor(lane, data)
               const showWrapCorridorBelow =
-                !collapsed && layerHasWrapCorridorBelow(layer)
+                !collapsed && laneHasWrapCorridorBelow(lane)
               const showInLaneLoopCorridorAbove =
-                !collapsed && layerHasInLaneLoopCorridor(layer, data)
+                !collapsed && laneHasInLaneLoopCorridor(lane, data)
               const showInteractionDivider =
-                !collapsed && shouldShowInteractionLineAfter(layer)
+                !collapsed && shouldShowInteractionLineAfter(lane)
 
               return (
-                <Fragment key={layer.id}>
+                <Fragment key={lane.id}>
                   <div className="flex shrink-0 flex-col">
                     {showOverheadRailCorridorAbove && (
                       <div
@@ -288,10 +288,10 @@ export function ServiceBlueprintGrid({
                       />
                     )}
                     <BlueprintSwimLane
-                      layer={layer}
+                      lane={lane}
                       laneStyle={laneStyle}
                       rowMinHeight={rowMinHeight}
-                      isPillLayer={isPillLayer}
+                      isPillLane={isPillLane}
                       compact={compact}
                       steps={steps}
                       cellLookup={cellLookup}
@@ -300,7 +300,7 @@ export function ServiceBlueprintGrid({
                       collapsed={collapsed}
                       flushBottom={flushBottom}
                       showInLaneLoopCorridorAbove={showInLaneLoopCorridorAbove}
-                      onToggleCollapse={() => toggleLayer(layer.id)}
+                      onToggleCollapse={() => toggleLane(lane.id)}
                       blueprint={data}
                       scenarioName={scenarioName}
                       phaseName={phaseName}
@@ -323,51 +323,51 @@ export function ServiceBlueprintGrid({
                       label={INTERACTION_LINE_LABEL}
                       lineStyle="dashed"
                       compact={compact}
-                      labelWidth={LAYER_COLUMN_WIDTH}
+                      labelWidth={LANE_COLUMN_WIDTH}
                       labelRailBg={blueprintPanelLabelRailColor(
                         BLUEPRINT_THEME.dividerBg,
                       )}
                       className="relative flex w-full shrink-0"
                       style={{
                         minWidth:
-                          LAYER_COLUMN_WIDTH + getStepColumnsWidth(steps.length),
+                          LANE_COLUMN_WIDTH + getStepColumnsWidth(steps.length),
                         backgroundColor: blueprintPanelDividerBgColor(),
                       }}
                     />
                   )}
 
-                  {!collapsed && shouldShowVisibilityLineAfter(layer, layers) && (
+                  {!collapsed && shouldShowVisibilityLineAfter(lane, lanes) && (
                     <BlueprintDividerRow
                       label={VISIBILITY_LINE_LABEL}
                       lineStyle="solid"
                       compact={compact}
-                      labelWidth={LAYER_COLUMN_WIDTH}
+                      labelWidth={LANE_COLUMN_WIDTH}
                       labelRailBg={blueprintPanelLabelRailColor(
                         BLUEPRINT_THEME.dividerBg,
                       )}
                       className="relative flex w-full shrink-0"
                       style={{
                         minWidth:
-                          LAYER_COLUMN_WIDTH + getStepColumnsWidth(steps.length),
+                          LANE_COLUMN_WIDTH + getStepColumnsWidth(steps.length),
                         backgroundColor: blueprintPanelDividerBgColor(),
                       }}
                     />
                   )}
 
                   {!collapsed &&
-                    shouldShowInternalInteractionLineAfter(layer, layers) && (
+                    shouldShowInternalInteractionLineAfter(lane, lanes) && (
                     <BlueprintDividerRow
                       label={INTERNAL_INTERACTION_LINE_LABEL}
                       lineStyle="dotted"
                       compact={compact}
-                      labelWidth={LAYER_COLUMN_WIDTH}
+                      labelWidth={LANE_COLUMN_WIDTH}
                       labelRailBg={blueprintPanelLabelRailColor(
                         BLUEPRINT_THEME.dividerBg,
                       )}
                       className="relative flex w-full shrink-0"
                       style={{
                         minWidth:
-                          LAYER_COLUMN_WIDTH + getStepColumnsWidth(steps.length),
+                          LANE_COLUMN_WIDTH + getStepColumnsWidth(steps.length),
                         backgroundColor: blueprintPanelDividerBgColor(),
                       }}
                     />
@@ -376,7 +376,7 @@ export function ServiceBlueprintGrid({
               )
             })}
             <BlueprintTriggerArrows
-              layer="wrap"
+              lane="wrap"
               triggers={triggers}
               contentRef={gridBodyRef}
               scrollContainerRef={scrollContainerRef}
@@ -385,12 +385,12 @@ export function ServiceBlueprintGrid({
             />
           </div>
 
-          {layers.length === 0 && steps.length > 0 && (
+          {lanes.length === 0 && steps.length > 0 && (
             <CanvasEmptyState
               variant="panel"
               className="h-auto w-full"
-              title="No layers defined"
-              description="Layers arrive with the blueprint import — or ask the agent with /sb:map."
+              title="No lanes defined"
+              summary="Lanes arrive with the blueprint import — or ask the agent with /sb:map."
             />
           )}
         </div>
@@ -400,10 +400,10 @@ export function ServiceBlueprintGrid({
 }
 
 function BlueprintSwimLane({
-  layer,
+  lane,
   laneStyle,
   rowMinHeight,
-  isPillLayer,
+  isPillLane,
   compact,
   steps,
   cellLookup,
@@ -420,10 +420,10 @@ function BlueprintSwimLane({
   showPlay = false,
   showEmptyCells = false,
 }: {
-  layer: BlueprintData['layers'][number]
-  laneStyle: BlueprintLayerStyle
+  lane: BlueprintData['lanes'][number]
+  laneStyle: BlueprintLaneStyle
   rowMinHeight: number
-  isPillLayer: boolean
+  isPillLane: boolean
   compact?: boolean
   steps: BlueprintData['steps']
   cellLookup: ReturnType<typeof buildCellLookup>
@@ -440,22 +440,22 @@ function BlueprintSwimLane({
   showPlay?: boolean
   showEmptyCells?: boolean
 }) {
-  const layerId = layer.id
-  const layerName = layer.name
-  const isVisualLayer = shouldUseVisualContent(layer)
-  const renderPlay = showPlay && isVisualLayer && playGutter > 0
+  const laneId = lane.id
+  const laneName = lane.name
+  const isVisualLane = shouldUseVisualContent(lane)
+  const renderPlay = showPlay && isVisualLane && playGutter > 0
   const loopCorridorHeight = showInLaneLoopCorridorAbove
     ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
     : 0
 
-  // `data-layer-name` lets a selected cell say which lane it is in without the
+  // `data-lane-name` lets a selected cell say which lane it is in without the
   // selection having to carry the whole blueprint (see lib/canvasCellQuery).
   return (
     <div
       data-blueprint-swimlane=""
       data-blueprint-row=""
-      data-layer-id={layerId}
-      data-layer-name={layer.name}
+      data-lane-id={laneId}
+      data-lane-name={lane.name}
       className={cn(
         'flex shrink-0 overflow-visible rounded-sm',
         showDividerBelow && 'border-b',
@@ -474,9 +474,9 @@ function BlueprintSwimLane({
           compact ? 'px-3.5' : 'pl-5 pr-3',
         )}
         style={{
-          width: LAYER_COLUMN_WIDTH,
-          minWidth: LAYER_COLUMN_WIDTH,
-          maxWidth: LAYER_COLUMN_WIDTH,
+          width: LANE_COLUMN_WIDTH,
+          minWidth: LANE_COLUMN_WIDTH,
+          maxWidth: LANE_COLUMN_WIDTH,
           backgroundColor: blueprintPanelLabelRailColor(BLUEPRINT_THEME.canvas),
           borderColor: BLUEPRINT_THEME.laneDivider,
         }}
@@ -494,7 +494,7 @@ function BlueprintSwimLane({
             compact ? 'pt-3 pb-3' : 'pt-5 pb-5',
           )}
         >
-        {isVisualLayer ? (
+        {isVisualLane ? (
           <span
             className={cn(
               'min-w-0 flex-1 text-left font-bold leading-snug tracking-tight whitespace-normal break-words',
@@ -502,7 +502,7 @@ function BlueprintSwimLane({
             )}
             style={{ color: laneStyle.label }}
           >
-            {layerName}
+            {laneName}
           </span>
         ) : (
           <span
@@ -512,12 +512,12 @@ function BlueprintSwimLane({
             )}
             style={{ color: laneStyle.label }}
           >
-            {layerName}
+            {laneName}
           </span>
         )}
-        {BLUEPRINT_LAYER_COLLAPSE_ENABLED && onToggleCollapse && (
-          <LayerCollapseToggle
-            layerName={layerName}
+        {BLUEPRINT_LANE_COLLAPSE_ENABLED && onToggleCollapse && (
+          <LaneCollapseToggle
+            laneName={laneName}
             collapsed={collapsed}
             onToggle={onToggleCollapse}
             className="size-6 shrink-0"
@@ -556,35 +556,35 @@ function BlueprintSwimLane({
               </div>
             ) : null}
       {steps.map((step, stepIndex) => {
-        const cell = getCellAt(cellLookup, layerId, step.id)
+        const cell = getCellAt(cellLookup, laneId, step.id)
         // A tech slot can hold several cells — one per touchpoint — and each
         // renders as its own pill with its own identity. Everything else
         // keeps asking for "the" cell.
-        const slotCells = isPillLayer
-          ? getCellsAt(cellLookup, layerId, step.id)
+        const slotCells = isPillLane
+          ? getCellsAt(cellLookup, laneId, step.id)
           : undefined
-        const variant = isVisualLayer ? 'visual' : isPillLayer ? 'pills' : 'default'
-        const visualPictures = isVisualLayer
+        const variant = isVisualLane ? 'visual' : isPillLane ? 'pills' : 'default'
+        const visualPictures = isVisualLane
           ? resolveVisualStepPictureEntries(blueprint, step.id)
           : undefined
-        const showCell = isVisualLayer
+        const showCell = isVisualLane
           ? (visualPictures?.length ?? 0) > 0 || showEmptyCells
-          : isPillLayer
+          : isPillLane
             ? (slotCells ?? []).some((entry) =>
                 hasCellContent(entry.content, variant),
               ) || showEmptyCells
             : hasCellContent(cell?.content, variant) || showEmptyCells
 
         return (
-          <Fragment key={`${layerId}-${step.id}`}>
+          <Fragment key={`${laneId}-${step.id}`}>
             {showCell ? (
               <BlueprintCellBlock
                 stepIndex={stepIndex}
                 cellId={
                   cell?.id ??
                   (showEmptyCells
-                    ? `empty-${layerId}-${step.id}`
-                    : isVisualLayer
+                    ? `empty-${laneId}-${step.id}`
+                    : isVisualLane
                       ? `visual-${step.id}`
                       : undefined)
                 }
@@ -599,26 +599,26 @@ function BlueprintSwimLane({
                 visualPictures={visualPictures}
                 slotCells={slotCells}
                 selectionContext={
-                  scenarioName && (cell?.id || isVisualLayer || showEmptyCells)
+                  scenarioName && (cell?.id || isVisualLane || showEmptyCells)
                     ? {
                         scenarioName,
                         phaseName,
-                        layerName,
+                        laneName,
                         stepId: step.id,
                         stepName: step.name,
                         stepIndex,
                         cellId:
                           cell?.id ??
-                          (isVisualLayer
+                          (isVisualLane
                             ? `visual-${step.id}`
-                            : `empty-${layerId}-${step.id}`),
+                            : `empty-${laneId}-${step.id}`),
                         cellContent: cell?.content ?? '',
                         cellPicture: cell?.picture ?? null,
-                        cellDescription: cell?.description ?? null,
+                        cellSummary: cell?.summary ?? null,
                         cellLinks: cell?.links,
                         pathId: blueprint.path.id,
                         pathName: blueprint.path.name,
-                        pathDescription: blueprint.path.description,
+                        pathSummary: blueprint.path.summary,
                         pathType: blueprint.path.path_type,
                       }
                     : undefined
@@ -629,9 +629,9 @@ function BlueprintSwimLane({
               // Outside Edit it stays the inert spacer it has always been.
               <BlueprintEmptyCellSlot
                 pathId={blueprint.path.id}
-                layerId={layerId}
+                laneId={laneId}
                 stepId={step.id}
-                layerName={layerName}
+                laneName={laneName}
                 stepName={step.name}
                 stepIndex={stepIndex}
                 scenarioName={scenarioName}
@@ -691,7 +691,7 @@ function BlueprintCellBlock({
   stepIndex: number
   cellId?: string
   content?: string
-  laneStyle: BlueprintLayerStyle
+  laneStyle: BlueprintLaneStyle
   variant?: 'default' | 'pills' | 'visual'
   width: number
   compact?: boolean
@@ -719,7 +719,7 @@ function BlueprintCellBlock({
       ? (slotCells && slotCells.length > 0
           ? slotCells
           : content !== undefined
-            ? [{ id: cellId, content, picture: null, description: null, links: [] }]
+            ? [{ id: cellId, content, picture: null, summary: null, links: [] }]
             : []
         ).flatMap((slotCell) =>
           getTechPillItems(slotCell.content ?? '').map((item) => ({
@@ -790,7 +790,7 @@ function BlueprintCellBlock({
                 cellId: slotCell.id ?? selectionContext.cellId,
                 cellContent: slotCell.content ?? '',
                 cellPicture: slotCell.picture ?? null,
-                cellDescription: slotCell.description ?? null,
+                cellSummary: slotCell.summary ?? null,
                 cellLinks: slotCell.links,
               }}
               stepIndex={stepIndex}

@@ -74,18 +74,18 @@ type Client = SupabaseClient<Database>
 // Tool specs and rosters live in `specs.ts` (imported directly by their
 // consumers — one canonical path); this module owns only dispatch.
 
-// One lifecycle per deployment today; cached after the first ask.
-let cachedLifecycleId: string | null = null
-async function lifecycleId(client: Client): Promise<string> {
-  if (cachedLifecycleId) return cachedLifecycleId
+// One service per deployment today; cached after the first ask.
+let cachedServiceId: string | null = null
+async function serviceId(client: Client): Promise<string> {
+  if (cachedServiceId) return cachedServiceId
   const { data, error } = await client
-    .from('service_lifecycles')
+    .from('services')
     .select('id')
     .limit(1)
     .maybeSingle()
   if (error) throw new Error(error.message)
-  if (!data) throw new Error('No service lifecycle exists yet.')
-  cachedLifecycleId = data.id
+  if (!data) throw new Error('No service service exists yet.')
+  cachedServiceId = data.id
   return data.id
 }
 
@@ -273,13 +273,13 @@ export async function dispatchTool(
         await addLane(client, {
           scenarioId: need(args, 'scenario_id'),
           name: need(args, 'name'),
-          layerRole: s(args, 'layer_role') ?? null,
-          atRow: typeof args.at_row === 'number' ? args.at_row : undefined,
+          laneRole: s(args, 'lane_role') ?? null,
+          atRow: typeof args.at_position === 'number' ? args.at_position : undefined,
         })
         return 'Added lane to every path of the scenario. Re-read the blueprint for the new lane ids.'
       }
       case 'upsert_cell': {
-        const layerId = need(args, 'layer_id')
+        const laneId = need(args, 'lane_id')
         const stepId = need(args, 'step_id')
         // Occupancy guard: the RPC upserts, so a second call on the same
         // slot would silently OVERWRITE the cell — and the recorded revert
@@ -289,9 +289,9 @@ export async function dispatchTool(
         const { data: occupied, error: occupiedError } = await client
           .from('cells')
           .select('id')
-          .eq('layer_id', layerId)
+          .eq('lane_id', laneId)
           .eq('step_id', stepId)
-          .or('slot_position.is.null,slot_position.eq.0')
+          .or('position.is.null,position.eq.0')
           .limit(1)
         if (occupiedError) throw new Error(occupiedError.message)
         if (occupied && occupied.length > 0)
@@ -303,7 +303,7 @@ export async function dispatchTool(
         if (lengthProblem) throw new Error(lengthProblem)
         const id = await upsertCell(client, {
           pathId: need(args, 'path_id'),
-          layerId,
+          laneId,
           stepId,
           content: newContent,
         })
@@ -318,14 +318,14 @@ export async function dispatchTool(
         }
         const { data, error } = await client
           .from('cells')
-          .select('content, description, owner, perceived_owner')
+          .select('content, summary, owner, perceived_owner')
           .eq('id', cellId)
           .maybeSingle()
         if (error) throw new Error(error.message)
         if (!data) throw new Error(`No cell with id ${cellId}.`)
         const previous: CellContentUpdate = {
           content: data.content ?? '',
-          description: data.description ?? '',
+          summary: data.summary ?? '',
           owner: data.owner ?? '',
           perceivedOwner: data.perceived_owner ?? '',
         }
@@ -334,7 +334,7 @@ export async function dispatchTool(
           cellId,
           {
             content: s(args, 'content') ?? previous.content,
-            description: s(args, 'summary') ?? previous.description,
+            summary: s(args, 'summary') ?? previous.summary,
             owner: s(args, 'owner') ?? previous.owner,
             perceivedOwner: s(args, 'perceived_owner') ?? previous.perceivedOwner,
           },
@@ -397,9 +397,9 @@ export async function dispatchTool(
       }
       case 'create_phase': {
         const id = await createPhase(client, {
-          lifecycleId: await lifecycleId(client),
+          serviceId: await serviceId(client),
           name: need(args, 'name'),
-          description: s(args, 'description') ?? null,
+          summary: s(args, 'summary') ?? null,
         })
         return `Created phase (${id}).`
       }
@@ -448,7 +448,7 @@ export async function dispatchTool(
         if (cellIds.length === 0)
           throw new Error('cell_ids must be a non-empty array of existing cell ids.')
         const slice = await createSlice(client, {
-          lifecycleId: await lifecycleId(client),
+          serviceId: await serviceId(client),
           title: need(args, 'title'),
           description: s(args, 'description') ?? '',
           sliceType: need(args, 'slice_type') as SliceType,
@@ -514,11 +514,11 @@ export async function dispatchTool(
           throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
         const runId = s(args, 'run_id') ?? crypto.randomUUID()
         const fingerprint = await findingFingerprint(checkName, cellIds, scope)
-        const lifecycle = await lifecycleId(client)
+        const service = await serviceId(client)
         const { data: existing, error: readError } = await client
           .from('findings')
           .select('id, status')
-          .eq('service_lifecycle_id', lifecycle)
+          .eq('service_id', service)
           .eq('fingerprint', fingerprint)
           .order('updated_at', { ascending: false })
         if (readError) throw new Error(readError.message)
@@ -535,7 +535,7 @@ export async function dispatchTool(
         if (dismissed)
           return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. run_id ${runId}; reuse it for the rest of this run.`
         const { error: insertError } = await client.from('findings').insert({
-          service_lifecycle_id: lifecycle,
+          service_id: service,
           run_id: runId,
           source,
           check_name: checkName,

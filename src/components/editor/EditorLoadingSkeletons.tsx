@@ -60,7 +60,7 @@ export type OverviewSkeletonPhase = {
   /**
    * The real panel size for this phase, once its blueprints have landed.
    *
-   * `getBlueprintArtboardSize` computes a panel from step and layer counts
+   * `getBlueprintArtboardSize` computes a panel from step and lane counts
    * with fixed constants, so this is the finished size rather than an
    * estimate — and the camera pre-fits against these rectangles. Absent
    * while the blueprints are still in flight; the flat fallback below is
@@ -73,7 +73,7 @@ export type OverviewSkeletonPhase = {
 /**
  * Neutral shape used only when nav metadata has not arrived within the
  * skeleton hold — a cold boot where even the phase list is still in flight.
- * Every other case is shaped from the real lifecycle.
+ * Every other case is shaped from the real service.
  */
 const UNKNOWN_SHAPE: OverviewSkeletonPhase[] = [
   { id: 'unknown', scenarioCount: 2 },
@@ -98,7 +98,7 @@ export function ServiceOverviewCanvasSkeleton({
   loopChannelOffset = 0,
 }: {
   phases: OverviewSkeletonPhase[]
-  /** Extra left padding when the lifecycle loop arrow has a channel. */
+  /** Extra left padding when the service loop arrow has a channel. */
   loopChannelOffset?: number
 }) {
   const rows = phases.length > 0 ? phases : UNKNOWN_SHAPE
@@ -322,7 +322,7 @@ const SESSION_EARLIER_SKELETON_ROWS = [
 
 /**
  * One collapsible nav section — header plus rows — at the real component's
- * measured geometry, so nothing moves when the boot layer lifts.
+ * measured geometry, so nothing moves when the boot lane lifts.
  *
  * The numbers are `SidebarNav`'s: a 29px header (a 16px chevron slot at
  * `pl-1`, then the title's line box), and 32px rows whose label starts 24px
@@ -365,10 +365,10 @@ function BootRailIconSkeleton({ hit }: { hit: string }) {
  * SESSIONS headers, the section chevrons and every control painted and
  * live over a screen that was still loading — a half-built panel beside a
  * progress bar. And because each list ran its own swap, the two halves
- * resolved on their own clocks. One opaque layer over the real sidebar
+ * resolved on their own clocks. One opaque lane over the real sidebar
  * fixes both by construction: everything behind it is covered, and it
  * lifts in a single fade, so every part of the sidebar resolves on exactly
- * the same beat as the canvas's first layer.
+ * the same beat as the canvas's first lane.
  *
  * Every box here is the real component's, measured: the rail's paddings and
  * its 24/36/28px hit areas, `SidebarContent`'s `px-2 pt-1 pb-1`, the dock's

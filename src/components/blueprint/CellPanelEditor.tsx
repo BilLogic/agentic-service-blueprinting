@@ -33,9 +33,9 @@ export const CELL_PANEL_FOOTER_ID = 'cell-panel-editor-footer'
 /** Where a not-yet-created cell would go — the draft the editor writes on Save. */
 export type DraftCellTarget = {
   pathId: string
-  layerId: string
+  laneId: string
   stepId: string
-  layerName: string
+  laneName: string
   stepName: string
   stepIndex: number
   scenarioName?: string
@@ -78,7 +78,7 @@ function Field({
 
 type FormState = {
   text: string
-  description: string
+  summary: string
   owner: string
   perceivedOwner: string
   functionText: string
@@ -102,19 +102,19 @@ type FormState = {
 export function CellPanelEditor({
   cellId,
   draft,
-  fallbackDescription = '',
+  fallbackSummary = '',
   onDone,
 }: {
   /** Existing cell to edit; null when creating from a draft target. */
   cellId: string | null
   draft?: DraftCellTarget
   /**
-   * What the panel displays as this cell's description when the column is
+   * What the panel displays as this cell's summary when the column is
    * empty (tech cells keep prose in `links`). Seeded into the field so the
    * editor shows the same text the reader saw — saving moves it into the
    * column, which takes precedence from then on.
    */
-  fallbackDescription?: string
+  fallbackSummary?: string
   onDone: () => void
 }) {
   const { configured } = useSupabase()
@@ -142,8 +142,8 @@ export function CellPanelEditor({
       // The DB truth. The *field* may be seeded with the links-derived
       // fallback below, but diffs and reverts compare against this — an
       // owner-only edit must not smuggle the fallback prose into the
-      // description column, and undo must restore what the DB actually held.
-      description: content.description ?? '',
+      // summary column, and undo must restore what the DB actually held.
+      summary: content.summary ?? '',
       owner: content.owner ?? '',
       perceivedOwner: content.perceived_owner ?? '',
       functionText: spec?.function ?? '',
@@ -157,7 +157,7 @@ export function CellPanelEditor({
         cellId={cellId}
         draft={undefined}
         baseline={baseline}
-        seededDescription={content.description ?? fallbackDescription}
+        seededSummary={content.summary ?? fallbackSummary}
         onDone={onDone}
       />
     )
@@ -166,19 +166,19 @@ export function CellPanelEditor({
   if (!draft) return null
   return (
     <CellPanelEditorForm
-      key={`${draft.layerId}:${draft.stepId}`}
+      key={`${draft.laneId}:${draft.stepId}`}
       cellId={null}
       draft={draft}
       baseline={{
         text: '',
-        description: '',
+        summary: '',
         owner: '',
         perceivedOwner: '',
         functionText: '',
         formText: '',
         valueProps: [],
       }}
-      seededDescription=""
+      seededSummary=""
       onDone={onDone}
     />
   )
@@ -188,13 +188,13 @@ function CellPanelEditorForm({
   cellId,
   draft,
   baseline: baselineProp,
-  seededDescription,
+  seededSummary,
   onDone,
 }: {
   cellId: string | null
   draft: DraftCellTarget | undefined
   baseline: FormState
-  seededDescription: string
+  seededSummary: string
   onDone: () => void
 }) {
   const { client } = useSupabase()
@@ -218,11 +218,11 @@ function CellPanelEditorForm({
   const [baseline] = useState(baselineProp)
   const [form, setForm] = useState<FormState>({
     ...baseline,
-    description: seededDescription,
+    summary: seededSummary,
   })
   // Only a deliberate edit persists the seeded fallback prose into the
-  // description column; an untouched field keeps whatever the DB held.
-  const [descriptionTouched, setDescriptionTouched] = useState(false)
+  // summary column; an untouched field keeps whatever the DB held.
+  const [summaryTouched, setSummaryTouched] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // A save that resolves after this form unmounted (the user switched
@@ -245,12 +245,12 @@ function CellPanelEditorForm({
 
   const blocked = !form.text.trim()
 
-  const effectiveDescription = descriptionTouched
-    ? form.description
-    : baseline.description
+  const effectiveSummary = summaryTouched
+    ? form.summary
+    : baseline.summary
   const contentChanged =
     form.text !== baseline.text ||
-    effectiveDescription !== baseline.description ||
+    effectiveSummary !== baseline.summary ||
     form.owner !== baseline.owner ||
     form.perceivedOwner !== baseline.perceivedOwner
   const specChanged =
@@ -269,7 +269,7 @@ function CellPanelEditorForm({
         // The draft becomes real here and only here. Cancel never writes.
         targetId = await upsertCell(client, {
           pathId: draft!.pathId,
-          layerId: draft!.layerId,
+          laneId: draft!.laneId,
           stepId: draft!.stepId,
           content: form.text.trim(),
         })
@@ -279,7 +279,7 @@ function CellPanelEditorForm({
       const draftExtras =
         !cellId &&
         Boolean(
-          form.description.trim() ||
+          form.summary.trim() ||
             form.owner.trim() ||
             form.perceivedOwner.trim(),
         )
@@ -289,14 +289,14 @@ function CellPanelEditorForm({
           targetId,
           {
             content: form.text,
-            description: cellId ? effectiveDescription : form.description,
+            summary: cellId ? effectiveSummary : form.summary,
             owner: form.owner,
             perceivedOwner: form.perceivedOwner,
           },
           cellId
             ? {
                 content: baseline.text,
-                description: baseline.description,
+                summary: baseline.summary,
                 owner: baseline.owner,
                 perceivedOwner: baseline.perceivedOwner,
               }
@@ -326,7 +326,7 @@ function CellPanelEditorForm({
         )
       }
 
-      invalidateQueries('lifecycle-phases')
+      invalidateQueries('service-phases')
       // Content edit: only the edited path's scenario is stale (todo 029).
       // Existing-cell edits mount with draft undefined and don't know their
       // path, so they fall back to invalidating every scenario's blueprint.
@@ -375,16 +375,16 @@ function CellPanelEditorForm({
         />
       </Field>
 
-      {/* "Summary", not "Description": it is the tl;dr that consolidates
+      {/* "Summary", not "Summary": it is the tl;dr that consolidates
           what the detailed fields (function, form, value) spell out. The
-          column stays `description` — a label rename is not a migration. */}
+          column stays `summary` — a label rename is not a migration. */}
       <Field label="Summary" hint="The tl;dr — what the detailed fields below add up to.">
         <textarea
-          value={form.description}
+          value={form.summary}
           rows={3}
           onChange={(event) => {
-            setDescriptionTouched(true)
-            set('description', event.target.value)
+            setSummaryTouched(true)
+            set('summary', event.target.value)
           }}
           className="w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         />

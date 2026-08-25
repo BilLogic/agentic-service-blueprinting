@@ -38,7 +38,7 @@
  * would become unreachable.
  */
 
-@layer utilities {
+@lane utilities {
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
   [data-phase-scenario-panel] {
     background-color: var(--color-slate-500);
@@ -164,7 +164,7 @@
     position: relative;
     /*
       `inset-ring` + `shadow`, not one hand-written box-shadow list: Tailwind
-      composes its ring / inset-ring / shadow layers into a single
+      composes its ring / inset-ring / shadow lanes into a single
       `box-shadow`, so the token-derived ring and the elevation stay
       independent instead of one raw list owning both.
     */
@@ -219,7 +219,7 @@
   }
 }
 
-@layer utilities {
+@lane utilities {
   /*
    * CELL SEMANTIC TOKENS — the full state set, per lane role.
    *
@@ -431,7 +431,7 @@
   }
 }
 
-@layer utilities {
+@lane utilities {
   /*
    * FOCUS PULSE — brief emphasis ring after a fly-to-cell (the counterpart
    * highlight from ledger rows, the divergence strip and agent focus).
@@ -464,7 +464,7 @@
 
   /*
    * ANNOTATION SHAPE FILL SHADOW — component token (tier 4) with a dark
-   * variant; the TS layer reads it by var() so the shape style stays
+   * variant; the TS lane reads it by var() so the shape style stays
    * data-driven while the color values live with every other color.
    */
   :root {
@@ -576,7 +576,7 @@
   }
 }
 
-@layer utilities {
+@lane utilities {
   /*
    * TOUCH: the canvas owns the gesture, so the OS must not.
    *
@@ -607,7 +607,7 @@
    * `touch-action` is not inherited. It was set on the viewport only, so
    * every element of the board computed `auto` — and the board hangs inside
    * `[data-zoom-pan-content]`, which carries a transform and is therefore a
-   * composited layer. WebKit does not reliably resolve an ancestor's `none`
+   * composited lane. WebKit does not reliably resolve an ancestor's `none`
    * across that boundary: a finger landing on a cell was treated as a native
    * pan/zoom, which cancels the pointer stream the canvas listens to. Panning
    * and pinching worked on empty canvas (the finger lands on the viewport,
@@ -629,7 +629,7 @@
   }
 }
 
-@layer utilities {
+@lane utilities {
   /*
    * PROGRESSIVE REVEAL — the landing choreography (ServiceOverviewView owns
    * the staging and its stability gate; this is only what each stage hides).
@@ -652,19 +652,19 @@
    * transitions both come back.
    */
   /*
-   * `--motion-micro` and a short-tailed ease for the LAYERS.
+   * `--motion-micro` and a short-tailed ease for the LANES.
    *
-   * The chain is event-driven: each layer opens when the one before it
+   * The chain is event-driven: each lane opens when the one before it
    * reports `transitionend`. That makes every duration here SERIAL, not
-   * parallel — the sequence costs the sum of its beats, so a per-layer
+   * parallel — the sequence costs the sum of its beats, so a per-lane
    * number that looks modest in isolation is a quarter of the whole
-   * disclosure. At `--motion-fade` the four layers plus the board ran close
+   * disclosure. At `--motion-fade` the four lanes plus the board ran close
    * to a second, which reads as a performance rather than a screen loading.
    *
    * The ease matters as much as the length. `--ease-structural` is a quint
-   * with a very long tail, so the final third of every layer crawled and
+   * with a very long tail, so the final third of every lane crawled and
    * the handoff landed late. `ease-out` ends decisively, which is what lets
-   * the next layer read as continuing the same gesture rather than starting
+   * the next lane read as continuing the same gesture rather than starting
    * a new one — so each beat carries it.
    *
    * The EASE-IN is one level up, in the cadence: see `--reveal-beat-*`.

@@ -11,7 +11,7 @@ and friction #19: a whole-file hash de-signed every scenario whenever any new
 phase was appended).
 
 The hashed unit is a scenario's full subtree from the IR (key, name,
-description, view_type, order, steps, paths — all locales inline), serialized
+summary, view_type, order, steps, paths — all locales inline), serialized
 canonically so the hash is stable across machines and re-serializations:
 
   * JSON with sorted keys and no insignificant whitespace,
@@ -45,8 +45,8 @@ import validate_ir  # noqa: E402
 
 def iter_scenarios(doc: dict):
     """Yield (scenario_key, scenario_dict) in IR order across all phases."""
-    lifecycle = doc.get("lifecycle", {})
-    for phase in lifecycle.get("phases", []):
+    service = doc.get("service", {})
+    for phase in service.get("phases", []):
         for scenario in phase.get("scenarios", []):
             yield scenario["key"], scenario
 

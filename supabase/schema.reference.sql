@@ -9,6 +9,7 @@
 --   20260818002000_service_account_tier.sql   (OPTIONAL tier recipe)
 --   20260819000000_agent_surface.sql          (agent transcripts + findings grants)
 --   21000101000000_schema_version_is_a_table.sql (the version, interrogable)
+--   21000102000000 .. 21000109000000              (the lane vocabulary: ten renames)
 -- This file shows the post-migration shape as plain CREATEs for reading;
 -- it is never executed. It is CHECKED, though: `npm run check:portable-core`
 -- compares it against what the migrations actually build, offline via the
@@ -43,20 +44,20 @@ create table public.schema_version (
 );
 
 -- Hierarchy
-create table public.service_lifecycles (
+create table public.services (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  description text,
+  summary text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table public.phases (
   id uuid primary key default gen_random_uuid(),
-  service_lifecycle_id uuid not null references public.service_lifecycles (id) on delete cascade,
+  service_id uuid not null references public.services (id) on delete cascade,
   name text not null,
-  description text,
-  order_position integer not null default 0,
+  summary text,
+  position integer not null default 0,
   loops_to_phase_id uuid references public.phases (id) on delete set null,
   business_impact text,           -- spec: opex, NPS, brand, retention, growth
   operational_requirements text,  -- spec: process / system / people / legal
@@ -65,12 +66,12 @@ create table public.phases (
   updated_at timestamptz not null default now()
 );
 
-create table public.service_scenarios (
+create table public.scenarios (
   id uuid primary key default gen_random_uuid(),
   phase_id uuid not null references public.phases (id) on delete cascade,
   name text not null,
-  description text,
-  order_position integer not null default 0,
+  summary text,
+  position integer not null default 0,
   view_type text not null default 'single' check (view_type in ('single', 'side-by-side', 'integrated')),
   origin text not null default 'import' check (origin in ('import', 'app')),
   created_at timestamptz not null default now(),
@@ -79,9 +80,9 @@ create table public.service_scenarios (
 
 create table public.paths (
   id uuid primary key default gen_random_uuid(),
-  service_scenario_id uuid not null references public.service_scenarios (id) on delete cascade,
+  scenario_id uuid not null references public.scenarios (id) on delete cascade,
   name text not null,
-  description text,
+  summary text,
   note text, -- optional path note shown alongside path metadata (e.g. parallel scenario context)
   path_type text not null check (path_type in ('happy', 'unhappy', 'exception', 'alternative')),
   origin text not null default 'import' check (origin in ('import', 'app')),
@@ -90,15 +91,15 @@ create table public.paths (
 );
 
 -- Blueprint grid
-create table public.layers (
+create table public.lanes (
   id uuid primary key default gen_random_uuid(),
   path_id uuid not null references public.paths (id) on delete cascade,
   name text not null,
   -- Semantic role key driving rendering (canonical: customer_actions,
   -- frontstage_actions, backstage_actions, frontstage_tech, backstage_tech,
   -- support_systems, visual, step_visual; extensible; null = generic swimlane).
-  layer_role text,
-  row_position integer not null default 0,
+  lane_role text,
+  position integer not null default 0,
   owner_team text,                        -- spec: team that staffs/owns this lane
   kpis jsonb not null default '[]',       -- string array: metrics the lane team is measured on
   tools jsonb not null default '[]',      -- string array: systems/tools the lane actors use
@@ -111,7 +112,7 @@ create table public.layers (
 
 create table public.steps (
   id uuid primary key default gen_random_uuid(),
-  service_scenario_id uuid not null references public.service_scenarios (id) on delete cascade,
+  scenario_id uuid not null references public.scenarios (id) on delete cascade,
   name text not null,
   origin text not null default 'import' check (origin in ('import', 'app')),
   created_at timestamptz not null default now(),
@@ -121,45 +122,45 @@ create table public.steps (
 create table public.path_steps (
   path_id uuid not null references public.paths (id) on delete cascade,
   step_id uuid not null references public.steps (id) on delete cascade,
-  column_position integer not null default 0,
+  position integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (path_id, step_id),
   -- Deferrable so the reorder RPCs can renumber a whole path in one batch.
-  unique (path_id, column_position) deferrable initially deferred
+  unique (path_id, position) deferrable initially deferred
 );
 
 create table public.cells (
   id uuid primary key default gen_random_uuid(),
   path_id uuid not null references public.paths (id) on delete cascade,
-  layer_id uuid not null references public.layers (id) on delete cascade,
+  lane_id uuid not null references public.lanes (id) on delete cascade,
   step_id uuid not null references public.steps (id) on delete cascade,
-  -- Ordering within one (layer, step) slot: tech-lane touchpoints occupy 0..n;
+  -- Ordering within one (lane, step) slot: tech-lane touchpoints occupy 0..n;
   -- everything else sits at 0.
-  slot_position integer not null default 0,
+  position integer not null default 0,
   content text not null default '',
   picture text,
-  description text,
+  summary text,
   links jsonb not null default '[]'::jsonb,
   function text,                          -- spec: role/responsibility/requirements
   form text,                              -- spec: communication/look/feel/sound
   value_props jsonb not null default '[]',-- array of {for, value}
   owner text,                             -- actual owning team/party
   perceived_owner text,                   -- who the customer believes owns this moment
-  -- Authored IR key (lifecycle/scenario/path/layer/step). Written by the import
+  -- Authored IR key (service/scenario/path/lane/step). Written by the import
   -- pipeline for origin=import, minted by upsert_cell for origin=app; survives
   -- re-import — slice_items.cell_keys matches against it. Null = not recoverable.
   cell_key text,
   origin text not null default 'import' check (origin in ('import', 'app')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint cells_layer_step_slot_unique unique (layer_id, step_id, slot_position),
+  constraint cells_lane_step_slot_unique unique (lane_id, step_id, position),
   check (jsonb_typeof(links) = 'array'),
   check (jsonb_typeof(value_props) = 'array')
 );
 -- Plus: create unique index cells_cell_key_unique on cells (cell_key) where cell_key is not null;
 
-create table public.cell_triggers (
+create table public.cell_dependencies (
   id uuid primary key default gen_random_uuid(),
   source_cell_id uuid not null references public.cells (id) on delete cascade,
   target_cell_id uuid not null references public.cells (id) on delete cascade,
@@ -168,7 +169,7 @@ create table public.cell_triggers (
   note text,  -- the why-line shown in the cell panel dependencies tab
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint cell_triggers_source_target_kind_unique unique (source_cell_id, target_cell_id, kind),
+  constraint cell_dependencies_source_target_kind_unique unique (source_cell_id, target_cell_id, kind),
   check (source_cell_id <> target_cell_id)
 );
 
@@ -176,7 +177,7 @@ create table public.cell_triggers (
 -- with paired cell_keys, no FK — so scenario re-import never cascades into them)
 create table public.slices (
   id uuid primary key default gen_random_uuid(),
-  service_lifecycle_id uuid not null references public.service_lifecycles (id) on delete cascade,
+  service_id uuid not null references public.services (id) on delete cascade,
   slice_type text not null check (slice_type in ('journey', 'step', 'lane', 'cell', 'custom')),
   title text not null,
   description text,
@@ -209,7 +210,7 @@ create table public.slice_items (
 
 create table public.findings (
   id uuid primary key default gen_random_uuid(),
-  service_lifecycle_id uuid not null references public.service_lifecycles (id) on delete cascade,
+  service_id uuid not null references public.services (id) on delete cascade,
   run_id uuid not null, -- audit-run identity; intentionally FK-less
   source text not null check (source in ('audit', 'whatif', 'import-sweep')),
   check_name text not null,
@@ -224,13 +225,13 @@ create table public.findings (
   check (cardinality(cell_ids) = cardinality(cell_keys))
 );
 -- Plus: create unique index findings_open_fingerprint_idx
---   on findings (service_lifecycle_id, fingerprint) where status = 'open';
+--   on findings (service_id, fingerprint) where status = 'open';
 -- Inserts must arrive with status = 'open' (policy); authenticated UPDATE is
 -- column-scoped to (status, note, severity, run_id, cell_ids, cell_keys, source).
 
 create table public.evidence (
   id uuid primary key default gen_random_uuid(),
-  service_lifecycle_id uuid not null references public.service_lifecycles (id) on delete cascade,
+  service_id uuid not null references public.services (id) on delete cascade,
   cell_id uuid,   -- SOFT ref; exactly one of cell_id / proposition_question_key
   cell_key text,  -- paired with cell_id (both set or both null)
   proposition_question_key text check (
@@ -254,8 +255,8 @@ create table public.evidence (
 -- adopters with sensitive excerpts drop that policy (see the migration header).
 
 create table public.propositions (
-  service_lifecycle_id uuid primary key
-    references public.service_lifecycles (id) on delete cascade,
+  service_id uuid primary key
+    references public.services (id) on delete cascade,
   funding text,
   pricing text,
   delivery_cost text,
@@ -332,7 +333,7 @@ create table public.agent_messages (
 -- Read helpers (open to anon):
 --   key_slug(value text) -> text
 --   cell_natural_key(cell_id uuid) -> text
---   mint_cell_key(path_id uuid, layer_id uuid, step_id uuid) -> text
+--   mint_cell_key(path_id uuid, lane_id uuid, step_id uuid) -> text
 --   slices_referencing(cell_ids uuid[]) -> jsonb
 --   deletion_impact(kind text, target_id uuid) -> jsonb
 --   is_service_account() -> boolean
@@ -340,13 +341,13 @@ create table public.agent_messages (
 -- Writes (authenticated only):
 --   create_scenario(phase_id, name, view_type, lane_source_path_id, lane_set, step_count, path_name) -> jsonb
 --   duplicate_scenario(source_scenario_id, name) -> uuid
---   create_phase(lifecycle_id, name, description) -> uuid
+--   create_phase(service_id, name, summary) -> uuid
 --   create_path(scenario_id, name, path_type, lane_source_path_id) -> uuid
 --   duplicate_path(source_path_id, name, path_type, copy_cells, copy_dependencies) -> uuid
 --   add_step(path_id, name, at_position) -> uuid
---   add_lane(scenario_id, name, layer_role, at_row) -> uuid[]   -- ids, for identity-keyed undo
+--   add_lane(scenario_id, name, lane_role, at_position) -> uuid[]   -- ids, for identity-keyed undo
 --   reorder_steps(path_id, step_ids) / set_path_steps(path_id, step_ids) / reorder_lanes(scenario_id, lane_names)
---   upsert_cell(path_id, layer_id, step_id, content) -> uuid    -- always slot 0
+--   upsert_cell(path_id, lane_id, step_id, content) -> uuid    -- always slot 0
 --   set_cell_dependency(source_cell_id, target_cell_id, kind, label, note) -> uuid
 --   clear_cell_dependency(dependency_id)
 --   rename_phase / rename_scenario / rename_path (id, new_name)

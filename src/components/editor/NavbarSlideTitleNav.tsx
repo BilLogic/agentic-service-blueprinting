@@ -19,14 +19,14 @@ const NAVBAR_TITLE_NAV_ENABLED = false
 
 /**
  * Plain breadcrumb-ish navbar title — reads as static context text, not a
- * floating pill (description stays reachable via the badge tooltip).
+ * floating pill (summary stays reachable via the badge tooltip).
  */
 const NAVBAR_TITLE_BADGE_CLASS =
   'h-5 max-w-full border-transparent bg-transparent px-0 py-0.5 text-sm font-semibold text-foreground shadow-none'
 
 type NavbarSlideTitleNavProps = {
   label: string
-  description?: string | null
+  summary?: string | null
   /** Optional info note rendered as an icon inside the title badge. */
   infoTooltip?: string | null
   /** Overview title has no slide of its own — it maps to the home view. */
@@ -35,12 +35,12 @@ type NavbarSlideTitleNavProps = {
 }
 
 /**
- * Navbar title using the shared scenario/phase title badge + description tooltip.
+ * Navbar title using the shared scenario/phase title badge + summary tooltip.
  * Optionally doubles as an overview/phase/scenario switcher when enabled.
  */
 export function NavbarSlideTitleNav({
   label,
-  description,
+  summary,
   infoTooltip,
   isOverview = false,
   className,
@@ -54,7 +54,7 @@ export function NavbarSlideTitleNav({
     return (
       <ScenarioTitleBadge
         name={label}
-        description={description}
+        summary={summary}
         infoTooltip={infoTooltip}
         side="bottom"
         className={cn(NAVBAR_TITLE_BADGE_CLASS, className)}
@@ -79,7 +79,7 @@ export function NavbarSlideTitleNav({
       >
         <ScenarioTitleBadge
           name={label}
-          description={description}
+          summary={summary}
           infoTooltip={infoTooltip}
           side="bottom"
           className={cn(NAVBAR_TITLE_BADGE_CLASS, 'pointer-events-none')}

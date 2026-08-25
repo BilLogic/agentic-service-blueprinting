@@ -19,7 +19,7 @@ export type CellDependencyTechEntry = {
   id: string
   cellId: string
   item: string
-  layerName?: string
+  laneName?: string
   stepIndex?: number
 }
 
@@ -39,12 +39,12 @@ type RowFlow = 'in' | 'out' | 'both'
 function resolveRowDirection(
   connection: BlueprintCellConnection,
   flow: RowFlow,
-  selectedLayerRowPosition: number,
+  selectedLanePosition: number,
 ): RowDirection {
   if (connection.kind === 'interaction') {
     // Same step, different lane — vertical relationship.
-    if (selectedLayerRowPosition < 0) return 'related'
-    return connection.layerRowPosition < selectedLayerRowPosition
+    if (selectedLanePosition < 0) return 'related'
+    return connection.lanePosition < selectedLanePosition
       ? 'up'
       : 'down'
   }
@@ -106,7 +106,7 @@ function DependencyRow({
           <span className="flex min-w-0 items-center gap-[7px]">
             <DirectionIcon direction={direction} />
             <span className="min-w-0 truncate font-normal text-foreground/90">
-              {connection.layerName}
+              {connection.laneName}
               <span className="text-muted-foreground">
                 {' '}
                 · Step {connection.stepIndex + 1}
@@ -182,7 +182,7 @@ type CellDependencySectionsProps = {
   /** Same-step tech without an explicit trigger (kept from panel v1). */
   otherTech: CellDependencyTechEntry[]
   /** Lane row position of the selected cell — orients up/down glyphs. */
-  selectedLayerRowPosition?: number
+  selectedLanePosition?: number
   className?: string
 } & SelectHandlers
 
@@ -196,7 +196,7 @@ type CellDependencySectionsProps = {
 export function CellDependencySections({
   connections,
   otherTech,
-  selectedLayerRowPosition = -1,
+  selectedLanePosition = -1,
   onCellSelect,
   onTechSelect,
   className,
@@ -253,7 +253,7 @@ export function CellDependencySections({
 
   const handlers = { onCellSelect, onTechSelect }
   const direction = (connection: BlueprintCellConnection, flow: RowFlow) =>
-    resolveRowDirection(connection, flow, selectedLayerRowPosition)
+    resolveRowDirection(connection, flow, selectedLanePosition)
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>

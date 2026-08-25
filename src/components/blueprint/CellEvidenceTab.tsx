@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateEvidence, useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
-import { resolveFirstLifecycleId } from '@/lib/lifecycle'
+import { resolveFirstServiceId } from '@/lib/service'
 import { safeExternalHref } from '@/lib/sliceCells'
 import type { Database, Evidence } from '@/types/database'
 
@@ -128,11 +128,11 @@ function AddSourceForm({
     setBusy(true)
     setError(null)
     try {
-      const lifecycleId = await resolveFirstLifecycleId(client)
+      const serviceId = await resolveFirstServiceId(client)
       // Through the ledger wrapper, like every other write — an added source
       // shows in the session log and can be taken back.
       await addEvidence(client, {
-        serviceLifecycleId: lifecycleId,
+        serviceId: serviceId,
         cellId,
         // TODO(map-skill): id placeholder — real IR key-paths come from
         // the skill.

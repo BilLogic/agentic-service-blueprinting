@@ -494,9 +494,9 @@ function PresentationMiniMap({
   memberCellIds: ReadonlySet<string>
   frameCellIds: ReadonlySet<string>
 }) {
-  const layers = useMemo(
-    () => [...blueprint.layers].sort((a, b) => a.row_position - b.row_position),
-    [blueprint.layers],
+  const lanes = useMemo(
+    () => [...blueprint.lanes].sort((a, b) => a.position - b.position),
+    [blueprint.lanes],
   )
   const cellLookup = useMemo(
     () => buildCellLookup(blueprint.cells),
@@ -509,10 +509,10 @@ function PresentationMiniMap({
       className="absolute right-3 bottom-2 z-10 rounded-md border border-border bg-card/80 p-1.5 opacity-40 transition-opacity duration-(--motion-micro) hover:opacity-100"
     >
       <div className="flex flex-col gap-px">
-        {layers.map((layer) => (
-          <div key={layer.id} className="flex gap-px">
+        {lanes.map((lane) => (
+          <div key={lane.id} className="flex gap-px">
             {blueprint.steps.map((step) => {
-              const cell = getCellAt(cellLookup, layer.id, step.id)
+              const cell = getCellAt(cellLookup, lane.id, step.id)
               const isMember = cell !== undefined && memberCellIds.has(cell.id)
               const isCurrent = cell !== undefined && frameCellIds.has(cell.id)
               return (

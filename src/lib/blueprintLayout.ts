@@ -5,25 +5,25 @@ import {
   CUSTOMER_ACTIONS_ROLE,
   FRONTSTAGE_ACTIONS_ROLE,
   FRONTSTAGE_TECH_ROLE,
-  getLayerRole,
+  getLaneRole,
   STEP_VISUAL_ROLE,
   SUPPORT_SYSTEMS_ROLE,
   VISUAL_ROLE,
-} from '@/lib/layerRoles'
-import type { BlueprintData, BlueprintLayer } from '@/types/blueprint'
+} from '@/lib/laneRoles'
+import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
 
-/** Minimal layer shape for role-driven layout checks. */
-type LayerRoleSource = { name: string; role?: string | null }
+/** Minimal lane shape for role-driven layout checks. */
+type LaneRoleSource = { name: string; role?: string | null }
 
 /** Roles whose cells list multiple items as inline pills (newline-separated content). */
-export const PILL_CELL_LAYER_ROLES = [
+export const PILL_CELL_LANE_ROLES = [
   FRONTSTAGE_TECH_ROLE,
   BACKSTAGE_TECH_ROLE,
   SUPPORT_SYSTEMS_ROLE,
 ] as const
 
 /** Roles rendered as picture rows instead of text cells. */
-export const VISUAL_LAYER_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
+export const VISUAL_LANE_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
 
 export const VISUAL_ROW_MIN_HEIGHT = 132
 export const VISUAL_ROW_MIN_HEIGHT_COMPACT = 108
@@ -35,10 +35,10 @@ export function getVisualCellButtonMaxHeight(compact = false): number {
   return rowHeight - shellVerticalPad
 }
 
-export function shouldUsePillCellContent(layer: LayerRoleSource): boolean {
-  const role = getLayerRole(layer)
+export function shouldUsePillCellContent(lane: LaneRoleSource): boolean {
+  const role = getLaneRole(lane)
   return (
-    role !== null && (PILL_CELL_LAYER_ROLES as readonly string[]).includes(role)
+    role !== null && (PILL_CELL_LANE_ROLES as readonly string[]).includes(role)
   )
 }
 
@@ -62,34 +62,34 @@ export function hasBlueprintCellContent(
   return true
 }
 
-export function shouldUseVisualContent(layer: LayerRoleSource): boolean {
-  const role = getLayerRole(layer)
+export function shouldUseVisualContent(lane: LaneRoleSource): boolean {
+  const role = getLaneRole(lane)
   return (
-    role !== null && (VISUAL_LAYER_ROLES as readonly string[]).includes(role)
+    role !== null && (VISUAL_LANE_ROLES as readonly string[]).includes(role)
   )
 }
 
 /** The standard service-blueprint interaction line follows the spine actor. */
-export function shouldShowInteractionLineAfter(layer: BlueprintLayer): boolean {
-  return getLayerRole(layer) === CUSTOMER_ACTIONS_ROLE
+export function shouldShowInteractionLineAfter(lane: BlueprintLane): boolean {
+  return getLaneRole(lane) === CUSTOMER_ACTIONS_ROLE
 }
 
-/** The visibility line is drawn after frontstage layers (above backstage layers). */
+/** The visibility line is drawn after frontstage lanes (above backstage lanes). */
 export function shouldShowVisibilityLineAfter(
-  layer: BlueprintLayer,
-  layers?: BlueprintLayer[],
+  lane: BlueprintLane,
+  lanes?: BlueprintLane[],
 ): boolean {
-  const role = getLayerRole(layer)
+  const role = getLaneRole(lane)
   if (role !== FRONTSTAGE_ACTIONS_ROLE && role !== FRONTSTAGE_TECH_ROLE) {
     return false
   }
 
   // Frontstage tech can sit above frontstage actions — the visibility line
   // follows the actions lane, not the tech lane.
-  if (role === FRONTSTAGE_TECH_ROLE && layers) {
-    const index = layers.findIndex((entry) => entry.id === layer.id)
-    const next = layers[index + 1]
-    if (next && getLayerRole(next) === FRONTSTAGE_ACTIONS_ROLE) {
+  if (role === FRONTSTAGE_TECH_ROLE && lanes) {
+    const index = lanes.findIndex((entry) => entry.id === lane.id)
+    const next = lanes[index + 1]
+    if (next && getLaneRole(next) === FRONTSTAGE_ACTIONS_ROLE) {
       return false
     }
   }
@@ -103,51 +103,51 @@ export function shouldShowVisibilityLineAfter(
  * null-role "Support Actions" swimlane, which must still anchor the divider
  * without picking up support_systems pill-cell rendering.
  */
-function isSupportHandoffLayer(layer: LayerRoleSource): boolean {
-  if (getLayerRole(layer) === SUPPORT_SYSTEMS_ROLE) return true
+function isSupportHandoffLane(lane: LaneRoleSource): boolean {
+  if (getLaneRole(lane) === SUPPORT_SYSTEMS_ROLE) return true
   return (
-    layer.name === 'Support Actions' || layer.name === 'Tech Support Actions'
+    lane.name === 'Support Actions' || lane.name === 'Tech Support Actions'
   )
 }
 
 /**
  * The internal interaction line marks the hand-off from backstage actions to
  * support systems / support actions, so it draws after a backstage-actions
- * layer only when a support handoff lane follows.
+ * lane only when a support handoff lane follows.
  */
 export function shouldShowInternalInteractionLineAfter(
-  layer: BlueprintLayer,
-  layers?: BlueprintLayer[],
+  lane: BlueprintLane,
+  lanes?: BlueprintLane[],
 ): boolean {
-  if (getLayerRole(layer) !== BACKSTAGE_ACTIONS_ROLE) return false
-  if (!layers) return false
-  const index = layers.findIndex((entry) => entry.id === layer.id)
-  const next = layers[index + 1]
-  return next !== undefined && isSupportHandoffLayer(next)
+  if (getLaneRole(lane) !== BACKSTAGE_ACTIONS_ROLE) return false
+  if (!lanes) return false
+  const index = lanes.findIndex((entry) => entry.id === lane.id)
+  const next = lanes[index + 1]
+  return next !== undefined && isSupportHandoffLane(next)
 }
 
 /** Light rule between swim lanes; omitted before interaction/visibility dividers. */
 export function shouldShowLaneDividerAfter(
-  layer: BlueprintLayer,
-  layerIndex: number,
-  layers: BlueprintLayer[],
+  lane: BlueprintLane,
+  laneIndex: number,
+  lanes: BlueprintLane[],
 ): boolean {
-  if (layerIndex >= layers.length - 1) return false
-  if (shouldShowInteractionLineAfter(layer)) return false
-  if (shouldShowVisibilityLineAfter(layer, layers)) return false
-  if (shouldShowInternalInteractionLineAfter(layer, layers)) return false
+  if (laneIndex >= lanes.length - 1) return false
+  if (shouldShowInteractionLineAfter(lane)) return false
+  if (shouldShowVisibilityLineAfter(lane, lanes)) return false
+  if (shouldShowInternalInteractionLineAfter(lane, lanes)) return false
   return true
 }
 
-/** Layer row is immediately followed by a blueprint divider band. */
-export function layerPrecedesBlueprintDivider(
-  layer: BlueprintLayer,
-  layers?: BlueprintLayer[],
+/** Lane row is immediately followed by a blueprint divider band. */
+export function lanePrecedesBlueprintDivider(
+  lane: BlueprintLane,
+  lanes?: BlueprintLane[],
 ): boolean {
   return (
-    shouldShowInteractionLineAfter(layer) ||
-    shouldShowVisibilityLineAfter(layer, layers) ||
-    shouldShowInternalInteractionLineAfter(layer, layers)
+    shouldShowInteractionLineAfter(lane) ||
+    shouldShowVisibilityLineAfter(lane, lanes) ||
+    shouldShowInternalInteractionLineAfter(lane, lanes)
   )
 }
 
@@ -171,22 +171,22 @@ export const BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN = 32
  *
  * Both lane corridors are decided by comparing the columns a trigger's two
  * ends occupy, so the shape of that question is the same either way: restrict
- * to the lane, then resolve `step_id` through `steps.column_position`. Reading
+ * to the lane, then resolve `step_id` through `steps.position`. Reading
  * the data this way (rather than parsing anything out of an id) is what keeps
  * the rule true for any blueprint.
  */
 function getLaneCellColumns(
   data: BlueprintData,
-  layerId: string,
+  laneId: string,
 ): Map<string, number> {
   const columnByStepId = new Map<string, number>()
   for (const step of data.steps) {
-    columnByStepId.set(step.id, step.column_position)
+    columnByStepId.set(step.id, step.position)
   }
 
   const columnByCellId = new Map<string, number>()
   for (const cell of data.cells) {
-    if (cell.layer_id !== layerId) continue
+    if (cell.lane_id !== laneId) continue
     const column = columnByStepId.get(cell.step_id)
     if (column === undefined) continue
     columnByCellId.set(cell.id, column)
@@ -195,16 +195,16 @@ function getLaneCellColumns(
 }
 
 /**
- * Does this blueprint hold a trigger that stays inside `layerId` and whose two
+ * Does this blueprint hold a trigger that stays inside `laneId` and whose two
  * step columns satisfy `matches`? Triggers that leave the lane at either end
  * are not the lane's business — they are routed between rows, not around one.
  */
 function blueprintHasInLaneTrigger(
   data: BlueprintData,
-  layerId: string,
+  laneId: string,
   matches: (sourceColumn: number, targetColumn: number) => boolean,
 ): boolean {
-  const columnByCellId = getLaneCellColumns(data, layerId)
+  const columnByCellId = getLaneCellColumns(data, laneId)
   if (columnByCellId.size === 0) return false
 
   return data.triggers.some((trigger) => {
@@ -216,14 +216,14 @@ function blueprintHasInLaneTrigger(
 }
 
 function anyBlueprintHasInLaneTrigger(
-  layer: BlueprintLayer,
+  lane: BlueprintLane,
   data: BlueprintData | readonly BlueprintData[] | undefined,
   matches: (sourceColumn: number, targetColumn: number) => boolean,
 ): boolean {
   if (!data) return false
   const blueprints = Array.isArray(data) ? data : [data]
   return blueprints.some((blueprint) =>
-    blueprintHasInLaneTrigger(blueprint, layer.id, matches),
+    blueprintHasInLaneTrigger(blueprint, lane.id, matches),
   )
 }
 
@@ -236,12 +236,12 @@ function anyBlueprintHasInLaneTrigger(
  * The arrow side asks the same question of the DOM (`isOverheadRailTrigger`);
  * the two must agree or the rail would be drawn where no space was reserved.
  */
-export function layerHasOverheadArrowCorridor(
-  layer: BlueprintLayer,
+export function laneHasOverheadArrowCorridor(
+  lane: BlueprintLane,
   data?: BlueprintData | readonly BlueprintData[],
 ): boolean {
   return anyBlueprintHasInLaneTrigger(
-    layer,
+    lane,
     data,
     (sourceColumn, targetColumn) => targetColumn >= sourceColumn + 2,
   )
@@ -255,30 +255,30 @@ export function layerHasOverheadArrowCorridor(
  *
  * Mirrored on the arrow side by `isInLaneWrapTrigger`.
  */
-export function layerHasInLaneLoopCorridor(
-  layer: BlueprintLayer,
+export function laneHasInLaneLoopCorridor(
+  lane: BlueprintLane,
   data?: BlueprintData | readonly BlueprintData[],
 ): boolean {
   return anyBlueprintHasInLaneTrigger(
-    layer,
+    lane,
     data,
     (sourceColumn, targetColumn) => targetColumn < sourceColumn,
   )
 }
 
 export function countInLaneLoopCorridorMargins(
-  layers: BlueprintLayer[],
+  lanes: BlueprintLane[],
   data?: BlueprintData,
 ): number {
   if (!data) return 0
-  return layers.filter((layer) => layerHasInLaneLoopCorridor(layer, data)).length
+  return lanes.filter((lane) => laneHasInLaneLoopCorridor(lane, data)).length
 }
 
 export function countOverheadRailCorridorMargins(
-  layers: BlueprintLayer[],
+  lanes: BlueprintLane[],
   data: BlueprintData,
 ): number {
-  return layers.filter((layer) => layerHasOverheadArrowCorridor(layer, data))
+  return lanes.filter((lane) => laneHasOverheadArrowCorridor(lane, data))
     .length
 }
 
@@ -288,26 +288,26 @@ export function countOverheadRailCorridorMargins(
  * interaction, and backward loops on that row are routed through it rather
  * than over the cells.
  */
-export function layerHasWrapCorridorBelow(layer: BlueprintLayer): boolean {
-  return shouldShowInteractionLineAfter(layer)
+export function laneHasWrapCorridorBelow(lane: BlueprintLane): boolean {
+  return shouldShowInteractionLineAfter(lane)
 }
 
-export function countBlueprintDividerRows(layers: BlueprintLayer[]): number {
-  return layers.filter(
-    (layer) =>
-      shouldShowInteractionLineAfter(layer) ||
-      shouldShowVisibilityLineAfter(layer, layers) ||
-      shouldShowInternalInteractionLineAfter(layer, layers),
+export function countBlueprintDividerRows(lanes: BlueprintLane[]): number {
+  return lanes.filter(
+    (lane) =>
+      shouldShowInteractionLineAfter(lane) ||
+      shouldShowVisibilityLineAfter(lane, lanes) ||
+      shouldShowInternalInteractionLineAfter(lane, lanes),
   ).length
 }
 
 export function countBlueprintWrapCorridorMargins(
-  layers: BlueprintLayer[],
+  lanes: BlueprintLane[],
 ): number {
-  return layers.filter(layerHasWrapCorridorBelow).length
+  return lanes.filter(laneHasWrapCorridorBelow).length
 }
 
-export const LAYER_COLUMN_WIDTH = 220
+export const LANE_COLUMN_WIDTH = 220
 export const STEP_COLUMN_WIDTH = 220
 /** Visible space between step columns where trigger arrows are drawn. */
 export const STEP_COLUMN_GAP = 24
@@ -315,7 +315,7 @@ export const STEP_COLUMN_GAP = 24
 export const VISUAL_PLAY_GUTTER = 28
 
 export function getStepColumnLeft(stepIndex: number): number {
-  return LAYER_COLUMN_WIDTH + stepIndex * (STEP_COLUMN_WIDTH + STEP_COLUMN_GAP)
+  return LANE_COLUMN_WIDTH + stepIndex * (STEP_COLUMN_WIDTH + STEP_COLUMN_GAP)
 }
 
 export function getStepColumnRight(stepIndex: number): number {
@@ -335,7 +335,7 @@ export const BLUEPRINT_PADDING = 24
 export const BLUEPRINT_HEADER_HEIGHT = 48
 export const BLUEPRINT_HEADER_HEIGHT_COMPACT = 32
 /** Gap between swim lanes and dividers (0 — lane borders handle separation). */
-export const BLUEPRINT_LAYER_ROW_GAP = 0
+export const BLUEPRINT_LANE_ROW_GAP = 0
 /** Padding around the grid body for arrow overlay bleed (matches ARROW_VIEWPORT_PAD). */
 export const BLUEPRINT_GRID_VIEWPORT_PAD = 13
 /** Artboard inner wrapper (p-2; formerly CanvasBlueprintArtboard). */
@@ -459,16 +459,16 @@ function getTextBlockMinHeight(lineCount: number, compact = false): number {
   return Math.max(base, wrappedHeight)
 }
 
-export function getMaxPillCountInLayer(
+export function getMaxPillCountInLane(
   data: BlueprintData,
-  layerId: string,
+  laneId: string,
 ): number {
   // Summed per *slot*, not maxed per cell: since the split a slot holds one
   // cell per touchpoint, and a row sized to the tallest single cell would be
   // one pill tall over a stack of three.
   const perStep = new Map<string, number>()
   for (const cell of data.cells) {
-    if (cell.layer_id === layerId && cell.content?.trim()) {
+    if (cell.lane_id === laneId && cell.content?.trim()) {
       const count = parseCellContentItems(cell.content).length
       perStep.set(cell.step_id, (perStep.get(cell.step_id) ?? 0) + count)
     }
@@ -491,14 +491,14 @@ export function getPillStackMinHeight(
   )
 }
 
-function getMaxLineCountInLayer(
+function getMaxLineCountInLane(
   data: BlueprintData,
-  layerId: string,
+  laneId: string,
   compact = false,
 ): number {
   let max = 1
   for (const cell of data.cells) {
-    if (cell.layer_id === layerId && cell.content?.trim()) {
+    if (cell.lane_id === laneId && cell.content?.trim()) {
       max = Math.max(max, getEffectiveLineCount(cell.content, compact))
     }
   }
@@ -507,11 +507,11 @@ function getMaxLineCountInLayer(
 
 /** Minimum inner content height for a single cell (excludes compare shell padding). */
 export function getCellContentMinHeight(
-  layer: BlueprintLayer,
+  lane: BlueprintLane,
   content: string | undefined,
   compact = false,
 ): number {
-  if (shouldUseVisualContent(layer)) {
+  if (shouldUseVisualContent(lane)) {
     return compact
       ? VISUAL_ROW_MIN_HEIGHT_COMPACT
       : VISUAL_ROW_MIN_HEIGHT
@@ -519,7 +519,7 @@ export function getCellContentMinHeight(
 
   if (!content?.trim()) return 0
 
-  if (shouldUsePillCellContent(layer)) {
+  if (shouldUsePillCellContent(lane)) {
     return getPillStackMinHeight(
       parseCellContentItems(content).length,
       compact,
@@ -531,17 +531,17 @@ export function getCellContentMinHeight(
 }
 
 function getDefaultCellMinHeight(
-  layer: BlueprintLayer,
+  lane: BlueprintLane,
   data: BlueprintData,
   compact = false,
 ): number {
   const base = compact ? BLUEPRINT_ROW_MIN_HEIGHT : BLUEPRINT_ROW_MIN_HEIGHT - 16
-  const lineCount = getMaxLineCountInLayer(data, layer.id, compact)
+  const lineCount = getMaxLineCountInLane(data, lane.id, compact)
   return Math.max(base, getTextBlockMinHeight(lineCount, compact))
 }
 
-export function getLayerRowMinHeight(
-  layer: BlueprintLayer,
+export function getLaneRowMinHeight(
+  lane: BlueprintLane,
   data: BlueprintData,
   compact = false,
   options?: { fitVertically?: boolean },
@@ -549,17 +549,17 @@ export function getLayerRowMinHeight(
   const fitVertically = options?.fitVertically ?? false
   const base = fitVertically && compact
     ? BLUEPRINT_ROW_MIN_HEIGHT_COMPACT
-    : getDefaultCellMinHeight(layer, data, compact)
+    : getDefaultCellMinHeight(lane, data, compact)
 
-  if (shouldUseVisualContent(layer)) {
+  if (shouldUseVisualContent(lane)) {
     return compact
       ? VISUAL_ROW_MIN_HEIGHT_COMPACT
       : VISUAL_ROW_MIN_HEIGHT
   }
 
-  if (!shouldUsePillCellContent(layer)) return base
+  if (!shouldUsePillCellContent(lane)) return base
 
-  const pillCount = getMaxPillCountInLayer(data, layer.id)
+  const pillCount = getMaxPillCountInLane(data, lane.id)
   return Math.max(base, getPillStackMinHeight(pillCount, compact))
 }
 
@@ -570,26 +570,26 @@ export function getBlueprintGridMinHeight(
   const { compact = false, includeHeader = true } = options ?? {}
   const header = compact ? BLUEPRINT_HEADER_HEIGHT_COMPACT : BLUEPRINT_HEADER_HEIGHT
   const dividers =
-    countBlueprintDividerRows(data.layers) * BLUEPRINT_DIVIDER_ROW_HEIGHT
+    countBlueprintDividerRows(data.lanes) * BLUEPRINT_DIVIDER_ROW_HEIGHT
   const wrapCorridorMargins =
-    countBlueprintWrapCorridorMargins(data.layers) *
+    countBlueprintWrapCorridorMargins(data.lanes) *
     BLUEPRINT_WRAP_CORRIDOR_MARGIN
   const overheadRailCorridorMargins =
-    countOverheadRailCorridorMargins(data.layers, data) *
+    countOverheadRailCorridorMargins(data.lanes, data) *
     BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN
   const inLaneLoopCorridorMargins =
-    countInLaneLoopCorridorMargins(data.layers, data) *
+    countInLaneLoopCorridorMargins(data.lanes, data) *
     BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
-  const layerRows = data.layers.reduce(
-    (sum, layer) => sum + getLayerRowMinHeight(layer, data, compact),
+  const laneRows = data.lanes.reduce(
+    (sum, lane) => sum + getLaneRowMinHeight(lane, data, compact),
     0,
   )
   const rowCount =
-    data.layers.length + countBlueprintDividerRows(data.layers)
-  const rowGaps = Math.max(0, rowCount - 1) * BLUEPRINT_LAYER_ROW_GAP
+    data.lanes.length + countBlueprintDividerRows(data.lanes)
+  const rowGaps = Math.max(0, rowCount - 1) * BLUEPRINT_LANE_ROW_GAP
   return (
     (includeHeader ? header : 0) +
-    layerRows +
+    laneRows +
     dividers +
     wrapCorridorMargins +
     overheadRailCorridorMargins +
@@ -604,7 +604,7 @@ export const BLUEPRINT_CANVAS_COMPARE_GAP = 24
 export const BLUEPRINT_CANVAS_STACK_GAP = BLUEPRINT_CANVAS_COMPARE_GAP
 /** PathMultiSelect fieldset + legend on canvas artboards. */
 export const BLUEPRINT_PATH_FILTER_HEIGHT = 72
-/** Scenario slide header in stack view (title, description, controls). */
+/** Scenario slide header in stack view (title, summary, controls). */
 export const BLUEPRINT_SCENARIO_HEADER_HEIGHT = 220
 /** Compact scenario header on canvas artboards. */
 export const BLUEPRINT_SCENARIO_HEADER_HEIGHT_COMPACT = 200
@@ -612,7 +612,7 @@ export const BLUEPRINT_SCENARIO_HEADER_HEIGHT_COMPACT = 200
 export type ArtboardSize = { width: number; height: number }
 
 export function getBlueprintGridMinWidth(stepCount: number): number {
-  return LAYER_COLUMN_WIDTH + getStepColumnsWidth(stepCount)
+  return LANE_COLUMN_WIDTH + getStepColumnsWidth(stepCount)
 }
 
 /** Pixel width of a compact ServiceBlueprintGrid (excluding artboard wrapper padding). */

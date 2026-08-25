@@ -59,31 +59,31 @@ Each is walked, with its own figure, in [guide/03 — The plugin](./docs/guide/0
 
 ## Where the blueprint is used
 
-![Ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot, over one shared context layer](./docs/assets/four-ways-in.svg)
+![Ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot, over one shared context lane](./docs/assets/four-ways-in.svg)
 
-The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. A chat bot on top answers questions and links back to the exact cell. All four work from one shared context layer, so what any of them reads is what the others wrote. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
+The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. A chat bot on top answers questions and links back to the exact cell. All four work from one shared context lane, so what any of them reads is what the others wrote. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
 
 ## The blueprint model
 
 ### How a blueprint is organized
 
-![How a blueprint is organized — lifecycle to phase to scenario to path](./docs/assets/data-model-hierarchy.svg)
+![How a blueprint is organized — service to phase to scenario to path](./docs/assets/data-model-hierarchy.svg)
 
-*Read left to right — each panel zooms one level in: a **lifecycle** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
+*Read left to right — each panel zooms one level in: a **service** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
 
 ### Inside a single path
 
 ![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
 
-*Lanes are rows — one actor each, colored by semantic `layer_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
+*Lanes are rows — one actor each, colored by semantic `lane_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
 
 *Two levels down — what a single cell holds, and how a slice is taken out of the blueprint — are in [guide/01 — The blueprint model](./docs/guide/01-the-blueprint-model.md).*
 
 ### Key semantics
 
-- **`layers.layer_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/layerRoles.ts`](./src/lib/layerRoles.ts).
+- **`lanes.lane_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/laneRoles.ts`](./src/lib/laneRoles.ts).
 - **Steps are scenario-scoped columns** shared across paths via `path_steps` ordering — see [references/data-model.md](./references/data-model.md).
-- **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → layers → cells → cell_triggers`.
+- **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → lanes → cells → cell_dependencies`.
 - **View modes** per scenario: `single`, `side-by-side` (any set of labeled variants — e.g. designed vs. reality), `integrated` (runtime merge).
 
 Full detail when you need it: [supabase/DATABASE.md](./supabase/DATABASE.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
@@ -165,14 +165,14 @@ Supabase-native, backend-portable. The app and the skills run Supabase out of th
 | [.claude-plugin/plugin.json](./.claude-plugin/plugin.json) | Claude Code plugin manifest — this is what makes the repo installable as a plugin |
 | [skills/](./skills/) | Four skills, one directory each (`map`, `slice`, `audit`, `whatif`): `SKILL.md` entry point plus that skill's own `references/` (playbooks, schemas, check docs) and `scripts/` |
 | [agents/](./agents/) | Five subagents: `document-reader`, `blueprint-reviewer` (adversarial pre-sign-off review), `render-checker`, `auditor` (one check at a time, blind to the others), `impact-tracer` (walks the dependency graph) |
-| [references/](./references/) | Shared core every skill uses: data model, blueprint schema, adapter contract, canvas adapter, layer-role & lane vocabularies, customization, audit playbook |
+| [references/](./references/) | Shared core every skill uses: data model, blueprint schema, adapter contract, canvas adapter, lane-role & lane vocabularies, customization, audit playbook |
 | [scripts/](./scripts/) | Shared blueprint pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, blueprint auto-validation on edit, service-role secret guard |
 | `src/components/blueprint/` | Blueprint grid, paths, trigger arrows (shadcn/ui + Tailwind v4; theme tokens in `src/styles/tokens.css`) |
 | `src/components/editor/` | Canvas/slide editor shell |
-| [src/lib/layerRoles.ts](./src/lib/layerRoles.ts) | `layer_role` rendering contract |
+| [src/lib/laneRoles.ts](./src/lib/laneRoles.ts) | `lane_role` rendering contract |
 | [src/data/blueprintFallbacks.ts](./src/data/blueprintFallbacks.ts) | Offline/no-DB fallback registry (sample content) |
-| [supabase/migrations/](./supabase/migrations/) | Schema migrations — base template plus the authoring and agent-surface layers |
+| [supabase/migrations/](./supabase/migrations/) | Schema migrations — base template plus the authoring and agent-surface lanes |
 | [supabase/seed.sql](./supabase/seed.sql) | Generated sample seed |
 | [supabase/schema.reference.sql](./supabase/schema.reference.sql) | DDL snapshot |
 | [docs/guide/](./docs/guide/) | The four guides: the model, using it, the plugin, operations |

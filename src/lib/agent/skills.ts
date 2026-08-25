@@ -19,7 +19,7 @@ export type AgentSkillCommand = {
   /** Bare tokens that also resolve to this command. */
   aliases: string[]
   label: string
-  description: string
+  summary: string
   /** SKILL.md content; null while the skill has not shipped. */
   content: string | null
 }
@@ -29,28 +29,28 @@ export const AGENT_SKILL_COMMANDS: AgentSkillCommand[] = [
     id: 'sb:map',
     aliases: ['map'],
     label: '/sb:map',
-    description: 'Create or evolve a blueprint from notes and conversation',
+    summary: 'Create or evolve a blueprint from notes and conversation',
     content: mapSkill,
   },
   {
     id: 'sb:slice',
     aliases: ['slice'],
     label: '/sb:slice',
-    description: 'Cut a stakeholder view out of the blueprint',
+    summary: 'Cut a stakeholder view out of the blueprint',
     content: sliceSkill,
   },
   {
     id: 'sb:audit',
     aliases: ['audit'],
     label: '/sb:audit',
-    description: 'Run the check roster — findings recorded for triage',
+    summary: 'Run the check roster — findings recorded for triage',
     content: auditSkill,
   },
   {
     id: 'sb:whatif',
     aliases: ['whatif'],
     label: '/sb:whatif',
-    description: 'Trace a hypothetical change — promote it only on acceptance',
+    summary: 'Trace a hypothetical change — promote it only on acceptance',
     content: whatifSkill,
   },
 ]

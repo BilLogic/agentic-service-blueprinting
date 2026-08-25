@@ -99,7 +99,7 @@ export function OwnerTagSelect({
         },
       )
       invalidateQueries('owner-tags')
-      invalidateQueries('lifecycle-phases')
+      invalidateQueries('service-phases')
       if (value === from) onChange(next)
       setRenaming(null)
     } catch (renameError) {

@@ -12,7 +12,7 @@ import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 function cellAt(stepIndex: number, cellId: string): BlueprintCellSelection {
   return {
     scenarioName: 'Intake Call',
-    layerName: 'Actor',
+    laneName: 'Actor',
     stepId: `step-${stepIndex}`,
     stepName: `Step ${stepIndex}`,
     stepIndex,
@@ -21,11 +21,11 @@ function cellAt(stepIndex: number, cellId: string): BlueprintCellSelection {
         cellId,
         pathId: 'path-1',
         pathName: 'Happy',
-        pathDescription: null,
+        pathSummary: null,
         pathType: 'happy',
         content: 'Greets the caller',
         picture: null,
-        description: null,
+        summary: null,
         links: [],
       },
     ],

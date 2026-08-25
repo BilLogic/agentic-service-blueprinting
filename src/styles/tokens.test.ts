@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest'
  *  - every custom-property reference in a component must resolve to a
  *    stylesheet declaration, an inline declaration in TS, or a runtime
  *    property injected by a library (allowlisted by prefix),
- *  - the theme dial set the semantic layer derives from must exist in both
+ *  - the theme dial set the semantic lane derives from must exist in both
  *    themes, and every blueprint component token a lane rule promises must
  *    actually be declared for every lane role,
  *  - the motion tokens in animations.css must agree with lib/motion.ts.
@@ -197,7 +197,7 @@ const SEMANTIC = stripComments(
   readFileSync(join(STYLES_DIR, 'semantic.css'), 'utf8'),
 )
 
-describe('theme dials and semantic layer', () => {
+describe('theme dials and semantic lane', () => {
   it('declares every dial in both themes', () => {
     for (const dial of DIALS) {
       expect(LIGHT.includes(`${dial}:`), `light missing ${dial}`).toBe(true)

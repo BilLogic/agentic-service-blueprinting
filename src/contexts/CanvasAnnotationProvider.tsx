@@ -66,17 +66,17 @@ export function CanvasAnnotationProvider({
   }, [])
 
   // The agent's marker pen: boxes around cells (+ an optional text note),
-  // in the same scratch layer, same data shape, same ephemerality as human
+  // in the same scratch lane, same data shape, same ephemerality as human
   // marks. Coordinates un-project the camera exactly like clientToLocal.
   useEffect(
     () =>
       registerAgentAnnotator((cellIds, note) => {
-        const layer = document.querySelector<HTMLElement>(
+        const lane = document.querySelector<HTMLElement>(
           '[data-canvas-annotation-layer]',
         )
-        if (!layer) return 'No annotatable canvas is open right now.'
-        const layerRect = layer.getBoundingClientRect()
-        const scale = layerRect.width / Math.max(layer.offsetWidth, 1)
+        if (!lane) return 'No annotatable canvas is open right now.'
+        const laneRect = lane.getBoundingClientRect()
+        const scale = laneRect.width / Math.max(lane.offsetWidth, 1)
         let drawn = 0
         let anchor: { x: number; y: number } | null = null
         for (const cellId of cellIds) {
@@ -85,8 +85,8 @@ export function CanvasAnnotationProvider({
           )
           if (!el) continue
           const rect = el.getBoundingClientRect()
-          const x = (rect.left - layerRect.left) / scale - 4
-          const y = (rect.top - layerRect.top) / scale - 4
+          const x = (rect.left - laneRect.left) / scale - 4
+          const y = (rect.top - laneRect.top) / scale - 4
           setAnnotations((current) => [
             ...current,
             {
@@ -131,7 +131,7 @@ export function CanvasAnnotationProvider({
     () =>
       registerAgentUiCommand({
         name: 'clear_annotations',
-        description: 'Erase every annotation mark from the canvas scratch layer.',
+        summary: 'Erase every annotation mark from the canvas scratch lane.',
         run: () => {
           clearAnnotations()
           return 'Annotations cleared.'

@@ -43,7 +43,7 @@ export default defineConfig([
     files: [
       'src/contexts/**/*.{ts,tsx}',
       'src/components/blueprint/BlueprintArrowMarkerDefs.tsx',
-      'src/components/blueprint/PathDescriptionTooltip.tsx',
+      'src/components/blueprint/PathSummaryTooltip.tsx',
       'src/components/blueprint/PathMultiSelect.tsx',
       'src/components/blueprint/ScenarioBlueprintPanel.tsx',
     ],

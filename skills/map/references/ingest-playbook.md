@@ -55,9 +55,9 @@ Before drafting anything, classify what the docs actually describe:
 
 ## 4. Cheap skeleton preview before IR
 
-Propose the lifecycle → phases → scenarios outline as plain markdown FIRST
+Propose the service → phases → scenarios outline as plain markdown FIRST
 and get a nod. A wrong parse costs one message here; after IR drafting it
-costs a rebuild. Also settle right-sizing now (single flow? skip lifecycle
+costs a rebuild. Also settle right-sizing now (single flow? skip service
 ceremony — see `skills/map/references/elicitation-protocol.md`).
 
 ## 5. Deep read + draft, one scenario at a time
@@ -71,7 +71,7 @@ For each scenario the user picked:
    - Set `provenance` on every cell extracted from a doc.
    - Set `needs_review: true` wherever confidence is low — flags, not guesses
      presented as facts.
-   - Assign layer roles explicitly (`references/lane-roles.md`); ask
+   - Assign lane roles explicitly (`references/lane-roles.md`); ask
      "whose journey is the spine?" if ambiguous.
    - Locale maps for all text; keep source-language text verbatim where the
      doc provides it, don't machine-round-trip.

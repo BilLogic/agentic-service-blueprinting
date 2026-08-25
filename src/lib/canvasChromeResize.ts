@@ -10,7 +10,7 @@
  * The shell announces those moments here; viewports consult the window and
  * drop resize observations that fall inside it. A module-level window (not
  * a prop or context) because the announcing chrome lives above the tab
- * content and the viewports live several layers below it, with no shared
+ * content and the viewports live several lanes below it, with no shared
  * provider in between.
  */
 

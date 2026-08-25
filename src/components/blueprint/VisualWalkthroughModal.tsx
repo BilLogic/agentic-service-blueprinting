@@ -26,22 +26,22 @@ import {
 } from '@/components/ui/breadcrumb'
 import { useVisualWalkthrough } from '@/contexts/VisualWalkthroughContext'
 import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
-import type { VisualWalkthroughLayerEntry } from '@/lib/visualWalkthrough'
-import { VISUAL_LAYER_SHORT_LABELS } from '@/lib/visualWalkthrough'
+import type { VisualWalkthroughLaneEntry } from '@/lib/visualWalkthrough'
+import { VISUAL_LANE_SHORT_LABELS } from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
 
 function WalkthroughStepSlide({
   step,
 }: {
   step: {
-    layerEntries: VisualWalkthroughLayerEntry[]
+    laneEntries: VisualWalkthroughLaneEntry[]
   }
 }) {
-  const entries = step.layerEntries.map((entry) => ({
-    layerName: entry.layerName,
-    label: VISUAL_LAYER_SHORT_LABELS[entry.layerName] ?? entry.layerName,
+  const entries = step.laneEntries.map((entry) => ({
+    laneName: entry.laneName,
+    label: VISUAL_LANE_SHORT_LABELS[entry.laneName] ?? entry.laneName,
     picture: entry.picture,
-    description: entry.content,
+    summary: entry.content,
   }))
 
   if (entries.length === 0) {

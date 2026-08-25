@@ -20,7 +20,7 @@ type CellSpec = {
   lane: string
   step: string
   content: string
-  description?: string
+  summary?: string
   id?: string
 }
 
@@ -31,38 +31,38 @@ function makeBlueprint(
   pathId: string,
   steps: string[],
   cells: CellSpec[],
-  lanes?: string[],
+  laneNameList?: string[],
 ): BlueprintData {
-  const laneNames = lanes ?? [...new Set(cells.map((cell) => cell.lane))]
-  const layers = laneNames.map((name, index) => ({
+  const laneNames = laneNameList ?? [...new Set(cells.map((cell) => cell.lane))]
+  const lanes = laneNames.map((name, index) => ({
     id: `${pathId}-lane-${name}`,
     name,
-    row_position: index,
+    position: index,
   }))
   const stepRows = steps.map((name, index) => ({
     id: `${pathId}-step-${index}`,
     name,
-    column_position: index,
+    position: index,
   }))
   const stepIdByName = new Map(stepRows.map((step) => [step.name, step.id]))
   const blueprintCells: BlueprintCell[] = cells.map((cell) => ({
     id: cell.id ?? nextId(`${pathId}-cell`),
-    layer_id: `${pathId}-lane-${cell.lane}`,
+    lane_id: `${pathId}-lane-${cell.lane}`,
     step_id: stepIdByName.get(cell.step) ?? '',
     content: cell.content,
     picture: null,
-    description: cell.description ?? null,
+    summary: cell.summary ?? null,
     links: [],
   }))
   return {
     path: {
       id: pathId,
       name: pathId,
-      description: null,
+      summary: null,
       note: null,
       path_type: 'happy',
     },
-    layers,
+    lanes,
     steps: stepRows,
     cells: blueprintCells,
     triggers: [],
@@ -74,7 +74,7 @@ const pair = (a: BlueprintData, b: BlueprintData): CompareBlueprints => [a, b]
 /**
  * Shared fixture: steps Browse/Pay/Confirm/Ship/Rate; Browse and Ship are
  * shared; Pay+Confirm diverge (zone ①), Rate diverges (zone ②); Ship has a
- * detail-only (description) difference.
+ * detail-only (summary) difference.
  */
 function fixture() {
   const a = makeBlueprint(
@@ -89,7 +89,7 @@ function fixture() {
         lane: 'Front Stage',
         step: 'Ship',
         content: 'Ship order',
-        description: 'Courier A',
+        summary: 'Courier A',
       },
       { lane: 'Front Stage', step: 'Rate', content: 'Rate purchase' },
     ],
@@ -106,7 +106,7 @@ function fixture() {
         lane: 'Front Stage',
         step: 'Ship',
         content: 'Ship order',
-        description: 'Courier B',
+        summary: 'Courier B',
       },
       { lane: 'Front Stage', step: 'Rate', content: 'Rate the call' },
     ],
@@ -142,13 +142,13 @@ describe('deriveCompareZones', () => {
   })
 
   it('treats a detail-only column as shared for zone purposes (V7)', () => {
-    // Ship differs only by description: no canvas fork, no zone — it lives
+    // Ship differs only by summary: no canvas fork, no zone — it lives
     // exclusively in the unnumbered detail-only group.
     const model = fixture()
     const detailOnly = getDetailOnlyCompareSlots(model)
     expect(detailOnly).toHaveLength(1)
     expect(detailOnly[0].columnLabel).toBe('Ship')
-    expect(detailOnly[0].differingFields).toEqual(['description'])
+    expect(detailOnly[0].differingFields).toEqual(['summary'])
   })
 })
 
@@ -333,7 +333,7 @@ describe('deriveCompareStepGroups', () => {
 
   it('gives a detail-only column no step group (V7)', () => {
     const groups = deriveCompareStepGroups(fixture())
-    // Ship differs only by description — it belongs to the trailing group.
+    // Ship differs only by summary — it belongs to the trailing group.
     expect(groups.some((group) => group.label === 'Ship')).toBe(false)
     expect(getDetailOnlyCompareSlots(fixture())[0].columnLabel).toBe('Ship')
   })

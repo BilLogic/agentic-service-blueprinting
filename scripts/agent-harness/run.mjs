@@ -185,13 +185,13 @@ const {
 // ---------------------------------------------------------------------------
 async function realListScenarios() {
   const data = await rest(
-    'phases?select=id,name,order_position,service_scenarios(id,name,description,order_position)&order=order_position',
+    'phases?select=id,name,position,scenarios(id,name,summary,position)&order=position',
   )
   return data
     .map((phase) => {
-      const scenarios = (phase.service_scenarios ?? [])
-        .sort((a, b) => a.order_position - b.order_position)
-        .map((s) => `  Scenario "${s.name}" (${s.id})${s.description ? ` — ${s.description}` : ''}`)
+      const scenarios = (phase.scenarios ?? [])
+        .sort((a, b) => a.position - b.position)
+        .map((s) => `  Scenario "${s.name}" (${s.id})${s.summary ? ` — ${s.summary}` : ''}`)
         .join('\n')
       return `Phase "${phase.name}" (${phase.id})${scenarios ? `\n${scenarios}` : ''}`
     })
@@ -200,31 +200,31 @@ async function realListScenarios() {
 
 async function realGetBlueprint(scenarioId) {
   const paths = await rest(
-    `paths?select=id,name,path_type,layers(id,name,layer_role,row_position),path_steps(column_position,steps(id,name))&service_scenario_id=eq.${encodeURIComponent(scenarioId)}`,
+    `paths?select=id,name,path_type,lanes(id,name,lane_role,position),path_steps(position,steps(id,name))&scenario_id=eq.${encodeURIComponent(scenarioId)}`,
   )
   if (!paths?.length) return 'No paths in this scenario.'
   const out = []
   for (const path of paths) {
     const steps = (path.path_steps ?? [])
-      .sort((a, b) => a.column_position - b.column_position)
-      .map((ps) => ({ ...ps.steps, column_position: ps.column_position }))
+      .sort((a, b) => a.position - b.position)
+      .map((ps) => ({ ...ps.steps, position: ps.position }))
       .filter((s) => s.id)
     const cells = await rest(
-      `cells?select=id,content,layer_id,step_id&path_id=eq.${path.id}`,
+      `cells?select=id,content,lane_id,step_id&path_id=eq.${path.id}`,
     )
     out.push(
       `Path "${path.name}" (${path.id}, type ${path.path_type})`,
-      `Steps: ${steps.map((s) => `${s.column_position}. "${s.name}" (${s.id})`).join(' | ')}`,
-      ...(path.layers ?? [])
-        .sort((a, b) => a.row_position - b.row_position)
-        .map((layer) => {
+      `Steps: ${steps.map((s) => `${s.position}. "${s.name}" (${s.id})`).join(' | ')}`,
+      ...(path.lanes ?? [])
+        .sort((a, b) => a.position - b.position)
+        .map((lane) => {
           const laneCells = (cells ?? [])
-            .filter((cell) => cell.layer_id === layer.id)
+            .filter((cell) => cell.lane_id === lane.id)
             .map((cell) => {
               const step = steps.find((s) => s.id === cell.step_id)
-              return `  [step ${step?.column_position ?? '?'}] "${cell.content}" (${cell.id})`
+              return `  [step ${step?.position ?? '?'}] "${cell.content}" (${cell.id})`
             })
-          return `Lane "${layer.name}" (${layer.id}${layer.layer_role ? `, role ${layer.layer_role}` : ''}):\n${laneCells.join('\n') || '  (empty)'}`
+          return `Lane "${lane.name}" (${lane.id}${lane.lane_role ? `, role ${lane.lane_role}` : ''}):\n${laneCells.join('\n') || '  (empty)'}`
         }),
     )
   }
@@ -233,7 +233,7 @@ async function realGetBlueprint(scenarioId) {
 
 async function realGetCell(cellId) {
   const data = await rest(
-    `cells?select=id,content,description,owner,perceived_owner,function,form,value_props&id=eq.${encodeURIComponent(cellId)}`,
+    `cells?select=id,content,summary,owner,perceived_owner,function,form,value_props&id=eq.${encodeURIComponent(cellId)}`,
   )
   if (!data?.[0]) throw new Error(`No cell with id ${cellId}.`)
   return JSON.stringify(data[0], null, 1)
@@ -628,7 +628,7 @@ async function openaiChat({ system, messages, tools, model, noTools }) {
     try {
       parsed = JSON.parse(call.function.arguments)
     } catch {
-      // Malformed args reach the tool layer as empty args.
+      // Malformed args reach the tool lane as empty args.
     }
     parts.push({ call: { id: call.id, name: call.function.name, args: parsed } })
   }

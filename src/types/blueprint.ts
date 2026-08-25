@@ -3,20 +3,20 @@ import type { PathType } from '@/types/database'
 export type BlueprintPath = {
   id: string
   name: string
-  description: string | null
+  summary: string | null
   note: string | null
   path_type: PathType
 }
 
-export type BlueprintLayer = {
+export type BlueprintLane = {
   id: string
   /** Display label — free-form, any language. */
   name: string
-  /** Semantic role key (`layers.layer_role`); null/absent = generic swimlane. */
+  /** Semantic role key (`lanes.lane_role`); null/absent = generic swimlane. */
   role?: string | null
-  row_position: number
+  position: number
   /**
-   * Lane spec (`layers.kpis` / `layers.tools`), carried so a no-DB build
+   * Lane spec (`lanes.kpis` / `lanes.tools`), carried so a no-DB build
    * serves what a database read serves. Optional: most lanes set neither.
    */
   kpis?: string[]
@@ -26,7 +26,7 @@ export type BlueprintLayer = {
 export type BlueprintStep = {
   id: string
   name: string
-  column_position: number
+  position: number
 }
 
 /** Structured link on a cell (stored as JSONB; type is usually "url"). */
@@ -45,24 +45,24 @@ export type CellLink = {
 export type BlueprintCell = {
   id: string
   /**
-   * The authored qualified key (`cells.cell_key`) — lifecycle/phase/scenario/
+   * The authored qualified key (`cells.cell_key`) — service/phase/scenario/
    * path/lane/step. The same string the cell's UUIDv5 is derived from, so a
    * no-DB build can answer "which authored cell is this?" without a database.
    */
   cell_key?: string
-  layer_id: string
+  lane_id: string
   step_id: string
   /** Cell Label — primary text shown in the blueprint grid. */
   content: string
   picture: string | null
-  description: string | null
+  summary: string | null
   links: CellLink[]
   /**
    * Order within a slot (one lane, one step). Tech lanes hold one cell per
    * touchpoint; everything else holds a single cell at 0. Optional because
    * rows predating the split never carry it — absent reads as 0.
    */
-  slot_position?: number
+  position?: number
   /**
    * Cell spec (`cells.owner` … `cells.value_props`), carried so the no-DB
    * fallback can serve the cell panel's spec sections the same way a database
@@ -94,7 +94,7 @@ export type BlueprintCellTrigger = {
 
 export type BlueprintData = {
   path: BlueprintPath
-  layers: BlueprintLayer[]
+  lanes: BlueprintLane[]
   steps: BlueprintStep[]
   cells: BlueprintCell[]
   triggers: BlueprintCellTrigger[]

@@ -18,7 +18,7 @@ type BlueprintTechPillProps = {
 }
 
 /**
- * One tech/tool pill inside a Tech-layer cell. Pills share their cell's id, so
+ * One tech/tool pill inside a Tech-lane cell. Pills share their cell's id, so
  * only the first carries the slice sequence badge.
  */
 export function BlueprintTechPill({

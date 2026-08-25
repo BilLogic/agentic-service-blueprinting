@@ -1,4 +1,4 @@
-import { getLayerRole, VISUAL_ROLE, STEP_VISUAL_ROLE } from '@/lib/layerRoles'
+import { getLaneRole, VISUAL_ROLE, STEP_VISUAL_ROLE } from '@/lib/laneRoles'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 import { pickPreferredPath } from '@/lib/pathSelection'
@@ -8,16 +8,16 @@ import type { PathType } from '@/types/database'
 /**
  * The lanes a walkthrough steps through, named by the blueprint rather than
  * by this module: an adopter's actor lanes carry their own names, so the
- * roster is discovered from the data (see `getVisualWalkthroughLayerNames`)
+ * roster is discovered from the data (see `getVisualWalkthroughLaneNames`)
  * and this constant stays empty as the pinned-order override.
  *
  * A fork that wants a fixed lane order for its walkthrough lists its lane
  * names here; anything listed wins, anything else follows board order.
  */
-export const VISUAL_WALKTHROUGH_LAYER_NAMES: readonly string[] = []
+export const VISUAL_WALKTHROUGH_LANE_NAMES: readonly string[] = []
 
 /** Short lane labels for the walkthrough chrome; defaults to the lane name. */
-export const VISUAL_LAYER_SHORT_LABELS: Record<string, string> = {}
+export const VISUAL_LANE_SHORT_LABELS: Record<string, string> = {}
 
 /**
  * Whether a step picture already carries its own frame, so the walkthrough
@@ -28,30 +28,30 @@ export function hasEmbeddedVisualFrame(_picture: string): boolean {
   return false
 }
 
-export type VisualWalkthroughLayerEntry = {
-  layerName: string
+export type VisualWalkthroughLaneEntry = {
+  laneName: string
   content: string
   picture: string
 }
 
 export type VisualStepPictureEntry = {
-  layerName: string
+  laneName: string
   label: string
   picture: string
-  description: string
+  summary: string
 }
 
 export type VisualWalkthroughStep = {
   stepIndex: number
   stepName: string
-  layerEntries: VisualWalkthroughLayerEntry[]
+  laneEntries: VisualWalkthroughLaneEntry[]
   pictures: string[]
 }
 
 export type VisualWalkthroughSession = {
   pathId: string
   pathName: string
-  pathDescription: string | null
+  pathSummary: string | null
   pathType: PathType
   scenarioName?: string
   phaseName?: string
@@ -84,34 +84,34 @@ export function pickWalkthroughBlueprint(
   )
 }
 
-type VisualPictureBlueprint = Pick<BlueprintData, 'layers' | 'cells'>
+type VisualPictureBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
 
 /**
  * The lanes a walkthrough steps through, in board order: every lane that is
  * NOT one of the visual rows — those hold the artwork the walkthrough shows,
  * so stepping through them would show each picture next to itself.
  *
- * `VISUAL_WALKTHROUGH_LAYER_NAMES` overrides this when a fork pins its own
+ * `VISUAL_WALKTHROUGH_LANE_NAMES` overrides this when a fork pins its own
  * roster; empty (the template default) means "whatever the board has", which
  * is the only rule that survives an adopter naming their lanes themselves.
  */
-function getWalkthroughLayerNames(
+function getWalkthroughLaneNames(
   blueprint: VisualPictureBlueprint,
 ): string[] {
-  if (VISUAL_WALKTHROUGH_LAYER_NAMES.length > 0) {
-    return [...VISUAL_WALKTHROUGH_LAYER_NAMES]
+  if (VISUAL_WALKTHROUGH_LANE_NAMES.length > 0) {
+    return [...VISUAL_WALKTHROUGH_LANE_NAMES]
   }
 
-  return blueprint.layers
-    .filter((layer) => {
-      const role = getLayerRole(layer)
+  return blueprint.lanes
+    .filter((lane) => {
+      const role = getLaneRole(lane)
       return role !== VISUAL_ROLE && role !== STEP_VISUAL_ROLE
     })
-    .map((layer) => layer.name)
+    .map((lane) => lane.name)
 }
 
-function resolveCellDescription(cell: BlueprintData['cells'][number] | undefined): string {
-  return cell?.description?.trim() || cell?.content.trim() || ''
+function resolveCellSummary(cell: BlueprintData['cells'][number] | undefined): string {
+  return cell?.summary?.trim() || cell?.content.trim() || ''
 }
 
 export function resolveVisualStepPictureEntries(
@@ -119,38 +119,38 @@ export function resolveVisualStepPictureEntries(
   stepId: string,
 ): VisualStepPictureEntry[] {
   const cellLookup = buildCellLookup(blueprint.cells)
-  const layerByName = new Map(blueprint.layers.map((layer) => [layer.name, layer]))
+  const laneByName = new Map(blueprint.lanes.map((lane) => [lane.name, lane]))
 
-  return getWalkthroughLayerNames(blueprint).flatMap((name) => {
-    const layer = layerByName.get(name)
-    if (!layer) return []
-    const cell = getCellAt(cellLookup, layer.id, stepId)
+  return getWalkthroughLaneNames(blueprint).flatMap((name) => {
+    const lane = laneByName.get(name)
+    if (!lane) return []
+    const cell = getCellAt(cellLookup, lane.id, stepId)
     if (!cell?.content.trim()) return []
     const picture = cell.picture?.trim()
     if (!picture || isBlueprintStepVisualPlaceholder(picture)) return []
     return [
       {
-        layerName: name,
-        label: VISUAL_LAYER_SHORT_LABELS[name] ?? name,
+        laneName: name,
+        label: VISUAL_LANE_SHORT_LABELS[name] ?? name,
         picture,
-        description: resolveCellDescription(cell),
+        summary: resolveCellSummary(cell),
       },
     ]
   })
 }
 
 /** True when any walkthrough lane has a cell in this step. */
-export function stepHasVisualWalkthroughLayerCells(
+export function stepHasVisualWalkthroughLaneCells(
   blueprint: VisualPictureBlueprint,
   stepId: string,
 ): boolean {
   const cellLookup = buildCellLookup(blueprint.cells)
-  const layerByName = new Map(blueprint.layers.map((layer) => [layer.name, layer]))
+  const laneByName = new Map(blueprint.lanes.map((lane) => [lane.name, lane]))
 
-  return getWalkthroughLayerNames(blueprint).some((name) => {
-    const layer = layerByName.get(name)
-    if (!layer) return false
-    const cell = getCellAt(cellLookup, layer.id, stepId)
+  return getWalkthroughLaneNames(blueprint).some((name) => {
+    const lane = laneByName.get(name)
+    if (!lane) return false
+    const cell = getCellAt(cellLookup, lane.id, stepId)
     return Boolean(cell?.content.trim())
   })
 }
@@ -169,15 +169,15 @@ export function buildVisualWalkthroughSession(
   meta?: VisualWalkthroughContextMeta,
 ): VisualWalkthroughSession {
   const steps = [...blueprint.steps]
-    .sort((a, b) => a.column_position - b.column_position)
+    .sort((a, b) => a.position - b.position)
     .map((step, stepIndex) => {
       const pictureEntries = resolveVisualStepPictureEntries(blueprint, step.id)
       return {
         stepIndex,
         stepName: step.name,
-        layerEntries: pictureEntries.map((entry) => ({
-          layerName: entry.layerName,
-          content: entry.description,
+        laneEntries: pictureEntries.map((entry) => ({
+          laneName: entry.laneName,
+          content: entry.summary,
           picture: entry.picture,
         })),
         pictures: pictureEntries.map((entry) => entry.picture),
@@ -186,7 +186,7 @@ export function buildVisualWalkthroughSession(
   return {
     pathId: blueprint.path.id,
     pathName: blueprint.path.name,
-    pathDescription: blueprint.path.description,
+    pathSummary: blueprint.path.summary,
     pathType: blueprint.path.path_type,
     scenarioName: meta?.scenarioName?.trim() || undefined,
     phaseName: meta?.phaseName?.trim() || undefined,

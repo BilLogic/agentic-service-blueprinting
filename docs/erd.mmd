@@ -2,19 +2,19 @@
 %% Source of truth: supabase/migrations/ (consolidated template schema 20260716200000
 %%   + derived layer 20260729120000/20260730090000/20260803001000
 %%   + authoring foundation/operations + optional tier recipe 20260818*).
-%% Enums: service_scenarios.view_type ∈ (single | side-by-side | integrated)
+%% Enums: scenarios.view_type ∈ (single | side-by-side | integrated)
 %%        paths.path_type ∈ (happy | unhappy | exception | alternative)
 %%        origin (structure tables) ∈ (import | app); slices.origin ∈ (generated | customized | human)
-%%        cell_triggers.kind ∈ (trigger | needs)
+%%        cell_dependencies.kind ∈ (trigger | needs)
 %%        slices.slice_type ∈ (journey | step | lane | cell | custom)
 %%        findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
 %%        evidence.kind ∈ (interview | survey | analytics | doc | meeting | decision | observation | other)
 %%        deleted_structure.kind ∈ (scenario | path | lane | step | cell)
-%% Integrity: cells.path_id must match layers.path_id AND (path_id, step_id) must exist in
+%% Integrity: cells.path_id must match lanes.path_id AND (path_id, step_id) must exist in
 %%            path_steps (DB trigger cells_validate_path_match). Import order:
-%%            paths → steps → path_steps → layers → cells → cell_triggers.
-%% Roles: layers.layer_role — semantic role key separate from the display name. Canonical:
+%%            paths → steps → path_steps → lanes → cells → cell_dependencies.
+%% Roles: lanes.lane_role — semantic role key separate from the display name. Canonical:
 %%            customer_actions, frontstage_actions, backstage_actions, frontstage_tech,
 %%            backstage_tech, support_systems, visual, step_visual; extensible (org-defined
 %%            custom roles render as generic swimlanes); null = generic swimlane.
@@ -28,60 +28,60 @@
 %%            the same transaction. Every write RPC asserts is_service_account() in-body
 %%            (default true; the optional tier recipe swaps in a JWT app_metadata check).
 erDiagram
-  service_lifecycles ||--o{ phases : "has many"
-  phases ||--o{ service_scenarios : "has many"
+  services ||--o{ phases : "has many"
+  phases ||--o{ scenarios : "has many"
   phases |o--o| phases : "loops_to_phase_id"
-  service_scenarios ||--o{ paths : "has many"
-  service_scenarios ||--o{ steps : "has many"
+  scenarios ||--o{ paths : "has many"
+  scenarios ||--o{ steps : "has many"
   paths ||--o{ path_steps : "has many"
   steps ||--o{ path_steps : "has many"
-  paths ||--o{ layers : "has many"
+  paths ||--o{ lanes : "has many"
   paths ||--o{ cells : "has many"
-  layers ||--o{ cells : "has many"
+  lanes ||--o{ cells : "has many"
   steps ||--o{ cells : "has many"
-  cells ||--o{ cell_triggers : "source"
-  cells ||--o{ cell_triggers : "target"
-  service_lifecycles ||--o{ slices : "has many"
+  cells ||--o{ cell_dependencies : "source"
+  cells ||--o{ cell_dependencies : "target"
+  services ||--o{ slices : "has many"
   slices ||--o{ slice_items : "has many"
-  service_lifecycles ||--o{ findings : "has many"
-  service_lifecycles ||--o{ evidence : "has many"
-  service_lifecycles ||--o| propositions : "has 0..1"
+  services ||--o{ findings : "has many"
+  services ||--o{ evidence : "has many"
+  services ||--o| propositions : "has 0..1"
 
-  service_lifecycles {
+  services {
     uuid id PK
     text name
-    text description
+    text summary
     timestamptz created_at
     timestamptz updated_at
   }
 
   phases {
     uuid id PK
-    uuid service_lifecycle_id FK
+    uuid service_id FK
     text name
-    text description
-    int order_position
+    text summary
+    int position
     uuid loops_to_phase_id FK "optional self-reference"
     text business_impact "spec: opex, NPS, brand, retention, growth"
     text operational_requirements "spec: process / system / people / legal"
     text origin "import | app"
   }
 
-  service_scenarios {
+  scenarios {
     uuid id PK
     uuid phase_id FK
     text name
-    text description
-    int order_position
+    text summary
+    int position
     text view_type "single | side-by-side | integrated"
     text origin "import | app"
   }
 
   paths {
     uuid id PK
-    uuid service_scenario_id FK
+    uuid scenario_id FK
     text name
-    text description
+    text summary
     text note "optional, e.g. parallel-scenario context"
     text path_type "happy | unhappy | exception | alternative"
     text origin "import | app"
@@ -89,7 +89,7 @@ erDiagram
 
   steps {
     uuid id PK
-    uuid service_scenario_id FK "columns are scenario-scoped, shared across paths"
+    uuid scenario_id FK "columns are scenario-scoped, shared across paths"
     text name
     text origin "import | app"
   }
@@ -97,15 +97,15 @@ erDiagram
   path_steps {
     uuid path_id PK, FK
     uuid step_id PK, FK
-    int column_position "unique per (path_id, column_position), deferrable"
+    int position "unique per (path_id, position), deferrable"
   }
 
-  layers {
+  lanes {
     uuid id PK
     uuid path_id FK
     text name "display label - free-form, any language"
-    text layer_role "semantic role key; null = generic swimlane"
-    int row_position
+    text lane_role "semantic role key; null = generic swimlane"
+    int position
     text owner_team "spec: team that staffs/owns this lane"
     jsonb kpis "string array: metrics the lane team is measured on"
     jsonb tools "string array: systems/tools the lane actors use"
@@ -115,12 +115,12 @@ erDiagram
   cells {
     uuid id PK
     uuid path_id FK
-    uuid layer_id FK "unique (layer_id, step_id, slot_position)"
+    uuid lane_id FK "unique (lane_id, step_id, position)"
     uuid step_id FK
-    int slot_position "ordering within one (layer, step) slot; 0 default"
+    int position "ordering within one (lane, step) slot; 0 default"
     text content "Cell Label - primary grid text"
     text picture "optional image URL"
-    text description "optional detail-panel text"
+    text summary "optional detail-panel text"
     jsonb links "array of {type, label, url?}"
     text function "spec: role/responsibility/requirements"
     text form "spec: communication/look/feel/sound"
@@ -131,7 +131,7 @@ erDiagram
     text origin "import | app"
   }
 
-  cell_triggers {
+  cell_dependencies {
     uuid id PK
     uuid source_cell_id FK "unique (source, target, kind); source != target"
     uuid target_cell_id FK
@@ -142,7 +142,7 @@ erDiagram
 
   slices {
     uuid id PK
-    uuid service_lifecycle_id FK
+    uuid service_id FK
     text slice_type "journey | step | lane | cell | custom"
     text title
     text description
@@ -167,7 +167,7 @@ erDiagram
 
   findings {
     uuid id PK
-    uuid service_lifecycle_id FK
+    uuid service_id FK
     uuid run_id "audit-run identity; intentionally FK-less"
     text source "audit | whatif | import-sweep"
     text check_name
@@ -175,13 +175,13 @@ erDiagram
     uuid[] cell_ids "SOFT refs, paired with cell_keys"
     text[] cell_keys
     text note
-    text fingerprint "dedupe identity; unique per lifecycle while open"
+    text fingerprint "dedupe identity; unique per service while open"
     text status "open | resolved | dismissed; inserts must be open"
   }
 
   evidence {
     uuid id PK
-    uuid service_lifecycle_id FK
+    uuid service_id FK
     uuid cell_id "SOFT ref; exactly one of cell_id / proposition_question_key"
     text cell_key "paired with cell_id"
     text proposition_question_key "understand | value | usability"
@@ -196,7 +196,7 @@ erDiagram
   }
 
   propositions {
-    uuid service_lifecycle_id PK, FK "one business-model record per lifecycle"
+    uuid service_id PK, FK "one business-model record per service"
     text funding
     text pricing
     text delivery_cost

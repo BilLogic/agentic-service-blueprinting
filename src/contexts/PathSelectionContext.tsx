@@ -80,7 +80,7 @@ function toggleKeyInList(
 /**
  * Every field of a path, in a stable order.
  *
- * The comparison used to name three of the five fields, so `description` and
+ * The comparison used to name three of the five fields, so `summary` and
  * `note` edits never reached the catalog and the sidebar kept rendering the
  * old text for the life of the session. Deriving the signature from the whole
  * record instead of a hand-written field list means adding a sixth field
@@ -301,7 +301,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
     const unregister = [
       registerAgentUiCommand({
         name: 'toggle_path_filter',
-        description:
+        summary:
           'Toggle a path variant\'s visibility (the PATHS checkboxes). arg: the path key (type:name, e.g. "happy:Happy Path") or a path name.',
         run: (arg) => {
           if (!arg) throw new Error('arg required: path key or name')
@@ -322,7 +322,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
       }),
       registerAgentUiCommand({
         name: 'restore_default_paths',
-        description: 'Reset the path filter to its defaults.',
+        summary: 'Reset the path filter to its defaults.',
         run: () => {
           restoreDefaultPathKeys()
           return 'Path filter restored to defaults.'

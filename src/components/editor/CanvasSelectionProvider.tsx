@@ -188,7 +188,7 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
     const unregister = [
       registerAgentUiCommand({
         name: 'select_cells',
-        description:
+        summary:
           'Gather cells into the Design-mode selection (for Make slice etc.). arg: comma-separated cell ids, or "all". Replaces the current selection. Needs design mode.',
         run: (arg) => {
           if (getSharedCanvasMode() !== 'design')
@@ -205,7 +205,7 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
       }),
       registerAgentUiCommand({
         name: 'clear_cell_selection',
-        description: 'Clear the Design-mode cell selection.',
+        summary: 'Clear the Design-mode cell selection.',
         run: () => {
           clear()
           return 'Selection cleared.'
@@ -231,7 +231,7 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         // Only when the canvas itself is the surface being escaped. With a
-        // dialog, popover or menu open, Escape belongs to that layer — one
+        // dialog, popover or menu open, Escape belongs to that lane — one
         // keystroke must not both close a sheet and wipe a selection that
         // took minutes to gather across blueprints.
         if (event.defaultPrevented) return

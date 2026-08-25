@@ -12,7 +12,7 @@ import {
   getTechPillItems,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
-import type { BlueprintLayerStyle } from '@/lib/blueprintTheme'
+import type { BlueprintLaneStyle } from '@/lib/blueprintTheme'
 import { getPathWashStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell } from '@/types/blueprint'
@@ -59,7 +59,7 @@ export function CompareCellBlock({
   cellId?: string
   stepIndex: number
   content?: string
-  laneStyle: BlueprintLayerStyle
+  laneStyle: BlueprintLaneStyle
   variant: BlueprintCellVariant
   compact?: boolean
   flushBottom?: boolean
@@ -156,7 +156,7 @@ export function CompareCellBlock({
                       cellId: slotCell.id,
                       cellContent: slotCell.content ?? '',
                       cellPicture: slotCell.picture ?? null,
-                      cellDescription: slotCell.description ?? null,
+                      cellSummary: slotCell.summary ?? null,
                       cellLinks: slotCell.links,
                     }
                   : selectionContext

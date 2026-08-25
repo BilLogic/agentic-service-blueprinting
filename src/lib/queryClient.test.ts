@@ -37,24 +37,24 @@ describe('invalidateQueries (prefix predicate)', () => {
 
   it('leaves keys outside the prefix untouched', () => {
     seed('canvas-blueprints:scenario:a')
-    seed('lifecycle-phases:first')
+    seed('service-phases:first')
     invalidateQueries('canvas-blueprints')
-    expect(isStale('lifecycle-phases:first')).toBe(false)
+    expect(isStale('service-phases:first')).toBe(false)
   })
 
   it('matches the bare prefix key itself', () => {
-    seed('lifecycle-phases:first')
-    invalidateQueries('lifecycle-phases')
-    expect(isStale('lifecycle-phases:first')).toBe(true)
+    seed('service-phases:first')
+    invalidateQueries('service-phases')
+    expect(isStale('service-phases:first')).toBe(true)
   })
 })
 
 describe('invalidateStructure', () => {
   it('sweeps every registered read prefix', () => {
-    seed('lifecycle-phases:first')
+    seed('service-phases:first')
     seed('canvas-blueprints:scenario:a')
     invalidateStructure()
-    expect(isStale('lifecycle-phases:first')).toBe(true)
+    expect(isStale('service-phases:first')).toBe(true)
     expect(isStale('canvas-blueprints:scenario:a')).toBe(true)
   })
 })

@@ -126,12 +126,12 @@ def cmd_fingerprint(args: argparse.Namespace) -> int:
 
 def cmd_export(args: argparse.Namespace) -> int:
     ir = load_ir(Path(args.ir))
-    lifecycle = ir.get("lifecycle", {})
+    service = ir.get("service", {})
     if args.scenario:
         # Build a filtered copy — never mutate the loaded IR in place (a
         # caller holding the dict would silently lose scenarios).
         phases = []
-        for phase in lifecycle.get("phases", []):
+        for phase in service.get("phases", []):
             scenarios = [
                 scenario
                 for scenario in phase.get("scenarios", [])
@@ -142,11 +142,11 @@ def cmd_export(args: argparse.Namespace) -> int:
         if not phases:
             print(f"error: no scenario with key {args.scenario!r}", file=sys.stderr)
             return 1
-        lifecycle = {**lifecycle, "phases": phases}
+        service = {**service, "phases": phases}
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
-        json.dumps({"schema_version": ir.get("schema_version"), "lifecycle": lifecycle},
+        json.dumps({"schema_version": ir.get("schema_version"), "service": service},
                    ensure_ascii=False, indent=1),
         encoding="utf-8",
     )

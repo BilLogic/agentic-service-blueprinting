@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { PathDescriptionTooltip } from '@/components/blueprint/PathDescriptionTooltip'
+import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { PathTypeColorKey } from '@/components/blueprint/PathTypeColorKey'
 import { formatPathPickerLabel } from '@/components/blueprint/PathMultiSelect'
@@ -36,7 +36,7 @@ export function WalkthroughPathSelect({
     return (
       <PathLabelBadge
         name={selected.path.name}
-        description={selected.path.description}
+        summary={selected.path.summary}
         pathType={selected.path.path_type}
         compact
         className={className}
@@ -85,13 +85,13 @@ export function WalkthroughPathSelect({
                   type={blueprint.path.path_type}
                   name={blueprint.path.name}
                 />
-                <PathDescriptionTooltip
-                  description={blueprint.path.description}
+                <PathSummaryTooltip
+                  summary={blueprint.path.summary}
                   pathName={blueprint.path.name}
                   side="right"
                 >
                   <span className="truncate">{label}</span>
-                </PathDescriptionTooltip>
+                </PathSummaryTooltip>
               </DropdownMenuRadioItem>
             )
           })}

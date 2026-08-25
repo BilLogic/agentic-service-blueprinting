@@ -16,13 +16,13 @@ export type IntegratedBlueprintStep = BlueprintStep & {
 
 export type IntegratedBlueprintCell = {
   id: string
-  layer_id: string
+  lane_id: string
   step_id: string
   path_id: string
   path_type: PathType
   content: string
   picture: string | null
-  description: string | null
+  summary: string | null
   links: CellLink[]
   opacity: number
 }

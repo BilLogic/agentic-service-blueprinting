@@ -32,11 +32,11 @@ export {
 
 type CanvasPhaseSectionProps = {
   title: string
-  /** 1-based lifecycle position. Phases ARE an ordered sequence in time, so
+  /** 1-based service position. Phases ARE an ordered sequence in time, so
    * the ordinal is information — it prefixes the badge (`01 · Application`)
    * in the same time-marker register the mobile reader uses. */
   ordinal: number
-  description?: string | null
+  summary?: string | null
   phaseId: string
   children: ReactNode
   className?: string
@@ -46,9 +46,9 @@ type CanvasPhaseSectionProps = {
   showFlowArrow?: boolean
   /** Marks Application — other flow arrows align to this section's center. */
   isFlowArrowAnchor?: boolean
-  /** Post-session lifecycle loop exits this section on the left. */
+  /** Post-session service loop exits this section on the left. */
   isLoopArrowFrom?: boolean
-  /** Pre-session lifecycle loop enters this section on the left. */
+  /** Pre-session service loop enters this section on the left. */
   isLoopArrowTo?: boolean
   /** Overview: hover + click opens the phase detail view. */
   onNavigate?: () => void
@@ -101,11 +101,11 @@ function isBlueprintPanelTarget(target: EventTarget | null): boolean {
   )
 }
 
-/** Figma-style canvas section grouping a lifecycle phase and its scenarios. */
+/** Figma-style canvas section grouping a service phase and its scenarios. */
 export function CanvasPhaseSection({
   title,
   ordinal,
-  description,
+  summary,
   phaseId,
   children,
   className,
@@ -225,7 +225,7 @@ export function CanvasPhaseSection({
       />
       <ScenarioTitleBadge
         name={ordinalLabel(ordinal, title)}
-        description={description}
+        summary={summary}
         tone={interactive ? 'phase' : 'default'}
         // The time-marker register: mono, uppercase, letterspaced — the same
         // idiom the mobile reader's step eyebrows use, so both surfaces name

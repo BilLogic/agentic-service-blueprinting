@@ -5,20 +5,20 @@ import type { CellLink } from '@/types/blueprint'
 
 export type CellContent = {
   content: string
-  description: string | null
+  summary: string | null
   owner: string | null
   perceived_owner: string | null
   links: CellLink[]
 }
 
-const CELL_CONTENT_SELECT = 'content, description, owner, perceived_owner, links'
+const CELL_CONTENT_SELECT = 'content, summary, owner, perceived_owner, links'
 
 /**
  * The cell's own editable text, read on demand.
  *
  * Separate from the grid query on purpose. The grid carries `content` and
  * `links` because it renders them, but not the owner pair — pulling those into
- * the canvas read would add two columns across every cell in the lifecycle to
+ * the canvas read would add two columns across every cell in the service to
  * serve a panel that shows one cell at a time.
  *
  * With no database the sample content answers instead: the generated fallback
@@ -34,7 +34,7 @@ export function useCellContent(
     if (!cell) return null
     return {
       content: cell.content,
-      description: cell.description,
+      summary: cell.summary,
       owner: cell.owner ?? null,
       perceived_owner: cell.perceived_owner ?? null,
       links: cell.links,
@@ -54,7 +54,7 @@ export function useCellContent(
       if (!data) return null
       return {
         content: data.content ?? '',
-        description: data.description ?? null,
+        summary: data.summary ?? null,
         owner: data.owner ?? null,
         perceived_owner: data.perceived_owner ?? null,
         links: (data.links ?? []) as unknown as CellLink[],
