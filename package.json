@@ -15,6 +15,7 @@
     "check:version": "node scripts/check-version-agreement.mjs",
     "check:parity": "python3 scripts/adapter_parity.py",
     "check:portable-core": "node scripts/check-portable-core.mjs --from-types",
+    "check:band": "node scripts/check-migration-band.mjs",
     "test:ir": "bash scripts/tests/run_tests.sh",
     "version": "changeset version && node scripts/check-version-agreement.mjs --write",
     "preview": "vite preview",

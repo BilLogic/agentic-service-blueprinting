@@ -189,6 +189,43 @@ credentials.
 | `20260818002000_service_account_tier.sql` | OPTIONAL recipe: splits `authenticated` into service accounts (edit everything) and regular accounts (view + agent surfaces) via RESTRICTIVE policies + `is_service_account()` |
 | `20260819000000_agent_surface.sql` | Agent surface: `agent_sessions`/`agent_messages` chat persistence (authenticated-only) and the findings insert/update grants for in-app agent runs |
 
+## Reserved migration timestamp band
+
+**Upstream migrations are allocated from `21000101000000`–`21991231235959`.
+Nothing else is.** Enforced by `npm run check:band`, on every pull request.
+
+The number is an allocation counter wearing a date's clothes. Take the next
+unused day in the band; the file's own header carries the date it was really
+written.
+
+### Why a band at all
+
+A fork adds `20260901120000_theirs.sql`, then pulls an upstream migration
+stamped with the day upstream wrote it. `supabase db push` applies in timestamp
+order, so that upstream file sorts *before* a migration the fork has already
+applied — the desync people repair by hand-editing
+`supabase_migrations.schema_migrations`.
+
+A band above any wall clock a fork will produce makes the ordering arithmetic
+instead of procedural: an upstream migration always sorts after everything the
+fork has applied, so a pull can only ever append. In exchange, upstream
+migrations must never assume anything a fork built — which is already true of
+every migration here, and is now a rule rather than a coincidence.
+
+### The eight that predate the rule
+
+`20260716200000` through `20260819000000` keep their real timestamps. They are
+already applied on every database that exists, and renaming an applied migration
+*is* the desync this prevents. `scripts/check-migration-band.mjs` freezes them by
+name; that list only ever shrinks.
+
+### Adding a migration
+
+1. Take the next unused day inside the band — one migration per day, in order.
+   Use the time field when several land in one release.
+2. Write the real authoring date in the file header.
+3. `npm run check:band`.
+
 ## Migration authoring notes
 
 Ops lessons this repo carries as rules for anyone adding migrations:
