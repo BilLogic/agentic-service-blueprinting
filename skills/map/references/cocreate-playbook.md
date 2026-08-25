@@ -12,17 +12,17 @@ wording lives in `skills/map/references/elicitation-protocol.md` — follow its 
 keep it dialogic: reflect back what you heard, propose structure, let the
 user correct. The user is the source of truth; you are the notation.
 
-## 1. Right-size first (⚠ do this before any lifecycle ceremony)
+## 1. Right-size first (⚠ do this before any service ceremony)
 
 The elicitation protocol's opening branch:
 
 - **Single flow?** ("I just want to map how refunds work") → auto-wrap in a
-  default lifecycle + one phase, skip straight to the scenario questions.
-  A founder mapping one flow must not sit through lifecycle taxonomy.
+  default service + one phase, skip straight to the scenario questions.
+  A founder mapping one flow must not sit through service taxonomy.
 - **Huge multi-actor journey?** → chunk it: outline all scenarios, then
   build **one scenario per session**, tracked per-scenario in
   `blueprint-workspace.json`. Partial completion (2 of 6 now) is first-class.
-- **In between** → the standard order: lifecycle → phases → scenarios.
+- **In between** → the standard order: service → phases → scenarios.
 
 ## 2. The spine question
 
@@ -30,11 +30,11 @@ Ask explicitly: **"Whose journey is the spine?"** — the actor whose lane gets
 `customer_actions` and anchors the interaction line. B2B multi-stakeholder
 and internal-ops blueprints make this genuinely non-obvious, and "no spine"
 is a legal answer (no `customer_actions` lane, no interaction line — see
-`references/layer-roles.md`).
+`references/lane-roles.md`).
 
 ## 3. Skeleton preview
 
-Same rule as ingestion: propose the outline (lifecycle → phases → scenarios,
+Same rule as ingestion: propose the outline (service → phases → scenarios,
 then per-scenario: actors/lanes, step columns, path variants) as markdown
 and get agreement **before** writing IR. Structure mistakes are cheap here,
 expensive later.
@@ -45,13 +45,13 @@ Per scenario, in this order (mirrors the elicitation protocol):
 
 1. Steps — the columns, in order. Start with the happy path's sequence.
 2. Lanes — actors + tech + support; assign roles explicitly
-   (`references/layer-roles.md`); reference docs may suggest system names
+   (`references/lane-roles.md`); reference docs may suggest system names
    for tech lanes.
 3. Cells — walk the grid lane by lane; empty cells are fine and normal.
 4. Paths — after the happy path exists, ask what goes wrong / what's the
    workaround; alternative/exception paths reuse scenario steps via
    `path_steps` and may add their own.
-5. Triggers — "what kicks off what?" — only where arrows genuinely add
+5. Dependencies — "what kicks off what?" — only where arrows genuinely add
    information (same-path only).
 6. Locales — if bilingual, capture both languages as you go (locale maps),
    don't bolt translation on later; flag domain terms for review.

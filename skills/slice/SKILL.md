@@ -7,7 +7,7 @@ description: Cuts a stakeholder-ready view out of an existing service blueprint 
 
 A blueprint answers "how does the whole service work". Nobody reads that in a
 meeting. A **slice** answers one question for one audience — *what is this
-like for the field technician*, *what happens at the greeting*, *what does this lane
+like for the technician*, *what happens at the greeting*, *what does this lane
 own* — by selecting cells that already exist and putting them in order.
 
 The discipline that makes slices worth trusting: **a slice never invents.**
@@ -60,7 +60,7 @@ actually breaks:
   single check `blueprint-reviewer` slice mode exists to run.
 - ⚠ **REQUIRED — no verbatim excerpts, ever.** Slices are written to
   public-read tables and to docs that get shared. Reference evidence and
-  propositions by cell key or title; never paste excerpt text or figures.
+  business_model by cell key or title; never paste excerpt text or figures.
   Personas, never participants ("a first-week field technician", not a name).
 - ⚠ **REQUIRED — validate before import.** `skills/slice/scripts/slice_tools.py validate`
   must exit 0. It catches unresolvable cell keys, duplicate cells, and
@@ -69,7 +69,7 @@ actually breaks:
 - ⚠ **REQUIRED — respect `origin`.** `generated` regenerates freely;
   `customized` needs explicit confirmation; `human` is never overwritten by
   an agent.
-- ⚠ **REQUIRED — confirm the import target** (project ref / lifecycle id)
+- ⚠ **REQUIRED — confirm the import target** (project ref / service id)
   before any write, and never default-assume Supabase — the adapter rules in
   `references/adapter-contract.md` apply to slices unchanged.
 - ⚠ **REQUIRED — secrets.** Image-model keys (Gemini `AIza…`, OpenAI `sk-…`)

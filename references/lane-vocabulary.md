@@ -1,10 +1,10 @@
 # Lane Vocabulary — cross-phase drafting convergence
 
-`references/layer-roles.md` says how a role renders. This says how independent
+`references/lane-roles.md` says how a role renders. This says how independent
 drafters **converge** on the same roles and labels across many phases — so a
-10-phase lifecycle drafted by parallel agents reads as one blueprint, not ten.
+10-phase service drafted by parallel agents reads as one blueprint, not ten.
 
-Read this before drafting when a lifecycle has more than one phase/scenario,
+Read this before drafting when a service has more than one phase/scenario,
 especially when phases are drafted in parallel. Feed it into every drafter.
 
 ## Why this exists
@@ -13,7 +13,7 @@ Parallel per-phase drafting reliably diverges three ways:
 
 1. **No customer spine.** Sales/procurement/renewal phases get drafted with the
    buyer cast as `backstage_actions` and no `customer_actions` lane — so half
-   the lifecycle has an interaction line and half doesn't.
+   the service has an interaction line and half doesn't.
 2. **The same actor, named four ways.** One team appears as `前台·BD` in phase ①,
    `前台·售前对接` in ②, `我方人工` in ⑤, `前台·现场` in ⑥ — the reader can't tell
    it's one group.
@@ -27,8 +27,8 @@ them; the `blueprint-reviewer` agent flags deviations.
 
 Every phase has a spine — the actor whose journey the phase follows. Put that
 actor on `customer_actions` (one per path; it draws the interaction line). The
-spine can **change across phases** of one lifecycle, and that is correct: a B2B
-lifecycle sells to a buyer, then serves end users. Pick per phase-type:
+spine can **change across phases** of one service, and that is correct: a B2B
+service sells to a buyer, then serves end users. Pick per phase-type:
 
 | Phase type | Spine actor (→ `customer_actions`) |
 | --- | --- |
@@ -44,13 +44,13 @@ lifecycle sells to a buyer, then serves end users. Pick per phase-type:
 If a phase genuinely has no external spine (pure internal ops), it's valid to
 have **no** `customer_actions` lane — but say so deliberately, don't just drop
 it. "Whose journey is the spine?" is the elicitation question
-(`references/layer-roles.md` §Line-anchoring).
+(`references/lane-roles.md` §Line-anchoring).
 
-## 2. One label per actor group, lifecycle-wide
+## 2. One label per actor group, service-wide
 
 Before drafting phase 2+, list the actor groups already named in earlier phases
 and **reuse the exact label**. Maintain a small actor glossary for the
-lifecycle (in the workspace notes or the IR provenance) so drafters converge:
+service (in the workspace notes or the IR provenance) so drafters converge:
 
 | Actor group | One canonical `display_name` | Typical role |
 | --- | --- | --- |

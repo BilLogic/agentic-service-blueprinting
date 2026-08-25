@@ -8,17 +8,17 @@ where does the blueprint go silent while the service keeps happening?
 
 ## Read
 Per path, in step order: the step list vs each lane's cells. Then the
-trigger graph.
+dependency graph.
 
 ## Finding shape
 Emit one finding per contiguous silent stretch, not per empty cell:
 - A lane empty across 3+ consecutive steps while its actor is clearly still
   present in the journey → cell_keys = the flanking cells; note names the
   silent steps.
-- A trigger whose narrative implies a follow-up ("which kicks off…") with
+- A `leads_to` dependency whose narrative implies a follow-up ("which kicks off…") with
   no cell at the receiving end → warn; cell_keys = the source cell.
 - The inverse: a cell whose narrative promises an INBOUND transition
-  (reopen, return, retry, "comes back to…") with no incoming trigger edge
+  (reopen, return, retry, "comes back to…") with no incoming dependency edge
   → warn; cell_keys = the promising cell.
 - A step no path includes (declared but orphaned) → info; scope-key
   fingerprint.

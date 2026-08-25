@@ -48,11 +48,11 @@ on this route, and the findings exit condition is met by it.
 1. Copy base IR → variant; apply the change.
 2. Dispatch `impact-tracer` (seed = changed cells) on the BASE export —
    the trace tells you which claims need re-examination. (IR exports
-   carry only `trigger` edges — `needs` exists only as a dependency kind
-   in DB-backed deployments; when absent, the tracer walks triggers only
-   and says so in its output.)
+   carry only `leads_to` edges — `enables` exists only as a dependency
+   kind in DB-backed deployments; when absent, the tracer walks `leads_to`
+   edges only and says so in its output.)
 3. Walk the affected chain in the variant: which cells' content is now
-   wrong, which triggers dangle, which lanes gain/lose work.
+   wrong, which dependencies dangle, which lanes gain/lose work.
 4. `blueprint-reviewer` (whatif-claim mode) verifies every replay claim
    cites cells that exist in base or variant — unverified claims are cut,
    not hedged.
@@ -73,11 +73,11 @@ Score every cell in scope on three signals, then present the top 3–5 with
 per-signal reasoning:
 - evidence weight (rows attached; zero rows = assumption — flag it, since
   an assumption-heavy "priority" is really a research task);
-- proposition expression (does the cell carry the value the propositions
+- proposition expression (does the cell carry the value the business_model
   claim — value_props where present);
-- backstage `needs` chain depth (impact-tracer, reversed: how much
+- backstage `enables` chain depth (impact-tracer, reversed: how much
   machinery serves this moment).
-Quick-win warnings: cells that look cheap but sit on deep needs-chains
+Quick-win warnings: cells that look cheap but sit on deep `enables` chains
 get a "load-bearing" caveat.
 
 ## §3 Findings
@@ -118,7 +118,7 @@ Legacy `__file__` entries get the same two checks against the whole-file
 
 ## §5 Canvas note
 
-Inside this template's in-app canvas agent whatif is fully live — the
+Inside the canvas agent whatif is fully live — the
 `/sb:whatif` row of `references/canvas-adapter.md` is the ONLY canonical
 canvas translation (conversational variant, direct promotion on
 acceptance, optimistic-concurrency staleness). Read that row; nothing

@@ -9,7 +9,7 @@ Where do simultaneous cells compete for the same actor or the same channel
 ## Read
 Column by column (a step is simultaneity). Within each step: which cells
 name the same actor across lanes; which name the same tool/channel. Then
-triggers that fan out from one cell to multiple same-step targets.
+dependencies that fan out from one cell to multiple same-step targets.
 
 ## Finding shape
 One finding per (step × contested resource). cell_keys = the competing

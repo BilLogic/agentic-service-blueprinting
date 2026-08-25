@@ -63,12 +63,12 @@ For: operational alignment — "at this moment, who is doing what".
 The reading order is the grid's order, which is the point of a step slice.>
 
 ## Hand-offs in this column
-<Only interactions the blueprint records as triggers. Source cell → target
+<Only interactions the blueprint records as dependencies. Source cell → target
 cell, one line each.>
 
 ## Where it is fragile
 <Lanes whose cell is empty here, or whose work depends on something with no
-recorded trigger. Absence is a finding; state it as absence, not as a
+recorded dependency. Absence is a finding; state it as absence, not as a
 guess about what fills it.>
 ```
 
@@ -87,8 +87,8 @@ carrying other people's work.
 gaps in a lane are as informative as its cells.>
 
 ## What it depends on
-<Incoming triggers, cited. If the lane depends on something with no recorded
-trigger, say the dependency is undocumented rather than asserting it.>
+<Incoming dependencies, cited. If the lane depends on something with no
+recorded dependency, say it is undocumented rather than asserting it.>
 
 ## Load and thin spots
 <Steps where the lane carries several cells at once, or is alone at a moment
@@ -118,7 +118,7 @@ outcome, say why.>
 value props, referenced not quoted.>
 
 ## Dependencies
-<Recorded triggers in and out, plus `needs` links. Cite each.>
+<Recorded dependencies in and out, both `leads_to` and `enables`. Cite each.>
 
 ## Open questions
 <What the blueprint does not answer about this cell. Questions, not

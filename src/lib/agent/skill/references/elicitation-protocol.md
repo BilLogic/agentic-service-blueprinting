@@ -9,14 +9,14 @@ script itself. Adapt wording freely; keep the order and the branches.
 > "Are we mapping one specific flow (like 'how refunds work'), or a whole
 > service with multiple scenarios?"
 
-- **Single flow** → auto-wrap: default lifecycle named after the org/service,
+- **Single flow** → auto-wrap: default service named after the org,
   one phase ("Core"), one scenario. **Skip Q1–Q2 entirely.** Go to Q3.
 - **Whole service** → continue with Q1.
 - **Huge / multi-actor / "everything we do"** → outline first (Q1–Q2 fast, as
   a sketch), then commit to **one scenario per session**; record the rest as
   `pending` in `blueprint-workspace.json`.
 
-## Q1 — Lifecycle
+## Q1 — Service
 
 > "What's the service called, one sentence on what it does?"
 
@@ -56,7 +56,7 @@ scenario-scoped columns.
 > "Who/what supports it all — vendors, infra, internal teams?" (`support_systems`)
 > "Do you want an image row for snapshots per step?" (`visual`)
 
-Assign roles per `references/layer-roles.md`; non-spine actors get null or
+Assign roles per `references/lane-roles.md`; non-spine actors get null or
 custom roles.
 
 ## Q6 — Cells (walk the grid)
@@ -68,13 +68,12 @@ the user volunteers in `description`, not by bloating labels.
 ## Q7 — Paths
 
 > "That was the way it's supposed to go. What actually goes wrong, and
-> what's the workaround?" (→ `exception` / `unhappy` / `alternative` paths)
+> what's the workaround?" (→ `exception` and `variant` paths)
 
 For designed-vs-reality comparisons: make it two labeled variants
-(`variant_label`, view_type `side-by-side` — the stored DB token; the UI
-calls this view "Stacked") and ask for the two labels.
+(`variant_label`, view_type `stacked`) and ask for the two labels.
 
-## Q8 — Triggers
+## Q8 — Dependencies
 
 > "Are there hand-offs worth drawing an arrow for — where one cell kicks off
 > another?" Only where arrows add information; same path only.

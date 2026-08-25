@@ -82,8 +82,8 @@ that disagree on a separator split the finding history).
 
 - Sorted, so cell order never changes identity.
 - `cell_keys` use the qualified key convention
-  `<lifecycle>/<phase>/<scenario>/<path>/<layer>/<step>` (the same
-  convention slice-schema.json defines; IR cells carry layer+step — the
+  `<lifecycle>/<phase>/<scenario>/<path>/<lane>/<step>` (the same
+  convention slice-schema.json defines; IR cells carry lane+step — the
   rest of the path comes from their position in the tree). On a live
   canvas, cell ids stand in for keys (separate dedupe space, by design).
 - The note is NOT part of the fingerprint — rewording a finding updates the
@@ -104,7 +104,7 @@ that disagree on a separator split the finding history).
   dedupe/report refuse the batch and name the colliding fingerprint;
   give each finding a distinct reason slug and re-run.
 - The DB backstop: `findings_open_fingerprint_idx` — unique on
-  `(service_lifecycle_id, fingerprint) where status = 'open'`. An insert
+  `(service_id, fingerprint) where status = 'open'`. An insert
   conflict means the dedupe logic missed; treat it as update-in-place,
   never as "insert with a tweaked fingerprint". On the no-DB route,
   `report --apply` mirrors the same backstop: it refuses to write a ledger

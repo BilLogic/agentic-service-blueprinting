@@ -41,10 +41,10 @@ The question→type table lives in SKILL.md ("The four questions") — one
 copy, there. This section carries only the binding selection rules.
 
 **Journey selection is arrow-derived, not adjacency-derived.** A companion
-cell joins a frame because the blueprint records a `trigger` between it and
+cell joins a frame because the blueprint records a `leads_to` between it and
 the actor's cell. Do not add a cell because it "seems related", sits nearby,
 or is on a tech lane. If the interaction is real and missing, the fix is a
-trigger in the IR (a map-skill edit, re-signed and re-imported) — not a
+dependency in the IR (a map-skill edit, re-signed and re-imported) — not a
 slice that asserts it.
 
 ## 2. Propose the selection
@@ -52,7 +52,7 @@ slice that asserts it.
 ```bash
 python3 skills/slice/scripts/slice_tools.py select \
   --ir blueprint/<file>.json --scenario <phase>/<scenario> \
-  --path <path> --type journey --layer <lane> --key <slice-key> --actor "<label>"
+  --path <path> --type journey --lane <lane> --key <slice-key> --actor "<label>"
 ```
 
 Emits a slice-file skeleton on stdout: frames already grouped, captions
@@ -106,7 +106,7 @@ differently:
 
 ```bash
 python3 skills/slice/scripts/slice_tools.py sql --ir blueprint/<file>.json --slices slices/<key>.json \
-  --locale <locale> --lifecycle-id <service_lifecycles.id>
+  --locale <locale> --service-id <services.id>
 ```
 
 One transaction, delete-then-insert per slice, so a regenerated slice never
