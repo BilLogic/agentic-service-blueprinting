@@ -28,9 +28,14 @@ the no-DB side quietly stopped carrying `cell_key`, `slot_position`, every
 cell spec field, and the edge `kind` — losing an adopter their cell specs
 on the adapter this contract calls "not a degraded mode".
 
-Two things are outside the projection on **both** adapters, which is parity
-by absence rather than by accident: lane `kpis`/`tools`, and
-`cell_triggers` `label`/`note`, which the IR has no shape to author.
+One thing is outside the projection on **both** adapters, which is parity by
+absence rather than by accident: `cell_triggers` `label`/`note`, which the IR
+has no shape to author.
+
+Lane `kpis`/`tools` were listed here too, and were not: the SQL adapter
+carried both and the no-DB one carried neither. The check had the same hole —
+it compared cells and edges and not lanes — so a claim about parity was itself
+the next thing to drift. Every aggregate is compared now.
 
 **Read-only without a database (normative).** The no-DB adapter serves; it
 does not accept live authoring — `canAgentWrite` is false without a
@@ -190,11 +195,16 @@ again, wearing a different word.
 `src/lib/backend/conformance.ts` is the suite — framework-free, so an adopter
 runs it from their own runner against their own store. It reports every case,
 skipping none silently: a read-only backend's write cases come back `skipped`
-with a reason, so "did not apply" is distinguishable from "was not run". Two
-reference implementations pass it in this repo: the bundled fixture
-(`adapters/fixture.ts`, reads only) and an in-memory store
-(`adapters/memory.ts`, which runs at either level and is about two hundred
-lines — the shortest honest answer to "what does implementing this involve").
+with a reason, so "did not apply" is distinguishable from "was not run".
+
+Passing it today: the bundled fixture (`adapters/fixture.ts`, reads only) and
+an in-memory store (`adapters/memory.ts`, which runs at either level in about
+two hundred lines — the shortest honest answer to "what does implementing this
+involve"). **The Supabase adapter is not written yet**: its call sites still
+talk to PostgREST directly, and it becomes the second reference implementation
+when the seam reaches them. Until then the suite is proved against two
+adapters that are not databases, which is worth knowing when reading its
+green.
 
 ⚠️ The suite writes. Point it at a scratch project.
 

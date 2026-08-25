@@ -33,12 +33,17 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-  # "The portable core runs on any Postgres" has been written in
-  # schema.reference.sql since the file existed, and had never been executed.
-  # This is that sentence, run: a plain Postgres, a shim supplying only the
-  # role names and auth.* helpers the Supabase recipe calls, and every
-  # migration replayed in order. If a migration reaches for something only
-  # Supabase provides, it fails here rather than in an adopter's project.
+  # Be precise about what this proves. It replays OUR MIGRATIONS — the Supabase
+  # recipe included — against a plain Postgres, behind a shim supplying the role
+  # names and auth.* helpers that recipe calls, and then checks the result
+  # against schema.reference.sql.
+  #
+  # That is NOT yet the decided check, which is "apply the GENERATED core to a
+  # stock Postgres". The core is still authored rather than generated, so there
+  # is nothing generated to apply; this job stands in until there is, and it
+  # already earns its place — a migration reaching for something only Supabase
+  # provides fails here instead of in an adopter's project, which is how the
+  # tier recipe's dependency on auth.users first became visible.
   portable-core:
     runs-on: ubuntu-latest
     services:

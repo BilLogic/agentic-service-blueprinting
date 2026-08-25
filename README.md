@@ -118,7 +118,15 @@ Copy `API URL` and `anon key` from the CLI output into `.env`. For a hosted proj
 
 ### Bring your own backend
 
-Supabase-native, backend-portable. The app and the skills run Supabase out of the box; for any other backend the repo ships the implementable spec — [references/adapter-contract.md](./references/adapter-contract.md) — the portable schema ([supabase/schema.reference.sql](./supabase/schema.reference.sql) + [docs/erd.mmd](./docs/erd.mmd)), and the no-DB fallback generator ([scripts/generate_fallbacks.py](./scripts/generate_fallbacks.py)) as the working proof of a second target.
+Supabase-native, backend-portable. The app and the skills run Supabase out of the box, and Supabase is one conformant recipe rather than the requirement.
+
+**What the app actually needs** is the repository interfaces in [`src/lib/backend/ports.ts`](./src/lib/backend/ports.ts): domain operations like `getBlueprint(pathId)`, each declaring whether it reads, is atomic, or converges on re-run. Any store that answers them can serve this app.
+
+**What decides whether yours does** is [`src/lib/backend/conformance.ts`](./src/lib/backend/conformance.ts) — a suite you run from your own runner against your own store. It has two levels: **Transactional**, where atomic operations are all-or-nothing, and **Idempotent**, where they may tear provided re-running converges and a repair pass can resolve what tore. The second level is why a store with no transactions at all can still serve this correctly.
+
+**What you get to copy**: the portable schema ([supabase/schema.reference.sql](./supabase/schema.reference.sql) + [docs/erd.mmd](./docs/erd.mmd)), checked in CI against a stock Postgres; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and two working implementations of the interfaces to read.
+
+**What we don't provide**: an adapter for your backend, hosting, or auth. The identity port asks one question — what tier is this session — and leaves how you answer it to you.
 
 ### Deploy
 

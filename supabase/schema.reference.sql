@@ -14,6 +14,11 @@
 -- generated types and in CI against a stock Postgres. It went two migrations
 -- stale before that check existed.
 --
+-- Still authored, not generated. The decision on record is that this file
+-- should be GENERATED from the migrations and diffed, because a hand-refreshed
+-- snapshot is a drift surface by construction. The check above alarms that
+-- drift; it does not remove it.
+--
 -- Portability partition. Everything in this schema is one of two things:
 --   PORTABLE POSTGRES CORE — the tables, constraints, checks, triggers,
 --     indexes, views, and the *logic* of every function below. This half

@@ -15,6 +15,12 @@ export type BlueprintLayer = {
   /** Semantic role key (`layers.layer_role`); null/absent = generic swimlane. */
   role?: string | null
   row_position: number
+  /**
+   * Lane spec (`layers.kpis` / `layers.tools`), carried so a no-DB build
+   * serves what a database read serves. Optional: most lanes set neither.
+   */
+  kpis?: string[]
+  tools?: string[]
 }
 
 export type BlueprintStep = {

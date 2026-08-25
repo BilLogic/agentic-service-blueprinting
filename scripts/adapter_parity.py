@@ -33,39 +33,45 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import validate_ir  # noqa: E402
-from generate_fallbacks import IMPLIED_BY_NESTING, blueprint_data_for_path  # noqa: E402
+from generate_fallbacks import (  # noqa: E402
+    FALLBACK_FIELD_NAMES,
+    IMPLIED_BY_NESTING,
+    blueprint_data_for_path,
+)
 from generate_seed_sql import (  # noqa: E402
     build_model,
     seed_cell_fields,
+    seed_lane_fields,
     seed_trigger_fields,
 )
 
 DEFAULT_IR = Path(__file__).resolve().parent / "tests" / "sample-ir.json"
 
 
-def sql_adapter_rows(model: dict) -> tuple[dict, dict]:
-    """What the SQL adapter would write, keyed by row id."""
-    cells, triggers = {}, {}
+def sql_adapter_rows(model: dict) -> dict:
+    """What the SQL adapter would write, per aggregate, keyed by row id."""
+    rows = {"lane": {}, "cell": {}, "edge": {}}
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
+            for lane in path["layers"]:
+                rows["lane"][lane["id"]] = seed_lane_fields(lane, path)
             for cell in path["cells"]:
-                cells[cell["id"]] = seed_cell_fields(cell, path)
+                rows["cell"][cell["id"]] = seed_cell_fields(cell, path)
             for trigger in path["triggers"]:
-                triggers[trigger["id"]] = seed_trigger_fields(trigger)
-    return cells, triggers
+                rows["edge"][trigger["id"]] = seed_trigger_fields(trigger)
+    return rows
 
 
-def fallback_adapter_rows(model: dict) -> tuple[dict, dict]:
+def fallback_adapter_rows(model: dict) -> dict:
     """What the no-DB adapter would serve, keyed by the same row ids."""
-    cells, triggers = {}, {}
+    rows = {"lane": {}, "cell": {}, "edge": {}}
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
             data = blueprint_data_for_path(scenario, path)
-            for cell in data["cells"]:
-                cells[cell["id"]] = cell
-            for trigger in data["triggers"]:
-                triggers[trigger["id"]] = trigger
-    return cells, triggers
+            for kind, key in (("lane", "layers"), ("cell", "cells"), ("edge", "triggers")):
+                for row in data[key]:
+                    rows[kind][row["id"]] = row
+    return rows
 
 
 def compare(kind: str, sql: dict, fallback: dict, implied: frozenset) -> list[str]:
@@ -79,25 +85,27 @@ def compare(kind: str, sql: dict, fallback: dict, implied: frozenset) -> list[st
     for row_id in sorted(set(sql) & set(fallback)):
         expected, actual = sql[row_id], fallback[row_id]
         for field in expected:
+            served = FALLBACK_FIELD_NAMES.get(field, field)
             if field in implied:
-                if field in actual:
+                if served in actual:
                     problems.append(
                         f"{kind} {row_id}: {field} is implied by the nested shape "
                         f"but the no-DB adapter emits it anyway"
                     )
                 continue
-            if field not in actual:
+            if served not in actual:
                 problems.append(
                     f"{kind} {row_id}: {field} reaches the database and not the "
                     f"no-DB adapter (would be {expected[field]!r})"
                 )
-            elif actual[field] != expected[field]:
+            elif actual[served] != expected[field]:
                 problems.append(
                     f"{kind} {row_id}: {field} differs — "
-                    f"database {expected[field]!r} vs no-DB {actual[field]!r}"
+                    f"database {expected[field]!r} vs no-DB {actual[served]!r}"
                 )
+        served_names = {FALLBACK_FIELD_NAMES.get(name, name) for name in expected}
         for field in actual:
-            if field not in expected and field not in implied:
+            if field not in served_names and field not in implied:
                 problems.append(
                     f"{kind} {row_id}: {field} is served without a database and "
                     f"stored nowhere ({actual[field]!r})"
@@ -118,14 +126,18 @@ def check(ir_path: Path, locale: str | None) -> list[str]:
     problems = []
     for tag in locales:
         model = build_model(doc, tag)
-        sql_cells, sql_triggers = sql_adapter_rows(model)
-        fb_cells, fb_triggers = fallback_adapter_rows(model)
-        if not sql_cells:
-            problems.append(f"{ir_path} [{tag}]: no cells to compare — vacuous parity")
+        sql = sql_adapter_rows(model)
+        fallback = fallback_adapter_rows(model)
+        # Every aggregate is compared. Cells and edges were compared first and
+        # lanes were not, so a lane field could be carried by one adapter only
+        # and the harness would still report agreement — which it did.
+        for kind in ("lane", "cell", "edge"):
+            if not sql[kind]:
+                problems.append(f"{ir_path} [{tag}]: no {kind} rows — vacuous parity")
         problems += [
             f"{ir_path} [{tag}]: {line}"
-            for line in compare("cell", sql_cells, fb_cells, IMPLIED_BY_NESTING)
-            + compare("edge", sql_triggers, fb_triggers, frozenset())
+            for kind in ("lane", "cell", "edge")
+            for line in compare(kind, sql[kind], fallback[kind], IMPLIED_BY_NESTING)
         ]
     return problems
 

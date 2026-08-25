@@ -48,8 +48,10 @@ with no database is told is "not a degraded mode". scripts/adapter_parity.py
 now checks the claim instead of asserting it.
 
 Still outside the projection on BOTH adapters, which is parity by absence:
-lanes kpis/tools (no fallback consumer), and cell_triggers label/note (no IR
-shape to author them from).
+cell_triggers label/note, which the IR has no shape to author. Lanes were on
+that list too, wrongly — the SQL adapter carried kpis and tools all along and
+the no-DB one did not, which is how a sentence about parity ended up being the
+next thing to drift.
 
 Stdlib only. Validation runs first via scripts/validate_ir.py (same dir);
 a failing IR generates nothing (the module is replaced wholesale and only
@@ -68,11 +70,28 @@ import validate_ir  # noqa: E402
 from generate_seed_sql import (  # noqa: E402
     build_model,
     seed_cell_fields,
+    seed_lane_fields,
     seed_trigger_fields,
 )
 
 #: Columns the SQL adapter stores that the nested fallback shape implies.
 IMPLIED_BY_NESTING = frozenset({"path_id"})
+
+#: The one place the two adapters disagree on a NAME rather than a value. The
+#: app's BlueprintLayer has called it `role` since before the column did, and
+#: renaming a field every component reads to match a column nobody reads would
+#: be the wrong way round. Declared here so adapter_parity.py can compare
+#: through it instead of reporting a difference that is only spelling.
+FALLBACK_FIELD_NAMES = {"layer_role": "role"}
+
+
+def project(fields: dict) -> dict:
+    """A SQL-adapter row as the no-DB adapter serves it."""
+    return {
+        FALLBACK_FIELD_NAMES.get(column, column): value
+        for column, value in fields.items()
+        if column not in IMPLIED_BY_NESTING
+    }
 
 MARKER_BEGIN = "GENERATED-BLUEPRINT-REGISTRY:BEGIN"
 MARKER_END = "GENERATED-BLUEPRINT-REGISTRY:END"
@@ -118,15 +137,7 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
             "note": path["note"],
             "path_type": path["path_type"],
         },
-        "layers": [
-            {
-                "id": layer["id"],
-                "name": layer["name"],
-                "role": layer["role"],
-                "row_position": layer["row"],
-            }
-            for layer in path["layers"]
-        ],
+        "layers": [project(seed_lane_fields(layer, path)) for layer in path["layers"]],
         # Steps in this path's column order (array index = column_position).
         "steps": [
             {
@@ -136,15 +147,8 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
             }
             for ps in path["path_steps"]
         ],
-        "cells": [
-            {
-                key: value
-                for key, value in seed_cell_fields(cell, path).items()
-                if key not in IMPLIED_BY_NESTING
-            }
-            for cell in path["cells"]
-        ],
-        "triggers": [seed_trigger_fields(trigger) for trigger in path["triggers"]],
+        "cells": [project(seed_cell_fields(cell, path)) for cell in path["cells"]],
+        "triggers": [project(seed_trigger_fields(trigger)) for trigger in path["triggers"]],
     }
 
 

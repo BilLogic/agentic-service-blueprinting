@@ -770,5 +770,33 @@ assert any("status" in line for line in problems), f"wrong complaint: {problems[
 PY
 pass "adapter-parity-negative (a field on one adapter only is reported)"
 
+python3 - "$SAMPLE" "$REPO_ROOT" <<'PY' || fail "adapter-parity: a lane-only field went undetected"
+import pathlib, sys
+sample, repo = sys.argv[1:3]
+sys.path.insert(0, f"{repo}/scripts")
+import adapter_parity, generate_fallbacks
+
+# The state this check shipped in, before review caught it: lanes projected by
+# hand, without kpis/tools, while the SQL adapter wrote both. The harness
+# compared cells and edges only and reported agreement.
+original = generate_fallbacks.blueprint_data_for_path
+def without_lane_spec(scenario, path):
+    data = original(scenario, path)
+    data["layers"] = [
+        {k: v for k, v in lane.items() if k not in ("kpis", "tools")}
+        for lane in data["layers"]
+    ]
+    return data
+generate_fallbacks.blueprint_data_for_path = without_lane_spec
+adapter_parity.blueprint_data_for_path = without_lane_spec
+
+problems = adapter_parity.check(pathlib.Path(sample), None)
+assert problems, "a lane field on one adapter only must be reported"
+assert any("kpis" in line for line in problems), f"wrong complaint: {problems[:1]}"
+assert any(line.startswith(f"{sample} [en]: lane ") for line in problems), \
+    "the complaint must name the aggregate that drifted"
+PY
+pass "adapter-parity-lanes (a lane field on one adapter only is reported)"
+
 echo
 echo "All $PASS_COUNT tests passed."

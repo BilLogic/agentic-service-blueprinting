@@ -2,7 +2,10 @@
  * A reference implementation of the whole seam, in memory — and the suite's
  * own proof that it can be satisfied.
  *
- * It exists for two reasons. First, so `conformance.ts` has something to pass
+ * It is NOT one of the two reference implementations the contract names —
+ * those are Supabase and the no-DB fixture, and the Supabase one is written
+ * when the seam reaches its call sites. This is a third thing, and it exists
+ * for two narrower reasons. First, so `conformance.ts` has something to pass
  * without a database, the way `adapter_parity.py` has a negative case: a suite
  * nothing has ever passed is a wish list. Second, and more useful to an
  * adopter, it is the shortest complete answer to "what does implementing this

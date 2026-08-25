@@ -22,7 +22,7 @@
  * one basename make the resolution order the contract.
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, basename, relative } from 'node:path'
+import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -201,4 +201,11 @@ function main() {
   process.exit(1)
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) main()
+// Same shape as scripts/sync-cover-assets.mjs: comparing against a
+// hand-built `file://` URL silently no-ops whenever the path needs escaping,
+// so a checkout under a directory with a space in its name would run this
+// script and have it do nothing, successfully.
+const isMain =
+  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isMain) main()

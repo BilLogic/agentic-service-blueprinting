@@ -149,9 +149,9 @@ def values_rows(rows) -> str:
 # same change, or the parity check fails.
 
 #: Columns whose Python value is JSON-encoded and cast to jsonb.
-JSONB_FIELDS = frozenset({"links", "value_props"})
+JSONB_FIELDS = frozenset({"links", "value_props", "kpis", "tools"})
 #: Columns emitted as a bare SQL literal (numbers), never quoted.
-RAW_FIELDS = frozenset({"slot_position"})
+RAW_FIELDS = frozenset({"slot_position", "row_position"})
 
 
 def seed_cell_fields(cell: dict, path: dict) -> dict:
@@ -177,6 +177,26 @@ def seed_cell_fields(cell: dict, path: dict) -> dict:
         "value_props": cell["value_props"],
         "owner": cell["owner"],
         "perceived_owner": cell["perceived_owner"],
+    }
+
+
+def seed_lane_fields(lane: dict, path: dict) -> dict:
+    """One lane as `layers` column -> value.
+
+    Lanes were left out of the shared projection when cells and edges got it,
+    and the omission immediately produced a false sentence: the contract said
+    kpis and tools were carried by neither adapter, when in fact the SQL side
+    carried both and the no-DB side carried neither. Same defect as before,
+    one aggregate over.
+    """
+    return {
+        "id": lane["id"],
+        "path_id": path["id"],
+        "name": lane["name"],
+        "layer_role": lane["role"],
+        "row_position": lane["row"],
+        "kpis": lane["kpis"],
+        "tools": lane["tools"],
     }
 
 
@@ -460,14 +480,10 @@ insert into public.path_steps (path_id, step_id, column_position) values
     ]
 )};
 
-insert into public.layers (id, path_id, name, layer_role, row_position, kpis, tools) values
+insert into public.layers ({', '.join(seed_lane_fields(scenario['paths'][0]['layers'][0], scenario['paths'][0]))}) values
 {values_rows(
     [
-        [
-            q(l['id']), q(p['id']), q(l['name']), q(l['role']), str(l['row']),
-            q(json.dumps(l['kpis'], ensure_ascii=False)) + '::jsonb',
-            q(json.dumps(l['tools'], ensure_ascii=False)) + '::jsonb',
-        ]
+        sql_row(seed_lane_fields(l, p))
         for p in scenario['paths']
         for l in p['layers']
     ]
