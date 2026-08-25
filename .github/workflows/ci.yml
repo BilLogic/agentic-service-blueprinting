@@ -1,0 +1,29 @@
+# The checks that make this package's claims true rather than asserted.
+#
+# Every guard in here already existed as a script somebody could remember to
+# run. A guard nobody runs is not a guard, so they run on every pull request.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The plugin contract's identifier layer, and the one version number.
+      - run: npm run check:manifest
+      - run: npm run check:version
+      # The vendored rulebook against its source, then the suite.
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
