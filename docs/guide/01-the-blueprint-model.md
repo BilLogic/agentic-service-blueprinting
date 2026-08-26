@@ -1,3 +1,7 @@
+---
+summary: What you are looking at when you open a blueprint — the hierarchy from service to cell, how lanes and steps make the grid, what a single cell holds, and where the interaction and visibility lines come from.
+---
+
 # The blueprint model
 
 **For** anyone who will read or author a blueprint.

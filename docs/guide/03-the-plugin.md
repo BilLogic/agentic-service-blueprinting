@@ -1,3 +1,7 @@
+---
+summary: How the machinery works and what lands on your disk — the four skills in the order a team meets them, the fresh-context agents they dispatch, the shared references, and the gates each phase ends at.
+---
+
 # The plugin
 
 **For** the adopter installing it and the engineer extending it.
