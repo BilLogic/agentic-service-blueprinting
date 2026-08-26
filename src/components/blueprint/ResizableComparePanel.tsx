@@ -56,6 +56,21 @@ type ResizableComparePanelProps = {
   dimmed?: boolean
   /** When true, this panel is the camera focus target — no hover chrome. */
   focusActive?: boolean
+  /**
+   * Keeps this panel's measurement OUT of its phase row's shared height.
+   *
+   * Set only for a focused scenario whose path selection is expanded past
+   * its default — the one case the exclusion exists for, where a comparison
+   * opened inside a focused panel would otherwise reach every dimmed
+   * neighbour through the row's `Math.max`. Focus ALONE must not set it:
+   * excluding a panel changes the row height, and a row height that moves
+   * on focus is a geometry change the camera pays for.
+   *
+   * A distinct attribute rather than a reading of `data-canvas-focus-active`,
+   * because that attribute is also set on the phase SECTION — a `closest()`
+   * for it matches every panel in a focused row, not the focused one.
+   */
+  excludeFromRowHeight?: boolean
   className?: string
   scrollContainerRef?: RefObject<HTMLDivElement | null>
 }
@@ -83,6 +98,7 @@ export function ResizableComparePanel({
   focusSlideId,
   dimmed = false,
   focusActive = false,
+  excludeFromRowHeight = false,
   className,
   scrollContainerRef,
 }: ResizableComparePanelProps) {
@@ -164,10 +180,15 @@ export function ResizableComparePanel({
     width: Math.max(targetWidth, userSize.width),
     height: lockHeight ? targetHeight : Math.max(targetHeight, userSize.height),
   }
-  const contentFitsWithPadding =
-    lockHeight &&
-    measuredContentHeight > 0 &&
-    measuredContentHeight + scrollPaddingY <= size.height
+  /*
+    Boards TOP-ALIGN inside their panel, always — never centred. Centring
+    each board independently inside its own container is what breaks a phase
+    row: shorter boards drift down and their headers stop lining up with
+    their neighbours'. The condition that used to sit here —
+    `contentFitsWithPadding && !lockHeight`, where the flag was itself
+    defined as `lockHeight && …` — could never fire. Dead, and a trap for
+    anyone who "fixes" it by making it reachable.
+  */
   const resizeStart = useRef({
     x: 0,
     y: 0,
@@ -313,6 +334,7 @@ export function ResizableComparePanel({
         data-blueprint-artboard
         {...(interactive ? { 'data-phase-scenario-panel': '' } : {})}
         {...(focusActive ? { 'data-canvas-focus-active': '' } : {})}
+        {...(excludeFromRowHeight ? { 'data-row-height-excluded': '' } : {})}
         role={navigable ? 'button' : undefined}
         tabIndex={navigable ? 0 : undefined}
         aria-label={navigable ? navigateLabel : undefined}
@@ -346,10 +368,7 @@ export function ResizableComparePanel({
       {chromeBar}
       <div
         ref={scrollContainerRef}
-        className={cn(
-          'min-h-0 flex-1 overflow-hidden',
-          contentFitsWithPadding && !lockHeight && 'flex flex-col justify-center',
-        )}
+        className="min-h-0 flex-1 overflow-hidden"
         style={{
           paddingTop: ARROW_VIEWPORT_PAD + scrollInsetY,
           paddingLeft: ARROW_VIEWPORT_PAD,
