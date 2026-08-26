@@ -9,7 +9,7 @@ Postgres database managed by [Supabase](https://supabase.com/) for the **agentic
 | **Migrations** | `supabase/migrations/` (consolidated schema + derived-layer migrations) |
 | **Seed data** | `supabase/seed.sql` (generated sample content) |
 | **ERD diagram** | `docs/erd.mmd` |
-| **DDL snapshot** | `supabase/schema.reference.sql` (its header partitions the portable Postgres core from the Supabase-specific recipe — auth defaults, role grants, RLS, `SECURITY DEFINER`; see also [`references/adapter-contract.md`](../references/adapter-contract.md) § Live backend surface) |
+| **The two halves** | `supabase/generated/portable-core.generated.sql` and `supabase/generated/supabase-recipe.generated.sql` — generated from the `-- @recipe` / `-- @core` marks in the migrations by `npm run generate:portable-core`, never hand-edited. The core is the contract and applies to a stock Postgres; the recipe is how Supabase enforces it. CI applies both. See also [`references/adapter-contract.md`](../references/adapter-contract.md) § Live backend surface |
 | **TypeScript types** | `src/types/database.ts` |
 
 ## Connection (application)

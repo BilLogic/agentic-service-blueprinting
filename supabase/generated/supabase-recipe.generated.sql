@@ -1,0 +1,605 @@
+-- The Supabase recipe — one conformant reference implementation.
+--
+-- ⚠ GENERATED FILE — DO NOT EDIT. Every line below was emitted from the
+-- partition marks in supabase/migrations/. Edit the migration, then run
+-- `npm run generate:portable-core`. A hand-edit is reverted by CI, which
+-- regenerates this file and fails on any difference.
+--
+-- ⚠ GENERATED, and also OPTIONAL. Applied on top of the portable core, this
+-- is how *Supabase* enforces the contract: request-scoped attribution from
+-- `auth.uid()`, the anon / authenticated / service_role grants, the RLS
+-- policies, the storage bucket for slice illustrations, and the optional
+-- service-account tier.
+--
+-- It is fully supported — this is what the shipped app runs on. It is not
+-- the contract. Another host writes its own recipe against the same core and
+-- is just as conformant, which is the point of the partition.
+--
+-- Applying this needs the Supabase primitives to exist. In CI that is
+-- supabase/portable/supabase-shim.sql, a harness and not something an
+-- adopter installs.
+--
+-- Fragments carry the CURRENT vocabulary, not the one their migration was
+-- written in: the core's renames are followed through. See the generator.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260716200000_template_schema.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- RLS and the read-only anon policies.
+-- ---------------------------------------------------------------------------
+-- Row Level Security (read-only for anon until auth is added)
+-- ---------------------------------------------------------------------------
+
+alter table public.services enable row level security;
+alter table public.phases enable row level security;
+alter table public.scenarios enable row level security;
+alter table public.paths enable row level security;
+alter table public.lanes enable row level security;
+alter table public.steps enable row level security;
+alter table public.path_steps enable row level security;
+alter table public.cells enable row level security;
+alter table public.cell_dependencies enable row level security;
+
+create policy "services_select" on public.services for select using (true);
+create policy "phases_select" on public.phases for select using (true);
+create policy "scenarios_select" on public.scenarios for select using (true);
+create policy "paths_select" on public.paths for select using (true);
+create policy "lanes_select" on public.lanes for select using (true);
+create policy "steps_select" on public.steps for select using (true);
+create policy "path_steps_select" on public.path_steps for select using (true);
+create policy "cells_select" on public.cells for select using (true);
+create policy "cell_dependencies_select" on public.cell_dependencies for select using (true);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260729120000_derived_layer.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- RLS, the role grants, and the storage bucket the app uploads to.
+-- ============================================================
+-- 4. RLS + grants
+-- ============================================================
+-- Attribution stamps the caller. On another host it is that host's
+-- request-scoped identity; the COLUMN is core, the value it takes is not.
+alter table public.slices   alter column created_by set default auth.uid();
+alter table public.evidence alter column created_by set default auth.uid();
+
+-- REQUIRED companion (deploy step, not SQL): disable public sign-ups in Auth settings
+-- and use shouldCreateUser:false in the frontend — otherwise "authenticated" means
+-- anyone on the internet. TO authenticated is authentication, not authorization:
+-- acceptable for a closed team only.
+
+alter table public.slices enable row level security;
+alter table public.slice_items enable row level security;
+alter table public.findings enable row level security;
+alter table public.evidence enable row level security;
+alter table public.propositions enable row level security;
+
+-- slices / slice_items: public read, authenticated write
+create policy "slices_select" on public.slices for select using (true);
+create policy "slices_insert_auth" on public.slices
+  for insert to authenticated with check (true);
+create policy "slices_update_auth" on public.slices
+  for update to authenticated using (true) with check (true);
+create policy "slices_delete_auth" on public.slices
+  for delete to authenticated using (true);
+
+create policy "slice_items_select" on public.slice_items for select using (true);
+create policy "slice_items_insert_auth" on public.slice_items
+  for insert to authenticated with check (true);
+create policy "slice_items_update_auth" on public.slice_items
+  for update to authenticated using (true) with check (true);
+create policy "slice_items_delete_auth" on public.slice_items
+  for delete to authenticated using (true);
+
+-- findings: public read; humans may flip STATUS only (column grant below); no
+-- insert/delete for authenticated — skills write via service key.
+create policy "findings_select" on public.findings for select using (true);
+create policy "findings_update_auth" on public.findings
+  for update to authenticated using (true) with check (true);
+revoke insert, update, delete on public.findings from authenticated;
+grant update (status) on public.findings to authenticated;
+
+-- evidence / propositions: restricted read (interview excerpts, pricing are not
+-- world-readable on public deploys); authenticated write.
+create policy "evidence_select_auth" on public.evidence
+  for select to authenticated using (true);
+create policy "evidence_insert_auth" on public.evidence
+  for insert to authenticated with check (true);
+create policy "evidence_update_auth" on public.evidence
+  for update to authenticated using (true) with check (true);
+create policy "evidence_delete_auth" on public.evidence
+  for delete to authenticated using (true);
+
+create policy "propositions_select_auth" on public.propositions
+  for select to authenticated using (true);
+create policy "propositions_insert_auth" on public.propositions
+  for insert to authenticated with check (true);
+create policy "propositions_update_auth" on public.propositions
+  for update to authenticated using (true) with check (true);
+
+-- evidence_counts view: public (counts only, no content)
+grant select on public.evidence_counts to anon, authenticated;
+
+-- Human-editable spec columns on IR-owned tables: column-scoped UPDATE only.
+-- (Content columns stay service-key-only.)
+create policy "cells_update_auth" on public.cells
+  for update to authenticated using (true) with check (true);
+revoke update on public.cells from authenticated;
+grant update (function, form, value_props, owner, perceived_owner)
+  on public.cells to authenticated;
+
+create policy "lanes_update_auth" on public.lanes
+  for update to authenticated using (true) with check (true);
+revoke update on public.lanes from authenticated;
+grant update (owner_team, kpis, tools) on public.lanes to authenticated;
+
+create policy "phases_update_auth" on public.phases
+  for update to authenticated using (true) with check (true);
+revoke update on public.phases from authenticated;
+grant update (business_impact, operational_requirements) on public.phases to authenticated;
+
+-- ============================================================
+-- 5. Storage bucket for slice illustrations
+-- ============================================================
+-- Object paths come only from DB ids/positions:
+--   slices/<slice_id>/frame-<position>.png, slices/<slice_id>/character-ref.png
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('slice-illustrations', 'slice-illustrations', true, 5242880, array['image/png'])
+on conflict (id) do nothing;
+
+-- storage.objects policies fail on hosted Supabase when the migration role doesn't own
+-- the table ("must be owner"): apply where possible, degrade visibly otherwise (writes
+-- then go through the service key only; see deploy notes).
+do $$
+begin
+  create policy "slice_illustrations_insert" on storage.objects
+    for insert to authenticated
+    with check (
+      bucket_id = 'slice-illustrations'
+      and name ~ '^slices/[0-9a-f-]{36}/(frame-[0-9]+|character-ref)\.png$'
+    );
+  create policy "slice_illustrations_select" on storage.objects
+    for select to authenticated
+    using (bucket_id = 'slice-illustrations');
+  create policy "slice_illustrations_update" on storage.objects
+    for update to authenticated
+    using (bucket_id = 'slice-illustrations')
+    with check (
+      bucket_id = 'slice-illustrations'
+      and name ~ '^slices/[0-9a-f-]{36}/(frame-[0-9]+|character-ref)\.png$'
+    );
+exception
+  when insufficient_privilege then
+    raise notice 'storage.objects policies skipped (not owner): bucket writes are service-key only until policies are added via the dashboard.';
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260730090000_derived_layer_grants_hardening.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- F1 is entirely about the anon / authenticated roles.
+-- ---- F1: explicit exposure grants ----
+grant select on public.slices, public.slice_items, public.findings to anon, authenticated;
+grant select on public.evidence, public.propositions to authenticated;
+grant insert, update, delete on public.slices, public.slice_items, public.evidence to authenticated;
+grant insert, update on public.propositions to authenticated;
+grant select on public.evidence_counts to anon, authenticated;
+
+-- Defense-in-depth: strip legacy write privileges from anon (RLS already blocks the
+-- DML, but TRUNCATE is not subject to RLS) and TRUNCATE from both roles everywhere.
+revoke insert, update, delete, truncate on public.slices, public.slice_items,
+  public.findings, public.evidence, public.propositions from anon;
+revoke select on public.evidence, public.propositions from anon;
+revoke truncate on public.slices, public.slice_items, public.findings,
+  public.evidence, public.propositions, public.cells, public.lanes, public.phases
+  from anon, authenticated;
+revoke insert, update, delete on public.evidence_counts from anon, authenticated;
+
+-- who "the caller" is, on Supabase.
+alter table public.slice_items  alter column created_by set default auth.uid();
+alter table public.propositions alter column created_by set default auth.uid();
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260818000000_authoring_foundation.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- everything from here is roles, RLS, grants and the storage
+-- bucket, plus the one column default that stamps the caller.
+alter table public.deleted_structure alter column deleted_by set default auth.uid();
+
+alter table public.deleted_structure enable row level security;
+
+-- Readable by anyone who can read the blueprint (the recovery list is part of
+-- the editor); written only by the delete functions, which run as definer.
+drop policy if exists "deleted_structure_select" on public.deleted_structure;
+create policy "deleted_structure_select" on public.deleted_structure
+  for select using (true);
+
+grant select on public.deleted_structure to anon, authenticated;
+revoke insert, update, delete, truncate on public.deleted_structure
+  from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Ordinary column writes the panel does directly (no function needed): the
+-- blueprint's own text, and the resource links. Structural shape stays behind
+-- the RPCs. Column grants accumulate on top of the derived layer's spec-field
+-- grants (cells: function/form/value_props/owner/perceived_owner; lanes:
+-- owner_team/kpis/tools; phases: business_impact/operational_requirements).
+-- ---------------------------------------------------------------------------
+grant update (content, summary, links) on public.cells to authenticated;
+grant update (name, lane_role) on public.lanes to authenticated;
+grant update (name) on public.steps to authenticated;
+grant update (name, summary, note, path_type) on public.paths to authenticated;
+grant update (name, summary, view_type) on public.scenarios to authenticated;
+
+-- cells/lanes/phases already carry update policies from the derived layer;
+-- steps, paths and scenarios gain theirs here.
+drop policy if exists "steps_update_auth" on public.steps;
+create policy "steps_update_auth" on public.steps
+  for update to authenticated using (true) with check (true);
+drop policy if exists "paths_update_auth" on public.paths;
+create policy "paths_update_auth" on public.paths
+  for update to authenticated using (true) with check (true);
+drop policy if exists "scenarios_update_auth" on public.scenarios;
+create policy "scenarios_update_auth" on public.scenarios
+  for update to authenticated using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- Evidence is display content, and the deployed app is a read-only viewer:
+-- every other content table (cells, slices) already grants anon SELECT.
+-- Evidence being authenticated-only surfaced as "permission denied for table
+-- evidence" in the panel's Evidence tab for every visitor. Writes stay
+-- authenticated-only, unchanged.
+--
+-- ⚠ Adopter decision: this makes evidence rows (including interview
+-- excerpts) readable on public deploys. If your evidence holds sensitive
+-- excerpts, drop this policy + grant AND revert the evidence_counts
+-- security_invoker change below (the owner-rights view is what keeps the
+-- anonymous assumption-lens count working without content access).
+-- ---------------------------------------------------------------------------
+grant select on public.evidence to anon;
+drop policy if exists evidence_select_anon on public.evidence;
+create policy evidence_select_anon on public.evidence
+  for select to anon using (true);
+
+-- With evidence publicly readable, the counts view's owner-rights execution
+-- guards nothing (security-definer-view advisor ERROR): run it as the
+-- querying user. Coupled to the anon-read decision above — see the warning.
+alter view public.evidence_counts set (security_invoker = true);
+
+-- ---------------------------------------------------------------------------
+-- Findings canvas writes, in their final hardened form: the in-app agent
+-- records findings directly, same as the IDE flow's service-key writes.
+-- A finding may only be INSERTED as open — the dedupe rule is "dismissed
+-- stays dismissed", so an insert that could set status directly would let one
+-- forged row permanently suppress a real finding from every future audit run.
+-- The UPDATE grant is column-narrowed: the derived layer's "humans may flip
+-- STATUS only" widened only to the columns record-finding update-in-place
+-- actually writes. Delete stays revoked everywhere;
+-- findings_open_fingerprint_idx remains the dedupe backstop.
+-- ---------------------------------------------------------------------------
+drop policy if exists "findings_insert_auth" on public.findings;
+create policy "findings_insert_auth" on public.findings
+  for insert to authenticated with check (status = 'open');
+
+grant insert on public.findings to authenticated;
+revoke update on public.findings from authenticated;
+grant update (status, note, severity, run_id, cell_ids, cell_keys, source)
+  on public.findings to authenticated;
+
+-- the storage bucket and its object policies.
+
+-- ---------------------------------------------------------------------------
+-- Storyboard uploads: people drop JPEGs and WebPs, and a mime rejection reads
+-- like a bug rather than a rule.
+-- ---------------------------------------------------------------------------
+update storage.buckets
+  set allowed_mime_types = array['image/png', 'image/jpeg', 'image/webp']
+  where id = 'slice-illustrations';
+
+-- The bucket's write policies name the *only* paths that may be written, and
+-- the derived layer's pattern accepts none of the paths the app builds:
+--
+--   1. It hard-codes `\.png$`, so widening the mime types above would have
+--      changed nothing — a JPEG would clear the bucket check and then be
+--      refused by the policy.
+--   2. It keys a frame's image by *position* (`frame-3.png`). Positions move:
+--      splitting or reordering frames renumbers them, so every image would
+--      silently repoint at a different frame. The app keys by `slice_items.id`
+--      instead, which is stable across every edit that is not a delete.
+--
+-- The old names stay accepted so anything already uploaded keeps resolving.
+-- Guarded: on hosted Supabase the migration role may not own storage.objects.
+do $$
+begin
+  drop policy if exists "slice_illustrations_insert" on storage.objects;
+  drop policy if exists "slice_illustrations_update" on storage.objects;
+
+  create policy "slice_illustrations_insert" on storage.objects
+    for insert to authenticated
+    with check (
+      bucket_id = 'slice-illustrations'
+      and name ~ '^slices/[0-9a-f-]{36}/([0-9a-f-]{36}|frame-[0-9]+|character-ref)\.(png|jpg|webp)$'
+    );
+  create policy "slice_illustrations_update" on storage.objects
+    for update to authenticated
+    using (bucket_id = 'slice-illustrations')
+    with check (
+      bucket_id = 'slice-illustrations'
+      and name ~ '^slices/[0-9a-f-]{36}/([0-9a-f-]{36}|frame-[0-9]+|character-ref)\.(png|jpg|webp)$'
+    );
+exception
+  when insufficient_privilege then
+    raise notice 'storage.objects policies skipped (not owner): bucket writes stay service-key only until these are added via the dashboard.';
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260818001000_authoring_operations.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the seam is core; naming the Supabase roles that may read it
+-- is not.
+grant execute on function public.is_service_account() to anon, authenticated;
+
+-- Grants, part 2: the Supabase roles.
+--
+-- Read helpers stay open to anon on purpose: stable/immutable, no writes,
+-- and they only describe data already readable through the SELECT policies.
+-- The writes are revoked from anon and granted to `authenticated`, which
+-- names the one role supposed to hold them. Another host substitutes its own
+-- caller classes here; the PUBLIC revoke above stands either way.
+
+-- Read helpers: open to anon.
+grant execute on function public.key_slug(text) to anon, authenticated;
+grant execute on function public.cell_natural_key(uuid) to anon, authenticated;
+grant execute on function public.mint_cell_key(uuid, uuid, uuid) to anon, authenticated;
+grant execute on function public.slices_referencing(uuid[]) to anon, authenticated;
+grant execute on function public.deletion_impact(text, uuid) to anon, authenticated;
+
+-- Writes: anon loses what PUBLIC already lost …
+revoke execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) from anon;
+revoke execute on function public.duplicate_scenario(uuid, text) from anon;
+revoke execute on function public.create_phase(uuid, text, text) from anon;
+revoke execute on function public.create_path(uuid, text, text, uuid) from anon;
+revoke execute on function public.duplicate_path(uuid, text, text, boolean, boolean) from anon;
+revoke execute on function public.add_step(uuid, text, int) from anon;
+revoke execute on function public.add_lane(uuid, text, text, int) from anon;
+revoke execute on function public.reorder_steps(uuid, uuid[]) from anon;
+revoke execute on function public.set_path_steps(uuid, uuid[]) from anon;
+revoke execute on function public.reorder_lanes(uuid, text[]) from anon;
+revoke execute on function public.upsert_cell(uuid, uuid, uuid, text) from anon;
+revoke execute on function public.set_cell_dependency(uuid, uuid, text, text, text) from anon;
+revoke execute on function public.clear_cell_dependency(uuid) from anon;
+revoke execute on function public.rename_phase(uuid, text) from anon;
+revoke execute on function public.rename_scenario(uuid, text) from anon;
+revoke execute on function public.rename_path(uuid, text) from anon;
+revoke execute on function public.rename_owner_tag(text, text) from anon;
+revoke execute on function public.delete_scenario(uuid) from anon;
+revoke execute on function public.delete_path(uuid) from anon;
+revoke execute on function public.remove_step(uuid, uuid) from anon;
+revoke execute on function public.remove_lane(uuid, text) from anon;
+revoke execute on function public.remove_lanes(uuid[]) from anon;
+revoke execute on function public.delete_cell(uuid) from anon;
+
+-- … and `authenticated` is named as the role that holds them.
+grant execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) to authenticated;
+grant execute on function public.duplicate_scenario(uuid, text) to authenticated;
+grant execute on function public.create_phase(uuid, text, text) to authenticated;
+grant execute on function public.create_path(uuid, text, text, uuid) to authenticated;
+grant execute on function public.duplicate_path(uuid, text, text, boolean, boolean) to authenticated;
+grant execute on function public.add_step(uuid, text, int) to authenticated;
+grant execute on function public.add_lane(uuid, text, text, int) to authenticated;
+grant execute on function public.reorder_steps(uuid, uuid[]) to authenticated;
+grant execute on function public.set_path_steps(uuid, uuid[]) to authenticated;
+grant execute on function public.reorder_lanes(uuid, text[]) to authenticated;
+grant execute on function public.upsert_cell(uuid, uuid, uuid, text) to authenticated;
+grant execute on function public.set_cell_dependency(uuid, uuid, text, text, text) to authenticated;
+grant execute on function public.clear_cell_dependency(uuid) to authenticated;
+grant execute on function public.rename_phase(uuid, text) to authenticated;
+grant execute on function public.rename_scenario(uuid, text) to authenticated;
+grant execute on function public.rename_path(uuid, text) to authenticated;
+grant execute on function public.rename_owner_tag(text, text) to authenticated;
+grant execute on function public.delete_scenario(uuid) to authenticated;
+grant execute on function public.delete_path(uuid) to authenticated;
+grant execute on function public.remove_step(uuid, uuid) to authenticated;
+grant execute on function public.remove_lane(uuid, text) to authenticated;
+grant execute on function public.remove_lanes(uuid[]) to authenticated;
+grant execute on function public.delete_cell(uuid) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260818002000_service_account_tier.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- this whole migration is the tier recipe. It is named that in
+-- its own header: it reads a Supabase JWT, hangs a trigger on auth.users and
+-- policies on storage.objects. Only the config table it reads is core.
+create or replace function public.is_service_account()
+returns boolean
+language sql
+stable
+set search_path = pg_catalog, pg_temp
+as $$
+  select coalesce(
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'service',
+    false
+  )
+$$;
+
+comment on function public.is_service_account() is
+  'True when the JWT app_metadata.role is service. Set via auth.users.raw_app_meta_data (service role only) or the service_account_emails config table — users cannot self-assign (user_metadata is ignored on purpose).';
+
+grant execute on function public.is_service_account() to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- RESTRICTIVE write policies on every blueprint + derived-layer table. They
+-- AND with the permissive policies, so a non-service session keeps its reads
+-- but loses every direct write.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'phases', 'scenarios', 'paths', 'steps', 'path_steps',
+    'lanes', 'cells', 'cell_dependencies', 'slices', 'slice_items',
+    'evidence', 'propositions', 'findings'
+  ] loop
+    execute format('drop policy if exists %I on public.%I',
+      t || '_insert_service_only', t);
+    execute format('drop policy if exists %I on public.%I',
+      t || '_update_service_only', t);
+    execute format('drop policy if exists %I on public.%I',
+      t || '_delete_service_only', t);
+    execute format(
+      'create policy %I on public.%I as restrictive for insert to authenticated with check (public.is_service_account())',
+      t || '_insert_service_only', t);
+    execute format(
+      'create policy %I on public.%I as restrictive for update to authenticated using (public.is_service_account()) with check (public.is_service_account())',
+      t || '_update_service_only', t);
+    execute format(
+      'create policy %I on public.%I as restrictive for delete to authenticated using (public.is_service_account())',
+      t || '_delete_service_only', t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Storage joins the tier: the slice-illustration policies check only bucket
+-- and filename shape, so without this a viewer could upload and overwrite
+-- any illustration in a public bucket. Guarded: on hosted Supabase the
+-- migration role may not own storage.objects.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  drop policy if exists "slice_illustrations_service_only" on storage.objects;
+  create policy "slice_illustrations_service_only"
+    on storage.objects as restrictive for all to authenticated
+    using (bucket_id <> 'slice-illustrations' or public.is_service_account())
+    with check (bucket_id <> 'slice-illustrations' or public.is_service_account());
+exception
+  when insufficient_privilege then
+    raise notice 'storage.objects tier policy skipped (not owner): add slice_illustrations_service_only via the dashboard.';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Enrollment config: which emails become service accounts at sign-up.
+--
+-- Empty by default — the adopter fills it. Service-role only: this table is
+-- an operator control surface, not app data. (No RLS policies = no access
+-- for anon/authenticated once RLS is enabled; service_role bypasses RLS.)
+-- ---------------------------------------------------------------------------
+alter table public.service_account_emails enable row level security;
+revoke all on public.service_account_emails from public, anon, authenticated;
+
+-- Stamp the role at account creation for allowlisted emails.
+create or replace function public.flag_service_accounts()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_catalog, pg_temp
+as $$
+begin
+  if exists (
+    select 1 from public.service_account_emails e
+    where lower(e.email) = lower(new.email)
+  ) then
+    new.raw_app_meta_data :=
+      coalesce(new.raw_app_meta_data, '{}'::jsonb) || '{"role":"service"}'::jsonb;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists flag_service_accounts on auth.users;
+create trigger flag_service_accounts
+  before insert on auth.users
+  for each row execute function public.flag_service_accounts();
+
+-- Operator routine; it has no business on the public REST surface. The grant
+-- that would expose it is the PUBLIC default (a per-role revoke alone is a
+-- no-op), so PUBLIC is revoked explicitly.
+revoke execute on function public.flag_service_accounts() from public;
+revoke execute on function public.flag_service_accounts()
+  from anon, authenticated;
+grant execute on function public.flag_service_accounts() to service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 20260819000000_agent_surface.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the caller stamp, RLS, the owner-scoped policies, and the
+-- findings grants: every one of them names a Supabase primitive.
+alter table public.agent_sessions
+  alter column created_by set default auth.uid();
+
+alter table public.agent_sessions enable row level security;
+alter table public.agent_messages enable row level security;
+
+-- Transcripts are private to their author. The app never writes created_by —
+-- the column default stamps the caller, which is exactly what the WITH CHECK
+-- requires, so inserts pass and every read/update/delete is filtered to the
+-- caller's own rows.
+create policy "agent sessions are owner-scoped"
+  on public.agent_sessions
+  for all
+  to authenticated
+  using (created_by = auth.uid())
+  with check (created_by = auth.uid());
+
+create policy "agent messages are owner-scoped"
+  on public.agent_messages
+  for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.agent_sessions s
+      where s.id = session_id and s.created_by = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.agent_sessions s
+      where s.id = session_id and s.created_by = auth.uid()
+    )
+  );
+
+-- ---------------------------------------------------------------------------
+-- Findings: let the in-app agent record and triage through the signed-in
+-- session, restoring the foundation migration's hardened form
+-- (20260818000000) rather than a blanket grant:
+--
+--   * A finding may only be INSERTED as open — the dedupe rule is "dismissed
+--     stays dismissed", so an insert that could set status directly would let
+--     one forged pre-dismissed row permanently suppress a real finding from
+--     every future audit run. record_finding inserts without status and takes
+--     the column default ('open').
+--   * The UPDATE grant is column-narrowed to what record-finding's
+--     update-in-place and human triage actually write. Delete stays revoked
+--     everywhere; findings_open_fingerprint_idx remains the dedupe backstop.
+--
+-- The tier recipe's RESTRICTIVE policies (when applied) still confine every
+-- one of these writes to service accounts.
+-- ---------------------------------------------------------------------------
+grant insert on public.findings to authenticated;
+revoke update on public.findings from authenticated;
+grant update (status, note, severity, run_id, cell_ids, cell_keys, source)
+  on public.findings to authenticated;
+
+drop policy if exists "findings_insert_auth" on public.findings;
+create policy "findings_insert_auth" on public.findings
+  for insert to authenticated with check (status = 'open');
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000101000000_schema_version_is_a_table.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- another host re-expresses these with its own primitives: the
+-- version is world-readable and nobody but a migration writes it.
+
+alter table public.schema_version enable row level security;
+
+create policy "schema_version_select" on public.schema_version for select using (true);
+
+grant select on public.schema_version to anon, authenticated;

@@ -24,7 +24,7 @@
 create table public.agent_sessions (
   id uuid primary key,
   title text not null default 'New session',
-  created_by uuid not null default auth.uid(),
+  created_by uuid not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -47,6 +47,11 @@ comment on table public.agent_messages is
 
 create index agent_messages_session_idx
   on public.agent_messages (session_id, seq);
+
+-- @recipe — the caller stamp, RLS, the owner-scoped policies, and the
+-- findings grants: every one of them names a Supabase primitive.
+alter table public.agent_sessions
+  alter column created_by set default auth.uid();
 
 alter table public.agent_sessions enable row level security;
 alter table public.agent_messages enable row level security;

@@ -147,7 +147,7 @@ alter table public.path_steps
 create table if not exists public.deleted_structure (
   id uuid primary key default gen_random_uuid(),
   deleted_at timestamptz not null default now(),
-  deleted_by uuid default auth.uid(),
+  deleted_by uuid,
   kind text not null check (kind in ('scenario', 'path', 'lane', 'step', 'cell')),
   -- Human name, for the undo toast and the recovery list.
   label text not null,
@@ -160,6 +160,10 @@ create table if not exists public.deleted_structure (
 
 create index if not exists deleted_structure_deleted_at_idx
   on public.deleted_structure (deleted_at desc);
+
+-- @recipe — everything from here is roles, RLS, grants and the storage
+-- bucket, plus the one column default that stamps the caller.
+alter table public.deleted_structure alter column deleted_by set default auth.uid();
 
 alter table public.deleted_structure enable row level security;
 
@@ -241,8 +245,11 @@ revoke update on public.findings from authenticated;
 grant update (status, note, severity, run_id, cell_ids, cell_keys, source)
   on public.findings to authenticated;
 
+-- @core
 comment on table public.findings is
   'Audit / whatif / import-sweep outputs. Written by skills (IDE service key or canvas authenticated agent); humans triage by status.';
+
+-- @recipe — the storage bucket and its object policies.
 
 -- ---------------------------------------------------------------------------
 -- Storyboard uploads: people drop JPEGs and WebPs, and a mime rejection reads

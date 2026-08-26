@@ -1,8 +1,8 @@
 -- Service Blueprint template schema (consolidated).
 --
 -- Single schema migration for the agentic-service-blueprinting template,
--- replacing the original instance's 700+ migration history. Matches
--- supabase/schema.reference.sql exactly: hierarchy tables, blueprint grid,
+-- replacing the original instance's 700+ migration history: hierarchy
+-- tables, blueprint grid,
 -- path_steps ordering, cell metadata, layer_role, integrity trigger,
 -- updated_at triggers, and read-only RLS. Content comes from seeds
 -- (supabase/seed.sql) or the import pipeline — this file contains no content.
@@ -279,6 +279,7 @@ create trigger set_cell_triggers_updated_at
   before update on public.cell_triggers
   for each row execute function public.set_updated_at();
 
+-- @recipe — RLS and the read-only anon policies.
 -- ---------------------------------------------------------------------------
 -- Row Level Security (read-only for anon until auth is added)
 -- ---------------------------------------------------------------------------

@@ -120,13 +120,22 @@ Then `npm run check:target` — it asks the database which schema it carries. Ru
 
 ### Bring your own backend
 
-Supabase-native, backend-portable. The app and the skills run Supabase out of the box, and Supabase is one conformant recipe rather than the requirement.
+**The portable Postgres core is the contract. Supabase is one conformant reference recipe — fully supported, and not the requirement.**
+
+That partition is not a stance in a comment any more; it is two generated files and a CI job. The migrations carry the marks, [scripts/generate-portable-core.mjs](./scripts/generate-portable-core.mjs) emits both halves from them, and every pull request applies the core to a stock `postgres:17` with no Supabase in front of it, then the recipe on top. If the core stops being portable, the build goes red.
+
+| | |
+| --- | --- |
+| [supabase/generated/portable-core.generated.sql](./supabase/generated/portable-core.generated.sql) | **The contract.** Tables, columns, constraints, indexes, views, triggers, function bodies. Runs on any Postgres. |
+| [supabase/generated/supabase-recipe.generated.sql](./supabase/generated/supabase-recipe.generated.sql) | **One recipe.** `auth.uid()` defaults, the anon / authenticated / service_role grants, RLS policies, the storage bucket. This is what the shipped app runs on. |
+
+Both are generated. Edit a migration and run `npm run generate:portable-core`; a hand-edit is reverted by CI. Another host writes its own recipe against the same core and is exactly as conformant — that is what the partition is for.
 
 **What the app actually needs** is the repository interfaces in [`src/lib/backend/ports.ts`](./src/lib/backend/ports.ts): domain operations like `getBlueprint(pathId)`, each declaring whether it reads, is atomic, or converges on re-run. Any store that answers them can serve this app.
 
 **What decides whether yours does** is [`src/lib/backend/conformance.ts`](./src/lib/backend/conformance.ts) — a suite you run from your own runner against your own store. It has two levels: **Transactional**, where atomic operations are all-or-nothing, and **Idempotent**, where they may tear provided re-running converges and a repair pass can resolve what tore. The second level is why a store with no transactions at all can still serve this correctly.
 
-**What you get to copy**: the portable schema ([supabase/schema.reference.sql](./supabase/schema.reference.sql) + [docs/erd.mmd](./docs/erd.mmd)), checked in CI against a stock Postgres; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and two working implementations of the interfaces to read.
+**What you get to copy**: the portable core ([supabase/generated/portable-core.generated.sql](./supabase/generated/portable-core.generated.sql) + [docs/erd.mmd](./docs/erd.mmd)), applied to a stock Postgres in CI; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and two working implementations of the interfaces to read.
 
 **What we don't provide** — stated as a boundary rather than a list of apologies, so you know where your work starts:
 
@@ -187,7 +196,7 @@ Supabase-native, backend-portable. The app and the skills run Supabase out of th
 | [src/data/blueprintFallbacks.ts](./src/data/blueprintFallbacks.ts) | Offline/no-DB fallback registry (sample content) |
 | [supabase/migrations/](./supabase/migrations/) | Schema migrations — base template plus the authoring and agent-surface lanes |
 | [supabase/seed.sql](./supabase/seed.sql) | Generated sample seed |
-| [supabase/schema.reference.sql](./supabase/schema.reference.sql) | DDL snapshot |
+| [supabase/generated/](./supabase/generated/) | The portable core and the Supabase recipe, generated from the migrations' partition marks |
 | [docs/guide/](./docs/guide/) | The four guides: the model, using it, the plugin, operations |
 | [docs/assets/](./docs/assets/) | Every figure in this README and the guides |
 | [docs/erd.mmd](./docs/erd.mmd) | Attribute-level ERD |

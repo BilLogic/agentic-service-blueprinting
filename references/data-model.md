@@ -13,8 +13,9 @@ that are the only sanctioned write path for structure;
 `20260818002000_service_account_tier.sql` — OPTIONAL recipe splitting
 `authenticated` into service/regular tiers via RESTRICTIVE policies;
 `20260819000000_agent_surface.sql` — `agent_sessions`/`agent_messages`
-chat persistence plus the findings write path for in-app runs) (snapshot:
-`supabase/schema.reference.sql`, diagram: `docs/erd.mmd`). The IR
+chat persistence plus the findings write path for in-app runs) (portable
+core: `supabase/generated/portable-core.generated.sql`, diagram:
+`docs/erd.mmd`). The IR
 (`references/ir-schema.json`) mirrors this shape one-to-one with locale maps
 and stable keys in place of UUIDs.
 

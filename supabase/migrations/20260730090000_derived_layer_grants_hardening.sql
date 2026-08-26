@@ -5,6 +5,7 @@
 -- F4: attribution columns missed on slice_items/propositions.
 -- F5: evidence cell_key XOR tightened to bidirectional pairing.
 
+-- @recipe — F1 is entirely about the anon / authenticated roles.
 -- ---- F1: explicit exposure grants ----
 grant select on public.slices, public.slice_items, public.findings to anon, authenticated;
 grant select on public.evidence, public.propositions to authenticated;
@@ -22,15 +23,22 @@ revoke truncate on public.slices, public.slice_items, public.findings,
   from anon, authenticated;
 revoke insert, update, delete on public.evidence_counts from anon, authenticated;
 
+-- @core
 -- ---- F3: pinned search_path on functions ----
 alter function public.set_updated_at() set search_path = pg_catalog, pg_temp;
 alter function public.cells_validate_path_match() set search_path = public, pg_catalog, pg_temp;
 
 -- ---- F4: attribution on the remaining human-writable derived tables ----
-alter table public.slice_items add column created_by uuid default auth.uid();
-alter table public.propositions add column created_by uuid default auth.uid();
-comment on column public.slice_items.created_by is 'auth.uid() at insert; null for service-key writes.';
-comment on column public.propositions.created_by is 'auth.uid() at insert; null for service-key writes.';
+alter table public.slice_items add column created_by uuid;
+alter table public.propositions add column created_by uuid;
+comment on column public.slice_items.created_by is 'The caller at insert; null for service-key writes.';
+comment on column public.propositions.created_by is 'The caller at insert; null for service-key writes.';
+
+-- @recipe — who "the caller" is, on Supabase.
+alter table public.slice_items  alter column created_by set default auth.uid();
+alter table public.propositions alter column created_by set default auth.uid();
+
+-- @core
 
 -- ---- F5: evidence cell_key pairing is bidirectional ----
 update public.evidence set cell_key = null where cell_id is null and cell_key is not null;

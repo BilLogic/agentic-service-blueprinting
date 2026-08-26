@@ -3,7 +3,8 @@ import type { SlideViewType } from '@/types/nav'
 /**
  * The two view-type vocabularies and the only place they meet.
  *
- * The database CHECK constraint (supabase/schema.reference.sql:33) keeps the
+ * The database CHECK constraint (`scenarios_view_type_check`, in
+ * supabase/generated/portable-core.generated.sql) keeps the
  * historical tokens `single | side-by-side | integrated`. The client speaks
  * `single | stacked | merged` (Compare v3 — docs/plans/2026-08-06-003).
  * Everything above the two seams — the read seam in `phasesToSlides.ts` and

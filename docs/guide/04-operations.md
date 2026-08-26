@@ -26,9 +26,13 @@ remember that rule.
 ## 2. The schema
 
 The schema migrations live in
-[`supabase/migrations/`](../../supabase/migrations/), with a DDL snapshot at
-[`supabase/schema.reference.sql`](../../supabase/schema.reference.sql) and an
-attribute-level ERD at [`docs/erd.mmd`](../erd.mmd).
+[`supabase/migrations/`](../../supabase/migrations/). They carry `-- @recipe` /
+`-- @core` marks, and
+[`supabase/generated/`](../../supabase/generated/) holds the two halves those
+marks emit: the portable Postgres core, which CI applies to a stock
+`postgres:17`, and the Supabase recipe applied on top of it. Both are
+generated — edit a migration, then run `npm run generate:portable-core`. The
+attribute-level ERD is at [`docs/erd.mmd`](../erd.mmd).
 
 Import order is enforced by the `cells_validate_path_match` trigger:
 `paths → steps → path_steps → lanes → cells → cell_dependencies`.

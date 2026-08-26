@@ -36,17 +36,26 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-  # Be precise about what this proves. It replays OUR MIGRATIONS — the Supabase
-  # recipe included — against a plain Postgres, behind a shim supplying the role
-  # names and auth.* helpers that recipe calls, and then checks the result
-  # against schema.reference.sql.
+  # The portability position, executed.
   #
-  # That is NOT yet the decided check, which is "apply the GENERATED core to a
-  # stock Postgres". The core is still authored rather than generated, so there
-  # is nothing generated to apply; this job stands in until there is, and it
-  # already earns its place — a migration reaching for something only Supabase
-  # provides fails here instead of in an adopter's project, which is how the
-  # tier recipe's dependency on auth.users first became visible.
+  # The partition between the portable Postgres core and the Supabase recipe is
+  # marked in the migrations and generated from those marks
+  # (scripts/generate-portable-core.mjs). Generated artifacts rot without a
+  # guard, and a claim nobody runs is a sentence, so this job does four things
+  # in order, each of which can fail on its own:
+  #
+  #   1. regenerate both halves and diff them against what is committed;
+  #   2. apply the CORE to a stock postgres:17 — no Supabase, no shim, nothing
+  #      in front of it. This is the claim. Either the SQL is accepted or the
+  #      build is red;
+  #   3. apply the RECIPE on top of that same database, behind the shim that
+  #      stands in for the Supabase primitives it names;
+  #   4. break the core on purpose and check that steps 1 and 2 go red. A guard
+  #      nobody has watched fail is a guard nobody knows the shape of.
+  #
+  # The full migration replay is kept as well, in its own database. It proves
+  # something the two halves cannot: that the path an actual Supabase project
+  # takes — every migration, in order — still lands where the halves land.
   portable-core:
     runs-on: ubuntu-latest
     services:
@@ -74,16 +83,80 @@ jobs:
       - run: npm ci
       - name: Install psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Supabase shim (CI harness, not the portable core)
-        run: psql -v ON_ERROR_STOP=1 -f supabase/portable/supabase-shim.sql
-      - name: Replay every migration in order
+
+      # 1. The generated halves still describe the migrations.
+      - name: Regenerate the partition and diff it against what is committed
+        run: npm run check:portable-core
+
+      # 2. The claim: this half runs on any Postgres.
+      - name: Apply the portable core to a stock Postgres, with no shim
         run: |
           set -euo pipefail
+          createdb portable_core
+          psql -v ON_ERROR_STOP=1 -d portable_core \
+            -f supabase/generated/portable-core.generated.sql
+
+      # 3. The recipe is one conformant way to enforce the contract on top.
+      - name: Apply the Supabase recipe on top of the core
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -d portable_core \
+            -f supabase/portable/supabase-shim.sql
+          psql -v ON_ERROR_STOP=1 -d portable_core \
+            -f supabase/generated/supabase-recipe.generated.sql
+
+      - name: The app's types describe the database the two halves built
+        run: |
+          set -euo pipefail
+          psql -At -F $'\t' -d portable_core -f supabase/portable/inventory.sql \
+            > /tmp/inventory.tsv
+          node scripts/check-schema-inventory.mjs /tmp/inventory.tsv
+
+      # The route a real Supabase project takes, in its own database.
+      - name: Replay every migration in order, behind the shim
+        run: |
+          set -euo pipefail
+          createdb migration_replay
+          psql -v ON_ERROR_STOP=1 -d migration_replay \
+            -f supabase/portable/supabase-shim.sql
           for file in supabase/migrations/*.sql; do
             echo "--- $file"
-            psql -v ON_ERROR_STOP=1 -f "$file"
+            psql -v ON_ERROR_STOP=1 -d migration_replay -f "$file"
           done
-      - name: Inventory what was actually built
-        run: psql -At -F $'\t' -f supabase/portable/inventory.sql > /tmp/inventory.tsv
-      - name: Compare it against schema.reference.sql
-        run: node scripts/check-portable-core.mjs /tmp/inventory.tsv
+
+      - name: The replay and the two halves agree
+        run: |
+          set -euo pipefail
+          psql -At -F $'\t' -d migration_replay -f supabase/portable/inventory.sql \
+            > /tmp/replay.tsv
+          diff -u /tmp/inventory.tsv /tmp/replay.tsv
+
+      # 4. The guard, watched failing. Both halves of it: a generated file that
+      # no longer matches its migrations, and a core that a stock Postgres
+      # refuses. Neither is allowed to pass.
+      - name: A broken core fails this job
+        run: |
+          set -euo pipefail
+          cp supabase/generated/portable-core.generated.sql /tmp/core.bak
+
+          echo "-- a hand edit, which is the thing the diff exists to catch" \
+            >> supabase/generated/portable-core.generated.sql
+          if npm run check:portable-core; then
+            echo "FAIL: a hand-edited generated file passed the diff" >&2
+            exit 1
+          fi
+          echo "ok: the diff refused a hand-edited core"
+
+          cp /tmp/core.bak supabase/generated/portable-core.generated.sql
+          createdb broken_core
+          {
+            echo "create table public.deliberately_broken ("
+            echo "  id uuid references public.a_table_that_does_not_exist (id)"
+            echo ");"
+            cat supabase/generated/portable-core.generated.sql
+          } > /tmp/broken-core.sql
+          if psql -v ON_ERROR_STOP=1 -d broken_core -f /tmp/broken-core.sql; then
+            echo "FAIL: a broken core applied cleanly to Postgres" >&2
+            exit 1
+          fi
+          echo "ok: Postgres refused a broken core, and ON_ERROR_STOP reported it"

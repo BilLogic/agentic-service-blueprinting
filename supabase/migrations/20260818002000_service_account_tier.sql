@@ -49,6 +49,9 @@
 --     read; the asserts are already there.
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- @recipe — this whole migration is the tier recipe. It is named that in
+-- its own header: it reads a Supabase JWT, hangs a trigger on auth.users and
+-- policies on storage.objects. Only the config table it reads is core.
 create or replace function public.is_service_account()
 returns boolean
 language sql
@@ -123,6 +126,7 @@ end $$;
 -- an operator control surface, not app data. (No RLS policies = no access
 -- for anon/authenticated once RLS is enabled; service_role bypasses RLS.)
 -- ---------------------------------------------------------------------------
+-- @core — a plain table. What stamps rows from it is the recipe's business.
 create table if not exists public.service_account_emails (
   email text primary key,
   note text,
@@ -132,6 +136,7 @@ create table if not exists public.service_account_emails (
 comment on table public.service_account_emails is
   'Adopter-configured allowlist: accounts created with these emails are stamped app_metadata.role=service by the flag_service_accounts trigger. Operator-only (service role). Existing accounts are stamped directly on auth.users — see the header of this migration.';
 
+-- @recipe
 alter table public.service_account_emails enable row level security;
 revoke all on public.service_account_emails from public, anon, authenticated;
 
