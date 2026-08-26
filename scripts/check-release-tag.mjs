@@ -18,9 +18,10 @@
  *   - A `v<version>` tag whose tree states a different version is a tag that
  *     lies about what it points at, which is worse than no tag at all.
  *   - Once tagging has started, it cannot stop: every release from the OLDEST
- *     tagged one forward must have a tag. Before the first tag that clause
- *     sleeps, and it never reaches back over the releases that shipped before
- *     tagging did — retro-tagging six old trees is not what this guard is for.
+ *     tagged one forward must have a tag, EXCEPT the version being released.
+ *     Before the first tag that clause sleeps, and it never reaches back over
+ *     the releases that shipped before tagging did — retro-tagging six old
+ *     trees is not what this guard is for.
  *
  * `--require` is the release step (see docs/engineering/releasing.md). It is
  * not run on ordinary pull requests, because the tag for a version is cut
@@ -84,7 +85,11 @@ export function tagFaults({ tags, released, version, taggedTree, require = false
   const era = released.map(tagged).lastIndexOf(true)
   for (const each of released.slice(0, Math.max(era, 0))) {
     if (tagged(each)) continue
-    if (each === version && require) continue // already said, with its command
+    // The version being released is the one case this clause must not judge:
+    // its tag is cut after the release commit is on `main`, so demanding one
+    // here would make the release commit itself unmergeable. That demand is
+    // `--require`, which the release step runs and a pull request does not.
+    if (each === version) continue
     faults.push(`release ${each} has no tag ${tagFor(each)}`)
   }
 
