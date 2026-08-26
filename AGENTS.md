@@ -6,6 +6,17 @@ sb@sb-marketplace`) and the skills load themselves. **Any other agent
 (Cursor, Codex, etc.): this file is the router — the skills are plain
 markdown and work anywhere; read the SKILL.md and follow it.**
 
+## Before the task
+
+- **[CONTEXT.md](./CONTEXT.md)** — the domain language. Scenario, path, phase,
+  step, cell, lane, the visibility line, dependency, need, slice, finding.
+  Read it before writing anything that lands in a blueprint; the words are not
+  interchangeable and the database enforces several of the distinctions.
+- **[INDEX.md](./INDEX.md)** — routes by task. Generated, so it is never out
+  of date with the tree.
+- **[SETUP.md](./SETUP.md)** — running the repository, and the guard set to run
+  before pushing.
+
 ## Skill routing
 
 | Invocation / intent | Read and follow |

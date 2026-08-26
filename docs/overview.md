@@ -1,0 +1,52 @@
+---
+summary: What lives under docs/ and what each folder is for — the three lanes (protocol, history, and a queue that is deliberately not here), and where the normative rulebook sits instead.
+---
+
+# What is in `docs/`
+
+**For** anyone looking for a document and not finding it.
+**Answers** what is here, what is deliberately not, and where each is instead?
+
+[`index.md`](./index.md) lists every document with its summary, and is
+generated. This file says what the folders mean, and is authored.
+
+## Three lanes, never mixed
+
+**Protocol — living, always true.** Everything below except `plans/`. If it
+is here and it is not in `plans/`, it describes how the package behaves today,
+and a statement in it that is wrong is a bug.
+
+**History — a snapshot of one moment, never edited.** `plans/`. Read
+[plans/overview.md](./plans/overview.md) before treating any of it as
+guidance; the short version is that you should not.
+
+**The queue — not in this repository.** Work in flight is
+[GitHub issues](https://github.com/BilLogic/agentic-service-blueprinting/issues),
+so a contributor can see what is already being worked on without cloning
+anything.
+
+## The folders
+
+| Folder | What is in it |
+| --- | --- |
+| [`adr/`](./adr/) | The decisions, numbered. ADR 1 draws the line between the two contract tiers and freezes the identifier layer; ADR 2 records why five folders keep names that break the grammar. |
+| [`guide/`](./guide/) | Four numbered parts, for a person reading start to finish: the model, using it, the plugin, operations. The guide links into the protocol rather than restating it. |
+| [`guidelines/`](./guidelines/) | How we work — writing documentation, and proposing a change. |
+| [`engineering/`](./engineering/) | Procedure for whoever runs the repository: cutting a release, and the guard set behind every red build. |
+| [`connectors/`](./connectors/) | One folder per external system this package talks to. Today that is `supabase/`, the reference recipe: the operated database, its row-level security, and the migration desync runbook. |
+| [`plans/`](./plans/) | History. |
+| [`assets/`](./assets/) | Every figure the README and the guides use. Authored here; the cover build copies what it needs. |
+| [`erd.mmd`](./erd.mmd) | The attribute-level entity relationship diagram. |
+
+## What is not here, and why
+
+**The rulebook.** `references/` at the repository root is normative protocol
+and by the grammar it would live under `docs/` — but skill text resolves
+`${CLAUDE_PLUGIN_ROOT}/references/<name>.md` at runtime on other people's
+machines, so its path is a published interface. Same for `skills/`, `agents/`,
+`hooks/` and `scripts/`. That is
+[ADR 2](./adr/0002-plugin-contract-folder-names.md), and it is a decision
+rather than an oversight.
+
+**The domain language.** `CONTEXT.md` at the root, because every reader needs
+it and no folder owns it.

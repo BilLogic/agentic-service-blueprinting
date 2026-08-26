@@ -1,3 +1,7 @@
+---
+summary: Running a deployed blueprint — which account may do what, how a change reaches the board, what is published to anonymous readers, and what to check after a deploy.
+---
+
 # Operations
 
 **For** whoever runs a deployed blueprint.

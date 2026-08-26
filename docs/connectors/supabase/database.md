@@ -1,3 +1,7 @@
+---
+summary: The Supabase recipe as an operated database — connection variables, every table and column, the enums, row-level security, the reserved upstream migration band and the desync repair, and how to tell whether a target was actually migrated.
+---
+
 # Database
 
 Postgres database managed by [Supabase](https://supabase.com/) for the **agentic service blueprinting** template.
@@ -9,7 +13,7 @@ Postgres database managed by [Supabase](https://supabase.com/) for the **agentic
 | **Migrations** | `supabase/migrations/` (consolidated schema + derived-layer migrations) |
 | **Seed data** | `supabase/seed.sql` (generated sample content) |
 | **ERD diagram** | `docs/erd.mmd` |
-| **The two halves** | `supabase/generated/portable-core.generated.sql` and `supabase/generated/supabase-recipe.generated.sql` — generated from the `-- @recipe` / `-- @core` marks in the migrations by `npm run generate:portable-core`, never hand-edited. The core is the contract and applies to a stock Postgres; the recipe is how Supabase enforces it. CI applies both. See also [`references/adapter-contract.md`](../references/adapter-contract.md) § Live backend surface |
+| **The two halves** | `supabase/generated/portable-core.generated.sql` and `supabase/generated/supabase-recipe.generated.sql` — generated from the `-- @recipe` / `-- @core` marks in the migrations by `npm run generate:portable-core`, never hand-edited. The core is the contract and applies to a stock Postgres; the recipe is how Supabase enforces it. CI applies both. See also [`references/adapter-contract.md`](../../../references/adapter-contract.md) § Live backend surface |
 | **TypeScript types** | `src/types/database.ts` |
 
 ## Connection (application)
@@ -41,7 +45,7 @@ erDiagram
 ```
 
 The full attribute-level ERD (with enums and the `lane_role` vocabulary) is
-in [`docs/erd.mmd`](../docs/erd.mmd).
+in [`docs/erd.mmd`](../../erd.mmd).
 
 ## Hierarchy
 
@@ -63,7 +67,7 @@ in [`docs/erd.mmd`](../docs/erd.mmd).
 
 **Path integrity:** `cells.path_id` must match `lanes.path_id`, and `cells.step_id` must appear in `path_steps` for that path (trigger `cells_validate_path_match`). Import order: `paths → steps → path_steps → lanes → cells → cell_dependencies`.
 
-**Shared steps:** Multiple paths under the same scenario can reference the same `steps.id` via `path_steps` with different `position` values. See [`references/data-model.md`](../references/data-model.md).
+**Shared steps:** Multiple paths under the same scenario can reference the same `steps.id` via `path_steps` with different `position` values. See [`references/data-model.md`](../../../references/data-model.md).
 
 ## Lanes (`lane_role`)
 

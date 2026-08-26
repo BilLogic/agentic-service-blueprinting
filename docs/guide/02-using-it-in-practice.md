@@ -1,3 +1,7 @@
+---
+summary: What a designer or PM actually does with a mapped service — checking it still describes reality, tracing a change through it, cutting the view one audience needs, and comparing two versions of a journey.
+---
+
 # Using it in practice
 
 **For** the designer or PM deciding whether, and how, this fits their week.

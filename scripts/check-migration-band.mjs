@@ -135,7 +135,7 @@ function main() {
   console.error('supabase/migrations breaks the reserved-band rule:\n')
   for (const problem of problems) console.error(`  ${problem}`)
   console.error(
-    '\nSee supabase/DATABASE.md § Reserved migration timestamp band. Take the ' +
+    '\nSee docs/connectors/supabase/database.md § Reserved migration timestamp band. Take the ' +
       'next unused day inside the band; do not stamp with the current date.',
   )
   process.exit(1)

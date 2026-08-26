@@ -86,7 +86,7 @@ The app is where people read, compare, and present. The in-app agent drafts chan
 - **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → lanes → cells → cell_dependencies`.
 - **View modes** per scenario: `single`, `side-by-side` (any set of labeled variants — e.g. designed vs. reality), `integrated` (runtime merge).
 
-Full detail when you need it: [supabase/DATABASE.md](./supabase/DATABASE.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
+Full detail when you need it: [docs/connectors/supabase/database.md](./docs/connectors/supabase/database.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
 
 ## Get set up
 
@@ -142,10 +142,10 @@ Both are generated. Edit a migration and run `npm run generate:portable-core`; a
 - **No auth beyond the anon / authenticated split.** The identity port asks one question — what tier is this session — and leaves how you answer it to you. Supabase Auth is the shipped recipe, not the requirement.
 - **No multi-tenancy.** One blueprint workspace per database. There is no tenant column, and RLS does not scope by one.
 - **No backup or restore.** Your host's problem, and the reason `supabase/migrations/` is append-only: an undo is a new migration.
-- **No migration ops beyond the shipped chain.** `db push` and `db reset` are supported; anything past that — branching, squashing, multi-environment promotion — is yours. The one operational failure we do own is desync, with a runbook: [supabase/DATABASE.md § Migration desync](./supabase/DATABASE.md).
+- **No migration ops beyond the shipped chain.** `db push` and `db reset` are supported; anything past that — branching, squashing, multi-environment promotion — is yours. The one operational failure we do own is desync, with a runbook: [docs/connectors/supabase/database.md § Migration desync](./docs/connectors/supabase/database.md).
 - **No adapter for your backend, and no hosting.**
 
-**What answers "is it actually wired up"**: `npm run check:target` asks the live database which schema it carries and tells you whether it was never migrated, is stale, or is fine — [supabase/DATABASE.md § Did the migration run](./supabase/DATABASE.md). Worth running once: without a configured project the app falls back to bundled content and renders perfectly, so a misconfigured target looks exactly like a working one.
+**What answers "is it actually wired up"**: `npm run check:target` asks the live database which schema it carries and tells you whether it was never migrated, is stale, or is fine — [docs/connectors/supabase/database.md § Did the migration run](./docs/connectors/supabase/database.md). Worth running once: without a configured project the app falls back to bundled content and renders perfectly, so a misconfigured target looks exactly like a working one.
 
 **What you start from**: `supabase/seed.sql` is the **META-BLUEPRINT** — the service blueprint of this template itself, not filler. One generator emits it and the no-DB fallback module from the same source, so both adapters serve the same content. Replace it with your own service; until then it doubles as the documentation.
 
@@ -184,6 +184,10 @@ Both are generated. Edit a migration and run `npm run generate:portable-core`; a
 
 | Path | Purpose |
 | --- | --- |
+| [INDEX.md](./INDEX.md) | Where to find things — routes by task, generated from the docs' frontmatter |
+| [CONTEXT.md](./CONTEXT.md) | The domain language: scenario, path, phase, step, cell, lane, the visibility line, dependency, need, slice, finding |
+| [SETUP.md](./SETUP.md) | Getting the repository running, and the checks to run before pushing |
+| [AGENTS.md](./AGENTS.md) | The agent router — which skill answers which intent |
 | [.claude-plugin/plugin.json](./.claude-plugin/plugin.json) | Claude Code plugin manifest — this is what makes the repo installable as a plugin |
 | [skills/](./skills/) | Four skills, one directory each (`map`, `slice`, `audit`, `whatif`): `SKILL.md` entry point plus that skill's own `references/` (playbooks, schemas, check docs) and `scripts/` |
 | [agents/](./agents/) | Five subagents: `document-reader`, `blueprint-reviewer` (adversarial pre-sign-off review), `render-checker`, `auditor` (one check at a time, blind to the others), `impact-tracer` (walks the dependency graph) |
@@ -198,6 +202,10 @@ Both are generated. Edit a migration and run `npm run generate:portable-core`; a
 | [supabase/seed.sql](./supabase/seed.sql) | Generated sample seed |
 | [supabase/generated/](./supabase/generated/) | The portable core and the Supabase recipe, generated from the migrations' partition marks |
 | [docs/guide/](./docs/guide/) | The four guides: the model, using it, the plugin, operations |
+| [docs/adr/](./docs/adr/) | The decisions: the two contract tiers and the frozen identifier layer, and why five folders keep their names |
+| [docs/connectors/supabase/](./docs/connectors/supabase/) | The reference recipe as an operated database: columns, row-level security, the migration desync runbook |
+| [docs/engineering/](./docs/engineering/) | Cutting a release, and every guard behind a red build |
+| [docs/guidelines/](./docs/guidelines/) | Writing documentation here, and proposing a change |
 | [docs/assets/](./docs/assets/) | Every figure in this README and the guides |
 | [docs/erd.mmd](./docs/erd.mmd) | Attribute-level ERD |
 
@@ -209,3 +217,11 @@ Both are generated. Edit a migration and run `npm run generate:portable-core`; a
 | [02 — Using it in practice](./docs/guide/02-using-it-in-practice.md) | the designer or PM deciding how this fits their week | what do I actually do with it? |
 | [03 — The plugin](./docs/guide/03-the-plugin.md) | the adopter installing it, the engineer extending it | how does the machinery work, and what lands on my disk? |
 | [04 — Operations](./docs/guide/04-operations.md) | whoever runs it | who may do what, and what happens when it changes? |
+
+Everything else — every document with what it answers, and the routing table
+an agent matches its task against — is [INDEX.md](./INDEX.md), with
+[docs/overview.md](./docs/overview.md) for what the folders mean. Work in
+flight lives in
+[issues](https://github.com/BilLogic/agentic-service-blueprinting/issues)
+rather than in the tree, so you can see what is already being worked on before
+proposing something.
