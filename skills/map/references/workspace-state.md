@@ -16,7 +16,7 @@ inject a status summary; every phase checks its preconditions against it.
 
 ```json
 {
-  "schema_version": "2026.08.25",
+  "schema_version": "2026.08.26",
   "ir_path": "blueprint/blueprint.json",
   "locales": ["en", "zh"],
   "scenarios": {

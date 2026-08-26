@@ -33,14 +33,24 @@ does NOT survive a bump that touches scenario content — the 2026.07.16 →
 2026.08.25 bump renames `description` → `summary`, `layers` → `lanes` and
 `layer` → `lane`, all of which live under a scenario.
 
+A bump does not HAVE to touch the subtree, and the cheapest sign-off answer is
+to design one that does not. 2026.08.25 → 2026.08.26 adds an optional `kind` to
+a dependency edge whose absence means exactly what every existing edge already
+meant, so the step writes nothing into the tree: every scenario hashes to the
+byte-identical digest afterwards and `--workspace` reports each one as already
+anchored. Materializing the default into every edge would have been
+content-preserving too — no authored value would have moved — but it would have
+changed every signed scenario's hash for no gain, and made sign-off survival
+depend on the operator remembering `--workspace`.
+
 Rather than silently de-sign every scenario an org already approved, `--workspace`
 re-anchors the recorded hashes: for each scenario whose stored `content_hash`
 equals its PRE-migration hash, the stored hash is replaced with its
 POST-migration hash and `signed_at`/`signed_by` are kept. That is sound
-precisely because a migration step is a mechanical rename of a field NAME —
-no authored value moves — and unsound the moment a step starts editing
-content, so a step that does must say so and this script refuses to
-re-anchor it (`content_preserving = False`).
+precisely because a migration step moves no authored VALUE — it renames a
+field name, or materializes a defaulted one — and unsound the moment a step
+starts editing content, so a step that does must say so and this script
+refuses to re-anchor it (`content_preserving = False`).
 
 A stored hash that matches NEITHER side was already stale before the
 migration ran: the scenario was hand-edited after it was signed. Those are
@@ -129,11 +139,19 @@ def to_2026_08_25(doc: dict) -> None:
 class Step:
     """One version-to-version hop.
 
-    `content_preserving` is the sign-off contract: True means the step renames
-    field names only, so a signed scenario's authored content is byte-identical
-    afterwards and its recorded hash may be re-anchored. A step that edits,
-    drops or synthesizes authored VALUES must set it False — then sign-off is
-    a human decision again and this script will not make it silently.
+    `content_preserving` is the sign-off contract: True means the step moves no
+    authored VALUE — it renames a field name, or writes a field whose value is
+    the default the absent field already meant — so what a signer approved is
+    still what the file says, and the recorded hash may be re-anchored onto the
+    migrated subtree. A step that edits, drops or synthesizes authored values
+    must set it False — then sign-off is a human decision again and this script
+    will not make it silently.
+
+    True is not a claim that the hash is unchanged. A rename changes the
+    subtree and therefore the hash, which is exactly why `--workspace` exists;
+    a step that writes nothing (2026.08.25 → 2026.08.26) leaves the hash alone
+    and re-anchoring reports it as already anchored. Both are content-
+    preserving; only one needs the re-anchor to do any work.
     """
 
     def __init__(self, from_version: str, to_version: str, summary: str,
@@ -145,6 +163,28 @@ class Step:
         self.content_preserving = content_preserving
 
 
+def to_2026_08_26(doc: dict) -> None:
+    """2026.08.25 → 2026.08.26 — dependency edges gain `kind`.
+
+    Nothing to do, and the nothing is the point.
+
+    The database has stored `cell_dependencies.kind in ('trigger','needs')`
+    since 20260729120000 and the app has read both kinds all along; the IR
+    was the half that could not say `needs`, so a needs edge was silently
+    dropped on export and could not survive a re-import. 2026.08.26 gives the
+    edge a `kind` field — OPTIONAL, defaulting to 'trigger', which is the
+    column default and the meaning every edge authored before this bump
+    already had.
+
+    So a 2026.08.25 file is already a valid 2026.08.26 file. Writing
+    `"kind": "trigger"` into every edge would say the same thing at greater
+    length, change every signed scenario's content hash, and put every
+    existing blueprint one forgotten `--workspace` away from de-signing
+    itself. The version stamp is the whole migration; `migrate_document`
+    applies it.
+    """
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -152,6 +192,13 @@ STEPS = (
         "lane vocabulary: lifecycle→service, layers→lanes, layer→lane, "
         "description→summary",
         to_2026_08_25,
+    ),
+    Step(
+        "2026.08.25",
+        "2026.08.26",
+        "dependency edges gain an optional `kind` (trigger | needs); absent "
+        "means trigger, so no authored content moves",
+        to_2026_08_26,
     ),
 )
 

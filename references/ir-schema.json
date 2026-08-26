@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/ir-schema.json",
   "title": "Service Blueprint IR",
-  "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): service -> phases -> scenarios -> paths -> lanes/steps/cells/triggers. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (service/phase/scenario/path/lane/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, lane, step) key triple; triggers by their source->target cell pair. Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
+  "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): service -> phases -> scenarios -> paths -> lanes/steps/cells/triggers. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (service/phase/scenario/path/lane/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, lane, step) key triple; dependency edges by their source->target cell pair AND their kind, matching the database's uniqueness key (source_cell_id, target_cell_id, kind). Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
   "type": "object",
   "required": [
     "schema_version",
@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.08.26",
         "2026.08.25",
         "2026.07.16"
       ],
@@ -487,9 +488,17 @@
         },
         "target": {
           "$ref": "#/$defs/cellRef"
+        },
+        "kind": {
+          "enum": [
+            "trigger",
+            "needs"
+          ],
+          "default": "trigger",
+          "description": "What kind of dependency this edge is. trigger = temporal: the source sets the target in motion, and the canvas draws an arrow. needs = functional: the source requires the target, and the canvas draws nothing — it reads in the cell panel only. ABSENCE MEANS 'trigger': that is the cell_dependencies.kind column default and the meaning every edge authored before 2026.08.26 already carried, so no existing file changes and no authored value moves. The pair alone is no longer an identity — a source->target pair may carry BOTH kinds as two rows, so the UUIDv5 derivation and the duplicate check both read the kind."
         }
       },
-      "description": "Directed trigger arrow between two cells on the SAME path (cross-path triggers are invalid). source != target."
+      "description": "Directed dependency edge between two cells on the SAME path (cross-path edges are invalid). source != target, whatever the kind. `kind: trigger` (the default) is the temporal arrow this array is named after; `kind: needs` is the functional dependency the database has stored since cell_dependencies grew the column, and which the IR could not express — and therefore silently dropped on export — until 2026.08.26."
     }
   }
 }
