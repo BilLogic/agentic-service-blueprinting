@@ -2,8 +2,9 @@
 
 Every supported customization point of the template, plus the portfolio
 conventions for running many client workspaces, and the template upgrade
-recipe. Everything here is guidance — the only hard rule is the
-schema-version compat check in the upgrade recipe.
+recipe. Everything here is guidance except two hard rules, both in the
+upgrade recipe: the schema-version compat check, and every bump shipping its
+migration in the same change.
 
 ## Contents
 
@@ -113,13 +114,59 @@ version together; `blueprint-workspace.json` records the workspace's
    template remote, or re-clone + copy `blueprint/`, `.env`, `HANDOFF.md`,
    `blueprint-workspace.json` forward). Resolve conflicts in favor of the
    template for app code — workspace-local app edits are unsupported.
-4. Update `schema_version` in both the workspace state and the IR.
+4. Carry the IR across the bump — do **not** hand-edit `schema_version`:
+
+   ```
+   python3 scripts/migrate_ir.py blueprint/blueprint.json \
+       --workspace blueprint-workspace.json --write
+   ```
+
+   Dry-run first (drop `--write`) to read the plan. The script rewrites the
+   IR's field names for each version it steps through, sets the new
+   `schema_version` on the IR and the workspace state, and re-anchors sign-off
+   (below). Editing the version by hand leaves the file's fields at the old
+   shape while claiming the new one — the exact mis-parse the version exists
+   to prevent.
 5. Re-run `scripts/validate_ir.py` (vocabulary/schema drift surfaces here).
 6. Re-import per `skills/map/references/review-import-playbook.md` (re-provision if the
    DDL changed), rebuild, redeploy, verify with `render-checker`.
 
 **Never import an IR whose `schema_version` mismatches the workspace clone**
 — that's the compat check the import pre-flight enforces.
+
+### The versioning rule (⚠ hard rule for template authors)
+
+**Every `schema_version` bump ships its migration in the same change.** A new
+value in the enum in `references/ir-schema.json` and a new step in
+`scripts/migrate_ir.py` land together, or neither lands. A bump without a step
+tells every workspace it is out of date and hands it nothing to run — and the
+IR is not re-derivable: sign-off is a human decision recorded against
+content that already exists.
+
+A version leaves the enum only when its migration stops existing, which is
+also when an IR at that version stops being upgradable and the workspace must
+check out the template revision that wrote it.
+
+### Sign-off across a bump
+
+Sign-off binds to a SHA-256 of a scenario's subtree
+(`scripts/compute_signoff_hash.py`). Renames land **inside** that subtree —
+2026.07.16 → 2026.08.25 moved `description` → `summary` and `layers` →
+`lanes` — so a hash recorded before a bump does not match the migrated file.
+Signed scenarios would silently de-sign.
+
+`--workspace` is what prevents that. For each scenario whose recorded
+`content_hash` equals its pre-migration hash, the migration replaces it with
+the post-migration hash and keeps `signed_at`/`signed_by`: sound because a
+step renames field *names* only, so no authored value moves. A step that ever
+edits authored content declares itself non-content-preserving, and the script
+refuses to touch sign-off at all — those scenarios go back through review.
+
+A recorded hash matching neither side was already stale (the scenario was
+hand-edited after it was signed). The migration reports it and leaves it: it
+is a re-review, not a rename. `targets[*].last_import.content_hash` is left
+alone too — step 6 re-imports anyway, and that record is a claim about what a
+target actually holds.
 
 ### Stale workspaces & the audit-skill fallback
 

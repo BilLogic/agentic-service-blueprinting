@@ -11,7 +11,9 @@
 # deterministic UUIDv5 ids across runs, per-locale divergence, --verify
 # companion); generators refusing an invalid IR without writing output;
 # fallback TS generation + `tsc` type-check + --register round-trip against
-# src/data/blueprintFallbacks.ts (restored afterwards).
+# src/data/blueprintFallbacks.ts (restored afterwards); schema-version
+# migration (a superseded IR is refused by name, migrate_ir.py carries it
+# forward, and a signed scenario's sign-off hash is re-anchored, not dropped).
 #
 # Requires: python3 (stdlib only) and the repo's node_modules (for tsc).
 
@@ -20,7 +22,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SAMPLE="$SCRIPT_DIR/sample-ir.json"
+SAMPLE_OLD="$SCRIPT_DIR/sample-ir-2026.07.16.json"
 VALIDATE="$REPO_ROOT/scripts/validate_ir.py"
+MIGRATE="$REPO_ROOT/scripts/migrate_ir.py"
 SEED_GEN="$REPO_ROOT/scripts/generate_seed_sql.py"
 FALLBACK_GEN="$REPO_ROOT/scripts/generate_fallbacks.py"
 REGISTRY="$REPO_ROOT/src/data/blueprintFallbacks.ts"
@@ -129,6 +133,9 @@ doc["schema_version"] = "1999.01.01"
 json.dump(doc, open(f"{tmp}/bad-version.json", "w", encoding="utf-8"), ensure_ascii=False)
 PY
 expect_invalid "validator-schema-version (unknown version rejected by name)" "$TMP/bad-version.json" "unknown schema_version"
+python3 "$VALIDATE" "$TMP/bad-version.json" > "$TMP/bad-version.out" 2>&1 || true
+grep -q "migrate_ir.py" "$TMP/bad-version.out" \
+  || fail "validator-schema-version: the message must say where the migration steps live"
 
 # ---------------------------------------------------------------------------
 # 3. YAML branch: native JSON always works; YAML needs PyYAML (clear message)
@@ -808,6 +815,159 @@ assert any(line.startswith(f"{sample} [en]: lane ") for line in problems), \
     "the complaint must name the aggregate that drifted"
 PY
 pass "adapter-parity-lanes (a lane field on one adapter only is reported)"
+
+# ---------------------------------------------------------------------------
+# 8. Schema-version migration: an old IR is refused by name and carried
+#    forward, and sign-off survives the bump (#61)
+# ---------------------------------------------------------------------------
+
+# The version enum still lists 2026.07.16, so "is it in the enum" cannot be the
+# whole check: an IR at a superseded version has the OLD field names, and
+# validating its body would report every renamed field as an unknown key. One
+# error, naming the command that fixes it.
+if python3 "$VALIDATE" "$SAMPLE_OLD" > "$TMP/old-version.out" 2>&1; then
+  fail "migrate-refusal: expected non-zero exit on a superseded schema_version"
+fi
+grep -q "migrate_ir.py" "$TMP/old-version.out" \
+  || fail "migrate-refusal: message must name the upgrade command — got: $(cat "$TMP/old-version.out")"
+[ "$(grep -c '^ERROR' "$TMP/old-version.out")" = 1 ] \
+  || fail "migrate-refusal: renamed fields leaked into the report — $(cat "$TMP/old-version.out")"
+pass "migrate-refusal (superseded version: one error, naming the upgrade)"
+
+# Migrating the pre-bump fixture must land exactly on the current fixture —
+# the two files are the same blueprint on either side of the rename.
+cp "$SAMPLE_OLD" "$TMP/migrate-me.json"
+python3 "$MIGRATE" "$TMP/migrate-me.json" --write > "$TMP/migrate.out" 2>&1 \
+  || fail "migrate-forward: migration failed — $(cat "$TMP/migrate.out")"
+python3 "$VALIDATE" "$TMP/migrate-me.json" > "$TMP/migrated-valid.out" 2>&1 \
+  || fail "migrate-forward: migrated IR does not validate — $(cat "$TMP/migrated-valid.out")"
+python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
+import json, sys
+migrated = json.load(open(sys.argv[1], encoding="utf-8"))
+current = json.load(open(sys.argv[2], encoding="utf-8"))
+assert migrated == current, "migrated IR differs from the current-version fixture"
+# A link's `description` is prose about the link and keeps its name; a
+# text-level rename would have taken it with the rest.
+link = current["service"]["phases"][0]["scenarios"][0]["paths"][0]["cells"][0]["links"][0]
+assert "summary" not in link, "the migration renamed a link's description"
+PYMIG
+pass "migrate-forward (pre-bump fixture migrates to the current fixture, and validates)"
+
+# The load-bearing one: sign-off binds to a hash of a scenario subtree, and the
+# bump renames fields INSIDE that subtree — so every recorded hash would be
+# wrong afterwards. --workspace moves each signed scenario's hash onto its
+# migrated subtree, keeping signed_at/signed_by.
+cp "$SAMPLE_OLD" "$TMP/signed-ir.json"
+python3 - "$REPO_ROOT" "$TMP" <<'PYSIGN'
+import json, pathlib, sys
+repo, tmp = sys.argv[1], sys.argv[2]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+
+doc = json.load(open(f"{tmp}/signed-ir.json", encoding="utf-8"))
+hashes = migrate_ir.scenario_hashes(doc)
+assert hashes, "fixture has no scenarios to sign"
+scenarios = {
+    key: {
+        "status": "signed_off",
+        "content_hash": digest,
+        "signed_at": "2026-07-16T11:03:00Z",
+        "signed_by": "bill",
+    }
+    for key, digest in hashes.items()
+}
+json.dump(
+    {
+        "schema_version": "2026.07.16",
+        "ir_path": "signed-ir.json",
+        "locales": doc["locales"],
+        "scenarios": scenarios,
+    },
+    open(f"{tmp}/signed-workspace.json", "w", encoding="utf-8"),
+    ensure_ascii=False,
+    indent=2,
+)
+PYSIGN
+python3 "$MIGRATE" "$TMP/signed-ir.json" --workspace "$TMP/signed-workspace.json" --write \
+  > "$TMP/migrate-signoff.out" 2>&1 \
+  || fail "migrate-signoff: migration failed — $(cat "$TMP/migrate-signoff.out")"
+grep -q "re-anchored" "$TMP/migrate-signoff.out" \
+  || fail "migrate-signoff: no re-anchor reported — $(cat "$TMP/migrate-signoff.out")"
+python3 - "$REPO_ROOT" "$TMP" <<'PYVERIFY'
+import json, subprocess, sys
+repo, tmp = sys.argv[1], sys.argv[2]
+workspace = json.load(open(f"{tmp}/signed-workspace.json", encoding="utf-8"))
+assert workspace["schema_version"] == "2026.08.25", "workspace version not bumped"
+
+out = subprocess.run(
+    [sys.executable, f"{repo}/scripts/compute_signoff_hash.py",
+     f"{tmp}/signed-ir.json", "--json"],
+    capture_output=True, text=True, check=True,
+)
+live = json.loads(out.stdout)
+assert live, "migrated IR yielded no scenario hashes"
+for key, digest in live.items():
+    entry = workspace["scenarios"][key]
+    assert entry["content_hash"] == digest, (
+        f"{key}: recorded {entry['content_hash']}, IR now hashes to {digest}"
+    )
+    assert entry["status"] == "signed_off", f"{key}: sign-off dropped"
+    assert entry["signed_by"] == "bill", f"{key}: signer lost"
+PYVERIFY
+pass "migrate-signoff (signed scenarios re-verify after migration)"
+
+# A scenario hand-edited after sign-off carries a hash that matches neither
+# side of the bump. It was de-signed before the migration ran, so re-anchoring
+# it would launder an unreviewed edit into a signed one: report and leave it.
+cp "$SAMPLE_OLD" "$TMP/stale-ir.json"
+python3 - "$TMP" <<'PYSTALE'
+import json, sys
+tmp = sys.argv[1]
+json.dump(
+    {
+        "schema_version": "2026.07.16",
+        "ir_path": "stale-ir.json",
+        "locales": ["en", "zh"],
+        "scenarios": {
+            "asset-repair": {
+                "status": "signed_off",
+                "content_hash": "sha256:" + "0" * 64,
+                "signed_at": "2026-07-16T11:03:00Z",
+                "signed_by": "bill",
+            }
+        },
+    },
+    open(f"{tmp}/stale-workspace.json", "w", encoding="utf-8"),
+    ensure_ascii=False,
+    indent=2,
+)
+PYSTALE
+python3 "$MIGRATE" "$TMP/stale-ir.json" --workspace "$TMP/stale-workspace.json" --write \
+  > "$TMP/migrate-stale.out" 2>&1 \
+  || fail "migrate-stale: migration failed — $(cat "$TMP/migrate-stale.out")"
+grep -q "already stale before this migration" "$TMP/migrate-stale.out" \
+  || fail "migrate-stale: a stale hash must be reported — $(cat "$TMP/migrate-stale.out")"
+grep -q '"sha256:0000000000000000000000000000000000000000000000000000000000000000"' \
+  "$TMP/stale-workspace.json" \
+  || fail "migrate-stale: a hash that was already stale must not be re-anchored"
+pass "migrate-stale (a hash stale before the bump is reported, not laundered)"
+
+# A version with no step is a dead end, and says so instead of half-migrating.
+python3 - "$SAMPLE" "$TMP" <<'PYNOPATH'
+import json, sys
+doc = json.load(open(sys.argv[1], encoding="utf-8"))
+doc["schema_version"] = "1999.01.01"
+json.dump(doc, open(f"{sys.argv[2]}/no-path.json", "w", encoding="utf-8"), ensure_ascii=False)
+PYNOPATH
+if python3 "$MIGRATE" "$TMP/no-path.json" > "$TMP/no-path.out" 2>&1; then
+  fail "migrate-no-path: expected non-zero exit for a version with no step"
+fi
+grep -q "no migration carries" "$TMP/no-path.out" \
+  || fail "migrate-no-path: unhelpful message — $(cat "$TMP/no-path.out")"
+python3 "$MIGRATE" "$SAMPLE" > "$TMP/no-op.out" 2>&1 \
+  || fail "migrate-no-op: a current IR must exit 0"
+grep -q "already at" "$TMP/no-op.out" || fail "migrate-no-op: no 'already at' line"
+pass "migrate-edges (no step: named dead end; current IR: no-op)"
 
 echo
 echo "All $PASS_COUNT tests passed."

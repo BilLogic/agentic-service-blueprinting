@@ -18,6 +18,12 @@ Stdlib only (runs on user machines — no pip installs assumed):
 What is checked (schema semantics implemented directly — the jsonschema
 package is deliberately not required):
 
+  Version     — schema_version must be the version this template speaks (the
+                first entry of the enum in references/ir-schema.json). A
+                superseded but migratable version is a single error naming
+                scripts/migrate_ir.py; the body is not checked, because the
+                field names moved and every one of them would be reported as
+                an unknown key.
   Structure   — required fields, types, enums (view_type/path_type/link
                 type), key/locale/role patterns, locale-map shape,
                 additionalProperties: false.
@@ -603,7 +609,9 @@ IR_SCHEMA = Path(__file__).resolve().parent.parent / "references" / "ir-schema.j
 
 
 def supported_schema_versions() -> list:
-    """The versions this template speaks, from the schema that declares them.
+    """The versions this template knows, newest first, from the schema that
+    declares them. The FIRST entry is the version this template speaks; the
+    rest are versions scripts/migrate_ir.py can carry forward.
 
     Checking only that the field is a STRING was the whole check for as long as
     the field existed, so an IR authored against a shape the database does not
@@ -626,7 +634,6 @@ def validate_document(doc, rep: Report) -> None:
     if not isinstance(doc, dict):
         rep.error("$", f"IR root must be an object, got {type_name(doc)}")
         return
-    check_extra_keys(doc, {"schema_version", "locales", "service"}, "$", rep)
 
     if "schema_version" not in doc:
         rep.error("$", "missing required field 'schema_version'")
@@ -634,12 +641,35 @@ def validate_document(doc, rep: Report) -> None:
         rep.error("$.schema_version", f"'schema_version' must be a string, got {type_name(doc['schema_version'])}")
     else:
         known = supported_schema_versions()
-        if known and doc["schema_version"] not in known:
+        version = doc["schema_version"]
+        if known and version not in known:
             rep.error(
                 "$.schema_version",
-                f"unknown schema_version {doc['schema_version']!r}; this template speaks "
-                + ", ".join(known),
+                f"unknown schema_version {version!r}; this template speaks "
+                + ", ".join(known)
+                + f". No migration carries {version!r} forward "
+                "(scripts/migrate_ir.py lists the steps that exist) — check out "
+                "the template revision that wrote this file, or re-author "
+                f"against {known[0]}.",
             )
+            return
+        if known and version != known[0]:
+            # Field names move across a bump, so continuing here would report
+            # every renamed field as an unknown key and bury the one error the
+            # reader can act on. Name the migration and stop.
+            rep.error(
+                "$.schema_version",
+                f"IR is at schema_version {version}; this template speaks "
+                f"{known[0]}. Field names moved in the bump, so the rest of "
+                "this file is not checked. Upgrade it with: python3 "
+                f"scripts/migrate_ir.py {rep.file_label} --to {known[0]} --write "
+                "(add --workspace blueprint-workspace.json to carry sign-off "
+                "hashes across; see references/customization.md § Template "
+                "upgrade recipe).",
+            )
+            return
+
+    check_extra_keys(doc, {"schema_version", "locales", "service"}, "$", rep)
 
     locales: list = []
     if "locales" not in doc:

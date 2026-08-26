@@ -17,7 +17,7 @@
         "2026.08.25",
         "2026.07.16"
       ],
-      "description": "Template schema version this IR was authored against, newest first. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). A version leaves this list when the migration that carries it forward stops existing."
+      "description": "Template schema version this IR was authored against, newest first — the FIRST entry is the version this template speaks, and validate_ir.py refuses any IR not at it, naming the migration. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). ⚠ Every value added here ships its migration step in scripts/migrate_ir.py in the SAME change — consumers hold signed-off data that cannot be re-derived, so a bump with no step is a bump with no answer (references/customization.md § The versioning rule). A version leaves this list when the migration that carries it forward stops existing."
     },
     "locales": {
       "type": "array",

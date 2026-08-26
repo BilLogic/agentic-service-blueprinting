@@ -87,6 +87,14 @@ unchanged (they stay `signed_off`) — the whole-file hash this replaced
 de-signed everything on any edit (friction #19). Recording a hash without an
 explicit user approval defeats the gate; don't.
 
+A template schema bump renames fields **inside** a scenario subtree, so every
+recorded hash would stop matching. `scripts/migrate_ir.py <ir> --workspace
+blueprint-workspace.json --write` re-anchors each signed scenario's
+`content_hash` onto its migrated subtree and keeps `signed_at`/`signed_by` —
+sound because a migration step renames field names only. A hash matching
+neither side was already stale and is reported, not moved. See
+`references/customization.md` § Sign-off across a bump.
+
 A top-level `sign_off` object (whole-IR hash) is no longer the gate. It may be
 kept as an optional convenience record, but per-scenario `content_hash` is
 authoritative.
