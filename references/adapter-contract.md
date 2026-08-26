@@ -239,7 +239,7 @@ Structural writes never touch tables — the app calls `POST /rpc/<fn>` for
 each function in
 [`supabase/generated/portable-core.generated.sql`](../supabase/generated/portable-core.generated.sql)
 (source in `supabase/migrations/20260818001000_authoring_operations.sql`;
-client wrappers in `src/lib/mutations/authoringRpc.ts`). The roster:
+client wrappers in `src/lib/authoringRpc.ts`). The roster:
 
 - **Read helpers** (open to anon): `key_slug`, `cell_natural_key`,
   `mint_cell_key`, `slices_referencing`, `deletion_impact`,
@@ -289,7 +289,7 @@ count is not.
 ### 3. Non-transactional multi-statement writes exist
 
 PostgREST offers no multi-statement transaction, and two client writes
-lean on that being survivable (`src/lib/mutations/sliceMutations.ts`):
+lean on that being survivable (`src/lib/sliceMutations.ts`):
 
 - `createSlice` inserts the `slices` row **first**, then its frames — a
   failure between the two leaves an empty slice, which is visible and
@@ -311,10 +311,10 @@ that budget.
 
 ### 5. Findings dedupe semantics and operators
 
-`recordFinding` (`src/lib/mutations/findingMutations.ts`) is
-read-then-write, not upsert: it reads existing rows by
-`(service_id, fingerprint)`, updates an open row in place,
-skips a dismissed one, and inserts a fresh `open` row otherwise. The
+`recordFindings` (the `findings` port in `src/lib/backend/ports.ts`, one
+implementation per adapter) is read-then-write, not upsert: it reads
+existing rows by `(service_id, fingerprint)`, updates an open row in
+place, skips a dismissed one, and inserts a fresh `open` row otherwise. The
 schema's **open-fingerprint partial unique index**
 (`findings_open_fingerprint_idx` on `(service_id, fingerprint)
 where status = 'open'`) is the backstop that makes the race harmless —

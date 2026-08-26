@@ -28,14 +28,18 @@ generic swimlanes); no role is mandatory. Prefer creating a custom role over
 - `src/config.ts` — `ORG_NAME`: the workspace/product name in app chrome
   (sidebar wordmark, breadcrumbs). Change per instantiation.
 - `index.html` — browser tab title.
-- `src/styles/tokens.css` — the design tokens (CSS custom properties for
-  colors, radii, fonts, light/dark). The **BRAND SEAM** block at the top of
-  the file is the one block an adopter edits to rebrand the canvas: the
-  template ships hue-neutral (greyscale semantic tokens), and the only
-  chromatic family is the muted blue-grey used for the interactive phase
-  frames — swap those five values for your brand's tint family (keeping the
-  light → dark ordering) and the canvas follows. Restyle by editing tokens,
-  not components; the shadcn components read the tokens.
+- `src/styles/` — the design tokens (CSS custom properties for colors,
+  radii, fonts, light/dark), split across a file per concern. The blocks an
+  adopter edits are marked **BRAND SEAM**, and there are two of them:
+  `src/styles/themes/light.css` and `src/styles/themes/dark.css`. The
+  template ships hue-neutral — every chroma dial is 0, so the whole semantic
+  lane renders greyscale. To rebrand: set `--hue` to your brand's OKLCH hue,
+  raise `--chroma` (surfaces) and `--primary-chroma` (the filled control),
+  and replace the greyscale `--brand-*` ramp with your tint family, keeping
+  its light → dark ordering. Everything else derives — the border, the
+  foreground flip and the focus ring follow from `src/styles/semantic.css`
+  on their own. Restyle by editing tokens, not components; the shadcn
+  components read the tokens.
 - Tech pills use a neutral palette by default; link-driven tech metadata
   (`tech_description` links) carries per-tool copy and imagery.
 
