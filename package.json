@@ -37,7 +37,8 @@
     "docs:index": "node scripts/generate-docs-index.mjs",
     "check:docs-index": "node scripts/generate-docs-index.mjs --check",
     "check:read-surface": "node scripts/check-read-surface.mjs",
-    "check:dependency-kinds": "node scripts/check-dependency-kinds.mjs"
+    "check:dependency-kinds": "node scripts/check-dependency-kinds.mjs",
+    "check:doc-paths": "node scripts/check-doc-paths.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

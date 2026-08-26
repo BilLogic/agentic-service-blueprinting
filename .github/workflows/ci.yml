@@ -73,6 +73,11 @@ jobs:
       # values its rulebook states. Both had drifted — docs/engineering/checks.md.
       - run: npm run check:read-surface
       - run: npm run check:dependency-kinds
+      # One level out from the two surface guards: every repository path the
+      # plugin surface NAMES still exists. An installed skill opens the paths
+      # its documents write down, so a rename that never looked at the prose
+      # hands the agent a dead end mid-run.
+      - run: npm run check:doc-paths
 
   # The portability position, executed.
   #
