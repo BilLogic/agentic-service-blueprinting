@@ -12,9 +12,8 @@
 --
 -- anon is untouched: the deployed site stays read-only either way.
 --
--- Consolidated port from the uno-blueprint proving ground (uno supabase/
--- migrations/ 20260805150000_service_account_tier, 20260805170000_service_
--- tier_rpc_enforcement, 20260806180000_advisor_hardening), PARAMETERIZED:
+-- Consolidated from a proving-ground deployment (the tier, its RPC
+-- enforcement, and the advisor hardening that followed), PARAMETERIZED:
 -- no hard-coded account emails — membership comes from the
 -- `service_account_emails` config table below and/or app_metadata you set
 -- yourself.

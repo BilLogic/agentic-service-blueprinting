@@ -265,9 +265,10 @@ Active tab: base blueprint view (no slice tab)`,
   },
   {
     id: 'B3', title: 'count-from-total',
-    // The capped-read doctrine (AC "Read consumers", live-verified on
-    // uno-bot r66): the tool reports 23 total but lists only 20 rows —
-    // counting the page ships "20", the exact defect the rule exists for.
+    // The capped-read doctrine (AC "Read consumers", live-verified
+    // against a deployed read bot): the tool reports 23 total but lists
+    // only 20 rows — counting the page ships "20", the exact defect the
+    // rule exists for.
     mocks: { list_findings: FINDINGS_MOCK },
     turns: ['How many open findings do we have right now?'],
     smokeCalls: [['list_findings', {}]],

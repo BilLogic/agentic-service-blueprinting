@@ -1,17 +1,9 @@
 -- Blueprint authoring (part 2 of 2): the operations.
 --
--- Consolidated port from the uno-blueprint proving ground. Sources (uno
--- supabase/migrations/): 20260731001000_blueprint_authoring_operations,
--- 20260731003000_create_phase, 20260731003000_fix_sql_function_parameter_
--- shadowing, 20260731004000_fix_upsert_cell_ambiguous_conflict_target,
--- 20260731004000_revoke_public_execute_on_writes, 20260731005000_fix_
--- remaining_ambiguous_conflict_targets, 20260802000000_rename_operations,
--- 20260804000000_cells_slot_position (upsert_cell), 20260804120000_rename_
--- owner_tag, 20260805170000_service_tier_rpc_enforcement (the in-body guard
--- pattern), 20260807120000_duplicate_scenario, 20260807130000_add_lane_
--- returns_ids, 20260807140000_duplicate_path_slot_aware. Every function is
--- ported ONCE, in its final corrected form — the fixes are folded in, not
--- replayed.
+-- Consolidated from a proving-ground deployment, where these functions and
+-- the dozen follow-up fixes to them were written one at a time. Every
+-- function appears ONCE here, in its final corrected form — the fixes are
+-- folded in, not replayed.
 --
 -- The app gets *operations*, not tables. Every function here performs one
 -- complete, valid edit in one transaction, which is what makes three things

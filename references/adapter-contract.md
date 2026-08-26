@@ -158,8 +158,8 @@ condition.
 
 The contract above governs imports; anything that READS the schema to
 answer questions (a Slack bot, an in-app agent tool, a reporting script)
-carries these rules, learned live on uno-bot (shipped "5 of 14" as a
-confident count before them):
+carries these rules, each learned the hard way from a bot that shipped
+"5 of 14" as a confident count before them:
 
 - **Every capped read carries the true total.** A tool that returns a
   page (top-N rows) must also return the full matched count — PostgREST's
