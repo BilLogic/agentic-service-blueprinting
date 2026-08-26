@@ -70,7 +70,7 @@ erDiagram
   lanes { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text lane_role "semantic role key; null = generic swimlane"  int position  text owner_team "from the closed list in lane-vocabulary.md; NULL on actor and storyboard lanes"  text kpis  text tools  uuid stakeholder_id FK }
   stakeholders { uuid id PK  uuid service_id FK  text name  text kind "recipient | staff | partner | provider | team"  uuid parent_id FK "sub-teams roll up, e.g. Marketing to Design"  text note  text aliases }
   cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status  jsonb links "array of {type, label, url?, description?, picture?, pictures?}" }
-  cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "leads_to = makes the other happen, drawn | enables = must already be true, never drawn"  text label  text note }
+  cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "trigger = makes the other happen, drawn | needs = must already be true, never drawn"  text label  text note }
 ```
 
 ## Tables in brief
@@ -85,7 +85,7 @@ erDiagram
 | `path_steps` | Which steps a path uses and in what column order | `position` unique per path |
 | `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
 | `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `links` JSONB array; `content` newline-separated items render as pills on pill-role lanes |
-| `cell_dependencies` | Directed arrows cell → cell. `kind` is `leads_to` (this cell makes the other happen — drawn) or `enables` (the other must already be true — recorded, never drawn). Not inverses: "follows" is `leads_to` read from the other end, and a precondition causes nothing | Unique pair, `source != target`, both cells must be on the same path |
+| `cell_dependencies` | Directed arrows cell → cell. `kind` is `trigger` (this cell makes the other happen — drawn) or `needs` (the other must already be true — recorded, never drawn). Not inverses: "follows" is `trigger` read from the other end, and a precondition causes nothing | Unique pair, `source != target`, both cells must be on the same path |
 
 ## Enums
 
@@ -100,6 +100,12 @@ erDiagram
     one combined blueprint) is a per-session display chosen in the compare
     control. The CHECK constraint rejects it, and `create_scenario` refuses it
     by name with a hint rather than coercing it
+- `cell_dependencies.kind`: `trigger` \| `needs`. `trigger` is temporal —
+  the source sets the target off, and it is the kind the canvas DRAWS as an
+  arrow. `needs` is functional — the target must already be true for the
+  source to make sense — and renders in the cell panel only. The container
+  is the dependency; `trigger` is one of its two kinds, which is why
+  renaming the table to `cell_dependencies` left the column alone.
 - `paths.path_type`: `happy` \| `variant` \| `exception`. Exactly one `happy`
   per scenario — the route things take when nothing intervenes. An `exception`
   is a route taken because something went wrong; a `variant` is a different but

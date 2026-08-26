@@ -35,7 +35,8 @@
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "docs:index": "node scripts/generate-docs-index.mjs",
     "check:docs-index": "node scripts/generate-docs-index.mjs --check",
-    "check:read-surface": "node scripts/check-read-surface.mjs"
+    "check:read-surface": "node scripts/check-read-surface.mjs",
+    "check:dependency-kinds": "node scripts/check-dependency-kinds.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

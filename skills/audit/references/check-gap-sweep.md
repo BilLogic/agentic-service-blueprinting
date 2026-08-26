@@ -15,7 +15,7 @@ Emit one finding per contiguous silent stretch, not per empty cell:
 - A lane empty across 3+ consecutive steps while its actor is clearly still
   present in the journey → cell_keys = the flanking cells; note names the
   silent steps.
-- A `leads_to` dependency whose narrative implies a follow-up ("which kicks off…") with
+- A `trigger` dependency whose narrative implies a follow-up ("which kicks off…") with
   no cell at the receiving end → warn; cell_keys = the source cell.
 - The inverse: a cell whose narrative promises an INBOUND transition
   (reopen, return, retry, "comes back to…") with no incoming dependency edge

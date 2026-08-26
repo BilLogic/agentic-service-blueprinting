@@ -48,8 +48,8 @@ on this route, and the findings exit condition is met by it.
 1. Copy base IR → variant; apply the change.
 2. Dispatch `impact-tracer` (seed = changed cells) on the BASE export —
    the trace tells you which claims need re-examination. (IR exports
-   carry only `leads_to` edges — `enables` exists only as a dependency
-   kind in DB-backed deployments; when absent, the tracer walks `leads_to`
+   carry only `trigger` edges — `needs` exists only as a dependency
+   kind in DB-backed deployments; when absent, the tracer walks `trigger`
    edges only and says so in its output.)
 3. Walk the affected chain in the variant: which cells' content is now
    wrong, which dependencies dangle, which lanes gain/lose work.
@@ -75,9 +75,9 @@ per-signal reasoning:
   an assumption-heavy "priority" is really a research task);
 - proposition expression (does the cell carry the value the business_model
   claim — value_props where present);
-- backstage `enables` chain depth (impact-tracer, reversed: how much
+- backstage `needs` chain depth (impact-tracer, reversed: how much
   machinery serves this moment).
-Quick-win warnings: cells that look cheap but sit on deep `enables` chains
+Quick-win warnings: cells that look cheap but sit on deep `needs` chains
 get a "load-bearing" caveat.
 
 ## §3 Findings
