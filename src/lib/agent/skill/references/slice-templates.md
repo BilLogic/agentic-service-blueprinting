@@ -118,7 +118,7 @@ outcome, say why.>
 value props, referenced not quoted.>
 
 ## Dependencies
-<Recorded dependencies in and out, both `leads_to` and `enables`. Cite each.>
+<Recorded dependencies in and out, both `trigger` and `needs`. Cite each.>
 
 ## Open questions
 <What the blueprint does not answer about this cell. Questions, not
