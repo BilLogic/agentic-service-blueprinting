@@ -13,7 +13,9 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { interpret, parseEnvFile, supportedVersions } from '../check-target-schema.mjs'
 
-const SUPPORTED = ['2026.08.25', '2026.07.16']
+// The schema's own enum, newest first — the last test in this file is the
+// guard that it stays the same list.
+const SUPPORTED = ['2026.08.26', '2026.08.25', '2026.07.16']
 
 test('a compatible target passes and says which version it carries', () => {
   const result = interpret({ status: 200, body: [{ version: '2026.08.25' }] }, SUPPORTED)

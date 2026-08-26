@@ -158,9 +158,18 @@ Signed scenarios would silently de-sign.
 `--workspace` is what prevents that. For each scenario whose recorded
 `content_hash` equals its pre-migration hash, the migration replaces it with
 the post-migration hash and keeps `signed_at`/`signed_by`: sound because a
-step renames field *names* only, so no authored value moves. A step that ever
-edits authored content declares itself non-content-preserving, and the script
-refuses to touch sign-off at all — those scenarios go back through review.
+step moves no authored *value* — it renames a field name, or materializes a
+default the absent field already meant. A step that ever edits authored
+content declares itself non-content-preserving, and the script refuses to
+touch sign-off at all — those scenarios go back through review.
+
+The cheapest answer is a bump that never enters the subtree. 2026.08.25 →
+2026.08.26 gives a dependency edge an optional `kind` whose absence means
+`trigger` — what every existing edge already meant — so the step writes
+nothing, every scenario hashes to the same digest as before, and `--workspace`
+reports each signed scenario as already anchored. Materializing the default
+into every edge would have been content-preserving too, and would have
+re-hashed every signed scenario for no gain.
 
 A recorded hash matching neither side was already stale (the scenario was
 hand-edited after it was signed). The migration reports it and leaves it: it

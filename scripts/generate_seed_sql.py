@@ -44,8 +44,12 @@ Schema coverage (migrations 20260729120000_derived_layer +
     Absent IR fields emit null / '[]'::jsonb, matching the column defaults.
     (lanes.owner_team, phases.business_impact/operational_requirements and
     cell_dependencies label/note have NO IR shape yet — columns stay default.)
-  * cell_dependencies emit `kind` explicitly as 'trigger': every IR trigger is a
-    temporal edge. The IR cannot author kind='needs' edges yet.
+  * cell_dependencies carry the IR edge's `kind` ('trigger' | 'needs'; absent
+    in the IR means 'trigger', the column default). The kind is part of the
+    edge's IDENTITY, not just its payload: the database's uniqueness key is
+    (source_cell_id, target_cell_id, kind), so one pair may carry both an
+    arrow and a needs edge, and the UUIDv5 qualified key ends in `#<kind>` so
+    the two do not collide. label/note still have no IR shape.
   * DERIVED TABLES ARE NEVER SEEDED. slices/slice_items/findings/evidence/
     propositions are runtime outputs of the sb:* skills, not IR-authored
     content — there is deliberately no IR shape for them. Seeds cannot break
@@ -203,16 +207,16 @@ def seed_lane_fields(lane: dict, path: dict) -> dict:
 def seed_trigger_fields(trigger: dict) -> dict:
     """One edge as `cell_dependencies` column -> value.
 
-    `kind` is emitted explicitly even though 'trigger' is the column default:
-    every IR edge is a temporal one, because the IR has no shape for
-    kind='needs', nor for label or note. Those columns stay at their defaults
-    on both adapters, which is parity by absence rather than by accident.
+    `kind` is emitted explicitly even though 'trigger' is the column default,
+    because an IR edge can now be either kind and the row should say which.
+    label and note still have no IR shape and stay at their defaults on both
+    adapters, which is parity by absence rather than by accident.
     """
     return {
         "id": trigger["id"],
         "source_cell_id": trigger["source_cell_id"],
         "target_cell_id": trigger["target_cell_id"],
-        "kind": "trigger",
+        "kind": trigger["kind"],
     }
 
 
@@ -346,12 +350,20 @@ def build_model(doc: dict, locale: str) -> dict:
                 for trigger in path.get("triggers", []):
                     src = (trigger["source"]["lane"], trigger["source"]["step"])
                     tgt = (trigger["target"]["lane"], trigger["target"]["step"])
-                    tr_q = f"{pa_q}/{src[0]}/{src[1]}->{tgt[0]}/{tgt[1]}"
+                    # Absent kind means 'trigger' — the column default, and
+                    # what every edge authored before 2026.08.26 meant.
+                    kind = trigger.get("kind", "trigger")
+                    # The kind is in the qualified key because it is in the
+                    # identity: cell_dependencies is unique on
+                    # (source, target, kind), so the same pair can hold an
+                    # arrow AND a needs edge and they need distinct ids.
+                    tr_q = f"{pa_q}/{src[0]}/{src[1]}->{tgt[0]}/{tgt[1]}#{kind}"
                     triggers.append(
                         {
                             "id": entity_uuid(locale, "trigger", tr_q),
                             "source_cell_id": cell_ids[src],
                             "target_cell_id": cell_ids[tgt],
+                            "kind": kind,
                         }
                     )
 

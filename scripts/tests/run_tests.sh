@@ -11,9 +11,13 @@
 # deterministic UUIDv5 ids across runs, per-locale divergence, --verify
 # companion); generators refusing an invalid IR without writing output;
 # fallback TS generation + `tsc` type-check + --register round-trip against
-# src/data/blueprintFallbacks.ts (restored afterwards); schema-version
+# src/data/blueprintFallbacks.ts (restored afterwards); a dependency edge's
+# `kind` round-tripping through both adapters, including a `needs` edge and
+# the identity that keeps both kinds of one pair apart; schema-version
 # migration (a superseded IR is refused by name, migrate_ir.py carries it
-# forward, and a signed scenario's sign-off hash is re-anchored, not dropped).
+# forward through every step, a signed scenario's sign-off hash is re-anchored
+# rather than dropped when a step moves the subtree, and left exactly alone
+# when a step does not).
 #
 # Requires: python3 (stdlib only) and the repo's node_modules (for tsc).
 
@@ -23,6 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SAMPLE="$SCRIPT_DIR/sample-ir.json"
 SAMPLE_OLD="$SCRIPT_DIR/sample-ir-2026.07.16.json"
+SAMPLE_PREV="$SCRIPT_DIR/sample-ir-2026.08.25.json"
 VALIDATE="$REPO_ROOT/scripts/validate_ir.py"
 MIGRATE="$REPO_ROOT/scripts/migrate_ir.py"
 SEED_GEN="$REPO_ROOT/scripts/generate_seed_sql.py"
@@ -303,17 +308,74 @@ assert "FieldOps app" in lanes_stmt, "lane tools value missing"
 PY
 pass "seed-spec-fields (cells + lanes wave-2 fields pass through; absent -> defaults)"
 
-# Trigger kind: every IR trigger is temporal — kind='trigger' emitted explicitly.
-python3 - "$TMP/seed.en.sql" <<'PY' || fail "seed-trigger-kind: kind emission broken"
+# Dependency kind, end to end. The IR could not express a `needs` edge at all
+# until 2026.08.26, so one authored in the fixture is the whole round trip: it
+# has to reach the insert, keep its kind, and not collide with the arrow.
+python3 - "$TMP/seed.en.sql" <<'PY' || fail "seed-dependency-kind: kind emission broken"
 import sys
 seed = open(sys.argv[1], encoding="utf-8").read()
 stmt = seed.split("insert into public.cell_dependencies ", 1)[1].split(";\n", 1)[0]
 assert "kind" in stmt.split(") values", 1)[0], "cell_dependencies insert missing kind column"
 rows = [r for r in stmt.split(") values", 1)[1].splitlines() if r.strip().startswith("(")]
-assert rows and all("'trigger'" in r for r in rows), "every trigger row must emit kind='trigger'"
-assert "'needs'" not in stmt, "IR cannot author needs edges — none may be emitted"
+assert rows, "no cell_dependencies rows emitted"
+needs = [r for r in rows if "'needs'" in r]
+triggers = [r for r in rows if "'trigger'" in r]
+assert len(needs) == 1, f"expected the fixture's one needs edge, got {len(needs)}"
+assert triggers, "an edge that states no kind must still be emitted as 'trigger'"
+assert len(needs) + len(triggers) == len(rows), "an edge row carries neither kind"
 PY
-pass "seed-trigger-kind (cell_dependencies emit kind='trigger'; no needs edges from IR)"
+pass "seed-dependency-kind (an IR-authored needs edge reaches cell_dependencies as kind='needs')"
+
+# The kind is part of the edge's IDENTITY, because the database's uniqueness
+# key is (source, target, kind). One pair carrying both kinds is two rows, and
+# two rows need two ids — the failure this guards is a UUIDv5 collision that
+# would silently make the second edge overwrite the first.
+python3 - "$REPO_ROOT" "$SAMPLE" <<'PY' || fail "seed-dependency-identity: kind is not in the identity"
+import copy, json, pathlib, sys
+repo, sample = sys.argv[1], sys.argv[2]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import generate_seed_sql, validate_ir
+
+doc = json.load(open(sample, encoding="utf-8"))
+first_path = doc["service"]["phases"][0]["scenarios"][0]["paths"][0]
+arrow = next(t for t in first_path["triggers"] if t.get("kind", "trigger") == "trigger")
+
+both = copy.deepcopy(doc)
+both["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"].append(
+    {"source": arrow["source"], "target": arrow["target"], "kind": "needs"}
+)
+report = validate_ir.Report("both-kinds")
+validate_ir.validate_document(both, report)
+assert not report.errors, f"one pair with both kinds must validate: {report.errors}"
+
+model = generate_seed_sql.build_model(both, "en")
+edges = [e for p in model["scenarios"][0]["paths"] for e in p["triggers"]]
+pair = [
+    e for e in edges
+    if (e["source_cell_id"], e["target_cell_id"])
+    == (edges[0]["source_cell_id"], edges[0]["target_cell_id"])
+]
+assert len(pair) == 2, f"the crafted pair produced {len(pair)} edges, expected 2"
+assert pair[0]["id"] != pair[1]["id"], "the two kinds collided on one UUIDv5 id"
+assert {e["kind"] for e in pair} == {"trigger", "needs"}, "kind lost between IR and model"
+
+# A genuine duplicate — same pair, SAME kind — is still a duplicate.
+dup = copy.deepcopy(both)
+dup["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"].append(
+    {"source": arrow["source"], "target": arrow["target"]}
+)
+report = validate_ir.Report("dup")
+validate_ir.validate_document(dup, report)
+assert any("duplicate trigger edge" in e for e in report.errors), report.errors
+
+# An unknown kind is refused, naming both legal values.
+bad = copy.deepcopy(doc)
+bad["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"][0]["kind"] = "causes"
+report = validate_ir.Report("bad-kind")
+validate_ir.validate_document(bad, report)
+assert any("'causes' is not one of ['trigger', 'needs']" in e for e in report.errors), report.errors
+PY
+pass "seed-dependency-identity (both kinds on one pair are two ids; duplicates and unknown kinds still fail)"
 
 # --verify: cell_key checks fail loudly; derived rows are reported, never failed.
 python3 - "$TMP/seed.en.verify.sql" <<'PY' || fail "verify-derived-report: verify script coverage broken"
@@ -355,6 +417,22 @@ missing = ts_ids - sql_ids
 assert not missing, f"adapter parity broken — TS ids missing from seed SQL: {sorted(missing)[:3]}"
 PY
 pass "fallback-parity (same UUIDv5 ids as the en seed SQL — adapter parity)"
+
+# The other half of the round trip. Export losing the kind was the bug; an
+# adapter that serves the edge without it is the same bug wearing a different
+# hat, so the no-DB module has to carry both kinds too.
+python3 - "$GENERATED_TS" <<'PY' || fail "fallback-dependency-kind: kind missing from the no-DB adapter"
+import json, re, sys
+ts = open(sys.argv[1], encoding="utf-8").read()
+block = ts.split("GENERATED_PATH_FALLBACKS_BY_SCENARIO: Record<string, BlueprintData[]> =", 1)[1]
+data = json.loads(block.strip())
+edges = [e for paths in data.values() for path in paths for e in path["triggers"]]
+kinds = [e.get("kind") for e in edges]
+assert edges, "the no-DB adapter served no edges at all"
+assert kinds.count("needs") == 1, f"expected the fixture's one needs edge, got {kinds.count('needs')}"
+assert kinds.count("trigger") == len(edges) - 1, "an edge reached the module without a kind"
+PY
+pass "fallback-dependency-kind (the no-DB adapter serves the needs edge as needs)"
 
 npx tsc -p tsconfig.app.json > "$TMP/tsc1.out" 2>&1 \
   || fail "fallback-tsc: type-check failed with generated module present — $(tail -20 "$TMP/tsc1.out")"
@@ -834,24 +912,114 @@ grep -q "migrate_ir.py" "$TMP/old-version.out" \
   || fail "migrate-refusal: renamed fields leaked into the report — $(cat "$TMP/old-version.out")"
 pass "migrate-refusal (superseded version: one error, naming the upgrade)"
 
-# Migrating the pre-bump fixture must land exactly on the current fixture —
-# the two files are the same blueprint on either side of the rename.
+# Migrating the oldest fixture must chain through every step and land on the
+# current fixture — the files are the same blueprint on either side of the
+# bumps, apart from the one edge no version before 2026.08.26 could express.
 cp "$SAMPLE_OLD" "$TMP/migrate-me.json"
 python3 "$MIGRATE" "$TMP/migrate-me.json" --write > "$TMP/migrate.out" 2>&1 \
   || fail "migrate-forward: migration failed — $(cat "$TMP/migrate.out")"
 python3 "$VALIDATE" "$TMP/migrate-me.json" > "$TMP/migrated-valid.out" 2>&1 \
   || fail "migrate-forward: migrated IR does not validate — $(cat "$TMP/migrated-valid.out")"
+grep -q "2026.07.16 -> 2026.08.25" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the lane-vocabulary step — $(cat "$TMP/migrate.out")"
+grep -q "2026.08.25 -> 2026.08.26" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the dependency-kind step — $(cat "$TMP/migrate.out")"
 python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
 import json, sys
 migrated = json.load(open(sys.argv[1], encoding="utf-8"))
 current = json.load(open(sys.argv[2], encoding="utf-8"))
-assert migrated == current, "migrated IR differs from the current-version fixture"
+# A migration carries content forward; it never invents any. The current
+# fixture authors a `needs` edge, which no version before 2026.08.26 had a
+# shape for, so what comes out of the chain is the current fixture without it
+# — and with no `kind` written anywhere, because absence already means
+# `trigger` and materializing that would rewrite every signed scenario's hash.
+expected = json.loads(json.dumps(current))
+path = expected["service"]["phases"][0]["scenarios"][0]["paths"][0]
+path["triggers"] = [t for t in path["triggers"] if t.get("kind", "trigger") != "needs"]
+assert migrated == expected, "migrated IR differs from the current fixture"
+assert not [
+    t
+    for phase in migrated["service"]["phases"]
+    for scenario in phase["scenarios"]
+    for pa in scenario["paths"]
+    for t in pa.get("triggers", [])
+    if "kind" in t
+], "the migration wrote a defaulted kind into the tree"
 # A link's `description` is prose about the link and keeps its name; a
 # text-level rename would have taken it with the rest.
 link = current["service"]["phases"][0]["scenarios"][0]["paths"][0]["cells"][0]["links"][0]
 assert "summary" not in link, "the migration renamed a link's description"
 PYMIG
-pass "migrate-forward (pre-bump fixture migrates to the current fixture, and validates)"
+pass "migrate-forward (the oldest fixture chains through every step and validates)"
+
+# The bump this change ships, on its own. 2026.08.25 -> 2026.08.26 adds an
+# optional field whose absence already meant `trigger`, so the step writes
+# nothing: every scenario subtree — and therefore every recorded sign-off hash
+# — is byte-identical afterwards. That is the honest content_preserving=True,
+# and it is checked rather than asserted.
+if python3 "$VALIDATE" "$SAMPLE_PREV" > "$TMP/prev-version.out" 2>&1; then
+  fail "migrate-prev-refusal: expected non-zero exit on the superseded 2026.08.25"
+fi
+grep -q "migrate_ir.py" "$TMP/prev-version.out" \
+  || fail "migrate-prev-refusal: message must name the upgrade command — got: $(cat "$TMP/prev-version.out")"
+[ "$(grep -c '^ERROR' "$TMP/prev-version.out")" = 1 ] \
+  || fail "migrate-prev-refusal: expected exactly one error — $(cat "$TMP/prev-version.out")"
+pass "migrate-prev-refusal (2026.08.25 is superseded: one error, naming the upgrade)"
+
+cp "$SAMPLE_PREV" "$TMP/prev.json"
+python3 "$SIGNOFF_GEN" "$TMP/prev.json" --json > "$TMP/prev-hashes.json"
+python3 - "$TMP" <<'PYWS'
+import json, sys
+tmp = sys.argv[1]
+hashes = json.load(open(f"{tmp}/prev-hashes.json", encoding="utf-8"))
+json.dump(
+    {
+        "schema_version": "2026.08.25",
+        "ir_path": "prev.json",
+        "locales": ["en", "zh"],
+        "scenarios": {
+            key: {
+                "status": "signed_off",
+                "content_hash": digest,
+                "signed_at": "2026-08-25T09:00:00Z",
+                "signed_by": "bill",
+            }
+            for key, digest in hashes.items()
+        },
+    },
+    open(f"{tmp}/prev-workspace.json", "w", encoding="utf-8"),
+    ensure_ascii=False,
+    indent=2,
+)
+PYWS
+python3 "$MIGRATE" "$TMP/prev.json" --workspace "$TMP/prev-workspace.json" --write \
+  > "$TMP/migrate-prev.out" 2>&1 \
+  || fail "migrate-prev: migration failed — $(cat "$TMP/migrate-prev.out")"
+python3 "$VALIDATE" "$TMP/prev.json" > "$TMP/prev-valid.out" 2>&1 \
+  || fail "migrate-prev: migrated IR does not validate — $(cat "$TMP/prev-valid.out")"
+grep -q "already anchored" "$TMP/migrate-prev.out" \
+  || fail "migrate-prev: a step that writes nothing must leave the hashes alone — $(cat "$TMP/migrate-prev.out")"
+if grep -q "re-anchored" "$TMP/migrate-prev.out"; then
+  fail "migrate-prev: nothing moved in the subtree, so nothing may be re-anchored"
+fi
+python3 - "$TMP" "$SAMPLE_PREV" <<'PYPREV'
+import json, sys
+tmp, before_path = sys.argv[1], sys.argv[2]
+before = json.load(open(before_path, encoding="utf-8"))
+after = json.load(open(f"{tmp}/prev.json", encoding="utf-8"))
+assert after["schema_version"] == "2026.08.26", "the version stamp did not move"
+before["schema_version"] = "2026.08.26"
+assert after == before, "the step changed something other than the version stamp"
+recorded = json.load(open(f"{tmp}/prev-hashes.json", encoding="utf-8"))
+workspace = json.load(open(f"{tmp}/prev-workspace.json", encoding="utf-8"))
+assert workspace["schema_version"] == "2026.08.26", "workspace version not bumped"
+for key, digest in recorded.items():
+    entry = workspace["scenarios"][key]
+    assert entry["content_hash"] == digest, f"{key}: a hash moved across a no-op step"
+    assert entry["status"] == "signed_off", f"{key}: sign-off dropped"
+    assert entry["signed_by"] == "bill", f"{key}: signer lost"
+PYPREV
+pass "migrate-prev (2026.08.25 -> 2026.08.26 stamps the version and moves no hash)"
 
 # The load-bearing one: sign-off binds to a hash of a scenario subtree, and the
 # bump renames fields INSIDE that subtree — so every recorded hash would be
@@ -897,7 +1065,7 @@ python3 - "$REPO_ROOT" "$TMP" <<'PYVERIFY'
 import json, subprocess, sys
 repo, tmp = sys.argv[1], sys.argv[2]
 workspace = json.load(open(f"{tmp}/signed-workspace.json", encoding="utf-8"))
-assert workspace["schema_version"] == "2026.08.25", "workspace version not bumped"
+assert workspace["schema_version"] == "2026.08.26", "workspace version not bumped"
 
 out = subprocess.run(
     [sys.executable, f"{repo}/scripts/compute_signoff_hash.py",

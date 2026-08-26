@@ -33,7 +33,10 @@ package is deliberately not required):
                 abort mid-import); no duplicate steps in path_steps
                 (duplicate position); triggers reference existing
                 cells on the SAME path (cross-path triggers are invalid);
-                source != target; unique keys at every level;
+                source != target; a dependency edge's optional `kind` is
+                one of trigger/needs, and (source, target, kind) is unique
+                — the database's own uniqueness key, so one pair may carry
+                both an arrow and a needs edge; unique keys at every level;
                 phase.loops_to resolves.
   Warnings    — unknown lane roles near a canonical role ("did you
                 mean…?" via edit distance; genuinely custom roles are legal
@@ -86,6 +89,10 @@ CJK_NAME_TO_ROLE = {
 VIEW_TYPES = ("single", "side-by-side", "integrated")
 PATH_TYPES = ("happy", "unhappy", "exception", "alternative")
 LINK_TYPES = ("url", "tech_description")
+#: cell_dependencies.kind — the same two values the database checks.
+#: An edge that states none is a 'trigger', which is the column default.
+DEPENDENCY_KINDS = ("trigger", "needs")
+DEFAULT_DEPENDENCY_KIND = "trigger"
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 LOCALE_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
@@ -536,21 +543,39 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         if not isinstance(trigger, dict):
             rep.error(tjp, f"trigger must be an object, got {type_name(trigger)}")
             continue
-        check_extra_keys(trigger, {"source", "target"}, tjp, rep)
+        check_extra_keys(trigger, {"source", "target", "kind"}, tjp, rep)
         for field in ("source", "target"):
             if field not in trigger:
                 rep.error(tjp, f"missing required field '{field}'")
         source = check_cell_ref(trigger.get("source"), f"{tjp}.source", rep) if "source" in trigger else None
         target = check_cell_ref(trigger.get("target"), f"{tjp}.target", rep) if "target" in trigger else None
+        # Absent is 'trigger' — the column default, and what every edge
+        # authored before the kind existed already meant.
+        kind = trigger.get("kind", DEFAULT_DEPENDENCY_KIND)
+        if kind not in DEPENDENCY_KINDS:
+            rep.error(
+                f"{tjp}.kind",
+                f"{kind!r} is not one of {list(DEPENDENCY_KINDS)} — 'trigger' is the "
+                "temporal arrow (and the default when the field is absent); 'needs' is "
+                "the functional dependency, which renders in the cell panel only",
+            )
+            kind = DEFAULT_DEPENDENCY_KIND
         if source is None or target is None:
             continue
         if source == target:
             rep.error(tjp, f"trigger source equals target (lane '{source[0]}', step '{source[1]}') — self-triggers are invalid")
             continue
-        if (source, target) in trigger_pairs:
-            rep.error(tjp, f"duplicate trigger {source} -> {target} — first declared at {trigger_pairs[(source, target)]}")
+        # Uniqueness is (source, target, kind), matching the database's
+        # cell_dependencies_source_target_kind_unique: one pair may carry an
+        # arrow AND a needs edge, and those are two rows, not a duplicate.
+        if (source, target, kind) in trigger_pairs:
+            rep.error(
+                tjp,
+                f"duplicate {kind} edge {source} -> {target} — first declared at "
+                f"{trigger_pairs[(source, target, kind)]}",
+            )
         else:
-            trigger_pairs[(source, target)] = tjp
+            trigger_pairs[(source, target, kind)] = tjp
         for end_name, (lane_key, step_key) in (("source", source), ("target", target)):
             if (lane_key, step_key) not in cell_pairs:
                 rep.error(
@@ -654,14 +679,16 @@ def validate_document(doc, rep: Report) -> None:
             )
             return
         if known and version != known[0]:
-            # Field names move across a bump, so continuing here would report
-            # every renamed field as an unknown key and bury the one error the
-            # reader can act on. Name the migration and stop.
+            # A bump may move field names, and then continuing here would
+            # report every renamed field as an unknown key and bury the one
+            # error the reader can act on. Whether the bumps between these two
+            # versions did that is migrate_ir.py's business, not this check's:
+            # name the migration and stop either way.
             rep.error(
                 "$.schema_version",
                 f"IR is at schema_version {version}; this template speaks "
-                f"{known[0]}. Field names moved in the bump, so the rest of "
-                "this file is not checked. Upgrade it with: python3 "
+                f"{known[0]}. The shape may have moved between them, so the "
+                "rest of this file is not checked. Upgrade it with: python3 "
                 f"scripts/migrate_ir.py {rep.file_label} --to {known[0]} --write "
                 "(add --workspace blueprint-workspace.json to carry sign-off "
                 "hashes across; see references/customization.md § Template "

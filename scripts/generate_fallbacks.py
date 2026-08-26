@@ -48,8 +48,10 @@ with no database is told is "not a degraded mode". scripts/adapter_parity.py
 now checks the claim instead of asserting it.
 
 Still outside the projection on BOTH adapters, which is parity by absence:
-cell_dependencies label/note, which the IR has no shape to author. Lanes were on
-that list too, wrongly — the SQL adapter carried kpis and tools all along and
+cell_dependencies label/note, which the IR has no shape to author. `kind` was on
+that list until 2026.08.26 and is not any more — the IR can author a `needs`
+edge, and it reaches both adapters through the same field function. Lanes were
+on the list too, wrongly — the SQL adapter carried kpis and tools all along and
 the no-DB one did not, which is how a sentence about parity ended up being the
 next thing to drift.
 
