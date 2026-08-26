@@ -39,6 +39,12 @@ jobs:
       # The standalone claim: no tracked file names the deployment this kit
       # was generalised from.
       - run: npm run check:standalone
+      # The tag is the only thing a consumer can pin, and a checkout does not
+      # fetch tags. `--require` is not passed here: the tag for a version is
+      # cut after the release commit is on main, not on the pull request that
+      # proposes it (docs/engineering/releasing.md).
+      - run: git fetch --tags --force
+      - run: npm run check:release-tag
 
   # The portability position, executed.
   #

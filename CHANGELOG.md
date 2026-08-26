@@ -12,7 +12,11 @@ schema filenames, agent names, hook events, agent tool names. A rename there is
 a major, because a consumer resolves those by name at runtime with nothing to
 catch a break. Refactoring the template app is not, however much of it moves: a
 consumer forks that surface and takes our changes as a visible merge conflict.
-Entries below flag identifier changes under **### Plugin contract**.
+Entries below flag identifier changes under **### Plugin contract**. The two
+contract tiers and what semver covers are recorded in
+[ADR 1](./docs/adr/0001-two-contract-tiers-and-a-frozen-identifier-layer.md);
+how a release is cut and tagged is in
+[`docs/engineering/releasing.md`](./docs/engineering/releasing.md).
 
 ## 0.4.0 — 2026-08-18
 

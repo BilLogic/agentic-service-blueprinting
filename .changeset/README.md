@@ -18,3 +18,9 @@ actually reads.
 names, hook events, agent tool names. A rename there is a major. Refactoring
 the template app is not, however much of it moves — a consumer forks that
 surface and takes our changes as a visible merge conflict.
+
+The full procedure — including the annotated `v<version>` tag every release
+gets, which is the only thing a consumer can pin — is in
+[`docs/engineering/releasing.md`](../docs/engineering/releasing.md); the
+decision behind it is
+[ADR 1](../docs/adr/0001-two-contract-tiers-and-a-frozen-identifier-layer.md).
