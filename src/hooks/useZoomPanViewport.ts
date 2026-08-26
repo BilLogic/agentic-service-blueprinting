@@ -930,6 +930,64 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   }, [])
 
   /**
+   * The gesture is CLAIMED, not merely declared.
+   *
+   * `touch-action: none` is a declaration the compositor consults *before*
+   * it decides whether a touch belongs to the page or to the app, and the
+   * board is the one place where that consultation is unreliable:
+   * `[data-zoom-pan-content]` carries a transform, so it is a composited
+   * lane, and WebKit does not dependably resolve the property across that
+   * boundary. `blueprint.css` answers this by setting the rule on every
+   * descendant directly rather than relying on an ancestor's — but a
+   * declaration the compositor may still drop leaves the same symptom
+   * behind it: the browser takes the touch and answers `pointercancel`, so
+   * a finger on empty canvas pans and the identical finger on a cell does
+   * nothing.
+   *
+   * `preventDefault` needs no such resolution. It is the answer to a
+   * question already asked, on an event already delivered, and no layer
+   * boundary sits between the two. The declaration keeps the compositor
+   * from starting a native gesture on the fast path; this keeps it from
+   * finishing one it started anyway.
+   *
+   * Scope matches the CSS exactly — the viewport subtree, nothing else.
+   * Note the deliberate difference from the wheel path above, which hands a
+   * delta back to a scrollable ancestor that can still consume it: a wheel
+   * inside the board has native scrolling to defer TO, and a touch does
+   * not, because `touch-action: none` already took it. A `preventDefault`
+   * drawn narrower than the declaration it backs would reopen exactly the
+   * gap it exists to close.
+   *
+   * `touchstart` is claimed only from the SECOND finger. Preventing the
+   * first suppresses the synthesized click a tap depends on; multi-touch
+   * synthesizes no click, and is where WebKit's page pinch-zoom starts.
+   *
+   * Non-passive — `preventDefault` on a passive listener is a no-op with a
+   * console warning — and bound on the window in capture, filtered by
+   * containment, for the same three reasons the wheel listener is: an
+   * effect that reads `containerRef.current` once may attach nothing at
+   * all, an intervening handler may run first, and a portalled overlay
+   * drawn over the canvas never bubbles to it.
+   */
+  useEffect(() => {
+    const claim = (event: TouchEvent) => {
+      const el = containerRef.current
+      const target = event.target
+      if (!el || !(target instanceof Node) || !el.contains(target)) return
+      if (!event.cancelable) return
+      if (event.type === 'touchstart' && event.touches.length < 2) return
+      event.preventDefault()
+    }
+    const options = { passive: false, capture: true } as const
+    window.addEventListener('touchstart', claim, options)
+    window.addEventListener('touchmove', claim, options)
+    return () => {
+      window.removeEventListener('touchstart', claim, { capture: true })
+      window.removeEventListener('touchmove', claim, { capture: true })
+    }
+  }, [])
+
+  /**
    * Touch gestures ride the SAME Pointer Events as mouse pan — no parallel
    * TouchEvent code path. Every touch pointer is tracked in a map; one
    * finger pans (same rules as a mouse drag), and the moment a second
