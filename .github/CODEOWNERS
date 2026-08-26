@@ -1,0 +1,5 @@
+# Every change needs a review from the maintainers before it can land on
+# main. Branch protection has `require_code_owner_reviews` on, so this file
+# is what makes that rule mean something — without an owner entry the
+# requirement matches nothing.
+* @BilLogic
