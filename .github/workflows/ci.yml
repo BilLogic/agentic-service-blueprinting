@@ -49,6 +49,10 @@ jobs:
       # doc that states no summary fails here rather than landing as a blank
       # row in the map an agent routes by.
       - run: npm run check:docs-index
+      # The other half of the write-surface guard above: the canvas agent
+      # also calls the READ tools its rulebook names, and that list had
+      # drifted too — docs/engineering/checks.md.
+      - run: npm run check:read-surface
 
   # The portability position, executed.
   #

@@ -68,6 +68,51 @@ export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
   'open_cell_panel',
 ])
 
+/**
+ * The tools that only READ — no row changes, and no effect on what the human
+ * is looking at. `references/canvas-adapter.md` states this list as the FULL
+ * read surface, and the agent reads that sentence as permission: a tool
+ * missing from it is a tool it believes it cannot call. Both directions are
+ * checked (scripts/check-read-surface.mjs), which is why this exists as a
+ * named set rather than as "whatever is left over".
+ */
+export const READ_TOOL_NAMES = new Set([
+  'read_reference',
+  'list_scenarios',
+  'get_blueprint',
+  'get_compare_diff',
+  'get_cell',
+  'list_slices',
+  'get_slice',
+  'list_owner_tags',
+  'get_ui_state',
+  'get_change_history',
+  'get_deletion_impact',
+  'list_findings',
+])
+
+/**
+ * The tools that drive the interface. They change what the human SEES and
+ * nothing else — except `ui_command`, whose "[changes data]" commands are a
+ * write path but not a write tool (the loop counts those against the write
+ * batch separately).
+ *
+ * Declared so the three sets partition TOOL_SPECS exactly (specs.test.ts). A
+ * tool added to the roster and left unclassified fails that test, which is
+ * what keeps READ_TOOL_NAMES from quietly becoming the next stale list.
+ */
+export const INTERFACE_TOOL_NAMES = new Set([
+  'open_phase',
+  'open_scenario',
+  'focus_cell',
+  'open_cell_panel',
+  'set_canvas_mode',
+  'set_sidebar',
+  'annotate_cells',
+  'list_ui_commands',
+  'ui_command',
+])
+
 /** The tools that mutate data — the loop enforces batch etiquette on these. */
 export const WRITE_TOOL_NAMES = new Set([
   'add_step',
