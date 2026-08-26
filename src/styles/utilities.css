@@ -1,13 +1,13 @@
 /*
  * Standalone utilities. Mirrors packages/config/css/utilities.css.
  *
- * `@utility`, not `@lane utilities { .class }` — Tailwind v4's own form, and
+ * `@utility`, not `@layer utilities { .class }` — Tailwind v4's own form, and
  * the one Supabase's file uses for all nineteen of its entries. It is not
  * cosmetic: an `@utility` participates in the variant machinery (so
  * `hover:`/`dark:` compose with it) and sorts with the rest of the utility
  * lane, where a hand-written class in the lane gets neither.
  *
- * Plain `@lane utilities` rules below are the ones that are NOT utilities —
+ * Plain `@layer utilities` rules below are the ones that are NOT utilities —
  * a rule keyed on a document-level attribute has no class to modify.
  */
 
@@ -94,7 +94,7 @@
     3px 3px;
 }
 
-@lane utilities {
+@layer utilities {
   /* Hide the system cursor while the pen tool is active. */
   html[data-pen-tool] [data-zoom-pan-viewport],
   html[data-pen-tool] [data-canvas-annotation-layer],

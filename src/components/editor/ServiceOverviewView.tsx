@@ -172,7 +172,8 @@ type ServicePhaseSectionProps = {
   focusActive?: boolean
   /** Slice-tab scope: mount only this scenario's artboard within the phase. */
   onlyScenarioId?: string | null
-  onOpenPhase: (phaseId: string) => void
+  /** OPTIONAL: mobile passes nothing — the drawer owns navigation there. */
+  onOpenPhase?: (phaseId: string) => void
 }
 
 function ServicePhaseSection({
@@ -209,7 +210,7 @@ function ServicePhaseSection({
       isLoopArrowTo={isLoopArrowTo}
       dimmed={dimmed}
       focusActive={focusActive}
-      onNavigate={() => onOpenPhase(phase.id)}
+      onNavigate={onOpenPhase ? () => onOpenPhase(phase.id) : undefined}
     >
       <PhaseScenarioOverview
         phase={phase}
@@ -1004,7 +1005,19 @@ function ServiceOverviewViewImpl({
                             blueprintsByPathId={blueprintsByPathId}
                             getSelectedPathIds={resolveSelectedPathIds}
                             displayViewType={overviewViewType}
-                            onOpenPhase={openDetail}
+                            /*
+                              The phase frame is a navigation target in its
+                              own right, and it is not a scenario — so
+                              scoping the mobile canvas to one scenario does
+                              not cover it. On a phone every move between
+                              phases belongs to the drawer, and passing no
+                              handler leaves the frame inert rather than a
+                              button that swallows taps: `navigable` is
+                              gated on the handler existing, so there is no
+                              `role="button"`, no pointer cursor and no
+                              aria-label promising a destination.
+                            */
+                            onOpenPhase={mobileShell ? undefined : openDetail}
                             dimmed={dimPhase}
                             focusActive={phaseIsFocused}
                             focusedScenarioId={

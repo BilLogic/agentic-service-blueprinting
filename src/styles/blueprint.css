@@ -38,7 +38,7 @@
  * would become unreachable.
  */
 
-@lane utilities {
+@layer utilities {
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
   [data-phase-scenario-panel] {
     background-color: var(--color-slate-500);
@@ -219,7 +219,7 @@
   }
 }
 
-@lane utilities {
+@layer utilities {
   /*
    * CELL SEMANTIC TOKENS — the full state set, per lane role.
    *
@@ -431,7 +431,7 @@
   }
 }
 
-@lane utilities {
+@layer utilities {
   /*
    * FOCUS PULSE — brief emphasis ring after a fly-to-cell (the counterpart
    * highlight from ledger rows, the divergence strip and agent focus).
@@ -576,7 +576,7 @@
   }
 }
 
-@lane utilities {
+@layer utilities {
   /*
    * TOUCH: the canvas owns the gesture, so the OS must not.
    *
@@ -629,7 +629,7 @@
   }
 }
 
-@lane utilities {
+@layer utilities {
   /*
    * PROGRESSIVE REVEAL — the landing choreography (ServiceOverviewView owns
    * the staging and its stability gate; this is only what each stage hides).

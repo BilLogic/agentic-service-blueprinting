@@ -1,4 +1,4 @@
-@lane base {
+@layer base {
   * {
     /* Full alpha, not `outline-ring/50`. This is the default focus outline colour
        for the 27 raw `<button>` elements that define no `focus-visible` rule of
