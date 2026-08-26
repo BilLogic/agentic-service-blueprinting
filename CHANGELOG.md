@@ -1,5 +1,208 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 5918319: A schema_version bump now ships the migration that carries existing
+  `blueprint.json` files across it, in the same change.
+
+  The IR has stated its own `schema_version` since the field existed, and the
+  enum in `references/ir-schema.json` has listed the versions this template
+  knows — but "knows" was doing two jobs. `2026.07.16` is in that list and an IR
+  carrying it validated cleanly, then failed on the first renamed field, because
+  the lane-vocabulary bump moved `lifecycle` → `service`, `layers` → `lanes`,
+  `layer` → `lane` and `description` → `summary`. Being in the list means
+  migratable, not current.
+
+  `validate_ir.py` now refuses an IR that is not at the version the template
+  speaks, with one error naming the command that fixes it, and stops before the
+  body — otherwise every renamed field is reported as an unknown key and the one
+  actionable line is buried. An unknown version says no migration carries it and
+  where the steps that exist live.
+
+  `scripts/migrate_ir.py` is that command. Steps chain, so a file two bumps
+  behind is carried through both; the 2026.07.16 → 2026.08.25 step walks the
+  tree by shape rather than rewriting text, so a link's `description` — prose
+  about the link, still called `description` — is left alone.
+
+  Sign-off is the reason this exists. It binds to a SHA-256 of a scenario
+  subtree, and the renames land inside that subtree, so every recorded hash
+  would stop matching and every signed scenario would silently de-sign.
+  `--workspace blueprint-workspace.json` re-anchors each signed scenario's
+  `content_hash` onto its migrated subtree and keeps `signed_at`/`signed_by` —
+  sound because a step renames field names only, and a step that ever edits
+  authored content declares itself non-content-preserving and gets refused. A
+  hash matching neither side was already stale before the migration ran; it is
+  reported and left, because that is a re-review, not a rename.
+
+  The rule, in `references/customization.md` and next to the enum it governs:
+  every future bump ships its migration in the same change. Consumers hold
+  signed-off data that cannot be re-derived, so a bump with no step is a bump
+  with no answer.
+
+- 7ea6f15: A dependency edge in the IR now says which kind it is, so a `needs` edge
+  survives an export.
+
+  The database has checked `cell_dependencies.kind in ('trigger','needs')` since
+  `20260729120000`, the app draws an arrow for one and a panel row for the other,
+  and the authoring RPC refuses any third value. The IR was the half that could
+  not say it: `$defs.trigger` carried `source` and `target` under
+  `additionalProperties: false`, so a needs edge could not be written down at
+  all. Exporting a blueprint that had one dropped it silently, and a re-import
+  could not put it back. That is data loss, not a documentation gap.
+
+  `schema_version` 2026.08.26 gives the edge an optional `kind`. Optional, and
+  absent means `trigger` — the column default, and what every edge authored
+  before this bump already meant — so every existing file is already a valid
+  2026.08.26 file.
+
+  The kind is part of the edge's **identity**, not just its payload. The
+  database's uniqueness key is `(source_cell_id, target_cell_id, kind)`: one pair
+  may carry both an arrow and a needs edge, and those are two rows. So the
+  validator's duplicate check reads the kind, and the UUIDv5 qualified key ends
+  in `#<kind>` — without that, the second edge of a pair would be minted with the
+  first one's id and quietly replace it. Every dependency edge's id therefore
+  changes across this bump, which is invisible in practice: an import is a
+  scenario-scoped delete-and-reinsert, and nothing outside `cell_dependencies`
+  references an edge id.
+
+  **The migration, and what it does to sign-off.** The rule holds — the bump
+  ships its step in the same change — and the step is a version stamp and nothing
+  else. Sign-off binds to a SHA-256 of a scenario subtree, and a dependency edge
+  lives inside one, so writing `"kind": "trigger"` into every existing edge would
+  have re-hashed every signed scenario in every workspace. That would have been
+  _content-preserving_ in the sense the machinery means — no authored value would
+  have moved, and `--workspace` would have re-anchored each hash — but it would
+  have put every signed blueprint one forgotten flag away from de-signing itself,
+  in exchange for saying at length what absence already says. So
+  `2026.08.25 → 2026.08.26` is `content_preserving = True` and touches nothing:
+  every scenario hashes to the byte-identical digest afterwards, and `--workspace`
+  reports each signed scenario as already anchored. The suite checks that, rather
+  than the changelog asserting it.
+
+  Both v1 adapters carry the kind, because both project the same field function —
+  the SQL seed emits it as a column, the no-DB module serves it on the edge, and
+  `npm run check:parity` compares them. The test suite covers a `needs` edge
+  round-tripping through both, a pair carrying both kinds getting two distinct
+  ids, an unknown kind refused by name, the pre-bump fixture migrating with its
+  hashes intact, and `2026.08.25` refused as superseded with the upgrade command
+  in the message.
+
+  The database gets a migration too, and it carries no DDL: the columns were
+  already right. `schema_version` is one contract version across both halves, so
+  the number moves on both. A target left at `2026.08.25` stays supported and
+  stays correct.
+
+- d5041c4: The portable Postgres core and the Supabase recipe are generated from the
+  migrations, and CI applies both.
+
+  The partition was a paragraph in the header of `supabase/schema.reference.sql`,
+  a file that was never executed and was hand-refreshed beside a tree that moved
+  underneath it. It is now marked in the migrations — `-- @recipe` and `-- @core`
+  — and `npm run generate:portable-core` emits both halves from those marks into
+  `supabase/generated/`. The snapshot is deleted; a second hand-maintained SQL
+  artifact was the drift surface this repo kept paying for.
+
+  The claim is executed rather than stated. Every pull request applies the
+  generated core to a stock `postgres:17` with no Supabase and no shim in front
+  of it, then applies the recipe on top, then checks that the full migration
+  replay lands in the same place. A deliberately broken core is fed to the same
+  job, so the guard is known to be able to fail.
+
+- 8b66dfe: The app's backend seam is named: repository interfaces per aggregate
+  (`src/lib/backend/ports.ts`), an identity port that answers in tiers rather
+  than claims, and two conformance levels — Transactional and Idempotent — so a
+  store without transactions can serve the app correctly and visibly. A
+  framework-free conformance suite ships with it, passed by two reference
+  implementations. `adapter-contract.md` no longer states our PostgREST coupling
+  as though it were a property of the world.
+- 134a529: The schema speaks the vocabulary the rulebook already taught. Ten renames:
+  `layers` → `lanes`, `cells.layer_id` → `lane_id`, `layers.layer_role` →
+  `lane_role`, `cell_triggers` → `cell_dependencies`, `service_lifecycles` →
+  `services` (and `service_lifecycle_id` → `service_id`), `service_scenarios` →
+  `scenarios` (and `service_scenario_id` → `scenario_id`), `row_position` ·
+  `column_position` · `slot_position` · `order_position` → `position`, and
+  `description` → `summary` on services, phases, scenarios, paths and cells.
+
+  The package was half-renamed and contradicting itself in one statement:
+  `create or replace function public.add_lane` inserted into `public.layers`.
+  `references/data-model.md` — what the canvas agent reads before touching data
+  — was already 100% the new vocabulary, so the agent was taught a schema its
+  own backend did not have.
+
+  Breaking for anyone holding data or calling the RPCs directly. Table and
+  column names, `upsert_cell(lane_id)`, `add_lane(lane_role, at_position)`,
+  `create_phase(summary)`, and the IR's field names all move. The database now
+  carries a `schema_version` row saying which shape it is, so a mismatch is a
+  named error instead of a column that is not there.
+
+  Not renamed, deliberately: `cell_dependencies.kind` keeps `('trigger',
+'needs')` — "trigger" there is one of two kinds of dependency, not the
+  container; `slices.description` stays, because a slice's description is prose
+  about the slice rather than a one-line gloss of a row; and the
+  `tech_description` link payload keeps its `description`.
+
+  Upstream migrations are now allocated from a reserved timestamp band
+  (`21000101000000`–`21991231235959`) so a fork's pull can only ever append.
+
+- 03c71e1: The plugin contract's identifier lane is written down in `identifiers.json`,
+  generated from the tree and diffed in test, so renaming a skill, reference,
+  schema, agent, hook or tool shows up in review instead of at a consumer's
+  runtime. One version number is pinned across `package.json`, `plugin.json` and
+  the CHANGELOG.
+
+  The two v1 adapters now project one shared field list, and
+  `scripts/adapter_parity.py` checks that they agree — closing a drift that had
+  the no-DB adapter silently dropping `cell_key`, `position`, every cell
+  spec field and the edge `kind`. No-DB is stated as the first run, and as
+  read-only.
+
+  CI runs all of it, plus the IR round-trip suite that previously ran nowhere.
+
+- 134a529: **"Did the migration run" is answerable.** `npm run check:target` asks the live
+  database for `public.schema_version` over the same Data API and anon key the app
+  uses, and distinguishes _never migrated_ from _stale_ from _fine_. It matters
+  more here than elsewhere: without a configured project the app serves its no-DB
+  fallback and renders perfectly, so a misconfigured target looks exactly like a
+  working one. Not in CI — CI has no target, and a check that needs a live
+  database is a check that gets skipped and then trusted.
+
+  **A desync runbook** for forks whose migration history diverged before the
+  reserved band existed: read both histories, apply pending files out of order
+  with `db push --include-all` (safe, because no upstream migration depends on
+  anything a fork built), repair `supabase_migrations.schema_migrations` per
+  version when they genuinely disagree, and `db pull` as the last resort. Inside
+  the band it cannot recur.
+
+  **The boundary, stated as a boundary** rather than a list of apologies, beside
+  README's "Bring your own backend": no auth beyond the anon/authenticated split,
+  no multi-tenancy, no backup or restore, no migration ops beyond the shipped
+  chain — and the one operational failure the package does own, with the runbook
+  attached.
+
+  **The seed's role is on the record**: `supabase/seed.sql` is the META-BLUEPRINT,
+  the service blueprint of this template itself, and one generator emits it and
+  the no-DB fallback module from the same source. That is why "no database" is a
+  supported mode and not a degraded one.
+
+### Patch Changes
+
+- e2ebf0e: The two contracts this repo ships are named in an ADR, and the tag that makes
+  one of them pinnable is now checkable. ADR 1 records the split — a plugin
+  contract consumers resolve by name at runtime, and a template surface they fork
+  — the frozen identifier layer inside it, that semver covers the plugin contract
+  only, and why `private: true` stays with no `files` allowlist. Every release
+  gets an annotated `v<version>` tag on `main`, which is the only thing a
+  consumer can pin, and `npm run check:release-tag` refuses a tag that names an
+  unreleased version, a tag pointing at a tree that states a different one, and
+  — once tagging has started — a release that skipped it.
+- a30cd05: `schema.reference.sql` is now checked rather than hand-refreshed: offline
+  against the generated types, and in CI by replaying every migration against a
+  stock Postgres behind a small shim. The first run found the snapshot two
+  migrations stale — `agent_sessions` and `agent_messages` were missing — which
+  is what an adopter carrying it would have built.
+
 All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
 documented here. The plugin and the blueprint template app share this
 repository and one version number, checked by
@@ -55,7 +258,7 @@ dead visual-walkthrough machinery removed ahead of the release cut.
   a failed count is undefined, never a filtered stand-in; row content is
   data, not instructions); `references/lane-roles.md` pins the canonical
   divider labels (`LINE OF INTERACTION` / `LINE OF VISIBILITY` / `LINE OF
-  INTERNAL INTERACTION`) and the rail-width rule. `package.json` version
+INTERNAL INTERACTION`) and the rail-width rule. `package.json` version
   invariant fixed (0.0.0 → 0.3.0, matching the plugin manifest).
 - **Generalization sweep**: examples and fixtures now use the shipped
   municipal-repair Sample Service world; deployment-specific identifiers
@@ -68,7 +271,7 @@ Per-skill resource layout, per the official plugin-structure guidance:
 each skill now owns its exclusive materials under its own directory —
 skills/map/references/ (four phase playbooks, elicitation-protocol,
 deploy-notes, workspace-state, crosswalk-schema), skills/audit/
-(references/check-*.md ×7, scripts/audit_tools.py), skills/slice/
+(references/check-\*.md ×7, scripts/audit_tools.py), skills/slice/
 (references/ slice-playbook + slice-templates + slice-schema +
 storyboard-prompts, scripts/slice_tools.py), skills/whatif/references/
 (whatif-playbook, change-request-schema). Root references/ and scripts/
@@ -86,7 +289,7 @@ Structural pass per Anthropic skill-authoring standards (skill-creator).
 skills/blueprint renamed skills/map — the runtime registration is now
 sb:map, matching every cross-pointer. Whatif sign-off hashes re-aligned
 to the canonical PER-SCENARIO model (workspace-state.md; the 0.2.1
-whole-file form survives only as the legacy __file__ fallback). Dedupe
+whole-file form survives only as the legacy **file** fallback). Dedupe
 semantics single-sourced (playbook §3 + canvas-adapter row; playbook
 canvas notes are now pointers). New scripts/audit_tools.py: fingerprint /
 export / dedupe / report — the reference implementation of playbook §2-§3
@@ -101,7 +304,7 @@ planned. plugin.json says JSON IR.
 
 Nineteen text-level gaps closed after blind cold-follow evals of sb:audit
 and sb:whatif (fresh-context agents following the SKILL.mds literally on a
-real workspace): two-target staleness guard, __file__ hash form, orphan-
+real workspace): two-target staleness guard, **file** hash form, orphan-
 reopen gap shape, zero-cell fingerprint reason slugs, audit cell-key
 convention, export + no-DB findings-report substrate, entry-state
 precedence, roster-owned skips, reviewer whatif-claim mode, impact-tracer
