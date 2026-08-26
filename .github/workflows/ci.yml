@@ -45,6 +45,10 @@ jobs:
       # proposes it (docs/engineering/releasing.md).
       - run: git fetch --tags --force
       - run: npm run check:release-tag
+      # The two indexes are generated from the docs' own frontmatter, and a
+      # doc that states no summary fails here rather than landing as a blank
+      # row in the map an agent routes by.
+      - run: npm run check:docs-index
 
   # The portability position, executed.
   #
