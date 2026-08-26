@@ -46,13 +46,36 @@ test('an untagged repo passes, and says that it is untagged', () => {
   assert.deepEqual(faults({ released: ['0.4.0'] }), [])
 })
 
-test('once tagging has started, a later release may not skip it', () => {
+test('once tagging has started, a release inside the era may not skip it', () => {
   const found = faults({
-    tags: ['v0.5.0'],
+    tags: ['v0.6.0', 'v0.4.0'],
     released: ['0.6.0', '0.5.0', '0.4.0'],
     version: '0.6.0',
   })
-  assert.deepEqual(found, ['release 0.6.0 has no tag v0.6.0'])
+  assert.deepEqual(found, ['release 0.5.0 has no tag v0.5.0'])
+})
+
+// The release commit states the new version before any tag for it can exist:
+// the tag is cut on `main`, after the merge. Judging it in the default mode
+// would make every version bump unmergeable — its own CI would demand a tag
+// that cannot be cut yet.
+test('the version being released is not judged in the default mode', () => {
+  const found = faults({
+    tags: ['v0.4.0'],
+    released: ['0.5.0', '0.4.0'],
+    version: '0.5.0',
+  })
+  assert.deepEqual(found, [])
+})
+
+test('--require judges exactly that version, and says how to fix it', () => {
+  const found = faults({
+    tags: ['v0.4.0'],
+    released: ['0.5.0', '0.4.0'],
+    version: '0.5.0',
+    require: true,
+  })
+  assert.deepEqual(found, ['version 0.5.0 is released in the CHANGELOG and has no tag'])
 })
 
 test('releases that shipped before tagging did are left where they are', () => {
