@@ -226,7 +226,10 @@ export function CanvasPhaseSection({
       <ScenarioTitleBadge
         name={ordinalLabel(ordinal, title)}
         summary={summary}
-        tone={interactive ? 'phase' : 'default'}
+        // The phase register — mono, uppercase, letterspaced. An identity,
+        // not an affordance: a phase frame that does not navigate (the
+        // mobile canvas) is still a phase, and its badge still says so.
+        tone="phase"
         // The time-marker register: mono, uppercase, letterspaced — the same
         // idiom the mobile reader's step eyebrows use, so both surfaces name
         // time the same way. The aria-label above keeps the plain title.

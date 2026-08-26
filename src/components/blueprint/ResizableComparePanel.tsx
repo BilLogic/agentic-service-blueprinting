@@ -19,9 +19,6 @@ import {
   getComparePanelScrollInsetY,
   getComparePanelScrollPaddingY,
 } from '@/lib/sideBySideCompareLayout'
-import {
-  BLUEPRINT_THEME,
-} from '@/lib/blueprintTheme'
 import { cn } from '@/lib/utils'
 
 type ResizableComparePanelProps = {
@@ -322,17 +319,26 @@ export function ResizableComparePanel({
           navigable &&
             'cursor-pointer transition-[box-shadow,border-color] duration-(--motion-micro) ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         )}
-        style={{
-          width: size.width,
-          height: size.height,
-          backgroundColor: interactive
-            ? undefined
-            : BLUEPRINT_THEME.labelRail,
-          borderColor: interactive ? undefined : BLUEPRINT_THEME.canvasBorder,
-        }}
+        /*
+          Fill and border come from `[data-phase-scenario-panel]` below,
+          never from here. The inline fallback that used to sit on these two
+          properties was reachable only by a panel without that attribute,
+          and now that the attribute names the surface rather than the
+          affordance there is no such panel — an inline value would simply
+          outrank the stylesheet on the mobile canvas.
+        */
+        style={{ width: size.width, height: size.height }}
         data-compare-panel
         data-blueprint-artboard
-        {...(interactive ? { 'data-phase-scenario-panel': '' } : {})}
+        /*
+          Names the SURFACE, not the affordance. The panel's fill, its border
+          and its beat in the canvas reveal all key off this attribute, so a
+          panel that merely does not navigate — the mobile canvas, where the
+          drawer owns every move — must still carry it or it renders unfilled
+          and skips its entrance. It was gated on `onNavigate` only because
+          every caller happened to pass one.
+        */
+        data-phase-scenario-panel=""
         {...(focusActive ? { 'data-canvas-focus-active': '' } : {})}
         {...(excludeFromRowHeight ? { 'data-row-height-excluded': '' } : {})}
         role={navigable ? 'button' : undefined}

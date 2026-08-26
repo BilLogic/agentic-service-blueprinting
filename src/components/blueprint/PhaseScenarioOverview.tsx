@@ -7,6 +7,7 @@ import { CanvasEmptyState } from '@/components/editor/CanvasEmptyState'
 import { useEditor } from '@/contexts/EditorContext'
 import { useAlignedPhaseRowPanelHeight } from '@/hooks/useAlignedPhaseRowPanelHeight'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
+import { useMobileShell } from '@/hooks/useMobileShell'
 import { defaultSelectedPathIds } from '@/lib/pathSelection'
 import type { PathListItem } from '@/lib/pathSelection'
 import { COMPARE_MIN_PANEL_HEIGHT, getPanelHeightFromSwimlaneBody } from '@/lib/sideBySideCompareLayout'
@@ -119,6 +120,22 @@ export function PhaseScenarioOverview({
   onlyScenarioId = null,
 }: PhaseScenarioOverviewProps) {
   const { getScenarioDisplayViewType, openDetail } = useEditor()
+  /*
+    THE CANVAS DOES NOT NAVIGATE ON A PHONE.
+
+    Every move between scenarios and between phases belongs to the drawer
+    there. Scoping the mobile canvas to one scenario removes the siblings
+    there are to tap, but that is a statement about what is currently
+    RENDERED; this is a statement about what a tap MEANS, and it is the one
+    that survives someone widening the scope later.
+
+    Undefined rather than a no-op: `navigable` in `ResizableComparePanel` is
+    gated on the handler existing, so the panel is genuinely inert — no
+    `role="button"`, no pointer cursor, no aria-label promising a
+    destination — instead of a button that swallows taps. Panning and
+    pinching over it are unaffected, and so is opening a cell.
+  */
+  const canvasNavigates = !useMobileShell()
   const isOverview = variant === 'overview'
 
   /*
@@ -451,7 +468,9 @@ export function PhaseScenarioOverview({
               displayViewType={
                 isFocusedScenario ? undefined : resolveViewType(scenario)
               }
-              onNavigate={() => openDetail(scenario.id)}
+              onNavigate={
+                canvasNavigates ? () => openDetail(scenario.id) : undefined
+              }
               dimmed={
                 dimAllScenarios ||
                 (focusedScenarioId !== null &&
