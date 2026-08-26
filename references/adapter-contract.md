@@ -98,7 +98,8 @@ be interrogated, which is the one thing the clause is for.
 **Runnable form**: `npm run check:target` performs exactly this check against a
 configured project and distinguishes *never migrated* from *stale*. Supabase:
 the desync repair, for a fork whose history diverged before the reserved
-timestamp band existed, is `supabase/DATABASE.md` § Migration desync.
+timestamp band existed, is `docs/connectors/supabase/database.md`
+§ Migration desync.
 
 Supabase: `supabase/migrations/20260716200000_template_schema.sql` (the template DDL; `supabase/generated/portable-core.generated.sql` is the whole portable half, generated from the migrations)
 (Supabase-specific anon RLS), via local `supabase db reset` or user-run CLI.
@@ -263,8 +264,8 @@ compile-time contract.
 ### 2. The direct table-write surface
 
 Non-structural edits go straight at tables and must be honored with the
-same scoping the Supabase grants encode (see `supabase/DATABASE.md` § Row
-Level Security):
+same scoping the Supabase grants encode (see
+`docs/connectors/supabase/database.md` § Row Level Security):
 
 - **Column-scoped UPDATE** on `cells`, `lanes`, `steps`, `paths`,
   `scenarios` (panel text edits and spec fields — never ids,

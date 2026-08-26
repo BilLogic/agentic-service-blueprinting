@@ -1,7 +1,7 @@
 /**
  * Supabase database types for the `public` schema.
  *
- * @see supabase/DATABASE.md — full schema, RLS, and connection docs
+ * @see docs/connectors/supabase/database.md — full schema, RLS, and connection docs
  * @see docs/erd.mmd — entity relationship diagram
  *
  * Regenerate after schema changes:

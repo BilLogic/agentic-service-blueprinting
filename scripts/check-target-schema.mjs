@@ -25,7 +25,7 @@
  *   npm run check:target                 # reads .env, then the environment
  *   npm run check:target -- --url <u> --key <k>
  *
- * See supabase/DATABASE.md § Did the migration run.
+ * See docs/connectors/supabase/database.md § Did the migration run.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
