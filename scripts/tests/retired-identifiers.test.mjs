@@ -20,16 +20,21 @@ import { RETIRED_IDENTIFIER_FRAGMENTS } from '../retired-vocabulary.mjs'
 
 test('a command tag is not a row', () => {
   // Verbatim shape of what `psql -At -F '\t'` writes for the self-test script.
-  const out = ['BEGIN', 'CREATE TABLE', 'table\tzz_selftest_layer_table\tlayer', 'ROLLBACK'].join('\n')
+  const out = ['BEGIN', 'CREATE TABLE', 'table\tzz_selftest_layer_table\tlayer\t', 'ROLLBACK'].join('\n')
   assert.deepEqual(parseRows(out), [
-    { kind: 'table', identifier: 'zz_selftest_layer_table', word: 'layer' },
+    { kind: 'table', identifier: 'zz_selftest_layer_table', word: 'layer', context: '' },
   ])
 })
 
 test('a row keeps all three of its fields, and blank lines are not rows', () => {
-  const out = ['', 'function body\tsearch_blueprint\tlifecycle', '  ', ''].join('\n')
+  const out = ['', 'function body\tsearch_blueprint\tlifecycle\t… from service_lifecycles s …', '  ', ''].join('\n')
   assert.deepEqual(parseRows(out), [
-    { kind: 'function body', identifier: 'search_blueprint', word: 'lifecycle' },
+    {
+      kind: 'function body',
+      identifier: 'search_blueprint',
+      word: 'lifecycle',
+      context: '… from service_lifecycles s …',
+    },
   ])
 })
 
@@ -42,6 +47,22 @@ test('the sweep is built from the word list, and refuses an empty one', () => {
     assert.ok(sql.includes(kind), `the sweep never reads ${kind}`)
   }
   assert.throws(() => sweepSql([]), /the map is empty/)
+})
+
+test('every branch selects four columns, so the shape does not vary by branch', () => {
+  // The parser keys on the field count, so a branch that selected three would
+  // have its findings silently dropped rather than crash — the failure mode
+  // this whole check is built to refuse.
+  const branches = sweepSql(['layer']).match(/^ {2}select .*$/gm)
+  assert.equal(branches.length, 11, 'a branch was added or removed without updating this')
+})
+
+test('a comment says whether it hangs off the table or a column', () => {
+  const sql = sweepSql(['layer'])
+  assert.ok(sql.includes("when des.objsubid = 0 then 'comment on table'"))
+  // A column comment hangs off the TABLE's oid with objsubid > 0, so without
+  // the attribute join every column comment is reported as the table's.
+  assert.ok(sql.includes('att.attnum = des.objsubid'))
 })
 
 test('the self-test plants a retired word and always rolls back', () => {
@@ -57,7 +78,7 @@ test('the self-test plants a retired word and always rolls back', () => {
 })
 
 test('an exemption is matched on "kind identifier", the way the check names it', () => {
-  const rows = [{ kind: 'index', identifier: 'cells_layer_step_slot_unique', word: 'layer' }]
+  const rows = [{ kind: 'index', identifier: 'cells_layer_step_slot_unique', word: 'layer', context: '' }]
   assert.equal(findings(rows).length, 1)
   assert.deepEqual(
     findings(rows, [{ identifier: 'index cells_layer_step_slot_unique', because: 'x'.repeat(30) }]),

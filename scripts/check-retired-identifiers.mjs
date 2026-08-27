@@ -80,15 +80,15 @@ export function sweepSql(fragments = RETIRED_IDENTIFIER_FRAGMENTS) {
   const values = fragments.map((f) => `(${quote(f)})`).join(', ')
   return `
 with fragment(word) as (values ${values})
-select kind, identifier, word from (
-  select 'table' as kind, cls.relname as identifier, f.word
+select kind, identifier, word, context from (
+  select 'table' as kind, cls.relname as identifier, f.word, '' as context
     from pg_class cls
     join pg_namespace nsp on nsp.oid = cls.relnamespace
     cross join fragment f
    where nsp.nspname = 'public' and cls.relkind in ('r','v','m','p')
      and strpos(cls.relname, f.word) > 0
   union all
-  select 'column', cls.relname || '.' || att.attname, f.word
+  select 'column', cls.relname || '.' || att.attname, f.word, ''
     from pg_attribute att
     join pg_class cls on cls.oid = att.attrelid
     join pg_namespace nsp on nsp.oid = cls.relnamespace
@@ -97,27 +97,27 @@ select kind, identifier, word from (
      and cls.relkind in ('r','v','m','p')
      and strpos(att.attname, f.word) > 0
   union all
-  select 'constraint', con.conname, f.word
+  select 'constraint', con.conname, f.word, ''
     from pg_constraint con
     join pg_namespace nsp on nsp.oid = con.connamespace
     cross join fragment f
    where nsp.nspname = 'public' and strpos(con.conname, f.word) > 0
   union all
-  select 'index', idx.relname, f.word
+  select 'index', idx.relname, f.word, ''
     from pg_class idx
     join pg_namespace nsp on nsp.oid = idx.relnamespace
     cross join fragment f
    where nsp.nspname = 'public' and idx.relkind = 'i'
      and strpos(idx.relname, f.word) > 0
   union all
-  select 'policy', pol.polname || ' on ' || cls.relname, f.word
+  select 'policy', pol.polname || ' on ' || cls.relname, f.word, ''
     from pg_policy pol
     join pg_class cls on cls.oid = pol.polrelid
     join pg_namespace nsp on nsp.oid = cls.relnamespace
     cross join fragment f
    where nsp.nspname = 'public' and strpos(pol.polname, f.word) > 0
   union all
-  select 'trigger', tg.tgname || ' on ' || cls.relname, f.word
+  select 'trigger', tg.tgname || ' on ' || cls.relname, f.word, ''
     from pg_trigger tg
     join pg_class cls on cls.oid = tg.tgrelid
     join pg_namespace nsp on nsp.oid = cls.relnamespace
@@ -125,21 +125,21 @@ select kind, identifier, word from (
    where nsp.nspname = 'public' and not tg.tgisinternal
      and strpos(tg.tgname, f.word) > 0
   union all
-  select 'sequence', cls.relname, f.word
+  select 'sequence', cls.relname, f.word, ''
     from pg_class cls
     join pg_namespace nsp on nsp.oid = cls.relnamespace
     cross join fragment f
    where nsp.nspname = 'public' and cls.relkind = 'S'
      and strpos(cls.relname, f.word) > 0
   union all
-  select 'type', typ.typname, f.word
+  select 'type', typ.typname, f.word, ''
     from pg_type typ
     join pg_namespace nsp on nsp.oid = typ.typnamespace
     cross join fragment f
    where nsp.nspname = 'public' and typ.typtype in ('e','d','c')
      and strpos(typ.typname, f.word) > 0
   union all
-  select 'function', pro.proname, f.word
+  select 'function', pro.proname, f.word, ''
     from pg_proc pro
     join pg_namespace nsp on nsp.oid = pro.pronamespace
     cross join fragment f
@@ -147,7 +147,12 @@ select kind, identifier, word from (
   union all
   -- The one an assertion against information_schema cannot see, and the one
   -- that broke upstream: a body still naming a relation the rename moved.
-  select 'function body', pro.proname, f.word
+  select 'function body', pro.proname, f.word,
+         regexp_replace(
+           substr(pro.prosrc,
+                  greatest(1, strpos(pro.prosrc, f.word) - 45),
+                  length(f.word) + 90),
+           '\\s+', ' ', 'g')
     from pg_proc pro
     join pg_namespace nsp on nsp.oid = pro.pronamespace
     cross join fragment f
@@ -156,10 +161,15 @@ select kind, identifier, word from (
   union all
   -- A comment is read by the next person and by an agent reading the schema,
   -- so a stale one is a wrong answer with a citation.
-  select 'comment on ' || coalesce(cls.relname, '?'), coalesce(cls.relname, '?'), f.word
+  select case when des.objsubid = 0 then 'comment on table' else 'comment on column' end,
+         cls.relname || coalesce('.' || att.attname, ''), f.word,
+         regexp_replace(des.description, '\\s+', ' ', 'g')
     from pg_description des
     join pg_class cls on cls.oid = des.objoid
     join pg_namespace nsp on nsp.oid = cls.relnamespace
+    left join pg_attribute att
+           on att.attrelid = des.objoid and att.attnum = des.objsubid
+                                        and des.objsubid > 0
     cross join fragment f
    where nsp.nspname = 'public' and strpos(des.description, f.word) > 0
 ) hit
@@ -172,7 +182,7 @@ const quote = (value) => `'${String(value).replace(/'/g, "''")}'`
 /**
  * Parse the `kind<TAB>identifier<TAB>word` rows psql emits under `-At -F \t`.
  *
- * A THREE-FIELD LINE IS A ROW; everything else is noise. psql echoes a command
+ * A FOUR-FIELD LINE IS A ROW; everything else is noise. psql echoes a command
  * tag — `BEGIN`, `CREATE TABLE`, `ROLLBACK` — for every statement in a
  * multi-statement script, and a tag carries no tabs. The self-test sends
  * exactly such a script, so the first time this ran against a real database it
@@ -186,11 +196,17 @@ const quote = (value) => `'${String(value).replace(/'/g, "''")}'`
 export function parseRows(tsv) {
   return tsv
     .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
+    // Carriage returns only. Trimming the whole line eats a TRAILING EMPTY
+    // FIELD, which is what psql writes for the context column on every branch
+    // that has no prose to quote — so `.trim()` here dropped every finding
+    // except the two that carried an excerpt.
+    .map((line) => line.replace(/\r$/, ''))
+    .filter((line) => line.trim() !== '')
     .map((line) => line.split('\t'))
-    .filter((fields) => fields.length === 3)
-    .map(([kind, identifier, word]) => ({ kind, identifier, word }))
+    // Four, always — the context column is selected as '' for the branches
+    // that have no prose to quote, so the shape does not vary by branch.
+    .filter((fields) => fields.length === 4)
+    .map(([kind, identifier, word, context]) => ({ kind, identifier, word, context }))
 }
 
 /** Findings, with exemptions applied. */
@@ -268,7 +284,10 @@ function main() {
     console.error(
       `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
         `renamed to ${replacementFor(problem.word)}. A rename moves the table and ` +
-        'the column; it never moves this.',
+        'the column; it never moves this.' +
+        // Without this a reader is told a function body contains a word and left
+        // to find it: `duplicate_path` is 100 lines and prose inside it counts.
+        (problem.context ? `\n    … ${problem.context.trim()} …` : ''),
     )
   }
   if (problems.length > 0) {
