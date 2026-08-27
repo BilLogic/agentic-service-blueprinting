@@ -559,7 +559,7 @@ export type Database = {
           },
         ]
       }
-      propositions: {
+      business_model: {
         Row: {
           created_at: string
           created_by: string | null
@@ -595,7 +595,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "propositions_service_id_fkey"
+            foreignKeyName: "business_model_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: true
             referencedRelation: "services"

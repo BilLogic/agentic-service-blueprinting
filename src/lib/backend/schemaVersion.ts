@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.08.26'
+export const TEMPLATE_SCHEMA_VERSION = '2026.08.27'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,10 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.08.26'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // propositions → business_model, the last row of the vocabulary map that
+  // applied to this package (#84). `evidence.proposition_question_key` keeps
+  // the word on purpose: the three validation questions ARE propositions.
+  '2026.08.27',
   // The IR can author a `needs` edge: dependency edges carry an optional
   // `kind`, absent meaning `trigger`. No DDL — cell_dependencies.kind has
   // existed since 20260729120000; what moved is the IR's ability to say it.

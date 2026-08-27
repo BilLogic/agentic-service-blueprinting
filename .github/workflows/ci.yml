@@ -79,6 +79,12 @@ jobs:
       # hands the agent a dead end mid-run.
       - run: npm run check:doc-paths
 
+      # Same reasoning, pointed at the database vocabulary instead of the file
+      # tree: a relation named in a string literal is a path the type checker
+      # cannot see, so a rename that TypeScript accepted still reaches Postgres
+      # as a request for a table that is not there.
+      - run: npm run check:database-names
+
   # The portability position, executed.
   #
   # The partition between the portable Postgres core and the Supabase recipe is
@@ -176,6 +182,23 @@ jobs:
           psql -At -F $'\t' -d migration_replay -f supabase/portable/inventory.sql \
             > /tmp/replay.tsv
           diff -u /tmp/inventory.tsv /tmp/replay.tsv
+
+      # The vocabulary sweep, against the catalogue rather than the files.
+      # `alter table … rename` moves the table and the column; the index, the
+      # constraint, the policy, the trigger, the comment and every plpgsql body
+      # keep the name they were created with. Only a built database can say
+      # which of those still carry a retired word, and `migration_replay` is one.
+      #
+      # The self-test runs FIRST, and for the same reason `A broken core fails
+      # this job` exists below: a sweep that returns nothing looks identical
+      # whether the schema is clean or the query is broken. It plants an object
+      # named for a retired word inside a transaction, asserts the sweep reports
+      # it, and rolls back.
+      - name: The vocabulary sweep can fail, then does not
+        run: |
+          set -euo pipefail
+          npm run check:identifiers -- --self-test --database migration_replay
+          npm run check:identifiers -- --database migration_replay
 
       # 4. The guard, watched failing. Both halves of it: a generated file that
       # no longer matches its migrations, and a core that a stock Postgres

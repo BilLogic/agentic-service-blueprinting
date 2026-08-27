@@ -18,6 +18,8 @@
     "check:portable-core": "node scripts/generate-portable-core.mjs --check",
     "check:band": "node scripts/check-migration-band.mjs",
     "check:target": "node scripts/check-target-schema.mjs",
+    "check:identifiers": "node scripts/check-retired-identifiers.mjs",
+    "check:database-names": "node scripts/check-database-names.mjs",
     "test:ir": "bash scripts/tests/run_tests.sh",
     "version": "changeset version && node scripts/check-version-agreement.mjs --write",
     "preview": "vite preview",

@@ -51,7 +51,7 @@ Schema coverage (migrations 20260729120000_derived_layer +
     arrow and a needs edge, and the UUIDv5 qualified key ends in `#<kind>` so
     the two do not collide. label/note still have no IR shape.
   * DERIVED TABLES ARE NEVER SEEDED. slices/slice_items/findings/evidence/
-    propositions are runtime outputs of the sb:* skills, not IR-authored
+    business_model is a runtime output of the sb:* skills, not IR-authored
     content — there is deliberately no IR shape for them. Seeds cannot break
     them either: derived tables reference cells softly (uuid[]/text[], no FK),
     so the scenario-replace delete cannot cascade into them. The --verify
@@ -622,7 +622,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
                 )
 
     # Derived-layer report (never a failure): slices/findings/evidence/
-    # propositions are user- and skill-authored at runtime, NOT seeded, and
+    # business_model are user- and skill-authored at runtime, NOT seeded, and
     # they soft-reference cells — so rows referencing a just-replaced scenario
     # are legitimate (that is the recovery design), but worth surfacing after
     # a re-import. Guarded by to_regclass so the verify script still runs
@@ -653,9 +653,9 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
         f"    select count(*) into n from public.slices where service_id = {lc_id};\n"
         "    raise notice 'derived (reported, not verified): % slices on this service', n;\n"
         "  end if;\n"
-        "  if to_regclass('public.propositions') is not null then\n"
-        f"    select count(*) into n from public.propositions where service_id = {lc_id};\n"
-        "    raise notice 'derived (reported, not verified): % propositions rows on this service', n;\n"
+        "  if to_regclass('public.business_model') is not null then\n"
+        f"    select count(*) into n from public.business_model where service_id = {lc_id};\n"
+        "    raise notice 'derived (reported, not verified): % business_model rows on this service', n;\n"
         "  end if;"
     )
 
@@ -667,7 +667,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
 -- Run AFTER the seed commits. Verifies per-scenario row counts for every
 -- table plus content and cell_key spot-checks for: {scenario_list}.
 -- Any mismatch raises an exception, so psql/supabase execution fails loudly.
--- Derived-layer rows (slices/findings/evidence/propositions) are REPORTED via
+-- Derived-layer rows (slices/findings/evidence/business_model) are REPORTED via
 -- notices, never failed: they are runtime skill/user output, not seed output.
 
 do $$

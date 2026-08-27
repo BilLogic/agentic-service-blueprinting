@@ -31,7 +31,7 @@ and stable keys in place of UUIDs.
 - Ordering fields
 - Working precedent
 - Cell slots (`position`)
-- Derived layer: slices, findings, evidence, propositions
+- Derived layer: slices, findings, evidence, business_model
 - Spec fields on IR-owned tables
 
 ## Hierarchy
@@ -178,7 +178,7 @@ slice references and evidence — and each further item becomes a sibling
 with the parent's key plus an ordinal suffix). Tools and the IR never
 expose slot management directly — treat "the" cell of a slot as slot 0.
 
-## Derived layer: slices, findings, evidence, propositions
+## Derived layer: slices, findings, evidence, business_model
 
 The skills' outputs land in five derived tables plus one view
 (DDL: `supabase/migrations/20260729120000_derived_layer.sql`).
@@ -201,7 +201,7 @@ deliberately never stored.
 | `slice_items` | One frame of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider frame), `caption`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
 | `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_name`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_name + sorted-cell_keys hash + reason slug — audit-playbook §2) |
 | `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); restricted SELECT — excerpts may hold interview content |
-| `propositions` | One business-model record per service (PK = `service_id`) | `funding`, `pricing`, `delivery_cost`, `revenue_model`, `partners`; restricted SELECT |
+| `business_model` | One business-model record per service (PK = `service_id`) | `funding`, `pricing`, `delivery_cost`, `revenue_model`, `partners`; restricted SELECT |
 
 **Findings dedupe is DB-backed**: the partial unique index
 `findings_open_fingerprint_idx` on `(service_id, fingerprint)

@@ -385,7 +385,7 @@ assert "cell_key" in verify, "verify has no cell_key checks"
 assert "missing the authored cell_key prefix" in verify, "verify missing cell_key prefix check"
 assert "cell_key mismatch" in verify, "verify missing cell_key spot-check"
 # Derived-layer section: present, guarded, and notice-only.
-for table in ("slice_items", "findings", "evidence", "slices", "propositions"):
+for table in ("slice_items", "findings", "evidence", "slices", "business_model"):
     assert f"to_regclass('public.{table}')" in verify, f"derived report missing {table}"
 derived = verify.split("to_regclass", 1)[1]
 assert "raise notice" in derived, "derived section must report via notice"
@@ -924,6 +924,8 @@ grep -q "2026.07.16 -> 2026.08.25" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the lane-vocabulary step — $(cat "$TMP/migrate.out")"
 grep -q "2026.08.25 -> 2026.08.26" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the dependency-kind step — $(cat "$TMP/migrate.out")"
+grep -q "2026.08.26 -> 2026.08.27" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the business-model step — $(cat "$TMP/migrate.out")"
 python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
 import json, sys
 migrated = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -1002,24 +1004,33 @@ grep -q "already anchored" "$TMP/migrate-prev.out" \
 if grep -q "re-anchored" "$TMP/migrate-prev.out"; then
   fail "migrate-prev: nothing moved in the subtree, so nothing may be re-anchored"
 fi
-python3 - "$TMP" "$SAMPLE_PREV" <<'PYPREV'
-import json, sys
-tmp, before_path = sys.argv[1], sys.argv[2]
+python3 - "$TMP" "$SAMPLE_PREV" "$REPO_ROOT" <<'PYPREV'
+import json, pathlib, sys
+tmp, before_path, repo = sys.argv[1], sys.argv[2], sys.argv[3]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+
+# Read from the schema rather than restating it. `migrate_ir` with no `--to`
+# migrates to whatever the template speaks, so that is what this asserts — the
+# contract, not one version's spelling of it. Hardcoding the target here meant
+# every bump had to remember three literals in this heredoc, and 2026.08.27
+# arrived without them.
+current = migrate_ir.current_version()
 before = json.load(open(before_path, encoding="utf-8"))
 after = json.load(open(f"{tmp}/prev.json", encoding="utf-8"))
-assert after["schema_version"] == "2026.08.26", "the version stamp did not move"
-before["schema_version"] = "2026.08.26"
+assert after["schema_version"] == current, "the version stamp did not move"
+before["schema_version"] = current
 assert after == before, "the step changed something other than the version stamp"
 recorded = json.load(open(f"{tmp}/prev-hashes.json", encoding="utf-8"))
 workspace = json.load(open(f"{tmp}/prev-workspace.json", encoding="utf-8"))
-assert workspace["schema_version"] == "2026.08.26", "workspace version not bumped"
+assert workspace["schema_version"] == current, "workspace version not bumped"
 for key, digest in recorded.items():
     entry = workspace["scenarios"][key]
     assert entry["content_hash"] == digest, f"{key}: a hash moved across a no-op step"
     assert entry["status"] == "signed_off", f"{key}: sign-off dropped"
     assert entry["signed_by"] == "bill", f"{key}: signer lost"
 PYPREV
-pass "migrate-prev (2026.08.25 -> 2026.08.26 stamps the version and moves no hash)"
+pass "migrate-prev (2026.08.25 -> current stamps the version and moves no hash)"
 
 # The load-bearing one: sign-off binds to a hash of a scenario subtree, and the
 # bump renames fields INSIDE that subtree — so every recorded hash would be
@@ -1062,10 +1073,13 @@ python3 "$MIGRATE" "$TMP/signed-ir.json" --workspace "$TMP/signed-workspace.json
 grep -q "re-anchored" "$TMP/migrate-signoff.out" \
   || fail "migrate-signoff: no re-anchor reported — $(cat "$TMP/migrate-signoff.out")"
 python3 - "$REPO_ROOT" "$TMP" <<'PYVERIFY'
-import json, subprocess, sys
+import json, pathlib, subprocess, sys
 repo, tmp = sys.argv[1], sys.argv[2]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+
 workspace = json.load(open(f"{tmp}/signed-workspace.json", encoding="utf-8"))
-assert workspace["schema_version"] == "2026.08.26", "workspace version not bumped"
+assert workspace["schema_version"] == migrate_ir.current_version(), "workspace version not bumped"
 
 out = subprocess.run(
     [sys.executable, f"{repo}/scripts/compute_signoff_hash.py",

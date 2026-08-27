@@ -45,7 +45,7 @@ erDiagram
   slices ||--o{ slice_items : "has many"
   services ||--o{ findings : "has many"
   services ||--o{ evidence : "has many"
-  services ||--o| propositions : "has 0..1"
+  services ||--o| business_model : "has 0..1"
 
   services {
     uuid id PK
@@ -195,7 +195,7 @@ erDiagram
     uuid created_by
   }
 
-  propositions {
+  business_model {
     uuid service_id PK, FK "one business-model record per service"
     text funding
     text pricing
