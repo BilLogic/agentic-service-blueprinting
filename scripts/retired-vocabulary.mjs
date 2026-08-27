@@ -14,9 +14,9 @@
  * divergence is itself a failure. Hence: two lists, one test holding them
  * together.
  *
- * Ported from `plus-uno-blueprint` (its #145/#146), whose renames these are.
- * The rows differ: `sets_off` and `cells.maturity` never existed here, and
- * `description` → `summary` did, so this is not a copy.
+ * Ported from an instance built on this template, whose renames these are —
+ * and not copied: the rows differ, because `sets_off` and `cells.maturity`
+ * never existed here and `description` → `summary` did.
  *
  * Read by:
  *   - `scripts/check-retired-identifiers.mjs`  (Check A — database identifiers)

@@ -252,12 +252,12 @@ export function namedObjects(code, language = 'javascript') {
       continue
     }
     // A `select=` clause long enough to need concatenating is split across
-    // several literals, and only the first piece carries the `select=`.
-    // `scripts/backfill_cell_keys.mjs:94` is the whole reason this branch
-    // exists: the dead relation is on the third line of a three-line
-    // concatenation, and matching only the piece that opens the query would
-    // step straight over it. The embed grammar — `alias:relation(` — is
-    // distinctive enough to stand on its own.
+    // several literals, and only the first piece carries the `select=`. A
+    // backfill script upstream is the whole reason this branch exists: its
+    // dead relation sat on the third line of a three-line concatenation, and
+    // matching only the piece that opens the query stepped straight over it.
+    // The embed grammar — `alias:relation(` — is distinctive enough to stand
+    // on its own. No such script is in this tree; the hazard is in the shape.
     if (EMBED_SYNTAX.test(literal.value)) {
       for (const name of databaseNames(literal.value, 'select')) {
         out.push({ ...literal, name, kind: 'embed hint' })

@@ -4,11 +4,12 @@
  *
  * `alter table … rename` moves the table and the column and nothing else. The
  * index, the constraint, the policy, the trigger, the comment and every plpgsql
- * body keep the name they were created with. Upstream discovered that the hard
- * way — twenty-two objects left carrying retired words a day after the rename
- * that was supposed to have moved them (plus-uno-blueprint#142), and nine
- * functions referencing columns that no longer existed because the sweep's
- * `\mservice_scenarios?\M` could not match inside `service_scenario_id` (#143).
+ * body keep the name they were created with. An instance built on this
+ * template discovered that the hard way — twenty-two objects still carrying
+ * retired words a day after the rename that was supposed to have moved them,
+ * and nine functions referencing columns that no longer existed because the
+ * sweep's `\mservice_scenarios?\M` could not match inside
+ * `service_scenario_id`. Both were found by hand, weeks later.
  *
  * This package avoided both: `21000102`'s `__rename_schema_objects` reads the
  * catalogue instead of a hand-written list, and `__assert_vocabulary_gone` was
