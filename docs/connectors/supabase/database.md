@@ -217,6 +217,7 @@ credentials.
 | `21000109000000_the_lane_vocabulary_is_a_schema_version.sql` | `schema_version` → `2026.08.25`; drops the series' scaffolding |
 | `21000110000000_the_ir_can_author_a_needs_edge.sql` | `schema_version` → `2026.08.26`. No DDL: `cell_dependencies.kind` has existed since `20260729120000`; the IR gained the field that can author it |
 | `21000111000000_propositions_are_the_business_model.sql` | `propositions` → `business_model`, with its constraint, index, policy and trigger names swept from the catalogue rather than listed. `evidence.proposition_question_key` is a permanent exemption and is asserted to survive. `schema_version` → `2026.08.27` |
+| `21000112000000_the_word_boundary_left_five_behind.sql` | Repairs what `\m…\M` could not reach. `set_cell_dependency` named `cell_triggers_source_target_kind_unique` in an `on conflict on constraint`, and `21000103`'s catalogue sweep had renamed that constraint — the body rewrite used a word-boundary pattern, and `_` is a word constituent, so it matched the table reference and not the constraint. Plus three stale comments and one inside a function body. No version bump: nothing about the shape moves |
 
 ## Reserved migration timestamp band
 
