@@ -169,16 +169,28 @@ order by kind, identifier, word;
 
 const quote = (value) => `'${String(value).replace(/'/g, "''")}'`
 
-/** Parse the `kind<TAB>identifier<TAB>word` rows psql emits under `-At -F \t`. */
+/**
+ * Parse the `kind<TAB>identifier<TAB>word` rows psql emits under `-At -F \t`.
+ *
+ * A THREE-FIELD LINE IS A ROW; everything else is noise. psql echoes a command
+ * tag — `BEGIN`, `CREATE TABLE`, `ROLLBACK` — for every statement in a
+ * multi-statement script, and a tag carries no tabs. The self-test sends
+ * exactly such a script, so the first time this ran against a real database it
+ * destructured `undefined` and crashed.
+ *
+ * Which is the self-test doing its job, one layer further out than intended.
+ * It was written on the argument that a sweep returning nothing looks the same
+ * whether the schema is clean or the query is broken; the thing it actually
+ * caught first was the PARSER, on a machine with no Postgres to catch it on.
+ */
 export function parseRows(tsv) {
   return tsv
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => {
-      const [kind, identifier, word] = line.split('\t')
-      return { kind, identifier, word }
-    })
+    .map((line) => line.split('\t'))
+    .filter((fields) => fields.length === 3)
+    .map(([kind, identifier, word]) => ({ kind, identifier, word }))
 }
 
 /** Findings, with exemptions applied. */
