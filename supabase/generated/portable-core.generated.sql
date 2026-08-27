@@ -3402,7 +3402,9 @@ $version$;
 do $bodies$
 declare
   target record;
-  edit record;
+  -- An array, not a record: `foreach … slice 1` hands back a text[] row of the
+  -- 2-D literal below, and plpgsql rejects a record variable for it outright.
+  edit text[];
   rewritten integer := 0;
   edits constant text[][] := array[
     -- The dangling constraint reference.
