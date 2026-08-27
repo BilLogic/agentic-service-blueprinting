@@ -74,7 +74,7 @@ alter table public.slices enable row level security;
 alter table public.slice_items enable row level security;
 alter table public.findings enable row level security;
 alter table public.evidence enable row level security;
-alter table public.propositions enable row level security;
+alter table public.business_model enable row level security;
 
 -- slices / slice_items: public read, authenticated write
 create policy "slices_select" on public.slices for select using (true);
@@ -101,7 +101,7 @@ create policy "findings_update_auth" on public.findings
 revoke insert, update, delete on public.findings from authenticated;
 grant update (status) on public.findings to authenticated;
 
--- evidence / propositions: restricted read (interview excerpts, pricing are not
+-- evidence / business_model: restricted read (interview excerpts, pricing are not
 -- world-readable on public deploys); authenticated write.
 create policy "evidence_select_auth" on public.evidence
   for select to authenticated using (true);
@@ -112,11 +112,11 @@ create policy "evidence_update_auth" on public.evidence
 create policy "evidence_delete_auth" on public.evidence
   for delete to authenticated using (true);
 
-create policy "propositions_select_auth" on public.propositions
+create policy "propositions_select_auth" on public.business_model
   for select to authenticated using (true);
-create policy "propositions_insert_auth" on public.propositions
+create policy "propositions_insert_auth" on public.business_model
   for insert to authenticated with check (true);
-create policy "propositions_update_auth" on public.propositions
+create policy "propositions_update_auth" on public.business_model
   for update to authenticated using (true) with check (true);
 
 -- evidence_counts view: public (counts only, no content)
@@ -183,24 +183,24 @@ end $$;
 -- F1 is entirely about the anon / authenticated roles.
 -- ---- F1: explicit exposure grants ----
 grant select on public.slices, public.slice_items, public.findings to anon, authenticated;
-grant select on public.evidence, public.propositions to authenticated;
+grant select on public.evidence, public.business_model to authenticated;
 grant insert, update, delete on public.slices, public.slice_items, public.evidence to authenticated;
-grant insert, update on public.propositions to authenticated;
+grant insert, update on public.business_model to authenticated;
 grant select on public.evidence_counts to anon, authenticated;
 
 -- Defense-in-depth: strip legacy write privileges from anon (RLS already blocks the
 -- DML, but TRUNCATE is not subject to RLS) and TRUNCATE from both roles everywhere.
 revoke insert, update, delete, truncate on public.slices, public.slice_items,
-  public.findings, public.evidence, public.propositions from anon;
-revoke select on public.evidence, public.propositions from anon;
+  public.findings, public.evidence, public.business_model from anon;
+revoke select on public.evidence, public.business_model from anon;
 revoke truncate on public.slices, public.slice_items, public.findings,
-  public.evidence, public.propositions, public.cells, public.lanes, public.phases
+  public.evidence, public.business_model, public.cells, public.lanes, public.phases
   from anon, authenticated;
 revoke insert, update, delete on public.evidence_counts from anon, authenticated;
 
 -- who "the caller" is, on Supabase.
 alter table public.slice_items  alter column created_by set default auth.uid();
-alter table public.propositions alter column created_by set default auth.uid();
+alter table public.business_model alter column created_by set default auth.uid();
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 20260818000000_authoring_foundation.sql
@@ -445,7 +445,7 @@ begin
   foreach t in array array[
     'phases', 'scenarios', 'paths', 'steps', 'path_steps',
     'lanes', 'cells', 'cell_dependencies', 'slices', 'slice_items',
-    'evidence', 'propositions', 'findings'
+    'evidence', 'business_model', 'findings'
   ] loop
     execute format('drop policy if exists %I on public.%I',
       t || '_insert_service_only', t);
