@@ -43,6 +43,12 @@ content-preserving too — no authored value would have moved — but it would h
 changed every signed scenario's hash for no gain, and made sign-off survival
 depend on the operator remembering `--workspace`.
 
+2026.08.26 → 2026.08.27 writes nothing either, and for a reason worth keeping
+separate: the table it renamed was never in the IR. Only the stamp moves. Two
+consecutive no-op hops is not a sign the versioning is idle — it is what a
+schema version costs when the schema and the interchange format are allowed to
+move independently, which is the arrangement that keeps sign-off cheap.
+
 Rather than silently de-sign every scenario an org already approved, `--workspace`
 re-anchors the recorded hashes: for each scenario whose stored `content_hash`
 equals its PRE-migration hash, the stored hash is replaced with its
@@ -185,6 +191,26 @@ def to_2026_08_26(doc: dict) -> None:
     """
 
 
+def to_2026_08_27(doc: dict) -> None:
+    """2026.08.26 → 2026.08.27 — `propositions` became `business_model`.
+
+    Nothing to do, for a different reason than the last no-op.
+
+    2026.08.26 wrote nothing because the field it added was optional and its
+    absence already meant the default. This one writes nothing because the
+    table it renamed is not in the IR at all: `business_model` holds one
+    record per service and is authored at RUNTIME by the sb:* skills, like
+    slices, findings and evidence. The IR carries the blueprint — phases,
+    scenarios, paths, cells, dependencies — and never carried this.
+
+    The version still moves, because the SCHEMA moved and the stamp is what a
+    target is checked against. A file that says 2026.08.26 would be refused by
+    a template speaking 2026.08.27 even though the two documents are byte-
+    identical apart from the stamp, which is exactly what this step exists to
+    fix.
+    """
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -199,6 +225,13 @@ STEPS = (
         "dependency edges gain an optional `kind` (trigger | needs); absent "
         "means trigger, so no authored content moves",
         to_2026_08_26,
+    ),
+    Step(
+        "2026.08.26",
+        "2026.08.27",
+        "propositions became business_model; the table is runtime output and "
+        "was never in the IR, so only the stamp moves",
+        to_2026_08_27,
     ),
 )
 
