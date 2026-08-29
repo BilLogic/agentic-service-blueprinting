@@ -29,7 +29,4 @@ in [overview.md](./overview.md); routing by task is in
 
 ## History — a snapshot of one moment, never current guidance
 
-| Plan | Status | What was decided |
-| --- | --- | --- |
-| [plans/2026-08-23-001-refactor-agent-harness-ia-plan.md](./plans/2026-08-23-001-refactor-agent-harness-ia-plan.md) | `approved` | Become the ratified canonical home for the sb skills, and adopt the shared harness IA without inheriting coupling to the deployment this template was generalised from. |
-| [plans/2026-08-23-002-spec-canonical-home-and-standalone.md](./plans/2026-08-23-002-spec-canonical-home-and-standalone.md) | `partly executed` | Make "canonical home" and "standalone" mechanisms rather than assertions — publish the skills through the git remote, fail the consumer's drift check when it cannot reach them, and sweep the package of references to the deployment it was generalised from. |
+No plans are in the tree today — see [plans/overview.md](./plans/overview.md) for what lands here and how it is marked.
