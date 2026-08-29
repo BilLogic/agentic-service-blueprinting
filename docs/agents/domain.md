@@ -1,3 +1,7 @@
+---
+summary: Where the engineering skills look for this repo's domain vocabulary and decisions — one root CONTEXT.md plus docs/adr/, both created lazily rather than scaffolded.
+---
+
 # Domain Docs
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.

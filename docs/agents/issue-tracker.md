@@ -1,3 +1,7 @@
+---
+summary: How the engineering skills read and write this repo's issue queue — GitHub Issues on BilLogic/agentic-service-blueprinting, through the gh CLI.
+---
+
 # Issue tracker: GitHub
 
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.

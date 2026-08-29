@@ -1,3 +1,9 @@
+---
+status: partly executed
+date: 2026-08-23
+summary: Make "canonical home" and "standalone" mechanisms rather than assertions — publish the skills through the git remote, fail the consumer's drift check when it cannot reach them, and sweep the package of references to the deployment it was generalised from.
+---
+
 ## Problem Statement
 
 This repo is the canonical home for the four `sb` skills and the package other teams will clone, but nothing enforces either fact.

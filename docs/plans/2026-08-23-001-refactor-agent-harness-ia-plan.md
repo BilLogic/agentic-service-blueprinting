@@ -1,7 +1,7 @@
 ---
 status: approved
 date: 2026-08-23
-summary: Become the ratified canonical home for the sb skills, and adopt the shared harness IA without inheriting any uno coupling.
+summary: Become the ratified canonical home for the sb skills, and adopt the shared harness IA without inheriting coupling to the deployment this template was generalised from.
 ---
 
 # Agent harness IA rebuild — agentic-service-blueprinting
