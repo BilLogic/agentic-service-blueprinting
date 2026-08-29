@@ -2,7 +2,7 @@
 
 The template's blueprint data model. Source of truth:
 `supabase/migrations/20260716200000_template_schema.sql` plus the
-derived-layer migrations (`20260729120000_derived_layer.sql`,
+analysis-tier migrations (`20260729120000_derived_layer.sql`,
 `20260730090000_derived_layer_grants_hardening.sql`,
 `20260803001000_slices_origin_allows_human.sql`) and the authoring
 migrations (`20260818000000_authoring_foundation.sql` — provenance
@@ -31,7 +31,7 @@ and stable keys in place of UUIDs.
 - Ordering fields
 - Working precedent
 - Cell slots (`position`)
-- Derived layer: slices, findings, evidence, business_model
+- Analysis tier: slices, findings, evidence, business_model
 - Spec fields on IR-owned tables
 
 ## Hierarchy
@@ -178,7 +178,7 @@ slice references and evidence — and each further item becomes a sibling
 with the parent's key plus an ordinal suffix). Tools and the IR never
 expose slot management directly — treat "the" cell of a slot as slot 0.
 
-## Derived layer: slices, findings, evidence, business_model
+## Analysis tier: slices, findings, evidence, business_model
 
 The skills' outputs land in five derived tables plus one view
 (DDL: `supabase/migrations/20260729120000_derived_layer.sql`).
@@ -216,7 +216,7 @@ powers the assumption lens on public deploys.
 
 ## Spec fields on IR-owned tables
 
-The derived-layer migration also adds human-editable spec columns to
+The analysis-tier migration also adds human-editable spec columns to
 three IR-owned tables (writable via column-scoped grants; the content
 columns stay import-owned):
 

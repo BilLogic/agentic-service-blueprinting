@@ -147,7 +147,7 @@ export function createFixtureBackend(): Backend {
 
     findings: {
       async listFindings() {
-        // The derived layer without a database is the audit ledger files, not
+        // The analysis tier without a database is the audit ledger files, not
         // this module — see adapter-contract.md. Nothing is served here rather
         // than an empty store being implied.
         return []

@@ -1,5 +1,5 @@
 /**
- * Offline / no-DB fallback for the slices surface — the derived-layer
+ * Offline / no-DB fallback for the slices surface — the analysis-tier
  * counterpart to blueprintFallbacks.ts. The template ships three generated
  * demo slices — journey, step, lane — over the sample content (see
  * scripts/generate_sample_blueprint.mjs);
