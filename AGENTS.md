@@ -58,3 +58,24 @@ A scaffolded blueprint workspace carries its own copies of `skills/`,
 `references/`, `agents/`, `scripts/` — the same routing applies there,
 resolved against the workspace root. Workspace version = template version;
 upgrade via the recipe in `references/customization.md`.
+
+## Agent skills
+
+Config for the `mattpocock-skills` engineering skills. Read the pointed-at
+file when a skill asks for it; don't preload.
+
+### Issue tracker
+
+GitHub Issues on `BilLogic/agentic-service-blueprinting`, via the `gh` CLI.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, label strings unchanged (`needs-triage`,
+`needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`).
+See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`, both created lazily
+by `/domain-modeling`. See `docs/agents/domain.md`.
