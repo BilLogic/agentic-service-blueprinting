@@ -56,6 +56,34 @@ import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 const SRC = resolve(ROOT, 'src')
+const GUARD_FILE = relative(ROOT, new URL(import.meta.url).pathname).split('\\').join('/')
+const GUARD_SOURCE = readFileSync(new URL(import.meta.url), 'utf8')
+const RERUN = 'npm test -- scripts/tests/labels-name-their-columns.test.mjs'
+
+function sourceLine(code, index) {
+  return code.slice(0, Math.max(0, index)).split('\n').length
+}
+
+function mapRowLocation(label) {
+  const index = GUARD_SOURCE.indexOf(`label: '${label}'`)
+  return `${GUARD_FILE}:${sourceLine(GUARD_SOURCE, index)}`
+}
+
+export function guardFailure(location, message) {
+  return `${location}: ${message}\nRun: ${RERUN}`
+}
+
+const PANEL_LABELS_LOCATION = `${GUARD_FILE}:${sourceLine(
+  GUARD_SOURCE,
+  GUARD_SOURCE.indexOf('export function panelLabels'),
+)}`
+
+test('guard diagnostics name a source line and the focused rerun command', () => {
+  assert.equal(
+    guardFailure('src/Panel.tsx:7', 'A label is not mapped.'),
+    `src/Panel.tsx:7: A label is not mapped.\nRun: ${RERUN}`,
+  )
+})
 
 /* ----------------------------------------------------------- the subject */
 
@@ -115,14 +143,22 @@ export function panelLabels(sources) {
   for (const { file, code } of sources) {
     for (const element of code.matchAll(LABEL_ELEMENT)) {
       const prop = LABEL_PROP.exec(element[2])
-      if (prop) out.push({ file, component: element[1], label: prop[2] })
+      if (prop) {
+        const propIndex = element.index + element[0].indexOf(prop[0])
+        out.push({ file, line: sourceLine(code, propIndex), component: element[1], label: prop[2] })
+      }
     }
     const start = code.indexOf(TAB_TABLE)
     if (start < 0) continue
     const end = code.indexOf('\n]', start)
     const table = code.slice(start, end < 0 ? code.length : end)
     for (const row of table.matchAll(/\blabel:\s*'([^']*)'/g)) {
-      out.push({ file, component: 'PANEL_TABS', label: row[1] })
+      out.push({
+        file,
+        line: sourceLine(code, start + row.index),
+        component: 'PANEL_TABS',
+        label: row[1],
+      })
     }
   }
   return out
@@ -245,9 +281,15 @@ export function labelsMissingFromMap(labels, map = LABEL_COLUMNS) {
   const seen = new Map()
   for (const entry of labels) {
     if (mapped.has(canonical(entry.label))) continue
-    if (!seen.has(entry.label)) seen.set(entry.label, `"${entry.label}" (${entry.file})`)
+    if (!seen.has(entry.label)) {
+      seen.set(entry.label, {
+        label: entry.label,
+        file: entry.file,
+        line: entry.line,
+      })
+    }
   }
-  return [...seen.values()].sort()
+  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
 }
 
 test('every panel label is a word the map binds to the schema', () => {
@@ -255,22 +297,34 @@ test('every panel label is a word the map binds to the schema', () => {
   // The extraction, asserted before its result is trusted: a walker that
   // found no labels would pass exactly as loudly as an interface that is
   // clean.
-  assert.ok(labels.length > 15, `only ${labels.length} panel labels found — the extraction is wrong`)
+  assert.ok(
+    labels.length > 15,
+    guardFailure(PANEL_LABELS_LOCATION, `only ${labels.length} panel labels found — the extraction is wrong`),
+  )
   for (const component of [...LABEL_COMPONENTS, 'PANEL_TABS']) {
     assert.ok(
       labels.some((one) => one.component === component),
-      `no ${component} label was found — either it is gone or the extraction missed it`,
+      guardFailure(
+        PANEL_LABELS_LOCATION,
+        `no ${component} label was found — either it is gone or the extraction missed it`,
+      ),
     )
   }
   const found = labelsMissingFromMap(labels)
+  const rendered = found.map(
+    (entry) => `"${entry.label}" (${entry.file}:${entry.line})`,
+  )
   assert.deepEqual(
     found,
     [],
-    'A panel label is bound to nothing. This is #89 exactly: not that the word ' +
-      'differs from its column, but that no document says which column it is, so ' +
-      'nobody downstream can tell a decision from an accident. Add a row to ' +
-      "LABEL_COLUMNS and to CONTEXT.md's interface→schema map — with a reason if " +
-      `the two words differ:\n${found.join('\n')}`,
+    guardFailure(
+      found[0] ? `${found[0].file}:${found[0].line}` : PANEL_LABELS_LOCATION,
+      'A panel label is bound to nothing. This is #89 exactly: not that the word ' +
+        'differs from its column, but that no document says which column it is, so ' +
+        'nobody downstream can tell a decision from an accident. Add a row to ' +
+        "LABEL_COLUMNS and to CONTEXT.md's interface→schema map — with a reason if " +
+        `the two words differ:\n${rendered.join('\n')}`,
+    ),
   )
 })
 
@@ -294,8 +348,8 @@ test('the unmapped-label check goes red on a label nobody bound', () => {
     },
   ]
   assert.deepEqual(labelsMissingFromMap(panelLabels(planted)), [
-    '"Cadence" (src/components/blueprint/Planted.tsx)',
-    '"Costs" (src/components/blueprint/Planted.tsx)',
+    { label: 'Cadence', file: 'src/components/blueprint/Planted.tsx', line: 1 },
+    { label: 'Costs', file: 'src/components/blueprint/Planted.tsx', line: 7 },
   ])
 })
 
@@ -312,9 +366,12 @@ test('every row of the map is a label some panel still says', () => {
   assert.deepEqual(
     found,
     [],
-    `The map describes an interface that is gone: ${found.join(', ')}. A stale row is ` +
-      'worse than a missing one — a reader looking the word up finds an answer, and ' +
-      'the answer is about a panel nobody can open. Delete the row, or restore the label.',
+    guardFailure(
+      mapRowLocation(found[0] ?? 'Content'),
+      `The map describes an interface that is gone: ${found.join(', ')}. A stale row is ` +
+        'worse than a missing one — a reader looking the word up finds an answer, and ' +
+        'the answer is about a panel nobody can open. Delete the row, or restore the label.',
+    ),
   )
 })
 
@@ -357,12 +414,21 @@ export function namesThatDoNotExist(schema, map = LABEL_COLUMNS) {
 }
 
 test('every row of the map names something the schema has', () => {
-  assert.ok(SCHEMA.size > 10, `only ${SCHEMA.size} tables parsed — the reader is wrong`)
+  assert.ok(
+    SCHEMA.size > 10,
+    guardFailure(
+      'src/types/database.ts:1',
+      `only ${SCHEMA.size} tables parsed — the generated-schema reader is wrong`,
+    ),
+  )
   assert.deepEqual(
     namesThatDoNotExist(SCHEMA),
     [],
-    'A label is bound to a name the schema does not have. A map that points at a ' +
-      'second missing word is the defect restated, not the fix for it.',
+    guardFailure(
+      mapRowLocation(/"([^"]+)"/.exec(namesThatDoNotExist(SCHEMA)[0] ?? '')?.[1] ?? 'Content'),
+      'A label is bound to a name the schema does not have. A map that points at a ' +
+        'second missing word is the defect restated, not the fix for it.',
+    ),
   )
 })
 
@@ -406,10 +472,13 @@ test('every divergence is a decision somebody wrote down', () => {
   assert.deepEqual(
     found,
     [],
-    `A label differs from its name with no reason a stranger can evaluate: ${found.join('; ')}. ` +
-      "CONTEXT.md's retired-spelling entries are the shape: a word that stands where " +
-      'it is, and the sentence saying why. That is what every divergence needs — a ' +
-      'reason, or a rename.',
+    guardFailure(
+      mapRowLocation(found[0]?.split(' → ')[0] ?? 'Content'),
+      `A label differs from its name with no reason a stranger can evaluate: ${found.join('; ')}. ` +
+        "CONTEXT.md's retired-spelling entries are the shape: a word that stands where " +
+        'it is, and the sentence saying why. That is what every divergence needs — a ' +
+        'reason, or a rename.',
+    ),
   )
 })
 
@@ -418,10 +487,13 @@ test('no row that agrees with the schema carries a reason anyway', () => {
   assert.deepEqual(
     found,
     [],
-    `A reason recorded about a label that never diverged: ${found.join(', ')}. It reads ` +
-      'as a decision and settles nothing, and a reason column with decoration in it is ' +
-      'a column readers learn to skip — which is how the real ones would get skipped ' +
-      'with it.',
+    guardFailure(
+      mapRowLocation(found[0] ?? 'Content'),
+      `A reason recorded about a label that never diverged: ${found.join(', ')}. It reads ` +
+        'as a decision and settles nothing, and a reason column with decoration in it is ' +
+        'a column readers learn to skip — which is how the real ones would get skipped ' +
+        'with it.',
+    ),
   )
 })
 
@@ -469,7 +541,10 @@ const CONTEXT = readFileSync(resolve(ROOT, 'CONTEXT.md'), 'utf8')
 /** The `| … | … | … |` rows under the interface→schema heading. */
 export function documentedRows(context = CONTEXT) {
   const section = /##\s+The interface→schema map[^\n]*\n([\s\S]*?)(?:\n##\s|$)/.exec(context)
-  assert.ok(section, 'CONTEXT.md has no "## The interface→schema map" section any more')
+  assert.ok(
+    section,
+    guardFailure('CONTEXT.md:1', 'CONTEXT.md has no "## The interface→schema map" section any more'),
+  )
   return section[1]
     .split('\n')
     .filter((line) => line.trim().startsWith('|'))
@@ -483,6 +558,18 @@ export function documentedRows(context = CONTEXT) {
     }))
 }
 
+test('a missing documented map names its file, line, and focused rerun', () => {
+  assert.throws(
+    () => documentedRows('# Context without the interface map'),
+    new RegExp(
+      guardFailure(
+        'CONTEXT.md:1',
+        'CONTEXT.md has no "## The interface→schema map" section any more',
+      ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    ),
+  )
+})
+
 test('the enforced interface map still matches the one CONTEXT.md documents', () => {
   const enforced = LABEL_COLUMNS.map((row) => ({
     label: row.label,
@@ -492,10 +579,13 @@ test('the enforced interface map still matches the one CONTEXT.md documents', ()
   assert.deepEqual(
     enforced,
     documentedRows(),
-    "CONTEXT.md's interface→schema map and LABEL_COLUMNS disagree. Whichever moved, " +
-      'move the other: the documented map is what a person reads and this one is what ' +
-      'CI acts on, and a difference between them is a lie in the file people trust to ' +
-      'learn the vocabulary.',
+    guardFailure(
+      `CONTEXT.md:${sourceLine(CONTEXT, CONTEXT.indexOf('## The interface→schema map'))}`,
+      "CONTEXT.md's interface→schema map and LABEL_COLUMNS disagree. Whichever moved, " +
+        'move the other: the documented map is what a person reads and this one is what ' +
+        'CI acts on, and a difference between them is a lie in the file people trust to ' +
+        'learn the vocabulary.',
+    ),
   )
 })
 
