@@ -3,12 +3,13 @@
 # A non-empty replay for 21000113000000. The normal CI replay starts empty,
 # which proves the migration parses but cannot prove that authored values move.
 
-set -euo pipefail
+set -Eeuo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DATABASE_NAME="${1:-resource_split_migration_test}"
 TARGET="21000113000000_one_column_held_two_unrelated_things.sql"
 CREATED=0
+RERUN="bash scripts/tests/resource-split-migration.test.sh"
 
 cleanup() {
   if [ "$CREATED" = 1 ]; then
@@ -16,6 +17,17 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+on_error() {
+  local status=$?
+  local source="${BASH_SOURCE[1]#"$REPO_ROOT"/}"
+  local line="${BASH_LINENO[0]}"
+  trap - ERR
+  echo "$source:$line: migration replay command failed (exit $status)" >&2
+  echo "Run: $RERUN" >&2
+  exit "$status"
+}
+trap on_error ERR
 
 createdb "$DATABASE_NAME"
 CREATED=1
@@ -99,7 +111,7 @@ ACTUAL_REF="$(psql -At -v ON_ERROR_STOP=1 -d "$DATABASE_NAME" -c \
 
 if [ "$ACTUAL_REF" != "https://evidence.example/interview/42" ]; then
   echo "supabase/migrations/$TARGET:358: citation target did not reach evidence.ref; got '$ACTUAL_REF'" >&2
-  echo "Run: bash scripts/tests/resource-split-migration.test.sh" >&2
+  echo "Run: $RERUN" >&2
   exit 1
 fi
 

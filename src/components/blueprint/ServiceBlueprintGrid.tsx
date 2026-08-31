@@ -728,7 +728,6 @@ function BlueprintCellBlock({
                   content,
                   picture: null,
                   summary: null,
-                  links: [],
                   touchpoints: [],
                   resources: [],
                 },

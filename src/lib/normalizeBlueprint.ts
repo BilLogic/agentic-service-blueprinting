@@ -222,10 +222,6 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     content: cell.content,
     picture: cell.picture ?? null,
     summary: cell.summary ?? null,
-    // A database board has no link array: the column it came from was split
-    // into the two relations below, and the fixtures in `src/data` are the
-    // only source that still carries one.
-    links: [],
     resources: cellResourcesFromRows(cell.resources),
     touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),
   }))
