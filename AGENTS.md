@@ -58,3 +58,23 @@ A scaffolded blueprint workspace carries its own copies of `skills/`,
 `references/`, `agents/`, `scripts/` — the same routing applies there,
 resolved against the workspace root. Workspace version = template version;
 upgrade via the recipe in `references/customization.md`.
+
+## Agent skills
+
+Config for the `mattpocock-skills` engineering skills. Read the pointed-at
+file when a skill asks for it; don't preload.
+
+### Issue tracker
+
+GitHub Issues. See `docs/agents/issue-tracker.md` for the repository and
+workflow.
+
+### Triage labels
+
+Canonical triage roles. See `docs/agents/triage-labels.md` for their tracker
+labels.
+
+### Domain docs
+
+Single-context. See `docs/agents/domain.md` for the domain-doc layout and
+consumer rules.
