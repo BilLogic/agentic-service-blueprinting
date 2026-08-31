@@ -101,7 +101,7 @@ table's owner is whoever may change it, not whoever reads it most:
 
 | record | written by | belongs to |
 | --- | --- | --- |
-| `slices`, `slides` | `create_slice`, `update_slice`, `replace_slice_frames` | the slice |
+| `slices`, `slides` | `create_slice`, `update_slice`, `replace_slides` | the slice |
 | `findings` | `record_finding`, `set_finding_status` | the audit |
 | `evidence` | no agent tool at all — the panel writes it | **nobody** |
 

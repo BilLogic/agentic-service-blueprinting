@@ -52,7 +52,7 @@ const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 export const RECORD_OWNERS = [
   {
     records: ['slices', 'slides'],
-    tools: ['create_slice', 'update_slice', 'replace_slice_frames'],
+    tools: ['create_slice', 'update_slice', 'replace_slides'],
     owner: 'the slice',
   },
   {
