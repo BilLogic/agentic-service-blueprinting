@@ -11,15 +11,21 @@
  *
  * **RETIRED SPELLINGS.** "derived layer" is built on `layer`, which `21000104`
  * retired when `layers` became `lanes`, and it is wrong on its own terms —
- * only `findings` is derived, because a human may author a slice. Nothing in
- * the catalogue ever carried the phrase, so no database check can reach it and
- * `check-retired-identifiers` never will. It is prose, so only a prose sweep
- * finds it.
+ * only `findings` is derived, because a human may author a slice. Its
+ * replacement, "analysis tier", is retired too: evidence is source material and
+ * a slice is a presentation, neither is analysis, and `tier` already names an
+ * access level. Nothing in the catalogue ever carried either phrase, so no
+ * database check can reach them and `check-retired-identifiers` never will.
+ * They are prose, so only a prose sweep finds them.
  *
- * **UNDEFINED LOAD-BEARING WORDS.** The opposite failure. `spec` and
- * `analysis tier` are the current, correct words; the defect is that an agent
- * is instructed to use them and given nowhere to look them up. A word the
- * skills depend on must be defined where a reader looks for definitions.
+ * **UNDEFINED LOAD-BEARING WORDS.** The opposite failure. `spec`, `slice`,
+ * `finding` and `evidence` are the current, correct words; the defect is that
+ * an agent is instructed to use them and given nowhere to look them up. A word
+ * the skills depend on must be defined where a reader looks for definitions.
+ *
+ * The list is the four records SEPARATELY on purpose. It used to be one entry,
+ * `analysis tier`, and the collective noun is what went stale — twice — while
+ * the words for the things themselves never did.
  *
  * SUBJECT: the text this template *publishes* — `CONTEXT.md`, `AGENTS.md`, and
  * markdown under `skills/`, `references/` and `docs/`. Not source comments,
@@ -61,9 +67,18 @@ const EXEMPT = [
   'CHANGELOG.md',
 ]
 
-/** Retired prose spellings, and what to say instead. */
+/**
+ * Retired prose spellings, and what to say instead.
+ *
+ * Both entries are collective nouns for the same four records, and both were
+ * retired for the same reason: no one word is true of `evidence`, `findings`,
+ * `slices` and `slides` at once. There is no third noun, so the replacement is
+ * to name the record — or, where a sentence genuinely covers all four, to
+ * enumerate them. `CONTEXT.md`'s rename map carries the argument.
+ */
 const RETIRED_PROSE = [
-  { pattern: /derived[\s-]+layer/gi, use: 'analysis tier' },
+  { pattern: /derived[\s-]+layer/gi, use: 'the record’s own name' },
+  { pattern: /analysis[\s-]+tier/gi, use: 'the record’s own name' },
 ]
 
 /**
@@ -76,7 +91,7 @@ const RETIRED_PROSE = [
  * the test green. `CONTEXT.md` opens every definition with the term in bold,
  * so that is what is looked for.
  */
-const MUST_BE_DEFINED = ['Analysis tier', 'Spec']
+const MUST_BE_DEFINED = ['Slice', 'Finding', 'Evidence', 'Spec']
 
 function guardFailure(location, message) {
   return `${location}: ${message}\nRun: ${RERUN}`
@@ -213,12 +228,21 @@ test('the sweep can fail', () => {
   // The guard above is a regex over prose, which is the kind of check that
   // passes because it matched nothing. Prove it matches what it claims to,
   // and does not match the applied-filename case it permits.
-  const [{ pattern }] = RETIRED_PROSE
-  const hits = (text) => [...text.matchAll(new RegExp(pattern.source, pattern.flags))]
+  const hits = (text) =>
+    RETIRED_PROSE.flatMap(({ pattern }) => [
+      ...text.matchAll(new RegExp(pattern.source, pattern.flags)),
+    ])
   assert.equal(hits('apply the derived-layer migrations').length, 1)
   assert.equal(hits('the derived layer exists').length, 1)
   assert.equal(hits('Derived Layer: slices, findings').length, 1)
-  assert.equal(hits('the analysis tier exists').length, 0)
+  // The second noun, which used to be this rule's ADVICE. A sweep that still
+  // recommended it would have kept shipping the word it now retires.
+  assert.equal(hits('the analysis tier exists').length, 1)
+  assert.equal(hits('Analysis tier: slices, findings').length, 1)
+  assert.equal(hits('analysis-tier records reference cells softly').length, 1)
+  // Neither pattern is a sweep for the word "analysis" or the word "layer".
+  assert.equal(hits('the audit tier of this analysis, one layer at a time').length, 0)
+  assert.equal(hits('a slice belongs to the slice; evidence belongs to nobody').length, 0)
 })
 
 test('the definition check can fail, and is not satisfied by a substring', () => {
@@ -228,6 +252,6 @@ test('the definition check can fail, and is not satisfied by a substring', () =>
   const defined = (term, text) => new RegExp(`^\\*\\*${term}\\*\\* —`, 'mi').test(text)
   assert.equal(defined('Spec', '**Spec** — the descriptive detail hanging off a board object.'), true)
   assert.equal(defined('Spec', 'the specific respective specification of a spec'), false)
-  assert.equal(defined('Analysis tier', '**Analysis tier** — the four tables that…'), true)
-  assert.equal(defined('Analysis tier', 'see the analysis tier section'), false)
+  assert.equal(defined('Evidence', '**Evidence** — one provenance record attached to a cell.'), true)
+  assert.equal(defined('Evidence', 'evidence is cited by a slice and weighed by an audit'), false)
 })
