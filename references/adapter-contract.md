@@ -304,7 +304,7 @@ lean on that being survivable (`src/lib/sliceMutations.ts`):
 - `createSlice` inserts the `slices` row **first**, then its frames — a
   failure between the two leaves an empty slice, which is visible and
   deletable; the reverse order would strand orphan frames.
-- `replaceSliceFrames` is delete-then-insert on `slides` — a failure
+- `replaceSlides` is delete-then-insert on `slides` — a failure
   after the delete leaves a frameless slice.
 
 A replacement backend must preserve this ordering tolerance: partial

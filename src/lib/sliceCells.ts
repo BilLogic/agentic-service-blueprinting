@@ -59,7 +59,7 @@ export type SliceCellPlacement = {
   order: number
   laneId: string
   stepIndex: number
-  /** Index of the owning frame in position-sorted slice items. */
+  /** Index of the owning slide in position-sorted slides. */
   itemIndex: number
 }
 
@@ -114,7 +114,7 @@ export function resolveSliceCells(
       })
       memberCellIds.add(cellId)
       memberCellIds.add(rawCellId)
-      // A cell repeated across frames keeps its first sequence number.
+      // A cell repeated across slides keeps its first sequence number.
       if (!sequenceByCellId.has(cellId)) sequenceByCellId.set(cellId, order)
       if (!sequenceByCellId.has(rawCellId)) {
         sequenceByCellId.set(rawCellId, order)
@@ -126,13 +126,13 @@ export function resolveSliceCells(
 }
 
 /**
- * Pictures for one presentation frame, from the frame's member cells:
- * each member cell's own `frame` first, then the Visual-lane cell of the
- * same step (many storyboard illustrations live on the Visual lane rather
- * than the acting cell). Placeholder tokens are skipped; order follows the
- * frame's cell order; duplicates collapse.
+ * The STRIP for one slide: the frames of the cells it references, in their
+ * order. Each member cell's own `frame` first, then the Visual-lane cell of
+ * the same step — a step's frame usually sits on the Visual lane rather than
+ * on the acting cell. Placeholder tokens are skipped and duplicates collapse,
+ * so what the slide shows is exactly what its cells carry.
  */
-export function resolveSliceFramePictures(
+export function resolveSlideStrip(
   blueprint: BlueprintData | null,
   item: Slide,
 ): string[] {

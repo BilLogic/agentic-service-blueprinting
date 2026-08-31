@@ -129,7 +129,7 @@ export const WRITE_TOOL_NAMES = new Set([
   'duplicate_scenario',
   'create_slice',
   'update_slice',
-  'replace_slice_frames',
+  'replace_slides',
   'record_finding',
   'set_finding_status',
 ])
@@ -194,7 +194,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_slice',
     description:
-      'One slice in full: fields plus every frame with its cells, title, narrative. Read before update_slice or replace_slice_frames.',
+      'One slice in full: fields plus every slide with its cells, title, narrative. Read before update_slice or replace_slides.',
     parameters: {
       type: 'object',
       properties: { slice_id: str('Slice id from list_slices') },
@@ -402,7 +402,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_deletion_impact',
     description:
-      'What deleting something would destroy — cell and arrow counts, which slices lose frames, which of those undo cannot put back, and what survives. A pure read: it deletes nothing, and no delete tool exists for you. Use it to answer "what happens if I remove this?" BEFORE the human opens the confirm dialog. Relay the warning and reassurance sentences VERBATIM; they are worded to not overstate what comes back.',
+      'What deleting something would destroy — cell and arrow counts, which slices lose slides, which of those undo cannot put back, and what survives. A pure read: it deletes nothing, and no delete tool exists for you. Use it to answer "what happens if I remove this?" BEFORE the human opens the confirm dialog. Relay the warning and reassurance sentences VERBATIM; they are worded to not overstate what comes back.',
     parameters: {
       type: 'object',
       properties: {
@@ -419,7 +419,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'create_slice',
     description:
-      'Create a slice (stakeholder view) that REFERENCES existing cells — never copies. cell_ids in journey order, one frame per cell by default. Propose members by name and get a nod first.',
+      'Create a slice (stakeholder view) that REFERENCES existing cells — never copies. cell_ids in journey order, one slide per cell by default. Propose members by name and get a nod first.',
     parameters: {
       type: 'object',
       properties: {
@@ -456,28 +456,28 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'replace_slice_frames',
+    name: 'replace_slides',
     description:
-      "Replace a slice's frames wholesale — THE tool for reordering, resequencing, merging cells into one screen, or splitting them apart. Read the slice first; pass the complete new frame list (each frame: cells in order + optional title/narrative). When a reorder instruction is positionally ambiguous (e.g. \"move the last one up, then merge 2 and 3\" — original numbering or after the move?), confirm which you mean before writing. Re-read the slice afterwards to confirm the frame count matches what you intended.",
+      "Replace a slice's slides wholesale — THE tool for reordering, resequencing, merging cells into one slide, or splitting them apart. Read the slice first; pass the complete new slide list (each slide: cells in order + optional title/narrative). When a reorder instruction is positionally ambiguous (e.g. \"move the last one up, then merge 2 and 3\" — original numbering or after the move?), confirm which you mean before writing. Re-read the slice afterwards to confirm the slide count matches what you intended.",
     parameters: {
       type: 'object',
       properties: {
         slice_id: str('Slice id'),
-        frames: {
+        slides: {
           type: 'array',
           description: 'Full replacement, in order',
           items: {
             type: 'object',
             properties: {
-              cells: { type: 'array', description: 'Cell ids in this frame', items: { type: 'string' } },
-              title: str('Frame title; omit for none'),
-              narrative: str('Frame narrative; omit for none'),
+              cells: { type: 'array', description: 'Cell ids on this slide', items: { type: 'string' } },
+              title: str('Slide title; omit for none'),
+              narrative: str('Slide narrative; omit for none'),
             },
             required: ['cells'],
           },
         },
       },
-      required: ['slice_id', 'frames'],
+      required: ['slice_id', 'slides'],
     },
   },
   {

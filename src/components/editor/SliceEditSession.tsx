@@ -2,25 +2,25 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { SliceFrameEditor } from '@/components/editor/SliceFrameEditor'
+import { SliceSlideEditor } from '@/components/editor/SliceSlideEditor'
 import { CellPickContext, type CellPickApi } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import type { SliceDetail } from '@/hooks/useSlice'
 import {
-  replaceSliceFrames,
+  replaceSlides,
   sliceToken,
   updateSliceMeta,
 } from '@/lib/sliceMutations'
 import {
   isSliceType,
   validateDraftSlice,
-  type DraftFrame,
+  type DraftSlide,
 } from '@/lib/sliceValidation'
 
-/** The saved slice, as frames the editor can mutate. */
-function toDraftFrames(detail: SliceDetail): DraftFrame[] {
+/** The saved slice, as slides the editor can mutate. */
+function toDraftSlides(detail: SliceDetail): DraftSlide[] {
   return [...detail.items]
     .sort((left, right) => left.position - right.position)
     .map((item) => ({
@@ -33,9 +33,9 @@ function toDraftFrames(detail: SliceDetail): DraftFrame[] {
 
 /**
  * An open editing session on one slice: the canvas becomes a picker, the
- * frame strip docks under it, and Save writes both halves.
+ * slide strip docks under it, and Save writes both halves.
  *
- * Clicking a cell on the canvas adds it to the **active frame** (or removes
+ * Clicking a cell on the canvas adds it to the **active slide** (or removes
  * it from wherever it is). That is the rule that makes the two surfaces one
  * editor rather than two: the strip says where new cells land, the canvas
  * says which cells.
@@ -51,7 +51,7 @@ export function SliceEditSession({
 }) {
   const { client } = useSupabase()
   const mode = useCanvasModeValue()
-  const [frames, setFrames] = useState<DraftFrame[]>(() => toDraftFrames(detail))
+  const [slides, setSlides] = useState<DraftSlide[]>(() => toDraftSlides(detail))
   // Read from `detail`, not the draft: a storyboard upload writes straight to
   // `slides` and refreshes the slice, so the draft never sees it.
   const illustrationFor = useCallback(
@@ -59,7 +59,7 @@ export function SliceEditSession({
       detail.items.find((item) => item.id === itemId)?.illustration ?? null,
     [detail.items],
   )
-  const [activeFrame, setActiveFrame] = useState(0)
+  const [activeSlide, setActiveSlide] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,56 +72,56 @@ export function SliceEditSession({
           ? detail.slice.slice_type
           : 'custom',
         actor: detail.slice.actor ?? '',
-        frames,
+        slides,
       }),
-    [detail.slice, frames],
+    [detail.slice, slides],
   )
 
   const toggle = useCallback(
     (cellId: string) => {
-      setFrames((current) => {
-        const owner = current.findIndex((frame) => frame.cells.includes(cellId))
+      setSlides((current) => {
+        const owner = current.findIndex((slide) => slide.cells.includes(cellId))
         if (owner !== -1) {
           return current
-            .map((frame, index) =>
+            .map((slide, index) =>
               index === owner
-                ? { ...frame, cells: frame.cells.filter((id) => id !== cellId) }
-                : frame,
+                ? { ...slide, cells: slide.cells.filter((id) => id !== cellId) }
+                : slide,
             )
-            .filter((frame) => frame.cells.length > 0)
+            .filter((slide) => slide.cells.length > 0)
         }
-        // No frames yet (every one was emptied) — the click starts one.
+        // No slides yet (every one was emptied) — the click starts one.
         if (current.length === 0) {
           return [{ cells: [cellId], title: '', narrative: '' }]
         }
-        const target = Math.min(activeFrame, current.length - 1)
-        return current.map((frame, index) =>
-          index === target ? { ...frame, cells: [...frame.cells, cellId] } : frame,
+        const target = Math.min(activeSlide, current.length - 1)
+        return current.map((slide, index) =>
+          index === target ? { ...slide, cells: [...slide.cells, cellId] } : slide,
         )
       })
     },
-    [activeFrame],
+    [activeSlide],
   )
 
   const pick = useMemo<CellPickApi>(() => {
     const order = new Map<string, number>()
     let sequence = 0
-    for (const frame of frames) {
-      for (const cell of frame.cells) order.set(cell, (sequence += 1))
+    for (const slide of slides) {
+      for (const cell of slide.cells) order.set(cell, (sequence += 1))
     }
     return {
       // The whole tab is an editor: a plain click picks, no modifier needed.
       plainClick: true,
-      picked: frames.flatMap((frame) => frame.cells),
+      picked: slides.flatMap((slide) => slide.cells),
       isPicked: (cellId) => order.has(cellId),
       orderOf: (cellId) => order.get(cellId),
       // Editing a slice is always additive-by-toggle: a plain click adding a
-      // cell must not wipe the frames already built.
+      // cell must not wipe the slides already built.
       pick: (cellId) => toggle(cellId),
       pickMany: (cellIds) => cellIds.forEach(toggle),
-      clear: () => setFrames([]),
+      clear: () => setSlides([]),
     }
-  }, [frames, toggle])
+  }, [slides, toggle])
 
   const handleSave = async () => {
     if (!client || busy || problems.length > 0) return
@@ -129,7 +129,7 @@ export function SliceEditSession({
     setError(null)
     try {
       // Meta first, under the concurrency guard: if someone else changed this
-      // slice while it was open, stop before rewriting their frames.
+      // slice while it was open, stop before rewriting their slides.
       const outcome = await updateSliceMeta(
         client,
         detail.slice.id,
@@ -151,7 +151,7 @@ export function SliceEditSession({
         return
       }
 
-      await replaceSliceFrames(client, detail.slice.id, frames)
+      await replaceSlides(client, detail.slice.id, slides)
       invalidateQueries('slices')
       invalidateQueries(`slice:${detail.slice.id}`)
       onClose()
@@ -181,14 +181,14 @@ export function SliceEditSession({
             slice tab to View reads the slice, and reading needs the canvas,
             not the composer. */}
         {mode === 'design' ? (
-          <SliceFrameEditor
-            frames={frames}
-            activeFrame={activeFrame}
+          <SliceSlideEditor
+            slides={slides}
+            activeSlide={activeSlide}
             problems={problems}
             sliceId={detail.slice.id}
             illustrationFor={illustrationFor}
-            onActivate={setActiveFrame}
-            onChange={setFrames}
+            onActivate={setActiveSlide}
+            onChange={setSlides}
           />
         ) : null}
 

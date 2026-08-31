@@ -208,7 +208,7 @@
     "read_reference",
     "record_finding",
     "rename_path",
-    "replace_slice_frames",
+    "replace_slides",
     "set_canvas_mode",
     "set_cell_dependency",
     "set_finding_status",

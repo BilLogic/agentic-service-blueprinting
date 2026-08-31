@@ -18,12 +18,12 @@ import {
   type ViewState,
 } from '@/contexts/viewStateStore'
 
-/** Safari throttles history.replaceState — debounce per-frame writes. */
-const FRAME_URL_DEBOUNCE_MS = 250
+/** Safari throttles history.replaceState — debounce per-slide writes. */
+const SLIDE_URL_DEBOUNCE_MS = 250
 
 function urlStateForTab(
   tab: TabDescriptor | null,
-  frame: number,
+  slide: number,
   openCellId: string | null,
 ): UrlViewState {
   if (tab === null) {
@@ -35,48 +35,48 @@ function urlStateForTab(
     case 'slice':
       return { kind: 'slice', sliceId: tab.sliceId }
     case 'present':
-      return { kind: 'present', sliceId: tab.sliceId, frame }
+      return { kind: 'present', sliceId: tab.sliceId, slide }
   }
 }
 
 /**
  * One hook owns URL writes: the active tab serializes via
- * `history.replaceState` (no popstate listener — we never pushState), frame
+ * `history.replaceState` (no popstate listener — we never pushState), slide
  * writes debounce, and nothing is written while a boot deep link is pending.
  */
 function useUrlViewState(
   state: ViewState,
   activeTab: TabDescriptor | null,
   openCellId: string | null,
-): (frame: number) => void {
+): (slide: number) => void {
   const pending = state.pendingUrlState !== null
-  const frameRef = useRef(0)
+  const slideRef = useRef(0)
   const debounceRef = useRef<number | null>(null)
   const activeTabRef = useRef(activeTab)
   const pendingRef = useRef(pending)
-  // Read through a ref so consuming the one-shot restored frame (setting it
+  // Read through a ref so consuming the one-shot restored slide (setting it
   // to null) does not re-run the tab-change effect and clobber the URL.
-  const restoredFrameRef = useRef(state.restoredFrame)
+  const restoredSlideRef = useRef(state.restoredSlide)
 
   useEffect(() => {
     activeTabRef.current = activeTab
     pendingRef.current = pending
-    restoredFrameRef.current = state.restoredFrame
+    restoredSlideRef.current = state.restoredSlide
   })
 
   // Read the open cell through a ref inside the writer: a cell opening must
-  // not re-run the tab-change effect (which resets the presentation frame),
+  // not re-run the tab-change effect (which resets the presentation slide),
   // and the write itself is driven by the effect below.
   const openCellRef = useRef(openCellId)
 
-  const writeUrl = useCallback((tab: TabDescriptor | null, frame: number) => {
+  const writeUrl = useCallback((tab: TabDescriptor | null, slide: number) => {
     const search = serializeUrlViewState(
-      urlStateForTab(tab, frame, openCellRef.current),
+      urlStateForTab(tab, slide, openCellRef.current),
     )
     window.history.replaceState(null, '', `${window.location.pathname}${search}`)
   }, [])
 
-  // Immediate write on tab change; a pending in-flight frame write is stale
+  // Immediate write on tab change; a pending in-flight slide write is stale
   // for the previous tab, so drop it.
   useEffect(() => {
     if (pending) return
@@ -85,23 +85,23 @@ function useUrlViewState(
       debounceRef.current = null
     }
     if (activeTab?.kind === 'present') {
-      const restoredFrame = restoredFrameRef.current
-      frameRef.current =
-        restoredFrame && restoredFrame.sliceId === activeTab.sliceId
-          ? restoredFrame.frame
+      const restoredSlide = restoredSlideRef.current
+      slideRef.current =
+        restoredSlide && restoredSlide.sliceId === activeTab.sliceId
+          ? restoredSlide.slide
           : 0
     }
-    writeUrl(activeTab, frameRef.current)
+    writeUrl(activeTab, slideRef.current)
   }, [activeTab, pending, writeUrl])
 
   // Opening or closing a cell rewrites the base view's URL. Its own effect,
   // NOT a dependency of the one above: that effect also reseeds the
-  // presentation frame, and a cell opening is not a tab change. Tabs own the
+  // presentation slide, and a cell opening is not a tab change. Tabs own the
   // URL while one is active — `?cell=` belongs to the base blueprint.
   useEffect(() => {
     openCellRef.current = openCellId
     if (pending || activeTab !== null) return
-    writeUrl(null, frameRef.current)
+    writeUrl(null, slideRef.current)
   }, [openCellId, activeTab, pending, writeUrl])
 
   useEffect(
@@ -112,15 +112,15 @@ function useUrlViewState(
   )
 
   return useCallback(
-    (frame: number) => {
-      frameRef.current = frame
+    (slide: number) => {
+      slideRef.current = slide
       const tab = activeTabRef.current
       if (pendingRef.current || tab?.kind !== 'present') return
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
       debounceRef.current = window.setTimeout(() => {
         debounceRef.current = null
-        writeUrl(tab, frame)
-      }, FRAME_URL_DEBOUNCE_MS)
+        writeUrl(tab, slide)
+      }, SLIDE_URL_DEBOUNCE_MS)
     },
     [writeUrl],
   )
@@ -146,7 +146,7 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
   )
 
   const openCellId = useOpenCellId()
-  const reportPresentFrame = useUrlViewState(state, activeTab, openCellId)
+  const reportPresentSlide = useUrlViewState(state, activeTab, openCellId)
 
   const openTab = useCallback(
     (tab: TabDescriptor) => dispatch({ type: 'open', tab }),
@@ -169,8 +169,8 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
       dispatch({ type: 'resolvePending', availableSliceIds }),
     [],
   )
-  const consumeRestoredFrame = useCallback(
-    () => dispatch({ type: 'consumeRestoredFrame' }),
+  const consumeRestoredSlide = useCallback(
+    () => dispatch({ type: 'consumeRestoredSlide' }),
     [],
   )
   const dismissMissingSlice = useCallback(
@@ -184,7 +184,7 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
       activeKey: state.activeKey,
       activeTab,
       pendingUrlState: state.pendingUrlState,
-      restoredFrame: state.restoredFrame,
+      restoredSlide: state.restoredSlide,
       missingSliceId: state.missingSliceId,
       dismissMissingSlice,
       openTab,
@@ -192,14 +192,14 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
       activateTab,
       closeTabsForSlice,
       resolvePending,
-      consumeRestoredFrame,
-      reportPresentFrame,
+      consumeRestoredSlide,
+      reportPresentSlide,
     }),
     [
       state.tabs,
       state.activeKey,
       state.pendingUrlState,
-      state.restoredFrame,
+      state.restoredSlide,
       state.missingSliceId,
       dismissMissingSlice,
       activeTab,
@@ -208,8 +208,8 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
       activateTab,
       closeTabsForSlice,
       resolvePending,
-      consumeRestoredFrame,
-      reportPresentFrame,
+      consumeRestoredSlide,
+      reportPresentSlide,
     ],
   )
 

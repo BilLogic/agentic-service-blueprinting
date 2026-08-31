@@ -28,12 +28,12 @@ describe('createInitialViewState', () => {
     expect(state.tabs).toEqual([])
   })
 
-  it('holds a present link with its frame', () => {
-    const state = createInitialViewState('?slice=s-1&mode=present&frame=2')
+  it('holds a present link with its slide', () => {
+    const state = createInitialViewState('?slice=s-1&mode=present&slide=2')
     expect(state.pendingUrlState).toEqual({
       kind: 'present',
       sliceId: 's-1',
-      frame: 2,
+      slide: 2,
     })
   })
 })
@@ -106,16 +106,16 @@ describe('viewStateReducer boot resolution', () => {
     expect(state.activeKey).toBe('slice:s-1')
   })
 
-  it('a present link opens the present tab and restores its frame one-shot', () => {
-    let state = createInitialViewState('?slice=s-1&mode=present&frame=3')
+  it('a present link opens the present tab and restores its slide one-shot', () => {
+    let state = createInitialViewState('?slice=s-1&mode=present&slide=3')
     state = viewStateReducer(state, {
       type: 'resolvePending',
       availableSliceIds: ['s-1'],
     })
     expect(state.activeKey).toBe('present:s-1')
-    expect(state.restoredFrame).toEqual({ sliceId: 's-1', frame: 3 })
-    state = viewStateReducer(state, { type: 'consumeRestoredFrame' })
-    expect(state.restoredFrame).toBeNull()
+    expect(state.restoredSlide).toEqual({ sliceId: 's-1', slide: 3 })
+    state = viewStateReducer(state, { type: 'consumeRestoredSlide' })
+    expect(state.restoredSlide).toBeNull()
   })
 
   it('a dead link stays on the base view and records the missing slice', () => {

@@ -6,11 +6,11 @@ describe('parseUrlViewState', () => {
     expect(parseUrlViewState('?slice=s-1')).toEqual({ kind: 'slice', sliceId: 's-1' })
   })
 
-  it('reads a presentation link with its frame', () => {
-    expect(parseUrlViewState('?slice=s-1&mode=present&frame=3')).toEqual({
+  it('reads a presentation link with its slide', () => {
+    expect(parseUrlViewState('?slice=s-1&mode=present&slide=3')).toEqual({
       kind: 'present',
       sliceId: 's-1',
-      frame: 3,
+      slide: 3,
     })
   })
 
@@ -48,7 +48,7 @@ describe('serializeUrlViewState', () => {
   it('keeps slice and present links unchanged', () => {
     expect(serializeUrlViewState({ kind: 'slice', sliceId: 's-1' })).toBe('?slice=s-1')
     expect(
-      serializeUrlViewState({ kind: 'present', sliceId: 's-1', frame: 2 }),
-    ).toBe('?slice=s-1&mode=present&frame=2')
+      serializeUrlViewState({ kind: 'present', sliceId: 's-1', slide: 2 }),
+    ).toBe('?slice=s-1&mode=present&slide=2')
   })
 })

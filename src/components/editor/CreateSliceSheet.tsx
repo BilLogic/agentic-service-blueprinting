@@ -9,40 +9,40 @@ import {
 } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { SliceScreenComposer } from '@/components/editor/SliceScreenComposer'
+import { SliceSlideComposer } from '@/components/editor/SliceSlideComposer'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { findFirstServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceType'
-import { validateDraftSlice, type DraftFrame } from '@/lib/sliceValidation'
+import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
 
-/** One screen per cell. The starting shape, and the only one worth seeding. */
-function seedScreens(cellIds: readonly string[]): DraftFrame[] {
+/** One slide per cell. The starting shape, and the only one worth seeding. */
+function seedSlides(cellIds: readonly string[]): DraftSlide[] {
   return cellIds.map((cell) => ({ cells: [cell], title: '', narrative: '' }))
 }
 
 /**
- * Reconcile a live selection change with screens already shaped by hand.
- * Removals are honoured (and an emptied screen disappears, as everywhere
- * else); additions arrive as new one-cell screens at the end, which is the
+ * Reconcile a live selection change with slides already shaped by hand.
+ * Removals are honoured (and an emptied slide disappears, as everywhere
+ * else); additions arrive as new one-cell slides at the end, which is the
  * same shape seeding would have given them.
  */
 function mergeSelectionIntoScreens(
-  current: DraftFrame[],
+  current: DraftSlide[],
   cellIds: readonly string[],
-): DraftFrame[] {
+): DraftSlide[] {
   const wanted = new Set(cellIds)
   const kept = current
-    .map((screen) => ({
-      ...screen,
-      cells: screen.cells.filter((cell) => wanted.has(cell)),
+    .map((slide) => ({
+      ...slide,
+      cells: slide.cells.filter((cell) => wanted.has(cell)),
     }))
-    .filter((screen) => screen.cells.length > 0)
-  const present = new Set(kept.flatMap((screen) => screen.cells))
+    .filter((slide) => slide.cells.length > 0)
+  const present = new Set(kept.flatMap((slide) => slide.cells))
   const added = cellIds.filter((cell) => !present.has(cell))
-  return [...kept, ...seedScreens(added)]
+  return [...kept, ...seedSlides(added)]
 }
 
 /**
@@ -54,7 +54,7 @@ function mergeSelectionIntoScreens(
  * beside it. Closing it does not clear the picks; the selection outlives the
  * sheet.
  *
- * Two steps, because they are two different jobs. Shaping the screens is done
+ * Two steps, because they are two different jobs. Shaping the slides is done
  * against the canvas, glancing between the list and the cells; naming is done
  * afterwards, once you know what you have made. Asking for a title first asks
  * for it at the moment you are least able to give it.
@@ -78,7 +78,7 @@ export function CreateSliceSheet({
 }) {
   const { client, isEditPreview } = useSupabase()
   const { openTab } = useViewState()
-  const [step, setStep] = useState<'screens' | 'name'>('screens')
+  const [step, setStep] = useState<'slides' | 'name'>('slides')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
@@ -87,14 +87,14 @@ export function CreateSliceSheet({
   // Screens are seeded one-per-cell and then shaped by hand. When the
   // selection changes under an open sheet — the canvas stays live — the
   // composition is *merged*, never rebuilt: cells that left the selection
-  // drop out of their screens, cells that joined append as new screens, and
-  // every screen the author already shaped survives. Reseeding on any change
+  // drop out of their slides, cells that joined append as new slides, and
+  // every slide the author already shaped survives. Reseeding on any change
   // used to throw away minutes of drag-composed grouping for one stray pick.
-  const [screens, setScreens] = useState<DraftFrame[]>(() => seedScreens(cellIds))
+  const [slides, setSlides] = useState<DraftSlide[]>(() => seedSlides(cellIds))
   const [seededFrom, setSeededFrom] = useState(cellIds)
   if (seededFrom !== cellIds) {
     setSeededFrom(cellIds)
-    setScreens((current) => mergeSelectionIntoScreens(current, cellIds))
+    setSlides((current) => mergeSelectionIntoScreens(current, cellIds))
   }
 
   // Read once per selection rather than per render: it walks the DOM, and the
@@ -102,7 +102,7 @@ export function CreateSliceSheet({
   const sliceType = useMemo(() => deriveSliceType(cellIds), [cellIds])
 
   const reset = () => {
-    setStep('screens')
+    setStep('slides')
     setTitle('')
     setDescription('')
     setError(null)
@@ -115,7 +115,7 @@ export function CreateSliceSheet({
     // Always blank: the field is gone, and the column stays nullable
     // until a migration drops it.
     actor: '',
-    frames: screens,
+    slides: slides,
   })
 
   const handleCreate = async () => {
@@ -134,7 +134,7 @@ export function CreateSliceSheet({
         sliceType,
         actor: '',
         cellIds,
-        frames: screens,
+        slides: slides,
       })
       invalidateQueries('slices')
       reset()
@@ -157,7 +157,7 @@ export function CreateSliceSheet({
     }
   }
 
-  const cellCount = screens.reduce((total, screen) => total + screen.cells.length, 0)
+  const cellCount = slides.reduce((total, slide) => total + slide.cells.length, 0)
 
   return (
     <Popover
@@ -166,7 +166,7 @@ export function CreateSliceSheet({
         onOpenChange(next)
         if (!next) {
           setError(null)
-          setStep('screens')
+          setStep('slides')
         }
       }}
     >
@@ -179,14 +179,14 @@ export function CreateSliceSheet({
       >
         <div className="flex items-center gap-2 border-b border-muted px-3 py-2">
           {step === 'name' ? (
-            <IconTooltip label="Back to screens" side="bottom">
+            <IconTooltip label="Back to slides" side="bottom">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Back to screens"
+                aria-label="Back to slides"
                 className="shrink-0 text-muted-foreground hover:text-foreground"
-                onClick={() => setStep('screens')}
+                onClick={() => setStep('slides')}
               >
                 <ArrowLeft className="size-3.5" />
               </Button>
@@ -205,7 +205,7 @@ export function CreateSliceSheet({
           </div>
         </div>
 
-        {step === 'screens' ? (
+        {step === 'slides' ? (
           <>
             {/* The one scroll surface: capped to the viewport, scrolls once.
                 The composer inside grows freely — no scroll within a scroll. */}
@@ -213,7 +213,7 @@ export function CreateSliceSheet({
               data-slice-sheet-scroll=""
               className="max-h-[55vh] overflow-y-auto px-3 py-2"
             >
-              <SliceScreenComposer screens={screens} onChange={setScreens} />
+              <SliceSlideComposer slides={slides} onChange={setSlides} />
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-muted px-3 py-2">
               <Button
@@ -245,7 +245,7 @@ export function CreateSliceSheet({
               {/* Both fields, visible at once — this step exists to name the
                   thing, so hiding half the name behind a click saved four
                   pixels and cost a discovery. Required-ness is carried by the
-                  labels, not by which field is on screen. */}
+                  labels, not by which field is on slide. */}
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
                   Subtitle{' '}
@@ -264,7 +264,7 @@ export function CreateSliceSheet({
                 No Actor field. It was asked for, stored, and read by nothing —
                 no header, no slide, no sidebar row — so it took a decision from
                 the author and gave nothing back. For a journey slice the actor
-                is already the lane its cells sit in, which is on screen.
+                is already the lane its cells sit in, which is on slide.
               */}
 
               {error ? (

@@ -80,11 +80,11 @@ export function deletionReadiness(archiveAvailable: boolean): DeletionReadiness 
 }
 
 export type FrameLoss = {
-  /** Slices that would lose frames and can be restored by undo. */
+  /** Slices that would lose slides and can be restored by undo. */
   recoverable: AffectedSlice[]
   /**
    * Slices holding at least one cell with no stored key. Undo matches on keys,
-   * so these frames cannot be put back — the delete is one-way for them.
+   * so these slides cannot be put back — the delete is one-way for them.
    */
   unrecoverable: AffectedSlice[]
 }
@@ -134,7 +134,7 @@ export type ImpactFact = { count: number; noun: string }
  * them.
  *
  * `facts` are always destroyed. `warnings` are consequences that need a clause
- * to be honest — which slices lose frames, and which of those undo cannot put
+ * to be honest — which slices lose slides, and which of those undo cannot put
  * back. `reassurances` name what deliberately survives, and exist because the
  * most important fact about deleting a slice is that the blueprint is untouched.
  */
@@ -161,7 +161,7 @@ export function summarizeImpact(impact: DeletionImpact): ImpactSummary {
   )
   if (recoverable.length > 0) {
     warnings.push(
-      `${plural(recoverable.length, 'slice')} will lose frames: ${names(recoverable)}.`,
+      `${plural(recoverable.length, 'slice')} will lose slides: ${names(recoverable)}.`,
     )
   }
   if (unrecoverable.length > 0) {
@@ -176,12 +176,12 @@ export function summarizeImpact(impact: DeletionImpact): ImpactSummary {
   // cannot be restored by undo" is a dialog contradicting itself in adjacent
   // lines, and the sentence people believe is the reassuring one. The archive
   // fact is still true and still worth stating; what is not true is the
-  // "nothing" — the blueprint rows come back, the slice frames pointing at
+  // "nothing" — the blueprint rows come back, the slice slides pointing at
   // them do not.
   const reassurances =
     unrecoverable.length > 0
       ? [
-          'The blueprint rows are archived to the recovery table first and can be restored — but not the slice frames named above.',
+          'The blueprint rows are archived to the recovery table first and can be restored — but not the slice slides named above.',
         ]
       : [
           'Archived to the recovery table first — nothing is destroyed without a copy behind it.',
@@ -192,13 +192,13 @@ export function summarizeImpact(impact: DeletionImpact): ImpactSummary {
 
 /**
  * A slice delete is the one case where the reassurance is the headline: the
- * frames die, the blueprint does not. No archive exists for slices, so the
+ * slides die, the blueprint does not. No archive exists for slices, so the
  * warning says so plainly rather than implying the same recovery the
  * structural kinds get.
  */
 export function summarizeSliceImpact(impact: SliceDeletionImpact): ImpactSummary {
   return {
-    facts: [{ count: impact.frame_count, noun: 'frame' }],
+    facts: [{ count: impact.slide_count, noun: 'slide' }],
     warnings: [
       'There is no archive for slices — once this is deleted it cannot be restored, and the change list will not offer a revert for it.',
     ],
