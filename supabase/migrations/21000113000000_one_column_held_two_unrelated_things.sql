@@ -725,6 +725,12 @@ $probe$;
 alter table public.cells drop constraint cells_links_is_array;
 alter table public.cells drop column links;
 
+-- The grant that named it is amended at its source, in
+-- `20260818000000_authoring_foundation.sql`, and the reason is written there.
+-- A superseding grant here would not have worked: the recipe is applied on
+-- top of the core in one pass, so by the time any recipe statement runs the
+-- column is already gone and the earlier grant has already failed.
+
 -- Nothing in `public` may still read it. `drop column` refuses when a view or
 -- an index depends on the column and says nothing at all about a function
 -- body, which is the whole reason the rewrite above had to be explicit.
