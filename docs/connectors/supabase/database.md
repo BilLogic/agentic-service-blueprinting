@@ -10,7 +10,7 @@ Postgres database managed by [Supabase](https://supabase.com/) for the **agentic
 | --- | --- |
 | **Engine** | PostgreSQL 17 |
 | **Primary schema** | `public` |
-| **Migrations** | `supabase/migrations/` (consolidated schema + derived-layer migrations) |
+| **Migrations** | `supabase/migrations/` (consolidated schema + analysis-tier migrations) |
 | **Seed data** | `supabase/seed.sql` (generated sample content) |
 | **ERD diagram** | `docs/erd.mmd` |
 | **The two halves** | `supabase/generated/portable-core.generated.sql` and `supabase/generated/supabase-recipe.generated.sql` — generated from the `-- @recipe` / `-- @core` marks in the migrations by `npm run generate:portable-core`, never hand-edited. The core is the contract and applies to a stock Postgres; the recipe is how Supabase enforces it. CI applies both. See also [`references/adapter-contract.md`](../../../references/adapter-contract.md) § Live backend surface |
@@ -178,7 +178,7 @@ Writes are laneed on top for signed-in sessions (`authenticated`):
 - **Ordinary text edits use column-scoped grants**: `cells.content/
   summary/links`, `lanes.name/lane_role`, `steps.name`,
   `paths.name/summary/note/path_type`,
-  `scenarios.name/summary/view_type`, plus the derived-layer
+  `scenarios.name/summary/view_type`, plus the analysis-tier
   spec columns — writable directly by `authenticated` under permissive
   update policies.
 - **Optional service-account tier** (`20260818002000`, a recipe you can
@@ -199,7 +199,7 @@ credentials.
 | File | Description |
 | --- | --- |
 | `20260716200000_template_schema.sql` | Consolidated template schema: hierarchy + blueprint grid + `lane_role`, integrity trigger, `updated_at` triggers, read-only RLS, legacy `services` cleanup |
-| `20260729120000_derived_layer.sql` | Derived layer: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_dependencies.kind` |
+| `20260729120000_derived_layer.sql` | Analysis tier: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_dependencies.kind` |
 | `20260730090000_derived_layer_grants_hardening.sql` | Explicit Data API grants, anon write-privilege revokes, pinned `search_path`, attribution columns, evidence `cell_key` pairing |
 | `20260803001000_slices_origin_allows_human.sql` | Adds `human` to the `slices.origin` vocabulary (in-app authored slices) |
 | `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.position` (+ widened uniqueness), deferrable `path_steps` ordering, `deleted_structure` archive, direct-column grants for panel edits |

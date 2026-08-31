@@ -30,7 +30,7 @@
  * emitting `if to_regclass('public.propositions') is not null then` into every
  * verify script. `to_regclass` returns null for a table that is not there, so
  * the branch simply stopped running: no error, no notice, one line of the
- * derived-layer report silently gone. A generator is the worst place for this
+ * analysis-tier report silently gone. A generator is the worst place for this
  * because the string is two removes from anyone reading SQL — and Python is
  * outside every type system in the repository.
  *

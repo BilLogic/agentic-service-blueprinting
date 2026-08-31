@@ -39,6 +39,23 @@ whether cells render as pills, and where the dividing lines fall.
 of a lane and a step on a path. A cell is the unit everything else points at
 — a slice quotes cells, a finding names cells, evidence attaches to a cell.
 
+**Spec** — the descriptive detail hanging off a board object, as opposed to
+its place on the board. `cells.function` / `form` / `value_props` / `owner` /
+`perceived_owner`; `phases.business_impact` / `operational_requirements`;
+`lanes.kpis` / `owner_team` / `tools`; and `business_model` for the service.
+Four levels, one word.
+
+Structure is *where a thing sits* — a cell's lane, step and path — and moves
+only through an authoring RPC. Spec is *what it is like*, and carries a
+column-scoped grant so a panel can edit it without opening the board's shape to
+the same path. That split is why the word is load-bearing: `skills/audit`
+instructs an agent to read "the spec columns" and skip gracefully when they are
+empty, and until now this file had never heard of them.
+
+**Not a UI word.** The interface says Function, Form, Value, Owner — never
+"spec fields". The ban is on the *interface*, not the glossary, and reading it
+as both is how a word the skills are told to use went undefined on both sides.
+
 **Line of visibility** — the divider between what the recipient of the service
 can see and what they cannot. It is derived from lane roles rather than
 stored: it draws below the last customer-facing lane. Its companion, the
@@ -58,6 +75,20 @@ not the inverse of a trigger — "follows" is a trigger read from the far end,
 and a precondition causes nothing.
 
 ## What the skills produce
+
+**Analysis tier** — the four tables that hold records *about* the board rather
+than squares of it: `evidence`, `findings`, `slices`, `slice_items`. What unites
+them is aboutness — each exists to say something concerning the board, and none
+is part of it. Evidence and findings concern cells directly; a slice reaches
+cells through the items it presents. Evidence, findings, and slices are
+hard-bound directly to the service; a slice item has no direct service binding
+and is hard-bound only to its slice. The exact keys and constraint topology
+live in `references/data-model.md`.
+
+**`business_model` is not in the tier**, and the schema settles it rather than
+taste: it holds no cell reference of any kind. It is the service's spec row —
+which is why it belongs under **Spec** above. Its fields live in
+`references/data-model.md`.
 
 **Slice** — a saved one-dimensional cut through the grid, taken for one
 audience: an actor's journey, a single moment, one lane, one cell, or a custom
@@ -105,6 +136,13 @@ than a domain one. "Lifecycle" was not a level above the service — it *was* th
 service, wearing a longer name. `enables` was left alone, because it was already
 the plain word for what it means.
 
+**One rename in this vocabulary is not in the table**, because it never was an
+identifier: **derived layer → analysis tier**. Only `findings` is derived — a
+human may author a slice — and `layer` is the spelling `21000104` retired when
+`layers` became `lanes`. So a word built on a retired spelling was still being
+shipped to agents in `skills/slice/SKILL.md`. Nothing in the catalogue moved,
+which is why no migration carries it and no check can enforce it.
+
 `scripts/retired-vocabulary.mjs` is the same map in machine-readable form, and
 `scripts/tests/retired-vocabulary.test.mjs` fails if the two disagree. Neither
 derives from the other on purpose: a prose table should not be load-bearing for
@@ -113,8 +151,8 @@ file people read to learn the words.
 
 ## Words that keep a retired spelling
 
-Three, and each is a fact about the language rather than a queue. A rename sweep
-breaks all three, so they are written where the person running that sweep looks.
+Four, and each is a fact about the language rather than a queue. A rename sweep
+breaks all four, so they are written where the person running that sweep looks.
 
 **`slices.description`.** `21000108` renamed `description` to `summary` on the
 five tables where it named a one-line précis of a thing. A slice's description
@@ -136,3 +174,19 @@ has to be exempted to keep this.
 blueprint draws. `21000104` says so in its own header. It is a frontend
 identifier rather than a database name or anything a reader sees, so no check
 that reads the map above can reach it.
+
+**"derived layer", inside applied migrations and the changelog.** Two migration
+filenames (`20260729120000_derived_layer.sql`,
+`20260730090000_derived_layer_grants_hardening.sql`) and ten `--` comments
+across five applied files keep the retired words, along with the CHANGELOG
+entries for the releases that shipped them.
+
+The rule is the same in both places: **an applied or dated record keeps the
+spelling it was written with.** Every instance of this template has already run
+those files; rewriting them buys tidiness at the cost of making applied
+migrations mutable, which is a precedent worth more than the tidiness. A
+changelog entry is the same kind of object — it says what shipped, under the
+name it shipped with.
+
+Everything an agent or a reader is *shown* uses the current name. That is the
+line: the record keeps its spelling, the instruction does not.
