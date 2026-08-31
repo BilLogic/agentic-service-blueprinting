@@ -27,6 +27,7 @@ Folders are named for the class of thing inside them.
 | Folder | Holds |
 | --- | --- |
 | `adr/` | Decisions, numbered, with the context that forced them. Never edited after acceptance — a decision that changed gets a new ADR that supersedes it. |
+| `agents/` | Repository-specific configuration consumed by engineering skills. |
 | `guide/` | The numbered narrative, for a person reading start to finish. |
 | `guidelines/` | How we work: this file, and how to propose a change. |
 | `engineering/` | Procedure for whoever runs the repository. |

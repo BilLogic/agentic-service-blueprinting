@@ -66,16 +66,15 @@ file when a skill asks for it; don't preload.
 
 ### Issue tracker
 
-GitHub Issues on `BilLogic/agentic-service-blueprinting`, via the `gh` CLI.
-See `docs/agents/issue-tracker.md`.
+GitHub Issues. See `docs/agents/issue-tracker.md` for the repository and
+workflow.
 
 ### Triage labels
 
-The five canonical roles, label strings unchanged (`needs-triage`,
-`needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`).
-See `docs/agents/triage-labels.md`.
+Canonical triage roles. See `docs/agents/triage-labels.md` for their tracker
+labels.
 
 ### Domain docs
 
-Single-context: one root `CONTEXT.md` plus `docs/adr/`, both created lazily
-by `/domain-modeling`. See `docs/agents/domain.md`.
+Single-context. See `docs/agents/domain.md` for the domain-doc layout and
+consumer rules.
