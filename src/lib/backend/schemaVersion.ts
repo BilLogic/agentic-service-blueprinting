@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.08.27'
+export const TEMPLATE_SCHEMA_VERSION = '2026.08.31'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,11 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.08.27'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // `cells.links` split into `resources` and `cell_touchpoints` (#91). One
+  // column held what a cell points at and the prose about a touchpoint used
+  // at it; the IR splits with it, so a 2026.08.27 file authors a `links`
+  // array this template no longer reads.
+  '2026.08.31',
   // propositions → business_model, the last row of the vocabulary map that
   // applied to this package (#84). `evidence.proposition_question_key` keeps
   // the word on purpose: the three validation questions ARE propositions.

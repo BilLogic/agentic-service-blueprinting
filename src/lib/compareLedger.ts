@@ -96,7 +96,7 @@ export type CompareStepGroup = {
 /**
  * One group per canonical column that has any canvas difference, in
  * canonical column order — the ledger's accordion grain. A column whose only
- * difference is detail-only (summary/links) gets NO group: it lives
+ * difference is detail-only (summary, resources, touchpoints) gets NO group: it lives
  * exclusively in the trailing `getDetailOnlyCompareSlots` group, the same V7
  * rule zones follow.
  */

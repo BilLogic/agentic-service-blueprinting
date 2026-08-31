@@ -6,6 +6,8 @@ import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { shouldUsePillCellContent } from '@/lib/blueprintLayout'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import type { BlueprintData } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 export type BlueprintStepTechEntry = {
   id: string
@@ -93,7 +95,8 @@ export function buildTechPillSelectionForItem(
       cellContent: cell.content,
       cellPicture: cell.picture,
       cellSummary: cell.summary,
-      cellLinks: cell.links,
+      cellTouchpoints: cellTouchpoints(cell),
+      cellResources: cellResources(cell),
       pathId: blueprint.path.id,
       pathName: blueprint.path.name,
       pathSummary: blueprint.path.summary,

@@ -116,19 +116,27 @@ def sql_quote(value) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
-def localize_links(links, locale: str, locales) -> list:
+def localize_resources(resources, locale: str, locales) -> list:
     out = []
-    for link in links or []:
-        localized = {"type": link["type"], "label": pick_text(link.get("label"), locale, locales) or ""}
-        if "url" in link:
-            localized["url"] = link["url"]
-        description = pick_text(link.get("description"), locale, locales)
-        if description is not None:
-            localized["description"] = description
-        if "picture" in link:
-            localized["picture"] = link["picture"]
-        if "pictures" in link:
-            localized["pictures"] = link["pictures"]
+    for resource in resources or []:
+        localized = {
+            "name": pick_text(resource.get("name"), locale, locales) or "",
+            "url": resource.get("url"),
+            "kind": resource.get("kind") or "link",
+        }
+        out.append(localized)
+    return out
+
+
+def localize_touchpoints(touchpoints, locale: str, locales) -> list:
+    out = []
+    for touchpoint in touchpoints or []:
+        localized = {
+            "name": pick_text(touchpoint.get("name"), locale, locales) or "",
+            "summary": pick_text(touchpoint.get("summary"), locale, locales),
+            "screenshots": list(touchpoint.get("screenshots") or []),
+            "url": touchpoint.get("url"),
+        }
         out.append(localized)
     return out
 
@@ -153,7 +161,9 @@ def values_rows(rows) -> str:
 # same change, or the parity check fails.
 
 #: Columns whose Python value is JSON-encoded and cast to jsonb.
-JSONB_FIELDS = frozenset({"links", "value_props", "kpis", "tools"})
+JSONB_FIELDS = frozenset({"value_props", "kpis", "tools"})
+#: Columns whose Python value is a list of strings, emitted as a text[] literal.
+TEXT_ARRAY_FIELDS = frozenset({"screenshots"})
 #: Columns emitted as a bare SQL literal (numbers), never quoted.
 RAW_FIELDS = frozenset({"position", "position"})
 
@@ -174,7 +184,6 @@ def seed_cell_fields(cell: dict, path: dict) -> dict:
         "content": cell["content"],
         "picture": cell["picture"],
         "summary": cell["summary"],
-        "links": cell["links"],
         "cell_key": cell["cell_key"],
         "function": cell["function"],
         "form": cell["form"],
@@ -220,12 +229,54 @@ def seed_trigger_fields(trigger: dict) -> dict:
     }
 
 
+def seed_touchpoint_fields(touchpoint: dict, cell: dict) -> dict:
+    """One placement as `cell_touchpoints` column -> value.
+
+    `position` is 1-based and contiguous within the cell, which is what the
+    table's deferred unique assumes and what the migration that created it
+    wrote. `origin` stays at 'import' — these rows ARE the import pipeline's.
+    """
+    return {
+        "id": touchpoint["id"],
+        "cell_id": cell["id"],
+        "name": touchpoint["name"],
+        "position": touchpoint["position"],
+        "summary": touchpoint["summary"],
+        "screenshots": touchpoint["screenshots"],
+        "url": touchpoint["url"],
+        "origin": "import",
+    }
+
+
+def seed_resource_fields(resource: dict, cell: dict) -> dict:
+    """One resource as `resources` column -> value.
+
+    `cell_id` and never `cell_touchpoint_id`: the table refuses both, and an
+    import cannot know which of a cell's resources documents one of its
+    touchpoints without guessing once per row. Attaching one is an authoring
+    act, and the IR has no way to say it.
+    """
+    return {
+        "id": resource["id"],
+        "cell_id": cell["id"],
+        "kind": resource["kind"],
+        "name": resource["name"],
+        "url": resource["url"],
+        "position": resource["position"],
+        "origin": "import",
+    }
+
+
 def sql_row(fields: dict) -> list:
     """Column values as SQL literals, in the order the insert names them."""
     out = []
     for column, value in fields.items():
         if column in JSONB_FIELDS:
             out.append(sql_quote(json.dumps(value, ensure_ascii=False)) + "::jsonb")
+        elif column in TEXT_ARRAY_FIELDS:
+            out.append(
+                "array[" + ", ".join(sql_quote(v) for v in value or []) + "]::text[]"
+            )
         elif column in RAW_FIELDS:
             out.append(str(value))
         else:
@@ -334,7 +385,44 @@ def build_model(doc: dict, locale: str) -> dict:
                             "content": text(cell.get("content")) or "",
                             "picture": cell.get("picture"),
                             "summary": text(cell.get("summary")),
-                            "links": localize_links(cell.get("links"), locale, locales),
+                            # Two lists where there was one array, because
+                            # the column they came from is now two tables.
+                            # Ids are UUIDv5 over the cell's qualified key
+                            # plus the row's own name, so a re-import lands on
+                            # the same row rather than a duplicate — the same
+                            # construction every other entity here uses.
+                            "resources": [
+                                {
+                                    **resource,
+                                    "id": entity_uuid(
+                                        locale, "resource",
+                                        f"{ce_q}#{resource['name']}@{index}",
+                                    ),
+                                    "position": index,
+                                }
+                                for index, resource in enumerate(
+                                    localize_resources(
+                                        cell.get("resources"), locale, locales
+                                    ),
+                                    start=1,
+                                )
+                            ],
+                            "touchpoints": [
+                                {
+                                    **touchpoint,
+                                    "id": entity_uuid(
+                                        locale, "touchpoint",
+                                        f"{ce_q}#{touchpoint['name']}",
+                                    ),
+                                    "position": index,
+                                }
+                                for index, touchpoint in enumerate(
+                                    localize_touchpoints(
+                                        cell.get("touchpoints"), locale, locales
+                                    ),
+                                    start=1,
+                                )
+                            ],
                             # Wave-2 spec fields (locale-independent strings /
                             # {for, value} array); absent -> null / [] =
                             # column defaults.
@@ -515,6 +603,33 @@ insert into public.lanes ({', '.join(seed_lane_fields(scenario['paths'][0]['lane
                 + ";\n"
             )
 
+        # Placements before resources, because a resource may hang off one.
+        touchpoint_fields = [
+            seed_touchpoint_fields(t, c)
+            for p in scenario["paths"]
+            for c in p["cells"]
+            for t in c["touchpoints"]
+        ]
+        if touchpoint_fields:
+            parts.append(
+                f"\ninsert into public.cell_touchpoints ({', '.join(touchpoint_fields[0])}) values\n"
+                + values_rows([sql_row(fields) for fields in touchpoint_fields])
+                + ";\n"
+            )
+
+        resource_fields = [
+            seed_resource_fields(r, c)
+            for p in scenario["paths"]
+            for c in p["cells"]
+            for r in c["resources"]
+        ]
+        if resource_fields:
+            parts.append(
+                f"\ninsert into public.resources ({', '.join(resource_fields[0])}) values\n"
+                + values_rows([sql_row(fields) for fields in resource_fields])
+                + ";\n"
+            )
+
         trigger_fields = [
             seed_trigger_fields(t) for p in scenario["paths"] for t in p["triggers"]
         ]
@@ -544,6 +659,12 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
             "lanes": sum(len(p["lanes"]) for p in scenario["paths"]),
             "cells": sum(len(p["cells"]) for p in scenario["paths"]),
             "cell_dependencies": sum(len(p["triggers"]) for p in scenario["paths"]),
+            "cell_touchpoints": sum(
+                len(c["touchpoints"]) for p in scenario["paths"] for c in p["cells"]
+            ),
+            "resources": sum(
+                len(c["resources"]) for p in scenario["paths"] for c in p["cells"]
+            ),
         }
         counts = {
             "scenario rows": f"select count(*) from public.scenarios where id = {sid}",
@@ -564,6 +685,18 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
             "cell_dependencies": (
                 "select count(*) from public.cell_dependencies t "
                 "join public.cells c on c.id = t.source_cell_id "
+                "join public.paths p on p.id = c.path_id "
+                f"where p.scenario_id = {sid}"
+            ),
+            "cell_touchpoints": (
+                "select count(*) from public.cell_touchpoints ct "
+                "join public.cells c on c.id = ct.cell_id "
+                "join public.paths p on p.id = c.path_id "
+                f"where p.scenario_id = {sid}"
+            ),
+            "resources": (
+                "select count(*) from public.resources r "
+                "join public.cells c on c.id = r.cell_id "
                 "join public.paths p on p.id = c.path_id "
                 f"where p.scenario_id = {sid}"
             ),

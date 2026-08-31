@@ -88,7 +88,9 @@ CJK_NAME_TO_ROLE = {
 
 VIEW_TYPES = ("single", "side-by-side", "integrated")
 PATH_TYPES = ("happy", "unhappy", "exception", "alternative")
-LINK_TYPES = ("url", "tech_description")
+#: resources.kind — the same short list the database checks. Absent means
+#: `link`, which is the column default.
+RESOURCE_KINDS = ("link", "other")
 #: cell_dependencies.kind — the same two values the database checks.
 #: An edge that states none is a 'trigger', which is the column default.
 DEPENDENCY_KINDS = ("trigger", "needs")
@@ -277,26 +279,39 @@ def check_enum(obj: dict, field: str, allowed, jp: str, rep: Report) -> str | No
     return value
 
 
-def check_link(link, jp: str, rep: Report, locales: list) -> None:
-    if not isinstance(link, dict):
-        rep.error(jp, f"link must be an object, got {type_name(link)}")
+def check_uri(value, jp: str, rep: Report) -> None:
+    if not isinstance(value, str) or not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", value):
+        rep.error(jp, f"'url' must be a URI string, got {value!r}")
+
+
+def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
+    if not isinstance(resource, dict):
+        rep.error(jp, f"resource must be an object, got {type_name(resource)}")
         return
-    check_extra_keys(link, {"type", "label", "url", "description", "picture", "pictures"}, jp, rep)
-    link_type = check_enum(link, "type", LINK_TYPES, jp, rep)
-    check_locale_text(link.get("label"), f"{jp}.label", rep, locales, True, "label")
-    if link_type == "url" and "url" not in link:
-        rep.error(jp, "links of type 'url' require a 'url' field")
-    if "url" in link:
-        url = link["url"]
-        if not isinstance(url, str) or not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", url):
-            rep.error(f"{jp}.url", f"'url' must be a URI string, got {url!r}")
-    if "description" in link:
-        check_locale_text(link["description"], f"{jp}.description", rep, locales, False, "description")
-    if "picture" in link and not isinstance(link["picture"], str):
-        rep.error(f"{jp}.picture", "'picture' must be a string")
-    if "pictures" in link:
-        if not isinstance(link["pictures"], list) or any(not isinstance(p, str) for p in link["pictures"]):
-            rep.error(f"{jp}.pictures", "'pictures' must be an array of strings")
+    check_extra_keys(resource, {"name", "url", "kind"}, jp, rep)
+    check_locale_text(resource.get("name"), f"{jp}.name", rep, locales, True, "name")
+    if "url" not in resource:
+        rep.error(jp, "a resource requires a 'url' field")
+    else:
+        check_uri(resource["url"], f"{jp}.url", rep)
+    if "kind" in resource:
+        check_enum(resource, "kind", RESOURCE_KINDS, jp, rep)
+
+
+def check_touchpoint(touchpoint, jp: str, rep: Report, locales: list) -> None:
+    if not isinstance(touchpoint, dict):
+        rep.error(jp, f"touchpoint must be an object, got {type_name(touchpoint)}")
+        return
+    check_extra_keys(touchpoint, {"name", "summary", "screenshots", "url"}, jp, rep)
+    check_locale_text(touchpoint.get("name"), f"{jp}.name", rep, locales, True, "name")
+    if "summary" in touchpoint:
+        check_locale_text(touchpoint["summary"], f"{jp}.summary", rep, locales, False, "summary")
+    if "screenshots" in touchpoint:
+        shots = touchpoint["screenshots"]
+        if not isinstance(shots, list) or any(not isinstance(x, str) for x in shots):
+            rep.error(f"{jp}.screenshots", "'screenshots' must be an array of strings")
+    if "url" in touchpoint:
+        check_uri(touchpoint["url"], f"{jp}.url", rep)
 
 
 def check_cell_ref(ref, jp: str, rep: Report):
@@ -392,7 +407,8 @@ def validate_cell(cell, jp: str, rep: Report, locales: list):
         return None
     check_extra_keys(
         cell,
-        {"lane", "step", "content", "summary", "picture", "links",
+        {"lane", "step", "content", "summary", "picture",
+         "resources", "touchpoints",
          "provenance", "needs_review", "evidence", "attribution",
          # Spec fields — audit wave 2 reads these; optional everywhere.
          "function", "form", "owner", "perceived_owner", "value_props"},
@@ -409,12 +425,26 @@ def validate_cell(cell, jp: str, rep: Report, locales: list):
         check_locale_text(cell["summary"], f"{jp}.summary", rep, locales, False, "summary")
     if "picture" in cell and not isinstance(cell["picture"], str):
         rep.error(f"{jp}.picture", "'picture' must be a string")
-    if "links" in cell:
-        if not isinstance(cell["links"], list):
-            rep.error(f"{jp}.links", "'links' must be an array")
+    if "resources" in cell:
+        if not isinstance(cell["resources"], list):
+            rep.error(f"{jp}.resources", "'resources' must be an array")
         else:
-            for i, link in enumerate(cell["links"]):
-                check_link(link, f"{jp}.links[{i}]", rep, locales)
+            for i, resource in enumerate(cell["resources"]):
+                check_resource(resource, f"{jp}.resources[{i}]", rep, locales)
+    if "touchpoints" in cell:
+        if not isinstance(cell["touchpoints"], list):
+            rep.error(f"{jp}.touchpoints", "'touchpoints' must be an array")
+        else:
+            names = []
+            for i, touchpoint in enumerate(cell["touchpoints"]):
+                check_touchpoint(touchpoint, f"{jp}.touchpoints[{i}]", rep, locales)
+                if isinstance(touchpoint, dict):
+                    names.append(json.dumps(touchpoint.get("name"), sort_keys=True))
+            # A cell names a touchpoint once. The table refuses a second row
+            # for the same name, so an IR that carries one fails at import
+            # rather than here, which is the wrong place to find out.
+            if len(set(names)) != len(names):
+                rep.error(f"{jp}.touchpoints", "a cell names the same touchpoint twice")
     if "provenance" in cell:
         prov = cell["provenance"]
         if not isinstance(prov, dict):

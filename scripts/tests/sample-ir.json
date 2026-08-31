@@ -1,5 +1,5 @@
 {
-  "schema_version": "2026.08.27",
+  "schema_version": "2026.08.31",
   "locales": ["en", "zh"],
   "service": {
     "key": "streetlight-service",
@@ -86,10 +86,9 @@
                       "en": "The citizen files a fault via the GIS portal.",
                       "zh": "市民通过 GIS 门户提交故障。"
                     },
-                    "links": [
+                    "resources": [
                       {
-                        "type": "url",
-                        "label": { "en": "Intake SOP", "zh": "受理 SOP 文档" },
+                        "name": { "en": "Intake SOP", "zh": "受理 SOP 文档" },
                         "url": "https://example.com/sop/intake"
                       }
                     ],
@@ -123,14 +122,15 @@
                     "lane": "frontstage-tech",
                     "step": "report",
                     "content": { "en": "GIS Portal\nWork Order App", "zh": "GIS 门户\n工单应用" },
-                    "links": [
+                    "touchpoints": [
                       {
-                        "type": "tech_description",
-                        "label": { "en": "GIS Portal", "zh": "GIS 门户" },
-                        "description": {
+                        "name": { "en": "GIS Portal", "zh": "GIS 门户" },
+                        "summary": {
                           "en": "Public map-based intake channel for streetlight faults.",
                           "zh": "面向公众的地图报修入口。"
-                        }
+                        },
+                        "screenshots": ["docs/assets/gis-portal.png"],
+                        "url": "https://example.com/design/gis-portal"
                       }
                     ]
                   },

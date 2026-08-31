@@ -603,3 +603,57 @@ alter table public.schema_version enable row level security;
 create policy "schema_version_select" on public.schema_version for select using (true);
 
 grant select on public.schema_version to anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000113000000_one_column_held_two_unrelated_things.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- RLS and the Supabase role grants for both tables. Another host
+-- expresses "anyone may read, only the service account may write" with its own
+-- primitives; the tables above are plain Postgres.
+
+alter table public.cell_touchpoints enable row level security;
+alter table public.resources enable row level security;
+
+create policy cell_touchpoints_select_anon on public.cell_touchpoints
+  for select to anon using (true);
+create policy cell_touchpoints_select_auth on public.cell_touchpoints
+  for select to authenticated using (true);
+create policy cell_touchpoints_insert_service_only on public.cell_touchpoints
+  for insert to authenticated with check (public.is_service_account());
+create policy cell_touchpoints_update_service_only on public.cell_touchpoints
+  for update to authenticated
+  using (public.is_service_account())
+  with check (public.is_service_account());
+create policy cell_touchpoints_delete_service_only on public.cell_touchpoints
+  for delete to authenticated using (public.is_service_account());
+
+create policy resources_select_anon on public.resources
+  for select to anon using (true);
+create policy resources_select_auth on public.resources
+  for select to authenticated using (true);
+create policy resources_insert_service_only on public.resources
+  for insert to authenticated with check (public.is_service_account());
+create policy resources_update_service_only on public.resources
+  for update to authenticated
+  using (public.is_service_account())
+  with check (public.is_service_account());
+create policy resources_delete_service_only on public.resources
+  for delete to authenticated using (public.is_service_account());
+
+grant select on public.cell_touchpoints, public.resources to anon, authenticated;
+grant insert, delete on public.cell_touchpoints, public.resources to authenticated;
+-- Column-level, as the authoring migration argues for `cells`: what a row
+-- SAYS may move through a direct update; WHICH cell or placement owns it is
+-- structure, and structure does not.
+grant update (name, position, summary, screenshots, url)
+  on public.cell_touchpoints to authenticated;
+grant update (kind, name, url, position) on public.resources to authenticated;
+-- The platform grants anon these at create time on every relation created in
+-- `public`. Nothing anonymous writes, and TRUNCATE is not subject to RLS.
+revoke insert, update, delete, truncate
+  on public.cell_touchpoints, public.resources from anon;
+revoke truncate on public.cell_touchpoints, public.resources from authenticated;
+
+-- the Supabase role that calls it.
+grant execute on function public.sync_cell_resources(uuid, jsonb) to authenticated;

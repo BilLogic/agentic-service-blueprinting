@@ -211,6 +211,99 @@ def to_2026_08_27(doc: dict) -> None:
     """
 
 
+def to_2026_08_31(doc: dict) -> None:
+    """2026.08.27 → 2026.08.31 — `links` splits into `resources` and
+    `touchpoints`.
+
+    A cell's `links` array carried two unrelated things under a name that
+    described one of them: entries typed `url`, which are what the cell points
+    at, and entries typed `tech_description`, which are prose, screenshots and
+    a design link about ONE touchpoint used at this cell. The database column
+    behind it is now two tables (21000113000000), and this is the same split
+    one layer up, where an author writes.
+
+    Field by field:
+
+        {type: url, label, url}                  → resources[]: {name, url}
+        {type: tech_description, label,
+         description, picture, pictures, url}    → touchpoints[]: {name,
+                                                    summary, screenshots, url}
+
+    `label` becomes `name` because both objects name a thing a reader
+    navigates to. `description` becomes `summary` on a TOUCHPOINT for the
+    reason 2026.08.25 renamed it everywhere else — it is the one-line précis
+    of the thing, and 2026.08.25 spared it only because a link's description
+    was prose about the link rather than about a touchpoint. `picture` and
+    `pictures` become one `screenshots` array, which is what the two fields
+    were always describing: the reader already preferred `pictures` when both
+    were set, so folding them loses nothing and stops a second answer.
+
+    CONTENT-PRESERVING. Every authored value survives under a new name, in the
+    same order, and nothing is synthesized: an entry with no `type` is left
+    alone below rather than guessed at, so a file this step cannot read fails
+    validation with its content intact rather than passing with content this
+    script invented. The discriminator `type` is the one field that stops
+    existing, and it is not an authored value — it is the array membership the
+    two new arrays now say structurally.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            for path in scenario.get("paths", []) or []:
+                for cell in path.get("cells", []) or []:
+                    _split_links(cell)
+
+
+def _split_links(cell) -> None:
+    if not isinstance(cell, dict) or "links" not in cell:
+        return
+    links = cell.pop("links")
+    if not isinstance(links, list):
+        # Left where the validator will find it: a `links` value that is not
+        # an array is not something this step can read, and inventing an empty
+        # array in its place would hide the file that needs a person.
+        cell["links"] = links
+        return
+
+    resources: list = []
+    touchpoints: list = []
+    unreadable: list = []
+    for link in links:
+        if not isinstance(link, dict):
+            unreadable.append(link)
+            continue
+        if link.get("type") == "url":
+            resource = {"name": link.get("label")}
+            if "url" in link:
+                resource["url"] = link["url"]
+            resources.append(resource)
+        elif link.get("type") == "tech_description":
+            touchpoint = {"name": link.get("label")}
+            if "description" in link:
+                touchpoint["summary"] = link["description"]
+            screenshots = [
+                shot
+                for shot in (link.get("pictures") or [link.get("picture")])
+                if isinstance(shot, str) and shot.strip()
+            ]
+            if screenshots:
+                touchpoint["screenshots"] = screenshots
+            if "url" in link:
+                touchpoint["url"] = link["url"]
+            touchpoints.append(touchpoint)
+        else:
+            unreadable.append(link)
+
+    if resources:
+        cell["resources"] = resources
+    if touchpoints:
+        cell["touchpoints"] = touchpoints
+    if unreadable:
+        cell["links"] = unreadable
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -232,6 +325,13 @@ STEPS = (
         "propositions became business_model; the table is runtime output and "
         "was never in the IR, so only the stamp moves",
         to_2026_08_27,
+    ),
+    Step(
+        "2026.08.27",
+        "2026.08.31",
+        "a cell's `links` array splits into `resources` and `touchpoints`; "
+        "label→name, description→summary, picture/pictures→screenshots",
+        to_2026_08_31,
     ),
 )
 

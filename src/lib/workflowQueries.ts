@@ -32,7 +32,20 @@ export const PATH_BLUEPRINT_SELECT = `
     content,
     picture,
     summary,
-    links,
+    resources!resources_cell_id_fkey (
+      position,
+      kind,
+      name,
+      url
+    ),
+    cell_touchpoints (
+      id,
+      position,
+      name,
+      summary,
+      screenshots,
+      url
+    ),
     outgoing:cell_dependencies!cell_dependencies_source_cell_id_fkey (
       id,
       target_cell_id,

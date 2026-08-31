@@ -11,7 +11,9 @@ import {
   type RawPath,
 } from '@/lib/normalizeBlueprint'
 import type { BlueprintData } from '@/types/blueprint'
-import type { CellLink } from '@/types/blueprint'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 export type BlueprintSource = 'database' | 'fallback' | null
 
@@ -29,58 +31,76 @@ function preferNonEmpty(
 }
 
 /**
- * DB-wins link merge: fallback links may fill empty fields on a link the DB
- * already has (matched by type + label) and append links the DB is missing
- * entirely. DB links are never removed or overwritten.
+ * DB-wins merge for the two relations that replaced the link array.
+ *
+ * A fallback row may fill a field the database row left empty and may append
+ * a name the database does not have; a database row is never removed or
+ * overwritten. Matched by NAME, which is what identifies both a resource and
+ * a placement to a reader — and, for a placement, what the table's own unique
+ * constraint uses.
  */
-function fillMissingCellLinks(
-  links: CellLink[],
-  fallbackLinks: CellLink[],
-): CellLink[] {
-  const fillField = (
-    existing: string | undefined,
-    fallbackValue: string | undefined,
-  ): string | undefined => {
-    if (existing?.trim()) return existing
-    if (fallbackValue?.trim()) return fallbackValue
-    return existing
-  }
+function fillMissing<T extends { name: string }>(
+  rows: readonly T[],
+  fallbackRows: readonly T[],
+  fill: (existing: T, fallback: T) => T,
+  carries: (row: T) => boolean,
+): T[] {
+  const merged = rows.map((row) => ({ ...row }))
 
-  const merged = links.map((link) => ({ ...link }))
-
-  for (const fallbackLink of fallbackLinks) {
-    const hasPayload =
-      fallbackLink.url?.trim() ||
-      fallbackLink.description?.trim() ||
-      fallbackLink.picture?.trim() ||
-      fallbackLink.pictures?.length
-    if (!hasPayload) continue
-
+  for (const fallbackRow of fallbackRows) {
+    if (!carries(fallbackRow)) continue
     const existingIndex = merged.findIndex(
-      (entry) =>
-        entry.type === fallbackLink.type && entry.label === fallbackLink.label,
+      (entry) => entry.name === fallbackRow.name,
     )
-
     if (existingIndex === -1) {
-      merged.push({ ...fallbackLink })
+      merged.push({ ...fallbackRow })
       continue
     }
-
-    const existing = merged[existingIndex]!
-    merged[existingIndex] = {
-      ...existing,
-      url: fillField(existing.url, fallbackLink.url),
-      description: fillField(existing.description, fallbackLink.description),
-      picture: fillField(existing.picture, fallbackLink.picture),
-      pictures: existing.pictures?.length
-        ? existing.pictures
-        : fallbackLink.pictures?.length
-          ? fallbackLink.pictures
-          : existing.pictures,
-    }
+    merged[existingIndex] = fill(merged[existingIndex]!, fallbackRow)
   }
 
   return merged
+}
+
+const preferText = (
+  existing: string | null | undefined,
+  fallbackValue: string | null | undefined,
+): string | null => (existing?.trim() ? existing : (fallbackValue ?? null))
+
+function fillMissingResources(
+  resources: readonly CellResource[],
+  fallbackResources: readonly CellResource[],
+): CellResource[] {
+  return fillMissing(
+    resources,
+    fallbackResources,
+    (existing, fallback) => ({
+      ...existing,
+      url: preferText(existing.url, fallback.url),
+    }),
+    (row) => Boolean(row.url?.trim()),
+  )
+}
+
+function fillMissingTouchpoints(
+  touchpoints: readonly CellTouchpoint[],
+  fallbackTouchpoints: readonly CellTouchpoint[],
+): CellTouchpoint[] {
+  return fillMissing(
+    touchpoints,
+    fallbackTouchpoints,
+    (existing, fallback) => ({
+      ...existing,
+      summary: preferText(existing.summary, fallback.summary),
+      url: preferText(existing.url, fallback.url),
+      screenshots:
+        existing.screenshots.length > 0
+          ? existing.screenshots
+          : fallback.screenshots,
+    }),
+    (row) =>
+      Boolean(row.url?.trim() || row.summary?.trim() || row.screenshots.length),
+  )
 }
 
 /**
@@ -157,9 +177,24 @@ function mergeMissingBlueprintContent(
       changed = true
     }
 
-    const mergedLinks = fillMissingCellLinks(cell.links, fallbackCell.links)
-    if (JSON.stringify(mergedLinks) !== JSON.stringify(cell.links)) {
-      next = { ...next, links: mergedLinks }
+    const mergedResources = fillMissingResources(
+      cellResources(cell),
+      cellResources(fallbackCell),
+    )
+    if (JSON.stringify(mergedResources) !== JSON.stringify(cellResources(cell))) {
+      next = { ...next, resources: mergedResources }
+      changed = true
+    }
+
+    const mergedTouchpoints = fillMissingTouchpoints(
+      cellTouchpoints(cell),
+      cellTouchpoints(fallbackCell),
+    )
+    if (
+      JSON.stringify(mergedTouchpoints) !==
+      JSON.stringify(cellTouchpoints(cell))
+    ) {
+      next = { ...next, touchpoints: mergedTouchpoints }
       changed = true
     }
 

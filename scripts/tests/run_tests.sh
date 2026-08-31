@@ -926,6 +926,8 @@ grep -q "2026.08.25 -> 2026.08.26" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the dependency-kind step — $(cat "$TMP/migrate.out")"
 grep -q "2026.08.26 -> 2026.08.27" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the business-model step — $(cat "$TMP/migrate.out")"
+grep -q "2026.08.27 -> 2026.08.31" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the links split — $(cat "$TMP/migrate.out")"
 python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
 import json, sys
 migrated = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -947,18 +949,38 @@ assert not [
     for t in pa.get("triggers", [])
     if "kind" in t
 ], "the migration wrote a defaulted kind into the tree"
-# A link's `description` is prose about the link and keeps its name; a
-# text-level rename would have taken it with the rest.
-link = current["service"]["phases"][0]["scenarios"][0]["paths"][0]["cells"][0]["links"][0]
-assert "summary" not in link, "the migration renamed a link's description"
+# The links split, end to end. One array of two shapes became two arrays of
+# one shape each, and every authored value came across under its new name —
+# including `picture`, which folds into the `screenshots` array the single
+# column now holds.
+cells = current["service"]["phases"][0]["scenarios"][0]["paths"][0]["cells"]
+assert not any("links" in cell for cell in cells), "a `links` array survived the split"
+resource = cells[0]["resources"][0]
+assert set(resource) == {"name", "url"}, f"resource shape moved: {resource}"
+touchpoint = next(t for cell in cells for t in cell.get("touchpoints", []))
+assert touchpoint["screenshots"] == ["docs/assets/gis-portal.png"], (
+    "picture did not fold into screenshots"
+)
+assert "summary" in touchpoint and "description" not in touchpoint, (
+    "a touchpoint's description did not become its summary"
+)
 PYMIG
 pass "migrate-forward (the oldest fixture chains through every step and validates)"
 
-# The bump this change ships, on its own. 2026.08.25 -> 2026.08.26 adds an
-# optional field whose absence already meant `trigger`, so the step writes
-# nothing: every scenario subtree — and therefore every recorded sign-off hash
-# — is byte-identical afterwards. That is the honest content_preserving=True,
-# and it is checked rather than asserted.
+# The two steps that write nothing, on their own. 2026.08.25 -> 2026.08.26
+# adds an optional field whose absence already meant `trigger`, and
+# 2026.08.26 -> 2026.08.27 renamed a table the IR never carried: neither
+# touches a scenario subtree, so every recorded sign-off hash is byte-identical
+# afterwards. That is the honest content_preserving=True, and it is checked
+# rather than asserted.
+#
+# The target is NAMED here where the rest of this file reads it from the
+# schema, and the reason is the assertion below: "nothing moved but the stamp"
+# is a claim about THESE TWO STEPS, not about the chain. 2026.08.27 ->
+# 2026.08.31 splits `links` into `resources` and `touchpoints`, which does move
+# the subtree — deliberately, and the re-anchoring test below is what covers
+# it. Reading the target from the schema here would silently turn this into a
+# test of whatever the newest step happens to do.
 if python3 "$VALIDATE" "$SAMPLE_PREV" > "$TMP/prev-version.out" 2>&1; then
   fail "migrate-prev-refusal: expected non-zero exit on the superseded 2026.08.25"
 fi
@@ -994,11 +1016,14 @@ json.dump(
     indent=2,
 )
 PYWS
-python3 "$MIGRATE" "$TMP/prev.json" --workspace "$TMP/prev-workspace.json" --write \
+python3 "$MIGRATE" "$TMP/prev.json" --to 2026.08.27 \
+  --workspace "$TMP/prev-workspace.json" --write \
   > "$TMP/migrate-prev.out" 2>&1 \
   || fail "migrate-prev: migration failed — $(cat "$TMP/migrate-prev.out")"
-python3 "$VALIDATE" "$TMP/prev.json" > "$TMP/prev-valid.out" 2>&1 \
-  || fail "migrate-prev: migrated IR does not validate — $(cat "$TMP/prev-valid.out")"
+# Not validated here, and that is the point of `--to`: the file is parked at
+# an intermediate version on purpose, and validate_ir refuses anything that is
+# not at the newest — which migrate-refusal above already proves. The chain is
+# validated end to end by migrate-forward.
 grep -q "already anchored" "$TMP/migrate-prev.out" \
   || fail "migrate-prev: a step that writes nothing must leave the hashes alone — $(cat "$TMP/migrate-prev.out")"
 if grep -q "re-anchored" "$TMP/migrate-prev.out"; then
@@ -1010,12 +1035,10 @@ tmp, before_path, repo = sys.argv[1], sys.argv[2], sys.argv[3]
 sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
 import migrate_ir
 
-# Read from the schema rather than restating it. `migrate_ir` with no `--to`
-# migrates to whatever the template speaks, so that is what this asserts — the
-# contract, not one version's spelling of it. Hardcoding the target here meant
-# every bump had to remember three literals in this heredoc, and 2026.08.27
-# arrived without them.
-current = migrate_ir.current_version()
+# The last version reachable from 2026.08.25 by steps that write nothing.
+# Not `migrate_ir.current_version()`: this test's claim is about those steps,
+# and the newest step is a rename that moves the subtree on purpose.
+current = "2026.08.27"
 before = json.load(open(before_path, encoding="utf-8"))
 after = json.load(open(f"{tmp}/prev.json", encoding="utf-8"))
 assert after["schema_version"] == current, "the version stamp did not move"
@@ -1030,7 +1053,7 @@ for key, digest in recorded.items():
     assert entry["status"] == "signed_off", f"{key}: sign-off dropped"
     assert entry["signed_by"] == "bill", f"{key}: signer lost"
 PYPREV
-pass "migrate-prev (2026.08.25 -> current stamps the version and moves no hash)"
+pass "migrate-prev (2026.08.25 -> 2026.08.27 stamps the version and moves no hash)"
 
 # The load-bearing one: sign-off binds to a hash of a scenario subtree, and the
 # bump renames fields INSIDE that subtree — so every recorded hash would be

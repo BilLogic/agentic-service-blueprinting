@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CellLink } from '@/types/blueprint'
+import type { CellResource } from '@/types/blueprint'
 import type { Database, Json } from '@/types/database'
 import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { validateResourceUrl } from '@/lib/resourceUrl'
-import { URL_LINK_TYPE } from '@/lib/blueprintTechDescriptions'
+import { hostOf } from '@/lib/cellResources'
 
 type Client = SupabaseClient<Database>
 
@@ -83,57 +83,56 @@ export async function updateCellContent(
   }
 }
 
-export type ResourceDraft = { label: string; url: string }
+export type ResourceDraft = { name: string; url: string }
 
 /**
- * Replace the cell's resource links.
+ * Replace the cell's resources, in one transaction.
  *
- * `links` carries more than resources — tech summaries, pictures, Figma
- * embeds all live in the same array keyed by `type`. So this rewrites *only*
- * the `URL_LINK_TYPE` entries and leaves every other kind untouched. Writing
- * the whole array from what the resources editor knows about would silently
- * delete the tech pills.
+ * An RPC rather than a table write, and the reason is the position column:
+ * the editor rewrites a whole list, PostgREST gives every statement its own
+ * transaction, and a deferred unique only forgives a collision until COMMIT.
+ * `sync_cell_resources` deletes and reinserts inside one.
+ *
+ * It reaches only rows whose `cell_id` is this cell, so a resource attached to
+ * one touchpoint placement is not this editor's to destroy.
  */
 export async function updateCellResources(
   client: Client,
   cellId: string,
-  existing: CellLink[],
+  /** The rows being replaced — captured so the change can be reverted. */
+  existing: CellResource[],
   drafts: ResourceDraft[],
 ): Promise<void> {
-  const rebuilt: CellLink[] = []
-
-  for (const draft of drafts) {
+  const rows = drafts.map((draft) => {
     const checked = validateResourceUrl(draft.url)
     if (!checked.ok) throw new Error(checked.problem)
-    rebuilt.push({
-      type: URL_LINK_TYPE,
-      label: draft.label.trim() || hostOf(checked.url),
+    return {
+      kind: 'link',
+      // The one place a nameless resource gets a name. The database refuses
+      // a row without one rather than inventing a second answer.
+      name: draft.name.trim() || hostOf(checked.url),
       url: checked.url,
-    })
-  }
+    }
+  })
 
-  const preserved = existing.filter((link) => link.type !== URL_LINK_TYPE)
-  const { data, error } = await client
-    .from('cells')
-    .update({ links: [...preserved, ...rebuilt] as unknown as Json })
-    .eq('id', cellId)
-    .select('id')
+  const { error } = await client.rpc('sync_cell_resources', {
+    p_cell_id: cellId,
+    p_rows: rows as unknown as Json,
+  })
   if (error) throw toAuthoringError(error)
-  requireRowsWritten(data, 'cell')
   recordChange(
     'update_cell_resources',
     { cell_id: cellId },
-    // Reverting means writing back the full pre-write array — URL entries as
-    // they were, plus the non-URL entries this write preserved anyway.
-    { fn: 'update_cell_resources', args: { cell_id: cellId, links: existing } },
+    // Reverting means writing the pre-write list back as it was.
+    {
+      fn: 'update_cell_resources',
+      args: {
+        cell_id: cellId,
+        rows: existing.map((resource) => ({
+          name: resource.name,
+          url: resource.url ?? '',
+        })),
+      },
+    },
   )
-}
-
-/** A link with no label still needs to say something — its host will do. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return 'Link'
-  }
 }

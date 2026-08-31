@@ -136,6 +136,53 @@ export type Database = {
           },
         ]
       }
+      cell_touchpoints: {
+        Row: {
+          cell_id: string
+          created_at: string
+          id: string
+          name: string
+          origin: string
+          position: number
+          screenshots: string[]
+          summary: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          cell_id: string
+          created_at?: string
+          id?: string
+          name: string
+          origin: string
+          position: number
+          screenshots?: string[]
+          summary?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          cell_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          origin?: string
+          position?: number
+          screenshots?: string[]
+          summary?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cell_touchpoints_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cells: {
         Row: {
           cell_key: string | null
@@ -146,7 +193,6 @@ export type Database = {
           function: string | null
           id: string
           lane_id: string
-          links: Json
           origin: string
           owner: string | null
           path_id: string
@@ -166,7 +212,6 @@ export type Database = {
           function?: string | null
           id?: string
           lane_id: string
-          links?: Json
           origin?: string
           owner?: string | null
           path_id: string
@@ -186,7 +231,6 @@ export type Database = {
           function?: string | null
           id?: string
           lane_id?: string
-          links?: Json
           origin?: string
           owner?: string | null
           path_id?: string
@@ -555,6 +599,60 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resources: {
+        Row: {
+          cell_id: string | null
+          cell_touchpoint_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          origin: string
+          position: number
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          cell_id?: string | null
+          cell_touchpoint_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          origin: string
+          position: number
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          cell_id?: string | null
+          cell_touchpoint_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          origin?: string
+          position?: number
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_cell_touchpoint_id_fkey"
+            columns: ["cell_touchpoint_id"]
+            isOneToOne: false
+            referencedRelation: "cell_touchpoints"
             referencedColumns: ["id"]
           },
         ]
@@ -974,6 +1072,10 @@ export type Database = {
         Returns: undefined
       }
       slices_referencing: { Args: { cell_ids: string[] }; Returns: Json }
+      sync_cell_resources: {
+        Args: { p_cell_id: string; p_rows: Json }
+        Returns: undefined
+      }
       upsert_cell: {
         Args: {
           content: string

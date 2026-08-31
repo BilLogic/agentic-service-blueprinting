@@ -1,5 +1,5 @@
 import type { PathType } from '@/types/database'
-import type { CellLink } from '@/types/blueprint'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 export type BlueprintCellPathEntry = {
   cellId: string
@@ -10,7 +10,8 @@ export type BlueprintCellPathEntry = {
   content: string
   picture?: string | null
   summary?: string | null
-  links?: CellLink[]
+  touchpoints?: CellTouchpoint[]
+  resources?: CellResource[]
 }
 
 /**

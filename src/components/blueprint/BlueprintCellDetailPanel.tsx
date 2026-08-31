@@ -90,14 +90,19 @@ import {
   resolveTechCellDetailLabel,
   resolveTechCellDetailText,
   resolveTechCellDetailUrl,
-  URL_LINK_TYPE,
 } from '@/lib/blueprintTechDescriptions'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { DependencyEndpoint } from '@/lib/dependencyValidation'
-import type { BlueprintCell, CellLink } from '@/types/blueprint'
+import type {
+  BlueprintCell,
+  CellResource,
+  CellTouchpoint,
+} from '@/types/blueprint'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 
 /**
@@ -138,25 +143,37 @@ const PANEL_TABS: Array<{
   { value: 'resources', label: 'Resources', icon: Link2 },
 ]
 
+/**
+ * The cell as this panel needs it, from either source.
+ *
+ * `touchpoints` and `resources` are resolved once at the top rather than
+ * threaded as the raw link array they used to be: the database has two
+ * relations where it had one column, and only `cellTouchpoints.ts` /
+ * `cellResources.ts` know which source a board came from.
+ */
+type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'picture'> & {
+  touchpoints: CellTouchpoint[]
+  resources: CellResource[]
+}
+
 function isFigmaUrl(url: string): boolean {
   return /figma\.com/i.test(url)
 }
 
 function resolveFigmaUrl(
   techItem: string | undefined,
-  cell: Pick<BlueprintCell, 'content' | 'links'> | null,
-  links: CellLink[],
+  cell: PanelCell | null,
+  resources: readonly CellResource[],
 ): string | null {
   if (cell) {
-    const fromTech = resolveTechCellDetailUrl(techItem, cell)
-    if (fromTech && isFigmaUrl(fromTech)) return fromTech
+    const fromTouchpoint = resolveTechCellDetailUrl(techItem, cell)
+    if (fromTouchpoint && isFigmaUrl(fromTouchpoint)) return fromTouchpoint
   }
 
-  for (const link of links) {
-    if (link.type !== URL_LINK_TYPE || !link.url?.trim()) continue
-    if (isFigmaUrl(link.url) || /figma/i.test(link.label ?? '')) {
-      return link.url.trim()
-    }
+  for (const resource of resources) {
+    const url = resource.url?.trim()
+    if (!url) continue
+    if (isFigmaUrl(url) || /figma/i.test(resource.name)) return url
   }
 
   return null
@@ -586,37 +603,53 @@ function BlueprintCellDetailPanelBody() {
     selection?.techItem,
   ])
 
-  const selectedCell = useMemo((): Pick<
-    BlueprintCell,
-    'content' | 'summary' | 'links' | 'picture'
-  > | null => {
-    const pathId = pathEntry?.pathId
-    if (!resolvedCellId || !pathId) {
+  const selectedCell = useMemo((): PanelCell | null => {
+    const fromEntry = (): PanelCell | null => {
       if (!pathEntry) return null
       return {
         content: pathEntry.content,
         summary: pathEntry.summary ?? null,
         picture: pathEntry.picture ?? null,
-        links: pathEntry.links ?? [],
+        touchpoints: pathEntry.touchpoints ?? [],
+        resources: pathEntry.resources ?? [],
       }
     }
+
+    const pathId = pathEntry?.pathId
+    if (!resolvedCellId || !pathId) return fromEntry()
 
     const blueprint = getBlueprintForPath(blueprints, pathId)
     const cell =
       blueprint?.cells.find((entry) => entry.id === resolvedCellId) ?? null
-    if (cell) return cell
-
-    return {
-      content: pathEntry?.content ?? '',
-      summary: pathEntry?.summary ?? null,
-      picture: pathEntry?.picture ?? null,
-      links: pathEntry?.links ?? [],
+    if (cell) {
+      return {
+        content: cell.content,
+        summary: cell.summary,
+        picture: cell.picture,
+        touchpoints: cellTouchpoints(cell),
+        resources: cellResources(cell),
+      }
     }
+
+    return (
+      fromEntry() ?? {
+        content: '',
+        summary: null,
+        picture: null,
+        touchpoints: [],
+        resources: [],
+      }
+    )
   }, [blueprints, pathEntry, resolvedCellId])
 
-  const cellLinks = useMemo(
-    (): CellLink[] => selectedCell?.links ?? pathEntry?.links ?? [],
-    [pathEntry?.links, selectedCell?.links],
+  const cellTouchpointList = useMemo(
+    (): CellTouchpoint[] => selectedCell?.touchpoints ?? [],
+    [selectedCell?.touchpoints],
+  )
+
+  const cellResourceList = useMemo(
+    (): CellResource[] => selectedCell?.resources ?? [],
+    [selectedCell?.resources],
   )
 
   const linkedTechItems = useMemo(
@@ -706,8 +739,8 @@ function BlueprintCellDetailPanelBody() {
 
   const figmaUrl = useMemo(() => {
     if (!selection) return null
-    return resolveFigmaUrl(selection.techItem, selectedCell, cellLinks)
-  }, [cellLinks, selectedCell, selection])
+    return resolveFigmaUrl(selection.techItem, selectedCell, cellResourceList)
+  }, [cellResourceList, selectedCell, selection])
 
   // Lane row position of the selected cell — orients up/down direction
   // glyphs on same-step dependency rows.
@@ -1070,7 +1103,7 @@ function BlueprintCellDetailPanelBody() {
     techItem: selection.techItem,
     cellContent: selection.paths[0]?.content,
     cellPicture: selection.paths[0]?.picture,
-    cellLinks,
+    cellTouchpoints: cellTouchpointList,
   })
   const showPicture = Boolean(detailPictures?.length && !isVisualLane)
   const showTechPill = Boolean(isTechLane && techDetailLabel)
@@ -1486,7 +1519,7 @@ function BlueprintCellDetailPanelBody() {
                   {activeTab === 'resources' ? (
                     <CellResourcesTab
                       cellId={resolvedCellId}
-                      links={cellLinks}
+                      resources={cellResourceList}
                       figmaUrl={figmaUrl}
                     />
                   ) : null}

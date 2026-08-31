@@ -60,6 +60,8 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | Path column order | `path_steps` | `position` per `(path_id, step_id)` |
 | Cell | `cells` | unique `(lane_id, step_id, position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
 | Cell dependency | `cell_dependencies` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
+| Touchpoint placement | `cell_touchpoints` | unique `(cell_id, name)`; owns the summary, screenshots and design link for that moment |
+| Resource | `resources` | a cell **or** one placement, never both — `num_nonnulls(cell_id, cell_touchpoint_id) = 1` |
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not service phases. Phases live in `phases`.
 
@@ -95,27 +97,41 @@ Each cell sits at a **lane × step** intersection for one path.
 | `content` | yes (default `''`) | **Cell Label** — primary text shown in the blueprint grid |
 | `picture` | no | Optional image URL or storage reference |
 | `summary` | no | Optional longer summary (detail panel; not the grid label) |
-| `links` | no (default `[]`) | JSON array of link objects |
 
-**Links shape** (JSONB array):
+### What a cell points at, and the touchpoints placed on it
 
-```json
-[
-  { "type": "url", "label": "Runbook", "url": "https://example.com/runbook" },
-  {
-    "type": "tech_description",
-    "label": "Work Order App",
-    "description": "Longer copy shown in the tech pill detail panel",
-    "picture": "https://example.com/screenshot.png"
-  }
-]
-```
+Both were one `links` JSONB array until `21000113000000`, which split it into
+two tables because it held two unrelated things under a name that described
+one of them.
 
-- `type` — `"url"` (external resource) or `"tech_description"` (per-tech copy/pictures for pill lanes)
-- `label` — display text; for `tech_description`, must match the pill label in `content`
-- `url` / `description` / `picture` / `pictures` — optional payload fields
+`cell_touchpoints` — one touchpoint, used at one cell:
 
-App types: `CellLink` and `BlueprintCell` in `src/types/blueprint.ts`. Parsing: `normalizeCellLinks()` in `src/lib/cellMetadata.ts`.
+| Column | Required | Description |
+| --- | --- | --- |
+| `cell_id` | yes | The cell this touchpoint is used at |
+| `name` | yes | What it is called here; matches a line of `content`, which the grid draws as a pill. Unique per cell |
+| `position` | yes | Author order within the cell |
+| `summary` | no | Prose about this touchpoint at THIS moment |
+| `screenshots` | yes (default `{}`) | `text[]` of screenshot/illustration paths, in author order |
+| `url` | no | The design file for THIS moment, not for the tool |
+
+`resources` — what a cell, or one placement, points at:
+
+| Column | Required | Description |
+| --- | --- | --- |
+| `cell_id` | exactly one of these two | The cell this resource belongs to |
+| `cell_touchpoint_id` | exactly one of these two | The placement it belongs to — a design link that documents one tool rather than the cell at large |
+| `kind` | yes (default `link`) | `link` \| `other` |
+| `name` | yes | What the thing on the other end is called |
+| `url` | required for `kind = 'link'` | |
+| `position` | yes | Author order within its owner |
+
+`resources_one_owner` enforces `num_nonnulls(cell_id, cell_touchpoint_id) = 1`
+in the schema rather than in the client: a resource belongs to a cell **or** to
+a placement, never both and never neither.
+
+App types: `CellResource` and `CellTouchpoint` in `src/types/blueprint.ts`.
+Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.
 
 ## View modes (`scenarios.view_type`)
 
@@ -176,7 +192,8 @@ Writes are laneed on top for signed-in sessions (`authenticated`):
   transaction. No table-level `INSERT`/`DELETE` on structural tables is
   granted to app roles.
 - **Ordinary text edits use column-scoped grants**: `cells.content/
-  summary/links`, `lanes.name/lane_role`, `steps.name`,
+  summary`, `cell_touchpoints.name/position/summary/screenshots/url`,
+  `resources.kind/name/url/position`, `lanes.name/lane_role`, `steps.name`,
   `paths.name/summary/note/path_type`,
   `scenarios.name/summary/view_type`, plus the derived-layer
   spec columns — writable directly by `authenticated` under permissive
@@ -428,9 +445,10 @@ const { data } = await supabase
       content,
       picture,
       summary,
-      links,
       lane_id,
-      step_id
+      step_id,
+      resources!resources_cell_id_fkey ( position, kind, name, url ),
+      cell_touchpoints ( id, position, name, summary, screenshots, url )
     )
   `)
   .eq('id', pathId)

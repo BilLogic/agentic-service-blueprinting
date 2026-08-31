@@ -250,7 +250,7 @@ function FilterChip({
  *
  * One accordion group PER STEP (canonical column) that has a canvas
  * difference, in canonical order, one open at a time; detail-only
- * (summary/links) diffs in a trailing unnumbered group. A single step
+ * (summary, resources, touchpoints) diffs in a trailing unnumbered group. A single step
  * group with nothing after it renders flat — accordion chrome around one
  * group is furniture. Opening a group flies the camera to that step's cells:
  * accordion + fly is ONE gesture, through the shared active-step cursor the

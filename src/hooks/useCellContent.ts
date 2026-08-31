@@ -1,23 +1,35 @@
 import { useCallback } from 'react'
 import { getFallbackCell } from '@/data/blueprintFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import type { CellLink } from '@/types/blueprint'
+import type { CellResource } from '@/types/blueprint'
+import { cellResources, cellResourcesFromRows } from '@/lib/cellResources'
 
 export type CellContent = {
   content: string
   summary: string | null
   owner: string | null
   perceived_owner: string | null
-  links: CellLink[]
+  resources: CellResource[]
 }
 
-const CELL_CONTENT_SELECT = 'content, summary, owner, perceived_owner, links'
+const CELL_CONTENT_SELECT = `
+  content,
+  summary,
+  owner,
+  perceived_owner,
+  resources!resources_cell_id_fkey (
+    position,
+    kind,
+    name,
+    url
+  )
+`
 
 /**
  * The cell's own editable text, read on demand.
  *
  * Separate from the grid query on purpose. The grid carries `content` and
- * `links` because it renders them, but not the owner pair — pulling those into
+ * the resources because it renders them, but not the owner pair — pulling those into
  * the canvas read would add two columns across every cell in the service to
  * serve a panel that shows one cell at a time.
  *
@@ -37,7 +49,7 @@ export function useCellContent(
       summary: cell.summary,
       owner: cell.owner ?? null,
       perceived_owner: cell.perceived_owner ?? null,
-      links: cell.links,
+      resources: cellResources(cell),
     }
   }, [cellId])
 
@@ -57,7 +69,7 @@ export function useCellContent(
         summary: data.summary ?? null,
         owner: data.owner ?? null,
         perceived_owner: data.perceived_owner ?? null,
-        links: (data.links ?? []) as unknown as CellLink[],
+        resources: cellResourcesFromRows(data.resources),
       }
     },
     fallback,
