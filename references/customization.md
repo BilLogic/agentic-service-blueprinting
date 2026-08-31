@@ -168,8 +168,8 @@ content declares itself non-content-preserving, and the script refuses to
 touch sign-off at all — those scenarios go back through review.
 
 The cheapest answer is a bump that never enters the subtree. 2026.08.25 →
-2026.08.26 gives a dependency edge an optional `kind` whose absence means
-`trigger` — what every existing edge already meant — so the step writes
+2026.08.26 gives a dependency edge an optional `kind` whose absence means the
+drawn kind — what every existing edge already meant — so the step writes
 nothing, every scenario hashes to the same digest as before, and `--workspace`
 reports each signed scenario as already anchored. Materializing the default
 into every edge would have been content-preserving too, and would have

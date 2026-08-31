@@ -114,8 +114,8 @@ export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-110400060000","source_cell_id":"f0000000-0000-4000-8000-110300060002","target_cell_id":"f0000000-0000-4000-8000-110300010002","label":"the pitch"},
     {"id":"f0000000-0000-4000-8000-110400070000","source_cell_id":"f0000000-0000-4000-8000-110300020003","target_cell_id":"f0000000-0000-4000-8000-110300010003"},
     {"id":"f0000000-0000-4000-8000-110400080000","source_cell_id":"f0000000-0000-4000-8000-110300010005","target_cell_id":"f0000000-0000-4000-8000-110300000005","label":"what it would take"},
-    {"id":"f0000000-0000-4000-8000-110400090000","source_cell_id":"f0000000-0000-4000-8000-110300010004","target_cell_id":"f0000000-0000-4000-8000-110300040004","kind":"needs","note":"A zero-config run has content only because the sample module is generated into the bundle."},
-    {"id":"f0000000-0000-4000-8000-110400100000","source_cell_id":"f0000000-0000-4000-8000-110300010005","target_cell_id":"f0000000-0000-4000-8000-110300040005","kind":"needs","note":"Weighing the cost means running the suites, not reading the claim that they pass."},
+    {"id":"f0000000-0000-4000-8000-110400090000","source_cell_id":"f0000000-0000-4000-8000-110300040004","target_cell_id":"f0000000-0000-4000-8000-110300010004","kind":"enables","note":"A zero-config run has content only because the sample module is generated into the bundle."},
+    {"id":"f0000000-0000-4000-8000-110400100000","source_cell_id":"f0000000-0000-4000-8000-110300040005","target_cell_id":"f0000000-0000-4000-8000-110300010005","kind":"enables","note":"Weighing the cost means running the suites, not reading the claim that they pass."},
   ],
 }
 
@@ -188,9 +188,9 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-210400050000","source_cell_id":"f0000000-0000-4000-8000-210300040008","target_cell_id":"f0000000-0000-4000-8000-210300040009"},
     {"id":"f0000000-0000-4000-8000-210400060000","source_cell_id":"f0000000-0000-4000-8000-210300040009","target_cell_id":"f0000000-0000-4000-8000-210300030009","label":"read back"},
     {"id":"f0000000-0000-4000-8000-210400070000","source_cell_id":"f0000000-0000-4000-8000-210300040007","target_cell_id":"f0000000-0000-4000-8000-210300040006","label":"rework","note":"Accepted findings send the draft back to cell-writing before a re-validate."},
-    {"id":"f0000000-0000-4000-8000-210400080000","source_cell_id":"f0000000-0000-4000-8000-210300020008","target_cell_id":"f0000000-0000-4000-8000-210300050008","kind":"needs","note":"Sign-off is bound to a content hash, not to a feeling."},
-    {"id":"f0000000-0000-4000-8000-210400090000","source_cell_id":"f0000000-0000-4000-8000-210300040009","target_cell_id":"f0000000-0000-4000-8000-210300050009","kind":"needs","note":"The import consumes the generated seed; the fallback module is registered in the same pass."},
-    {"id":"f0000000-0000-4000-8000-210400100000","source_cell_id":"f0000000-0000-4000-8000-210300060004","target_cell_id":"f0000000-0000-4000-8000-210300050004","kind":"needs","note":"The reader follows the ingest playbook rather than improvising a reading order."},
+    {"id":"f0000000-0000-4000-8000-210400080000","source_cell_id":"f0000000-0000-4000-8000-210300050008","target_cell_id":"f0000000-0000-4000-8000-210300020008","kind":"enables","note":"Sign-off is bound to a content hash, not to a feeling."},
+    {"id":"f0000000-0000-4000-8000-210400090000","source_cell_id":"f0000000-0000-4000-8000-210300050009","target_cell_id":"f0000000-0000-4000-8000-210300040009","kind":"enables","note":"The import consumes the generated seed; the fallback module is registered in the same pass."},
+    {"id":"f0000000-0000-4000-8000-210400100000","source_cell_id":"f0000000-0000-4000-8000-210300050004","target_cell_id":"f0000000-0000-4000-8000-210300060004","kind":"enables","note":"The reader follows the ingest playbook rather than improvising a reading order."},
   ],
 }
 
@@ -264,8 +264,8 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-220400060000","source_cell_id":"f0000000-0000-4000-8000-220300040008","target_cell_id":"f0000000-0000-4000-8000-220300040009"},
     {"id":"f0000000-0000-4000-8000-220400070000","source_cell_id":"f0000000-0000-4000-8000-220300040009","target_cell_id":"f0000000-0000-4000-8000-220300030009","label":"read back"},
     {"id":"f0000000-0000-4000-8000-220400080000","source_cell_id":"f0000000-0000-4000-8000-220300040007","target_cell_id":"f0000000-0000-4000-8000-220300040006","label":"rework","note":"Accepted findings send the draft back to cell-writing before a re-validate."},
-    {"id":"f0000000-0000-4000-8000-220400090000","source_cell_id":"f0000000-0000-4000-8000-220300020008","target_cell_id":"f0000000-0000-4000-8000-220300050008","kind":"needs","note":"Sign-off is bound to a content hash, not to a feeling."},
-    {"id":"f0000000-0000-4000-8000-220400100000","source_cell_id":"f0000000-0000-4000-8000-220300040009","target_cell_id":"f0000000-0000-4000-8000-220300050009","kind":"needs","note":"The import consumes the generated seed; the fallback module is registered in the same pass."},
+    {"id":"f0000000-0000-4000-8000-220400090000","source_cell_id":"f0000000-0000-4000-8000-220300050008","target_cell_id":"f0000000-0000-4000-8000-220300020008","kind":"enables","note":"Sign-off is bound to a content hash, not to a feeling."},
+    {"id":"f0000000-0000-4000-8000-220400100000","source_cell_id":"f0000000-0000-4000-8000-220300050009","target_cell_id":"f0000000-0000-4000-8000-220300040009","kind":"enables","note":"The import consumes the generated seed; the fallback module is registered in the same pass."},
   ],
 }
 
@@ -319,8 +319,8 @@ export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-310400030000","source_cell_id":"f0000000-0000-4000-8000-310300050004","target_cell_id":"f0000000-0000-4000-8000-310300020005","label":"findings"},
     {"id":"f0000000-0000-4000-8000-310400040000","source_cell_id":"f0000000-0000-4000-8000-310300020005","target_cell_id":"f0000000-0000-4000-8000-310300010005"},
     {"id":"f0000000-0000-4000-8000-310400050000","source_cell_id":"f0000000-0000-4000-8000-310300010006","target_cell_id":"f0000000-0000-4000-8000-310300030007","label":"triaged"},
-    {"id":"f0000000-0000-4000-8000-310400060000","source_cell_id":"f0000000-0000-4000-8000-310300030004","target_cell_id":"f0000000-0000-4000-8000-310300040004","kind":"needs","note":"Dedupe is the fingerprint algorithm, not a judgement call about whether two findings feel alike."},
-    {"id":"f0000000-0000-4000-8000-310400070000","source_cell_id":"f0000000-0000-4000-8000-310300050003","target_cell_id":"f0000000-0000-4000-8000-310300060003","kind":"needs","note":"An auditor is given exactly one check doc; the roster is the directory listing."},
+    {"id":"f0000000-0000-4000-8000-310400060000","source_cell_id":"f0000000-0000-4000-8000-310300040004","target_cell_id":"f0000000-0000-4000-8000-310300030004","kind":"enables","note":"Dedupe is the fingerprint algorithm, not a judgement call about whether two findings feel alike."},
+    {"id":"f0000000-0000-4000-8000-310400070000","source_cell_id":"f0000000-0000-4000-8000-310300060003","target_cell_id":"f0000000-0000-4000-8000-310300050003","kind":"enables","note":"An auditor is given exactly one check doc; the roster is the directory listing."},
   ],
 }
 
@@ -375,8 +375,8 @@ export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-320400040000","source_cell_id":"f0000000-0000-4000-8000-320300020005","target_cell_id":"f0000000-0000-4000-8000-320300010005"},
     {"id":"f0000000-0000-4000-8000-320400050000","source_cell_id":"f0000000-0000-4000-8000-320300010006","target_cell_id":"f0000000-0000-4000-8000-320300030007","label":"triaged"},
     {"id":"f0000000-0000-4000-8000-320400060000","source_cell_id":"f0000000-0000-4000-8000-320300030007","target_cell_id":"f0000000-0000-4000-8000-320300030003","label":"re-dispatch","note":"A re-run is a full run: the roster goes out again, and supersede semantics make that safe."},
-    {"id":"f0000000-0000-4000-8000-320400070000","source_cell_id":"f0000000-0000-4000-8000-320300030004","target_cell_id":"f0000000-0000-4000-8000-320300040004","kind":"needs","note":"Dedupe is the fingerprint algorithm, not a judgement call about whether two findings feel alike."},
-    {"id":"f0000000-0000-4000-8000-320400080000","source_cell_id":"f0000000-0000-4000-8000-320300050003","target_cell_id":"f0000000-0000-4000-8000-320300060003","kind":"needs","note":"An auditor is given exactly one check doc; the roster is the directory listing."},
+    {"id":"f0000000-0000-4000-8000-320400070000","source_cell_id":"f0000000-0000-4000-8000-320300040004","target_cell_id":"f0000000-0000-4000-8000-320300030004","kind":"enables","note":"Dedupe is the fingerprint algorithm, not a judgement call about whether two findings feel alike."},
+    {"id":"f0000000-0000-4000-8000-320400080000","source_cell_id":"f0000000-0000-4000-8000-320300060003","target_cell_id":"f0000000-0000-4000-8000-320300050003","kind":"enables","note":"An auditor is given exactly one check doc; the roster is the directory listing."},
   ],
 }
 
@@ -408,7 +408,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-410300020007","lane_id":"f0000000-0000-4000-8000-410100020000","step_id":"f0000000-0000-4000-8000-400200070000","content":"Nothing on the canvas changes until sb:map promotes an accepted change","picture":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030001","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200010000","content":"Picks the operation: replay, restage, or prioritize","picture":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030002","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200020000","content":"Copies the blueprint into whatif/<key>/ — the hypothetical never touches the base","picture":null,"summary":null,"resources":[],"touchpoints":[]},
-    {"id":"f0000000-0000-4000-8000-410300030003","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200030000","content":"Dispatches impact-tracer down trigger and needs edges","picture":null,"summary":null,"resources":[],"touchpoints":[]},
+    {"id":"f0000000-0000-4000-8000-410300030003","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200030000","content":"Dispatches impact-tracer down leads_to and enables edges","picture":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030004","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200040000","content":"Judges the consequences against the operation it picked, not against a general opinion","picture":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030005","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200050000","content":"Dispatches blueprint-reviewer in whatif-claim mode and cuts every claim that fails","picture":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030006","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200060000","content":"Writes comparison.md with citations and zero verbatim excerpts","picture":null,"summary":null,"resources":[],"touchpoints":[]},
@@ -417,7 +417,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-410300040003","lane_id":"f0000000-0000-4000-8000-410100040000","step_id":"f0000000-0000-4000-8000-400200030000","content":"Visited set + depth cap","picture":null,"summary":"Loops are legal in this data — a phase may feed back — so the walk has to survive a cyclic graph rather than assume a tree.","resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300040006","lane_id":"f0000000-0000-4000-8000-410100040000","step_id":"f0000000-0000-4000-8000-400200060000","content":"comparison.md\nchange-request-schema.json","picture":null,"summary":null,"resources":[{"name":"change-request-schema.json","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/whatif/references/change-request-schema.json"}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300040007","lane_id":"f0000000-0000-4000-8000-410100040000","step_id":"f0000000-0000-4000-8000-400200070000","content":"Recorded AND recomputed sign-off hashes must both match, or promotion refuses","picture":null,"summary":null,"resources":[],"touchpoints":[]},
-    {"id":"f0000000-0000-4000-8000-410300050003","lane_id":"f0000000-0000-4000-8000-410100050000","step_id":"f0000000-0000-4000-8000-400200030000","content":"impact-tracer returns affected cells, strained assumptions, and displaced demand","picture":null,"summary":null,"resources":[{"name":"agents/impact-tracer.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/agents/impact-tracer.md"}],"touchpoints":[],"function":"Answer “what else does this touch?” from the graph rather than from whoever remembers the service best.","form":"A read-only walk down trigger and needs edges from one named cell, returning a bounded list with a truncation flag.","value_props":[{"for":"The blueprint owner","value":"The blast radius of a change, before anyone estimates it."},{"for":"The reviewer","value":"A claim list with cell keys attached, so every claim is checkable."}]},
+    {"id":"f0000000-0000-4000-8000-410300050003","lane_id":"f0000000-0000-4000-8000-410100050000","step_id":"f0000000-0000-4000-8000-400200030000","content":"impact-tracer returns affected cells, strained assumptions, and displaced demand","picture":null,"summary":null,"resources":[{"name":"agents/impact-tracer.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/agents/impact-tracer.md"}],"touchpoints":[],"function":"Answer “what else does this touch?” from the graph rather than from whoever remembers the service best.","form":"A read-only walk down leads_to and enables edges from one named cell, returning a bounded list with a truncation flag.","value_props":[{"for":"The blueprint owner","value":"The blast radius of a change, before anyone estimates it."},{"for":"The reviewer","value":"A claim list with cell keys attached, so every claim is checkable."}]},
     {"id":"f0000000-0000-4000-8000-410300050005","lane_id":"f0000000-0000-4000-8000-410100050000","step_id":"f0000000-0000-4000-8000-400200050000","content":"blueprint-reviewer, whatif-claim mode: every surviving claim carries cell keys it confirmed exist","picture":null,"summary":null,"resources":[{"name":"agents/blueprint-reviewer.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/agents/blueprint-reviewer.md"}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300060001","lane_id":"f0000000-0000-4000-8000-410100060000","step_id":"f0000000-0000-4000-8000-400200010000","content":"whatif-playbook.md","picture":null,"summary":null,"resources":[{"name":"whatif-playbook.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/whatif/references/whatif-playbook.md"}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300060006","lane_id":"f0000000-0000-4000-8000-410100060000","step_id":"f0000000-0000-4000-8000-400200060000","content":"audit-playbook.md §2–§4 — findings mechanics, shared with the audit","picture":null,"summary":null,"resources":[{"name":"references/audit-playbook.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/references/audit-playbook.md"}],"touchpoints":[]},
@@ -428,9 +428,9 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-410400030000","source_cell_id":"f0000000-0000-4000-8000-410300050003","target_cell_id":"f0000000-0000-4000-8000-410300010004","label":"affected cells"},
     {"id":"f0000000-0000-4000-8000-410400040000","source_cell_id":"f0000000-0000-4000-8000-410300050003","target_cell_id":"f0000000-0000-4000-8000-410300020003"},
     {"id":"f0000000-0000-4000-8000-410400050000","source_cell_id":"f0000000-0000-4000-8000-410300030005","target_cell_id":"f0000000-0000-4000-8000-410300050005"},
-    {"id":"f0000000-0000-4000-8000-410400060000","source_cell_id":"f0000000-0000-4000-8000-410300030006","target_cell_id":"f0000000-0000-4000-8000-410300050003","kind":"needs","note":"The comparison is written from the tracer’s result, never from memory of the service."},
-    {"id":"f0000000-0000-4000-8000-410400070000","source_cell_id":"f0000000-0000-4000-8000-410300030007","target_cell_id":"f0000000-0000-4000-8000-410300050005","kind":"needs","note":"A change request carries only claims the reviewer confirmed."},
-    {"id":"f0000000-0000-4000-8000-410400080000","source_cell_id":"f0000000-0000-4000-8000-410300030007","target_cell_id":"f0000000-0000-4000-8000-410300040007","kind":"needs","note":"The staleness guard compares against the sign-off hashes captured when the variant was copied."},
+    {"id":"f0000000-0000-4000-8000-410400060000","source_cell_id":"f0000000-0000-4000-8000-410300050003","target_cell_id":"f0000000-0000-4000-8000-410300030006","kind":"enables","note":"The comparison is written from the tracer’s result, never from memory of the service."},
+    {"id":"f0000000-0000-4000-8000-410400070000","source_cell_id":"f0000000-0000-4000-8000-410300050005","target_cell_id":"f0000000-0000-4000-8000-410300030007","kind":"enables","note":"A change request carries only claims the reviewer confirmed."},
+    {"id":"f0000000-0000-4000-8000-410400080000","source_cell_id":"f0000000-0000-4000-8000-410300040007","target_cell_id":"f0000000-0000-4000-8000-410300030007","kind":"enables","note":"The staleness guard compares against the sign-off hashes captured when the variant was copied."},
   ],
 }
 
@@ -490,8 +490,8 @@ export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-510400060000","source_cell_id":"f0000000-0000-4000-8000-510300060007","target_cell_id":"f0000000-0000-4000-8000-510300000007","label":"frames, not slides"},
     {"id":"f0000000-0000-4000-8000-510400070000","source_cell_id":"f0000000-0000-4000-8000-510300040006","target_cell_id":"f0000000-0000-4000-8000-510300020007","label":"rows the app reads"},
     {"id":"f0000000-0000-4000-8000-510400080000","source_cell_id":"f0000000-0000-4000-8000-510300010003","target_cell_id":"f0000000-0000-4000-8000-510300030004","label":"nod"},
-    {"id":"f0000000-0000-4000-8000-510400090000","source_cell_id":"f0000000-0000-4000-8000-510300030006","target_cell_id":"f0000000-0000-4000-8000-510300030004","kind":"needs","note":"Only a validated slice is importable."},
-    {"id":"f0000000-0000-4000-8000-510400100000","source_cell_id":"f0000000-0000-4000-8000-510300030006","target_cell_id":"f0000000-0000-4000-8000-510300050005","kind":"needs","note":"The import waits for the fresh-context claim review to come back clean."},
+    {"id":"f0000000-0000-4000-8000-510400090000","source_cell_id":"f0000000-0000-4000-8000-510300030004","target_cell_id":"f0000000-0000-4000-8000-510300030006","kind":"enables","note":"Only a validated slice is importable."},
+    {"id":"f0000000-0000-4000-8000-510400100000","source_cell_id":"f0000000-0000-4000-8000-510300050005","target_cell_id":"f0000000-0000-4000-8000-510300030006","kind":"enables","note":"The import waits for the fresh-context claim review to come back clean."},
   ],
 }
 
@@ -541,8 +541,8 @@ export const SAMPLE_KEEP_UPDATE_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-610400060000","source_cell_id":"f0000000-0000-4000-8000-610300030005","target_cell_id":"f0000000-0000-4000-8000-610300020005","label":"read back"},
     {"id":"f0000000-0000-4000-8000-610400070000","source_cell_id":"f0000000-0000-4000-8000-610300060002","target_cell_id":"f0000000-0000-4000-8000-610300030002","label":"resume rules"},
     {"id":"f0000000-0000-4000-8000-610400080000","source_cell_id":"f0000000-0000-4000-8000-610300020005","target_cell_id":"f0000000-0000-4000-8000-610300000005","label":"back in use"},
-    {"id":"f0000000-0000-4000-8000-610400090000","source_cell_id":"f0000000-0000-4000-8000-610300030004","target_cell_id":"f0000000-0000-4000-8000-610300040004","kind":"needs","note":"Re-signing is a recomputed hash, so an edit cannot inherit the previous approval."},
-    {"id":"f0000000-0000-4000-8000-610400100000","source_cell_id":"f0000000-0000-4000-8000-610300030005","target_cell_id":"f0000000-0000-4000-8000-610300030004","kind":"needs","note":"Only a re-signed scenario is re-importable."},
+    {"id":"f0000000-0000-4000-8000-610400090000","source_cell_id":"f0000000-0000-4000-8000-610300040004","target_cell_id":"f0000000-0000-4000-8000-610300030004","kind":"enables","note":"Re-signing is a recomputed hash, so an edit cannot inherit the previous approval."},
+    {"id":"f0000000-0000-4000-8000-610400100000","source_cell_id":"f0000000-0000-4000-8000-610300030004","target_cell_id":"f0000000-0000-4000-8000-610300030005","kind":"enables","note":"Only a re-signed scenario is re-importable."},
   ],
 }
 

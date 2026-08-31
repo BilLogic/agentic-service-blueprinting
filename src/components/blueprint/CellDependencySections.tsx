@@ -201,33 +201,33 @@ export function CellDependencySections({
   onTechSelect,
   className,
 }: CellDependencySectionsProps) {
-  const setOffBy = connections.incoming.filter(
-    (connection) => connection.linkKind === 'trigger',
+  const follows = connections.incoming.filter(
+    (connection) => connection.linkKind === 'leads_to',
   )
-  const setsOff = connections.outgoing.filter(
-    (connection) => connection.linkKind === 'trigger',
+  const leadsTo = connections.outgoing.filter(
+    (connection) => connection.linkKind === 'leads_to',
   )
 
-  const needsById = new Map<
+  const enablesById = new Map<
     string,
     { connection: BlueprintCellConnection; flow: RowFlow }
   >()
   for (const connection of connections.incoming) {
-    if (connection.linkKind !== 'needs') continue
-    if (!needsById.has(connection.triggerId)) {
-      needsById.set(connection.triggerId, { connection, flow: 'in' })
+    if (connection.linkKind !== 'enables') continue
+    if (!enablesById.has(connection.triggerId)) {
+      enablesById.set(connection.triggerId, { connection, flow: 'in' })
     }
   }
   for (const connection of connections.outgoing) {
-    if (connection.linkKind !== 'needs') continue
-    const existing = needsById.get(connection.triggerId)
+    if (connection.linkKind !== 'enables') continue
+    const existing = enablesById.get(connection.triggerId)
     if (existing) {
       existing.flow = 'both'
     } else {
-      needsById.set(connection.triggerId, { connection, flow: 'out' })
+      enablesById.set(connection.triggerId, { connection, flow: 'out' })
     }
   }
-  const needs = [...needsById.values()]
+  const enables = [...enablesById.values()]
 
   const linkedTechIds = new Set(
     [...connections.incoming, ...connections.outgoing].flatMap((connection) =>
@@ -239,9 +239,9 @@ export function CellDependencySections({
   )
 
   if (
-    setOffBy.length === 0 &&
-    setsOff.length === 0 &&
-    needs.length === 0 &&
+    follows.length === 0 &&
+    leadsTo.length === 0 &&
+    enables.length === 0 &&
     remainingTech.length === 0
   ) {
     return (
@@ -257,9 +257,9 @@ export function CellDependencySections({
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      {setOffBy.length > 0 ? (
-        <DependencyGroup title="Set off by">
-          {setOffBy.map((connection) => (
+      {follows.length > 0 ? (
+        <DependencyGroup title="Follows">
+          {follows.map((connection) => (
             <DependencyRow
               key={`in:${connection.triggerId}`}
               connection={connection}
@@ -269,9 +269,9 @@ export function CellDependencySections({
           ))}
         </DependencyGroup>
       ) : null}
-      {setsOff.length > 0 ? (
-        <DependencyGroup title="Sets off">
-          {setsOff.map((connection) => (
+      {leadsTo.length > 0 ? (
+        <DependencyGroup title="Leads to">
+          {leadsTo.map((connection) => (
             <DependencyRow
               key={`out:${connection.triggerId}`}
               connection={connection}
@@ -281,11 +281,11 @@ export function CellDependencySections({
           ))}
         </DependencyGroup>
       ) : null}
-      {needs.length > 0 ? (
-        <DependencyGroup title="Needs">
-          {needs.map(({ connection, flow }) => (
+      {enables.length > 0 ? (
+        <DependencyGroup title="Enables">
+          {enables.map(({ connection, flow }) => (
             <DependencyRow
-              key={`needs:${connection.triggerId}`}
+              key={`enables:${connection.triggerId}`}
               connection={connection}
               direction={direction(connection, flow)}
               {...handlers}

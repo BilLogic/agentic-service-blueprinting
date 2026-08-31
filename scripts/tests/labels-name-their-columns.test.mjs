@@ -207,22 +207,22 @@ export const LABEL_COLUMNS = Object.freeze(
         'The relation names both ends, because a dependency always runs from one cell to another. The tab is already standing inside a cell, so the prefix would be the one word on it that told a reader nothing.',
     },
     {
-      label: 'Set off by',
+      label: 'Follows',
       names: ['cell_dependencies.kind'],
       because:
-        "Names a VALUE read from one end rather than a column: these rows are `kind = 'trigger'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this.",
+        "Names a VALUE read from one end rather than a column: these rows are `kind = 'leads_to'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this.",
     },
     {
-      label: 'Sets off',
+      label: 'Leads to',
       names: ['cell_dependencies.kind'],
       because:
-        "The same value from the other end — `kind = 'trigger'` leaving. Renaming the pair to the glossary's word, Trigger, would trade one non-column word for another and close no divergence; what the two labels carry that `kind` cannot is the direction.",
+        "The same value from the other end — `kind = 'leads_to'` leaving, and here the label IS the value minus its underscore. What the pair carries that `kind` cannot is the direction, which is why the arriving end keeps a word of its own.",
     },
     {
-      label: 'Needs',
+      label: 'Enables',
       names: ['cell_dependencies.kind'],
       because:
-        "The word IS the value — `kind = 'needs'`, the recorded dependency that never draws — and `kind` is the name of the place holding it. This is the row of the three whose label the schema already says out loud.",
+        "The word IS the value — `kind = 'enables'`, the recorded dependency that never draws — and `kind` is the name of the place holding it. It needs no second label for the other end: `enables` reads source-first whichever end you stand at.",
     },
     {
       label: 'Tech in this step',
@@ -336,7 +336,7 @@ test('the unmapped-label check goes red on a label nobody bound', () => {
         // Already mapped, and must not be reported: the check is about words
         // with no row, not about words it dislikes.
         '<Field label="Content" />',
-        '<DependencyGroup title="Needs">',
+        '<DependencyGroup title="Enables">',
         // Case and spacing are the label's business, not the map's.
         '<OwnerCell label="perceived owner" />',
         "const PANEL_TABS = [",

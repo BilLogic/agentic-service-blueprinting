@@ -1,5 +1,5 @@
 {
-  "schema_version": "2026.08.31",
+  "schema_version": "2026.09.01",
   "locales": ["en", "zh"],
   "service": {
     "key": "streetlight-service",
@@ -174,9 +174,9 @@
                     "target": { "lane": "citizen", "step": "verify" }
                   },
                   {
-                    "source": { "lane": "compliance", "step": "archive" },
-                    "target": { "lane": "backstage-tech", "step": "archive" },
-                    "kind": "needs"
+                    "source": { "lane": "backstage-tech", "step": "archive" },
+                    "target": { "lane": "compliance", "step": "archive" },
+                    "kind": "enables"
                   }
                 ]
               },

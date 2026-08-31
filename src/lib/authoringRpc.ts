@@ -69,7 +69,7 @@ export type LaneSetEntry = {
   position: number
 }
 
-export type DependencyKind = 'trigger' | 'needs'
+export type DependencyKind = 'leads_to' | 'enables'
 
 export type ViewType = 'single' | 'side-by-side' | 'integrated'
 
@@ -485,7 +485,7 @@ export function setCellDependency(
   return call<string>(client, 'set_cell_dependency', {
     source_cell_id: input.sourceCellId,
     target_cell_id: input.targetCellId,
-    kind: input.kind ?? 'trigger',
+    kind: input.kind ?? 'leads_to',
     label: input.label ?? null,
     note: input.note ?? null,
   })

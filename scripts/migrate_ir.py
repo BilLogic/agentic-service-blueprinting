@@ -304,6 +304,48 @@ def _split_links(cell) -> None:
         cell["links"] = unreadable
 
 
+def to_2026_09_01(doc: dict) -> None:
+    """2026.08.31 → 2026.09.01 — the two dependency kinds, and one of them turns.
+
+    `trigger` becomes `leads_to` and `needs` becomes `enables`, matching
+    21000114000000. The first is a rename. The second is not:
+
+        A needs   B   →  B comes first, B is required by A
+        A enables B   →  A comes first, A makes B possible
+
+    So every `needs` edge has its `source` and `target` exchanged as its kind
+    is rewritten. An edge left where it lay would claim the exact reverse of
+    what its author wrote. This is the only migration step in this file that
+    moves authored content rather than a stamp, which is why it is also the
+    only one that can change a scenario's content hash — a workspace holding
+    signed `needs` edges re-signs those scenarios, and that is correct: the
+    bytes really did change.
+
+    `trigger` edges are rewritten in place because a rename cannot move a
+    meaning. An edge with NO kind is left alone: absence meant the drawn kind
+    before this bump and still does, so a file full of bare edges migrates by
+    its stamp and hashes identically.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            for path in scenario.get("paths", []) or []:
+                for edge in path.get("triggers", []) or []:
+                    if not isinstance(edge, dict):
+                        continue
+                    kind = edge.get("kind")
+                    if kind == "trigger":
+                        edge["kind"] = "leads_to"
+                    elif kind == "needs":
+                        edge["source"], edge["target"] = (
+                            edge.get("target"),
+                            edge.get("source"),
+                        )
+                        edge["kind"] = "enables"
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -332,6 +374,13 @@ STEPS = (
         "a cell's `links` array splits into `resources` and `touchpoints`; "
         "label→name, description→summary, picture/pictures→screenshots",
         to_2026_08_31,
+    ),
+    Step(
+        "2026.08.31",
+        "2026.09.01",
+        "dependency kinds: trigger→leads_to, and needs→enables with the edge "
+        "turned around, because the two words put the source at opposite ends",
+        to_2026_09_01,
     ),
 )
 

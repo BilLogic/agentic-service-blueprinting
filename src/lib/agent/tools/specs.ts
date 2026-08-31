@@ -571,13 +571,13 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'set_cell_dependency',
     description:
-      'Connect two cells on the SAME path. kind "trigger" = source sets target in motion (drawn as an arrow); "needs" = source depends on target existing (panel-only) — "only makes sense after X" / "depends on X" reads as needs. State which kind you chose and why in your reply. Arrows only where they add information.',
+      'Connect two cells on the SAME path. kind "leads_to" = source makes target happen (drawn as an arrow); "enables" = source makes target possible without causing it (panel-only) — "X only makes sense once Y is true" reads as Y enables X, source-first. State which kind you chose and why in your reply. Arrows only where they add information.',
     parameters: {
       type: 'object',
       properties: {
         source_cell_id: str('Source cell id'),
         target_cell_id: str('Target cell id'),
-        kind: { type: 'string', enum: ['trigger', 'needs'], description: 'Default trigger' },
+        kind: { type: 'string', enum: ['leads_to', 'enables'], description: 'Default leads_to' },
         label: str('Short arrow label; omit for none'),
       },
       required: ['source_cell_id', 'target_cell_id'],

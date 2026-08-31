@@ -41,7 +41,7 @@ The question→type table lives in SKILL.md ("The four questions") — one
 copy, there. This section carries only the binding selection rules.
 
 **Journey selection is arrow-derived, not adjacency-derived.** A companion
-cell joins a frame because the blueprint records a `trigger` between it and
+cell joins a frame because the blueprint records a `leads_to` between it and
 the actor's cell. Do not add a cell because it "seems related", sits nearby,
 or is on a tech lane. If the interaction is real and missing, the fix is a
 dependency in the IR (a map-skill edit, re-signed and re-imported) — not a

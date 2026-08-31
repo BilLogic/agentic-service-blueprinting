@@ -260,7 +260,7 @@ export function MergedCompareGrid({
         const key = [
           trigger.source_cell_id,
           trigger.target_cell_id,
-          raw?.kind ?? 'trigger',
+          raw?.kind ?? 'leads_to',
           raw?.label ?? '',
         ].join(' | ')
         if (drawnEdges.has(key)) return false

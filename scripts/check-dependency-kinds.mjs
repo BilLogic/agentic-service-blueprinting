@@ -46,10 +46,28 @@ const DATA_MODEL = 'references/data-model.md'
 /** The rulebook trees the canvas agent and the IDE skills both read. */
 const RULEBOOK = ['references', 'skills']
 
-/** Retired kind words, and what the database calls them instead. */
+/**
+ * Retired kind words, and what the database calls them instead.
+ *
+ * These swapped ends in 21000114000000. The docs used to run AHEAD of the
+ * column — they taught `leads_to`/`enables` while the constraint accepted
+ * `trigger`/`needs`, which is the drift this file was written for. The column
+ * has now caught up and passed them: `trigger` is the retired word, and
+ * `needs` is retired twice over, because the edge it named points the other
+ * way from the `enables` that replaced it.
+ *
+ * Both are held to their CODE-SPAN form, and each for its own reason.
+ * `needs` is an ordinary English verb — "a slice needs a cell" — which is the
+ * rule `enables` used to be held by. `trigger` is a database object these
+ * documents legitimately discuss: `references/data-model.md` has a whole
+ * section on the integrity trigger `cells_validate_path_match`, and a bare
+ * word sweep read every line of it as a retired kind. Narrowing the subject
+ * to the code span is the fix; dropping `trigger` from the list would have
+ * made this a rule that never covered the word at all.
+ */
 const RETIRED = [
-  [/\bleads_to\b/g, 'leads_to', 'trigger'],
-  [/`enables`/g, '`enables`', '`needs`'],
+  [/`trigger`/g, '`trigger`', '`leads_to`'],
+  [/`needs`/g, '`needs`', '`enables`'],
 ]
 
 /**
@@ -57,17 +75,31 @@ const RETIRED = [
  *
  * The constraint is still named for the table's old name — the rename
  * migration says so on purpose — so match either.
+ *
+ * TWO THINGS THIS LEARNED FROM 21000114000000, both silent failures:
+ *
+ * 1. It insisted on exactly ONE definition and threw otherwise, on the
+ *    reasoning that a redefinition should fail loudly rather than be read
+ *    stale. A migration that drops and re-adds the constraint is exactly that
+ *    redefinition, and it is the ordinary way to change an enum — so the rule
+ *    made the normal case an error. The LAST definition wins now, because the
+ *    file is generated in migration order and the last one is what a fresh
+ *    database ends up with.
+ *
+ * 2. It matched on one line. `alter table … add constraint … check (…)`
+ *    written across three lines did not match at all, so the sweep read the
+ *    ORIGINAL constraint and reported agreement with a column that had since
+ *    changed underneath it. Whitespace is collapsed before matching.
  */
 export function enforcedKinds(sql) {
+  const flat = sql.replace(/\s+/g, ' ')
   const pattern =
     /constraint (?:cell_triggers|cell_dependencies)_kind_check check \(kind in \(([^)]*)\)\)/g
-  const found = [...sql.matchAll(pattern)]
-  if (found.length !== 1) {
-    throw new Error(
-      `expected exactly one cell-dependency kind constraint in ${SCHEMA}, found ${found.length}`,
-    )
+  const found = [...flat.matchAll(pattern)]
+  if (found.length === 0) {
+    throw new Error(`no cell-dependency kind constraint found in ${SCHEMA}`)
   }
-  return [...found[0][1].matchAll(/'([a-z_]+)'/g)].map(([, value]) => value)
+  return [...found.at(-1)[1].matchAll(/'([a-z_]+)'/g)].map(([, value]) => value)
 }
 
 /** The values the Enums section states for `cell_dependencies.kind`. */
