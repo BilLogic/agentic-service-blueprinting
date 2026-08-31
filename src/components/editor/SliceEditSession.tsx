@@ -26,7 +26,7 @@ function toDraftFrames(detail: SliceDetail): DraftFrame[] {
     .map((item) => ({
       id: item.id,
       cells: [...item.cell_ids],
-      caption: item.caption ?? '',
+      title: item.title ?? '',
       narrative: item.narrative ?? '',
     }))
 }
@@ -53,7 +53,7 @@ export function SliceEditSession({
   const mode = useCanvasModeValue()
   const [frames, setFrames] = useState<DraftFrame[]>(() => toDraftFrames(detail))
   // Read from `detail`, not the draft: a storyboard upload writes straight to
-  // `slice_items` and refreshes the slice, so the draft never sees it.
+  // `slides` and refreshes the slice, so the draft never sees it.
   const illustrationFor = useCallback(
     (itemId: string) =>
       detail.items.find((item) => item.id === itemId)?.illustration ?? null,
@@ -92,7 +92,7 @@ export function SliceEditSession({
         }
         // No frames yet (every one was emptied) — the click starts one.
         if (current.length === 0) {
-          return [{ cells: [cellId], caption: '', narrative: '' }]
+          return [{ cells: [cellId], title: '', narrative: '' }]
         }
         const target = Math.min(activeFrame, current.length - 1)
         return current.map((frame, index) =>

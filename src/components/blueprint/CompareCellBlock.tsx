@@ -66,7 +66,7 @@ export function CompareCellBlock({
   compact?: boolean
   flushBottom?: boolean
   selectionContext?: BlueprintCellSelectionContext
-  visualPictures?: Array<{ picture: string; label: string }>
+  visualPictures?: Array<{ frame: string; label: string }>
   /** Every cell in a tech slot — one per touchpoint since the split. */
   slotCells?: BlueprintCell[]
   /** Member paths of a divergent sub-cell — one wash stripe + label each. */
@@ -112,7 +112,7 @@ export function CompareCellBlock({
         <BlueprintStepVisual
           compact={compact}
           fill={laneStyle.lane}
-          pictures={visualPictures}
+          frames={visualPictures}
           selection={
             selectionContext
               ? buildBlueprintCellSelection(selectionContext)
@@ -157,7 +157,7 @@ export function CompareCellBlock({
                       ...selectionContext,
                       cellId: slotCell.id,
                       cellContent: slotCell.content ?? '',
-                      cellPicture: slotCell.picture ?? null,
+                      cellFrame: slotCell.frame ?? null,
                       cellSummary: slotCell.summary ?? null,
                       cellTouchpoints: cellTouchpoints(slotCell),
                       cellResources: cellResources(slotCell),

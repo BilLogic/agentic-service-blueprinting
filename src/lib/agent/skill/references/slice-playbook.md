@@ -66,7 +66,7 @@ framed blank.
 
 ## 3. Write the prose
 
-Per frame: a caption (the moment) and a narrative (what happens, and what it
+Per frame: a title (the moment) and a narrative (what happens, and what it
 costs the actor). Per slice: a title and a description that says who it is
 for and what question it answers.
 
@@ -74,7 +74,7 @@ Rules that are not style preferences:
 
 - **Cite, never quote.** Slices land in public-read tables. Reference
   evidence by cell key or title; never paste an interview excerpt or a
-  proposition figure into a caption, narrative, or doc.
+  proposition figure into a title, narrative, or doc.
 - **Personas, not people.** "A first-week field technician", never a participant's name,
   employer, or contact string.
 - **No claim without a cell.** If a sentence cannot point at a cell in its own
@@ -115,7 +115,7 @@ leaves stale frames behind. The adapter rules in
 writing, verify by read-back after.
 
 Read-back check: `slices` row count matches the file, and each slice's
-`slice_items` count matches its frame count.
+`slides` count matches its frame count.
 
 ## 6. Regenerate, edit, delete
 

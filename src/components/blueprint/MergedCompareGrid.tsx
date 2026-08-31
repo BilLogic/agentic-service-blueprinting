@@ -189,19 +189,19 @@ export function MergedCompareGrid({
           const entry = slot?.perPath[pathId]
           const cellIds = entry?.present ? entry.cellIds : undefined
           if (variant === 'visual') {
-            // A visual lane's face comes from the walkthrough lanes' pictures,
-            // not from its own cell text, so it merges on the picture set.
-            const pictures = resolveVisualStepPictureEntries(
+            // A visual lane's face comes from the walkthrough lanes' frames,
+            // not from its own cell text, so it merges on the frame set.
+            const frames = resolveVisualStepPictureEntries(
               runtime.blueprint,
               stepId,
             )
-            if (pictures.length === 0) continue
+            if (frames.length === 0) continue
             candidates.push({
               pathId,
               stepId,
               cellIds: cellIds ?? [`visual-${stepId}`],
-              signature: pictures
-                .map((picture) => `${picture.label}=${picture.picture}`)
+              signature: frames
+                .map((frame) => `${frame.label}=${frame.frame}`)
                 .join('\u0000'),
             })
             continue
@@ -686,7 +686,7 @@ function MergedSubCellBlock({
               stepIndex: pathStepIndex,
               cellId,
               cellContent: cell?.content ?? '',
-              cellPicture: cell?.picture ?? null,
+              cellFrame: cell?.frame ?? null,
               cellSummary: cell?.summary ?? null,
               cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
               cellResources: cell ? cellResources(cell) : undefined,

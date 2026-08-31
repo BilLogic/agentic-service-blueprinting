@@ -384,8 +384,9 @@ verify = open(sys.argv[1], encoding="utf-8").read()
 assert "cell_key" in verify, "verify has no cell_key checks"
 assert "missing the authored cell_key prefix" in verify, "verify missing cell_key prefix check"
 assert "cell_key mismatch" in verify, "verify missing cell_key spot-check"
-# Derived-layer section: present, guarded, and notice-only.
-for table in ("slice_items", "findings", "evidence", "slices", "business_model"):
+# The four tables that are about the board, plus business_model: present,
+# guarded, and notice-only.
+for table in ("slides", "findings", "evidence", "slices", "business_model"):
     assert f"to_regclass('public.{table}')" in verify, f"derived report missing {table}"
 derived = verify.split("to_regclass", 1)[1]
 assert "raise notice" in derived, "derived section must report via notice"

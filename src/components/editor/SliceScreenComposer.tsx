@@ -22,7 +22,7 @@ import type { DraftFrame } from '@/lib/sliceValidation'
  * that they imagined the gesture. Pointer capture has one owner and no such
  * moods: down on the grip, move updates the slot under the pointer, up drops.
  *
- * "Screen" is the word here on purpose. A frame is the row in `slice_items`;
+ * "Screen" is the word here on purpose. A frame is the row in `slides`;
  * a screen is what the reader sees in presentation. The code keeps `frame`.
  */
 
@@ -87,7 +87,7 @@ export function SliceScreenComposer({
     // drop zone is how a screen boundary comes into being.
     const next =
       target.screen >= withoutCell.length
-        ? [...withoutCell, { cells: [cell], caption: '', narrative: '' }]
+        ? [...withoutCell, { cells: [cell], title: '', narrative: '' }]
         : withoutCell.map((screen, index) =>
             index === target.screen
               ? {
@@ -248,13 +248,13 @@ export function SliceScreenComposer({
                 Screen {screenIndex + 1}
               </span>
               {/*
-                No caption field here any more, and the space it took is now
+                No title field here any more, and the space it took is now
                 the screen's own. Captions are prose about a screen, and prose
                 cannot be written before the screen exists — asking for it
                 mid-grouping interrupts the one job this step has with a blank
                 box per screen, five of which is five blank boxes. They are
                 written in the slice itself, against the cells they describe.
-                `caption` stays on the draft and saves as empty.
+                `title` stays on the draft and saves as empty.
               */}
               {/*
                 No "Merge up" button: dragging a cell across the boundary IS
@@ -281,7 +281,7 @@ export function SliceScreenComposer({
                     >
                       {/*
                         Only the grip starts a drag. The row also holds a
-                        caption field and a remove button, and a drag that can
+                        title field and a remove button, and a drag that can
                         start anywhere turns every misjudged click into a
                         move.
                       */}

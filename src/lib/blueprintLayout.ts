@@ -22,7 +22,7 @@ export const PILL_CELL_LANE_ROLES = [
   SUPPORT_SYSTEMS_ROLE,
 ] as const
 
-/** Roles rendered as picture rows instead of text cells. */
+/** Roles rendered as frame rows instead of text cells. */
 export const VISUAL_LANE_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
 
 export const VISUAL_ROW_MIN_HEIGHT = 132
@@ -47,7 +47,7 @@ export type BlueprintCellVariant = 'default' | 'pills' | 'visual'
 
 /**
  * Whether a cell has anything to draw for its lane's variant. A visual cell
- * is decided by its pictures upstream, a pill cell by having at least one
+ * is decided by its frames upstream, a pill cell by having at least one
  * parsable item, a plain cell by non-blank content.
  */
 export function hasBlueprintCellContent(

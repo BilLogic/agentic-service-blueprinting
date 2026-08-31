@@ -3,11 +3,11 @@ import { touchpointNamed } from '@/lib/cellTouchpoints'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 
 /**
- * Detail-panel pictures come from the touchpoint placed at this cell — no
- * hardcoded logo registry. Falls back to the cell's own picture.
+ * Detail-panel frames come from the touchpoint placed at this cell — no
+ * hardcoded logo registry. Falls back to the cell's own frame.
  *
  * The placement's `screenshots` is one array where the old link entry carried
- * `picture` and `pictures` and the reader had to prefer one over the other.
+ * `frame` and `frames` and the reader had to prefer one over the other.
  */
 function screenshotsFor(
   touchpoints: readonly CellTouchpoint[],
@@ -24,7 +24,7 @@ function screenshotsFor(
 export function resolveCellDetailPictures(input: {
   techItem?: string | null
   cellContent?: string | null
-  cellPicture?: string | null
+  cellFrame?: string | null
   cellTouchpoints?: readonly CellTouchpoint[]
 }): readonly string[] | null {
   const touchpoints = input.cellTouchpoints ?? []
@@ -40,7 +40,7 @@ export function resolveCellDetailPictures(input: {
     if (placed) return placed
   }
 
-  const picture = input.cellPicture?.trim()
-  if (!picture || isBlueprintStepVisualPlaceholder(picture)) return null
-  return [picture]
+  const frame = input.cellFrame?.trim()
+  if (!frame || isBlueprintStepVisualPlaceholder(frame)) return null
+  return [frame]
 }

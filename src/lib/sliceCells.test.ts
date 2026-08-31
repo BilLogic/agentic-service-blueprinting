@@ -7,24 +7,24 @@ import {
   resolveSliceCells,
 } from '@/lib/sliceCells'
 import type { BlueprintData } from '@/types/blueprint'
-import type { SliceItem } from '@/types/database'
+import type { Slide } from '@/types/database'
 
 const item = (
   position: number,
   cellIds: string[],
-): SliceItem =>
+): Slide =>
   ({
     id: `item-${position}`,
     slice_id: 'slice-1',
     position,
     cell_ids: cellIds,
     cell_keys: cellIds.map((id) => `key-${id}`),
-    caption: null,
+    title: null,
     narrative: null,
     illustration: null,
     created_at: '',
     updated_at: '',
-  }) as SliceItem
+  }) as Slide
 
 const blueprint: BlueprintData = {
   path: {
@@ -45,7 +45,7 @@ const blueprint: BlueprintData = {
       lane_id: 'l-1',
       step_id: 'st-1',
       content: 'first',
-      picture: null,
+      frame: null,
       summary: null,
       links: [],
     },
@@ -54,7 +54,7 @@ const blueprint: BlueprintData = {
       lane_id: 'l-1',
       step_id: 'st-2',
       content: 'second',
-      picture: null,
+      frame: null,
       summary: null,
       links: [],
     },

@@ -20,7 +20,7 @@ import { validateDraftSlice, type DraftFrame } from '@/lib/sliceValidation'
 
 /** One screen per cell. The starting shape, and the only one worth seeding. */
 function seedScreens(cellIds: readonly string[]): DraftFrame[] {
-  return cellIds.map((cell) => ({ cells: [cell], caption: '', narrative: '' }))
+  return cellIds.map((cell) => ({ cells: [cell], title: '', narrative: '' }))
 }
 
 /**

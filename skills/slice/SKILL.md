@@ -50,7 +50,7 @@ Everything else here is guidance you may adapt. These are where the system
 actually breaks:
 
 - ⚠ **REQUIRED — never write cells.** Slices write `slices` and
-  `slice_items`, nothing else. If a slice needs a cell that does not exist,
+  `slides`, nothing else. If a slice needs a cell that does not exist,
   or an interaction the blueprint does not record, that is a blueprint edit:
   hand it to the `sb:map` skill, re-sign, re-import, then
   slice. A slice that asserts an unrecorded interaction is an invention
@@ -116,7 +116,7 @@ Never "looks done":
 | --- | --- |
 | Selection | `slice_tools.py validate` exit 0 |
 | Review | `blueprint-reviewer` slice mode passes; grep confirms no excerpt text in the file or doc |
-| Import | Transaction committed; `slices` rows = file slices, `slice_items` rows = frame count |
+| Import | Transaction committed; `slices` rows = file slices, `slides` rows = frame count |
 | Present | `render-checker` confirms every frame renders at `?slice=<id>` |
 | Storyboard | Every frame has an illustration, or the slice is explicitly text-only |
 

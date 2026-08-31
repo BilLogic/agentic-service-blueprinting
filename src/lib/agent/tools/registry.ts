@@ -174,16 +174,16 @@ export async function dispatchTool(
       const sliceId = need(args, 'slice_id')
       const { data, error } = await client
         .from('slices')
-        .select('id, title, description, slice_type, actor, origin, slice_items(id, position, caption, narrative, cell_ids)')
+        .select('id, title, description, slice_type, actor, origin, slides(id, position, title, narrative, cell_ids)')
         .eq('id', sliceId)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!data) throw new Error(`No slice with id ${sliceId}.`)
-      const frames = [...(data.slice_items ?? [])]
+      const frames = [...(data.slides ?? [])]
         .sort((a, b) => a.position - b.position)
         .map(
           (frame, index) =>
-            `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.caption ? ` caption "${frame.caption}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
+            `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.title ? ` title "${frame.title}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
         )
       return `slice "${data.title}" (${data.id}) type=${data.slice_type}${data.actor ? ` actor=${data.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
     }
@@ -489,7 +489,7 @@ export async function dispatchTool(
                   (value): value is string => typeof value === 'string',
                 )
               : [],
-            caption: typeof frame.caption === 'string' ? frame.caption : '',
+            title: typeof frame.title === 'string' ? frame.title : '',
             narrative:
               typeof frame.narrative === 'string' ? frame.narrative : '',
           }),

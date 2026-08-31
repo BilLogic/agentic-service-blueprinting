@@ -1,18 +1,18 @@
-/** Shown in the Visual swimlane when a step has no actor-lane pictures yet. */
+/** Shown in the Visual swimlane when a step has no actor-lane frames yet. */
 export const BLUEPRINT_STEP_VISUAL_PLACEHOLDER =
   '/step-visual-placeholder.svg'
 
 export function isBlueprintStepVisualPlaceholder(
-  picture: string | null | undefined,
+  frame: string | null | undefined,
 ): boolean {
-  const trimmed = picture?.trim()
+  const trimmed = frame?.trim()
   if (!trimmed) return true
   return trimmed === BLUEPRINT_STEP_VISUAL_PLACEHOLDER
 }
 
-/** Returns pictures as-is; the Visual swimlane stays empty when none are provided. */
+/** Returns frames as-is; the Visual swimlane stays empty when none are provided. */
 export function withBlueprintStepVisualPlaceholder(
-  pictures: readonly string[] | undefined,
+  frames: readonly string[] | undefined,
 ): readonly string[] {
-  return pictures ?? []
+  return frames ?? []
 }

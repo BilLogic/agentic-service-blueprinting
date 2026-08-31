@@ -204,10 +204,10 @@ upgrade recipe rather than failing mid-import.
 Design invariant: analysis-tier records reference cells SOFTLY wherever they
 reference them at all, so the importer's scenario-scoped
 delete-and-reinsert never cascades into user-authored rows. `evidence` uses a
-paired `cell_id` / `cell_key`; `findings` and `slice_items` use `cell_ids
+paired `cell_id` / `cell_key`; `findings` and `slides` use `cell_ids
 uuid[]` paired 1:1 with `cell_keys text[]`; `slices` reaches those references
-through its `slice_items`. None has a cell FK. `evidence`, `findings`, and
-`slices` carry a hard `service_id` FK (cascade), while `slice_items` carries a
+through its `slides`. None has a cell FK. `evidence`, `findings`, and
+`slices` carry a hard `service_id` FK (cascade), while `slides` carries a
 hard `slice_id` FK. Services are upserted, never deleted, by the importer, and
 for `evidence` the service FK is the retention/deletion story for interview
 excerpts.
@@ -217,7 +217,7 @@ deliberately never stored.
 | Table | What it is | Notes |
 |---|---|---|
 | `slices` | A saved 1D cut through the grid that REFERENCES cells (never copies them) | `title`, `description`, `slice_type` (`journey`\|`step`\|`lane`\|`cell`\|`custom`), `actor`, `locale`, `position`, `origin` (`generated` = safe to regenerate \| `customized` = skill output human-edited, regeneration must confirm \| `human` = authored in the app, never the skill's to regenerate) |
-| `slice_items` | One frame of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider frame), `caption`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
+| `slides` | One frame of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider frame), `title`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
 | `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_name`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_name + sorted-cell_keys hash + reason slug — audit-playbook §2) |
 | `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); restricted SELECT — excerpts may hold interview content |
 

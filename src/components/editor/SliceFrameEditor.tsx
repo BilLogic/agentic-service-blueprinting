@@ -38,7 +38,7 @@ export function SliceFrameEditor({
   sliceId: string
   /**
    * The saved illustration for a frame's row, read from the slice rather than
-   * carried in the draft: the image is written straight to `slice_items` on
+   * carried in the draft: the image is written straight to `slides` on
    * upload, so the draft would go stale the moment one lands.
    */
   illustrationFor: (itemId: string) => Json | null
@@ -208,15 +208,15 @@ export function SliceFrameEditor({
                 {index + 1}
               </span>
               <Input
-                value={frame.caption}
-                placeholder="Screen caption"
+                value={frame.title}
+                placeholder="Screen title"
                 className="h-6 min-w-0 flex-1 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) =>
                   onChange(
                     frames.map((item, itemIndex) =>
                       itemIndex === index
-                        ? { ...item, caption: event.target.value }
+                        ? { ...item, title: event.target.value }
                         : item,
                     ),
                   )
@@ -351,7 +351,7 @@ export function SliceFrameEditor({
         type="button"
         className="flex w-28 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
         onClick={() => {
-          onChange([...frames, { cells: [], caption: '', narrative: '' }])
+          onChange([...frames, { cells: [], title: '', narrative: '' }])
           onActivate(frames.length)
         }}
       >

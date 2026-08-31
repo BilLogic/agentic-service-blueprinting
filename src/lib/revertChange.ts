@@ -12,7 +12,7 @@ import type { Database, Json } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 type EvidenceRowType = Database['public']['Tables']['evidence']['Row']
-type SliceItemRow = Database['public']['Tables']['slice_items']['Row']
+type SliceItemRow = Database['public']['Tables']['slides']['Row']
 /** The subset of `slices` that `updateSliceMeta` writes, and so restores. */
 type SliceMetaFields = Pick<
   Database['public']['Tables']['slices']['Row'],
@@ -117,7 +117,7 @@ export async function executeRevert(
         throw new Error('This change’s captured frames are malformed.')
       }
       const cleared = await client
-        .from('slice_items')
+        .from('slides')
         .delete()
         .eq('slice_id', sliceId)
       if (cleared.error) throw toAuthoringError(cleared.error)
@@ -125,14 +125,14 @@ export async function executeRevert(
       // had no frames before the write, so putting none back IS the inverse.
       if (rows.length === 0) return
       const restored = await client
-        .from('slice_items')
+        .from('slides')
         .insert(rows as SliceItemRow[])
       if (restored.error) throw toAuthoringError(restored.error)
       return
     }
     case 'delete_slice_row': {
       // Undo of "added a slice" / "duplicated a slice": remove the row it
-      // created. `slice_items` cascade, so the frames go with it — which is
+      // created. `slides` cascade, so the frames go with it — which is
       // why neither of those operations needs a frame capture of its own.
       //
       // A direct delete rather than `deleteSlice`: that wrapper records a

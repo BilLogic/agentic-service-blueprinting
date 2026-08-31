@@ -14,7 +14,7 @@ function slicesContainingCell(
 ): SliceListEntry[] {
   const resolved = resolveBlueprintCellId(cellId)
   return slices.filter((slice) =>
-    slice.slice_items.some((item) =>
+    slice.slides.some((item) =>
       item.cell_ids.some(
         (id) =>
           id === cellId ||

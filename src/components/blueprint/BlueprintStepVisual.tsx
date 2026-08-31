@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
 export type BlueprintStepVisualPicture = {
-  picture: string
+  frame: string
   label?: string
 }
 
@@ -19,28 +19,28 @@ type BlueprintStepVisualProps = {
   cellId?: string
   stepIndex?: number
   opacity?: number
-  pictures?: readonly string[] | readonly BlueprintStepVisualPicture[]
+  frames?: readonly string[] | readonly BlueprintStepVisualPicture[]
   /** Larger walkthrough/presentation layout — images scale to fit without clipping. */
   presentation?: boolean
 }
 
 function normalizePictures(
-  pictures: readonly string[] | readonly BlueprintStepVisualPicture[],
+  frames: readonly string[] | readonly BlueprintStepVisualPicture[],
 ): BlueprintStepVisualPicture[] {
-  return pictures.map((entry) =>
-    typeof entry === 'string' ? { picture: entry } : entry,
+  return frames.map((entry) =>
+    typeof entry === 'string' ? { frame: entry } : entry,
   )
 }
 
 function VisualPictureStrip({
-  pictures,
+  frames,
   className,
 }: {
-  pictures: readonly BlueprintStepVisualPicture[]
+  frames: readonly BlueprintStepVisualPicture[]
   className?: string
 }) {
   const showLabels =
-    pictures.some((entry) => Boolean(entry.label?.trim()))
+    frames.some((entry) => Boolean(entry.label?.trim()))
 
   return (
     <div
@@ -49,20 +49,20 @@ function VisualPictureStrip({
         className,
       )}
     >
-      {pictures.map((entry, index) => (
+      {frames.map((entry, index) => (
         <div
-          key={`${entry.picture}-${entry.label ?? index}`}
+          key={`${entry.frame}-${entry.label ?? index}`}
           className="flex h-full min-h-0 max-h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 self-stretch overflow-hidden"
         >
           <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden">
             <img
-              src={entry.picture}
+              src={entry.frame}
               alt=""
               loading="lazy"
               decoding="async"
               className={cn(
                 'max-h-full max-w-full rounded-sm object-contain object-center',
-                hasEmbeddedVisualFrame(entry.picture) && 'scale-[1.08]',
+                hasEmbeddedVisualFrame(entry.frame) && 'scale-[1.08]',
               )}
             />
           </div>
@@ -86,10 +86,10 @@ export function BlueprintStepVisual({
   cellId,
   stepIndex,
   opacity,
-  pictures,
+  frames,
   presentation = false,
 }: BlueprintStepVisualProps) {
-  const displayPictures = normalizePictures(pictures ?? [])
+  const displayPictures = normalizePictures(frames ?? [])
   const hasRealPictures = displayPictures.length > 0
   // Counts what is actually here — images for one step, not people. The old
   // wording ("Step visuals for 1 users") got both halves wrong, and a screen
@@ -117,7 +117,7 @@ export function BlueprintStepVisual({
         role="img"
         aria-label={ariaLabel}
       >
-        <VisualPictureStrip pictures={displayPictures} />
+        <VisualPictureStrip frames={displayPictures} />
       </div>
     )
   }
@@ -142,7 +142,7 @@ export function BlueprintStepVisual({
       opacity={opacity}
       aria-label={ariaLabel}
     >
-      <VisualPictureStrip pictures={displayPictures} />
+      <VisualPictureStrip frames={displayPictures} />
     </BlueprintCellButton>
   )
 }

@@ -151,7 +151,7 @@ const PANEL_TABS: Array<{
  * relations where it had one column, and only `cellTouchpoints.ts` /
  * `cellResources.ts` know which source a board came from.
  */
-type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'picture'> & {
+type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'frame'> & {
   touchpoints: CellTouchpoint[]
   resources: CellResource[]
 }
@@ -222,7 +222,7 @@ function panelEditorBusy(): boolean {
  * A render error in the drawer must cost the drawer, not the app.
  *
  * This panel is the one surface that renders arbitrary cell content —
- * pictures, links, tech pills, prose — outside the canvas's providers, which
+ * frames, links, tech pills, prose — outside the canvas's providers, which
  * makes it the most likely place for a render throw. Without a boundary that
  * throw unmounted the entire editor to a white page, which is how a broken
  * pill icon read as "loading is broken". React error boundaries are still
@@ -609,7 +609,7 @@ function BlueprintCellDetailPanelBody() {
       return {
         content: pathEntry.content,
         summary: pathEntry.summary ?? null,
-        picture: pathEntry.picture ?? null,
+        frame: pathEntry.frame ?? null,
         touchpoints: pathEntry.touchpoints ?? [],
         resources: pathEntry.resources ?? [],
       }
@@ -625,7 +625,7 @@ function BlueprintCellDetailPanelBody() {
       return {
         content: cell.content,
         summary: cell.summary,
-        picture: cell.picture,
+        frame: cell.frame,
         touchpoints: cellTouchpoints(cell),
         resources: cellResources(cell),
       }
@@ -635,7 +635,7 @@ function BlueprintCellDetailPanelBody() {
       fromEntry() ?? {
         content: '',
         summary: null,
-        picture: null,
+        frame: null,
         touchpoints: [],
         resources: [],
       }
@@ -1102,7 +1102,7 @@ function BlueprintCellDetailPanelBody() {
   const detailPictures = resolveCellDetailPictures({
     techItem: selection.techItem,
     cellContent: selection.paths[0]?.content,
-    cellPicture: selection.paths[0]?.picture,
+    cellFrame: selection.paths[0]?.frame,
     cellTouchpoints: cellTouchpointList,
   })
   const showPicture = Boolean(detailPictures?.length && !isVisualLane)
@@ -1242,7 +1242,7 @@ function BlueprintCellDetailPanelBody() {
   const pictureBlock = showPicture ? (
     <div className="flex w-full flex-col items-center gap-3">
       {(() => {
-        const pictures = detailPictures!
+        const frames = detailPictures!
         const useSmallerTechLogo = [
           'social media',
           'on-campus booth',
@@ -1253,8 +1253,8 @@ function BlueprintCellDetailPanelBody() {
           useSmallerTechLogo ||
           src.includes('-logo.') ||
           src.includes('/logo/')
-        const logos = pictures.filter(isTechLogo)
-        const screenshots = pictures.filter((src) => !isTechLogo(src))
+        const logos = frames.filter(isTechLogo)
+        const screenshots = frames.filter((src) => !isTechLogo(src))
 
         return (
           <>

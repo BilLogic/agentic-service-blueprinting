@@ -25,7 +25,7 @@ export type IntegratedBlueprintCell = {
   path_id: string
   path_type: PathType
   content: string
-  picture: string | null
+  frame: string | null
   summary: string | null
   touchpoints: CellTouchpoint[]
   resources: CellResource[]

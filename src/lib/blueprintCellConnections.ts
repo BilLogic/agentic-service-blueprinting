@@ -303,7 +303,7 @@ export function buildBlueprintCellSelectionForId(
     stepIndex,
     cellId: cell.id,
     cellContent: cell.content,
-    cellPicture: cell.picture,
+    cellFrame: cell.frame,
     cellSummary: cell.summary,
     cellTouchpoints: cellTouchpoints(cell),
     cellResources: cellResources(cell),

@@ -55,8 +55,8 @@ elicitation), or to none.
   attaches long-form copy, screenshots and a design link to one pill: its
   `name` is the pill's label, and the row survives a rename where the old
   label-matched link entry silently stopped being found.
-- Roles `visual`/`step_visual` render `picture` and ignore text content. An
-  empty visual row (null `picture`) is a valid default — see
+- Roles `visual`/`step_visual` render `frame` and ignore text content. An
+  empty visual row (null `frame`) is a valid default — see
   `skills/map/references/ingest-playbook.md` §6 for sourcing stage images.
 
 ## Custom roles

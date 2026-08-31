@@ -420,7 +420,7 @@ function CompareLaneRow({
                 stepIndex,
                 cellId: cell?.id ?? `visual-${step.id}`,
                 cellContent: cell?.content ?? '',
-                cellPicture: cell?.picture ?? null,
+                cellFrame: cell?.frame ?? null,
                 cellSummary: cell?.summary ?? null,
                 cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
                 cellResources: cell ? cellResources(cell) : undefined,

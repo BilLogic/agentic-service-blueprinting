@@ -197,7 +197,7 @@ export type Database = {
           owner: string | null
           path_id: string
           perceived_owner: string | null
-          picture: string | null
+          frame: string | null
           position: number
           step_id: string
           updated_at: string
@@ -216,7 +216,7 @@ export type Database = {
           owner?: string | null
           path_id: string
           perceived_owner?: string | null
-          picture?: string | null
+          frame?: string | null
           position?: number
           step_id: string
           updated_at?: string
@@ -235,7 +235,7 @@ export type Database = {
           owner?: string | null
           path_id?: string
           perceived_owner?: string | null
-          picture?: string | null
+          frame?: string | null
           position?: number
           step_id?: string
           updated_at?: string
@@ -805,9 +805,9 @@ export type Database = {
           },
         ]
       }
-      slice_items: {
+      slides: {
         Row: {
-          caption: string | null
+          title: string | null
           cell_ids: string[]
           cell_keys: string[]
           created_at: string
@@ -820,7 +820,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          caption?: string | null
+          title?: string | null
           cell_ids?: string[]
           cell_keys?: string[]
           created_at?: string
@@ -833,7 +833,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          caption?: string | null
+          title?: string | null
           cell_ids?: string[]
           cell_keys?: string[]
           created_at?: string
@@ -1236,7 +1236,7 @@ export type Scenario = Database['public']['Tables']['scenarios']['Row']
 export type Step = Database['public']['Tables']['steps']['Row']
 
 export type Slice = Database['public']['Tables']['slices']['Row']
-export type SliceItem = Database['public']['Tables']['slice_items']['Row']
+export type Slide = Database['public']['Tables']['slides']['Row']
 export type Evidence = Database['public']['Tables']['evidence']['Row']
 export type Finding = Database['public']['Tables']['findings']['Row']
 export type EvidenceCount = Database['public']['Views']['evidence_counts']['Row']

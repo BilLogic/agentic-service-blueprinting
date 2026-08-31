@@ -45,7 +45,7 @@ erDiagram
   cells ||--o{ resources : "points at"
   cell_touchpoints ||--o{ resources : "points at"
   services ||--o{ slices : "has many"
-  slices ||--o{ slice_items : "has many"
+  slices ||--o{ slides : "has many"
   services ||--o{ findings : "has many"
   services ||--o{ evidence : "has many"
   services ||--o| business_model : "has 0..1"
@@ -177,13 +177,13 @@ erDiagram
     uuid created_by "auth.uid() at insert"
   }
 
-  slice_items {
+  slides {
     uuid id PK
     uuid slice_id FK "unique (slice_id, position), deferrable"
     int position
     uuid[] cell_ids "SOFT refs to cells - no FK, survive re-import"
     text[] cell_keys "IR key-paths paired with cell_ids for recovery"
-    text caption
+    text title
     text narrative
     jsonb illustration "{src, alt, source, updated_at}"
     uuid created_by

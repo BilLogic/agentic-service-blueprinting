@@ -213,7 +213,7 @@ const MAP_LANES = [
 
 /**
  * Scenario cell spec:
- *   { lane, col, content, slot?, picture?, summary?, resources?,
+ *   { lane, col, content, slot?, frame?, summary?, resources?,
  *     touchpoints?, paths?,
  *     owner?, perceivedOwner?, fn?, form?, valueProps? }
  * `content` is a string (present on every path) or a per-path-key record
@@ -409,7 +409,7 @@ const SCENARIOS = [
     lanes: MAP_LANES,
     cells: [
       // The visual row draws NOTHING of its own: src/lib/visualWalkthrough.ts
-      // collects the pictures hanging off the OTHER lanes' cells at the same
+      // collects the frames hanging off the OTHER lanes' cells at the same
       // column and lays them out in the visual lane. So the four figures are
       // attached below, to the cells whose moment they actually illustrate.
 
@@ -455,7 +455,7 @@ const SCENARIOS = [
         lane: 'claude', col: 1,
         content: 'Loads the sb:map skill and its elicitation protocol',
         // Journey figure for this column — the visual row picks it up.
-        picture: figure('sb-map.svg'),
+        frame: figure('sb-map.svg'),
       },
       {
         lane: 'claude', col: 2,
@@ -571,7 +571,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 3,
         content: 'lane-roles.md\nlane-vocabulary.md',
-        picture: figure('data-model-hierarchy.svg'),
+        frame: figure('data-model-hierarchy.svg'),
         summary:
           'Rendering follows the semantic lane_role, never the display name — which is why lane labels are free-form, in any language.',
         resources: [repoLink('references/lane-roles.md', 'references/lane-roles.md')],
@@ -579,7 +579,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 6,
         content: 'data-model.md\nir-schema.json',
-        picture: figure('blueprint-anatomy.svg'),
+        frame: figure('blueprint-anatomy.svg'),
         resources: [
           repoLink('references/data-model.md', 'references/data-model.md'),
           repoLink('references/ir-schema.json', 'references/ir-schema.json'),
@@ -602,7 +602,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 10,
         content: 'deploy-notes.md',
-        picture: figure('four-ways-in.svg'),
+        frame: figure('four-ways-in.svg'),
         resources: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
       },
     ],
@@ -1020,9 +1020,9 @@ const SCENARIOS = [
       },
       {
         lane: 'scripts', col: 6,
-        content: 'slices\nslice_items',
+        content: 'slices\nslides',
         summary:
-          'Slice items reference cells softly — uuid arrays paired with cell keys — so re-importing a scenario never cascades into a presentation.',
+          'Slides reference cells softly — uuid arrays paired with cell keys — so re-importing a scenario never cascades into a presentation.',
         resources: [repoLink('references/data-model.md', 'references/data-model.md')],
       },
 
@@ -1298,7 +1298,7 @@ function buildScenario(scenario) {
       lane_id: fid(S, P, KIND.lane, lane.row, 0),
       step_id: steps[col - 1].id,
       content,
-      picture: spec.picture ?? null,
+      frame: spec.frame ?? null,
       summary: spec.summary ?? null,
       resources: spec.resources ?? [],
       touchpoints: (spec.touchpoints ?? []).map((tp) => ({
@@ -1454,11 +1454,11 @@ function buildDemoSlices() {
     created_at: FIXTURE_TIMESTAMP,
     updated_at: FIXTURE_TIMESTAMP,
   }
-  const item = (sliceOrdinal, sliceId, position, caption, narrative, refs) => ({
+  const item = (sliceOrdinal, sliceId, position, title, narrative, refs) => ({
     id: fid(0, 0, KIND.sliceItem, sliceOrdinal, position),
     slice_id: sliceId,
     position,
-    caption,
+    title,
     narrative,
     created_by: null,
     illustration: null,
@@ -1643,7 +1643,7 @@ ${totals
   .join('\n')}
 
 import type { BlueprintData } from '@/types/blueprint'
-import type { Slice, SliceItem } from '@/types/database'
+import type { Slice, Slide } from '@/types/database'
 
 export const SAMPLE_SERVICE_ID = '${SERVICE_ID}'
 
@@ -1736,7 +1736,7 @@ export const SAMPLE_DEMO_SLICES: Slice[] = [
 ${demoSlices.map(({ slice }) => `  ${JSON.stringify(slice)},`).join('\n')}
 ]
 
-export const SAMPLE_DEMO_SLICE_ITEMS: Record<string, SliceItem[]> = {
+export const SAMPLE_DEMO_SLIDES: Record<string, Slide[]> = {
 ${demoSlices
   .map(
     ({ slice, items }) =>
@@ -1859,7 +1859,7 @@ ${sqlRows(
 )};
 `)
 
-seedParts.push(`insert into public.cells (id, path_id, lane_id, step_id, position, content, picture, summary, owner, perceived_owner, function, form, value_props, cell_key) values
+seedParts.push(`insert into public.cells (id, path_id, lane_id, step_id, position, content, frame, summary, owner, perceived_owner, function, form, value_props, cell_key) values
 ${sqlRows(
   allBlueprints.flatMap(({ scenario, bp }) => {
     const laneName = new Map(bp.lanes.map((l) => [l.id, l.name]))
@@ -1873,7 +1873,7 @@ ${sqlRows(
         q(cell.step_id),
         String(slot),
         q(cell.content),
-        q(cell.picture),
+        q(cell.frame),
         q(cell.summary),
         q(cell.owner ?? null),
         q(cell.perceived_owner ?? null),
@@ -1974,7 +1974,7 @@ ${sqlRows(
 const sqlUuidArray = (ids) => `array[${ids.map((id) => `${q(id)}::uuid`).join(', ')}]`
 const sqlTextArray = (values) => `array[${values.map((value) => q(value)).join(', ')}]`
 
-seedParts.push(`insert into public.slice_items (id, slice_id, position, cell_ids, cell_keys, caption, narrative) values
+seedParts.push(`insert into public.slides (id, slice_id, position, cell_ids, cell_keys, title, narrative) values
 ${sqlRows(
   demoSlices.flatMap(({ items }) =>
     items.map((row) => [
@@ -1983,7 +1983,7 @@ ${sqlRows(
       String(row.position),
       sqlUuidArray(row.cell_ids),
       sqlTextArray(row.cell_keys),
-      q(row.caption),
+      q(row.title),
       q(row.narrative),
     ]),
   ),

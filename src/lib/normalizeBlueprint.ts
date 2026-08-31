@@ -31,7 +31,7 @@ export type RawCell = {
   lane_id: string
   step_id: string
   content: string
-  picture?: string | null
+  frame?: string | null
   summary?: string | null
   /** `resources` rows embedded by the board query. */
   resources?: RawCellResource[] | null
@@ -220,7 +220,7 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     lane_id: cell.lane_id,
     step_id: cell.step_id,
     content: cell.content,
-    picture: cell.picture ?? null,
+    frame: cell.frame ?? null,
     summary: cell.summary ?? null,
     resources: cellResourcesFromRows(cell.resources),
     touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),

@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.01'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.02'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,11 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.01'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // A cell's `picture` is its `frame` (#94). One word served two ideas — the
+  // image on a cell, and the border a walkthrough draws around one — and the
+  // column took it. `slice_items` became `slides` in the same migration; the
+  // IR never carried that table, so only the cell field moves here.
+  '2026.09.02',
   // The dependency kinds became `leads_to` and `enables` (#94). Not a pair of
   // renames: `needs` put the source at the opposite end from `enables`, so
   // 21000114000000 and the IR step both TURN those edges around. This is the

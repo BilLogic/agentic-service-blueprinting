@@ -93,7 +93,7 @@ export function buildTechPillSelectionForItem(
       stepIndex,
       cellId: cell.id,
       cellContent: cell.content,
-      cellPicture: cell.picture,
+      cellFrame: cell.frame,
       cellSummary: cell.summary,
       cellTouchpoints: cellTouchpoints(cell),
       cellResources: cellResources(cell),
