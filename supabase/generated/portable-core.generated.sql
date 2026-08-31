@@ -4351,13 +4351,44 @@ comment on table public.cell_dependencies is
   'Dependency from one cell to another. kind: leads_to (makes it happen) | enables (makes it possible). Both read source-first and upstream-first.';
 
 -- The literals inside `set_cell_dependency` — its `kind` default and the
--- guard that rejects an unknown kind. Quoted patterns, so this cannot reach
--- the word `trigger` where it means a database trigger.
-select public.__rewrite_function_bodies(
-  array['''trigger''', '''needs'''],
-  array['''leads_to''', '''enables'''],
-  1
-);
+-- guard that rejects an unknown kind.
+--
+-- Done here rather than through `__rewrite_function_bodies`, which
+-- 21000109000000 dropped along with the other two vocabulary helpers once the
+-- lane renames were finished. One function is one function; a helper that
+-- sweeps every routine in the schema is what the wide renames needed and this
+-- does not.
+--
+-- The patterns are QUOTED, so this cannot reach the word `trigger` where it
+-- means a database trigger, and the grants ride through `create or replace`
+-- untouched — a drop would take the ACL with it and the recreate would land on
+-- EXECUTE TO PUBLIC.
+do $rewrite$
+declare
+  v_before text;
+  v_after text;
+begin
+  select pg_get_functiondef(p.oid) into v_before
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'set_cell_dependency';
+
+  if v_before is null then
+    raise exception 'set_cell_dependency is missing; nothing to rewrite';
+  end if;
+
+  v_after := replace(replace(v_before, '''trigger''', '''leads_to'''),
+                     '''needs''', '''enables''');
+
+  if v_after = v_before then
+    raise exception
+      'set_cell_dependency names neither retired kind, so this migration is '
+      'either already applied or reading a function it does not recognise';
+  end if;
+
+  execute v_after;
+end
+$rewrite$;
 
 do $$
 declare

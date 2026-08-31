@@ -44,8 +44,8 @@ Schema coverage (migrations 20260729120000_derived_layer +
     Absent IR fields emit null / '[]'::jsonb, matching the column defaults.
     (lanes.owner_team, phases.business_impact/operational_requirements and
     cell_dependencies label/note have NO IR shape yet — columns stay default.)
-  * cell_dependencies carry the IR edge's `kind` ('trigger' | 'needs'; absent
-    in the IR means 'trigger', the column default). The kind is part of the
+  * cell_dependencies carry the IR edge's `kind` ('leads_to' | 'enables';
+    absent in the IR means 'leads_to', the column default). The kind is part of the
     edge's IDENTITY, not just its payload: the database's uniqueness key is
     (source_cell_id, target_cell_id, kind), so one pair may carry both an
     arrow and a needs edge, and the UUIDv5 qualified key ends in `#<kind>` so
@@ -216,7 +216,7 @@ def seed_lane_fields(lane: dict, path: dict) -> dict:
 def seed_trigger_fields(trigger: dict) -> dict:
     """One edge as `cell_dependencies` column -> value.
 
-    `kind` is emitted explicitly even though 'trigger' is the column default,
+    `kind` is emitted explicitly even though 'leads_to' is the column default,
     because an IR edge can now be either kind and the row should say which.
     label and note still have no IR shape and stay at their defaults on both
     adapters, which is parity by absence rather than by accident.
@@ -438,16 +438,22 @@ def build_model(doc: dict, locale: str) -> dict:
                 for trigger in path.get("triggers", []):
                     src = (trigger["source"]["lane"], trigger["source"]["step"])
                     tgt = (trigger["target"]["lane"], trigger["target"]["step"])
-                    # Absent kind means 'trigger' — the column default, and
+                    # Absent kind means 'leads_to' — the column default, and
                     # what every edge authored before 2026.08.26 meant.
-                    kind = trigger.get("kind", "trigger")
+                    kind = trigger.get("kind", "leads_to")
                     # The kind is in the qualified key because it is in the
                     # identity: cell_dependencies is unique on
                     # (source, target, kind), so the same pair can hold an
-                    # arrow AND a needs edge and they need distinct ids.
+                    # arrow AND an enables edge and they need distinct ids.
                     tr_q = f"{pa_q}/{src[0]}/{src[1]}->{tgt[0]}/{tgt[1]}#{kind}"
                     triggers.append(
                         {
+                            # The namespace label stays "trigger" through the
+                            # 2026.09.01 rename. It is UUIDv5 input, not
+                            # vocabulary: changing it would give every existing
+                            # edge a new id and stop re-imports being
+                            # idempotent, which is the one property this
+                            # derivation exists for.
                             "id": entity_uuid(locale, "trigger", tr_q),
                             "source_cell_id": cell_ids[src],
                             "target_cell_id": cell_ids[tgt],
