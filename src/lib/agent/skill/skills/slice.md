@@ -13,7 +13,7 @@ own* — by selecting cells that already exist and putting them in order.
 The discipline that makes slices worth trusting: **a slice never invents.**
 It selects, orders, captions, and cites. Every claim points at a cell key.
 Regenerating a slice is therefore cheap and safe, which is the whole reason
-the derived layer exists.
+the analysis tier exists.
 
 All paths are relative to the plugin root (`${CLAUDE_PLUGIN_ROOT}`): this
 skill's own materials (playbook, templates, schema, `slice_tools.py`) live
@@ -31,7 +31,7 @@ selecting anything:
 | Entry state | Route |
 | --- | --- |
 | No workspace / no IR | Stop. This is the `sb:map` skill's job — a slice of nothing is a fabrication |
-| Workspace DB predates the derived layer (`relation public.slices does not exist`) | Stop before any insert: apply the derived-layer migrations (`supabase/migrations/20260729120000_derived_layer.sql` onward) to the target, then resume — never hand-create the tables |
+| Workspace DB predates the analysis tier (`relation public.slices does not exist`) | Stop before any insert: apply the analysis-tier migrations (`supabase/migrations/20260729120000_derived_layer.sql` onward) to the target, then resume — never hand-create the tables |
 | IR exists, scenario not signed off | Finish review first: a slice of unsigned IR cites cells review may still change |
 | Signed off, not imported | Import the scenario, then slice |
 | Imported, no slices yet | Read `skills/slice/references/slice-playbook.md`, then select |

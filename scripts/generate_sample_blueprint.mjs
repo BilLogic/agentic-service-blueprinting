@@ -1420,7 +1420,7 @@ const cellKeyFor = (scenario, pathName, laneName, stepName) =>
   ].join('/')
 
 // ---------------------------------------------------------------------------
-// Demo slices — the derived layer's zero-config content. Three of the five
+// Demo slices — the analysis tier's zero-config content. Three of the five
 // slice types, each earning its place: a JOURNEY slice reading the owner's
 // spine across the whole of Map your service, a STEP slice reading the import
 // column down every lane (the vertical read is the point — the guardrail lane
@@ -1953,7 +1953,7 @@ ${sqlRows(
 )};
 `)
 
-// Derived layer: the same demo slices the TS fixture ships, so a seeded
+// Analysis tier: the same demo slices the TS fixture ships, so a seeded
 // database and a no-DB session read identical content.
 seedParts.push(`insert into public.slices (id, service_id, slice_type, title, description, actor, locale, origin, position) values
 ${sqlRows(

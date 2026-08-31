@@ -201,12 +201,12 @@ export interface IdentityPort {
 export type Tier =
   /** Not signed in. Reads what is public; writes nothing. */
   | 'anon'
-  /** Signed in. Writes the derived layer: slices, findings, evidence. */
+  /** Signed in. Writes the analysis tier: slices, findings, evidence. */
   | 'authoring'
   /** Trusted automation. Writes structure as well. */
   | 'service'
 
-/** True when this tier may write the derived layer at all. */
+/** True when this tier may write the analysis tier at all. */
 export function tierCanWrite(tier: Tier): boolean {
   return tier !== 'anon'
 }

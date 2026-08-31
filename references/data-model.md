@@ -2,7 +2,7 @@
 
 The template's blueprint data model. Source of truth:
 `supabase/migrations/20260716200000_template_schema.sql` plus the
-derived-layer migrations (`20260729120000_derived_layer.sql`,
+analysis-tier migrations (`20260729120000_derived_layer.sql`,
 `20260730090000_derived_layer_grants_hardening.sql`,
 `20260803001000_slices_origin_allows_human.sql`) and the authoring
 migrations (`20260818000000_authoring_foundation.sql` — provenance
@@ -31,7 +31,8 @@ and stable keys in place of UUIDs.
 - Ordering fields
 - Working precedent
 - Cell slots (`position`)
-- Derived layer: slices, findings, evidence, business_model
+- Analysis tier: slices, findings, evidence
+- Service spec: business_model
 - Spec fields on IR-owned tables
 
 ## Hierarchy
@@ -192,20 +193,23 @@ slot sibling is a CELL — one row of a tech-role lane, drawn as its own box. A
 moment. A cell holding three pills is one cell and three placements; splitting
 it into three cells is a slot operation and leaves each with one placement.
 
-## Derived layer: slices, findings, evidence, business_model
+## Analysis tier: slices, findings, evidence
 
-The skills' outputs land in five derived tables plus one view
+The skills' outputs land in four analysis-tier tables plus one view
 (DDL: `supabase/migrations/20260729120000_derived_layer.sql`).
 Workspaces provisioned before that migration must route through the
 upgrade recipe rather than failing mid-import.
 
-Design invariants: derived tables reference cells SOFTLY — `cell_ids
-uuid[]` paired 1:1 with `cell_keys text[]` (IR key-paths for orphan
-recovery), no FK — so the importer's scenario-scoped delete-and-reinsert
-never cascades into user-authored rows. The hard FK each table does carry
-is `service_id` (cascade): services are upserted, never
-deleted, by the importer, and for `evidence` that FK is the
-retention/deletion story for interview excerpts.
+Design invariant: analysis-tier records reference cells SOFTLY wherever they
+reference them at all, so the importer's scenario-scoped
+delete-and-reinsert never cascades into user-authored rows. `evidence` uses a
+paired `cell_id` / `cell_key`; `findings` and `slice_items` use `cell_ids
+uuid[]` paired 1:1 with `cell_keys text[]`; `slices` reaches those references
+through its `slice_items`. None has a cell FK. `evidence`, `findings`, and
+`slices` carry a hard `service_id` FK (cascade), while `slice_items` carries a
+hard `slice_id` FK. Services are upserted, never deleted, by the importer, and
+for `evidence` the service FK is the retention/deletion story for interview
+excerpts.
 "Assumption" is a derived state — a cell with zero evidence rows —
 deliberately never stored.
 
@@ -215,7 +219,6 @@ deliberately never stored.
 | `slice_items` | One frame of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider frame), `caption`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
 | `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_name`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_name + sorted-cell_keys hash + reason slug — audit-playbook §2) |
 | `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); restricted SELECT — excerpts may hold interview content |
-| `business_model` | One business-model record per service (PK = `service_id`) | `funding`, `pricing`, `delivery_cost`, `revenue_model`, `partners`; restricted SELECT |
 
 **Findings dedupe is DB-backed**: the partial unique index
 `findings_open_fingerprint_idx` on `(service_id, fingerprint)
@@ -228,9 +231,16 @@ dismissed, resolved reopens as a new row (a reopen collision surfaces as
 exposes evidence row counts — never content — to anonymous readers; it
 powers the assumption lens on public deploys.
 
+## Service spec: business_model
+
+`business_model` is the service-level spec row, not part of the analysis tier.
+It has no cell reference of any kind; its primary key is the hard
+`service_id` FK. It carries `funding`, `pricing`, `delivery_cost`,
+`revenue_model`, and `partners`, with restricted SELECT.
+
 ## Spec fields on IR-owned tables
 
-The derived-layer migration also adds human-editable spec columns to
+The analysis-tier migration also adds human-editable spec columns to
 three IR-owned tables (writable via column-scoped grants; the content
 columns stay import-owned):
 

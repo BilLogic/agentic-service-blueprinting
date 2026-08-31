@@ -40,7 +40,7 @@ the next thing to drift. Every aggregate is compared now.
 **Read-only without a database (normative).** The no-DB adapter serves; it
 does not accept live authoring — `canAgentWrite` is false without a
 configured project. An adopter with no database authors by editing the IR
-and regenerating, and the derived layer lands in the ledger files below. A
+and regenerating, and the analysis tier lands in the ledger files below. A
 browser-local write path was considered and rejected: it would be a second
 implementation of the authoring semantics whose divergence would surface
 only in the demo.
@@ -54,13 +54,13 @@ embedded selects; that is one implementation, not the requirement.
 This paragraph used to say that a host without a PostgREST-compatible read
 API "cannot serve the app". That was our coupling written down as physics.
 
-**⚠ Derived layer without a DB (normative)**: a no-DB adopter's
+**⚠ Analysis tier without a DB (normative)**: a no-DB adopter's
 findings/slices store IS the ledger files that
 `skills/audit/scripts/audit_tools.py` `export` / `report --apply` read and
 write (`{"rows": [...]}` JSON carrying the same fingerprint/dedupe
 semantics as the `findings` table). This is the substrate, not a degraded
 mode — skills persist derived output there, and no separate store exists
-to provision. The derived-layer tables are the Supabase adapter's
+to provision. The analysis-tier tables are the Supabase adapter's
 rendering of the same contract.
 
 ## ⚠ REQUIRED operations
