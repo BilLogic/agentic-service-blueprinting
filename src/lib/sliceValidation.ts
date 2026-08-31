@@ -24,9 +24,9 @@ export function isSliceOrigin(value: string): value is SliceOrigin {
   return (SLICE_ORIGINS as readonly string[]).includes(value)
 }
 
-/** A frame as the editor holds it, before it becomes a `slides` row. */
-export type DraftFrame = {
-  /** Existing row id; absent for a frame that has not been saved yet. */
+/** A slide as the editor holds it, before it becomes a `slides` row. */
+export type DraftSlide = {
+  /** Existing row id; absent for a slide that has not been saved yet. */
   id?: string
   cells: string[]
   title: string
@@ -38,12 +38,12 @@ export type DraftSlice = {
   description: string
   sliceType: SliceType
   actor: string
-  frames: DraftFrame[]
+  slides: DraftSlide[]
 }
 
 export type ValidationProblem = {
-  /** Frame index the problem belongs to; absent means the slice as a whole. */
-  frame?: number
+  /** Slide index the problem belongs to; absent means the slice as a whole. */
+  slide?: number
   message: string
 }
 
@@ -68,24 +68,24 @@ export function validateDraftSlice(draft: DraftSlice): ValidationProblem[] {
     problems.push({ message: `Unknown slice type “${draft.sliceType}”.` })
   }
 
-  if (draft.frames.length === 0) {
-    problems.push({ message: 'A slice needs at least one frame.' })
+  if (draft.slides.length === 0) {
+    problems.push({ message: 'A slice needs at least one slide.' })
   }
 
-  // A cell in two frames renders twice with two different sequence numbers —
+  // A cell in two slides renders twice with two different sequence numbers —
   // the badge machinery keys on cell id, so the second wins and the first
   // silently loses its number.
   const seen = new Map<string, number>()
-  draft.frames.forEach((frame, index) => {
-    if (frame.cells.length === 0) {
-      problems.push({ frame: index, message: 'This frame has no cells.' })
+  draft.slides.forEach((slide, index) => {
+    if (slide.cells.length === 0) {
+      problems.push({ slide: index, message: 'This slide has no cells.' })
     }
-    frame.cells.forEach((cellId) => {
+    slide.cells.forEach((cellId) => {
       const first = seen.get(cellId)
       if (first !== undefined) {
         problems.push({
-          frame: index,
-          message: `A cell is already in frame ${first + 1}. Move it instead of adding it twice.`,
+          slide: index,
+          message: `A cell is already in slide ${first + 1}. Move it instead of adding it twice.`,
         })
       } else {
         seen.set(cellId, index)

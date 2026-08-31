@@ -66,8 +66,8 @@ export type PathSummary = {
   pathType: string
 }
 
-/** One frame of a slice: the cells it points at, and the words around them. */
-export type SliceFrame = {
+/** One slide of a slice: the cells it points at, and the words around them. */
+export type Slide = {
   position: number
   title: string
   body: string | null
@@ -82,14 +82,14 @@ export type SliceSummary = {
   origin: string
 }
 
-export type SliceDetail = SliceSummary & { frames: SliceFrame[] }
+export type SliceDetail = SliceSummary & { slides: Slide[] }
 
 export type SliceDraft = {
   scenarioId: string | null
   title: string
   sliceType: string
   origin: string
-  frames: SliceFrame[]
+  slides: Slide[]
 }
 
 export type FindingStatus = 'open' | 'resolved' | 'dismissed'
@@ -134,18 +134,18 @@ export interface SliceRepository {
   /** @guarantee read @roundTrips 1 @returns null when absent */
   getSlice(sliceId: string): Promise<SliceDetail | null>
   /**
-   * The slice and all its frames, or neither.
+   * The slice and all its slides, or neither.
    *
-   * @guarantee atomic — a slice with no frames is a slice nobody can read and
+   * @guarantee atomic — a slice with no slides is a slice nobody can read and
    * nobody knows to delete. On an Idempotent backend see `repairSlices`.
    */
   createSlice(draft: SliceDraft): Promise<SliceDetail>
   /**
-   * Swap a slice's frames wholesale.
+   * Swap a slice's slides wholesale.
    *
-   * @guarantee atomic — the old frames are gone only once the new ones land.
+   * @guarantee atomic — the old slides are gone only once the new ones land.
    */
-  replaceSliceFrames(sliceId: string, frames: SliceFrame[]): Promise<SliceDetail>
+  replaceSlides(sliceId: string, slides: Slide[]): Promise<SliceDetail>
   /**
    * @guarantee converging — deleting a slice that is already gone is success,
    * not an error. Callers retry, and a retry must not be a failure.

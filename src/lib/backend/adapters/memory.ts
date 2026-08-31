@@ -16,7 +16,7 @@
  *  - `transactional` validates the whole draft before touching the store, so a
  *    rejected write leaves nothing.
  *  - `idempotent` writes the slice row first and validates while writing the
- *    frames, exactly like a store that cannot roll back. A rejected write
+ *    slides, exactly like a store that cannot roll back. A rejected write
  *    leaves an incomplete slice behind — and `repairSlices` clears it. That is
  *    the whole difference between the two levels, in one branch.
  *
@@ -38,7 +38,7 @@ import type {
   PhaseSummary,
   SliceDetail,
   SliceDraft,
-  SliceFrame,
+  Slide,
   SliceSummary,
   Tier,
 } from '../ports'
@@ -50,7 +50,7 @@ export type MemorySeed = {
 }
 
 type StoredSlice = SliceSummary & {
-  frames: SliceFrame[]
+  slides: Slide[]
   /** Written last. An unset flag means a write stopped halfway. */
   complete: boolean
 }
@@ -58,10 +58,10 @@ type StoredSlice = SliceSummary & {
 /** Why a draft is unacceptable, or null when it is fine. */
 function rejectionReason(draft: SliceDraft): string | null {
   if (draft.title.trim() === '') return 'a slice must have a title'
-  if (draft.frames.length === 0) return 'a slice must have at least one frame'
-  for (const frame of draft.frames) {
-    if (frame.position < 0) return `frame position ${frame.position} is negative`
-    if (frame.title.trim() === '') return 'a frame must have a title'
+  if (draft.slides.length === 0) return 'a slice must have at least one slide'
+  for (const slide of draft.slides) {
+    if (slide.position < 0) return `slide position ${slide.position} is negative`
+    if (slide.title.trim() === '') return 'a slide must have a title'
   }
   return null
 }
@@ -86,7 +86,7 @@ export function createMemoryBackend(
     title: stored.title,
     sliceType: stored.sliceType,
     origin: stored.origin,
-    frames: [...stored.frames].sort((a, b) => a.position - b.position),
+    slides: [...stored.slides].sort((a, b) => a.position - b.position),
   })
 
   return {
@@ -115,7 +115,7 @@ export function createMemoryBackend(
         // conformance suite, which is the one place it has to show.
         return [...slices.values()]
           .filter((slice) => !scenarioId || slice.scenarioId === scenarioId)
-          .map(({ frames: _frames, complete: _complete, ...summary }) => summary)
+          .map(({ slides: _slides, complete: _complete, ...summary }) => summary)
       },
       async getSlice(sliceId) {
         const stored = slices.get(sliceId)
@@ -134,7 +134,7 @@ export function createMemoryBackend(
           title: draft.title,
           sliceType: draft.sliceType,
           origin: draft.origin,
-          frames: [],
+          slides: [],
           complete: false,
         }
         slices.set(id, stored)
@@ -144,19 +144,19 @@ export function createMemoryBackend(
           // is what finishes the story.
           if (reason) throw new Error(reason)
         }
-        stored.frames = draft.frames.map((frame) => ({ ...frame }))
+        stored.slides = draft.slides.map((slide) => ({ ...slide }))
         stored.complete = true
         return detail(stored)
       },
-      async replaceSliceFrames(sliceId, frames) {
+      async replaceSlides(sliceId, slides) {
         const stored = slices.get(sliceId)
         if (!stored) throw new Error(`no slice ${sliceId}`)
-        const next = frames.map((frame) => ({ ...frame }))
+        const next = slides.map((slide) => ({ ...slide }))
         if (level === 'transactional') {
-          stored.frames = next
+          stored.slides = next
         } else {
           stored.complete = false
-          stored.frames = next
+          stored.slides = next
           stored.complete = true
         }
         return detail(stored)

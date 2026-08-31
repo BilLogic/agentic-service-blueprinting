@@ -10,9 +10,9 @@ nothing here relaxes one.
 
 | Skill-world operation | Here |
 |---|---|
-| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `duplicate_scenario`, `rename_path`, `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `create_slice`, `update_slice`, `replace_slice_frames`, `record_finding`, `set_finding_status` — plus `ui_command`'s few commands marked "[changes data]". That is the FULL write surface; nothing else writes. Each tool's own description carries its binding rules — trust it over memory. |
+| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `duplicate_scenario`, `rename_path`, `add_step`, `add_lane`, `upsert_cell`, `update_cell_content`, `update_cell_spec`, `set_cell_dependency`, `create_slice`, `update_slice`, `replace_slides`, `record_finding`, `set_finding_status` — plus `ui_command`'s few commands marked "[changes data]". That is the FULL write surface; nothing else writes. Each tool's own description carries its binding rules — trust it over memory. |
 | Read the blueprint | call read tools: `read_reference`, `list_scenarios`, `get_blueprint`, `get_compare_diff`, `get_cell`, `list_slices`, `get_slice`, `list_owner_tags`, `get_ui_state`, `get_change_history`, `get_deletion_impact`, `list_findings` — none of them move the user's canvas or change a row. That is the FULL read surface; nothing else reads. Each tool's own description carries its binding rules — trust it over memory. |
-| Save / rework a slice | `create_slice`, `update_slice`, `replace_slice_frames` |
+| Save / rework a slice | `create_slice`, `update_slice`, `replace_slides` |
 | Drive the interface | `open_phase`, `open_scenario`, `focus_cell`, `open_cell_panel`, `set_canvas_mode` (view/design), `set_sidebar`, `annotate_cells` (ephemeral marker boxes + note) — the same gestures the human has; none of these touch data |
 | Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
 | Run an audit (`/sb:audit`) | FULLY LIVE — follow "Canvas audit run" below |

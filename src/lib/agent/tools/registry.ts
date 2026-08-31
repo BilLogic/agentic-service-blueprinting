@@ -14,7 +14,7 @@ import {
 } from '@/lib/authoringRpc'
 import {
   createSlice,
-  replaceSliceFrames,
+  replaceSlides,
   updateSliceMeta,
 } from '@/lib/sliceMutations'
 import type { SliceType } from '@/lib/sliceValidation'
@@ -179,13 +179,13 @@ export async function dispatchTool(
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!data) throw new Error(`No slice with id ${sliceId}.`)
-      const frames = [...(data.slides ?? [])]
+      const slides = [...(data.slides ?? [])]
         .sort((a, b) => a.position - b.position)
         .map(
-          (frame, index) =>
-            `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.title ? ` title "${frame.title}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
+          (slide, index) =>
+            `slide ${index + 1}: cells [${(slide.cell_ids ?? []).join(', ')}]${slide.title ? ` title "${slide.title}"` : ''}${slide.narrative ? ` narrative "${slide.narrative}"` : ''}`,
         )
-      return `slice "${data.title}" (${data.id}) type=${data.slice_type}${data.actor ? ` actor=${data.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
+      return `slice "${data.title}" (${data.id}) type=${data.slice_type}${data.actor ? ` actor=${data.actor}` : ''}\n${slides.join('\n') || '(no slides)'}`
     }
     case 'list_findings': {
       const filter = s(args, 'status') ?? 'open'
@@ -455,7 +455,7 @@ export async function dispatchTool(
           actor: s(args, 'actor') ?? '',
           cellIds,
         })
-        return `Created slice "${slice.title}" (${slice.id}) with one frame per cell — replace_slice_frames regroups them.`
+        return `Created slice "${slice.title}" (${slice.id}) with one slide per cell — replace_slides regroups them.`
       }
       case 'update_slice': {
         const sliceId = need(args, 'slice_id')
@@ -477,25 +477,25 @@ export async function dispatchTool(
           throw new Error('The slice changed since you read it — re-read and retry.')
         return 'Slice updated.'
       }
-      case 'replace_slice_frames': {
+      case 'replace_slides': {
         const sliceId = need(args, 'slice_id')
-        const rawFrames = Array.isArray(args.frames) ? args.frames : []
-        if (rawFrames.length === 0)
-          throw new Error('frames must be a non-empty array.')
-        const frames = (rawFrames as Array<Record<string, unknown>>).map(
-          (frame) => ({
-            cells: Array.isArray(frame.cells)
-              ? frame.cells.filter(
+        const rawSlides = Array.isArray(args.slides) ? args.slides : []
+        if (rawSlides.length === 0)
+          throw new Error('slides must be a non-empty array.')
+        const slides = (rawSlides as Array<Record<string, unknown>>).map(
+          (slide) => ({
+            cells: Array.isArray(slide.cells)
+              ? slide.cells.filter(
                   (value): value is string => typeof value === 'string',
                 )
               : [],
-            title: typeof frame.title === 'string' ? frame.title : '',
+            title: typeof slide.title === 'string' ? slide.title : '',
             narrative:
-              typeof frame.narrative === 'string' ? frame.narrative : '',
+              typeof slide.narrative === 'string' ? slide.narrative : '',
           }),
         )
-        await replaceSliceFrames(client, sliceId, frames)
-        return `Replaced the slice's frames (${frames.length}).`
+        await replaceSlides(client, sliceId, slides)
+        return `Replaced the slice's slides (${slides.length}).`
       }
       case 'record_finding': {
         const source = args.source === 'whatif' ? 'whatif' : 'audit'

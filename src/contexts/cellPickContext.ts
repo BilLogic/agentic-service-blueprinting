@@ -25,7 +25,7 @@ export type CellPickApi = {
   /**
    * `true` while the picker is a set-builder rather than a cursor — Design
    * mode. A slice edit session picks too, but its clicks mean "put this cell in
-   * the active frame", so it keeps replace-style semantics of its own.
+   * the active slide", so it keeps replace-style semantics of its own.
    */
   gathers?: boolean
   /**

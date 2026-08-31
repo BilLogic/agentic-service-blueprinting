@@ -120,7 +120,7 @@ export function createFixtureBackend(): Backend {
         const items = FALLBACK_SLICE_ITEMS[sliceId] ?? []
         return {
           ...sliceSummary(slice),
-          frames: items
+          slides: items
             .map((item) => ({
               position: item.position,
               title: item.title ?? '',
@@ -133,7 +133,7 @@ export function createFixtureBackend(): Backend {
       async createSlice() {
         throw new Error(READ_ONLY)
       },
-      async replaceSliceFrames() {
+      async replaceSlides() {
         throw new Error(READ_ONLY)
       },
       async deleteSlice() {

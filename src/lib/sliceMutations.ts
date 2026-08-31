@@ -5,18 +5,18 @@ import {
   readWriteOutcome,
   type UpdatedAtToken,
 } from '@/lib/optimisticConcurrency'
-import { originAfterEdit, type DraftFrame, type SliceType } from '@/lib/sliceValidation'
+import { originAfterEdit, type DraftSlide, type SliceType } from '@/lib/sliceValidation'
 import type { Database, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 
 /**
- * A `slides` row exactly as the server stores it — what a frame revert
+ * A `slides` row exactly as the server stores it — what a slide revert
  * puts back. Captured verbatim rather than rebuilt from the draft shape: a
- * frame carries `illustration` and `cell_keys` that `DraftFrame` has no field
+ * slide carries `illustration` and `cell_keys` that `DraftSlide` has no field
  * for, and a "restore" that silently dropped them would not be one.
  */
-type SliceItemRow = Database['public']['Tables']['slides']['Row']
+type SlideRow = Database['public']['Tables']['slides']['Row']
 
 /**
  * What deleting a slice would destroy.
@@ -31,7 +31,7 @@ type SliceItemRow = Database['public']['Tables']['slides']['Row']
  */
 export type SliceDeletionImpact = {
   label: string
-  frame_count: number
+  slide_count: number
   /** Distinct blueprint cells this slice points at. They are not deleted. */
   referenced_cell_count: number
 }
@@ -60,7 +60,7 @@ export async function sliceDeletionImpact(
 
   return {
     label: slice.title,
-    frame_count: (items ?? []).length,
+    slide_count: (items ?? []).length,
     referenced_cell_count: cells.size,
   }
 }
@@ -72,7 +72,7 @@ export async function sliceDeletionImpact(
  * so Save asks twice. There is deliberately no captured inverse: unlike a
  * scenario or path delete there is no `deleted_structure` archive for slices,
  * so nothing exists to put back. An entry with a revert control that could not
- * actually restore the frames would be worse than one without.
+ * actually restore the slides would be worse than one without.
  *
  * `title` is passed only so the change list can name what went — it is not
  * part of the delete.
@@ -93,23 +93,23 @@ export type NewSlice = {
   description: string
   sliceType: SliceType
   actor: string
-  /** Ordered cell ids; one frame per cell unless `frames` is given. */
+  /** Ordered cell ids; one slide per cell unless `slides` is given. */
   cellIds: readonly string[]
-  frames?: readonly DraftFrame[]
+  slides?: readonly DraftSlide[]
 }
 
 /**
- * Create a slice and its frames.
+ * Create a slice and its slides.
  *
  * `origin` is `human` — this slice was authored here, so the slice skill will
- * never regenerate over it. Frames default to one cell each: that is the
+ * never regenerate over it. Slides default to one cell each: that is the
  * honest reading of a selection made by clicking cells one at a time, and
  * merging them afterwards is one click in the editor.
  *
  * The two inserts are not one transaction (PostgREST has no multi-statement
- * write). The slice row is therefore inserted first and the frames second: a
+ * write). The slice row is therefore inserted first and the slides second: a
  * failure between them leaves an empty slice, which is visible and
- * deletable — the reverse order would leave orphan frames pointing at
+ * deletable — the reverse order would leave orphan slides pointing at
  * nothing.
  */
 export async function createSlice(
@@ -130,14 +130,14 @@ export async function createSlice(
     .single()
   if (error) throw new Error(error.message)
 
-  const frames: DraftFrame[] =
-    input.frames?.map((frame) => ({ ...frame })) ??
+  const slides: DraftSlide[] =
+    input.slides?.map((slide) => ({ ...slide })) ??
     input.cellIds.map((cellId) => ({ cells: [cellId], title: '', narrative: '' }))
 
   // `record: false` — the create is ONE change in the ledger, not a create
-  // followed by a frame replacement of nothing. Its inverse deletes the slice,
-  // which takes the frames with it.
-  await replaceSliceFrames(client, data.id, frames, { record: false })
+  // followed by a slide replacement of nothing. Its inverse deletes the slice,
+  // which takes the slides with it.
+  await replaceSlides(client, data.id, slides, { record: false })
   recordChange(
     'create_slice',
     { slice_id: data.id, title: data.title },
@@ -147,12 +147,12 @@ export async function createSlice(
 }
 
 /**
- * Replace a slice's frames wholesale.
+ * Replace a slice's slides wholesale.
  *
- * Delete-then-insert rather than a per-row diff: frame identity is position,
+ * Delete-then-insert rather than a per-row diff: slide identity is position,
  * and reordering by position update trips the uniqueness constraint halfway
  * through unless every move is staged. Replacing sidesteps the whole class of
- * problem, and a slice has tens of frames, not thousands.
+ * problem, and a slice has tens of slides, not thousands.
  *
  * `cell_keys` is written as the cell ids themselves. Human-authored slices
  * have no IR key path to record — the slice skill fills real key paths when
@@ -160,21 +160,21 @@ export async function createSlice(
  * trail than an empty array.
  *
  * **The prior rows are read before the delete and carried as the inverse.**
- * This is the most destructive write in the file — it removes every frame of
+ * This is the most destructive write in the file — it removes every slide of
  * a slice — and it is reachable both from the editor's Save and from the
- * agent's `replace_slice_frames` tool. Without the capture there was no ledger
+ * agent's `replace_slides` tool. Without the capture there was no ledger
  * row, no revert control, and nothing counted against the destructive-save
- * gate: an agent told to "reorder the frames" could empty a slice and the
+ * gate: an agent told to "reorder the slides" could empty a slice and the
  * change sheet would show that nothing had happened.
  *
  * `record: false` is for callers that own a coarser entry — `createSlice`,
- * whose own inverse already takes the frames with it, and the revert path,
+ * whose own inverse already takes the slides with it, and the revert path,
  * which must not log its own undo.
  */
-export async function replaceSliceFrames(
+export async function replaceSlides(
   client: Client,
   sliceId: string,
-  frames: readonly DraftFrame[],
+  slides: readonly DraftSlide[],
   options?: { record?: boolean },
 ): Promise<void> {
   const record = options?.record !== false
@@ -182,7 +182,7 @@ export async function replaceSliceFrames(
   // Before the delete, or there is nothing left to capture. Ordered so the
   // restored rows go back in the order they were read, which is the order
   // `position` already encodes.
-  let previous: SliceItemRow[] = []
+  let previous: SlideRow[] = []
   if (record) {
     const { data, error } = await client
       .from('slides')
@@ -199,14 +199,14 @@ export async function replaceSliceFrames(
     .eq('slice_id', sliceId)
   if (deleteError) throw new Error(deleteError.message)
 
-  if (frames.length > 0) {
-    const rows = frames.map((frame, position) => ({
+  if (slides.length > 0) {
+    const rows = slides.map((slide, position) => ({
       slice_id: sliceId,
       position,
-      cell_ids: [...frame.cells],
-      cell_keys: [...frame.cells],
-      title: frame.title.trim() || null,
-      narrative: frame.narrative.trim() || null,
+      cell_ids: [...slide.cells],
+      cell_keys: [...slide.cells],
+      title: slide.title.trim() || null,
+      narrative: slide.narrative.trim() || null,
     }))
 
     const { error } = await client.from('slides').insert(rows)
@@ -216,15 +216,15 @@ export async function replaceSliceFrames(
   // After the write, like every other entry: the ledger records what landed.
   if (record) {
     recordChange(
-      'replace_slice_frames',
-      { slice_id: sliceId, frame_count: frames.length },
-      { fn: 'restore_slice_frames', args: { slice_id: sliceId, rows: previous } },
+      'replace_slides',
+      { slice_id: sliceId, slide_count: slides.length },
+      { fn: 'restore_slides', args: { slice_id: sliceId, rows: previous } },
     )
   }
 }
 
 /**
- * Copy a slice — row and frames — as "<title> copy".
+ * Copy a slice — row and slides — as "<title> copy".
  *
  * The copy is `origin: 'human'` regardless of the source's origin: the act
  * of duplicating is authorship, and a copy the slice skill could regenerate
@@ -276,7 +276,7 @@ export async function duplicateSlice(
     if (error) throw new Error(error.message)
   }
 
-  // One entry for the whole copy, inverted by deleting the copy — the frames
+  // One entry for the whole copy, inverted by deleting the copy — the slides
   // cascade with it, so nothing of the original is at risk in the undo.
   recordChange(
     'duplicate_slice',
@@ -340,9 +340,9 @@ export async function updateSliceMeta(
     .select()
   const outcome = readWriteOutcome<Slice>(data, error)
 
-  // Recorded only when a field actually moved. The frame editor calls this on
+  // Recorded only when a field actually moved. The slide editor calls this on
   // every Save with the slice's current values, purely to exercise the
-  // concurrency guard before it rewrites the frames — logging that would put
+  // concurrency guard before it rewrites the slides — logging that would put
   // an "Edited slice" row in the list on saves where nobody edited the slice,
   // which is the ledger claiming a change that did not happen.
   //
