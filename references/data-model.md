@@ -2,7 +2,8 @@
 
 The template's blueprint data model. Source of truth:
 `supabase/migrations/20260716200000_template_schema.sql` plus the
-analysis-tier migrations (`20260729120000_derived_layer.sql`,
+migrations that add the records about the board — filenames keep the
+spelling they shipped with (`20260729120000_derived_layer.sql`,
 `20260730090000_derived_layer_grants_hardening.sql`,
 `20260803001000_slices_origin_allows_human.sql`) and the authoring
 migrations (`20260818000000_authoring_foundation.sql` — provenance
@@ -31,7 +32,7 @@ and stable keys in place of UUIDs.
 - Ordering fields
 - Working precedent
 - Cell slots (`position`)
-- Analysis tier: slices, findings, evidence
+- Records about the board: slices, slides, findings, evidence
 - Service spec: business_model
 - Spec fields on IR-owned tables
 
@@ -194,14 +195,14 @@ slot sibling is a CELL — one row of a tech-role lane, drawn as its own box. A
 moment. A cell holding three pills is one cell and three placements; splitting
 it into three cells is a slot operation and leaves each with one placement.
 
-## Analysis tier: slices, findings, evidence
+## Records about the board: slices, slides, findings, evidence
 
-The skills' outputs land in four analysis-tier tables plus one view
+The skills' outputs land in four tables plus one view
 (DDL: `supabase/migrations/20260729120000_derived_layer.sql`).
 Workspaces provisioned before that migration must route through the
 upgrade recipe rather than failing mid-import.
 
-Design invariant: analysis-tier records reference cells SOFTLY wherever they
+Design invariant: these records reference cells SOFTLY wherever they
 reference them at all, so the importer's scenario-scoped
 delete-and-reinsert never cascades into user-authored rows. `evidence` uses a
 paired `cell_id` / `cell_key`; `findings` and `slides` use `cell_ids
@@ -234,14 +235,15 @@ powers the assumption lens on public deploys.
 
 ## Service spec: business_model
 
-`business_model` is the service-level spec row, not part of the analysis tier.
+`business_model` is the service-level spec row, and not one of the records
+about the board.
 It has no cell reference of any kind; its primary key is the hard
 `service_id` FK. It carries `funding`, `pricing`, `delivery_cost`,
 `revenue_model`, and `partners`, with restricted SELECT.
 
 ## Spec fields on IR-owned tables
 
-The analysis-tier migration also adds human-editable spec columns to
+The same migration also adds human-editable spec columns to
 three IR-owned tables (writable via column-scoped grants; the content
 columns stay import-owned):
 
