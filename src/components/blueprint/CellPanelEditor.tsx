@@ -77,7 +77,7 @@ function Field({
 }
 
 type FormState = {
-  text: string
+  content: string
   summary: string
   owner: string
   perceivedOwner: string
@@ -89,8 +89,8 @@ type FormState = {
 /**
  * The whole cell in one form, one Save.
  *
- * This replaced two stacked editors (text/owners and function/form/value)
- * that each carried their own Save and Cancel — four buttons for one cell,
+ * This replaced two stacked editors (content/owners and function/form/
+ * value proposition) that each carried their own Save and Cancel — four buttons for one cell,
  * and a Save that only saved half of what was on screen. Here Save writes
  * everything that changed and Cancel discards everything, at page level.
  *
@@ -138,7 +138,7 @@ export function CellPanelEditor({
     if (!content) return null
 
     const baseline: FormState = {
-      text: content.content,
+      content: content.content,
       // The DB truth. The *field* may be seeded with the links-derived
       // fallback below, but diffs and reverts compare against this — an
       // owner-only edit must not smuggle the fallback prose into the
@@ -170,7 +170,7 @@ export function CellPanelEditor({
       cellId={null}
       draft={draft}
       baseline={{
-        text: '',
+        content: '',
         summary: '',
         owner: '',
         perceivedOwner: '',
@@ -243,13 +243,13 @@ function CellPanelEditorForm({
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
-  const blocked = !form.text.trim()
+  const blocked = !form.content.trim()
 
   const effectiveSummary = summaryTouched
     ? form.summary
     : baseline.summary
   const contentChanged =
-    form.text !== baseline.text ||
+    form.content !== baseline.content ||
     effectiveSummary !== baseline.summary ||
     form.owner !== baseline.owner ||
     form.perceivedOwner !== baseline.perceivedOwner
@@ -271,7 +271,7 @@ function CellPanelEditorForm({
           pathId: draft!.pathId,
           laneId: draft!.laneId,
           stepId: draft!.stepId,
-          content: form.text.trim(),
+          content: form.content.trim(),
         })
         setCreatedId(targetId)
       }
@@ -288,14 +288,14 @@ function CellPanelEditorForm({
           client,
           targetId,
           {
-            content: form.text,
+            content: form.content,
             summary: cellId ? effectiveSummary : form.summary,
             owner: form.owner,
             perceivedOwner: form.perceivedOwner,
           },
           cellId
             ? {
-                content: baseline.text,
+                content: baseline.content,
                 summary: baseline.summary,
                 owner: baseline.owner,
                 perceivedOwner: baseline.perceivedOwner,
@@ -362,22 +362,24 @@ function CellPanelEditorForm({
       // would otherwise materialize the cell into a panel-less silence.
       data-busy={busy || undefined}
     >
-      <Field label="Text" hint="What this cell says on the grid." required>
+      <Field label="Content" hint="What this cell says on the grid." required>
         <Input
-          value={form.text}
+          value={form.content}
           autoFocus={cellId === null}
           // The cell-content budget (todo 026): a cell is read at a glance,
           // and the lane grid's row rhythm assumes ~5-6 wrapped lines.
           // Detail belongs in Summary. Same cap the agent write path
           // enforces (cellContentLimits.ts).
           maxLength={CELL_CONTENT_MAX}
-          onChange={(event) => set('text', event.target.value)}
+          onChange={(event) => set('content', event.target.value)}
         />
       </Field>
 
-      {/* "Summary", not "Summary": it is the tl;dr that consolidates
-          what the detailed fields (function, form, value) spell out. The
-          column stays `summary` — a label rename is not a migration. */}
+      {/* The tl;dr that consolidates what the detailed fields (function,
+          form, value proposition) spell out. Label and column are the same
+          word here; CONTEXT.md's interface→schema map says which are not.
+          A leftover of the description→summary rename used to sit here
+          saying "Summary", not "Summary" — both halves swept. */}
       <Field label="Summary" hint="The tl;dr — what the detailed fields below add up to.">
         <textarea
           value={form.summary}
@@ -427,7 +429,7 @@ function CellPanelEditorForm({
         />
       </Field>
 
-      <Field label="Value" hint="Who gets what from it.">
+      <Field label="Value proposition" hint="Who gets what from it.">
         <div className="flex flex-col gap-1.5">
           {form.valueProps.map((entry, index) => (
             <div key={index} className="flex items-center gap-1.5">
@@ -464,12 +466,12 @@ function CellPanelEditorForm({
                   )
                 }
               />
-              <IconTooltip label="Remove this value">
+              <IconTooltip label="Remove this value proposition">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  aria-label="Remove value"
+                  aria-label="Remove value proposition"
                   className="shrink-0 text-muted-foreground hover:text-foreground"
                   onClick={() =>
                     set(
@@ -495,7 +497,7 @@ function CellPanelEditorForm({
             }
           >
             <Plus className="size-3" />
-            Add value
+            Add value proposition
           </Button>
           <datalist id="cell-value-audiences">
             {audiences.map((audience) => (
@@ -507,7 +509,7 @@ function CellPanelEditorForm({
 
       {blocked ? (
         <p className="text-xs text-muted-foreground">
-          A cell needs text.
+          A cell needs content.
         </p>
       ) : null}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}

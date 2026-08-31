@@ -112,15 +112,26 @@ export const RENAME_MAP = Object.freeze(
       was: ['propositions'],
       is: ['business_model'],
       migrations: ['21000111000000'],
-      // The PLURAL, and this is not a pattern narrowed to dodge a case. The
-      // retired IDENTIFIER is the table `propositions`. Singular `proposition`
-      // was never one: its only occurrence is
+      // The PLURAL, in both lists, and this is not a pattern narrowed to dodge
+      // a case. The retired IDENTIFIER is the table `propositions`. Singular
+      // `proposition` was never one: its only occurrence is
       // `evidence.proposition_question_key`, a live column recording which of
       // the three validation questions an evidence row answers — and those
       // three ARE propositions in the ordinary sense. The rename moved the
       // container, not the concept, so there is nothing here to exempt.
+      //
+      // THE COPY LIST HELD THE SINGULAR UNTIL #89, and that was the same
+      // over-reach one column to the left, caught the first time a panel had
+      // to say the word. `cells.value_props` abbreviates "value proposition"
+      // and nothing else — `21000111`'s own header says the phrase is what
+      // `propositions` collided with, "a CELL's value proposition", one level
+      // down. A label reading `Value proposition` is therefore the schema's
+      // word spelled out, not a retired one surviving, and this list keying
+      // on the plural leaves the retired NAME covered on screen exactly as it
+      // is in identifiers. Retiring a word the vocabulary still means is how
+      // a guard teaches people to route around it.
       retired: ['propositions'],
-      copy: ['proposition', 'propositions'],
+      copy: ['propositions'],
     },
   ].map((row) =>
     Object.freeze({
