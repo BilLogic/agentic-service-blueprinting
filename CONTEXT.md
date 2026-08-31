@@ -52,9 +52,10 @@ the same path. That split is why the word is load-bearing: `skills/audit`
 instructs an agent to read "the spec columns" and skip gracefully when they are
 empty, and until now this file had never heard of them.
 
-**Not a UI word.** The interface says Function, Form, Value, Owner — never
-"spec fields". The ban is on the *interface*, not the glossary, and reading it
-as both is how a word the skills are told to use went undefined on both sides.
+**Not a UI word.** The interface says Function, Form, Value proposition,
+Owner — never "spec fields". The ban is on the *interface*, not the glossary,
+and reading it as both is how a word the skills are told to use went undefined
+on both sides.
 
 **Line of visibility** — the divider between what the recipient of the service
 can see and what they cannot. It is derived from lane roles rather than
