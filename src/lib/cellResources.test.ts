@@ -123,6 +123,17 @@ describe('resources from database rows', () => {
     ])
   })
 
+  it('keeps resource kinds inside the domain vocabulary', () => {
+    const rows = [
+      { position: 1, name: 'Document', kind: 'other' },
+      { position: 2, name: 'Legacy value', kind: 'unexpected' },
+    ]
+    expect(cellResourcesFromRows(rows).map((row) => row.kind)).toEqual([
+      'other',
+      'other',
+    ])
+  })
+
   it('reads a cell that carries none as pointing at nothing', () => {
     expect(cellResources({})).toEqual([])
     expect(cellResourcesFromRows(null)).toEqual([])

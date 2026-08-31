@@ -11,7 +11,8 @@
  * serves. `cellTouchpoints.ts` is the sibling for the other half of the array
  * that used to hold both.
  */
-import type { BlueprintCell, CellResource } from '@/types/blueprint'
+import type { BlueprintCell, CellResource, ResourceKind } from '@/types/blueprint'
+import { orderedNamedRows } from '@/lib/orderedNamedRows'
 
 /** A `resources` row as the board query selects it. */
 export type RawCellResource = {
@@ -43,22 +44,23 @@ export function hostOf(url: string): string {
   return match?.[1] ?? 'Link'
 }
 
+function resourceKind(
+  value: string | null | undefined,
+  url: string | null | undefined,
+): ResourceKind {
+  const normalized = value?.trim()
+  if (normalized === 'other') return 'other'
+  if (normalized === 'link' || !normalized) return url?.trim() ? 'link' : 'other'
+  return 'other'
+}
+
 /** Resources from database rows, in the order the author put them. */
 export function cellResourcesFromRows(
   rows: readonly RawCellResource[] | null | undefined,
 ): CellResource[] {
-  if (!rows || rows.length === 0) return []
-
-  return rows
-    .filter((row) => (row.name ?? '').trim())
-    .slice()
-    // Sorted here rather than trusted: PostgREST does not promise an order for
-    // an embedded relation, so the list would otherwise come back in whatever
-    // order the planner chose.
-    .sort((a, b) => a.position - b.position)
-    .map((row) => ({
-      name: row.name!.trim(),
-      kind: row.kind?.trim() || 'link',
+  return orderedNamedRows(rows, (row, name) => ({
+      name,
+      kind: resourceKind(row.kind, row.url),
       url: row.url?.trim() || null,
     }))
 }

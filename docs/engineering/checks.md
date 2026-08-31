@@ -54,6 +54,7 @@ green. A guard nobody has watched fail is a guard nobody knows the shape of.
 | `npm run test:ir` | The blueprint round trip broke: validation, seed SQL, the no-database fallback, or the schema-version migration that carries a signed-off blueprint forward instead of stranding it. Python standard library only. |
 | `npm run check:standalone` | A tracked file names the deployment this template was generalised from. Word-bounded and case-insensitive for one term, case-sensitive for the other — the reasons are in the script's header, and relaxing either turns the check into noise that gets deleted. Mirrored content is excluded, because a mirror reports every sentence twice. |
 | `npm run check:docs-index` | `INDEX.md` or `docs/index.md` is stale, or a document under `docs/` has no `summary:` in its frontmatter. The failure names the file. Run `npm run docs:index`. |
+| `bash scripts/tests/resource-split-migration.test.sh` | A populated replay of `21000113000000` lost the target of a legacy citation while moving it from `cells.links` to `evidence.ref`. Requires a local PostgreSQL server; CI runs it in the portable-core job. |
 | `npm run lint`, `npm run build` | ESLint, then a typecheck and a production build. |
 
 ## 5. Adding one

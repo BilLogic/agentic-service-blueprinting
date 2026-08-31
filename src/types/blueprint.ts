@@ -68,10 +68,12 @@ export type CellTouchpoint = {
  * Built by `cellResources.ts` from either source: `resources` rows from the
  * database, or the `url`-typed entries of a fallback blueprint's `links`.
  */
+export type ResourceKind = 'link' | 'other'
+
 export type CellResource = {
   name: string
   /** `link` for everything the split carried across; the column allows `other`. */
-  kind: string
+  kind: ResourceKind
   /** Null only for a kind that is not a link — the table refuses a link without one. */
   url: string | null
 }

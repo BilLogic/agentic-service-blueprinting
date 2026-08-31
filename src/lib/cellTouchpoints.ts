@@ -18,6 +18,7 @@
  * the sibling for the other half of the array that used to hold both.
  */
 import type { BlueprintCell, CellTouchpoint } from '@/types/blueprint'
+import { orderedNamedRows } from '@/lib/orderedNamedRows'
 
 /** A `cell_touchpoints` row as the board query selects it. */
 export type RawCellTouchpoint = {
@@ -40,17 +41,9 @@ function screenshotList(
 export function cellTouchpointsFromRows(
   rows: readonly RawCellTouchpoint[] | null | undefined,
 ): CellTouchpoint[] {
-  if (!rows || rows.length === 0) return []
-
-  return rows
-    .filter((row) => (row.name ?? '').trim())
-    .slice()
-    // Sorted here rather than trusted, for the reason `cellResources.ts`
-    // gives: PostgREST promises no order for an embedded relation.
-    .sort((a, b) => a.position - b.position)
-    .map((row) => ({
+  return orderedNamedRows(rows, (row, name) => ({
       id: row.id ?? null,
-      name: row.name!.trim(),
+      name,
       summary: row.summary?.trim() || null,
       screenshots: screenshotList(row.screenshots),
       url: row.url?.trim() || null,

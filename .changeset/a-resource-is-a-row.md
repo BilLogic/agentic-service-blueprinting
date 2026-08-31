@@ -1,5 +1,5 @@
 ---
-'agentic-service-blueprinting': minor
+'agentic-service-blueprinting': major
 ---
 
 `cells.links` held two concepts and was named after neither. It is now two

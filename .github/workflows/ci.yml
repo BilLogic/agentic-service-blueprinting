@@ -183,6 +183,9 @@ jobs:
             > /tmp/replay.tsv
           diff -u /tmp/inventory.tsv /tmp/replay.tsv
 
+      - name: A populated resource split preserves citation targets
+        run: bash scripts/tests/resource-split-migration.test.sh
+
       # The vocabulary sweep, against the catalogue rather than the files.
       # `alter table … rename` moves the table and the column; the index, the
       # constraint, the policy, the trigger, the comment and every plpgsql body

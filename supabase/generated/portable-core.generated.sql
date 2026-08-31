@@ -3822,7 +3822,7 @@ where item.link ->> 'type' = 'url'
 -- ---------------------------------------------------------------------------
 
 insert into public.evidence
-  (service_id, cell_id, cell_key, kind, title, added_by)
+  (service_id, cell_id, cell_key, kind, title, ref, added_by)
 select
   ph.service_id,
   c.id,
@@ -3833,6 +3833,9 @@ select
   coalesce(c.cell_key, public.mint_cell_key(c.path_id, c.lane_id, c.step_id)),
   'other',
   btrim(item.link ->> 'label'),
+  nullif(
+    btrim(coalesce(item.link ->> 'ref', item.link ->> 'url', '')),
+    ''),
   'cells-links-split'
 from public.cells c
 join public.paths p on p.id = c.path_id
@@ -4114,7 +4117,11 @@ begin
     and nullif(btrim(coalesce(item.link ->> 'label', '')), '') is not null
     and not exists (
       select 1 from public.evidence e
-      where e.cell_id = c.id and e.title = btrim(item.link ->> 'label')
+      where e.cell_id = c.id
+        and e.title = btrim(item.link ->> 'label')
+        and e.ref is not distinct from nullif(
+          btrim(coalesce(item.link ->> 'ref', item.link ->> 'url', '')),
+          '')
     );
   if v_lost_citation <> 0 then
     raise exception '% provenance citations did not reach evidence', v_lost_citation;
