@@ -43,6 +43,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
+const RERUN = 'npm test -- scripts/tests/agent-vocabulary.test.mjs'
 
 /** The trees whose markdown is published to an agent or to a reader. */
 const PUBLISHED_DIRS = ['skills', 'references', 'docs']
@@ -76,6 +77,52 @@ const RETIRED_PROSE = [
  * so that is what is looked for.
  */
 const MUST_BE_DEFINED = ['Analysis tier', 'Spec']
+
+function guardFailure(location, message) {
+  return `${location}: ${message}\nRun: ${RERUN}`
+}
+
+function retiredVocabularyFailure(offenders) {
+  const location = offenders[0]?.split(' — ')[0] ?? 'scripts/tests/agent-vocabulary.test.mjs:1'
+  return guardFailure(
+    location,
+    `Retired vocabulary in text this template publishes:\n  ${offenders.join('\n  ')}\n\n` +
+      `These are shipped to every instance built from this template. Applied ` +
+      `migrations, generated files and changelog entries are exempt — an applied ` +
+      `or dated record keeps the spelling it was written with.`,
+  )
+}
+
+function missingDefinitionsFailure(missing) {
+  return guardFailure(
+    'CONTEXT.md:1',
+    `Not defined in CONTEXT.md: ${missing.join(', ')} — a definition is a ` +
+      `bolded term followed by an em dash, the shape every other entry uses. ` +
+      `A skill instructs an agent to use these words (see skills/audit/SKILL.md ` +
+      `on the spec columns). A word an agent is told to read has to be defined ` +
+      `where a reader looks for definitions.`,
+  )
+}
+
+test('guard failures name a source line and the focused rerun command', () => {
+  assert.equal(
+    retiredVocabularyFailure(['skills/slice/SKILL.md:16 — "derived layer", use "analysis tier"']),
+    'skills/slice/SKILL.md:16: Retired vocabulary in text this template publishes:\n' +
+      '  skills/slice/SKILL.md:16 — "derived layer", use "analysis tier"\n\n' +
+      'These are shipped to every instance built from this template. Applied migrations, ' +
+      'generated files and changelog entries are exempt — an applied or dated record keeps ' +
+      'the spelling it was written with.\n' +
+      'Run: npm test -- scripts/tests/agent-vocabulary.test.mjs',
+  )
+  assert.equal(
+    missingDefinitionsFailure(['Spec']),
+    'CONTEXT.md:1: Not defined in CONTEXT.md: Spec — a definition is a bolded term followed ' +
+      'by an em dash, the shape every other entry uses. A skill instructs an agent to use ' +
+      'these words (see skills/audit/SKILL.md on the spec columns). A word an agent is told ' +
+      'to read has to be defined where a reader looks for definitions.\n' +
+      'Run: npm test -- scripts/tests/agent-vocabulary.test.mjs',
+  )
+})
 
 function markdownUnder(dir) {
   const root = resolve(REPO_ROOT, dir)
@@ -146,10 +193,7 @@ test('no retired prose spelling reaches a published document', () => {
   assert.deepEqual(
     offenders,
     [],
-    `Retired vocabulary in text this template publishes:\n  ${offenders.join('\n  ')}\n\n` +
-      `These are shipped to every instance built from this template. Applied ` +
-      `migrations, generated files and changelog entries are exempt — an applied ` +
-      `or dated record keeps the spelling it was written with.`,
+    retiredVocabularyFailure(offenders),
   )
 })
 
@@ -161,11 +205,7 @@ test('every word the skills are told to use is defined in CONTEXT.md', () => {
   assert.deepEqual(
     missing,
     [],
-    `Not defined in CONTEXT.md: ${missing.join(', ')} — a definition is a ` +
-      `bolded term followed by an em dash, the shape every other entry uses. ` +
-      `A skill instructs an agent to use these words (see skills/audit/SKILL.md ` +
-      `on the spec columns). A word an agent is told to read has to be defined ` +
-      `where a reader looks for definitions.`,
+    missingDefinitionsFailure(missing),
   )
 })
 
