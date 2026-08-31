@@ -54,13 +54,13 @@ lanes they separate.
 
 ![Inside a single cell](../assets/cell-anatomy.svg)
 
-A cell is what one actor does at one step. Beyond its text it carries:
+A cell is what one actor does at one step. Beyond its content it carries:
 
 - **Owner** and **perceived owner.** Kept separately because the
   interesting case is when they differ: the customer thanks a team that was
   not accountable for the moment.
-- **Function, form, value.** What it has to accomplish, how it comes
-  across, and who gets what from it.
+- **Function, form, value proposition.** What it has to accomplish, how it
+  comes across, and who gets what from it.
 - **Dependencies.** `Set off by` and `Sets off` are the arrows drawn on the
   grid. `Needs` is a dependency with no arrow: the cell cannot happen
   without it, but it is not what triggers it.

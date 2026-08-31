@@ -111,6 +111,90 @@ derives from the other on purpose: a prose table should not be load-bearing for
 CI, and a documented map that has drifted from the enforced one is a lie in the
 file people read to learn the words.
 
+## The interface→schema map
+
+Every word a panel puts in front of a reader, and the name behind it. The
+rename map above records the words that **changed**; this records what every
+current word is **bound to**, the agreements included. A table of divergences
+alone cannot say that the rest are fine — "not listed" would mean both
+"aligned" and "nobody looked", and that ambiguity is the state
+[#89](https://github.com/BilLogic/agentic-service-blueprinting/issues/89) was
+raised about: *"how come we have inconsistent naming from front and backend
+again (i.e., resources vs. links)?"* The complaint was never that the words
+differ. It was that no document said which of the differences were on purpose.
+
+The interface word is a **panel label** — the `label` and `title` props of the
+four components that put a field's name in front of a reader, plus the cell
+panel's tab table. The schema word is a `table.column`, or a bare table where
+the label heads a whole relation rather than one field of it. The two **agree**
+when they are the same word once case, spaces and a foreign key's `_id` are set
+aside; singular and plural agree too, because the label over a relation names
+the thing and the table names the collection. Anything further apart than that
+owes the third column a reason.
+
+| The interface says | The schema says | Why they differ |
+|---|---|---|
+| **Content** | `cells.content` | — |
+| **Summary** | `cells.summary` | — |
+| **Owner** | `cells.owner` | — |
+| **Perceived owner** | `cells.perceived_owner` | — |
+| **Function** | `cells.function` | — |
+| **Form** | `cells.form` | — |
+| **Value proposition** | `cells.value_props` | `props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens. |
+| **Dependencies** | `cell_dependencies` | The relation names both ends, because a dependency always runs from one cell to another. The tab is already standing inside a cell, so the prefix would be the one word on it that told a reader nothing. |
+| **Set off by** | `cell_dependencies.kind` | Names a VALUE read from one end rather than a column: these rows are `kind = 'trigger'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this. |
+| **Sets off** | `cell_dependencies.kind` | The same value from the other end — `kind = 'trigger'` leaving. Renaming the pair to the glossary's word, Trigger, would trade one non-column word for another and close no divergence; what the two labels carry that `kind` cannot is the direction. |
+| **Needs** | `cell_dependencies.kind` | The word IS the value — `kind = 'needs'`, the recorded dependency that never draws — and `kind` is the name of the place holding it. This is the row of the three whose label the schema already says out loud. |
+| **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
+| **Evidence** | `evidence` | — |
+| **Resources** | `cells.links` | One column, two interface concepts. The tab lists the entries typed `url`; the entries typed `tech_description` are the touchpoint prose the grid draws, and a tab called Links would promise both and show one. Splitting the column so each concept has its own name is a schema change rather than a naming one, and until that lands the label names the subset it shows. |
+
+Seven rows out of fourteen carry a reason, and each one is a decision rather
+than an accident. That is the claim the table exists to make checkable, and
+[`scripts/tests/labels-name-their-columns.test.mjs`](scripts/tests/labels-name-their-columns.test.mjs)
+checks it four ways: every panel label has a row, every row is a label some
+panel still says, every row names something the schema has, and a divergent row
+carries a reason while an aligned row does not. The last pair is the one worth
+stating out loud. A reason recorded about a label that never diverged reads as
+a decision and settles nothing, and a reason column with decoration in it is a
+column readers learn to skip — taking the real ones with it.
+
+**Two labels were renamed rather than reasoned about**, which is the other half
+of what this table is for. The panel said **Text** where the column is
+`cells.content`, and **Value** where it is `cells.value_props`; both columns
+were already right while the words above them were not, so the labels now say
+Content and Value proposition. Neither is a migration — a label rename moves
+words on a screen — and neither needs a row in the rename map above, which
+records what the *schema* was called.
+
+**`Resources` is the sharp one, and the answer to it is not a rename.**
+`cells.links` carries two things a reader meets under two names — the `url`
+entries the Resources tab lists, and the `tech_description` entries the grid
+draws as a touchpoint's prose. One column, two concepts, named after neither.
+No label can fix that: `Links` over the tab would promise both and show one,
+and `Resources` on the column would be wrong for half its rows. The fix is a
+schema change — a table of its own for each concept, which means a migration, a
+regenerated `src/types/database.ts`, an IR schema revision and every skill that
+writes a link — and that is deliberately **not** in scope here, where the ask
+was a map and a check that keeps it honest. The row above converts the
+divergence from an accident into a recorded decision today; the split, when it
+comes, deletes that row rather than editing it.
+
+**The subject is panel labels, and that is narrower than "words on screen" on
+purpose.** *Line of visibility* and *line of interaction* reach a reader as
+drawings rather than as the name of a field, and are derived from lane roles at
+render time, so there is nothing to bind them to. So it is for every heading
+that names a view rather than a field. A word that heads no field has no name
+to be bound to, and a rule pretending otherwise would be a rule nobody could
+satisfy — which is the failure mode that gets a check deleted rather than
+fixed.
+
+**The enforced half is a second list, deliberately, exactly as the rename map's
+is.** `LABEL_COLUMNS` in that test file is what CI reads; this table is what a
+person reads; neither derives from the other, and a parity test fails when they
+disagree — verbatim, reason text included, so editing one cell in one place
+goes red.
+
 ## Words that keep a retired spelling
 
 Three, and each is a fact about the language rather than a queue. A rename sweep
@@ -124,13 +208,21 @@ type, is untouched for the same reason. Because the word is still live, the
 `description` row of the map above enforces **no** identifier fragment at all;
 `21000108` carries its own assertion instead.
 
-**`evidence.proposition_question_key`.** `propositions` became `business_model`
-because that word already meant a *cell's* value proposition. This column is not
-that table: it records which of the three validation questions an evidence row
-answers — `understand`, `value`, `usability` — and those three are propositions
-in the ordinary sense, claims the service is betting on. The rename moved the
-container, not the concept. The enforced map keys on the **plural**, so nothing
-has to be exempted to keep this.
+**`evidence.proposition_question_key`, and the label above `cells.value_props`.**
+`propositions` became `business_model` because that word already meant a *cell's*
+value proposition. The column is not that table: it records which of the three
+validation questions an evidence row answers — `understand`, `value`,
+`usability` — and those three are propositions in the ordinary sense, claims the
+service is betting on. The rename moved the container, not the concept.
+
+Both enforced lists key on the **plural**, so nothing has to be exempted to keep
+either. The identifier list always did. The copy list held the singular as well
+until the interface→schema map above had to name `cells.value_props`, which
+abbreviates "value proposition" and nothing else: a guard that flagged that
+label would have pushed a reader away from the name of the column they were
+editing. `scripts/tests/retired-copy.test.mjs` asserts the split — the plural
+still flagged on screen, the singular deliberately not — so the shorter list
+reads as the decision it is rather than as a word someone quietly dropped.
 
 **`CanvasAnnotationLayer`.** A rendering layer, unrelated to the lane the
 blueprint draws. `21000104` says so in its own header. It is a frontend

@@ -148,3 +148,33 @@ test('the guard does not read what it excludes', () => {
   ]
   assert.deepEqual(offenders(readerFacingStrings(quiet)), [])
 })
+
+/**
+ * The one word this list keys on the plural, stated here rather than left to
+ * the list to be read as an oversight.
+ *
+ * `21000111` renamed the table `propositions`; it did not retire the English
+ * noun. Its own header says what the collision was — the word "already means
+ * something else one level down: a CELL's value proposition" — and
+ * `cells.value_props` is that phrase abbreviated. So the panel label
+ * `Value proposition` (#89) is the schema's own word spelled out, and a word
+ * list that flagged it would be pushing a reader away from the name of the
+ * column they are editing.
+ *
+ * This is not the forbidden move the header above describes. Dropping `layer`
+ * to silence a legitimate use would leave the retired NAME uncovered; the
+ * retired name here is the plural, and the plural is still on the list.
+ */
+test('the singular is a live word, and only the retired plural is flagged', () => {
+  const planted = [
+    {
+      file: 'components/planted.tsx',
+      code: [
+        '<Field label="Value proposition" />',
+        '<Field label={"Propositions"} />',
+      ].join('\n'),
+    },
+  ]
+  const found = offenders(readerFacingStrings(planted)).map((one) => one.split(' — ')[1])
+  assert.deepEqual(found, ['"propositions"'])
+})
