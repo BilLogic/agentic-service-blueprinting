@@ -42,7 +42,7 @@
  *   - trigger kinds: forward cross-lane, same-column, opt-in spine chains,
  *     cross-lane UPWARD arrows, backward in-lane loops (rework + re-dispatch),
  *     and panel-only `needs` dependencies with labels and notes
- *   - links to REAL repo paths — every one is existsSync-checked at emission
+ *   - resources pointing at REAL repo paths — every one is existsSync-checked
  *   - three demo slices (journey + step + lane) over the new content
  *
  * Deliberate omissions, so they read as decisions and not oversights:
@@ -106,15 +106,15 @@ const SERVICE = {
 /** Fixed timestamp for generated derived rows — deterministic output. */
 const FIXTURE_TIMESTAMP = '2026-08-18T00:00:00+00:00'
 
-/** GitHub blob base for cell links — every path is verified to exist. */
+/** GitHub blob base for cell resources — every path is verified to exist. */
 const REPO_URL = 'https://github.com/BilLogic/agentic-service-blueprinting/blob/main'
-const repoLink = (label, path) => {
+const repoLink = (name, path) => {
   // A rename must never leave a 404 on the board: the link is checked against
   // the working tree at emission, not trusted.
   if (!existsSync(join(REPO_ROOT, path))) {
-    throw new Error(`repoLink("${label}"): ${path} does not exist in the repo`)
+    throw new Error(`repoLink("${name}"): ${path} does not exist in the repo`)
   }
-  return { type: 'url', label, url: `${REPO_URL}/${path}` }
+  return { name, kind: 'link', url: `${REPO_URL}/${path}` }
 }
 
 /** Figures for the visual row — served from /cover/ by scripts/sync-cover-assets.mjs. */
@@ -213,7 +213,8 @@ const MAP_LANES = [
 
 /**
  * Scenario cell spec:
- *   { lane, col, content, slot?, picture?, summary?, links?, paths?,
+ *   { lane, col, content, slot?, picture?, summary?, resources?,
+ *     touchpoints?, paths?,
  *     owner?, perceivedOwner?, fn?, form?, valueProps? }
  * `content` is a string (present on every path) or a per-path-key record
  * (present only on the named paths; differing values = a divergent slot).
@@ -289,13 +290,13 @@ const SCENARIOS = [
         perceivedOwner: 'A database somewhere',
         summary:
           'With no VITE_SUPABASE_* variables the app never opens a connection: what renders is src/data/sampleBlueprint.ts, shipped inside the bundle.',
-        links: [repoLink('src/data/blueprintFallbacks.ts', 'src/data/blueprintFallbacks.ts')],
+        resources: [repoLink('src/data/blueprintFallbacks.ts', 'src/data/blueprintFallbacks.ts')],
       },
 
       {
         lane: 'claude', col: 5,
         content: 'Installs the repo as a Claude Code plugin: four skills, five agents, and the hooks load into the session',
-        links: [repoLink('.claude-plugin/plugin.json', '.claude-plugin/plugin.json')],
+        resources: [repoLink('.claude-plugin/plugin.json', '.claude-plugin/plugin.json')],
       },
 
       {
@@ -303,14 +304,14 @@ const SCENARIOS = [
         content: 'generate_sample_blueprint.mjs',
         summary:
           'The board a first look renders and the database seed come from one run of this script, so the two can never disagree.',
-        links: [repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs')],
+        resources: [repoLink('scripts/generate_sample_blueprint.mjs', 'scripts/generate_sample_blueprint.mjs')],
       },
       {
         lane: 'scripts', col: 5,
         content: 'run_tests.sh\nagent-harness --smoke',
         summary:
           'Both go green on a keyless clone — a reviewer can check the kit’s claims before configuring anything.',
-        links: [repoLink('scripts/tests/run_tests.sh', 'scripts/tests/run_tests.sh')],
+        resources: [repoLink('scripts/tests/run_tests.sh', 'scripts/tests/run_tests.sh')],
       },
 
       // The Subagent fleet lane is silent on this board: nothing dispatches an
@@ -319,19 +320,19 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 2,
         content: 'README.md',
-        links: [repoLink('README.md', 'README.md')],
+        resources: [repoLink('README.md', 'README.md')],
       },
       {
         lane: 'refs', col: 3,
         content: 'guide/01 — the blueprint model',
-        links: [repoLink('guide/01 — The blueprint model', 'docs/guide/01-the-blueprint-model.md')],
+        resources: [repoLink('guide/01 — The blueprint model', 'docs/guide/01-the-blueprint-model.md')],
       },
       {
         lane: 'refs', col: 5,
         content: 'AGENTS.md\nguide/03 — the plugin',
         summary:
           'What a reader opens next: the conventions an agent follows in this repo, and how the kit ships as an installable plugin.',
-        links: [
+        resources: [
           repoLink('AGENTS.md', 'AGENTS.md'),
           repoLink('guide/03 — The plugin', 'docs/guide/03-the-plugin.md'),
         ],
@@ -439,12 +440,11 @@ const SCENARIOS = [
       {
         lane: 'surface', col: 7, slot: 1,
         content: 'Cell detail panel',
-        links: [
+        touchpoints: [
           {
-            type: 'tech_description',
-            label: 'Cell detail panel',
-            description:
-              'What one cell holds: summary, owner pair, function / form / value, links, and the dependency tab.',
+            name: 'Cell detail panel',
+            summary:
+              'What one cell holds: summary, owner pair, function / form / value, resources, and the dependency tab.',
           },
         ],
       },
@@ -465,7 +465,7 @@ const SCENARIOS = [
         },
         summary:
           'Entry-state detection is the first thing the skill does: nothing → co-create, docs → ingest, a foreign diagram → translate, an existing workspace → resume.',
-        links: [repoLink('skills/map/SKILL.md', 'skills/map/SKILL.md')],
+        resources: [repoLink('skills/map/SKILL.md', 'skills/map/SKILL.md')],
       },
       { lane: 'claude', col: 3, content: 'Right-sizes the scope and settles the spine before drawing a single lane' },
       { lane: 'claude', col: 4, content: { DOCS: 'Dispatches document-readers instead of reading the corpus in its own context' } },
@@ -487,17 +487,17 @@ const SCENARIOS = [
         content: 'blueprint-workspace.json',
         summary:
           'The workspace-state file: which scenarios are pending, drafted, signed off, or imported, and the hash each sign-off was bound to.',
-        links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
+        resources: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
       },
       {
         lane: 'scripts', col: 4,
         content: { DOCS: 'ingest-playbook.md' },
-        links: [repoLink('ingest-playbook.md', 'skills/map/references/ingest-playbook.md')],
+        resources: [repoLink('ingest-playbook.md', 'skills/map/references/ingest-playbook.md')],
       },
       {
         lane: 'scripts', col: 5,
         content: { DIAGRAM: 'crosswalk-schema.json\ntranslate-playbook.md' },
-        links: [
+        resources: [
           repoLink('crosswalk-schema.json', 'skills/map/references/crosswalk-schema.json'),
           repoLink('translate-playbook.md', 'skills/map/references/translate-playbook.md'),
         ],
@@ -507,14 +507,14 @@ const SCENARIOS = [
         content: 'blueprint/blueprint.json',
         summary:
           'Where the blueprint lives before it is a database: one intermediate-representation file the skills read and write.',
-        links: [repoLink('references/ir-schema.json', 'references/ir-schema.json')],
+        resources: [repoLink('references/ir-schema.json', 'references/ir-schema.json')],
       },
       {
         lane: 'scripts', col: 7,
         content: 'validate_ir.py (stdlib-only)',
         summary:
           'No dependencies to install: the validator runs on a stock Python 3, and the drafting phase does not end until it exits 0.',
-        links: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
+        resources: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
       },
       {
         lane: 'scripts', col: 8,
@@ -527,14 +527,14 @@ const SCENARIOS = [
         ],
         owner: 'The blueprint owner who signs',
         perceivedOwner: 'The skill that computes the hash',
-        links: [repoLink('scripts/compute_signoff_hash.py', 'scripts/compute_signoff_hash.py')],
+        resources: [repoLink('scripts/compute_signoff_hash.py', 'scripts/compute_signoff_hash.py')],
       },
       {
         lane: 'scripts', col: 9,
         content: 'generate_fallbacks.py --register\ngenerate_seed_sql.py',
         summary:
           'One blueprint file becomes both targets: a no-database data module registered into the app, and a transactional seed for Postgres.',
-        links: [
+        resources: [
           repoLink('scripts/generate_fallbacks.py', 'scripts/generate_fallbacks.py'),
           repoLink('scripts/generate_seed_sql.py', 'scripts/generate_seed_sql.py'),
         ],
@@ -543,30 +543,30 @@ const SCENARIOS = [
       {
         lane: 'agents', col: 4,
         content: { DOCS: 'document-reader returns structure, keeping raw source text out of the main context' },
-        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
+        resources: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
       },
       {
         lane: 'agents', col: 5,
         content: { DIAGRAM: 'document-reader in foreign-blueprint mode returns lanes, columns and variants' },
-        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
+        resources: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
       },
       {
         lane: 'agents', col: 7,
         content: 'blueprint-reviewer returns numbered findings with severities',
         summary:
           'A fresh context that never saw the drafting catches what the drafting context is anchored on.',
-        links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
+        resources: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
       },
       {
         lane: 'agents', col: 10,
         content: 'render-checker walks every scenario and view and screenshots each',
-        links: [repoLink('agents/render-checker.md', 'agents/render-checker.md')],
+        resources: [repoLink('agents/render-checker.md', 'agents/render-checker.md')],
       },
 
       {
         lane: 'refs', col: 1,
         content: 'elicitation-protocol.md',
-        links: [repoLink('elicitation-protocol.md', 'skills/map/references/elicitation-protocol.md')],
+        resources: [repoLink('elicitation-protocol.md', 'skills/map/references/elicitation-protocol.md')],
       },
       {
         lane: 'refs', col: 3,
@@ -574,13 +574,13 @@ const SCENARIOS = [
         picture: figure('data-model-hierarchy.svg'),
         summary:
           'Rendering follows the semantic lane_role, never the display name — which is why lane labels are free-form, in any language.',
-        links: [repoLink('references/lane-roles.md', 'references/lane-roles.md')],
+        resources: [repoLink('references/lane-roles.md', 'references/lane-roles.md')],
       },
       {
         lane: 'refs', col: 6,
         content: 'data-model.md\nir-schema.json',
         picture: figure('blueprint-anatomy.svg'),
-        links: [
+        resources: [
           repoLink('references/data-model.md', 'references/data-model.md'),
           repoLink('references/ir-schema.json', 'references/ir-schema.json'),
         ],
@@ -588,7 +588,7 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 8,
         content: 'validate_ir_on_edit.py — re-validates the blueprint file on every edit',
-        links: [repoLink('hooks/validate_ir_on_edit.py', 'hooks/validate_ir_on_edit.py')],
+        resources: [repoLink('hooks/validate_ir_on_edit.py', 'hooks/validate_ir_on_edit.py')],
       },
       {
         lane: 'refs', col: 9,
@@ -597,13 +597,13 @@ const SCENARIOS = [
         perceivedOwner: 'The kit',
         summary:
           'The guard runs in the owner’s harness, on their machine — the kit ships the hook, it never holds the key.',
-        links: [repoLink('hooks/secret_guard.py', 'hooks/secret_guard.py')],
+        resources: [repoLink('hooks/secret_guard.py', 'hooks/secret_guard.py')],
       },
       {
         lane: 'refs', col: 10,
         content: 'deploy-notes.md',
         picture: figure('four-ways-in.svg'),
-        links: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
+        resources: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
       },
     ],
     triggers: [
@@ -729,21 +729,21 @@ const SCENARIOS = [
           { for: 'The blueprint owner', value: 'Findings arrive as triageable rows, not as a chat opinion to argue with.' },
           { for: 'The next run', value: 'Fingerprints dedupe repeats, so a re-audit surfaces what changed.' },
         ],
-        links: [repoLink('audit_tools.py', 'skills/audit/scripts/audit_tools.py')],
+        resources: [repoLink('audit_tools.py', 'skills/audit/scripts/audit_tools.py')],
       },
       {
         lane: 'scripts', col: 4,
         content: 'Fingerprint = check name + sha256 of the sorted cell keys + reason slug',
         summary:
           'A duplicate fingerprint inside one incoming batch is a reported error, never a second insert; the partial unique index on open fingerprints is the backstop.',
-        links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
+        resources: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
       },
       {
         lane: 'scripts', col: 5,
         content: 'findings table\naudit/findings-report.json',
         summary:
           'Rows in the findings table when a database is reachable, and a JSON ledger when one is not — the audit still runs, straight against the blueprint files.',
-        links: [repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md')],
+        resources: [repoLink('skills/audit/SKILL.md', 'skills/audit/SKILL.md')],
       },
       { lane: 'scripts', col: 7, content: 'Per-check atomic supersede\nOne run_id per run' },
 
@@ -752,7 +752,7 @@ const SCENARIOS = [
         content: 'auditor — one check doc and the export, never another check’s output',
         summary:
           'Each check’s judgement stays uncontaminated because the auditor running it cannot see any other check or its findings.',
-        links: [repoLink('agents/auditor.md', 'agents/auditor.md')],
+        resources: [repoLink('agents/auditor.md', 'agents/auditor.md')],
       },
       { lane: 'agents', col: 4, content: 'Each auditor’s output is validated against the findings-row shape before any dedupe' },
       {
@@ -768,14 +768,14 @@ const SCENARIOS = [
         content: 'audit-playbook.md',
         summary:
           'Read before executing any route: run semantics, the fingerprint algorithm, triage rules, and the check-authoring template.',
-        links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
+        resources: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
       },
       {
         lane: 'refs', col: 3,
         content: 'check-gap-sweep.md\ncheck-jargon-lint.md\ncheck-channel-conflict.md',
         summary:
           'Three of the roster’s eight checks. The roster is the directory listing, not this list — a check file that exists runs, or is reported skipped.',
-        links: [
+        resources: [
           repoLink('check-gap-sweep.md', 'skills/audit/references/check-gap-sweep.md'),
           repoLink('check-jargon-lint.md', 'skills/audit/references/check-jargon-lint.md'),
         ],
@@ -785,7 +785,7 @@ const SCENARIOS = [
         content: 'check-perceived-owner.md\ncheck-value-ledger.md',
         summary:
           'Wave-2 checks read the cell spec columns, and skip gracefully — reported, never silent — when those columns are empty.',
-        links: [
+        resources: [
           repoLink('check-perceived-owner.md', 'skills/audit/references/check-perceived-owner.md'),
           repoLink('check-value-ledger.md', 'skills/audit/references/check-value-ledger.md'),
         ],
@@ -869,7 +869,7 @@ const SCENARIOS = [
         content: 'validate_ir.py on the variant',
         summary:
           'A hypothetical still has to be a legal blueprint, so the variant passes the same validator the real one does.',
-        links: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
+        resources: [repoLink('scripts/validate_ir.py', 'scripts/validate_ir.py')],
       },
       {
         lane: 'scripts', col: 3,
@@ -880,7 +880,7 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 6,
         content: 'comparison.md\nchange-request-schema.json',
-        links: [repoLink('change-request-schema.json', 'skills/whatif/references/change-request-schema.json')],
+        resources: [repoLink('change-request-schema.json', 'skills/whatif/references/change-request-schema.json')],
       },
       { lane: 'scripts', col: 7, content: 'Recorded AND recomputed sign-off hashes must both match, or promotion refuses' },
 
@@ -893,23 +893,23 @@ const SCENARIOS = [
           { for: 'The blueprint owner', value: 'The blast radius of a change, before anyone estimates it.' },
           { for: 'The reviewer', value: 'A claim list with cell keys attached, so every claim is checkable.' },
         ],
-        links: [repoLink('agents/impact-tracer.md', 'agents/impact-tracer.md')],
+        resources: [repoLink('agents/impact-tracer.md', 'agents/impact-tracer.md')],
       },
       {
         lane: 'agents', col: 5,
         content: 'blueprint-reviewer, whatif-claim mode: every surviving claim carries cell keys it confirmed exist',
-        links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
+        resources: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
       },
 
       {
         lane: 'refs', col: 1,
         content: 'whatif-playbook.md',
-        links: [repoLink('whatif-playbook.md', 'skills/whatif/references/whatif-playbook.md')],
+        resources: [repoLink('whatif-playbook.md', 'skills/whatif/references/whatif-playbook.md')],
       },
       {
         lane: 'refs', col: 6,
         content: 'audit-playbook.md §2–§4 — findings mechanics, shared with the audit',
-        links: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
+        resources: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
       },
     ],
     triggers: [
@@ -1004,43 +1004,43 @@ const SCENARIOS = [
         content: 'slice-templates.md',
         summary:
           'The type decides the shape of the read: a journey follows one actor along the board, a step reads one column top to bottom, a lane follows one row across, a cell zooms in on one moment, custom is any hand-picked set.',
-        links: [repoLink('slice-templates.md', 'skills/slice/references/slice-templates.md')],
+        resources: [repoLink('slice-templates.md', 'skills/slice/references/slice-templates.md')],
       },
       {
         lane: 'scripts', col: 3,
         content: 'slice_tools.py select',
         summary:
           'Cell-id derivation lives in the script and must agree byte-for-byte with the blueprint import, or the slice points at rows that do not exist.',
-        links: [repoLink('slice_tools.py', 'skills/slice/scripts/slice_tools.py')],
+        resources: [repoLink('slice_tools.py', 'skills/slice/scripts/slice_tools.py')],
       },
       {
         lane: 'scripts', col: 4,
         content: 'slice-schema.json',
-        links: [repoLink('slice-schema.json', 'skills/slice/references/slice-schema.json')],
+        resources: [repoLink('slice-schema.json', 'skills/slice/references/slice-schema.json')],
       },
       {
         lane: 'scripts', col: 6,
         content: 'slices\nslice_items',
         summary:
           'Slice items reference cells softly — uuid arrays paired with cell keys — so re-importing a scenario never cascades into a presentation.',
-        links: [repoLink('references/data-model.md', 'references/data-model.md')],
+        resources: [repoLink('references/data-model.md', 'references/data-model.md')],
       },
 
       {
         lane: 'agents', col: 5,
         content: 'blueprint-reviewer, slice mode: every claim traces to a cited cell, nothing invented, nothing quoted',
-        links: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
+        resources: [repoLink('agents/blueprint-reviewer.md', 'agents/blueprint-reviewer.md')],
       },
 
       {
         lane: 'refs', col: 1,
         content: 'slice-playbook.md',
-        links: [repoLink('slice-playbook.md', 'skills/slice/references/slice-playbook.md')],
+        resources: [repoLink('slice-playbook.md', 'skills/slice/references/slice-playbook.md')],
       },
       {
         lane: 'refs', col: 7,
         content: 'storyboard-prompts.md — optional imagery, only after the text path is complete',
-        links: [repoLink('storyboard-prompts.md', 'skills/slice/references/storyboard-prompts.md')],
+        resources: [repoLink('storyboard-prompts.md', 'skills/slice/references/storyboard-prompts.md')],
       },
     ],
     triggers: [
@@ -1118,34 +1118,34 @@ const SCENARIOS = [
       {
         lane: 'scripts', col: 2,
         content: 'blueprint-workspace.json\nHANDOFF.md',
-        links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
+        resources: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
       },
       {
         lane: 'scripts', col: 4,
         content: 'compute_signoff_hash.py',
-        links: [repoLink('scripts/compute_signoff_hash.py', 'scripts/compute_signoff_hash.py')],
+        resources: [repoLink('scripts/compute_signoff_hash.py', 'scripts/compute_signoff_hash.py')],
       },
       {
         lane: 'scripts', col: 5,
         content: 'generate_seed_sql.py\ngenerate_fallbacks.py --register',
-        links: [repoLink('scripts/generate_seed_sql.py', 'scripts/generate_seed_sql.py')],
+        resources: [repoLink('scripts/generate_seed_sql.py', 'scripts/generate_seed_sql.py')],
       },
 
       {
         lane: 'agents', col: 3,
         content: 'document-reader, single-doc mode, when the change arrives as a document',
-        links: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
+        resources: [repoLink('agents/document-reader.md', 'agents/document-reader.md')],
       },
 
       {
         lane: 'refs', col: 2,
         content: 'workspace-state.md',
-        links: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
+        resources: [repoLink('workspace-state.md', 'skills/map/references/workspace-state.md')],
       },
       {
         lane: 'refs', col: 3,
         content: 'customization.md — how a workspace is upgraded when the kit moves under it',
-        links: [repoLink('references/customization.md', 'references/customization.md')],
+        resources: [repoLink('references/customization.md', 'references/customization.md')],
       },
     ],
     triggers: [
@@ -1300,7 +1300,14 @@ function buildScenario(scenario) {
       content,
       picture: spec.picture ?? null,
       summary: spec.summary ?? null,
-      links: spec.links ?? [],
+      resources: spec.resources ?? [],
+      touchpoints: (spec.touchpoints ?? []).map((tp) => ({
+        id: null,
+        name: tp.name,
+        summary: tp.summary ?? null,
+        screenshots: tp.screenshots ?? [],
+        url: tp.url ?? null,
+      })),
       ...(slot > 0 ? { position: slot } : {}),
       // Cell spec — emitted only where authored, so the fixture stays lean.
       // `fn` in the spec, `function` on the row: the column is named for the
@@ -1852,7 +1859,7 @@ ${sqlRows(
 )};
 `)
 
-seedParts.push(`insert into public.cells (id, path_id, lane_id, step_id, position, content, picture, summary, links, owner, perceived_owner, function, form, value_props, cell_key) values
+seedParts.push(`insert into public.cells (id, path_id, lane_id, step_id, position, content, picture, summary, owner, perceived_owner, function, form, value_props, cell_key) values
 ${sqlRows(
   allBlueprints.flatMap(({ scenario, bp }) => {
     const laneName = new Map(bp.lanes.map((l) => [l.id, l.name]))
@@ -1868,7 +1875,6 @@ ${sqlRows(
         q(cell.content),
         q(cell.picture),
         q(cell.summary),
-        `${q(JSON.stringify(cell.links))}::jsonb`,
         q(cell.owner ?? null),
         q(cell.perceived_owner ?? null),
         q(cell.function ?? null),
@@ -1890,6 +1896,47 @@ ${sqlRows(
   }),
 )};
 `)
+
+// The two relations that replaced `cells.links`. No `id` column: nothing in
+// this seed points at one of these rows, and a generated default keeps the
+// emitter from minting a second id space nobody reads. Placements first —
+// a resource may hang off one.
+const touchpointRows = allBlueprints.flatMap(({ bp }) =>
+  bp.cells.flatMap((cell) =>
+    (cell.touchpoints ?? []).map((placement, index) => [
+      q(cell.id),
+      q(placement.name),
+      String(index + 1),
+      q(placement.summary),
+      `array[${(placement.screenshots ?? []).map((shot) => q(shot)).join(', ')}]::text[]`,
+      q(placement.url),
+      q('import'),
+    ]),
+  ),
+)
+if (touchpointRows.length > 0) {
+  seedParts.push(`insert into public.cell_touchpoints (cell_id, name, position, summary, screenshots, url, origin) values
+${sqlRows(touchpointRows)};
+`)
+}
+
+const resourceRows = allBlueprints.flatMap(({ bp }) =>
+  bp.cells.flatMap((cell) =>
+    (cell.resources ?? []).map((resource, index) => [
+      q(cell.id),
+      q(resource.kind ?? 'link'),
+      q(resource.name),
+      q(resource.url),
+      String(index + 1),
+      q('import'),
+    ]),
+  ),
+)
+if (resourceRows.length > 0) {
+  seedParts.push(`insert into public.resources (cell_id, kind, name, url, position, origin) values
+${sqlRows(resourceRows)};
+`)
+}
 
 seedParts.push(`insert into public.cell_dependencies (id, source_cell_id, target_cell_id, kind, label, note) values
 ${sqlRows(

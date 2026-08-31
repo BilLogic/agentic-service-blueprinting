@@ -51,8 +51,10 @@ elicitation), or to none.
 
 - Roles `frontstage_tech`, `backstage_tech`, `support_systems` render cell
   `content` as **pills**: one pill per newline-separated line
-  (`"GIS Portal\nWork Order App"` → two pills). `tech_description` links
-  attach long-form copy/screenshots to a pill by matching its label.
+  (`"GIS Portal\nWork Order App"` → two pills). A `cell_touchpoints` row
+  attaches long-form copy, screenshots and a design link to one pill: its
+  `name` is the pill's label, and the row survives a rename where the old
+  label-matched link entry silently stopped being found.
 - Roles `visual`/`step_visual` render `picture` and ignore text content. An
   empty visual row (null `picture`) is a valid default — see
   `skills/map/references/ingest-playbook.md` §6 for sourcing stage images.

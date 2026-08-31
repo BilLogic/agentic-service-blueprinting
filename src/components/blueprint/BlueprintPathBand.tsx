@@ -42,6 +42,8 @@ import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
 import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
 import { buildVisualWalkthroughSession } from '@/lib/visualWalkthrough'
 import type { BlueprintData, BlueprintStep } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 /** Left gutter on the white board so the play control clears Visual cells. */
 const VISUAL_PLAY_GUTTER = 28
@@ -420,7 +422,8 @@ function CompareLaneRow({
                 cellContent: cell?.content ?? '',
                 cellPicture: cell?.picture ?? null,
                 cellSummary: cell?.summary ?? null,
-                cellLinks: cell?.links,
+                cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
+                cellResources: cell ? cellResources(cell) : undefined,
                 pathId: blueprint.path.id,
                 pathName: blueprint.path.name,
                 pathSummary: blueprint.path.summary,

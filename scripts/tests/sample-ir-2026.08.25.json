@@ -130,7 +130,9 @@
                         "description": {
                           "en": "Public map-based intake channel for streetlight faults.",
                           "zh": "面向公众的地图报修入口。"
-                        }
+                        },
+                        "picture": "docs/assets/gis-portal.png",
+                        "url": "https://example.com/design/gis-portal"
                       }
                     ]
                   },

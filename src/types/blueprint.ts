@@ -29,17 +29,53 @@ export type BlueprintStep = {
   position: number
 }
 
-/** Structured link on a cell (stored as JSONB; type is usually "url"). */
-export type CellLink = {
-  type: string
-  label: string
-  url?: string
-  /** Long-form copy for `tech_description` links keyed by tech pill label. */
-  description?: string
-  /** Screenshot or illustration for `tech_description` links keyed by tech pill label. */
-  picture?: string
-  /** Multiple images for a tech pill (e.g. logo + screenshot). Takes precedence over `picture`. */
-  pictures?: string[]
+/**
+ * One touchpoint, used at one cell.
+ *
+ * `summary`, `screenshots` and `url` are THIS moment's own: the same tool
+ * describes a different screen and points at a different design file at a
+ * different step, which is the distinction a label-keyed link entry could not
+ * hold. Built by `cellTouchpoints.ts` from either source.
+ */
+export type CellTouchpoint = {
+  /**
+   * The `cell_touchpoints` row this came from, and the only handle an editor
+   * may write through — a placement is identified by its id, never by the
+   * name it currently shows.
+   *
+   * Null on a board that has no rows behind it: the template's own sample
+   * fixture writes null, while a fallback generated from an IR carries the
+   * UUIDv5 the import would mint for that row, which is the id it has once
+   * imported.
+   */
+  id: string | null
+  name: string
+  summary: string | null
+  /** Screenshots or illustrations for this moment, in author order. */
+  screenshots: string[]
+  /** The design file for THIS moment, not for the tool. */
+  url: string | null
+}
+
+/**
+ * One thing a cell — or one touchpoint placement — points at.
+ *
+ * A link is one kind of resource, which is why `kind` carries the subtype and
+ * the type is named for the parent. `name` is what the thing on the other end
+ * is called; this vocabulary reserves `title` for authored content a reader
+ * reads and gives a NAME to a thing a reader navigates to.
+ *
+ * Built by `cellResources.ts` from either source: `resources` rows from the
+ * database, or the `url`-typed entries of a fallback blueprint's `links`.
+ */
+export type ResourceKind = 'link' | 'other'
+
+export type CellResource = {
+  name: string
+  /** `link` for everything the split carried across; the column allows `other`. */
+  kind: ResourceKind
+  /** Null only for a kind that is not a link — the table refuses a link without one. */
+  url: string | null
 }
 
 export type BlueprintCell = {
@@ -56,7 +92,19 @@ export type BlueprintCell = {
   content: string
   picture: string | null
   summary: string | null
-  links: CellLink[]
+  /**
+   * Touchpoints placed at this cell.
+   *
+   * Optional because the hand-written test fixtures do not write it and both
+   * generators and the normalizer always do — read it through
+   * `cellTouchpoints(cell)` rather than directly.
+   */
+  touchpoints?: CellTouchpoint[]
+  /**
+   * What this cell points at. Optional for the same reason; ask
+   * `cellResources(cell)`.
+   */
+  resources?: CellResource[]
   /**
    * Order within a slot (one lane, one step). Tech lanes hold one cell per
    * touchpoint; everything else holds a single cell at 0. Optional because

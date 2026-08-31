@@ -3,6 +3,8 @@ import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { shouldUsePillCellContent } from '@/lib/blueprintLayout'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import type { BlueprintCell, BlueprintCellTrigger, BlueprintData } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 export type BlueprintCellConnectionKind = 'interaction' | 'connection'
 
@@ -303,7 +305,8 @@ export function buildBlueprintCellSelectionForId(
     cellContent: cell.content,
     cellPicture: cell.picture,
     cellSummary: cell.summary,
-    cellLinks: cell.links,
+    cellTouchpoints: cellTouchpoints(cell),
+    cellResources: cellResources(cell),
     pathId: blueprint.path.id,
     pathName: blueprint.path.name,
     pathSummary: blueprint.path.summary,

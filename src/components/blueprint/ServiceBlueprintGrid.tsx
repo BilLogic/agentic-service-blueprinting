@@ -75,6 +75,8 @@ import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags
 import { buildVisualWalkthroughSession } from '@/lib/visualWalkthrough'
 import { BlueprintVisualPlayButton } from '@/components/blueprint/BlueprintVisualPlayButton'
 import type { BlueprintCell, BlueprintData } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 type ServiceBlueprintGridProps = {
   data: BlueprintData
@@ -615,7 +617,8 @@ function BlueprintSwimLane({
                         cellContent: cell?.content ?? '',
                         cellPicture: cell?.picture ?? null,
                         cellSummary: cell?.summary ?? null,
-                        cellLinks: cell?.links,
+                        cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
+                        cellResources: cell ? cellResources(cell) : undefined,
                         pathId: blueprint.path.id,
                         pathName: blueprint.path.name,
                         pathSummary: blueprint.path.summary,
@@ -719,7 +722,16 @@ function BlueprintCellBlock({
       ? (slotCells && slotCells.length > 0
           ? slotCells
           : content !== undefined
-            ? [{ id: cellId, content, picture: null, summary: null, links: [] }]
+            ? [
+                {
+                  id: cellId,
+                  content,
+                  picture: null,
+                  summary: null,
+                  touchpoints: [],
+                  resources: [],
+                },
+              ]
             : []
         ).flatMap((slotCell) =>
           getTechPillItems(slotCell.content ?? '').map((item) => ({
@@ -791,7 +803,8 @@ function BlueprintCellBlock({
                 cellContent: slotCell.content ?? '',
                 cellPicture: slotCell.picture ?? null,
                 cellSummary: slotCell.summary ?? null,
-                cellLinks: slotCell.links,
+                cellTouchpoints: cellTouchpoints(slotCell),
+                cellResources: cellResources(slotCell),
               }}
               stepIndex={stepIndex}
               compact={compact}

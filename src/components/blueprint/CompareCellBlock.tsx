@@ -16,6 +16,8 @@ import type { BlueprintLaneStyle } from '@/lib/blueprintTheme'
 import { getPathWashStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 /**
  * One cell of a compare grid — the same face in every arrangement (stacked
@@ -157,7 +159,8 @@ export function CompareCellBlock({
                       cellContent: slotCell.content ?? '',
                       cellPicture: slotCell.picture ?? null,
                       cellSummary: slotCell.summary ?? null,
-                      cellLinks: slotCell.links,
+                      cellTouchpoints: cellTouchpoints(slotCell),
+                      cellResources: cellResources(slotCell),
                     }
                   : selectionContext
               }

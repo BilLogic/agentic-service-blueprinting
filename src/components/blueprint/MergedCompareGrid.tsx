@@ -67,6 +67,8 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 type MergedCompareGridProps = {
   /** In selection order — the order sub-cells stack in and the legend reads. */
@@ -686,7 +688,8 @@ function MergedSubCellBlock({
               cellContent: cell?.content ?? '',
               cellPicture: cell?.picture ?? null,
               cellSummary: cell?.summary ?? null,
-              cellLinks: cell?.links,
+              cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
+              cellResources: cell ? cellResources(cell) : undefined,
               pathId: blueprint.path.id,
               pathName: blueprint.path.name,
               pathSummary: blueprint.path.summary,

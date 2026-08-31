@@ -66,7 +66,8 @@ A cell is what one actor does at one step. Beyond its content it carries:
   without it, but it is not what triggers it.
 - **Evidence.** The sources the cell rests on. A cell with none reads as an
   assumption, which is a finding rather than a gap in the tooling.
-- **Resources.** What the cell links out to.
+- **Resources.** What the cell points at. Their rows and ownership live in the
+  [data model](../../references/data-model.md#tables-in-brief).
 - **Slices.** Which slices quote this cell.
 
 ## 4. Slices

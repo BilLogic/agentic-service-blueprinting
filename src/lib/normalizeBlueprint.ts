@@ -5,8 +5,12 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
-import type { PathType, Json } from '@/types/database'
-import { normalizeCellLinks } from '@/lib/cellMetadata'
+import type { PathType } from '@/types/database'
+import { cellResourcesFromRows, type RawCellResource } from '@/lib/cellResources'
+import {
+  cellTouchpointsFromRows,
+  type RawCellTouchpoint,
+} from '@/lib/cellTouchpoints'
 
 type RawOutgoingTrigger = {
   id: string
@@ -29,7 +33,10 @@ export type RawCell = {
   content: string
   picture?: string | null
   summary?: string | null
-  links?: Json | null
+  /** `resources` rows embedded by the board query. */
+  resources?: RawCellResource[] | null
+  /** `cell_touchpoints` rows embedded by the board query. */
+  cell_touchpoints?: RawCellTouchpoint[] | null
   outgoing?: RawOutgoingTrigger[] | null
 }
 
@@ -215,7 +222,8 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     content: cell.content,
     picture: cell.picture ?? null,
     summary: cell.summary ?? null,
-    links: normalizeCellLinks(cell.links),
+    resources: cellResourcesFromRows(cell.resources),
+    touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),
   }))
   const triggers =
     raw.cell_dependencies && raw.cell_dependencies.length > 0

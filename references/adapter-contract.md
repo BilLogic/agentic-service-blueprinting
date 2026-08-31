@@ -109,7 +109,9 @@ No-DB: provisioning is a no-op (the template app ships the types).
 All-or-nothing per import. Scenario-scoped **delete-and-reinsert inside one
 transaction**: delete the scenario's rows (FK cascades handle children),
 insert in dependency order `paths → steps → path_steps → lanes → cells →
-cell_dependencies` (see `references/data-model.md`). A deliberately-invalid IR
+cell_touchpoints → resources → cell_dependencies` (see
+`references/data-model.md`). Placements before resources: a resource may hang
+off a placement, and never off both a placement and a cell. A deliberately-invalid IR
 must leave the target untouched. Never `on conflict do update` — removed IR
 rows must not survive as orphans. No-DB equivalent: the generated module is
 replaced wholesale and only written if generation fully succeeds.
@@ -129,8 +131,9 @@ documented as unsupported; this diff is the safety net, not an endorsement.
 
 ### 6. Read-back verification after import
 After the transaction commits, read the target back and verify: row counts
-per table match the IR (paths, steps, path_steps, lanes, cells, triggers per
-scenario) plus spot-check content equality. No-DB equivalent: `tsc --noEmit`
+per table match the IR (paths, steps, path_steps, lanes, cells,
+cell_touchpoints, resources, triggers per scenario) plus spot-check content
+equality. No-DB equivalent: `tsc --noEmit`
 passes and the generated module's exported counts match the IR. **Import is
 not "done" until read-back matches** — this is the phase's deterministic exit
 condition.
@@ -268,8 +271,15 @@ same scoping the Supabase grants encode (see
 `docs/connectors/supabase/database.md` § Row Level Security):
 
 - **Column-scoped UPDATE** on `cells`, `lanes`, `steps`, `paths`,
-  `scenarios` (panel text edits and spec fields — never ids,
-  positions, or FK columns).
+  `scenarios`, `cell_touchpoints` (panel text edits and spec fields — never
+  ids, positions, or FK columns). WHICH cell or placement a row hangs off is
+  structure, and structure does not move through a direct update.
+- **A cell's resources are replaced through `sync_cell_resources`, not
+  through the table.** The editor rewrites a whole list, every statement over
+  the wire is its own transaction, and a deferred position constraint only
+  forgives a collision until COMMIT — so a delete followed by an insert
+  leaves a window where the cell has no resources at all. No-DB equivalent:
+  the generated module is replaced wholesale.
 - **INSERT + column-scoped UPDATE** on `findings` (inserts arrive with
   `status = 'open'`; updates touch `status, note, severity, run_id,
   cell_ids, cell_keys, source`).

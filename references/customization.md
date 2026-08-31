@@ -40,8 +40,8 @@ generic swimlanes); no role is mandatory. Prefer creating a custom role over
   foreground flip and the focus ring follow from `src/styles/semantic.css`
   on their own. Restyle by editing tokens, not components; the shadcn
   components read the tokens.
-- Tech pills use a neutral palette by default; link-driven tech metadata
-  (`tech_description` links) carries per-tool copy and imagery.
+- Tech pills use a neutral palette by default; a `cell_touchpoints` row
+  carries the copy, screenshots and design link for one pill at one moment.
 
 ### Pinning an org tech-pill palette
 

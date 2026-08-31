@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.08.31",
         "2026.08.27",
         "2026.08.26",
         "2026.08.25",
@@ -90,60 +91,61 @@
       },
       "description": "Reference to a cell on the same path by its (lane, step) key pair."
     },
-    "link": {
+    "resource": {
       "type": "object",
       "required": [
-        "type",
-        "label"
+        "name",
+        "url"
       ],
       "additionalProperties": false,
+      "description": "Something a cell points at. A link is one kind of resource, which is why the object is named for the parent concept and `kind` carries the subtype.",
       "properties": {
-        "type": {
-          "enum": [
-            "url",
-            "tech_description"
-          ],
-          "description": "url = external link chip; tech_description = long-form copy attached to a tech pill, keyed by the pill label."
-        },
-        "label": {
-          "$ref": "#/$defs/localeText"
+        "name": {
+          "$ref": "#/$defs/localeText",
+          "description": "What the thing on the other end is called. A NAME, not a title: a reader navigates to it."
         },
         "url": {
           "type": "string",
           "format": "uri"
         },
-        "description": {
+        "kind": {
+          "enum": [
+            "link",
+            "other"
+          ],
+          "description": "Subtype. Absent means `link`, which is every resource an import has produced so far; the list grows when something produces a second kind."
+        }
+      }
+    },
+    "touchpoint": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "One touchpoint used at one cell — the tool, document, channel or artifact the cell's text names. `summary`, `screenshots` and `url` belong to THIS moment: the same tool describes a different screen and points at a different design file at a different step.",
+      "properties": {
+        "name": {
           "$ref": "#/$defs/localeText",
-          "description": "Long-form copy for tech_description links."
+          "description": "What the touchpoint is called here. Matches a line of the cell's `content` where the grid draws it as a pill; a name that matches nothing still keeps its prose."
         },
-        "picture": {
-          "type": "string",
-          "description": "Screenshot/illustration path or URL for tech_description links."
+        "summary": {
+          "$ref": "#/$defs/localeText",
+          "description": "Long-form copy about this touchpoint at this moment."
         },
-        "pictures": {
+        "screenshots": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Multiple images (e.g. logo + screenshot); takes precedence over picture."
+          "description": "Screenshot or illustration paths/URLs for this moment, in author order."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The design file or external reference for THIS moment, not for the tool."
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "url"
-              }
-            }
-          },
-          "then": {
-            "required": [
-              "url"
-            ]
-          }
-        }
-      ]
+      }
     },
     "service": {
       "type": "object",
@@ -412,11 +414,19 @@
           "type": "string",
           "description": "Image path or URL (visual rows and illustrated cells)."
         },
-        "links": {
+        "resources": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/link"
-          }
+            "$ref": "#/$defs/resource"
+          },
+          "description": "What this cell points at."
+        },
+        "touchpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/touchpoint"
+          },
+          "description": "Touchpoints placed at this cell, in author order."
         },
         "provenance": {
           "$ref": "#/$defs/provenance"

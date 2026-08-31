@@ -60,6 +60,9 @@ erDiagram
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
+  cells ||--o{ cell_touchpoints : "places"
+  cells ||--o{ resources : "points at"
+  cell_touchpoints ||--o{ resources : "points at"
 
   services { uuid id PK  text name  text summary }
   business_model { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
@@ -70,7 +73,9 @@ erDiagram
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int position "unique per (path_id, position)" }
   lanes { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text lane_role "semantic role key; null = generic swimlane"  int position  text owner_team "from the closed list in lane-vocabulary.md; NULL on actor and storyboard lanes"  text kpis  text tools  uuid stakeholder_id FK }
   stakeholders { uuid id PK  uuid service_id FK  text name  text kind "recipient | staff | partner | provider | team"  uuid parent_id FK "sub-teams roll up, e.g. Marketing to Design"  text note  text aliases }
-  cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status  jsonb links "array of {type, label, url?, description?, picture?, pictures?}" }
+  cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status }
+  cell_touchpoints { uuid id PK  uuid cell_id FK  text name "what the touchpoint is called HERE; matches a line of cells.content where the grid draws it as a pill"  int position  text summary "prose about this touchpoint at THIS moment"  text_array screenshots  text url "the design file for THIS moment, not for the tool"  text origin }
+  resources { uuid id PK  uuid cell_id FK "exactly one of these two"  uuid cell_touchpoint_id FK  text kind "link | other"  text name  text url  int position  text origin }
   cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "trigger = makes the other happen, drawn | needs = must already be true, never drawn"  text label  text note }
 ```
 
@@ -85,7 +90,9 @@ erDiagram
 | `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps` |
 | `path_steps` | Which steps a path uses and in what column order | `position` unique per path |
 | `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
-| `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `links` JSONB array; `content` newline-separated items render as pills on pill-role lanes |
+| `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `content` newline-separated items render as pills on pill-role lanes |
+| `cell_touchpoints` | One touchpoint, used at one cell | Owns the summary, screenshots and design link for THIS moment — the same tool describes a different screen at a different step. `unique (cell_id, name)` |
+| `resources` | What a cell, or one placement, points at | `num_nonnulls(cell_id, cell_touchpoint_id) = 1` — a cell OR a placement, never both and never neither. That constraint is what lets a design link belong to the tool it documents rather than to the cell at large |
 | `cell_dependencies` | Directed arrows cell → cell. `kind` is `trigger` (this cell makes the other happen — drawn) or `needs` (the other must already be true — recorded, never drawn). Not inverses: "follows" is `trigger` read from the other end, and a precondition causes nothing | Unique pair, `source != target`, both cells must be on the same path |
 
 ## Enums
@@ -178,6 +185,13 @@ original row keeps the first item — preserving its id, `cell_key`, arrows,
 slice references and evidence — and each further item becomes a sibling
 with the parent's key plus an ordinal suffix). Tools and the IR never
 expose slot management directly — treat "the" cell of a slot as slot 0.
+
+**Two granularities carry the word "touchpoint", and they are not rivals.** A
+slot sibling is a CELL — one row of a tech-role lane, drawn as its own box. A
+`cell_touchpoints` row is a PLACEMENT — one of the pill labels inside a cell's
+`content`, with the summary, screenshots and design link for that pill at that
+moment. A cell holding three pills is one cell and three placements; splitting
+it into three cells is a slot operation and leaves each with one placement.
 
 ## Analysis tier: slices, findings, evidence
 

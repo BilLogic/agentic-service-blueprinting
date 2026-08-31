@@ -36,45 +36,100 @@ import validate_ir  # noqa: E402
 from generate_fallbacks import (  # noqa: E402
     FALLBACK_FIELD_NAMES,
     IMPLIED_BY_NESTING,
+    IMPLIED_ON_RESOURCE,
+    IMPLIED_ON_TOUCHPOINT,
+    NESTED_UNDER_CELL,
     blueprint_data_for_path,
 )
 from generate_seed_sql import (  # noqa: E402
     build_model,
     seed_cell_fields,
     seed_lane_fields,
+    seed_resource_fields,
+    seed_touchpoint_fields,
     seed_trigger_fields,
 )
 
 DEFAULT_IR = Path(__file__).resolve().parent / "tests" / "sample-ir.json"
 
 
+#: The aggregates compared, and what each treats as implied by nesting.
+#: Every aggregate is compared: cells and edges were compared first and lanes
+#: were not, so a lane field could be carried by one adapter only and the
+#: harness still reported agreement — which it did.
+KINDS = {
+    "lane": (IMPLIED_BY_NESTING, frozenset()),
+    "cell": (IMPLIED_BY_NESTING, NESTED_UNDER_CELL),
+    "edge": (IMPLIED_BY_NESTING, frozenset()),
+    "resource": (IMPLIED_ON_RESOURCE, frozenset()),
+    "touchpoint": (IMPLIED_ON_TOUCHPOINT, frozenset()),
+}
+
+
 def sql_adapter_rows(model: dict) -> dict:
     """What the SQL adapter would write, per aggregate, keyed by row id."""
-    rows = {"lane": {}, "cell": {}, "edge": {}}
+    rows = {kind: {} for kind in KINDS}
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
             for lane in path["lanes"]:
                 rows["lane"][lane["id"]] = seed_lane_fields(lane, path)
             for cell in path["cells"]:
                 rows["cell"][cell["id"]] = seed_cell_fields(cell, path)
+                for resource in cell["resources"]:
+                    rows["resource"][resource["id"]] = seed_resource_fields(
+                        resource, cell
+                    )
+                for touchpoint in cell["touchpoints"]:
+                    rows["touchpoint"][touchpoint["id"]] = seed_touchpoint_fields(
+                        touchpoint, cell
+                    )
             for trigger in path["triggers"]:
                 rows["edge"][trigger["id"]] = seed_trigger_fields(trigger)
     return rows
 
 
-def fallback_adapter_rows(model: dict) -> dict:
-    """What the no-DB adapter would serve, keyed by the same row ids."""
-    rows = {"lane": {}, "cell": {}, "edge": {}}
+def fallback_adapter_rows(model: dict, sql: dict) -> dict:
+    """What the no-DB adapter would serve, keyed by the same row ids.
+
+    A resource is served with no id — the fallback shape nests it under its
+    cell and the app rewrites the list as a whole — so it is keyed here by the
+    id the SQL adapter gives the row in the same position of the same cell.
+    That is a real comparison rather than a tautology: the two adapters agree
+    on which cell holds how many resources in what order, or the zip below
+    lines up rows that do not correspond and every field disagrees.
+    """
+    rows = {kind: {} for kind in KINDS}
+    sql_by_cell = {"resource": {}, "touchpoint": {}}
+    for kind in sql_by_cell:
+        for row_id, fields in sql[kind].items():
+            sql_by_cell[kind].setdefault(fields["cell_id"], []).append(row_id)
+
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
             data = blueprint_data_for_path(scenario, path)
             for kind, key in (("lane", "lanes"), ("cell", "cells"), ("edge", "triggers")):
                 for row in data[key]:
                     rows[kind][row["id"]] = row
+            for cell in data["cells"]:
+                for kind, key in (("resource", "resources"), ("touchpoint", "touchpoints")):
+                    ids = sql_by_cell[kind].get(cell["id"], [])
+                    served = cell[key]
+                    if len(ids) != len(served):
+                        # Reported as a missing/extra row by compare() below,
+                        # which is where a count disagreement belongs.
+                        continue
+                    for row_id, row in zip(ids, served):
+                        rows[kind][row_id] = row
     return rows
 
 
-def compare(kind: str, sql: dict, fallback: dict, implied: frozenset) -> list[str]:
+def compare(
+    kind: str,
+    sql: dict,
+    fallback: dict,
+    implied: frozenset,
+    nested: frozenset = frozenset(),
+) -> list[str]:
     """Every disagreement between the two adapters, as readable lines."""
     problems = []
     for missing in sorted(set(sql) - set(fallback)):
@@ -105,6 +160,8 @@ def compare(kind: str, sql: dict, fallback: dict, implied: frozenset) -> list[st
                 )
         served_names = {FALLBACK_FIELD_NAMES.get(name, name) for name in expected}
         for field in actual:
+            if field in nested:
+                continue
             if field not in served_names and field not in implied:
                 problems.append(
                     f"{kind} {row_id}: {field} is served without a database and "
@@ -127,17 +184,14 @@ def check(ir_path: Path, locale: str | None) -> list[str]:
     for tag in locales:
         model = build_model(doc, tag)
         sql = sql_adapter_rows(model)
-        fallback = fallback_adapter_rows(model)
-        # Every aggregate is compared. Cells and edges were compared first and
-        # lanes were not, so a lane field could be carried by one adapter only
-        # and the harness would still report agreement — which it did.
-        for kind in ("lane", "cell", "edge"):
+        fallback = fallback_adapter_rows(model, sql)
+        for kind in KINDS:
             if not sql[kind]:
                 problems.append(f"{ir_path} [{tag}]: no {kind} rows — vacuous parity")
         problems += [
             f"{ir_path} [{tag}]: {line}"
-            for kind in ("lane", "cell", "edge")
-            for line in compare(kind, sql[kind], fallback[kind], IMPLIED_BY_NESTING)
+            for kind, (implied, nested) in KINDS.items()
+            for line in compare(kind, sql[kind], fallback[kind], implied, nested)
         ]
     return problems
 

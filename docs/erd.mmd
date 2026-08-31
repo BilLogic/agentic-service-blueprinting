@@ -41,6 +41,9 @@ erDiagram
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
+  cells ||--o{ cell_touchpoints : "places"
+  cells ||--o{ resources : "points at"
+  cell_touchpoints ||--o{ resources : "points at"
   services ||--o{ slices : "has many"
   slices ||--o{ slice_items : "has many"
   services ||--o{ findings : "has many"
@@ -121,13 +124,34 @@ erDiagram
     text content "Cell Label - primary grid text"
     text picture "optional image URL"
     text summary "optional detail-panel text"
-    jsonb links "array of {type, label, url?}"
     text function "spec: role/responsibility/requirements"
     text form "spec: communication/look/feel/sound"
     jsonb value_props "array of {for, value}"
     text owner "actual owning team/party"
     text perceived_owner "who the customer believes owns this moment"
     text cell_key "authored IR key; unique when set; null = not recoverable"
+    text origin "import | app"
+  }
+
+  cell_touchpoints {
+    uuid id PK
+    uuid cell_id FK "unique (cell_id, name)"
+    text name "what the touchpoint is called here; matches a line of cells.content"
+    int position "author order within the cell"
+    text summary "prose about this touchpoint at THIS moment"
+    text_array screenshots "screenshot/illustration paths, in author order"
+    text url "the design file for THIS moment, not for the tool"
+    text origin "import | app"
+  }
+
+  resources {
+    uuid id PK
+    uuid cell_id FK "exactly one of these two is set"
+    uuid cell_touchpoint_id FK "so a design link can belong to the tool it documents"
+    text kind "link | other"
+    text name "what the thing on the other end is called"
+    text url "required when kind = link"
+    int position "author order within its owner"
     text origin "import | app"
   }
 

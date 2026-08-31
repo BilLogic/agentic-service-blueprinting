@@ -1,79 +1,44 @@
-import type { BlueprintCell, CellLink } from '@/types/blueprint'
+import type { BlueprintCell, CellTouchpoint } from '@/types/blueprint'
+import { touchpointNamed } from '@/lib/cellTouchpoints'
 import { parseCellContentItems } from '@/lib/parseCellContent'
 
-export const TECH_DESCRIPTION_LINK_TYPE = 'tech_description'
-export const URL_LINK_TYPE = 'url'
-
 /**
- * Per-tech copy/pictures live in cell `links` (type `tech_description`), not
- * in a hardcoded registry — content authors attach the description, optional
- * screenshots, and an optional external URL per tech label.
+ * What the detail panel reads off the touchpoints placed at a cell.
+ *
+ * The prose, the screenshots and the design link used to be entries in the
+ * `cells.links` array, found again by matching a `label` against a line of the
+ * cell's own `content`. `cell_touchpoints` gives each one a row of its own;
+ * `cellTouchpoints.ts` is the seam that reads them.
  */
-export function techDescriptionLink(
-  techLabel: string,
-  description?: string,
-  picture?: string | readonly string[],
-  url?: string,
-): CellLink {
-  const pictures = Array.isArray(picture)
-    ? picture.map((entry) => entry.trim()).filter(Boolean)
-    : undefined
-  const singlePicture =
-    typeof picture === 'string' && picture.trim() ? picture.trim() : undefined
 
-  return {
-    type: TECH_DESCRIPTION_LINK_TYPE,
-    label: techLabel,
-    ...(description ? { description } : {}),
-    ...(pictures && pictures.length > 0
-      ? { pictures, picture: pictures[0] }
-      : singlePicture
-        ? { picture: singlePicture }
-        : {}),
-    ...(url ? { url } : {}),
-  }
+/** A cell as the touchpoint readers below need it. */
+type TouchpointBearingCell = Pick<BlueprintCell, 'content'> & {
+  summary?: string | null
+  touchpoints: readonly CellTouchpoint[]
 }
 
-function getTechUrlFromLinks(
-  links: CellLink[],
+function touchpointUrl(
+  touchpoints: readonly CellTouchpoint[],
   techItem: string,
 ): string | null {
-  for (const link of links) {
-    if (
-      link.type === TECH_DESCRIPTION_LINK_TYPE &&
-      link.label === techItem &&
-      link.url?.trim()
-    ) {
-      return link.url.trim()
-    }
-  }
-  return null
+  return touchpointNamed(touchpoints, techItem)?.url ?? null
 }
 
-function getTechDescriptionFromLinks(
-  links: CellLink[],
+function touchpointSummary(
+  touchpoints: readonly CellTouchpoint[],
   techItem: string,
 ): string | null {
-  for (const link of links) {
-    if (
-      link.type === TECH_DESCRIPTION_LINK_TYPE &&
-      link.label === techItem &&
-      link.description?.trim()
-    ) {
-      return link.description.trim()
-    }
-  }
-  return null
+  return touchpointNamed(touchpoints, techItem)?.summary ?? null
 }
 
-function getLinkedDescriptionsForContentItems(
-  links: CellLink[],
+function joinedSummariesForContentItems(
+  touchpoints: readonly CellTouchpoint[],
   items: string[],
 ): string | null {
   const parts: string[] = []
   for (const item of items) {
-    const description = getTechDescriptionFromLinks(links, item)
-    if (description) parts.push(description)
+    const summary = touchpointSummary(touchpoints, item)
+    if (summary) parts.push(summary)
   }
   return parts.length > 0 ? parts.join('\n\n') : null
 }
@@ -92,13 +57,14 @@ export function resolveTechCellDetailLabel(
 /** Detail panel body copy for a tech pill or single-tech cell. */
 export function resolveTechCellDetailText(
   techItem: string | undefined,
-  cell: Pick<BlueprintCell, 'content' | 'summary' | 'links'>,
+  cell: TouchpointBearingCell,
 ): string {
   const content = cell.content.trim()
+  const touchpoints = cell.touchpoints
 
   if (techItem) {
-    const fromLinks = getTechDescriptionFromLinks(cell.links, techItem)
-    if (fromLinks) return fromLinks
+    const placed = touchpointSummary(touchpoints, techItem)
+    if (placed) return placed
 
     if (cell.summary?.trim()) {
       const items = parseCellContentItems(cell.content)
@@ -112,13 +78,13 @@ export function resolveTechCellDetailText(
 
   const contentItems = parseCellContentItems(content)
   if (contentItems.length === 1) {
-    const fromLinks = getTechDescriptionFromLinks(cell.links, contentItems[0]!)
-    if (fromLinks) return fromLinks
+    const placed = touchpointSummary(touchpoints, contentItems[0]!)
+    if (placed) return placed
   }
 
   if (contentItems.length > 1) {
-    const fromLinks = getLinkedDescriptionsForContentItems(cell.links, contentItems)
-    if (fromLinks) return fromLinks
+    const joined = joinedSummariesForContentItems(touchpoints, contentItems)
+    if (joined) return joined
   }
 
   if (cell.summary?.trim()) {
@@ -131,44 +97,16 @@ export function resolveTechCellDetailText(
 /** External design reference (e.g. Figma) for a tech pill detail panel. */
 export function resolveTechCellDetailUrl(
   techItem: string | undefined,
-  cell: Pick<BlueprintCell, 'content' | 'links'>,
+  cell: Pick<BlueprintCell, 'content'> & { touchpoints: readonly CellTouchpoint[] },
 ): string | null {
   if (techItem) {
-    return getTechUrlFromLinks(cell.links, techItem)
+    return touchpointUrl(cell.touchpoints, techItem)
   }
 
   const contentItems = parseCellContentItems(cell.content.trim())
   if (contentItems.length === 1) {
-    return getTechUrlFromLinks(cell.links, contentItems[0]!)
+    return touchpointUrl(cell.touchpoints, contentItems[0]!)
   }
 
   return null
-}
-
-export function mergeUrlLinks(
-  links: CellLink[],
-  fallbackLinks: CellLink[],
-): CellLink[] {
-  const merged = links.map((link) => ({ ...link }))
-
-  for (const fallbackLink of fallbackLinks) {
-    if (fallbackLink.type !== URL_LINK_TYPE || !fallbackLink.url?.trim()) continue
-
-    const existingIndex = merged.findIndex(
-      (entry) => entry.type === URL_LINK_TYPE && entry.label === fallbackLink.label,
-    )
-
-    if (existingIndex >= 0) {
-      const existing = merged[existingIndex]
-      merged[existingIndex] = {
-        ...existing,
-        url: existing.url?.trim() || fallbackLink.url,
-      }
-      continue
-    }
-
-    merged.push(fallbackLink)
-  }
-
-  return merged
 }

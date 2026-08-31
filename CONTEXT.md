@@ -186,9 +186,9 @@ owes the third column a reason.
 | **Needs** | `cell_dependencies.kind` | The word IS the value — `kind = 'needs'`, the recorded dependency that never draws — and `kind` is the name of the place holding it. This is the row of the three whose label the schema already says out loud. |
 | **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
 | **Evidence** | `evidence` | — |
-| **Resources** | `cells.links` | One column, two interface concepts. The tab lists the entries typed `url`; the entries typed `tech_description` are the touchpoint prose the grid draws, and a tab called Links would promise both and show one. Splitting the column so each concept has its own name is a schema change rather than a naming one, and until that lands the label names the subset it shows. |
+| **Resources** | `resources` | — |
 
-Seven rows out of fourteen carry a reason, and each one is a decision rather
+Six rows out of fourteen carry a reason, and each one is a decision rather
 than an accident. That is the claim the table exists to make checkable, and
 [`scripts/tests/labels-name-their-columns.test.mjs`](scripts/tests/labels-name-their-columns.test.mjs)
 checks it four ways: every panel label has a row, every row is a label some
@@ -206,18 +206,24 @@ Content and Value proposition. Neither is a migration — a label rename moves
 words on a screen — and neither needs a row in the rename map above, which
 records what the *schema* was called.
 
-**`Resources` is the sharp one, and the answer to it is not a rename.**
-`cells.links` carries two things a reader meets under two names — the `url`
+**`Resources` was the sharp one, and the answer to it was not a rename.**
+`cells.links` carried two things a reader meets under two names — the `url`
 entries the Resources tab lists, and the `tech_description` entries the grid
 draws as a touchpoint's prose. One column, two concepts, named after neither.
-No label can fix that: `Links` over the tab would promise both and show one,
-and `Resources` on the column would be wrong for half its rows. The fix is a
-schema change — a table of its own for each concept, which means a migration, a
-regenerated `src/types/database.ts`, an IR schema revision and every skill that
-writes a link — and that is deliberately **not** in scope here, where the ask
-was a map and a check that keeps it honest. The row above converts the
-divergence from an accident into a recorded decision today; the split, when it
-comes, deletes that row rather than editing it.
+No label could fix that: `Links` over the tab would promise both and show one,
+and `Resources` on the column would be wrong for half its rows. So the map
+carried the divergence as a recorded decision and said the fix would be a
+schema change rather than a naming one.
+
+`21000113000000` made that change. `resources` holds what a cell — or one
+touchpoint placement — points at, `cell_touchpoints` holds the per-moment
+summary, screenshots and design link, and `cells.links` is gone. **The row that
+carried the reason is deleted rather than rewritten**, which is what that
+promise meant: `Resources` and `resources` are the same word, so the row that
+remains is an aligned one like `Evidence`, and rule 4 forbids it a reason. The
+label stays in the map because every panel label must — a word nobody bound to
+a name is the defect the map exists to catch — but the divergence it was
+holding open has stopped existing rather than acquired a better excuse.
 
 **The subject is panel labels, and that is narrower than "words on screen" on
 purpose.** *Line of visibility* and *line of interaction* reach a reader as
@@ -243,7 +249,10 @@ breaks all four, so they are written where the person running that sweep looks.
 five tables where it named a one-line précis of a thing. A slice's description
 is not that — it is prose the author writes *about* the slice. The word was
 right in one place and wrong in five, so five moved. `tech_description`, a link
-type, is untouched for the same reason. Because the word is still live, the
+type, was untouched for the same reason, and is now gone with the column that
+held it — `21000113000000` moved that prose onto `cell_touchpoints.summary`,
+where it is the one-line précis the word `summary` names. Because the word is
+still live on `slices`, the
 `description` row of the map above enforces **no** identifier fragment at all;
 `21000108` carries its own assertion instead.
 

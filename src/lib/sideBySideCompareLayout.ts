@@ -28,6 +28,8 @@ import {
 import type { PathListItem } from '@/lib/pathSelection'
 import { itemsInSelectionOrder } from '@/lib/pathSelection'
 import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import type {
   IntegratedBlueprintCell,
   IntegratedBlueprintStep,
@@ -61,7 +63,8 @@ export function getComparePathArrowData(
       content: cell.content,
       picture: cell.picture,
       summary: cell.summary,
-      links: cell.links,
+      touchpoints: cellTouchpoints(cell),
+      resources: cellResources(cell),
       opacity: 1,
     })),
     triggers: triggers.map((trigger) => ({

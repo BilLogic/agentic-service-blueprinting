@@ -41,12 +41,16 @@
  * column is `cells.content` and **Value** where it is `cells.value_props`;
  * both columns were already right while the words above them were not.
  *
- * THE THIRD CASE IS NOT A NAMING PROBLEM AT ALL. `cells.links` carries two
- * interface concepts — the tab's `url` entries and the grid's
- * `tech_description` prose — so no label can be its name without lying about
- * half its rows. The `Resources` row records the divergence as a decision;
- * splitting the column is a schema change and its own piece of work, and
- * `CONTEXT.md` says so at length.
+ * THE THIRD CASE WAS NOT A NAMING PROBLEM AT ALL, and it is no longer a
+ * divergence. `cells.links` carried two interface concepts — the tab's `url`
+ * entries and the grid's `tech_description` prose — so no label could be its
+ * name without lying about half its rows, and the `Resources` row recorded
+ * that as a decision while the schema change waited. 21000113000000 made the
+ * change: the column is two tables, `Resources` names `resources`, and the row
+ * that carried the reason is gone rather than rewritten. What is left is an
+ * aligned row like `Evidence`, which is what rule 4 requires of a label that
+ * says its own name — a reason kept past the divergence it explained is the
+ * decoration this map refuses.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
@@ -227,12 +231,7 @@ export const LABEL_COLUMNS = Object.freeze(
         "Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from.",
     },
     { label: 'Evidence', names: ['evidence'], because: '' },
-    {
-      label: 'Resources',
-      names: ['cells.links'],
-      because:
-        "One column, two interface concepts. The tab lists the entries typed `url`; the entries typed `tech_description` are the touchpoint prose the grid draws, and a tab called Links would promise both and show one. Splitting the column so each concept has its own name is a schema change rather than a naming one, and until that lands the label names the subset it shows.",
-    },
+    { label: 'Resources', names: ['resources'], because: '' },
   ].map((row) => Object.freeze({ ...row, names: Object.freeze(row.names) })),
 )
 
@@ -500,7 +499,7 @@ test('no row that agrees with the schema carries a reason anyway', () => {
 test('both halves of the reason rule go red', () => {
   assert.deepEqual(
     divergencesWithoutReason([
-      { label: 'Resources', names: ['cells.links'], because: '' },
+      { label: 'Resources', names: ['cells.content'], because: '' },
       { label: 'Blurb', names: ['cells.summary'], because: 'too short to evaluate' },
       { label: 'Summary', names: ['cells.summary'], because: '' },
       {
@@ -509,7 +508,7 @@ test('both halves of the reason rule go red', () => {
         because: 'It names the value the kind holds, not the name of the place holding it.',
       },
     ]),
-    ['Resources → cells.links', 'Blurb → cells.summary'],
+    ['Resources → cells.content', 'Blurb → cells.summary'],
   )
   assert.deepEqual(
     reasonsWithoutDivergence([
@@ -524,8 +523,8 @@ test('a row is divergent when ANY of its names disagrees', () => {
   // The failure this forbids: a shared word riding into the map on the one
   // name where it happens to match.
   assert.deepEqual(
-    divergentNames({ label: 'Summary', names: ['cells.summary', 'cells.links'], because: '' }),
-    ['cells.links'],
+    divergentNames({ label: 'Summary', names: ['cells.summary', 'cells.content'], because: '' }),
+    ['cells.content'],
   )
   assert.deepEqual(divergentNames({ label: 'Evidence', names: ['evidence'], because: '' }), [])
   assert.deepEqual(
@@ -609,9 +608,9 @@ test('the parity check goes red on a table that has drifted', () => {
   // stopped explaining itself.
   const reasonless = drifted.replace(
     '| **Content** | `cells.content` | — |',
-    '| **Resources** | `cells.links` | — |',
+    '| **Resources** | `cells.content` | — |',
   )
   assert.deepEqual(documentedRows(reasonless), [
-    { label: 'Resources', names: ['cells.links'], because: '' },
+    { label: 'Resources', names: ['cells.content'], because: '' },
   ])
 })

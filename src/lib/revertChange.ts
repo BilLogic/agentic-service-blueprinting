@@ -8,7 +8,6 @@ import {
 import { updateCellSpec, type CellSpecUpdate } from '@/lib/cellSpecMutations'
 import { deleteEvidence, restoreEvidenceRow } from '@/lib/evidenceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
-import type { CellLink } from '@/types/blueprint'
 import type { Database, Json } from '@/types/database'
 
 type Client = SupabaseClient<Database>
@@ -67,21 +66,21 @@ export async function executeRevert(
       return
     }
     case 'update_cell_resources': {
-      // The captured value is the full pre-write links array — write it
-      // back verbatim rather than rebuilding through the draft validator,
-      // which could refuse to restore a link it considers malformed.
+      // The captured value is the pre-write list — written back through the
+      // same RPC the editor uses, so the revert lands in one transaction for
+      // the reason the edit does. Verbatim rather than rebuilt through the
+      // draft validator, which could refuse to restore a url it dislikes.
       const cellId = stringArg(revert.args, 'cell_id')
-      const links = revert.args.links as CellLink[]
-      const { data, error } = await client
-        .from('cells')
-        .update({ links: links as unknown as Json })
-        .eq('id', cellId)
-        .select('id')
+      const rows = revert.args.rows as Array<{ name: string; url: string }>
+      const { error } = await client.rpc('sync_cell_resources', {
+        p_cell_id: cellId,
+        p_rows: rows.map((row) => ({
+          kind: 'link',
+          name: row.name,
+          url: row.url,
+        })) as unknown as Json,
+      })
       if (error) throw toAuthoringError(error)
-      // Zero rows is a real answer: the cell was deleted after this edit.
-      if (!data || data.length === 0) {
-        throw new Error('That cell no longer exists — nothing to revert onto.')
-      }
       return
     }
     case 'delete_evidence': {
