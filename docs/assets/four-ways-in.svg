@@ -82,7 +82,7 @@
 
   <!-- the blueprint itself -->
   <rect x="16" y="200" width="848" height="60" rx="12" fill="#d9e4ea" stroke="#9aadbe" stroke-width="1.4"/>
-  <text x="40" y="228" class="title" font-size="12">one shared context layer</text>
+  <text x="40" y="228" class="title" font-size="12">one shared context</text>
   <text x="40" y="244" class="sub" fill="#6b7280">maintained in one place, referenced from every surface</text>
   <g opacity="0.9">
     <rect x="772" y="212" width="68" height="36" fill="#ffffff" stroke="#9aadbe"/>
