@@ -79,15 +79,16 @@ and a precondition causes nothing.
 **Analysis tier** — the four tables that hold records *about* the board rather
 than squares of it: `evidence`, `findings`, `slices`, `slice_items`. What unites
 them is aboutness — each exists to say something concerning the board, and none
-is part of it — and they point at the board *softly*, by cell uuid with no
-foreign key, so a cell can be deleted without taking the record of it with it.
-The `service_id` on each is a hard reference; the softness is specifically about
-the cell.
+is part of it. Evidence and findings concern cells directly; a slice reaches
+cells through the items it presents. Evidence, findings, and slices are
+hard-bound directly to the service; a slice item has no direct service binding
+and is hard-bound only to its slice. The exact keys and constraint topology
+live in `references/data-model.md`.
 
 **`business_model` is not in the tier**, and the schema settles it rather than
 taste: it holds no cell reference of any kind. It is the service's spec row —
-`funding`, `pricing`, `delivery_cost`, `revenue_model`, `partners` — which is
-why it belongs under **Spec** above.
+which is why it belongs under **Spec** above. Its fields live in
+`references/data-model.md`.
 
 **Slice** — a saved one-dimensional cut through the grid, taken for one
 audience: an actor's journey, a single moment, one lane, one cell, or a custom
