@@ -11,12 +11,12 @@ import type { Database, Slice } from '@/types/database'
 type Client = SupabaseClient<Database>
 
 /**
- * A `slice_items` row exactly as the server stores it — what a frame revert
+ * A `slides` row exactly as the server stores it — what a frame revert
  * puts back. Captured verbatim rather than rebuilt from the draft shape: a
  * frame carries `illustration` and `cell_keys` that `DraftFrame` has no field
  * for, and a "restore" that silently dropped them would not be one.
  */
-type SliceItemRow = Database['public']['Tables']['slice_items']['Row']
+type SliceItemRow = Database['public']['Tables']['slides']['Row']
 
 /**
  * What deleting a slice would destroy.
@@ -48,7 +48,7 @@ export async function sliceDeletionImpact(
   if (sliceError) throw new Error(sliceError.message)
 
   const { data: items, error: itemsError } = await client
-    .from('slice_items')
+    .from('slides')
     .select('cell_ids')
     .eq('slice_id', sliceId)
   if (itemsError) throw new Error(itemsError.message)
@@ -66,7 +66,7 @@ export async function sliceDeletionImpact(
 }
 
 /**
- * Delete a slice; slice_items cascade in the database.
+ * Delete a slice; slides cascade in the database.
  *
  * Recorded in the session ledger with **no** revert, and named in `DESTRUCTIVE`
  * so Save asks twice. There is deliberately no captured inverse: unlike a
@@ -132,7 +132,7 @@ export async function createSlice(
 
   const frames: DraftFrame[] =
     input.frames?.map((frame) => ({ ...frame })) ??
-    input.cellIds.map((cellId) => ({ cells: [cellId], caption: '', narrative: '' }))
+    input.cellIds.map((cellId) => ({ cells: [cellId], title: '', narrative: '' }))
 
   // `record: false` — the create is ONE change in the ledger, not a create
   // followed by a frame replacement of nothing. Its inverse deletes the slice,
@@ -185,7 +185,7 @@ export async function replaceSliceFrames(
   let previous: SliceItemRow[] = []
   if (record) {
     const { data, error } = await client
-      .from('slice_items')
+      .from('slides')
       .select()
       .eq('slice_id', sliceId)
       .order('position', { ascending: true })
@@ -194,7 +194,7 @@ export async function replaceSliceFrames(
   }
 
   const { error: deleteError } = await client
-    .from('slice_items')
+    .from('slides')
     .delete()
     .eq('slice_id', sliceId)
   if (deleteError) throw new Error(deleteError.message)
@@ -205,11 +205,11 @@ export async function replaceSliceFrames(
       position,
       cell_ids: [...frame.cells],
       cell_keys: [...frame.cells],
-      caption: frame.caption.trim() || null,
+      title: frame.title.trim() || null,
       narrative: frame.narrative.trim() || null,
     }))
 
-    const { error } = await client.from('slice_items').insert(rows)
+    const { error } = await client.from('slides').insert(rows)
     if (error) throw new Error(error.message)
   }
 
@@ -242,7 +242,7 @@ export async function duplicateSlice(
   if (sourceError) throw new Error(sourceError.message)
 
   const { data: items, error: itemsError } = await client
-    .from('slice_items')
+    .from('slides')
     .select()
     .eq('slice_id', sliceId)
     .order('position', { ascending: true })
@@ -268,11 +268,11 @@ export async function duplicateSlice(
       position: item.position,
       cell_ids: item.cell_ids,
       cell_keys: item.cell_keys,
-      caption: item.caption,
+      title: item.title,
       narrative: item.narrative,
       illustration: item.illustration,
     }))
-    const { error } = await client.from('slice_items').insert(rows)
+    const { error } = await client.from('slides').insert(rows)
     if (error) throw new Error(error.message)
   }
 

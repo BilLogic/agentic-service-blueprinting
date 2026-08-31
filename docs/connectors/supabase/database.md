@@ -95,7 +95,7 @@ Each cell sits at a **lane × step** intersection for one path.
 | Column | Required | Description |
 | --- | --- | --- |
 | `content` | yes (default `''`) | **Cell Label** — primary text shown in the blueprint grid |
-| `picture` | no | Optional image URL or storage reference |
+| `frame` | no | Optional image URL or storage reference |
 | `summary` | no | Optional longer summary (detail panel; not the grid label) |
 
 ### What a cell points at, and the touchpoints placed on it
@@ -216,7 +216,7 @@ credentials.
 | File | Description |
 | --- | --- |
 | `20260716200000_template_schema.sql` | Consolidated template schema: hierarchy + blueprint grid + `lane_role`, integrity trigger, `updated_at` triggers, read-only RLS, legacy `services` cleanup |
-| `20260729120000_derived_layer.sql` | Analysis tier: `slices`, `slice_items`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_dependencies.kind` |
+| `20260729120000_derived_layer.sql` | Analysis tier: `slices`, `slides`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_dependencies.kind` |
 | `20260730090000_derived_layer_grants_hardening.sql` | Explicit Data API grants, anon write-privilege revokes, pinned `search_path`, attribution columns, evidence `cell_key` pairing |
 | `20260803001000_slices_origin_allows_human.sql` | Adds `human` to the `slices.origin` vocabulary (in-app authored slices) |
 | `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.position` (+ widened uniqueness), deferrable `path_steps` ordering, `deleted_structure` archive, direct-column grants for panel edits |

@@ -24,7 +24,7 @@ import {
 } from '@/lib/sliceCells'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell, BlueprintData } from '@/types/blueprint'
-import type { SliceItem } from '@/types/database'
+import type { Slide } from '@/types/database'
 
 const CELL_SNIPPET_MAX_LENGTH = 60
 
@@ -53,7 +53,7 @@ type SlicePresentationProps = {
 /**
  * Presentation tab: a dark full-bleed stage (the root carries the `.dark`
  * token class regardless of app theme) with the illustration as the star
- * when present, caption as headline, cell chips as a subtle bottom row, a
+ * when present, title as headline, cell chips as a subtle bottom row, a
  * dim mini-map locator bottom-right, and a filmstrip of cells bracketed per
  * frame. Frames render synchronously from the cached useSlice data —
  * navigation never refetches. Keyboard is scoped to the container (tabIndex
@@ -228,7 +228,7 @@ export function SlicePresentation({
   }
 
   // Stage media resolution: an authored illustration wins; otherwise fall
-  // back to the frame's own cell pictures (member cells first, then the
+  // back to the frame's own cell frames (member cells first, then the
   // Visual-lane cell of the same step); no media → title-slide layout.
   const illustration = parseSliceIllustration(item.illustration)
   const framePictures = illustration
@@ -238,7 +238,7 @@ export function SlicePresentation({
     ? [sliceIllustrationUrl(illustration)]
     : framePictures
   const frameCellIds = new Set(item.cell_ids.map(resolveBlueprintCellId))
-  const caption = item.caption ?? detail.slice.title
+  const title = item.title ?? detail.slice.title
 
   return (
     <div
@@ -274,13 +274,13 @@ export function SlicePresentation({
               {stageMedia.length > 0 ? (
                 <>
                   {/* Media is the star — large centered area; multiple cell
-                      pictures in one frame sit side by side. */}
+                      frames in one frame sit side by side. */}
                   <div className="flex max-w-full items-center justify-center gap-4">
                     {stageMedia.map((src) => (
                       <img
                         key={src}
                         src={src}
-                        alt={caption}
+                        alt={title}
                         className={cn(
                           'max-h-[60vh] w-auto rounded-lg object-contain',
                           stageMedia.length > 1
@@ -298,7 +298,7 @@ export function SlicePresentation({
                     ))}
                   </div>
                   <h2 className="max-w-3xl text-2xl font-semibold text-balance">
-                    {caption}
+                    {title}
                   </h2>
                   {item.narrative && (
                     <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -310,7 +310,7 @@ export function SlicePresentation({
                 <>
                   {/* No illustration: title-slide layout, no card frame. */}
                   <h2 className="mt-6 max-w-3xl text-3xl font-semibold text-balance">
-                    {caption}
+                    {title}
                   </h2>
                   {item.narrative && (
                     <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
@@ -400,7 +400,7 @@ function PresentationFilmstrip({
   cellById,
   onSelect,
 }: {
-  items: readonly SliceItem[]
+  items: readonly Slide[]
   activeFrame: number
   cellById: ReadonlyMap<string, BlueprintCell>
   onSelect: (frame: number) => void
@@ -444,7 +444,7 @@ function PresentationFilmstrip({
                 )}
               >
                 <span className="min-w-0 truncate">
-                  {item.caption ?? `Frame ${index + 1}`}
+                  {item.title ?? `Frame ${index + 1}`}
                 </span>
               </Button>
               <div className="flex gap-1.5">

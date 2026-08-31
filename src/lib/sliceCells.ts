@@ -7,7 +7,7 @@ import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlacehold
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { FALLBACK_NAV, getBlueprintScenarioId } from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
-import type { Json, SliceItem } from '@/types/database'
+import type { Json, Slide } from '@/types/database'
 
 /** Scan the local fallback registry for the scenario owning these cells. */
 export function findFallbackScenarioForCells(
@@ -79,7 +79,7 @@ export type SliceCellResolution = {
 /** Place a slice's cells on one blueprint; unresolvable ids become tombstones. */
 export function resolveSliceCells(
   blueprint: BlueprintData | null,
-  items: readonly SliceItem[],
+  items: readonly Slide[],
 ): SliceCellResolution {
   const sorted = [...items].sort((a, b) => a.position - b.position)
   const cellById = new Map(
@@ -127,14 +127,14 @@ export function resolveSliceCells(
 
 /**
  * Pictures for one presentation frame, from the frame's member cells:
- * each member cell's own `picture` first, then the Visual-lane cell of the
+ * each member cell's own `frame` first, then the Visual-lane cell of the
  * same step (many storyboard illustrations live on the Visual lane rather
  * than the acting cell). Placeholder tokens are skipped; order follows the
  * frame's cell order; duplicates collapse.
  */
 export function resolveSliceFramePictures(
   blueprint: BlueprintData | null,
-  item: SliceItem,
+  item: Slide,
 ): string[] {
   if (!blueprint) return []
 
@@ -150,23 +150,23 @@ export function resolveSliceFramePictures(
       .map((cell) => [cell.step_id, cell]),
   )
 
-  const pictures: string[] = []
+  const frames: string[] = []
   const seen = new Set<string>()
-  const add = (picture: string | null | undefined) => {
-    const src = picture?.trim()
+  const add = (frame: string | null | undefined) => {
+    const src = frame?.trim()
     if (!src || isBlueprintStepVisualPlaceholder(src) || seen.has(src)) return
     seen.add(src)
-    pictures.push(src)
+    frames.push(src)
   }
 
   for (const rawCellId of item.cell_ids) {
     const cell = cellById.get(resolveBlueprintCellId(rawCellId))
     if (!cell) continue
-    add(cell.picture)
-    add(visualCellByStepId.get(cell.step_id)?.picture)
+    add(cell.frame)
+    add(visualCellByStepId.get(cell.step_id)?.frame)
   }
 
-  return pictures
+  return frames
 }
 
 export type SliceIllustration = {

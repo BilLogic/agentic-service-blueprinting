@@ -32,7 +32,7 @@ import type { Json } from '@/types/database'
  *
  * Upload is an upsert onto the derived path, so replacing an image overwrites
  * it. The `updated_at` stamp written alongside is what busts the CDN cache;
- * without it a replaced storyboard would keep showing the old picture for as
+ * without it a replaced storyboard would keep showing the old frame for as
  * long as the edge held it.
  */
 export function SliceStoryboardField({
@@ -41,7 +41,7 @@ export function SliceStoryboardField({
   illustration,
 }: {
   sliceId: string
-  /** `slice_items.id`. Absent means the frame has never been saved. */
+  /** `slides.id`. Absent means the frame has never been saved. */
   itemId: string | undefined
   illustration: Json | null
 }) {
@@ -81,7 +81,7 @@ export function SliceStoryboardField({
       } = client.storage.from(STORYBOARD_BUCKET).getPublicUrl(path)
 
       const { error } = await client
-        .from('slice_items')
+        .from('slides')
         .update({
           illustration: {
             src: publicUrl,
@@ -116,9 +116,9 @@ export function SliceStoryboardField({
     try {
       // The row is cleared but the file is left in place: another frame may
       // point at the same path after a merge, and a delete here would break a
-      // picture nobody asked to remove. Storage is cheap; a blank slide is not.
+      // frame nobody asked to remove. Storage is cheap; a blank slide is not.
       const { error } = await client
-        .from('slice_items')
+        .from('slides')
         .update({ illustration: null })
         .eq('id', itemId)
       if (error) throw new Error(error.message)
@@ -134,7 +134,7 @@ export function SliceStoryboardField({
     }
   }
 
-  // Unsaved frame: no control and no explanatory caption. The affordance
+  // Unsaved frame: no control and no explanatory title. The affordance
   // appears once the frame is saved; a permanent sentence about it on every
   // draft card was noise repeated per frame.
   if (!itemId) return null
@@ -162,12 +162,12 @@ export function SliceStoryboardField({
             alt=""
             className="aspect-[4/3] w-full object-cover"
           />
-          <IconTooltip label="Remove the storyboard image" side="left">
+          <IconTooltip label="Remove the slide image" side="left">
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label="Remove storyboard image"
+              aria-label="Remove slide image"
               disabled={busy}
               className="absolute top-1 right-1 bg-background/80 text-muted-foreground hover:text-destructive"
               onClick={handleRemove}

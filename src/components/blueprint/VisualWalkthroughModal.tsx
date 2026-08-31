@@ -40,7 +40,7 @@ function WalkthroughStepSlide({
   const entries = step.laneEntries.map((entry) => ({
     laneName: entry.laneName,
     label: VISUAL_LANE_SHORT_LABELS[entry.laneName] ?? entry.laneName,
-    picture: entry.picture,
+    frame: entry.frame,
     summary: entry.content,
   }))
 

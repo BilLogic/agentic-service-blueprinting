@@ -12,7 +12,7 @@ that do not exist. The rule is:
     cell_key = <service>/<phase>/<scenario>/<path>/<lane>/<step>
     cell_id  = uuid5(NAMESPACE, NFC(f"{locale}:cell:{cell_key}"))
 
-`slice_items` stores **both**: `cell_ids` for the join the frontend actually
+`slides` stores **both**: `cell_ids` for the join the frontend actually
 runs, and `cell_keys` so a slice survives a re-import (scenario import is
 delete-and-reinsert, so ids are stable only while the IR keys are — and a
 renamed key must be *reported*, not silently repaired).
@@ -360,15 +360,15 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
         for position, frame in enumerate(entry["frames"]):
             keys = frame["cells"]
             ids = [cell_id(locale, key) for key in keys]
-            caption = pick_text(frame.get("caption"), locale, locales)
+            title = pick_text(frame.get("title"), locale, locales)
             narrative = pick_text(frame.get("narrative"), locale, locales)
             illustration = frame.get("illustration")
             lines.append(
-                "insert into public.slice_items "
-                "(id, slice_id, position, cell_ids, cell_keys, caption, narrative, illustration) values ("
+                "insert into public.slides "
+                "(id, slice_id, position, cell_ids, cell_keys, title, narrative, illustration) values ("
                 f"{sql_quote(slice_item_id(locale, service_key, entry['key'], position))}, "
                 f"{sql_quote(sid)}, {position}, {sql_array(ids, 'uuid[]')}, "
-                f"{sql_array(keys, 'text[]')}, {sql_quote(caption)}, {sql_quote(narrative)}, "
+                f"{sql_array(keys, 'text[]')}, {sql_quote(title)}, {sql_quote(narrative)}, "
                 + (f"{sql_quote(json.dumps(illustration, ensure_ascii=False))}::jsonb" if illustration else "null")
                 + ");"
             )
@@ -399,8 +399,8 @@ def emit_doc(index: dict, doc: dict, locale: str) -> str:
             out.append("")
 
         for position, frame in enumerate(entry["frames"], start=1):
-            caption = pick_text(frame.get("caption"), locale, locales) or f"Frame {position}"
-            out.append(f"## {position}. {caption}")
+            title = pick_text(frame.get("title"), locale, locales) or f"Frame {position}"
+            out.append(f"## {position}. {title}")
             out.append("")
             narrative = pick_text(frame.get("narrative"), locale, locales)
             if narrative:
@@ -450,8 +450,8 @@ def build_skeleton(args, index: dict) -> dict:
     skeleton_frames = []
     for frame in frames:
         step_key = frame[0].split("/")[5]
-        caption = steps[step_key]["name"] if step_key in steps else {"en": ""}
-        skeleton_frames.append({"caption": caption, "narrative": {"en": ""}, "cells": frame})
+        title = steps[step_key]["name"] if step_key in steps else {"en": ""}
+        skeleton_frames.append({"title": title, "narrative": {"en": ""}, "cells": frame})
 
     return {
         "schema_version": "1.0.0",

@@ -124,7 +124,7 @@ describe('coverContent', () => {
       'Decision Evaluation',
       'Context Management',
     ])
-    // Each definition expands on the figure's caption rather than repeating it.
+    // Each definition expands on the figure's title rather than repeating it.
     for (const item of section.items) {
       expect(item.definition.length).toBeGreaterThan(60)
     }

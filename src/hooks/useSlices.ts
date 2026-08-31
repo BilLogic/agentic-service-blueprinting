@@ -4,19 +4,19 @@ import {
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { findFirstServiceId } from '@/lib/service'
-import type { Slice, SliceItem } from '@/types/database'
+import type { Slice, Slide } from '@/types/database'
 
 /** Slim frame projection carried on the list — powers client-side
  * membership checks (panel "In slices" footer) without per-cell queries. */
-export type SliceListItem = Pick<SliceItem, 'id' | 'position' | 'cell_ids'>
+export type SliceListItem = Pick<Slide, 'id' | 'position' | 'cell_ids'>
 
-export type SliceListEntry = Slice & { slice_items: SliceListItem[] }
+export type SliceListEntry = Slice & { slides: SliceListItem[] }
 
 /** The bundled demo slices, in the list projection. */
 const slicesFallback = (): SliceListEntry[] =>
   FALLBACK_SLICES.map((slice) => ({
     ...slice,
-    slice_items: (FALLBACK_SLICE_ITEMS[slice.id] ?? []).map((item) => ({
+    slides: (FALLBACK_SLICE_ITEMS[slice.id] ?? []).map((item) => ({
       id: item.id,
       position: item.position,
       cell_ids: item.cell_ids,
@@ -40,7 +40,7 @@ export function useSlices(serviceId?: string): QueryResult<SliceListEntry[]> {
 
       const { data, error } = await client
         .from('slices')
-        .select('*, slice_items (id, position, cell_ids)')
+        .select('*, slides (id, position, cell_ids)')
         .eq('service_id', resolvedServiceId)
         .order('position', { ascending: true })
       if (error) throw new Error(error.message)

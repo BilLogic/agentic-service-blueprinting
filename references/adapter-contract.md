@@ -283,7 +283,7 @@ same scoping the Supabase grants encode (see
 - **INSERT + column-scoped UPDATE** on `findings` (inserts arrive with
   `status = 'open'`; updates touch `status, note, severity, run_id,
   cell_ids, cell_keys, source`).
-- **INSERT / DELETE** on `slices` and `slice_items`.
+- **INSERT / DELETE** on `slices` and `slides`.
 - **Full CRUD for the owner** on `agent_sessions` / `agent_messages`
   (`src/lib/agent/persistence.ts`), reachable by authenticated sessions
   only.
@@ -304,7 +304,7 @@ lean on that being survivable (`src/lib/sliceMutations.ts`):
 - `createSlice` inserts the `slices` row **first**, then its frames — a
   failure between the two leaves an empty slice, which is visible and
   deletable; the reverse order would strand orphan frames.
-- `replaceSliceFrames` is delete-then-insert on `slice_items` — a failure
+- `replaceSliceFrames` is delete-then-insert on `slides` — a failure
   after the delete leaves a frameless slice.
 
 A replacement backend must preserve this ordering tolerance: partial

@@ -194,7 +194,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_slice',
     description:
-      'One slice in full: fields plus every frame with its cells, caption, narrative. Read before update_slice or replace_slice_frames.',
+      'One slice in full: fields plus every frame with its cells, title, narrative. Read before update_slice or replace_slice_frames.',
     parameters: {
       type: 'object',
       properties: { slice_id: str('Slice id from list_slices') },
@@ -458,7 +458,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'replace_slice_frames',
     description:
-      "Replace a slice's frames wholesale — THE tool for reordering, resequencing, merging cells into one screen, or splitting them apart. Read the slice first; pass the complete new frame list (each frame: cells in order + optional caption/narrative). When a reorder instruction is positionally ambiguous (e.g. \"move the last one up, then merge 2 and 3\" — original numbering or after the move?), confirm which you mean before writing. Re-read the slice afterwards to confirm the frame count matches what you intended.",
+      "Replace a slice's frames wholesale — THE tool for reordering, resequencing, merging cells into one screen, or splitting them apart. Read the slice first; pass the complete new frame list (each frame: cells in order + optional title/narrative). When a reorder instruction is positionally ambiguous (e.g. \"move the last one up, then merge 2 and 3\" — original numbering or after the move?), confirm which you mean before writing. Re-read the slice afterwards to confirm the frame count matches what you intended.",
     parameters: {
       type: 'object',
       properties: {
@@ -470,7 +470,7 @@ export const TOOL_SPECS: ToolSpec[] = [
             type: 'object',
             properties: {
               cells: { type: 'array', description: 'Cell ids in this frame', items: { type: 'string' } },
-              caption: str('Frame caption; omit for none'),
+              title: str('Frame title; omit for none'),
               narrative: str('Frame narrative; omit for none'),
             },
             required: ['cells'],

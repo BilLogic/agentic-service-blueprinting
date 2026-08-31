@@ -49,7 +49,7 @@ Consistent character design matching the reference. 16:9 composition.
 No text, no labels, no logos, no UI chrome in the image.
 ```
 
-Text in generated images is unreliable and unlocalizable — the caption is
+Text in generated images is unreliable and unlocalizable — the title is
 already rendered by the app, in the right language. Keep it out of the
 picture.
 

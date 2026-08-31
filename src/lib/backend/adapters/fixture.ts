@@ -123,7 +123,7 @@ export function createFixtureBackend(): Backend {
           frames: items
             .map((item) => ({
               position: item.position,
-              title: item.caption ?? '',
+              title: item.title ?? '',
               body: item.narrative,
               cellIds: item.cell_ids ?? [],
             }))

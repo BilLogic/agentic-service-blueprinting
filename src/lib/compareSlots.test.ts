@@ -45,7 +45,7 @@ function makeBlueprint(
     lane_id: `${pathId}-lane-${cell.lane}`,
     step_id: stepIdByName.get(cell.step) ?? '',
     content: cell.content,
-    picture: null,
+    frame: null,
     summary: cell.summary ?? null,
     links: [],
   }))

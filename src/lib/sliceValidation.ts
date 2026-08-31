@@ -24,12 +24,12 @@ export function isSliceOrigin(value: string): value is SliceOrigin {
   return (SLICE_ORIGINS as readonly string[]).includes(value)
 }
 
-/** A frame as the editor holds it, before it becomes a `slice_items` row. */
+/** A frame as the editor holds it, before it becomes a `slides` row. */
 export type DraftFrame = {
   /** Existing row id; absent for a frame that has not been saved yet. */
   id?: string
   cells: string[]
-  caption: string
+  title: string
   narrative: string
 }
 

@@ -4,11 +4,11 @@ import {
   FALLBACK_SLICE_ITEMS,
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import type { Slice, SliceItem } from '@/types/database'
+import type { Slice, Slide } from '@/types/database'
 
 export type SliceDetail = {
   slice: Slice
-  items: SliceItem[]
+  items: Slide[]
 }
 
 /** Bundled demo-slice detail; null when the id is not a fixture slice. */
@@ -19,7 +19,7 @@ function sliceFallback(sliceId: string): SliceDetail | null {
 }
 
 /**
- * One slice with its frames (`slice_items`), items ordered by position.
+ * One slice with its frames (`slides`), items ordered by position.
  * Cached across mounts; `invalidateQueries('slice:')` drops it.
  */
 export function useSlice(sliceId: string): QueryResult<SliceDetail> {
@@ -37,7 +37,7 @@ export function useSlice(sliceId: string): QueryResult<SliceDetail> {
       if (!slice) throw new Error('Slice not found')
 
       const { data: items, error: itemsError } = await client
-        .from('slice_items')
+        .from('slides')
         .select('*')
         .eq('slice_id', sliceId)
         .order('position', { ascending: true })

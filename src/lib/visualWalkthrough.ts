@@ -20,24 +20,27 @@ export const VISUAL_WALKTHROUGH_LANE_NAMES: readonly string[] = []
 export const VISUAL_LANE_SHORT_LABELS: Record<string, string> = {}
 
 /**
- * Whether a step picture already carries its own frame, so the walkthrough
- * should not draw one around it. No path convention in the template: an
- * adopter whose artwork bakes in a frame keys it off their own asset paths.
+ * Whether a step's frame already has a border drawn into the artwork, so the
+ * walkthrough should not draw one around it. Two senses of one word met here:
+ * `frame` is the image on the cell, and the border is a frame in the picture
+ * sense — so the border keeps the word and the image does not.
+ * No path convention in the template: an adopter whose artwork bakes in a
+ * border keys it off their own asset paths.
  */
-export function hasEmbeddedVisualFrame(_picture: string): boolean {
+export function hasEmbeddedVisualFrame(_frame: string): boolean {
   return false
 }
 
 export type VisualWalkthroughLaneEntry = {
   laneName: string
   content: string
-  picture: string
+  frame: string
 }
 
 export type VisualStepPictureEntry = {
   laneName: string
   label: string
-  picture: string
+  frame: string
   summary: string
 }
 
@@ -45,7 +48,7 @@ export type VisualWalkthroughStep = {
   stepIndex: number
   stepName: string
   laneEntries: VisualWalkthroughLaneEntry[]
-  pictures: string[]
+  frames: string[]
 }
 
 export type VisualWalkthroughSession = {
@@ -89,7 +92,7 @@ type VisualPictureBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
 /**
  * The lanes a walkthrough steps through, in board order: every lane that is
  * NOT one of the visual rows — those hold the artwork the walkthrough shows,
- * so stepping through them would show each picture next to itself.
+ * so stepping through them would show each frame next to itself.
  *
  * `VISUAL_WALKTHROUGH_LANE_NAMES` overrides this when a fork pins its own
  * roster; empty (the template default) means "whatever the board has", which
@@ -126,13 +129,13 @@ export function resolveVisualStepPictureEntries(
     if (!lane) return []
     const cell = getCellAt(cellLookup, lane.id, stepId)
     if (!cell?.content.trim()) return []
-    const picture = cell.picture?.trim()
-    if (!picture || isBlueprintStepVisualPlaceholder(picture)) return []
+    const frame = cell.frame?.trim()
+    if (!frame || isBlueprintStepVisualPlaceholder(frame)) return []
     return [
       {
         laneName: name,
         label: VISUAL_LANE_SHORT_LABELS[name] ?? name,
-        picture,
+        frame,
         summary: resolveCellSummary(cell),
       },
     ]
@@ -160,7 +163,7 @@ export function resolveVisualStepPictures(
   stepId: string,
 ): string[] {
   return resolveVisualStepPictureEntries(blueprint, stepId).map(
-    (entry) => entry.picture,
+    (entry) => entry.frame,
   )
 }
 
@@ -178,9 +181,9 @@ export function buildVisualWalkthroughSession(
         laneEntries: pictureEntries.map((entry) => ({
           laneName: entry.laneName,
           content: entry.summary,
-          picture: entry.picture,
+          frame: entry.frame,
         })),
-        pictures: pictureEntries.map((entry) => entry.picture),
+        frames: pictureEntries.map((entry) => entry.frame),
       }
     })
   return {
