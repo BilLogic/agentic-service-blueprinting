@@ -692,17 +692,74 @@ alter policy "slice_items_delete_auth" on public.slides rename to "slides_delete
 -- policies exist only where the Supabase recipe was applied, and
 -- their names are the one dependent kind the core cannot carry.
 
-alter policy "findings_select"      on public.audit_findings rename to "audit_findings_select";
-alter policy "findings_insert_auth" on public.audit_findings rename to "audit_findings_insert_auth";
-alter policy "findings_update_auth" on public.audit_findings rename to "audit_findings_update_auth";
+-- Policies are renamed from the CATALOG, not by literal name, and this is the
+-- one place in this migration where that is forced rather than preferred.
+--
+-- The two supported build paths disagree about what these policies are called
+-- when this file runs:
+--
+--   REPLAY (a real project) applies migrations in timestamp order, so the
+--   policies exist by the time `21000111000000`'s sweep runs, and it renames
+--   them `propositions_*` → `business_model_*`.
+--
+--   THE TWO HALVES (core, then shim, then recipe) run the entire core first —
+--   sweep included — while no policy exists yet. The recipe then creates them
+--   as `propositions_*`, and nothing ever sweeps them.
+--
+-- Same series, same statements, two different catalogs. A literal `alter
+-- policy` can only satisfy one of them, which is exactly why `21000111000000`
+-- swept rather than listing: its own header says these names "appear nowhere
+-- in the source as literals". They appear in two forms instead.
+--
+-- So this keys on the RETIRED WORDS and renames whatever it finds. The static
+-- readers lose nothing here: the words being retired are written out below in
+-- plain text, so a search for `findings` or `business_model` still lands on
+-- this block.
+do $policies$
+declare
+  target record;
+  renamed int := 0;
+begin
+  for target in
+    select pol.polname as name, cls.relname as rel
+      from pg_policy pol
+      join pg_class cls on cls.oid = pol.polrelid
+      join pg_namespace nsp on nsp.oid = cls.relnamespace
+     where nsp.nspname = 'public'
+       and cls.relname in ('audit_findings', 'business_models')
+       and (pol.polname like 'findings%'
+            or pol.polname like 'propositions%'
+            or pol.polname like 'business\_model\_%')
+  loop
+    execute format(
+      'alter policy %I on public.%I rename to %I',
+      target.name,
+      target.rel,
+      case
+        when target.name like 'findings%' then
+          'audit_' || target.name
+        else
+          'business_models_' || regexp_replace(target.name, '^(propositions|business_model)_', '')
+      end);
+    renamed := renamed + 1;
+  end loop;
 
--- `21000111000000` renamed the table and deliberately left these three alone:
--- its sweep keyed on `propositions`, and the singular would have welded a
--- plural `s` onto every object it touched. The table is plural now, so the
--- policies can be too.
-alter policy "propositions_select_auth" on public.business_models rename to "business_models_select_auth";
-alter policy "propositions_insert_auth" on public.business_models rename to "business_models_insert_auth";
-alter policy "propositions_update_auth" on public.business_models rename to "business_models_update_auth";
+  -- Vacuous where policies were never created (a core-only database), and a
+  -- real assertion where they were: no count, just "nothing was left behind".
+  if exists (
+    select 1
+      from pg_policy pol
+      join pg_class cls on cls.oid = pol.polrelid
+      join pg_namespace nsp on nsp.oid = cls.relnamespace
+     where nsp.nspname = 'public'
+       and (pol.polname like 'findings%'
+            or pol.polname like 'propositions%'
+            or pol.polname like 'business\_model\_%')
+  ) then
+    raise exception 'a policy still carries a retired table name';
+  end if;
+end
+$policies$;
 
 -- The recreated RPCs did not widen. This is a RECIPE proof and not a core one
 -- because `anon` is a role only the recipe creates: the core drops and replays
