@@ -52,14 +52,14 @@ values (
   'Before', null, 1
 );
 
-insert into public.scenarios (id, phase_id, name, summary, position, view_type)
+insert into public.scenarios (id, phase_id, name, summary, position, layout)
 values (
   '10000000-0000-4000-8000-000000000003',
   '10000000-0000-4000-8000-000000000002',
   'Carry the citation', null, 1, 'single'
 );
 
-insert into public.paths (id, scenario_id, name, summary, note, path_type)
+insert into public.paths (id, scenario_id, name, summary, note, kind)
 values (
   '10000000-0000-4000-8000-000000000004',
   '10000000-0000-4000-8000-000000000003',

@@ -16,7 +16,7 @@ type SlideRow = Database['public']['Tables']['slides']['Row']
 /** The subset of `slices` that `updateSliceMeta` writes, and so restores. */
 type SliceMetaFields = Pick<
   Database['public']['Tables']['slices']['Row'],
-  'title' | 'description' | 'slice_type' | 'actor' | 'origin'
+  'title' | 'description' | 'kind' | 'actor' | 'origin'
 >
 
 function stringArg(args: Record<string, unknown>, key: string): string {
@@ -163,7 +163,7 @@ export async function executeRevert(
         .update({
           title: row.title,
           description: row.description,
-          slice_type: row.slice_type,
+          kind: row.kind,
           actor: row.actor,
           origin: row.origin,
         })

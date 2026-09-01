@@ -24,7 +24,7 @@ package is deliberately not required):
                 scripts/migrate_ir.py; the body is not checked, because the
                 field names moved and every one of them would be reported as
                 an unknown key.
-  Structure   — required fields, types, enums (view_type/path_type/link
+  Structure   — required fields, types, enums (layout/kind/link
                 type), key/locale/role patterns, locale-map shape,
                 additionalProperties: false.
   Integrity   — every cell's (path, lane, step) references exist; a cell's
@@ -86,8 +86,8 @@ CJK_NAME_TO_ROLE = {
     "后台行为": "backstage_actions",
 }
 
-VIEW_TYPES = ("single", "side-by-side", "integrated")
-PATH_TYPES = ("happy", "unhappy", "exception", "alternative")
+LAYOUTS = ("single", "stacked")
+PATH_KINDS = ("happy", "variant", "exception")
 #: resources.kind — the same short list the database checks. Absent means
 #: `link`, which is the column default.
 RESOURCE_KINDS = ("link", "other")
@@ -475,7 +475,7 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         return
     check_extra_keys(
         path,
-        {"key", "name", "summary", "note", "path_type", "variant_label",
+        {"key", "name", "summary", "note", "kind", "variant_label",
          "lanes", "path_steps", "cells", "triggers"},
         jp, rep,
     )
@@ -487,7 +487,7 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
     for optional in ("summary", "note", "variant_label"):
         if optional in path:
             check_locale_text(path[optional], f"{jp}.{optional}", rep, locales, False, optional)
-    check_enum(path, "path_type", PATH_TYPES, jp, rep)
+    check_enum(path, "kind", PATH_KINDS, jp, rep)
 
     # Lanes -----------------------------------------------------------------
     lane_keys: set = set()
@@ -621,7 +621,7 @@ def validate_scenario(scenario, jp: str, rep: Report, locales: list, scenarios_s
     if not isinstance(scenario, dict):
         rep.error(jp, f"scenario must be an object, got {type_name(scenario)}")
         return
-    check_extra_keys(scenario, {"key", "name", "summary", "order", "view_type", "steps", "paths"}, jp, rep)
+    check_extra_keys(scenario, {"key", "name", "summary", "order", "layout", "steps", "paths"}, jp, rep)
     key = check_key(scenario.get("key"), f"{jp}.key", rep) if "key" in scenario else None
     if "key" not in scenario:
         rep.error(jp, "missing required field 'key'")
@@ -630,7 +630,7 @@ def validate_scenario(scenario, jp: str, rep: Report, locales: list, scenarios_s
     if "summary" in scenario:
         check_locale_text(scenario["summary"], f"{jp}.summary", rep, locales, False, "summary")
     check_int(scenario, "order", jp, rep, required=True)
-    check_enum(scenario, "view_type", VIEW_TYPES, jp, rep)
+    check_enum(scenario, "layout", LAYOUTS, jp, rep)
 
     steps = scenario.get("steps")
     step_keys: set = set()

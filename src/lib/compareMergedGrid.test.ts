@@ -156,7 +156,7 @@ describe('buildMergedArrowRemap', () => {
         source_cell_id: 'b1',
         target_cell_id: 'b2',
         path_id: 'b',
-        path_type: 'alternative',
+        kind: 'variant',
         opacity: 1,
       },
     ]
@@ -193,7 +193,7 @@ describe('buildMergedArrowRemap', () => {
       source_cell_id: source,
       target_cell_id: target,
       path_id: pathId,
-      path_type: 'happy' as const,
+      kind: 'happy' as const,
       opacity: 1,
     })
     expect(
@@ -233,7 +233,7 @@ describe('buildMergedArrowRemap', () => {
       source_cell_id: 'a2',
       target_cell_id: 'b2',
       path_id: 'a',
-      path_type: 'happy',
+      kind: 'happy',
       opacity: 1,
     }
     expect(remapMergedPathTriggers([trigger], remap, true)[0]).toBe(trigger)

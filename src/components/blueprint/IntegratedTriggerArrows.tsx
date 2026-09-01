@@ -25,7 +25,7 @@ import {
   pathColorKeyToMarkerSuffix,
   type PathColorInput,
 } from '@/lib/pathColorTheme'
-import { getPathTypeArrowColor } from '@/lib/pathTypeTheme'
+import { getPathKindArrowColor } from '@/lib/pathTypeTheme'
 import { cn } from '@/lib/utils'
 import {
   BlueprintArrowMarkerDefs,
@@ -36,14 +36,14 @@ import type {
   IntegratedBlueprintStep,
   IntegratedBlueprintTrigger,
 } from '@/types/integratedBlueprint'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 type ArrowLayer = 'forward' | 'wrap'
 
 type IntegratedPathRef = {
   id: string
   name: string
-  path_type: PathType
+  kind: PathKind
 }
 
 type IntegratedTriggerArrowsProps = {
@@ -111,11 +111,11 @@ function resolveSegmentStyle(
 ): { colorKey: string; arrowColor: string } {
   const path = pathById.get(pathId)
   if (!path) {
-    return { colorKey: 'happy', arrowColor: getPathTypeArrowColor('happy') }
+    return { colorKey: 'happy', arrowColor: getPathKindArrowColor('happy') }
   }
 
   const input: PathColorInput = {
-    path_type: path.path_type,
+    kind: path.kind,
     name: path.name,
   }
 

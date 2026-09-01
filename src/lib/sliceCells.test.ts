@@ -32,7 +32,7 @@ const blueprint: BlueprintData = {
     name: 'Happy',
     summary: null,
     note: null,
-    path_type: 'happy',
+    kind: 'happy',
   },
   lanes: [{ id: 'l-1', name: 'Lane', role: null, position: 0 }],
   steps: [
@@ -112,7 +112,7 @@ describe('bundled demo slices', () => {
   })
 
   it('the journey slice lives on the primary (compare-demo) scenario', () => {
-    const journey = FALLBACK_SLICES.find((slice) => slice.slice_type === 'journey')
+    const journey = FALLBACK_SLICES.find((slice) => slice.kind === 'journey')
     expect(journey).toBeDefined()
     const cellIds = (FALLBACK_SLICE_ITEMS[journey!.id] ?? []).flatMap(
       (entry) => entry.cell_ids,

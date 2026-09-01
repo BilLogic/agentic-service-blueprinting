@@ -1,4 +1,4 @@
-import type { SliceType } from '@/lib/sliceValidation'
+import type { SliceKind } from '@/lib/sliceValidation'
 
 /**
  * What kind of slice a selection *is*, read off the selection itself.
@@ -37,7 +37,7 @@ export function readCellPosition(cellId: string): CellPosition {
 export function deriveSliceType(
   cellIds: readonly string[],
   read: (cellId: string) => CellPosition = readCellPosition,
-): SliceType {
+): SliceKind {
   if (cellIds.length === 0) return 'custom'
   if (cellIds.length === 1) return 'cell'
 
@@ -63,7 +63,7 @@ export function deriveSliceType(
 }
 
 /** One line naming what was picked, in the words a reader would use. */
-export function describeSliceType(type: SliceType, count: number): string {
+export function describeSliceType(type: SliceKind, count: number): string {
   const cells = `${count} cell${count === 1 ? '' : 's'}`
   switch (type) {
     case 'journey':

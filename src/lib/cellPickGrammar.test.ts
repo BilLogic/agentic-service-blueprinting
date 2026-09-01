@@ -22,7 +22,7 @@ function cellAt(stepIndex: number, cellId: string): BlueprintCellSelection {
         pathId: 'path-1',
         pathName: 'Happy',
         pathSummary: null,
-        pathType: 'happy',
+        pathKind: 'happy',
         content: 'Greets the caller',
         frame: null,
         summary: null,

@@ -71,7 +71,18 @@ export type LaneSetEntry = {
 
 export type DependencyKind = 'leads_to' | 'enables'
 
-export type ViewType = 'single' | 'side-by-side' | 'integrated'
+/**
+ * What the column accepts, which is now what the client says.
+ *
+ * `side-by-side` and `integrated` were the historical tokens, translated at a
+ * read seam and a write seam because the rows had not moved. `21000116000000`
+ * moved them, so both seams and the module holding them are gone: one
+ * vocabulary, and the CHECK constraint is the thing that enforces it.
+ *
+ * `merged` is NOT here on purpose — it is a display state the client holds and
+ * never persists, so it must not typecheck at a write.
+ */
+export type Layout = 'single' | 'stacked'
 
 // ---------------------------------------------------------------------------
 // The call seam.
@@ -254,7 +265,7 @@ export function createScenario(
   input: {
     phaseId: string
     name: string
-    viewType?: ViewType
+    layout?: Layout
     laneSourcePathId?: string | null
     laneSet?: LaneSetEntry[]
     stepCount?: number
@@ -264,7 +275,7 @@ export function createScenario(
   return call<CreatedScenario>(client, 'create_scenario', {
     phase_id: input.phaseId,
     name: input.name,
-    view_type: input.viewType ?? 'single',
+    layout: input.layout ?? 'single',
     lane_source_path_id: input.laneSourcePathId ?? null,
     lane_set: input.laneSet ?? [],
     step_count: input.stepCount ?? 5,
@@ -510,14 +521,14 @@ export function createPath(
   input: {
     scenarioId: string
     name: string
-    pathType?: string
+    pathKind?: string
     laneSourcePathId?: string | null
   },
 ): Promise<string> {
   return call<string>(client, 'create_path', {
     scenario_id: input.scenarioId,
     name: input.name,
-    path_type: input.pathType ?? 'alternative',
+    kind: input.pathKind ?? 'variant',
     lane_source_path_id: input.laneSourcePathId ?? null,
   })
 }
@@ -534,7 +545,7 @@ export function duplicatePath(
   input: {
     sourcePathId: string
     name: string
-    pathType?: string
+    pathKind?: string
     copyCells?: boolean
     copyDependencies?: boolean
   },
@@ -542,7 +553,7 @@ export function duplicatePath(
   return call<string>(client, 'duplicate_path', {
     source_path_id: input.sourcePathId,
     name: input.name,
-    path_type: input.pathType ?? 'alternative',
+    kind: input.pathKind ?? 'variant',
     copy_cells: input.copyCells ?? true,
     copy_dependencies: input.copyDependencies ?? true,
   })

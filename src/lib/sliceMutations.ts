@@ -5,7 +5,7 @@ import {
   readWriteOutcome,
   type UpdatedAtToken,
 } from '@/lib/optimisticConcurrency'
-import { originAfterEdit, type DraftSlide, type SliceType } from '@/lib/sliceValidation'
+import { originAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
 import type { Database, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
@@ -91,7 +91,7 @@ export type NewSlice = {
   serviceId: string
   title: string
   description: string
-  sliceType: SliceType
+  sliceKind: SliceKind
   actor: string
   /** Ordered cell ids; one slide per cell unless `slides` is given. */
   cellIds: readonly string[]
@@ -122,7 +122,7 @@ export async function createSlice(
       service_id: input.serviceId,
       title: input.title.trim(),
       description: input.description.trim() || null,
-      slice_type: input.sliceType,
+      kind: input.sliceKind,
       actor: input.actor.trim() || null,
       origin: 'human',
     })
@@ -254,7 +254,7 @@ export async function duplicateSlice(
       service_id: source.service_id,
       title: `${source.title} copy`,
       description: source.description,
-      slice_type: source.slice_type,
+      kind: source.kind,
       actor: source.actor,
       origin: 'human',
     })
@@ -290,7 +290,7 @@ export async function duplicateSlice(
 export type SliceMetaUpdate = {
   title: string
   description: string
-  sliceType: SliceType
+  sliceKind: SliceKind
   actor: string
   /** Current origin; an edit promotes `generated` to `customized`. */
   origin: string
@@ -320,7 +320,7 @@ export async function updateSliceMeta(
 ) {
   const { data: before, error: beforeError } = await client
     .from('slices')
-    .select('title, description, slice_type, actor, origin')
+    .select('title, description, kind, actor, origin')
     .eq('id', sliceId)
     .maybeSingle()
   if (beforeError) throw new Error(beforeError.message)
@@ -330,7 +330,7 @@ export async function updateSliceMeta(
     .update({
       title: update.title.trim(),
       description: update.description.trim() || null,
-      slice_type: update.sliceType,
+      kind: update.sliceKind,
       actor: update.actor.trim() || null,
       origin: originAfterEdit(update.origin),
       // updated_at is trigger-maintained — never set it here.
@@ -365,7 +365,7 @@ export async function updateSliceMeta(
 /** The subset of `slices` a meta update writes — what is compared and restored. */
 type SliceMetaFields = Pick<
   Slice,
-  'title' | 'description' | 'slice_type' | 'actor' | 'origin'
+  'title' | 'description' | 'kind' | 'actor' | 'origin'
 >
 
 /**
@@ -380,7 +380,7 @@ function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
   return (
     before.title !== after.title ||
     before.description !== after.description ||
-    before.slice_type !== after.slice_type ||
+    before.kind !== after.kind ||
     before.actor !== after.actor ||
     before.origin !== after.origin
   )

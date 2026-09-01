@@ -16,7 +16,7 @@ type FallbackPathListItem = {
   name: string
   summary: string | null
   note: string | null
-  path_type: BlueprintData['path']['path_type']
+  kind: BlueprintData['path']['kind']
 }
 
 // GENERATED-BLUEPRINT-REGISTRY:BEGIN — managed by scripts/generate_fallbacks.py --register.
@@ -57,7 +57,7 @@ const FALLBACK_PATHS_BY_SCENARIO: Record<string, FallbackPathListItem[]> =
         name: fallback.path.name,
         summary: fallback.path.summary,
         note: fallback.path.note,
-        path_type: fallback.path.path_type,
+        kind: fallback.path.kind,
       })),
     ]),
   )
@@ -101,7 +101,7 @@ export function mergePathsWithFallback<
     name: string
     summary: string | null
     note: string | null
-    path_type: BlueprintData['path']['path_type']
+    kind: BlueprintData['path']['kind']
   },
 >(scenarioId: string | undefined, paths: readonly T[]): T[] {
   const fallbackPaths = getFallbackPathsForScenario(scenarioId)
@@ -123,7 +123,7 @@ export function mergePathsWithFallback<
       })
     } else {
       const hasPathOfType = [...merged.values()].some(
-        (path) => path.path_type === fallbackPath.path_type,
+        (path) => path.kind === fallbackPath.kind,
       )
       if (!hasPathOfType) {
         merged.set(fallbackPath.id, fallbackPath as T)
@@ -159,7 +159,7 @@ function withPathIdentity(
     name: string
     summary?: string | null
     note?: string | null
-    path_type: BlueprintData['path']['path_type']
+    kind: BlueprintData['path']['kind']
   },
 ): BlueprintData {
   return {
@@ -170,7 +170,7 @@ function withPathIdentity(
       name: path.name,
       summary: path.summary ?? data.path.summary,
       note: path.note ?? data.path.note,
-      path_type: path.path_type,
+      kind: path.kind,
     },
   }
 }
@@ -184,14 +184,14 @@ export function hasRegisteredPathFallback(
 export function getRawBlueprintFallback(
   scenarioId: string | undefined,
   pathId?: string | null,
-  pathType?: BlueprintData['path']['path_type'],
+  pathKind?: BlueprintData['path']['kind'],
 ): BlueprintData | null {
   let data: BlueprintData | null = null
   if (pathId && FALLBACK_BY_PATH[pathId]) {
     data = FALLBACK_BY_PATH[pathId]
-  } else if (scenarioId && pathType) {
+  } else if (scenarioId && pathKind) {
     const match = (FALLBACK_PATHS_BY_SCENARIO[scenarioId] ?? []).find(
-      (path) => path.path_type === pathType,
+      (path) => path.kind === pathKind,
     )
     if (match) {
       data = FALLBACK_BY_PATH[match.id] ?? null
@@ -205,8 +205,8 @@ export function getRawBlueprintFallback(
   if (!data) return null
 
   const identity =
-    pathId && pathType
-      ? { id: pathId, name: data.path.name, path_type: pathType }
+    pathId && pathKind
+      ? { id: pathId, name: data.path.name, kind: pathKind }
       : null
 
   return identity ? withPathIdentity(data, identity) : data
@@ -215,9 +215,9 @@ export function getRawBlueprintFallback(
 export function getBlueprintFallback(
   scenarioId: string | undefined,
   pathId?: string | null,
-  pathType?: BlueprintData['path']['path_type'],
+  pathKind?: BlueprintData['path']['kind'],
 ): BlueprintData | null {
-  return getRawBlueprintFallback(scenarioId, pathId, pathType)
+  return getRawBlueprintFallback(scenarioId, pathId, pathKind)
 }
 
 export function getFallbackBlueprintsForScenarios(

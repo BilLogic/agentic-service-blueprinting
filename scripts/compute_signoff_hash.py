@@ -11,7 +11,7 @@ and friction #19: a whole-file hash de-signed every scenario whenever any new
 phase was appended).
 
 The hashed unit is a scenario's full subtree from the IR (key, name,
-summary, view_type, order, steps, paths — all locales inline), serialized
+summary, layout, order, steps, paths — all locales inline), serialized
 canonically so the hash is stable across machines and re-serializations:
 
   * JSON with sorted keys and no insignificant whitespace,

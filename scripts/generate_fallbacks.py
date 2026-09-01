@@ -156,7 +156,7 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
             "name": path["name"],
             "summary": path["summary"],
             "note": path["note"],
-            "path_type": path["path_type"],
+            "kind": path["kind"],
         },
         "lanes": [project(seed_lane_fields(lane, path)) for lane in path["lanes"]],
         # Steps in this path's column order (array index = position).
@@ -272,7 +272,7 @@ for (const [scenarioId, fallbacks] of Object.entries(
     name: fallback.path.name,
     summary: fallback.path.summary,
     note: fallback.path.note,
-    path_type: fallback.path.path_type,
+    kind: fallback.path.kind,
   }}))
   for (const fallback of fallbacks) {{
     FALLBACK_BY_PATH[fallback.path.id] = fallback
@@ -343,11 +343,11 @@ def nav_items(model: dict) -> list:
                 "parentId": phase["id"],
                 # IR/DB vocabulary -> client slide vocabulary (mirrors
                 # src/lib/viewTypeVocabulary.ts dbToClientViewType).
-                "viewType": {
+                "layout": {
                     "single": "single",
                     "side-by-side": "stacked",
                     "integrated": "stacked",
-                }.get(scenario["view_type"], "single"),
+                }.get(scenario["layout"], "single"),
             }
             if scenario.get("summary"):
                 sub["summary"] = scenario["summary"]

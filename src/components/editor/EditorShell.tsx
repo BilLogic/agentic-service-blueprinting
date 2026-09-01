@@ -423,10 +423,10 @@ function DesktopEditorShell() {
         name: 'set_scenario_view',
         summary: 'Switch the SELECTED scenario between its two displays. arg: stacked | merged (needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also applies the reading preset — shared steps fold and the difference ledger opens; returning to stacked unfolds. Legacy aliases accepted: side-by-side = stacked, integrated = merged.',
         run: (arg) =>
-          // 'side-by-side'/'integrated' are the pre-v3 tokens, kept as
+          // 'stacked'/'stacked' are the pre-v3 tokens, kept as
           // documented aliases so older prompts and transcripts still work.
           commands.current.setScenarioView(
-            arg === 'merged' || arg === 'integrated' ? 'merged' : 'stacked',
+            arg === 'merged' || arg === 'stacked' ? 'merged' : 'stacked',
           ),
       }),
     ]
@@ -541,11 +541,11 @@ function DesktopEditorShell() {
       return 'Left the presentation onto the slice tab.'
     },
     togglePhase: (phaseId) => togglePhaseExpanded(phaseId),
-    setScenarioView: (viewType) => {
+    setScenarioView: (layout) => {
       const scenario = slides.find((slide) => slide.id === selectedScenarioId)
       if (!scenario) return 'No scenario is selected — open one first.'
-      setScenarioDisplayViewType(scenario.id, viewType)
-      return `Scenario view set to ${viewType === 'merged' ? 'Merged' : 'Stacked'}.`
+      setScenarioDisplayViewType(scenario.id, layout)
+      return `Scenario view set to ${layout === 'merged' ? 'Merged' : 'Stacked'}.`
     },
   }
   useEffect(() => {

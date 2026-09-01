@@ -10,9 +10,9 @@ import type { PathListItem } from '@/lib/pathSelection'
 function path(
   id: string,
   name: string,
-  path_type: PathListItem['path_type'] = 'happy',
+  kind: PathListItem['kind'] = 'happy',
 ): PathListItem {
-  return { id, name, summary: null, note: null, path_type }
+  return { id, name, summary: null, note: null, kind }
 }
 
 /**
@@ -24,7 +24,7 @@ const DIFFERENTLY_NAMED: PathCatalog = {
   discover: [path('p-discover', 'First visit')],
   adopt: [
     path('p-nodb', 'No-database run'),
-    path('p-supabase', 'Supabase run', 'alternative'),
+    path('p-supabase', 'Supabase run', 'variant'),
   ],
   map: [path('p-map', 'Guided mapping')],
   present: [path('p-present', 'Stakeholder readout')],
@@ -35,19 +35,19 @@ describe('defaultPathKeyForScenario', () => {
   it('prefers the canonical Happy Path, then any happy path, then the first', () => {
     expect(
       defaultPathKeyForScenario([
-        path('a', 'Recovery', 'alternative'),
+        path('a', 'Recovery', 'variant'),
         path('b', 'Happy Path'),
       ]),
     ).toBe('happy:Happy Path')
     expect(
       defaultPathKeyForScenario([
-        path('a', 'Recovery', 'alternative'),
+        path('a', 'Recovery', 'variant'),
         path('b', 'Guided mapping'),
       ]),
     ).toBe('happy:Guided mapping')
     expect(
-      defaultPathKeyForScenario([path('a', 'Recovery', 'alternative')]),
-    ).toBe('alternative:Recovery')
+      defaultPathKeyForScenario([path('a', 'Recovery', 'variant')]),
+    ).toBe('variant:Recovery')
     expect(defaultPathKeyForScenario([])).toBeUndefined()
   })
 })
@@ -106,8 +106,8 @@ describe('deriveSelections', () => {
     // even where one scenario's default key also exists in another scenario.
     const selections = deriveSelections(
       {
-        a: [path('a1', 'Recovery', 'alternative')],
-        b: [path('b1', 'Happy Path'), path('b2', 'Recovery', 'alternative')],
+        a: [path('a1', 'Recovery', 'variant')],
+        b: [path('b1', 'Happy Path'), path('b2', 'Recovery', 'variant')],
       },
       null,
     )
@@ -118,7 +118,7 @@ describe('deriveSelections', () => {
   it('filters globally once a selection is explicit', () => {
     const selections = deriveSelections(DIFFERENTLY_NAMED, [
       'happy:First visit',
-      'alternative:Supabase run',
+      'variant:Supabase run',
     ])
 
     expect(selections).toEqual({
@@ -136,7 +136,7 @@ describe('deriveSelections', () => {
     expect(
       deriveSelections(DIFFERENTLY_NAMED, [
         'happy:No-database run',
-        'alternative:Supabase run',
+        'variant:Supabase run',
       ]).adopt,
     ).toEqual(['p-nodb', 'p-supabase'])
   })

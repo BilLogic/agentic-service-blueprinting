@@ -20,7 +20,7 @@ clean.
 
 ## Finding shape
 One finding per dead surface (grouped across cells), cell_keys = every
-cell built on it. The note names the surface, the evidence it is gone
+cell built on it. The summary names the surface, the evidence it is gone
 (missing path, retired doc, dead URL), and the blast radius — whether the
 dead surface is one stray step or the spine of a whole scenario. A
 scenario built entirely on a dead surface is one finding at the scenario
@@ -30,6 +30,6 @@ level, not N per-cell findings.
 Planned or future-state paths (a surface that does not exist YET is the
 point of a `planned` path, not rot); a url that fails for access reasons
 (auth walls, network) rather than absence; renamed-but-live surfaces when
-the rename is traceable — those are a relink suggestion in the note, not
+the rename is traceable — those are a relink suggestion in the summary, not
 an obsolete-source finding. This check flags modeling of the PAST, never
 modeling of the intended future.

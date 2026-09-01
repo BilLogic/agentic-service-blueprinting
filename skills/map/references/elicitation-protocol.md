@@ -71,7 +71,7 @@ the user volunteers in `description`, not by bloating labels.
 > what's the workaround?" (→ `exception` and `variant` paths)
 
 For designed-vs-reality comparisons: make it two labeled variants
-(`variant_label`, view_type `stacked`) and ask for the two labels.
+(`variant_label`, layout `stacked`) and ask for the two labels.
 
 ## Q8 — Dependencies
 

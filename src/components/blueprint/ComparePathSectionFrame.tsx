@@ -1,5 +1,5 @@
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
-import { PathTypeBadge } from '@/components/blueprint/PathTypeBadge'
+import { PathKindBadge } from '@/components/blueprint/PathKindBadge'
 import {
   getPathTypeSectionBorderStyle,
   shouldShowPathTypeBadge,
@@ -50,7 +50,7 @@ export function ComparePathSectionFrame({
   extraTopInset = 0,
 }: ComparePathSectionFrameProps) {
   const { path } = blueprint
-  const pathBorder = getPathTypeSectionBorderStyle(path.path_type, path)
+  const pathBorder = getPathTypeSectionBorderStyle(path.kind, path)
   const { borderColor, borderStyle, borderWidth } = pathBorder
   const sectionFill = blueprintPanelSectionFillColor()
   const useTypeBadge = showPathTypeBadge && shouldShowPathTypeBadge(path)
@@ -111,8 +111,8 @@ export function ComparePathSectionFrame({
       ) : null}
       {showTitle ? (
         useTypeBadge ? (
-          <PathTypeBadge
-            pathType={path.path_type}
+          <PathKindBadge
+            pathKind={path.kind}
             summary={path.summary}
             compact={compact}
             className="pointer-events-auto absolute z-50 max-w-[calc(100%-12px)]"
@@ -126,7 +126,7 @@ export function ComparePathSectionFrame({
           <PathLabelBadge
             name={path.name}
             summary={path.summary}
-            pathType={path.path_type}
+            pathKind={path.kind}
             compact={compact}
             className="pointer-events-auto absolute z-50 max-w-[calc(100%-12px)]"
             style={{

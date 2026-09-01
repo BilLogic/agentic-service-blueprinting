@@ -310,7 +310,7 @@ export function buildBlueprintCellSelectionForId(
     pathId: blueprint.path.id,
     pathName: blueprint.path.name,
     pathSummary: blueprint.path.summary,
-    pathType: blueprint.path.path_type,
+    pathKind: blueprint.path.kind,
   })
 }
 

@@ -1,25 +1,25 @@
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 export type PathListItem = {
   id: string
   name: string
   summary: string | null
   note: string | null
-  path_type: PathType
+  kind: PathKind
 }
 
-/** Prefer the canonical "Happy Path" when several paths share path_type happy. */
-export function pickPreferredPath<T extends { name: string; path_type: PathType }>(
+/** Prefer the canonical "Happy Path" when several paths share kind happy. */
+export function pickPreferredPath<T extends { name: string; kind: PathKind }>(
   paths: readonly T[],
 ): T | undefined {
   if (paths.length === 0) return undefined
   const namedHappy = paths.find(
     (path) =>
-      path.path_type === 'happy' &&
+      path.kind === 'happy' &&
       /^happy\s*path$/i.test(path.name.trim()),
   )
   if (namedHappy) return namedHappy
-  return paths.find((path) => path.path_type === 'happy') ?? paths[0]
+  return paths.find((path) => path.kind === 'happy') ?? paths[0]
 }
 
 export function defaultSelectedPathIds(paths: PathListItem[]): string[] {

@@ -177,8 +177,8 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
 export async function listSlices(client: Client): Promise<string> {
   const { data, error } = await client
     .from('slices')
-    .select('id, title, slice_type')
-    .order('slice_type')
+    .select('id, title, kind')
+    .order('kind')
   if (error) throw new Error(error.message)
   return formatSliceList(data ?? [])
 }

@@ -1,4 +1,4 @@
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 export type BlueprintCellPathEntry = {
@@ -6,7 +6,7 @@ export type BlueprintCellPathEntry = {
   pathId: string
   pathName: string
   pathSummary?: string | null
-  pathType: PathType
+  pathKind: PathKind
   content: string
   frame?: string | null
   summary?: string | null

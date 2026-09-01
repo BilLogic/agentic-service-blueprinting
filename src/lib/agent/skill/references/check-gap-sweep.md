@@ -13,7 +13,7 @@ dependency graph.
 ## Finding shape
 Emit one finding per contiguous silent stretch, not per empty cell:
 - A lane empty across 3+ consecutive steps while its actor is clearly still
-  present in the journey → cell_keys = the flanking cells; note names the
+  present in the journey → cell_keys = the flanking cells; summary names the
   silent steps.
 - A `leads_to` dependency whose narrative implies a follow-up ("which kicks off…") with
   no cell at the receiving end → warn; cell_keys = the source cell.

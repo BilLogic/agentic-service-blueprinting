@@ -60,7 +60,7 @@ actually breaks:
   single check `blueprint-reviewer` slice mode exists to run.
 - ⚠ **REQUIRED — no verbatim excerpts, ever.** Slices are written to
   public-read tables and to docs that get shared. Reference evidence and
-  business_model by cell key or title; never paste excerpt text or figures.
+  business_models by cell key or title; never paste excerpt text or figures.
   Personas, never participants ("a first-week field technician", not a name).
 - ⚠ **REQUIRED — validate before import.** `skills/slice/scripts/slice_tools.py validate`
   must exit 0. It catches unresolvable cell keys, duplicate cells, and

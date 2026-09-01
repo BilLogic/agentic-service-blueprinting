@@ -60,7 +60,7 @@ function makeBlueprint(
       name: pathId,
       summary: null,
       note: null,
-      path_type: 'happy',
+      kind: 'happy',
     },
     lanes,
     steps: stepRows,

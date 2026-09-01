@@ -72,9 +72,9 @@ alter table public.evidence alter column created_by set default auth.uid();
 
 alter table public.slices enable row level security;
 alter table public.slides enable row level security;
-alter table public.findings enable row level security;
+alter table public.audit_findings enable row level security;
 alter table public.evidence enable row level security;
-alter table public.business_model enable row level security;
+alter table public.business_models enable row level security;
 
 -- slices / slides: public read, authenticated write
 create policy "slices_select" on public.slices for select using (true);
@@ -93,15 +93,15 @@ create policy "slice_items_update_auth" on public.slides
 create policy "slice_items_delete_auth" on public.slides
   for delete to authenticated using (true);
 
--- findings: public read; humans may flip STATUS only (column grant below); no
+-- audit_findings: public read; humans may flip STATUS only (column grant below); no
 -- insert/delete for authenticated — skills write via service key.
-create policy "findings_select" on public.findings for select using (true);
-create policy "findings_update_auth" on public.findings
+create policy "findings_select" on public.audit_findings for select using (true);
+create policy "findings_update_auth" on public.audit_findings
   for update to authenticated using (true) with check (true);
-revoke insert, update, delete on public.findings from authenticated;
-grant update (status) on public.findings to authenticated;
+revoke insert, update, delete on public.audit_findings from authenticated;
+grant update (status) on public.audit_findings to authenticated;
 
--- evidence / business_model: restricted read (interview excerpts, pricing are not
+-- evidence / business_models: restricted read (interview excerpts, pricing are not
 -- world-readable on public deploys); authenticated write.
 create policy "evidence_select_auth" on public.evidence
   for select to authenticated using (true);
@@ -112,11 +112,11 @@ create policy "evidence_update_auth" on public.evidence
 create policy "evidence_delete_auth" on public.evidence
   for delete to authenticated using (true);
 
-create policy "propositions_select_auth" on public.business_model
+create policy "propositions_select_auth" on public.business_models
   for select to authenticated using (true);
-create policy "propositions_insert_auth" on public.business_model
+create policy "propositions_insert_auth" on public.business_models
   for insert to authenticated with check (true);
-create policy "propositions_update_auth" on public.business_model
+create policy "propositions_update_auth" on public.business_models
   for update to authenticated using (true) with check (true);
 
 -- evidence_counts view: public (counts only, no content)
@@ -182,25 +182,25 @@ end $$;
 
 -- F1 is entirely about the anon / authenticated roles.
 -- ---- F1: explicit exposure grants ----
-grant select on public.slices, public.slides, public.findings to anon, authenticated;
-grant select on public.evidence, public.business_model to authenticated;
+grant select on public.slices, public.slides, public.audit_findings to anon, authenticated;
+grant select on public.evidence, public.business_models to authenticated;
 grant insert, update, delete on public.slices, public.slides, public.evidence to authenticated;
-grant insert, update on public.business_model to authenticated;
+grant insert, update on public.business_models to authenticated;
 grant select on public.evidence_counts to anon, authenticated;
 
 -- Defense-in-depth: strip legacy write privileges from anon (RLS already blocks the
 -- DML, but TRUNCATE is not subject to RLS) and TRUNCATE from both roles everywhere.
 revoke insert, update, delete, truncate on public.slices, public.slides,
-  public.findings, public.evidence, public.business_model from anon;
-revoke select on public.evidence, public.business_model from anon;
-revoke truncate on public.slices, public.slides, public.findings,
-  public.evidence, public.business_model, public.cells, public.lanes, public.phases
+  public.audit_findings, public.evidence, public.business_models from anon;
+revoke select on public.evidence, public.business_models from anon;
+revoke truncate on public.slices, public.slides, public.audit_findings,
+  public.evidence, public.business_models, public.cells, public.lanes, public.phases
   from anon, authenticated;
 revoke insert, update, delete on public.evidence_counts from anon, authenticated;
 
 -- who "the caller" is, on Supabase.
 alter table public.slides  alter column created_by set default auth.uid();
-alter table public.business_model alter column created_by set default auth.uid();
+alter table public.business_models alter column created_by set default auth.uid();
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 20260818000000_authoring_foundation.sql
@@ -247,8 +247,8 @@ revoke insert, update, delete, truncate on public.deleted_structure
 grant update (content, summary) on public.cells to authenticated;
 grant update (name, lane_role) on public.lanes to authenticated;
 grant update (name) on public.steps to authenticated;
-grant update (name, summary, note, path_type) on public.paths to authenticated;
-grant update (name, summary, view_type) on public.scenarios to authenticated;
+grant update (name, summary, summary, kind) on public.paths to authenticated;
+grant update (name, summary, layout) on public.scenarios to authenticated;
 
 -- cells/lanes/phases already carry update policies from the derived layer;
 -- steps, paths and scenarios gain theirs here.
@@ -287,7 +287,7 @@ alter view public.evidence_counts set (security_invoker = true);
 
 -- ---------------------------------------------------------------------------
 -- Findings canvas writes, in their final hardened form: the in-app agent
--- records findings directly, same as the IDE flow's service-key writes.
+-- records audit_findings directly, same as the IDE flow's service-key writes.
 -- A finding may only be INSERTED as open — the dedupe rule is "dismissed
 -- stays dismissed", so an insert that could set status directly would let one
 -- forged row permanently suppress a real finding from every future audit run.
@@ -296,14 +296,14 @@ alter view public.evidence_counts set (security_invoker = true);
 -- actually writes. Delete stays revoked everywhere;
 -- findings_open_fingerprint_idx remains the dedupe backstop.
 -- ---------------------------------------------------------------------------
-drop policy if exists "findings_insert_auth" on public.findings;
-create policy "findings_insert_auth" on public.findings
+drop policy if exists "findings_insert_auth" on public.audit_findings;
+create policy "findings_insert_auth" on public.audit_findings
   for insert to authenticated with check (status = 'open');
 
-grant insert on public.findings to authenticated;
-revoke update on public.findings from authenticated;
-grant update (status, note, severity, run_id, cell_ids, cell_keys, source)
-  on public.findings to authenticated;
+grant insert on public.audit_findings to authenticated;
+revoke update on public.audit_findings from authenticated;
+grant update (status, summary, severity, run_id, cell_ids, cell_keys, source)
+  on public.audit_findings to authenticated;
 
 -- the storage bucket and its object policies.
 
@@ -460,7 +460,7 @@ begin
   foreach t in array array[
     'phases', 'scenarios', 'paths', 'steps', 'path_steps',
     'lanes', 'cells', 'cell_dependencies', 'slices', 'slides',
-    'evidence', 'business_model', 'findings'
+    'evidence', 'business_models', 'audit_findings'
   ] loop
     execute format('drop policy if exists %I on public.%I',
       t || '_insert_service_only', t);
@@ -545,7 +545,7 @@ grant execute on function public.flag_service_accounts() to service_role;
 -- ─────────────────────────────────────────────────────────────────────────
 
 -- the caller stamp, RLS, the owner-scoped policies, and the
--- findings grants: every one of them names a Supabase primitive.
+-- audit_findings grants: every one of them names a Supabase primitive.
 alter table public.agent_sessions
   alter column created_by set default auth.uid();
 
@@ -597,13 +597,13 @@ create policy "agent messages are owner-scoped"
 -- The tier recipe's RESTRICTIVE policies (when applied) still confine every
 -- one of these writes to service accounts.
 -- ---------------------------------------------------------------------------
-grant insert on public.findings to authenticated;
-revoke update on public.findings from authenticated;
-grant update (status, note, severity, run_id, cell_ids, cell_keys, source)
-  on public.findings to authenticated;
+grant insert on public.audit_findings to authenticated;
+revoke update on public.audit_findings from authenticated;
+grant update (status, summary, severity, run_id, cell_ids, cell_keys, source)
+  on public.audit_findings to authenticated;
 
-drop policy if exists "findings_insert_auth" on public.findings;
-create policy "findings_insert_auth" on public.findings
+drop policy if exists "findings_insert_auth" on public.audit_findings;
+create policy "findings_insert_auth" on public.audit_findings
   for insert to authenticated with check (status = 'open');
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -684,3 +684,44 @@ alter policy "slice_items_select"      on public.slides rename to "slides_select
 alter policy "slice_items_insert_auth" on public.slides rename to "slides_insert_auth";
 alter policy "slice_items_update_auth" on public.slides rename to "slides_update_auth";
 alter policy "slice_items_delete_auth" on public.slides rename to "slides_delete_auth";
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000116000000_one_spelling_each.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- policies exist only where the Supabase recipe was applied, and
+-- their names are the one dependent kind the core cannot carry.
+
+alter policy "findings_select"      on public.audit_findings rename to "audit_findings_select";
+alter policy "findings_insert_auth" on public.audit_findings rename to "audit_findings_insert_auth";
+alter policy "findings_update_auth" on public.audit_findings rename to "audit_findings_update_auth";
+
+-- `21000111000000` renamed the table and deliberately left these three alone:
+-- its sweep keyed on `propositions`, and the singular would have welded a
+-- plural `s` onto every object it touched. The table is plural now, so the
+-- policies can be too.
+alter policy "propositions_select_auth" on public.business_models rename to "business_models_select_auth";
+alter policy "propositions_insert_auth" on public.business_models rename to "business_models_insert_auth";
+alter policy "propositions_update_auth" on public.business_models rename to "business_models_update_auth";
+
+-- The recreated RPCs did not widen. This is a RECIPE proof and not a core one
+-- because `anon` is a role only the recipe creates: the core drops and replays
+-- whatever ACL it found, and the question "did anon keep its revoke" can only
+-- be asked where anon exists. Asking it in the core would make the portable
+-- core name the host it exists to be independent of.
+do $anon$
+declare
+  widened text;
+begin
+  select string_agg(p.proname, ', ' order by p.proname) into widened
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname in ('create_path', 'create_scenario', 'duplicate_path',
+                       'set_cell_dependency')
+     and has_function_privilege('anon', p.oid, 'execute');
+  if widened is not null then
+    raise exception 'the drop-and-recreate widened an RPC to anon: %', widened;
+  end if;
+end
+$anon$;

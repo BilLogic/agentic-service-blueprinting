@@ -51,7 +51,7 @@ Schema coverage (migrations 20260729120000_derived_layer +
     arrow and a needs edge, and the UUIDv5 qualified key ends in `#<kind>` so
     the two do not collide. label/note still have no IR shape.
   * DERIVED TABLES ARE NEVER SEEDED. slices/slides/findings/evidence/
-    business_model is a runtime output of the sb:* skills, not IR-authored
+    business_models is a runtime output of the sb:* skills, not IR-authored
     content — there is deliberately no IR shape for them. Seeds cannot break
     them either: derived tables reference cells softly (uuid[]/text[], no FK),
     so the scenario-replace delete cannot cascade into them. The --verify
@@ -468,7 +468,7 @@ def build_model(doc: dict, locale: str) -> dict:
                         "name": text(path["name"]),
                         "summary": text(path.get("summary")),
                         "note": text(path.get("note")),
-                        "path_type": path["path_type"],
+                        "kind": path["kind"],
                         "lanes": lanes,
                         "path_steps": path_steps,
                         "cells": cells,
@@ -488,7 +488,7 @@ def build_model(doc: dict, locale: str) -> dict:
                     "name": text(scenario["name"]),
                     "summary": text(scenario.get("summary")),
                     "order": scenario["order"],
-                    "view_type": scenario["view_type"],
+                    "layout": scenario["layout"],
                     "steps": steps,
                     "paths": paths,
                 }
@@ -563,13 +563,13 @@ on conflict (id) do update
 
 delete from public.scenarios where id = {q(scenario['id'])};
 
-insert into public.scenarios (id, phase_id, name, summary, position, view_type) values
-  ({q(scenario['id'])}, {q(scenario['phase_id'])}, {q(scenario['name'])}, {q(scenario['summary'])}, {scenario['order']}, {q(scenario['view_type'])});
+insert into public.scenarios (id, phase_id, name, summary, position, layout) values
+  ({q(scenario['id'])}, {q(scenario['phase_id'])}, {q(scenario['name'])}, {q(scenario['summary'])}, {scenario['order']}, {q(scenario['layout'])});
 
-insert into public.paths (id, scenario_id, name, summary, note, path_type) values
+insert into public.paths (id, scenario_id, name, summary, note, kind) values
 {values_rows(
     [
-        [q(p['id']), q(scenario['id']), q(p['name']), q(p['summary']), q(p['note']), q(p['path_type'])]
+        [q(p['id']), q(scenario['id']), q(p['name']), q(p['summary']), q(p['note']), q(p['kind'])]
         for p in scenario['paths']
     ]
 )};
@@ -761,7 +761,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
                 )
 
     # Derived-layer report (never a failure): slices/findings/evidence/
-    # business_model are user- and skill-authored at runtime, NOT seeded, and
+    # business_models are user- and skill-authored at runtime, NOT seeded, and
     # they soft-reference cells — so rows referencing a just-replaced scenario
     # are legitimate (that is the recovery design), but worth surfacing after
     # a re-import. Guarded by to_regclass so the verify script still runs
@@ -777,8 +777,8 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
             f"    where exists (select 1 from unnest(si.cell_keys) k where k like {pat});\n"
             f"    raise notice 'derived (reported, not verified): % slides reference scenario {label}', n;\n"
             "  end if;\n"
-            "  if to_regclass('public.findings') is not null then\n"
-            "    select count(*) into n from public.findings f\n"
+            "  if to_regclass('public.audit_findings') is not null then\n"
+            "    select count(*) into n from public.audit_findings f\n"
             f"    where exists (select 1 from unnest(f.cell_keys) k where k like {pat});\n"
             f"    raise notice 'derived (reported, not verified): % findings reference scenario {label}', n;\n"
             "  end if;\n"
@@ -792,9 +792,9 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
         f"    select count(*) into n from public.slices where service_id = {lc_id};\n"
         "    raise notice 'derived (reported, not verified): % slices on this service', n;\n"
         "  end if;\n"
-        "  if to_regclass('public.business_model') is not null then\n"
-        f"    select count(*) into n from public.business_model where service_id = {lc_id};\n"
-        "    raise notice 'derived (reported, not verified): % business_model rows on this service', n;\n"
+        "  if to_regclass('public.business_models') is not null then\n"
+        f"    select count(*) into n from public.business_models where service_id = {lc_id};\n"
+        "    raise notice 'derived (reported, not verified): % business_models rows on this service', n;\n"
         "  end if;"
     )
 
@@ -806,7 +806,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
 -- Run AFTER the seed commits. Verifies per-scenario row counts for every
 -- table plus content and cell_key spot-checks for: {scenario_list}.
 -- Any mismatch raises an exception, so psql/supabase execution fails loudly.
--- Derived-layer rows (slices/findings/evidence/business_model) are REPORTED via
+-- Derived-layer rows (slices/findings/evidence/business_models) are REPORTED via
 -- notices, never failed: they are runtime skill/user output, not seed output.
 
 do $$

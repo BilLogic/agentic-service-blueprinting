@@ -67,7 +67,7 @@ that never happened.
 ## §2 Fingerprint
 
 ```
-fingerprint = check_name + ':' + sha256(join(sort(cell_keys), '\n')) + ':' + <reason-slug>
+fingerprint = check_key + ':' + sha256(join(sort(cell_keys), '\n')) + ':' + <reason-slug>
 ```
 
 EVERY finding carries a short reason slug — cell-bearing findings included,
@@ -90,11 +90,11 @@ that disagree on a separator split the finding history).
   open row rather than duplicating it.
 - Zero-cell findings (e.g. "no scenario covers onboarding at all") use a
   scope key instead of cell keys, WITH the same reason-slug discipline:
-  `check_name + ':scope:' + scenario_key + ':' + <reason-slug>`
+  `check_key + ':scope:' + scenario_key + ':' + <reason-slug>`
   (e.g. `gap-sweep:scope:sample-service:orphan-step-inspection`).
 - **Migration note (existing ledgers).** Rows written before the reason
   slug was extended to cell-bearing findings carry old-form fingerprints
-  (`check_name + ':' + sha256(cell_keys)`, no slug). They remain valid
+  (`check_key + ':' + sha256(cell_keys)`, no slug). They remain valid
   rows — dedupe compares exact fingerprint strings, so old rows simply
   never match new-form incoming findings and NO ledger rewrite is needed.
   New writes always use the new form; per-check supersede retires the
@@ -156,7 +156,7 @@ What to read in the export, in what order. Wave-2: name the columns and
 the skip condition.
 
 ## Finding shape
-When to emit; what the cell_keys set is; what the note must contain
+When to emit; what the cell_keys set is; what the summary must contain
 (cite keys/titles — never excerpt text); when to raise/lower severity.
 
 ## Non-findings

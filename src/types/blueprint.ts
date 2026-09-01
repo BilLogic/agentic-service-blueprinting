@@ -1,11 +1,11 @@
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 export type BlueprintPath = {
   id: string
   name: string
   summary: string | null
   note: string | null
-  path_type: PathType
+  kind: PathKind
 }
 
 export type BlueprintLane = {

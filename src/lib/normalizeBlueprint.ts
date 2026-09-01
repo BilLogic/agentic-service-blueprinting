@@ -5,7 +5,7 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 import { cellResourcesFromRows, type RawCellResource } from '@/lib/cellResources'
 import {
   cellTouchpointsFromRows,
@@ -60,7 +60,7 @@ export type RawPath = {
   name: string
   summary?: string | null
   note?: string | null
-  path_type: PathType
+  kind: PathKind
   lanes?: RawLane[] | null
   /** @deprecated Legacy shape; use path_steps */
   steps?: BlueprintStep[] | null
@@ -241,7 +241,7 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
       name: raw.name,
       summary: raw.summary ?? null,
       note: raw.note ?? null,
-      path_type: raw.path_type,
+      kind: raw.kind,
     },
     lanes,
     steps,

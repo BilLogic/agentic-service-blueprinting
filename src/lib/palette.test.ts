@@ -392,7 +392,7 @@ describe('path badges', () => {
     const open = [
       ...new Set(
         Array.from({ length: 40 }, (_, i) =>
-          getPathColor({ path_type: 'alternative', name: `Path ${i}` }),
+          getPathColor({ kind: 'variant', name: `Path ${i}` }),
         ),
       ),
     ]
@@ -412,8 +412,8 @@ describe('path badges', () => {
   })
 
   it('separates two unregistered custom-named paths', () => {
-    const a = getPathColor({ path_type: 'alternative', name: 'Alpha' })
-    const b = getPathColor({ path_type: 'alternative', name: 'Beta' })
+    const a = getPathColor({ kind: 'variant', name: 'Alpha' })
+    const b = getPathColor({ kind: 'variant', name: 'Beta' })
     expect(a === b).toBe(false)
   })
 
@@ -428,14 +428,14 @@ describe('path badges', () => {
     // that colour and dash travel together — never that colour separates two
     // paths a dash does not.
     const typeDefault = getPathDashArray({
-      path_type: 'alternative',
+      kind: 'variant',
       name: 'Alternate Path',
     })
     const named = [
       'Set Preferences',
       'Check Preferences',
       'Update Preferences',
-    ].map((name) => getPathDashArray({ path_type: 'alternative', name }))
+    ].map((name) => getPathDashArray({ kind: 'variant', name }))
     expect(new Set(named).size).toBeGreaterThan(1)
     expect(named.every((dash) => dash !== undefined)).toBe(true)
     expect(typeDefault).toBe('12 5')
@@ -446,7 +446,7 @@ describe('path badges', () => {
     // channel for SC 1.4.1 only if the two lists are the same length.
     const seen = new Map<string, string | undefined>()
     for (let i = 0; i < 40; i++) {
-      const path = { path_type: 'alternative' as const, name: `Path ${i}` }
+      const path = { kind: 'variant' as const, name: `Path ${i}` }
       const colour = getPathColor(path)
       const dash = getPathDashArray(path)
       if (seen.has(colour)) expect(seen.get(colour)).toBe(dash)
@@ -487,7 +487,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
     const lanes = familiesIn('lane')
     const pathFamilies = new Set(
       Array.from({ length: 40 }, (_, i) =>
-        getPathColor({ path_type: 'alternative', name: `Path ${i}` }),
+        getPathColor({ kind: 'variant', name: `Path ${i}` }),
       ).map((token) => /--color-([a-z]+)-/.exec(token)![1]),
     )
     expect(pathFamilies.size).toBeGreaterThan(1)

@@ -17,7 +17,7 @@ import {
   replaceSlides,
   updateSliceMeta,
 } from '@/lib/sliceMutations'
-import type { SliceType } from '@/lib/sliceValidation'
+import type { SliceKind } from '@/lib/sliceValidation'
 import { asUpdatedAtToken } from '@/lib/optimisticConcurrency'
 import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
 import {
@@ -174,7 +174,7 @@ export async function dispatchTool(
       const sliceId = need(args, 'slice_id')
       const { data, error } = await client
         .from('slices')
-        .select('id, title, description, slice_type, actor, origin, slides(id, position, title, narrative, cell_ids)')
+        .select('id, title, description, kind, actor, origin, slides(id, position, title, narrative, cell_ids)')
         .eq('id', sliceId)
         .maybeSingle()
       if (error) throw new Error(error.message)
@@ -185,13 +185,13 @@ export async function dispatchTool(
           (slide, index) =>
             `slide ${index + 1}: cells [${(slide.cell_ids ?? []).join(', ')}]${slide.title ? ` title "${slide.title}"` : ''}${slide.narrative ? ` narrative "${slide.narrative}"` : ''}`,
         )
-      return `slice "${data.title}" (${data.id}) type=${data.slice_type}${data.actor ? ` actor=${data.actor}` : ''}\n${slides.join('\n') || '(no slides)'}`
+      return `slice "${data.title}" (${data.id}) type=${data.kind}${data.actor ? ` actor=${data.actor}` : ''}\n${slides.join('\n') || '(no slides)'}`
     }
     case 'list_findings': {
       const filter = s(args, 'status') ?? 'open'
       let query = client
-        .from('findings')
-        .select('id, source, check_name, severity, note, status, cell_ids, created_at')
+        .from('audit_findings')
+        .select('id, source, check_key, severity, summary, status, cell_ids, created_at')
         .order('created_at', { ascending: false })
         .limit(100)
       if (filter !== 'all')
@@ -205,7 +205,7 @@ export async function dispatchTool(
       return data
         .map(
           (row) =>
-            `${row.id} [${row.severity}] ${row.check_name} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.note ? ` — ${row.note}` : ''}`,
+            `${row.id} [${row.severity}] ${row.check_key} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.summary ? ` — ${row.summary}` : ''}`,
         )
         .join('\n')
     }
@@ -418,7 +418,7 @@ export async function dispatchTool(
         const id = await createPath(client, {
           scenarioId: need(args, 'scenario_id'),
           name: need(args, 'name'),
-          pathType: s(args, 'path_type'),
+          pathKind: s(args, 'kind'),
           laneSourcePathId: s(args, 'lane_source_path_id') ?? null,
         })
         return `Created path (${id}).`
@@ -427,7 +427,7 @@ export async function dispatchTool(
         const id = await duplicatePath(client, {
           sourcePathId: need(args, 'source_path_id'),
           name: need(args, 'name'),
-          pathType: s(args, 'path_type'),
+          pathKind: s(args, 'kind'),
           copyCells: args.copy_cells !== false,
         })
         return `Duplicated path (${id}).`
@@ -451,7 +451,7 @@ export async function dispatchTool(
           serviceId: await serviceId(client),
           title: need(args, 'title'),
           description: s(args, 'description') ?? '',
-          sliceType: need(args, 'slice_type') as SliceType,
+          sliceKind: need(args, 'kind') as SliceKind,
           actor: s(args, 'actor') ?? '',
           cellIds,
         })
@@ -461,7 +461,7 @@ export async function dispatchTool(
         const sliceId = need(args, 'slice_id')
         const { data, error } = await client
           .from('slices')
-          .select('title, description, slice_type, actor, origin, updated_at')
+          .select('title, description, kind, actor, origin, updated_at')
           .eq('id', sliceId)
           .maybeSingle()
         if (error) throw new Error(error.message)
@@ -469,7 +469,7 @@ export async function dispatchTool(
         const outcome = await updateSliceMeta(client, sliceId, asUpdatedAtToken(data.updated_at), {
           title: s(args, 'title') ?? data.title,
           description: s(args, 'description') ?? data.description ?? '',
-          sliceType: (s(args, 'slice_type') ?? data.slice_type) as SliceType,
+          sliceKind: (s(args, 'kind') ?? data.kind) as SliceKind,
           actor: s(args, 'actor') ?? data.actor ?? '',
           origin: data.origin,
         })
@@ -499,11 +499,11 @@ export async function dispatchTool(
       }
       case 'record_finding': {
         const source = args.source === 'whatif' ? 'whatif' : 'audit'
-        const checkName = need(args, 'check_name')
+        const checkKey = need(args, 'check_key')
         const severityArg = s(args, 'severity')
         if (severityArg !== 'info' && severityArg !== 'warn' && severityArg !== 'critical')
           throw new Error('severity must be info, warn, or critical.')
-        const note = need(args, 'note')
+        const summary = need(args, 'summary')
         const cellIds = Array.isArray(args.cell_ids)
           ? args.cell_ids.filter(
               (value): value is string => typeof value === 'string',
@@ -513,10 +513,10 @@ export async function dispatchTool(
         if (cellIds.length === 0 && !scope)
           throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
         const runId = s(args, 'run_id') ?? crypto.randomUUID()
-        const fingerprint = await findingFingerprint(checkName, cellIds, scope)
+        const fingerprint = await findingFingerprint(checkKey, cellIds, scope)
         const service = await serviceId(client)
         const { data: existing, error: readError } = await client
-          .from('findings')
+          .from('audit_findings')
           .select('id, status')
           .eq('service_id', service)
           .eq('fingerprint', fingerprint)
@@ -526,28 +526,28 @@ export async function dispatchTool(
         const dismissed = existing?.find((row) => row.status === 'dismissed')
         if (open) {
           const { error } = await client
-            .from('findings')
-            .update({ severity: severityArg, note, run_id: runId, cell_ids: cellIds, cell_keys: cellIds, source })
+            .from('audit_findings')
+            .update({ severity: severityArg, summary, run_id: runId, cell_ids: cellIds, cell_keys: cellIds, source })
             .eq('id', open.id)
           if (error) throw new Error(error.message)
           return `An open finding already had this fingerprint — updated it in place (dedupe). run_id ${runId}; reuse it for the rest of this run.`
         }
         if (dismissed)
           return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. run_id ${runId}; reuse it for the rest of this run.`
-        const { error: insertError } = await client.from('findings').insert({
+        const { error: insertError } = await client.from('audit_findings').insert({
           service_id: service,
           run_id: runId,
           source,
-          check_name: checkName,
+          check_key: checkKey,
           severity: severityArg,
-          note,
+          summary,
           cell_ids: cellIds,
           cell_keys: cellIds,
           fingerprint,
         })
         if (insertError) throw new Error(insertError.message)
         const reopened = existing && existing.length > 0
-        return `Recorded ${severityArg} finding for ${checkName}${reopened ? ' (a resolved twin existed — this reopens the issue)' : ''}. run_id ${runId}; reuse it for the rest of this run.`
+        return `Recorded ${severityArg} finding for ${checkKey}${reopened ? ' (a resolved twin existed — this reopens the issue)' : ''}. run_id ${runId}; reuse it for the rest of this run.`
       }
       case 'set_finding_status': {
         const status = s(args, 'status')
@@ -555,7 +555,7 @@ export async function dispatchTool(
           throw new Error('status must be open, resolved, or dismissed.')
         const findingId = need(args, 'finding_id')
         const { data, error } = await client
-          .from('findings')
+          .from('audit_findings')
           .update({ status })
           .eq('id', findingId)
           .select('id')

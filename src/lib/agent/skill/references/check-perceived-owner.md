@@ -15,7 +15,7 @@ One finding per divergence pair per scenario; cell_keys = the cells in the
 cluster. Divergence on the interaction line (customer perceives X, Y acts)
 → warn if no adjacent cell manages the impression; a divergence that a
 cell's own content calls out as deliberate (ghost-writing, white-label) →
-info, note says "reads as designed".
+info, summary says "reads as designed".
 
 ## Non-findings
 Divergences where perceived_owner is simply unset (that's data absence,

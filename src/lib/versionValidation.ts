@@ -9,7 +9,7 @@
 export type VersionMode = 'blank' | 'duplicate'
 
 /**
- * The `path_type` values the database actually accepts.
+ * The `kind` values the database actually accepts.
  *
  * These are not a UI vocabulary choice — `paths_path_type_check` is a CHECK
  * constraint, and anything outside this list is refused by the insert. The
@@ -21,25 +21,24 @@ export type VersionMode = 'blank' | 'duplicate'
  * Keep this in step with the constraint. If a new type is wanted, the
  * constraint changes first.
  */
-export const PATH_TYPES = [
+export const PATH_KINDS = [
   'happy',
-  'alternative',
-  'unhappy',
+  'variant',
+  'variant',
   'exception',
 ] as const
-export type PathType = (typeof PATH_TYPES)[number]
+export type PathKind = (typeof PATH_KINDS)[number]
 
-export const PATH_TYPE_LABELS: Record<PathType, string> = {
+export const PATH_TYPE_LABELS: Record<PathKind, string> = {
   happy: 'Happy path',
-  alternative: 'Alternative',
-  unhappy: 'Unhappy path',
+  variant: 'Variant',
   exception: 'Exception',
 }
 
 export type DraftVersion = {
   mode: VersionMode
   name: string
-  pathType: PathType
+  pathKind: PathKind
   /** Blank mode: copy lanes from here. Duplicate mode: the version to copy. */
   sourcePathId: string | null
   copyCells: boolean

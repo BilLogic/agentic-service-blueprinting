@@ -15,7 +15,7 @@ import { useViewState } from '@/contexts/viewStateStore'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { findFirstServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
-import { deriveSliceType, describeSliceType } from '@/lib/sliceType'
+import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
 import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
 
 /** One slide per cell. The starting shape, and the only one worth seeding. */
@@ -99,7 +99,7 @@ export function CreateSliceSheet({
 
   // Read once per selection rather than per render: it walks the DOM, and the
   // answer cannot change while the same cells are picked.
-  const sliceType = useMemo(() => deriveSliceType(cellIds), [cellIds])
+  const sliceKind = useMemo(() => deriveSliceType(cellIds), [cellIds])
 
   const reset = () => {
     setStep('slides')
@@ -111,7 +111,7 @@ export function CreateSliceSheet({
   const problems = validateDraftSlice({
     title,
     description,
-    sliceType,
+    sliceKind,
     // Always blank: the field is gone, and the column stays nullable
     // until a migration drops it.
     actor: '',
@@ -131,7 +131,7 @@ export function CreateSliceSheet({
         serviceId,
         title,
         description,
-        sliceType,
+        sliceKind,
         actor: '',
         cellIds,
         slides: slides,
@@ -200,7 +200,7 @@ export function CreateSliceSheet({
               had already decided.
             */}
             <p className="truncate text-2xs text-muted-foreground">
-              {describeSliceType(sliceType, cellCount)}
+              {describeSliceType(sliceKind, cellCount)}
             </p>
           </div>
         </div>

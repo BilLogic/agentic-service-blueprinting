@@ -1,4 +1,4 @@
-import type { LaneSetEntry, ViewType } from '@/lib/authoringRpc'
+import type { LaneSetEntry, Layout } from '@/lib/authoringRpc'
 
 /**
  * What a new scenario needs before it is worth sending.
@@ -9,20 +9,25 @@ import type { LaneSetEntry, ViewType } from '@/lib/authoringRpc'
  * type; the database's copy stays as the authority.
  */
 
-export const VIEW_TYPES: ViewType[] = ['single', 'side-by-side', 'integrated']
+export const LAYOUTS: Layout[] = ['single', 'stacked']
 
-/** Display names. The stored values are hyphenated; nobody should read those. */
-export const VIEW_TYPE_LABELS: Record<ViewType, string> = {
+/** Display names. */
+export const LAYOUT_LABELS: Record<Layout, string> = {
   single: 'Single',
-  'side-by-side': 'Side by side',
-  integrated: 'Integrated',
+  stacked: 'Stacked',
 }
 
-/** What each view type is for, in the words someone choosing one would use. */
-export const VIEW_TYPE_HINTS: Record<ViewType, string> = {
+/**
+ * What each layout is for, in the words someone choosing one would use.
+ *
+ * Two rather than three since `21000116000000`: `side-by-side` and
+ * `integrated` were one layout the reader switches between, not two a scenario
+ * is stored as. Merging every path into one grid is a display state the client
+ * holds; it was never a property of the scenario.
+ */
+export const LAYOUT_HINTS: Record<Layout, string> = {
   single: 'One version at a time',
-  'side-by-side': 'Paths compared step by step',
-  integrated: 'Every version merged into one grid',
+  stacked: 'Paths compared step by step',
 }
 
 /**
@@ -62,7 +67,7 @@ export const MIN_STEP_COUNT = 1
 export type DraftBlueprint = {
   phaseId: string | null
   name: string
-  viewType: ViewType
+  layout: Layout
   /** Copy lanes from this version. Null means use `DEFAULT_LANE_SET`. */
   laneSourcePathId: string | null
   stepCount: number
@@ -87,7 +92,7 @@ export function validateDraftBlueprint(draft: DraftBlueprint): string[] {
   if (!draft.pathName.trim()) {
     problems.push('The first version needs a name — "Happy Path" is the usual one.')
   }
-  if (!VIEW_TYPES.includes(draft.viewType)) {
+  if (!LAYOUTS.includes(draft.layout)) {
     problems.push('Pick how the versions should be laid out.')
   }
   if (!Number.isInteger(draft.stepCount)) {

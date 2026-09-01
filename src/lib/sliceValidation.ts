@@ -10,14 +10,14 @@
  * the failure messages are user-facing copy, not stack traces.
  */
 
-export const SLICE_TYPES = ['journey', 'step', 'lane', 'cell', 'custom'] as const
-export type SliceType = (typeof SLICE_TYPES)[number]
+export const SLICE_KINDS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
+export type SliceKind = (typeof SLICE_KINDS)[number]
 
 export const SLICE_ORIGINS = ['generated', 'customized', 'human'] as const
 export type SliceOrigin = (typeof SLICE_ORIGINS)[number]
 
-export function isSliceType(value: string): value is SliceType {
-  return (SLICE_TYPES as readonly string[]).includes(value)
+export function isSliceKind(value: string): value is SliceKind {
+  return (SLICE_KINDS as readonly string[]).includes(value)
 }
 
 export function isSliceOrigin(value: string): value is SliceOrigin {
@@ -36,7 +36,7 @@ export type DraftSlide = {
 export type DraftSlice = {
   title: string
   description: string
-  sliceType: SliceType
+  sliceKind: SliceKind
   actor: string
   slides: DraftSlide[]
 }
@@ -64,8 +64,8 @@ export function validateDraftSlice(draft: DraftSlice): ValidationProblem[] {
     problems.push({ message: `Title is longer than ${TITLE_MAX} characters.` })
   }
 
-  if (!isSliceType(draft.sliceType)) {
-    problems.push({ message: `Unknown slice type “${draft.sliceType}”.` })
+  if (!isSliceKind(draft.sliceKind)) {
+    problems.push({ message: `Unknown slice type “${draft.sliceKind}”.` })
   }
 
   if (draft.slides.length === 0) {

@@ -17,7 +17,7 @@ type UsePhaseBlueprintFiltersOptions = {
   slides: NavItem[]
   enabled?: boolean
   getScenarioDisplayViewType: (slide: NavItem) => SlideViewType
-  setScenarioDisplayViewType: (scenarioId: string, viewType: SlideViewType) => void
+  setScenarioDisplayViewType: (scenarioId: string, layout: SlideViewType) => void
 }
 
 export type PhaseBlueprintFilters = {
@@ -28,8 +28,8 @@ export type PhaseBlueprintFilters = {
   progress: { loaded: number; total: number }
   filterPaths: PathOption[]
   filterSelectedPathIds: string[]
-  viewType: SlideViewType
-  setViewType: (viewType: SlideViewType) => void
+  layout: SlideViewType
+  setViewType: (layout: SlideViewType) => void
   toggleFilterPath: (pathKey: string) => void
   resolveSelectedPathIds: (scenarioId: string, paths: PathListItem[]) => string[]
 }
@@ -78,7 +78,7 @@ export function usePhaseBlueprintFilters({
     [filterPaths, pathsByScenario, activePathKeys],
   )
 
-  const viewType = useMemo(() => {
+  const layout = useMemo(() => {
     if (activeScenarioIds.length === 0) return 'stacked' as SlideViewType
 
     const viewTypes = activeScenarioIds.map((scenarioId) => {
@@ -133,7 +133,7 @@ export function usePhaseBlueprintFilters({
     progress,
     filterPaths,
     filterSelectedPathIds,
-    viewType,
+    layout,
     setViewType,
     toggleFilterPath,
     resolveSelectedPathIds,

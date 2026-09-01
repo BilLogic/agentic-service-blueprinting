@@ -4,12 +4,12 @@ import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { Badge } from '@/components/ui/badge'
 import { getPathBadgeStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 type PathLabelBadgeProps = {
   name: string
   summary: string | null | undefined
-  pathType: PathType
+  pathKind: PathKind
   compact?: boolean
   className?: string
   style?: CSSProperties
@@ -27,7 +27,7 @@ type PathLabelBadgeProps = {
 export function PathLabelBadge({
   name,
   summary,
-  pathType,
+  pathKind,
   compact = false,
   className,
   style,
@@ -52,7 +52,7 @@ export function PathLabelBadge({
         className,
       )}
       style={{
-        ...getPathBadgeStyle({ path_type: pathType, name }),
+        ...getPathBadgeStyle({ kind: pathKind, name }),
         ...style,
       }}
     >

@@ -470,7 +470,7 @@ function MergedSectionFrame({
             key={path.id}
             name={`${shortLabels.get(path.id) ?? ''} ${path.name}`.trim()}
             summary={path.summary}
-            pathType={path.path_type}
+            pathKind={path.kind}
             compact={compact}
           />
         ))}
@@ -693,7 +693,7 @@ function MergedSubCellBlock({
               pathId: blueprint.path.id,
               pathName: blueprint.path.name,
               pathSummary: blueprint.path.summary,
-              pathType: blueprint.path.path_type,
+              pathKind: blueprint.path.kind,
             }
           : undefined
       }

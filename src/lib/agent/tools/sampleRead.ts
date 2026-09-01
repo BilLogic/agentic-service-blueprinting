@@ -37,7 +37,7 @@ function sampleBlueprintsFor(scenarioId: string): BlueprintData[] {
   if (paths.length > 0) {
     return paths
       .map((path) =>
-        getBlueprintFallback(scenarioId, path.id, path.path_type),
+        getBlueprintFallback(scenarioId, path.id, path.kind),
       )
       .filter((blueprint): blueprint is BlueprintData => Boolean(blueprint))
   }

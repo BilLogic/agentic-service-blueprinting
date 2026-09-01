@@ -145,6 +145,53 @@ export const RENAME_MAP = Object.freeze(
       retired: [],
       copy: [],
     },
+    {
+      was: ['business_model'],
+      is: ['business_models'],
+      migrations: ['21000116000000'],
+      // Plural, like every other table. `21000111000000` took the singular
+      // from the noun rather than from the convention around it, which is why
+      // this row exists one migration later instead of being folded into that
+      // one: the rename was right and the number was not.
+      retired: [],
+      copy: [],
+    },
+    {
+      was: ['findings', 'findings.check_name', 'findings.note'],
+      is: ['audit_findings', 'audit_findings.check_key', 'audit_findings.summary'],
+      migrations: ['21000116000000'],
+      // `finding` alone is NOT retired — it is the live domain word, defined
+      // in CONTEXT.md, and a panel has to be able to say it. What is retired
+      // is the bare TABLE name, which said nothing about whose findings these
+      // are, and `check_name`, which called a key a name.
+      retired: ['check_name'],
+      copy: ['check name'],
+    },
+    {
+      was: ['paths.path_type', 'slices.slice_type', 'scenarios.view_type'],
+      is: ['paths.kind', 'slices.kind', 'scenarios.layout'],
+      migrations: ['21000116000000'],
+      // `_type` is a suffix apologising for a name. All three said "the kind
+      // of thing this is" in a column that could say `kind`, which
+      // `cell_dependencies` already did.
+      retired: ['path_type', 'slice_type', 'view_type'],
+      copy: ['path type', 'slice type', 'view type'],
+    },
+    {
+      was: ['cell_dependencies.label', 'slices.description', 'slices.origin'],
+      is: ['cell_dependencies.name', 'slices.summary', 'slices.authorship'],
+      migrations: ['21000116000000'],
+      // One word per meaning: a `name` is navigated by, a `title` is authored,
+      // a `summary` describes, a `note` is an aside.
+      //
+      // NOT `label`, `description` or `origin` as bare fragments. Each is a
+      // live word elsewhere in this tree — a form control has a label, a
+      // package has a description, and `origin` is the import-provenance
+      // column on cells and phases, which this migration does not touch.
+      // Narrow the subject, never the word list.
+      retired: [],
+      copy: [],
+    },
   ].map((row) =>
     Object.freeze({
       ...row,

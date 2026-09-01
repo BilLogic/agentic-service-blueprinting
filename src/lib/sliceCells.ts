@@ -20,7 +20,7 @@ export function findFallbackScenarioForCells(
     const scenarioId = getBlueprintScenarioId(slide)
     if (!scenarioId) continue
     for (const path of getFallbackPathsForScenario(scenarioId)) {
-      const blueprint = getBlueprintFallback(scenarioId, path.id, path.path_type)
+      const blueprint = getBlueprintFallback(scenarioId, path.id, path.kind)
       if (blueprint?.cells.some((cell) => wanted.has(cell.id))) {
         return scenarioId
       }

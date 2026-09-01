@@ -196,13 +196,13 @@ def to_2026_08_26(doc: dict) -> None:
 
 
 def to_2026_08_27(doc: dict) -> None:
-    """2026.08.26 → 2026.08.27 — `propositions` became `business_model`.
+    """2026.08.26 → 2026.08.27 — `propositions` became `business_models`.
 
     Nothing to do, for a different reason than the last no-op.
 
     2026.08.26 wrote nothing because the field it added was optional and its
     absence already meant the default. This one writes nothing because the
-    table it renamed is not in the IR at all: `business_model` holds one
+    table it renamed is not in the IR at all: `business_models` holds one
     record per service and is authored at RUNTIME by the sb:* skills, like
     slices, findings and evidence. The IR carries the blueprint — phases,
     scenarios, paths, cells, dependencies — and never carried this.
@@ -375,6 +375,50 @@ def to_2026_09_02(doc: dict) -> None:
                         cell["frame"] = cell.pop("picture")
 
 
+def to_2026_09_03(doc: dict) -> None:
+    """2026.09.02 → 2026.09.03 — one spelling each, and two shorter enums.
+
+    `path_type`, `slice_type` and `view_type` all said "the kind of thing this
+    is" in a field that could say `kind`, which dependency edges already did.
+    Two of those three reach the IR, as `paths[].path_type` and
+    `scenarios[].view_type`; the third is a runtime column the IR never carried.
+
+    Both also lose values, and that is the part that moves authored content:
+
+      unhappy, alternative  →  variant     two spellings of one thing, and
+                                           `exception` already carries "this
+                                           went wrong"
+      side-by-side, integrated  →  stacked one layout a reader switches
+                                           between, not two a scenario is
+                                           stored as
+
+    A file that authored either retired value changes its bytes and its
+    scenarios re-sign. A file that stated neither field migrates by its stamp
+    alone.
+    """
+    path_kinds = {"variant": "variant", "variant": "variant"}
+    layouts = {"side-by-side": "stacked", "integrated": "stacked"}
+
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if not isinstance(scenario, dict):
+                continue
+            if "view_type" in scenario:
+                scenario["layout"] = scenario.pop("view_type")
+            if scenario.get("layout") in layouts:
+                scenario["layout"] = layouts[scenario["layout"]]
+            for path in scenario.get("paths", []) or []:
+                if not isinstance(path, dict):
+                    continue
+                if "path_type" in path:
+                    path["kind"] = path.pop("path_type")
+                if path.get("kind") in path_kinds:
+                    path["kind"] = path_kinds[path["kind"]]
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -393,7 +437,7 @@ STEPS = (
     Step(
         "2026.08.26",
         "2026.08.27",
-        "propositions became business_model; the table is runtime output and "
+        "propositions became business_models; the table is runtime output and "
         "was never in the IR, so only the stamp moves",
         to_2026_08_27,
     ),
@@ -420,6 +464,14 @@ STEPS = (
         "a cell's `picture` is its `frame`; slice_items became slides and its "
         "caption a title, neither of which the IR ever carried",
         to_2026_09_02,
+    ),
+    Step(
+        "2026.09.02",
+        "2026.09.03",
+        "paths[].path_type became .kind and scenarios[].view_type became "
+        ".layout; both enums lost a duplicate spelling (unhappy/alternative "
+        "\u2192 variant, side-by-side/integrated \u2192 stacked)",
+        to_2026_09_03,
     ),
 )
 

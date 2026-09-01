@@ -23,10 +23,10 @@ import {
   getPathDashArrayFromKey,
   pathColorKeyToMarkerSuffix,
 } from '@/lib/pathColorTheme'
-import { getPathTypeArrowColor } from '@/lib/pathTypeTheme'
+import { getPathKindArrowColor } from '@/lib/pathTypeTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCellTrigger } from '@/types/blueprint'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 import {
   BlueprintArrowMarkerDefs,
   blueprintArrowPathProps,
@@ -35,7 +35,7 @@ import {
 type ArrowLayer = 'forward' | 'wrap'
 
 export type ColoredBlueprintTrigger = BlueprintCellTrigger & {
-  path_type: PathType
+  pathKind: PathKind
   opacity?: number
 }
 
@@ -45,9 +45,9 @@ type BlueprintTriggerArrowsProps = {
   scrollContainerRef: RefObject<HTMLElement | null>
   /** forward = in column gaps behind cells; wrap = loop overlay on top */
   lane: ArrowLayer
-  /** Used when triggers do not include path_type (single-path grids). */
-  pathType?: PathType
-  /** When set with pathType, arrows use the stable path identity color. */
+  /** Used when triggers do not include kind (single-path grids). */
+  pathKind?: PathKind
+  /** When set with pathKind, arrows use the stable path identity color. */
   pathName?: string
 }
 
@@ -74,7 +74,7 @@ function serializeSegments(segments: readonly ArrowSegment[]): string {
 function isColoredTrigger(
   trigger: BlueprintCellTrigger,
 ): trigger is ColoredBlueprintTrigger {
-  return 'path_type' in trigger
+  return 'pathKind' in trigger
 }
 
 /**
@@ -87,7 +87,7 @@ export function BlueprintTriggerArrows({
   contentRef,
   scrollContainerRef,
   lane,
-  pathType = 'happy',
+  pathKind = 'happy',
   pathName,
 }: BlueprintTriggerArrowsProps) {
   const [segments, setSegments] = useState<ArrowSegment[]>([])
@@ -95,11 +95,11 @@ export function BlueprintTriggerArrows({
   const markerId = useId().replace(/:/g, '')
 
   const defaultColorKey = pathName
-    ? getPathColorKey({ path_type: pathType, name: pathName })
-    : pathType
+    ? getPathColorKey({ kind: pathKind, name: pathName })
+    : pathKind
   const defaultArrowColor = pathName
-    ? getPathArrowColor({ path_type: pathType, name: pathName })
-    : getPathTypeArrowColor(pathType)
+    ? getPathArrowColor({ kind: pathKind, name: pathName })
+    : getPathKindArrowColor(pathKind)
 
   const updateArrows = useCallback(() => {
     const content = contentRef.current

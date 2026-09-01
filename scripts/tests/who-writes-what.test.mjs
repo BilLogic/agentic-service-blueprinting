@@ -56,7 +56,7 @@ export const RECORD_OWNERS = [
     owner: 'the slice',
   },
   {
-    records: ['findings'],
+    records: ['audit_findings'],
     tools: ['record_finding', 'set_finding_status'],
     owner: 'the audit',
   },

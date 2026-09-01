@@ -51,7 +51,7 @@ export function formatBlueprints(blueprints: readonly BlueprintData[]): string {
   const sections: string[] = []
   for (const { path, steps, lanes, cells } of blueprints) {
     const lines: string[] = [
-      `Path "${path.name}" (${path.id}, type ${path.path_type})`,
+      `Path "${path.name}" (${path.id}, type ${path.kind})`,
       `Steps: ${steps
         .map((step) => `${step.position}. "${step.name}" (${step.id})`)
         .join(' | ')}`,
@@ -89,11 +89,11 @@ export function formatFields(fields: Array<[string, unknown]>): string {
 }
 
 export function formatSliceList(
-  slices: ReadonlyArray<{ id: string; title: string; slice_type: string }>,
+  slices: ReadonlyArray<{ id: string; title: string; kind: string }>,
 ): string {
   if (slices.length === 0) return 'No slices yet.'
   return slices
-    .map((slice) => `"${slice.title}" (${slice.id}, type ${slice.slice_type})`)
+    .map((slice) => `"${slice.title}" (${slice.id}, type ${slice.kind})`)
     .join('\n')
 }
 
@@ -101,7 +101,7 @@ export function formatSliceDetail(
   slice: {
     id: string
     title: string
-    slice_type: string
+    kind: string
     actor?: string | null
   },
   items: ReadonlyArray<{
@@ -117,7 +117,7 @@ export function formatSliceDetail(
       (frame, index) =>
         `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.title ? ` title "${frame.title}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
     )
-  return `slice "${slice.title}" (${slice.id}) type=${slice.slice_type}${slice.actor ? ` actor=${slice.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
+  return `slice "${slice.title}" (${slice.id}) type=${slice.kind}${slice.actor ? ` actor=${slice.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
 }
 
 export function formatOwnerTags(

@@ -36,7 +36,7 @@ blueprint's own scaffolding, 224 of 299 lane rows. Never ask who they are for.
 - A frontstage/customer cell with zero value_props while its siblings have
   them → info; per-lane grouped finding.
 - A STAKEHOLDER who appears as a lane but is never named as a value audience
-  anywhere → warn; scope-key fingerprint; note asks "who is this lane for?".
+  anywhere → warn; scope-key fingerprint; summary asks "who is this lane for?".
   `Supervisor` is the live example: one lane, a real actor, zero value
   entries — a true finding this check could not previously make.
 - Value claimed for an audience that resolves to no stakeholder → info, and

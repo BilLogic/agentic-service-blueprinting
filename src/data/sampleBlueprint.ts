@@ -55,23 +55,23 @@ export type SampleScenario = {
   summary: string
   position: number
   /** Client-vocabulary view type for the offline nav. */
-  view_type: 'single' | 'stacked'
+  layout: 'single' | 'stacked'
   /** Exactly one scenario is the compare/slice demo anchor — see SAMPLE_SCENARIO_ID. */
   primary?: boolean
   path_ids: string[]
 }
 
 export const SAMPLE_SCENARIOS: SampleScenario[] = [
-  {"id":"f0000000-0000-4000-8000-100000000001","phase_id":"f0000000-0000-4000-8000-000700010000","name":"Find the kit and see what it does","summary":"The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.","position":1,"view_type":"single","path_ids":["f0000000-0000-4000-8000-110000000000"]},
-  {"id":"f0000000-0000-4000-8000-200000000001","phase_id":"f0000000-0000-4000-8000-000700020000","name":"Map your service","summary":"The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.","position":1,"view_type":"stacked","primary":true,"path_ids":["f0000000-0000-4000-8000-210000000000","f0000000-0000-4000-8000-220000000000"]},
-  {"id":"f0000000-0000-4000-8000-300000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Audit the check roster","summary":"sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.","position":1,"view_type":"stacked","path_ids":["f0000000-0000-4000-8000-310000000000","f0000000-0000-4000-8000-320000000000"]},
-  {"id":"f0000000-0000-4000-8000-400000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Ideate a change (what-if)","summary":"sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.","position":2,"view_type":"single","path_ids":["f0000000-0000-4000-8000-410000000000"]},
-  {"id":"f0000000-0000-4000-8000-500000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Slice for an audience","summary":"sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.","position":3,"view_type":"single","path_ids":["f0000000-0000-4000-8000-510000000000"]},
-  {"id":"f0000000-0000-4000-8000-600000000001","phase_id":"f0000000-0000-4000-8000-000700040000","name":"Keep it current","summary":"The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.","position":1,"view_type":"single","path_ids":["f0000000-0000-4000-8000-610000000000"]},
+  {"id":"f0000000-0000-4000-8000-100000000001","phase_id":"f0000000-0000-4000-8000-000700010000","name":"Find the kit and see what it does","summary":"The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.","position":1,"layout":"single","path_ids":["f0000000-0000-4000-8000-110000000000"]},
+  {"id":"f0000000-0000-4000-8000-200000000001","phase_id":"f0000000-0000-4000-8000-000700020000","name":"Map your service","summary":"The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.","position":1,"layout":"stacked","primary":true,"path_ids":["f0000000-0000-4000-8000-210000000000","f0000000-0000-4000-8000-220000000000"]},
+  {"id":"f0000000-0000-4000-8000-300000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Audit the check roster","summary":"sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.","position":1,"layout":"stacked","path_ids":["f0000000-0000-4000-8000-310000000000","f0000000-0000-4000-8000-320000000000"]},
+  {"id":"f0000000-0000-4000-8000-400000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Ideate a change (what-if)","summary":"sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.","position":2,"layout":"single","path_ids":["f0000000-0000-4000-8000-410000000000"]},
+  {"id":"f0000000-0000-4000-8000-500000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Slice for an audience","summary":"sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.","position":3,"layout":"single","path_ids":["f0000000-0000-4000-8000-510000000000"]},
+  {"id":"f0000000-0000-4000-8000-600000000001","phase_id":"f0000000-0000-4000-8000-000700040000","name":"Keep it current","summary":"The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.","position":1,"layout":"single","path_ids":["f0000000-0000-4000-8000-610000000000"]},
 ]
 
 export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-110000000000","name":"A first look","summary":"Repository to running app to decision, with no account, no key, and no database anywhere.","note":null,"path_type":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-110000000000","name":"A first look","summary":"Repository to running app to decision, with no account, no key, and no database anywhere.","note":null,"kind":"happy"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-110100000000","name":"Stakeholders","role":"stakeholders","position":0},
     {"id":"f0000000-0000-4000-8000-110100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -120,7 +120,7 @@ export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-210000000000","name":"From your documents","summary":"The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.","note":null,"path_type":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-210000000000","name":"From your documents","summary":"The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.","note":null,"kind":"happy"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-210100000000","name":"Journey figures","role":"visual","position":0},
     {"id":"f0000000-0000-4000-8000-210100010000","name":"Stakeholders","role":"stakeholders","position":1},
@@ -195,7 +195,7 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-220000000000","name":"From someone else’s diagram","summary":"The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.","note":null,"path_type":"alternative"},
+  path: {"id":"f0000000-0000-4000-8000-220000000000","name":"From someone else’s diagram","summary":"The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.","note":null,"kind":"variant"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-220100000000","name":"Journey figures","role":"visual","position":0},
     {"id":"f0000000-0000-4000-8000-220100010000","name":"Stakeholders","role":"stakeholders","position":1},
@@ -270,7 +270,7 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-310000000000","name":"Findings triaged","summary":"Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.","note":null,"path_type":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-310000000000","name":"Findings triaged","summary":"Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.","note":null,"kind":"happy"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-310100000000","name":"Stakeholders","role":"stakeholders","position":0},
     {"id":"f0000000-0000-4000-8000-310100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -325,7 +325,7 @@ export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-320000000000","name":"A critical finding reopens","summary":"A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.","note":null,"path_type":"unhappy"},
+  path: {"id":"f0000000-0000-4000-8000-320000000000","name":"A critical finding reopens","summary":"A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.","note":null,"kind":"variant"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-320100000000","name":"Stakeholders","role":"stakeholders","position":0},
     {"id":"f0000000-0000-4000-8000-320100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -381,7 +381,7 @@ export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-410000000000","name":"Traced before it lands","summary":"Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.","note":null,"path_type":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-410000000000","name":"Traced before it lands","summary":"Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.","note":null,"kind":"happy"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-410100000000","name":"Stakeholders","role":"stakeholders","position":0},
     {"id":"f0000000-0000-4000-8000-410100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -435,7 +435,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-510000000000","name":"Stakeholder readout","summary":"From “show me my part” to a presented, exportable slice that still points at its cells.","note":null,"path_type":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-510000000000","name":"Stakeholder readout","summary":"From “show me my part” to a presented, exportable slice that still points at its cells.","note":null,"kind":"happy"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-510100000000","name":"Stakeholders","role":"stakeholders","position":0},
     {"id":"f0000000-0000-4000-8000-510100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -496,7 +496,7 @@ export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_KEEP_UPDATE_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-610000000000","name":"Update what changed","summary":"The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.","note":null,"path_type":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-610000000000","name":"Update what changed","summary":"The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.","note":null,"kind":"happy"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-610100000000","name":"Stakeholders","role":"stakeholders","position":0},
     {"id":"f0000000-0000-4000-8000-610100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -576,9 +576,9 @@ export const SAMPLE_BLUEPRINTS_BY_SCENARIO: Record<string, BlueprintData[]> = {
  * the database rows, so the read hooks fall back to them verbatim.
  */
 export const SAMPLE_DEMO_SLICES: Slice[] = [
-  {"id":"f0000000-0000-4000-8000-000500010000","service_id":"f0000000-0000-4000-8000-000000000010","title":"The map, end to end","description":"One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.","actor":"Blueprint owner","slice_type":"journey","origin":"generated","locale":"en","position":1,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
-  {"id":"f0000000-0000-4000-8000-000500020000","service_id":"f0000000-0000-4000-8000-000000000010","title":"The import moment, read top to bottom","description":"One column of Map your service — “Import and verify” — read down every lane at once: the step where a file in a repo becomes rows in a database, and the step with the most that can go quietly wrong.","actor":null,"slice_type":"step","origin":"generated","locale":"en","position":2,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
-  {"id":"f0000000-0000-4000-8000-000500030000","service_id":"f0000000-0000-4000-8000-000000000010","title":"Everything that happens out of sight","description":"One lane of Audit the check roster — the subagent fleet, on the path where findings get triaged — read left to right: the half of the audit nobody watches, and the half that decides whether its verdicts can be trusted.","actor":"Subagent fleet","slice_type":"lane","origin":"generated","locale":"en","position":3,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
+  {"id":"f0000000-0000-4000-8000-000500010000","service_id":"f0000000-0000-4000-8000-000000000010","title":"The map, end to end","description":"One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.","actor":"Blueprint owner","kind":"journey","origin":"generated","locale":"en","position":1,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
+  {"id":"f0000000-0000-4000-8000-000500020000","service_id":"f0000000-0000-4000-8000-000000000010","title":"The import moment, read top to bottom","description":"One column of Map your service — “Import and verify” — read down every lane at once: the step where a file in a repo becomes rows in a database, and the step with the most that can go quietly wrong.","actor":null,"kind":"step","origin":"generated","locale":"en","position":2,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
+  {"id":"f0000000-0000-4000-8000-000500030000","service_id":"f0000000-0000-4000-8000-000000000010","title":"Everything that happens out of sight","description":"One lane of Audit the check roster — the subagent fleet, on the path where findings get triaged — read left to right: the half of the audit nobody watches, and the half that decides whether its verdicts can be trusted.","actor":"Subagent fleet","kind":"lane","origin":"generated","locale":"en","position":3,"created_by":null,"created_at":"2026-08-18T00:00:00+00:00","updated_at":"2026-08-18T00:00:00+00:00"},
 ]
 
 export const SAMPLE_DEMO_SLIDES: Record<string, Slide[]> = {
