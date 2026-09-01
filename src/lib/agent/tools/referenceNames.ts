@@ -1,6 +1,6 @@
 /**
  * The reference-doc vocabulary, as a LEAF module: no imports at all, so
- * `specs.ts` (which quotes these names in the read_reference tool
+ * `specs.ts` (which quotes these names in the get_reference tool
  * summary) stays loadable without dragging read.ts's Vite `?raw`
  * markdown imports into a node test environment — the eval harness bundles
  * specs.ts directly.

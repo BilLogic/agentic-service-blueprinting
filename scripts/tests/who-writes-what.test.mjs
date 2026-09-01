@@ -57,7 +57,7 @@ export const RECORD_OWNERS = [
   },
   {
     records: ['audit_findings'],
-    tools: ['record_finding', 'set_finding_status'],
+    tools: ['create_finding', 'update_finding'],
     owner: 'the audit',
   },
   // No tools, and that is the point rather than an omission: evidence is

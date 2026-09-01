@@ -25,12 +25,12 @@
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 const WRITES = new Set([
-  'add_step', 'add_lane', 'upsert_cell', 'update_cell_content',
-  'update_cell_spec', 'set_cell_dependency', 'rename_path',
+  'create_step', 'create_lane', 'upsert_cell', 'update_cell',
+  'update_cell', 'create_cell_dependency', 'update_path',
   'create_phase', 'create_scenario', 'create_path', 'duplicate_path',
   'duplicate_scenario',
   'create_slice', 'update_slice', 'replace_slides',
-  'record_finding', 'set_finding_status',
+  'create_finding', 'update_finding',
 ])
 
 const writesIn = (trace, turn) =>
@@ -152,7 +152,7 @@ export const CASES = [
       {
         id: 'reads-check-docs',
         fn: (trace) =>
-          calls(trace, 'read_reference').some((t) =>
+          calls(trace, 'get_reference').some((t) =>
             String(t.args.name ?? '').startsWith('check-') ||
             t.args.name === 'audit-playbook',
           ) || 'never read the audit playbook or any check doc',
@@ -164,7 +164,7 @@ export const CASES = [
       {
         id: 'records-findings',
         fn: (trace) =>
-          calls(trace, 'record_finding').length > 0 ||
+          calls(trace, 'create_finding').length > 0 ||
           'ran an audit but never recorded a finding row',
       },
       {
@@ -173,8 +173,8 @@ export const CASES = [
           const offenders = toolCalls(trace).filter(
             (t) =>
               WRITES.has(t.name) &&
-              t.name !== 'record_finding' &&
-              t.name !== 'set_finding_status',
+              t.name !== 'create_finding' &&
+              t.name !== 'update_finding',
           )
           return (
             offenders.length === 0 ||
@@ -185,12 +185,12 @@ export const CASES = [
       {
         id: 'one-run-id',
         fn: (trace) => {
-          const recs = calls(trace, 'record_finding')
+          const recs = calls(trace, 'create_finding')
           const omitted = recs.filter((t) => !t.args.run_id).length
           return (
             recs.length <= 1 ||
             omitted <= 1 ||
-            `${omitted} record_finding calls minted their own run_id — one run, one run_id`
+            `${omitted} create_finding calls minted their own run_id — one run, one run_id`
           )
         },
       },
@@ -299,9 +299,9 @@ Active tab: base blueprint view (no slice tab)`,
     turns: ['Add a Quality Assurance lane to the Map your service scenario.', 'yes, add it.'],
     // --smoke: exercises fixture/DB reads + dry-run write plumbing keyless.
     smokeCalls: [
-      ['read_reference', { name: 'lane-roles' }],
+      ['get_reference', { name: 'lane-roles' }],
       ['list_scenarios', {}],
-      ['add_lane', { scenario_id: 'smoke', name: 'Quality Assurance' }],
+      ['create_lane', { scenario_id: 'smoke', name: 'Quality Assurance' }],
     ],
     smokeReply: 'Adding the Quality Assurance lane now (one line of narration first).',
     traceChecks: [
@@ -311,22 +311,22 @@ Active tab: base blueprint view (no slice tab)`,
         fn: (trace) => {
           const firstWrite = firstIndex(trace, (t) => WRITES.has(t.name))
           if (firstWrite === -1) return 'never wrote the lane'
-          const refBefore = trace.slice(0, firstWrite).some((t) => t.name === 'read_reference')
+          const refBefore = trace.slice(0, firstWrite).some((t) => t.name === 'get_reference')
           const readBefore = trace.slice(0, firstWrite).some((t) => t.name === 'get_blueprint' || t.name === 'list_scenarios')
-          if (!refBefore) return 'no read_reference before the write (lane-roles / lane-vocabulary)'
+          if (!refBefore) return 'no get_reference before the write (lane-roles / lane-vocabulary)'
           if (!readBefore) return 'no blueprint read before the write'
           return true
         },
       },
       {
         id: 'exactly-one-add-lane',
-        fn: (trace) => calls(trace, 'add_lane').length === 1 || `${calls(trace, 'add_lane').length} add_lane calls`,
+        fn: (trace) => calls(trace, 'create_lane').length === 1 || `${calls(trace, 'create_lane').length} create_lane calls`,
       },
       narratesBeforeWrites(1),
     ],
     judgeLines: [
       { id: 'narrates-batch', text: 'The narration before the write batch is short (about one line); the agent does not ask permission per cell. (CA etiquette)' },
-      { id: 'coinage-stated', text: 'If an unusual lane_role was coined, the agent says so explicitly; otherwise it reuses existing vocabulary. (add_lane description + lane-roles)' },
+      { id: 'coinage-stated', text: 'If an unusual lane_role was coined, the agent says so explicitly; otherwise it reuses existing vocabulary. (create_lane description + lane-roles)' },
     ],
   },
   {
@@ -343,7 +343,7 @@ Active tab: base blueprint view (no slice tab)`,
     traceChecks: [noWritesTurn0, upsertsHaveContent],
     judgeLines: [
       { id: 'outline-gate', text: 'Turn 1 is a plain-text outline plus a request for a nod — the skeleton preview gate. (EP-Q2)' },
-      { id: 'step-name-reuse', text: 'IF a proposed step semantically matches a step already visible in the trace reads (e.g. Export once, Dispatch the auditors, Collect and dedupe, Re-run the roster), the EXACT existing name is reused — no synonyms. If nothing proposed overlaps the existing steps, this line PASSES (new names for new moments are correct). (add_step description: name alignment)' },
+      { id: 'step-name-reuse', text: 'IF a proposed step semantically matches a step already visible in the trace reads (e.g. Export once, Dispatch the auditors, Collect and dedupe, Re-run the roster), the EXACT existing name is reused — no synonyms. If nothing proposed overlaps the existing steps, this line PASSES (new names for new moments are correct). (create_step description: name alignment)' },
       { id: 'traceable-cells', text: 'Cells map to the notes; volunteered detail goes to summaries, not bloated labels. (EP-Q6)' },
       { id: 'paths-question', text: 'Path awareness: the agent asks what goes wrong, OR relates the extension to the sibling Happy/Alternative paths, OR states why no further path work is needed — any of the three passes; silence on paths fails. (EP-Q7 / role.md path completeness)' },
     ],
@@ -383,7 +383,7 @@ Active tab: base blueprint view (no slice tab)`,
       {
         id: 'reads-before-updates',
         fn: (trace) => {
-          const firstWrite = firstIndex(trace, (t) => t.name === 'update_cell_content')
+          const firstWrite = firstIndex(trace, (t) => t.name === 'update_cell')
           if (firstWrite === -1) return true // proposing first is also fine
           const readBefore = trace.slice(0, firstWrite).some((t) => t.name === 'get_blueprint' || t.name === 'get_cell')
           return readBefore || 'updated cells without reading them first'
@@ -495,7 +495,7 @@ Active tab: base blueprint view (no slice tab)`,
     // Unambiguous transient failure: a revision conflict has one correct
     // response — report it verbatim, re-read, retry the SAME cell.
     mocks: {
-      update_cell_content: (() => {
+      update_cell: (() => {
         let first = true
         return () => {
           if (first) {

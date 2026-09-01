@@ -154,7 +154,7 @@ const adapterDoc = readFileSync(resolve(REFERENCES_DIR, 'canvas-adapter.md'), 'u
 function buildSystem(skillId, contextNote) {
   const parts = [
     ROLE,
-    '\n\n--- canvas-adapter reference (FULL text — read_reference serves the other, deeper references) ---\n',
+    '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
     adapterDoc,
   ]
   if (skillId) {
@@ -353,15 +353,15 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
       record.dryRun = true
       // The rehearsal note matters: reads are real and will not reflect
       // this write — without it the model re-reads, concludes the write
-      // failed, and retries (observed live: a doubled add_lane).
+      // failed, and retries (observed live: a doubled create_lane).
       record.result =
-        name === 'record_finding'
+        name === 'create_finding'
           ? `Recorded ${args.severity ?? 'warn'} finding for ${args.check_key ?? '?'}. run_id ${args.run_id ?? `00000000-0000-4000-8000-00000000d${dryCounter}`}; reuse it for the rest of this run. NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
           : `Done (${name} accepted, ref dry-${dryCounter}). NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
       return record.result
     }
     switch (name) {
-      case 'read_reference':
+      case 'get_reference':
         record.result = readFileSync(
           resolve(REFERENCES_DIR, `${String(args.name).replace(/[^a-z-]/g, '')}.md`),
           'utf8',

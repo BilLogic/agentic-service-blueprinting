@@ -33,7 +33,7 @@ text this repository publishes to other people's machines.
 - A skill body says `${CLAUDE_PLUGIN_ROOT}/references/data-model.md`. The
   plugin root is wherever Claude Code installed the plugin; the rest of the
   path is ours.
-- The canvas agent calls `read_reference { name: 'data-model' }` and the tool
+- The canvas agent calls `get_reference { name: 'data-model' }` and the tool
   resolves the bare name against `references/`.
 - `.claude-plugin/plugin.json` names `agents/` and `hooks/` for the runtime to
   load.
@@ -64,7 +64,7 @@ reach for first:
 - **`references/` stays at the root.** It is normative protocol and it is not
   moving under `docs/`. `docs/` links to it; `INDEX.md` routes to it.
 - **A reference file is renamed only through the deprecation path in ADR 1**,
-  never as part of a documentation reorganisation. `read_reference` resolves by
+  never as part of a documentation reorganisation. `get_reference` resolves by
   bare filename, so a rename is a runtime break with no compile error.
 
 ## Consequences

@@ -249,12 +249,12 @@ client wrappers in `src/lib/authoringRpc.ts`). The roster:
   `mint_cell_key`, `slices_referencing`, `deletion_impact`,
   `is_service_account`
 - **Creates**: `create_phase`, `create_scenario`, `create_path`,
-  `add_step`, `add_lane`, `upsert_cell`
+  `create_step`, `create_lane`, `upsert_cell`
 - **Duplicates**: `duplicate_scenario`, `duplicate_path`
-- **Renames**: `rename_phase`, `rename_scenario`, `rename_path`,
+- **Renames**: `rename_phase`, `rename_scenario`, `update_path`,
   `rename_owner_tag`
 - **Reorders**: `reorder_steps`, `set_path_steps`, `reorder_lanes`
-- **Dependencies**: `set_cell_dependency`, `clear_cell_dependency`
+- **Dependencies**: `create_cell_dependency`, `clear_cell_dependency`
 - **Deletes** (each archives to `deleted_structure` and returns the
   archive id): `delete_scenario`, `delete_path`, `remove_step`,
   `remove_lane`, `remove_lanes`, `delete_cell`

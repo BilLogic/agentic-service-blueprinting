@@ -23,10 +23,10 @@ const str = (description: string) => ({ type: 'string', description })
  * enforcement stays the real wall.
  */
 export const MOBILE_READ_TOOL_NAMES = new Set([
-  'read_reference',
+  'get_reference',
   'list_scenarios',
   'get_blueprint',
-  'get_compare_diff',
+  'compare_blueprint',
   'get_cell',
   'list_slices',
   'get_slice',
@@ -37,7 +37,7 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
   'open_scenario',
   'focus_cell',
   'open_cell_panel',
-  'get_deletion_impact',
+  'measure_deletion_impact',
   'list_findings',
 ])
 
@@ -53,10 +53,10 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
  * someone deliberately puts it here and gives it a sample-data answer.
  */
 export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
-  'read_reference',
+  'get_reference',
   'list_scenarios',
   'get_blueprint',
-  'get_compare_diff',
+  'compare_blueprint',
   'get_cell',
   'list_slices',
   'get_slice',
@@ -77,17 +77,21 @@ export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
  * named set rather than as "whatever is left over".
  */
 export const READ_TOOL_NAMES = new Set([
-  'read_reference',
+  // A READ, not an interface call: it reports which controls exist right now
+  // and touches neither the canvas nor a row. `ui_command`, which fires one,
+  // is the interface call.
+  'list_ui_commands',
+  'get_reference',
   'list_scenarios',
   'get_blueprint',
-  'get_compare_diff',
+  'compare_blueprint',
   'get_cell',
   'list_slices',
   'get_slice',
   'list_owner_tags',
   'get_ui_state',
   'get_change_history',
-  'get_deletion_impact',
+  'measure_deletion_impact',
   'list_findings',
 ])
 
@@ -109,19 +113,17 @@ export const INTERFACE_TOOL_NAMES = new Set([
   'set_canvas_mode',
   'set_sidebar',
   'annotate_cells',
-  'list_ui_commands',
   'ui_command',
 ])
 
 /** The tools that mutate data — the loop enforces batch etiquette on these. */
 export const WRITE_TOOL_NAMES = new Set([
-  'add_step',
-  'add_lane',
+  'create_step',
+  'create_lane',
   'upsert_cell',
-  'update_cell_content',
-  'update_cell_spec',
-  'set_cell_dependency',
-  'rename_path',
+  'update_cell',
+  'create_cell_dependency',
+  'update_path',
   'create_phase',
   'create_scenario',
   'create_path',
@@ -130,13 +132,13 @@ export const WRITE_TOOL_NAMES = new Set([
   'create_slice',
   'update_slice',
   'replace_slides',
-  'record_finding',
-  'set_finding_status',
+  'create_finding',
+  'update_finding',
 ])
 
 export const TOOL_SPECS: ToolSpec[] = [
   {
-    name: 'read_reference',
+    name: 'get_reference',
     description: `Read a rulebook reference before acting on its topic. Available: ${REFERENCE_NAMES.filter((n) => n !== 'canvas-adapter').join(', ')}. Read lane-roles and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`,
     parameters: {
       type: 'object',
@@ -160,7 +162,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'get_compare_diff',
+    name: 'compare_blueprint',
     description:
       "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (summary, resources, touchpoints) group. Read before driving the compare UI or answering \"what differs\". Dependency edges (leads_to, enables) are not compared.",
     parameters: {
@@ -400,7 +402,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'get_deletion_impact',
+    name: 'measure_deletion_impact',
     description:
       'What deleting something would destroy — cell and arrow counts, which slices lose slides, which of those undo cannot put back, and what survives. A pure read: it deletes nothing, and no delete tool exists for you. Use it to answer "what happens if I remove this?" BEFORE the human opens the confirm dialog. Relay the warning and reassurance sentences VERBATIM; they are worded to not overstate what comes back.',
     parameters: {
@@ -481,7 +483,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'add_step',
+    name: 'create_step',
     description:
       'Add a step (column) to a path. Read sibling paths first — step names align across paths BY NAME, so reuse the exact name when the step exists elsewhere.',
     parameters: {
@@ -498,7 +500,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'add_lane',
+    name: 'create_lane',
     description:
       'Add a lane to EVERY path of a scenario. Read lane-roles and lane-vocabulary first; lane labels are byte-identical for the same actor group across scenarios.',
     parameters: {
@@ -517,7 +519,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'upsert_cell',
     description:
-      'Create the cell at (path, lane, step). Creation ONLY — the call refuses if a cell already exists there (edit with update_cell_content instead). content is REQUIRED and must be real journey text — an empty or placeholder cell is invisible in the grid.',
+      'Create the cell at (path, lane, step). Creation ONLY — the call refuses if a cell already exists there (edit with update_cell instead). content is REQUIRED and must be real journey text — an empty or placeholder cell is invisible in the grid.',
     parameters: {
       type: 'object',
       properties: {
@@ -530,9 +532,9 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'update_cell_content',
+    name: 'update_cell',
     description:
-      'Edit a cell: text, summary (the tl;dr — never a copy of the text), owner and perceived_owner (existing tags — see list_owner_tags). Reads the current values first internally, so only pass fields you mean to change. Fields cannot be CLEARED through this tool — an empty string means keep; ask the human to clear a field in the panel.',
+      'Edit a cell. Text side: content, summary (the tl;dr — never a copy of the text), owner and perceived_owner (existing tags — see list_owner_tags). Spec side: function (what it does), form (how it appears), value_props (audience/value pairs). Reads the current values first, so pass only the fields you mean to change. Fields cannot be CLEARED here — an empty string means keep; ask the human to clear one in the panel.',
     parameters: {
       type: 'object',
       properties: {
@@ -541,20 +543,8 @@ export const TOOL_SPECS: ToolSpec[] = [
         summary: str('New summary; omit to keep'),
         owner: str('Owner tag; omit to keep'),
         perceived_owner: str('Perceived-owner tag; omit to keep'),
-      },
-      required: ['cell_id'],
-    },
-  },
-  {
-    name: 'update_cell_spec',
-    description:
-      'Edit a cell’s spec: function (what it does), form (how it appears), value_props (audience/value pairs).',
-    parameters: {
-      type: 'object',
-      properties: {
-        cell_id: str('Cell id'),
-        function: str('Function text; omit to keep'),
-        form: str('Form text; omit to keep'),
+        function: str('Function text — what the cell does; omit to keep'),
+        form: str('Form text — how it appears; omit to keep'),
         value_props: {
           type: 'array',
           description: 'Full replacement list of {for, value}; omit to keep',
@@ -569,7 +559,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'set_cell_dependency',
+    name: 'create_cell_dependency',
     description:
       'Connect two cells on the SAME path. kind "leads_to" = source makes target happen (drawn as an arrow); "enables" = source makes target possible without causing it (panel-only) — "X only makes sense once Y is true" reads as Y enables X, source-first. State which kind you chose and why in your reply. Arrows only where they add information.',
     parameters: {
@@ -584,7 +574,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'rename_path',
+    name: 'update_path',
     description: 'Rename a path.',
     parameters: {
       type: 'object',
@@ -608,7 +598,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
-    name: 'record_finding',
+    name: 'create_finding',
     description:
       'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_key + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
     parameters: {
@@ -624,13 +614,13 @@ export const TOOL_SPECS: ToolSpec[] = [
           items: { type: 'string' },
         },
         scope: str('Zero-cell fingerprint scope, required when cell_ids is empty. Include a short reason slug so two zero-cell findings from one check cannot collide, e.g. "scenario:Intake Call:orphan-step-cooldown"'),
-        run_id: str('The run identity returned by the first record_finding of this run'),
+        run_id: str('The run identity returned by the first create_finding of this run'),
       },
       required: ['source', 'check_key', 'severity', 'summary'],
     },
   },
   {
-    name: 'set_finding_status',
+    name: 'update_finding',
     description:
       'Triage a finding: resolved (fixed / no longer true) or dismissed (accepted as-is; dismissed findings never reopen), or open to reopen. This is the only edit humans or agents make to an existing finding.',
     parameters: {

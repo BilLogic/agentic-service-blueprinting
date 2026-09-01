@@ -63,7 +63,7 @@ tier/mobile injections.
 ## C. Write discipline
 
 - **C1 add-lane** — QA lane, two turns. [T] reference + blueprint read
-  before the write; exactly one add_lane; narration precedes the write.
+  before the write; exactly one create_lane; narration precedes the write.
   [J] one-line batch narration; coinage stated. *(smoke)*
 - **C2 notes-to-path** — same notes, extend the reopened-finding path.
   [T] no writes before the nod; upserts carry content. [J] outline gate
@@ -98,7 +98,7 @@ tier/mobile injections.
 ## E. Communication & error etiquette
 
 - **E1 error-etiquette** — mocked revision conflict on the first
-  update_cell_content. [T] no blind identical retry without a re-read; no
+  update_cell. [T] no blind identical retry without a re-read; no
   writes to unread targets. [J] the error is surfaced near-verbatim even
   when recovery follows (CA etiquette).
 - **E2 id-hygiene** — "which cells mention validate_ir.py", then

@@ -52,7 +52,7 @@ const ADAPTERS: Record<string, AgentProviderAdapter> = {
  *
  * The service-designer posture + the canvas
  * adapter (the plugin rulebook's app translation), with the deeper
- * references behind the read_reference tool — the runtime version of the
+ * references behind the get_reference tool — the runtime version of the
  * skills' progressive disclosure. Full four-skill routing (loading
  * skills/map or skills/slice SKILL.md per task) lanes on here once the
  * sync script vendors them; the adapter is written to make that a drop-in.
@@ -66,7 +66,7 @@ export function buildSystem(
 ): string {
   return [
     ROLE,
-    '\n\n--- canvas-adapter reference (FULL text — read_reference serves the other, deeper references) ---\n',
+    '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
     canvasAdapterDoc,
     skill?.content
       ? `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
