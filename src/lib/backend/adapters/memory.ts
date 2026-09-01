@@ -85,7 +85,7 @@ export function createMemoryBackend(
     scenarioId: stored.scenarioId,
     title: stored.title,
     sliceKind: stored.sliceKind,
-    origin: stored.origin,
+    authorship: stored.authorship,
     slides: [...stored.slides].sort((a, b) => a.position - b.position),
   })
 
@@ -133,7 +133,7 @@ export function createMemoryBackend(
           scenarioId: draft.scenarioId,
           title: draft.title,
           sliceKind: draft.sliceKind,
-          origin: draft.origin,
+          authorship: draft.authorship,
           slides: [],
           complete: false,
         }

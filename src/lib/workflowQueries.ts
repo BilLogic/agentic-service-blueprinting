@@ -50,7 +50,7 @@ export const PATH_BLUEPRINT_SELECT = `
       id,
       target_cell_id,
       kind,
-      label,
+      name,
       note
     )
   )

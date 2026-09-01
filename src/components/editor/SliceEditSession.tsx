@@ -67,7 +67,7 @@ export function SliceEditSession({
     () =>
       validateDraftSlice({
         title: detail.slice.title,
-        description: detail.slice.description ?? '',
+        summary: detail.slice.summary ?? '',
         sliceKind: isSliceKind(detail.slice.kind)
           ? detail.slice.kind
           : 'custom',
@@ -136,12 +136,12 @@ export function SliceEditSession({
         sliceToken(detail.slice),
         {
           title: detail.slice.title,
-          description: detail.slice.description ?? '',
+          summary: detail.slice.summary ?? '',
           sliceKind: isSliceKind(detail.slice.kind)
             ? detail.slice.kind
             : 'custom',
           actor: detail.slice.actor ?? '',
-          origin: detail.slice.origin,
+          authorship: detail.slice.authorship,
         },
       )
       if (outcome.status === 'conflict') {

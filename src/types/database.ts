@@ -93,7 +93,7 @@ export type Database = {
           created_at: string
           id: string
           kind: string
-          label: string | null
+          name: string | null
           note: string | null
           source_cell_id: string
           target_cell_id: string
@@ -103,7 +103,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: string
-          label?: string | null
+          name?: string | null
           note?: string | null
           source_cell_id: string
           target_cell_id: string
@@ -113,7 +113,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: string
-          label?: string | null
+          name?: string | null
           note?: string | null
           source_cell_id?: string
           target_cell_id?: string
@@ -860,10 +860,10 @@ export type Database = {
           actor: string | null
           created_at: string
           created_by: string | null
-          description: string | null
+          summary: string | null
           id: string
           locale: string
-          origin: string
+          authorship: string
           position: number
           service_id: string
           kind: string
@@ -874,10 +874,10 @@ export type Database = {
           actor?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
+          summary?: string | null
           id?: string
           locale?: string
-          origin?: string
+          authorship?: string
           position?: number
           service_id: string
           kind: string
@@ -888,10 +888,10 @@ export type Database = {
           actor?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
+          summary?: string | null
           id?: string
           locale?: string
-          origin?: string
+          authorship?: string
           position?: number
           service_id?: string
           kind?: string

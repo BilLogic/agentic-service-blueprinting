@@ -5,7 +5,7 @@ import {
   readWriteOutcome,
   type UpdatedAtToken,
 } from '@/lib/optimisticConcurrency'
-import { originAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
+import { authorshipAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
 import type { Database, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
@@ -90,7 +90,7 @@ export async function deleteSlice(
 export type NewSlice = {
   serviceId: string
   title: string
-  description: string
+  summary: string
   sliceKind: SliceKind
   actor: string
   /** Ordered cell ids; one slide per cell unless `slides` is given. */
@@ -121,10 +121,10 @@ export async function createSlice(
     .insert({
       service_id: input.serviceId,
       title: input.title.trim(),
-      description: input.description.trim() || null,
+      summary: input.summary.trim() || null,
       kind: input.sliceKind,
       actor: input.actor.trim() || null,
-      origin: 'human',
+      authorship: 'human',
     })
     .select()
     .single()
@@ -226,7 +226,7 @@ export async function replaceSlides(
 /**
  * Copy a slice — row and slides — as "<title> copy".
  *
- * The copy is `origin: 'human'` regardless of the source's origin: the act
+ * The copy is `authorship: 'human'` regardless of the source's authorship: the act
  * of duplicating is authorship, and a copy the slice skill could regenerate
  * over would not be the safe scratchpad duplication exists to provide.
  */
@@ -253,10 +253,10 @@ export async function duplicateSlice(
     .insert({
       service_id: source.service_id,
       title: `${source.title} copy`,
-      description: source.description,
+      summary: source.summary,
       kind: source.kind,
       actor: source.actor,
-      origin: 'human',
+      authorship: 'human',
     })
     .select()
     .single()
@@ -289,11 +289,11 @@ export async function duplicateSlice(
 
 export type SliceMetaUpdate = {
   title: string
-  description: string
+  summary: string
   sliceKind: SliceKind
   actor: string
   /** Current origin; an edit promotes `generated` to `customized`. */
-  origin: string
+  authorship: string
 }
 
 /**
@@ -320,7 +320,7 @@ export async function updateSliceMeta(
 ) {
   const { data: before, error: beforeError } = await client
     .from('slices')
-    .select('title, description, kind, actor, origin')
+    .select('title, summary, kind, actor, authorship')
     .eq('id', sliceId)
     .maybeSingle()
   if (beforeError) throw new Error(beforeError.message)
@@ -329,10 +329,10 @@ export async function updateSliceMeta(
     .from('slices')
     .update({
       title: update.title.trim(),
-      description: update.description.trim() || null,
+      summary: update.summary.trim() || null,
       kind: update.sliceKind,
       actor: update.actor.trim() || null,
-      origin: originAfterEdit(update.origin),
+      authorship: authorshipAfterEdit(update.authorship),
       // updated_at is trigger-maintained — never set it here.
     })
     .eq('id', sliceId)
@@ -365,24 +365,24 @@ export async function updateSliceMeta(
 /** The subset of `slices` a meta update writes — what is compared and restored. */
 type SliceMetaFields = Pick<
   Slice,
-  'title' | 'description' | 'kind' | 'actor' | 'origin'
+  'title' | 'summary' | 'kind' | 'actor' | 'authorship'
 >
 
 /**
  * Did the update change anything?
  *
  * Compared field by field against the row the update RETURNED, not against the
- * caller's intent: `origin` is rewritten by `originAfterEdit` rather than
+ * caller's intent: `origin` is rewritten by `authorshipAfterEdit` rather than
  * passed through, and the trimming happens in the update itself, so comparing
  * `before` to the arguments would call a no-op save a change (and vice versa).
  */
 function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
   return (
     before.title !== after.title ||
-    before.description !== after.description ||
+    before.summary !== after.summary ||
     before.kind !== after.kind ||
     before.actor !== after.actor ||
-    before.origin !== after.origin
+    before.authorship !== after.authorship
   )
 }
 

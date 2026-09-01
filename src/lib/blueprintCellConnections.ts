@@ -82,7 +82,7 @@ function toConnection(
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
     linkKind: trigger.kind === 'enables' ? 'enables' : 'leads_to',
-    linkLabel: trigger.label ?? null,
+    linkLabel: trigger.name ?? null,
     linkNote: trigger.note ?? null,
     isTech,
     techItems,

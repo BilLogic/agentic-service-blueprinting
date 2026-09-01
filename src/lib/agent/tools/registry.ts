@@ -174,7 +174,7 @@ export async function dispatchTool(
       const sliceId = need(args, 'slice_id')
       const { data, error } = await client
         .from('slices')
-        .select('id, title, description, kind, actor, origin, slides(id, position, title, narrative, cell_ids)')
+        .select('id, title, summary, kind, actor, authorship, slides(id, position, title, narrative, cell_ids)')
         .eq('id', sliceId)
         .maybeSingle()
       if (error) throw new Error(error.message)
@@ -450,7 +450,7 @@ export async function dispatchTool(
         const slice = await createSlice(client, {
           serviceId: await serviceId(client),
           title: need(args, 'title'),
-          description: s(args, 'description') ?? '',
+          summary: s(args, 'summary') ?? '',
           sliceKind: need(args, 'kind') as SliceKind,
           actor: s(args, 'actor') ?? '',
           cellIds,
@@ -461,17 +461,17 @@ export async function dispatchTool(
         const sliceId = need(args, 'slice_id')
         const { data, error } = await client
           .from('slices')
-          .select('title, description, kind, actor, origin, updated_at')
+          .select('title, summary, kind, actor, authorship, updated_at')
           .eq('id', sliceId)
           .maybeSingle()
         if (error) throw new Error(error.message)
         if (!data) throw new Error(`No slice with id ${sliceId}.`)
         const outcome = await updateSliceMeta(client, sliceId, asUpdatedAtToken(data.updated_at), {
           title: s(args, 'title') ?? data.title,
-          description: s(args, 'description') ?? data.description ?? '',
+          summary: s(args, 'summary') ?? data.summary ?? '',
           sliceKind: (s(args, 'kind') ?? data.kind) as SliceKind,
           actor: s(args, 'actor') ?? data.actor ?? '',
-          origin: data.origin,
+          authorship: data.authorship,
         })
         if (outcome.status === 'conflict')
           throw new Error('The slice changed since you read it — re-read and retry.')

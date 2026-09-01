@@ -72,7 +72,7 @@ function invalidDraft(scenarioId: string): SliceDraft {
     scenarioId,
     title: '',
     sliceKind: 'custom',
-    origin: 'generated',
+    authorship: 'generated',
     slides: [{ position: 0, title: 'orphan', body: null, cellIds: [] }],
   }
 }
@@ -82,7 +82,7 @@ function draft(title: string, scenarioId: string): SliceDraft {
     scenarioId,
     title,
     sliceKind: 'custom',
-    origin: 'generated',
+    authorship: 'generated',
     slides: [
       { position: 0, title: 'first', body: 'one', cellIds: [] },
       { position: 1, title: 'second', body: null, cellIds: [] },

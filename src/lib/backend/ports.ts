@@ -79,7 +79,7 @@ export type SliceSummary = {
   scenarioId: string | null
   title: string
   sliceKind: string
-  origin: string
+  authorship: string
 }
 
 export type SliceDetail = SliceSummary & { slides: Slide[] }
@@ -88,7 +88,7 @@ export type SliceDraft = {
   scenarioId: string | null
   title: string
   sliceKind: string
-  origin: string
+  authorship: string
   slides: Slide[]
 }
 

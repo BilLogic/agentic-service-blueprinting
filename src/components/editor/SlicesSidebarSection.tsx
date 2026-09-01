@@ -263,7 +263,7 @@ function RenameSliceDialog({
 }) {
   const { client } = useSupabase()
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [summary, setSummary] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -273,7 +273,7 @@ function RenameSliceDialog({
   if (open && slice && !seeded) {
     setSeeded(true)
     setTitle(slice.title)
-    setDescription(slice.description ?? '')
+    setSummary(slice.summary ?? '')
     setError(null)
   }
   if (!open && seeded) setSeeded(false)
@@ -286,10 +286,10 @@ function RenameSliceDialog({
     try {
       outcome = await updateSliceMeta(client, slice.id, sliceToken(slice), {
         title,
-        description,
+        summary,
         sliceKind: isSliceKind(slice.kind) ? slice.kind : 'custom',
         actor: slice.actor ?? '',
-        origin: slice.origin ?? 'human',
+        authorship: slice.authorship ?? 'human',
       })
     } catch (renameError) {
       setBusy(false)
@@ -335,9 +335,9 @@ function RenameSliceDialog({
               </span>
             </span>
             <Input
-              value={description}
+              value={summary}
               placeholder="What this slice shows, and who it is for"
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(event) => setSummary(event.target.value)}
             />
           </label>
           {error ? (

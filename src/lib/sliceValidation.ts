@@ -13,15 +13,15 @@
 export const SLICE_KINDS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
 export type SliceKind = (typeof SLICE_KINDS)[number]
 
-export const SLICE_ORIGINS = ['generated', 'customized', 'human'] as const
-export type SliceOrigin = (typeof SLICE_ORIGINS)[number]
+export const SLICE_AUTHORSHIPS = ['generated', 'customized', 'human'] as const
+export type SliceAuthorship = (typeof SLICE_AUTHORSHIPS)[number]
 
 export function isSliceKind(value: string): value is SliceKind {
   return (SLICE_KINDS as readonly string[]).includes(value)
 }
 
-export function isSliceOrigin(value: string): value is SliceOrigin {
-  return (SLICE_ORIGINS as readonly string[]).includes(value)
+export function isSliceAuthorship(value: string): value is SliceAuthorship {
+  return (SLICE_AUTHORSHIPS as readonly string[]).includes(value)
 }
 
 /** A slide as the editor holds it, before it becomes a `slides` row. */
@@ -35,7 +35,7 @@ export type DraftSlide = {
 
 export type DraftSlice = {
   title: string
-  description: string
+  summary: string
   sliceKind: SliceKind
   actor: string
   slides: DraftSlide[]
@@ -106,7 +106,7 @@ export function isDraftSaveable(draft: DraftSlice): boolean {
  * slice skill from regenerating over hand-written prose. `human` slices —
  * authored here in the first place — stay `human`.
  */
-export function originAfterEdit(current: string): SliceOrigin {
+export function authorshipAfterEdit(current: string): SliceAuthorship {
   if (current === 'human') return 'human'
   return 'customized'
 }

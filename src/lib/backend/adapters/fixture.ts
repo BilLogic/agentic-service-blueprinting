@@ -85,7 +85,7 @@ function sliceSummary(slice: (typeof FALLBACK_SLICES)[number]): SliceSummary {
     scenarioId: null,
     title: slice.title,
     sliceKind: slice.kind,
-    origin: slice.origin,
+    authorship: slice.authorship,
   }
 }
 

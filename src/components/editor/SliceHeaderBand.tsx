@@ -44,7 +44,7 @@ export function SliceHeaderBand({
   className?: string
 }) {
   const SecondaryIcon = secondaryAction?.icon
-  const description = detail.slice.description?.trim()
+  const description = detail.slice.summary?.trim()
   const PrimaryIcon = primaryAction.icon
 
   // Collapsed: the floating pill is the only header on screen, so hand it
