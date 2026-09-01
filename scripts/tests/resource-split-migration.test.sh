@@ -41,6 +41,11 @@ for file in "$REPO_ROOT"/supabase/migrations/*.sql; do
   psql -v ON_ERROR_STOP=1 -d "$DATABASE_NAME" -f "$file" >/dev/null
 done
 
+# This seed runs at the schema as it stood BEFORE $TARGET, so it spells the
+# columns the way that schema does: `view_type` and `path_type`, which
+# 21000116000000 later renames to `layout` and `kind`. A vocabulary sweep that
+# updates these two lines makes the script insert into columns that do not
+# exist yet, which is what happened the first time.
 psql -v ON_ERROR_STOP=1 -d "$DATABASE_NAME" >/dev/null <<'SQL'
 insert into public.services (id, name, summary)
 values ('10000000-0000-4000-8000-000000000001', 'Migration proof', null);
@@ -52,14 +57,14 @@ values (
   'Before', null, 1
 );
 
-insert into public.scenarios (id, phase_id, name, summary, position, layout)
+insert into public.scenarios (id, phase_id, name, summary, position, view_type)
 values (
   '10000000-0000-4000-8000-000000000003',
   '10000000-0000-4000-8000-000000000002',
   'Carry the citation', null, 1, 'single'
 );
 
-insert into public.paths (id, scenario_id, name, summary, note, kind)
+insert into public.paths (id, scenario_id, name, summary, note, path_type)
 values (
   '10000000-0000-4000-8000-000000000004',
   '10000000-0000-4000-8000-000000000003',
