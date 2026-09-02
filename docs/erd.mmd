@@ -2,12 +2,12 @@
 %% Source of truth: supabase/migrations/ (consolidated template schema 20260716200000
 %%   + derived layer 20260729120000/20260730090000/20260803001000
 %%   + authoring foundation/operations + optional tier recipe 20260818*).
-%% Enums: scenarios.layout ∈ (single | side-by-side | integrated)
-%%        paths.kind ∈ (happy | unhappy | exception | alternative)
-%%        origin (structure tables) ∈ (import | app); slices.origin ∈ (generated | customized | human)
+%% Enums: scenarios.layout ∈ (single | stacked) — merged is a session view, never stored
+%%        paths.kind ∈ (happy | variant | exception)
+%%        origin (structure tables) ∈ (import | app); slices.authorship ∈ (generated | customized | human)
 %%        cell_dependencies.kind ∈ (leads_to | enables)
 %%        slices.kind ∈ (journey | step | lane | cell | custom)
-%%        findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
+%%        audit_findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
 %%        evidence.kind ∈ (interview | survey | analytics | doc | meeting | decision | observation | other)
 %%        deleted_structure.kind ∈ (scenario | path | lane | step | cell)
@@ -18,7 +18,7 @@
 %%            customer_actions, frontstage_actions, backstage_actions, frontstage_tech,
 %%            backstage_tech, support_systems, visual, step_visual; extensible (org-defined
 %%            custom roles render as generic swimlanes); null = generic swimlane.
-%% Derived layer: slices/findings/evidence reference cells SOFTLY (uuid / uuid[] with paired
+%% Derived layer: slices/audit_findings/evidence reference cells SOFTLY (uuid / uuid[] with paired
 %%            cell_keys, no FK) — scenario re-import deletes and recreates cells; the authored
 %%            cell_key is the identity that survives. A cell with zero evidence rows is an
 %%            ASSUMPTION (derived state, never stored). evidence_counts (view) exposes
@@ -46,7 +46,7 @@ erDiagram
   cell_touchpoints ||--o{ resources : "points at"
   services ||--o{ slices : "has many"
   slices ||--o{ slides : "has many"
-  services ||--o{ findings : "has many"
+  services ||--o{ audit_findings : "has many"
   services ||--o{ evidence : "has many"
   services ||--o| business_models : "has 0..1"
 
@@ -76,7 +76,7 @@ erDiagram
     text name
     text summary
     int position
-    text layout "single | side-by-side | integrated"
+    text layout "single | stacked — merged is a session view, never stored"
     text origin "import | app"
   }
 
@@ -86,7 +86,7 @@ erDiagram
     text name
     text summary
     text note "optional, e.g. parallel-scenario context"
-    text kind "happy | unhappy | exception | alternative"
+    text kind "happy | variant | exception"
     text origin "import | app"
   }
 
@@ -169,10 +169,10 @@ erDiagram
     uuid service_id FK
     text kind "journey | step | lane | cell | custom"
     text title
-    text description
+    text summary
     text actor
     text locale "default en"
-    text origin "generated | customized | human"
+    text authorship "generated | customized | human"
     int position
     uuid created_by "auth.uid() at insert"
   }
@@ -189,7 +189,7 @@ erDiagram
     uuid created_by
   }
 
-  findings {
+  audit_findings {
     uuid id PK
     uuid service_id FK
     uuid run_id "audit-run identity; intentionally FK-less"
@@ -198,7 +198,7 @@ erDiagram
     text severity "info | warn | critical"
     uuid[] cell_ids "SOFT refs, paired with cell_keys"
     text[] cell_keys
-    text note
+    text summary
     text fingerprint "dedupe identity; unique per service while open"
     text status "open | resolved | dismissed; inserts must be open"
   }

@@ -84,7 +84,7 @@ The app is where people read, compare, and present. The in-app agent drafts chan
 - **`lanes.lane_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/laneRoles.ts`](./src/lib/laneRoles.ts).
 - **Steps are scenario-scoped columns** shared across paths via `path_steps` ordering — see [references/data-model.md](./references/data-model.md).
 - **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → lanes → cells → cell_dependencies`.
-- **View modes** per scenario: `single`, `side-by-side` (any set of labeled variants — e.g. designed vs. reality), `integrated` (runtime merge).
+- **Layouts** per scenario: `layout` is `single` (one path at a time) or `stacked` (labelled variants compared slot by slot). The merged canvas is a session view, never stored; `side-by-side` and `integrated` became `stacked` in `21000116000000`.
 
 Full detail when you need it: [docs/connectors/supabase/database.md](./docs/connectors/supabase/database.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
 

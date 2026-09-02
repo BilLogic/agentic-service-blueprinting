@@ -73,7 +73,7 @@ happen. A handoff, rendered as an arrow.
 possible without causing it. A precondition, never drawn, because a blueprint
 in which every relationship is an arrow cannot be read. Both kinds read
 source-first: `A enables B` puts the precondition at the source, the same end
-`A leads_to B` puts the cause. (The retired `needs` put it at the target, so
+`A leads_to B` puts the cause. (The `needs` that `21000114000000` retired put it at the target, so
 those edges turned around in `21000114000000`.) The panel names each end:
 **Follows** and **Leads to** for the drawn kind, **Enabled by** and
 **Enables** for the recorded one.
@@ -84,6 +84,15 @@ identifier sweep has no fragment to key on and the copy sweep no reader-facing
 word: a database *trigger* is a live subject in these documents, and "needs"
 is English. `scripts/check-dependency-kinds.mjs` holds them instead, in their
 code-span form, across every rulebook tree an agent or reader follows.
+
+The same is true of `scenarios.layout = 'side-by-side'`,
+`scenarios.layout = 'integrated'`, `paths.kind = 'unhappy'` and
+`paths.kind = 'alternative'`, which `21000116000000` folded into `stacked`,
+`exception` and `variant`: values, so no fragment and no copy word.
+`scripts/value-set-claims.mjs` holds them — a list in any swept document
+that names one is stale, unless the sentence records the retirement and
+cites the migration — and holds every documented value set to the CHECK
+that defines it, read off the schema dump.
 
 ## What the skills produce
 
@@ -164,6 +173,8 @@ now checks that nothing came back.
 | `description` | `summary` | `21000108000000` |
 | `propositions` | `business_model` | `21000111000000` |
 | `cell_dependencies.kind = 'trigger'`, `cell_dependencies.kind = 'needs'` | `cell_dependencies.kind = 'leads_to'`, `cell_dependencies.kind = 'enables'` | `21000114000000` |
+| `scenarios.layout = 'side-by-side'`, `scenarios.layout = 'integrated'` | `scenarios.layout = 'stacked'`, `scenarios.layout = 'stacked'` | `21000116000000` |
+| `paths.kind = 'unhappy'`, `paths.kind = 'alternative'` | `paths.kind = 'exception'`, `paths.kind = 'variant'` | `21000116000000` |
 | `business_model` | `business_models` | `21000116000000` |
 | `findings`, `findings.check_name`, `findings.note` | `audit_findings`, `audit_findings.check_key`, `audit_findings.summary` | `21000116000000` |
 | `paths.path_type`, `slices.slice_type`, `scenarios.view_type` | `paths.kind`, `slices.kind`, `scenarios.layout` | `21000116000000` |

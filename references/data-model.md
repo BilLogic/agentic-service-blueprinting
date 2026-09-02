@@ -101,7 +101,8 @@ erDiagram
 - `scenarios.layout`: `single` \| `stacked` — ONE vocabulary. The
   stored token is the token the UI names. (It used to store
   `single | side-by-side | integrated` with a translation module; all rows held
-  `side-by-side` and the other two were unused, so the translation was deleted.)
+  `side-by-side` and the other two were unused, so `21000116000000` folded
+  both into `stacked` and the translation was deleted.)
   - `single`: one path at a time (path picker)
   - `stacked`: labeled variant comparison — any two labeled variants
     ("as designed" vs "reality" is just the default labeling)

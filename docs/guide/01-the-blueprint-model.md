@@ -98,9 +98,11 @@ with everything else dimmed, and **in presentation**, one frame at a time
 on a dark surface with a filmstrip and a locator. Same slice, two ways of
 looking at it.
 
-## 5. View modes
+## 5. Layouts
 
-Per scenario: `single`, `side-by-side` (any set of labelled variants, such
-as designed versus reality), and `integrated` (a runtime merge of the
-paths). Comparison is per slot, so a difference in one cell is a difference
-you can point at.
+Per scenario, `layout` is `single` (one path at a time, chosen in the path
+picker) or `stacked` (any two labelled variants, such as designed versus
+reality, compared slot by slot). The merged canvas — the compared paths drawn
+as one grid — is a session view and is never stored; `side-by-side` and
+`integrated` became `stacked` in `21000116000000`. Comparison is per slot,
+so a difference in one cell is a difference you can point at.

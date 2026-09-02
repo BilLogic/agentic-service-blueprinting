@@ -69,8 +69,8 @@ export function schemaInventory(dump) {
     for (const line of m[2].split('\n')) {
       const col = /^\s{4}(\w+)\s/.exec(line)
       if (col && !/^(CONSTRAINT)$/.test(col[1])) columns.add(`${m[1]}.${col[1]}`)
-      const inline = /^\s{4}(\w+)\s.*CHECK \(\(?(\w+) = ANY \(ARRAY\[([^\]]*)\]\)/.exec(line)
-      if (inline) values.set(`${m[1]}.${inline[2]}`, valueList(inline[3]))
+      const inline = /^\s{4}\w+\s.*CHECK \(\(?(?:\(\w+ IS NULL\) OR \()?\(?(\w+) = ANY \(ARRAY\[([^\]]*)\]\)/.exec(line)
+      if (inline) values.set(`${m[1]}.${inline[1]}`, valueList(inline[2]))
     }
   }
   const CHECK =
