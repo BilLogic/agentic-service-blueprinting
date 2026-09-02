@@ -61,7 +61,7 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | Path column order | `path_steps` | `position` per `(path_id, step_id)` |
 | Cell | `cells` | unique `(lane_id, step_id, position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
 | Cell dependency | `cell_dependencies` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
-| Touchpoint placement | `cell_touchpoints` | unique `(cell_id, name)`; owns the summary, screenshots and design link for that moment |
+| Touchpoint placement | `cell_touchpoints` | unique `(cell_id, name)`; owns the summary and role for that moment — what it points at is `resources` rows carrying its id |
 | Resource | `resources` | every row carries its cell; a placement's carries `cell_touchpoint_id` as well, held to the placement's cell by a composite key |
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not service phases. Phases live in `phases`.
@@ -113,8 +113,12 @@ one of them.
 | `name` | yes | What it is called here; matches a line of `content`, which the grid draws as a pill. Unique per cell |
 | `position` | yes | Author order within the cell |
 | `summary` | no | Prose about this touchpoint at THIS moment |
-| `screenshots` | yes (default `{}`) | `text[]` of screenshot/illustration paths, in author order |
-| `url` | no | The design file for THIS moment, not for the tool |
+| `role` | no | `core` \| `peripheral` — whether the moment happens through this touchpoint or it is merely present. Null = nobody has judged it, and renders nothing |
+
+A placement's design link and screenshots are `resources` rows carrying its
+`cell_touchpoint_id` — a featured `link`, and `attachment`s with the first
+featured. `21000119000000` copied the `url` and `screenshots` columns there and
+dropped them.
 
 `resources` — what a cell points at:
 
@@ -200,7 +204,7 @@ Writes are laneed on top for signed-in sessions (`authenticated`):
   transaction. No table-level `INSERT`/`DELETE` on structural tables is
   granted to app roles.
 - **Ordinary text edits use column-scoped grants**: `cells.content/
-  summary`, `cell_touchpoints.name/position/summary/screenshots/url`,
+  summary`, `cell_touchpoints.name/position/summary/role`,
   `resources.kind/name/url/position`, `lanes.name/lane_role`, `steps.name`,
   `paths.name/summary/note/kind`,
   `scenarios.name/summary/layout`, plus the spec columns — writable directly by `authenticated` under permissive
@@ -454,8 +458,8 @@ const { data } = await supabase
       summary,
       lane_id,
       step_id,
-      resources!resources_cell_id_fkey ( position, kind, name, url ),
-      cell_touchpoints ( id, position, name, summary, screenshots, url )
+      resources!resources_cell_id_fkey ( id, position, kind, name, url, cell_touchpoint_id, featured ),
+      cell_touchpoints ( id, position, name, summary, role )
     )
   `)
   .eq('id', pathId)

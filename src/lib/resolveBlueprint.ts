@@ -92,14 +92,9 @@ function fillMissingTouchpoints(
     (existing, fallback) => ({
       ...existing,
       summary: preferText(existing.summary, fallback.summary),
-      url: preferText(existing.url, fallback.url),
-      screenshots:
-        existing.screenshots.length > 0
-          ? existing.screenshots
-          : fallback.screenshots,
+      role: existing.role ?? fallback.role,
     }),
-    (row) =>
-      Boolean(row.url?.trim() || row.summary?.trim() || row.screenshots.length),
+    (row) => Boolean(row.summary?.trim() || row.role),
   )
 }
 

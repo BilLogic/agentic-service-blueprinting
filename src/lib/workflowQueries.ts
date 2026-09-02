@@ -46,8 +46,7 @@ export const PATH_BLUEPRINT_SELECT = `
       position,
       name,
       summary,
-      screenshots,
-      url
+      role
     ),
     outgoing:cell_dependencies!cell_dependencies_source_cell_id_fkey (
       id,

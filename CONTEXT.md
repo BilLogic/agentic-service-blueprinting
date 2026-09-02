@@ -91,7 +91,10 @@ The same is true of `scenarios.layout = 'side-by-side'`,
 `exception` and `variant`, of `scenarios.layout = 'single'`, which
 `21000117000000` folded into `stacked`, and of `resources.kind = 'other'`,
 which `21000118000000` folded into `attachment`: values, so no fragment and
-no copy word.
+no copy word. `cell_touchpoints.url` and `cell_touchpoints.screenshots`, which
+`21000119000000` moved into `resources` as a featured link and attachments,
+retire no fragment either: `url` is a live column on `resources`, and
+"screenshots" is English wherever a render check takes them.
 `scripts/value-set-claims.mjs` holds them — a list in any swept document
 that names one is stale, unless the sentence records the retirement and
 cites the migration — and holds every documented value set to the CHECK
@@ -180,6 +183,7 @@ now checks that nothing came back.
 | `paths.kind = 'unhappy'`, `paths.kind = 'alternative'` | `paths.kind = 'exception'`, `paths.kind = 'variant'` | `21000116000000` |
 | `scenarios.layout = 'single'` | `scenarios.layout = 'stacked'` | `21000117000000` |
 | `resources.kind = 'other'` | `resources.kind = 'attachment'` | `21000118000000` |
+| `cell_touchpoints.url`, `cell_touchpoints.screenshots` | `resources.url`, `resources.kind` | `21000119000000` |
 | `business_model` | `business_models` | `21000116000000` |
 | `findings`, `findings.check_name`, `findings.note` | `audit_findings`, `audit_findings.check_key`, `audit_findings.summary` | `21000116000000` |
 | `paths.path_type`, `slices.slice_type`, `scenarios.view_type` | `paths.kind`, `slices.kind`, `scenarios.layout` | `21000116000000` |
@@ -320,9 +324,9 @@ and `Resources` on the column would be wrong for half its rows. So the map
 carried the divergence as a recorded decision and said the fix would be a
 schema change rather than a naming one.
 
-`21000113000000` made that change. `resources` holds what a cell — or one
-touchpoint placement — points at, `cell_touchpoints` holds the per-moment
-summary, screenshots and design link, and `cells.links` is gone. **The row that
+`21000113000000` made that change. `resources` holds what a cell — through
+one of its touchpoint placements, or on its own — points at, `cell_touchpoints`
+holds the per-moment summary and role, and `cells.links` is gone. **The row that
 carried the reason is deleted rather than rewritten**, which is what that
 promise meant: `Resources` and `resources` are the same word, so the row that
 remains is an aligned one like `Evidence`, and rule 4 forbids it a reason. The

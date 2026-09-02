@@ -826,3 +826,11 @@ begin
   end loop;
 end
 $recipe_proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000119000000_a_placement_says_what_a_tool_does_here.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the panel's column-scoped edit gains the new column; the two
+-- dropped ones took their grants with them.
+grant update (role) on public.cell_touchpoints to authenticated;

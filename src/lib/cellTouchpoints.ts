@@ -3,9 +3,11 @@
  * came from.
  *
  * A placement is one touchpoint used at one cell: the tool, document, channel
- * or artifact named in the cell's text, plus the summary, screenshots and
- * design link that belong to THIS moment rather than to the tool. The database
- * stores one `cell_touchpoints` row per placement.
+ * or artifact named in the cell's text, plus the summary and role that belong
+ * to THIS moment rather than to the tool. What it points at — a design link,
+ * screenshots — are resources carrying the placement's id (#111), read from
+ * the cell's list. The database stores one `cell_touchpoints` row per
+ * placement.
  *
  * Before that, the same prose lived in the `cells.links` array as an entry
  * typed `tech_description`, and it found its touchpoint by comparing its label
@@ -17,8 +19,9 @@
  * no-database build serves what a database build serves. `cellResources.ts` is
  * the sibling for the other half of the array that used to hold both.
  */
-import type { BlueprintCell, CellTouchpoint } from '@/types/blueprint'
+import type { BlueprintCell, CellResource, CellTouchpoint } from '@/types/blueprint'
 import { orderedNamedRows } from '@/lib/orderedNamedRows'
+import { normalizeRole } from '@/lib/touchpointRole'
 
 /** A `cell_touchpoints` row as the board query selects it. */
 export type RawCellTouchpoint = {
@@ -26,15 +29,7 @@ export type RawCellTouchpoint = {
   position: number
   name?: string | null
   summary?: string | null
-  screenshots?: readonly string[] | null
-  url?: string | null
-}
-
-function screenshotList(
-  values: readonly string[] | null | undefined,
-): string[] {
-  if (!values) return []
-  return values.map((entry) => entry.trim()).filter(Boolean)
+  role?: string | null
 }
 
 /** Placements from database rows, in the order the author put them. */
@@ -45,9 +40,21 @@ export function cellTouchpointsFromRows(
       id: row.id ?? null,
       name,
       summary: row.summary?.trim() || null,
-      screenshots: screenshotList(row.screenshots),
-      url: row.url?.trim() || null,
+      role: normalizeRole(row.role),
     }))
+}
+
+/** The resources one placement points at, in author order, featured first. */
+export function placementResources(
+  resources: readonly CellResource[],
+  placementId: string | null,
+): CellResource[] {
+  if (!placementId) return []
+  const own = resources.filter((resource) => resource.placementId === placementId)
+  return [
+    ...own.filter((resource) => resource.featured),
+    ...own.filter((resource) => !resource.featured),
+  ]
 }
 
 /**

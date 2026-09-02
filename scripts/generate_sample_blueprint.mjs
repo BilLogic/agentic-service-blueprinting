@@ -1300,8 +1300,7 @@ function buildScenario(scenario) {
         id: null,
         name: tp.name,
         summary: tp.summary ?? null,
-        screenshots: tp.screenshots ?? [],
-        url: tp.url ?? null,
+        role: tp.role ?? null,
       })),
       ...(slot > 0 ? { position: slot } : {}),
       // Cell spec — emitted only where authored, so the fixture stays lean.
@@ -1903,14 +1902,13 @@ const touchpointRows = allBlueprints.flatMap(({ bp }) =>
       q(placement.name),
       String(index + 1),
       q(placement.summary),
-      `array[${(placement.screenshots ?? []).map((shot) => q(shot)).join(', ')}]::text[]`,
-      q(placement.url),
+      q(placement.role),
       q('import'),
     ]),
   ),
 )
 if (touchpointRows.length > 0) {
-  seedParts.push(`insert into public.cell_touchpoints (cell_id, name, position, summary, screenshots, url, origin) values
+  seedParts.push(`insert into public.cell_touchpoints (cell_id, name, position, summary, role, origin) values
 ${sqlRows(touchpointRows)};
 `)
 }

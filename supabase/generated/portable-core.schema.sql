@@ -544,7 +544,7 @@ CREATE FUNCTION public.duplicate_path(source_path_id uuid, name text, kind text 
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
 declare
-  scenario_id uuid;
+  v_scenario_id uuid;
   new_path_id uuid;
   -- old lane id → new lane id, as jsonb rather than a temp table: this runs
   -- inside one PostgREST statement and a temp table would outlive it.
@@ -557,17 +557,17 @@ begin
       using errcode = '42501';
   end if;
 
-  select p.scenario_id into scenario_id
+  select p.scenario_id into v_scenario_id
   from public.paths p
   where p.id = duplicate_path.source_path_id;
 
-  if scenario_id is null then
+  if v_scenario_id is null then
     raise exception 'Unknown path';
   end if;
 
   insert into public.paths
     (scenario_id, name, kind, summary, note, origin)
-  select scenario_id, duplicate_path.name, duplicate_path.kind,
+  select v_scenario_id, duplicate_path.name, duplicate_path.kind,
          p.summary, p.note, 'app'
   from public.paths p
   where p.id = duplicate_path.source_path_id
@@ -616,8 +616,8 @@ begin
     -- below use and stops a multi-cell slot from fanning one row out into a
     -- copy per sibling.
     insert into public.cell_touchpoints
-      (cell_id, name, position, summary, screenshots, url, origin)
-    select nc.id, ct.name, ct.position, ct.summary, ct.screenshots, ct.url, 'app'
+      (cell_id, name, position, summary, role, origin)
+    select nc.id, ct.name, ct.position, ct.summary, ct.role, 'app'
     from public.cell_touchpoints ct
     join public.cells c on c.id = ct.cell_id and c.path_id = duplicate_path.source_path_id
     join public.cells nc
@@ -627,10 +627,10 @@ begin
      and nc.position is not distinct from c.position;
 
     insert into public.resources
-      (cell_id, kind, name, url, position, origin)
-    select nc.id, r.kind, r.name, r.url, r.position, 'app'
+      (cell_id, kind, name, url, position, featured, origin)
+    select nc.id, r.kind, r.name, r.url, r.position, r.featured, 'app'
     from public.resources r
-    join public.cells c on c.id = r.cell_id and c.path_id = duplicate_path.source_path_id
+    join public.cells c on c.id = r.cell_id and r.cell_touchpoint_id is null and c.path_id = duplicate_path.source_path_id
     join public.cells nc
       on nc.path_id = new_path_id
      and nc.lane_id = (lane_map ->> c.lane_id::text)::uuid
@@ -641,8 +641,8 @@ begin
     -- copied cell. Nothing writes one today; carrying them anyway is what
     -- stops the first one that is written from being lost by a copy.
     insert into public.resources
-      (cell_touchpoint_id, kind, name, url, position, origin)
-    select nct.id, r.kind, r.name, r.url, r.position, 'app'
+      (cell_id, cell_touchpoint_id, kind, name, url, position, featured, origin)
+    select nc.id, nct.id, r.kind, r.name, r.url, r.position, r.featured, 'app'
     from public.resources r
     join public.cell_touchpoints ct on ct.id = r.cell_touchpoint_id
     join public.cells c on c.id = ct.cell_id and c.path_id = duplicate_path.source_path_id
@@ -809,8 +809,8 @@ begin
     -- below use and stops a multi-cell slot from fanning one row out into a
     -- copy per sibling.
     insert into public.cell_touchpoints
-      (cell_id, name, position, summary, screenshots, url, origin)
-    select nc.id, ct.name, ct.position, ct.summary, ct.screenshots, ct.url, 'app'
+      (cell_id, name, position, summary, role, origin)
+    select nc.id, ct.name, ct.position, ct.summary, ct.role, 'app'
     from public.cell_touchpoints ct
     join public.cells c on c.id = ct.cell_id and c.path_id = src_path.id
     join public.cells nc
@@ -820,10 +820,10 @@ begin
      and nc.position is not distinct from c.position;
 
     insert into public.resources
-      (cell_id, kind, name, url, position, origin)
-    select nc.id, r.kind, r.name, r.url, r.position, 'app'
+      (cell_id, kind, name, url, position, featured, origin)
+    select nc.id, r.kind, r.name, r.url, r.position, r.featured, 'app'
     from public.resources r
-    join public.cells c on c.id = r.cell_id and c.path_id = src_path.id
+    join public.cells c on c.id = r.cell_id and r.cell_touchpoint_id is null and c.path_id = src_path.id
     join public.cells nc
       on nc.path_id = new_path_id
      and nc.lane_id = (lane_map ->> c.lane_id::text)::uuid
@@ -834,8 +834,8 @@ begin
     -- copied cell. Nothing writes one today; carrying them anyway is what
     -- stops the first one that is written from being lost by a copy.
     insert into public.resources
-      (cell_touchpoint_id, kind, name, url, position, origin)
-    select nct.id, r.kind, r.name, r.url, r.position, 'app'
+      (cell_id, cell_touchpoint_id, kind, name, url, position, featured, origin)
+    select nc.id, nct.id, r.kind, r.name, r.url, r.position, r.featured, 'app'
     from public.resources r
     join public.cell_touchpoints ct on ct.id = r.cell_touchpoint_id
     join public.cells c on c.id = ct.cell_id and c.path_id = src_path.id
@@ -1963,19 +1963,19 @@ CREATE TABLE public.cell_touchpoints (
     name text NOT NULL,
     "position" integer NOT NULL,
     summary text,
-    screenshots text[] DEFAULT '{}'::text[] NOT NULL,
-    url text,
     origin text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT cell_touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
+    role text,
+    CONSTRAINT cell_touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text]))),
+    CONSTRAINT cell_touchpoints_role_check CHECK ((role = ANY (ARRAY['core'::text, 'peripheral'::text])))
 );
 
 --
 -- Name: TABLE cell_touchpoints; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.cell_touchpoints IS 'One touchpoint, used at one cell. Owns the summary, screenshots and design link for THIS moment, which is what differs between two uses of the same tool. Replaces the tech_description entries of the old cells.links column, which found their touchpoint by matching a string.';
+COMMENT ON TABLE public.cell_touchpoints IS 'One touchpoint used at one cell: its own summary and role at this moment. What it points at is in resources (cell_touchpoint_id).';
 
 --
 -- Name: COLUMN cell_touchpoints.name; Type: COMMENT; Schema: public; Owner: -
@@ -1984,16 +1984,10 @@ COMMENT ON TABLE public.cell_touchpoints IS 'One touchpoint, used at one cell. O
 COMMENT ON COLUMN public.cell_touchpoints.name IS 'What the touchpoint is called at this cell. There is no catalog yet; a catalog replaces this column with a reference.';
 
 --
--- Name: COLUMN cell_touchpoints.screenshots; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN cell_touchpoints.role; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.cell_touchpoints.screenshots IS 'Screenshots or illustrations for this moment, in author order.';
-
---
--- Name: COLUMN cell_touchpoints.url; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.cell_touchpoints.url IS 'The design file or external reference for THIS moment, not for the tool.';
+COMMENT ON COLUMN public.cell_touchpoints.role IS 'core = the moment happens through this touchpoint; peripheral = present at it but not what it turns on. Null = nobody has judged this placement, which is the common state and renders nothing.';
 
 --
 -- Name: cells; Type: TABLE; Schema: public; Owner: -

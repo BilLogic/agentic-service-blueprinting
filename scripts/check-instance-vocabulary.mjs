@@ -40,13 +40,7 @@ const RAW = 'https://raw.githubusercontent.com/BilLogic/plus-uno-blueprint/main/
  * `was` is the instance's spelling of the retired name; `until` is the issue
  * whose landing removes the entry.
  */
-export const ACCEPTED_DIVERGENCES = [
-  {
-    was: 'cell_touchpoints.url',
-    until: '#103',
-    because: 'a placement still carries its own link here; #103 moves it to a featured resource',
-  },
-]
+export const ACCEPTED_DIVERGENCES = []
 
 /* ------------------------------------------------------------ the schema */
 

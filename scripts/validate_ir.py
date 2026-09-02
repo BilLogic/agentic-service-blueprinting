@@ -91,6 +91,9 @@ PATH_KINDS = ("happy", "variant", "exception")
 #: resources.kind — the same short list the database checks. Absent means
 #: `link`, which is the column default.
 RESOURCE_KINDS = ("link", "attachment")
+#: cell_touchpoints.role — the two values the database checks; absent means
+#: nobody has judged the placement.
+TOUCHPOINT_ROLES = ("core", "peripheral")
 #: cell_dependencies.kind — the same two values the database checks.
 #: An edge that states none is a 'leads_to', which is the column default.
 DEPENDENCY_KINDS = ("leads_to", "enables")
@@ -292,6 +295,13 @@ def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
     check_locale_text(resource.get("name"), f"{jp}.name", rep, locales, True, "name")
     if "url" not in resource:
         rep.error(jp, "a resource requires a 'url' field")
+    elif resource.get("kind") == "attachment":
+        # A file the cell points at: a site-relative path shipped with the
+        # app, or a URI once it lives in Storage. Either way, non-empty and
+        # one token.
+        url = resource["url"]
+        if not isinstance(url, str) or not url.strip() or any(ch.isspace() for ch in url.strip()):
+            rep.error(f"{jp}.url", f"an attachment's 'url' must be a path or URI, got {url!r}")
     else:
         check_uri(resource["url"], f"{jp}.url", rep)
     if "kind" in resource:
@@ -304,16 +314,19 @@ def check_touchpoint(touchpoint, jp: str, rep: Report, locales: list) -> None:
     if not isinstance(touchpoint, dict):
         rep.error(jp, f"touchpoint must be an object, got {type_name(touchpoint)}")
         return
-    check_extra_keys(touchpoint, {"name", "summary", "screenshots", "url"}, jp, rep)
+    check_extra_keys(touchpoint, {"name", "summary", "role", "resources"}, jp, rep)
     check_locale_text(touchpoint.get("name"), f"{jp}.name", rep, locales, True, "name")
     if "summary" in touchpoint:
         check_locale_text(touchpoint["summary"], f"{jp}.summary", rep, locales, False, "summary")
-    if "screenshots" in touchpoint:
-        shots = touchpoint["screenshots"]
-        if not isinstance(shots, list) or any(not isinstance(x, str) for x in shots):
-            rep.error(f"{jp}.screenshots", "'screenshots' must be an array of strings")
-    if "url" in touchpoint:
-        check_uri(touchpoint["url"], f"{jp}.url", rep)
+    if "role" in touchpoint:
+        check_enum(touchpoint, "role", TOUCHPOINT_ROLES, jp, rep)
+    if "resources" in touchpoint:
+        resources = touchpoint["resources"]
+        if not isinstance(resources, list):
+            rep.error(f"{jp}.resources", "'resources' must be an array")
+        else:
+            for i, resource in enumerate(resources):
+                check_resource(resource, f"{jp}.resources[{i}]", rep, locales)
 
 
 def check_cell_ref(ref, jp: str, rep: Report):

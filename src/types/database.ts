@@ -144,10 +144,9 @@ export type Database = {
           name: string
           origin: string
           position: number
-          screenshots: string[]
+          role: string | null
           summary: string | null
           updated_at: string
-          url: string | null
         }
         Insert: {
           cell_id: string
@@ -156,10 +155,9 @@ export type Database = {
           name: string
           origin: string
           position: number
-          screenshots?: string[]
+          role?: string | null
           summary?: string | null
           updated_at?: string
-          url?: string | null
         }
         Update: {
           cell_id?: string
@@ -168,10 +166,9 @@ export type Database = {
           name?: string
           origin?: string
           position?: number
-          screenshots?: string[]
+          role?: string | null
           summary?: string | null
           updated_at?: string
-          url?: string | null
         }
         Relationships: [
           {

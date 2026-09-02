@@ -1,5 +1,5 @@
-import type { BlueprintCell, CellTouchpoint } from '@/types/blueprint'
-import { touchpointNamed } from '@/lib/cellTouchpoints'
+import type { BlueprintCell, CellResource, CellTouchpoint } from '@/types/blueprint'
+import { placementResources, touchpointNamed } from '@/lib/cellTouchpoints'
 import { parseCellContentItems } from '@/lib/parseCellContent'
 
 /**
@@ -8,7 +8,9 @@ import { parseCellContentItems } from '@/lib/parseCellContent'
  * The prose, the screenshots and the design link used to be entries in the
  * `cells.links` array, found again by matching a `label` against a line of the
  * cell's own `content`. `cell_touchpoints` gives each one a row of its own;
- * `cellTouchpoints.ts` is the seam that reads them.
+ * `cellTouchpoints.ts` is the seam that reads them. Since #111 what a
+ * placement points at is a resource carrying its id, so the link readers
+ * take the cell's resources too.
  */
 
 /** A cell as the touchpoint readers below need it. */
@@ -17,11 +19,18 @@ type TouchpointBearingCell = Pick<BlueprintCell, 'content'> & {
   touchpoints: readonly CellTouchpoint[]
 }
 
+/** The placement's link: the featured one, else the first. */
 function touchpointUrl(
   touchpoints: readonly CellTouchpoint[],
+  resources: readonly CellResource[],
   techItem: string,
 ): string | null {
-  return touchpointNamed(touchpoints, techItem)?.url ?? null
+  const placement = touchpointNamed(touchpoints, techItem)
+  if (!placement) return null
+  const link = placementResources(resources, placement.id).find(
+    (resource) => resource.kind === 'link' && resource.url?.trim(),
+  )
+  return link?.url?.trim() ?? null
 }
 
 function touchpointSummary(
@@ -97,15 +106,18 @@ export function resolveTechCellDetailText(
 /** External design reference (e.g. Figma) for a tech pill detail panel. */
 export function resolveTechCellDetailUrl(
   techItem: string | undefined,
-  cell: Pick<BlueprintCell, 'content'> & { touchpoints: readonly CellTouchpoint[] },
+  cell: Pick<BlueprintCell, 'content'> & {
+    touchpoints: readonly CellTouchpoint[]
+    resources: readonly CellResource[]
+  },
 ): string | null {
   if (techItem) {
-    return touchpointUrl(cell.touchpoints, techItem)
+    return touchpointUrl(cell.touchpoints, cell.resources, techItem)
   }
 
   const contentItems = parseCellContentItems(cell.content.trim())
   if (contentItems.length === 1) {
-    return touchpointUrl(cell.touchpoints, contentItems[0]!)
+    return touchpointUrl(cell.touchpoints, cell.resources, contentItems[0]!)
   }
 
   return null

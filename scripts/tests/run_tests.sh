@@ -952,16 +952,21 @@ assert not [
 ], "the migration wrote a defaulted kind into the tree"
 # The links split, end to end. One array of two shapes became two arrays of
 # one shape each, and every authored value came across under its new name —
-# including `picture`, which folds into the `screenshots` array the single
-# column now holds.
+# including `picture`, which folded into `screenshots` and then, at
+# 2026.09.06, into an attachment on the placement.
 cells = current["service"]["phases"][0]["scenarios"][0]["paths"][0]["cells"]
 assert not any("links" in cell for cell in cells), "a `links` array survived the split"
 resource = cells[0]["resources"][0]
 assert set(resource) == {"name", "url"}, f"resource shape moved: {resource}"
 touchpoint = next(t for cell in cells for t in cell.get("touchpoints", []))
-assert touchpoint["screenshots"] == ["docs/assets/gis-portal.png"], (
-    "picture did not fold into screenshots"
+assert "screenshots" not in touchpoint and "url" not in touchpoint, (
+    "a placement still carries a URL column"
 )
+attachments = [r for r in touchpoint["resources"] if r.get("kind") == "attachment"]
+assert [r["url"] for r in attachments] == ["docs/assets/gis-portal.png"], (
+    "picture did not become an attachment on the placement"
+)
+assert attachments[0].get("featured") is True, "the first attachment is not featured"
 assert "summary" in touchpoint and "description" not in touchpoint, (
     "a touchpoint's description did not become its summary"
 )

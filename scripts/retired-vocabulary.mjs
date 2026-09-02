@@ -174,6 +174,19 @@ export const RENAME_MAP = Object.freeze(
       copy: [],
     },
     {
+      // #111. A placement is summary + role. Its two URL columns — the
+      // screenshots of the tool at this moment, and where it lives — became
+      // attachments and a featured link in `resources`, carrying the
+      // placement's id. No identifier retires: `url` is a live column on
+      // `resources`, and `screenshots` is English elsewhere in these
+      // documents (a render check takes them).
+      was: ['cell_touchpoints.url', 'cell_touchpoints.screenshots'],
+      is: ['resources.url', 'resources.kind'],
+      migrations: ['21000119000000'],
+      retired: [],
+      copy: [],
+    },
+    {
       was: ['business_model'],
       is: ['business_models'],
       migrations: ['21000116000000'],

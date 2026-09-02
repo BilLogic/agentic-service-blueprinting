@@ -28,6 +28,10 @@ import {
   FeaturedPreviewFrame,
 } from '@/components/blueprint/FeaturedResources'
 import { featuredPresentation } from '@/lib/resourcePresentation'
+import {
+  TOUCHPOINT_ROLE_DEFINITION,
+  TOUCHPOINT_ROLE_LABEL,
+} from '@/lib/touchpointRole'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { TechPillFace } from '@/components/blueprint/TechPillFace'
 import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
@@ -1135,6 +1139,7 @@ function BlueprintCellDetailPanelBody() {
     cellContent: selection.paths[0]?.content,
     cellFrame: selection.paths[0]?.frame,
     cellTouchpoints: cellTouchpointList,
+    cellResources: cellResourceList,
   })
   // A featured attachment is the owner's picture (#110); the frame and the
   // placement's screenshots are the fallback until #111 moves them here.
@@ -1266,12 +1271,37 @@ function BlueprintCellDetailPanelBody() {
     </div>
   )
 
+  /*
+    The placement's role, beside its pill (#111). Only when someone judged
+    it — null is the unmarked majority and renders nothing, because a badge
+    for "nobody decided" puts a decision on screen that nobody made.
+  */
+  const selectedPlacementRole = (() => {
+    const techItem = techDetailLabel?.trim().toLowerCase()
+    if (!techItem) return null
+    return (
+      cellTouchpointList.find(
+        (touchpoint) => touchpoint.name.trim().toLowerCase() === techItem,
+      )?.role ?? null
+    )
+  })()
   const selectedTechPill = showTechPill ? (
-    <TechPillFace
-      item={techDetailLabel!}
-      compact
-      className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
-    />
+    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <TechPillFace
+        item={techDetailLabel!}
+        compact
+        className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
+      />
+      {selectedPlacementRole ? (
+        <span
+          className="inline-flex h-5 shrink-0 items-center rounded-full border border-border px-2 text-3xs font-medium text-muted-foreground"
+          title={TOUCHPOINT_ROLE_DEFINITION[selectedPlacementRole]}
+          data-touchpoint-role={selectedPlacementRole}
+        >
+          {TOUCHPOINT_ROLE_LABEL[selectedPlacementRole]}
+        </span>
+      ) : null}
+    </span>
   ) : null
 
   const pictureBlock = showPicture ? (
@@ -1317,7 +1347,9 @@ function BlueprintCellDetailPanelBody() {
                 mediaClassName={CELL_DETAIL_PICTURE_CLASS}
               />
             ) : null}
-            {(featured.preview ? [] : screenshots).map((src) =>
+            {screenshots
+              .filter((src) => src !== featured.preview?.url)
+              .map((src) =>
               figmaUrl ? (
                 <a
                   key={src}
