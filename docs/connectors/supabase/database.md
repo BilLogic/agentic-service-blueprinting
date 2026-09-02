@@ -61,7 +61,8 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | Path column order | `path_steps` | `position` per `(path_id, step_id)` |
 | Cell | `cells` | unique `(lane_id, step_id, position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
 | Cell dependency | `cell_dependencies` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
-| Touchpoint placement | `cell_touchpoints` | unique `(cell_id, name)`; owns the summary and role for that moment — what it points at is `resources` rows carrying its id |
+| Touchpoint | `touchpoints` | the service's registry; unique `(service_id, name)`; `kind` is `app`, `document`, `physical`, `channel`, `service` or `other` |
+| Touchpoint placement | `cell_touchpoints` | `touchpoint_id` into the registry OR `name` alone (`cell_touchpoints_one_identity`); unique `(cell_id, touchpoint_id)` and `(cell_id, lower(name))`; owns the summary and role for that moment — what it points at is `resources` rows carrying its id |
 | Resource | `resources` | every row carries its cell; a placement's carries `cell_touchpoint_id` as well, held to the placement's cell by a composite key |
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not service phases. Phases live in `phases`.
@@ -105,15 +106,34 @@ Both were one `links` JSONB array until `21000113000000`, which split it into
 two tables because it held two unrelated things under a name that described
 one of them.
 
+`touchpoints` — the service's registry:
+
+| Column | Required | Description |
+| --- | --- | --- |
+| `service_id` | yes | The service that owns it |
+| `name` | yes | Unique per service; placements match it case-insensitively |
+| `kind` | yes (default `other`) | `app` \| `document` \| `physical` \| `channel` \| `service` \| `other` |
+| `summary` | no | What this touchpoint IS, for the service |
+| `url` | no | Where the touchpoint itself lives |
+
 `cell_touchpoints` — one touchpoint, used at one cell:
 
 | Column | Required | Description |
 | --- | --- | --- |
 | `cell_id` | yes | The cell this touchpoint is used at |
-| `name` | yes | What it is called here; matches a line of `content`, which the grid draws as a pill. Unique per cell |
+| `touchpoint_id` | one of these two | The registry entry this placement names |
+| `name` | one of these two | The touchpoint's name when the registry lacks it — a **name-only placement**, drawn dashed. `cell_touchpoints_one_identity` holds exactly one of the two set; linking to the registry clears it |
 | `position` | yes | Author order within the cell |
 | `summary` | no | Prose about this touchpoint at THIS moment |
 | `role` | no | `core` \| `peripheral` — whether the moment happens through this touchpoint or it is merely present. Null = nobody has judged it, and renders nothing |
+
+Five structural writes, SECURITY DEFINER behind `is_service_account()` since
+`21000120000000`: `sync_cell_touchpoints` follows a cell's text (a new line
+mints a registry row and a placement; a line that left keeps its writing as a
+name-only row, or goes), `restore_cell_touchpoints` is its inverse,
+`set_placement_touchpoint` links a placement to the registry or names it,
+`remove_placement` / `restore_placement` take a name-only row off a cell and
+put it back, resources included.
 
 A placement's design link and screenshots are `resources` rows carrying its
 `cell_touchpoint_id` — a featured `link`, and `attachment`s with the first
@@ -459,7 +479,7 @@ const { data } = await supabase
       lane_id,
       step_id,
       resources!resources_cell_id_fkey ( id, position, kind, name, url, cell_touchpoint_id, featured ),
-      cell_touchpoints ( id, position, name, summary, role )
+      cell_touchpoints ( id, touchpoint_id, name, position, summary, role, touchpoints ( name, kind ) )
     )
   `)
   .eq('id', pathId)

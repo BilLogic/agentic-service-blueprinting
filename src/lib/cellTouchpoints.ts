@@ -27,21 +27,42 @@ import { normalizeRole } from '@/lib/touchpointRole'
 export type RawCellTouchpoint = {
   id?: string | null
   position: number
+  /** The registry entry, or null with `name` set — a name-only placement (#112). */
+  touchpoint_id?: string | null
   name?: string | null
   summary?: string | null
   role?: string | null
+  /** The joined registry row. PostgREST names the embed after the table. */
+  touchpoints?: { name: string; kind?: string | null } | null
 }
 
 /** Placements from database rows, in the order the author put them. */
 export function cellTouchpointsFromRows(
   rows: readonly RawCellTouchpoint[] | null | undefined,
 ): CellTouchpoint[] {
-  return orderedNamedRows(rows, (row, name) => ({
+  // The registry's spelling where there is a registry row; the placement's
+  // own name where the registry lacks it (or a fallback board has none).
+  const named = (rows ?? []).map((row) => ({
+    ...row,
+    name: row.touchpoints?.name ?? row.name ?? null,
+  }))
+  return orderedNamedRows(named, (row, name) => ({
       id: row.id ?? null,
+      touchpointId: row.touchpoint_id ?? null,
       name,
+      kind: row.touchpoints?.kind ?? null,
       summary: row.summary?.trim() || null,
       role: normalizeRole(row.role),
     }))
+}
+
+/**
+ * A placement the registry lacks: a real row that names its touchpoint by
+ * name alone. A fallback placement has no row and no registry, and is not
+ * one of these.
+ */
+export function isNameOnlyPlacement(placement: CellTouchpoint): boolean {
+  return placement.id !== null && placement.touchpointId === null
 }
 
 /** The resources one placement points at, in author order, featured first. */

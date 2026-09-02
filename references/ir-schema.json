@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.07",
         "2026.09.06",
         "2026.09.05",
         "2026.09.04",
@@ -133,7 +134,7 @@
         "name"
       ],
       "additionalProperties": false,
-      "description": "One touchpoint used at one cell — the tool, document, channel or artifact the cell's text names. A placement is its words (`summary`), its weight (`role`) and what it points at (`resources`), all belonging to THIS moment: the same tool describes a different screen and points at a different design file at a different step. `screenshots` and `url` became resources on the placement at 2026.09.06 — each screenshot an `attachment` (the first featured), the url a featured `link`.",
+      "description": "One touchpoint used at one cell — the tool, document, channel or artifact the cell's text names. A placement is its words (`summary`), its weight (`role`) and what it points at (`resources`), all belonging to THIS moment: the same tool describes a different screen and points at a different design file at a different step. `screenshots` and `url` became resources on the placement at 2026.09.06 — each screenshot an `attachment` (the first featured), the url a featured `link`. Since 2026.09.07 the name resolves through the service's `touchpoints` registry: a matching entry (case-insensitively) is the placement's touchpoint, and a name the registry lacks is minted into it on import.",
       "properties": {
         "name": {
           "$ref": "#/$defs/localeText",
@@ -176,6 +177,13 @@
         },
         "summary": {
           "$ref": "#/$defs/localeText"
+        },
+        "touchpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/registryTouchpoint"
+          },
+          "description": "The service's touchpoint registry, optional since 2026.09.07. Every placement name across the service becomes a registry row on import whether or not it is listed here; listing one is how it gets a kind, a summary and a home."
         },
         "phases": {
           "type": "array",
@@ -521,6 +529,40 @@
         }
       },
       "description": "Directed dependency edge between two cells on the SAME path (cross-path edges are invalid). source != target, whatever the kind. `kind: leads_to` (the default) is the drawn arrow this array is named after; `kind: enables` is the panel-only dependency the database has stored since cell_dependencies grew the column, and which the IR could not express — and therefore silently dropped on export — until 2026.08.26."
+    },
+    "registryTouchpoint": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "One entry in the service's touchpoint registry — an app, a document, a channel, a physical thing the service owns. A placement names one of these by name; a placement whose name the registry lacks is minted into it on import, so the registry is where a touchpoint's kind, summary and home live once, not per cell.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/localeText",
+          "description": "The touchpoint's name, unique within the service (case-insensitively). Placements match it by name."
+        },
+        "kind": {
+          "enum": [
+            "app",
+            "document",
+            "physical",
+            "channel",
+            "service",
+            "other"
+          ],
+          "description": "What sort of thing this is. Absent means `other`; never guessed from a name."
+        },
+        "summary": {
+          "$ref": "#/$defs/localeText",
+          "description": "What this touchpoint IS, for the service — not what it does at any one cell."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Where the touchpoint itself lives, when it has a home."
+        }
+      }
     }
   }
 }

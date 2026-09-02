@@ -4,6 +4,7 @@ import {
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
 import { getTouchpointTone } from '@/lib/techPillColors'
+import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
 type BlueprintTechPillProps = {
@@ -15,6 +16,11 @@ type BlueprintTechPillProps = {
   style?: CSSProperties
   /** Pills share their cell id — only the first pill carries the badge. */
   sliceSequenceBadge?: boolean
+  /**
+   * A placement the registry lacks (#112): the name is the author's, not
+   * the catalog's. Drawn dashed; the panel offers "Link to registry".
+   */
+  nameOnly?: boolean
 }
 
 /**
@@ -29,6 +35,7 @@ export function BlueprintTechPill({
   opacity,
   style,
   sliceSequenceBadge = false,
+  nameOnly = false,
 }: BlueprintTechPillProps) {
   return (
     <BlueprintCellButton
@@ -42,7 +49,8 @@ export function BlueprintTechPill({
       opacity={opacity}
       style={style}
       sliceSequenceBadge={sliceSequenceBadge}
-      className="min-w-0 shrink-0 break-words"
+      nameOnly={nameOnly}
+      className={cn('min-w-0 shrink-0 break-words', nameOnly && 'border-dashed')}
       data-blueprint-tech-pill={item}
     >
       {item}

@@ -244,6 +244,10 @@ def seed_touchpoint_fields(touchpoint: dict, cell: dict) -> dict:
     return {
         "id": touchpoint["id"],
         "cell_id": cell["id"],
+        # Both, here: the fallback shape keeps the name beside the registry
+        # id because it has no registry to join. The seed nulls the name of a
+        # linked row at emission — the table holds one identity, not two.
+        "touchpoint_id": touchpoint["touchpoint_id"],
         "name": touchpoint["name"],
         "position": touchpoint["position"],
         "summary": touchpoint["summary"],
@@ -312,9 +316,35 @@ def build_model(doc: dict, locale: str) -> dict:
             "name": text(lc["name"]),
             "summary": text(lc.get("summary")),
         },
+        "touchpoints": [],
         "phases": [],
         "scenarios": [],
     }
+
+    # The service's touchpoint registry: the entries the IR lists, then every
+    # placement name the IR uses that they do not cover, minted with kind
+    # `other`. Matched case-insensitively, the way the database's fold does,
+    # and keyed on the lowered name so a re-import lands on the same row.
+    registry: dict = {}
+
+    def registry_entry(name: str, listed: dict | None = None) -> dict:
+        key = name.strip().lower()
+        if key not in registry:
+            registry[key] = {
+                "id": entity_uuid(locale, "registry-touchpoint", f"{lc_q}#{key}"),
+                "service_id": model["service"]["id"],
+                "name": name.strip(),
+                "kind": (listed or {}).get("kind") or "other",
+                "summary": text((listed or {}).get("summary")),
+                "url": (listed or {}).get("url"),
+                "origin": "import",
+            }
+        return registry[key]
+
+    for listed in lc.get("touchpoints", []) or []:
+        listed_name = text(listed.get("name"))
+        if listed_name:
+            registry_entry(listed_name, listed)
 
     phase_ids = {}
     for phase in lc["phases"]:
@@ -446,6 +476,13 @@ def build_model(doc: dict, locale: str) -> dict:
                                         locale, "touchpoint",
                                         f"{ce_q}#{touchpoint['name']}",
                                     ),
+                                    # Linked into the registry, minting the
+                                    # entry when the IR did not list it. The
+                                    # entry's kind rides along for the
+                                    # fallback, which has no join to read it
+                                    # through; the seed does not write it.
+                                    "touchpoint_id": registry_entry(touchpoint["name"])["id"],
+                                    "kind": registry_entry(touchpoint["name"])["kind"],
                                     "position": index,
                                 }
                                 for index, touchpoint in enumerate(
@@ -527,6 +564,7 @@ def build_model(doc: dict, locale: str) -> dict:
             )
 
     model["phase_ids"] = phase_ids
+    model["touchpoints"] = list(registry.values())
     return model
 
 
@@ -579,6 +617,26 @@ on conflict (id) do update
       position = excluded.position;
 """
     )
+
+    if model["touchpoints"]:
+        parts.append(
+            f"""
+-- The service's touchpoint registry (shared, upserted) -------------------------
+
+insert into public.touchpoints (id, service_id, name, kind, summary, url, origin) values
+{values_rows(
+    [
+        [q(tp['id']), q(tp['service_id']), q(tp['name']), q(tp['kind']), q(tp['summary']), q(tp['url']), q(tp['origin'])]
+        for tp in model['touchpoints']
+    ]
+)}
+on conflict (id) do update
+  set name = excluded.name,
+      kind = excluded.kind,
+      summary = excluded.summary,
+      url = excluded.url;
+"""
+        )
 
     for ph in model["phases"]:
         loops_to_id = model["phase_ids"][ph["loops_to"]] if ph.get("loops_to") else None
@@ -643,10 +701,15 @@ insert into public.lanes ({', '.join(seed_lane_fields(scenario['paths'][0]['lane
 
         # Placements before resources, because a resource may hang off one.
         touchpoint_fields = [
-            seed_touchpoint_fields(t, c)
-            for p in scenario["paths"]
-            for c in p["cells"]
-            for t in c["touchpoints"]
+            # One identity per row: a linked placement carries the registry
+            # id and no name (`cell_touchpoints_one_identity`).
+            {**fields, "name": None if fields["touchpoint_id"] else fields["name"]}
+            for fields in (
+                seed_touchpoint_fields(t, c)
+                for p in scenario["paths"]
+                for c in p["cells"]
+                for t in c["touchpoints"]
+            )
         ]
         if touchpoint_fields:
             parts.append(

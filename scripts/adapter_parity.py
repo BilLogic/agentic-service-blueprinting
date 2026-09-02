@@ -38,6 +38,7 @@ from generate_fallbacks import (  # noqa: E402
     IMPLIED_BY_NESTING,
     IMPLIED_ON_RESOURCE,
     IMPLIED_ON_TOUCHPOINT,
+    JOINED_ON_TOUCHPOINT,
     NESTED_UNDER_CELL,
     blueprint_data_for_path,
 )
@@ -62,7 +63,7 @@ KINDS = {
     "cell": (IMPLIED_BY_NESTING, NESTED_UNDER_CELL),
     "edge": (IMPLIED_BY_NESTING, frozenset()),
     "resource": (IMPLIED_ON_RESOURCE, frozenset()),
-    "touchpoint": (IMPLIED_ON_TOUCHPOINT, frozenset()),
+    "touchpoint": (IMPLIED_ON_TOUCHPOINT, JOINED_ON_TOUCHPOINT),
 }
 
 

@@ -59,6 +59,9 @@ export type WriteFn =
   | 'update_placement_resources'
   | 'set_featured_resource'
   | 'restore_featured_resources'
+  | 'set_placement_touchpoint'
+  | 'remove_placement'
+  | 'restore_placement'
   | 'update_cell_spec'
   | 'add_evidence'
   | 'delete_evidence'
@@ -267,6 +270,12 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
       ? 'Unfeatured a resource'
       : 'Featured a resource',
   restore_featured_resources: () => 'Put back which resources were featured',
+  set_placement_touchpoint: (entry) =>
+    typeof entry.args.touchpoint_name === 'string' && entry.args.touchpoint_name
+      ? `Linked “${String(entry.args.name ?? '')}” to the registry as “${entry.args.touchpoint_name}”`
+      : `Named a placement “${String(entry.args.name ?? '')}”`,
+  remove_placement: (entry) => `Removed “${String(entry.args.name ?? '')}” from a cell`,
+  restore_placement: () => 'Put a placement back on its cell',
   update_cell_spec: () => 'Specified function & form',
   add_evidence: (entry) =>
     titled(entry) ? `Added evidence “${titled(entry)}”` : 'Added an evidence source',

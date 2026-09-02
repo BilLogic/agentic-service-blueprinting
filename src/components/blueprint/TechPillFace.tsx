@@ -15,6 +15,11 @@ type TechPillFaceProps = {
   style?: CSSProperties
   opacity?: number
   asSpan?: boolean
+  /**
+   * A placement the registry lacks (#112): the name is the author's, not
+   * the catalog's, and the face says so with a dashed border.
+   */
+  nameOnly?: boolean
 }
 
 /**
@@ -28,6 +33,7 @@ export function TechPillFace({
   style: styleProp,
   opacity,
   asSpan = false,
+  nameOnly = false,
 }: TechPillFaceProps) {
   const tone = getTouchpointTone(item)
 
@@ -43,10 +49,12 @@ export function TechPillFace({
           buttonVariants({ variant: 'blueprintPill' }),
           blueprintCellButtonClassName({ compact, variant: 'pill' }),
           'pointer-events-none min-w-0 shrink-0 cursor-default break-words',
+          nameOnly && 'border-dashed',
           className,
         )}
         style={style}
         {...blueprintToneAttrs(tone)}
+        {...(nameOnly ? { 'data-name-only': '' } : {})}
       >
         {item}
       </span>
@@ -60,8 +68,9 @@ export function TechPillFace({
       variant="pill"
       compact={compact}
       opacity={opacity}
-      className={cn('min-w-0 shrink-0 break-words', className)}
+      className={cn('min-w-0 shrink-0 break-words', nameOnly && 'border-dashed', className)}
       style={styleProp}
+      nameOnly={nameOnly}
     >
       {item}
     </BlueprintCellButton>

@@ -522,6 +522,18 @@ def to_2026_09_06(doc: dict) -> None:
                             touchpoint["resources"] = list(touchpoint.get("resources") or []) + moved
 
 
+def to_2026_09_07(doc: dict) -> None:
+    """2026.09.06 → 2026.09.07 — a touchpoint is a thing the service owns.
+
+    The service gains an optional `touchpoints` registry; a placement still
+    names its touchpoint by name, and the import mints a registry row for
+    every name the registry lacks. Nothing in an existing file moves: the
+    registry is optional and a placement's shape is unchanged, so only the
+    stamp changes.
+    """
+    return
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -599,6 +611,14 @@ STEPS = (
         "(a featured link; attachments with the first featured), and "
         "touchpoints[].role arrives, optional",
         to_2026_09_06,
+    ),
+    Step(
+        "2026.09.06",
+        "2026.09.07",
+        "the service gains an optional `touchpoints` registry; placements "
+        "still name their touchpoint by name and the import mints the rest, "
+        "so only the stamp moves",
+        to_2026_09_07,
     ),
 )
 
