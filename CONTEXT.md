@@ -102,7 +102,7 @@ table's owner is whoever may change it, not whoever reads it most:
 | record | written by | belongs to |
 | --- | --- | --- |
 | `slices`, `slides` | `create_slice`, `update_slice`, `replace_slides` | the slice |
-| `audit_findings` | `record_finding`, `set_finding_status` | the audit |
+| `audit_findings` | `create_finding`, `update_finding` | the audit |
 | `evidence` | no agent tool at all — the panel writes it | **nobody** |
 
 **Evidence is the one with no owner**, and here that is visible in the roster

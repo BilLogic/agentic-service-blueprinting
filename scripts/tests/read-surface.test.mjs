@@ -58,18 +58,25 @@ test('a tool listed twice is reported once', () => {
   assert.deepEqual(differences(['get_cell', 'get_cell'], ['get_cell']).duplicated, ['get_cell'])
 })
 
-// The four names that had drifted into PROSE rather than into a row. A
-// row-scoped check walks straight past these, which is why the sweep exists.
+// Names that drift into PROSE rather than into a row. A row-scoped check walks
+// straight past these, which is why the sweep exists.
+//
+// The fixture used to be four names the downstream instance had and this
+// template did not — and three of them stopped being phantoms the moment the
+// tool rename landed, which is the honest hazard of writing a guard's fixture
+// out of another repository's roster. These are tools that exist THERE and
+// have no counterpart here, because they are backed by tables this template
+// does not carry: evidence rows, a stakeholder cast list, and a full-text
+// index. A fixture whose examples cannot quietly become real.
 test('a tool name invented anywhere in the prose is caught', () => {
   const markdown = [
     'Read the docs with parallel `get_reference` calls.',
-    'Record findings via `create_finding`, resolve them via `update_finding`.',
+    'Cite sources via `create_evidence`, and name the cast with `list_stakeholders`.',
     '`search_blueprint` answers without moving the canvas.',
   ].join('\n')
-  assert.deepEqual(phantomTools(markdown, ['read_reference', 'record_finding']), [
-    'get_reference',
-    'create_finding',
-    'update_finding',
+  assert.deepEqual(phantomTools(markdown, ['get_reference', 'create_finding']), [
+    'create_evidence',
+    'list_stakeholders',
     'search_blueprint',
   ])
 })

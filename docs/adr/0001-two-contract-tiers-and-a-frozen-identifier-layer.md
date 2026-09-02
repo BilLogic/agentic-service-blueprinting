@@ -20,7 +20,7 @@ repo had one word — "breaking" — for both.
 
 A consumer installs the plugin and **does not fork it**. They type `/sb:audit`,
 the skill dispatches an agent named `auditor`, the canvas agent calls
-`read_reference { name: 'data-model' }`, a hook fires on an event name. Every
+`get_reference { name: 'data-model' }`, a hook fires on an event name. Every
 one of those is a string resolved at runtime. Nothing type-checks it, nothing
 imports it, and no test in the consumer's repo mentions it. Rename one and the
 consumer breaks the next time that path runs, with no compile error anywhere.
@@ -63,7 +63,7 @@ That layer is not a list in this document. It is generated from the tree by
 fails when the tree and the manifest disagree. A rename therefore shows up in
 review as a line in a committed JSON file, where a reviewer gets to ask the
 only question that matters: who else says this word? The generator treats a
-bare-name collision as a hard error, because `read_reference` resolves by bare
+bare-name collision as a hard error, because `get_reference` resolves by bare
 filename across every `references/` directory — two files sharing a basename
 would make the resolution order part of the contract.
 

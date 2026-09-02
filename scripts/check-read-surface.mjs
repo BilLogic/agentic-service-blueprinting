@@ -6,9 +6,9 @@
  * `references/canvas-adapter.md` is normative for the canvas agent, so a tool
  * name in it is an interface the agent believes it has. The write surface had
  * drifted; so had the read surface, in five places at once — `get_reference`
- * for `read_reference`, `list_blueprint` and `search_blueprint` for
- * `get_blueprint`, `create_finding` for `record_finding`, `update_finding`
- * for `set_finding_status`. None of those tools have ever existed. An agent
+ * for `get_reference`, `list_blueprint` and `search_blueprint` for
+ * `get_blueprint`, `create_finding` for `create_finding`, `update_finding`
+ * for `update_finding`. None of those tools have ever existed. An agent
  * that follows the document calls a name the registry has no entry for.
  *
  * Two assertions, because the two failures are different shapes:

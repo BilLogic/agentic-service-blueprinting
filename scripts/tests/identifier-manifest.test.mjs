@@ -8,7 +8,7 @@
  * Second: does every name the canvas agent will accept resolve to a file that
  * exists? That is the exact shape of the bug this repo already shipped: a
  * reference renamed on disk, the pointer left behind, no compile error, and a
- * runtime `read_reference` that answers "unknown reference".
+ * runtime `get_reference` that answers "unknown reference".
  *
  * Run: npm test
  */
@@ -67,7 +67,7 @@ test('every hook names a script that exists', () => {
 })
 
 test('a name claimed by two files is a collision, not a diff', () => {
-  // read_reference takes a bare name, so two files called `data-model.md` in
+  // get_reference takes a bare name, so two files called `data-model.md` in
   // different directories make the walk order the contract.
   assert.deepEqual(collisions([{ name: 'a', path: 'one/a.md' }]), [])
   assert.deepEqual(
