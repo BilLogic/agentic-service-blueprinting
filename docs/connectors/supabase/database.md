@@ -160,6 +160,15 @@ clears the owner's previous featured attachment in the same transaction and
 returns the before-states; `restore_featured_resources` writes them back.
 `other` became `attachment` in `21000118000000`.
 
+An uploaded file is an `attachment` whose `url` is its object's public URL in
+the `cell-attachments` bucket (`21000121000000`, recipe): public read, writes
+for the service account only, keys `cells/<cell id>/<object id>.<ext>` — ids
+and nothing else, so no rename moves a URL. Deleting the row leaves the
+object. `resources_url_absolute` (core) refuses a site-relative path on any
+resource; a backend without Supabase keeps files wherever it keeps files and
+writes their URLs into the row. The upload helper is `attachmentUpload.ts` in
+`src/lib`; the Resources tab's **Upload a file** and **Replace** call it.
+
 App types: `CellResource` and `CellTouchpoint` in `src/types/blueprint.ts`.
 Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.
 

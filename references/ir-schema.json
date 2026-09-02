@@ -113,7 +113,7 @@
         },
         "url": {
           "type": "string",
-          "description": "A URI for a link. An attachment may instead be a site-relative path to a file shipped with the app (`docs/assets/x.png`), until it lives in Storage."
+          "description": "A URI. For an attachment, the file's public URL in Storage — the import never copies bytes, and the database refuses a site-relative path."
         },
         "kind": {
           "enum": [

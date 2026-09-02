@@ -297,14 +297,10 @@ def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
     check_locale_text(resource.get("name"), f"{jp}.name", rep, locales, True, "name")
     if "url" not in resource:
         rep.error(jp, "a resource requires a 'url' field")
-    elif resource.get("kind") == "attachment":
-        # A file the cell points at: a site-relative path shipped with the
-        # app, or a URI once it lives in Storage. Either way, non-empty and
-        # one token.
-        url = resource["url"]
-        if not isinstance(url, str) or not url.strip() or any(ch.isspace() for ch in url.strip()):
-            rep.error(f"{jp}.url", f"an attachment's 'url' must be a path or URI, got {url!r}")
     else:
+        # Both kinds: a URL. An attachment's is its object's public URL in
+        # Storage (21000121000000); the database refuses a site-relative
+        # path (`resources_url_absolute`), so the file does too.
         check_uri(resource["url"], f"{jp}.url", rep)
     if "kind" in resource:
         check_enum(resource, "kind", RESOURCE_KINDS, jp, rep)

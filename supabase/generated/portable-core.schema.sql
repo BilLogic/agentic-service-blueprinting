@@ -2719,7 +2719,8 @@ CREATE TABLE public.resources (
     featured boolean DEFAULT false NOT NULL,
     CONSTRAINT resources_has_url CHECK ((NULLIF(btrim(url), ''::text) IS NOT NULL)),
     CONSTRAINT resources_kind_check CHECK ((kind = ANY (ARRAY['link'::text, 'attachment'::text]))),
-    CONSTRAINT resources_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
+    CONSTRAINT resources_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text]))),
+    CONSTRAINT resources_url_absolute CHECK (((url IS NULL) OR (url !~ '^/'::text)))
 );
 
 --
@@ -2757,6 +2758,12 @@ COMMENT ON COLUMN public.resources.name IS 'What the thing on the other end is c
 --
 
 COMMENT ON COLUMN public.resources.featured IS 'The resource its owner leads with. One featured attachment per placement or per cell (the image it shows); any number of featured links.';
+
+--
+-- Name: CONSTRAINT resources_url_absolute ON resources; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON CONSTRAINT resources_url_absolute ON public.resources IS 'A resource points at a URL, never at a path inside whatever site deployed this template. An uploaded file''s URL is its object''s in the cell-attachments bucket (21000121000000).';
 
 --
 -- Name: scenarios; Type: TABLE; Schema: public; Owner: -

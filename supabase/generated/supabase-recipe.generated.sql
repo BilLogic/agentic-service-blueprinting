@@ -872,3 +872,82 @@ revoke execute on function public.remove_placement(uuid) from public, anon;
 grant execute on function public.remove_placement(uuid) to authenticated;
 revoke execute on function public.restore_placement(jsonb, jsonb) from public, anon;
 grant execute on function public.restore_placement(jsonb, jsonb) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000121000000_an_upload_is_an_attachment_with_a_stable_url.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the bucket, its policies, and their proof.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'cell-attachments', 'cell-attachments', true, 10485760,
+  array[
+    'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml',
+    'video/mp4', 'video/webm', 'video/quicktime',
+    'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg',
+    'application/pdf'
+  ]
+)
+on conflict (id) do update
+  set public = excluded.public,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "cell_attachments_select" on storage.objects;
+drop policy if exists "cell_attachments_insert" on storage.objects;
+drop policy if exists "cell_attachments_update" on storage.objects;
+drop policy if exists "cell_attachments_delete" on storage.objects;
+
+create policy "cell_attachments_select" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'cell-attachments');
+
+create policy "cell_attachments_insert" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'cell-attachments'
+    and public.is_service_account()
+    and name ~ '^cells/[0-9a-f-]{36}/[0-9a-f-]{36}\.[a-z0-9]{1,8}$'
+  );
+
+create policy "cell_attachments_update" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'cell-attachments' and public.is_service_account())
+  with check (
+    bucket_id = 'cell-attachments'
+    and public.is_service_account()
+    and name ~ '^cells/[0-9a-f-]{36}/[0-9a-f-]{36}\.[a-z0-9]{1,8}$'
+  );
+
+create policy "cell_attachments_delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'cell-attachments' and public.is_service_account());
+
+do $proof$
+declare
+  bad int;
+begin
+  if not exists (select 1 from storage.buckets where id = 'cell-attachments' and public) then
+    raise exception 'the cell-attachments bucket is missing or not public';
+  end if;
+
+  select count(*) into bad
+    from pg_policies
+   where schemaname = 'storage' and tablename = 'objects'
+     and policyname in ('cell_attachments_select', 'cell_attachments_insert',
+                        'cell_attachments_update', 'cell_attachments_delete');
+  if bad <> 4 then
+    raise exception 'expected four cell_attachments policies on storage.objects, found %', bad;
+  end if;
+
+  select count(*) into bad
+    from pg_policies
+   where schemaname = 'storage' and tablename = 'objects'
+     and policyname in ('cell_attachments_insert', 'cell_attachments_update', 'cell_attachments_delete')
+     and ('anon' = any(roles) or 'public' = any(roles)
+          or coalesce(qual, '') || coalesce(with_check, '') not like '%is_service_account()%');
+  if bad <> 0 then
+    raise exception '% cell_attachments write policies are open to anon or unguarded', bad;
+  end if;
+end
+$proof$;

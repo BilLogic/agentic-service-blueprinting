@@ -258,7 +258,7 @@
                               "en": "GIS Portal",
                               "zh": "GIS 门户"
                             },
-                            "url": "docs/assets/gis-portal.png",
+                            "url": "https://example.test/assets/gis-portal.png",
                             "kind": "attachment",
                             "featured": true
                           }

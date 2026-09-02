@@ -964,7 +964,7 @@ assert "screenshots" not in touchpoint and "url" not in touchpoint, (
     "a placement still carries a URL column"
 )
 attachments = [r for r in touchpoint["resources"] if r.get("kind") == "attachment"]
-assert [r["url"] for r in attachments] == ["docs/assets/gis-portal.png"], (
+assert [r["url"] for r in attachments] == ["https://example.test/assets/gis-portal.png"], (
     "picture did not become an attachment on the placement"
 )
 assert attachments[0].get("featured") is True, "the first attachment is not featured"
