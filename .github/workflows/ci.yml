@@ -137,8 +137,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install psql
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      # The client has to match the service: `pg_dump` refuses a server newer
+      # than itself, and ubuntu-latest's `postgresql-client` is 16 against the
+      # postgres:17 container. The PGDG repository the runner already carries
+      # has 17; its binaries go first on PATH so the pg_wrapper cannot pick 16.
+      - name: Install the Postgres 17 client
+        run: |
+          # The runner's PGDG source is pinned to the 16 component, so the
+          # full repository line goes in beside it.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc > /dev/null
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg-all.list > /dev/null
+          sudo apt-get update && sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       # 1. The generated halves still describe the migrations.
       - name: Regenerate the partition and diff it against what is committed
