@@ -33,10 +33,13 @@ export const PATH_BLUEPRINT_SELECT = `
     frame,
     summary,
     resources!resources_cell_id_fkey (
+      id,
       position,
       kind,
       name,
-      url
+      url,
+      cell_touchpoint_id,
+      featured
     ),
     cell_touchpoints (
       id,

@@ -790,3 +790,39 @@ $anon$;
 -- the Supabase roles: a fresh function is executable by PUBLIC.
 revoke execute on function public.update_scenario_layout(uuid, text) from public, anon;
 grant execute on function public.update_scenario_layout(uuid, text) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000118000000_a_resource_keeps_its_id_and_knows_its_cell.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the Supabase roles. A fresh function is executable by PUBLIC,
+-- and the cell's list was an invoker function until now.
+revoke execute on function public.sync_cell_resources(uuid, jsonb) from public, anon;
+grant execute on function public.sync_cell_resources(uuid, jsonb) to authenticated;
+revoke execute on function public.sync_placement_resources(uuid, jsonb) from public, anon;
+grant execute on function public.sync_placement_resources(uuid, jsonb) to authenticated;
+revoke execute on function public.set_featured_resource(uuid, boolean) from public, anon;
+grant execute on function public.set_featured_resource(uuid, boolean) to authenticated;
+revoke execute on function public.restore_featured_resources(jsonb) from public, anon;
+grant execute on function public.restore_featured_resources(jsonb) to authenticated;
+-- the four writes are closed to the public role and open to the
+-- signed-in one.
+do $recipe_proof$
+declare
+  fn text;
+begin
+  foreach fn in array array[
+    'public.sync_cell_resources(uuid, jsonb)',
+    'public.sync_placement_resources(uuid, jsonb)',
+    'public.set_featured_resource(uuid, boolean)',
+    'public.restore_featured_resources(jsonb)'
+  ] loop
+    if has_function_privilege('anon', fn, 'execute') then
+      raise exception 'anon can execute %', fn;
+    end if;
+    if not has_function_privilege('authenticated', fn, 'execute') then
+      raise exception 'authenticated cannot execute %', fn;
+    end if;
+  end loop;
+end
+$recipe_proof$;

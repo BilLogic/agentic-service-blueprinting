@@ -76,7 +76,7 @@ erDiagram
   stakeholders { uuid id PK  uuid service_id FK  text name  text kind "recipient | staff | partner | provider | team"  uuid parent_id FK "sub-teams roll up, e.g. Marketing to Design"  text note  text aliases }
   cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text frame "one image for one cell; a step's frames across the lanes are its strip"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status }
   cell_touchpoints { uuid id PK  uuid cell_id FK  text name "what the touchpoint is called HERE; matches a line of cells.content where the grid draws it as a pill"  int position  text summary "prose about this touchpoint at THIS moment"  text_array screenshots  text url "the design file for THIS moment, not for the tool"  text origin }
-  resources { uuid id PK  uuid cell_id FK "exactly one of these two"  uuid cell_touchpoint_id FK  text kind "link | other"  text name  text url  int position  text origin }
+  resources { uuid id PK  uuid cell_id FK "always — every resource knows its cell"  uuid cell_touchpoint_id FK "set as well when a placement owns it; (cell_touchpoint_id, cell_id) references the placement in its cell"  text kind "link | attachment"  text name  text url  bool featured "the one its owner leads with"  int position  text origin }
   cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "leads_to = makes the other happen, drawn | enables = makes the other possible, never drawn"  text label  text note }
 ```
 
@@ -93,7 +93,7 @@ erDiagram
 | `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
 | `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `content` newline-separated items render as pills on pill-role lanes |
 | `cell_touchpoints` | One touchpoint, used at one cell | Owns the summary, screenshots and design link for THIS moment — the same tool describes a different screen at a different step. `unique (cell_id, name)` |
-| `resources` | What a cell, or one placement, points at | `num_nonnulls(cell_id, cell_touchpoint_id) = 1` — a cell OR a placement, never both and never neither. That constraint is what lets a design link belong to the tool it documents rather than to the cell at large |
+| `resources` | What a cell points at | Every row carries `cell_id`; a row a touchpoint placement owns carries `cell_touchpoint_id` as well, and the composite key `(cell_touchpoint_id, cell_id)` holds the two to one row. `kind` is `link` \| `attachment`; both carry a url. `featured` marks the one its owner leads with — one featured attachment per cell and per placement (a partial unique index), any number of featured links. The cell's list (`sync_cell_resources`) reconciles by id and refuses a placement's rows; the placement's list (`sync_placement_resources`) is theirs; `set_featured_resource` clears the previous preview in the same transaction |
 | `cell_dependencies` | Directed arrows cell → cell. `kind` is `leads_to` (this cell makes the other happen — drawn) or `enables` (this cell makes the other possible — recorded, never drawn). Not inverses: "follows" is `leads_to` read from the other end, and making something possible causes nothing | Unique pair, `source != target`, both cells must be on the same path |
 
 ## Enums
@@ -112,6 +112,11 @@ erDiagram
     step axis, cells the paths agree on drawn once, divergent slots stacking
     each path's version. Needs two visible paths; with one, the canvas draws
     stacked and the row keeps its value.
+- `resources.kind`: `link` \| `attachment`. A link is a place on the web;
+  an attachment is a file the cell points at — a site-relative image path, or
+  an object in Storage once #113 lands. Both carry a url; host and file type
+  are read at render, never stored. `other` became `attachment` in
+  `21000118000000`; it had named nothing.
 - `cell_dependencies.kind`: `leads_to` \| `enables`. `leads_to` means the
   source makes the target HAPPEN, and it is the kind the canvas DRAWS as an
   arrow. `enables` means the source makes the target POSSIBLE without causing

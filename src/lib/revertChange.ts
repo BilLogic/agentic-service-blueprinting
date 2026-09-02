@@ -3,12 +3,18 @@ import { toAuthoringError } from '@/lib/authoringErrors'
 import type { ChangeEntry } from '@/lib/authoringSession'
 import {
   updateCellContent,
+  writeCellResources,
   type CellContentUpdate,
+  type ResourceRowInput,
 } from '@/lib/cellContentMutations'
+import {
+  writePlacementResources,
+  type PlacementResourceRowInput,
+} from '@/lib/placementResourceMutations'
 import { updateCellSpec, type CellSpecUpdate } from '@/lib/cellSpecMutations'
 import { deleteEvidence, restoreEvidenceRow } from '@/lib/evidenceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
-import type { Database, Json } from '@/types/database'
+import type { Database } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 type EvidenceRowType = Database['public']['Tables']['evidence']['Row']
@@ -70,17 +76,20 @@ export async function executeRevert(
       // same RPC the editor uses, so the revert lands in one transaction for
       // the reason the edit does. Verbatim rather than rebuilt through the
       // draft validator, which could refuse to restore a url it dislikes.
+      // By id (#110), so the rows themselves come back, not look-alikes;
+      // the RPC raises when the cell is gone.
       const cellId = stringArg(revert.args, 'cell_id')
-      const rows = revert.args.rows as Array<{ name: string; url: string }>
-      const { error } = await client.rpc('sync_cell_resources', {
-        p_cell_id: cellId,
-        p_rows: rows.map((row) => ({
-          kind: 'link',
-          name: row.name,
-          url: row.url,
-        })) as unknown as Json,
-      })
-      if (error) throw toAuthoringError(error)
+      const resources = revert.args.resources as ResourceRowInput[]
+      await writeCellResources(client, cellId, resources ?? [])
+      return
+    }
+    case 'update_placement_resources': {
+      // The same shape as update_cell_resources, for the touchpoint's list at
+      // one cell: the captured rows, by id, written back as they stood. The
+      // RPC raises when the placement is gone.
+      const placementId = stringArg(revert.args, 'placement_id')
+      const resources = revert.args.resources as PlacementResourceRowInput[]
+      await writePlacementResources(client, placementId, resources ?? [])
       return
     }
     case 'delete_evidence': {

@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.05",
         "2026.09.04",
         "2026.09.03",
         "2026.09.02",
@@ -115,9 +116,13 @@
         "kind": {
           "enum": [
             "link",
-            "other"
+            "attachment"
           ],
-          "description": "Subtype. Absent means `link`, which is every resource an import has produced so far; the list grows when something produces a second kind."
+          "description": "Subtype. Absent means `link`, a place on the web. `attachment` is a file the cell points at — a site-relative image path, or an object in Storage — and carries a url like a link does. `other` became `attachment` at 2026.09.05; it had named nothing."
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "The resource the cell leads with. One featured attachment per cell (the image it shows); any number of featured links (each a button). Absent means false."
         }
       }
     },

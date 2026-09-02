@@ -123,6 +123,7 @@ def localize_resources(resources, locale: str, locales) -> list:
             "name": pick_text(resource.get("name"), locale, locales) or "",
             "url": resource.get("url"),
             "kind": resource.get("kind") or "link",
+            "featured": bool(resource.get("featured", False)),
         }
         out.append(localized)
     return out
@@ -165,7 +166,9 @@ JSONB_FIELDS = frozenset({"value_props", "kpis", "tools"})
 #: Columns whose Python value is a list of strings, emitted as a text[] literal.
 TEXT_ARRAY_FIELDS = frozenset({"screenshots"})
 #: Columns emitted as a bare SQL literal (numbers), never quoted.
-RAW_FIELDS = frozenset({"position", "position"})
+RAW_FIELDS = frozenset({"position"})
+#: Booleans are SQL keywords, not quoted strings.
+BOOL_FIELDS = frozenset({"featured"})
 
 
 def seed_cell_fields(cell: dict, path: dict) -> dict:
@@ -251,18 +254,20 @@ def seed_touchpoint_fields(touchpoint: dict, cell: dict) -> dict:
 def seed_resource_fields(resource: dict, cell: dict) -> dict:
     """One resource as `resources` column -> value.
 
-    `cell_id` and never `cell_touchpoint_id`: the table refuses both, and an
-    import cannot know which of a cell's resources documents one of its
+    `cell_id` and never `cell_touchpoint_id`: every row carries its cell, and
+    an import cannot know which of a cell's resources documents one of its
     touchpoints without guessing once per row. Attaching one is an authoring
     act, and the IR has no way to say it.
     """
     return {
         "id": resource["id"],
         "cell_id": cell["id"],
+        "cell_touchpoint_id": None,
         "kind": resource["kind"],
         "name": resource["name"],
         "url": resource["url"],
         "position": resource["position"],
+        "featured": resource["featured"],
         "origin": "import",
     }
 
@@ -279,6 +284,8 @@ def sql_row(fields: dict) -> list:
             )
         elif column in RAW_FIELDS:
             out.append(str(value))
+        elif column in BOOL_FIELDS:
+            out.append("true" if value else "false")
         else:
             out.append(sql_quote(value))
     return out

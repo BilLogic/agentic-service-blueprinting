@@ -83,56 +83,97 @@ export async function updateCellContent(
   }
 }
 
-export type ResourceDraft = { name: string; url: string }
+/**
+ * A row as the editor holds it. `id` is the row it came from; absent on a
+ * row typed since the last save. `kind` is `attachment` for a file and
+ * `link` otherwise; the sync leaves a kept row's kind alone either way.
+ */
+export type ResourceDraft = {
+  id?: string | null
+  kind?: 'link' | 'attachment'
+  name: string
+  url: string
+}
+
+/** The rows `sync_cell_resources` takes, and the shape a revert carries. */
+export type ResourceRowInput = {
+  /** Null for a row to insert; the row's own id for one to update in place (#110). */
+  id: string | null
+  kind: string
+  name: string
+  url: string | null
+}
 
 /**
  * Replace the cell's resources, in one transaction.
  *
  * An RPC rather than a table write, and the reason is the position column:
  * the editor rewrites a whole list, PostgREST gives every statement its own
- * transaction, and a deferred unique only forgives a collision until COMMIT.
- * `sync_cell_resources` deletes and reinserts inside one.
+ * transaction, and a deferred rule only forgives a collision until COMMIT.
+ * `sync_cell_resources` reconciles the list inside one — a row that arrives
+ * with its id is updated in place, so a reorder keeps every id (#110).
  *
- * It reaches only rows whose `cell_id` is this cell, so a resource attached to
- * one touchpoint placement is not this editor's to destroy.
+ * It writes the cell's OWN rows. A placement's resources sit in the same
+ * list to be read but are the touchpoint's to write, and the sync refuses
+ * their ids.
  */
 export async function updateCellResources(
   client: Client,
   cellId: string,
   /** The rows being replaced — captured so the change can be reverted. */
-  existing: CellResource[],
+  existing: readonly CellResource[],
   drafts: ResourceDraft[],
 ): Promise<void> {
-  const rows = drafts.map((draft) => {
-    const checked = validateResourceUrl(draft.url)
+  const rows: ResourceRowInput[] = []
+  for (const draft of drafts) {
+    const checked =
+      draft.kind === 'attachment'
+        ? { ok: true as const, url: draft.url.trim() }
+        : validateResourceUrl(draft.url)
     if (!checked.ok) throw new Error(checked.problem)
-    return {
-      kind: 'link',
+    rows.push({
+      id: draft.id ?? null,
+      kind: draft.kind ?? 'link',
       // The one place a nameless resource gets a name. The database refuses
       // a row without one rather than inventing a second answer.
       name: draft.name.trim() || hostOf(checked.url),
       url: checked.url,
-    }
-  })
+    })
+  }
 
+  await writeCellResources(client, cellId, rows)
+  recordChange(
+    'update_cell_resources',
+    { cell_id: cellId },
+    // The captured list, written back as it stood — by id, so the revert
+    // restores the rows themselves, not look-alikes. The cell's own rows
+    // only: the sync refuses a placement's ids, so the inverse names none.
+    {
+      fn: 'update_cell_resources',
+      args: {
+        cell_id: cellId,
+        resources: existing
+          .filter((resource) => !resource.placementId)
+          .map((resource) => ({
+            id: resource.id,
+            kind: resource.kind,
+            name: resource.name,
+            url: resource.url,
+          })),
+      },
+    },
+  )
+}
+
+/** The write itself, shared by the save and by its revert. */
+export async function writeCellResources(
+  client: Client,
+  cellId: string,
+  rows: readonly ResourceRowInput[],
+): Promise<void> {
   const { error } = await client.rpc('sync_cell_resources', {
     p_cell_id: cellId,
     p_rows: rows as unknown as Json,
   })
   if (error) throw toAuthoringError(error)
-  recordChange(
-    'update_cell_resources',
-    { cell_id: cellId },
-    // Reverting means writing the pre-write list back as it was.
-    {
-      fn: 'update_cell_resources',
-      args: {
-        cell_id: cellId,
-        rows: existing.map((resource) => ({
-          name: resource.name,
-          url: resource.url ?? '',
-        })),
-      },
-    },
-  )
 }

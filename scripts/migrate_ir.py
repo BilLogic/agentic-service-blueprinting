@@ -443,6 +443,39 @@ def to_2026_09_04(doc: dict) -> None:
                 scenario["layout"] = "stacked"
 
 
+def to_2026_09_05(doc: dict) -> None:
+    """2026.09.04 → 2026.09.05 — a resource keeps its id, knows its cell,
+    and one of them is featured.
+
+    The IR carries two of the four: `resources[].kind` loses `other`, which
+    named nothing, for `attachment`, which names a file the cell points at;
+    and `resources[].featured` arrives, optional, absent meaning false. The
+    id and the cell are the database's — the IR nests a resource under its
+    cell already.
+
+      other  →  attachment
+
+    A file that authored `other` changes its bytes and its scenarios
+    re-sign. No shipped fixture did.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if not isinstance(scenario, dict):
+                continue
+            for path in scenario.get("paths", []) or []:
+                if not isinstance(path, dict):
+                    continue
+                for cell in path.get("cells", []) or []:
+                    if not isinstance(cell, dict):
+                        continue
+                    for resource in cell.get("resources", []) or []:
+                        if isinstance(resource, dict) and resource.get("kind") == "other":
+                            resource["kind"] = "attachment"
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -504,6 +537,14 @@ STEPS = (
         "(one path stacked is one band), and merged — until now a session-only "
         "display — is a value a scenario is stored as",
         to_2026_09_04,
+    ),
+    Step(
+        "2026.09.04",
+        "2026.09.05",
+        "resources[].kind is link | attachment (`other` folds into attachment) "
+        "and resources[].featured arrives, optional; a resource keeps its id "
+        "across a save and every row knows its cell",
+        to_2026_09_05,
     ),
 )
 

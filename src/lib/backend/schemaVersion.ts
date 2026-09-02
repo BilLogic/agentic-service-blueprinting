@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.04'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.05'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,10 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.04'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // A resource keeps its id, knows its cell, and one of them is featured
+  // (#110). `resources.kind` is `link | attachment` and `featured` arrives;
+  // a file that authored `other` moves.
+  '2026.09.05',
   // `scenarios.layout` is `stacked | merged` (#109). `single` folded into
   // stacked — one path stacked is one band — and merged, until now a
   // session-only display, is a value the row holds, so a scenario left

@@ -119,18 +119,48 @@ describe('resources from database rows', () => {
       { position: 2, name: 'Named', url: 'https://b.example/' },
     ]
     expect(cellResourcesFromRows(rows)).toEqual([
-      { name: 'Named', kind: 'link', url: 'https://b.example/' },
+      {
+        id: null,
+        name: 'Named',
+        kind: 'link',
+        url: 'https://b.example/',
+        placementId: null,
+        featured: false,
+      },
     ])
   })
 
   it('keeps resource kinds inside the domain vocabulary', () => {
     const rows = [
-      { position: 1, name: 'Document', kind: 'other' },
-      { position: 2, name: 'Legacy value', kind: 'unexpected' },
+      { position: 1, name: 'Screenshot', kind: 'attachment', url: '/a.png' },
+      { position: 2, name: 'Legacy value', kind: 'unexpected', url: 'https://a.example/' },
     ]
     expect(cellResourcesFromRows(rows).map((row) => row.kind)).toEqual([
-      'other',
-      'other',
+      'attachment',
+      'link',
+    ])
+  })
+
+  it('carries the row\u2019s id, whose placement it is, and whether it leads', () => {
+    const rows = [
+      {
+        id: 'r-1',
+        position: 1,
+        name: 'Design',
+        url: 'https://www.figma.com/design/x',
+        cell_touchpoint_id: 'placement-1',
+        featured: true,
+      },
+    ]
+    expect(cellResourcesFromRows(rows)).toEqual([
+      {
+        id: 'r-1',
+        name: 'Design',
+        kind: 'link',
+        url: 'https://www.figma.com/design/x',
+        placementId: 'placement-1',
+        featured: true,
+      },
     ])
   })
 

@@ -23,6 +23,11 @@ import {
   CellPanelEditor,
 } from '@/components/blueprint/CellPanelEditor'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
+import {
+  FeaturedButtons,
+  FeaturedPreviewFrame,
+} from '@/components/blueprint/FeaturedResources'
+import { featuredPresentation } from '@/lib/resourcePresentation'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { TechPillFace } from '@/components/blueprint/TechPillFace'
 import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
@@ -742,6 +747,32 @@ function BlueprintCellDetailPanelBody() {
     return resolveFigmaUrl(selection.techItem, selectedCell, cellResourceList)
   }, [cellResourceList, selectedCell, selection])
 
+  /*
+    What the cell leads with (#110): the selected placement's featured
+    attachment is the preview, every featured link — the placement's, then
+    the cell's own — is a button named by its host. A placement is the row
+    whose name the selected pill shows.
+  */
+  const selectedPlacementId = useMemo(() => {
+    const techItem = selection?.techItem?.trim().toLowerCase()
+    if (!techItem) return null
+    return (
+      cellTouchpointList.find(
+        (touchpoint) => touchpoint.name.trim().toLowerCase() === techItem,
+      )?.id ?? null
+    )
+  }, [cellTouchpointList, selection?.techItem])
+  const featured = useMemo(
+    () =>
+      selection
+        ? featuredPresentation({
+            placementId: selectedPlacementId,
+            resources: cellResourceList,
+          })
+        : { preview: null, buttons: [] },
+    [cellResourceList, selection, selectedPlacementId],
+  )
+
   // Lane row position of the selected cell — orients up/down direction
   // glyphs on same-step dependency rows.
   const selectedLanePosition = useMemo(() => {
@@ -1105,7 +1136,11 @@ function BlueprintCellDetailPanelBody() {
     cellFrame: selection.paths[0]?.frame,
     cellTouchpoints: cellTouchpointList,
   })
-  const showPicture = Boolean(detailPictures?.length && !isVisualLane)
+  // A featured attachment is the owner's picture (#110); the frame and the
+  // placement's screenshots are the fallback until #111 moves them here.
+  const showPicture = Boolean(
+    (featured.preview || detailPictures?.length) && !isVisualLane,
+  )
   const showTechPill = Boolean(isTechLane && techDetailLabel)
   const showTechPillAboveTitle =
     showTechPill &&
@@ -1242,7 +1277,7 @@ function BlueprintCellDetailPanelBody() {
   const pictureBlock = showPicture ? (
     <div className="flex w-full flex-col items-center gap-3">
       {(() => {
-        const frames = detailPictures!
+        const frames = detailPictures ?? []
         const useSmallerTechLogo = [
           'social media',
           'on-campus booth',
@@ -1275,7 +1310,14 @@ function BlueprintCellDetailPanelBody() {
                 ))}
               </div>
             ) : null}
-            {screenshots.map((src) =>
+            {featured.preview ? (
+              <FeaturedPreviewFrame
+                preview={featured.preview}
+                frameClassName={CELL_DETAIL_PICTURE_FRAME_CLASS}
+                mediaClassName={CELL_DETAIL_PICTURE_CLASS}
+              />
+            ) : null}
+            {(featured.preview ? [] : screenshots).map((src) =>
               figmaUrl ? (
                 <a
                   key={src}
@@ -1348,6 +1390,9 @@ function BlueprintCellDetailPanelBody() {
   const overviewContent = (
     <>
       {pictureBlock}
+      {!editingCell && featured.buttons.length > 0 ? (
+        <FeaturedButtons buttons={featured.buttons} className="px-1" />
+      ) : null}
       <div className="flex min-w-0 flex-col gap-2">
         {showTechPillAboveTitle ? selectedTechPill : null}
         {/* In edit mode the form's TEXT field *is* the title; repeating it

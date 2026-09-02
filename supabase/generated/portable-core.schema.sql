@@ -1301,6 +1301,54 @@ end;
 $$;
 
 --
+-- Name: restore_featured_resources(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.restore_featured_resources(p_rows jsonb) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_expected int;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  select count(*) into v_expected
+    from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb)) as r(id uuid, featured boolean);
+  if v_expected = 0 then
+    raise exception 'nothing to restore';
+  end if;
+
+  if (select count(*) from public.resources x
+        join jsonb_to_recordset(p_rows) as r(id uuid, featured boolean) on r.id = x.id)
+     <> v_expected then
+    raise exception 'some of the % resources to restore no longer exist', v_expected;
+  end if;
+
+  -- Clears first, then sets. The partial unique index behind "one preview
+  -- per owner" is checked row by row, not at commit, so restoring
+  -- {old: true, new: false} in one statement can meet a moment where both
+  -- are true and be refused — the capture, run backwards.
+  update public.resources x
+     set featured = false, updated_at = now()
+    from jsonb_to_recordset(p_rows) as r(id uuid, featured boolean)
+   where x.id = r.id and not r.featured;
+  update public.resources x
+     set featured = true, updated_at = now()
+    from jsonb_to_recordset(p_rows) as r(id uuid, featured boolean)
+   where x.id = r.id and r.featured;
+end
+$$;
+
+--
+-- Name: FUNCTION restore_featured_resources(p_rows jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.restore_featured_resources(p_rows jsonb) IS 'The inverse of set_featured_resource: each {id, featured} written back as captured, no clearing rule.';
+
+--
 -- Name: set_cell_dependency(uuid, uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1350,6 +1398,60 @@ begin
   return dependency_id;
 end;
 $$;
+
+--
+-- Name: set_featured_resource(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_featured_resource(p_resource_id uuid, p_featured boolean) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_row      public.resources;
+  v_previous jsonb;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  select * into v_row from public.resources where id = p_resource_id for update;
+  if v_row.id is null then
+    raise exception 'resource % does not exist', p_resource_id;
+  end if;
+
+  -- What this call changes, as it was. The row itself, and — when a
+  -- preview is being set — the previous preview of the same owner.
+  select coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'featured', x.featured)), '[]'::jsonb)
+    into v_previous
+    from public.resources x
+   where x.id = p_resource_id
+      or (p_featured and v_row.kind = 'attachment'
+          and x.featured and x.kind = 'attachment' and x.id <> p_resource_id
+          and x.cell_touchpoint_id is not distinct from v_row.cell_touchpoint_id
+          and x.cell_id = v_row.cell_id);
+
+  if p_featured and v_row.kind = 'attachment' then
+    update public.resources x
+       set featured = false, updated_at = now()
+     where x.featured and x.kind = 'attachment' and x.id <> p_resource_id
+       and x.cell_touchpoint_id is not distinct from v_row.cell_touchpoint_id
+       and x.cell_id = v_row.cell_id;
+  end if;
+
+  update public.resources
+     set featured = p_featured, updated_at = now()
+   where id = p_resource_id;
+
+  return jsonb_build_object('previous', v_previous);
+end
+$$;
+
+--
+-- Name: FUNCTION set_featured_resource(p_resource_id uuid, p_featured boolean); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.set_featured_resource(p_resource_id uuid, p_featured boolean) IS 'One row''s featured flag. Featuring an attachment clears the owner''s previous featured attachment in the same transaction and returns both before-states, which is the inverse.';
 
 --
 -- Name: set_path_steps(uuid, uuid[]); Type: FUNCTION; Schema: public; Owner: -
@@ -1430,30 +1532,79 @@ $_$;
 --
 
 CREATE FUNCTION public.sync_cell_resources(p_cell_id uuid, p_rows jsonb) RETURNS void
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
 declare
-  v_nameless int;
+  v_nameless  int;
+  v_foreign   int;
+  v_placement int;
 begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
   if not exists (select 1 from public.cells c where c.id = p_cell_id) then
     raise exception 'cell % does not exist', p_cell_id;
   end if;
 
-  -- Refused rather than defaulted. The editor already falls back to the url's
-  -- host, so a nameless row arriving here means a caller skipped that, and
-  -- inventing a name on its behalf hides the bug and adds a second answer to
-  -- the question this file's header settles.
+  -- Refused rather than defaulted. The editor already falls back to the
+  -- url's host, so a nameless row reaching here means a caller skipped that,
+  -- and inventing a name on its behalf hides the bug.
   select count(*) into v_nameless
   from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
-    as r(kind text, name text, url text)
+    as r(id uuid, kind text, name text, url text)
   where nullif(btrim(coalesce(r.name, '')), '') is null;
   if v_nameless <> 0 then
     raise exception '% resource(s) arrived with no name', v_nameless;
   end if;
 
-  delete from public.resources where cell_id = p_cell_id;
+  -- An id has to be one of this cell's own rows.
+  select count(*) into v_foreign
+  from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb)) as r(id uuid)
+  where r.id is not null
+    and not exists (
+      select 1 from public.resources x
+       where x.id = r.id and x.cell_id = p_cell_id
+    );
+  if v_foreign <> 0 then
+    raise exception '% resource id(s) are not rows of cell %', v_foreign, p_cell_id;
+  end if;
 
+  -- And not one of a placement's. Those are the cell's to READ, and the
+  -- touchpoint's list to write; a cell list rewriting them would turn a
+  -- featured attachment into a link.
+  select count(*) into v_placement
+  from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb)) as r(id uuid)
+  join public.resources x on x.id = r.id
+  where x.cell_touchpoint_id is not null;
+  if v_placement <> 0 then
+    raise exception '% resource(s) belong to a touchpoint placement and are edited from it', v_placement;
+  end if;
+
+  -- Rows the list no longer names — the cell's own only.
+  delete from public.resources x
+   where x.cell_id = p_cell_id
+     and x.cell_touchpoint_id is null
+     and x.id not in (
+       select r.id
+         from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb)) as r(id uuid)
+        where r.id is not null
+     );
+
+  -- Kept rows, updated in place — position included, kind left alone.
+  update public.resources x
+     set name       = btrim(r.name),
+         url        = nullif(btrim(coalesce(r.url, '')), ''),
+         position   = r.ord::int,
+         updated_at = now()
+    from rows from (
+           jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+             as (id uuid, kind text, name text, url text)
+         ) with ordinality as r(id, kind, name, url, ord)
+   where x.id = r.id
+     and x.cell_id = p_cell_id;
+
+  -- New rows.
   insert into public.resources (cell_id, kind, name, url, position, origin)
   select p_cell_id,
          coalesce(nullif(btrim(coalesce(r.kind, '')), ''), 'link'),
@@ -1461,17 +1612,11 @@ begin
          nullif(btrim(coalesce(r.url, '')), ''),
          r.ord::int,
          'app'
-  -- `rows from (... as (...)) with ordinality`, not
-  -- `jsonb_to_recordset(...) with ordinality as r(...)`. Postgres refuses the
-  -- second outright — "WITH ORDINALITY cannot be used with a column definition
-  -- list" — and nothing static would catch it: the file parses, a replay
-  -- against an empty database never calls the function, and a unit test that
-  -- stubs the RPC never reaches it. It takes running the real function against
-  -- a real server, which is why this one was.
-  from rows from (
-    jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
-      as (kind text, name text, url text)
-  ) with ordinality as r(kind, name, url, ord);
+    from rows from (
+           jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+             as (id uuid, kind text, name text, url text)
+         ) with ordinality as r(id, kind, name, url, ord)
+   where r.id is null;
 end
 $$;
 
@@ -1479,7 +1624,95 @@ $$;
 -- Name: FUNCTION sync_cell_resources(p_cell_id uuid, p_rows jsonb); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.sync_cell_resources(p_cell_id uuid, p_rows jsonb) IS 'Replace one cell''s resources in a single transaction, in list order. Placement-attached resources are not this function''s business.';
+COMMENT ON FUNCTION public.sync_cell_resources(p_cell_id uuid, p_rows jsonb) IS 'The cell''s own list, reconciled in order: delete the rows not named, update the named ones in place (name, url, position — never kind or featured), insert the rest. Refuses another cell''s id and a placement''s.';
+
+--
+-- Name: sync_placement_resources(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sync_placement_resources(p_placement_id uuid, p_rows jsonb) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_cell_id  uuid;
+  v_nameless int;
+  v_foreign  int;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  select ct.cell_id into v_cell_id
+    from public.cell_touchpoints ct
+   where ct.id = p_placement_id;
+  if v_cell_id is null then
+    raise exception 'touchpoint placement % does not exist', p_placement_id;
+  end if;
+
+  select count(*) into v_nameless
+  from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+    as r(id uuid, kind text, name text, url text)
+  where nullif(btrim(coalesce(r.name, '')), '') is null
+     or nullif(btrim(coalesce(r.url, '')), '') is null;
+  if v_nameless <> 0 then
+    raise exception '% resource(s) arrived with no name or no url', v_nameless;
+  end if;
+
+  -- An id has to be one of THIS placement's rows.
+  select count(*) into v_foreign
+  from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb)) as r(id uuid)
+  where r.id is not null
+    and not exists (
+      select 1 from public.resources x
+       where x.id = r.id and x.cell_touchpoint_id = p_placement_id
+    );
+  if v_foreign <> 0 then
+    raise exception '% resource id(s) are not rows of placement %', v_foreign, p_placement_id;
+  end if;
+
+  delete from public.resources x
+   where x.cell_touchpoint_id = p_placement_id
+     and x.id not in (
+       select r.id
+         from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb)) as r(id uuid)
+        where r.id is not null
+     );
+
+  -- Kept rows: name, url, position. Not kind, not featured.
+  update public.resources x
+     set name       = btrim(r.name),
+         url        = btrim(r.url),
+         position   = r.ord::int,
+         updated_at = now()
+    from rows from (
+           jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+             as (id uuid, kind text, name text, url text)
+         ) with ordinality as r(id, kind, name, url, ord)
+   where x.id = r.id
+     and x.cell_touchpoint_id = p_placement_id;
+
+  insert into public.resources
+    (cell_id, cell_touchpoint_id, kind, name, url, position, origin)
+  select v_cell_id, p_placement_id,
+         coalesce(nullif(btrim(coalesce(r.kind, '')), ''), 'link'),
+         btrim(r.name),
+         btrim(r.url),
+         r.ord::int,
+         'app'
+    from rows from (
+           jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+             as (id uuid, kind text, name text, url text)
+         ) with ordinality as r(id, kind, name, url, ord)
+   where r.id is null;
+end
+$$;
+
+--
+-- Name: FUNCTION sync_placement_resources(p_placement_id uuid, p_rows jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.sync_placement_resources(p_placement_id uuid, p_rows jsonb) IS 'The touchpoint''s list at one cell, replaced in order: delete the rows not named, update the named ones (name, url, position — never kind or featured), insert the rest. Refuses another placement''s id and a placement that is gone.';
 
 --
 -- Name: update_scenario_layout(uuid, text); Type: FUNCTION; Schema: public; Owner: -
@@ -2096,7 +2329,7 @@ COMMENT ON COLUMN public.phases.operational_requirements IS 'Process / system / 
 
 CREATE TABLE public.resources (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    cell_id uuid,
+    cell_id uuid NOT NULL,
     cell_touchpoint_id uuid,
     kind text DEFAULT 'link'::text NOT NULL,
     name text NOT NULL,
@@ -2105,9 +2338,9 @@ CREATE TABLE public.resources (
     origin text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT resources_kind_check CHECK ((kind = ANY (ARRAY['link'::text, 'other'::text]))),
-    CONSTRAINT resources_link_has_url CHECK (((kind <> 'link'::text) OR (NULLIF(btrim(url), ''::text) IS NOT NULL))),
-    CONSTRAINT resources_one_owner CHECK ((num_nonnulls(cell_id, cell_touchpoint_id) = 1)),
+    featured boolean DEFAULT false NOT NULL,
+    CONSTRAINT resources_has_url CHECK ((NULLIF(btrim(url), ''::text) IS NOT NULL)),
+    CONSTRAINT resources_kind_check CHECK ((kind = ANY (ARRAY['link'::text, 'attachment'::text]))),
     CONSTRAINT resources_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
 
@@ -2115,13 +2348,37 @@ CREATE TABLE public.resources (
 -- Name: TABLE resources; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.resources IS 'Things a cell, or one touchpoint placement, points at. A link is one kind of resource and `kind` carries the subtype. Exactly one of cell_id and cell_touchpoint_id is set, so a design link can belong to the tool it documents rather than to the cell at large.';
+COMMENT ON TABLE public.resources IS 'Things a cell points at. Every row carries its cell; a row a touchpoint placement owns carries the placement as well, and the composite key holds the two to one row. A link is one kind of resource and `kind` carries the subtype.';
+
+--
+-- Name: COLUMN resources.cell_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.resources.cell_id IS 'The cell this resource belongs to — always. A placement-owned resource carries its placement in cell_touchpoint_id as well.';
+
+--
+-- Name: COLUMN resources.cell_touchpoint_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.resources.cell_touchpoint_id IS 'The touchpoint placement this resource belongs to, when it is a placement''s: a link or the image a touchpoint shows at this cell. Still the cell''s row; edited from the touchpoint.';
+
+--
+-- Name: COLUMN resources.kind; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.resources.kind IS 'link = a place on the web; attachment = a file the cell points at, today a site-relative image path, after #113 an object in Storage. Both carry a url. Host and file type are read at render, never stored.';
 
 --
 -- Name: COLUMN resources.name; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.resources.name IS 'What the thing on the other end is called. `name`, not `label`: a reader navigates to it.';
+
+--
+-- Name: COLUMN resources.featured; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.resources.featured IS 'The resource its owner leads with. One featured attachment per placement or per cell (the image it shows); any number of featured links.';
 
 --
 -- Name: scenarios; Type: TABLE; Schema: public; Owner: -
@@ -2401,6 +2658,13 @@ ALTER TABLE ONLY public.cell_touchpoints
     ADD CONSTRAINT cell_touchpoints_cell_position_unique UNIQUE (cell_id, "position") DEFERRABLE INITIALLY DEFERRED;
 
 --
+-- Name: cell_touchpoints cell_touchpoints_id_cell_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cell_touchpoints
+    ADD CONSTRAINT cell_touchpoints_id_cell_id_key UNIQUE (id, cell_id);
+
+--
 -- Name: cell_touchpoints cell_touchpoints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2475,7 +2739,7 @@ ALTER TABLE ONLY public.phases
 --
 
 ALTER TABLE ONLY public.resources
-    ADD CONSTRAINT resources_cell_position_unique UNIQUE (cell_id, "position") DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT resources_cell_position_unique EXCLUDE USING btree (cell_id WITH =, "position" WITH =) WHERE ((cell_touchpoint_id IS NULL)) DEFERRABLE INITIALLY DEFERRED;
 
 --
 -- Name: resources resources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2672,6 +2936,18 @@ CREATE INDEX phases_service_id_idx ON public.phases USING btree (service_id);
 --
 
 CREATE INDEX phases_service_order_idx ON public.phases USING btree (service_id, "position");
+
+--
+-- Name: resources_one_featured_attachment_per_cell; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX resources_one_featured_attachment_per_cell ON public.resources USING btree (cell_id) WHERE (featured AND (kind = 'attachment'::text) AND (cell_touchpoint_id IS NULL));
+
+--
+-- Name: resources_one_featured_attachment_per_placement; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX resources_one_featured_attachment_per_placement ON public.resources USING btree (cell_touchpoint_id) WHERE (featured AND (kind = 'attachment'::text) AND (cell_touchpoint_id IS NOT NULL));
 
 --
 -- Name: scenarios_phase_id_idx; Type: INDEX; Schema: public; Owner: -
@@ -2931,11 +3207,11 @@ ALTER TABLE ONLY public.resources
     ADD CONSTRAINT resources_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id) ON DELETE CASCADE;
 
 --
--- Name: resources resources_cell_touchpoint_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: resources resources_placement_in_cell_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.resources
-    ADD CONSTRAINT resources_cell_touchpoint_id_fkey FOREIGN KEY (cell_touchpoint_id) REFERENCES public.cell_touchpoints(id) ON DELETE CASCADE;
+    ADD CONSTRAINT resources_placement_in_cell_fkey FOREIGN KEY (cell_touchpoint_id, cell_id) REFERENCES public.cell_touchpoints(id, cell_id) ON DELETE CASCADE;
 
 --
 -- Name: scenarios scenarios_phase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

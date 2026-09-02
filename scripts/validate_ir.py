@@ -90,7 +90,7 @@ LAYOUTS = ("stacked", "merged")
 PATH_KINDS = ("happy", "variant", "exception")
 #: resources.kind — the same short list the database checks. Absent means
 #: `link`, which is the column default.
-RESOURCE_KINDS = ("link", "other")
+RESOURCE_KINDS = ("link", "attachment")
 #: cell_dependencies.kind — the same two values the database checks.
 #: An edge that states none is a 'leads_to', which is the column default.
 DEPENDENCY_KINDS = ("leads_to", "enables")
@@ -288,7 +288,7 @@ def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
     if not isinstance(resource, dict):
         rep.error(jp, f"resource must be an object, got {type_name(resource)}")
         return
-    check_extra_keys(resource, {"name", "url", "kind"}, jp, rep)
+    check_extra_keys(resource, {"name", "url", "kind", "featured"}, jp, rep)
     check_locale_text(resource.get("name"), f"{jp}.name", rep, locales, True, "name")
     if "url" not in resource:
         rep.error(jp, "a resource requires a 'url' field")
@@ -296,6 +296,8 @@ def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
         check_uri(resource["url"], f"{jp}.url", rep)
     if "kind" in resource:
         check_enum(resource, "kind", RESOURCE_KINDS, jp, rep)
+    if "featured" in resource and not isinstance(resource["featured"], bool):
+        rep.error(f"{jp}.featured", f"featured must be a boolean, got {type_name(resource['featured'])}")
 
 
 def check_touchpoint(touchpoint, jp: str, rep: Report, locales: list) -> None:
