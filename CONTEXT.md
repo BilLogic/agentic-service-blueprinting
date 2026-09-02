@@ -88,11 +88,11 @@ code-span form, across every rulebook tree an agent or reader follows.
 ## What the skills produce
 
 **Analysis tier** — the four tables that hold records *about* the board rather
-than squares of it: `evidence`, `findings`, `slices`, `slice_items`. What unites
+than squares of it: `evidence`, `findings`, `slices`, `slides`. What unites
 them is aboutness — each exists to say something concerning the board, and none
 is part of it. Evidence and findings concern cells directly; a slice reaches
 cells through the items it presents. Evidence, findings, and slices are
-hard-bound directly to the service; a slice item has no direct service binding
+hard-bound directly to the service; a slide has no direct service binding
 and is hard-bound only to its slice. The exact keys and constraint topology
 live in `references/data-model.md`.
 

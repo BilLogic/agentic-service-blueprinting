@@ -71,12 +71,12 @@ alter table public.evidence alter column created_by set default auth.uid();
 -- acceptable for a closed team only.
 
 alter table public.slices enable row level security;
-alter table public.slice_items enable row level security;
+alter table public.slides enable row level security;
 alter table public.findings enable row level security;
 alter table public.evidence enable row level security;
 alter table public.business_model enable row level security;
 
--- slices / slice_items: public read, authenticated write
+-- slices / slides: public read, authenticated write
 create policy "slices_select" on public.slices for select using (true);
 create policy "slices_insert_auth" on public.slices
   for insert to authenticated with check (true);
@@ -85,12 +85,12 @@ create policy "slices_update_auth" on public.slices
 create policy "slices_delete_auth" on public.slices
   for delete to authenticated using (true);
 
-create policy "slice_items_select" on public.slice_items for select using (true);
-create policy "slice_items_insert_auth" on public.slice_items
+create policy "slice_items_select" on public.slides for select using (true);
+create policy "slice_items_insert_auth" on public.slides
   for insert to authenticated with check (true);
-create policy "slice_items_update_auth" on public.slice_items
+create policy "slice_items_update_auth" on public.slides
   for update to authenticated using (true) with check (true);
-create policy "slice_items_delete_auth" on public.slice_items
+create policy "slice_items_delete_auth" on public.slides
   for delete to authenticated using (true);
 
 -- findings: public read; humans may flip STATUS only (column grant below); no
@@ -182,24 +182,24 @@ end $$;
 
 -- F1 is entirely about the anon / authenticated roles.
 -- ---- F1: explicit exposure grants ----
-grant select on public.slices, public.slice_items, public.findings to anon, authenticated;
+grant select on public.slices, public.slides, public.findings to anon, authenticated;
 grant select on public.evidence, public.business_model to authenticated;
-grant insert, update, delete on public.slices, public.slice_items, public.evidence to authenticated;
+grant insert, update, delete on public.slices, public.slides, public.evidence to authenticated;
 grant insert, update on public.business_model to authenticated;
 grant select on public.evidence_counts to anon, authenticated;
 
 -- Defense-in-depth: strip legacy write privileges from anon (RLS already blocks the
 -- DML, but TRUNCATE is not subject to RLS) and TRUNCATE from both roles everywhere.
-revoke insert, update, delete, truncate on public.slices, public.slice_items,
+revoke insert, update, delete, truncate on public.slices, public.slides,
   public.findings, public.evidence, public.business_model from anon;
 revoke select on public.evidence, public.business_model from anon;
-revoke truncate on public.slices, public.slice_items, public.findings,
+revoke truncate on public.slices, public.slides, public.findings,
   public.evidence, public.business_model, public.cells, public.lanes, public.phases
   from anon, authenticated;
 revoke insert, update, delete on public.evidence_counts from anon, authenticated;
 
 -- who "the caller" is, on Supabase.
-alter table public.slice_items  alter column created_by set default auth.uid();
+alter table public.slides  alter column created_by set default auth.uid();
 alter table public.business_model alter column created_by set default auth.uid();
 
 -- ─────────────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ update storage.buckets
 --      refused by the policy.
 --   2. It keys a frame's image by *position* (`frame-3.png`). Positions move:
 --      splitting or reordering frames renumbers them, so every image would
---      silently repoint at a different frame. The app keys by `slice_items.id`
+--      silently repoint at a different frame. The app keys by `slides.id`
 --      instead, which is stable across every edit that is not a delete.
 --
 -- The old names stay accepted so anything already uploaded keeps resolving.
@@ -459,7 +459,7 @@ declare
 begin
   foreach t in array array[
     'phases', 'scenarios', 'paths', 'steps', 'path_steps',
-    'lanes', 'cells', 'cell_dependencies', 'slices', 'slice_items',
+    'lanes', 'cells', 'cell_dependencies', 'slices', 'slides',
     'evidence', 'business_model', 'findings'
   ] loop
     execute format('drop policy if exists %I on public.%I',
@@ -672,3 +672,15 @@ revoke truncate on public.cell_touchpoints, public.resources from authenticated;
 
 -- the Supabase role that calls it.
 grant execute on function public.sync_cell_resources(uuid, jsonb) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000115000000_a_slide_a_frame_and_a_title.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- policies exist only where the Supabase recipe was applied, and
+-- their names are the one dependent kind the core cannot carry.
+
+alter policy "slice_items_select"      on public.slides rename to "slides_select";
+alter policy "slice_items_insert_auth" on public.slides rename to "slides_insert_auth";
+alter policy "slice_items_update_auth" on public.slides rename to "slides_update_auth";
+alter policy "slice_items_delete_auth" on public.slides rename to "slides_delete_auth";

@@ -73,7 +73,7 @@ function invalidDraft(scenarioId: string): SliceDraft {
     title: '',
     sliceType: 'custom',
     origin: 'generated',
-    frames: [{ position: 0, title: 'orphan', body: null, cellIds: [] }],
+    slides: [{ position: 0, title: 'orphan', body: null, cellIds: [] }],
   }
 }
 
@@ -83,7 +83,7 @@ function draft(title: string, scenarioId: string): SliceDraft {
     title,
     sliceType: 'custom',
     origin: 'generated',
-    frames: [
+    slides: [
       { position: 0, title: 'first', body: 'one', cellIds: [] },
       { position: 1, title: 'second', body: null, cellIds: [] },
     ],
@@ -199,7 +199,7 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
   {
     id: 'write/slice-round-trip',
     kind: 'write',
-    title: 'a created slice reads back with its frames, in order',
+    title: 'a created slice reads back with its slides, in order',
     async run(backend, fixture) {
       const created = await backend.slices.createSlice(
         draft('conformance round trip', fixture.scenarioId),
@@ -208,10 +208,10 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
         const read = await backend.slices.getSlice(created.id)
         require(read !== null, 'a slice that was just created did not read back')
         require(read.title === 'conformance round trip', 'title did not survive the write')
-        require(read.frames.length === 2, `expected 2 frames, read ${read.frames.length}`)
+        require(read.slides.length === 2, `expected 2 slides, read ${read.slides.length}`)
         require(
-          read.frames[0].position === 0 && read.frames[1].position === 1,
-          'frames came back out of position order',
+          read.slides[0].position === 0 && read.slides[1].position === 1,
+          'slides came back out of position order',
         )
       } finally {
         await tidy(() => backend.slices.deleteSlice(created.id))
@@ -219,21 +219,21 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
     },
   },
   {
-    id: 'write/replace-frames',
+    id: 'write/replace-slides',
     kind: 'write',
-    title: 'replacing frames leaves the new set and none of the old',
+    title: 'replacing slides leaves the new set and none of the old',
     async run(backend, fixture) {
       const created = await backend.slices.createSlice(
         draft('conformance replace', fixture.scenarioId),
       )
       try {
-        await backend.slices.replaceSliceFrames(created.id, [
+        await backend.slices.replaceSlides(created.id, [
           { position: 0, title: 'only', body: null, cellIds: [] },
         ])
         const read = await backend.slices.getSlice(created.id)
-        require(read !== null, 'the slice vanished during a frame replace')
-        require(read.frames.length === 1, `old frames survived: ${read.frames.length} remain`)
-        require(read.frames[0].title === 'only', 'the new frame did not land')
+        require(read !== null, 'the slice vanished during a slide replace')
+        require(read.slides.length === 1, `old slides survived: ${read.slides.length} remain`)
+        require(read.slides[0].title === 'only', 'the new slide did not land')
       } finally {
         await tidy(() => backend.slices.deleteSlice(created.id))
       }

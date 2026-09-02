@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
  *
  * `rightSlot` is contextual chrome the shell owns: the path selector on the
  * reader, Fit on the map, nothing when neither applies. The ⋯ overflow and
- * the theme toggle are gone — the overflow held only a disabled caption,
+ * the theme toggle are gone — the overflow held only a disabled title,
  * and light/dark now lives at the foot of the drawer's rail, where the
  * desktop keeps its utilities.
  */

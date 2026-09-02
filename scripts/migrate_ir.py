@@ -350,6 +350,31 @@ def to_2026_09_01(doc: dict) -> None:
                         edge["kind"] = "enables"
 
 
+def to_2026_09_02(doc: dict) -> None:
+    """2026.09.01 → 2026.09.02 — a cell's `picture` is its `frame`.
+
+    One word had to serve two ideas: the image on a cell, and the border drawn
+    around one in a walkthrough. The vocabulary settles it — `frame` is ONE
+    image on ONE cell, a step's frames across the lanes are its `strip`, a
+    slice's screen is a `slide`, and `storyboard` is the lane — so the column
+    took the word and the picture-frame sense kept it only where it means a
+    border.
+
+    A straight rename of one optional field. Every authored value moves, so a
+    file that sets any `picture` changes its bytes and its scenarios re-sign;
+    a file that sets none migrates by its stamp alone.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            for path in scenario.get("paths", []) or []:
+                for cell in path.get("cells", []) or []:
+                    if isinstance(cell, dict) and "picture" in cell:
+                        cell["frame"] = cell.pop("picture")
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -388,6 +413,13 @@ STEPS = (
         # Swapping source and target on a `needs` edge is authored content
         # moving, not a field renamed under it.
         content_preserving=False,
+    ),
+    Step(
+        "2026.09.01",
+        "2026.09.02",
+        "a cell's `picture` is its `frame`; slice_items became slides and its "
+        "caption a title, neither of which the IR ever carried",
+        to_2026_09_02,
     ),
 )
 

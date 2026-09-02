@@ -126,7 +126,7 @@ export function ServiceBlueprintGrid({
   const showPlay =
     isBlueprintVisualWalkthroughEnabled() &&
     buildVisualWalkthroughSession(data).steps.some(
-      (step) => step.pictures.length > 0,
+      (step) => step.frames.length > 0,
     )
   const playGutter = showPlay ? VISUAL_PLAY_GUTTER : 0
 
@@ -615,7 +615,7 @@ function BlueprintSwimLane({
                             ? `visual-${step.id}`
                             : `empty-${laneId}-${step.id}`),
                         cellContent: cell?.content ?? '',
-                        cellPicture: cell?.picture ?? null,
+                        cellFrame: cell?.frame ?? null,
                         cellSummary: cell?.summary ?? null,
                         cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
                         cellResources: cell ? cellResources(cell) : undefined,
@@ -702,7 +702,7 @@ function BlueprintCellBlock({
   rowMinHeight?: number
   flushBottom?: boolean
   selectionContext?: BlueprintCellSelectionContext
-  visualPictures?: Array<{ picture: string; label: string }>
+  visualPictures?: Array<{ frame: string; label: string }>
   /** Every cell in a tech slot — one per touchpoint since the split. */
   slotCells?: BlueprintCell[]
 }) {
@@ -726,7 +726,7 @@ function BlueprintCellBlock({
                 {
                   id: cellId,
                   content,
-                  picture: null,
+                  frame: null,
                   summary: null,
                   touchpoints: [],
                   resources: [],
@@ -768,7 +768,7 @@ function BlueprintCellBlock({
         <BlueprintStepVisual
           compact={compact}
           fill={laneStyle.lane}
-          pictures={visualPictures}
+          frames={visualPictures}
           selection={
             selectionContext
               ? buildBlueprintCellSelection(selectionContext)
@@ -801,7 +801,7 @@ function BlueprintCellBlock({
                 ...selectionContext,
                 cellId: slotCell.id ?? selectionContext.cellId,
                 cellContent: slotCell.content ?? '',
-                cellPicture: slotCell.picture ?? null,
+                cellFrame: slotCell.frame ?? null,
                 cellSummary: slotCell.summary ?? null,
                 cellTouchpoints: cellTouchpoints(slotCell),
                 cellResources: cellResources(slotCell),

@@ -106,7 +106,7 @@ export function formatSliceDetail(
   },
   items: ReadonlyArray<{
     position: number
-    caption?: string | null
+    title?: string | null
     narrative?: string | null
     cell_ids?: string[] | null
   }>,
@@ -115,7 +115,7 @@ export function formatSliceDetail(
     .sort((a, b) => a.position - b.position)
     .map(
       (frame, index) =>
-        `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.caption ? ` caption "${frame.caption}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
+        `frame ${index + 1}: cells [${(frame.cell_ids ?? []).join(', ')}]${frame.title ? ` title "${frame.title}"` : ''}${frame.narrative ? ` narrative "${frame.narrative}"` : ''}`,
     )
   return `slice "${slice.title}" (${slice.id}) type=${slice.slice_type}${slice.actor ? ` actor=${slice.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
 }

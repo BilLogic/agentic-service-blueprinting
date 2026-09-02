@@ -109,7 +109,7 @@ function fillMissingTouchpoints(
  * Merge policy (applies only when the blueprint source is 'database'):
  * - Field values already present in the DB (non-empty after trim) are kept.
  * - Fallback values only fill DB fields that are null/empty (a placeholder
- *   step visual counts as empty when the fallback has a real picture).
+ *   step visual counts as empty when the fallback has a real frame).
  * - Fallback lanes/cells/steps/triggers/links that are entirely missing from
  *   the DB are appended; nothing in the DB is removed or repositioned.
  */
@@ -155,14 +155,14 @@ function mergeMissingBlueprintContent(
     let changed = false
     let next = cell
 
-    if (fallbackCell.picture?.trim()) {
-      const cellPicture = cell.picture?.trim()
+    if (fallbackCell.frame?.trim()) {
+      const cellFrame = cell.frame?.trim()
       if (
-        !cellPicture ||
-        (isBlueprintStepVisualPlaceholder(cellPicture) &&
-          !isBlueprintStepVisualPlaceholder(fallbackCell.picture))
+        !cellFrame ||
+        (isBlueprintStepVisualPlaceholder(cellFrame) &&
+          !isBlueprintStepVisualPlaceholder(fallbackCell.frame))
       ) {
-        next = { ...next, picture: fallbackCell.picture }
+        next = { ...next, frame: fallbackCell.frame }
         changed = true
       }
     }

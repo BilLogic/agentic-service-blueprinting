@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { describeCell } from '@/lib/canvasCellQuery'
 import { cn } from '@/lib/utils'
-import type { DraftFrame } from '@/lib/sliceValidation'
+import type { DraftSlide } from '@/lib/sliceValidation'
 
 /**
  * Ordering *and* grouping, in one list.
  *
  * Presets were the wrong idea: grouping is something people shape cell by
  * cell, and since they are already dragging to reorder, both belong in one
- * gesture space. Cells between two dividers are one screen, so reordering and
+ * gesture space. Cells between two dividers are one slide, so reordering and
  * re-bucketing are the same drag.
  *
  * The drag is **pointer events, not HTML5 drag-and-drop**. That API failed
@@ -22,15 +22,17 @@ import type { DraftFrame } from '@/lib/sliceValidation'
  * that they imagined the gesture. Pointer capture has one owner and no such
  * moods: down on the grip, move updates the slot under the pointer, up drops.
  *
- * "Screen" is the word here on purpose. A frame is the row in `slice_items`;
- * a screen is what the reader sees in presentation. The code keeps `frame`.
+ * "Slide" is the only word for this here, and that is the point: the row in
+ * `slides`, the card in this list and the screen the reader sees in
+ * presentation are one thing. It used to be a "frame" in the schema and a
+ * "screen" on this surface, while "frame" also meant one image on one cell.
  */
 
-/** Where a dragged cell would land: before cell `index` of screen `screen`. */
-type DropSlot = { screen: number; index: number }
+/** Where a dragged cell would land: before cell `index` of slide `slide`. */
+type DropSlot = { slide: number; index: number }
 
 const sameSlot = (left: DropSlot | null, right: DropSlot | null) =>
-  left?.screen === right?.screen && left?.index === right?.index
+  left?.slide === right?.slide && left?.index === right?.index
 
 /** Read the slot back off the element under the pointer. */
 function slotAt(x: number, y: number): DropSlot | null {
@@ -38,17 +40,17 @@ function slotAt(x: number, y: number): DropSlot | null {
     .elementFromPoint(x, y)
     ?.closest<HTMLElement>('[data-drop-slot]')
   if (!hit) return null
-  const [screen, index] = (hit.dataset.dropSlot ?? '').split(':').map(Number)
-  if (Number.isNaN(screen) || Number.isNaN(index)) return null
-  return { screen, index }
+  const [slide, index] = (hit.dataset.dropSlot ?? '').split(':').map(Number)
+  if (Number.isNaN(slide) || Number.isNaN(index)) return null
+  return { slide, index }
 }
 
-export function SliceScreenComposer({
-  screens,
+export function SliceSlideComposer({
+  slides,
   onChange,
 }: {
-  screens: DraftFrame[]
-  onChange: (screens: DraftFrame[]) => void
+  slides: DraftSlide[]
+  onChange: (slides: DraftSlide[]) => void
 }) {
   const [dragging, setDragging] = useState<string | null>(null)
   const [slot, setSlot] = useState<DropSlot | null>(null)
@@ -60,50 +62,50 @@ export function SliceScreenComposer({
   // and a pointerup in that gap would apply the drop against the previous
   // list — silently discarding whatever changed it.
   const slotRef = useRef(slot)
-  const screensRef = useRef(screens)
+  const slidesRef = useRef(slides)
   // eslint-disable-next-line react-hooks/refs -- latest-value mirror; an effect is one commit late
   slotRef.current = slot
   // eslint-disable-next-line react-hooks/refs -- same: a pointerup in the effect gap would drop against a stale list
-  screensRef.current = screens
+  slidesRef.current = slides
 
   /**
-   * Move a cell to an explicit position rather than "into a screen".
+   * Move a cell to an explicit position rather than "into a slide".
    *
    * Remove first, then re-derive the index — pulling the cell out shifts
    * everything after it, and inserting at the pre-removal index is how a drag
    * one place down silently becomes a no-op.
    */
   const moveTo = (cell: string, target: DropSlot) => {
-    const current = screensRef.current
+    const current = slidesRef.current
     let insertIndex = target.index
-    const withoutCell = current.map((screen, index) => {
-      const position = screen.cells.indexOf(cell)
-      if (position === -1) return screen
-      if (index === target.screen && position < target.index) insertIndex -= 1
-      return { ...screen, cells: screen.cells.filter((id) => id !== cell) }
+    const withoutCell = current.map((slide, index) => {
+      const position = slide.cells.indexOf(cell)
+      if (position === -1) return slide
+      if (index === target.slide && position < target.index) insertIndex -= 1
+      return { ...slide, cells: slide.cells.filter((id) => id !== cell) }
     })
 
-    // A drop past the last screen mints a new one — with Split gone, this
-    // drop zone is how a screen boundary comes into being.
+    // A drop past the last slide mints a new one — with Split gone, this
+    // drop zone is how a slide boundary comes into being.
     const next =
-      target.screen >= withoutCell.length
-        ? [...withoutCell, { cells: [cell], caption: '', narrative: '' }]
-        : withoutCell.map((screen, index) =>
-            index === target.screen
+      target.slide >= withoutCell.length
+        ? [...withoutCell, { cells: [cell], title: '', narrative: '' }]
+        : withoutCell.map((slide, index) =>
+            index === target.slide
               ? {
-                  ...screen,
+                  ...slide,
                   cells: [
-                    ...screen.cells.slice(0, insertIndex),
+                    ...slide.cells.slice(0, insertIndex),
                     cell,
-                    ...screen.cells.slice(insertIndex),
+                    ...slide.cells.slice(insertIndex),
                   ],
                 }
-              : screen,
+              : slide,
           )
 
-    // A screen emptied by the move disappears — an empty screen is not a
+    // A slide emptied by the move disappears — an empty slide is not a
     // renderable state, and leaving one behind only fails validation later.
-    onChange(next.filter((screen) => screen.cells.length > 0))
+    onChange(next.filter((slide) => slide.cells.length > 0))
   }
 
   /** The whole drag lives on window: the pointer is captured, not trusted. */
@@ -179,20 +181,20 @@ export function SliceScreenComposer({
 
   const removeCell = (screenIndex: number, cell: string) => {
     onChange(
-      screens
-        .map((screen, index) =>
+      slides
+        .map((slide, index) =>
           index === screenIndex
-            ? { ...screen, cells: screen.cells.filter((id) => id !== cell) }
-            : screen,
+            ? { ...slide, cells: slide.cells.filter((id) => id !== cell) }
+            : slide,
         )
-        .filter((screen) => screen.cells.length > 0),
+        .filter((slide) => slide.cells.length > 0),
     )
   }
 
-  // Running cell number across screens, derived from the screens above each
+  // Running cell number across slides, derived from the slides above each
   // one rather than a counter mutated during render.
-  const offsets = screens.map((_, index) =>
-    screens.slice(0, index).reduce((total, screen) => total + screen.cells.length, 0),
+  const offsets = slides.map((_, index) =>
+    slides.slice(0, index).reduce((total, slide) => total + slide.cells.length, 0),
   )
 
   /**
@@ -205,7 +207,7 @@ export function SliceScreenComposer({
     const active = dragging !== null && sameSlot(slot, target)
     return (
       <div
-        data-drop-slot={`${target.screen}:${target.index}`}
+        data-drop-slot={`${target.slide}:${target.index}`}
         className={cn(
           'relative transition-[height]',
           dragging === null ? 'h-1' : 'h-4',
@@ -233,8 +235,8 @@ export function SliceScreenComposer({
       // The sheet owns the one scroll surface; this just grows.
       className={cn('flex flex-col gap-2', dragging !== null && 'select-none')}
     >
-      {screens.map((screen, screenIndex) => {
-        const holdsDrag = dragging !== null && slot?.screen === screenIndex
+      {slides.map((slide, screenIndex) => {
+        const holdsDrag = dragging !== null && slot?.slide === screenIndex
         return (
           <div
             key={screenIndex}
@@ -245,33 +247,33 @@ export function SliceScreenComposer({
           >
             <div className="mb-1.5 flex items-center gap-1.5">
               <span className="shrink-0 text-3xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Screen {screenIndex + 1}
+                Slide {screenIndex + 1}
               </span>
               {/*
-                No caption field here any more, and the space it took is now
-                the screen's own. Captions are prose about a screen, and prose
-                cannot be written before the screen exists — asking for it
+                No title field here any more, and the space it took is now
+                the slide's own. Captions are prose about a slide, and prose
+                cannot be written before the slide exists — asking for it
                 mid-grouping interrupts the one job this step has with a blank
-                box per screen, five of which is five blank boxes. They are
+                box per slide, five of which is five blank boxes. They are
                 written in the slice itself, against the cells they describe.
-                `caption` stays on the draft and saves as empty.
+                `title` stays on the draft and saves as empty.
               */}
               {/*
                 No "Merge up" button: dragging a cell across the boundary IS
                 the merge, and the split line is its opposite. Two gestures,
-                zero buttons — a per-screen action row was noise that said
+                zero buttons — a per-slide action row was noise that said
                 less than the drag it duplicated.
               */}
             </div>
 
             <ul className="flex flex-col">
-              {screen.cells.map((cell, cellIndex) => {
+              {slide.cells.map((cell, cellIndex) => {
                 const described = describeCell(cell)
                 const running = offsets[screenIndex] + cellIndex + 1
                 const isDragging = dragging === cell
                 return (
                   <li key={cell}>
-                    <DropLine target={{ screen: screenIndex, index: cellIndex }} />
+                    <DropLine target={{ slide: screenIndex, index: cellIndex }} />
 
                     <div
                       className={cn(
@@ -281,7 +283,7 @@ export function SliceScreenComposer({
                     >
                       {/*
                         Only the grip starts a drag. The row also holds a
-                        caption field and a remove button, and a drag that can
+                        title field and a remove button, and a drag that can
                         start anywhere turns every misjudged click into a
                         move.
                       */}
@@ -313,7 +315,7 @@ export function SliceScreenComposer({
                         ) : null}
                       </span>
                       <IconTooltip
-                        label={`Take ${described.label} out of this screen`}
+                        label={`Take ${described.label} out of this slide`}
                       >
                         <Button
                           type="button"
@@ -328,11 +330,11 @@ export function SliceScreenComposer({
                       </IconTooltip>
                     </div>
 
-                    {/* The end of the screen needs its own slot, or the last
-                        position in every screen is unreachable. */}
-                    {cellIndex === screen.cells.length - 1 ? (
+                    {/* The end of the slide needs its own slot, or the last
+                        position in every slide is unreachable. */}
+                    {cellIndex === slide.cells.length - 1 ? (
                       <DropLine
-                        target={{ screen: screenIndex, index: screen.cells.length }}
+                        target={{ slide: screenIndex, index: slide.cells.length }}
                       />
                     ) : null}
                   </li>
@@ -343,19 +345,19 @@ export function SliceScreenComposer({
         )
       })}
 
-      {/* Dropping past the last screen creates one — the boundary-minting
+      {/* Dropping past the last slide creates one — the boundary-minting
           gesture now that Split is gone. Visible only mid-drag. */}
       {dragging !== null ? (
         <div
-          data-drop-slot={`${screens.length}:0`}
+          data-drop-slot={`${slides.length}:0`}
           className={cn(
             'flex h-9 items-center justify-center rounded-lg border border-dashed text-2xs transition-colors',
-            slot?.screen === screens.length
+            slot?.slide === slides.length
               ? 'border-primary text-primary'
               : 'border-border text-muted-foreground',
           )}
         >
-          Drop here for a new screen
+          Drop here for a new slide
         </div>
       ) : null}
 

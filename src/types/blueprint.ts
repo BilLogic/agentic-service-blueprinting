@@ -90,7 +90,7 @@ export type BlueprintCell = {
   step_id: string
   /** Cell Label — primary text shown in the blueprint grid. */
   content: string
-  picture: string | null
+  frame: string | null
   summary: string | null
   /**
    * Touchpoints placed at this cell.

@@ -50,8 +50,8 @@ enforces that is the account each surface uses, covered in
 
 ## 3. Presenting and sharing
 
-A slice enters presentation mode as one frame at a time on a dark surface,
-with the filmstrip along the bottom and a locator showing where the frame
+A slice enters presentation mode as one slide at a time on a dark surface,
+with the filmstrip along the bottom and a locator showing where the slide
 sits on the blueprint. Print and PDF come from the same place.
 
 For sharing outside the team, deploy read-only: the app builds to a plain

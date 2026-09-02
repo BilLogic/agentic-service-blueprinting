@@ -8,11 +8,11 @@
  */
 import {
   SAMPLE_DEMO_SLICES,
-  SAMPLE_DEMO_SLICE_ITEMS,
+  SAMPLE_DEMO_SLIDES,
 } from '@/data/sampleBlueprint'
-import type { Slice, SliceItem } from '@/types/database'
+import type { Slice, Slide } from '@/types/database'
 
 export const FALLBACK_SLICES: Slice[] = SAMPLE_DEMO_SLICES
 
-export const FALLBACK_SLICE_ITEMS: Record<string, SliceItem[]> =
-  SAMPLE_DEMO_SLICE_ITEMS
+export const FALLBACK_SLICE_ITEMS: Record<string, Slide[]> =
+  SAMPLE_DEMO_SLIDES

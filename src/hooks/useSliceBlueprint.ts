@@ -5,7 +5,7 @@ import { useSliceScenarioId } from '@/hooks/useSliceScenarioId'
 import type { QueryResult } from '@/hooks/useSupabaseQuery'
 import { pickBlueprintForCells } from '@/lib/sliceCells'
 import type { BlueprintData } from '@/types/blueprint'
-import type { SliceItem } from '@/types/database'
+import type { Slide } from '@/types/database'
 
 export type SliceBlueprint = {
   /** Raw slice query result, for loading / error branches. */
@@ -13,7 +13,7 @@ export type SliceBlueprint = {
   /** Loaded detail (error branches fall back); null while unavailable. */
   detail: SliceDetail | null
   /** The slice's frames sorted by position. */
-  items: SliceItem[]
+  items: Slide[]
   /** Cell ids across all frames, in frame order then in-frame order. */
   cellIds: string[]
   /** Scenario resolution result (gated until `detail` exists). */

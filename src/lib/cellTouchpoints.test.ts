@@ -8,7 +8,7 @@
  * being found, silently. `cell_touchpoints` gives it an identity of its own.
  *
  * The behaviour worth pinning here is the part the reader sees — order, the
- * fold of `picture`/`pictures` into one `screenshots` array, and what happens
+ * fold of `frame`/`frames` into one `screenshots` array, and what happens
  * when a name resolves to nothing.
  */
 import { describe, expect, it } from 'vitest'

@@ -70,7 +70,7 @@ export const coverContent: CoverContent = {
             {
               term: 'Stakeholder Alignment',
               definition:
-                'Each audience is given the one view that concerns them, cut from the same source, so no two rooms are reading different pictures.',
+                'Each audience is given the one view that concerns them, cut from the same source, so no two rooms are reading different versions.',
             },
             {
               term: 'Decision Evaluation',
@@ -176,13 +176,13 @@ export const coverContent: CoverContent = {
           id: 'slices-intro',
           heading: 'A view taken out of the blueprint',
           paragraphs: [
-            'A blueprint is complete by design, which makes it the wrong thing to put in front of any one person. A **slice** is a standing view cut from it: an ordered set of cells with a caption and a narrative, built for one audience and one question.',
+            'A blueprint is complete by design, which makes it the wrong thing to put in front of any one person. A **slice** is a standing view cut from it: an ordered set of cells with a title and a narrative, built for one audience and one question.',
             'A slice quotes cells rather than copying them — it keeps naming its sources. That is the difference between a view and a snapshot: when the cells move, the slice does not go on asserting the old thing.',
-            'It opens as its own tab beside the blueprint, so a reader can move between the view and the board it came from, and it runs frame by frame in presentation mode when the audience is a room rather than a person. Both states are addressable — a slice link carries its id, a presented one carries the frame — so you can send someone exactly what you are looking at.',
+            'It opens as its own tab beside the blueprint, so a reader can move between the view and the board it came from, and in presentation mode it runs slide by slide, for when the audience is a room rather than a person. Both states are addressable — a slice link carries its id, a presented one carries the slide — so you can send someone exactly what you are looking at.',
           ],
           figure: {
             src: '/cover/slice-concept.svg',
-            alt: 'One path becoming a presentation — the cells a slice quotes, ordered into frames',
+            alt: 'One path becoming a presentation — the cells a slice quotes, ordered into slides',
             width: 880,
             height: 364,
           },

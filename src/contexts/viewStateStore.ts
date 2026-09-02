@@ -24,7 +24,7 @@ export type ViewStateAction =
   | { type: 'activate'; key: TabKey | null }
   | { type: 'closeForSlice'; sliceId: string }
   | { type: 'resolvePending'; availableSliceIds: readonly string[] }
-  | { type: 'consumeRestoredFrame' }
+  | { type: 'consumeRestoredSlide' }
   | { type: 'dismissMissingSlice' }
 
 export type ViewState = {
@@ -33,8 +33,8 @@ export type ViewState = {
   activeKey: TabKey | null
   /** Parsed boot URL, held until the slice list loads (never applied blind). */
   pendingUrlState: UrlViewState | null
-  /** Frame restored from a `?mode=present&frame=` deep link. */
-  restoredFrame: { sliceId: string; frame: number } | null
+  /** Slide restored from a `?mode=present&slide=` deep link. */
+  restoredSlide: { sliceId: string; slide: number } | null
   /**
    * A deep link named a slice that does not exist (deleted, or another
    * workspace's). Surfaced as a dismissible notice — dropping straight to
@@ -48,7 +48,7 @@ export function createInitialViewState(search: string): ViewState {
     tabs: [],
     activeKey: null,
     pendingUrlState: parseUrlViewState(search),
-    restoredFrame: null,
+    restoredSlide: null,
     missingSliceId: null,
   }
 }
@@ -123,16 +123,16 @@ export function viewStateReducer(state: ViewState, action: ViewStateAction): Vie
           : { kind: 'slice', sliceId: pending.sliceId }
       const opened = viewStateReducer(cleared, { type: 'open', tab })
       return pending.kind === 'present'
-        ? { ...opened, restoredFrame: { sliceId: pending.sliceId, frame: pending.frame } }
+        ? { ...opened, restoredSlide: { sliceId: pending.sliceId, slide: pending.slide } }
         : opened
     }
-    case 'consumeRestoredFrame':
-      // One-shot: once the presentation has seeded its frame, drop the
-      // deep-link frame so reopening a present tab starts at frame 0
-      // instead of snapping back to the stale URL frame.
-      return state.restoredFrame === null
+    case 'consumeRestoredSlide':
+      // One-shot: once the presentation has seeded its slide, drop the
+      // deep-link slide so reopening a present tab starts at slide 0
+      // instead of snapping back to the stale URL slide.
+      return state.restoredSlide === null
         ? state
-        : { ...state, restoredFrame: null }
+        : { ...state, restoredSlide: null }
     case 'dismissMissingSlice':
       return state.missingSliceId === null
         ? state
@@ -146,7 +146,7 @@ export type ViewStateContextValue = {
   /** Active tab descriptor; `null` means the base blueprint view. */
   activeTab: TabDescriptor | null
   pendingUrlState: UrlViewState | null
-  restoredFrame: { sliceId: string; frame: number } | null
+  restoredSlide: { sliceId: string; slide: number } | null
   /** Slice id from a deep link that resolved to nothing; null once dismissed. */
   missingSliceId: string | null
   /** Dismiss the missing-slice notice. */
@@ -158,10 +158,10 @@ export type ViewStateContextValue = {
   closeTabsForSlice: (sliceId: string) => void
   /** Activate a pending URL deep link once the slice list has loaded. */
   resolvePending: (availableSliceIds: readonly string[]) => void
-  /** Clear `restoredFrame` after the presentation reads it (one-shot). */
-  consumeRestoredFrame: () => void
-  /** Presentation frame changes mirror to the URL (debounced). */
-  reportPresentFrame: (frame: number) => void
+  /** Clear `restoredSlide` after the presentation reads it (one-shot). */
+  consumeRestoredSlide: () => void
+  /** Presentation slide changes mirror to the URL (debounced). */
+  reportPresentSlide: (slide: number) => void
 }
 
 export const ViewStateContext = createContext<ViewStateContextValue | null>(null)

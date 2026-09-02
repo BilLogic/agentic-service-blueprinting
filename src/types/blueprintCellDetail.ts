@@ -8,7 +8,7 @@ export type BlueprintCellPathEntry = {
   pathSummary?: string | null
   pathType: PathType
   content: string
-  picture?: string | null
+  frame?: string | null
   summary?: string | null
   touchpoints?: CellTouchpoint[]
   resources?: CellResource[]

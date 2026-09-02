@@ -107,7 +107,7 @@ export function MarqueeSelection() {
       }
 
       // Recomputed from the gesture rather than read back out of state — the
-      // rendered rectangle is a picture of this, not the source of truth.
+      // rendered rectangle is a frame of this, not the source of truth.
       const marquee: Rect = {
         left: Math.min(start.x, event.clientX),
         top: Math.min(start.y, event.clientY),

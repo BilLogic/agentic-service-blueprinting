@@ -33,7 +33,7 @@ Schema coverage (migrations 20260729120000_derived_layer +
     `<service>/<phase>/<scenario>/<path>/<lane>/<step>`, byte-identical to
     the string this script already hashes into the cell's UUIDv5 and to the
     keys skills/slice/scripts/slice_tools.py writes into
-    `slice_items.cell_keys`. Stored, not derived: only the import pipeline
+    `slides.cell_keys`. Stored, not derived: only the import pipeline
     knows the authored keys (see the cells.cell_key column comment).
   * cells carry `position`. The IR identifies a cell by its
     (path, lane, step) triple, so it CANNOT express two cells in one slot —
@@ -50,7 +50,7 @@ Schema coverage (migrations 20260729120000_derived_layer +
     (source_cell_id, target_cell_id, kind), so one pair may carry both an
     arrow and a needs edge, and the UUIDv5 qualified key ends in `#<kind>` so
     the two do not collide. label/note still have no IR shape.
-  * DERIVED TABLES ARE NEVER SEEDED. slices/slice_items/findings/evidence/
+  * DERIVED TABLES ARE NEVER SEEDED. slices/slides/findings/evidence/
     business_model is a runtime output of the sb:* skills, not IR-authored
     content — there is deliberately no IR shape for them. Seeds cannot break
     them either: derived tables reference cells softly (uuid[]/text[], no FK),
@@ -182,7 +182,7 @@ def seed_cell_fields(cell: dict, path: dict) -> dict:
         "step_id": cell["step_id"],
         "position": 0,
         "content": cell["content"],
-        "picture": cell["picture"],
+        "frame": cell["frame"],
         "summary": cell["summary"],
         "cell_key": cell["cell_key"],
         "function": cell["function"],
@@ -383,7 +383,7 @@ def build_model(doc: dict, locale: str) -> dict:
                             "lane_id": lane_ids[cell["lane"]],
                             "step_id": step_ids[cell["step"]],
                             "content": text(cell.get("content")) or "",
-                            "picture": cell.get("picture"),
+                            "frame": cell.get("frame"),
                             "summary": text(cell.get("summary")),
                             # Two lists where there was one array, because
                             # the column they came from is now two tables.
@@ -772,10 +772,10 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
         pat = q(scenario["qualified_key"] + "/%")
         label = scenario["key"]
         derived.append(
-            "  if to_regclass('public.slice_items') is not null then\n"
-            "    select count(*) into n from public.slice_items si\n"
+            "  if to_regclass('public.slides') is not null then\n"
+            "    select count(*) into n from public.slides si\n"
             f"    where exists (select 1 from unnest(si.cell_keys) k where k like {pat});\n"
-            f"    raise notice 'derived (reported, not verified): % slice_items reference scenario {label}', n;\n"
+            f"    raise notice 'derived (reported, not verified): % slides reference scenario {label}', n;\n"
             "  end if;\n"
             "  if to_regclass('public.findings') is not null then\n"
             "    select count(*) into n from public.findings f\n"

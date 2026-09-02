@@ -80,7 +80,7 @@ A slice selects cells that already exist. It may not add information. Every
 finding below is therefore about the gap between what the prose claims and
 what the cited cells actually contain.
 
-- **Untraceable claims.** For each caption and narrative sentence: which cell
+- **Untraceable claims.** For each title and narrative sentence: which cell
   in *that frame* supports it? A sentence whose support lives in another
   frame, another slice, or nowhere is a finding. This is the main event —
   work through frames one at a time rather than forming a general impression.
@@ -105,7 +105,7 @@ what the cited cells actually contain.
 
 Severity in slice mode: BLOCKER = invented interaction, untraceable claim, or
 any excerpt/identifying string; MAJOR = omission that changes the story, or
-persona drift; MINOR = caption phrasing, ordering, polish.
+persona drift; MINOR = title phrasing, ordering, polish.
 
 ## Output format
 
