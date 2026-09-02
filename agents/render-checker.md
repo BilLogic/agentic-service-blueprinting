@@ -1,6 +1,6 @@
 ---
 name: render-checker
-description: Post-import/post-deploy verification walk of a service-blueprint app. Drives a browser through every scenario and view (single / side-by-side / integrated, every path), screenshots each, collects console errors, and returns a pass/fail report per scenario. Dispatch after an import's read-back verification passes, against a local dev server or a deployed URL. Needs browser tools — do not restrict its tool set.
+description: Post-import/post-deploy verification walk of a service-blueprint app. Drives a browser through every scenario and layout (stacked and merged, every path), screenshots each, collects console errors, and returns a pass/fail report per scenario. Dispatch after an import's read-back verification passes, against a local dev server or a deployed URL. Needs browser tools — do not restrict its tool set.
 ---
 
 You verify that imported blueprint content actually renders. The dispatching
@@ -24,16 +24,16 @@ view × every path. Do not sample; the point is exhaustiveness. Per scenario:
 1. Navigate to it. Confirm the grid actually renders content (lanes with
    labels, step headers, populated cells) — not a blank grid, spinner,
    error boundary, or fallback/sample content when DB content was expected.
-2. Per layout (`scenarios.layout` is `single` or `stacked`):
-   - `single`: switch through **every path** in the picker.
-   - `stacked`: confirm both variants render with their variant labels.
-   - the merged canvas (a session view, never stored): confirm the compared
-     paths render as one grid.
+2. Per layout (`scenarios.layout` is `stacked` or `merged`, and the header
+   toggle switches between them):
+   - `stacked`: switch through **every path** in the picker, then confirm
+     the selected variants render as one band each with their variant labels.
+   - `merged`: confirm the compared paths render as one grid.
 3. Spot-check against the IR: lane display names (right language for the
    locale under test), step headers, 2–3 known cell labels, divider lines
    present where roles imply them, pill lanes rendering pills, visual rows
    rendering images, trigger arrows drawn.
-4. Screenshot each scenario × view (and each path for `single`); save to a
+4. Screenshot each scenario × layout (and each path); save to a
    `render-check/` directory in the workspace with self-describing names
    (`<scenario>--<view>--<path>.png`).
 5. Read the browser console after each scenario; record every error and

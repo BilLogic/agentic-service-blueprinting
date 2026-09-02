@@ -54,20 +54,20 @@ export type SampleScenario = {
   name: string
   summary: string
   position: number
-  /** Client-vocabulary view type for the offline nav. */
-  layout: 'single' | 'stacked'
+  /** What the scenario opens as — the stored value, one vocabulary. */
+  layout: 'stacked' | 'merged'
   /** Exactly one scenario is the compare/slice demo anchor — see SAMPLE_SCENARIO_ID. */
   primary?: boolean
   path_ids: string[]
 }
 
 export const SAMPLE_SCENARIOS: SampleScenario[] = [
-  {"id":"f0000000-0000-4000-8000-100000000001","phase_id":"f0000000-0000-4000-8000-000700010000","name":"Find the kit and see what it does","summary":"The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.","position":1,"layout":"single","path_ids":["f0000000-0000-4000-8000-110000000000"]},
+  {"id":"f0000000-0000-4000-8000-100000000001","phase_id":"f0000000-0000-4000-8000-000700010000","name":"Find the kit and see what it does","summary":"The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.","position":1,"layout":"stacked","path_ids":["f0000000-0000-4000-8000-110000000000"]},
   {"id":"f0000000-0000-4000-8000-200000000001","phase_id":"f0000000-0000-4000-8000-000700020000","name":"Map your service","summary":"The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.","position":1,"layout":"stacked","primary":true,"path_ids":["f0000000-0000-4000-8000-210000000000","f0000000-0000-4000-8000-220000000000"]},
   {"id":"f0000000-0000-4000-8000-300000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Audit the check roster","summary":"sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.","position":1,"layout":"stacked","path_ids":["f0000000-0000-4000-8000-310000000000","f0000000-0000-4000-8000-320000000000"]},
-  {"id":"f0000000-0000-4000-8000-400000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Ideate a change (what-if)","summary":"sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.","position":2,"layout":"single","path_ids":["f0000000-0000-4000-8000-410000000000"]},
-  {"id":"f0000000-0000-4000-8000-500000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Slice for an audience","summary":"sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.","position":3,"layout":"single","path_ids":["f0000000-0000-4000-8000-510000000000"]},
-  {"id":"f0000000-0000-4000-8000-600000000001","phase_id":"f0000000-0000-4000-8000-000700040000","name":"Keep it current","summary":"The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.","position":1,"layout":"single","path_ids":["f0000000-0000-4000-8000-610000000000"]},
+  {"id":"f0000000-0000-4000-8000-400000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Ideate a change (what-if)","summary":"sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.","position":2,"layout":"stacked","path_ids":["f0000000-0000-4000-8000-410000000000"]},
+  {"id":"f0000000-0000-4000-8000-500000000001","phase_id":"f0000000-0000-4000-8000-000700030000","name":"Slice for an audience","summary":"sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.","position":3,"layout":"stacked","path_ids":["f0000000-0000-4000-8000-510000000000"]},
+  {"id":"f0000000-0000-4000-8000-600000000001","phase_id":"f0000000-0000-4000-8000-000700040000","name":"Keep it current","summary":"The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.","position":1,"layout":"stacked","path_ids":["f0000000-0000-4000-8000-610000000000"]},
 ]
 
 export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {

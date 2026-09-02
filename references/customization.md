@@ -74,9 +74,11 @@ one client's labels into the shared template.
 ## Layouts & path kinds
 
 Set per scenario / per path **in the IR**, not in code: `layout`
-(`single` | `stacked`) and `kind` (`happy` | `variant` | `exception`).
+(`stacked` | `merged`) and `kind` (`happy` | `variant` | `exception`).
 
-Both lists got shorter at `21000116000000`. `side-by-side` and `integrated`
+`21000117000000` folded `single` into `stacked` — one path stacked is one
+band — and made `merged`, until then a session-only display, a value a
+scenario is stored as. Both lists got shorter at `21000116000000`. `side-by-side` and `integrated`
 were one layout a reader switches between rather than two a scenario is stored
 as — the client had been collapsing both to the same view on read for a while,
 and `21000116000000` moved the rows to `stacked` so the seam could go.

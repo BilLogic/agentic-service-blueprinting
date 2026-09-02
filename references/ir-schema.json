@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.04",
         "2026.09.03",
         "2026.09.02",
         "2026.09.01",
@@ -240,10 +241,10 @@
         },
         "layout": {
           "enum": [
-            "single",
-            "stacked"
+            "stacked",
+            "merged"
           ],
-          "description": "How this scenario's paths are laid out: single = one path at a time; stacked = paths compared step by step (see paths[].variant_label). Two values since 2026.09.03, which retired `side-by-side` and `integrated` — they were one layout a reader switches between, not two a scenario is stored as, and the client had already been collapsing both to the same view on read. Merging every path into one grid is a display state the reader turns on, never a property of the scenario."
+          "description": "How this scenario opens: stacked = one full band per path on a shared step axis (see paths[].variant_label); merged = the paths combined into one blueprint — one lane rail, one step axis, cells the paths agree on drawn once. Two values since 2026.09.04, which retired `single`: stacked with one path IS one path drawn in full, so `single` only ever changed which component drew it. `merged` had been a session-only display state until the same revision; a scenario left merged now opens merged. 2026.09.03 had retired `side-by-side` and `integrated` into `stacked`."
         },
         "steps": {
           "type": "array",

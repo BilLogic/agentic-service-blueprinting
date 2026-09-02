@@ -419,6 +419,30 @@ def to_2026_09_03(doc: dict) -> None:
                     path["kind"] = path_kinds[path["kind"]]
 
 
+def to_2026_09_04(doc: dict) -> None:
+    """2026.09.03 → 2026.09.04 — a scenario left merged opens merged.
+
+    `layout` was `single | stacked` while the canvas drew three things, and
+    the one a reader reached for most — merged, the paths combined into ONE
+    blueprint — was the one the field could not say. Now it can:
+
+      single  →  stacked      stacked with one path IS one path drawn in
+                              full; `single` only changed which component
+                              drew it, so nothing a reader sees moves
+
+    A file that authored `single` changes its bytes and its scenarios
+    re-sign. A file that authored `stacked` migrates by its stamp alone.
+    `merged` is new, so no existing file carries it.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if isinstance(scenario, dict) and scenario.get("layout") == "single":
+                scenario["layout"] = "stacked"
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -472,6 +496,14 @@ STEPS = (
         ".layout; both enums lost a duplicate spelling (unhappy/alternative "
         "\u2192 variant, side-by-side/integrated \u2192 stacked)",
         to_2026_09_03,
+    ),
+    Step(
+        "2026.09.03",
+        "2026.09.04",
+        "scenarios[].layout is stacked | merged: `single` folds into stacked "
+        "(one path stacked is one band), and merged — until now a session-only "
+        "display — is a value a scenario is stored as",
+        to_2026_09_04,
     ),
 )
 

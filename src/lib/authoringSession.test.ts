@@ -44,6 +44,7 @@ const EVERY_WRITE = Object.keys({
   duplicate_scenario: true,
   rename_phase: true,
   rename_scenario: true,
+  update_scenario_layout: true,
   rename_path: true,
   rename_owner_tag: true,
   add_step: true,

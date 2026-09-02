@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { ResizableComparePanel } from '@/components/blueprint/ResizableComparePanel'
-import { ServiceBlueprintGrid } from '@/components/blueprint/ServiceBlueprintGrid'
 import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
 import { SideBySideCompareGrid } from '@/components/blueprint/SideBySideCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
@@ -118,11 +117,8 @@ export function ScenarioBlueprintPanel({
     storedViewType === 'merged' && selectedPathIds.length < 2
       ? 'stacked'
       : storedViewType
-  const useSideBySideLayout =
-    (displayViewType === 'stacked' || displayViewType === 'merged') &&
-    selectedPathIds.length > 0
-  const useSinglePathLayout =
-    displayViewType === 'single' && selectedPathIds.length > 0
+  // One path stacked is one band — there is no third arrangement.
+  const useSideBySideLayout = selectedPathIds.length > 0
   /*
     Two arrangements of the same path bands. Overview rows render under a
     shared-row-height contract (locked heights, phase-uniform view type) and
@@ -137,17 +133,12 @@ export function ScenarioBlueprintPanel({
 
   const visibleBlueprints = useMemo(
     () =>
-      useSideBySideLayout || useSinglePathLayout
+      useSideBySideLayout
         ? itemsInSelectionOrder(selectedPathIds, (id) =>
             blueprintsByPathId.get(id),
           )
         : [],
-    [
-      blueprintsByPathId,
-      selectedPathIds,
-      useSideBySideLayout,
-      useSinglePathLayout,
-    ],
+    [blueprintsByPathId, selectedPathIds, useSideBySideLayout],
   )
 
   /*
@@ -372,7 +363,6 @@ export function ScenarioBlueprintPanel({
   const sectionTitleSummary = sectionTitleLabel
     ? slide.summary
     : undefined
-  const showPathTypeBadge = Boolean(sectionTitleLabel)
 
   // The chrome this panel will ACTUALLY have. A locked panel carries no
   // resize handle, and an estimate that budgets one is dead gray space —
@@ -468,79 +458,53 @@ export function ScenarioBlueprintPanel({
     )
   }
 
-  if (useSideBySideLayout) {
-    // Strip in STACKED only: merged already reads as one combined board
-    // (labels + wash carry divergence); the zone strip on top of it was
-    // chrome without a job.
-    const stripVisible = compareModel !== null && displayViewType !== 'merged'
-    return (
-      <ResizableComparePanel
-        {...comparePanelProps}
-        chromeBar={
-          stripVisible ? (
-            <CompareDivergenceStrip
-              model={compareModel}
-              blueprints={visibleBlueprints}
-              slideId={slide.id}
-            />
-          ) : undefined
-        }
-        chromeBarHeight={stripVisible ? COMPARE_STRIP_HEIGHT : 0}
-        fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
-      >
-        {mergedModel !== null ? (
-          <MergedCompareGrid
-            blueprints={visibleBlueprints}
-            model={mergedModel}
-            scrollContainerRef={scrollContainerRef}
-            scenarioName={scenarioName}
-            phaseName={phaseName}
-          />
-        ) : useStackedArrangement ? (
-          <StackedCompareGrid
-            blueprints={visibleBlueprints}
-            model={compareModel}
-            scrollContainerRef={scrollContainerRef}
-            scenarioName={scenarioName}
-            phaseName={phaseName}
-            sectionTitleLabel={sectionTitleLabel}
-          />
-        ) : (
-          <SideBySideCompareGrid
-            blueprints={visibleBlueprints}
-            scrollContainerRef={scrollContainerRef}
-            scenarioName={scenarioName}
-            phaseName={phaseName}
-            sectionTitleLabel={sectionTitleLabel}
-            fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
-            fillSwimlaneHeight={fillSwimlaneHeight}
-          />
-        )}
-      </ResizableComparePanel>
-    )
-  }
-
+  // Strip in STACKED only: merged already reads as one combined board
+  // (labels + wash carry divergence); the zone strip on top of it was
+  // chrome without a job.
+  const stripVisible = compareModel !== null && displayViewType !== 'merged'
   return (
     <ResizableComparePanel
       {...comparePanelProps}
-      fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}:single`}
-    >
-      <div className="flex flex-row items-start gap-6">
-        {visibleBlueprints.map((data) => (
-          <ServiceBlueprintGrid
-            key={data.path.id}
-            data={data}
-            className="shrink-0"
-            scenarioName={scenarioName}
-          phaseName={phaseName}
-            headerTitleLabel={sectionTitleLabel}
-            headerTitleSummary={sectionTitleSummary}
-            showPathTypeBadge={showPathTypeBadge}
-            fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
-            fillSwimlaneHeight={fillSwimlaneHeight}
+      chromeBar={
+        stripVisible ? (
+          <CompareDivergenceStrip
+            model={compareModel}
+            blueprints={visibleBlueprints}
+            slideId={slide.id}
           />
-        ))}
-      </div>
+        ) : undefined
+      }
+      chromeBarHeight={stripVisible ? COMPARE_STRIP_HEIGHT : 0}
+      fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
+    >
+      {mergedModel !== null ? (
+        <MergedCompareGrid
+          blueprints={visibleBlueprints}
+          model={mergedModel}
+          scrollContainerRef={scrollContainerRef}
+          scenarioName={scenarioName}
+          phaseName={phaseName}
+        />
+      ) : useStackedArrangement ? (
+        <StackedCompareGrid
+          blueprints={visibleBlueprints}
+          model={compareModel}
+          scrollContainerRef={scrollContainerRef}
+          scenarioName={scenarioName}
+          phaseName={phaseName}
+          sectionTitleLabel={sectionTitleLabel}
+        />
+      ) : (
+        <SideBySideCompareGrid
+          blueprints={visibleBlueprints}
+          scrollContainerRef={scrollContainerRef}
+          scenarioName={scenarioName}
+          phaseName={phaseName}
+          sectionTitleLabel={sectionTitleLabel}
+          fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
+          fillSwimlaneHeight={fillSwimlaneHeight}
+        />
+      )}
     </ResizableComparePanel>
   )
 }

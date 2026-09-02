@@ -100,9 +100,12 @@ looking at it.
 
 ## 5. Layouts
 
-Per scenario, `layout` is `single` (one path at a time, chosen in the path
-picker) or `stacked` (any two labelled variants, such as designed versus
-reality, compared slot by slot). The merged canvas — the compared paths drawn
-as one grid — is a session view and is never stored; `side-by-side` and
-`integrated` became `stacked` in `21000116000000`. Comparison is per slot,
-so a difference in one cell is a difference you can point at.
+Per scenario, `layout` is `stacked` (one full band per path on a shared step
+axis — any labelled variants, such as designed versus reality, compared slot
+by slot) or `merged` (the compared paths drawn as one grid: one lane rail,
+one step axis, cells the paths agree on drawn once). The header toggle
+stores the choice, so a scenario left merged opens merged. `single` became
+`stacked` in `21000117000000` — one path stacked is one band — after
+`side-by-side` and `integrated` became `stacked` in `21000116000000`.
+Comparison is per slot, so a difference in one cell is a difference you can
+point at.

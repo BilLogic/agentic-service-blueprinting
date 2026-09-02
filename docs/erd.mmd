@@ -2,7 +2,7 @@
 %% Source of truth: supabase/migrations/ (consolidated template schema 20260716200000
 %%   + derived layer 20260729120000/20260730090000/20260803001000
 %%   + authoring foundation/operations + optional tier recipe 20260818*).
-%% Enums: scenarios.layout ∈ (single | stacked) — merged is a session view, never stored
+%% Enums: scenarios.layout ∈ (stacked | merged) — what the scenario opens as; the header toggle writes it
 %%        paths.kind ∈ (happy | variant | exception)
 %%        origin (structure tables) ∈ (import | app); slices.authorship ∈ (generated | customized | human)
 %%        cell_dependencies.kind ∈ (leads_to | enables)
@@ -76,7 +76,7 @@ erDiagram
     text name
     text summary
     int position
-    text layout "single | stacked — merged is a session view, never stored"
+    text layout "stacked | merged — what the scenario opens as"
     text origin "import | app"
   }
 

@@ -277,7 +277,7 @@ $$;
 -- Name: create_scenario(uuid, text, text, uuid, jsonb, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.create_scenario(phase_id uuid, name text, layout text DEFAULT 'single'::text, lane_source_path_id uuid DEFAULT NULL::uuid, lane_set jsonb DEFAULT '[]'::jsonb, step_count integer DEFAULT 5, path_name text DEFAULT 'Happy Path'::text) RETURNS jsonb
+CREATE FUNCTION public.create_scenario(phase_id uuid, name text, layout text DEFAULT 'stacked'::text, lane_source_path_id uuid DEFAULT NULL::uuid, lane_set jsonb DEFAULT '[]'::jsonb, step_count integer DEFAULT 5, path_name text DEFAULT 'Happy Path'::text) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
@@ -297,8 +297,9 @@ begin
   if coalesce(trim(name), '') = '' then
     raise exception 'A blueprint needs a name';
   end if;
-  if layout not in ('single', 'side-by-side', 'integrated') then
-    raise exception 'Unknown view type %', layout;
+  if layout not in ('stacked', 'merged') then
+    raise exception 'Unknown layout %', layout
+      using hint = 'One of: stacked, merged.';
   end if;
 
   select coalesce(max(position), -1) + 1 into next_order
@@ -1481,6 +1482,37 @@ $$;
 COMMENT ON FUNCTION public.sync_cell_resources(p_cell_id uuid, p_rows jsonb) IS 'Replace one cell''s resources in a single transaction, in list order. Placement-attached resources are not this function''s business.';
 
 --
+-- Name: update_scenario_layout(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_scenario_layout(scenario_id uuid, layout text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+  if layout not in ('stacked', 'merged') then
+    raise exception 'Unknown layout %', layout
+      using hint = 'One of: stacked, merged.';
+  end if;
+
+  update public.scenarios s set layout = update_scenario_layout.layout
+  where s.id = update_scenario_layout.scenario_id;
+  if not found then
+    raise exception 'Unknown scenario';
+  end if;
+end;
+$$;
+
+--
+-- Name: FUNCTION update_scenario_layout(scenario_id uuid, layout text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.update_scenario_layout(scenario_id uuid, layout text) IS 'The header toggle''s write: how this scenario''s board is drawn, stacked or merged. Its inverse is itself with the previous value.';
+
+--
 -- Name: upsert_cell(uuid, uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2101,11 +2133,11 @@ CREATE TABLE public.scenarios (
     name text NOT NULL,
     summary text,
     "position" integer DEFAULT 0 NOT NULL,
-    layout text DEFAULT 'single'::text NOT NULL,
+    layout text DEFAULT 'stacked'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     origin text DEFAULT 'import'::text NOT NULL,
-    CONSTRAINT scenarios_layout_check CHECK ((layout = ANY (ARRAY['single'::text, 'stacked'::text]))),
+    CONSTRAINT scenarios_layout_check CHECK ((layout = ANY (ARRAY['stacked'::text, 'merged'::text]))),
     CONSTRAINT scenarios_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
 
@@ -2119,7 +2151,7 @@ COMMENT ON TABLE public.scenarios IS 'Scenario within a phase';
 -- Name: COLUMN scenarios.layout; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.scenarios.layout IS 'How this scenario''s paths are laid out: single, or stacked. `merged` is a display state the client holds and never persists.';
+COMMENT ON COLUMN public.scenarios.layout IS 'How this scenario opens: stacked = one full band per path on a shared step axis; merged = the paths combined into one blueprint. The header toggle writes it, so a scenario left merged opens merged.';
 
 --
 -- Name: schema_version; Type: TABLE; Schema: public; Owner: -

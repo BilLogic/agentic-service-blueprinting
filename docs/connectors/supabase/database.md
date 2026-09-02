@@ -138,13 +138,15 @@ Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.
 
 | Value | Behavior |
 | --- | --- |
-| `single` | One path at a time, chosen in the path picker |
-| `stacked` | Labelled variants compared slot by slot (`variant_label` names each) |
+| `stacked` | One full band per path on a shared step axis (`variant_label` names each) |
+| `merged` | The paths combined into one blueprint: one lane rail, one step axis, shared cells drawn once |
 
-Two values, stored as the UI names them, since `21000116000000`. The merged
-canvas — compared paths drawn as one grid — is a session view and is never
-written back. `side-by-side` and `integrated` became `stacked` in
-`21000116000000`; every row held `side-by-side` and the other two were unused.
+Two values, stored as the UI names them. The header toggle writes the column
+through `update_scenario_layout`, so a scenario left merged opens merged.
+`single` became `stacked` in `21000117000000` — one path stacked is one
+band, so the value only ever changed which component drew it. `side-by-side`
+and `integrated` became `stacked` in `21000116000000`; every row held
+`side-by-side` and the other two were unused.
 
 ## Sample seed
 

@@ -79,10 +79,10 @@ export type DependencyKind = 'leads_to' | 'enables'
  * moved them, so both seams and the module holding them are gone: one
  * vocabulary, and the CHECK constraint is the thing that enforces it.
  *
- * `merged` is NOT here on purpose — it is a display state the client holds and
- * never persists, so it must not typecheck at a write.
+ * `merged` joined at `21000117000000`, when `single` left: a scenario is
+ * stored as what it opens as, and the header toggle writes it.
  */
-export type Layout = 'single' | 'stacked'
+export type Layout = 'stacked' | 'merged'
 
 // ---------------------------------------------------------------------------
 // The call seam.
@@ -275,7 +275,7 @@ export function createScenario(
   return call<CreatedScenario>(client, 'create_scenario', {
     phase_id: input.phaseId,
     name: input.name,
-    layout: input.layout ?? 'single',
+    layout: input.layout ?? 'stacked',
     lane_source_path_id: input.laneSourcePathId ?? null,
     lane_set: input.laneSet ?? [],
     step_count: input.stepCount ?? 5,
@@ -336,6 +336,31 @@ export function renameScenario(
       ? {
           fn: 'rename_scenario',
           args: { scenario_id: input.scenarioId, new_name: input.previousName },
+        }
+      : undefined,
+  )
+}
+
+/**
+ * The header toggle's write: how this scenario's board opens. Recorded with
+ * the value it replaces so the session sheet can take it back.
+ */
+export function updateScenarioLayout(
+  client: Client,
+  input: {
+    scenarioId: string
+    layout: Layout
+    previousLayout?: Layout
+  },
+): Promise<void> {
+  return call<void>(
+    client,
+    'update_scenario_layout',
+    { scenario_id: input.scenarioId, layout: input.layout },
+    input.previousLayout
+      ? {
+          fn: 'update_scenario_layout',
+          args: { scenario_id: input.scenarioId, layout: input.previousLayout },
         }
       : undefined,
   )

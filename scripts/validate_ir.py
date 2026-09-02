@@ -86,7 +86,7 @@ CJK_NAME_TO_ROLE = {
     "后台行为": "backstage_actions",
 }
 
-LAYOUTS = ("single", "stacked")
+LAYOUTS = ("stacked", "merged")
 PATH_KINDS = ("happy", "variant", "exception")
 #: resources.kind — the same short list the database checks. Absent means
 #: `link`, which is the column default.

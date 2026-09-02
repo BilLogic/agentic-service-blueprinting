@@ -42,10 +42,10 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         parentId: phase.id,
         // No seam any more: 21000116000000 moved the rows, so the column
         // holds the client's own vocabulary. Unknown values still fall back
-        // to 'single' rather than leaking a token nothing can render.
+        // to 'stacked' rather than leaking a token nothing can render.
         layout: SLIDE_VIEW_TYPES.includes(scenario.layout as SlideViewType)
           ? (scenario.layout as SlideViewType)
-          : 'single',
+          : 'stacked',
       })
     })
   })
