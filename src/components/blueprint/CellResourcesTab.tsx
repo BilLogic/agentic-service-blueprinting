@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { ExternalLink, FileText, Plus, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ExternalLink, FileText, Plus, Upload, X } from 'lucide-react'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
+import { uploadAttachment } from '@/lib/attachmentUpload'
 import {
   updateCellResources,
   type ResourceDraft,
@@ -146,6 +147,10 @@ function CellResourcesEditor({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+  /** Which row the next chosen file replaces; null means it joins the list. */
+  const replacing = useRef<number | null>(null)
 
   // Checked as they type rather than on save: a bad link is worth knowing
   // about while the cursor is still in the field that caused it.
@@ -182,6 +187,39 @@ function CellResourcesEditor({
       setError(saveError instanceof Error ? saveError.message : String(saveError))
     } finally {
       setBusy(false)
+    }
+  }
+
+  const chooseFile = (replaceIndex: number | null) => {
+    replacing.current = replaceIndex
+    fileInput.current?.click()
+  }
+
+  /**
+   * The file goes to the bucket now; the row is written when the list is
+   * saved, the same two steps as a pasted link (#113). Replacing swaps the
+   * url on the row the file was chosen for and keeps its name and id.
+   */
+  const upload = async (file: File) => {
+    if (!client || uploading) return
+    setUploading(true)
+    setError(null)
+    try {
+      const uploaded = await uploadAttachment(client, { cellId, file })
+      const target = replacing.current
+      replacing.current = null
+      setSaved(false)
+      setResources((current) =>
+        target !== null && target < current.length
+          ? current.map((entry, i) =>
+              i === target ? { ...entry, kind: 'attachment', url: uploaded.url } : entry,
+            )
+          : [...current, { id: null, kind: 'attachment', name: uploaded.name, url: uploaded.url }],
+      )
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : String(uploadError))
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -224,13 +262,25 @@ function CellResourcesEditor({
               }
             />
             {resource.kind === 'attachment' ? (
-              // A file's URL is the object's: shown, never retyped.
+              // A file's URL is the object's: shown, never retyped. Replace
+              // puts a new file under the same row.
               <span
                 className="flex h-7 min-w-0 flex-1 items-center gap-1 truncate text-xs text-muted-foreground"
                 title={resource.url}
               >
                 <FileText className="size-3 shrink-0" aria-hidden />
                 <span className="min-w-0 truncate">{resource.url.split('/').pop()}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 shrink-0 px-1.5 text-2xs"
+                  disabled={uploading || !client}
+                  aria-label={`Replace the file of resource ${index + 1}`}
+                  onClick={() => chooseFile(index)}
+                >
+                  Replace
+                </Button>
               </span>
             ) : (
               <Input
@@ -285,6 +335,29 @@ function CellResourcesEditor({
       >
         <Plus className="size-3" />
         Add resource
+      </Button>
+      <input
+        ref={fileInput}
+        type="file"
+        className="sr-only"
+        aria-label="Upload a file"
+        tabIndex={-1}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ''
+          if (file) void upload(file)
+        }}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-foreground"
+        disabled={uploading || !client}
+        onClick={() => chooseFile(null)}
+      >
+        <Upload className="size-3" />
+        {uploading ? 'Uploading…' : 'Upload a file'}
       </Button>
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
       {dirty || busy ? (

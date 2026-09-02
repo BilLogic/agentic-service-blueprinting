@@ -125,8 +125,9 @@ erDiagram
   incidental three phases later. Null is the common state — nobody has judged
   this placement — and renders nothing; it is not a quiet `peripheral`.
 - `resources.kind`: `link` \| `attachment`. A link is a place on the web;
-  an attachment is a file the cell points at — a site-relative image path, or
-  an object in Storage once #113 lands. Both carry a url; host and file type
+  an attachment is a file the cell points at — an object in Storage, its
+  public URL the row's url (`21000121000000`). Both carry a URL, never a path
+  inside the deploying site (`resources_url_absolute`); host and file type
   are read at render, never stored. `other` became `attachment` in
   `21000118000000`; it had named nothing.
 - `cell_dependencies.kind`: `leads_to` \| `enables`. `leads_to` means the
