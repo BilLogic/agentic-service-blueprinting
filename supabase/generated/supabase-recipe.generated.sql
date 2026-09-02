@@ -661,7 +661,7 @@ grant insert, delete on public.cell_touchpoints, public.resources to authenticat
 -- Column-level, as the authoring migration argues for `cells`: what a row
 -- SAYS may move through a direct update; WHICH cell or placement owns it is
 -- structure, and structure does not.
-grant update (name, position, summary, screenshots, url)
+grant update (name, position, summary)
   on public.cell_touchpoints to authenticated;
 grant update (kind, name, url, position) on public.resources to authenticated;
 -- The platform grants anon these at create time on every relation created in

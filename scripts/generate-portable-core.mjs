@@ -104,17 +104,24 @@ function trim(lines) {
 }
 
 /**
- * The renames a core fragment performs, in the order it performs them.
+ * The renames — and the column drops — a core fragment performs, in the
+ * order it performs them.
  *
- * Only these three forms rename anything a recipe fragment can name. A rename
+ * Only these four forms change anything a recipe fragment can name. A rename
  * this misses shows up as a recipe that will not apply, which is a CI failure
- * and not a silent one.
+ * and not a silent one. A drop is the same class of change: a column-scoped
+ * grant written in 21000113000000 still named `screenshots` after
+ * 21000119000000 dropped it, and the recipe refused to apply on top of the
+ * core it was written for.
  */
 export function renamesIn(sql) {
   const ops = []
   const table = /^\s*alter table (?:if exists )?(?:public\.)?(\w+)\s+rename to (\w+);/gim
   const column = /^\s*alter table (?:if exists )?(?:public\.)?\w+\s+rename column\s+(\w+)\s+to\s+(\w+);/gim
   const objects = /^\s*select public\.__rename_schema_objects\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\);/gim
+  // One `alter table` may drop several columns in one statement.
+  const alter = /^\s*alter table (?:if exists )?(?:public\.)?(\w+)\b([^;]*);/gim
+  const dropped = /\bdrop column (?:if exists )?(\w+)/gi
   const found = []
   for (const [match, from, to] of sql.matchAll(table)) {
     found.push([sql.indexOf(match), { kind: 'identifier', from, to }])
@@ -125,6 +132,11 @@ export function renamesIn(sql) {
   for (const [match, from, to] of sql.matchAll(objects)) {
     found.push([sql.indexOf(match), { kind: 'object-name', from, to }])
   }
+  for (const [match, table_, body] of sql.matchAll(alter)) {
+    for (const [, column_] of body.matchAll(dropped)) {
+      found.push([sql.indexOf(match), { kind: 'dropped-column', table: table_, column: column_ }])
+    }
+  }
   found.sort((a, b) => a[0] - b[0])
   for (const [, op] of found) ops.push(op)
   return ops
@@ -134,6 +146,24 @@ export function renamesIn(sql) {
 export function applyRename(sql, op) {
   if (op.kind === 'identifier') {
     return sql.replace(new RegExp(`\\b${op.from}\\b`, 'g'), op.to)
+  }
+  if (op.kind === 'dropped-column') {
+    // A column-scoped grant on the table loses the column from its list.
+    // Postgres drops the grant with the column, so the fragment says what
+    // the database holds either way; this only keeps it applying. A policy
+    // that reads the column is the migration author's to rewrite — it
+    // would be wrong, not just stale.
+    const grant = new RegExp(
+      `(\\bgrant\\s+(?:select|insert|update|references)\\s*\\()([^)]*)(\\)\\s*on\\s+(?:public\\.)?${op.table}\\b)`,
+      'gi',
+    )
+    return sql.replace(grant, (whole, open, list, close) => {
+      const kept = list
+        .split(',')
+        .map((name) => name.trim())
+        .filter((name) => name && name !== op.column)
+      return `${open}${kept.join(', ')}${close}`
+    })
   }
   // Dependent-object names. In a recipe fragment those are the quoted policy
   // names, and `__rename_schema_objects` replaces the substring wherever it

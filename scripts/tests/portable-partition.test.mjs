@@ -99,6 +99,35 @@ test('a recipe fragment is carried forward through a rename in a later migration
   assert.doesNotMatch(recipe, /public\.layers/)
 })
 
+test('a column-scoped grant loses a column a later migration drops', () => {
+  // 21000119000000 dropped `cell_touchpoints.screenshots` and `.url`; the
+  // grant 21000113000000 wrote under its recipe mark still named both, and
+  // the recipe refused to apply on top of the core it was written for.
+  const { recipe } = generate([
+    {
+      name: '001_tables.sql',
+      sql: [
+        'create table public.cell_touchpoints (id uuid, name text, screenshots text[], url text);',
+        '-- @recipe',
+        'grant update (name, screenshots, url)',
+        '  on public.cell_touchpoints to authenticated;',
+        'grant select on public.cell_touchpoints to anon;',
+      ].join('\n'),
+    },
+    {
+      name: '002_drop.sql',
+      sql: 'alter table public.cell_touchpoints\n  drop column screenshots,\n  drop column url;',
+    },
+  ])
+  assert.deepEqual(renamesIn('alter table public.cell_touchpoints\n  drop column screenshots,\n  drop column url;'), [
+    { kind: 'dropped-column', table: 'cell_touchpoints', column: 'screenshots' },
+    { kind: 'dropped-column', table: 'cell_touchpoints', column: 'url' },
+  ])
+  assert.match(recipe, /grant update \(name\)\s+on public\.cell_touchpoints to authenticated;/)
+  assert.match(recipe, /grant select on public\.cell_touchpoints to anon;/)
+  assert.doesNotMatch(recipe, /screenshots/)
+})
+
 test('prose about a Supabase primitive is not a dependency on one', () => {
   assert.deepEqual(
     supabaseLeaks(
