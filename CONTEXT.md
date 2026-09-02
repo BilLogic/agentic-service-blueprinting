@@ -66,14 +66,24 @@ actions, and separates what the recipient does from what the service does.
 **Dependency** — a directed edge from one cell to another on the same path.
 Two kinds, and the difference between them is whether the edge draws.
 
-**Trigger** — the drawn kind (`kind = 'trigger'`): this cell makes that one
+**Leads to** — the drawn kind (`kind = 'leads_to'`): this cell makes that one
 happen. A handoff, rendered as an arrow.
 
-**Need** — the recorded kind (`kind = 'needs'`): the other cell must already
-be true for this one to happen. A precondition, never drawn, because a
-blueprint in which every relationship is an arrow cannot be read. A need is
-not the inverse of a trigger — "follows" is a trigger read from the far end,
-and a precondition causes nothing.
+**Enables** — the recorded kind (`kind = 'enables'`): this cell makes that one
+possible without causing it. A precondition, never drawn, because a blueprint
+in which every relationship is an arrow cannot be read. Both kinds read
+source-first: `A enables B` puts the precondition at the source, the same end
+`A leads_to B` puts the cause. (The retired `needs` put it at the target, so
+those edges turned around in `21000114000000`.) The panel names each end:
+**Follows** and **Leads to** for the drawn kind, **Enabled by** and
+**Enables** for the recorded one.
+
+The retired values — `cell_dependencies.kind = 'trigger'` and
+`cell_dependencies.kind = 'needs'` — are values, not identifiers, so the
+identifier sweep has no fragment to key on and the copy sweep no reader-facing
+word: a database *trigger* is a live subject in these documents, and "needs"
+is English. `scripts/check-dependency-kinds.mjs` holds them instead, in their
+code-span form, across every rulebook tree an agent or reader follows.
 
 ## What the skills produce
 
@@ -130,6 +140,7 @@ now checks that nothing came back.
 | `row_position`, `column_position`, `slot_position`, `order_position` | `position` | `21000105000000` |
 | `description` | `summary` | `21000108000000` |
 | `propositions` | `business_model` | `21000111000000` |
+| `cell_dependencies.kind = 'trigger'`, `cell_dependencies.kind = 'needs'` | `cell_dependencies.kind = 'leads_to'`, `cell_dependencies.kind = 'enables'` | `21000114000000` |
 
 The reasoning, where it is worth knowing. `row` and `column` named how a lane
 and a step happen to be *drawn* today, and the axis is a rendering fact rather
@@ -181,9 +192,10 @@ owes the third column a reason.
 | **Form** | `cells.form` | — |
 | **Value proposition** | `cells.value_props` | `props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens. |
 | **Dependencies** | `cell_dependencies` | The relation names both ends, because a dependency always runs from one cell to another. The tab is already standing inside a cell, so the prefix would be the one word on it that told a reader nothing. |
-| **Set off by** | `cell_dependencies.kind` | Names a VALUE read from one end rather than a column: these rows are `kind = 'trigger'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this. |
-| **Sets off** | `cell_dependencies.kind` | The same value from the other end — `kind = 'trigger'` leaving. Renaming the pair to the glossary's word, Trigger, would trade one non-column word for another and close no divergence; what the two labels carry that `kind` cannot is the direction. |
-| **Needs** | `cell_dependencies.kind` | The word IS the value — `kind = 'needs'`, the recorded dependency that never draws — and `kind` is the name of the place holding it. This is the row of the three whose label the schema already says out loud. |
+| **Follows** | `cell_dependencies.kind` | Names a VALUE read from one end rather than a column: these rows are `kind = 'leads_to'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this. |
+| **Leads to** | `cell_dependencies.kind` | The same value from the other end — `kind = 'leads_to'` leaving, and here the label IS the value minus its underscore. What the pair carries that `kind` cannot is the direction, which is why the arriving end keeps a word of its own. |
+| **Enabled by** | `cell_dependencies.kind` | The recorded kind, arriving — `kind = 'enables'` with this cell as the target. The same one-row-two-ends rule as Follows: without its own word, a reader standing at the target reads "Enables › A" as this cell enabling A, the exact inversion the rename ended. |
+| **Enables** | `cell_dependencies.kind` | The word IS the value — `kind = 'enables'` leaving, the recorded dependency that never draws — and `kind` is the name of the place holding it. |
 | **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
 | **Evidence** | `evidence` | — |
 | **Resources** | `resources` | — |

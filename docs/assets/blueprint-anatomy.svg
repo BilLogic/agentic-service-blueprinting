@@ -113,8 +113,8 @@
   <text x="724" y="49" class="sub">this scenario's variants</text>
   <path class="lead" d="M720,32 L712,28"/>
 
-  <text x="724" y="150" class="anno">TRIGGER</text>
-  <text x="724" y="163" class="sub">one action sets off another</text>
+  <text x="724" y="150" class="anno">DEPENDENCY</text>
+  <text x="724" y="163" class="sub">one cell leads to or enables another</text>
   <path class="lead" d="M720,153 L508,232"/>
 
   <text x="724" y="218" class="anno">LINE OF INTERACTION</text>

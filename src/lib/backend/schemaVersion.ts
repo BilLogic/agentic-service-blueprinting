@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.08.31'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.01'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,12 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.08.31'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // The dependency kinds became `leads_to` and `enables` (#94). Not a pair of
+  // renames: `needs` put the source at the opposite end from `enables`, so
+  // 21000114000000 and the IR step both TURN those edges around. This is the
+  // only bump so far that moves authored content, so it is the only one that
+  // can change a signed scenario's content hash.
+  '2026.09.01',
   // `cells.links` split into `resources` and `cell_touchpoints` (#91). One
   // column held what a cell points at and the prose about a touchpoint used
   // at it; the IR splits with it, so a 2026.08.27 file authors a `links`

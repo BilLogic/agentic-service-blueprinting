@@ -12,7 +12,7 @@
 # companion); generators refusing an invalid IR without writing output;
 # fallback TS generation + `tsc` type-check + --register round-trip against
 # src/data/blueprintFallbacks.ts (restored afterwards); a dependency edge's
-# `kind` round-tripping through both adapters, including a `needs` edge and
+# `kind` round-tripping through both adapters, including an `enables` edge and
 # the identity that keeps both kinds of one pair apart; schema-version
 # migration (a superseded IR is refused by name, migrate_ir.py carries it
 # forward through every step, a signed scenario's sign-off hash is re-anchored
@@ -308,9 +308,9 @@ assert "FieldOps app" in lanes_stmt, "lane tools value missing"
 PY
 pass "seed-spec-fields (cells + lanes wave-2 fields pass through; absent -> defaults)"
 
-# Dependency kind, end to end. The IR could not express a `needs` edge at all
-# until 2026.08.26, so one authored in the fixture is the whole round trip: it
-# has to reach the insert, keep its kind, and not collide with the arrow.
+# Dependency kind, end to end. The IR could not express the panel-only kind at
+# all until 2026.08.26, so one authored in the fixture is the whole round trip:
+# it has to reach the insert, keep its kind, and not collide with the arrow.
 python3 - "$TMP/seed.en.sql" <<'PY' || fail "seed-dependency-kind: kind emission broken"
 import sys
 seed = open(sys.argv[1], encoding="utf-8").read()
@@ -318,13 +318,13 @@ stmt = seed.split("insert into public.cell_dependencies ", 1)[1].split(";\n", 1)
 assert "kind" in stmt.split(") values", 1)[0], "cell_dependencies insert missing kind column"
 rows = [r for r in stmt.split(") values", 1)[1].splitlines() if r.strip().startswith("(")]
 assert rows, "no cell_dependencies rows emitted"
-needs = [r for r in rows if "'needs'" in r]
-triggers = [r for r in rows if "'trigger'" in r]
-assert len(needs) == 1, f"expected the fixture's one needs edge, got {len(needs)}"
-assert triggers, "an edge that states no kind must still be emitted as 'trigger'"
-assert len(needs) + len(triggers) == len(rows), "an edge row carries neither kind"
+enables = [r for r in rows if "'enables'" in r]
+leads_to = [r for r in rows if "'leads_to'" in r]
+assert len(enables) == 1, f"expected the fixture's one enables edge, got {len(enables)}"
+assert leads_to, "an edge that states no kind must still be emitted as 'leads_to'"
+assert len(enables) + len(leads_to) == len(rows), "an edge row carries neither kind"
 PY
-pass "seed-dependency-kind (an IR-authored needs edge reaches cell_dependencies as kind='needs')"
+pass "seed-dependency-kind (an IR-authored enables edge reaches cell_dependencies as kind='enables')"
 
 # The kind is part of the edge's IDENTITY, because the database's uniqueness
 # key is (source, target, kind). One pair carrying both kinds is two rows, and
@@ -338,11 +338,11 @@ import generate_seed_sql, validate_ir
 
 doc = json.load(open(sample, encoding="utf-8"))
 first_path = doc["service"]["phases"][0]["scenarios"][0]["paths"][0]
-arrow = next(t for t in first_path["triggers"] if t.get("kind", "trigger") == "trigger")
+arrow = next(t for t in first_path["triggers"] if t.get("kind", "leads_to") == "leads_to")
 
 both = copy.deepcopy(doc)
 both["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"].append(
-    {"source": arrow["source"], "target": arrow["target"], "kind": "needs"}
+    {"source": arrow["source"], "target": arrow["target"], "kind": "enables"}
 )
 report = validate_ir.Report("both-kinds")
 validate_ir.validate_document(both, report)
@@ -357,7 +357,7 @@ pair = [
 ]
 assert len(pair) == 2, f"the crafted pair produced {len(pair)} edges, expected 2"
 assert pair[0]["id"] != pair[1]["id"], "the two kinds collided on one UUIDv5 id"
-assert {e["kind"] for e in pair} == {"trigger", "needs"}, "kind lost between IR and model"
+assert {e["kind"] for e in pair} == {"leads_to", "enables"}, "kind lost between IR and model"
 
 # A genuine duplicate — same pair, SAME kind — is still a duplicate.
 dup = copy.deepcopy(both)
@@ -366,14 +366,14 @@ dup["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"].append(
 )
 report = validate_ir.Report("dup")
 validate_ir.validate_document(dup, report)
-assert any("duplicate trigger edge" in e for e in report.errors), report.errors
+assert any("duplicate leads_to edge" in e for e in report.errors), report.errors
 
 # An unknown kind is refused, naming both legal values.
 bad = copy.deepcopy(doc)
 bad["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"][0]["kind"] = "causes"
 report = validate_ir.Report("bad-kind")
 validate_ir.validate_document(bad, report)
-assert any("'causes' is not one of ['trigger', 'needs']" in e for e in report.errors), report.errors
+assert any("'causes' is not one of ['leads_to', 'enables']" in e for e in report.errors), report.errors
 PY
 pass "seed-dependency-identity (both kinds on one pair are two ids; duplicates and unknown kinds still fail)"
 
@@ -429,10 +429,10 @@ data = json.loads(block.strip())
 edges = [e for paths in data.values() for path in paths for e in path["triggers"]]
 kinds = [e.get("kind") for e in edges]
 assert edges, "the no-DB adapter served no edges at all"
-assert kinds.count("needs") == 1, f"expected the fixture's one needs edge, got {kinds.count('needs')}"
-assert kinds.count("trigger") == len(edges) - 1, "an edge reached the module without a kind"
+assert kinds.count("enables") == 1, f"expected the fixture's one enables edge, got {kinds.count('enables')}"
+assert kinds.count("leads_to") == len(edges) - 1, "an edge reached the module without a kind"
 PY
-pass "fallback-dependency-kind (the no-DB adapter serves the needs edge as needs)"
+pass "fallback-dependency-kind (the no-DB adapter serves the enables edge as enables)"
 
 npx tsc -p tsconfig.app.json > "$TMP/tsc1.out" 2>&1 \
   || fail "fallback-tsc: type-check failed with generated module present — $(tail -20 "$TMP/tsc1.out")"
@@ -933,13 +933,13 @@ import json, sys
 migrated = json.load(open(sys.argv[1], encoding="utf-8"))
 current = json.load(open(sys.argv[2], encoding="utf-8"))
 # A migration carries content forward; it never invents any. The current
-# fixture authors a `needs` edge, which no version before 2026.08.26 had a
+# fixture authors an `enables` edge, which no version before 2026.08.26 had a
 # shape for, so what comes out of the chain is the current fixture without it
 # — and with no `kind` written anywhere, because absence already means
-# `trigger` and materializing that would rewrite every signed scenario's hash.
+# `leads_to` and materializing that would rewrite every signed scenario's hash.
 expected = json.loads(json.dumps(current))
 path = expected["service"]["phases"][0]["scenarios"][0]["paths"][0]
-path["triggers"] = [t for t in path["triggers"] if t.get("kind", "trigger") != "needs"]
+path["triggers"] = [t for t in path["triggers"] if t.get("kind", "leads_to") != "enables"]
 assert migrated == expected, "migrated IR differs from the current fixture"
 assert not [
     t
@@ -1120,6 +1120,63 @@ for key, digest in live.items():
     assert entry["signed_by"] == "bill", f"{key}: signer lost"
 PYVERIFY
 pass "migrate-signoff (signed scenarios re-verify after migration)"
+
+# The turn itself, end to end. No fixture before 2026.08.26 can carry a `needs`
+# edge and the current fixture already says `enables`, so the one branch of
+# to_2026_09_01 that moves authored content — swapping the ends of a `needs`
+# edge — ran on zero edges until this test built its own input: the current
+# fixture stamped 2026.08.31 with its `enables` edge written the old way round.
+# Migrating it must land on the current fixture exactly, and a workspace that
+# had signed that scenario must NOT be re-anchored across the turn — the
+# sign-off stays stale, and the report says why — while nothing else in the
+# chain is refused.
+python3 - "$SAMPLE" "$TMP" "$REPO_ROOT" <<'PYTURN'
+import json, pathlib, sys
+sample, tmp, repo = sys.argv[1], sys.argv[2], sys.argv[3]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+doc = json.load(open(sample, encoding="utf-8"))
+doc["schema_version"] = "2026.08.31"
+turned = 0
+for phase in doc["service"]["phases"]:
+    for scenario in phase["scenarios"]:
+        for path in scenario["paths"]:
+            for edge in path.get("triggers", []):
+                if edge.get("kind") == "enables":
+                    edge["kind"] = "needs"
+                    edge["source"], edge["target"] = edge["target"], edge["source"]
+                    turned += 1
+assert turned == 1, f"expected the fixture to carry exactly one enables edge, found {turned}"
+json.dump(doc, open(f"{tmp}/turn-me.json", "w", encoding="utf-8"), indent=2)
+before = migrate_ir.scenario_hashes(doc)
+signed = {key: {"status": "signed_off", "content_hash": digest,
+                "signed_at": "2026-08-31T09:00:00Z", "signed_by": "bill"}
+          for key, digest in before.items()}
+json.dump({"schema_version": "2026.08.31", "ir_path": "turn-me.json", "scenarios": signed},
+          open(f"{tmp}/turn-workspace.json", "w", encoding="utf-8"), indent=2)
+PYTURN
+python3 "$MIGRATE" "$TMP/turn-me.json" --workspace "$TMP/turn-workspace.json" --write \
+  > "$TMP/migrate-turn.out" 2>&1 \
+  || fail "migrate-turn: migration failed — $(cat "$TMP/migrate-turn.out")"
+grep -q "2026.08.31 -> 2026.09.01" "$TMP/migrate-turn.out" \
+  || fail "migrate-turn: the chain skipped the kinds step — $(cat "$TMP/migrate-turn.out")"
+grep -q "re-review and re-sign" "$TMP/migrate-turn.out" \
+  || fail "migrate-turn: the turned scenario's sign-off was carried across — $(cat "$TMP/migrate-turn.out")"
+python3 - "$TMP" "$SAMPLE" "$REPO_ROOT" <<'PYTURNED'
+import json, pathlib, sys
+tmp, sample, repo = sys.argv[1], sys.argv[2], sys.argv[3]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+migrated = json.load(open(f"{tmp}/turn-me.json", encoding="utf-8"))
+current = json.load(open(sample, encoding="utf-8"))
+assert migrated == current, "turning the needs edge around did not land on the current fixture"
+workspace = json.load(open(f"{tmp}/turn-workspace.json", encoding="utf-8"))
+after = migrate_ir.scenario_hashes(migrated)
+for key, entry in workspace["scenarios"].items():
+    assert entry["content_hash"] != after[key], f"{key}: re-anchored across a step that moved its content"
+    assert entry["signed_by"] == "bill", f"{key}: the stale sign-off was rewritten instead of left alone"
+PYTURNED
+pass "migrate-turn (a needs edge turns around, and its sign-off is not carried across)"
 
 # A scenario hand-edited after sign-off carries a hash that matches neither
 # side of the bump. It was de-signed before the migration ran, so re-anchoring

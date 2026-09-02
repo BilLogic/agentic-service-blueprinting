@@ -61,9 +61,10 @@ A cell is what one actor does at one step. Beyond its content it carries:
   not accountable for the moment.
 - **Function, form, value proposition.** What it has to accomplish, how it
   comes across, and who gets what from it.
-- **Dependencies.** `Set off by` and `Sets off` are the arrows drawn on the
-  grid. `Needs` is a dependency with no arrow: the cell cannot happen
-  without it, but it is not what triggers it.
+- **Dependencies.** `Follows` and `Leads to` are the two ends of the arrow
+  drawn on the grid. `Enabled by` and `Enables` are the two ends of a
+  dependency with no arrow: the source makes the target possible without
+  being what makes it happen.
 - **Evidence.** The sources the cell rests on. A cell with none reads as an
   assumption, which is a finding rather than a gap in the tooling.
 - **Resources.** What the cell points at. Their rows and ownership live in the

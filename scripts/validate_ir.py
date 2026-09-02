@@ -34,9 +34,9 @@ package is deliberately not required):
                 (duplicate position); triggers reference existing
                 cells on the SAME path (cross-path triggers are invalid);
                 source != target; a dependency edge's optional `kind` is
-                one of trigger/needs, and (source, target, kind) is unique
+                one of leads_to/enables, and (source, target, kind) is unique
                 — the database's own uniqueness key, so one pair may carry
-                both an arrow and a needs edge; unique keys at every level;
+                both an arrow and an enables edge; unique keys at every level;
                 phase.loops_to resolves.
   Warnings    — unknown lane roles near a canonical role ("did you
                 mean…?" via edit distance; genuinely custom roles are legal
@@ -92,9 +92,9 @@ PATH_TYPES = ("happy", "unhappy", "exception", "alternative")
 #: `link`, which is the column default.
 RESOURCE_KINDS = ("link", "other")
 #: cell_dependencies.kind — the same two values the database checks.
-#: An edge that states none is a 'trigger', which is the column default.
-DEPENDENCY_KINDS = ("trigger", "needs")
-DEFAULT_DEPENDENCY_KIND = "trigger"
+#: An edge that states none is a 'leads_to', which is the column default.
+DEPENDENCY_KINDS = ("leads_to", "enables")
+DEFAULT_DEPENDENCY_KIND = "leads_to"
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 LOCALE_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
@@ -579,15 +579,16 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
                 rep.error(tjp, f"missing required field '{field}'")
         source = check_cell_ref(trigger.get("source"), f"{tjp}.source", rep) if "source" in trigger else None
         target = check_cell_ref(trigger.get("target"), f"{tjp}.target", rep) if "target" in trigger else None
-        # Absent is 'trigger' — the column default, and what every edge
+        # Absent is 'leads_to' — the column default, and what every edge
         # authored before the kind existed already meant.
         kind = trigger.get("kind", DEFAULT_DEPENDENCY_KIND)
         if kind not in DEPENDENCY_KINDS:
             rep.error(
                 f"{tjp}.kind",
-                f"{kind!r} is not one of {list(DEPENDENCY_KINDS)} — 'trigger' is the "
-                "temporal arrow (and the default when the field is absent); 'needs' is "
-                "the functional dependency, which renders in the cell panel only",
+                f"{kind!r} is not one of {list(DEPENDENCY_KINDS)} — 'leads_to' makes "
+                "the target happen and draws an arrow (the default when the field is "
+                "absent); 'enables' makes it possible and renders in the cell panel "
+                "only. Both read source-first",
             )
             kind = DEFAULT_DEPENDENCY_KIND
         if source is None or target is None:

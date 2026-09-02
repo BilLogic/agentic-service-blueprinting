@@ -55,8 +55,12 @@ equals its PRE-migration hash, the stored hash is replaced with its
 POST-migration hash and `signed_at`/`signed_by` are kept. That is sound
 precisely because a migration step moves no authored VALUE — it renames a
 field name, or materializes a defaulted one — and unsound the moment a step
-starts editing content, so a step that does must say so and this script
-refuses to re-anchor it (`content_preserving = False`).
+starts editing content, so a step that does must say so
+(`content_preserving = False`). Such a step is watched scenario by scenario:
+the scenarios whose subtree it actually changed are left with their recorded
+hash — stale on purpose, so they go back through review — and every other
+scenario re-anchors as usual. A blanket refusal was the alternative, and it
+would have de-signed a whole workspace over a step that touched none of it.
 
 A stored hash that matches NEITHER side was already stale before the
 migration ran: the scenario was hand-edited after it was signed. Those are
@@ -304,6 +308,48 @@ def _split_links(cell) -> None:
         cell["links"] = unreadable
 
 
+def to_2026_09_01(doc: dict) -> None:
+    """2026.08.31 → 2026.09.01 — the two dependency kinds, and one of them turns.
+
+    `trigger` becomes `leads_to` and `needs` becomes `enables`, matching
+    21000114000000. The first is a rename. The second is not:
+
+        A needs   B   →  B comes first, B is required by A
+        A enables B   →  A comes first, A makes B possible
+
+    So every `needs` edge has its `source` and `target` exchanged as its kind
+    is rewritten. An edge left where it lay would claim the exact reverse of
+    what its author wrote. This is the only migration step in this file that
+    moves authored content rather than a stamp, which is why it is also the
+    only one that can change a scenario's content hash — a workspace holding
+    signed `needs` edges re-signs those scenarios, and that is correct: the
+    bytes really did change.
+
+    `trigger` edges are rewritten in place because a rename cannot move a
+    meaning. An edge with NO kind is left alone: absence meant the drawn kind
+    before this bump and still does, so a file full of bare edges migrates by
+    its stamp and hashes identically.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            for path in scenario.get("paths", []) or []:
+                for edge in path.get("triggers", []) or []:
+                    if not isinstance(edge, dict):
+                        continue
+                    kind = edge.get("kind")
+                    if kind == "trigger":
+                        edge["kind"] = "leads_to"
+                    elif kind == "needs":
+                        edge["source"], edge["target"] = (
+                            edge.get("target"),
+                            edge.get("source"),
+                        )
+                        edge["kind"] = "enables"
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -332,6 +378,16 @@ STEPS = (
         "a cell's `links` array splits into `resources` and `touchpoints`; "
         "label→name, description→summary, picture/pictures→screenshots",
         to_2026_08_31,
+    ),
+    Step(
+        "2026.08.31",
+        "2026.09.01",
+        "dependency kinds: trigger→leads_to, and needs→enables with the edge "
+        "turned around, because the two words put the source at opposite ends",
+        to_2026_09_01,
+        # Swapping source and target on a `needs` edge is authored content
+        # moving, not a field renamed under it.
+        content_preserving=False,
     ),
 )
 
@@ -386,22 +442,34 @@ def scenario_hashes(doc: dict) -> dict:
     }
 
 
-def migrate_document(doc: dict, chain: list) -> dict:
-    """Apply a chain of steps to a copy of doc, returning the migrated copy."""
+def migrate_document(doc: dict, chain: list, moved: set | None = None) -> dict:
+    """Apply a chain of steps to a copy of doc, returning the migrated copy.
+
+    When `moved` is given, every scenario key whose subtree a
+    non-content-preserving step changed is added to it. Those are the
+    scenarios whose sign-off cannot be carried across mechanically.
+    """
     migrated = copy.deepcopy(doc)
     for step in chain:
+        prior = None if step.content_preserving else scenario_hashes(migrated)
         step.apply(migrated)
         migrated["schema_version"] = step.to_version
+        if prior is not None and moved is not None:
+            now = scenario_hashes(migrated)
+            moved.update(key for key, digest in now.items() if prior.get(key) != digest)
     return migrated
 
 
 def reanchor_workspace(workspace: dict, before: dict, after: dict,
-                       to_version: str) -> list:
+                       to_version: str, moved: set | None = None) -> list:
     """Move each signed scenario's recorded hash onto its migrated subtree.
 
-    Mutates `workspace`. Returns one report line per scenario it looked at.
+    A scenario in `moved` (its authored content changed across a step) keeps
+    its recorded hash untouched, so it reads as stale until someone re-signs
+    it. Mutates `workspace`. Returns one report line per scenario it looked at.
     """
     notes: list = []
+    moved = moved or set()
     workspace["schema_version"] = to_version
     scenarios = workspace.get("scenarios")
     if not isinstance(scenarios, dict):
@@ -417,6 +485,12 @@ def reanchor_workspace(workspace: dict, before: dict, after: dict,
             continue
         if recorded == after[key]:
             notes.append(f"  {key}: already anchored to the migrated subtree")
+        elif key in moved and recorded == before[key]:
+            notes.append(
+                f"  {key}: authored content moved in this migration (an edge "
+                "turned around), so its sign-off is not carried across. Left "
+                "alone; re-review and re-sign this scenario."
+            )
         elif recorded == before[key]:
             entry["content_hash"] = after[key]
             notes.append(f"  {key}: re-anchored {recorded} -> {after[key]}")
@@ -496,7 +570,8 @@ def main(argv=None) -> int:
         return 0
 
     before = scenario_hashes(doc)
-    migrated = migrate_document(doc, chain)
+    moved: set = set()
+    migrated = migrate_document(doc, chain, moved)
     after = scenario_hashes(migrated)
 
     print(f"migrate_ir: {ir_path}  {from_version} -> {target}", file=report)
@@ -510,14 +585,8 @@ def main(argv=None) -> int:
         if ws_error is not None:
             print(f"ERROR: {ws_error}", file=sys.stderr)
             return 1
-        if not all(step.content_preserving for step in chain):
-            print("ERROR: a step in this chain edits authored content, so a "
-                  "recorded sign-off hash cannot be moved onto it mechanically. "
-                  "Re-review and re-sign the affected scenarios by hand.",
-                  file=sys.stderr)
-            return 1
         print(f"sign-off hashes in {workspace_path}:", file=report)
-        for line in reanchor_workspace(workspace, before, after, target):
+        for line in reanchor_workspace(workspace, before, after, target, moved):
             print(line, file=report)
 
     if args.json:

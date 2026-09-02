@@ -41,7 +41,7 @@
  *     BOTH artifacts, so a keyless clone renders them like a seeded database
  *   - trigger kinds: forward cross-lane, same-column, opt-in spine chains,
  *     cross-lane UPWARD arrows, backward in-lane loops (rework + re-dispatch),
- *     and panel-only `needs` dependencies with labels and notes
+ *     and panel-only `enables` dependencies with labels and notes
  *   - resources pointing at REAL repo paths — every one is existsSync-checked
  *   - three demo slices (journey + step + lane) over the new content
  *
@@ -345,11 +345,11 @@ const SCENARIOS = [
       { from: ['surface', 3], to: ['owner', 3] },
       { from: ['owner', 5], to: ['stakeholders', 5], label: 'what it would take' },
       {
-        from: ['owner', 4], to: ['scripts', 4], kind: 'needs',
+        from: ['scripts', 4], to: ['owner', 4], kind: 'enables',
         note: 'A zero-config run has content only because the sample module is generated into the bundle.',
       },
       {
-        from: ['owner', 5], to: ['scripts', 5], kind: 'needs',
+        from: ['scripts', 5], to: ['owner', 5], kind: 'enables',
         note: 'Weighing the cost means running the suites, not reading the claim that they pass.',
       },
     ],
@@ -622,15 +622,15 @@ const SCENARIOS = [
         note: 'Accepted findings send the draft back to cell-writing before a re-validate.',
       },
       {
-        from: ['owner', 8], to: ['scripts', 8], kind: 'needs',
+        from: ['scripts', 8], to: ['owner', 8], kind: 'enables',
         note: 'Sign-off is bound to a content hash, not to a feeling.',
       },
       {
-        from: ['claude', 9], to: ['scripts', 9], kind: 'needs',
+        from: ['scripts', 9], to: ['claude', 9], kind: 'enables',
         note: 'The import consumes the generated seed; the fallback module is registered in the same pass.',
       },
       {
-        from: ['agents', 4], to: ['scripts', 4], kind: 'needs', paths: ['DOCS'],
+        from: ['scripts', 4], to: ['agents', 4], kind: 'enables', paths: ['DOCS'],
         note: 'The reader follows the ingest playbook rather than improvising a reading order.',
       },
     ],
@@ -804,11 +804,11 @@ const SCENARIOS = [
         note: 'A re-run is a full run: the roster goes out again, and supersede semantics make that safe.',
       },
       {
-        from: ['claude', 4], to: ['scripts', 4], kind: 'needs',
+        from: ['scripts', 4], to: ['claude', 4], kind: 'enables',
         note: 'Dedupe is the fingerprint algorithm, not a judgement call about whether two findings feel alike.',
       },
       {
-        from: ['agents', 3], to: ['refs', 3], kind: 'needs',
+        from: ['refs', 3], to: ['agents', 3], kind: 'enables',
         note: 'An auditor is given exactly one check doc; the roster is the directory listing.',
       },
     ],
@@ -858,7 +858,7 @@ const SCENARIOS = [
 
       { lane: 'claude', col: 1, content: 'Picks the operation: replay, restage, or prioritize' },
       { lane: 'claude', col: 2, content: 'Copies the blueprint into whatif/<key>/ — the hypothetical never touches the base' },
-      { lane: 'claude', col: 3, content: 'Dispatches impact-tracer down trigger and needs edges' },
+      { lane: 'claude', col: 3, content: 'Dispatches impact-tracer down leads_to and enables edges' },
       { lane: 'claude', col: 4, content: 'Judges the consequences against the operation it picked, not against a general opinion' },
       { lane: 'claude', col: 5, content: 'Dispatches blueprint-reviewer in whatif-claim mode and cuts every claim that fails' },
       { lane: 'claude', col: 6, content: 'Writes comparison.md with citations and zero verbatim excerpts' },
@@ -888,7 +888,7 @@ const SCENARIOS = [
         lane: 'agents', col: 3,
         content: 'impact-tracer returns affected cells, strained assumptions, and displaced demand',
         fn: 'Answer “what else does this touch?” from the graph rather than from whoever remembers the service best.',
-        form: 'A read-only walk down trigger and needs edges from one named cell, returning a bounded list with a truncation flag.',
+        form: 'A read-only walk down leads_to and enables edges from one named cell, returning a bounded list with a truncation flag.',
         valueProps: [
           { for: 'The blueprint owner', value: 'The blast radius of a change, before anyone estimates it.' },
           { for: 'The reviewer', value: 'A claim list with cell keys attached, so every claim is checkable.' },
@@ -920,15 +920,15 @@ const SCENARIOS = [
       { from: ['agents', 3], to: ['surface', 3] },
       { from: ['claude', 5], to: ['agents', 5] },
       {
-        from: ['claude', 6], to: ['agents', 3], kind: 'needs',
+        from: ['agents', 3], to: ['claude', 6], kind: 'enables',
         note: 'The comparison is written from the tracer’s result, never from memory of the service.',
       },
       {
-        from: ['claude', 7], to: ['agents', 5], kind: 'needs',
+        from: ['agents', 5], to: ['claude', 7], kind: 'enables',
         note: 'A change request carries only claims the reviewer confirmed.',
       },
       {
-        from: ['claude', 7], to: ['scripts', 7], kind: 'needs',
+        from: ['scripts', 7], to: ['claude', 7], kind: 'enables',
         note: 'The staleness guard compares against the sign-off hashes captured when the variant was copied.',
       },
     ],
@@ -1055,11 +1055,11 @@ const SCENARIOS = [
       { from: ['scripts', 6], to: ['surface', 7], label: 'rows the app reads' },
       { from: ['owner', 3], to: ['claude', 4], label: 'nod' },
       {
-        from: ['claude', 6], to: ['claude', 4], kind: 'needs',
+        from: ['claude', 4], to: ['claude', 6], kind: 'enables',
         note: 'Only a validated slice is importable.',
       },
       {
-        from: ['claude', 6], to: ['agents', 5], kind: 'needs',
+        from: ['agents', 5], to: ['claude', 6], kind: 'enables',
         note: 'The import waits for the fresh-context claim review to come back clean.',
       },
     ],
@@ -1157,11 +1157,11 @@ const SCENARIOS = [
       { from: ['refs', 2], to: ['claude', 2], label: 'resume rules' },
       { from: ['surface', 5], to: ['stakeholders', 5], label: 'back in use' },
       {
-        from: ['claude', 4], to: ['scripts', 4], kind: 'needs',
+        from: ['scripts', 4], to: ['claude', 4], kind: 'enables',
         note: 'Re-signing is a recomputed hash, so an edit cannot inherit the previous approval.',
       },
       {
-        from: ['claude', 5], to: ['claude', 4], kind: 'needs',
+        from: ['claude', 4], to: ['claude', 5], kind: 'enables',
         note: 'Only a re-signed scenario is re-importable.',
       },
     ],
@@ -1358,7 +1358,7 @@ function buildScenario(scenario) {
       id: fid(S, P, KIND.trigger, index + 1, 0),
       source_cell_id: cellId(trig.from[0], trig.from[1]),
       target_cell_id: cellId(trig.to[0], trig.to[1]),
-      ...(trig.kind === 'needs' ? { kind: 'needs' } : {}),
+      ...(trig.kind === 'enables' ? { kind: 'enables' } : {}),
       ...(trig.label ? { label: trig.label } : {}),
       ...(trig.note ? { note: trig.note } : {}),
     }))
@@ -1945,7 +1945,7 @@ ${sqlRows(
       q(trigger.id),
       q(trigger.source_cell_id),
       q(trigger.target_cell_id),
-      q(trigger.kind ?? 'trigger'),
+      q(trigger.kind ?? 'leads_to'),
       q(trigger.label ?? null),
       q(trigger.note ?? null),
     ]),

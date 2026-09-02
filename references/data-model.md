@@ -76,7 +76,7 @@ erDiagram
   cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text picture "optional image URL"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status }
   cell_touchpoints { uuid id PK  uuid cell_id FK  text name "what the touchpoint is called HERE; matches a line of cells.content where the grid draws it as a pill"  int position  text summary "prose about this touchpoint at THIS moment"  text_array screenshots  text url "the design file for THIS moment, not for the tool"  text origin }
   resources { uuid id PK  uuid cell_id FK "exactly one of these two"  uuid cell_touchpoint_id FK  text kind "link | other"  text name  text url  int position  text origin }
-  cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "trigger = makes the other happen, drawn | needs = must already be true, never drawn"  text label  text note }
+  cell_dependencies { uuid id PK  uuid source_cell_id FK "unique pair; source != target"  uuid target_cell_id FK  text kind "leads_to = makes the other happen, drawn | enables = makes the other possible, never drawn"  text label  text note }
 ```
 
 ## Tables in brief
@@ -93,7 +93,7 @@ erDiagram
 | `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `content` newline-separated items render as pills on pill-role lanes |
 | `cell_touchpoints` | One touchpoint, used at one cell | Owns the summary, screenshots and design link for THIS moment — the same tool describes a different screen at a different step. `unique (cell_id, name)` |
 | `resources` | What a cell, or one placement, points at | `num_nonnulls(cell_id, cell_touchpoint_id) = 1` — a cell OR a placement, never both and never neither. That constraint is what lets a design link belong to the tool it documents rather than to the cell at large |
-| `cell_dependencies` | Directed arrows cell → cell. `kind` is `trigger` (this cell makes the other happen — drawn) or `needs` (the other must already be true — recorded, never drawn). Not inverses: "follows" is `trigger` read from the other end, and a precondition causes nothing | Unique pair, `source != target`, both cells must be on the same path |
+| `cell_dependencies` | Directed arrows cell → cell. `kind` is `leads_to` (this cell makes the other happen — drawn) or `enables` (this cell makes the other possible — recorded, never drawn). Not inverses: "follows" is `leads_to` read from the other end, and making something possible causes nothing | Unique pair, `source != target`, both cells must be on the same path |
 
 ## Enums
 
@@ -108,12 +108,13 @@ erDiagram
     one combined blueprint) is a per-session display chosen in the compare
     control. The CHECK constraint rejects it, and `create_scenario` refuses it
     by name with a hint rather than coercing it
-- `cell_dependencies.kind`: `trigger` \| `needs`. `trigger` is temporal —
-  the source sets the target off, and it is the kind the canvas DRAWS as an
-  arrow. `needs` is functional — the target must already be true for the
-  source to make sense — and renders in the cell panel only. The container
-  is the dependency; `trigger` is one of its two kinds, which is why
-  renaming the table to `cell_dependencies` left the column alone.
+- `cell_dependencies.kind`: `leads_to` \| `enables`. `leads_to` means the
+  source makes the target HAPPEN, and it is the kind the canvas DRAWS as an
+  arrow. `enables` means the source makes the target POSSIBLE without causing
+  it, and renders in the cell panel only. Both read source-first and
+  upstream-first, so an edge's direction can be read without checking its
+  kind — which is why 21000114000000 turned the older functional edges
+  around rather than renaming them where they lay.
 - `paths.path_type`: `happy` \| `variant` \| `exception`. Exactly one `happy`
   per scenario — the route things take when nothing intervenes. An `exception`
   is a route taken because something went wrong; a `variant` is a different but

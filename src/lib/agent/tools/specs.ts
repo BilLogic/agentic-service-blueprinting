@@ -162,7 +162,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_compare_diff',
     description:
-      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (summary, resources, touchpoints) group. Read before driving the compare UI or answering \"what differs\". Triggers/needs edges are not compared.",
+      "Structured comparison of a scenario's paths: canonical columns with verdicts, one group per divergent STEP (the same \"Step N\" the ledger groups by and jump_divergence takes) tagged with its divergence zone ①②③ (drawn as the strip in Stacked), every differing slot with per-path quotes and cell ids, and the detail-only (summary, resources, touchpoints) group. Read before driving the compare UI or answering \"what differs\". Dependency edges (leads_to, enables) are not compared.",
     parameters: {
       type: 'object',
       properties: {
@@ -571,13 +571,13 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'set_cell_dependency',
     description:
-      'Connect two cells on the SAME path. kind "trigger" = source sets target in motion (drawn as an arrow); "needs" = source depends on target existing (panel-only) — "only makes sense after X" / "depends on X" reads as needs. State which kind you chose and why in your reply. Arrows only where they add information.',
+      'Connect two cells on the SAME path. kind "leads_to" = source makes target happen (drawn as an arrow); "enables" = source makes target possible without causing it (panel-only) — "X only makes sense once Y is true" reads as Y enables X, source-first. State which kind you chose and why in your reply. Arrows only where they add information.',
     parameters: {
       type: 'object',
       properties: {
         source_cell_id: str('Source cell id'),
         target_cell_id: str('Target cell id'),
-        kind: { type: 'string', enum: ['trigger', 'needs'], description: 'Default trigger' },
+        kind: { type: 'string', enum: ['leads_to', 'enables'], description: 'Default leads_to' },
         label: str('Short arrow label; omit for none'),
       },
       required: ['source_cell_id', 'target_cell_id'],

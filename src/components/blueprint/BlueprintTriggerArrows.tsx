@@ -104,7 +104,7 @@ export function BlueprintTriggerArrows({
   const updateArrows = useCallback(() => {
     const content = contentRef.current
     // `needs` links are panel-only by design — arrows draw temporal triggers only.
-    const arrowTriggers = triggers.filter((t) => (t.kind ?? 'trigger') === 'trigger')
+    const arrowTriggers = triggers.filter((t) => (t.kind ?? 'leads_to') === 'leads_to')
     if (!content || arrowTriggers.length === 0) {
       setSegments([])
       return

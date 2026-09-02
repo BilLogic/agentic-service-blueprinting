@@ -151,7 +151,7 @@ export const coverContent: CoverContent = {
           heading: 'Inside a single cell',
           paragraphs: [
             "A cell is one actor's action at one step, plus the record around it. It carries where it sits in the hierarchy, what it does, what form it takes, and what it is worth. It carries who **owns** it and who the customer *thinks* owns it — two fields, because the interesting case is when they differ.",
-            'It also carries the **evidence** it rests on, the resources it points at, its **dependencies** — what sets it off, what it sets off, what it needs to exist — and the slices that quote it.',
+            'It also carries the **evidence** it rests on, the resources it points at, its **dependencies** — what leads to it, what it leads to, what enables it, what it enables — and the slices that quote it.',
             'That last one runs both ways: open a cell and you can see which views would change if you edited it.',
           ],
           figure: {

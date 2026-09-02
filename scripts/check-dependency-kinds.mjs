@@ -3,11 +3,11 @@
  * The dependency vocabulary the documents teach, against the one the database
  * enforces.
  *
- * `references/data-model.md` called the two `cell_dependencies.kind` values
- * `leads_to` and `enables`. The column has never accepted either. An agent
- * that trusted the normative reference — which is what normative means —
- * wrote a value the CHECK constraint refused, and five more reference docs
- * repeated the same two words downstream.
+ * The two `cell_dependencies.kind` values are `leads_to` and `enables` since
+ * 21000114000000. Before that the docs and the column disagreed for weeks —
+ * the normative reference taught words the CHECK constraint refused, and an
+ * agent that trusted it wrote a call that could not land. This file is the
+ * check that keeps the two from drifting again, in either direction.
  *
  * So two assertions, mirroring check-read-surface.mjs:
  *
@@ -15,11 +15,12 @@
  *      the schema's CHECK constraint states the values; they must be the same
  *      set, in both directions.
  *
- *   2. THE RETIRED SPELLING. The wrong words had spread into slice, audit and
- *      whatif references, where no enum row exists to compare against. So no
- *      rulebook document may contain them at all. `enables` is an ordinary
- *      English verb, so only its code-span form (`` `enables` ``) counts;
- *      `leads_to` is not English and counts anywhere.
+ *   2. THE RETIRED SPELLING. The words the column no longer accepts —
+ *      `trigger` and `needs`, see `RETIRED` — may not appear as code spans in
+ *      any document an agent or a reader follows: the references, the skills,
+ *      the agents, and the guides. Prose is left alone (a database trigger is
+ *      a legitimate subject; "a slice needs a cell" is English), which is why
+ *      the subject is the code span and not the word.
  *
  * SOURCE OF TRUTH: `supabase/generated/portable-core.generated.sql`, not the
  * migrations directly. It is generated FROM the migrations, and CI runs
@@ -28,9 +29,9 @@
  * What it buys is a single flat file instead of a replay: reading the
  * constraint out of the migrations means ordering 20-odd files and tracking
  * drop/re-add across a table rename, and a check that reimplements migration
- * replay is a check with its own bugs. The parse below insists on exactly one
- * definition, so a future migration that redefines the constraint fails here
- * loudly rather than being read stale.
+ * replay is a check with its own bugs. The LAST definition of the constraint
+ * in that file is the one a fresh database ends up with, so it is the one
+ * read — `enforcedKinds` says why.
  *
  *   node scripts/check-dependency-kinds.mjs
  */
@@ -43,13 +44,35 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SCHEMA = 'supabase/generated/portable-core.generated.sql'
 const DATA_MODEL = 'references/data-model.md'
 
-/** The rulebook trees the canvas agent and the IDE skills both read. */
-const RULEBOOK = ['references', 'skills']
+/**
+ * Every tree a reader or an agent takes instructions from. `agents/` was
+ * missing at first, and the impact tracer kept walking "incoming `needs`"
+ * edges for a whole release after the edges had turned around.
+ */
+const RULEBOOK = ['references', 'skills', 'agents', 'docs/guide', 'docs/engineering']
 
-/** Retired kind words, and what the database calls them instead. */
+/**
+ * Retired kind words, and what the database calls them instead.
+ *
+ * These swapped ends in 21000114000000. The docs used to run AHEAD of the
+ * column — they taught `leads_to`/`enables` while the constraint accepted
+ * `trigger`/`needs`, which is the drift this file was written for. The column
+ * has now caught up and passed them: `trigger` is the retired word, and
+ * `needs` is retired twice over, because the edge it named points the other
+ * way from the `enables` that replaced it.
+ *
+ * Both are held to their CODE-SPAN form, and each for its own reason.
+ * `needs` is an ordinary English verb — "a slice needs a cell" — which is the
+ * rule `enables` used to be held by. `trigger` is a database object these
+ * documents legitimately discuss: `references/data-model.md` has a whole
+ * section on the integrity trigger `cells_validate_path_match`, and a bare
+ * word sweep read every line of it as a retired kind. Narrowing the subject
+ * to the code span is the fix; dropping `trigger` from the list would have
+ * made this a rule that never covered the word at all.
+ */
 const RETIRED = [
-  [/\bleads_to\b/g, 'leads_to', 'trigger'],
-  [/`enables`/g, '`enables`', '`needs`'],
+  [/`trigger`/g, '`trigger`', '`leads_to`'],
+  [/`needs`/g, '`needs`', '`enables`'],
 ]
 
 /**
@@ -57,17 +80,31 @@ const RETIRED = [
  *
  * The constraint is still named for the table's old name — the rename
  * migration says so on purpose — so match either.
+ *
+ * TWO THINGS THIS LEARNED FROM 21000114000000, both silent failures:
+ *
+ * 1. It insisted on exactly ONE definition and threw otherwise, on the
+ *    reasoning that a redefinition should fail loudly rather than be read
+ *    stale. A migration that drops and re-adds the constraint is exactly that
+ *    redefinition, and it is the ordinary way to change an enum — so the rule
+ *    made the normal case an error. The LAST definition wins now, because the
+ *    file is generated in migration order and the last one is what a fresh
+ *    database ends up with.
+ *
+ * 2. It matched on one line. `alter table … add constraint … check (…)`
+ *    written across three lines did not match at all, so the sweep read the
+ *    ORIGINAL constraint and reported agreement with a column that had since
+ *    changed underneath it. Whitespace is collapsed before matching.
  */
 export function enforcedKinds(sql) {
+  const flat = sql.replace(/\s+/g, ' ')
   const pattern =
     /constraint (?:cell_triggers|cell_dependencies)_kind_check check \(kind in \(([^)]*)\)\)/g
-  const found = [...sql.matchAll(pattern)]
-  if (found.length !== 1) {
-    throw new Error(
-      `expected exactly one cell-dependency kind constraint in ${SCHEMA}, found ${found.length}`,
-    )
+  const found = [...flat.matchAll(pattern)]
+  if (found.length === 0) {
+    throw new Error(`no cell-dependency kind constraint found in ${SCHEMA}`)
   }
-  return [...found[0][1].matchAll(/'([a-z_]+)'/g)].map(([, value]) => value)
+  return [...found.at(-1)[1].matchAll(/'([a-z_]+)'/g)].map(([, value]) => value)
 }
 
 /** The values the Enums section states for `cell_dependencies.kind`. */

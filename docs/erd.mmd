@@ -5,7 +5,7 @@
 %% Enums: scenarios.view_type ∈ (single | side-by-side | integrated)
 %%        paths.path_type ∈ (happy | unhappy | exception | alternative)
 %%        origin (structure tables) ∈ (import | app); slices.origin ∈ (generated | customized | human)
-%%        cell_dependencies.kind ∈ (trigger | needs)
+%%        cell_dependencies.kind ∈ (leads_to | enables)
 %%        slices.slice_type ∈ (journey | step | lane | cell | custom)
 %%        findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
@@ -159,7 +159,7 @@ erDiagram
     uuid id PK
     uuid source_cell_id FK "unique (source, target, kind); source != target"
     uuid target_cell_id FK
-    text kind "trigger = temporal | needs = functional (panel only)"
+    text kind "leads_to = drawn | enables = panel only; both source-first"
     text label "short edge label, e.g. a channel tag"
     text note "why-line shown in the panel dependencies tab"
   }

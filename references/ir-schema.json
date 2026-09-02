@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.01",
         "2026.08.31",
         "2026.08.27",
         "2026.08.26",
@@ -502,14 +503,14 @@
         },
         "kind": {
           "enum": [
-            "trigger",
-            "needs"
+            "leads_to",
+            "enables"
           ],
-          "default": "trigger",
-          "description": "What kind of dependency this edge is. trigger = temporal: the source sets the target in motion, and the canvas draws an arrow. needs = functional: the source requires the target, and the canvas draws nothing — it reads in the cell panel only. ABSENCE MEANS 'trigger': that is the cell_dependencies.kind column default and the meaning every edge authored before 2026.08.26 already carried, so no existing file changes and no authored value moves. The pair alone is no longer an identity — a source->target pair may carry BOTH kinds as two rows, so the UUIDv5 derivation and the duplicate check both read the kind."
+          "default": "leads_to",
+          "description": "What kind of dependency this edge is. leads_to: the source makes the target HAPPEN, and the canvas draws an arrow. enables: the source makes the target POSSIBLE without causing it, and the canvas draws nothing — it reads in the cell panel only. Both read source-first and upstream-first, so an edge's direction can be read without checking its kind; the retired `needs` pointed the other way, which is why 2026.09.01 turned those edges around rather than renaming them where they lay. ABSENCE MEANS 'leads_to': that is the cell_dependencies.kind column default and the meaning every edge authored before 2026.08.26 already carried, so a file of bare edges migrates by its stamp alone. The pair alone is no longer an identity — a source->target pair may carry BOTH kinds as two rows, so the UUIDv5 derivation and the duplicate check both read the kind."
         }
       },
-      "description": "Directed dependency edge between two cells on the SAME path (cross-path edges are invalid). source != target, whatever the kind. `kind: trigger` (the default) is the temporal arrow this array is named after; `kind: needs` is the functional dependency the database has stored since cell_dependencies grew the column, and which the IR could not express — and therefore silently dropped on export — until 2026.08.26."
+      "description": "Directed dependency edge between two cells on the SAME path (cross-path edges are invalid). source != target, whatever the kind. `kind: leads_to` (the default) is the drawn arrow this array is named after; `kind: enables` is the panel-only dependency the database has stored since cell_dependencies grew the column, and which the IR could not express — and therefore silently dropped on export — until 2026.08.26."
     }
   }
 }

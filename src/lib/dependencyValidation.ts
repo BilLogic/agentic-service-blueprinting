@@ -8,23 +8,35 @@ import type { DependencyKind } from '@/lib/authoringRpc'
  * being rejected is a rule you have to guess at first.
  */
 
-export const DEPENDENCY_KINDS: DependencyKind[] = ['trigger', 'needs']
+export const DEPENDENCY_KINDS: DependencyKind[] = ['leads_to', 'enables']
 
 /**
  * What each kind means, and — the part that matters — whether it draws.
  *
  * Every relationship being an arrow is what makes a blueprint unreadable.
  * Most "this depends on that" facts are not handoffs: they are constraints
- * worth recording and not worth drawing. `needs` is where those go.
+ * worth recording and not worth drawing. `enables` is where those go.
+ *
+ * BOTH READ SOURCE-FIRST AND UPSTREAM-FIRST, which is why the second is
+ * `enables` and not `needs`. Makes it HAPPEN versus makes it POSSIBLE:
+ *
+ *   "Creates breakout rooms"          leads to   "Reminds tutors to check them"
+ *   "generate_sample_blueprint.mjs"   enables    "npm run dev with no .env"
+ *
+ * `needs` pointed the other way — B comes first, B is required by A — so an
+ * edge's direction could not be read without first checking its kind.
+ * `21000114000000` turned those edges around rather than renaming them where
+ * they lay.
  */
 export const DEPENDENCY_KIND_HINTS: Record<DependencyKind, string> = {
-  trigger: 'One step hands off to the next. Draws an arrow.',
-  needs: 'A dependency that is not a handoff. Recorded, never drawn.',
+  leads_to: 'One step hands off to the next. Draws an arrow.',
+  enables: 'Makes the next step possible, without causing it.',
 }
 
+/** The stored value IS the label, minus the underscore. */
 export const DEPENDENCY_KIND_LABELS: Record<DependencyKind, string> = {
-  trigger: 'Triggers',
-  needs: 'Needs',
+  leads_to: 'Leads to',
+  enables: 'Enables',
 }
 
 export type DraftDependency = {
