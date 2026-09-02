@@ -55,7 +55,7 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | Service Service | `services` | — |
 | Phase | `phases` | `position`; optional `loops_to_phase_id` |
 | Service Scenario | `scenarios` | `position`; `layout` for layout |
-| Path | `paths` | `kind`: happy, unhappy, exception, alternative; optional `note` for path-level context |
+| Path | `paths` | `kind` is `happy`, `variant` or `exception`; optional `note` for path-level context |
 | Blueprint row | `lanes` | `position` (per path); `lane_role` semantic key |
 | Blueprint column | `steps` | canonical per `scenario` |
 | Path column order | `path_steps` | `position` per `(path_id, step_id)` |
@@ -134,17 +134,17 @@ a placement, never both and never neither.
 App types: `CellResource` and `CellTouchpoint` in `src/types/blueprint.ts`.
 Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.
 
-## View modes (`scenarios.layout`)
+## Layouts (`scenarios.layout`)
 
 | Value | Behavior |
 | --- | --- |
-| `single` | One path blueprint at a time |
-| `side-by-side` | Labeled variant comparison (UI: "Stacked") |
-| `integrated` | **Legacy value** — persisted rows coerce to the plain Stacked view on read (`src/lib/viewTypeVocabulary.ts`). The UI's "Merged" canvas is session-only and never written back as `integrated` |
+| `single` | One path at a time, chosen in the path picker |
+| `stacked` | Labelled variants compared slot by slot (`variant_label` names each) |
 
-These are the STORED (DB) tokens; the client vocabulary is `single` \|
-`stacked` \| `merged`, mapped at the read/write seams in
-`src/lib/viewTypeVocabulary.ts`.
+Two values, stored as the UI names them, since `21000116000000`. The merged
+canvas — compared paths drawn as one grid — is a session view and is never
+written back. `side-by-side` and `integrated` became `stacked` in
+`21000116000000`; every row held `side-by-side` and the other two were unused.
 
 ## Sample seed
 
@@ -166,7 +166,7 @@ supported mode here and not a degraded one.
 alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
 `Keeping a blueprint true` service → four phases (`Discover` → `Setup` →
 `Operate` → `Maintain`, with `Maintain.loops_to_phase_id` → `Operate`) → six
-scenarios carrying eight paths (happy / alternative / unhappy) on one 7-lane
+scenarios carrying eight paths (`happy` and `variant` kinds) on one 7-lane
 roster (canonical + one custom role), plus a visual row
 on `Map your service` and three demo slices. Sample UUIDs use the
 `f0000000-…` prefix. Re-run the generator after editing it — never edit the
@@ -443,7 +443,7 @@ const { data } = await supabase
     cells (
       id,
       content,
-      picture,
+      frame,
       summary,
       lane_id,
       step_id,
@@ -461,7 +461,6 @@ const { data } = await supabase
 | --- | --- |
 | `src/lib/workflowQueries.ts` | Supabase nested selects |
 | `src/lib/normalizeBlueprint.ts` | Raw path row → `BlueprintData` |
-| `src/lib/viewTypeVocabulary.ts` | DB ⇄ client view-type token maps (`integrated` → stacked on read) |
 | `src/hooks/useScenarioBlueprint.ts` | Load paths + blueprints per scenario |
 | `src/data/blueprintFallbacks.ts` | Offline/demo blueprint data |
 

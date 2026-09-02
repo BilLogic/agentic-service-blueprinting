@@ -24,10 +24,11 @@ view × every path. Do not sample; the point is exhaustiveness. Per scenario:
 1. Navigate to it. Confirm the grid actually renders content (lanes with
    labels, step headers, populated cells) — not a blank grid, spinner,
    error boundary, or fallback/sample content when DB content was expected.
-2. Per view type:
+2. Per layout (`scenarios.layout` is `single` or `stacked`):
    - `single`: switch through **every path** in the picker.
-   - `side-by-side`: confirm both variants render with their variant labels.
-   - `integrated`: confirm the merged grid renders.
+   - `stacked`: confirm both variants render with their variant labels.
+   - the merged canvas (a session view, never stored): confirm the compared
+     paths render as one grid.
 3. Spot-check against the IR: lane display names (right language for the
    locale under test), step headers, 2–3 known cell labels, divider lines
    present where roles imply them, pill lanes rendering pills, visual rows

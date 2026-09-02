@@ -79,9 +79,10 @@ Set per scenario / per path **in the IR**, not in code: `layout`
 Both lists got shorter at `21000116000000`. `side-by-side` and `integrated`
 were one layout a reader switches between rather than two a scenario is stored
 as — the client had been collapsing both to the same view on read for a while,
-and the migration moved the rows so the seam could go. `unhappy` and
-`alternative` were two spellings of one thing, and `exception` already carries
-"this went wrong", so both became `variant`.
+and `21000116000000` moved the rows to `stacked` so the seam could go.
+`unhappy` and `alternative` were two spellings of one thing, and `exception`
+already carries "this went wrong", so `21000116000000` folded both into
+`variant`.
 
 The stacked layout compares any two labeled variants via `variant_label` —
 designed-vs-reality, before/after a redesign, or two stakeholders' conflicting
