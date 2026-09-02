@@ -17,7 +17,11 @@ import { getPathWashStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
-import { cellTouchpoints } from '@/lib/cellTouchpoints'
+import {
+  cellTouchpoints,
+  isNameOnlyPlacement,
+  touchpointNamed,
+} from '@/lib/cellTouchpoints'
 
 /**
  * One cell of a compare grid — the same face in every arrangement (stacked
@@ -143,11 +147,20 @@ export function CompareCellBlock({
               item,
               slotCell: undefined,
             }))
-        ).map(({ item, slotCell }, index, all) =>
-          selectionContext ? (
+        ).map(({ item, slotCell }, index, all) => {
+          // A pill whose placement the registry lacks is drawn dashed
+          // (#112). Read from the cell the pill belongs to — its own slot
+          // in a merged view, the block's cell otherwise.
+          const placement = touchpointNamed(
+            slotCell ? cellTouchpoints(slotCell) : selectionContext?.cellTouchpoints ?? [],
+            item,
+          )
+          const nameOnly = placement ? isNameOnlyPlacement(placement) : false
+          return selectionContext ? (
             <BlueprintTechPill
               key={`${slotCell?.id ?? 'anon'}-${item}-${index}`}
               item={item}
+              nameOnly={nameOnly}
               style={washStyle}
               // Identity is the split's point: each pill carries its own
               // cell in the selection it hands to the panel and the picker.
@@ -175,11 +188,12 @@ export function CompareCellBlock({
               key={`${item}-${index}`}
               item={item}
               compact={compact}
+              nameOnly={nameOnly}
               className="shrink-0"
               style={washStyle}
             />
-          ),
-        )}
+          )
+        })}
       </div>
     ) : (
       <BlueprintCellButton

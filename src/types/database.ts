@@ -141,33 +141,36 @@ export type Database = {
           cell_id: string
           created_at: string
           id: string
-          name: string
+          name: string | null
           origin: string
           position: number
           role: string | null
           summary: string | null
+          touchpoint_id: string | null
           updated_at: string
         }
         Insert: {
           cell_id: string
           created_at?: string
           id?: string
-          name: string
+          name?: string | null
           origin: string
           position: number
           role?: string | null
           summary?: string | null
+          touchpoint_id?: string | null
           updated_at?: string
         }
         Update: {
           cell_id?: string
           created_at?: string
           id?: string
-          name?: string
+          name?: string | null
           origin?: string
           position?: number
           role?: string | null
           summary?: string | null
+          touchpoint_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -176,6 +179,13 @@ export type Database = {
             columns: ["cell_id"]
             isOneToOne: false
             referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cell_touchpoints_touchpoint_id_fkey"
+            columns: ["touchpoint_id"]
+            isOneToOne: false
+            referencedRelation: "touchpoints"
             referencedColumns: ["id"]
           },
         ]
@@ -737,6 +747,50 @@ export type Database = {
         }
         Relationships: []
       }
+      touchpoints: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          origin: string
+          service_id: string
+          summary: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          origin: string
+          service_id: string
+          summary?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          origin?: string
+          service_id?: string
+          summary?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "touchpoints_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           created_at: string
@@ -1091,6 +1145,26 @@ export type Database = {
       restore_featured_resources: {
         Args: { p_rows: Json }
         Returns: undefined
+      }
+      sync_cell_touchpoints: {
+        Args: { p_cell_id: string; p_names: string[] }
+        Returns: Json
+      }
+      restore_cell_touchpoints: {
+        Args: { p_cell_id: string; p_rows: Json }
+        Returns: undefined
+      }
+      set_placement_touchpoint: {
+        Args: { p_placement_id: string; p_touchpoint_id?: string | null; p_name?: string | null }
+        Returns: Json
+      }
+      remove_placement: {
+        Args: { p_placement_id: string }
+        Returns: Json
+      }
+      restore_placement: {
+        Args: { p_row: Json; p_resources?: Json }
+        Returns: Json
       }
       upsert_cell: {
         Args: {

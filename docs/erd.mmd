@@ -7,6 +7,7 @@
 %%        origin (structure tables) ∈ (import | app); slices.authorship ∈ (generated | customized | human)
 %%        cell_dependencies.kind ∈ (leads_to | enables); resources.kind ∈ (link | attachment)
 %%        cell_touchpoints.role ∈ (core | peripheral) — null means nobody has judged the placement
+%%        touchpoints.kind ∈ (app | document | physical | channel | service | other)
 %%        slices.kind ∈ (journey | step | lane | cell | custom)
 %%        audit_findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
@@ -42,6 +43,8 @@ erDiagram
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
+  services ||--o{ touchpoints : "registry"
+  touchpoints ||--o{ cell_touchpoints : "placed as"
   cells ||--o{ cell_touchpoints : "places"
   cells ||--o{ resources : "points at"
   cell_touchpoints ||--o{ resources : "points at"
@@ -134,10 +137,21 @@ erDiagram
     text origin "import | app"
   }
 
+  touchpoints {
+    uuid id PK
+    uuid service_id FK "unique (service_id, name)"
+    text name "the registry's spelling; placements match it case-insensitively"
+    text kind "app | document | physical | channel | service | other"
+    text summary "what this touchpoint IS, for the service"
+    text url "where the touchpoint itself lives"
+    text origin "import | app"
+  }
+
   cell_touchpoints {
     uuid id PK
-    uuid cell_id FK "unique (cell_id, name)"
-    text name "what the touchpoint is called here; matches a line of cells.content"
+    uuid cell_id FK "unique (cell_id, touchpoint_id); unique (cell_id, lower(name)) where name is set"
+    uuid touchpoint_id FK "the registry entry, or null for a name-only placement"
+    text name "set only when the registry lacks the touchpoint — exactly one of the two"
     int position "author order within the cell"
     text summary "prose about this touchpoint at THIS moment"
     text role "core | peripheral — or null, nobody has judged it; what it points at is in resources"

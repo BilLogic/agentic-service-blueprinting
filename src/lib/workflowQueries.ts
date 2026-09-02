@@ -43,10 +43,15 @@ export const PATH_BLUEPRINT_SELECT = `
     ),
     cell_touchpoints (
       id,
-      position,
+      touchpoint_id,
       name,
+      position,
       summary,
-      role
+      role,
+      touchpoints (
+        name,
+        kind
+      )
     ),
     outgoing:cell_dependencies!cell_dependencies_source_cell_id_fkey (
       id,

@@ -834,3 +834,41 @@ $recipe_proof$;
 -- the panel's column-scoped edit gains the new column; the two
 -- dropped ones took their grants with them.
 grant update (role) on public.cell_touchpoints to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000120000000_a_touchpoint_is_a_thing_the_service_owns.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the registry's RLS and grants, the same shape as every other
+-- root-scoped table; the five structural writes closed to anon.
+alter table public.touchpoints enable row level security;
+
+create policy touchpoints_select_anon on public.touchpoints
+  for select to anon using (true);
+create policy touchpoints_select_auth on public.touchpoints
+  for select to authenticated using (true);
+create policy touchpoints_insert_service_only on public.touchpoints
+  for insert to authenticated with check (public.is_service_account());
+create policy touchpoints_update_service_only on public.touchpoints
+  for update to authenticated
+  using (public.is_service_account())
+  with check (public.is_service_account());
+create policy touchpoints_delete_service_only on public.touchpoints
+  for delete to authenticated using (public.is_service_account());
+
+grant select on public.touchpoints to anon, authenticated;
+grant insert, delete on public.touchpoints to authenticated;
+grant update (name, kind, summary, url) on public.touchpoints to authenticated;
+revoke insert, update, delete, truncate on public.touchpoints from anon;
+revoke truncate on public.touchpoints from authenticated;
+
+revoke execute on function public.sync_cell_touchpoints(uuid, text[]) from public, anon;
+grant execute on function public.sync_cell_touchpoints(uuid, text[]) to authenticated;
+revoke execute on function public.restore_cell_touchpoints(uuid, jsonb) from public, anon;
+grant execute on function public.restore_cell_touchpoints(uuid, jsonb) to authenticated;
+revoke execute on function public.set_placement_touchpoint(uuid, uuid, text) from public, anon;
+grant execute on function public.set_placement_touchpoint(uuid, uuid, text) to authenticated;
+revoke execute on function public.remove_placement(uuid) from public, anon;
+grant execute on function public.remove_placement(uuid) to authenticated;
+revoke execute on function public.restore_placement(jsonb, jsonb) from public, anon;
+grant execute on function public.restore_placement(jsonb, jsonb) to authenticated;

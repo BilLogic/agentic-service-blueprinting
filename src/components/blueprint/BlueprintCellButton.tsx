@@ -50,6 +50,8 @@ type BlueprintCellButtonProps = {
   children: ReactNode
   'aria-label'?: string
   'data-blueprint-tech-pill'?: string
+  /** A name-only placement (#112): the registry lacks this touchpoint. */
+  nameOnly?: boolean
 }
 
 /**
@@ -74,6 +76,7 @@ export function BlueprintCellButton({
   children,
   'aria-label': ariaLabel,
   'data-blueprint-tech-pill': techPillLabel,
+  nameOnly = false,
 }: BlueprintCellButtonProps) {
   const detail = useBlueprintCellDetailOptional()
   const isInteractive = Boolean(detail?.enabled && selection && detail)
@@ -246,6 +249,7 @@ export function BlueprintCellButton({
       {...(cellId ? { 'data-blueprint-cell': cellId } : {})}
       data-step-index={stepIndex}
       {...(techPillLabel ? { 'data-blueprint-tech-pill': techPillLabel } : {})}
+      {...(nameOnly ? { 'data-name-only': '' } : {})}
       aria-label={ariaLabel}
       aria-pressed={isInteractive ? isActive : undefined}
       data-blueprint-cell-emphasis={emphasis}

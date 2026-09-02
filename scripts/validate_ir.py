@@ -94,6 +94,8 @@ RESOURCE_KINDS = ("link", "attachment")
 #: cell_touchpoints.role — the two values the database checks; absent means
 #: nobody has judged the placement.
 TOUCHPOINT_ROLES = ("core", "peripheral")
+#: touchpoints.kind — the registry's short list; absent means `other`.
+TOUCHPOINT_KINDS = ("app", "document", "physical", "channel", "service", "other")
 #: cell_dependencies.kind — the same two values the database checks.
 #: An edge that states none is a 'leads_to', which is the column default.
 DEPENDENCY_KINDS = ("leads_to", "enables")
@@ -308,6 +310,36 @@ def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
         check_enum(resource, "kind", RESOURCE_KINDS, jp, rep)
     if "featured" in resource and not isinstance(resource["featured"], bool):
         rep.error(f"{jp}.featured", f"featured must be a boolean, got {type_name(resource['featured'])}")
+
+
+def check_registry(entries, jp: str, rep: Report, locales: list) -> None:
+    """The service's touchpoint registry: named entries, unique by name
+    (case-insensitively, the way the database's fold matches placements)."""
+    if not isinstance(entries, list):
+        rep.error(jp, "'touchpoints' must be an array")
+        return
+    seen: dict = {}
+    for i, entry in enumerate(entries):
+        ejp = f"{jp}[{i}]"
+        if not isinstance(entry, dict):
+            rep.error(ejp, f"registry touchpoint must be an object, got {type_name(entry)}")
+            continue
+        check_extra_keys(entry, {"name", "kind", "summary", "url"}, ejp, rep)
+        check_locale_text(entry.get("name"), f"{ejp}.name", rep, locales, True, "name")
+        if "kind" in entry:
+            check_enum(entry, "kind", TOUCHPOINT_KINDS, ejp, rep)
+        if "summary" in entry:
+            check_locale_text(entry["summary"], f"{ejp}.summary", rep, locales, False, "summary")
+        if "url" in entry:
+            check_uri(entry["url"], f"{ejp}.url", rep)
+        name = entry.get("name")
+        if isinstance(name, dict):
+            for locale, value in name.items():
+                if isinstance(value, str) and value.strip():
+                    key = (locale, value.strip().lower())
+                    if key in seen:
+                        rep.error(f"{ejp}.name", f"duplicate registry name {value!r} ({locale}); see {seen[key]}")
+                    seen[key] = ejp
 
 
 def check_touchpoint(touchpoint, jp: str, rep: Report, locales: list) -> None:
@@ -767,7 +799,7 @@ def validate_document(doc, rep: Report) -> None:
     if not isinstance(service, dict):
         rep.error(jp, f"'service' must be an object, got {type_name(service)}")
         return
-    check_extra_keys(service, {"key", "name", "summary", "phases"}, jp, rep)
+    check_extra_keys(service, {"key", "name", "summary", "touchpoints", "phases"}, jp, rep)
     if "key" not in service:
         rep.error(jp, "missing required field 'key'")
     else:
@@ -775,6 +807,8 @@ def validate_document(doc, rep: Report) -> None:
     check_locale_text(service.get("name"), f"{jp}.name", rep, locales, True, "name")
     if "summary" in service:
         check_locale_text(service["summary"], f"{jp}.summary", rep, locales, False, "summary")
+    if "touchpoints" in service:
+        check_registry(service["touchpoints"], f"{jp}.touchpoints", rep, locales)
 
     phases = service.get("phases")
     if not isinstance(phases, list) or not phases:

@@ -31,7 +31,9 @@ const placement = (over: Partial<ReturnType<typeof base>> = {}) => ({
 })
 const base = () => ({
   id: 'ct-1',
+  touchpointId: null,
   name: 'GIS Portal',
+  kind: null,
   summary: 'Public map-based intake channel.',
   role: null as 'core' | 'peripheral' | null,
 })

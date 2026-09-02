@@ -50,7 +50,16 @@ export type CellTouchpoint = {
    * imported.
    */
   id: string | null
+  /**
+   * The registry entry this placement names, or null for a NAME-ONLY
+   * placement — one whose touchpoint the registry lacks (#112). Drawn
+   * dashed on the board, offered a "Link to registry" action in the panel.
+   * Also null on a hand-written fixture, which has no registry at all.
+   */
+  touchpointId: string | null
   name: string
+  /** The registry entry's kind, or null where there is no registry row to read. */
+  kind: string | null
   summary: string | null
   /**
    * Core or peripheral AT THIS MOMENT, or null for the unmarked majority.

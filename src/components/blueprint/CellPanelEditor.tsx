@@ -19,6 +19,7 @@ import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { upsertCell } from '@/lib/authoringRpc'
 import { CELL_CONTENT_MAX } from '@/lib/cellContentLimits'
 import { updateCellContent } from '@/lib/cellContentMutations'
+import { RegistryLinks } from '@/components/blueprint/RegistryLinks'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseValueProps, type ValueProp } from '@/lib/valueProps'
 
@@ -362,6 +363,7 @@ function CellPanelEditorForm({
       // would otherwise materialize the cell into a panel-less silence.
       data-busy={busy || undefined}
     >
+      {cellId ? <RegistryLinks cellId={cellId} /> : null}
       <Field label="Content" hint="What this cell says on the grid." required>
         <Input
           value={form.content}

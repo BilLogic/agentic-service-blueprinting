@@ -6,8 +6,73 @@ import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { validateResourceUrl } from '@/lib/resourceUrl'
 import { hostOf } from '@/lib/cellResources'
+import { parseCellContentItems } from '@/lib/parseCellContent'
 
 type Client = SupabaseClient<Database>
+
+/** One resource a removed placement carried, as the sync hands it back. */
+export type RemovedResource = {
+  kind: string
+  name: string
+  url: string | null
+  position: number
+  featured: boolean
+  origin: string
+}
+
+/**
+ * A placement's per-moment writing, as the sync hands it back: its summary
+ * and role, and its resources in order (the revert re-creates them). The
+ * row itself stays, name-only, when it carried any of these (#112).
+ */
+export type RemovedPlacement = {
+  name: string
+  position: number
+  summary: string | null
+  role: string | null
+  resources?: RemovedResource[]
+}
+
+/**
+ * Bring a cell's placements into line with the text just saved (#112).
+ *
+ * One RPC, because this has to be one transaction: the position constraint
+ * is DEFERRABLE INITIALLY DEFERRED, and PostgREST gives every statement its
+ * own transaction, so a reorder issued row by row collides with itself. The
+ * gate on touchpoint-bearing cells lives in the function too: content on an
+ * actor lane is a sentence about what somebody did, and syncing it would
+ * file that sentence in the registry as a tool.
+ *
+ * Returns the placements it removed, with their writing, so the caller can
+ * put them in the inverse it records.
+ */
+export async function syncCellTouchpoints(
+  client: Client,
+  cellId: string,
+  content: string,
+): Promise<RemovedPlacement[]> {
+  const { data, error } = await client.rpc('sync_cell_touchpoints', {
+    p_cell_id: cellId,
+    p_names: parseCellContentItems(content),
+  })
+  if (error) throw toAuthoringError(error)
+  const removed = (data as { removed?: unknown } | null)?.removed
+  return Array.isArray(removed) ? (removed as RemovedPlacement[]) : []
+}
+
+/** Put back the writing a removed placement was carrying. */
+export async function restoreCellTouchpoints(
+  client: Client,
+  cellId: string,
+  rows: RemovedPlacement[],
+): Promise<void> {
+  if (rows.length === 0) return
+  const { error } = await client.rpc('restore_cell_touchpoints', {
+    p_cell_id: cellId,
+    p_rows: rows as unknown as Json,
+  })
+  if (error) throw toAuthoringError(error)
+}
 
 export type CellContentUpdate = {
   /** The text in the cell on the grid. */
@@ -67,6 +132,10 @@ export async function updateCellContent(
   // path was since deleted "succeeds", and its revert reports "taken back"
   // having written nothing.
   requireRowsWritten(data, 'cell')
+  // The placements follow the text: a new line is a new placement, a line
+  // that left keeps its writing as a name-only row or goes (#112). What
+  // the sync removed rides in the inverse so a revert can put it back.
+  const removed = await syncCellTouchpoints(client, cellId, content)
   // Direct table write, so `call()` never sees it — logged here for the same
   // reason and with the same after-success placement.
   if (options.record !== false) {
@@ -76,7 +145,11 @@ export async function updateCellContent(
       previous?.content.trim()
         ? {
             fn: 'update_cell_content',
-            args: { cell_id: cellId, update: previous },
+            args: {
+              cell_id: cellId,
+              update: previous,
+              ...(removed.length > 0 ? { removed_placements: removed } : {}),
+            },
           }
         : undefined,
     )

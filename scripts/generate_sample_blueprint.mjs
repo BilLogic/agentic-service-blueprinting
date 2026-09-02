@@ -96,6 +96,20 @@ function fid(scenarioOrdinal, pathOrdinal, kind, a = 0, b = 0) {
 /** The sample service (also used by the SQL seed emission below). */
 const SERVICE_ID = 'f0000000-0000-4000-8000-000000000010'
 
+/**
+ * The service's touchpoint registry, minted from every placement name the
+ * cells below use — the way an import does. One row per spelling; ids are
+ * deterministic so the seed and the fallback name the same entry.
+ */
+const REGISTRY_IDS = new Map()
+function registryId(name) {
+  const key = name.trim().toLowerCase()
+  if (!REGISTRY_IDS.has(key)) {
+    REGISTRY_IDS.set(key, `f0000000-0000-4000-8000-0008${pad4(REGISTRY_IDS.size + 1)}0000`)
+  }
+  return REGISTRY_IDS.get(key)
+}
+
 const SERVICE = {
   id: SERVICE_ID,
   name: 'Keeping a blueprint true',
@@ -1298,7 +1312,9 @@ function buildScenario(scenario) {
       resources: spec.resources ?? [],
       touchpoints: (spec.touchpoints ?? []).map((tp) => ({
         id: null,
+        touchpointId: registryId(tp.name),
         name: tp.name,
+        kind: 'other',
         summary: tp.summary ?? null,
         role: tp.role ?? null,
       })),
@@ -1895,11 +1911,24 @@ ${sqlRows(
 // this seed points at one of these rows, and a generated default keeps the
 // emitter from minting a second id space nobody reads. Placements first —
 // a resource may hang off one.
+// The registry first — a placement names an entry in it.
+const registryRows = [...REGISTRY_IDS.entries()].map(([, id]) => {
+  const name = allBlueprints
+    .flatMap(({ bp }) => bp.cells.flatMap((cell) => cell.touchpoints ?? []))
+    .find((placement) => placement.touchpointId === id)?.name
+  return [q(id), q(SERVICE_ID), q(name), q('other'), 'null', 'null', q('import')]
+})
+if (registryRows.length > 0) {
+  seedParts.push(`insert into public.touchpoints (id, service_id, name, kind, summary, url, origin) values
+${sqlRows(registryRows)};
+`)
+}
+
 const touchpointRows = allBlueprints.flatMap(({ bp }) =>
   bp.cells.flatMap((cell) =>
     (cell.touchpoints ?? []).map((placement, index) => [
       q(cell.id),
-      q(placement.name),
+      q(placement.touchpointId),
       String(index + 1),
       q(placement.summary),
       q(placement.role),
@@ -1908,7 +1937,7 @@ const touchpointRows = allBlueprints.flatMap(({ bp }) =>
   ),
 )
 if (touchpointRows.length > 0) {
-  seedParts.push(`insert into public.cell_touchpoints (cell_id, name, position, summary, role, origin) values
+  seedParts.push(`insert into public.cell_touchpoints (cell_id, touchpoint_id, position, summary, role, origin) values
 ${sqlRows(touchpointRows)};
 `)
 }

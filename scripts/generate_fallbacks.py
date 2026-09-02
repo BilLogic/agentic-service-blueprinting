@@ -91,6 +91,12 @@ IMPLIED_BY_CELL_NESTING = frozenset({"cell_id", "origin", "position"})
 IMPLIED_ON_RESOURCE = IMPLIED_BY_CELL_NESTING
 IMPLIED_ON_TOUCHPOINT = IMPLIED_BY_CELL_NESTING
 
+#: A placement field the database adapter reads THROUGH A JOIN rather than
+#: from the placement row: the registry entry's kind (#112). The fallback
+#: serves it on the placement because it has no registry to join, and the
+#: parity harness compares it as nested rather than as a column of the row.
+JOINED_ON_TOUCHPOINT = frozenset({"kind"})
+
 #: Keys the fallback cell carries that are not cell COLUMNS — they are the two
 #: relations the fallback nests instead of joining. Compared as aggregates of
 #: their own (scripts/adapter_parity.py), so the cell comparison must not read
@@ -103,7 +109,11 @@ NESTED_UNDER_CELL = frozenset({"resources", "touchpoints"})
 #: be the wrong way round; a resource's `placementId` is `cell_touchpoint_id`
 #: read as the app names it. Declared here so adapter_parity.py can compare
 #: through it instead of reporting a difference that is only spelling.
-FALLBACK_FIELD_NAMES = {"lane_role": "role", "cell_touchpoint_id": "placementId"}
+FALLBACK_FIELD_NAMES = {
+    "lane_role": "role",
+    "cell_touchpoint_id": "placementId",
+    "touchpoint_id": "touchpointId",
+}
 
 
 def project(fields: dict, implied: frozenset = IMPLIED_BY_NESTING) -> dict:
@@ -180,7 +190,12 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
                     for r in cell["resources"]
                 ],
                 "touchpoints": [
-                    project(seed_touchpoint_fields(t, cell), IMPLIED_ON_TOUCHPOINT)
+                    {
+                        **project(seed_touchpoint_fields(t, cell), IMPLIED_ON_TOUCHPOINT),
+                        # The registry entry's kind, as the database adapter
+                        # reads it through the join (#112).
+                        "kind": t["kind"],
+                    }
                     for t in cell["touchpoints"]
                 ],
             }

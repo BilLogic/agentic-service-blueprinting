@@ -39,6 +39,21 @@ whether cells render as pills, and where the dividing lines fall.
 of a lane and a step on a path. A cell is the unit everything else points at
 — a slice quotes cells, a finding names cells, evidence attaches to a cell.
 
+**Touchpoint** — a thing the service owns that a moment happens through: an
+app, a document, a physical object, a channel. One `touchpoints` row per
+service and name — the registry — carrying the touchpoint's kind, summary and
+home once, not per cell.
+
+**Placement** — one touchpoint used at one cell: a `cell_touchpoints` row with
+the summary and role for THAT moment, and the resources it points at hanging
+off it. A placement names its touchpoint one of two ways and exactly one — by
+`touchpoint_id` into the registry, or by `name` alone.
+
+**Name-only placement** — a placement whose touchpoint the registry lacks. It
+is still a placement: drawn dashed on the board, opening the same panel, and
+offered "Link to registry" there. Never matched to the entry it resembles by a
+rule; the choice is the author's.
+
 **Spec** — the descriptive detail hanging off a board object, as opposed to
 its place on the board. `cells.function` / `form` / `value_props` / `owner` /
 `perceived_owner`; `phases.business_impact` / `operational_requirements`;

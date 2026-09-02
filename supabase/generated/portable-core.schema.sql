@@ -539,7 +539,7 @@ $$;
 -- Name: duplicate_path(uuid, text, text, boolean, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.duplicate_path(source_path_id uuid, name text, kind text DEFAULT 'alternative'::text, copy_cells boolean DEFAULT true, copy_dependencies boolean DEFAULT true) RETURNS uuid
+CREATE FUNCTION public.duplicate_path(source_path_id uuid, name text, kind text DEFAULT 'variant'::text, copy_cells boolean DEFAULT true, copy_dependencies boolean DEFAULT true) RETURNS uuid
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
@@ -616,8 +616,8 @@ begin
     -- below use and stops a multi-cell slot from fanning one row out into a
     -- copy per sibling.
     insert into public.cell_touchpoints
-      (cell_id, name, position, summary, role, origin)
-    select nc.id, ct.name, ct.position, ct.summary, ct.role, 'app'
+      (cell_id, touchpoint_id, name, position, summary, role, origin)
+    select nc.id, ct.touchpoint_id, ct.name, ct.position, ct.summary, ct.role, 'app'
     from public.cell_touchpoints ct
     join public.cells c on c.id = ct.cell_id and c.path_id = duplicate_path.source_path_id
     join public.cells nc
@@ -652,7 +652,7 @@ begin
      and nc.step_id = c.step_id
      and nc.position is not distinct from c.position
     join public.cell_touchpoints nct
-      on nct.cell_id = nc.id and nct.name = ct.name;
+      on nct.cell_id = nc.id and nct.touchpoint_id is not distinct from ct.touchpoint_id and nct.name is not distinct from ct.name;
 
     if copy_dependencies then
       -- The join is (path, lane, step, slot). The slot term is what stops a
@@ -809,8 +809,8 @@ begin
     -- below use and stops a multi-cell slot from fanning one row out into a
     -- copy per sibling.
     insert into public.cell_touchpoints
-      (cell_id, name, position, summary, role, origin)
-    select nc.id, ct.name, ct.position, ct.summary, ct.role, 'app'
+      (cell_id, touchpoint_id, name, position, summary, role, origin)
+    select nc.id, ct.touchpoint_id, ct.name, ct.position, ct.summary, ct.role, 'app'
     from public.cell_touchpoints ct
     join public.cells c on c.id = ct.cell_id and c.path_id = src_path.id
     join public.cells nc
@@ -845,7 +845,7 @@ begin
      and nc.step_id = (step_map ->> c.step_id::text)::uuid
      and nc.position is not distinct from c.position
     join public.cell_touchpoints nct
-      on nct.cell_id = nc.id and nct.name = ct.name;
+      on nct.cell_id = nc.id and nct.touchpoint_id is not distinct from ct.touchpoint_id and nct.name is not distinct from ct.name;
   end loop;
 
   -- Arrows last, once every cell they could point at exists. Only arrows
@@ -1045,6 +1045,43 @@ begin
   return archive_id;
 end;
 $$;
+
+--
+-- Name: remove_placement(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.remove_placement(p_placement_id uuid) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_row       jsonb;
+  v_resources jsonb;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  select to_jsonb(ct) into v_row from public.cell_touchpoints ct where ct.id = p_placement_id for update;
+  if v_row is null then
+    raise exception 'placement % does not exist', p_placement_id;
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(r) order by r.position), '[]'::jsonb)
+    into v_resources
+    from public.resources r where r.cell_touchpoint_id = p_placement_id;
+
+  delete from public.cell_touchpoints where id = p_placement_id;
+
+  return jsonb_build_object('row', v_row, 'resources', v_resources);
+end
+$$;
+
+--
+-- Name: FUNCTION remove_placement(p_placement_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.remove_placement(p_placement_id uuid) IS 'Deletes one placement and returns the row and its resources for restore_placement.';
 
 --
 -- Name: remove_step(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -1301,6 +1338,66 @@ end;
 $$;
 
 --
+-- Name: restore_cell_touchpoints(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.restore_cell_touchpoints(p_cell_id uuid, p_rows jsonb) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  -- By name, linked or name-only: the revert re-ran the sync first, so a
+  -- row that was kept name-only is linked again by the time this runs.
+  update public.cell_touchpoints ct
+     set summary    = r.summary,
+         role       = r.role,
+         updated_at = now()
+    from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+           as r(name text, summary text, role text)
+   where ct.cell_id = p_cell_id
+     and ((ct.touchpoint_id is not null
+           and exists (select 1 from public.touchpoints tp
+                        where tp.id = ct.touchpoint_id and tp.name = r.name))
+          or (ct.touchpoint_id is null and lower(ct.name) = lower(r.name)));
+
+  -- The resources the placement carried, for a placement that has none —
+  -- the one the same revert just re-inserted. One that still has its own
+  -- is left alone rather than doubled.
+  insert into public.resources
+    (cell_id, cell_touchpoint_id, kind, name, url, position, featured, origin)
+  select p_cell_id, ct.id,
+         coalesce(nullif(btrim(e.kind), ''), 'link'), e.name, e.url,
+         coalesce(e.position, e.ord::int - 1), coalesce(e.featured, false),
+         coalesce(nullif(btrim(e.origin), ''), 'app')
+    from jsonb_to_recordset(coalesce(p_rows, '[]'::jsonb))
+           as r(name text, resources jsonb)
+    join public.cell_touchpoints ct on ct.cell_id = p_cell_id
+    left join public.touchpoints tp on tp.id = ct.touchpoint_id
+    cross join lateral (
+           select x.kind, x.name, x.url, x.position, x.featured, x.origin, x.ord
+             from rows from (
+                    jsonb_to_recordset(coalesce(r.resources, '[]'::jsonb))
+                      as (kind text, name text, url text, position int, featured boolean, origin text)
+                  ) with ordinality as x(kind, name, url, position, featured, origin, ord)
+         ) e
+   where ((ct.touchpoint_id is not null and tp.name = r.name)
+          or (ct.touchpoint_id is null and lower(ct.name) = lower(r.name)))
+     and nullif(btrim(e.url), '') is not null
+     and not exists (select 1 from public.resources have where have.cell_touchpoint_id = ct.id);
+end
+$$;
+
+--
+-- Name: FUNCTION restore_cell_touchpoints(p_cell_id uuid, p_rows jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.restore_cell_touchpoints(p_cell_id uuid, p_rows jsonb) IS 'The inverse of a sync: summary and role back by name, linked or name-only; resources re-created for a row that has none.';
+
+--
 -- Name: restore_featured_resources(jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1347,6 +1444,62 @@ $$;
 --
 
 COMMENT ON FUNCTION public.restore_featured_resources(p_rows jsonb) IS 'The inverse of set_featured_resource: each {id, featured} written back as captured, no clearing rule.';
+
+--
+-- Name: restore_placement(jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.restore_placement(p_row jsonb, p_resources jsonb DEFAULT '[]'::jsonb) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_id uuid;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  insert into public.cell_touchpoints
+    (id, cell_id, touchpoint_id, name, position, summary, role, origin, created_at)
+  select r.id, r.cell_id, r.touchpoint_id, r.name,
+         -- Its old position if free, else after everything the cell shows.
+         case when exists (select 1 from public.cell_touchpoints x
+                            where x.cell_id = r.cell_id and x.position = r.position)
+              then (select coalesce(max(position), -1) + 1 from public.cell_touchpoints x
+                     where x.cell_id = r.cell_id)
+              else r.position end,
+         r.summary, r.role, coalesce(r.origin, 'app'), coalesce(r.created_at, now())
+    from jsonb_to_record(p_row)
+      as r(id uuid, cell_id uuid, touchpoint_id uuid, name text, position int,
+           summary text, role text, origin text, created_at timestamptz)
+  returning id into v_id;
+
+  if v_id is null then
+    raise exception 'the captured placement could not be restored';
+  end if;
+
+  insert into public.resources
+    (id, cell_id, cell_touchpoint_id, kind, name, url, position, featured, origin)
+  select coalesce(e.id, gen_random_uuid()), (p_row ->> 'cell_id')::uuid, v_id,
+         coalesce(nullif(btrim(e.kind), ''), 'link'), e.name, e.url,
+         coalesce(e.position, e.ord::int - 1), coalesce(e.featured, false),
+         coalesce(nullif(btrim(e.origin), ''), 'app')
+    from rows from (
+           jsonb_to_recordset(coalesce(p_resources, '[]'::jsonb))
+             as (id uuid, kind text, name text, url text, position int, featured boolean, origin text)
+         ) with ordinality as e(id, kind, name, url, position, featured, origin, ord)
+   where nullif(btrim(e.url), '') is not null;
+
+  return jsonb_build_object('placement_id', v_id);
+end
+$$;
+
+--
+-- Name: FUNCTION restore_placement(p_row jsonb, p_resources jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.restore_placement(p_row jsonb, p_resources jsonb) IS 'The inverse of remove_placement: the row back under its own id, resources included.';
 
 --
 -- Name: set_cell_dependency(uuid, uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
@@ -1481,6 +1634,63 @@ begin
   end loop;
 end;
 $$;
+
+--
+-- Name: set_placement_touchpoint(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_placement_touchpoint(p_placement_id uuid, p_touchpoint_id uuid DEFAULT NULL::uuid, p_name text DEFAULT NULL::text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_row public.cell_touchpoints;
+  v_service_id uuid;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+  if (p_touchpoint_id is null) = (nullif(btrim(coalesce(p_name, '')), '') is null) then
+    raise exception 'a placement names its touchpoint one way: a registry id or a name';
+  end if;
+
+  select ct.* into v_row from public.cell_touchpoints ct where ct.id = p_placement_id for update;
+  if v_row.id is null then
+    raise exception 'placement % does not exist', p_placement_id;
+  end if;
+
+  if p_touchpoint_id is not null then
+    select ph.service_id into v_service_id
+      from public.cells c
+      join public.paths p on p.id = c.path_id
+      join public.scenarios s on s.id = p.scenario_id
+      join public.phases ph on ph.id = s.phase_id
+     where c.id = v_row.cell_id;
+    if not exists (select 1 from public.touchpoints tp
+                    where tp.id = p_touchpoint_id and tp.service_id = v_service_id) then
+      raise exception 'that touchpoint is not in this service''s registry';
+    end if;
+    if exists (select 1 from public.cell_touchpoints x
+                where x.cell_id = v_row.cell_id and x.touchpoint_id = p_touchpoint_id and x.id <> v_row.id) then
+      raise exception 'that cell already shows that touchpoint';
+    end if;
+  end if;
+
+  update public.cell_touchpoints
+     set touchpoint_id = p_touchpoint_id,
+         name          = case when p_touchpoint_id is null then btrim(p_name) end,
+         updated_at    = now()
+   where id = p_placement_id;
+
+  return jsonb_build_object('touchpoint_id', v_row.touchpoint_id, 'name', v_row.name);
+end
+$$;
+
+--
+-- Name: FUNCTION set_placement_touchpoint(p_placement_id uuid, p_touchpoint_id uuid, p_name text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.set_placement_touchpoint(p_placement_id uuid, p_touchpoint_id uuid, p_name text) IS 'Names a placement''s touchpoint one way — a registry id, or a name the registry lacks — and returns the previous pair, which is the inverse.';
 
 --
 -- Name: set_updated_at(); Type: FUNCTION; Schema: public; Owner: -
@@ -1625,6 +1835,171 @@ $$;
 --
 
 COMMENT ON FUNCTION public.sync_cell_resources(p_cell_id uuid, p_rows jsonb) IS 'The cell''s own list, reconciled in order: delete the rows not named, update the named ones in place (name, url, position — never kind or featured), insert the rest. Refuses another cell''s id and a placement''s.';
+
+--
+-- Name: sync_cell_touchpoints(uuid, text[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sync_cell_touchpoints(p_cell_id uuid, p_names text[]) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_service_id uuid;
+  v_lane_role  text;
+  v_bearing    boolean;
+  v_removed    jsonb;
+  v_wanted     jsonb;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  select ph.service_id, ln.lane_role
+    into v_service_id, v_lane_role
+    from public.cells c
+    join public.lanes ln on ln.id = c.lane_id
+    join public.paths p on p.id = c.path_id
+    join public.scenarios s on s.id = p.scenario_id
+    join public.phases ph on ph.id = s.phase_id
+   where c.id = p_cell_id;
+
+  if v_service_id is null then
+    raise exception 'cell % is not attached to a service', p_cell_id;
+  end if;
+
+  -- Content on an actor lane is a sentence about what somebody did; syncing
+  -- it would file that sentence in the registry as a tool.
+  select v_lane_role in ('frontstage_tech', 'backstage_tech', 'support_systems')
+         or exists (select 1 from public.cell_touchpoints where cell_id = p_cell_id)
+    into v_bearing;
+
+  if not v_bearing then
+    return jsonb_build_object('skipped', true, 'removed', '[]'::jsonb);
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object('name', name, 'position', position)), '[]'::jsonb)
+    into v_wanted
+    from (
+      select name, min(ord)::int as position
+        from unnest(p_names) with ordinality as t(name, ord)
+       where btrim(name) <> ''
+       group by name
+    ) deduped;
+
+  insert into public.touchpoints (service_id, name, origin)
+  select v_service_id, w.name, 'app'
+    from jsonb_to_recordset(v_wanted) as w(name text, position int)
+  on conflict (service_id, name) do nothing;
+
+  -- A name typed back links the name-only row that was keeping its
+  -- writing, rather than inserting a second row beside it.
+  update public.cell_touchpoints ct
+     set touchpoint_id = tp.id,
+         name          = null,
+         updated_at    = now()
+    from jsonb_to_recordset(v_wanted) as w(name text, position int)
+    join public.touchpoints tp
+      on tp.service_id = v_service_id and tp.name = w.name
+   where ct.cell_id = p_cell_id
+     and ct.touchpoint_id is null
+     and lower(ct.name) = lower(w.name)
+     and not exists (select 1 from public.cell_touchpoints x
+                      where x.cell_id = p_cell_id and x.touchpoint_id = tp.id);
+
+  -- What leaves the text: linked rows whose name is not wanted. Handed back
+  -- with everything on them, so the inverse can put the words back.
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'name', tp.name,
+           'position', ct.position,
+           'summary', ct.summary,
+           'role', ct.role,
+           'resources', (select coalesce(jsonb_agg(jsonb_build_object(
+                             'kind', r.kind, 'name', r.name, 'url', r.url,
+                             'position', r.position, 'featured', r.featured, 'origin', r.origin
+                           ) order by r.position), '[]'::jsonb)
+                           from public.resources r where r.cell_touchpoint_id = ct.id)
+         )), '[]'::jsonb)
+    into v_removed
+    from public.cell_touchpoints ct
+    join public.touchpoints tp on tp.id = ct.touchpoint_id
+   where ct.cell_id = p_cell_id
+     and tp.name not in (
+       select w.name from jsonb_to_recordset(v_wanted) as w(name text, position int)
+     );
+
+  -- A removed placement with anything on it stays as a name-only row —
+  -- words, role and resources intact, drawn dashed — unless the cell already
+  -- keeps a name-only row under that name. One with nothing on it goes.
+  update public.cell_touchpoints ct
+     set touchpoint_id = null,
+         name          = tp.name,
+         updated_at    = now()
+    from public.touchpoints tp
+   where ct.touchpoint_id = tp.id
+     and ct.cell_id = p_cell_id
+     and tp.name not in (
+       select w.name from jsonb_to_recordset(v_wanted) as w(name text, position int)
+     )
+     and (coalesce(btrim(ct.summary), '') <> ''
+          or ct.role is not null
+          or exists (select 1 from public.resources r where r.cell_touchpoint_id = ct.id))
+     and not exists (select 1 from public.cell_touchpoints x
+                      where x.cell_id = p_cell_id and x.name is not null
+                        and lower(x.name) = lower(tp.name));
+
+  delete from public.cell_touchpoints ct
+   using public.touchpoints tp
+   where ct.touchpoint_id = tp.id
+     and ct.cell_id = p_cell_id
+     and tp.name not in (
+       select w.name from jsonb_to_recordset(v_wanted) as w(name text, position int)
+     );
+
+  update public.cell_touchpoints ct
+     set position = w.position,
+         updated_at = now()
+    from public.touchpoints tp,
+         jsonb_to_recordset(v_wanted) as w(name text, position int)
+   where ct.touchpoint_id = tp.id
+     and ct.cell_id = p_cell_id
+     and tp.name = w.name
+     and ct.position is distinct from w.position;
+
+  -- Name-only rows sit after the text's own, in the order they had.
+  update public.cell_touchpoints ct
+     set position = ranked.position,
+         updated_at = now()
+    from (
+      select x.id,
+             (select coalesce(max(position), -1) from public.cell_touchpoints y
+               where y.cell_id = p_cell_id and y.touchpoint_id is not null)
+             + row_number() over (order by x.position, x.name) as position
+        from public.cell_touchpoints x
+       where x.cell_id = p_cell_id and x.touchpoint_id is null
+    ) ranked
+   where ct.id = ranked.id
+     and ct.position is distinct from ranked.position;
+
+  insert into public.cell_touchpoints (cell_id, touchpoint_id, position, origin)
+  select p_cell_id, tp.id, w.position, 'app'
+    from jsonb_to_recordset(v_wanted) as w(name text, position int)
+    join public.touchpoints tp
+      on tp.service_id = v_service_id and tp.name = w.name
+   where not exists (
+     select 1 from public.cell_touchpoints ct
+      where ct.cell_id = p_cell_id and ct.touchpoint_id = tp.id
+   );
+
+  return jsonb_build_object('skipped', false, 'removed', v_removed);
+end
+$$;
+
+--
+-- Name: FUNCTION sync_cell_touchpoints(p_cell_id uuid, p_names text[]); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.sync_cell_touchpoints(p_cell_id uuid, p_names text[]) IS 'Brings a cell''s placements into line with its text. A new name mints a registry row; a name typed back links the name-only row; a removed placement with anything on it becomes name-only, one with nothing is deleted. Returns what it removed, for restore_cell_touchpoints.';
 
 --
 -- Name: sync_placement_resources(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
@@ -1960,13 +2335,16 @@ COMMENT ON COLUMN public.cell_dependencies.note IS 'The why-line shown in the ce
 CREATE TABLE public.cell_touchpoints (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     cell_id uuid NOT NULL,
-    name text NOT NULL,
+    name text,
     "position" integer NOT NULL,
     summary text,
     origin text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     role text,
+    touchpoint_id uuid,
+    CONSTRAINT cell_touchpoints_name_not_blank CHECK (((name IS NULL) OR (btrim(name) <> ''::text))),
+    CONSTRAINT cell_touchpoints_one_identity CHECK (((touchpoint_id IS NULL) <> (name IS NULL))),
     CONSTRAINT cell_touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text]))),
     CONSTRAINT cell_touchpoints_role_check CHECK ((role = ANY (ARRAY['core'::text, 'peripheral'::text])))
 );
@@ -1975,19 +2353,25 @@ CREATE TABLE public.cell_touchpoints (
 -- Name: TABLE cell_touchpoints; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.cell_touchpoints IS 'One touchpoint used at one cell: its own summary and role at this moment. What it points at is in resources (cell_touchpoint_id).';
+COMMENT ON TABLE public.cell_touchpoints IS 'One touchpoint used at one cell: its own summary and role at this moment. Named by touchpoint_id into the registry, or by name alone when the registry lacks it. What it points at is in resources.';
 
 --
 -- Name: COLUMN cell_touchpoints.name; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.cell_touchpoints.name IS 'What the touchpoint is called at this cell. There is no catalog yet; a catalog replaces this column with a reference.';
+COMMENT ON COLUMN public.cell_touchpoints.name IS 'The touchpoint''s name when the registry lacks it. Exactly one of name and touchpoint_id is set; linking to the registry clears it.';
 
 --
 -- Name: COLUMN cell_touchpoints.role; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.cell_touchpoints.role IS 'core = the moment happens through this touchpoint; peripheral = present at it but not what it turns on. Null = nobody has judged this placement, which is the common state and renders nothing.';
+
+--
+-- Name: COLUMN cell_touchpoints.touchpoint_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.cell_touchpoints.touchpoint_id IS 'The registry entry this placement names, or null for a name-only placement.';
 
 --
 -- Name: cells; Type: TABLE; Schema: public; Owner: -
@@ -2589,6 +2973,48 @@ COMMENT ON TABLE public.steps IS 'Blueprint column (journey step) scoped to a se
 COMMENT ON COLUMN public.steps.scenario_id IS 'Scenario that owns this canonical step';
 
 --
+-- Name: touchpoints; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.touchpoints (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    service_id uuid NOT NULL,
+    name text NOT NULL,
+    kind text DEFAULT 'other'::text NOT NULL,
+    summary text,
+    url text,
+    origin text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT touchpoints_kind_check CHECK ((kind = ANY (ARRAY['app'::text, 'document'::text, 'physical'::text, 'channel'::text, 'service'::text, 'other'::text]))),
+    CONSTRAINT touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
+);
+
+--
+-- Name: TABLE touchpoints; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.touchpoints IS 'The service''s registry of touchpoints — the apps, documents, channels and things a moment happens through. One row per (service, name); a placement in cell_touchpoints is one use of one at one cell.';
+
+--
+-- Name: COLUMN touchpoints.kind; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.kind IS 'app | document | physical | channel | service | other. What sort of thing this is; defaulted to other and judged later, never guessed from a name.';
+
+--
+-- Name: COLUMN touchpoints.summary; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.summary IS 'What this touchpoint IS, for the service — not what it does at any one cell.';
+
+--
+-- Name: COLUMN touchpoints.url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.url IS 'Where the touchpoint itself lives, when it has a home; a placement''s own link is a resource on the placement.';
+
+--
 -- Name: agent_messages agent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2638,11 +3064,11 @@ ALTER TABLE ONLY public.cell_dependencies
     ADD CONSTRAINT cell_dependencies_source_target_kind_unique UNIQUE (source_cell_id, target_cell_id, kind);
 
 --
--- Name: cell_touchpoints cell_touchpoints_cell_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: cell_touchpoints cell_touchpoints_cell_id_touchpoint_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.cell_touchpoints
-    ADD CONSTRAINT cell_touchpoints_cell_name_unique UNIQUE (cell_id, name);
+    ADD CONSTRAINT cell_touchpoints_cell_id_touchpoint_id_key UNIQUE (cell_id, touchpoint_id);
 
 --
 -- Name: cell_touchpoints cell_touchpoints_cell_position_unique; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2806,6 +3232,20 @@ ALTER TABLE ONLY public.steps
     ADD CONSTRAINT steps_pkey PRIMARY KEY (id);
 
 --
+-- Name: touchpoints touchpoints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.touchpoints
+    ADD CONSTRAINT touchpoints_pkey PRIMARY KEY (id);
+
+--
+-- Name: touchpoints touchpoints_service_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.touchpoints
+    ADD CONSTRAINT touchpoints_service_id_name_key UNIQUE (service_id, name);
+
+--
 -- Name: agent_messages_session_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2840,6 +3280,12 @@ CREATE INDEX cell_dependencies_source_cell_id_idx ON public.cell_dependencies US
 --
 
 CREATE INDEX cell_dependencies_target_cell_id_idx ON public.cell_dependencies USING btree (target_cell_id);
+
+--
+-- Name: cell_touchpoints_cell_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX cell_touchpoints_cell_name_key ON public.cell_touchpoints USING btree (cell_id, lower(name)) WHERE (name IS NOT NULL);
 
 --
 -- Name: cells_cell_key_unique; Type: INDEX; Schema: public; Owner: -
@@ -3082,6 +3528,12 @@ CREATE TRIGGER set_slides_updated_at BEFORE UPDATE ON public.slides FOR EACH ROW
 CREATE TRIGGER set_steps_updated_at BEFORE UPDATE ON public.steps FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 --
+-- Name: touchpoints set_touchpoints_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_touchpoints_updated_at BEFORE UPDATE ON public.touchpoints FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+--
 -- Name: agent_messages agent_messages_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3122,6 +3574,13 @@ ALTER TABLE ONLY public.cell_dependencies
 
 ALTER TABLE ONLY public.cell_touchpoints
     ADD CONSTRAINT cell_touchpoints_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id) ON DELETE CASCADE;
+
+--
+-- Name: cell_touchpoints cell_touchpoints_touchpoint_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cell_touchpoints
+    ADD CONSTRAINT cell_touchpoints_touchpoint_id_fkey FOREIGN KEY (touchpoint_id) REFERENCES public.touchpoints(id) ON DELETE RESTRICT;
 
 --
 -- Name: cells cells_lane_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3234,6 +3693,13 @@ ALTER TABLE ONLY public.slides
 
 ALTER TABLE ONLY public.steps
     ADD CONSTRAINT steps_scenario_id_fkey FOREIGN KEY (scenario_id) REFERENCES public.scenarios(id) ON DELETE CASCADE;
+
+--
+-- Name: touchpoints touchpoints_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.touchpoints
+    ADD CONSTRAINT touchpoints_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
 
 --
 -- PostgreSQL database dump complete

@@ -203,8 +203,9 @@ for path in sys.argv[1:]:
     assert delete_pos < min(positions), f"{path}: delete must precede child inserts"
     assert positions == sorted(positions), f"{path}: insert order violates paths->steps->path_steps->lanes->cells->cell_dependencies"
 
-    # Service/phases are upserts; scenario children are plain inserts.
-    assert body.count("on conflict (id) do update") == 2, f"{path}: service+phases must be the only upserts"
+    # Service, the touchpoint registry and phases are upserts; scenario
+    # children are plain inserts.
+    assert body.count("on conflict (id) do update") == 3, f"{path}: service+touchpoints+phases must be the only upserts"
 
 en = open(sys.argv[1], encoding="utf-8").read()
 zh = open(sys.argv[2], encoding="utf-8").read()

@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.06'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.07'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,10 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.06'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // A touchpoint is a thing the service owns (#112): the `touchpoints`
+  // registry, optional in the IR; placements still name theirs by name and
+  // the import mints the rest. Nothing authored moves.
+  '2026.09.07',
   // A placement says what a tool does here (#111): `touchpoints[].url` and
   // `.screenshots` become resources on the placement, and `.role` arrives.
   // A file that authored either URL field moves.

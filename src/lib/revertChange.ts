@@ -2,9 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import type { ChangeEntry } from '@/lib/authoringSession'
 import {
+  restoreCellTouchpoints,
   updateCellContent,
   writeCellResources,
   type CellContentUpdate,
+  type RemovedPlacement,
   type ResourceRowInput,
 } from '@/lib/cellContentMutations'
 import {
@@ -63,6 +65,14 @@ export async function executeRevert(
       await updateCellContent(client, cellId, update, undefined, {
         record: false,
       })
+      // Restoring the text brings back the names of any placements the
+      // original save removed, but not what was written about them at this
+      // moment. This puts it back, and has to run after the content write,
+      // which is what re-creates the rows (#112).
+      const removed = revert.args.removed_placements
+      if (Array.isArray(removed) && removed.length > 0) {
+        await restoreCellTouchpoints(client, cellId, removed as RemovedPlacement[])
+      }
       return
     }
     case 'update_cell_spec': {
