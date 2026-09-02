@@ -87,16 +87,39 @@ code-span form, across every rulebook tree an agent or reader follows.
 
 ## What the skills produce
 
-**Analysis tier** — the four tables that hold records *about* the board rather
-than squares of it: `evidence`, `findings`, `slices`, `slides`. What unites
-them is aboutness — each exists to say something concerning the board, and none
-is part of it. Evidence and findings concern cells directly; a slice reaches
-cells through the items it presents. Evidence, findings, and slices are
-hard-bound directly to the service; a slide has no direct service binding
-and is hard-bound only to its slice. The exact keys and constraint topology
-live in `references/data-model.md`.
+**Records about the board** — `evidence`, `findings`, `slices`, `slides` hold
+what is said *concerning* the board rather than squares of it. Evidence and
+findings concern cells directly; a slice reaches cells through the slides it
+presents. Evidence, findings and slices are hard-bound to the service; a slide
+has no direct service binding and is hard-bound only to its slice. The exact
+keys and constraint topology live in `references/data-model.md`.
 
-**`business_model` is not in the tier**, and the schema settles it rather than
+**There is deliberately no collective noun for the four.** Two were tried and
+both claimed something untrue of half the set; the rename map below records
+which, and why. What they have instead is an OWNER, and the write surface says who — because a
+table's owner is whoever may change it, not whoever reads it most:
+
+| record | written by | belongs to |
+| --- | --- | --- |
+| `slices`, `slides` | `create_slice`, `update_slice`, `replace_slides` | the slice |
+| `findings` | `record_finding`, `set_finding_status` | the audit |
+| `evidence` | no agent tool at all — the panel writes it | **nobody** |
+
+**Evidence is the one with no owner**, and here that is visible in the roster
+rather than argued: nothing in `WRITE_TOOL_NAMES` writes it. It is research
+provenance — recorded when a blueprint is imported, cited by a slice, weighed
+by an audit — and no ONE reader's work is what it is for. Naming it after the
+audit would be wrong in the direction a slice would notice first.
+
+So write the owner you mean — *the slice's record*, *the audit's findings*,
+*evidence*. Where a statement genuinely covers all four — a grant, a
+migration's scope — enumerate them, which is four words against a category name
+that has twice had to be replaced.
+`scripts/tests/who-writes-what.test.mjs` holds the table above against
+`WRITE_TOOL_NAMES`, so a renamed tool or a new write with no owner fails
+`npm test` rather than leaving this table quietly wrong.
+
+**`business_model` is not one of them**, and the schema settles it rather than
 taste: it holds no cell reference of any kind. It is the service's spec row —
 which is why it belongs under **Spec** above. Its fields live in
 `references/data-model.md`.
@@ -149,11 +172,28 @@ service, wearing a longer name. `enables` was left alone, because it was already
 the plain word for what it means.
 
 **One rename in this vocabulary is not in the table**, because it never was an
-identifier: **derived layer → analysis tier**. Only `findings` is derived — a
-human may author a slice — and `layer` is the spelling `21000104` retired when
-`layers` became `lanes`. So a word built on a retired spelling was still being
-shipped to agents in `skills/slice/SKILL.md`. Nothing in the catalogue moved,
-which is why no migration carries it and no check can enforce it.
+identifier and because it ended in no word at all. `evidence`, `findings`,
+`slices` and `slides` were the **derived layer**, then the *analysis tier*, and
+are now four records with an owner each — the table under "What the skills
+produce" above. Both collective nouns failed the same way, by claiming
+something untrue of half the set:
+
+- *derived layer* — only `findings` is derived; a person may author a slice.
+  And `layer` is the spelling `21000104000000` retired when `layers` became
+  `lanes`, so the word was built on a word this template had withdrawn. It was
+  still being shipped to agents in `skills/slice/SKILL.md`.
+- *analysis tier* — evidence is source material and a slice is a presentation
+  for an audience. Neither is analysis. It also collided with `tier`, which
+  already means an access level here (`20260818002000_service_account_tier`),
+  so one word named both what a reader may write and what they may write it
+  to.
+
+Nothing in the catalogue ever moved, which is why no migration carries either
+word. What enforces the replacement is not this vocabulary map but the write
+surface: `scripts/tests/who-writes-what.test.mjs` holds the ownership table
+against `WRITE_TOOL_NAMES`, so a renamed tool or an unowned new write fails
+`npm test`. That is the check neither collective noun ever had — both were
+adopted, both went stale, and nothing anywhere noticed.
 
 `scripts/retired-vocabulary.mjs` is the same map in machine-readable form, and
 `scripts/tests/retired-vocabulary.test.mjs` fails if the two disagree. Neither
