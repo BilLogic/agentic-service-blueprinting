@@ -135,8 +135,10 @@ def localize_touchpoints(touchpoints, locale: str, locales) -> list:
         localized = {
             "name": pick_text(touchpoint.get("name"), locale, locales) or "",
             "summary": pick_text(touchpoint.get("summary"), locale, locales),
-            "screenshots": list(touchpoint.get("screenshots") or []),
-            "url": touchpoint.get("url"),
+            "role": touchpoint.get("role"),
+            "resources": localize_resources(
+                touchpoint.get("resources"), locale, locales
+            ),
         }
         out.append(localized)
     return out
@@ -164,7 +166,7 @@ def values_rows(rows) -> str:
 #: Columns whose Python value is JSON-encoded and cast to jsonb.
 JSONB_FIELDS = frozenset({"value_props", "kpis", "tools"})
 #: Columns whose Python value is a list of strings, emitted as a text[] literal.
-TEXT_ARRAY_FIELDS = frozenset({"screenshots"})
+TEXT_ARRAY_FIELDS = frozenset()
 #: Columns emitted as a bare SQL literal (numbers), never quoted.
 RAW_FIELDS = frozenset({"position"})
 #: Booleans are SQL keywords, not quoted strings.
@@ -245,8 +247,7 @@ def seed_touchpoint_fields(touchpoint: dict, cell: dict) -> dict:
         "name": touchpoint["name"],
         "position": touchpoint["position"],
         "summary": touchpoint["summary"],
-        "screenshots": touchpoint["screenshots"],
-        "url": touchpoint["url"],
+        "role": touchpoint["role"],
         "origin": "import",
     }
 
@@ -254,15 +255,14 @@ def seed_touchpoint_fields(touchpoint: dict, cell: dict) -> dict:
 def seed_resource_fields(resource: dict, cell: dict) -> dict:
     """One resource as `resources` column -> value.
 
-    `cell_id` and never `cell_touchpoint_id`: every row carries its cell, and
-    an import cannot know which of a cell's resources documents one of its
-    touchpoints without guessing once per row. Attaching one is an authoring
-    act, and the IR has no way to say it.
+    Every row carries its cell. A resource authored under a touchpoint
+    placement carries the placement as well, in `cell_touchpoint_id`; one
+    authored on the cell carries none.
     """
     return {
         "id": resource["id"],
         "cell_id": cell["id"],
-        "cell_touchpoint_id": None,
+        "cell_touchpoint_id": resource.get("cell_touchpoint_id"),
         "kind": resource["kind"],
         "name": resource["name"],
         "url": resource["url"],
@@ -398,25 +398,50 @@ def build_model(doc: dict, locale: str) -> dict:
                             # plus the row's own name, so a re-import lands on
                             # the same row rather than a duplicate — the same
                             # construction every other entity here uses.
-                            "resources": [
-                                {
-                                    **resource,
-                                    "id": entity_uuid(
-                                        locale, "resource",
-                                        f"{ce_q}#{resource['name']}@{index}",
-                                    ),
-                                    "position": index,
-                                }
-                                for index, resource in enumerate(
-                                    localize_resources(
-                                        cell.get("resources"), locale, locales
-                                    ),
-                                    start=1,
-                                )
-                            ],
+                            "resources": (
+                                [
+                                    {
+                                        **resource,
+                                        "id": entity_uuid(
+                                            locale, "resource",
+                                            f"{ce_q}#{resource['name']}@{index}",
+                                        ),
+                                        "position": index,
+                                    }
+                                    for index, resource in enumerate(
+                                        localize_resources(
+                                            cell.get("resources"), locale, locales
+                                        ),
+                                        start=1,
+                                    )
+                                ]
+                                # A placement's resources are the cell's too,
+                                # through the touchpoint (21000118000000):
+                                # the same rows, carrying the placement's id.
+                                + [
+                                    {
+                                        **resource,
+                                        "id": entity_uuid(
+                                            locale, "resource",
+                                            f"{ce_q}#{touchpoint['name']}#{resource['name']}@{index}",
+                                        ),
+                                        "cell_touchpoint_id": entity_uuid(
+                                            locale, "touchpoint",
+                                            f"{ce_q}#{touchpoint['name']}",
+                                        ),
+                                        "position": index,
+                                    }
+                                    for touchpoint in localize_touchpoints(
+                                        cell.get("touchpoints"), locale, locales
+                                    )
+                                    for index, resource in enumerate(
+                                        touchpoint["resources"], start=1
+                                    )
+                                ]
+                            ),
                             "touchpoints": [
                                 {
-                                    **touchpoint,
+                                    **{k: v for k, v in touchpoint.items() if k != "resources"},
                                     "id": entity_uuid(
                                         locale, "touchpoint",
                                         f"{ce_q}#{touchpoint['name']}",

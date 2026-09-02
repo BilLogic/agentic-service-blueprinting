@@ -1,3 +1,4 @@
+import type { TouchpointRoleValue } from '@/lib/touchpointRole'
 import type { PathKind } from '@/types/database'
 
 export type BlueprintPath = {
@@ -32,7 +33,7 @@ export type BlueprintStep = {
 /**
  * One touchpoint, used at one cell.
  *
- * `summary`, `screenshots` and `url` are THIS moment's own: the same tool
+ * `summary` and `role` are THIS moment's own: the same tool
  * describes a different screen and points at a different design file at a
  * different step, which is the distinction a label-keyed link entry could not
  * hold. Built by `cellTouchpoints.ts` from either source.
@@ -51,10 +52,13 @@ export type CellTouchpoint = {
   id: string | null
   name: string
   summary: string | null
-  /** Screenshots or illustrations for this moment, in author order. */
-  screenshots: string[]
-  /** The design file for THIS moment, not for the tool. */
-  url: string | null
+  /**
+   * Core or peripheral AT THIS MOMENT, or null for the unmarked majority.
+   * Null is a state of its own, not a quiet `peripheral` — see
+   * `src/lib/touchpointRole.ts`. What the placement points at is in the
+   * cell's resources, carrying this placement's id (#111).
+   */
+  role: TouchpointRoleValue
 }
 
 /**

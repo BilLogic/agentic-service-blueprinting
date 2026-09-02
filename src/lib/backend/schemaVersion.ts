@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.05'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.06'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,10 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.05'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // A placement says what a tool does here (#111): `touchpoints[].url` and
+  // `.screenshots` become resources on the placement, and `.role` arrives.
+  // A file that authored either URL field moves.
+  '2026.09.06',
   // A resource keeps its id, knows its cell, and one of them is featured
   // (#110). `resources.kind` is `link | attachment` and `featured` arrives;
   // a file that authored `other` moves.

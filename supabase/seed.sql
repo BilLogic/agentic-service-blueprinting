@@ -434,9 +434,9 @@ generate_fallbacks.py --register', null, null, null, null, null, null, '[]'::jso
   ('f0000000-0000-4000-8000-610300060002', 'f0000000-0000-4000-8000-610000000000', 'f0000000-0000-4000-8000-610100060000', 'f0000000-0000-4000-8000-600200020000', 0, 'workspace-state.md', null, null, null, null, null, null, '[]'::jsonb, 'keeping-a-blueprint-true/maintain/keep-it-current/update-what-changed/references-guardrails/resume-the-workspace'),
   ('f0000000-0000-4000-8000-610300060003', 'f0000000-0000-4000-8000-610000000000', 'f0000000-0000-4000-8000-610100060000', 'f0000000-0000-4000-8000-600200030000', 0, 'customization.md — how a workspace is upgraded when the kit moves under it', null, null, null, null, null, null, '[]'::jsonb, 'keeping-a-blueprint-true/maintain/keep-it-current/update-what-changed/references-guardrails/edit-the-scenario');
 
-insert into public.cell_touchpoints (cell_id, name, position, summary, screenshots, url, origin) values
-  ('f0000000-0000-4000-8000-210300030107', 'Cell detail panel', 1, 'What one cell holds: summary, owner pair, function / form / value, resources, and the dependency tab.', array[]::text[], null, 'import'),
-  ('f0000000-0000-4000-8000-220300030107', 'Cell detail panel', 1, 'What one cell holds: summary, owner pair, function / form / value, resources, and the dependency tab.', array[]::text[], null, 'import');
+insert into public.cell_touchpoints (cell_id, name, position, summary, role, origin) values
+  ('f0000000-0000-4000-8000-210300030107', 'Cell detail panel', 1, 'What one cell holds: summary, owner pair, function / form / value, resources, and the dependency tab.', null, 'import'),
+  ('f0000000-0000-4000-8000-220300030107', 'Cell detail panel', 1, 'What one cell holds: summary, owner pair, function / form / value, resources, and the dependency tab.', null, 'import');
 
 insert into public.resources (cell_id, kind, name, url, position, origin) values
   ('f0000000-0000-4000-8000-110300020004', 'link', 'src/data/blueprintFallbacks.ts', 'https://github.com/BilLogic/agentic-service-blueprinting/blob/main/src/data/blueprintFallbacks.ts', 1, 'import'),

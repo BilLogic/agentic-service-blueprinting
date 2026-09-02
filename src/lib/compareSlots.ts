@@ -248,9 +248,10 @@ function touchpointSignature(cell: BlueprintData['cells'][number]): string {
   return cellTouchpoints(cell)
     .map(
       (placement) =>
+        // What the placement points at is in the cell's resources, which
+        // `resourceSignature` already covers.
         `${placement.name}${KEY_SEPARATOR}${placement.summary ?? ''}` +
-        `${KEY_SEPARATOR}${placement.url ?? ''}` +
-        `${KEY_SEPARATOR}${placement.screenshots.join(',')}`,
+        `${KEY_SEPARATOR}${placement.role ?? ''}`,
     )
     .sort()
     .join(KEY_SEPARATOR)

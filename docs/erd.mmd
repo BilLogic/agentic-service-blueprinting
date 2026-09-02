@@ -6,6 +6,7 @@
 %%        paths.kind ∈ (happy | variant | exception)
 %%        origin (structure tables) ∈ (import | app); slices.authorship ∈ (generated | customized | human)
 %%        cell_dependencies.kind ∈ (leads_to | enables); resources.kind ∈ (link | attachment)
+%%        cell_touchpoints.role ∈ (core | peripheral) — null means nobody has judged the placement
 %%        slices.kind ∈ (journey | step | lane | cell | custom)
 %%        audit_findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
@@ -139,8 +140,7 @@ erDiagram
     text name "what the touchpoint is called here; matches a line of cells.content"
     int position "author order within the cell"
     text summary "prose about this touchpoint at THIS moment"
-    text_array screenshots "screenshot/illustration paths, in author order"
-    text url "the design file for THIS moment, not for the tool"
+    text role "core | peripheral — or null, nobody has judged it; what it points at is in resources"
     text origin "import | app"
   }
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": "2026.09.05",
+  "schema_version": "2026.09.06",
   "locales": [
     "en",
     "zh"
@@ -244,10 +244,25 @@
                           "en": "Public map-based intake channel for streetlight faults.",
                           "zh": "面向公众的地图报修入口。"
                         },
-                        "screenshots": [
-                          "docs/assets/gis-portal.png"
-                        ],
-                        "url": "https://example.com/design/gis-portal"
+                        "resources": [
+                          {
+                            "name": {
+                              "en": "GIS Portal",
+                              "zh": "GIS 门户"
+                            },
+                            "url": "https://example.com/design/gis-portal",
+                            "featured": true
+                          },
+                          {
+                            "name": {
+                              "en": "GIS Portal",
+                              "zh": "GIS 门户"
+                            },
+                            "url": "docs/assets/gis-portal.png",
+                            "kind": "attachment",
+                            "featured": true
+                          }
+                        ]
                       }
                     ]
                   },

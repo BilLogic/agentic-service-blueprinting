@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.06",
         "2026.09.05",
         "2026.09.04",
         "2026.09.03",
@@ -111,7 +112,7 @@
         },
         "url": {
           "type": "string",
-          "format": "uri"
+          "description": "A URI for a link. An attachment may instead be a site-relative path to a file shipped with the app (`docs/assets/x.png`), until it lives in Storage."
         },
         "kind": {
           "enum": [
@@ -132,7 +133,7 @@
         "name"
       ],
       "additionalProperties": false,
-      "description": "One touchpoint used at one cell — the tool, document, channel or artifact the cell's text names. `summary`, `screenshots` and `url` belong to THIS moment: the same tool describes a different screen and points at a different design file at a different step.",
+      "description": "One touchpoint used at one cell — the tool, document, channel or artifact the cell's text names. A placement is its words (`summary`), its weight (`role`) and what it points at (`resources`), all belonging to THIS moment: the same tool describes a different screen and points at a different design file at a different step. `screenshots` and `url` became resources on the placement at 2026.09.06 — each screenshot an `attachment` (the first featured), the url a featured `link`.",
       "properties": {
         "name": {
           "$ref": "#/$defs/localeText",
@@ -142,17 +143,19 @@
           "$ref": "#/$defs/localeText",
           "description": "Long-form copy about this touchpoint at this moment."
         },
-        "screenshots": {
+        "role": {
+          "enum": [
+            "core",
+            "peripheral"
+          ],
+          "description": "Whether the moment happens THROUGH this touchpoint (core) or the touchpoint is merely present at it (peripheral). On the placement, not the tool: a poster is core at recruitment and incidental three phases later. Absent means nobody has judged this placement, which renders nothing."
+        },
+        "resources": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/resource"
           },
-          "description": "Screenshot or illustration paths/URLs for this moment, in author order."
-        },
-        "url": {
-          "type": "string",
-          "format": "uri",
-          "description": "The design file or external reference for THIS moment, not for the tool."
+          "description": "What this placement points at, in author order: the design file as a featured `link`, screenshots as `attachment`s with the first featured. Read by the cell as its own resources too, through the touchpoint."
         }
       }
     },

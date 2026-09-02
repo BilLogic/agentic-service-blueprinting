@@ -476,6 +476,52 @@ def to_2026_09_05(doc: dict) -> None:
                             resource["kind"] = "attachment"
 
 
+def to_2026_09_06(doc: dict) -> None:
+    """2026.09.05 → 2026.09.06 — a placement says what a tool does here.
+
+    A touchpoint placement is its words (`summary`), its weight (`role`,
+    new and optional) and what it points at (`resources`). The two URL
+    fields it carried become resources ON the placement, named after it:
+
+      url             →  resources[]: {kind: link, featured: true}
+      screenshots[i]  →  resources[]: {kind: attachment, featured: i == 0}
+
+    A file that authored either field changes its bytes and its scenarios
+    re-sign; the shipped fixture did.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if not isinstance(scenario, dict):
+                continue
+            for path in scenario.get("paths", []) or []:
+                if not isinstance(path, dict):
+                    continue
+                for cell in path.get("cells", []) or []:
+                    if not isinstance(cell, dict):
+                        continue
+                    for touchpoint in cell.get("touchpoints", []) or []:
+                        if not isinstance(touchpoint, dict):
+                            continue
+                        moved = []
+                        url = touchpoint.pop("url", None)
+                        if url:
+                            moved.append({"name": touchpoint.get("name"), "url": url, "featured": True})
+                        for index, shot in enumerate(touchpoint.pop("screenshots", None) or []):
+                            if not shot:
+                                continue
+                            moved.append({
+                                "name": touchpoint.get("name"),
+                                "url": shot,
+                                "kind": "attachment",
+                                "featured": index == 0,
+                            })
+                        if moved:
+                            touchpoint["resources"] = list(touchpoint.get("resources") or []) + moved
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -545,6 +591,14 @@ STEPS = (
         "and resources[].featured arrives, optional; a resource keeps its id "
         "across a save and every row knows its cell",
         to_2026_09_05,
+    ),
+    Step(
+        "2026.09.05",
+        "2026.09.06",
+        "touchpoints[].url and .screenshots become resources on the placement "
+        "(a featured link; attachments with the first featured), and "
+        "touchpoints[].role arrives, optional",
+        to_2026_09_06,
     ),
 )
 
