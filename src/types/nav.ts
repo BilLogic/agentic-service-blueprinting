@@ -9,19 +9,16 @@ import { ORG_NAME } from '@/config'
 export type EditorView = 'landing' | 'home' | 'detail'
 
 /**
- * How blueprint paths are laid out on a scenario slide — CLIENT vocabulary.
- * The DB keeps `side-by-side`/`integrated`; the two meet only in
- * `src/lib/viewTypeVocabulary.ts`. `'merged'` is session-only, never persisted.
+ * How a scenario's paths are drawn — the value `scenarios.layout` holds, no
+ * translation between. `stacked` is one full band per path on a shared step
+ * axis; `merged` is the paths combined into ONE blueprint. The header toggle
+ * writes it (21000117000000), so a scenario left merged opens merged.
  */
-export type SlideViewType = 'single' | 'stacked' | 'merged'
+export type SlideViewType = 'stacked' | 'merged'
 
-export const SLIDE_VIEW_TYPES: SlideViewType[] = ['single', 'stacked', 'merged']
-
-/** Options shown in the scenario view type control (merged is session-only). */
-export const SCENARIO_VIEW_TYPE_OPTIONS: SlideViewType[] = ['stacked']
+export const SLIDE_VIEW_TYPES: SlideViewType[] = ['stacked', 'merged']
 
 export const SLIDE_VIEW_TYPE_LABELS: Record<SlideViewType, string> = {
-  single: 'Single',
   stacked: 'Stacked',
   merged: 'Merged',
 }
@@ -153,13 +150,9 @@ export function getBlueprintScenarioId(slide: NavItem): string | undefined {
 }
 
 export function getSlideViewType(slide: NavItem): SlideViewType {
-  // `slide.layout` is already client vocabulary: the raw DB value is mapped
-  // at the read seam (`phasesToSlides` via `viewTypeVocabulary`), where a
-  // persisted 'stacked' keeps coercing to the plain stacked view.
-  if (slide.layout) return slide.layout
-  if (isSubslide(slide)) return 'stacked'
-  if (hasBlueprintFallback(slide.id)) return 'stacked'
-  return 'single'
+  // `slide.layout` is the stored value itself; `phasesToSlides` only guards
+  // against a token nothing can render.
+  return slide.layout ?? 'stacked'
 }
 
 export function showsBlueprintFilters(

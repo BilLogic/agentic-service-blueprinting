@@ -68,7 +68,7 @@ erDiagram
   services { uuid id PK  text name  text summary }
   business_models { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
   phases { uuid id PK  uuid service_id FK  text name  text summary  text business_impact  text operational_requirements  int position  uuid loops_to_phase_id FK "optional self-reference" }
-  scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text layout "single | stacked — merged is session-only, never stored" }
+  scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text layout "stacked | merged — what the scenario opens as" }
   paths { uuid id PK  uuid scenario_id FK  text name "the CONDITION that routes you here, never the activity — the scenario already said that"  text summary "when this route applies"  text note "the author's aside: open questions, provenance, working state"  text kind "happy | variant | exception"  entity_status status }
   steps { uuid id PK  uuid scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int position "unique per (path_id, position)" }
@@ -98,18 +98,20 @@ erDiagram
 
 ## Enums
 
-- `scenarios.layout`: `single` \| `stacked` — ONE vocabulary. The
-  stored token is the token the UI names. (It used to store
-  `single | side-by-side | integrated` with a translation module; all rows held
-  `side-by-side` and the other two were unused, so `21000116000000` folded
-  both into `stacked` and the translation was deleted.)
-  - `single`: one path at a time (path picker)
-  - `stacked`: labeled variant comparison — any two labeled variants
-    ("as designed" vs "reality" is just the default labeling)
-  - **`merged` is not storable.** The Merged canvas (compared paths drawn as
-    one combined blueprint) is a per-session display chosen in the compare
-    control. The CHECK constraint rejects it, and `create_scenario` refuses it
-    by name with a hint rather than coercing it
+- `scenarios.layout`: `stacked` \| `merged` — ONE vocabulary. The
+  stored token is the token the UI names, and the header toggle writes it
+  through `update_scenario_layout`, so a scenario left merged opens merged.
+  (It used to store `single | side-by-side | integrated` with a translation
+  module; all rows held `side-by-side` and the other two were unused, so
+  `21000116000000` folded both into `stacked` and the translation was
+  deleted. `21000117000000` then folded `single` into `stacked` — one path
+  stacked is one band — and made `merged` storable.)
+  - `stacked`: one full band per path on a shared step axis — any labeled
+    variants ("as designed" vs "reality" is just the default labeling)
+  - `merged`: the paths combined into one blueprint — one lane rail, one
+    step axis, cells the paths agree on drawn once, divergent slots stacking
+    each path's version. Needs two visible paths; with one, the canvas draws
+    stacked and the row keeps its value.
 - `cell_dependencies.kind`: `leads_to` \| `enables`. `leads_to` means the
   source makes the target HAPPEN, and it is the kind the canvas DRAWS as an
   arrow. `enables` means the source makes the target POSSIBLE without causing

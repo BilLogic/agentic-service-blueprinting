@@ -782,3 +782,11 @@ begin
   end if;
 end
 $anon$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000117000000_a_scenario_left_merged_opens_merged.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the Supabase roles: a fresh function is executable by PUBLIC.
+revoke execute on function public.update_scenario_layout(uuid, text) from public, anon;
+grant execute on function public.update_scenario_layout(uuid, text) to authenticated;

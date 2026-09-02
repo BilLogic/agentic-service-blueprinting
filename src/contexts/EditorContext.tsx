@@ -8,8 +8,10 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
+import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
   FALLBACK_NAV,
   isSubslide,
@@ -334,29 +336,67 @@ export function EditorProvider({ children }: EditorProviderProps) {
 
   const nav = useNavSelectionState(slides)
 
+  const { client, canWrite } = useSupabase()
+
   /*
-    Per-scenario display override, session-local. Stacked is the default
-    reading view; 'merged' is the comparison lens (the header toggle calls
-    it Merged) — session-only, never persisted to the DB.
+    Per-scenario display override, layered over the stored `layout`.
+
+    `scenarios.layout` is `stacked | merged` and is what a scenario opens as.
+    An editor's toggle WRITES it — `persistScenarioLayout`, recorded with its
+    inverse — so a scenario left merged opens merged. Anon and view-only
+    sessions hold no write on the column, so their choice lives here and
+    only for the session.
+
+    An editor's choice lands here first too: the segment moves on the click,
+    not on the refetch. Each override remembers what the row said when it was
+    made, and it counts only while the row still says that. The moment the
+    refetched slide says something else — the write landed, or a revert from
+    the session sheet rewrote the row — the row wins, and no stale session
+    choice can shadow it. Derived, so nothing has to run after a fetch to
+    tidy up.
   */
   const [layoutOverrides, setLayoutOverrides] = useState<
-    Record<string, SlideViewType>
+    Record<string, { layout: SlideViewType; over: SlideViewType | undefined }>
   >({})
 
   const getScenarioDisplayViewType = useCallback(
-    (slide: NavItem): SlideViewType =>
-      layoutOverrides[slide.id] ?? 'stacked',
+    (slide: NavItem): SlideViewType => {
+      const override = layoutOverrides[slide.id]
+      if (override && override.over === slide.layout) return override.layout
+      return slide.layout ?? 'stacked'
+    },
     [layoutOverrides],
   )
 
+  const clearLayoutOverride = useCallback((scenarioId: string) => {
+    setLayoutOverrides((current) => {
+      if (!(scenarioId in current)) return current
+      const next = { ...current }
+      delete next[scenarioId]
+      return next
+    })
+  }, [])
+
   const setScenarioDisplayViewType = useCallback(
     (scenarioId: string, layout: SlideViewType) => {
+      const slide = slides.find((item) => item.id === scenarioId)
+      const previous = slide ? getScenarioDisplayViewType(slide) : undefined
+      if (previous === layout) return
       setLayoutOverrides((current) => ({
         ...current,
-        [scenarioId]: layout,
+        [scenarioId]: { layout, over: slide?.layout },
       }))
+      void persistScenarioLayout(client, canWrite, {
+        scenarioId,
+        layout,
+        previous,
+      }).catch((error: unknown) => {
+        // The row kept its old value, so the screen goes back to it.
+        console.error('[layout] update_scenario_layout failed:', error)
+        clearLayoutOverride(scenarioId)
+      })
     },
-    [],
+    [slides, client, canWrite, getScenarioDisplayViewType, clearLayoutOverride],
   )
 
   const slidesLoading = configured && loading && dbSlides.length === 0

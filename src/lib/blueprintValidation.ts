@@ -9,12 +9,12 @@ import type { LaneSetEntry, Layout } from '@/lib/authoringRpc'
  * type; the database's copy stays as the authority.
  */
 
-export const LAYOUTS: Layout[] = ['single', 'stacked']
+export const LAYOUTS: Layout[] = ['stacked', 'merged']
 
 /** Display names. */
 export const LAYOUT_LABELS: Record<Layout, string> = {
-  single: 'Single',
   stacked: 'Stacked',
+  merged: 'Merged',
 }
 
 /**
@@ -26,8 +26,8 @@ export const LAYOUT_LABELS: Record<Layout, string> = {
  * holds; it was never a property of the scenario.
  */
 export const LAYOUT_HINTS: Record<Layout, string> = {
-  single: 'One version at a time',
-  stacked: 'Paths compared step by step',
+  stacked: 'One full band per path, on a shared step axis',
+  merged: 'The paths combined into one blueprint',
 }
 
 /**

@@ -84,7 +84,7 @@ The app is where people read, compare, and present. The in-app agent drafts chan
 - **`lanes.lane_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/laneRoles.ts`](./src/lib/laneRoles.ts).
 - **Steps are scenario-scoped columns** shared across paths via `path_steps` ordering — see [references/data-model.md](./references/data-model.md).
 - **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → lanes → cells → cell_dependencies`.
-- **Layouts** per scenario: `layout` is `single` (one path at a time) or `stacked` (labelled variants compared slot by slot). The merged canvas is a session view, never stored; `side-by-side` and `integrated` became `stacked` in `21000116000000`.
+- **Layouts** per scenario: `layout` is `stacked` (one full band per path on a shared step axis) or `merged` (the paths combined into one blueprint). The header toggle stores it, so a scenario left merged opens merged. `single` became `stacked` in `21000117000000`; `side-by-side` and `integrated` became `stacked` in `21000116000000`.
 
 Full detail when you need it: [docs/connectors/supabase/database.md](./docs/connectors/supabase/database.md) (column reference) · [docs/erd.mmd](./docs/erd.mmd) (attribute-level ERD).
 

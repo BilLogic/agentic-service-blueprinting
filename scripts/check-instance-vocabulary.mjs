@@ -42,11 +42,6 @@ const RAW = 'https://raw.githubusercontent.com/BilLogic/plus-uno-blueprint/main/
  */
 export const ACCEPTED_DIVERGENCES = [
   {
-    was: "scenarios.layout = 'single'",
-    until: '#103',
-    because: 'the merged layout is still session-only here; #103 ports stacked | merged and stores it',
-  },
-  {
     was: 'cell_touchpoints.url',
     until: '#103',
     because: 'a placement still carries its own link here; #103 moves it to a featured resource',

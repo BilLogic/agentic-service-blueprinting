@@ -318,9 +318,7 @@ export function getScenarioSwimlaneRowSpecs(
   // stacked anyway, and the focused stacked arrangement reuses these specs
   // per band.
   const useCompareLayout =
-    (displayViewType === 'stacked' ||
-      displayViewType === 'merged' ||
-      displayViewType === 'single') &&
+    (displayViewType === 'stacked' || displayViewType === 'merged') &&
     selectedPathIds.length > 0
 
   if (useCompareLayout) {

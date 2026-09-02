@@ -421,12 +421,10 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'set_scenario_view',
-        summary: 'Switch the SELECTED scenario between its two displays. arg: stacked | merged (needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also applies the reading preset — shared steps fold and the difference ledger opens; returning to stacked unfolds. Legacy aliases accepted: side-by-side = stacked, integrated = merged.',
+        summary: 'Switch the SELECTED scenario between its two layouts and store the choice, so it opens that way next time. arg: stacked | merged (merged needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also opens the difference ledger.',
         run: (arg) =>
-          // 'stacked'/'stacked' are the pre-v3 tokens, kept as
-          // documented aliases so older prompts and transcripts still work.
           commands.current.setScenarioView(
-            arg === 'merged' || arg === 'stacked' ? 'merged' : 'stacked',
+            arg === 'merged' ? 'merged' : 'stacked',
           ),
       }),
     ]

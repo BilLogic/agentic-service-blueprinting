@@ -88,7 +88,9 @@ code-span form, across every rulebook tree an agent or reader follows.
 The same is true of `scenarios.layout = 'side-by-side'`,
 `scenarios.layout = 'integrated'`, `paths.kind = 'unhappy'` and
 `paths.kind = 'alternative'`, which `21000116000000` folded into `stacked`,
-`exception` and `variant`: values, so no fragment and no copy word.
+`exception` and `variant`, and of `scenarios.layout = 'single'`, which
+`21000117000000` folded into `stacked`: values, so no fragment and no copy
+word.
 `scripts/value-set-claims.mjs` holds them — a list in any swept document
 that names one is stale, unless the sentence records the retirement and
 cites the migration — and holds every documented value set to the CHECK
@@ -175,6 +177,7 @@ now checks that nothing came back.
 | `cell_dependencies.kind = 'trigger'`, `cell_dependencies.kind = 'needs'` | `cell_dependencies.kind = 'leads_to'`, `cell_dependencies.kind = 'enables'` | `21000114000000` |
 | `scenarios.layout = 'side-by-side'`, `scenarios.layout = 'integrated'` | `scenarios.layout = 'stacked'`, `scenarios.layout = 'stacked'` | `21000116000000` |
 | `paths.kind = 'unhappy'`, `paths.kind = 'alternative'` | `paths.kind = 'exception'`, `paths.kind = 'variant'` | `21000116000000` |
+| `scenarios.layout = 'single'` | `scenarios.layout = 'stacked'` | `21000117000000` |
 | `business_model` | `business_models` | `21000116000000` |
 | `findings`, `findings.check_name`, `findings.note` | `audit_findings`, `audit_findings.check_key`, `audit_findings.summary` | `21000116000000` |
 | `paths.path_type`, `slices.slice_type`, `scenarios.view_type` | `paths.kind`, `slices.kind`, `scenarios.layout` | `21000116000000` |

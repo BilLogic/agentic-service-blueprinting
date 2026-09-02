@@ -1049,6 +1049,10 @@ export type Database = {
         Args: { new_name: string; scenario_id: string }
         Returns: undefined
       }
+      update_scenario_layout: {
+        Args: { layout: string; scenario_id: string }
+        Returns: undefined
+      }
       reorder_lanes: {
         Args: { lane_names: string[]; scenario_id: string }
         Returns: undefined

@@ -48,6 +48,7 @@ export type WriteFn =
   | 'duplicate_scenario'
   | 'rename_phase'
   | 'rename_scenario'
+  | 'update_scenario_layout'
   | 'rename_path'
   | 'rename_owner_tag'
   | 'add_step'
@@ -242,6 +243,8 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
     `Duplicated a blueprint as${named(entry) || ' a copy'}`,
   rename_phase: (entry) => `Renamed a phase${renameTo(entry)}`,
   rename_scenario: (entry) => `Renamed a scenario${renameTo(entry)}`,
+  update_scenario_layout: (entry) =>
+    `Showed a scenario ${entry.args.layout === 'merged' ? 'merged' : 'stacked'}`,
   rename_path: (entry) => `Renamed a path${renameTo(entry)}`,
   rename_owner_tag: (entry) => {
     const from = typeof entry.args.from === 'string' ? entry.args.from : ''

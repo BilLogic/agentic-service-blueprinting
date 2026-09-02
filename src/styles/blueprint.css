@@ -674,7 +674,7 @@
    *
    * The two are not the same set and neither contains the other. The
    * anchor is on `BlueprintCellButton`, but the tech lane's `pills` variant
-   * (`ServiceBlueprintGrid`) is a cell CONTAINER — `data-blueprint-cell`,
+   * (the pills lane row) is a cell CONTAINER — `data-blueprint-cell`,
    * no anchor — and 135 of this board's 663 cells are those. Keyed on the
    * anchor alone they were never staged, so they surfaced at stage 2 with
    * the scenario panel while the other 528 waited for stage 3: "some cells

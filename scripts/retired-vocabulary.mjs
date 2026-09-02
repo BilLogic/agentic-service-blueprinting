@@ -160,6 +160,13 @@ export const RENAME_MAP = Object.freeze(
       copy: [],
     },
     {
+      was: ["scenarios.layout = 'single'"],
+      is: ["scenarios.layout = 'stacked'"],
+      migrations: ['21000117000000'],
+      retired: [],
+      copy: [],
+    },
+    {
       was: ['business_model'],
       is: ['business_models'],
       migrations: ['21000116000000'],

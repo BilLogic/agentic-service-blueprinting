@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.03'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.04'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,11 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.03'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // `scenarios.layout` is `stacked | merged` (#109). `single` folded into
+  // stacked — one path stacked is one band — and merged, until now a
+  // session-only display, is a value the row holds, so a scenario left
+  // merged opens merged. A file that authored `single` moves.
+  '2026.09.04',
   // A cell's `picture` is its `frame` (#94). One word served two ideas — the
   // image on a cell, and the border a walkthrough draws around one — and the
   // column took it. `slice_items` became `slides` in the same migration; the

@@ -461,7 +461,8 @@ export function valueSetFindings({ text, source, medium, host = null }, catalog,
     // A lone span is not a list, but `integrated` on its own is still a
     // value nothing accepts any more — an agent told to "confirm the
     // `integrated` grid renders" will look for one. Judged only when no
-    // column accepts the word today, so `single` stays English until it goes.
+    // column accepts the word today — `single` was English until
+    // 21000117000000 retired it, and a finding from then on.
     if (medium === 'markdown') {
       for (const { tokens } of fragments) {
         const lone = tokens.find((token) => {
