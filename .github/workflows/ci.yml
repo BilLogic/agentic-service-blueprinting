@@ -46,6 +46,10 @@ jobs:
       # suite — which until now existed as a script nobody ran.
       - run: npm run check:parity
       - run: npm run check:portable-core
+      # The instance's rename map, read from GitHub, against the schema the
+      # portable core builds: a name the instance retired that is still live
+      # here fails the build instead of waiting to be noticed (#101).
+      - run: npm run check:instance-vocabulary
       # Upstream migrations are allocated from the reserved band, never stamped
       # with the wall clock — see docs/connectors/supabase/database.md.
       - run: npm run check:band
@@ -147,6 +151,12 @@ jobs:
           createdb portable_core
           psql -v ON_ERROR_STOP=1 -d portable_core \
             -f supabase/generated/portable-core.generated.sql
+
+      # The dump of what that core builds, with only the names it holds them
+      # under, is committed beside the series and read by the vocabulary
+      # checks. It is regenerated here and diffed (#101).
+      - name: The schema dump is what the series builds
+        run: npm run check:portable-schema
 
       # 3. The recipe is one conformant way to enforce the contract on top.
       - name: Apply the Supabase recipe on top of the core

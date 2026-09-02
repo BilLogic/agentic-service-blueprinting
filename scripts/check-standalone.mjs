@@ -82,6 +82,10 @@ export const EXCLUDED = [
   'src/content/coverContent.test.ts', // the narrower guard, same words
   'scripts/tests/standalone.test.mjs', // this check's own fixtures
   'docs/plans/', // the specs that ordered the boundary
+  // Names the instance BY DESIGN: it reads that repository's rename map and
+  // holds this template's schema to it (#101). The coupling it carries is the
+  // one it exists to measure.
+  'scripts/check-instance-vocabulary.mjs',
 ]
 
 /** Binary payloads git happens to track. Nothing to read a line out of. */
