@@ -56,6 +56,9 @@ export type WriteFn =
   | 'upsert_cell'
   | 'update_cell_content'
   | 'update_cell_resources'
+  | 'update_placement_resources'
+  | 'set_featured_resource'
+  | 'restore_featured_resources'
   | 'update_cell_spec'
   | 'add_evidence'
   | 'delete_evidence'
@@ -258,6 +261,12 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
   upsert_cell: () => 'Added a cell',
   update_cell_content: () => 'Edited a cell’s text',
   update_cell_resources: () => 'Edited a cell’s resources',
+  update_placement_resources: () => 'Edited a touchpoint’s resources at this cell',
+  set_featured_resource: (entry) =>
+    entry.args.featured === false
+      ? 'Unfeatured a resource'
+      : 'Featured a resource',
+  restore_featured_resources: () => 'Put back which resources were featured',
   update_cell_spec: () => 'Specified function & form',
   add_evidence: (entry) =>
     titled(entry) ? `Added evidence “${titled(entry)}”` : 'Added an evidence source',

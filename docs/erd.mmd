@@ -5,7 +5,7 @@
 %% Enums: scenarios.layout ∈ (stacked | merged) — what the scenario opens as; the header toggle writes it
 %%        paths.kind ∈ (happy | variant | exception)
 %%        origin (structure tables) ∈ (import | app); slices.authorship ∈ (generated | customized | human)
-%%        cell_dependencies.kind ∈ (leads_to | enables)
+%%        cell_dependencies.kind ∈ (leads_to | enables); resources.kind ∈ (link | attachment)
 %%        slices.kind ∈ (journey | step | lane | cell | custom)
 %%        audit_findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
@@ -146,11 +146,12 @@ erDiagram
 
   resources {
     uuid id PK
-    uuid cell_id FK "exactly one of these two is set"
-    uuid cell_touchpoint_id FK "so a design link can belong to the tool it documents"
-    text kind "link | other"
+    uuid cell_id FK "always — every resource knows its cell"
+    uuid cell_touchpoint_id FK "set as well when a placement owns it; (cell_touchpoint_id, cell_id) references the placement in its cell"
+    text kind "link | attachment"
     text name "what the thing on the other end is called"
-    text url "required when kind = link"
+    text url "both kinds carry one"
+    bool featured "the one its owner leads with; one featured attachment per owner"
     int position "author order within its owner"
     text origin "import | app"
   }

@@ -68,14 +68,27 @@ export type CellTouchpoint = {
  * Built by `cellResources.ts` from either source: `resources` rows from the
  * database, or the `url`-typed entries of a fallback blueprint's `links`.
  */
-export type ResourceKind = 'link' | 'other'
+export type ResourceKind = 'link' | 'attachment'
 
 export type CellResource = {
+  /**
+   * The row's id, so a later write can name the row it means (#110). Null
+   * on a fallback board, which has no rows to name.
+   */
+  id: string | null
   name: string
-  /** `link` for everything the split carried across; the column allows `other`. */
+  /** `link` or `attachment` — what the row is, decided when it is made. */
   kind: ResourceKind
-  /** Null only for a kind that is not a link — the table refuses a link without one. */
+  /** The table refuses a row without one; null only on a fallback board. */
   url: string | null
+  /**
+   * The placement this resource belongs to, when it is a placement's — a
+   * link or the image a touchpoint shows here. Still the cell's row, so it
+   * renders in the cell's list; edited from the touchpoint.
+   */
+  placementId: string | null
+  /** The resource its owner leads with. */
+  featured: boolean
 }
 
 export type BlueprintCell = {

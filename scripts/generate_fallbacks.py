@@ -84,12 +84,11 @@ IMPLIED_BY_NESTING = frozenset({"path_id"})
 #: The same idea, one level further in. A resource and a placement are nested
 #: under the cell they hang off, so `cell_id` is the row's location rather than
 #: a value; `origin` is the same literal on every imported row; `position` is
-#: the array index the fallback shape already carries. A placement keeps its
-#: `id` where a resource does not, because a placement is the one of the two
-#: an editor writes through and the app addresses it by id — a resource is
-#: rewritten as a whole list.
+#: the array index the fallback shape already carries. Both keep their `id`:
+#: an editor writes through it, and since 21000118000000 a resource keeps
+#: its id across a save the way a placement always did.
 IMPLIED_BY_CELL_NESTING = frozenset({"cell_id", "origin", "position"})
-IMPLIED_ON_RESOURCE = IMPLIED_BY_CELL_NESTING | {"id"}
+IMPLIED_ON_RESOURCE = IMPLIED_BY_CELL_NESTING
 IMPLIED_ON_TOUCHPOINT = IMPLIED_BY_CELL_NESTING
 
 #: Keys the fallback cell carries that are not cell COLUMNS — they are the two
@@ -98,12 +97,13 @@ IMPLIED_ON_TOUCHPOINT = IMPLIED_BY_CELL_NESTING
 #: them as fields served without a database.
 NESTED_UNDER_CELL = frozenset({"resources", "touchpoints"})
 
-#: The one place the two adapters disagree on a NAME rather than a value. The
+#: The places the two adapters disagree on a NAME rather than a value. The
 #: app's BlueprintLane has called it `role` since before the column did, and
 #: renaming a field every component reads to match a column nobody reads would
-#: be the wrong way round. Declared here so adapter_parity.py can compare
+#: be the wrong way round; a resource's `placementId` is `cell_touchpoint_id`
+#: read as the app names it. Declared here so adapter_parity.py can compare
 #: through it instead of reporting a difference that is only spelling.
-FALLBACK_FIELD_NAMES = {"lane_role": "role"}
+FALLBACK_FIELD_NAMES = {"lane_role": "role", "cell_touchpoint_id": "placementId"}
 
 
 def project(fields: dict, implied: frozenset = IMPLIED_BY_NESTING) -> dict:

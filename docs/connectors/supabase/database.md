@@ -62,7 +62,7 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | Cell | `cells` | unique `(lane_id, step_id, position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
 | Cell dependency | `cell_dependencies` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
 | Touchpoint placement | `cell_touchpoints` | unique `(cell_id, name)`; owns the summary, screenshots and design link for that moment |
-| Resource | `resources` | a cell **or** one placement, never both — `num_nonnulls(cell_id, cell_touchpoint_id) = 1` |
+| Resource | `resources` | every row carries its cell; a placement's carries `cell_touchpoint_id` as well, held to the placement's cell by a composite key |
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not service phases. Phases live in `phases`.
 
@@ -116,20 +116,25 @@ one of them.
 | `screenshots` | yes (default `{}`) | `text[]` of screenshot/illustration paths, in author order |
 | `url` | no | The design file for THIS moment, not for the tool |
 
-`resources` — what a cell, or one placement, points at:
+`resources` — what a cell points at:
 
 | Column | Required | Description |
 | --- | --- | --- |
-| `cell_id` | exactly one of these two | The cell this resource belongs to |
-| `cell_touchpoint_id` | exactly one of these two | The placement it belongs to — a design link that documents one tool rather than the cell at large |
-| `kind` | yes (default `link`) | `link` \| `other` |
+| `cell_id` | yes | The cell this resource belongs to — always |
+| `cell_touchpoint_id` | no | Set as well when a placement owns it — a design link or the image a touchpoint shows at this cell. `resources_placement_in_cell_fkey` is the composite key `(cell_touchpoint_id, cell_id)` onto `cell_touchpoints (id, cell_id)`, so a resource cannot name a placement in another cell |
+| `kind` | yes (default `link`) | `link` \| `attachment` — a place on the web, or a file the cell points at |
 | `name` | yes | What the thing on the other end is called |
-| `url` | required for `kind = 'link'` | |
-| `position` | yes | Author order within its owner |
+| `url` | yes | Both kinds carry one (`resources_has_url`) |
+| `featured` | yes (default `false`) | The resource its owner leads with. One featured attachment per cell and per placement — `resources_one_featured_attachment_per_cell` / `_per_placement` — any number of featured links |
+| `position` | yes | Author order within its owner; the cell's own rows and a placement's rows are ordered separately |
 
-`resources_one_owner` enforces `num_nonnulls(cell_id, cell_touchpoint_id) = 1`
-in the schema rather than in the client: a resource belongs to a cell **or** to
-a placement, never both and never neither.
+Four writes, all SECURITY DEFINER behind `is_service_account()` since
+`21000118000000`: `sync_cell_resources` reconciles the cell's own list by id
+(a reorder keeps every id) and refuses a placement's rows;
+`sync_placement_resources` is the placement's list; `set_featured_resource`
+clears the owner's previous featured attachment in the same transaction and
+returns the before-states; `restore_featured_resources` writes them back.
+`other` became `attachment` in `21000118000000`.
 
 App types: `CellResource` and `CellTouchpoint` in `src/types/blueprint.ts`.
 Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.

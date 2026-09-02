@@ -16,10 +16,13 @@ import { orderedNamedRows } from '@/lib/orderedNamedRows'
 
 /** A `resources` row as the board query selects it. */
 export type RawCellResource = {
+  id?: string | null
   position: number
   kind?: string | null
   name?: string | null
   url?: string | null
+  cell_touchpoint_id?: string | null
+  featured?: boolean | null
 }
 
 /**
@@ -44,14 +47,9 @@ export function hostOf(url: string): string {
   return match?.[1] ?? 'Link'
 }
 
-function resourceKind(
-  value: string | null | undefined,
-  url: string | null | undefined,
-): ResourceKind {
-  const normalized = value?.trim()
-  if (normalized === 'other') return 'other'
-  if (normalized === 'link' || !normalized) return url?.trim() ? 'link' : 'other'
-  return 'other'
+/** The column holds `link | attachment`; anything else reads as a link. */
+function resourceKind(value: string | null | undefined): ResourceKind {
+  return value?.trim() === 'attachment' ? 'attachment' : 'link'
 }
 
 /** Resources from database rows, in the order the author put them. */
@@ -59,9 +57,12 @@ export function cellResourcesFromRows(
   rows: readonly RawCellResource[] | null | undefined,
 ): CellResource[] {
   return orderedNamedRows(rows, (row, name) => ({
+      id: row.id ?? null,
       name,
-      kind: resourceKind(row.kind, row.url),
+      kind: resourceKind(row.kind),
       url: row.url?.trim() || null,
+      placementId: row.cell_touchpoint_id ?? null,
+      featured: row.featured ?? false,
     }))
 }
 

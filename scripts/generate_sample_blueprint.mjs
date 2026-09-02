@@ -114,7 +114,8 @@ const repoLink = (name, path) => {
   if (!existsSync(join(REPO_ROOT, path))) {
     throw new Error(`repoLink("${name}"): ${path} does not exist in the repo`)
   }
-  return { name, kind: 'link', url: `${REPO_URL}/${path}` }
+  // A fallback board has no rows to name, so no id and nothing featured.
+  return { id: null, name, kind: 'link', url: `${REPO_URL}/${path}`, placementId: null, featured: false }
 }
 
 /** Figures for the visual row — served from /cover/ by scripts/sync-cover-assets.mjs. */

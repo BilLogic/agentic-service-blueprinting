@@ -18,10 +18,13 @@ const CELL_CONTENT_SELECT = `
   owner,
   perceived_owner,
   resources!resources_cell_id_fkey (
+    id,
     position,
     kind,
     name,
-    url
+    url,
+    cell_touchpoint_id,
+    featured
   )
 `
 

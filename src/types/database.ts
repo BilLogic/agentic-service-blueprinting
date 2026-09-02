@@ -605,9 +605,10 @@ export type Database = {
       }
       resources: {
         Row: {
-          cell_id: string | null
+          cell_id: string
           cell_touchpoint_id: string | null
           created_at: string
+          featured: boolean
           id: string
           kind: string
           name: string
@@ -617,9 +618,10 @@ export type Database = {
           url: string | null
         }
         Insert: {
-          cell_id?: string | null
+          cell_id: string
           cell_touchpoint_id?: string | null
           created_at?: string
+          featured?: boolean
           id?: string
           kind?: string
           name: string
@@ -629,9 +631,10 @@ export type Database = {
           url?: string | null
         }
         Update: {
-          cell_id?: string | null
+          cell_id?: string
           cell_touchpoint_id?: string | null
           created_at?: string
+          featured?: boolean
           id?: string
           kind?: string
           name?: string
@@ -649,8 +652,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "resources_cell_touchpoint_id_fkey"
-            columns: ["cell_touchpoint_id"]
+            foreignKeyName: "resources_placement_in_cell_fkey"
+            columns: ["cell_touchpoint_id", "cell_id"]
             isOneToOne: false
             referencedRelation: "cell_touchpoints"
             referencedColumns: ["id"]
@@ -1078,6 +1081,18 @@ export type Database = {
       slices_referencing: { Args: { cell_ids: string[] }; Returns: Json }
       sync_cell_resources: {
         Args: { p_cell_id: string; p_rows: Json }
+        Returns: undefined
+      }
+      sync_placement_resources: {
+        Args: { p_placement_id: string; p_rows: Json }
+        Returns: undefined
+      }
+      set_featured_resource: {
+        Args: { p_resource_id: string; p_featured: boolean }
+        Returns: Json
+      }
+      restore_featured_resources: {
+        Args: { p_rows: Json }
         Returns: undefined
       }
       upsert_cell: {

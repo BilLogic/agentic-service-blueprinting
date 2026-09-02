@@ -167,6 +167,13 @@ export const RENAME_MAP = Object.freeze(
       copy: [],
     },
     {
+      was: ["resources.kind = 'other'"],
+      is: ["resources.kind = 'attachment'"],
+      migrations: ['21000118000000'],
+      retired: [],
+      copy: [],
+    },
+    {
       was: ['business_model'],
       is: ['business_models'],
       migrations: ['21000116000000'],
