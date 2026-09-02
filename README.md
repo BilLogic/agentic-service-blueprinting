@@ -61,7 +61,7 @@ Each is walked, with its own figure, in [guide/03 — The plugin](./docs/guide/0
 
 ![Ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot, over one shared context lane](./docs/assets/four-ways-in.svg)
 
-The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. A chat bot on top — Slack is where one usually lands — answers questions and links back to the exact cell. All four work from one shared context lane, so what any of them reads is what the others wrote. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
+The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. The Slack bot on top answers questions and links back to the exact cell. All four work from one shared context lane, so what any of them reads is what the others wrote. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
 
 ## The blueprint model
 

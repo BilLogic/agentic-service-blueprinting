@@ -135,11 +135,11 @@ export function VisualWalkthroughModal() {
         <DialogContent
           data-visual-walkthrough-modal=""
           className="flex h-[min(85vh,36rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border p-0 shadow-sm sm:max-w-5xl"
-          aria-label="Visual walkthrough"
+          aria-label="Presentation"
         >
           <DialogHeader className="shrink-0 flex-row items-center gap-2 border-b border-muted px-5 py-3.5 pr-14 text-left">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="sr-only">Visual walkthrough</DialogTitle>
+              <DialogTitle className="sr-only">Presentation</DialogTitle>
               <DialogDescription className="sr-only">
                 Presentation for {pathName || 'this path'}
               </DialogDescription>

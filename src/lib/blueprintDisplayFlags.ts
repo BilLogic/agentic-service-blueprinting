@@ -13,7 +13,7 @@ export const BLUEPRINT_VISUAL_LANE_UI_ENABLED = true
 /** Cell click → detail side panel. */
 export const BLUEPRINT_CELL_DETAIL_UI_ENABLED = true
 
-/** Visual walkthrough / presentation mode (play button + modal). */
+/** Presentation mode (play button + modal). */
 // Off: the ▶ sat inside the Visual lane of every blueprint looking like part
 // of the diagram, and the walkthrough it opened duplicated what presentation
 // mode already does better. The machinery stays for a future surface that

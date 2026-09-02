@@ -95,7 +95,7 @@
         },
         "illustration": {
           "type": "object",
-          "description": "Optional storyboard image for this frame. Written by the storyboard sub-flow, not by hand.",
+          "description": "Optional image for this slide. Written by the storyboard sub-flow, not by hand.",
           "additionalProperties": true,
           "properties": {
             "url": { "type": "string" },

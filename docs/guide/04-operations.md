@@ -23,9 +23,9 @@ file is git-ignored, and the service-role key is never written to disk and
 never pasted into a session
 ([adapter-contract.md §"Secrets"](../../references/adapter-contract.md)).
 
-A chat bot holding only the published key can therefore answer questions
-and link to cells, and cannot change anything, without anyone having to
-remember that rule.
+The Slack bot, holding only the published key, can therefore answer
+questions and link to cells, and cannot change anything, without anyone
+having to remember that rule.
 
 ## 2. The schema
 
