@@ -143,6 +143,13 @@ jobs:
       # has 17; its binaries go first on PATH so the pg_wrapper cannot pick 16.
       - name: Install the Postgres 17 client
         run: |
+          # The runner's PGDG source is pinned to the 16 component, so the
+          # full repository line goes in beside it.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc > /dev/null
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg-all.list > /dev/null
           sudo apt-get update && sudo apt-get install -y postgresql-client-17
           echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
           /usr/lib/postgresql/17/bin/pg_dump --version
