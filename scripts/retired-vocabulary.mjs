@@ -64,9 +64,9 @@ export const RENAME_MAP = Object.freeze(
       is: ['cell_dependencies'],
       migrations: ['21000103000000'],
       retired: ['cell_trigger'],
-      // Not `trigger` alone: a trigger is a LIVE domain term here — the drawn
-      // kind of dependency, `kind = 'trigger'`, defined in CONTEXT.md. The
-      // table is what was renamed, not the concept.
+      // Not `trigger` alone: a database trigger (`cells_validate_path_match`)
+      // is a live subject in these documents, and the kind value that carried
+      // the word has its own row below.
       copy: ['cell trigger', 'cell triggers'],
     },
     {
@@ -132,6 +132,18 @@ export const RENAME_MAP = Object.freeze(
       // a guard teaches people to route around it.
       retired: ['propositions'],
       copy: ['propositions'],
+    },
+    {
+      // Values, not identifiers: the two `cell_dependencies.kind` values were
+      // renamed and the `needs` rows turned around (source and target swapped)
+      // because `enables` reads source-first and `needs` did not. Not a copy
+      // word and not an identifier fragment — `scripts/check-dependency-kinds.mjs`
+      // sweeps the code-span form through every rulebook tree instead.
+      was: ["cell_dependencies.kind = 'trigger'", "cell_dependencies.kind = 'needs'"],
+      is: ["cell_dependencies.kind = 'leads_to'", "cell_dependencies.kind = 'enables'"],
+      migrations: ['21000114000000'],
+      retired: [],
+      copy: [],
     },
   ].map((row) =>
     Object.freeze({

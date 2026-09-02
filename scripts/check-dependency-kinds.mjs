@@ -3,11 +3,11 @@
  * The dependency vocabulary the documents teach, against the one the database
  * enforces.
  *
- * `references/data-model.md` called the two `cell_dependencies.kind` values
- * `leads_to` and `enables`. The column has never accepted either. An agent
- * that trusted the normative reference — which is what normative means —
- * wrote a value the CHECK constraint refused, and five more reference docs
- * repeated the same two words downstream.
+ * The two `cell_dependencies.kind` values are `leads_to` and `enables` since
+ * 21000114000000. Before that the docs and the column disagreed for weeks —
+ * the normative reference taught words the CHECK constraint refused, and an
+ * agent that trusted it wrote a call that could not land. This file is the
+ * check that keeps the two from drifting again, in either direction.
  *
  * So two assertions, mirroring check-read-surface.mjs:
  *
@@ -15,11 +15,12 @@
  *      the schema's CHECK constraint states the values; they must be the same
  *      set, in both directions.
  *
- *   2. THE RETIRED SPELLING. The wrong words had spread into slice, audit and
- *      whatif references, where no enum row exists to compare against. So no
- *      rulebook document may contain them at all. `enables` is an ordinary
- *      English verb, so only its code-span form (`` `enables` ``) counts;
- *      `leads_to` is not English and counts anywhere.
+ *   2. THE RETIRED SPELLING. The words the column no longer accepts —
+ *      `trigger` and `needs`, see `RETIRED` — may not appear as code spans in
+ *      any document an agent or a reader follows: the references, the skills,
+ *      the agents, and the guides. Prose is left alone (a database trigger is
+ *      a legitimate subject; "a slice needs a cell" is English), which is why
+ *      the subject is the code span and not the word.
  *
  * SOURCE OF TRUTH: `supabase/generated/portable-core.generated.sql`, not the
  * migrations directly. It is generated FROM the migrations, and CI runs
@@ -28,9 +29,9 @@
  * What it buys is a single flat file instead of a replay: reading the
  * constraint out of the migrations means ordering 20-odd files and tracking
  * drop/re-add across a table rename, and a check that reimplements migration
- * replay is a check with its own bugs. The parse below insists on exactly one
- * definition, so a future migration that redefines the constraint fails here
- * loudly rather than being read stale.
+ * replay is a check with its own bugs. The LAST definition of the constraint
+ * in that file is the one a fresh database ends up with, so it is the one
+ * read — `enforcedKinds` says why.
  *
  *   node scripts/check-dependency-kinds.mjs
  */
@@ -43,8 +44,12 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SCHEMA = 'supabase/generated/portable-core.generated.sql'
 const DATA_MODEL = 'references/data-model.md'
 
-/** The rulebook trees the canvas agent and the IDE skills both read. */
-const RULEBOOK = ['references', 'skills']
+/**
+ * Every tree a reader or an agent takes instructions from. `agents/` was
+ * missing at first, and the impact tracer kept walking "incoming `needs`"
+ * edges for a whole release after the edges had turned around.
+ */
+const RULEBOOK = ['references', 'skills', 'agents', 'docs/guide', 'docs/engineering']
 
 /**
  * Retired kind words, and what the database calls them instead.

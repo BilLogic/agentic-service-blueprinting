@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import {
   ArrowDown,
   ArrowLeft,
-  ArrowLeftRight,
   ArrowRight,
   ArrowUp,
   Plus,
@@ -28,13 +27,13 @@ type SelectHandlers = {
   onTechSelect: (cellId: string, techItem: string) => void
 }
 
-type RowDirection = 'prev' | 'next' | 'both' | 'up' | 'down' | 'related'
+type RowDirection = 'prev' | 'next' | 'up' | 'down' | 'related'
 
 /** Indents wrapped detail lines under the label: DirectionIcon width (size-3, 12px) + the row's 7px gap. */
 const detailIndentClass = 'pl-[19px]'
 
 /** Which list(s) a connection came from — drives the direction glyph. */
-type RowFlow = 'in' | 'out' | 'both'
+type RowFlow = 'in' | 'out'
 
 function resolveRowDirection(
   connection: BlueprintCellConnection,
@@ -48,7 +47,6 @@ function resolveRowDirection(
       ? 'up'
       : 'down'
   }
-  if (flow === 'both') return 'both'
   return flow === 'in' ? 'prev' : 'next'
 }
 
@@ -60,8 +58,6 @@ function DirectionIcon({ direction }: { direction: RowDirection }) {
       return <ArrowUp className={iconClass} aria-hidden />
     case 'down':
       return <ArrowDown className={iconClass} aria-hidden />
-    case 'both':
-      return <ArrowLeftRight className={iconClass} aria-hidden />
     case 'prev':
       return <ArrowLeft className={iconClass} aria-hidden />
     case 'next':
@@ -208,26 +204,15 @@ export function CellDependencySections({
     (connection) => connection.linkKind === 'leads_to',
   )
 
-  const enablesById = new Map<
-    string,
-    { connection: BlueprintCellConnection; flow: RowFlow }
-  >()
-  for (const connection of connections.incoming) {
-    if (connection.linkKind !== 'enables') continue
-    if (!enablesById.has(connection.triggerId)) {
-      enablesById.set(connection.triggerId, { connection, flow: 'in' })
-    }
-  }
-  for (const connection of connections.outgoing) {
-    if (connection.linkKind !== 'enables') continue
-    const existing = enablesById.get(connection.triggerId)
-    if (existing) {
-      existing.flow = 'both'
-    } else {
-      enablesById.set(connection.triggerId, { connection, flow: 'out' })
-    }
-  }
-  const enables = [...enablesById.values()]
+  // The recorded kind, split by end the way the drawn kind is. One group for
+  // both ends read "Enables › A" at the target, i.e. as this cell enabling A —
+  // the inversion the rename existed to end. Each end gets its own word.
+  const enabledBy = connections.incoming.filter(
+    (connection) => connection.linkKind === 'enables',
+  )
+  const enables = connections.outgoing.filter(
+    (connection) => connection.linkKind === 'enables',
+  )
 
   const linkedTechIds = new Set(
     [...connections.incoming, ...connections.outgoing].flatMap((connection) =>
@@ -241,6 +226,7 @@ export function CellDependencySections({
   if (
     follows.length === 0 &&
     leadsTo.length === 0 &&
+    enabledBy.length === 0 &&
     enables.length === 0 &&
     remainingTech.length === 0
   ) {
@@ -281,13 +267,25 @@ export function CellDependencySections({
           ))}
         </DependencyGroup>
       ) : null}
+      {enabledBy.length > 0 ? (
+        <DependencyGroup title="Enabled by">
+          {enabledBy.map((connection) => (
+            <DependencyRow
+              key={`enabled-by:${connection.triggerId}`}
+              connection={connection}
+              direction={direction(connection, 'in')}
+              {...handlers}
+            />
+          ))}
+        </DependencyGroup>
+      ) : null}
       {enables.length > 0 ? (
         <DependencyGroup title="Enables">
-          {enables.map(({ connection, flow }) => (
+          {enables.map((connection) => (
             <DependencyRow
               key={`enables:${connection.triggerId}`}
               connection={connection}
-              direction={direction(connection, flow)}
+              direction={direction(connection, 'out')}
               {...handlers}
             />
           ))}

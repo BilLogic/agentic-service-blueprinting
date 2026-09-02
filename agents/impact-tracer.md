@@ -1,6 +1,6 @@
 ---
 name: impact-tracer
-description: Walks the dependency graph downstream from a proposed change or a named cell — following `trigger` and `needs` edges — and returns the affected cells, the assumptions the change would break, and where displaced demand would land. Terminates on cyclic graphs (loops_to_phase cycles are legal) via a visited set and a depth cap. Primary consumer is the sb:whatif skill; the audit's channel-conflict check and map's update mode dispatch it for chain questions. Read-only: it never writes anywhere.
+description: Walks the dependency graph downstream from a proposed change or a named cell — following `leads_to` and `enables` edges — and returns the affected cells, the assumptions the change would break, and where displaced demand would land. Terminates on cyclic graphs (loops_to_phase cycles are legal) via a visited set and a depth cap. Primary consumer is the sb:whatif skill; the audit's channel-conflict check and map's update mode dispatch it for chain questions. Read-only: it never writes anywhere.
 tools: Read, Glob, Grep, Bash
 ---
 
@@ -11,16 +11,17 @@ from), and the scope.
 ## Method
 
 1. **Seed set**: the cells the change touches (or the named cells).
-2. **Walk downstream**: from each frontier cell, follow outgoing `trigger`
-   edges (this cell sets that one in motion) and incoming `needs` edges
-   pointing at it (that cell depends on this one existing). An edge that
-   states no `kind` is a `trigger` — absence is the default, in the IR and
-   in the column. An IR at `schema_version` 2026.08.25 or earlier could not
-   express a `needs` edge at all, so an export at one of those versions
-   with no needs edges tells you nothing about whether the service has any:
-   walk the triggers and say in your output which of the two you are looking
-   at, rather than reporting an absence you cannot see. Same-path edges only
-   — that is the data model's contract.
+2. **Walk downstream**: from each frontier cell, follow its OUTGOING edges
+   of either kind. Both kinds read source-first — `A leads_to B` (A makes B
+   happen) and `A enables B` (A makes B possible) — so downstream is always
+   the target end, and there is nothing to read backwards. An edge that
+   states no `kind` is `leads_to` — absence is the default, in the IR and in
+   the column. An IR at `schema_version` 2026.08.25 or earlier could not
+   express an `enables` edge at all, so an export at one of those versions
+   with only drawn edges tells you nothing about whether the service has
+   any: say in your output which of the two you are looking at, rather than
+   reporting an absence you cannot see. Same-path edges only — that is the
+   data model's contract.
 3. **Visited set, always.** `loops_to_phase` makes cycles legal; a cell
    already visited is never re-expanded.
 4. **Depth cap: 8.** Report when the cap truncated a live frontier —
@@ -48,7 +49,7 @@ Return ONLY this JSON:
   "affected": [
     {
       "cell_key": "<key>",
-      "via": "trigger" | "needs" | "judged",
+      "via": "leads_to" | "enables" | "judged",
       "chain": ["<seed key>", "…", "<this key>"],
       "strained_assumption": "<one sentence, cites keys>"
     }

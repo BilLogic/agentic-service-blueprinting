@@ -579,15 +579,16 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
                 rep.error(tjp, f"missing required field '{field}'")
         source = check_cell_ref(trigger.get("source"), f"{tjp}.source", rep) if "source" in trigger else None
         target = check_cell_ref(trigger.get("target"), f"{tjp}.target", rep) if "target" in trigger else None
-        # Absent is 'trigger' — the column default, and what every edge
+        # Absent is 'leads_to' — the column default, and what every edge
         # authored before the kind existed already meant.
         kind = trigger.get("kind", DEFAULT_DEPENDENCY_KIND)
         if kind not in DEPENDENCY_KINDS:
             rep.error(
                 f"{tjp}.kind",
-                f"{kind!r} is not one of {list(DEPENDENCY_KINDS)} — 'trigger' is the "
-                "temporal arrow (and the default when the field is absent); 'needs' is "
-                "the functional dependency, which renders in the cell panel only",
+                f"{kind!r} is not one of {list(DEPENDENCY_KINDS)} — 'leads_to' makes "
+                "the target happen and draws an arrow (the default when the field is "
+                "absent); 'enables' makes it possible and renders in the cell panel "
+                "only. Both read source-first",
             )
             kind = DEFAULT_DEPENDENCY_KIND
         if source is None or target is None:

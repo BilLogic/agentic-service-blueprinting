@@ -1121,6 +1121,63 @@ for key, digest in live.items():
 PYVERIFY
 pass "migrate-signoff (signed scenarios re-verify after migration)"
 
+# The turn itself, end to end. No fixture before 2026.08.26 can carry a `needs`
+# edge and the current fixture already says `enables`, so the one branch of
+# to_2026_09_01 that moves authored content — swapping the ends of a `needs`
+# edge — ran on zero edges until this test built its own input: the current
+# fixture stamped 2026.08.31 with its `enables` edge written the old way round.
+# Migrating it must land on the current fixture exactly, and a workspace that
+# had signed that scenario must NOT be re-anchored across the turn — the
+# sign-off stays stale, and the report says why — while nothing else in the
+# chain is refused.
+python3 - "$SAMPLE" "$TMP" "$REPO_ROOT" <<'PYTURN'
+import json, pathlib, sys
+sample, tmp, repo = sys.argv[1], sys.argv[2], sys.argv[3]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+doc = json.load(open(sample, encoding="utf-8"))
+doc["schema_version"] = "2026.08.31"
+turned = 0
+for phase in doc["service"]["phases"]:
+    for scenario in phase["scenarios"]:
+        for path in scenario["paths"]:
+            for edge in path.get("triggers", []):
+                if edge.get("kind") == "enables":
+                    edge["kind"] = "needs"
+                    edge["source"], edge["target"] = edge["target"], edge["source"]
+                    turned += 1
+assert turned == 1, f"expected the fixture to carry exactly one enables edge, found {turned}"
+json.dump(doc, open(f"{tmp}/turn-me.json", "w", encoding="utf-8"), indent=2)
+before = migrate_ir.scenario_hashes(doc)
+signed = {key: {"status": "signed_off", "content_hash": digest,
+                "signed_at": "2026-08-31T09:00:00Z", "signed_by": "bill"}
+          for key, digest in before.items()}
+json.dump({"schema_version": "2026.08.31", "ir_path": "turn-me.json", "scenarios": signed},
+          open(f"{tmp}/turn-workspace.json", "w", encoding="utf-8"), indent=2)
+PYTURN
+python3 "$MIGRATE" "$TMP/turn-me.json" --workspace "$TMP/turn-workspace.json" --write \
+  > "$TMP/migrate-turn.out" 2>&1 \
+  || fail "migrate-turn: migration failed — $(cat "$TMP/migrate-turn.out")"
+grep -q "2026.08.31 -> 2026.09.01" "$TMP/migrate-turn.out" \
+  || fail "migrate-turn: the chain skipped the kinds step — $(cat "$TMP/migrate-turn.out")"
+grep -q "re-review and re-sign" "$TMP/migrate-turn.out" \
+  || fail "migrate-turn: the turned scenario's sign-off was carried across — $(cat "$TMP/migrate-turn.out")"
+python3 - "$TMP" "$SAMPLE" "$REPO_ROOT" <<'PYTURNED'
+import json, pathlib, sys
+tmp, sample, repo = sys.argv[1], sys.argv[2], sys.argv[3]
+sys.path.insert(0, str(pathlib.Path(repo) / "scripts"))
+import migrate_ir
+migrated = json.load(open(f"{tmp}/turn-me.json", encoding="utf-8"))
+current = json.load(open(sample, encoding="utf-8"))
+assert migrated == current, "turning the needs edge around did not land on the current fixture"
+workspace = json.load(open(f"{tmp}/turn-workspace.json", encoding="utf-8"))
+after = migrate_ir.scenario_hashes(migrated)
+for key, entry in workspace["scenarios"].items():
+    assert entry["content_hash"] != after[key], f"{key}: re-anchored across a step that moved its content"
+    assert entry["signed_by"] == "bill", f"{key}: the stale sign-off was rewritten instead of left alone"
+PYTURNED
+pass "migrate-turn (a needs edge turns around, and its sign-off is not carried across)"
+
 # A scenario hand-edited after sign-off carries a hash that matches neither
 # side of the bump. It was de-signed before the migration ran, so re-anchoring
 # it would launder an unreviewed edit into a signed one: report and leave it.

@@ -219,10 +219,16 @@ export const LABEL_COLUMNS = Object.freeze(
         "The same value from the other end — `kind = 'leads_to'` leaving, and here the label IS the value minus its underscore. What the pair carries that `kind` cannot is the direction, which is why the arriving end keeps a word of its own.",
     },
     {
+      label: 'Enabled by',
+      names: ['cell_dependencies.kind'],
+      because:
+        'The recorded kind, arriving — `kind = \'enables\'` with this cell as the target. The same one-row-two-ends rule as Follows: without its own word, a reader standing at the target reads "Enables › A" as this cell enabling A, the exact inversion the rename ended.',
+    },
+    {
       label: 'Enables',
       names: ['cell_dependencies.kind'],
       because:
-        "The word IS the value — `kind = 'enables'`, the recorded dependency that never draws — and `kind` is the name of the place holding it. It needs no second label for the other end: `enables` reads source-first whichever end you stand at.",
+        "The word IS the value — `kind = 'enables'` leaving, the recorded dependency that never draws — and `kind` is the name of the place holding it.",
     },
     {
       label: 'Tech in this step',

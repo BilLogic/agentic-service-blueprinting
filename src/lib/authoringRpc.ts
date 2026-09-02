@@ -468,7 +468,7 @@ export function reorderLanes(
 /**
  * Add or update one dependency between two cells in the same version.
  *
- * `trigger` draws an arrow; `needs` records a dependency that deliberately
+ * `leads_to` draws an arrow; `enables` records a dependency that deliberately
  * does not — a blueprint where every relationship is an arrow is unreadable,
  * and most "this depends on that" facts are not handoffs.
  */

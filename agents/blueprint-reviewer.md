@@ -85,7 +85,7 @@ what the cited cells actually contain.
   frame, another slice, or nowhere is a finding. This is the main event —
   work through frames one at a time rather than forming a general impression.
 - **Invented interaction.** A journey frame may only pair the actor's cell
-  with cells the blueprint records a `trigger` between. A companion cell
+  with cells the blueprint records a `leads_to` edge between. A companion cell
   present because it "seems related" is an invention wearing a citation.
   Check the IR's `triggers`, not your sense of what usually happens.
 - **Verbatim excerpts.** Grep the slice file and its doc for sentences

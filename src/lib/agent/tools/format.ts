@@ -216,7 +216,7 @@ export function formatCompareDiff(
     (slot) => slot.verdict === 'shared' && !isDetailOnlyCompareSlot(slot),
   ).length
   lines.push(
-    `${shared} shared slots. Note: triggers/needs edges are not compared.`,
+    `${shared} shared slots. Note: dependency edges (leads_to, enables) are not compared.`,
   )
   return lines.join('\n')
 }

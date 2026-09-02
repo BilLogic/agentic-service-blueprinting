@@ -4292,36 +4292,15 @@ $version$;
 -- ── What could go wrong, and what stops it ────────────────────────────────
 --
 -- `cell_dependencies_source_target_kind_unique` covers (source, target, kind).
--- Turning a `needs` edge around moves it onto a key that another row might
--- already hold — only if two `needs` rows are mirror images of each other,
--- which is a contradiction nobody can have meant. That is asserted before any
--- row moves, so a database holding one fails here instead of losing an edge to
--- a silent conflict.
+-- Turning a `needs` edge around cannot collide: the turned row's kind is
+-- `enables`, which no row carries before this file runs (the old CHECK allowed
+-- only `trigger` and `needs`), and a mutual pair (A,B,needs) + (B,A,needs)
+-- turns into (B,A,enables) + (A,B,enables) — two distinct keys. An earlier
+-- draft asserted against exactly that pair, which would have stranded a legal
+-- database at 2026.08.31 over a collision that cannot happen.
 --
 -- The words "temporal" and "functional" go with the rename. They named the
 -- distinction without ever making it usable.
-
-do $$
-declare
-  v_mirrored int;
-begin
-  select count(*) into v_mirrored
-  from public.cell_dependencies a
-  join public.cell_dependencies b
-    on b.kind = 'needs'
-   and b.source_cell_id = a.target_cell_id
-   and b.target_cell_id = a.source_cell_id
-  where a.kind = 'needs';
-
-  if v_mirrored > 0 then
-    raise exception
-      '% needs edge(s) are mirror images of each other. Turning them around '
-      'would collide on cell_dependencies_source_target_kind_unique, and a '
-      'pair that both needs the other is a contradiction this migration will '
-      'not resolve by guessing.', v_mirrored;
-  end if;
-end
-$$;
 
 alter table public.cell_dependencies
   drop constraint if exists cell_dependencies_kind_check;
@@ -4349,6 +4328,11 @@ alter table public.cell_dependencies
 
 comment on table public.cell_dependencies is
   'Dependency from one cell to another. kind: leads_to (makes it happen) | enables (makes it possible). Both read source-first and upstream-first.';
+-- The column comment was set by 20260729120000 and followed the column through
+-- the table rename; left alone it would keep teaching the retired words and
+-- the retired direction to every schema reader.
+comment on column public.cell_dependencies.kind is
+  'leads_to = makes it happen (draws an arrow) | enables = makes it possible (panel only). Both read source-first.';
 
 -- The literals inside `set_cell_dependency` — its `kind` default and the
 -- guard that rejects an unknown kind.
@@ -4419,3 +4403,22 @@ begin
   end if;
 end
 $$;
+
+-- ---------------------------------------------------------------------------
+-- The bump. This file changes the shape — the CHECK, the default, the
+-- direction of every `needs` row — so the target has to say so, or a database
+-- that has not run this file is indistinguishable from one that has, and the
+-- 2026.09.01 app draws its `needs` rows the wrong way round without a word.
+-- ---------------------------------------------------------------------------
+
+update public.schema_version
+set version = '2026.09.01',
+    applied_at = now();
+
+do $version$
+begin
+  if not exists (select 1 from public.schema_version where version = '2026.09.01') then
+    raise exception 'schema_version did not take the bump';
+  end if;
+end
+$version$;

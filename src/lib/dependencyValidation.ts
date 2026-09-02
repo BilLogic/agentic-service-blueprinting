@@ -39,14 +39,6 @@ export const DEPENDENCY_KIND_LABELS: Record<DependencyKind, string> = {
   enables: 'Enables',
 }
 
-/** The two directions, for a panel that groups edges by which way they point. */
-export const DEPENDENCY_DIRECTION_LABELS = {
-  /** Edges arriving at this cell — what came before it. */
-  incoming: 'Follows',
-  /** Edges leaving it — what it hands to. */
-  outgoing: 'Leads to',
-} as const
-
 export type DraftDependency = {
   sourceCellId: string
   targetCellId: string | null
