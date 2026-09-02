@@ -95,7 +95,7 @@ export const coverContent: CoverContent = {
           id: 'overview-where',
           heading: 'Where you reach it from',
           paragraphs: [
-            'Four ways to work the same blueprint. The app is where people read, compare, and present. The in-app agent drafts changes in place, using the same write path the interface uses. Agentic tools reach the same rows from an IDE or a terminal — that is where the four skills run. A chat bot — the Slack bot, where one is wired up — answers questions and links back to the exact cell it read.',
+            'Four ways to work the same blueprint. The app is where people read, compare, and present. The in-app agent drafts changes in place, using the same write path the interface uses. Agentic tools reach the same rows from an IDE or a terminal — that is where the four skills run. The Slack bot on top answers questions and links back to the exact cell.',
             'All four sit on one shared context lane, so what any surface reads is what the others wrote. Who may do what follows from the account a surface signs in with, not from which surface it is.',
           ],
           figure: {

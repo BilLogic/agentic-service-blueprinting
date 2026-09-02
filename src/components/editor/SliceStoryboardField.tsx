@@ -17,13 +17,13 @@ import {
 import type { Json } from '@/types/database'
 
 /**
- * The storyboard image for one saved frame.
+ * The image for one saved slide.
  *
- * Only offered on a frame that has been saved, because the image is stored at
- * a path derived from the frame's row id — an unsaved frame has no id, and
+ * Only offered on a slide that has been saved, because the image is stored at
+ * a path derived from the slide's row id — an unsaved slide has no id, and
  * inventing one would leave a file nothing ever points at. That is not a
- * limitation worth working around: the frame is one Save away, and a
- * storyboard for a frame that may still be split or merged is guesswork.
+ * limitation worth working around: the slide is one Save away, and an
+ * image for a slide that may still be split or merged is guesswork.
  *
  * The file is checked before it is sent. Storage enforces the real limits and
  * would reject the same file, but only after the whole thing has crossed the
@@ -32,7 +32,7 @@ import type { Json } from '@/types/database'
  *
  * Upload is an upsert onto the derived path, so replacing an image overwrites
  * it. The `updated_at` stamp written alongside is what busts the CDN cache;
- * without it a replaced storyboard would keep showing the old frame for as
+ * without it a replaced image would keep showing the old one for as
  * long as the edge held it.
  */
 export function SliceStoryboardField({
@@ -41,7 +41,7 @@ export function SliceStoryboardField({
   illustration,
 }: {
   sliceId: string
-  /** `slides.id`. Absent means the frame has never been saved. */
+  /** `slides.id`. Absent means the slide has never been saved. */
   itemId: string | undefined
   illustration: Json | null
 }) {
@@ -114,9 +114,9 @@ export function SliceStoryboardField({
     setBusy(true)
     setProblem(null)
     try {
-      // The row is cleared but the file is left in place: another frame may
+      // The row is cleared but the file is left in place: another slide may
       // point at the same path after a merge, and a delete here would break a
-      // frame nobody asked to remove. Storage is cheap; a blank slide is not.
+      // slide nobody asked to remove. Storage is cheap; a blank slide is not.
       const { error } = await client
         .from('slides')
         .update({ illustration: null })
@@ -134,9 +134,9 @@ export function SliceStoryboardField({
     }
   }
 
-  // Unsaved frame: no control and no explanatory title. The affordance
-  // appears once the frame is saved; a permanent sentence about it on every
-  // draft card was noise repeated per frame.
+  // Unsaved slide: no control and no explanatory title. The affordance
+  // appears once the slide is saved; a permanent sentence about it on every
+  // draft card was noise repeated per slide.
   if (!itemId) return null
 
   return (
@@ -191,7 +191,7 @@ export function SliceStoryboardField({
         ) : (
           <ImagePlus className="size-3" aria-hidden />
         )}
-        {current ? 'Replace storyboard' : 'Add storyboard'}
+        {current ? 'Replace the slide image' : 'Add a slide image'}
       </Button>
 
       {problem ? (
