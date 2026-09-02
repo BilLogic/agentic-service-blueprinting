@@ -4,10 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { getBlueprintFillStyle, PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
 import { PATH_TYPE_LABELS, PATH_TYPE_SHORT_LABELS } from '@/lib/pathTypeTheme'
 import { cn } from '@/lib/utils'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 type PathTypeBadgeProps = {
-  pathType: PathType
+  pathKind: PathKind
   summary?: string | null
   compact?: boolean
   className?: string
@@ -16,20 +16,20 @@ type PathTypeBadgeProps = {
 }
 
 /** Compact badge showing path type (Happy, Unhappy, etc.) on overview path frames. */
-export function PathTypeBadge({
-  pathType,
+export function PathKindBadge({
+  pathKind,
   summary,
   compact = false,
   className,
   style,
   side = 'top',
 }: PathTypeBadgeProps) {
-  const label = PATH_TYPE_SHORT_LABELS[pathType]
+  const label = PATH_TYPE_SHORT_LABELS[pathKind]
 
   return (
     <PathSummaryTooltip
       summary={summary}
-      pathName={PATH_TYPE_LABELS[pathType]}
+      pathName={PATH_TYPE_LABELS[pathKind]}
       side={side}
     >
       <Badge
@@ -46,7 +46,7 @@ export function PathTypeBadge({
         // misses PATH_COLOR_REGISTRY and falls into the hash branch for
         // `alternative` and `named`.
         style={{
-          ...getBlueprintFillStyle(PATH_TYPE_COLORS[pathType]),
+          ...getBlueprintFillStyle(PATH_TYPE_COLORS[pathKind]),
           ...style,
         }}
       >

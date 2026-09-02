@@ -47,10 +47,10 @@ const RAIL_SURFACES: Array<{
  * (SlicesSidebarSection) — unknown types fall into CUSTOM. */
 const SLICE_TYPE_GROUPS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
 
-function sliceTypeGroup(
-  sliceType: string,
+function sliceKindGroup(
+  sliceKind: string,
 ): (typeof SLICE_TYPE_GROUPS)[number] {
-  const type = sliceType.toLowerCase()
+  const type = sliceKind.toLowerCase()
   return SLICE_TYPE_GROUPS.find((group) => group === type) ?? 'custom'
 }
 
@@ -70,7 +70,7 @@ function SliceGroups({
   const groups = SLICE_TYPE_GROUPS.map((type) => ({
     type,
     slices: slices.filter(
-      (slice) => sliceTypeGroup(slice.slice_type) === type,
+      (slice) => sliceKindGroup(slice.kind) === type,
     ),
   })).filter((group) => group.slices.length > 0)
 

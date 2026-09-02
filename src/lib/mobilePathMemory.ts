@@ -1,5 +1,5 @@
 import { pickPreferredPath } from '@/lib/pathSelection'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 /**
  * Which path the phone last showed for each scenario (plan 2026-08-16-002
@@ -52,7 +52,7 @@ export function writeLastViewedPath(scenarioId: string, pathId: string): void {
  */
 export function resolveDefaultPathId(
   stored: string | null,
-  paths: readonly { id: string; name: string; path_type: PathType }[],
+  paths: readonly { id: string; name: string; kind: PathKind }[],
 ): string | null {
   if (stored !== null && paths.some((path) => path.id === stored)) return stored
   return pickPreferredPath(paths)?.id ?? null

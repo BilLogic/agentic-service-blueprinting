@@ -242,7 +242,7 @@ const SCENARIOS = [
     summary:
       'The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.',
     order: 1,
-    viewType: 'single',
+    layout: 'single',
     navViewType: 'single',
     spineLane: 'owner',
     spineChain: true,
@@ -251,7 +251,7 @@ const SCENARIOS = [
         ordinal: 1,
         key: 'FIRSTLOOK',
         name: 'A first look',
-        path_type: 'happy',
+        kind: 'happy',
         summary:
           'Repository to running app to decision, with no account, no key, and no database anywhere.',
       },
@@ -368,7 +368,7 @@ const SCENARIOS = [
     summary:
       'The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.',
     order: 1,
-    viewType: 'side-by-side',
+    layout: 'stacked',
     navViewType: 'stacked',
     spineLane: 'owner',
     primary: true,
@@ -377,7 +377,7 @@ const SCENARIOS = [
         ordinal: 1,
         key: 'DOCS',
         name: 'From your documents',
-        path_type: 'happy',
+        kind: 'happy',
         summary:
           'The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.',
         // No crosswalk to translate — that column belongs to the other path.
@@ -387,7 +387,7 @@ const SCENARIOS = [
         ordinal: 2,
         key: 'DIAGRAM',
         name: 'From someone else’s diagram',
-        path_type: 'alternative',
+        kind: 'variant',
         summary:
           'The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.',
         // No document corpus to read — that column belongs to the other path.
@@ -647,7 +647,7 @@ const SCENARIOS = [
     summary:
       'sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.',
     order: 1,
-    viewType: 'side-by-side',
+    layout: 'stacked',
     navViewType: 'stacked',
     spineLane: 'owner',
     paths: [
@@ -655,14 +655,14 @@ const SCENARIOS = [
         ordinal: 1,
         key: 'TRIAGED',
         name: 'Findings triaged',
-        path_type: 'happy',
+        kind: 'happy',
         summary: 'Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.',
       },
       {
         ordinal: 2,
         key: 'REOPENS',
         name: 'A critical finding reopens',
-        path_type: 'unhappy',
+        kind: 'variant',
         summary:
           'A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.',
       },
@@ -825,7 +825,7 @@ const SCENARIOS = [
     summary:
       'sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.',
     order: 2,
-    viewType: 'single',
+    layout: 'single',
     navViewType: 'single',
     spineLane: 'owner',
     paths: [
@@ -833,7 +833,7 @@ const SCENARIOS = [
         ordinal: 1,
         key: 'TRACED',
         name: 'Traced before it lands',
-        path_type: 'happy',
+        kind: 'happy',
         summary:
           'Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.',
       },
@@ -945,7 +945,7 @@ const SCENARIOS = [
     summary:
       'sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.',
     order: 3,
-    viewType: 'single',
+    layout: 'single',
     navViewType: 'single',
     spineLane: 'owner',
     paths: [
@@ -953,7 +953,7 @@ const SCENARIOS = [
         ordinal: 1,
         key: 'READOUT',
         name: 'Stakeholder readout',
-        path_type: 'happy',
+        kind: 'happy',
         summary: 'From “show me my part” to a presented, exportable slice that still points at its cells.',
       },
     ],
@@ -1077,7 +1077,7 @@ const SCENARIOS = [
     summary:
       'The service moved and the board did not: resume the workspace, edit what changed, re-sign it, re-import. A blueprint is maintained, not delivered.',
     order: 1,
-    viewType: 'single',
+    layout: 'single',
     navViewType: 'single',
     spineLane: 'owner',
     spineChain: true,
@@ -1086,7 +1086,7 @@ const SCENARIOS = [
         ordinal: 1,
         key: 'UPDATE',
         name: 'Update what changed',
-        path_type: 'happy',
+        kind: 'happy',
         summary:
           'The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.',
       },
@@ -1203,10 +1203,10 @@ function assertStructure(scenarios) {
     assertLaneRoster(scenario)
     if (scenario.primary) primaries += 1
     for (const path of scenario.paths) {
-      // Path identity is `path_type:name` (src/lib/pathColorTheme.ts), and the
+      // Path identity is `kind:name` (src/lib/pathColorTheme.ts), and the
       // overview path filter keys its options on the same composite — two paths
       // sharing it merge into one row. Uniqueness is a property, not a habit.
-      const key = `${path.path_type}:${path.name}`
+      const key = `${path.kind}:${path.name}`
       if (seenPathNames.has(key)) {
         throw new Error(
           `path identity "${key}" is used by both ${seenPathNames.get(key)} and ${scenario.key} — path names must be unique across the service`,
@@ -1369,7 +1369,7 @@ function buildScenario(scenario) {
         name: path.name,
         summary: path.summary,
         note: null,
-        path_type: path.path_type,
+        kind: path.kind,
       },
       lanes,
       steps: pathSteps,
@@ -1477,7 +1477,7 @@ function buildDemoSlices() {
       description:
         'One pass down the blueprint owner’s own lane through Map your service, on the documents route — every moment where a person, rather than the pipeline, has to decide something.',
       actor: 'Blueprint owner',
-      slice_type: 'journey',
+      kind: 'journey',
       origin: 'generated',
       locale: 'en',
       position: 1,
@@ -1520,7 +1520,7 @@ function buildDemoSlices() {
       description:
         'One column of Map your service — “Import and verify” — read down every lane at once: the step where a file in a repo becomes rows in a database, and the step with the most that can go quietly wrong.',
       actor: null,
-      slice_type: 'step',
+      kind: 'step',
       origin: 'generated',
       locale: 'en',
       position: 2,
@@ -1551,7 +1551,7 @@ function buildDemoSlices() {
       description:
         'One lane of Audit the check roster — the subagent fleet, on the path where findings get triaged — read left to right: the half of the audit nobody watches, and the half that decides whether its verdicts can be trusted.',
       actor: 'Subagent fleet',
-      slice_type: 'lane',
+      kind: 'lane',
       origin: 'generated',
       locale: 'en',
       position: 3,
@@ -1674,7 +1674,7 @@ export type SampleScenario = {
   summary: string
   position: number
   /** Client-vocabulary view type for the offline nav. */
-  view_type: 'single' | 'stacked'
+  layout: 'single' | 'stacked'
   /** Exactly one scenario is the compare/slice demo anchor — see SAMPLE_SCENARIO_ID. */
   primary?: boolean
   path_ids: string[]
@@ -1690,7 +1690,7 @@ ${built
         name: scenario.name,
         summary: scenario.summary,
         position: scenario.order,
-        view_type: scenario.navViewType,
+        layout: scenario.navViewType,
         ...(scenario.primary ? { primary: true } : {}),
         path_ids: blueprints.map((bp) => bp.path.id),
       })},`,
@@ -1805,7 +1805,7 @@ where id = ${q(phaseId(phase.ordinal))};`,
   )
   .join('\n')}
 
-insert into public.scenarios (id, phase_id, name, summary, position, view_type) values
+insert into public.scenarios (id, phase_id, name, summary, position, layout) values
 ${sqlRows(
   built.map(({ scenario, id }) => [
     q(id),
@@ -1813,12 +1813,12 @@ ${sqlRows(
     q(scenario.name),
     q(scenario.summary),
     String(scenario.order),
-    q(scenario.viewType),
+    q(scenario.layout),
   ]),
 )};
 `)
 
-seedParts.push(`insert into public.paths (id, scenario_id, name, summary, note, path_type) values
+seedParts.push(`insert into public.paths (id, scenario_id, name, summary, note, kind) values
 ${sqlRows(
   allBlueprints.map(({ scenarioId, bp }) => [
     q(bp.path.id),
@@ -1826,7 +1826,7 @@ ${sqlRows(
     q(bp.path.name),
     q(bp.path.summary),
     q(bp.path.note),
-    q(bp.path.path_type),
+    q(bp.path.kind),
   ]),
 )};
 `)
@@ -1955,12 +1955,12 @@ ${sqlRows(
 
 // Analysis tier: the same demo slices the TS fixture ships, so a seeded
 // database and a no-DB session read identical content.
-seedParts.push(`insert into public.slices (id, service_id, slice_type, title, description, actor, locale, origin, position) values
+seedParts.push(`insert into public.slices (id, service_id, kind, title, description, actor, locale, origin, position) values
 ${sqlRows(
   demoSlices.map(({ slice }) => [
     q(slice.id),
     q(slice.service_id),
-    q(slice.slice_type),
+    q(slice.kind),
     q(slice.title),
     q(slice.description),
     q(slice.actor),

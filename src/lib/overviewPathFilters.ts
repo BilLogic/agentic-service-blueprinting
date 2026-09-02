@@ -2,7 +2,7 @@ import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 import type { PathListItem } from '@/lib/pathSelection'
 import { getPathColorKey } from '@/lib/pathColorTheme'
 
-export function getOverviewPathKey(path: Pick<PathListItem, 'path_type' | 'name'>): string {
+export function getOverviewPathKey(path: Pick<PathListItem, 'kind' | 'name'>): string {
   return getPathColorKey(path)
 }
 

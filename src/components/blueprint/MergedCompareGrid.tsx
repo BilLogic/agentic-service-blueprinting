@@ -261,7 +261,7 @@ export function MergedCompareGrid({
           trigger.source_cell_id,
           trigger.target_cell_id,
           raw?.kind ?? 'leads_to',
-          raw?.label ?? '',
+          raw?.name ?? '',
         ].join(' | ')
         if (drawnEdges.has(key)) return false
         drawnEdges.add(key)
@@ -470,7 +470,7 @@ function MergedSectionFrame({
             key={path.id}
             name={`${shortLabels.get(path.id) ?? ''} ${path.name}`.trim()}
             summary={path.summary}
-            pathType={path.path_type}
+            pathKind={path.kind}
             compact={compact}
           />
         ))}
@@ -693,7 +693,7 @@ function MergedSubCellBlock({
               pathId: blueprint.path.id,
               pathName: blueprint.path.name,
               pathSummary: blueprint.path.summary,
-              pathType: blueprint.path.path_type,
+              pathKind: blueprint.path.kind,
             }
           : undefined
       }

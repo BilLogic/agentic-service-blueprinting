@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 export type PathColorInput = {
-  path_type: PathType
+  kind: PathKind
   name: string
 }
 
@@ -27,11 +27,10 @@ export type PathColorInput = {
  * family would have had to be read at a different step from every other path
  * type.
  */
-export const PATH_TYPE_COLORS: Record<PathType, string> = {
+export const PATH_TYPE_COLORS: Record<PathKind, string> = {
   happy: 'var(--color-green-1100)',
-  unhappy: 'var(--color-orange-1100)',
+  variant: 'var(--color-blue-1100)',
   exception: 'var(--color-red-1100)',
-  alternative: 'var(--color-blue-1100)',
 }
 
 /**
@@ -39,16 +38,15 @@ export const PATH_TYPE_COLORS: Record<PathType, string> = {
  * the badge, so a stroke reads as related to the label it belongs to without
  * being the same value. Same family per path type as `PATH_TYPE_COLORS`.
  */
-export const PATH_TYPE_ARROW_COLORS: Record<PathType, string> = {
+export const PATH_TYPE_ARROW_COLORS: Record<PathKind, string> = {
   happy: 'var(--color-green-1000)',
-  unhappy: 'var(--color-orange-1000)',
+  variant: 'var(--color-blue-1000)',
   exception: 'var(--color-red-1000)',
-  alternative: 'var(--color-blue-1000)',
 }
 
 /** Stable identity for path colors across scenarios (same type + name → same color). */
 export function getPathColorKey(path: PathColorInput): string {
-  return `${path.path_type}:${path.name}`
+  return `${path.kind}:${path.name}`
 }
 
 /**
@@ -89,14 +87,19 @@ const step = (family: string, weight: 1000 | 1100) =>
  */
 export const PATH_COLOR_REGISTRY: Record<string, string> = {
   'happy:Happy Path': PATH_TYPE_COLORS.happy,
-  'unhappy:Sad Path': PATH_TYPE_COLORS.unhappy,
-  'alternative:Alternate Path': PATH_TYPE_COLORS.alternative,
+  // Two registry entries, one kind: `unhappy` and `alternative` collapsed
+  // into `variant` at 21000116000000, and the NAME is what still separates a
+  // sad path from an alternate one. That was always the design — the registry
+  // keys on kind AND name, and everything unregistered hashes into the open
+  // set below.
+  'variant:Sad Path': PATH_TYPE_COLORS.variant,
+  'variant:Alternate Path': PATH_TYPE_COLORS.variant,
 }
 
 export const PATH_ARROW_COLOR_REGISTRY: Record<string, string> = {
   'happy:Happy Path': PATH_TYPE_ARROW_COLORS.happy,
-  'unhappy:Sad Path': PATH_TYPE_ARROW_COLORS.unhappy,
-  'alternative:Alternate Path': PATH_TYPE_ARROW_COLORS.alternative,
+  'variant:Sad Path': PATH_TYPE_ARROW_COLORS.variant,
+  'variant:Alternate Path': PATH_TYPE_ARROW_COLORS.variant,
 }
 
 /** Hash fallback for a path with no registry entry. Step 1100, the badge weight. */
@@ -115,11 +118,10 @@ const EXTENDED_PATH_COLORS = PATH_NAMED_FAMILIES.map((f) =>
  * dotted blur at overview zoom, longer than ~12px stops repeating within a
  * short segment.
  */
-const PATH_TYPE_DASH: Record<PathType, string | undefined> = {
+const PATH_TYPE_DASH: Record<PathKind, string | undefined> = {
   happy: undefined,
-  unhappy: '7 4',
+  variant: '12 5',
   exception: '2 4',
-  alternative: '12 5',
 }
 
 /**
@@ -152,13 +154,13 @@ const EXTENDED_PATH_DASHES = [
  * would leave colour as the only thing telling them apart.
  */
 export function getPathDashArray(path: PathColorInput): string | undefined {
-  if (path.path_type === 'alternative') {
+  if (path.kind === 'variant') {
     const key = getPathColorKey(path)
     if (!PATH_COLOR_REGISTRY[key]) {
       return EXTENDED_PATH_DASHES[hashKey(key) % EXTENDED_PATH_DASHES.length]
     }
   }
-  return PATH_TYPE_DASH[path.path_type]
+  return PATH_TYPE_DASH[path.kind]
 }
 
 /**
@@ -168,10 +170,10 @@ export function getPathDashArray(path: PathColorInput): string | undefined {
 export function getPathDashArrayFromKey(colorKey: string): string | undefined {
   const separator = colorKey.indexOf(':')
   if (separator === -1) {
-    return PATH_TYPE_DASH[colorKey as PathType] ?? undefined
+    return PATH_TYPE_DASH[colorKey as PathKind] ?? undefined
   }
   return getPathDashArray({
-    path_type: colorKey.slice(0, separator) as PathType,
+    kind: colorKey.slice(0, separator) as PathKind,
     name: colorKey.slice(separator + 1),
   })
 }
@@ -189,12 +191,12 @@ export function getPathColor(path: PathColorInput): string {
   const known = PATH_COLOR_REGISTRY[key]
   if (known) return known
 
-  if (path.path_type === 'alternative') {
+  if (path.kind === 'variant') {
     // Same index the dash is read from, so the pair holds.
     return EXTENDED_PATH_COLORS[hashKey(key) % EXTENDED_PATH_COLORS.length]
   }
 
-  return PATH_TYPE_COLORS[path.path_type]
+  return PATH_TYPE_COLORS[path.kind]
 }
 
 export function getPathArrowColor(path: PathColorInput): string {
@@ -202,11 +204,11 @@ export function getPathArrowColor(path: PathColorInput): string {
   const known = PATH_ARROW_COLOR_REGISTRY[key]
   if (known) return known
 
-  if (path.path_type === 'alternative') {
+  if (path.kind === 'variant') {
     return getPathColor(path)
   }
 
-  return PATH_TYPE_ARROW_COLORS[path.path_type]
+  return PATH_TYPE_ARROW_COLORS[path.kind]
 }
 
 /**

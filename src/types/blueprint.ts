@@ -1,11 +1,11 @@
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 export type BlueprintPath = {
   id: string
   name: string
   summary: string | null
   note: string | null
-  path_type: PathType
+  kind: PathKind
 }
 
 export type BlueprintLane = {
@@ -134,8 +134,8 @@ export type BlueprintCellTrigger = {
   target_cell_id: string
   /** leads_to = makes the target happen, drawn (default); enables = makes it possible, panel only. */
   kind?: 'leads_to' | 'enables'
-  /** Short edge label, e.g. a channel tag like "Email". */
-  label?: string | null
+  /** What this edge is called, e.g. a channel tag like "Email". */
+  name?: string | null
   /** Why-line shown in the cell panel dependencies tab. */
   note?: string | null
 }

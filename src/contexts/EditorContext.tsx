@@ -72,7 +72,7 @@ type EditorContextValue = {
   getScenarioDisplayViewType: (slide: NavItem) => SlideViewType
   setScenarioDisplayViewType: (
     scenarioId: string,
-    viewType: SlideViewType,
+    layout: SlideViewType,
   ) => void
   slidesLoading: boolean
   slidesError: string | null
@@ -339,21 +339,21 @@ export function EditorProvider({ children }: EditorProviderProps) {
     reading view; 'merged' is the comparison lens (the header toggle calls
     it Merged) — session-only, never persisted to the DB.
   */
-  const [viewTypeOverrides, setViewTypeOverrides] = useState<
+  const [layoutOverrides, setLayoutOverrides] = useState<
     Record<string, SlideViewType>
   >({})
 
   const getScenarioDisplayViewType = useCallback(
     (slide: NavItem): SlideViewType =>
-      viewTypeOverrides[slide.id] ?? 'stacked',
-    [viewTypeOverrides],
+      layoutOverrides[slide.id] ?? 'stacked',
+    [layoutOverrides],
   )
 
   const setScenarioDisplayViewType = useCallback(
-    (scenarioId: string, viewType: SlideViewType) => {
-      setViewTypeOverrides((current) => ({
+    (scenarioId: string, layout: SlideViewType) => {
+      setLayoutOverrides((current) => ({
         ...current,
-        [scenarioId]: viewType,
+        [scenarioId]: layout,
       }))
     },
     [],

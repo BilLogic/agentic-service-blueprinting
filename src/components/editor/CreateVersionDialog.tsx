@@ -15,12 +15,12 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPath, duplicatePath } from '@/lib/authoringRpc'
 import {
-  PATH_TYPES,
+  PATH_KINDS,
   PATH_TYPE_LABELS,
   describeVersionOutcome,
   validateDraftVersion,
   type DraftVersion,
-  type PathType,
+  type PathKind,
 } from '@/lib/versionValidation'
 
 export type ExistingVersion = { pathId: string; name: string }
@@ -28,7 +28,7 @@ export type ExistingVersion = { pathId: string; name: string }
 const EMPTY: DraftVersion = {
   mode: 'blank',
   name: '',
-  pathType: 'alternative',
+  pathKind: 'variant',
   sourcePathId: null,
   copyCells: true,
   copyDependencies: true,
@@ -83,14 +83,14 @@ export function CreateVersionDialog({
           ? await duplicatePath(client, {
               sourcePathId: draft.sourcePathId,
               name: draft.name,
-              pathType: draft.pathType,
+              pathKind: draft.pathKind,
               copyCells: draft.copyCells,
               copyDependencies: draft.copyDependencies,
             })
           : await createPath(client, {
               scenarioId,
               name: draft.name,
-              pathType: draft.pathType,
+              pathKind: draft.pathKind,
               laneSourcePathId: draft.sourcePathId,
             })
       invalidateStructure()
@@ -139,14 +139,14 @@ export function CreateVersionDialog({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-foreground">Kind</span>
             <div className="flex flex-wrap gap-1.5">
-              {PATH_TYPES.map((type) => (
+              {PATH_KINDS.map((type) => (
                 <Button
                   key={type}
                   type="button"
                   size="sm"
-                  variant={draft.pathType === type ? 'default' : 'outline'}
+                  variant={draft.pathKind === type ? 'default' : 'outline'}
                   className="h-7 text-xs"
-                  onClick={() => set('pathType', type as PathType)}
+                  onClick={() => set('pathKind', type as PathKind)}
                 >
                   {PATH_TYPE_LABELS[type]}
                 </Button>

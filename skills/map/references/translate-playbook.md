@@ -32,7 +32,7 @@ Write a crosswalk file in the workspace `blueprint/` dir conforming to
 - **N:1 merges**: several source lanes may map to one target lane; each
   mapping gets a `merge_note` explaining how cell content combines.
 - **Columns → steps**, in order.
-- **Variants/branches/boards → paths** with a `path_type` each; a
+- **Variants/branches/boards → paths** with a `kind` each; a
   single-flow source is one happy path.
 - **⚠ REQUIRED — the unmapped bucket**: every source element with no
   mapping goes in `unmapped` with kind, reason, and disposition

@@ -15,14 +15,13 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { createScenario } from '@/lib/authoringRpc'
-import { clientToDbViewType } from '@/lib/viewTypeVocabulary'
 import {
   DEFAULT_LANE_SET,
-  VIEW_TYPE_LABELS,
+  LAYOUT_LABELS,
   MAX_STEP_COUNT,
   MIN_STEP_COUNT,
-  VIEW_TYPES,
-  VIEW_TYPE_HINTS,
+  LAYOUTS,
+  LAYOUT_HINTS,
   laneSetFor,
   validateDraftBlueprint,
   type DraftBlueprint,
@@ -77,9 +76,9 @@ function useLaneSources() {
 const EMPTY_DRAFT: DraftBlueprint = {
   phaseId: null,
   name: '',
-  // DraftBlueprint speaks DB vocabulary (it feeds `createScenario` directly),
-  // so the client default crosses the write seam through the vocabulary map.
-  viewType: clientToDbViewType['stacked'],
+  // One vocabulary now: 21000116000000 retired `side-by-side`/`integrated`,
+  // so the token the client says is the token the column stores.
+  layout: 'stacked',
   laneSourcePathId: null,
   stepCount: 5,
   pathName: 'Happy Path',
@@ -146,7 +145,7 @@ export function CreateBlueprintDialog({
       const created = await createScenario(client, {
         phaseId: draft.phaseId,
         name: draft.name,
-        viewType: draft.viewType,
+        layout: draft.layout,
         laneSourcePathId: draft.laneSourcePathId,
         laneSet: laneSetFor(draft),
         stepCount: draft.stepCount,
@@ -237,21 +236,21 @@ export function CreateBlueprintDialog({
               no business looking different from each other.
             */}
             <div className="flex flex-wrap gap-1.5">
-              {VIEW_TYPES.map((type) => (
+              {LAYOUTS.map((type) => (
                 <Button
                   key={type}
                   type="button"
                   size="sm"
-                  variant={draft.viewType === type ? 'default' : 'outline'}
+                  variant={draft.layout === type ? 'default' : 'outline'}
                   className="h-7 text-xs"
-                  onClick={() => set('viewType', type)}
+                  onClick={() => set('layout', type)}
                 >
-                  {VIEW_TYPE_LABELS[type]}
+                  {LAYOUT_LABELS[type]}
                 </Button>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              {VIEW_TYPE_HINTS[draft.viewType]}
+              {LAYOUT_HINTS[draft.layout]}
             </p>
           </div>
 

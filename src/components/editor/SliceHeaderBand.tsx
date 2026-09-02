@@ -44,7 +44,7 @@ export function SliceHeaderBand({
   className?: string
 }) {
   const SecondaryIcon = secondaryAction?.icon
-  const description = detail.slice.description?.trim()
+  const description = detail.slice.summary?.trim()
   const PrimaryIcon = primaryAction.icon
 
   // Collapsed: the floating pill is the only header on screen, so hand it
@@ -78,13 +78,13 @@ export function SliceHeaderBand({
           <h2 className="min-w-0 truncate text-sm font-semibold">
             {detail.slice.title}
           </h2>
-          {/* A raw `slice_type` enum, not a written label — mono so it reads
+          {/* A raw `kind` enum, not a written label — mono so it reads
               as the stored value it is, on a real filled chip. */}
           <Badge
             variant="secondary"
             className="shrink-0 border-muted bg-foreground/5 font-mono text-muted-foreground"
           >
-            {detail.slice.slice_type}
+            {detail.slice.kind}
           </Badge>
         </div>
         <div className="mt-0.5 flex min-w-0 items-baseline gap-2">

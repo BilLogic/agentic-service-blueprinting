@@ -384,9 +384,9 @@ verify = open(sys.argv[1], encoding="utf-8").read()
 assert "cell_key" in verify, "verify has no cell_key checks"
 assert "missing the authored cell_key prefix" in verify, "verify missing cell_key prefix check"
 assert "cell_key mismatch" in verify, "verify missing cell_key spot-check"
-# The four tables that are about the board, plus business_model: present,
+# The four tables that are about the board, plus business_models: present,
 # guarded, and notice-only.
-for table in ("slides", "findings", "evidence", "slices", "business_model"):
+for table in ("slides", "audit_findings", "evidence", "slices", "business_models"):
     assert f"to_regclass('public.{table}')" in verify, f"derived report missing {table}"
 derived = verify.split("to_regclass", 1)[1]
 assert "raise notice" in derived, "derived section must report via notice"
@@ -717,9 +717,9 @@ pass "audit-fingerprint-form (reason slug in every fingerprint; slugless cell fi
 # cells. Distinct reason slugs -> two distinct fingerprints, two inserts.
 cat > "$TMP/audit-incoming.json" <<'JSON'
 [
- {"check_name": "jargon-lint", "severity": "warn", "note": "UCO acronym",
+ {"check_key": "jargon-lint", "severity": "warn", "note": "UCO acronym",
   "cell_keys": ["x/1", "x/2", "x/3"], "reason": "uco-acronym", "source": "audit"},
- {"check_name": "jargon-lint", "severity": "info", "note": "perms wording",
+ {"check_key": "jargon-lint", "severity": "info", "note": "perms wording",
   "cell_keys": ["x/1", "x/2", "x/3"], "reason": "perms-wording", "source": "audit"}
 ]
 JSON
@@ -746,9 +746,9 @@ pass "audit-same-cells (same check + same cells, distinct reasons -> two open ro
 # untouched.
 cat > "$TMP/audit-dup.json" <<'JSON'
 [
- {"check_name": "jargon-lint", "severity": "warn", "note": "first",
+ {"check_key": "jargon-lint", "severity": "warn", "note": "first",
   "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit"},
- {"check_name": "jargon-lint", "severity": "info", "note": "second",
+ {"check_key": "jargon-lint", "severity": "info", "note": "second",
   "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit"}
 ]
 JSON
@@ -771,10 +771,10 @@ pass "audit-batch-collision (intra-batch duplicate fingerprint = reported error;
 # --apply refuses to write two open rows with one fingerprint.
 cat > "$TMP/audit-corrupt-ledger.json" <<'JSON'
 {"rows": [
- {"check_name": "jargon-lint", "severity": "warn", "note": "a",
+ {"check_key": "jargon-lint", "severity": "warn", "note": "a",
   "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit",
   "fingerprint": "jargon-lint:deadbeef:same-slug", "status": "open", "run_id": "old-1"},
- {"check_name": "jargon-lint", "severity": "info", "note": "b",
+ {"check_key": "jargon-lint", "severity": "info", "note": "b",
   "cell_keys": ["x/1"], "reason": "same-slug", "source": "audit",
   "fingerprint": "jargon-lint:deadbeef:same-slug", "status": "open", "run_id": "old-2"}
 ]}
@@ -796,7 +796,7 @@ pass "audit-ledger-backstop (two open rows with one fingerprint refuse to be wri
 # alongside it rather than colliding.
 cat > "$TMP/audit-old-ledger.json" <<'JSON'
 {"rows": [
- {"check_name": "jargon-lint", "severity": "warn", "note": "old form",
+ {"check_key": "jargon-lint", "severity": "warn", "note": "old form",
   "cell_keys": ["x/1", "x/2", "x/3"], "source": "audit",
   "fingerprint": "jargon-lint:0123456789abcdef", "status": "open", "run_id": "old-1"}
 ]}

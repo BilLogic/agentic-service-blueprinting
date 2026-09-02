@@ -15,22 +15,22 @@ function mergeSlideFromFallback(slide: NavItem, fallback: NavItem | undefined): 
       ? slide.summary
       : fallback.summary
 
-  const viewType =
-    hasBlueprintFallback(slide.id) && fallback.viewType
-      ? fallback.viewType
-      : slide.viewType
+  const layout =
+    hasBlueprintFallback(slide.id) && fallback.layout
+      ? fallback.layout
+      : slide.layout
 
   const loopToId = slide.loopToId ?? fallback?.loopToId
 
   if (
     summary === slide.summary &&
-    viewType === slide.viewType &&
+    layout === slide.layout &&
     loopToId === slide.loopToId
   ) {
     return slide
   }
 
-  return { ...slide, summary, viewType, loopToId }
+  return { ...slide, summary, layout, loopToId }
 }
 
 /**

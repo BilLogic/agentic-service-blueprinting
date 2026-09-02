@@ -5,7 +5,7 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 import { cellResourcesFromRows, type RawCellResource } from '@/lib/cellResources'
 import {
   cellTouchpointsFromRows,
@@ -15,9 +15,9 @@ import {
 type RawOutgoingTrigger = {
   id: string
   target_cell_id: string
-  /** Fallback data omits these — default kind 'leads_to', label/note null. */
+  /** Fallback data omits these — default kind 'leads_to', name/note null. */
   kind?: string | null
-  label?: string | null
+  name?: string | null
   note?: string | null
 }
 
@@ -60,7 +60,7 @@ export type RawPath = {
   name: string
   summary?: string | null
   note?: string | null
-  path_type: PathType
+  kind: PathKind
   lanes?: RawLane[] | null
   /** @deprecated Legacy shape; use path_steps */
   steps?: BlueprintStep[] | null
@@ -103,7 +103,7 @@ function flattenTriggersFromCells(cells: RawCell[]): BlueprintCellTrigger[] {
         source_cell_id: cell.id,
         target_cell_id: outgoing.target_cell_id,
         kind: normalizeTriggerKind(outgoing.kind),
-        label: outgoing.label ?? null,
+        name: outgoing.name ?? null,
         note: outgoing.note ?? null,
       })
     }
@@ -230,7 +230,7 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
       ? raw.cell_dependencies.map((trigger) => ({
           ...trigger,
           kind: normalizeTriggerKind(trigger.kind),
-          label: trigger.label ?? null,
+          name: trigger.name ?? null,
           note: trigger.note ?? null,
         }))
       : flattenTriggersFromCells(rawCells)
@@ -241,7 +241,7 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
       name: raw.name,
       summary: raw.summary ?? null,
       note: raw.note ?? null,
-      path_type: raw.path_type,
+      kind: raw.kind,
     },
     lanes,
     steps,

@@ -14,8 +14,8 @@ never resolve a role from the key alone.
 
 ## Finding shape
 One finding per term (grouped across cells), cell_keys = every cell using
-it. The note names the term and a plainer candidate, citing keys — never
-rewriting cell text in the note. Internal-system names, org-chart words,
+it. The summary names the term and a plainer candidate, citing keys — never
+rewriting cell text in the summary. Internal-system names, org-chart words,
 and acronyms in customer-visible cells → warn; the same words in backstage
 lanes → not a finding.
 

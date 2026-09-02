@@ -48,7 +48,7 @@ sys.path.insert(0, str(SHARED_SCRIPTS))
 # slices point at nothing.
 from generate_seed_sql import entity_uuid, pick_text  # noqa: E402
 
-SLICE_TYPES = ("journey", "step", "lane", "cell", "custom")
+SLICE_KINDS = ("journey", "step", "lane", "cell", "custom")
 ORIGINS = ("generated", "customized", "human")
 
 
@@ -268,8 +268,8 @@ def validate_slices(index: dict, doc: dict) -> list[str]:
         else:
             seen_slice_keys.add(entry["key"])
 
-        if entry.get("type") not in SLICE_TYPES:
-            problems.append(f"slice {label}: type must be one of {', '.join(SLICE_TYPES)}")
+        if entry.get("type") not in SLICE_KINDS:
+            problems.append(f"slice {label}: type must be one of {', '.join(SLICE_KINDS)}")
         if entry.get("origin", "generated") not in ORIGINS:
             problems.append(f"slice {label}: origin must be one of {', '.join(ORIGINS)}")
         if not entry.get("title"):
@@ -351,7 +351,7 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
         lines.append(f"delete from public.slices where id = {sql_quote(sid)};")
         lines.append(
             "insert into public.slices "
-            "(id, service_id, slice_type, title, description, actor, locale, origin, position) values ("
+            "(id, service_id, kind, title, description, actor, locale, origin, position) values ("
             f"{sql_quote(sid)}, {sql_quote(service_id)}, {sql_quote(entry['type'])}, "
             f"{sql_quote(title)}, {sql_quote(description)}, {sql_quote(entry.get('actor'))}, "
             f"{sql_quote(locale)}, {sql_quote(entry.get('origin', 'generated'))}, {int(entry.get('order', 0))});"
@@ -486,7 +486,7 @@ def main() -> int:
     select.add_argument("--ir", required=True, type=Path)
     select.add_argument("--scenario", required=True, help="<phase>/<scenario> key")
     select.add_argument("--path", help="defaults to the scenario's first path")
-    select.add_argument("--type", required=True, choices=SLICE_TYPES)
+    select.add_argument("--type", required=True, choices=SLICE_KINDS)
     select.add_argument("--key", required=True, help="stable slice key")
     select.add_argument("--lane", help="lane key (journey, lane, cell)")
     select.add_argument("--step", help="step key (step, cell)")

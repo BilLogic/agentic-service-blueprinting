@@ -15,7 +15,7 @@ import { useViewState } from '@/contexts/viewStateStore'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { findFirstServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
-import { deriveSliceType, describeSliceType } from '@/lib/sliceType'
+import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
 import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
 
 /** One slide per cell. The starting shape, and the only one worth seeding. */
@@ -80,7 +80,7 @@ export function CreateSliceSheet({
   const { openTab } = useViewState()
   const [step, setStep] = useState<'slides' | 'name'>('slides')
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [summary, setSummary] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -99,19 +99,19 @@ export function CreateSliceSheet({
 
   // Read once per selection rather than per render: it walks the DOM, and the
   // answer cannot change while the same cells are picked.
-  const sliceType = useMemo(() => deriveSliceType(cellIds), [cellIds])
+  const sliceKind = useMemo(() => deriveSliceType(cellIds), [cellIds])
 
   const reset = () => {
     setStep('slides')
     setTitle('')
-    setDescription('')
+    setSummary('')
     setError(null)
   }
 
   const problems = validateDraftSlice({
     title,
-    description,
-    sliceType,
+    summary,
+    sliceKind,
     // Always blank: the field is gone, and the column stays nullable
     // until a migration drops it.
     actor: '',
@@ -130,8 +130,8 @@ export function CreateSliceSheet({
       const slice = await createSlice(client, {
         serviceId,
         title,
-        description,
-        sliceType,
+        summary,
+        sliceKind,
         actor: '',
         cellIds,
         slides: slides,
@@ -200,7 +200,7 @@ export function CreateSliceSheet({
               had already decided.
             */}
             <p className="truncate text-2xs text-muted-foreground">
-              {describeSliceType(sliceType, cellCount)}
+              {describeSliceType(sliceKind, cellCount)}
             </p>
           </div>
         </div>
@@ -254,9 +254,9 @@ export function CreateSliceSheet({
                   </span>
                 </span>
                 <Input
-                  value={description}
+                  value={summary}
                   placeholder="What this slice shows, and who it is for"
-                  onChange={(event) => setDescription(event.target.value)}
+                  onChange={(event) => setSummary(event.target.value)}
                 />
               </label>
 

@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { duplicateSlice, sliceToken, updateSliceMeta } from '@/lib/sliceMutations'
-import { isSliceType } from '@/lib/sliceValidation'
+import { isSliceKind } from '@/lib/sliceValidation'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
@@ -38,8 +38,8 @@ const SLICE_TYPE_GROUPS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
 
 type SliceTypeGroup = (typeof SLICE_TYPE_GROUPS)[number]
 
-function sliceTypeGroup(sliceType: string): SliceTypeGroup {
-  const type = sliceType.toLowerCase()
+function sliceKindGroup(sliceKind: string): SliceTypeGroup {
+  const type = sliceKind.toLowerCase()
   return SLICE_TYPE_GROUPS.find((group) => group === type) ?? 'custom'
 }
 
@@ -116,7 +116,7 @@ function SliceRow({
 }
 
 /**
- * Slices sidebar mode — the service's slices grouped by `slice_type` into
+ * Slices sidebar mode — the service's slices grouped by `kind` into
  * accordion sections (JOURNEY / STEP / LANE / CELL / CUSTOM; only non-empty
  * groups render, all open by default). Click (or the context menu) opens the
  * slice tab; writers can delete from the context menu.
@@ -150,7 +150,7 @@ export function SlicesSidebarSection() {
 
   const groups = SLICE_TYPE_GROUPS.map((type) => ({
     type,
-    slices: rows.filter((slice) => sliceTypeGroup(slice.slice_type) === type),
+    slices: rows.filter((slice) => sliceKindGroup(slice.kind) === type),
   })).filter((group) => group.slices.length > 0)
 
   if (groups.length === 0) {
@@ -263,7 +263,7 @@ function RenameSliceDialog({
 }) {
   const { client } = useSupabase()
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [summary, setSummary] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -273,7 +273,7 @@ function RenameSliceDialog({
   if (open && slice && !seeded) {
     setSeeded(true)
     setTitle(slice.title)
-    setDescription(slice.description ?? '')
+    setSummary(slice.summary ?? '')
     setError(null)
   }
   if (!open && seeded) setSeeded(false)
@@ -286,10 +286,10 @@ function RenameSliceDialog({
     try {
       outcome = await updateSliceMeta(client, slice.id, sliceToken(slice), {
         title,
-        description,
-        sliceType: isSliceType(slice.slice_type) ? slice.slice_type : 'custom',
+        summary,
+        sliceKind: isSliceKind(slice.kind) ? slice.kind : 'custom',
         actor: slice.actor ?? '',
-        origin: slice.origin ?? 'human',
+        authorship: slice.authorship ?? 'human',
       })
     } catch (renameError) {
       setBusy(false)
@@ -335,9 +335,9 @@ function RenameSliceDialog({
               </span>
             </span>
             <Input
-              value={description}
+              value={summary}
               placeholder="What this slice shows, and who it is for"
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(event) => setSummary(event.target.value)}
             />
           </label>
           {error ? (

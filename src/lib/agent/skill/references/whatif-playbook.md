@@ -72,7 +72,7 @@ Score every cell in scope on three signals, then present the top 3–5 with
 per-signal reasoning:
 - evidence weight (rows attached; zero rows = assumption — flag it, since
   an assumption-heavy "priority" is really a research task);
-- proposition expression (does the cell carry the value the business_model
+- proposition expression (does the cell carry the value the business_models
   claim — value_props where present);
 - backstage `enables` chain depth (impact-tracer, reversed: how much
   machinery makes this moment possible).
@@ -82,7 +82,7 @@ get a "load-bearing" caveat.
 ## §3 Findings
 
 Same table, `source = 'whatif'`, same fingerprint algorithm as audit
-(check_name = `whatif-<operation>-<key>`), same dedupe/triage rules
+(check_key = `whatif-<operation>-<key>`), same dedupe/triage rules
 (audit-playbook §2–§4). Whatif findings never supersede audit findings
 and vice versa — fingerprints keep them disjoint by construction.
 

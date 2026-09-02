@@ -9,7 +9,7 @@
  *   npm run supabase:types:local
  *
  * Generated against the full migration chain; the hand-written aliases at
- * the bottom of the file (PathType, Cell, Finding, …) survive regeneration —
+ * the bottom of the file (PathKind, Cell, Finding, …) survive regeneration —
  * re-append them if the generator output replaces this file wholesale.
  */
 
@@ -93,7 +93,7 @@ export type Database = {
           created_at: string
           id: string
           kind: string
-          label: string | null
+          name: string | null
           note: string | null
           source_cell_id: string
           target_cell_id: string
@@ -103,7 +103,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: string
-          label?: string | null
+          name?: string | null
           note?: string | null
           source_cell_id: string
           target_cell_id: string
@@ -113,7 +113,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: string
-          label?: string | null
+          name?: string | null
           note?: string | null
           source_cell_id?: string
           target_cell_id?: string
@@ -357,15 +357,15 @@ export type Database = {
           },
         ]
       }
-      findings: {
+      audit_findings: {
         Row: {
           cell_ids: string[]
           cell_keys: string[]
-          check_name: string
+          check_key: string
           created_at: string
           fingerprint: string
           id: string
-          note: string | null
+          summary: string | null
           run_id: string
           service_id: string
           severity: string
@@ -376,11 +376,11 @@ export type Database = {
         Insert: {
           cell_ids?: string[]
           cell_keys?: string[]
-          check_name: string
+          check_key: string
           created_at?: string
           fingerprint: string
           id?: string
-          note?: string | null
+          summary?: string | null
           run_id: string
           service_id: string
           severity: string
@@ -391,11 +391,11 @@ export type Database = {
         Update: {
           cell_ids?: string[]
           cell_keys?: string[]
-          check_name?: string
+          check_key?: string
           created_at?: string
           fingerprint?: string
           id?: string
-          note?: string | null
+          summary?: string | null
           run_id?: string
           service_id?: string
           severity?: string
@@ -510,7 +510,7 @@ export type Database = {
           name: string
           note: string | null
           origin: string
-          path_type: string
+          kind: string
           scenario_id: string
           updated_at: string
         }
@@ -521,7 +521,7 @@ export type Database = {
           name: string
           note?: string | null
           origin?: string
-          path_type: string
+          kind: string
           scenario_id: string
           updated_at?: string
         }
@@ -532,7 +532,7 @@ export type Database = {
           name?: string
           note?: string | null
           origin?: string
-          path_type?: string
+          kind?: string
           scenario_id?: string
           updated_at?: string
         }
@@ -657,7 +657,7 @@ export type Database = {
           },
         ]
       }
-      business_model: {
+      business_models: {
         Row: {
           created_at: string
           created_by: string | null
@@ -771,7 +771,7 @@ export type Database = {
           origin: string
           phase_id: string
           updated_at: string
-          view_type: string
+          layout: string
         }
         Insert: {
           created_at?: string
@@ -782,7 +782,7 @@ export type Database = {
           origin?: string
           phase_id: string
           updated_at?: string
-          view_type?: string
+          layout?: string
         }
         Update: {
           created_at?: string
@@ -793,7 +793,7 @@ export type Database = {
           origin?: string
           phase_id?: string
           updated_at?: string
-          view_type?: string
+          layout?: string
         }
         Relationships: [
           {
@@ -860,13 +860,13 @@ export type Database = {
           actor: string | null
           created_at: string
           created_by: string | null
-          description: string | null
+          summary: string | null
           id: string
           locale: string
-          origin: string
+          authorship: string
           position: number
           service_id: string
-          slice_type: string
+          kind: string
           title: string
           updated_at: string
         }
@@ -874,13 +874,13 @@ export type Database = {
           actor?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
+          summary?: string | null
           id?: string
           locale?: string
-          origin?: string
+          authorship?: string
           position?: number
           service_id: string
-          slice_type: string
+          kind: string
           title: string
           updated_at?: string
         }
@@ -888,13 +888,13 @@ export type Database = {
           actor?: string | null
           created_at?: string
           created_by?: string | null
-          description?: string | null
+          summary?: string | null
           id?: string
           locale?: string
-          origin?: string
+          authorship?: string
           position?: number
           service_id?: string
-          slice_type?: string
+          kind?: string
           title?: string
           updated_at?: string
         }
@@ -976,7 +976,7 @@ export type Database = {
         Args: {
           lane_source_path_id?: string
           name: string
-          path_type?: string
+          kind?: string
           scenario_id: string
         }
         Returns: string
@@ -993,7 +993,7 @@ export type Database = {
           path_name?: string
           phase_id: string
           step_count?: number
-          view_type?: string
+          layout?: string
         }
         Returns: Json
       }
@@ -1009,7 +1009,7 @@ export type Database = {
           copy_cells?: boolean
           copy_dependencies?: boolean
           name: string
-          path_type?: string
+          kind?: string
           source_path_id: string
         }
         Returns: string
@@ -1223,7 +1223,7 @@ export const Constants = {
 // generator output replaces the file above.
 // ---------------------------------------------------------------------------
 
-export type PathType = 'happy' | 'unhappy' | 'exception' | 'alternative'
+export type PathKind = 'happy' | 'variant' | 'exception'
 
 export type Cell = Database['public']['Tables']['cells']['Row']
 export type CellDependency = Database['public']['Tables']['cell_dependencies']['Row']
@@ -1238,5 +1238,5 @@ export type Step = Database['public']['Tables']['steps']['Row']
 export type Slice = Database['public']['Tables']['slices']['Row']
 export type Slide = Database['public']['Tables']['slides']['Row']
 export type Evidence = Database['public']['Tables']['evidence']['Row']
-export type Finding = Database['public']['Tables']['findings']['Row']
+export type Finding = Database['public']['Tables']['audit_findings']['Row']
 export type EvidenceCount = Database['public']['Views']['evidence_counts']['Row']

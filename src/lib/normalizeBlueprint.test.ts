@@ -6,7 +6,7 @@ describe('normalizeBlueprint', () => {
     const normalized = normalizeBlueprint({
       id: 'path-1',
       name: 'Happy path',
-      path_type: 'happy',
+      kind: 'happy',
       lanes: [{ id: 'lane-1', name: 'Customer', position: 0 }],
       path_steps: [{ position: 0, steps: { id: 'step-1', name: 'Arrive' } }],
       cells: [

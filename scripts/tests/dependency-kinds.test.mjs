@@ -59,7 +59,7 @@ test('the documented values stop at the end of the enum sentence', () => {
 })
 
 test('a missing enum row fails loudly rather than comparing an empty list', () => {
-  assert.throws(() => documentedKinds('## Enums\n\n- `paths.path_type`: `happy`.\n'))
+  assert.throws(() => documentedKinds('## Enums\n\n- `paths.kind`: `happy`.\n'))
 })
 
 // The defect this check was written for: the doc taught two values the

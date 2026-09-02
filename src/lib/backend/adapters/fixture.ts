@@ -59,7 +59,7 @@ function pathsFor(scenarioId: string): PathSummary[] {
     name: path.name,
     summary: path.summary,
     note: path.note,
-    pathType: path.path_type,
+    pathKind: path.kind,
   }))
 }
 
@@ -84,8 +84,8 @@ function sliceSummary(slice: (typeof FALLBACK_SLICES)[number]): SliceSummary {
     // scenario, and the seam does not invent an owner they do not have.
     scenarioId: null,
     title: slice.title,
-    sliceType: slice.slice_type,
-    origin: slice.origin,
+    sliceKind: slice.kind,
+    authorship: slice.authorship,
   }
 }
 

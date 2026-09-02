@@ -71,16 +71,22 @@ Any label not in the map still falls back to the deterministic hash palette,
 so partial pinning is fine. Keep the map **client-specific** — do not commit
 one client's labels into the shared template.
 
-## View types & path types
+## Layouts & path kinds
 
-Set per scenario / per path **in the IR**, not in code: `view_type`
-(`single` | `side-by-side` | `integrated`) and `path_type` (`happy` |
-`unhappy` | `exception` | `alternative`). Note `integrated` is a legacy
-value — persisted rows coerce to the plain Stacked view on read
-(`src/lib/viewTypeVocabulary.ts`). Side-by-side compares any two
-labeled variants via `variant_label` — designed-vs-reality, before/after a
-redesign, or two stakeholders' conflicting accounts. There are no hardcoded
-scenario or path IDs left in the template; do not reintroduce any.
+Set per scenario / per path **in the IR**, not in code: `layout`
+(`single` | `stacked`) and `kind` (`happy` | `variant` | `exception`).
+
+Both lists got shorter at `21000116000000`. `side-by-side` and `integrated`
+were one layout a reader switches between rather than two a scenario is stored
+as — the client had been collapsing both to the same view on read for a while,
+and the migration moved the rows so the seam could go. `unhappy` and
+`alternative` were two spellings of one thing, and `exception` already carries
+"this went wrong", so both became `variant`.
+
+The stacked layout compares any two labeled variants via `variant_label` —
+designed-vs-reality, before/after a redesign, or two stakeholders' conflicting
+accounts. There are no hardcoded scenario or path IDs left in the template; do
+not reintroduce any.
 
 ## Scale
 

@@ -35,7 +35,7 @@ export type NavItem = {
   /** Main-phase loop target (e.g. post-session → pre-session). Stored in DB; not drawn on canvas. */
   loopToId?: string
   /** Scenario blueprint layout; defaults to single-path view. */
-  viewType?: SlideViewType
+  layout?: SlideViewType
   /** Short scenario summary shown under the slide title. */
   summary?: string | null
 }
@@ -117,7 +117,7 @@ export const FALLBACK_NAV: NavItem[] = [
       index: scenario.position,
       label: scenario.name,
       parentId: scenario.phase_id,
-      viewType: scenario.view_type,
+      layout: scenario.layout,
       summary: scenario.summary,
     }),
   ),
@@ -153,10 +153,10 @@ export function getBlueprintScenarioId(slide: NavItem): string | undefined {
 }
 
 export function getSlideViewType(slide: NavItem): SlideViewType {
-  // `slide.viewType` is already client vocabulary: the raw DB value is mapped
+  // `slide.layout` is already client vocabulary: the raw DB value is mapped
   // at the read seam (`phasesToSlides` via `viewTypeVocabulary`), where a
-  // persisted 'integrated' keeps coercing to the plain stacked view.
-  if (slide.viewType) return slide.viewType
+  // persisted 'stacked' keeps coercing to the plain stacked view.
+  if (slide.layout) return slide.layout
   if (isSubslide(slide)) return 'stacked'
   if (hasBlueprintFallback(slide.id)) return 'stacked'
   return 'single'
@@ -180,7 +180,7 @@ export function showsBlueprintFilters(
 export function isIntegratedBlueprintSlide(_slide: NavItem): boolean {
   // The integrated (single-grid, all-paths) layout is disabled app-wide: a
   // scenario's paths render stacked. Kept as a named predicate because the
-  // DB vocabulary still carries 'integrated' and the read seam coerces it.
+  // DB vocabulary still carries 'stacked' and the read seam coerces it.
   return false
 }
 

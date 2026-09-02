@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.03",
         "2026.09.02",
         "2026.09.01",
         "2026.08.31",
@@ -218,7 +219,7 @@
         "key",
         "name",
         "order",
-        "view_type",
+        "layout",
         "steps",
         "paths"
       ],
@@ -237,13 +238,12 @@
           "type": "integer",
           "minimum": 0
         },
-        "view_type": {
+        "layout": {
           "enum": [
             "single",
-            "side-by-side",
-            "integrated"
+            "stacked"
           ],
-          "description": "single = one path at a time; side-by-side = labeled variant comparison (see paths[].variant_label); integrated = runtime merge of all paths."
+          "description": "How this scenario's paths are laid out: single = one path at a time; stacked = paths compared step by step (see paths[].variant_label). Two values since 2026.09.03, which retired `side-by-side` and `integrated` — they were one layout a reader switches between, not two a scenario is stored as, and the client had already been collapsing both to the same view on read. Merging every path into one grid is a display state the reader turns on, never a property of the scenario."
         },
         "steps": {
           "type": "array",
@@ -283,7 +283,7 @@
       "required": [
         "key",
         "name",
-        "path_type",
+        "kind",
         "lanes",
         "path_steps",
         "cells"
@@ -303,17 +303,17 @@
           "$ref": "#/$defs/localeText",
           "description": "Optional note shown with path metadata (e.g. parallel-scenario context)."
         },
-        "path_type": {
+        "kind": {
           "enum": [
             "happy",
-            "unhappy",
-            "exception",
-            "alternative"
-          ]
+            "variant",
+            "exception"
+          ],
+          "description": "What kind of route this is. Three values since 2026.09.03: `unhappy` and `alternative` were two spellings of the same thing and neither said what it meant, so both became `variant`. `exception` already carries \"this went wrong\", which is the distinction `unhappy` was reaching for."
         },
         "variant_label": {
           "$ref": "#/$defs/localeText",
-          "description": "Label for this path as a comparison variant in side-by-side view (e.g. 'as designed' vs 'as actually done'). Any two labeled variants compare — designed-vs-reality is just the default labeling."
+          "description": "Label for this path as a comparison variant in the stacked layout (e.g. 'as designed' vs 'as actually done'). Any two labeled variants compare — designed-vs-reality is just the default labeling."
         },
         "lanes": {
           "type": "array",

@@ -11,9 +11,9 @@ import type { PathListItem } from '@/lib/pathSelection'
 function path(
   id: string,
   name: string,
-  path_type: PathListItem['path_type'] = 'happy',
+  kind: PathListItem['kind'] = 'happy',
 ): PathListItem {
-  return { id, name, summary: null, note: null, path_type }
+  return { id, name, summary: null, note: null, kind }
 }
 
 /** The template's own sample shape: a differently-named happy path per scenario. */
@@ -23,7 +23,7 @@ const CATALOG = new Map<string, PathListItem[]>([
     'adopt',
     [
       path('p-nodb', 'No-database run'),
-      path('p-supabase', 'Supabase run', 'alternative'),
+      path('p-supabase', 'Supabase run', 'variant'),
     ],
   ],
   ['map', [path('p-map', 'Guided mapping')]],
@@ -99,7 +99,7 @@ describe('PathSelectionProvider', () => {
   it('selects a scenario’s second path when the user adds it', () => {
     const { result } = renderStore()
     act(() => result.current.syncScenarioPaths(CATALOG, [...CATALOG.keys()]))
-    act(() => result.current.togglePathKey('alternative:Supabase run'))
+    act(() => result.current.togglePathKey('variant:Supabase run'))
 
     expect(result.current.getSelectedPathIds('adopt')).toEqual([
       'p-nodb',

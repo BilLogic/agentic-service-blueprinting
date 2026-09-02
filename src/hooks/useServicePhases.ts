@@ -17,7 +17,7 @@ const SERVICE_PHASES_SELECT = `
     summary,
     position,
     phase_id,
-    view_type
+    layout
   )
 `
 

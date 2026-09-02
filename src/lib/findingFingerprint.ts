@@ -8,9 +8,9 @@
  * the test runner — so the one function whose silent breakage corrupts
  * data had no test. This module exists to give it one.
  *
- * Canvas dialect of audit-playbook §2: `check_name + ':' + sha256` of the
+ * Canvas dialect of audit-playbook §2: `check_key + ':' + sha256` of the
  * sorted cited cell ids joined with newlines (cell_keys are written as the
- * ids themselves here), or `check_name + ':' + scope` for a finding that
+ * ids themselves here), or `check_key + ':' + scope` for a finding that
  * cites no cells. The IDE hashes IR key-paths instead, which is why the
  * two are deliberately separate dedupe spaces.
  */

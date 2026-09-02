@@ -75,12 +75,12 @@
     },
     "pathMapping": {
       "type": "object",
-      "required": ["source_path", "target_path", "path_type"],
+      "required": ["source_path", "target_path", "kind"],
       "additionalProperties": false,
       "properties": {
         "source_path": { "type": "string", "description": "The foreign variant/branch/board name, verbatim." },
         "target_path": { "type": "string", "description": "Target path key in the IR." },
-        "path_type": { "enum": ["happy", "unhappy", "exception", "alternative"] },
+        "kind": { "enum": ["happy", "variant", "exception"] },
         "note": { "type": "string" }
       }
     },

@@ -22,8 +22,8 @@ Usage:
 Stdlib only. Exit 0 on success; 1 on bad input.
 
 Fingerprint form (audit-playbook §2): EVERY finding carries a reason slug —
-    cell-bearing: check_name + ':' + sha256(sorted cell_keys) + ':' + <reason-slug>
-    zero-cell:    check_name + ':scope:' + <scope-key> + ':' + <reason-slug>
+    cell-bearing: check_key + ':' + sha256(sorted cell_keys) + ':' + <reason-slug>
+    zero-cell:    check_key + ':scope:' + <scope-key> + ':' + <reason-slug>
 (the zero-cell scope value already ends in its reason slug). Without the
 slug, two findings from one check over the same cells collide and dedupe
 silently destroys one of them.
@@ -35,7 +35,7 @@ ledger rewrite is needed. New writes always use the new form; per-check
 supersede retires the old-form open rows on the next completed run.
 
 Findings JSON shape (both incoming and ledger rows):
-    {"check_name": str, "severity": "info|warn|critical", "note": str,
+    {"check_key": str, "severity": "info|warn|critical", "summary": str,
      "cell_keys": [str, ...],
      "reason": str (short reason slug — required when cell_keys is non-empty),
      "scope": str|null ("<scope-key>:<reason-slug>" — required when cell_keys is empty),
@@ -55,7 +55,7 @@ from pathlib import Path
 
 
 def fingerprint(
-    check_name: str, cell_keys: list[str], scope: str | None, reason: str | None = None
+    check_key: str, cell_keys: list[str], scope: str | None, reason: str | None = None
 ) -> str:
     """audit-playbook §2, exactly. EVERY finding carries a reason slug so
     two distinct findings from one check over the same cells (or the same
@@ -67,10 +67,10 @@ def fingerprint(
                 "without it, two findings from one check over the same cells collide"
             )
         digest = hashlib.sha256("\n".join(sorted(cell_keys)).encode("utf-8")).hexdigest()
-        return f"{check_name}:{digest}:{reason}"
+        return f"{check_key}:{digest}:{reason}"
     if not scope:
         raise ValueError("zero-cell finding needs --scope 'scope-key:reason-slug'")
-    return f"{check_name}:scope:{scope}"
+    return f"{check_key}:scope:{scope}"
 
 
 def dedupe_action(existing_rows: list[dict], fp: str) -> str:
@@ -168,7 +168,7 @@ def _plan(ledger: dict, incoming: list[dict], run_id: str | None) -> list[tuple[
     seen: set[str] = set()
     for finding in incoming:
         fp = fingerprint(
-            finding["check_name"],
+            finding["check_key"],
             finding.get("cell_keys") or [],
             finding.get("scope"),
             finding.get("reason"),
@@ -213,7 +213,7 @@ def cmd_report(args: argparse.Namespace) -> int:
                     "open" if action == "update" else "resolved",
                 ):
                     row.update(
-                        {k: finding[k] for k in ("severity", "note", "run_id") if k in finding}
+                        {k: finding[k] for k in ("severity", "summary", "run_id") if k in finding}
                     )
                     row["status"] = "open"
                     break

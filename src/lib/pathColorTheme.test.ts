@@ -13,17 +13,21 @@ import {
  * resolve the tokens against the stylesheet.
  */
 describe('path identity', () => {
-  it('gives every non-happy type a distinct dash pattern', () => {
-    // Only the closed types resolve to their own `PATH_TYPE_DASH` entry. A
-    // `named` path — and an `alternative` one with no registry entry — hashes
-    // into the open set instead, so asking for its "type dash" measures the
-    // hash rather than the type. Those are covered by the colour+dash pairing
-    // assertion in palette.test.ts.
+  it('gives every non-happy kind a distinct dash pattern', () => {
+    // Only the closed kinds resolve to their own `PATH_TYPE_DASH` entry. A
+    // path with no registry entry hashes into the open set instead, so asking
+    // for its "kind dash" measures the hash rather than the kind. Those are
+    // covered by the colour+dash pairing assertion in palette.test.ts.
+    //
+    // THREE kinds since 21000116000000, not four: `unhappy` and `alternative`
+    // were one kind under two names, and they are now one dash. Two paths that
+    // used to differ by kind alone still read apart, because the registry keys
+    // on kind AND name — `variant:Sad Path` and `variant:Alternate Path` are
+    // separate entries, and that separation was always doing the work.
     const closed = [
-      { path_type: 'happy', name: 'Happy Path' },
-      { path_type: 'unhappy', name: 'Sad Path' },
-      { path_type: 'exception', name: 'Boom' },
-      { path_type: 'alternative', name: 'Alternate Path' },
+      { kind: 'happy', name: 'Happy Path' },
+      { kind: 'variant', name: 'Sad Path' },
+      { kind: 'exception', name: 'Boom' },
     ] as const
     const dashes = closed.map(getPathDashArray)
     expect(dashes[0]).toBeUndefined() // happy stays solid
@@ -32,8 +36,8 @@ describe('path identity', () => {
   })
 
   it('separates two unregistered custom-named paths', () => {
-    const a = { path_type: 'alternative', name: 'Alpha' } as const
-    const b = { path_type: 'alternative', name: 'Beta' } as const
+    const a = { kind: 'variant', name: 'Alpha' } as const
+    const b = { kind: 'variant', name: 'Beta' } as const
     // They may share a hue slot, but not both a hue and a dash.
     const same =
       getPathColor(a) === getPathColor(b) &&
@@ -42,8 +46,8 @@ describe('path identity', () => {
   })
 
   it('reads the same dash from a colour key as from the path', () => {
-    const path = { path_type: 'unhappy', name: 'Sad Path' } as const
-    expect(getPathDashArrayFromKey('unhappy:Sad Path')).toBe(
+    const path = { kind: 'variant', name: 'Sad Path' } as const
+    expect(getPathDashArrayFromKey('variant:Sad Path')).toBe(
       getPathDashArray(path),
     )
     // Bare key with no colon is the legacy default-path form.
@@ -52,11 +56,11 @@ describe('path identity', () => {
 
   it('dashes the section frame for every type except happy', () => {
     expect(
-      getPathSectionBorderStyle({ path_type: 'happy', name: 'Happy Path' })
+      getPathSectionBorderStyle({ kind: 'happy', name: 'Happy Path' })
         .borderStyle,
     ).toBe('solid')
     expect(
-      getPathSectionBorderStyle({ path_type: 'exception', name: 'Boom' })
+      getPathSectionBorderStyle({ kind: 'exception', name: 'Boom' })
         .borderStyle,
     ).toBe('dashed')
   })

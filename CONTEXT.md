@@ -102,7 +102,7 @@ table's owner is whoever may change it, not whoever reads it most:
 | record | written by | belongs to |
 | --- | --- | --- |
 | `slices`, `slides` | `create_slice`, `update_slice`, `replace_slides` | the slice |
-| `findings` | `record_finding`, `set_finding_status` | the audit |
+| `audit_findings` | `record_finding`, `set_finding_status` | the audit |
 | `evidence` | no agent tool at all — the panel writes it | **nobody** |
 
 **Evidence is the one with no owner**, and here that is visible in the roster
@@ -142,7 +142,7 @@ never stored as a flag.
 
 ## The rename map
 
-Seven renames landed across `21000103`–`21000111`. They are recorded here
+Eleven renames landed across `21000103`–`21000116`. They are recorded here
 because this is the file a person reads to learn the vocabulary, and because a
 sweep that catches every occurrence of a retired word needs to know which
 occurrences are not residue.
@@ -164,12 +164,49 @@ now checks that nothing came back.
 | `description` | `summary` | `21000108000000` |
 | `propositions` | `business_model` | `21000111000000` |
 | `cell_dependencies.kind = 'trigger'`, `cell_dependencies.kind = 'needs'` | `cell_dependencies.kind = 'leads_to'`, `cell_dependencies.kind = 'enables'` | `21000114000000` |
+| `business_model` | `business_models` | `21000116000000` |
+| `findings`, `findings.check_name`, `findings.note` | `audit_findings`, `audit_findings.check_key`, `audit_findings.summary` | `21000116000000` |
+| `paths.path_type`, `slices.slice_type`, `scenarios.view_type` | `paths.kind`, `slices.kind`, `scenarios.layout` | `21000116000000` |
+| `cell_dependencies.label`, `slices.description`, `slices.origin` | `cell_dependencies.name`, `slices.summary`, `slices.authorship` | `21000116000000` |
 
 The reasoning, where it is worth knowing. `row` and `column` named how a lane
 and a step happen to be *drawn* today, and the axis is a rendering fact rather
 than a domain one. "Lifecycle" was not a level above the service — it *was* the
 service, wearing a longer name. `enables` was left alone, because it was already
 the plain word for what it means.
+
+`21000116000000` is one migration answering two complaints. **`_type` is a
+suffix apologising for a name**: `paths.path_type`, `slices.slice_type` and
+`scenarios.view_type` all said "the kind of thing this is" in a column that
+could say `kind`, which `cell_dependencies` already did. And **one word per meaning** — a `name` is
+what you navigate by, a `title` is authored content, a `summary` is the
+sentence that describes the thing, and a `note` is an aside beside it.
+`findings.note` was never an aside; it is the finding's own sentence.
+
+**Four of those words are retired as identifiers and NOT as words**, which is
+why their rows enforce nothing and this paragraph exists — a check that
+deliberately ignores a word has to say so, or the next person reads the silence
+as an oversight and closes it:
+
+- **`label`** — `cell_dependencies.label` became `.name`, but a form control
+  has a label and half this tree's components take one as a prop. What was
+  retired is the column, not the noun.
+- **`description`** — `package.json` has one, so does every tool spec. Only
+  `slices.description` moved, and `21000108000000` had already moved the rest.
+  The row is `cell_dependencies.label`, `slices.description`, `slices.origin`
+  together because one migration answered all three.
+- **`origin`** — still the live import-provenance column on `cells`, `phases`,
+  `scenarios`, `paths`, `lanes` and `steps`. Only `slices.origin` became
+  `authorship`, because on a slice the question is who WROTE it, not where it
+  came from — a person may author one outright.
+- **`business_model`** — the singular is the retired TABLE name and the live
+  domain term at once. `21000111000000` renamed `propositions` to it and took
+  the singular from the noun rather than from the convention around it; this
+  migration fixes the number without disturbing the word.
+
+`finding` is the same case: the bare word is the live domain term, defined
+above. What `21000116000000` retired is the bare TABLE name, which never said
+whose findings these were.
 
 **One rename in this vocabulary is not in the table**, because it never was an
 identifier and because it ended in no word at all. `evidence`, `findings`,

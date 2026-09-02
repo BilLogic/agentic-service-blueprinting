@@ -51,7 +51,7 @@ triage rules, and the check-authoring template.
   and never sees other checks' output. Cross-check synthesis happens in the
   main context after all auditors return.
 - ⚠ **REQUIRED — dedupe by fingerprint; dismissed stays dismissed.**
-  `fingerprint = check_name + ':' + sha256 of the sorted cell_keys joined
+  `fingerprint = check_key + ':' + sha256 of the sorted cell_keys joined
   with '\n' + ':' + reason-slug` — every finding carries a reason slug,
   cell-bearing ones included (exact form + old-ledger migration note:
   playbook §2). A duplicate fingerprint within one incoming batch is a
@@ -138,7 +138,7 @@ reportable result, not a failure.
 ## Agents
 
 - `auditor` — one check doc + the blueprint export in; findings JSON out
-  (check, severity `info|warn|critical`, cell keys, note). Blind to other
+  (check, severity `info|warn|critical`, cell keys, summary). Blind to other
   checks. Tools: Read, Glob, Grep, Bash.
 - `impact-tracer` — used by `channel-conflict` when a suspected conflict
   needs its downstream chain walked (shared with the whatif skill).

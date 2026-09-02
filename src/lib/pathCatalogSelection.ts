@@ -16,7 +16,7 @@ export type PathCatalog = Record<string, PathListItem[]>
  * including the empty array ("nothing selected"), which is a real state a
  * user can reach and must not be silently refilled.
  *
- * The distinction is the whole point. Path identity is `path_type:name`, and
+ * The distinction is the whole point. Path identity is `kind:name`, and
  * nothing makes two scenarios name their happy paths the same: a blueprint
  * whose scenarios run "First visit", "No-database run", "Guided mapping" is
  * ordinary, not pathological. Deriving one global default key from the first
@@ -33,7 +33,7 @@ export type PathCatalog = Record<string, PathListItem[]>
 export type ActivePathKeys = readonly string[] | null
 
 export function getPathKey(
-  path: Pick<PathListItem, 'path_type' | 'name'>,
+  path: Pick<PathListItem, 'kind' | 'name'>,
 ): string {
   return getPathColorKey(path)
 }

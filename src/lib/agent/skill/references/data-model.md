@@ -33,7 +33,7 @@ and stable keys in place of UUIDs.
 - Working precedent
 - Cell slots (`position`)
 - Records about the board: slices, slides, findings, evidence
-- Service spec: business_model
+- Service spec: business_models
 - Spec fields on IR-owned tables
 
 ## Hierarchy
@@ -66,10 +66,10 @@ erDiagram
   cell_touchpoints ||--o{ resources : "points at"
 
   services { uuid id PK  text name  text summary }
-  business_model { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
+  business_models { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
   phases { uuid id PK  uuid service_id FK  text name  text summary  text business_impact  text operational_requirements  int position  uuid loops_to_phase_id FK "optional self-reference" }
-  scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text view_type "single | stacked — merged is session-only, never stored" }
-  paths { uuid id PK  uuid scenario_id FK  text name "the CONDITION that routes you here, never the activity — the scenario already said that"  text summary "when this route applies"  text note "the author's aside: open questions, provenance, working state"  text path_type "happy | variant | exception"  entity_status status }
+  scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text layout "single | stacked — merged is session-only, never stored" }
+  paths { uuid id PK  uuid scenario_id FK  text name "the CONDITION that routes you here, never the activity — the scenario already said that"  text summary "when this route applies"  text note "the author's aside: open questions, provenance, working state"  text kind "happy | variant | exception"  entity_status status }
   steps { uuid id PK  uuid scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int position "unique per (path_id, position)" }
   lanes { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text lane_role "semantic role key; null = generic swimlane"  int position  text owner_team "from the closed list in lane-vocabulary.md; NULL on actor and storyboard lanes"  text kpis  text tools  uuid stakeholder_id FK }
@@ -86,8 +86,8 @@ erDiagram
 | --- | --- | --- |
 | `services` | Top container (one per blueprint deployment, usually) | |
 | `phases` | Service stages, ordered by `position` | `loops_to_phase_id` self-reference renders the service loop |
-| `scenarios` | The unit users navigate; owns steps and paths | `view_type` enum below |
-| `paths` | A journey variant within a scenario | `path_type` enum below; optional `note` |
+| `scenarios` | The unit users navigate; owns steps and paths | `layout` enum below |
+| `paths` | A journey variant within a scenario | `kind` enum below; optional `note` |
 | `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps` |
 | `path_steps` | Which steps a path uses and in what column order | `position` unique per path |
 | `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
@@ -98,7 +98,7 @@ erDiagram
 
 ## Enums
 
-- `scenarios.view_type`: `single` \| `stacked` — ONE vocabulary. The
+- `scenarios.layout`: `single` \| `stacked` — ONE vocabulary. The
   stored token is the token the UI names. (It used to store
   `single | side-by-side | integrated` with a translation module; all rows held
   `side-by-side` and the other two were unused, so the translation was deleted.)
@@ -116,7 +116,7 @@ erDiagram
   upstream-first, so an edge's direction can be read without checking its
   kind — which is why 21000114000000 turned the older functional edges
   around rather than renaming them where they lay.
-- `paths.path_type`: `happy` \| `variant` \| `exception`. Exactly one `happy`
+- `paths.kind`: `happy` \| `variant` \| `exception`. Exactly one `happy`
   per scenario — the route things take when nothing intervenes. An `exception`
   is a route taken because something went wrong; a `variant` is a different but
   equally valid way through. Colour follows type (`happy` green, `exception`
@@ -217,9 +217,9 @@ deliberately never stored.
 
 | Table | What it is | Notes |
 |---|---|---|
-| `slices` | A saved 1D cut through the grid that REFERENCES cells (never copies them) | `title`, `description`, `slice_type` (`journey`\|`step`\|`lane`\|`cell`\|`custom`), `actor`, `locale`, `position`, `origin` (`generated` = safe to regenerate \| `customized` = skill output human-edited, regeneration must confirm \| `human` = authored in the app, never the skill's to regenerate) |
+| `slices` | A saved 1D cut through the grid that REFERENCES cells (never copies them) | `title`, `description`, `kind` (`journey`\|`step`\|`lane`\|`cell`\|`custom`), `actor`, `locale`, `position`, `origin` (`generated` = safe to regenerate \| `customized` = skill output human-edited, regeneration must confirm \| `human` = authored in the app, never the skill's to regenerate) |
 | `slides` | One frame of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider frame), `title`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
-| `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_name`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_name + sorted-cell_keys hash + reason slug — audit-playbook §2) |
+| `findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_key`, `severity` (`info`\|`warn`\|`critical`), `note`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_key + sorted-cell_keys hash + reason slug — audit-playbook §2) |
 | `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); restricted SELECT — excerpts may hold interview content |
 
 **Findings dedupe is DB-backed**: the partial unique index
@@ -233,9 +233,9 @@ dismissed, resolved reopens as a new row (a reopen collision surfaces as
 exposes evidence row counts — never content — to anonymous readers; it
 powers the assumption lens on public deploys.
 
-## Service spec: business_model
+## Service spec: business_models
 
-`business_model` is the service-level spec row, and not one of the records
+`business_models` is the service-level spec row, and not one of the records
 about the board.
 It has no cell reference of any kind; its primary key is the hard
 `service_id` FK. It carries `funding`, `pricing`, `delivery_cost`,

@@ -32,7 +32,7 @@ type PathSelectionState = {
 type PathSelectionContextValue = {
   /** Registered paths per scenario id (read-only; merged, pruned by scope). */
   catalog: PathCatalog
-  /** Selected path identities (`path_type:name`) — shared across overview/phase/scenario. */
+  /** Selected path identities (`kind:name`) — shared across overview/phase/scenario. */
   activePathKeys: readonly string[]
   /**
    * The default path identities: each scenario's own happy path, deduped.

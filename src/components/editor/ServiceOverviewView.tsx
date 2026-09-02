@@ -355,7 +355,7 @@ function ServiceOverviewViewImpl({
     progress: blueprintsProgress,
     filterPaths: overviewPaths,
     filterSelectedPathIds: overviewSelectedPathIds,
-    viewType: overviewViewType,
+    layout: overviewViewType,
     resolveSelectedPathIds,
   } = usePhaseBlueprintFilters({
     scenarioIds,

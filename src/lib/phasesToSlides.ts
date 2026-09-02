@@ -1,10 +1,9 @@
-import { toClientViewType } from '@/lib/viewTypeVocabulary'
 import type { Phase, Scenario } from '@/types/database'
-import type { NavItem } from '@/types/nav'
+import { SLIDE_VIEW_TYPES, type NavItem, type SlideViewType } from '@/types/nav'
 
 export type ScenarioRow = Pick<
   Scenario,
-  'id' | 'name' | 'summary' | 'position' | 'phase_id' | 'view_type'
+  'id' | 'name' | 'summary' | 'position' | 'phase_id' | 'layout'
 >
 
 export type PhaseRow = Pick<
@@ -41,9 +40,12 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         label: scenario.name,
         summary: scenario.summary,
         parentId: phase.id,
-        // Read seam: DB tokens become client vocabulary here (and only here);
-        // unknown values fall back to 'single' instead of leaking through.
-        viewType: toClientViewType(scenario.view_type),
+        // No seam any more: 21000116000000 moved the rows, so the column
+        // holds the client's own vocabulary. Unknown values still fall back
+        // to 'single' rather than leaking a token nothing can render.
+        layout: SLIDE_VIEW_TYPES.includes(scenario.layout as SlideViewType)
+          ? (scenario.layout as SlideViewType)
+          : 'single',
       })
     })
   })

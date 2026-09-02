@@ -2,11 +2,11 @@
 %% Source of truth: supabase/migrations/ (consolidated template schema 20260716200000
 %%   + derived layer 20260729120000/20260730090000/20260803001000
 %%   + authoring foundation/operations + optional tier recipe 20260818*).
-%% Enums: scenarios.view_type ∈ (single | side-by-side | integrated)
-%%        paths.path_type ∈ (happy | unhappy | exception | alternative)
+%% Enums: scenarios.layout ∈ (single | side-by-side | integrated)
+%%        paths.kind ∈ (happy | unhappy | exception | alternative)
 %%        origin (structure tables) ∈ (import | app); slices.origin ∈ (generated | customized | human)
 %%        cell_dependencies.kind ∈ (leads_to | enables)
-%%        slices.slice_type ∈ (journey | step | lane | cell | custom)
+%%        slices.kind ∈ (journey | step | lane | cell | custom)
 %%        findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
 %%        evidence.kind ∈ (interview | survey | analytics | doc | meeting | decision | observation | other)
@@ -48,7 +48,7 @@ erDiagram
   slices ||--o{ slides : "has many"
   services ||--o{ findings : "has many"
   services ||--o{ evidence : "has many"
-  services ||--o| business_model : "has 0..1"
+  services ||--o| business_models : "has 0..1"
 
   services {
     uuid id PK
@@ -76,7 +76,7 @@ erDiagram
     text name
     text summary
     int position
-    text view_type "single | side-by-side | integrated"
+    text layout "single | side-by-side | integrated"
     text origin "import | app"
   }
 
@@ -86,7 +86,7 @@ erDiagram
     text name
     text summary
     text note "optional, e.g. parallel-scenario context"
-    text path_type "happy | unhappy | exception | alternative"
+    text kind "happy | unhappy | exception | alternative"
     text origin "import | app"
   }
 
@@ -167,7 +167,7 @@ erDiagram
   slices {
     uuid id PK
     uuid service_id FK
-    text slice_type "journey | step | lane | cell | custom"
+    text kind "journey | step | lane | cell | custom"
     text title
     text description
     text actor
@@ -194,7 +194,7 @@ erDiagram
     uuid service_id FK
     uuid run_id "audit-run identity; intentionally FK-less"
     text source "audit | whatif | import-sweep"
-    text check_name
+    text check_key
     text severity "info | warn | critical"
     uuid[] cell_ids "SOFT refs, paired with cell_keys"
     text[] cell_keys
@@ -219,7 +219,7 @@ erDiagram
     uuid created_by
   }
 
-  business_model {
+  business_models {
     uuid service_id PK, FK "one business-model record per service"
     text funding
     text pricing

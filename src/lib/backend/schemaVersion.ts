@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.02'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.03'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -28,6 +28,7 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // image on a cell, and the border a walkthrough draws around one — and the
   // column took it. `slice_items` became `slides` in the same migration; the
   // IR never carried that table, so only the cell field moves here.
+  '2026.09.03',
   '2026.09.02',
   // The dependency kinds became `leads_to` and `enables` (#94). Not a pair of
   // renames: `needs` put the source at the opposite end from `enables`, so
@@ -40,7 +41,7 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // at it; the IR splits with it, so a 2026.08.27 file authors a `links`
   // array this template no longer reads.
   '2026.08.31',
-  // propositions → business_model, the last row of the vocabulary map that
+  // propositions → business_models, the last row of the vocabulary map that
   // applied to this package (#84). `evidence.proposition_question_key` keeps
   // the word on purpose: the three validation questions ARE propositions.
   '2026.08.27',

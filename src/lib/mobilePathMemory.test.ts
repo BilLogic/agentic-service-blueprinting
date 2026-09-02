@@ -5,22 +5,22 @@ import {
   resolveDefaultPathId,
   writeLastViewedPath,
 } from '@/lib/mobilePathMemory'
-import type { PathType } from '@/types/database'
+import type { PathKind } from '@/types/database'
 
 // Pins the Phase-3 default rule (plan 2026-08-16-002): last-viewed wins
 // when it still exists, else the happy path, and storage failures degrade
 // to defaults rather than throwing.
 
-const path = (id: string, name: string, path_type: PathType = 'happy') => ({
+const path = (id: string, name: string, kind: PathKind = 'happy') => ({
   id,
   name,
-  path_type,
+  kind,
 })
 
 describe('resolveDefaultPathId', () => {
   const paths = [
     path('p-happy', 'Happy Path', 'happy'),
-    path('p-unhappy', 'Reschedule', 'unhappy'),
+    path('p-unhappy', 'Reschedule', 'variant'),
   ]
 
   it('a stored path that still exists wins', () => {

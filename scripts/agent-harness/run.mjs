@@ -200,7 +200,7 @@ async function realListScenarios() {
 
 async function realGetBlueprint(scenarioId) {
   const paths = await rest(
-    `paths?select=id,name,path_type,lanes(id,name,lane_role,position),path_steps(position,steps(id,name))&scenario_id=eq.${encodeURIComponent(scenarioId)}`,
+    `paths?select=id,name,kind,lanes(id,name,lane_role,position),path_steps(position,steps(id,name))&scenario_id=eq.${encodeURIComponent(scenarioId)}`,
   )
   if (!paths?.length) return 'No paths in this scenario.'
   const out = []
@@ -213,7 +213,7 @@ async function realGetBlueprint(scenarioId) {
       `cells?select=id,content,lane_id,step_id&path_id=eq.${path.id}`,
     )
     out.push(
-      `Path "${path.name}" (${path.id}, type ${path.path_type})`,
+      `Path "${path.name}" (${path.id}, type ${path.kind})`,
       `Steps: ${steps.map((s) => `${s.position}. "${s.name}" (${s.id})`).join(' | ')}`,
       ...(path.lanes ?? [])
         .sort((a, b) => a.position - b.position)
@@ -250,28 +250,28 @@ async function realListOwnerTags() {
 }
 
 async function realListSlices() {
-  const data = await rest('slices?select=id,title,slice_type')
+  const data = await rest('slices?select=id,title,kind')
   return (data ?? [])
-    .map((s) => `"${s.title}" (${s.id}, type ${s.slice_type})`)
+    .map((s) => `"${s.title}" (${s.id}, type ${s.kind})`)
     .join('\n')
 }
 
 async function realGetSlice(sliceId) {
   const rows = await rest(
-    `slices?select=id,title,description,slice_type,actor,origin,slice_items(id,position,caption,narrative,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
+    `slices?select=id,title,description,kind,actor,origin,slice_items(id,position,caption,narrative,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
   )
   if (!rows?.[0]) throw new Error('No slice with that id.')
   const slice = rows[0]
   const frames = [...(slice.slice_items ?? [])]
     .sort((a, b) => a.position - b.position)
     .map((f, i) => `frame ${i + 1}: cells [${(f.cell_ids ?? []).join(', ')}]${f.caption ? ` caption "${f.caption}"` : ''}`)
-  return `slice "${slice.title}" (${slice.id}) type=${slice.slice_type}\n${frames.join('\n') || '(no frames)'}`
+  return `slice "${slice.title}" (${slice.id}) type=${slice.kind}\n${frames.join('\n') || '(no frames)'}`
 }
 
 async function realListFindings(statusFilter) {
   // Mirrors read.ts: the capped read carries the TRUE TOTAL (count=exact)
   // and instructs the model to answer count questions from it.
-  const query = `findings?select=id,source,check_name,severity,note,status,cell_ids,created_at&order=created_at.desc&limit=100${statusFilter === 'all' ? '' : `&status=eq.${encodeURIComponent(statusFilter)}`}`
+  const query = `findings?select=id,source,check_key,severity,note,status,cell_ids,created_at&order=created_at.desc&limit=100${statusFilter === 'all' ? '' : `&status=eq.${encodeURIComponent(statusFilter)}`}`
   const response = await fetch(`${env.VITE_SUPABASE_URL}/rest/v1/${query}`, {
     headers: {
       apikey: env.VITE_SUPABASE_ANON_KEY,
@@ -293,7 +293,7 @@ async function realListFindings(statusFilter) {
     header,
     ...rows.map(
       (r) =>
-        `${r.id} [${r.severity}] ${r.check_name} (${r.source}, ${r.status}, ${String(r.created_at).slice(0, 10)}) cells:${(r.cell_ids ?? []).length}${r.note ? ` — ${r.note}` : ''}`,
+        `${r.id} [${r.severity}] ${r.check_key} (${r.source}, ${r.status}, ${String(r.created_at).slice(0, 10)}) cells:${(r.cell_ids ?? []).length}${r.note ? ` — ${r.note}` : ''}`,
     ),
   ].join('\n')
 }
@@ -356,7 +356,7 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
       // failed, and retries (observed live: a doubled add_lane).
       record.result =
         name === 'record_finding'
-          ? `Recorded ${args.severity ?? 'warn'} finding for ${args.check_name ?? '?'}. run_id ${args.run_id ?? `00000000-0000-4000-8000-00000000d${dryCounter}`}; reuse it for the rest of this run. NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
+          ? `Recorded ${args.severity ?? 'warn'} finding for ${args.check_key ?? '?'}. run_id ${args.run_id ?? `00000000-0000-4000-8000-00000000d${dryCounter}`}; reuse it for the rest of this run. NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
           : `Done (${name} accepted, ref dry-${dryCounter}). NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
       return record.result
     }

@@ -361,9 +361,9 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         scenario_id: str('Scenario id'),
         name: str('Path name'),
-        path_type: {
+        kind: {
           type: 'string',
-          enum: ['happy', 'unhappy', 'exception', 'alternative', 'named'],
+          enum: ['happy', 'variant', 'exception', 'variant', 'named'],
           description: 'Default alternative',
         },
         lane_source_path_id: str('Sibling path id whose lanes to copy; omit for none'),
@@ -380,7 +380,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         source_path_id: str('Path to copy'),
         name: str('New path name'),
-        path_type: { type: 'string', enum: ['happy', 'unhappy', 'exception', 'alternative', 'named'], description: 'Default alternative' },
+        kind: { type: 'string', enum: ['happy', 'variant', 'exception', 'variant', 'named'], description: 'Default alternative' },
         copy_cells: { type: 'boolean', description: 'Default true' },
       },
       required: ['source_path_id', 'name'],
@@ -425,7 +425,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         title: str('Slice title'),
         description: str('One-line description; omit for none'),
-        slice_type: {
+        kind: {
           type: 'string',
           enum: ['journey', 'lane', 'step', 'custom'],
           description: 'Kind of cut',
@@ -437,7 +437,7 @@ export const TOOL_SPECS: ToolSpec[] = [
           items: { type: 'string' },
         },
       },
-      required: ['title', 'slice_type', 'cell_ids'],
+      required: ['title', 'kind', 'cell_ids'],
     },
   },
   {
@@ -450,7 +450,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         title: str('omit to keep'),
         description: str('omit to keep'),
         actor: str('omit to keep'),
-        slice_type: { type: 'string', enum: ['journey', 'lane', 'step', 'custom'], description: 'omit to keep' },
+        kind: { type: 'string', enum: ['journey', 'lane', 'step', 'custom'], description: 'omit to keep' },
       },
       required: ['slice_id'],
     },
@@ -610,14 +610,14 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'record_finding',
     description:
-      'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_name + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
+      'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_key + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
     parameters: {
       type: 'object',
       properties: {
         source: { type: 'string', enum: ['audit', 'whatif'], description: 'Which skill produced it' },
-        check_name: str('Roster check name, e.g. "gap-sweep"'),
+        check_key: str('Roster check key, e.g. "gap-sweep"'),
         severity: { type: 'string', enum: ['info', 'warn', 'critical'], description: 'Per the check doc default unless evidence says otherwise' },
-        note: str('The finding itself — what is wrong, where, and why it matters. No raw ids in this text.'),
+        summary: str('The finding itself — what is wrong, where, and why it matters. No raw ids in this text.'),
         cell_ids: {
           type: 'array',
           description: 'Cells the finding is about; omit only for zero-cell findings',
@@ -626,7 +626,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         scope: str('Zero-cell fingerprint scope, required when cell_ids is empty. Include a short reason slug so two zero-cell findings from one check cannot collide, e.g. "scenario:Intake Call:orphan-step-cooldown"'),
         run_id: str('The run identity returned by the first record_finding of this run'),
       },
-      required: ['source', 'check_name', 'severity', 'note'],
+      required: ['source', 'check_key', 'severity', 'summary'],
     },
   },
   {

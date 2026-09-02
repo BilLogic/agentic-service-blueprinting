@@ -82,7 +82,7 @@ function toConnection(
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
     linkKind: trigger.kind === 'enables' ? 'enables' : 'leads_to',
-    linkLabel: trigger.label ?? null,
+    linkLabel: trigger.name ?? null,
     linkNote: trigger.note ?? null,
     isTech,
     techItems,
@@ -310,7 +310,7 @@ export function buildBlueprintCellSelectionForId(
     pathId: blueprint.path.id,
     pathName: blueprint.path.name,
     pathSummary: blueprint.path.summary,
-    pathType: blueprint.path.path_type,
+    pathKind: blueprint.path.kind,
   })
 }
 

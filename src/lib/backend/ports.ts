@@ -63,7 +63,7 @@ export type PathSummary = {
   name: string
   summary: string | null
   note: string | null
-  pathType: string
+  pathKind: string
 }
 
 /** One slide of a slice: the cells it points at, and the words around them. */
@@ -78,8 +78,8 @@ export type SliceSummary = {
   id: string
   scenarioId: string | null
   title: string
-  sliceType: string
-  origin: string
+  sliceKind: string
+  authorship: string
 }
 
 export type SliceDetail = SliceSummary & { slides: Slide[] }
@@ -87,8 +87,8 @@ export type SliceDetail = SliceSummary & { slides: Slide[] }
 export type SliceDraft = {
   scenarioId: string | null
   title: string
-  sliceType: string
-  origin: string
+  sliceKind: string
+  authorship: string
   slides: Slide[]
 }
 

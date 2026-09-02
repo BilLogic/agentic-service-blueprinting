@@ -53,8 +53,8 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | --- | --- | --- |
 | Service Service | `services` | — |
 | Phase | `phases` | `position`; optional `loops_to_phase_id` |
-| Service Scenario | `scenarios` | `position`; `view_type` for layout |
-| Path | `paths` | `path_type`: happy, unhappy, exception, alternative; optional `note` for path-level context |
+| Service Scenario | `scenarios` | `position`; `layout` for layout |
+| Path | `paths` | `kind`: happy, unhappy, exception, alternative; optional `note` for path-level context |
 | Blueprint row | `lanes` | `position` (per path); `lane_role` semantic key |
 | Blueprint column | `steps` | canonical per `scenario` |
 | Path column order | `path_steps` | `position` per `(path_id, step_id)` |
@@ -133,7 +133,7 @@ a placement, never both and never neither.
 App types: `CellResource` and `CellTouchpoint` in `src/types/blueprint.ts`.
 Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.
 
-## View modes (`scenarios.view_type`)
+## View modes (`scenarios.layout`)
 
 | Value | Behavior |
 | --- | --- |
@@ -194,8 +194,8 @@ Writes are laneed on top for signed-in sessions (`authenticated`):
 - **Ordinary text edits use column-scoped grants**: `cells.content/
   summary`, `cell_touchpoints.name/position/summary/screenshots/url`,
   `resources.kind/name/url/position`, `lanes.name/lane_role`, `steps.name`,
-  `paths.name/summary/note/path_type`,
-  `scenarios.name/summary/view_type`, plus the spec columns — writable directly by `authenticated` under permissive
+  `paths.name/summary/note/kind`,
+  `scenarios.name/summary/layout`, plus the spec columns — writable directly by `authenticated` under permissive
   update policies.
 - **Optional service-account tier** (`20260818002000`, a recipe you can
   skip or delete): RESTRICTIVE policies AND an in-function
@@ -232,7 +232,7 @@ credentials.
 | `21000108000000_description_is_a_summary.sql` | `description` → `summary` on services, phases, scenarios, paths, cells; `slices.description` keeps its name |
 | `21000109000000_the_lane_vocabulary_is_a_schema_version.sql` | `schema_version` → `2026.08.25`; drops the series' scaffolding |
 | `21000110000000_the_ir_can_author_a_needs_edge.sql` | `schema_version` → `2026.08.26`. No DDL: `cell_dependencies.kind` has existed since `20260729120000`; the IR gained the field that can author it |
-| `21000111000000_propositions_are_the_business_model.sql` | `propositions` → `business_model`, with its constraint, index, policy and trigger names swept from the catalogue rather than listed. `evidence.proposition_question_key` is a permanent exemption and is asserted to survive. `schema_version` → `2026.08.27` |
+| `21000111000000_propositions_are_the_business_model.sql` | `propositions` → `business_models`, with its constraint, index, policy and trigger names swept from the catalogue rather than listed. `evidence.proposition_question_key` is a permanent exemption and is asserted to survive. `schema_version` → `2026.08.27` |
 | `21000112000000_the_word_boundary_left_five_behind.sql` | Repairs what `\m…\M` could not reach. `set_cell_dependency` named `cell_triggers_source_target_kind_unique` in an `on conflict on constraint`, and `21000103`'s catalogue sweep had renamed that constraint — the body rewrite used a word-boundary pattern, and `_` is a word constituent, so it matched the table reference and not the constraint. Plus three stale comments and one inside a function body. No version bump: nothing about the shape moves |
 
 ## Reserved migration timestamp band
@@ -423,7 +423,7 @@ const { data } = await supabase
   .select(`
     id,
     name,
-    path_type,
+    kind,
     scenarios (
       id,
       name,

@@ -107,7 +107,7 @@ function deriveFromRows(
             name: path.name,
             summary: path.summary ?? null,
             note: path.note ?? null,
-            path_type: path.path_type,
+            kind: path.kind,
           })),
         ),
       )
