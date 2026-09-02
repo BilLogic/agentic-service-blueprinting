@@ -27,10 +27,11 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { sourceFilesUnder } from '../check-database-names.mjs'
 import { RETIRED_COPY_WORDS } from '../retired-vocabulary.mjs'
+import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
@@ -177,4 +178,103 @@ test('the singular is a live word, and only the retired plural is flagged', () =
   ]
   const found = offenders(readerFacingStrings(planted)).map((one) => one.split(' — ')[1])
   assert.deepEqual(found, ['"propositions"'])
+})
+
+/* ------------------------------------------------------------- the figures */
+
+/**
+ * SECOND SUBJECT: the text inside the authored diagrams.
+ *
+ * `docs/assets/` is where the figures are authored; `sync-cover-assets.mjs`
+ * copies them to the gitignored `public/cover/` at predev and prebuild, and
+ * `CoverPage` renders them **inside the app**. So a word in a `<text>` node
+ * reaches a reader the way a heading does, and it reaches every instance built
+ * from this template as well.
+ *
+ * Added because the first subject could not see them at all. Every rename this
+ * repository has run — `service_lifecycles` to `services`, `layers` to `lanes`,
+ * `propositions` to `business_model` — had to be carried into these files by
+ * hand, and a figure that was missed would say the retired word on every cover
+ * page built from this template with nothing reporting it. Any copy of these
+ * files kept outside this repository inherits that, which is the reason to fix
+ * the mechanism here rather than in the copies.
+ *
+ * This is a widened SUBJECT, not a widened word list. Same
+ * `RETIRED_COPY_WORDS`, same `offenders()`; only where a reader-facing string
+ * is looked for has changed.
+ *
+ * `<text>` only. Not `id`, not `class`, not an SVG comment, not the filename —
+ * a figure called `four-ways-in.svg` is nobody's copy. `public/cover/` is
+ * deliberately NOT read: it is generated, gitignored, and a check that reads
+ * build output reports the same finding twice.
+ */
+const FIGURES = resolve(REPO_ROOT, 'docs/assets')
+
+/** `<text>` content, with any `<tspan>` markup inside it flattened away. */
+const SVG_TEXT = /<text\b[^>]*>([\s\S]*?)<\/text>/g
+
+export function figureStrings(files = figureFiles()) {
+  const out = []
+  for (const { file, code } of files) {
+    for (const match of code.matchAll(SVG_TEXT)) {
+      const value = match[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      if (value && /[A-Za-z]/.test(value)) out.push({ file, where: 'text', value })
+    }
+  }
+  return out
+}
+
+function figureFiles() {
+  return readdirSync(FIGURES)
+    .filter((name) => name.endsWith('.svg'))
+    .sort()
+    .map((name) => ({
+      file: `docs/assets/${name}`,
+      code: readFileSync(resolve(FIGURES, name), 'utf8'),
+    }))
+}
+
+test('no retired spelling reaches a reader through a figure', () => {
+  const found = offenders(figureStrings())
+  assert.deepEqual(
+    found,
+    [],
+    'A retired word is on screen in a diagram. These render in the app through ' +
+      `the cover page, not only in a README:\n${found.join('\n')}`,
+  )
+})
+
+test('the figure guard reads the text nodes it claims to', () => {
+  // The extraction, on the shapes the real files use: a plain node, one broken
+  // across lines, one built from tspans, and the attributes NOT read.
+  const planted = [
+    {
+      file: 'docs/assets/planted.svg',
+      code: [
+        '<text x="10" y="20" class="uiLabel">Service lifecycle</text>',
+        '<text x="10" y="40">a row',
+        '  position</text>',
+        '<text x="10" y="60"><tspan>one</tspan> <tspan>lane</tspan></text>',
+        '<rect id="layer-1" class="layer" data-note="the layer"/>',
+        '<!-- a lifecycle in a comment is not copy -->',
+      ].join('\n'),
+    },
+  ]
+  const strings = figureStrings(planted)
+  assert.deepEqual(
+    strings.map((one) => one.value),
+    ['Service lifecycle', 'a row position', 'one lane'],
+  )
+  assert.deepEqual(
+    offenders(strings).map((one) => one.split(' — ')[1]).sort(),
+    ['"lifecycle"', '"row position"'],
+  )
+})
+
+test('every authored figure is covered, and there are some', () => {
+  // A reader that found no files would pass the assertion above in silence,
+  // which is the failure mode this whole file is written against.
+  const files = figureFiles()
+  assert.equal(files.length, COVER_ASSET_MANIFEST.length)
+  assert.ok(figureStrings(files).length > 100, 'the figures parsed to almost no text')
 })
