@@ -750,6 +750,7 @@ export type Database = {
       touchpoints: {
         Row: {
           created_at: string
+          icon_url: string | null
           id: string
           kind: string
           name: string
@@ -761,6 +762,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          icon_url?: string | null
           id?: string
           kind?: string
           name: string
@@ -772,6 +774,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          icon_url?: string | null
           id?: string
           kind?: string
           name?: string

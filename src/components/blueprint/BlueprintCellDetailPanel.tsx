@@ -137,8 +137,6 @@ const CELL_DETAIL_PICTURE_CLASS =
   'absolute inset-0 h-full w-full object-contain object-center'
 const CELL_DETAIL_LOGO_CLASS =
   'size-32 shrink-0 rounded-lg bg-muted/20 p-2 object-contain object-center'
-const CELL_DETAIL_SMALL_LOGO_CLASS =
-  'size-[6.5rem] shrink-0 rounded-lg bg-muted/20 p-2 object-contain object-center'
 
 type PanelTab = 'dependencies' | 'evidence' | 'resources'
 
@@ -1143,14 +1141,19 @@ function BlueprintCellDetailPanelBody() {
   })
   // A featured attachment is the owner's picture (#110); the frame and the
   // placement's screenshots are the fallback until #111 moves them here.
+  // The stock logo for the touchpoint this panel is about — a string on the
+  // registry row now (#326), not a tool name matched against a table in code.
+  const techLogoUrl =
+    cellTouchpointList.find(
+      (placement) => placement.name === (selection.techItem ?? techDetailLabel),
+    )?.iconUrl?.trim() || null
   const showPicture = Boolean(
     (featured.preview || detailPictures?.length) && !isVisualLane,
   )
   const showTechPill = Boolean(isTechLane && techDetailLabel)
-  const showTechPillAboveTitle =
-    showTechPill &&
-    (selection.laneName === 'Front Stage Tech' ||
-      selection.laneName === 'Back Stage Tech')
+  // The touchpoint pill sits above the title on a touchpoint lane — decided by
+  // the lane's role (isTechLane), not by a hardcoded lane name (#326).
+  const showTechPillAboveTitle = showTechPill
 
   const handleConnectionSelect = (cellId: string) => {
     const pathId = pathEntry?.pathId
@@ -1308,14 +1311,11 @@ function BlueprintCellDetailPanelBody() {
     <div className="flex w-full flex-col items-center gap-3">
       {(() => {
         const frames = detailPictures ?? []
-        const useSmallerTechLogo = [
-          'social media',
-          'on-campus booth',
-          'handshake',
-          'handshake employer profile',
-        ].includes(techDetailLabel?.trim().toLowerCase() ?? '')
+        // A picture is a logo when it IS the touchpoint's registry icon (#326);
+        // the filename convention stays a fallback for a logo carried as a
+        // placement attachment.
         const isTechLogo = (src: string) =>
-          useSmallerTechLogo ||
+          (techLogoUrl != null && src === techLogoUrl) ||
           src.includes('-logo.') ||
           src.includes('/logo/')
         const logos = frames.filter(isTechLogo)
@@ -1330,12 +1330,7 @@ function BlueprintCellDetailPanelBody() {
                     key={src}
                     src={src}
                     alt=""
-                    className={cn(
-                      useSmallerTechLogo
-                        ? CELL_DETAIL_SMALL_LOGO_CLASS
-                        : CELL_DETAIL_LOGO_CLASS,
-                      src.includes('figma-logo.') && 'bg-transparent',
-                    )}
+                    className={CELL_DETAIL_LOGO_CLASS}
                   />
                 ))}
               </div>

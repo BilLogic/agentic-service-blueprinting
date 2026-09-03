@@ -33,7 +33,7 @@ export type BlueprintCellSelection = {
   stepId: string
   stepName: string
   stepIndex: number
-  /** Set when a single tech pill is selected (Front Stage Tech, Back Stage Tech). */
+  /** Set when a single touchpoint is selected on a touchpoint lane. */
   techItem?: string
   paths: BlueprintCellPathEntry[]
 }

@@ -33,7 +33,7 @@ export type RawCellTouchpoint = {
   summary?: string | null
   role?: string | null
   /** The joined registry row. PostgREST names the embed after the table. */
-  touchpoints?: { name: string; kind?: string | null } | null
+  touchpoints?: { name: string; kind?: string | null; icon_url?: string | null } | null
 }
 
 /** Placements from database rows, in the order the author put them. */
@@ -51,6 +51,7 @@ export function cellTouchpointsFromRows(
       touchpointId: row.touchpoint_id ?? null,
       name,
       kind: row.touchpoints?.kind ?? null,
+      iconUrl: row.touchpoints?.icon_url ?? null,
       summary: row.summary?.trim() || null,
       role: normalizeRole(row.role),
     }))

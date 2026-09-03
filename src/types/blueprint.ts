@@ -60,6 +60,14 @@ export type CellTouchpoint = {
   name: string
   /** The registry entry's kind, or null where there is no registry row to read. */
   kind: string | null
+  /**
+   * The registry entry's stock icon / logo URL, or absent where the registry
+   * has none. A property of the touchpoint the service owns, authored once and
+   * read off the row (#326) — never a tool name matched against a table baked
+   * into the renderer. Optional so a fallback board, which has no registry,
+   * simply omits it.
+   */
+  iconUrl?: string | null
   summary: string | null
   /**
    * Core or peripheral AT THIS MOMENT, or null for the unmarked majority.
