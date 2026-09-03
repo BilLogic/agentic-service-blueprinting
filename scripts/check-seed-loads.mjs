@@ -106,7 +106,24 @@ export const RENDER_READS = {
     'join public.phases ph on ph.service_id = sv.id ' +
     'join public.scenarios sc on sc.phase_id = ph.id ' +
     'join public.paths pa on pa.scenario_id = sc.id',
+  // A deployment carries its tool logos as data in `touchpoints.icon_url`
+  // (#326). The fixture below seeds one as the owner; this read, run as anon,
+  // is the deployed key seeing it — the value a deployment renders off the row
+  // rather than a tool name matched against a table baked into code.
+  '@icon': `select count(*) from public.touchpoints where icon_url = '${'/touchpoint-logos/example-logo.png'}'`,
 }
+
+/**
+ * The sample seed ships no tool logos, so the icon column would read as all-null
+ * and `@icon` above could never see a value carried to the anon key. This stands
+ * one up the way a deployment's seed would: the OWNER sets one touchpoint's
+ * icon, and the anon read proves the deployed key sees it (#326). It runs after
+ * the stack and before the inventory read.
+ */
+export const ICON_FIXTURE_URL = '/touchpoint-logos/example-logo.png'
+export const ICON_FIXTURE_SQL =
+  `update public.touchpoints set icon_url = '${ICON_FIXTURE_URL}' ` +
+  'where id = (select id from public.touchpoints order by id limit 1);'
 
 /** The single query, run as `anon`, that returns one `label|count` row each. */
 export function buildInventorySql() {
@@ -148,6 +165,14 @@ export function evaluate(counts) {
   for (const label of Object.keys(RENDER_READS)) {
     const n = counts.get(label)
     if (!n || n === 0) {
+      if (label === '@icon') {
+        problems.push(
+          `a deployment touchpoint icon (@icon) is not visible as anon — the ` +
+            `icon_url column did not reach the deployed key (a grant the recipe ` +
+            `never extended to the new column, or the fixture did not apply)`,
+        )
+        continue
+      }
       const what = label === '@grid' ? 'the blueprint grid' : 'the service hierarchy'
       problems.push(`${what} (${label}) returned no rows — the seed loaded but does not render`)
     }
@@ -181,6 +206,9 @@ function main() {
   run('createdb', [DB])
   try {
     for (const file of STACK) psql(['-f', P(file)])
+    // Stand up a deployment's tool logo (#326) as the owner, so the anon read
+    // below (`@icon`) proves the value reaches the deployed key.
+    psql(['-c', ICON_FIXTURE_SQL])
     const stdout = psql(['-At', '-F', '|', '-c', buildInventorySql()])
     const problems = evaluate(parseCounts(stdout))
     if (problems.length > 0) {
@@ -196,7 +224,7 @@ function main() {
     }
     console.log(
       `the generated seed loads on a fresh core + recipe and renders as anon ` +
-        `(${POPULATED.length} tables populated, both render reads return rows)`,
+        `(${POPULATED.length} tables populated, ${Object.keys(RENDER_READS).length} render reads return rows)`,
     )
   } catch (error) {
     // A non-zero psql exit — an apply that would not run, or a read the anon

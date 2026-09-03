@@ -3001,6 +3001,7 @@ CREATE TABLE public.touchpoints (
     origin text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    icon_url text,
     CONSTRAINT touchpoints_kind_check CHECK ((kind = ANY (ARRAY['app'::text, 'document'::text, 'physical'::text, 'channel'::text, 'service'::text, 'other'::text]))),
     CONSTRAINT touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
@@ -3028,6 +3029,12 @@ COMMENT ON COLUMN public.touchpoints.summary IS 'What this touchpoint IS, for th
 --
 
 COMMENT ON COLUMN public.touchpoints.url IS 'Where the touchpoint itself lives, when it has a home; a placement''s own link is a resource on the placement.';
+
+--
+-- Name: COLUMN touchpoints.icon_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.icon_url IS 'A stable URL for the touchpoint''s stock icon or logo — the mark a well-known tool shows in the detail panel. A property of the thing the service owns, authored once per (service, name), not per placement. Blueprint data, not app config: the template ships it null and draws nothing, and a deployment seeds its own asset URL. The renderer reads this row rather than matching a tool name against a table baked into code.';
 
 --
 -- Name: agent_messages agent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -

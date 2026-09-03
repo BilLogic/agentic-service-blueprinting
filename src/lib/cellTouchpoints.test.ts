@@ -67,6 +67,26 @@ describe('placements from database rows', () => {
     expect(cellTouchpoints({})).toEqual([])
     expect(cellTouchpointsFromRows(undefined)).toEqual([])
   })
+
+  it('carries the registry icon url off the embed, null where there is none (#326)', () => {
+    const rows = [
+      {
+        id: 'a',
+        position: 1,
+        touchpoint_id: 'tp-1',
+        touchpoints: {
+          name: 'Zoom',
+          kind: 'app',
+          icon_url: '/touchpoint-logos/zoom-logo.png',
+        },
+      },
+      { id: 'b', position: 2, name: 'Hand-typed only' },
+    ]
+    const out = cellTouchpointsFromRows(rows)
+    expect(out[0]!.name).toBe('Zoom')
+    expect(out[0]!.iconUrl).toBe('/touchpoint-logos/zoom-logo.png')
+    expect(out[1]!.iconUrl ?? null).toBeNull()
+  })
 })
 
 describe('what the panel reads off a placement', () => {
