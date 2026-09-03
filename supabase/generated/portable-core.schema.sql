@@ -2845,7 +2845,8 @@ CREATE TABLE public.services (
     name text NOT NULL,
     summary text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    entity_examples jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 --
@@ -2853,6 +2854,12 @@ CREATE TABLE public.services (
 --
 
 COMMENT ON TABLE public.services IS 'The service this blueprint describes, end to end';
+
+--
+-- Name: COLUMN services.entity_examples; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.services.entity_examples IS 'Per-service authored examples, one free-text value per core kind (service, phase, scenario, path, step, lane), shown under each kind''s definition to ground it in this deployment. Blueprint data, not app config: it rides the service block so a re-map round-trips it. A jsonb object with no CHECK — the six-key shape is the app''s, and an unwritten key simply does not render.';
 
 --
 -- Name: slices; Type: TABLE; Schema: public; Owner: -

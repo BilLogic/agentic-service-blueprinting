@@ -33,6 +33,20 @@ import type { Slice, Slide } from '@/types/database'
 
 export const SAMPLE_SERVICE_ID = 'f0000000-0000-4000-8000-000000000010'
 
+/**
+ * The sample service's per-kind examples — the no-DB fallback for
+ * `services.entity_examples`, so a definition popover grounds its generic
+ * definition even with no backend configured.
+ */
+export const SAMPLE_ENTITY_EXAMPLES: Record<string, string> = {
+  "service": "Keeping a blueprint true — this template mapped as its own service, so the board doubles as the documentation.",
+  "phase": "Setup — the one-time work of getting a real service onto the board and signed off.",
+  "scenario": "Map your service — the run that turns a folder of documents, or someone else’s diagram, into a validated board.",
+  "path": "From your documents — the ingest route that reads a corpus of service documents with per-claim provenance.",
+  "step": "Import and verify — the column where a validated file in a repository becomes rows in the database.",
+  "lane": "Blueprint owner — the row for the person driving the map, read across every step."
+}
+
 export type SamplePhase = {
   id: string
   name: string
