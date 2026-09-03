@@ -88,11 +88,22 @@ export const POPULATED = [
 ]
 
 /**
- * The two reads the app performs to render, as raw counts. `@grid` is the
+ * The reads the app performs to render, as raw counts. `@grid` is the
  * blueprint itself — a path, its ordered steps, and the cells at each
- * lane × step; `@hierarchy` is the nav spine down to a path. Both must return
+ * lane × step; `@hierarchy` is the nav spine down to a path. Each must return
  * rows, which a populated-but-unjoinable seed (a dangling foreign key the owner
  * inserted around) would not.
+ *
+ * `@registry` and `@placement` are the touchpoint registry the same way the
+ * app reaches it (#325). The registry is the SERVICE's — `touchpoints` carries
+ * `service_id` — so `useRegistryTouchpoints` resolves a cell's owning service
+ * (cell → path → scenario → phase → `service_id`) and lists that service's
+ * touchpoints; `@registry` runs exactly that per-service join, so the read that
+ * feeds the registry UI is proven to reach a cell's registry as anon, scoped to
+ * the service that owns it. `@placement` is the other half — a cell's placement
+ * joined to its registry row, the name / kind / icon a touchpoint cell renders
+ * (`cellTouchpointsFromRows`). A deployment's touchpoints render through this
+ * template's registry exactly when both joins return rows to the deployed key.
  */
 export const RENDER_READS = {
   '@grid':
@@ -111,6 +122,34 @@ export const RENDER_READS = {
   // is the deployed key seeing it — the value a deployment renders off the row
   // rather than a tool name matched against a table baked into code.
   '@icon': `select count(*) from public.touchpoints where icon_url = '${'/touchpoint-logos/example-logo.png'}'`,
+  // The registry a cell can link to, resolved per-service the way the hook does:
+  // a cell reaches its service through its path, and the registry is that
+  // service's touchpoints. Non-zero proves the anon key can walk the whole
+  // scope and read the touchpoints filtered by the service it lands on.
+  '@registry':
+    'select count(*) from public.cells c ' +
+    'join public.paths p on p.id = c.path_id ' +
+    'join public.scenarios sc on sc.id = p.scenario_id ' +
+    'join public.phases ph on ph.id = sc.phase_id ' +
+    'join public.touchpoints tp on tp.service_id = ph.service_id',
+  // A placement joined to its registry row — the name the touchpoint cell shows
+  // in the registry's spelling, not the placement's own. The embed the board
+  // query names `touchpoints`, run here as the join it compiles to.
+  '@placement':
+    'select count(*) from public.cell_touchpoints ct ' +
+    'join public.touchpoints tp on tp.id = ct.touchpoint_id',
+}
+
+/**
+ * What each render read renders, for the failure line. `@icon` is not here: its
+ * empty result has a bespoke message (a grant the recipe never extended to the
+ * new column), handled before this map is consulted.
+ */
+export const RENDER_READ_NAMES = {
+  '@grid': 'the blueprint grid',
+  '@hierarchy': 'the service hierarchy',
+  '@registry': 'the touchpoint registry a cell links to',
+  '@placement': "a cell's touchpoint placement",
 }
 
 /**
@@ -173,7 +212,7 @@ export function evaluate(counts) {
         )
         continue
       }
-      const what = label === '@grid' ? 'the blueprint grid' : 'the service hierarchy'
+      const what = RENDER_READ_NAMES[label] ?? label
       problems.push(`${what} (${label}) returned no rows — the seed loaded but does not render`)
     }
   }
