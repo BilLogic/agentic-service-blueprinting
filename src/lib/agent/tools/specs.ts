@@ -509,7 +509,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         scenario_id: str('Scenario id'),
         name: str('Lane label'),
         lane_role: str(
-          'Semantic role (e.g. frontstage_actions, backstage_tech); omit if none fits',
+          'Semantic role (e.g. frontstage_actions, backstage_touchpoints); omit if none fits',
         ),
         at_position: { type: 'number', description: 'Insert row (1-based); omit to append' },
       },

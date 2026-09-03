@@ -33,7 +33,7 @@ import {
   TOUCHPOINT_ROLE_LABEL,
 } from '@/lib/touchpointRole'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { TechPillFace } from '@/components/blueprint/TechPillFace'
+import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
 import {
   CANVAS_REGION_SELECTOR,
@@ -83,11 +83,11 @@ import {
   scrollBlueprintCellIntoView,
 } from '@/lib/blueprintCellConnections'
 import {
-  buildTechPillSelectionForItem,
+  buildTouchpointSelectionForItem,
   getBlueprintStepTechItems,
-  scrollBlueprintTechPillIntoView,
+  scrollBlueprintTouchpointCellIntoView,
 } from '@/lib/blueprintStepTech'
-import { shouldUsePillCellContent, shouldUseVisualContent } from '@/lib/blueprintLayout'
+import { shouldUseTouchpointCellContent, shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { resolveCellDetailPictures } from '@/lib/blueprintTechPictures'
 import {
@@ -1114,7 +1114,7 @@ function BlueprintCellDetailPanelBody() {
   }
 
   const isVisualLane = Boolean(
-    selectedLane && shouldUseVisualContent(selectedLane),
+    selectedLane && shouldUseStoryboardContent(selectedLane),
   )
   const cellContent =
     selection.paths[0]?.content.trim() ||
@@ -1124,7 +1124,7 @@ function BlueprintCellDetailPanelBody() {
     ? resolveTechCellDetailText(selection.techItem, selectedCell)
     : cellContent
   const isTechLane = Boolean(
-    selectedLane && shouldUsePillCellContent(selectedLane),
+    selectedLane && shouldUseTouchpointCellContent(selectedLane),
   )
   const techDetailLabel =
     isTechLane && selectedCell
@@ -1180,7 +1180,7 @@ function BlueprintCellDetailPanelBody() {
     const blueprint = getBlueprintForPath(blueprints, pathId)
     if (!blueprint) return
 
-    const nextSelection = buildTechPillSelectionForItem(
+    const nextSelection = buildTouchpointSelectionForItem(
       blueprint,
       resolveBlueprintCellId(cellId),
       techItem,
@@ -1191,7 +1191,7 @@ function BlueprintCellDetailPanelBody() {
 
     selectCell(nextSelection)
     requestAnimationFrame(() => {
-      scrollBlueprintTechPillIntoView(cellId, techItem)
+      scrollBlueprintTouchpointCellIntoView(cellId, techItem)
     })
   }
 
@@ -1246,7 +1246,7 @@ function BlueprintCellDetailPanelBody() {
   )
 
   // Panel v2 header: title is the cell content snippet; the lane appears as
-  // one role-colored chip (colored by lane_role, never by name).
+  // one role-colored badge (colored by lane_role, never by name).
   const cellTitleText =
     cellContent.split('\n')[0]?.trim() || selection.laneName
   const laneChip = laneChipStyle ? (
@@ -1287,7 +1287,7 @@ function BlueprintCellDetailPanelBody() {
   })()
   const selectedTechPill = showTechPill ? (
     <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <TechPillFace
+      <TouchpointCellFace
         item={techDetailLabel!}
         compact
         className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
@@ -1406,11 +1406,11 @@ function BlueprintCellDetailPanelBody() {
     </div>
   ) : null
 
-  // A pill that says exactly what the title says is the title twice — one of
-  // them yields. The pill keeps the tech identity; the plain-text title only
-  // renders when it adds words the pill does not have. Same rule for the
-  // summary paragraph: a cell with no authored summary falls back to
-  // its own content, and printing the title again as "summary" is the
+  // A touchpoint that says exactly what the title says is the title twice —
+  // one of them yields. The touchpoint keeps its own identity; the plain-text
+  // title only renders when it adds words the touchpoint does not have. Same
+  // rule for the summary paragraph: a cell with no authored summary falls back
+  // to its own content, and printing the title again as "summary" is the
   // same word twice pretending to be two facts.
   const titleRepeatsPill =
     showTechPill && techDetailLabel?.trim() === cellTitleText.trim()

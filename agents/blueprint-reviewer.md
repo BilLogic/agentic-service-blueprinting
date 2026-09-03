@@ -44,8 +44,8 @@ validator stops: it proves the IR is well-formed; you probe whether it is
 - Dead ends: exception/unhappy paths that never resolve or rejoin.
 - The spine: does `customer_actions` sit on the actor whose journey this
   actually is? Interaction/visibility lines landing somewhere absurd?
-- Role smells: prose in pill lanes (`*_tech`, `support_systems`), tech
-  names in actor lanes, a `visual` row with text content.
+- Role smells: prose in touchpoint lanes (`*_touchpoints`), touchpoint
+  names in actor lanes, a `storyboard` row with text content.
 - Cells that read like system capabilities rather than journey moments —
   the fabricated-from-a-manual signature. Flag hard if pervasive.
 
@@ -57,8 +57,8 @@ validator stops: it proves the IR is well-formed; you probe whether it is
 - Label drift: the same actor group labeled differently across phases
   (`前台·BD` vs `前台·售前对接` vs `我方人工`). Flag each divergent label and name
   the one canonical form.
-- Human work cast as tech: back-office staff actions modeled as `*_tech`
-  pills instead of `*_actions` prose.
+- Human work cast as a touchpoint: back-office staff actions modeled as
+  `*_touchpoints` touchpoints instead of `*_actions` prose.
 
 **Provenance coverage**:
 - Ingested/translated scenarios: what fraction of cells carry provenance?

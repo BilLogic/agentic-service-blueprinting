@@ -1,20 +1,20 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import {
-  buildTechPillSelection,
+  buildTouchpointSelection,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
-import { getTouchpointTone } from '@/lib/techPillColors'
+import { getTouchpointTone } from '@/lib/touchpointColors'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
-type BlueprintTechPillProps = {
+type BlueprintTouchpointCellProps = {
   item: string
   selectionContext: BlueprintCellSelectionContext
   stepIndex: number
   compact?: boolean
   opacity?: number
   style?: CSSProperties
-  /** Pills share their cell id — only the first pill carries the badge. */
+  /** Touchpoints share their cell id — only the first carries the badge. */
   sliceSequenceBadge?: boolean
   /**
    * A placement the registry lacks (#112): the name is the author's, not
@@ -24,10 +24,10 @@ type BlueprintTechPillProps = {
 }
 
 /**
- * One tech/tool pill inside a Tech-lane cell. Pills share their cell's id, so
- * only the first carries the slice sequence badge.
+ * One touchpoint inside a touchpoints-lane cell. Touchpoints share their
+ * cell's id, so only the first carries the slice sequence badge.
  */
-export function BlueprintTechPill({
+export function BlueprintTouchpointCell({
   item,
   selectionContext,
   stepIndex,
@@ -36,22 +36,22 @@ export function BlueprintTechPill({
   style,
   sliceSequenceBadge = false,
   nameOnly = false,
-}: BlueprintTechPillProps) {
+}: BlueprintTouchpointCellProps) {
   return (
     <BlueprintCellButton
-      fill="frontstage-tech"
+      fill="frontstage-touchpoint"
       tone={getTouchpointTone(item)}
-      selection={buildTechPillSelection(selectionContext, item)}
+      selection={buildTouchpointSelection(selectionContext, item)}
       cellId={selectionContext.cellId}
       stepIndex={stepIndex}
-      variant="pill"
+      variant="touchpoint"
       compact={compact}
       opacity={opacity}
       style={style}
       sliceSequenceBadge={sliceSequenceBadge}
       nameOnly={nameOnly}
       className={cn('min-w-0 shrink-0 break-words', nameOnly && 'border-dashed')}
-      data-blueprint-tech-pill={item}
+      data-blueprint-touchpoint={item}
     >
       {item}
     </BlueprintCellButton>

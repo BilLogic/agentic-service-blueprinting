@@ -73,13 +73,13 @@ export const SAMPLE_SCENARIOS: SampleScenario[] = [
 export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-110000000000","name":"A first look","summary":"Repository to running app to decision, with no account, no key, and no database anywhere.","note":null,"kind":"happy"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-110100000000","name":"Stakeholders","role":"stakeholders","position":0},
+    {"id":"f0000000-0000-4000-8000-110100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-110100010000","name":"Blueprint owner","role":"customer_actions","position":1},
-    {"id":"f0000000-0000-4000-8000-110100020000","name":"App & skill surface","role":"frontstage_tech","position":2},
+    {"id":"f0000000-0000-4000-8000-110100020000","name":"App & skill surface","role":"frontstage_touchpoints","position":2},
     {"id":"f0000000-0000-4000-8000-110100030000","name":"Claude in the IDE","role":"frontstage_actions","position":3},
-    {"id":"f0000000-0000-4000-8000-110100040000","name":"Pipeline scripts","role":"backstage_tech","position":4},
+    {"id":"f0000000-0000-4000-8000-110100040000","name":"Pipeline scripts","role":"backstage_touchpoints","position":4},
     {"id":"f0000000-0000-4000-8000-110100050000","name":"Subagent fleet","role":"backstage_actions","position":5},
-    {"id":"f0000000-0000-4000-8000-110100060000","name":"References & guardrails","role":"support_systems","position":6},
+    {"id":"f0000000-0000-4000-8000-110100060000","name":"References & guardrails","role":"backstage_touchpoints","position":6},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-100200010000","name":"Land on the repo","position":1},
@@ -122,14 +122,14 @@ export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-210000000000","name":"From your documents","summary":"The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.","note":null,"kind":"happy"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-210100000000","name":"Journey figures","role":"visual","position":0},
-    {"id":"f0000000-0000-4000-8000-210100010000","name":"Stakeholders","role":"stakeholders","position":1},
+    {"id":"f0000000-0000-4000-8000-210100000000","name":"Journey figures","role":"storyboard","position":0},
+    {"id":"f0000000-0000-4000-8000-210100010000","name":"Stakeholders","role":null,"position":1},
     {"id":"f0000000-0000-4000-8000-210100020000","name":"Blueprint owner","role":"customer_actions","position":2},
-    {"id":"f0000000-0000-4000-8000-210100030000","name":"App & skill surface","role":"frontstage_tech","position":3},
+    {"id":"f0000000-0000-4000-8000-210100030000","name":"App & skill surface","role":"frontstage_touchpoints","position":3},
     {"id":"f0000000-0000-4000-8000-210100040000","name":"Claude in the IDE","role":"frontstage_actions","position":4},
-    {"id":"f0000000-0000-4000-8000-210100050000","name":"Pipeline scripts","role":"backstage_tech","position":5},
+    {"id":"f0000000-0000-4000-8000-210100050000","name":"Pipeline scripts","role":"backstage_touchpoints","position":5},
     {"id":"f0000000-0000-4000-8000-210100060000","name":"Subagent fleet","role":"backstage_actions","position":6},
-    {"id":"f0000000-0000-4000-8000-210100070000","name":"References & guardrails","role":"support_systems","position":7},
+    {"id":"f0000000-0000-4000-8000-210100070000","name":"References & guardrails","role":"backstage_touchpoints","position":7},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-200200010000","name":"Invoke sb:map","position":1},
@@ -197,14 +197,14 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-220000000000","name":"From someone else’s diagram","summary":"The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.","note":null,"kind":"variant"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-220100000000","name":"Journey figures","role":"visual","position":0},
-    {"id":"f0000000-0000-4000-8000-220100010000","name":"Stakeholders","role":"stakeholders","position":1},
+    {"id":"f0000000-0000-4000-8000-220100000000","name":"Journey figures","role":"storyboard","position":0},
+    {"id":"f0000000-0000-4000-8000-220100010000","name":"Stakeholders","role":null,"position":1},
     {"id":"f0000000-0000-4000-8000-220100020000","name":"Blueprint owner","role":"customer_actions","position":2},
-    {"id":"f0000000-0000-4000-8000-220100030000","name":"App & skill surface","role":"frontstage_tech","position":3},
+    {"id":"f0000000-0000-4000-8000-220100030000","name":"App & skill surface","role":"frontstage_touchpoints","position":3},
     {"id":"f0000000-0000-4000-8000-220100040000","name":"Claude in the IDE","role":"frontstage_actions","position":4},
-    {"id":"f0000000-0000-4000-8000-220100050000","name":"Pipeline scripts","role":"backstage_tech","position":5},
+    {"id":"f0000000-0000-4000-8000-220100050000","name":"Pipeline scripts","role":"backstage_touchpoints","position":5},
     {"id":"f0000000-0000-4000-8000-220100060000","name":"Subagent fleet","role":"backstage_actions","position":6},
-    {"id":"f0000000-0000-4000-8000-220100070000","name":"References & guardrails","role":"support_systems","position":7},
+    {"id":"f0000000-0000-4000-8000-220100070000","name":"References & guardrails","role":"backstage_touchpoints","position":7},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-200200010000","name":"Invoke sb:map","position":1},
@@ -272,13 +272,13 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-310000000000","name":"Findings triaged","summary":"Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.","note":null,"kind":"happy"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-310100000000","name":"Stakeholders","role":"stakeholders","position":0},
+    {"id":"f0000000-0000-4000-8000-310100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-310100010000","name":"Blueprint owner","role":"customer_actions","position":1},
-    {"id":"f0000000-0000-4000-8000-310100020000","name":"App & skill surface","role":"frontstage_tech","position":2},
+    {"id":"f0000000-0000-4000-8000-310100020000","name":"App & skill surface","role":"frontstage_touchpoints","position":2},
     {"id":"f0000000-0000-4000-8000-310100030000","name":"Claude in the IDE","role":"frontstage_actions","position":3},
-    {"id":"f0000000-0000-4000-8000-310100040000","name":"Pipeline scripts","role":"backstage_tech","position":4},
+    {"id":"f0000000-0000-4000-8000-310100040000","name":"Pipeline scripts","role":"backstage_touchpoints","position":4},
     {"id":"f0000000-0000-4000-8000-310100050000","name":"Subagent fleet","role":"backstage_actions","position":5},
-    {"id":"f0000000-0000-4000-8000-310100060000","name":"References & guardrails","role":"support_systems","position":6},
+    {"id":"f0000000-0000-4000-8000-310100060000","name":"References & guardrails","role":"backstage_touchpoints","position":6},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-300200010000","name":"Name the scope","position":1},
@@ -327,13 +327,13 @@ export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-320000000000","name":"A critical finding reopens","summary":"A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.","note":null,"kind":"variant"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-320100000000","name":"Stakeholders","role":"stakeholders","position":0},
+    {"id":"f0000000-0000-4000-8000-320100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-320100010000","name":"Blueprint owner","role":"customer_actions","position":1},
-    {"id":"f0000000-0000-4000-8000-320100020000","name":"App & skill surface","role":"frontstage_tech","position":2},
+    {"id":"f0000000-0000-4000-8000-320100020000","name":"App & skill surface","role":"frontstage_touchpoints","position":2},
     {"id":"f0000000-0000-4000-8000-320100030000","name":"Claude in the IDE","role":"frontstage_actions","position":3},
-    {"id":"f0000000-0000-4000-8000-320100040000","name":"Pipeline scripts","role":"backstage_tech","position":4},
+    {"id":"f0000000-0000-4000-8000-320100040000","name":"Pipeline scripts","role":"backstage_touchpoints","position":4},
     {"id":"f0000000-0000-4000-8000-320100050000","name":"Subagent fleet","role":"backstage_actions","position":5},
-    {"id":"f0000000-0000-4000-8000-320100060000","name":"References & guardrails","role":"support_systems","position":6},
+    {"id":"f0000000-0000-4000-8000-320100060000","name":"References & guardrails","role":"backstage_touchpoints","position":6},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-300200010000","name":"Name the scope","position":1},
@@ -383,13 +383,13 @@ export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-410000000000","name":"Traced before it lands","summary":"Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.","note":null,"kind":"happy"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-410100000000","name":"Stakeholders","role":"stakeholders","position":0},
+    {"id":"f0000000-0000-4000-8000-410100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-410100010000","name":"Blueprint owner","role":"customer_actions","position":1},
-    {"id":"f0000000-0000-4000-8000-410100020000","name":"App & skill surface","role":"frontstage_tech","position":2},
+    {"id":"f0000000-0000-4000-8000-410100020000","name":"App & skill surface","role":"frontstage_touchpoints","position":2},
     {"id":"f0000000-0000-4000-8000-410100030000","name":"Claude in the IDE","role":"frontstage_actions","position":3},
-    {"id":"f0000000-0000-4000-8000-410100040000","name":"Pipeline scripts","role":"backstage_tech","position":4},
+    {"id":"f0000000-0000-4000-8000-410100040000","name":"Pipeline scripts","role":"backstage_touchpoints","position":4},
     {"id":"f0000000-0000-4000-8000-410100050000","name":"Subagent fleet","role":"backstage_actions","position":5},
-    {"id":"f0000000-0000-4000-8000-410100060000","name":"References & guardrails","role":"support_systems","position":6},
+    {"id":"f0000000-0000-4000-8000-410100060000","name":"References & guardrails","role":"backstage_touchpoints","position":6},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-400200010000","name":"Frame the hypothetical","position":1},
@@ -437,13 +437,13 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-510000000000","name":"Stakeholder readout","summary":"From “show me my part” to a presented, exportable slice that still points at its cells.","note":null,"kind":"happy"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-510100000000","name":"Stakeholders","role":"stakeholders","position":0},
+    {"id":"f0000000-0000-4000-8000-510100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-510100010000","name":"Blueprint owner","role":"customer_actions","position":1},
-    {"id":"f0000000-0000-4000-8000-510100020000","name":"App & skill surface","role":"frontstage_tech","position":2},
+    {"id":"f0000000-0000-4000-8000-510100020000","name":"App & skill surface","role":"frontstage_touchpoints","position":2},
     {"id":"f0000000-0000-4000-8000-510100030000","name":"Claude in the IDE","role":"frontstage_actions","position":3},
-    {"id":"f0000000-0000-4000-8000-510100040000","name":"Pipeline scripts","role":"backstage_tech","position":4},
+    {"id":"f0000000-0000-4000-8000-510100040000","name":"Pipeline scripts","role":"backstage_touchpoints","position":4},
     {"id":"f0000000-0000-4000-8000-510100050000","name":"Subagent fleet","role":"backstage_actions","position":5},
-    {"id":"f0000000-0000-4000-8000-510100060000","name":"References & guardrails","role":"support_systems","position":6},
+    {"id":"f0000000-0000-4000-8000-510100060000","name":"References & guardrails","role":"backstage_touchpoints","position":6},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-500200010000","name":"Ask for a view","position":1},
@@ -498,13 +498,13 @@ export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
 export const SAMPLE_KEEP_UPDATE_PATH_FALLBACK: BlueprintData = {
   path: {"id":"f0000000-0000-4000-8000-610000000000","name":"Update what changed","summary":"The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.","note":null,"kind":"happy"},
   lanes: [
-    {"id":"f0000000-0000-4000-8000-610100000000","name":"Stakeholders","role":"stakeholders","position":0},
+    {"id":"f0000000-0000-4000-8000-610100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-610100010000","name":"Blueprint owner","role":"customer_actions","position":1},
-    {"id":"f0000000-0000-4000-8000-610100020000","name":"App & skill surface","role":"frontstage_tech","position":2},
+    {"id":"f0000000-0000-4000-8000-610100020000","name":"App & skill surface","role":"frontstage_touchpoints","position":2},
     {"id":"f0000000-0000-4000-8000-610100030000","name":"Claude in the IDE","role":"frontstage_actions","position":3},
-    {"id":"f0000000-0000-4000-8000-610100040000","name":"Pipeline scripts","role":"backstage_tech","position":4},
+    {"id":"f0000000-0000-4000-8000-610100040000","name":"Pipeline scripts","role":"backstage_touchpoints","position":4},
     {"id":"f0000000-0000-4000-8000-610100050000","name":"Subagent fleet","role":"backstage_actions","position":5},
-    {"id":"f0000000-0000-4000-8000-610100060000","name":"References & guardrails","role":"support_systems","position":6},
+    {"id":"f0000000-0000-4000-8000-610100060000","name":"References & guardrails","role":"backstage_touchpoints","position":6},
   ],
   steps: [
     {"id":"f0000000-0000-4000-8000-600200010000","name":"Notice the drift","position":1},

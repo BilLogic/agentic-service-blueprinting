@@ -2,7 +2,7 @@ import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
 } from '@/data/blueprintFallbacks'
-import { shouldUseVisualContent } from '@/lib/blueprintLayout'
+import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { FALLBACK_NAV, getBlueprintScenarioId } from '@/types/nav'
@@ -141,7 +141,7 @@ export function resolveSlideStrip(
   const cellById = new Map(blueprint.cells.map((cell) => [cell.id, cell]))
   const visualLaneIds = new Set(
     blueprint.lanes
-      .filter((lane) => shouldUseVisualContent(lane))
+      .filter((lane) => shouldUseStoryboardContent(lane))
       .map((lane) => lane.id),
   )
   const visualCellByStepId = new Map(

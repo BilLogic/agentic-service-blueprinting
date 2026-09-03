@@ -1,5 +1,5 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
-import { getVisualCellButtonMaxHeight } from '@/lib/blueprintLayout'
+import { getStoryboardCellButtonMaxHeight } from '@/lib/blueprintLayout'
 import type { BlueprintLaneRole } from '@/lib/blueprintCellStyle'
 import { hasEmbeddedVisualFrame } from '@/lib/visualWalkthrough'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
@@ -81,7 +81,7 @@ function VisualPictureStrip({
 export function BlueprintStepVisual({
   compact = false,
   className,
-  fill = 'visual',
+  fill = 'storyboard',
   selection,
   cellId,
   stepIndex,
@@ -99,7 +99,7 @@ export function BlueprintStepVisual({
       ? 'Step visual'
       : `Step visuals, ${displayPictures.length} images`
     : 'Empty step visual'
-  const inlineMaxHeight = getVisualCellButtonMaxHeight(compact)
+  const inlineMaxHeight = getStoryboardCellButtonMaxHeight(compact)
 
   if (!hasRealPictures) {
     return null
@@ -126,7 +126,7 @@ export function BlueprintStepVisual({
     <BlueprintCellButton
       fill={fill}
       compact={compact}
-      variant="visual"
+      variant="storyboard"
       className={cn(
         'h-full min-h-0 max-h-full w-full overflow-hidden',
         'items-stretch justify-stretch p-1',

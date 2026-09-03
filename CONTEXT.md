@@ -172,10 +172,17 @@ never stored as a flag.
 
 ## The rename map
 
-Eleven renames landed across `21000103`–`21000116`. They are recorded here
+These renames landed across `21000103`–`21000122`. They are recorded here
 because this is the file a person reads to learn the vocabulary, and because a
 sweep that catches every occurrence of a retired word needs to know which
-occurrences are not residue.
+occurrences are not residue. The last block closes the lane vocabulary
+(`21000122000000`): the tech lanes become touchpoints, `support_systems`
+splits into `support_actions` (people) and `backstage_touchpoints` (systems),
+`visual` becomes `storyboard`, `step_visual` is dropped, and the design system
+keeps one word for each of its two markers — `badge` for a descriptive one,
+`tag` for one of a set. The `pill`/`chip` row carries no migration because no
+database object ever bore either word; it is a component-and-copy rename that
+`tsc` and review hold.
 
 **These are the current names.** An `alter table … rename` moves the table and
 the column and nothing else — the index, the constraint, the policy, the
@@ -203,6 +210,10 @@ now checks that nothing came back.
 | `findings`, `findings.check_name`, `findings.note` | `audit_findings`, `audit_findings.check_key`, `audit_findings.summary` | `21000116000000` |
 | `paths.path_type`, `slices.slice_type`, `scenarios.view_type` | `paths.kind`, `slices.kind`, `scenarios.layout` | `21000116000000` |
 | `cell_dependencies.label`, `slices.description`, `slices.origin` | `cell_dependencies.name`, `slices.summary`, `slices.authorship` | `21000116000000` |
+| `frontstage_tech`, `backstage_tech` | `frontstage_touchpoints`, `backstage_touchpoints` | `21000122000000` |
+| `support_systems` | `backstage_touchpoints` | `21000122000000` |
+| `visual`, `step_visual` | `storyboard` | `21000122000000` |
+| `pill`, `chip` | `badge`, `tag` |  |
 
 The reasoning, where it is worth knowing. `row` and `column` named how a lane
 and a step happen to be *drawn* today, and the axis is a rendering fact rather

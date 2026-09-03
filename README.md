@@ -75,13 +75,13 @@ The app is where people read, compare, and present. The in-app agent drafts chan
 
 ![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
 
-*Lanes are rows — one actor each, colored by semantic `lane_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (tech/support lanes render their cells as pills in the app).*
+*Lanes are rows — one actor each, colored by semantic `lane_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (touchpoint lanes render their cells as touchpoints in the app).*
 
 *Two levels down — what a single cell holds, and how a slice is taken out of the blueprint — are in [guide/01 — The blueprint model](./docs/guide/01-the-blueprint-model.md).*
 
 ### Key semantics
 
-- **`lanes.lane_role`** — rendering (colors, pill cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `frontstage_tech`, `backstage_tech`, `support_systems`, `visual`, `step_visual`), never by the display name — lane labels are free-form in any language. Custom roles and `null` render as generic swimlanes. Contract: [`src/lib/laneRoles.ts`](./src/lib/laneRoles.ts).
+- **`lanes.lane_role`** — rendering (colors, touchpoint cells, divider lines) is driven by a semantic role key (`customer_actions`, `frontstage_actions`, `backstage_actions`, `partner_actions`, `frontstage_touchpoints`, `backstage_touchpoints`, `support_actions`, `storyboard`), never by the display name — lane labels are free-form in any language. The set is closed by `lanes_lane_role_check`; `null` renders as a generic swimlane. Contract: [`src/lib/laneRoles.ts`](./src/lib/laneRoles.ts).
 - **Steps are scenario-scoped columns** shared across paths via `path_steps` ordering — see [references/data-model.md](./references/data-model.md).
 - **Import order** (enforced by the `cells_validate_path_match` trigger): `paths → steps → path_steps → lanes → cells → cell_dependencies`.
 - **Layouts** per scenario: `layout` is `stacked` (one full band per path on a shared step axis) or `merged` (the paths combined into one blueprint). The header toggle stores it, so a scenario left merged opens merged. `single` became `stacked` in `21000117000000`; `side-by-side` and `integrated` became `stacked` in `21000116000000`.

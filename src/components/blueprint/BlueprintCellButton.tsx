@@ -39,17 +39,17 @@ type BlueprintCellButtonProps = {
   selection?: BlueprintCellSelection
   cellId?: string
   stepIndex?: number
-  variant?: 'cell' | 'pill' | 'visual'
+  variant?: 'cell' | 'touchpoint' | 'storyboard'
   opacity?: number
   /**
-   * Whether this button may carry the slice sequence badge. Tech pills share
-   * their cell's id, so pill call sites pass `index === 0` to badge the
-   * first pill only; plain cell faces leave the default (true).
+   * Whether this button may carry the slice sequence badge. Touchpoints share
+   * their cell's id, so touchpoint call sites pass `index === 0` to badge the
+   * first touchpoint only; plain cell faces leave the default (true).
    */
   sliceSequenceBadge?: boolean
   children: ReactNode
   'aria-label'?: string
-  'data-blueprint-tech-pill'?: string
+  'data-blueprint-touchpoint'?: string
   /** A name-only placement (#112): the registry lacks this touchpoint. */
   nameOnly?: boolean
 }
@@ -75,7 +75,7 @@ export function BlueprintCellButton({
   sliceSequenceBadge = true,
   children,
   'aria-label': ariaLabel,
-  'data-blueprint-tech-pill': techPillLabel,
+  'data-blueprint-touchpoint': touchpointLabel,
   nameOnly = false,
 }: BlueprintCellButtonProps) {
   const detail = useBlueprintCellDetailOptional()
@@ -144,8 +144,8 @@ export function BlueprintCellButton({
   )
   const isPreviewHover = Boolean(
     matchesPreviewCell &&
-      (techPillLabel
-        ? preview?.techItem === techPillLabel
+      (touchpointLabel
+        ? preview?.techItem === touchpointLabel
         : !preview?.techItem),
   )
   /*
@@ -238,17 +238,15 @@ export function BlueprintCellButton({
     ...style,
   } as CSSProperties
 
-  const buttonVariant = variant === 'pill' ? 'blueprintPill' : 'blueprint'
-
   return (
     <Button
       type="button"
-      variant={buttonVariant}
+      variant="blueprint"
       data-blueprint-cell-anchor=""
       {...(tone ? blueprintToneAttrs(tone) : blueprintLaneAttrs(fill))}
       {...(cellId ? { 'data-blueprint-cell': cellId } : {})}
       data-step-index={stepIndex}
-      {...(techPillLabel ? { 'data-blueprint-tech-pill': techPillLabel } : {})}
+      {...(touchpointLabel ? { 'data-blueprint-touchpoint': touchpointLabel } : {})}
       {...(nameOnly ? { 'data-name-only': '' } : {})}
       aria-label={ariaLabel}
       aria-pressed={isInteractive ? isActive : undefined}
@@ -262,7 +260,7 @@ export function BlueprintCellButton({
       className={cn(
         blueprintCellButtonClassName({ compact, variant, className }),
         variant === 'cell' && 'min-h-[80px]',
-        variant === 'visual' &&
+        variant === 'storyboard' &&
           'min-h-0 h-full max-h-full overflow-hidden',
         !isInteractive && 'pointer-events-none cursor-default',
         (sliceSequence !== undefined || isPicked) && 'relative overflow-visible',

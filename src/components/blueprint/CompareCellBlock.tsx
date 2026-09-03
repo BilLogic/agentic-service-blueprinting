@@ -1,15 +1,15 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import { BlueprintStepVisual } from '@/components/blueprint/BlueprintStepVisual'
-import { BlueprintTechPill } from '@/components/blueprint/BlueprintTechPill'
-import { TechPillFace } from '@/components/blueprint/TechPillFace'
+import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpointCell'
+import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
   STEP_COLUMN_WIDTH,
-  getVisualCellButtonMaxHeight,
+  getStoryboardCellButtonMaxHeight,
   type BlueprintCellVariant,
 } from '@/lib/blueprintLayout'
 import {
   buildBlueprintCellSelection,
-  getTechPillItems,
+  getTouchpointItems,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
 import type { BlueprintLaneStyle } from '@/lib/blueprintTheme'
@@ -88,14 +88,14 @@ export function CompareCellBlock({
     flushBottom ? 'pb-0' : compact ? 'pb-3' : 'pb-4',
   )
   const width = STEP_COLUMN_WIDTH
-  const isVisual = variant === 'visual'
+  const isVisual = variant === 'storyboard'
   const shellVerticalPad = compact ? 24 : 32
   const shellStyle = {
     width,
     minWidth: width,
     maxWidth: width,
     ...(isVisual
-      ? { maxHeight: getVisualCellButtonMaxHeight(compact) + shellVerticalPad }
+      ? { maxHeight: getStoryboardCellButtonMaxHeight(compact) + shellVerticalPad }
       : undefined),
   }
   const shellClassName = cn(
@@ -111,7 +111,7 @@ export function CompareCellBlock({
       : getPathWashStyle(pathRails?.map((rail) => rail.color))
 
   const innerContent =
-    variant === 'visual' ? (
+    variant === 'storyboard' ? (
       <div className="relative flex h-full min-h-0 max-h-full w-full flex-1 overflow-hidden">
         <BlueprintStepVisual
           compact={compact}
@@ -127,7 +127,7 @@ export function CompareCellBlock({
           className="flex-1"
         />
       </div>
-    ) : variant === 'pills' ? (
+    ) : variant === 'touchpoints' ? (
       <div
         {...(cellId ? { 'data-blueprint-cell': cellId } : {})}
         data-step-index={stepIndex}
@@ -138,12 +138,12 @@ export function CompareCellBlock({
       >
         {(slotCells && slotCells.length > 0
           ? slotCells.flatMap((slotCell) =>
-              getTechPillItems(slotCell.content ?? '').map((item) => ({
+              getTouchpointItems(slotCell.content ?? '').map((item) => ({
                 item,
                 slotCell,
               })),
             )
-          : getTechPillItems(content).map((item) => ({
+          : getTouchpointItems(content).map((item) => ({
               item,
               slotCell: undefined,
             }))
@@ -157,7 +157,7 @@ export function CompareCellBlock({
           )
           const nameOnly = placement ? isNameOnlyPlacement(placement) : false
           return selectionContext ? (
-            <BlueprintTechPill
+            <BlueprintTouchpointCell
               key={`${slotCell?.id ?? 'anon'}-${item}-${index}`}
               item={item}
               nameOnly={nameOnly}
@@ -184,7 +184,7 @@ export function CompareCellBlock({
               }
             />
           ) : (
-            <TechPillFace
+            <TouchpointCellFace
               key={`${item}-${index}`}
               item={item}
               compact={compact}

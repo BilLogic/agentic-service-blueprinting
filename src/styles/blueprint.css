@@ -265,8 +265,8 @@
    * the element, and giving them colours would let a dimmed cell drift away
    * from the one it is dimming.
    */
-  /* visual */
-[data-blueprint-lane='visual'] {
+  /* storyboard */
+[data-blueprint-lane='storyboard'] {
     --background-blueprint-cell-origin: var(--color-slate-500);
     --background-blueprint-cell: var(--color-slate-500);
     --background-blueprint-cell-hover: var(--color-slate-600);
@@ -298,8 +298,8 @@
     --foreground-blueprint-cell: var(--color-green-1200);
   }
 
-  /* frontstage-tech */
-[data-blueprint-lane='frontstage-tech'] {
+  /* frontstage-touchpoint */
+[data-blueprint-lane='frontstage-touchpoint'] {
     --background-blueprint-cell-origin: var(--color-violet-500);
     --background-blueprint-cell: var(--color-violet-500);
     --background-blueprint-cell-hover: var(--color-violet-600);
@@ -320,8 +320,8 @@
     --foreground-blueprint-cell: var(--color-pink-1200);
   }
 
-  /* backstage-tech */
-[data-blueprint-lane='backstage-tech'] {
+  /* backstage-touchpoint */
+[data-blueprint-lane='backstage-touchpoint'] {
     --background-blueprint-cell-origin: var(--color-lime-500);
     --background-blueprint-cell: var(--color-lime-500);
     --background-blueprint-cell-hover: var(--color-lime-600);

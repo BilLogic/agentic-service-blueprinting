@@ -17,8 +17,8 @@ Parallel per-phase drafting reliably diverges three ways:
 2. **The same actor, named four ways.** One team appears as `前台·BD` in phase ①,
    `前台·售前对接` in ②, `我方人工` in ⑤, `前台·现场` in ⑥ — the reader can't tell
    it's one group.
-3. **Human work cast as tech.** Back-office staff actions get modeled as
-   `backstage_tech` pills instead of `backstage_actions` prose.
+3. **Human work cast as a touchpoint.** Back-office staff actions get modeled
+   as `backstage_touchpoints` touchpoints instead of `backstage_actions` prose.
 
 The fixes below are conventions, not schema rules. The validator won't enforce
 them; the `blueprint-reviewer` agent flags deviations.
@@ -56,7 +56,7 @@ service (in the workspace notes or the IR provenance) so drafters converge:
 | --- | --- | --- |
 | The provider's customer-facing team | e.g. `前台·<provider>` (pick once) | `frontstage_actions` |
 | The provider's back-office | e.g. `后台·<provider>` | `backstage_actions` |
-| External partner/vendor | e.g. `支撑·<partner>` | `support_systems` |
+| External partner/vendor | e.g. `支撑·<partner>` | `support_actions` |
 | The buyer/customer spine | e.g. `<buyer org>` | `customer_actions` |
 
 Rules:
@@ -69,18 +69,20 @@ Rules:
   Therefore never bake a role word into a role-varying group's label: `青翼·班组`
   in every phase, not `青翼·班组` in one and `前台·青翼` in another.
 - **Same rule for shared systems.** A platform lane (e.g. `平台·<provider>`) may
-  be `frontstage_tech` in a phase where the spine actor touches it directly and
-  `backstage_tech` where it works behind the spine — that flip is correct, but
+  be `frontstage_touchpoints` in a phase where the spine actor touches it directly and
+  `backstage_touchpoints` where it works behind the spine — that flip is correct, but
   decide it from "does THIS phase's spine actor interact with it?", label it
   identically everywhere, and if one phase has BOTH a spine-facing surface and
   an internal one (citizen miniapp + admin console), split into two lanes
   rather than casting the customer's touchpoint backstage.
-- Distinguish **actor** (a who → actions role) from **system** (a what → tech/
-  pill role). A person doing work is `*_actions`, not a `*_tech` pill.
+- Distinguish **actor** (a who → actions role) from **touchpoint** (a what →
+  `*_touchpoints` role). A person doing work is `*_actions`, not a
+  `*_touchpoints` touchpoint.
 - Prefix conventions (`前台·` / `后台· ` / `支撑·`) are optional but, once chosen,
   applied everywhere — and only on groups whose role never varies (see above).
-- Non-spine client orgs (e.g. a supervising bureau): prefer one named custom
-  role (`gov_management`) over `null`, and use the SAME choice in every phase.
+- Non-spine client orgs (e.g. a supervising bureau): the role vocabulary is
+  closed, so give them `null` (a generic swimlane) and reuse the SAME
+  `display_name` in every phase to keep them one group.
 
 ## 3. Source-layout crosswalk
 
@@ -89,9 +91,9 @@ apply the mapping to every phase (see also `skills/map/references/crosswalk-sche
 
 | Source layout | Map to role |
 | --- | --- |
-| FigJam **actor lanes** (one lane per team) | The spine actor → `customer_actions`; other people-lanes → `frontstage_actions` / `backstage_actions` by visibility; system lanes → `*_tech`; vendors → `support_systems` |
-| Notion / Shostack **5-lane** (物理证据 / 服务对象 / 前台 / 后台 / 支撑) | 物理证据 → `visual` or a custom `physical_evidence`; 服务对象 → `customer_actions`; 前台 → `frontstage_actions` (+ `frontstage_tech` for its systems); 后台 → `backstage_actions` (+ `backstage_tech`); 支撑 → `support_systems` |
-| Spreadsheet with a "system/tool" column | Tool column → the matching `*_tech` pill lane; owner column → the `*_actions` lane |
+| FigJam **actor lanes** (one lane per team) | The spine actor → `customer_actions`; other people-lanes → `frontstage_actions` / `backstage_actions` by visibility; system lanes → `*_touchpoints`; vendors → `support_actions` |
+| Notion / Shostack **5-lane** (物理证据 / 服务对象 / 前台 / 后台 / 支撑) | 物理证据 → `storyboard` (or `null` when it carries no imagery); 服务对象 → `customer_actions`; 前台 → `frontstage_actions` (+ `frontstage_touchpoints` for its touchpoints); 后台 → `backstage_actions` (+ `backstage_touchpoints`); 支撑 → `support_actions` |
+| Spreadsheet with a "system/tool" column | Tool column → the matching `*_touchpoints` lane; owner column → the `*_actions` lane |
 
 Don't transcribe a foreign layout verbatim — interpret it to the canonical
 roles so all phases share one structure.

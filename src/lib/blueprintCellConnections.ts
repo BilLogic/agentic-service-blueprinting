@@ -1,6 +1,6 @@
-import { buildBlueprintCellSelection, getTechPillItems } from '@/lib/blueprintCellSelection'
+import { buildBlueprintCellSelection, getTouchpointItems } from '@/lib/blueprintCellSelection'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import { shouldUsePillCellContent } from '@/lib/blueprintLayout'
+import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import type { BlueprintCell, BlueprintCellTrigger, BlueprintData } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
@@ -70,8 +70,8 @@ function toConnection(
   const lane = resolveLane(blueprint, cell.lane_id)
   const laneName = lane?.name ?? 'Unknown lane'
   const lanePosition = lane?.position ?? -1
-  const isTech = lane ? shouldUsePillCellContent(lane) : false
-  const techItems = isTech ? getTechPillItems(cell.content) : []
+  const isTech = lane ? shouldUseTouchpointCellContent(lane) : false
+  const techItems = isTech ? getTouchpointItems(cell.content) : []
 
   return {
     triggerId: trigger.id,

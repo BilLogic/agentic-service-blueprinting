@@ -41,23 +41,24 @@ export const LAYOUT_HINTS: Record<Layout, string> = {
  * contains, not from the generic service-blueprint diagram. Two things there
  * are easy to get wrong and are load-bearing:
  *
- * - The roles are `frontstage_tech`, not `front_stage_tech`. Only `visual` and
- *   the four stage roles carry one; actor lanes and Support Actions have none,
- *   and inventing a role for them would put a stage separator where there is
- *   no stage boundary.
- * - **Tech sits above actions**, which reverses the usual textbook order. That
- *   was a deliberate change — see the `stage_tech_before_actions_lane_order`
- *   migration — and a new blueprint that ordered them the other way would not
- *   line up against any existing one in the side-by-side view.
+ * - The roles come from the closed `lane_role` vocabulary
+ *   (`lanes_lane_role_check`): `storyboard`, the two touchpoint roles, the
+ *   four stage/support roles. Every lane here carries one — a role outside the
+ *   set is rejected on write.
+ * - **Touchpoints sit above actions**, which reverses the usual textbook
+ *   order. That was a deliberate change — see the
+ *   `stage_tech_before_actions_lane_order` migration — and a new blueprint
+ *   that ordered them the other way would not line up against any existing one
+ *   in the side-by-side view.
  */
 export const DEFAULT_LANE_SET: LaneSetEntry[] = [
-  { name: 'Visual', lane_role: 'visual', position: 0 },
+  { name: 'Storyboard', lane_role: 'storyboard', position: 0 },
   { name: 'Customer Actions', lane_role: 'customer_actions', position: 1 },
-  { name: 'Front Stage Tech', lane_role: 'frontstage_tech', position: 2 },
+  { name: 'Front Stage Touchpoints', lane_role: 'frontstage_touchpoints', position: 2 },
   { name: 'Front Stage Actions', lane_role: 'frontstage_actions', position: 3 },
-  { name: 'Back Stage Tech', lane_role: 'backstage_tech', position: 4 },
+  { name: 'Back Stage Touchpoints', lane_role: 'backstage_touchpoints', position: 4 },
   { name: 'Back Stage Actions', lane_role: 'backstage_actions', position: 5 },
-  { name: 'Support Actions', lane_role: null, position: 6 },
+  { name: 'Support Actions', lane_role: 'support_actions', position: 6 },
 ]
 
 /** Columns beyond this read as a process map, not a blueprint. */

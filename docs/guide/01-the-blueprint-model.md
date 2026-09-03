@@ -39,13 +39,14 @@ and a blueprint in Chinese renders exactly like one in English.
 | --- | --- |
 | `customer_actions` | what the customer does |
 | `frontstage_actions` | what staff do in view of the customer |
-| `frontstage_tech` | the customer-facing systems |
+| `frontstage_touchpoints` | the touchpoints the customer meets |
 | `backstage_actions` | what staff do out of view |
-| `backstage_tech` | the systems behind them |
-| `support_systems` | what everything else rests on |
-| `visual` / `step_visual` | imagery attached to a step |
+| `backstage_touchpoints` | the touchpoints only staff meet |
+| `support_actions` | the teams, vendors and infrastructure behind the work |
+| `partner_actions` | a party outside the service, acting in view |
+| `storyboard` | imagery for each step |
 
-Custom roles and `null` render as generic swimlanes. The **line of
+The role set is closed; `null` renders as a generic swimlane. The **line of
 interaction** and **line of visibility** are derived from these roles
 rather than drawn by hand, so they cannot drift out of agreement with the
 lanes they separate.
