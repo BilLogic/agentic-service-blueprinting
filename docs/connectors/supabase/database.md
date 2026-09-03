@@ -27,6 +27,51 @@ Postgres database managed by [Supabase](https://supabase.com/) for the **agentic
 Without these variables the app runs in **no-DB mode** from the generated
 fallback content in `src/data/` — no database required.
 
+## Stand up your own copy
+
+The whole deployer path, for someone who has not read the rest of this file:
+clone, create an empty Supabase project, set the two values above, replay the
+schema and the seed, and confirm your content shows up. Nothing here needs
+Docker or a local database — a hosted project is enough.
+
+1. **Clone and install.** `git clone <your fork>` then `npm install`.
+2. **Create an empty project** at [supabase.com](https://supabase.com/), then
+   `supabase link --project-ref <your ref>` (the CLI ships as a dev dependency,
+   so `npx supabase …` works with no separate install).
+3. **Replay the schema — the migrations, in order.** `supabase db push` applies
+   every file in `supabase/migrations/`. That IS the core and the recipe: the
+   two generated `supabase/generated/*.sql` files are what those same migrations
+   build, split into the portable half and the Supabase half, and CI proves the
+   split matches. You apply the migrations; you read the generated halves.
+4. **Load the seed.** `supabase db execute --file supabase/seed.sql --linked`.
+   Out of the box that is the **META-BLUEPRINT** — the blueprint of this
+   template itself (see [§ Sample seed](#sample-seed)), so the board is never
+   empty on first load.
+5. **Set the two values.** Copy the **Project API URL** and **anon key** from
+   **Settings → API** into `.env` as `VITE_SUPABASE_URL` and
+   `VITE_SUPABASE_ANON_KEY`.
+6. **Confirm the content shows up — do not trust the page.** The app falls back
+   to bundled content whenever it cannot reach the project, so a database that
+   was never migrated renders exactly like a working one. Run `npm run
+   check:target` (§ [Did the migration run](#did-the-migration-run)): it asks
+   the live target, over the same anon key the app uses, whether it was actually
+   migrated.
+
+**Replacing the sample with your own content.** The seed is regenerated from a
+blueprint file, never hand-edited: run `python3 scripts/generate_seed_sql.py
+<your blueprint>.json --locale <tag>` to emit a transactional seed, replace
+`supabase/seed.sql` with it, and repeat step 4. A deployment built on this
+template carries its own blueprint and regenerates both `supabase/seed.sql` and
+the offline fallback from it — the sample here is only the default until you do.
+`sb:map` (the `map` skill) is the guided way to produce that blueprint file.
+
+**Proving the path before you deploy.** `npm run check:seed-load` performs this
+whole load — core, recipe, and seed onto a throwaway database — and reads it
+back as the anon key, so you can confirm a seed renders before it is anywhere
+near a real project. Point it at your own seed by replacing `supabase/seed.sql`
+first. It is the same guard CI runs on every change; it needs a reachable
+Postgres and permission to create a database.
+
 ## Entity relationship (Service Blueprint)
 
 ```mermaid

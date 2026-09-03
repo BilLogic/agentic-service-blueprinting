@@ -42,13 +42,16 @@ Procedure: [releasing.md](./releasing.md).
 | `npm test` → `portable-schema.test.mjs` | The schema dump carries an identifier with a retired fragment in it — the usual cause is a rename that reached the table and not its constraint or index. |
 | `npm run check:band` | A new upstream migration was stamped with the wall clock instead of allocated from the reserved band. Timestamp order is apply order, so an upstream file stamped below a fork's own migration lands before it and desyncs them. |
 | `npm run check:parity` | The SQL adapter and the no-database adapter project different field sets out of one blueprint. The contract calls the second one "not a degraded mode"; this is what makes that sentence true. |
+| `npm run check:seed-load` | The generated seed does not load onto a fresh core + recipe, or it loads but the **anon** key cannot read the content back. Stands up a database of its own (shim, the platform's SELECT default, core, recipe, seed), then reads every seeded table and the two render joins as `anon` — the role the deployed app's key resolves to. Every other database check reads as the owner, which cannot see the one failure the deployer feels: a table the recipe never exposed renders blank in the browser and stays green everywhere else. Needs a reachable Postgres and permission to create a database; in CI it is the `portable-core` job's service. |
 | `npm run check:target` | *Not in CI — it needs a live project.* Asks the configured database for `public.schema_version` and distinguishes never migrated from stale from fine. Worth running once against any target, because the fallback renders perfectly over a database that was never migrated. |
 
 The `portable-core` CI job goes further than a diff: it applies the generated
 core to a stock `postgres:17` with nothing in front of it, applies the recipe
 on top, replays every migration in a second database and diffs the two
-inventories — then breaks the core on purpose and fails if either guard stayed
-green. A guard nobody has watched fail is a guard nobody knows the shape of.
+inventories, loads the seed onto a third and reads it back as `anon`
+(`check:seed-load`) — then breaks the core on purpose and fails if either guard
+stayed green. A guard nobody has watched fail is a guard nobody knows the shape
+of.
 
 ## 4. The pipeline, and the claims about the repo itself
 

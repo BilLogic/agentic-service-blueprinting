@@ -188,6 +188,16 @@ jobs:
             > /tmp/inventory.tsv
           node scripts/check-schema-inventory.mjs /tmp/inventory.tsv
 
+      # The deployer's path, on a database of its own. The two proofs above read
+      # as the owner; this one reads as the anon key the deployed app carries, so
+      # a table the recipe forgot to expose — a blank screen in the browser —
+      # fails here instead of shipping. check-seed-loads.mjs stands up its own
+      # fresh database (shim, the platform's SELECT default, core, recipe, seed)
+      # and tears it down; the postgres:17 service and PG* env above are all it
+      # needs. See docs/engineering/checks.md § The database.
+      - name: The generated seed loads on a fresh core and renders as anon
+        run: npm run check:seed-load
+
       # The route a real Supabase project takes, in its own database.
       - name: Replay every migration in order, behind the shim
         run: |
