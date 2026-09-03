@@ -19,8 +19,8 @@ import {
   STEP_COLUMN_WIDTH,
   hasBlueprintCellContent,
   lanePrecedesBlueprintDivider,
-  shouldUsePillCellContent,
-  shouldUseVisualContent,
+  shouldUseTouchpointCellContent,
+  shouldUseStoryboardContent,
 } from '@/lib/blueprintLayout'
 import { buildCellLookup, getCellAt, getCellsAt } from '@/lib/normalizeBlueprint'
 import {
@@ -46,7 +46,7 @@ import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 /** Left gutter on the white board so the play control clears Visual cells. */
-const VISUAL_PLAY_GUTTER = 28
+const STORYBOARD_PLAY_GUTTER = 28
 
 /**
  * How one band is placed inside its parent grid.
@@ -121,7 +121,7 @@ export function BlueprintPathBand({
   // cells must stay on the canonical column tracks — so the control hangs in
   // the rail gap instead (see CompareLaneRow).
   const playGutter =
-    showPlay && arrangement.kind === 'column' ? VISUAL_PLAY_GUTTER : 0
+    showPlay && arrangement.kind === 'column' ? STORYBOARD_PLAY_GUTTER : 0
 
   const placementStyle =
     arrangement.kind === 'column'
@@ -350,14 +350,14 @@ function CompareLaneRow({
     () => new Map(blueprint.steps.map((step, index) => [step.id, index])),
     [blueprint.steps],
   )
-  const isPillLane = shouldUsePillCellContent(lane)
+  const isPillLane = shouldUseTouchpointCellContent(lane)
   const laneStyle = getBlueprintLaneStyle(
     lane.name,
     getBlueprintLaneZone(lane, lanes),
     lane.role,
   )
   const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
-  const isVisualLane = shouldUseVisualContent(lane)
+  const isVisualLane = shouldUseStoryboardContent(lane)
   const renderPlay =
     showPlay && isVisualLane && (playGutter > 0 || stackedTracks !== undefined)
 
@@ -367,7 +367,7 @@ function CompareLaneRow({
     const slotCells = isPillLane
       ? getCellsAt(cellLookup, blueprintLane.id, step.id)
       : undefined
-    const variant = isVisualLane ? 'visual' : isPillLane ? 'pills' : 'default'
+    const variant = isVisualLane ? 'storyboard' : isPillLane ? 'touchpoints' : 'default'
     const visualPictures = isVisualLane
       ? resolveVisualStepPictureEntries(blueprint, step.id)
       : undefined
@@ -400,7 +400,7 @@ function CompareLaneRow({
 
     return (
       <CompareCellBlock
-        cellId={cell?.id ?? (isVisualLane ? `visual-${step.id}` : undefined)}
+        cellId={cell?.id ?? (isVisualLane ? `storyboard-${step.id}` : undefined)}
         stepIndex={stepIndex}
         content={cell?.content}
         laneStyle={laneStyle}
@@ -418,7 +418,7 @@ function CompareLaneRow({
                 stepId: step.id,
                 stepName: step.name,
                 stepIndex,
-                cellId: cell?.id ?? `visual-${step.id}`,
+                cellId: cell?.id ?? `storyboard-${step.id}`,
                 cellContent: cell?.content ?? '',
                 cellFrame: cell?.frame ?? null,
                 cellSummary: cell?.summary ?? null,

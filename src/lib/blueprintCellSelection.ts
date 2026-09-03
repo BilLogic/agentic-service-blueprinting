@@ -49,7 +49,7 @@ export function buildBlueprintCellSelection(
   }
 }
 
-export function buildTechPillSelection(
+export function buildTouchpointSelection(
   context: BlueprintCellSelectionContext,
   techItem: string,
 ): BlueprintCellSelection {
@@ -78,7 +78,7 @@ export function buildTechPillSelection(
   }
 }
 
-export function getTechPillItems(content: string | undefined): string[] {
+export function getTouchpointItems(content: string | undefined): string[] {
   return parseCellContentItems(content ?? '')
 }
 

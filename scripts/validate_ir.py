@@ -67,21 +67,21 @@ CANONICAL_ROLES = (
     "customer_actions",
     "frontstage_actions",
     "backstage_actions",
-    "frontstage_tech",
-    "backstage_tech",
-    "support_systems",
-    "visual",
-    "step_visual",
+    "partner_actions",
+    "frontstage_touchpoints",
+    "backstage_touchpoints",
+    "support_actions",
+    "storyboard",
 )
 
 # Small CJK display-name shim map for the "did you mean role …?" warning on
 # role-less lanes (see references/lane-roles.md, legacy name shim).
 CJK_NAME_TO_ROLE = {
-    "前台技术": "frontstage_tech",
-    "后台技术": "backstage_tech",
+    "前台技术": "frontstage_touchpoints",
+    "后台技术": "backstage_touchpoints",
     "客户行为": "customer_actions",
     "顾客行为": "customer_actions",
-    "支持系统": "support_systems",
+    "支持系统": "backstage_touchpoints",
     "前台行为": "frontstage_actions",
     "后台行为": "backstage_actions",
 }

@@ -1,9 +1,9 @@
 import {
-  buildTechPillSelection,
-  getTechPillItems,
+  buildTouchpointSelection,
+  getTouchpointItems,
 } from '@/lib/blueprintCellSelection'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import { shouldUsePillCellContent } from '@/lib/blueprintLayout'
+import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import type { BlueprintData } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
@@ -31,7 +31,7 @@ export function getBlueprintStepTechItems(
   if (stepIndex < 0) return []
 
   const pillLanes = blueprint.lanes
-    .filter((lane) => shouldUsePillCellContent(lane))
+    .filter((lane) => shouldUseTouchpointCellContent(lane))
     .sort((a, b) => a.position - b.position)
 
   const entries: BlueprintStepTechEntry[] = []
@@ -42,7 +42,7 @@ export function getBlueprintStepTechItems(
     )
     if (!cell) continue
 
-    for (const item of getTechPillItems(cell.content)) {
+    for (const item of getTouchpointItems(cell.content)) {
       if (
         exclude &&
         resolveBlueprintCellId(exclude.cellId) === cell.id &&
@@ -64,7 +64,7 @@ export function getBlueprintStepTechItems(
   return entries
 }
 
-export function buildTechPillSelectionForItem(
+export function buildTouchpointSelectionForItem(
   blueprint: BlueprintData,
   cellId: string,
   techItem: string,
@@ -81,9 +81,9 @@ export function buildTechPillSelectionForItem(
   const step = blueprint.steps[stepIndex]
   if (!lane || !step || stepIndex < 0) return null
 
-  if (!getTechPillItems(cell.content).includes(techItem)) return null
+  if (!getTouchpointItems(cell.content).includes(techItem)) return null
 
-  return buildTechPillSelection(
+  return buildTouchpointSelection(
     {
       scenarioName,
       phaseName,
@@ -106,7 +106,7 @@ export function buildTechPillSelectionForItem(
   )
 }
 
-export function scrollBlueprintTechPillIntoView(
+export function scrollBlueprintTouchpointCellIntoView(
   cellId: string,
   techItem: string,
 ): void {
@@ -115,10 +115,10 @@ export function scrollBlueprintTechPillIntoView(
   )
   const pill =
     cellRoot?.querySelector<HTMLElement>(
-      `[data-blueprint-tech-pill="${techItem}"]`,
+      `[data-blueprint-touchpoint="${techItem}"]`,
     ) ??
     document.querySelector<HTMLElement>(
-      `[data-blueprint-tech-pill="${techItem}"]`,
+      `[data-blueprint-touchpoint="${techItem}"]`,
     )
 
   pill?.scrollIntoView({

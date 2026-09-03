@@ -309,12 +309,12 @@ describe('brand fill', () => {
 describe('blueprint cells', () => {
   // role → family, mirroring the [data-blueprint-lane] rules in blueprint.css.
   const lanes: ReadonlyArray<readonly [string, string]> = [
-    ['visual', 'slate'],
+    ['storyboard', 'slate'],
     ['evidence', 'blue'],
     ['actor', 'green'],
-    ['frontstage-tech', 'violet'],
+    ['frontstage-touchpoint', 'violet'],
     ['frontstage-action', 'pink'],
-    ['backstage-tech', 'lime'],
+    ['backstage-touchpoint', 'lime'],
     ['backstage-action', 'orange'],
     ['support', 'amber'],
   ]

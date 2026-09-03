@@ -76,17 +76,18 @@ in [`docs/erd.mmd`](../../erd.mmd).
 ## Lanes (`lane_role`)
 
 A lane's display name (`lanes.name`) is free-form in any language; the
-semantic key `lanes.lane_role` drives rendering (pill cells, visual rows,
-divider-line anchoring):
+semantic key `lanes.lane_role` drives rendering (touchpoint cells, storyboard
+rows, divider-line anchoring), and the set is closed by `lanes_lane_role_check`:
 
 | Role | Rendering |
 | --- | --- |
 | `customer_actions` | Spine actor lane — the **interaction line** draws after it |
-| `frontstage_actions`, `frontstage_tech` | Frontstage lanes — the **visibility line** draws after them |
-| `backstage_actions` | Backstage lane — the **internal interaction line** draws after it when a `support_systems` lane follows |
-| `frontstage_tech`, `backstage_tech`, `support_systems` | Cells render as multi-item **pills** (newline-separated content) |
-| `visual`, `step_visual` | Picture rows |
-| any other value / `null` | Generic swimlane (actor lanes, org-defined custom roles) |
+| `frontstage_actions`, `frontstage_touchpoints` | Frontstage lanes — the **visibility line** draws after them |
+| `backstage_actions` | Backstage lane — the **internal interaction line** draws after it when a `support_actions` lane follows |
+| `frontstage_touchpoints`, `backstage_touchpoints` | Cells render as multi-item **touchpoints** (newline-separated content) |
+| `support_actions`, `partner_actions` | Text cells (support and partner lanes) |
+| `storyboard` | Storyboard frame rows |
+| `null` | Generic swimlane (actor lanes; the role set is closed, so there is no custom role) |
 
 Frontend contract: `src/lib/laneRoles.ts`.
 
@@ -207,8 +208,8 @@ alongside the offline fallback module (`src/data/sampleBlueprint.ts`): one
 `Keeping a blueprint true` service → four phases (`Discover` → `Setup` →
 `Operate` → `Maintain`, with `Maintain.loops_to_phase_id` → `Operate`) → six
 scenarios carrying eight paths (`happy` and `variant` kinds) on one 7-lane
-roster (canonical + one custom role), plus a visual row
-on `Map your service` and three demo slices. Sample UUIDs use the
+roster (canonical roles plus a null-role Stakeholders swimlane), plus a
+storyboard row on `Map your service` and three demo slices. Sample UUIDs use the
 `f0000000-…` prefix. Re-run the generator after editing it — never edit the
 emitted files by hand.
 

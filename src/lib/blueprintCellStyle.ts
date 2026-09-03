@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 /*
  * Blueprint colour vocabulary — two sets, deliberately disjoint.
  *
- * A LANE ROLE says what a swim lane *is*: evidence, actor, frontstage tech. Not
+ * A LANE ROLE says what a swim lane *is*: evidence, actor, frontstage touchpoint. Not
  * what colour it is. Naming lanes after hues is what made this hard to reason
  * about — `chartreuse` told you nothing about a blueprint, and stopped even
  * being true once fills became scale steps. A role survives a repalette.
@@ -13,44 +13,44 @@ import { cn } from '@/lib/utils'
  * decision — so
  * naming it after the hue is honest here where it was not for lanes.
  *
- * The two sets share no family, so a pill can never be mistaken for the lane it
- * sits in, whichever tone is picked.
+ * The two sets share no family, so a touchpoint can never be mistaken for the
+ * lane it sits in, whichever tone is picked.
  *
  * Which family each maps to lives in blueprint.css, keyed on
  * `data-blueprint-lane` / `data-blueprint-tone`. Nothing here assigns a colour.
  */
 export type BlueprintLaneRole =
-  /** Screenshots and journey stage — the pictorial band. */
-  | 'visual'
+  /** The storyboard band — frames rather than words. */
+  | 'storyboard'
   /** Physical evidence: what the customer can see or hold. */
   | 'evidence'
   /** Customer and staff actions — the people the service runs through. */
   | 'actor'
-  /** Systems the customer touches directly. */
-  | 'frontstage-tech'
+  /** Touchpoints the customer meets directly. */
+  | 'frontstage-touchpoint'
   /** Staff actions the customer can see. */
   | 'frontstage-action'
-  /** Systems only staff touch. */
-  | 'backstage-tech'
+  /** Touchpoints only staff meet. */
+  | 'backstage-touchpoint'
   /** Staff actions the customer cannot see. */
   | 'backstage-action'
   /** Support processes and resources behind the internal line. */
   | 'support'
 
 export const BLUEPRINT_LANE_ROLES = [
-  'visual',
+  'storyboard',
   'evidence',
   'actor',
-  'frontstage-tech',
+  'frontstage-touchpoint',
   'frontstage-action',
-  'backstage-tech',
+  'backstage-touchpoint',
   'backstage-action',
   'support',
 ] as const satisfies readonly BlueprintLaneRole[]
 
 /**
  * Tones a touchpoint colour can be set to. Disjoint from the families the lane
- * roles use, so a pill never reads as a lane.
+ * roles use, so a touchpoint never reads as a lane.
  */
 export type TouchpointTone =
   | 'crimson'
@@ -91,7 +91,7 @@ export const CELL_STEP = {
   text: 1200,
 } as const
 
-/** Same, for a touchpoint pill and its chosen tone. */
+/** Same, for a touchpoint and its chosen tone. */
 export function blueprintToneAttrs(
   tone: TouchpointTone,
 ): { 'data-blueprint-tone': TouchpointTone } {
@@ -125,7 +125,7 @@ export function blueprintCellButtonClassName({
   className,
 }: {
   compact?: boolean
-  variant?: 'cell' | 'pill' | 'visual'
+  variant?: 'cell' | 'touchpoint' | 'storyboard'
   className?: string
 } = {}) {
   const shared = cn(
@@ -133,7 +133,7 @@ export function blueprintCellButtonClassName({
     compact ? 'text-xs' : 'text-sm',
   )
 
-  if (variant === 'pill') {
+  if (variant === 'touchpoint') {
     return cn(
       shared,
       'rounded-full text-center leading-snug',
@@ -142,7 +142,7 @@ export function blueprintCellButtonClassName({
     )
   }
 
-  if (variant === 'visual') {
+  if (variant === 'storyboard') {
     return cn(
       shared,
       'rounded-lg flex items-center justify-center',

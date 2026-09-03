@@ -40,22 +40,22 @@ generic swimlanes); no role is mandatory. Prefer creating a custom role over
   foreground flip and the focus ring follow from `src/styles/semantic.css`
   on their own. Restyle by editing tokens, not components; the shadcn
   components read the tokens.
-- Tech pills use a neutral palette by default; a `cell_touchpoints` row
-  carries the copy, screenshots and design link for one pill at one moment.
+- Touchpoint cells use a neutral palette by default; a `cell_touchpoints` row
+  carries the copy, screenshots and design link for one touchpoint at one moment.
 
-### Pinning an org tech-pill palette
+### Pinning an org touchpoint palette
 
-By default `src/lib/techPillColors.ts` ships an **empty** `TECH_PILL_COLORS`
-and colors each pill deterministically by hashing its label into a neutral
+By default `src/lib/touchpointColors.ts` ships an **empty** `TOUCHPOINT_COLORS`
+and colors each touchpoint deterministically by hashing its label into a neutral
 palette. That keeps a fresh clone brand-neutral, but hash-assigned pastels
 carry no meaning — two tools in the same system land on unrelated colors.
 
 To give a client's tools coherent color families, pin them: add
-`label → hex` entries to `TECH_PILL_COLORS` (exact pill label as the key),
+`label → hex` entries to `TOUCHPOINT_COLORS` (exact touchpoint label as the key),
 grouping related tools onto one family. Example:
 
 ```ts
-export const TECH_PILL_COLORS: Record<string, string> = {
+export const TOUCHPOINT_COLORS: Record<string, string> = {
   // Customer-facing app → green family
   'Mobile App': '#DCF3E4',
   'SMS Notify': '#DCF3E4',

@@ -20,8 +20,8 @@ import {
   getBlueprintForPath,
 } from '@/lib/blueprintCellConnections'
 import {
-  shouldUsePillCellContent,
-  shouldUseVisualContent,
+  shouldUseTouchpointCellContent,
+  shouldUseStoryboardContent,
 } from '@/lib/blueprintLayout'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
@@ -259,7 +259,7 @@ export function BlueprintCellDetailProvider({
       return { selectedCellIds, directlyConnectedCellIds }
     }
 
-    const skipHighlightZone = shouldUseVisualContent({
+    const skipHighlightZone = shouldUseStoryboardContent({
       name: selection.laneName,
     })
 
@@ -291,7 +291,7 @@ export function BlueprintCellDetailProvider({
       // even when no explicit trigger connects it to the active cell.
       const techLaneIds = new Set(
         blueprint.lanes
-          .filter((lane) => shouldUsePillCellContent(lane))
+          .filter((lane) => shouldUseTouchpointCellContent(lane))
           .map((lane) => lane.id),
       )
       for (const cell of blueprint.cells) {

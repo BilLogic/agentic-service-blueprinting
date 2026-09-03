@@ -18,11 +18,12 @@
  * What the content deliberately exercises (the template's rendering smoke):
  *   - four phases, six scenarios, incl. the phase loop
  *     (Maintain.loops_to_phase_id → Operate) drawn on the overview canvas
- *   - ONE lane roster, reused by every scenario, ordered so all three divider
- *     lines draw exactly once on every board: customer_actions →
- *     frontstage_tech → frontstage_actions → backstage_tech →
- *     backstage_actions → support_systems, under a custom-role Stakeholders
- *     swimlane. The adjacency rules are asserted below, not hoped for.
+ *   - ONE lane roster, reused by every scenario, ordered so the interaction
+ *     and visibility lines each draw exactly once on every board:
+ *     customer_actions → frontstage_touchpoints → frontstage_actions →
+ *     backstage_touchpoints → backstage_actions → backstage_touchpoints
+ *     (References & guardrails), under a null-role Stakeholders swimlane. The
+ *     adjacency rules are asserted below, not hoped for.
  *   - TWO scenarios with two genuinely divergent paths each, shaped so the
  *     compare views show every verdict: fully shared columns (quiet),
  *     divergent columns, path-only cells, path-only STEPS (each Map path
@@ -190,7 +191,7 @@ const LANES = [
   // A named custom role, not null: lane-roles.md asks for one whenever the
   // lane means something. It renders as a generic swimlane and anchors no
   // divider line. This is the lane that is deliberately quiet on three boards.
-  { row: 0, key: 'stakeholders', name: 'Stakeholders', role: 'stakeholders' },
+  { row: 0, key: 'stakeholders', name: 'Stakeholders', role: null },
   /*
     The spine lane, present on every board.
 
@@ -208,11 +209,11 @@ const LANES = [
     carries its own non-ASCII handling and comments.
   */
   { row: 1, key: 'owner', name: 'Blueprint owner', role: 'customer_actions' },
-  { row: 2, key: 'surface', name: 'App & skill surface', role: 'frontstage_tech' },
+  { row: 2, key: 'surface', name: 'App & skill surface', role: 'frontstage_touchpoints' },
   { row: 3, key: 'claude', name: 'Claude in the IDE', role: 'frontstage_actions' },
-  { row: 4, key: 'scripts', name: 'Pipeline scripts', role: 'backstage_tech' },
+  { row: 4, key: 'scripts', name: 'Pipeline scripts', role: 'backstage_touchpoints' },
   { row: 5, key: 'agents', name: 'Subagent fleet', role: 'backstage_actions' },
-  { row: 6, key: 'refs', name: 'References & guardrails', role: 'support_systems' },
+  { row: 6, key: 'refs', name: 'References & guardrails', role: 'backstage_touchpoints' },
 ]
 
 /**
@@ -222,7 +223,7 @@ const LANES = [
  * rather than an empty band on half of them.
  */
 const MAP_LANES = [
-  { row: 0, key: 'figures', name: 'Journey figures', role: 'visual' },
+  { row: 0, key: 'figures', name: 'Journey figures', role: 'storyboard' },
   ...LANES.map((lane) => ({ ...lane, row: lane.row + 1 })),
 ]
 
@@ -1192,14 +1193,12 @@ function assertLaneRoster(scenario) {
     )
   }
   roles.forEach((role, index) => {
-    if (role === 'frontstage_tech' && roles[index + 1] !== 'frontstage_actions') {
+    if (
+      role === 'frontstage_touchpoints' &&
+      roles[index + 1] !== 'frontstage_actions'
+    ) {
       throw new Error(
-        `scenario ${scenario.key}: frontstage_tech at row ${index} is not immediately followed by frontstage_actions — the visibility line would draw twice`,
-      )
-    }
-    if (role === 'backstage_actions' && roles[index + 1] !== 'support_systems') {
-      throw new Error(
-        `scenario ${scenario.key}: backstage_actions at row ${index} is not immediately followed by support_systems — the internal-interaction line would never draw`,
+        `scenario ${scenario.key}: frontstage_touchpoints at row ${index} is not immediately followed by frontstage_actions — the visibility line would draw twice`,
       )
     }
   })
@@ -1297,7 +1296,7 @@ function buildScenario(scenario) {
     const lanes = scenario.lanes.map((lane) => ({
       id: fid(S, P, KIND.lane, lane.row, 0),
       name: lane.name,
-      role: lane.role === 'visual' ? 'visual' : lane.role,
+      role: lane.role === 'storyboard' ? 'storyboard' : lane.role,
       position: lane.row,
     }))
 

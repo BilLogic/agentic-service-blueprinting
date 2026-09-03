@@ -1,29 +1,36 @@
 /**
  * Semantic lane roles — the stable contract between blueprint content and
  * rendering. A lane's display name (`lanes.name`) is free-form in any
- * language; its `lane_role` carries the rendering semantics (pill cells,
- * visual rows, divider-line anchoring). The vocabulary is extensible:
- * org-defined custom roles render as generic swimlanes, as does a null role
- * (e.g. actor lanes such as "现场技术员" or "Field Crew").
+ * language; its `lane_role` carries the rendering semantics (touchpoint cells,
+ * storyboard rows, divider-line anchoring). The vocabulary is closed: the
+ * `lanes_lane_role_check` constraint accepts exactly these roles or null, and
+ * a null role (e.g. an actor lane such as "现场技术员" or "Field Crew") renders
+ * as a generic swimlane.
  */
 export const CUSTOMER_ACTIONS_ROLE = 'customer_actions'
 export const FRONTSTAGE_ACTIONS_ROLE = 'frontstage_actions'
 export const BACKSTAGE_ACTIONS_ROLE = 'backstage_actions'
-export const FRONTSTAGE_TECH_ROLE = 'frontstage_tech'
-export const BACKSTAGE_TECH_ROLE = 'backstage_tech'
-export const SUPPORT_SYSTEMS_ROLE = 'support_systems'
-export const VISUAL_ROLE = 'visual'
-export const STEP_VISUAL_ROLE = 'step_visual'
+export const PARTNER_ACTIONS_ROLE = 'partner_actions'
+export const FRONTSTAGE_TOUCHPOINTS_ROLE = 'frontstage_touchpoints'
+export const BACKSTAGE_TOUCHPOINTS_ROLE = 'backstage_touchpoints'
+export const SUPPORT_ACTIONS_ROLE = 'support_actions'
+export const STORYBOARD_ROLE = 'storyboard'
 
+/**
+ * The vocabulary, and the whole of it. Held identical to the `lane_role` CHECK
+ * constraint added in `21000122000000`. `support_systems` and `step_visual`
+ * are gone — the tech lanes were never only tech, so their systems are
+ * touchpoints, and a step never carried its own storyboard variation.
+ */
 export const CANONICAL_LANE_ROLES = [
   CUSTOMER_ACTIONS_ROLE,
   FRONTSTAGE_ACTIONS_ROLE,
   BACKSTAGE_ACTIONS_ROLE,
-  FRONTSTAGE_TECH_ROLE,
-  BACKSTAGE_TECH_ROLE,
-  SUPPORT_SYSTEMS_ROLE,
-  VISUAL_ROLE,
-  STEP_VISUAL_ROLE,
+  PARTNER_ACTIONS_ROLE,
+  FRONTSTAGE_TOUCHPOINTS_ROLE,
+  BACKSTAGE_TOUCHPOINTS_ROLE,
+  SUPPORT_ACTIONS_ROLE,
+  STORYBOARD_ROLE,
 ] as const
 
 export type CanonicalLaneRole = (typeof CANONICAL_LANE_ROLES)[number]
@@ -40,11 +47,13 @@ export const LEGACY_NAME_TO_ROLE: Readonly<Record<string, CanonicalLaneRole>> =
     'Frontstage Actions': FRONTSTAGE_ACTIONS_ROLE,
     'Back Stage Actions': BACKSTAGE_ACTIONS_ROLE,
     'Backstage Actions': BACKSTAGE_ACTIONS_ROLE,
-    'Front Stage Tech': FRONTSTAGE_TECH_ROLE,
-    'Back Stage Tech': BACKSTAGE_TECH_ROLE,
-    'Computer Systems': SUPPORT_SYSTEMS_ROLE,
-    Visual: VISUAL_ROLE,
-    'Step Visual': STEP_VISUAL_ROLE,
+    'Front Stage Tech': FRONTSTAGE_TOUCHPOINTS_ROLE,
+    'Back Stage Tech': BACKSTAGE_TOUCHPOINTS_ROLE,
+    'Front Stage Touchpoints': FRONTSTAGE_TOUCHPOINTS_ROLE,
+    'Back Stage Touchpoints': BACKSTAGE_TOUCHPOINTS_ROLE,
+    'Support Actions': SUPPORT_ACTIONS_ROLE,
+    Visual: STORYBOARD_ROLE,
+    Storyboard: STORYBOARD_ROLE,
   }
 
 /** Resolve a lane's semantic role: explicit role, else legacy name, else none. */

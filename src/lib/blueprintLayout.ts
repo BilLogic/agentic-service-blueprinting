@@ -1,71 +1,72 @@
 import { parseCellContentItems } from '@/lib/parseCellContent'
 import {
   BACKSTAGE_ACTIONS_ROLE,
-  BACKSTAGE_TECH_ROLE,
+  BACKSTAGE_TOUCHPOINTS_ROLE,
   CUSTOMER_ACTIONS_ROLE,
   FRONTSTAGE_ACTIONS_ROLE,
-  FRONTSTAGE_TECH_ROLE,
+  FRONTSTAGE_TOUCHPOINTS_ROLE,
   getLaneRole,
-  STEP_VISUAL_ROLE,
-  SUPPORT_SYSTEMS_ROLE,
-  VISUAL_ROLE,
+  STORYBOARD_ROLE,
+  SUPPORT_ACTIONS_ROLE,
 } from '@/lib/laneRoles'
 import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
 
 /** Minimal lane shape for role-driven layout checks. */
 type LaneRoleSource = { name: string; role?: string | null }
 
-/** Roles whose cells list multiple items as inline pills (newline-separated content). */
-export const PILL_CELL_LANE_ROLES = [
-  FRONTSTAGE_TECH_ROLE,
-  BACKSTAGE_TECH_ROLE,
-  SUPPORT_SYSTEMS_ROLE,
+/** Roles whose cells list each touchpoint as its own inline cell (newline-separated content). */
+export const TOUCHPOINT_CELL_LANE_ROLES = [
+  FRONTSTAGE_TOUCHPOINTS_ROLE,
+  BACKSTAGE_TOUCHPOINTS_ROLE,
 ] as const
 
-/** Roles rendered as frame rows instead of text cells. */
-export const VISUAL_LANE_ROLES = [VISUAL_ROLE, STEP_VISUAL_ROLE] as const
+/** Roles rendered as storyboard frame rows instead of text cells. */
+export const STORYBOARD_LANE_ROLES = [STORYBOARD_ROLE] as const
 
-export const VISUAL_ROW_MIN_HEIGHT = 132
-export const VISUAL_ROW_MIN_HEIGHT_COMPACT = 108
+export const STORYBOARD_ROW_MIN_HEIGHT = 132
+export const STORYBOARD_ROW_MIN_HEIGHT_COMPACT = 108
 
-/** Max height for the visual cell button inside a swimlane row (excludes shell padding). */
-export function getVisualCellButtonMaxHeight(compact = false): number {
-  const rowHeight = compact ? VISUAL_ROW_MIN_HEIGHT_COMPACT : VISUAL_ROW_MIN_HEIGHT
+/** Max height for the storyboard cell button inside a swimlane row (excludes shell padding). */
+export function getStoryboardCellButtonMaxHeight(compact = false): number {
+  const rowHeight = compact
+    ? STORYBOARD_ROW_MIN_HEIGHT_COMPACT
+    : STORYBOARD_ROW_MIN_HEIGHT
   const shellVerticalPad = compact ? 24 : 32
   return rowHeight - shellVerticalPad
 }
 
-export function shouldUsePillCellContent(lane: LaneRoleSource): boolean {
+export function shouldUseTouchpointCellContent(lane: LaneRoleSource): boolean {
   const role = getLaneRole(lane)
   return (
-    role !== null && (PILL_CELL_LANE_ROLES as readonly string[]).includes(role)
+    role !== null &&
+    (TOUCHPOINT_CELL_LANE_ROLES as readonly string[]).includes(role)
   )
 }
 
-/** Which face a lane's cells wear — pill stack, step visual, or plain cell. */
-export type BlueprintCellVariant = 'default' | 'pills' | 'visual'
+/** Which face a lane's cells wear — touchpoint stack, storyboard, or plain cell. */
+export type BlueprintCellVariant = 'default' | 'touchpoints' | 'storyboard'
 
 /**
- * Whether a cell has anything to draw for its lane's variant. A visual cell
- * is decided by its frames upstream, a pill cell by having at least one
- * parsable item, a plain cell by non-blank content.
+ * Whether a cell has anything to draw for its lane's variant. A storyboard
+ * cell is decided by its frames upstream, a touchpoint cell by having at least
+ * one parsable item, a plain cell by non-blank content.
  */
 export function hasBlueprintCellContent(
   content: string | undefined,
   variant: BlueprintCellVariant,
 ): boolean {
-  if (variant === 'visual') return true
+  if (variant === 'storyboard') return true
   if (!content?.trim()) return false
-  if (variant === 'pills') {
+  if (variant === 'touchpoints') {
     return parseCellContentItems(content).length > 0
   }
   return true
 }
 
-export function shouldUseVisualContent(lane: LaneRoleSource): boolean {
+export function shouldUseStoryboardContent(lane: LaneRoleSource): boolean {
   const role = getLaneRole(lane)
   return (
-    role !== null && (VISUAL_LANE_ROLES as readonly string[]).includes(role)
+    role !== null && (STORYBOARD_LANE_ROLES as readonly string[]).includes(role)
   )
 }
 
@@ -80,13 +81,13 @@ export function shouldShowVisibilityLineAfter(
   lanes?: BlueprintLane[],
 ): boolean {
   const role = getLaneRole(lane)
-  if (role !== FRONTSTAGE_ACTIONS_ROLE && role !== FRONTSTAGE_TECH_ROLE) {
+  if (role !== FRONTSTAGE_ACTIONS_ROLE && role !== FRONTSTAGE_TOUCHPOINTS_ROLE) {
     return false
   }
 
-  // Frontstage tech can sit above frontstage actions — the visibility line
-  // follows the actions lane, not the tech lane.
-  if (role === FRONTSTAGE_TECH_ROLE && lanes) {
+  // A frontstage-touchpoints lane can sit above frontstage actions — the
+  // visibility line follows the actions lane, not the touchpoints lane.
+  if (role === FRONTSTAGE_TOUCHPOINTS_ROLE && lanes) {
     const index = lanes.findIndex((entry) => entry.id === lane.id)
     const next = lanes[index + 1]
     if (next && getLaneRole(next) === FRONTSTAGE_ACTIONS_ROLE) {
@@ -98,13 +99,13 @@ export function shouldShowVisibilityLineAfter(
 }
 
 /**
- * Support handoff lanes that sit below backstage actions. `support_systems`
- * (e.g. Computer Systems) is the canonical role; a board may also carry a
- * null-role "Support Actions" swimlane, which must still anchor the divider
- * without picking up support_systems pill-cell rendering.
+ * Support handoff lanes that sit below backstage actions. `support_actions`
+ * is the canonical role — the teams, vendors and infrastructure behind the
+ * work; a board may also carry a null-role "Support Actions" swimlane, which
+ * anchors the divider by name.
  */
 function isSupportHandoffLane(lane: LaneRoleSource): boolean {
-  if (getLaneRole(lane) === SUPPORT_SYSTEMS_ROLE) return true
+  if (getLaneRole(lane) === SUPPORT_ACTIONS_ROLE) return true
   return (
     lane.name === 'Support Actions' || lane.name === 'Tech Support Actions'
   )
@@ -311,8 +312,8 @@ export const LANE_COLUMN_WIDTH = 220
 export const STEP_COLUMN_WIDTH = 220
 /** Visible space between step columns where trigger arrows are drawn. */
 export const STEP_COLUMN_GAP = 24
-/** Left gutter on the white board so the play control clears Visual cells. */
-export const VISUAL_PLAY_GUTTER = 28
+/** Left gutter on the white board so the play control clears storyboard cells. */
+export const STORYBOARD_PLAY_GUTTER = 28
 
 export function getStepColumnLeft(stepIndex: number): number {
   return LANE_COLUMN_WIDTH + stepIndex * (STEP_COLUMN_WIDTH + STEP_COLUMN_GAP)
@@ -355,10 +356,10 @@ export const BLUEPRINT_CELL_GUTTER = 12
 export const BLUEPRINT_CELL_INNER_X = 16
 export const BLUEPRINT_CELL_INNER_Y = 12
 
-const PILL_ITEM_HEIGHT = 44
-const PILL_ITEM_HEIGHT_COMPACT = 34
-const PILL_STACK_GAP = 10
-const PILL_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
+const TOUCHPOINT_ITEM_HEIGHT = 44
+const TOUCHPOINT_ITEM_HEIGHT_COMPACT = 34
+const TOUCHPOINT_STACK_GAP = 10
+const TOUCHPOINT_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
 
 /** Compare / service grid cell inner width — the box TEXT actually wraps
  * in: column minus the shell's padding AND the cell button's own chrome
@@ -459,13 +460,13 @@ function getTextBlockMinHeight(lineCount: number, compact = false): number {
   return Math.max(base, wrappedHeight)
 }
 
-export function getMaxPillCountInLane(
+export function getMaxTouchpointCountInLane(
   data: BlueprintData,
   laneId: string,
 ): number {
   // Summed per *slot*, not maxed per cell: since the split a slot holds one
   // cell per touchpoint, and a row sized to the tallest single cell would be
-  // one pill tall over a stack of three.
+  // one touchpoint tall over a stack of three.
   const perStep = new Map<string, number>()
   for (const cell of data.cells) {
     if (cell.lane_id === laneId && cell.content?.trim()) {
@@ -478,16 +479,16 @@ export function getMaxPillCountInLane(
   return max
 }
 
-export function getPillStackMinHeight(
-  pillCount: number,
+export function getTouchpointStackMinHeight(
+  touchpointCount: number,
   compact = false,
 ): number {
-  if (pillCount <= 0) return 0
-  const itemHeight = compact ? PILL_ITEM_HEIGHT_COMPACT : PILL_ITEM_HEIGHT
+  if (touchpointCount <= 0) return 0
+  const itemHeight = compact ? TOUCHPOINT_ITEM_HEIGHT_COMPACT : TOUCHPOINT_ITEM_HEIGHT
   return (
-    PILL_CELL_PADDING +
-    pillCount * itemHeight +
-    Math.max(0, pillCount - 1) * PILL_STACK_GAP
+    TOUCHPOINT_CELL_PADDING +
+    touchpointCount * itemHeight +
+    Math.max(0, touchpointCount - 1) * TOUCHPOINT_STACK_GAP
   )
 }
 
@@ -511,16 +512,16 @@ export function getCellContentMinHeight(
   content: string | undefined,
   compact = false,
 ): number {
-  if (shouldUseVisualContent(lane)) {
+  if (shouldUseStoryboardContent(lane)) {
     return compact
-      ? VISUAL_ROW_MIN_HEIGHT_COMPACT
-      : VISUAL_ROW_MIN_HEIGHT
+      ? STORYBOARD_ROW_MIN_HEIGHT_COMPACT
+      : STORYBOARD_ROW_MIN_HEIGHT
   }
 
   if (!content?.trim()) return 0
 
-  if (shouldUsePillCellContent(lane)) {
-    return getPillStackMinHeight(
+  if (shouldUseTouchpointCellContent(lane)) {
+    return getTouchpointStackMinHeight(
       parseCellContentItems(content).length,
       compact,
     )
@@ -551,16 +552,16 @@ export function getLaneRowMinHeight(
     ? BLUEPRINT_ROW_MIN_HEIGHT_COMPACT
     : getDefaultCellMinHeight(lane, data, compact)
 
-  if (shouldUseVisualContent(lane)) {
+  if (shouldUseStoryboardContent(lane)) {
     return compact
-      ? VISUAL_ROW_MIN_HEIGHT_COMPACT
-      : VISUAL_ROW_MIN_HEIGHT
+      ? STORYBOARD_ROW_MIN_HEIGHT_COMPACT
+      : STORYBOARD_ROW_MIN_HEIGHT
   }
 
-  if (!shouldUsePillCellContent(lane)) return base
+  if (!shouldUseTouchpointCellContent(lane)) return base
 
-  const pillCount = getMaxPillCountInLane(data, lane.id)
-  return Math.max(base, getPillStackMinHeight(pillCount, compact))
+  const touchpointCount = getMaxTouchpointCountInLane(data, lane.id)
+  return Math.max(base, getTouchpointStackMinHeight(touchpointCount, compact))
 }
 
 export function getBlueprintGridMinHeight(

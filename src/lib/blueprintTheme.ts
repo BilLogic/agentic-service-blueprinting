@@ -53,8 +53,8 @@ export const BLUEPRINT_THEME = {
   canvasBorder: 'var(--color-slate-700)',
   divider: 'var(--color-slate-800)',
   dividerLabel: 'var(--color-gray-900)',
-  /** Figma-style interaction / visibility line tag. */
-  dividerTagBg: 'var(--color-slate-1200)',
+  /** Figma-style interaction / visibility line badge. */
+  dividerBadgeBg: 'var(--color-slate-1200)',
   dividerBg: 'var(--color-slate-500)',
   cellText: 'var(--color-slate-1200)',
   headerText: 'var(--color-gray-1200)',
@@ -208,9 +208,9 @@ function cellStyleFromFill(
 }
 
 const LANE_STYLES: Record<string, BlueprintLaneStyle> = {
-  Visual: cellStyleFromFill('visual'),
-  'Step Visual': cellStyleFromFill('visual'),
-  'Front Stage Tech': cellStyleFromFill('frontstage-tech',
+  Visual: cellStyleFromFill('storyboard'),
+  'Step Visual': cellStyleFromFill('storyboard'),
+  'Front Stage Tech': cellStyleFromFill('frontstage-touchpoint',
     BLUEPRINT_LABEL_TEXT.customerFacing,
   ),
   'Front Stage Actions': cellStyleFromFill('frontstage-action',
@@ -219,7 +219,7 @@ const LANE_STYLES: Record<string, BlueprintLaneStyle> = {
   'Back Stage Actions': cellStyleFromFill('frontstage-action',
     BLUEPRINT_LABEL_TEXT.backstage,
   ),
-  'Back Stage Tech': cellStyleFromFill('frontstage-tech',
+  'Back Stage Tech': cellStyleFromFill('frontstage-touchpoint',
     BLUEPRINT_LABEL_TEXT.backstage,
   ),
   'Support Actions': cellStyleFromFill('support',
@@ -231,7 +231,7 @@ const LANE_STYLES: Record<string, BlueprintLaneStyle> = {
   'Customer Actions': cellStyleFromFill('actor',
     BLUEPRINT_LABEL_TEXT.frontstage,
   ),
-  'Frontstage Actions': cellStyleFromFill('frontstage-tech',
+  'Frontstage Actions': cellStyleFromFill('frontstage-touchpoint',
     BLUEPRINT_LABEL_TEXT.customerFacing,
   ),
   'Backstage Actions': cellStyleFromFill('backstage-action',
@@ -262,14 +262,13 @@ const BACKSTAGE_FALLBACK: BlueprintLaneStyle = cellStyleFromFill('support',
  * (name-keyed `LANE_STYLES` above is the legacy fallback for pre-role content).
  */
 const ROLE_STYLES: Record<string, BlueprintLaneStyle> = {
-  visual: cellStyleFromFill('visual'),
-  step_visual: cellStyleFromFill('visual'),
-  journey_stage: cellStyleFromFill('visual'),
+  storyboard: cellStyleFromFill('storyboard'),
+  journey_stage: cellStyleFromFill('storyboard'),
   physical_evidence: cellStyleFromFill('evidence'),
   customer_actions: cellStyleFromFill('actor',
     BLUEPRINT_LABEL_TEXT.frontstage,
   ),
-  frontstage_tech: cellStyleFromFill('frontstage-tech',
+  frontstage_touchpoints: cellStyleFromFill('frontstage-touchpoint',
     BLUEPRINT_LABEL_TEXT.customerFacing,
   ),
   frontstage_actions: cellStyleFromFill('frontstage-action',
@@ -278,10 +277,10 @@ const ROLE_STYLES: Record<string, BlueprintLaneStyle> = {
   backstage_actions: cellStyleFromFill('backstage-action',
     BLUEPRINT_LABEL_TEXT.backstage,
   ),
-  backstage_tech: cellStyleFromFill('evidence',
+  backstage_touchpoints: cellStyleFromFill('evidence',
     BLUEPRINT_LABEL_TEXT.backstage,
   ),
-  support_systems: cellStyleFromFill('support',
+  support_actions: cellStyleFromFill('support',
     BLUEPRINT_LABEL_TEXT.backstage,
   ),
 }

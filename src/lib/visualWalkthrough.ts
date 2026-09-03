@@ -1,4 +1,4 @@
-import { getLaneRole, VISUAL_ROLE, STEP_VISUAL_ROLE } from '@/lib/laneRoles'
+import { getLaneRole, STORYBOARD_ROLE } from '@/lib/laneRoles'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
 import { pickPreferredPath } from '@/lib/pathSelection'
@@ -108,7 +108,7 @@ function getWalkthroughLaneNames(
   return blueprint.lanes
     .filter((lane) => {
       const role = getLaneRole(lane)
-      return role !== VISUAL_ROLE && role !== STEP_VISUAL_ROLE
+      return role !== STORYBOARD_ROLE
     })
     .map((lane) => lane.name)
 }

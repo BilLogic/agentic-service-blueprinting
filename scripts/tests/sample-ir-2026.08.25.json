@@ -61,13 +61,13 @@
                   {
                     "key": "frontstage-tech",
                     "display_name": { "en": "Citizen-Facing Tech", "zh": "市民端系统" },
-                    "role": "frontstage_tech",
+                    "role": "frontstage_touchpoints",
                     "row": 2
                   },
                   {
                     "key": "backstage-tech",
                     "display_name": { "en": "Backstage Tech", "zh": "后台系统" },
-                    "role": "backstage_tech",
+                    "role": "backstage_touchpoints",
                     "row": 3
                   },
                   {
@@ -207,13 +207,13 @@
                   {
                     "key": "frontstage-tech",
                     "display_name": { "en": "Citizen-Facing Tech", "zh": "市民端系统" },
-                    "role": "frontstage_tech",
+                    "role": "frontstage_touchpoints",
                     "row": 2
                   },
                   {
                     "key": "backstage-tech",
                     "display_name": { "en": "Backstage Tech", "zh": "后台系统" },
-                    "role": "backstage_tech",
+                    "role": "backstage_touchpoints",
                     "row": 3
                   },
                   {

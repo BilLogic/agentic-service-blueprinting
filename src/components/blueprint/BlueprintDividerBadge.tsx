@@ -3,7 +3,7 @@ import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
-type BlueprintDividerTagProps = {
+type BlueprintDividerBadgeProps = {
   label: string
   compact?: boolean
   /** Flat right edge so the rule can meet the pill flush (Figma-style). */
@@ -32,11 +32,11 @@ export function BlueprintDividerRailLabel({
 }
 
 /** Figma-style dark pill label for interaction / visibility divider rows. */
-export function BlueprintDividerTag({
+export function BlueprintDividerBadge({
   label,
   compact,
   connected,
-}: BlueprintDividerTagProps) {
+}: BlueprintDividerBadgeProps) {
   return (
     <span
       data-blueprint-fill
@@ -45,7 +45,7 @@ export function BlueprintDividerTag({
         compact ? 'text-3xs' : 'text-2xs',
         connected ? 'rounded-l rounded-r-none' : 'rounded',
       )}
-      style={getBlueprintFillStyle(BLUEPRINT_THEME.dividerTagBg)}
+      style={getBlueprintFillStyle(BLUEPRINT_THEME.dividerBadgeBg)}
     >
       {label}
     </span>
@@ -131,7 +131,7 @@ export function BlueprintDividerLabelLine({
 }: BlueprintDividerLabelLineProps) {
   return (
     <div className={cn('flex min-w-0 items-center', className)}>
-      <BlueprintDividerTag label={label} compact={compact} connected />
+      <BlueprintDividerBadge label={label} compact={compact} connected />
       <BlueprintDividerRule lineStyle={lineStyle} className="min-w-0 flex-1" />
     </div>
   )

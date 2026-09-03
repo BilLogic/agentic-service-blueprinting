@@ -384,7 +384,7 @@
             "null"
           ],
           "pattern": "^[a-z0-9][a-z0-9_]*$",
-          "description": "Semantic role key (lanes.lane_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. Org-defined custom roles and null both render as generic swimlanes. See references/lane-roles.md."
+          "description": "Semantic role key (lanes.lane_role) driving rendering and divider lines. Canonical: customer_actions, frontstage_actions, backstage_actions, partner_actions, frontstage_touchpoints, backstage_touchpoints, support_actions, storyboard. The database closes the set (lanes_lane_role_check); at the IR level an org-defined custom role and null both render as generic swimlanes. See references/lane-roles.md."
         },
         "row": {
           "type": "integer",

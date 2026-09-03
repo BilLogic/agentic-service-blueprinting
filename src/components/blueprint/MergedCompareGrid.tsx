@@ -20,8 +20,8 @@ import {
   STEP_COLUMN_WIDTH,
   hasBlueprintCellContent,
   lanePrecedesBlueprintDivider,
-  shouldUsePillCellContent,
-  shouldUseVisualContent,
+  shouldUseTouchpointCellContent,
+  shouldUseStoryboardContent,
   type BlueprintCellVariant,
 } from '@/lib/blueprintLayout'
 import {
@@ -188,7 +188,7 @@ export function MergedCompareGrid({
           if (!runtime || stepId === undefined) continue
           const entry = slot?.perPath[pathId]
           const cellIds = entry?.present ? entry.cellIds : undefined
-          if (variant === 'visual') {
+          if (variant === 'storyboard') {
             // A visual lane's face comes from the walkthrough lanes' frames,
             // not from its own cell text, so it merges on the frame set.
             const frames = resolveVisualStepPictureEntries(
@@ -199,7 +199,7 @@ export function MergedCompareGrid({
             candidates.push({
               pathId,
               stepId,
-              cellIds: cellIds ?? [`visual-${stepId}`],
+              cellIds: cellIds ?? [`storyboard-${stepId}`],
               signature: frames
                 .map((frame) => `${frame.label}=${frame.frame}`)
                 .join('\u0000'),
@@ -402,10 +402,10 @@ function mergedSlotKey(laneId: string, trackKey: string): string {
 }
 
 function resolveMergedCellVariant(lane: BlueprintLane): BlueprintCellVariant {
-  return shouldUseVisualContent(lane)
-    ? 'visual'
-    : shouldUsePillCellContent(lane)
-      ? 'pills'
+  return shouldUseStoryboardContent(lane)
+    ? 'storyboard'
+    : shouldUseTouchpointCellContent(lane)
+      ? 'touchpoints'
       : 'default'
 }
 
@@ -652,9 +652,9 @@ function MergedSubCellBlock({
   const cells = subCell.cellIds
     .map((cellId) => runtime.cellById.get(cellId))
     .filter((cell): cell is BlueprintCell => cell !== undefined)
-  const isVisual = variant === 'visual'
+  const isVisual = variant === 'storyboard'
   const cell = cells[0]
-  const cellId = cell?.id ?? (isVisual ? `visual-${subCell.stepId}` : undefined)
+  const cellId = cell?.id ?? (isVisual ? `storyboard-${subCell.stepId}` : undefined)
   const visualPictures = isVisual
     ? resolveVisualStepPictureEntries(blueprint, subCell.stepId)
     : undefined
@@ -669,7 +669,7 @@ function MergedSubCellBlock({
       compact={compact}
       flushBottom={flushBottom}
       visualPictures={visualPictures}
-      slotCells={variant === 'pills' ? cells : undefined}
+      slotCells={variant === 'touchpoints' ? cells : undefined}
       pathRails={pathRails}
       pathWash={pathWash}
       selectionContext={

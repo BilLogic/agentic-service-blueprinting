@@ -14,7 +14,7 @@ if they describe the system rather than a journey, switch to
 - 3. ⚠ REQUIRED — the system-vs-journey branch
 - 4. Cheap skeleton preview before IR
 - 5. Deep read + draft, one scenario at a time
-- 6. Journey-stage images (`visual` / `step_visual` rows)
+- 6. Journey-stage images (`storyboard` rows)
 - ⚠ Exit condition (deterministic)
 
 ## 1. Triage + exclusion (before reading anything at depth)
@@ -81,11 +81,11 @@ For each scenario the user picked:
 Then hand off to `skills/map/references/review-import-playbook.md` for preview, review,
 sign-off, and import.
 
-## 6. Journey-stage images (`visual` / `step_visual` rows)
+## 6. Journey-stage images (`storyboard` rows)
 
-The `visual`, `step_visual`, and `journey_stage` roles render a cell's
+The `storyboard` role renders a cell's
 `frame` (an image URL / storage ref) and ignore its text. Most orgs have no
-ready screenshots when they first blueprint, so **an empty visual row is the
+ready screenshots when they first blueprint, so **an empty storyboard row is the
 default and is fine** — leave `frame` null and the row renders as an empty
 stage band; it does not block validation, sign-off, or import. Do NOT fabricate
 image URLs to fill it.

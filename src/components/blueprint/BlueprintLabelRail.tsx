@@ -1,7 +1,7 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import {
   BlueprintDividerRailLabelLine,
-} from '@/components/blueprint/BlueprintDividerTag'
+} from '@/components/blueprint/BlueprintDividerBadge'
 import { LaneCollapseToggle } from '@/components/blueprint/LaneCollapseToggle'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import {

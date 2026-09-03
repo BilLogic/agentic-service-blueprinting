@@ -13,7 +13,7 @@ import type { TouchpointTone } from '@/lib/blueprintCellStyle'
  * A pill renders at step 400, one paler than the step-500 lane it sits in, so
  * it reads as an object on the cell rather than as another cell.
  */
-export const TECH_PILL_COLORS = {
+export const TOUCHPOINT_COLORS = {
   Email: 'purple',
   Figma: 'purple',
   'Google Docs': 'crimson',
@@ -27,7 +27,7 @@ export const TECH_PILL_COLORS = {
   Zoom: 'indigo',
 } as const satisfies Record<string, TouchpointTone>
 
-export type TechPillName = keyof typeof TECH_PILL_COLORS
+export type TouchpointColorName = keyof typeof TOUCHPOINT_COLORS
 
 /*
  * Spelling variants that should resolve to one registry key. Empty in the
@@ -35,14 +35,14 @@ export type TechPillName = keyof typeof TECH_PILL_COLORS
  * aliases here, so `Google Docs` and `google docs` do not become two colours.
  * (Case alone is already handled by LOWER_TO_CANONICAL below.)
  */
-const TECH_LABEL_ALIASES: Record<string, TechPillName> = {}
+const TECH_LABEL_ALIASES: Record<string, TouchpointColorName> = {}
 
 const LOWER_TO_CANONICAL = Object.fromEntries(
-  (Object.keys(TECH_PILL_COLORS) as TechPillName[]).map((name) => [
+  (Object.keys(TOUCHPOINT_COLORS) as TouchpointColorName[]).map((name) => [
     name.toLowerCase(),
     name,
   ]),
-) as Record<string, TechPillName>
+) as Record<string, TouchpointColorName>
 
 /** Unknown tech names fall back to a deterministic family from this set. */
 const EXTENDED_FALLBACK_TONES = [
@@ -64,7 +64,7 @@ function hashLabel(label: string): number {
 }
 
 /** Resolve a raw pill label to its canonical registry key when possible. */
-export function normalizeTechPillLabel(label: string): string {
+export function normalizeTouchpointLabel(label: string): string {
   const trimmed = label.trim()
   const lower = trimmed.toLowerCase()
   return TECH_LABEL_ALIASES[lower] ?? LOWER_TO_CANONICAL[lower] ?? trimmed
@@ -81,8 +81,8 @@ export function getTouchpointTone(
   chosen?: TouchpointTone,
 ): TouchpointTone {
   if (chosen) return chosen
-  const canonical = normalizeTechPillLabel(label)
-  const known = TECH_PILL_COLORS[canonical as TechPillName]
+  const canonical = normalizeTouchpointLabel(label)
+  const known = TOUCHPOINT_COLORS[canonical as TouchpointColorName]
   if (known) return known
 
   return EXTENDED_FALLBACK_TONES[

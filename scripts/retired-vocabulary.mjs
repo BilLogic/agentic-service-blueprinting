@@ -233,6 +233,66 @@ export const RENAME_MAP = Object.freeze(
       retired: [],
       copy: [],
     },
+    // The lane vocabulary closes (`21000122000000`). A "tech" lane never held
+    // only software — it held the things a moment happens THROUGH, which is a
+    // touchpoint — so the two tech roles become touchpoints. Both spellings
+    // retire outright: neither is a substring of any surviving database name,
+    // and the lane LABELS ("Front Stage Tech") are free-form text the migration
+    // does not touch, so the copy guard reads the ROLE aloud and not the label.
+    {
+      was: ['frontstage_tech', 'backstage_tech'],
+      is: ['frontstage_touchpoints', 'backstage_touchpoints'],
+      migrations: ['21000122000000'],
+      retired: ['frontstage_tech', 'backstage_tech'],
+      copy: ['frontstage tech', 'backstage tech'],
+    },
+    // `support_systems` did two jobs — back-office people and back-office
+    // systems. The people are `support_actions` (a new role for a lane an
+    // adopter may add); the systems are touchpoints, and every support_systems
+    // lane in this template is a systems lane, so each becomes
+    // `backstage_touchpoints`.
+    {
+      was: ['support_systems'],
+      is: ['backstage_touchpoints'],
+      migrations: ['21000122000000'],
+      retired: ['support_systems'],
+      copy: ['support systems'],
+    },
+    // `visual` said what the MEDIUM is where every sibling role says what the
+    // row is FOR; it is `storyboard` now, the word the panel and the walkthrough
+    // already used. `step_visual` named no lane here — a step never carried its
+    // own storyboard variation — and is dropped, its concept folded into
+    // `storyboard`.
+    {
+      was: ['visual', 'step_visual'],
+      is: ['storyboard'],
+      migrations: ['21000122000000'],
+      retired: ['visual', 'step_visual'],
+      copy: ['visual', 'step visual'],
+    },
+    /*
+      THE DESIGN SYSTEM'S OWN VOCABULARY, which had four words for two ideas.
+
+      A **badge** describes the thing it sits on: one per thing, not drawn from
+      a set, never interactive — the divider caption, a touchpoint's own face.
+      A **tag** is one value out of a set, selectable or removable. "Chip" and
+      "pill" were a third and fourth name for those same two ideas and are not
+      names any more.
+
+      `retired` is empty and that IS the entry: no database object was ever
+      called either word, so the identifier sweep has nothing to forbid, and a
+      guard that cannot fire is a comment wearing a check's clothes. The copy
+      list costs nothing — neither word reaches a reader today — and is what
+      keeps it that way. The component and prop renames are held by review and
+      by `tsc`, not by this map.
+    */
+    {
+      was: ['pill', 'chip'],
+      is: ['badge', 'tag'],
+      migrations: [],
+      retired: [],
+      copy: ['pill', 'pills', 'chip', 'chips'],
+    },
   ].map((row) =>
     Object.freeze({
       ...row,

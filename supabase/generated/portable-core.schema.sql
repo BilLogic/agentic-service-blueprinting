@@ -1870,7 +1870,7 @@ begin
 
   -- Content on an actor lane is a sentence about what somebody did; syncing
   -- it would file that sentence in the registry as a tool.
-  select v_lane_role in ('frontstage_tech', 'backstage_tech', 'support_systems')
+  select v_lane_role in ('frontstage_touchpoints', 'backstage_touchpoints')
          or exists (select 1 from public.cell_touchpoints where cell_id = p_cell_id)
     into v_bearing;
 
@@ -2558,6 +2558,7 @@ CREATE TABLE public.lanes (
     tools jsonb DEFAULT '[]'::jsonb NOT NULL,
     origin text DEFAULT 'import'::text NOT NULL,
     CONSTRAINT lanes_kpis_is_array CHECK ((jsonb_typeof(kpis) = 'array'::text)),
+    CONSTRAINT lanes_lane_role_check CHECK (((lane_role IS NULL) OR (lane_role = ANY (ARRAY['customer_actions'::text, 'frontstage_actions'::text, 'backstage_actions'::text, 'partner_actions'::text, 'frontstage_touchpoints'::text, 'backstage_touchpoints'::text, 'support_actions'::text, 'storyboard'::text])))),
     CONSTRAINT lanes_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text]))),
     CONSTRAINT lanes_tools_is_array CHECK ((jsonb_typeof(tools) = 'array'::text))
 );
@@ -2572,7 +2573,7 @@ COMMENT ON TABLE public.lanes IS 'Blueprint row (swimlane) within a path';
 -- Name: COLUMN lanes.lane_role; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.lanes.lane_role IS 'Semantic role key that drives rendering (pill cells, visual rows, divider-line anchoring); the display name stays in lanes.name and is free-form in any language. Canonical values: customer_actions, frontstage_actions, backstage_actions, frontstage_tech, backstage_tech, support_systems, visual, step_visual. The vocabulary is extensible — org-defined custom roles are allowed and render as generic swimlanes. Null = generic swimlane (e.g. actor lanes).';
+COMMENT ON COLUMN public.lanes.lane_role IS 'Semantic role key that drives rendering (touchpoint cells, storyboard rows, divider-line anchoring); the display name stays in lanes.name and is free-form in any language. Canonical values: customer_actions, frontstage_actions, backstage_actions, partner_actions, frontstage_touchpoints, backstage_touchpoints, support_actions, storyboard. Null = generic swimlane (e.g. actor lanes), and is permitted on purpose. Constrained by lanes_lane_role_check — a custom role is not allowed, because an unconstrained column is how a lane goes unclassified.';
 
 --
 -- Name: COLUMN lanes.owner_team; Type: COMMENT; Schema: public; Owner: -

@@ -51,10 +51,10 @@ scenario-scoped columns.
 ## Q5 — Lanes
 
 > "Who else acts in this scenario — people, teams?" (actor lanes)
-> "What systems/tools does the spine actor touch directly?" (`frontstage_tech`)
-> "What runs behind the scenes?" (`backstage_tech`)
-> "Who/what supports it all — vendors, infra, internal teams?" (`support_systems`)
-> "Do you want an image row for snapshots per step?" (`visual`)
+> "What systems/tools does the spine actor touch directly?" (`frontstage_touchpoints`)
+> "What runs behind the scenes?" (`backstage_touchpoints`)
+> "Who/what supports it all — vendors, infra, internal teams?" (`support_actions`)
+> "Do you want an image row for snapshots per step?" (`storyboard`)
 
 Assign roles per `references/lane-roles.md`; non-spine actors get null or
 custom roles.
