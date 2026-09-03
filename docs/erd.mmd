@@ -16,10 +16,10 @@
 %% Integrity: cells.path_id must match lanes.path_id AND (path_id, step_id) must exist in
 %%            path_steps (DB trigger cells_validate_path_match). Import order:
 %%            paths → steps → path_steps → lanes → cells → cell_dependencies.
-%% Roles: lanes.lane_role — semantic role key separate from the display name. Canonical:
-%%            customer_actions, frontstage_actions, backstage_actions, frontstage_tech,
-%%            backstage_tech, support_systems, visual, step_visual; extensible (org-defined
-%%            custom roles render as generic swimlanes); null = generic swimlane.
+%% Roles: lanes.lane_role — semantic role key separate from the display name. Closed set
+%%            (CHECK): customer_actions, frontstage_actions, backstage_actions,
+%%            frontstage_touchpoints, backstage_touchpoints, support_actions, partner_actions,
+%%            storyboard; null = generic swimlane (custom roles are no longer allowed).
 %% Derived layer: slices/audit_findings/evidence reference cells SOFTLY (uuid / uuid[] with paired
 %%            cell_keys, no FK) — scenario re-import deletes and recreates cells; the authored
 %%            cell_key is the identity that survives. A cell with zero evidence rows is an
