@@ -74,6 +74,7 @@ function ZoomPanViewportInner({
     contentRef,
     zoom,
     isPanning,
+    isSpaceHeld,
     pointerHandlers,
     zoomIn,
     zoomOut,
@@ -126,7 +127,10 @@ function ZoomPanViewportInner({
     // know the mode above its viewport to swap in the editor.
     <CanvasSelectionProvider>
     <div
-      className={cn('relative min-h-0 flex-1', className)}
+      // Bound every canvas-local z-index to this surface. The transformed
+      // world, screen-space chrome, and annotation tools keep their internal
+      // order without competing with the editor shell or portalled dialogs.
+      className={cn('relative isolate min-h-0 flex-1', className)}
       data-zoom-pan-root
       // Cell-corner overlays (slice sequence badges) scale with the canvas;
       // below this zoom they are illegible specks, so CSS hides them. Same
@@ -136,12 +140,19 @@ function ZoomPanViewportInner({
     >
       <div
         ref={containerRef}
+        // Focusable, NOT tabbable. `-1` keeps the tab order exactly as it
+        // was — hundreds of cells, no new stop — while giving a click on the
+        // board somewhere for focus to land, which is what puts the arrow-key
+        // pan within reach of a reader who has not tabbed into a cell yet.
+        tabIndex={-1}
         className={cn(
-          'absolute inset-0 overflow-hidden touch-none',
+          'absolute inset-0 overflow-hidden touch-none outline-none',
+          (isPanning || isSpaceHeld) && 'cursor-grab',
           isPanning && 'cursor-grabbing',
         )}
         style={{ backgroundColor: BLUEPRINT_THEME.viewportPad }}
         data-zoom-pan-viewport
+        data-canvas-space-pan={isSpaceHeld ? '' : undefined}
         {...pointerHandlers}
       >
         <div

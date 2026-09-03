@@ -5,13 +5,40 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
-  type PointerEvent,
 } from 'react'
+import {
+  getCanvasSpaceHeld,
+  setCanvasSpaceHeld,
+} from '@/lib/canvasKeyboardState'
+import { isEditableKeyboardTarget } from '@/lib/keyboardTarget'
+import {
+  createCameraTransitionClock,
+  easeCameraTransition,
+  interpolateCameraTransform,
+  transformCameraAroundPoint,
+  type CameraTransitionResult,
+} from '@/lib/cameraTransition'
 import { isCanvasResizeRefitSuppressed } from '@/lib/canvasChromeResize'
 import {
   pulseBlueprintCells,
   type FocusCellsResult,
 } from '@/lib/canvasFocusCells'
+import {
+  gestureScaleFactor,
+  shouldApplyGestureZoom,
+} from '@/lib/canvasGestureZoom'
+import {
+  computeFocusRevealPan,
+  resolveKeyboardPan,
+} from '@/lib/canvasKeyboardCamera'
+import {
+  hasScrollableRegion,
+  scrollableAncestorCanConsume,
+} from '@/lib/canvasScrollRegions'
+import {
+  normalizeWheelDelta,
+  wheelZoomScaleFactor,
+} from '@/lib/canvasWheelDelta'
 import { MOTION_CAMERA_MS, prefersReducedMotion } from '@/lib/motion'
 import {
   BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN,
@@ -101,6 +128,14 @@ export const SEMANTIC_ZOOM_THRESHOLD = 0.25
 /** How far a pending touch may wander before it stops being a tap and
  * becomes a board drag. */
 const TOUCH_PAN_SLOP = 10
+
+/**
+ * Frame cap on the pre-fit settle loop. Comfortably longer than the two
+ * frames a stable board needs and than the commits a navigation takes, and
+ * short enough that a target which never goes quiet degrades to "fit against
+ * whatever we have" rather than polling forever.
+ */
+const MAX_SETTLE_POLLS = 20
 /** Counter-scale that keeps a phase badge at roughly constant screen size
  * (12px type reads ~11px). Capped so a deep zoom-out cannot grow a badge
  * past its artboard. */
@@ -198,51 +233,6 @@ function measureFitBounds(
   }
 }
 
-function easeInOutCubic(t: number) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-}
-
-/**
- * True when something between `target` and `container` can still scroll in
- * the direction of this wheel delta — in which case the wheel belongs to it,
- * not to the camera. At-the-end counts as "cannot": a list scrolled to its
- * bottom hands further downward wheel to the canvas, which is how native
- * scroll chaining behaves everywhere else.
- */
-function scrollableAncestorCanConsume(
-  target: Node,
-  container: HTMLElement,
-  deltaX: number,
-  deltaY: number,
-): boolean {
-  let node: Node | null = target
-  while (node && node !== container) {
-    if (node instanceof HTMLElement) {
-      const style = getComputedStyle(node)
-      const scrollsY =
-        node.scrollHeight > node.clientHeight &&
-        /auto|scroll/.test(style.overflowY)
-      const scrollsX =
-        node.scrollWidth > node.clientWidth &&
-        /auto|scroll/.test(style.overflowX)
-      if (scrollsY && deltaY !== 0) {
-        const atTop = node.scrollTop <= 0
-        const atBottom =
-          node.scrollTop + node.clientHeight >= node.scrollHeight - 1
-        if ((deltaY < 0 && !atTop) || (deltaY > 0 && !atBottom)) return true
-      }
-      if (scrollsX && deltaX !== 0) {
-        const atLeft = node.scrollLeft <= 0
-        const atRight =
-          node.scrollLeft + node.clientWidth >= node.scrollWidth - 1
-        if ((deltaX < 0 && !atLeft) || (deltaX > 0 && !atRight)) return true
-      }
-    }
-    node = node.parentNode
-  }
-  return false
-}
-
 /** Sub-pixel camera deltas aren't worth a React commit. */
 function isSameTransform(
   a: { pan: { x: number; y: number }; zoom: number },
@@ -275,10 +265,36 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   } = options
 
   const containerRef = useRef<HTMLDivElement>(null)
+  /**
+   * The container as a value, not only as a ref — and the reason is a bug
+   * class this file has already been bitten by once.
+   *
+   * An effect that reads `containerRef.current` once attaches nothing if it
+   * runs before that node exists, and with stable deps it is never retried:
+   * the canvas is then permanently dead to whatever that effect was binding.
+   * The wheel and gesture listeners escaped by moving to window-in-capture
+   * (see their comments below); the three that must stay scoped to the
+   * element — native pointer capture, the touch claim, and the keyboard
+   * camera — escape by depending on the node instead of reading it. A
+   * container that mounts late, or remounts, re-runs them.
+   *
+   * `containerRef` is still the truth for handlers, which run at gesture
+   * time and want the current node with no render in between. This is only
+   * for effects.
+   */
+  const [containerNode, setContainerNode] = useState<HTMLDivElement | null>(
+    null,
+  )
+  /** Returned as `containerRef` — a ref callback is still a ref to JSX. */
+  const attachContainer = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node
+    setContainerNode(node)
+  }, [])
   const contentRef = useRef<HTMLDivElement>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false)
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
   const transformRef = useRef({ pan: { x: 0, y: 0 }, zoom: 1 })
   const pendingFitRef = useRef(false)
@@ -295,6 +311,13 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   const pendingFitAnimateRef = useRef(false)
   const userAdjustedViewRef = useRef(false)
   const fitAnimationRef = useRef<number | null>(null)
+  const fitAnimationTargetRef = useRef<{
+    pan: { x: number; y: number }
+    zoom: number
+  } | null>(null)
+  const fitAnimationResolveRef = useRef<
+    ((result: CameraTransitionResult) => void) | null
+  >(null)
   /**
    * False until this viewport instance has framed content once. The first
    * fit jumps: animating it would swoop in from the unfitted origin
@@ -302,12 +325,46 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    */
   const hasFittedRef = useRef(false)
   /**
-   * Latest semantic threshold, so the post-fit badge re-stamp can read it
-   * without making `fitToView` depend on (and re-create itself for) a prop
-   * that changes nothing about how a fit is computed.
+   * True while the resetKey effect's settle loop is waiting for the fit
+   * target's layout to go quiet. The resize observer's owed-fit branch
+   * defers to it — see the loop for why.
+   */
+  const fitSettlingRef = useRef(false)
+  /**
+   * Portrait/landscape, for the rotation rule in the resize observer.
+   *
+   * A ref, not a closure local of that effect: the effect lists `resetKey`
+   * in its deps, so every navigation re-created it and reset the detector to
+   * `null` — and a flip needs a previous value to compare against. A freshly
+   * constructed ResizeObserver also delivers once for each observed element,
+   * which consumed the re-seed. The upshot was that the branch existing
+   * because "on a phone there is no Reset control to recover with" could not
+   * fire on the first delivery after any navigation. Orientation is device
+   * state; it does not belong to an effect generation.
+   */
+  const lastAspectLandscapeRef = useRef<boolean | null>(null)
+  /**
+   * Latest semantic threshold, read by every transform write so that NOTHING
+   * on the camera path depends on the prop.
+   *
+   * This ref existed for the post-fit badge re-stamp and said, correctly,
+   * that `fitToView` must not "depend on (and re-create itself for) a prop
+   * that changes nothing about how a fit is computed" — but `commitTransform`
+   * still closed over the prop, so the whole chain
+   * (`commitTransform → animateTransform → fitToView → runPendingFit →` the
+   * resetKey layout effect) was rebuilt whenever the threshold moved. That
+   * effect is NOT idempotent: it raises `pendingFitRef` and clears
+   * `userAdjustedViewRef`. The threshold is dynamic now, so a reader focused
+   * on a phase who toggled a path — a case `fitKey` deliberately ignores —
+   * had their pan and zoom thrown away by a fit nobody asked for. Reading it
+   * through the ref finishes the job the comment described.
+   *
+   * Synced in a LAYOUT effect: the fit effect below is one too, and a passive
+   * sync would leave the first fit after a threshold change reading a stale
+   * value.
    */
   const semanticThresholdRef = useRef(semanticZoomThreshold)
-  useEffect(() => {
+  useLayoutEffect(() => {
     semanticThresholdRef.current = semanticZoomThreshold
   }, [semanticZoomThreshold])
   /**
@@ -340,12 +397,21 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     animateFitRef.current = animateFit
   }, [animateFit])
 
-  const cancelFitAnimation = useCallback(() => {
-    if (fitAnimationRef.current !== null) {
-      cancelAnimationFrame(fitAnimationRef.current)
-      fitAnimationRef.current = null
-    }
-  }, [])
+  const cancelFitAnimation = useCallback(
+    (kind: 'cancelled' | 'superseded' = 'cancelled') => {
+      if (fitAnimationRef.current !== null) {
+        cancelAnimationFrame(fitAnimationRef.current)
+        fitAnimationRef.current = null
+        fitAnimationTargetRef.current = null
+        fitAnimationResolveRef.current?.({
+          kind,
+          transform: transformRef.current,
+        })
+        fitAnimationResolveRef.current = null
+      }
+    },
+    [],
+  )
 
   const commitTransform = useCallback(
     (
@@ -362,7 +428,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           el,
           nextPan,
           nextZoom,
-          semanticZoomThreshold,
+          semanticThresholdRef.current,
           tierZoom,
         )
       }
@@ -371,36 +437,83 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         setZoom(nextZoom)
       }
     },
-    [semanticZoomThreshold],
+    // Identity-stable on purpose — see `semanticThresholdRef`. Everything
+    // downstream of this callback schedules fits, and a rebuild there is a
+    // camera move.
+    [],
   )
 
   const animateTransform = useCallback(
-    (nextPan: { x: number; y: number }, nextZoom: number) => {
-      cancelFitAnimation()
+    (
+      nextPan: { x: number; y: number },
+      nextZoom: number,
+    ): Promise<CameraTransitionResult> => {
+      cancelFitAnimation('superseded')
       const from = transformRef.current
-      const start = performance.now()
+      const target = { pan: nextPan, zoom: nextZoom }
 
-      const step = (now: number) => {
-        const t = Math.min(1, (now - start) / fitDurationMs)
-        const e = easeInOutCubic(t)
-        commitTransform(
-          {
-            x: from.pan.x + (nextPan.x - from.pan.x) * e,
-            y: from.pan.y + (nextPan.y - from.pan.y) * e,
-          },
-          from.zoom + (nextZoom - from.zoom) * e,
-          t === 1,
-          // The tier commits to the destination from frame one.
-          nextZoom,
-        )
-        if (t < 1) {
-          fitAnimationRef.current = requestAnimationFrame(step)
-          return
+      /*
+        The viewport is read PER FRAME, not snapshotted.
+
+        Interpolating about the viewport centre made `height` load-bearing —
+        the old rectangle-width maths used `width` alone. A snapshot taken
+        while the container is still zero-height (a fit scheduled from a
+        layout effect, a collapsed panel, a `display` change in the same
+        commit) fell back to 1, so every intermediate frame was computed
+        about y≈0 instead of the real centre: the camera swung hundreds of
+        pixels out and snapped home on the last frame, because the endpoints
+        short-circuit and stay exact. Reading live also means a container
+        that resizes mid-ease (chrome opening) is followed rather than
+        ignored.
+      */
+      const readViewport = () => {
+        const container = containerRef.current
+        return {
+          width: container?.clientWidth ?? 0,
+          height: container?.clientHeight ?? 0,
         }
-        fitAnimationRef.current = null
       }
 
-      fitAnimationRef.current = requestAnimationFrame(step)
+      // Nothing to interpolate against, and no frame would be honest about
+      // it — land on the target rather than animate through a fictional
+      // centre.
+      const initialViewport = readViewport()
+      if (initialViewport.width <= 0 || initialViewport.height <= 0) {
+        commitTransform(nextPan, nextZoom, true, nextZoom)
+        return Promise.resolve<CameraTransitionResult>({
+          kind: 'completed',
+          transform: target,
+        })
+      }
+
+      fitAnimationTargetRef.current = target
+      const progressAt = createCameraTransitionClock(fitDurationMs)
+
+      return new Promise((resolve) => {
+        fitAnimationResolveRef.current = resolve
+        const step = (now: number) => {
+          const t = progressAt(now)
+          const viewport = readViewport()
+          const next = interpolateCameraTransform(
+            from,
+            target,
+            viewport.width > 0 && viewport.height > 0
+              ? viewport
+              : initialViewport,
+            easeCameraTransition(t),
+          )
+          commitTransform(next.pan, next.zoom, t === 1, nextZoom)
+          if (t < 1) {
+            fitAnimationRef.current = requestAnimationFrame(step)
+            return
+          }
+          fitAnimationRef.current = null
+          fitAnimationTargetRef.current = null
+          fitAnimationResolveRef.current = null
+          resolve({ kind: 'completed', transform: target })
+        }
+        fitAnimationRef.current = requestAnimationFrame(step)
+      })
     },
     [cancelFitAnimation, commitTransform, fitDurationMs],
   )
@@ -430,7 +543,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   )
 
   const zoomAtPoint = useCallback(
-    (clientX: number, clientY: number, scaleFactor: number, syncReact = true) => {
+    (
+      clientX: number,
+      clientY: number,
+      scaleFactor: number,
+      syncReact = true,
+    ) => {
       const el = containerRef.current
       if (!el) return
 
@@ -440,16 +558,44 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       const rect = el.getBoundingClientRect()
       const mx = clientX - rect.left
       const my = clientY - rect.top
-      const { pan: p, zoom: z } = transformRef.current
-      const newZoom = clampZoom(z * scaleFactor)
-      const worldX = (mx - p.x) / z
-      const worldY = (my - p.y) / z
-      const nextPan = {
-        x: mx - worldX * newZoom,
-        y: my - worldY * newZoom,
-      }
+      const current = transformRef.current
+      const newZoom = clampZoom(current.zoom * scaleFactor)
+      const next = transformCameraAroundPoint(
+        current,
+        { x: mx, y: my },
+        { x: mx, y: my },
+        newZoom,
+      )
 
-      commitTransform(nextPan, newZoom, syncReact)
+      commitTransform(next.pan, next.zoom, syncReact)
+    },
+    [cancelFitAnimation, commitTransform],
+  )
+
+  const zoomBetweenPoints = useCallback(
+    (
+      fromClientX: number,
+      fromClientY: number,
+      toClientX: number,
+      toClientY: number,
+      scaleFactor: number,
+      syncReact = true,
+    ) => {
+      const el = containerRef.current
+      if (!el) return
+
+      cancelFitAnimation()
+      userAdjustedViewRef.current = true
+
+      const rect = el.getBoundingClientRect()
+      const current = transformRef.current
+      const next = transformCameraAroundPoint(
+        current,
+        { x: fromClientX - rect.left, y: fromClientY - rect.top },
+        { x: toClientX - rect.left, y: toClientY - rect.top },
+        clampZoom(current.zoom * scaleFactor),
+      )
+      commitTransform(next.pan, next.zoom, syncReact)
     },
     [cancelFitAnimation, commitTransform],
   )
@@ -460,14 +606,16 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * `forcedZoom` keeps an existing zoom and solves for pan only.
    */
   const computeFitTransform = useCallback(
-    (forcedZoom?: number) => {
+    (forcedZoom?: number, selector = fitSelector) => {
       const el = containerRef.current
       const content = contentRef.current
       if (!el || !content) return null
 
       const margin = fitMargin
+      const matchedTarget = content.querySelector<HTMLElement>(selector)
       const fitTarget =
-        content.querySelector<HTMLElement>(fitSelector) ?? content
+        matchedTarget ?? (selector === fitSelector ? content : null)
+      if (!fitTarget) return null
       const { zoom: currentZoom } = transformRef.current
       const bounds = measureFitBounds(content, fitTarget, currentZoom)
 
@@ -478,7 +626,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         left: margin,
       }
       const fitWidth = Math.max(el.clientWidth - insets.left - insets.right, 1)
-      const fitHeight = Math.max(el.clientHeight - insets.top - insets.bottom, 1)
+      const fitHeight = Math.max(
+        el.clientHeight - insets.top - insets.bottom,
+        1,
+      )
       if (bounds.width <= 0 || bounds.height <= 0) return null
 
       const trueFit = Math.min(
@@ -549,8 +700,31 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       const shouldAnimate =
         (options?.animate ?? animateFitRef.current) && !prefersReducedMotion()
       if (shouldAnimate) {
-        animateTransform(next.pan, next.zoom)
+        const activeTarget = fitAnimationTargetRef.current
+        if (
+          !activeTarget ||
+          !isSameTransform(activeTarget, { pan: next.pan, zoom: next.zoom })
+        ) {
+          void animateTransform(next.pan, next.zoom)
+        }
       } else {
+        /*
+          Cancel first. Every other camera entry point in this file does
+          (`zoomAtPoint`, `zoomBetweenPoints`, `beginPan`, `panBy`, the wheel
+          pan) — this branch did not, and `commitTransform` only writes the
+          ref and the element: a queued `step` still holds its own captured
+          `from`/`target` and repaints straight over the correction on the
+          next frame.
+
+          It made two escape hatches inert. `refitWhenIdle` gives up waiting
+          past its deadline precisely BECAUSE an ease is still running, then
+          "corrected" into that ease and lost. And a backgrounded tab stops
+          `requestAnimationFrame` mid-flight, so the queued frame is still
+          pending when the reader returns — the deadline correction lands
+          during the freeze, then the resumed frame slams the camera back to
+          the pre-layout framing the instant the tab is looked at.
+        */
+        cancelFitAnimation()
         commitTransform(next.pan, next.zoom, true)
       }
       const content = contentRef.current
@@ -584,7 +758,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
       return true
     },
-    [animateTransform, commitTransform, computeFitTransform],
+    [animateTransform, cancelFitAnimation, commitTransform, computeFitTransform],
   )
 
   /**
@@ -627,7 +801,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     commitTransform(p, z, false)
   }, [commitTransform])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (resetKey === undefined) return
     pendingFitRef.current = true
     userAdjustedViewRef.current = false
@@ -636,21 +810,111 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     // cleared between scheduling this fit and the frame it runs on.
     const animate = animateFitRef.current
     pendingFitAnimateRef.current = animate
-    let frame1 = 0
-    let frame2 = 0
-    const runFit = () => runPendingFit(animate)
 
-    frame1 = requestAnimationFrame(() => {
-      frame2 = requestAnimationFrame(runFit)
-    })
+    /*
+      Fit when the TARGET has stopped changing size, not on a fixed clock.
 
-    // Backstop for content that hasn't laid out within two frames.
-    const timeout = window.setTimeout(runFit, 150)
+      The old schedule (two frames, 150 ms backstop) fit against whatever
+      had laid out by then — and a comparison panel is mid-measurement
+      right then: its content mounts in one commit, a ResizeObserver
+      measures it, and the panel takes its real size a commit later. A
+      path toggled onto a focused scenario therefore eased toward a
+      half-grown panel, and the growth correction afterwards landed as a
+      visible snap on top of the ease — the "zoom messes up the page".
+      Waiting for two consecutive frames to measure the same target size
+      costs one frame on already-stable boards and buys a single clean
+      ease against final geometry everywhere else.
+
+      `fitSettlingRef` tells the resize observer's owed-fit branch to stay
+      out while this loop is watching — that branch re-fires the pending
+      fit on any content resize, which is precisely the mid-layout moment
+      this loop exists to wait out.
+    */
+    fitSettlingRef.current = true
+    let frame = 0
+    let polls = 0
+    let lastSize: { width: number; height: number } | null = null
+    let lastTarget: HTMLElement | null = null
+
+    const stop = () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
+
+    /*
+      Stand down only once the fit has actually been CONSUMED.
+
+      `runPendingFit` can decline: `computeFitTransform` bails when the
+      target measures 0×0, leaving `pendingFitRef` raised. Lowering the guard
+      regardless handed the next fit to the ResizeObserver's owed-fit branch
+      — which fires on the panel's mid-layout growth, i.e. exactly the
+      premature fit this loop exists to prevent, ~200 ms before the backstop
+      could have helped.
+    */
+    const runFit = () => {
+      runPendingFit(animate)
+      if (pendingFitRef.current) return false
+      fitSettlingRef.current = false
+      stop()
+      return true
+    }
+
+    const step = () => {
+      const content = contentRef.current
+      const target = content?.querySelector<HTMLElement>(fitSelector) ?? content
+      const size = target
+        ? { width: target.offsetWidth, height: target.offsetHeight }
+        : null
+      /*
+        Three things have to be true to call this settled, and only the last
+        one used to be checked.
+
+        A REAL size — `0×0` twice running is a board that has not begun
+        laying out, not a board that has finished. That is the heavy mount
+        this loop was written for, and it was the one case it mis-read.
+
+        The SAME element both times — `fitSelector` changes on the same
+        navigation that mounts the new node, so frame one legitimately
+        measures the content fallback and frame two measures the real target.
+        Two different elements agreeing within a pixel is a coincidence, not
+        a settled layout.
+
+        And the same size, within a pixel of integer `offsetWidth` rounding.
+      */
+      const measurable = size !== null && size.width > 0 && size.height > 0
+      const settled =
+        measurable &&
+        lastSize !== null &&
+        target === lastTarget &&
+        Math.abs(size.width - lastSize.width) <= 1 &&
+        Math.abs(size.height - lastSize.height) <= 1
+
+      if (settled && runFit()) return
+
+      lastSize = measurable ? size : null
+      lastTarget = target
+      // Bounded, like `refitWhenIdle` below. A target that never goes quiet
+      // — an oscillating measurement, a selector that keeps missing — would
+      // otherwise poll forever, and each poll is a `querySelector` plus two
+      // forced layout reads scheduled right after our own transform writes.
+      if (++polls > MAX_SETTLE_POLLS) {
+        runFit()
+        return
+      }
+      frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
+
+    // Backstop for content that will not go quiet in time — the ease is
+    // 420 ms, and a fit that starts later than this reads as a hang. Late
+    // growth after it is the resize observer's correction to make. It also
+    // ENDS the loop: leaving the rAF running past the backstop was a
+    // permanent per-frame forced layout for the life of the view.
+    const timeout = window.setTimeout(runFit, 250)
 
     return () => {
-      cancelAnimationFrame(frame1)
-      cancelAnimationFrame(frame2)
-      window.clearTimeout(timeout)
+      fitSettlingRef.current = false
+      stop()
     }
   }, [resetKey, fitSelector, runPendingFit])
 
@@ -664,8 +928,6 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     if (!content) return
 
     let debounceTimer = 0
-    // Portrait/landscape detection for the rotation rule below.
-    let lastAspectLandscape: boolean | null = null
 
     const onResize = () => {
       // A rotation is not a window drag (todo 027 §4): flipping the aspect
@@ -676,8 +938,9 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       if (box && box.width > 0 && box.height > 0) {
         const landscape = box.width > box.height
         const flipped =
-          lastAspectLandscape !== null && landscape !== lastAspectLandscape
-        lastAspectLandscape = landscape
+          lastAspectLandscapeRef.current !== null &&
+          landscape !== lastAspectLandscapeRef.current
+        lastAspectLandscapeRef.current = landscape
         if (flipped) {
           userAdjustedViewRef.current = false
           window.clearTimeout(debounceTimer)
@@ -689,15 +952,20 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       if (userAdjustedViewRef.current) return
 
       // A fit that is still owed takes priority over every policy below: the
-      // resetKey fit retries twice by frame and once at 150ms, and on a heavy
-      // mount all three fire before the grid has laid out — after which this
-      // observer used to be the only agent left, and the refit branch never
-      // ran it. A viewport that has never framed anything has nothing to
-      // preserve; re-centering a camera that does not exist yet is not a
-      // policy question. This is how Edit mode ended up permanently at
-      // identity zoom over an empty corner.
+      // resetKey fit's settle loop and backstop can all pass before a heavy
+      // mount's grid has laid out — after which this observer is the only
+      // agent left, and the refit branch never ran it. A viewport that has
+      // never framed anything has nothing to preserve; re-centering a camera
+      // that does not exist yet is not a policy question. This is how Edit
+      // mode ended up permanently at identity zoom over an empty corner.
+      //
+      // NOT while the settle loop is still watching: these observations are
+      // the very mid-layout growth it is waiting out, and fitting from here
+      // is exactly the premature fit the loop exists to prevent.
       if (pendingFitRef.current) {
-        runPendingFit(pendingFitAnimateRef.current)
+        if (!fitSettlingRef.current) {
+          runPendingFit(pendingFitAnimateRef.current)
+        }
         return
       }
 
@@ -731,7 +999,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           easeInOut restart begins at zero velocity, so the visible result is
           the zoom braking hard partway through and setting off again. That
           is the "abrupt" phase→scenario transition. Waiting for the ease to
-          land turns the pair into two clean glides in sequence.
+          land preserves one clean glide, followed only by the instant layout
+          correction documented below.
         */
         /*
           Bounded. The poll waits out a fit ease, and a backgrounded tab
@@ -768,9 +1037,6 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         )
         return
       }
-      // Not a refit: the fit scheduled by the last resetKey is still
-      // waiting on content that has only now laid out.
-      runPendingFit(pendingFitAnimateRef.current)
     }
 
     const observer = new ResizeObserver(onResize)
@@ -822,6 +1088,14 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     const onWheel = (e: WheelEvent) => {
       const el = containerRef.current
       if (!el) return
+      /*
+        Pixels, once, at the door. Firefox reports LINES for a wheel mouse and
+        Chromium reports pixels, and the camera used to consume both raw — the
+        same notch moved the board 3px on one browser and 100 on the other.
+        Every consumer below this line, including the sign-only scroll test,
+        reads the same unit.
+      */
+      const { deltaX, deltaY } = normalizeWheelDelta(e)
       const target = e.target
       if (!(target instanceof Node) || !el.contains(target)) {
         // Not the canvas — but an unprevented ctrl+wheel is still a browser
@@ -839,7 +1113,13 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         // Immediate: a second viewport's window listener must not also apply
         // the same tick, squaring the scale factor.
         e.stopImmediatePropagation()
-        const scaleFactor = Math.exp(-e.deltaY * 0.01)
+        /*
+          The factor is clamped per event, not per gesture. A trackpad pinch
+          is dozens of events of a few pixels each and is unaffected; a wheel
+          mouse delivers a whole notch in ONE event, which at the trackpad's
+          rate was a 2.7x scale change from a single click of the wheel.
+        */
+        const scaleFactor = wheelZoomScaleFactor(deltaY)
         /*
           `syncReact: false` — and this is the whole bug.
 
@@ -860,12 +1140,13 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         return
       }
 
-      if (e.deltaX !== 0 || e.deltaY !== 0) {
+      if (deltaX !== 0 || deltaY !== 0) {
         // A scrollable *inside* the canvas that can still consume this delta
-        // keeps it — an overflowing cell body, a text editor. Hijacking those
-        // scrolls pans the whole canvas while the text under the pointer
-        // sits unread, which is the exact jank this handler exists to fight.
-        if (scrollableAncestorCanConsume(target, el, e.deltaX, e.deltaY)) {
+        // keeps it — an overflowing grid, a cell body, a text editor.
+        // Hijacking those scrolls pans the whole canvas while the text under
+        // the pointer sits unread, which is the exact jank this handler
+        // exists to fight. The touch path asks the same function.
+        if (scrollableAncestorCanConsume(target, el, deltaX, deltaY)) {
           return
         }
         e.preventDefault()
@@ -875,8 +1156,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         const { pan: p, zoom: z } = transformRef.current
         commitTransform(
           {
-            x: p.x - e.deltaX,
-            y: p.y - e.deltaY,
+            x: p.x - deltaX,
+            y: p.y - deltaY,
           },
           z,
           false,
@@ -892,100 +1173,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       passive: false,
       capture: true,
     })
-    return () =>
-      window.removeEventListener('wheel', onWheel, { capture: true })
+    return () => window.removeEventListener('wheel', onWheel, { capture: true })
   }, [cancelFitAnimation, commitTransform, syncZoomToReact, zoomAtPoint])
-
-  /**
-   * Safari's own pinch, swallowed.
-   *
-   * WebKit ships non-standard `gesture*` events alongside the pointer
-   * stream, and on iOS an unprevented `gesturestart` is a *page* zoom —
-   * the visual viewport rescaling the whole app while the canvas sits
-   * still, which is what "pinch does not work" looks like on a phone.
-   * `touch-action: none` does not cover them. Preventing the default is
-   * the entire job: the pinch itself is already handled by the pointer map
-   * below, so these listeners must never also apply a transform.
-   *
-   * Bound on the window in capture and filtered by containment, for the
-   * same three reasons the wheel listener is (see above) — chiefly that a
-   * listener attached from a ref read once may never attach at all.
-   */
-  useEffect(() => {
-    const swallow = (event: Event) => {
-      const el = containerRef.current
-      const target = event.target
-      if (!el || !(target instanceof Node) || !el.contains(target)) return
-      event.preventDefault()
-    }
-    const options = { passive: false, capture: true } as const
-    window.addEventListener('gesturestart', swallow, options)
-    window.addEventListener('gesturechange', swallow, options)
-    window.addEventListener('gestureend', swallow, options)
-    return () => {
-      window.removeEventListener('gesturestart', swallow, { capture: true })
-      window.removeEventListener('gesturechange', swallow, { capture: true })
-      window.removeEventListener('gestureend', swallow, { capture: true })
-    }
-  }, [])
-
-  /**
-   * The gesture is CLAIMED, not merely declared.
-   *
-   * `touch-action: none` is a declaration the compositor consults *before*
-   * it decides whether a touch belongs to the page or to the app, and the
-   * board is the one place where that consultation is unreliable:
-   * `[data-zoom-pan-content]` carries a transform, so it is a composited
-   * lane, and WebKit does not dependably resolve the property across that
-   * boundary. `blueprint.css` answers this by setting the rule on every
-   * descendant directly rather than relying on an ancestor's — but a
-   * declaration the compositor may still drop leaves the same symptom
-   * behind it: the browser takes the touch and answers `pointercancel`, so
-   * a finger on empty canvas pans and the identical finger on a cell does
-   * nothing.
-   *
-   * `preventDefault` needs no such resolution. It is the answer to a
-   * question already asked, on an event already delivered, and no layer
-   * boundary sits between the two. The declaration keeps the compositor
-   * from starting a native gesture on the fast path; this keeps it from
-   * finishing one it started anyway.
-   *
-   * Scope matches the CSS exactly — the viewport subtree, nothing else.
-   * Note the deliberate difference from the wheel path above, which hands a
-   * delta back to a scrollable ancestor that can still consume it: a wheel
-   * inside the board has native scrolling to defer TO, and a touch does
-   * not, because `touch-action: none` already took it. A `preventDefault`
-   * drawn narrower than the declaration it backs would reopen exactly the
-   * gap it exists to close.
-   *
-   * `touchstart` is claimed only from the SECOND finger. Preventing the
-   * first suppresses the synthesized click a tap depends on; multi-touch
-   * synthesizes no click, and is where WebKit's page pinch-zoom starts.
-   *
-   * Non-passive — `preventDefault` on a passive listener is a no-op with a
-   * console warning — and bound on the window in capture, filtered by
-   * containment, for the same three reasons the wheel listener is: an
-   * effect that reads `containerRef.current` once may attach nothing at
-   * all, an intervening handler may run first, and a portalled overlay
-   * drawn over the canvas never bubbles to it.
-   */
-  useEffect(() => {
-    const claim = (event: TouchEvent) => {
-      const el = containerRef.current
-      const target = event.target
-      if (!el || !(target instanceof Node) || !el.contains(target)) return
-      if (!event.cancelable) return
-      if (event.type === 'touchstart' && event.touches.length < 2) return
-      event.preventDefault()
-    }
-    const options = { passive: false, capture: true } as const
-    window.addEventListener('touchstart', claim, options)
-    window.addEventListener('touchmove', claim, options)
-    return () => {
-      window.removeEventListener('touchstart', claim, { capture: true })
-      window.removeEventListener('touchmove', claim, { capture: true })
-    }
-  }, [])
 
   /**
    * Touch gestures ride the SAME Pointer Events as mouse pan — no parallel
@@ -1002,6 +1191,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    */
   const touchPoints = useRef(new Map<number, { x: number; y: number }>())
   const pinchStart = useRef<{ dist: number; x: number; y: number } | null>(null)
+  /**
+   * The last cumulative scale a WebKit `gesture*` stream reported. Safari
+   * counts from 1 per gesture; the camera multiplies, so each event is
+   * applied as its ratio against this.
+   */
+  const gestureScaleRef = useRef(1)
   /**
    * A finger down on a CELL is ambiguous: a tap (open it) or the start of a
    * board drag — phones expect both from anywhere. Neither is committed at
@@ -1084,19 +1279,39 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           userAdjustedViewRef.current = true
           return
         }
+        /*
+          One finger inside a scrolling region scrolls it, and the camera
+          stays out of the way — the same answer the wheel path gives the
+          same element. Leaving without a pending pan is what makes that
+          possible: the board can no longer steal the gesture at the slop
+          line, and the tap is untouched (no `preventDefault` here), so a
+          cell inside an overflowing grid still opens on a tap.
+        */
+        const container = containerRef.current
+        if (container && hasScrollableRegion(e.target as Node, container)) {
+          suppressNextClick.current = false
+          return
+        }
       }
       // Cleared before ANY early return: a suppress flag stranded by a
       // cancelled gesture (OS edge swipe — no click ever fires to consume
       // it) must not eat the first honest click of a later, unrelated
       // interaction, including ones that arrive while panning is disabled.
       suppressNextClick.current = false
-      if (!panEnabled) return
-      if (e.button !== 0) return
+      const temporaryPan =
+        e.button === 1 ||
+        (e.button === 0 && e.pointerType !== 'touch' && getCanvasSpaceHeld())
+      if (!panEnabled && !temporaryPan) return
+      if (e.button !== 0 && e.button !== 1) return
       const target = e.target as HTMLElement
       // The mouse on an interactive child is a tap on it, never a pan. A
       // single FINGER there goes pending instead — pan if it travels past
       // the slop, tap if it lifts inside it.
-      if (panIgnoreSelector && target.closest(panIgnoreSelector)) {
+      if (
+        !temporaryPan &&
+        panIgnoreSelector &&
+        target.closest(panIgnoreSelector)
+      ) {
         if (e.pointerType === 'touch') {
           pendingTouchPan.current = {
             id: e.pointerId,
@@ -1107,6 +1322,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         return
       }
 
+      if (temporaryPan) e.preventDefault()
       try {
         containerRef.current?.setPointerCapture(e.pointerId)
       } catch {
@@ -1118,6 +1334,43 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     [beginPan, cancelFitAnimation, endPan, panEnabled, panIgnoreSelector],
   )
 
+  useEffect(() => {
+    const clear = () => {
+      setCanvasSpaceHeld(false)
+      setIsSpaceHeld(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || event.repeat) return
+      if (isEditableKeyboardTarget(event.target)) return
+      const el = containerRef.current
+      const active = document.activeElement
+      if (
+        !el ||
+        (active instanceof Node &&
+          active !== document.body &&
+          !el.contains(active))
+      )
+        return
+      setCanvasSpaceHeld(true)
+      setIsSpaceHeld(true)
+      event.preventDefault()
+    }
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'Space') clear()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', clear)
+    document.addEventListener('visibilitychange', clear)
+    return () => {
+      clear()
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', clear)
+      document.removeEventListener('visibilitychange', clear)
+    }
+  }, [])
+
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
       if (e.pointerType === 'touch' && touchPoints.current.has(e.pointerId)) {
@@ -1128,11 +1381,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           const dist = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y))
           const midX = (a.x + b.x) / 2
           const midY = (a.y + b.y) / 2
-          zoomAtPoint(midX, midY, dist / pinch.dist, false)
-          const { pan: p, zoom: z } = transformRef.current
-          commitTransform(
-            { x: p.x + (midX - pinch.x), y: p.y + (midY - pinch.y) },
-            z,
+          zoomBetweenPoints(
+            pinch.x,
+            pinch.y,
+            midX,
+            midY,
+            dist / pinch.dist,
             false,
           )
           pinchStart.current = { dist, x: midX, y: midY }
@@ -1182,21 +1436,18 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         false,
       )
     },
-    [beginPan, commitTransform, syncZoomToReact, zoomAtPoint],
+    [beginPan, commitTransform, syncZoomToReact, zoomBetweenPoints],
   )
 
   /** Capture-phase click filter: a click synthesized at the end of an
    * engaged touch pan must not reach the cell under the finger. Runs on the
    * container in capture order, so it fires before any cell's own handler. */
-  const handleClickCapture = useCallback(
-    (e: ReactMouseEvent<HTMLElement>) => {
-      if (!suppressNextClick.current) return
-      suppressNextClick.current = false
-      e.preventDefault()
-      e.stopPropagation()
-    },
-    [],
-  )
+  const handleClickCapture = useCallback((e: ReactMouseEvent<HTMLElement>) => {
+    if (!suppressNextClick.current) return
+    suppressNextClick.current = false
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
 
   const handlePointerUp = useCallback(
     (e: PointerEvent) => {
@@ -1243,6 +1494,186 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     [beginPan, endPan, panEnabled, syncZoomToReact],
   )
 
+  // Native capture is the bug fix: React bubble pointerdown never runs when
+  // a populated lane/container child stops propagation. Observing the stream
+  // at the viewport boundary first preserves the pending-touch decision and
+  // pointer capture regardless of descendant handlers.
+  useEffect(() => {
+    const el = containerNode
+    if (!el) return
+    const captureOptions = { capture: true } as const
+    el.addEventListener('pointerdown', handlePointerDown, captureOptions)
+    el.addEventListener('pointermove', handlePointerMove, captureOptions)
+    el.addEventListener('pointerup', handlePointerUp, captureOptions)
+    el.addEventListener('pointercancel', handlePointerUp, captureOptions)
+    return () => {
+      el.removeEventListener('pointerdown', handlePointerDown, captureOptions)
+      el.removeEventListener('pointermove', handlePointerMove, captureOptions)
+      el.removeEventListener('pointerup', handlePointerUp, captureOptions)
+      el.removeEventListener('pointercancel', handlePointerUp, captureOptions)
+    }
+  }, [containerNode, handlePointerDown, handlePointerMove, handlePointerUp])
+
+  /**
+   * Safari's own pinch — prevented on the page, applied to the camera.
+   *
+   * WebKit ships non-standard `gesture*` events alongside the pointer
+   * stream, and an unprevented `gesturestart` is a *page* zoom — the visual
+   * viewport rescaling the whole app while the canvas sits still, which is
+   * what "pinch does not work" looks like. `touch-action: none` does not
+   * cover them. That half always worked; the other half never did, because
+   * these handlers dropped the `scale` the gesture carries on the grounds
+   * that the pointer map below already pinches.
+   *
+   * Which is true on iOS and false on macOS. A trackpad pinch on the desktop
+   * produces gesture events and nothing else — no touch pointers, no
+   * synthesised ctrl+wheel — so swallowing the gesture was the whole
+   * interaction. The gate is the touch-pointer count (`shouldApplyGestureZoom`):
+   * zero means nothing else is applying this pinch, and the moment a finger
+   * is down the pointer map owns it and scale must not land twice.
+   *
+   * Bound on the window in capture and filtered by containment, for the
+   * same three reasons the wheel listener is (see above) — chiefly that a
+   * listener attached from a ref read once may never attach at all.
+   *
+   * Placed here rather than beside the wheel listener because it reads the
+   * touch pointer map that the block above owns.
+   */
+  useEffect(() => {
+    /** WebKit-only; no lib.dom type exists for it. */
+    type WebKitGestureEvent = Event & {
+      scale?: number
+      clientX?: number
+      clientY?: number
+    }
+    const inCanvas = (event: Event) => {
+      const el = containerRef.current
+      const target = event.target
+      return !!el && target instanceof Node && el.contains(target)
+        ? el
+        : null
+    }
+    const onGestureStart = (event: Event) => {
+      if (!inCanvas(event)) return
+      event.preventDefault()
+      gestureScaleRef.current = 1
+    }
+    const onGestureChange = (event: Event) => {
+      const el = inCanvas(event)
+      if (!el) return
+      event.preventDefault()
+      const gesture = event as WebKitGestureEvent
+      const factor = gestureScaleFactor(
+        gestureScaleRef.current,
+        gesture.scale ?? gestureScaleRef.current,
+      )
+      if (Number.isFinite(gesture.scale)) {
+        gestureScaleRef.current = gesture.scale as number
+      }
+      if (!shouldApplyGestureZoom(touchPoints.current.size)) return
+      if (factor === 1) return
+      const rect = el.getBoundingClientRect()
+      // Anchored at the pointer, like the wheel. A gesture event without
+      // coordinates (older WebKit) falls back to the viewport centre.
+      zoomAtPoint(
+        gesture.clientX ?? rect.left + rect.width / 2,
+        gesture.clientY ?? rect.top + rect.height / 2,
+        factor,
+        false,
+      )
+      syncZoomToReact()
+    }
+    const onGestureEnd = (event: Event) => {
+      if (!inCanvas(event)) return
+      event.preventDefault()
+      gestureScaleRef.current = 1
+      syncZoomToReact()
+    }
+    const gestureOptions = { passive: false, capture: true } as const
+    window.addEventListener('gesturestart', onGestureStart, gestureOptions)
+    window.addEventListener('gesturechange', onGestureChange, gestureOptions)
+    window.addEventListener('gestureend', onGestureEnd, gestureOptions)
+    return () => {
+      window.removeEventListener('gesturestart', onGestureStart, {
+        capture: true,
+      })
+      window.removeEventListener('gesturechange', onGestureChange, {
+        capture: true,
+      })
+      window.removeEventListener('gestureend', onGestureEnd, { capture: true })
+    }
+  }, [syncZoomToReact, zoomAtPoint])
+
+  /**
+   * The gesture is claimed OUTRIGHT, not merely declared.
+   *
+   * `touch-action: none` is a *declaration* the compositor consults before
+   * it decides whether a touch belongs to the page or to the browser, and
+   * the board is the one place where that consultation is unreliable:
+   * `[data-zoom-pan-content]` carries a transform, so it is a composited
+   * lane, and WebKit does not dependably resolve the property across that
+   * boundary (blueprint.css says the same thing from the CSS side). When it
+   * resolves to `auto`, the browser takes the touch and answers with
+   * `pointercancel` — a finger on empty canvas pans, the identical finger on
+   * a cell does nothing, and two fingers zoom the PAGE instead of the board.
+   * That asymmetry is the whole bug report.
+   *
+   * `preventDefault` is not a declaration; it is the answer to a question
+   * already asked, on an event the browser has already delivered, and no
+   * lane boundary sits between the two. Belt and braces with the CSS: the
+   * declaration keeps the compositor from ever starting the gesture on the
+   * fast path, this keeps it from finishing one it started anyway.
+   *
+   * Both listeners are non-passive — `preventDefault` on a passive listener
+   * is a no-op with a console warning — and both are scoped to the viewport
+   * element, so nothing outside the canvas loses native scrolling. The cell
+   * detail sheet is portalled out of this subtree and is unaffected.
+   *
+   * `touchstart` is prevented only for the SECOND finger. Preventing the
+   * first would suppress the synthesized click that a tap depends on;
+   * multi-touch synthesizes no click, and preventing it there is what stops
+   * WebKit's page pinch-zoom, which `touch-action` cannot reach at all.
+   *
+   * And `touchmove` is NOT claimed inside a genuinely scrollable region.
+   * The claim used to be unconditional, justified by "the board holds no
+   * scrollable region" — but an overflowing board (`BlueprintPathBand`) is one, so a finger
+   * could not reach rows a trackpad reached happily. One finger over a
+   * scrolling region is that region's; two fingers are always the canvas's
+   * pinch, wherever they land. `hasScrollableRegion` is the same
+   * determination the wheel path makes, which is what keeps the two from
+   * diverging again.
+   */
+  useEffect(() => {
+    const el = containerNode
+    if (!el) return
+    const claimPinch = (event: TouchEvent) => {
+      if (event.touches.length >= 2 && event.cancelable) event.preventDefault()
+    }
+    const claimMove = (event: TouchEvent) => {
+      if (!event.cancelable) return
+      const target = event.target
+      if (
+        event.touches.length < 2 &&
+        target instanceof Node &&
+        hasScrollableRegion(target, el)
+      )
+        return
+      event.preventDefault()
+    }
+    // Non-passive is the whole point: `preventDefault` on a passive listener
+    // is a no-op with a console warning, and preventing the default IS the
+    // claim. `canvasTouchContract.test.ts` dispatches real touch events at
+    // this listener and asserts what got prevented, which is the only way to
+    // see the difference from outside.
+    const touchClaimOptions = { passive: false } as const
+    el.addEventListener('touchstart', claimPinch, touchClaimOptions)
+    el.addEventListener('touchmove', claimMove, touchClaimOptions)
+    return () => {
+      el.removeEventListener('touchstart', claimPinch)
+      el.removeEventListener('touchmove', claimMove)
+    }
+  }, [containerNode])
+
   useEffect(() => {
     if (panEnabled) return
     isPanningRef.current = false
@@ -1269,7 +1700,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * a fly computed from them lands beside the target, not on it.
    */
   const focusCells = useCallback(
-    (cellIds: string[], opts?: { animate?: boolean }): FocusCellsResult => {
+    async (
+      cellIds: string[],
+      opts?: { animate?: boolean },
+    ): Promise<FocusCellsResult> => {
       const container = containerRef.current
       const content = contentRef.current
       if (!container || !content) {
@@ -1312,11 +1746,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
 
       const animate = (opts?.animate ?? true) && !prefersReducedMotion()
-      if (animate) animateTransform(nextPan, nextZoom)
+      let completion: 'completed' | 'cancelled' | 'superseded' = 'completed'
+      if (animate) completion = (await animateTransform(nextPan, nextZoom)).kind
       else commitTransform(nextPan, nextZoom, true)
 
       pulseBlueprintCells(found)
-      return { kind: 'flown' }
+      return { kind: 'flown', completion }
     },
     [animateTransform, cancelFitAnimation, commitTransform],
   )
@@ -1335,6 +1770,28 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, 1 / 1.2)
   }, [zoomAtPoint])
 
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      cancelFitAnimation()
+      userAdjustedViewRef.current = true
+      const current = transformRef.current
+      commitTransform(
+        { x: current.pan.x + dx, y: current.pan.y + dy },
+        current.zoom,
+        true,
+      )
+    },
+    [cancelFitAnimation, commitTransform],
+  )
+
+  const getCameraState = useCallback(
+    () => ({
+      ...transformRef.current,
+      moving: fitAnimationRef.current !== null,
+    }),
+    [],
+  )
+
   /**
    * Keyboard zoom, because on some setups there is otherwise none.
    *
@@ -1346,18 +1803,20 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    *
    * Guarded on the event target so it never steals `⌘−` from a text field, and
    * on `⌘` so a bare `-` still types a hyphen.
+   *
+   * WINDOW, deliberately — unlike the arrow-key pan below, which binds to the
+   * container. Zoom is the one camera control with no on-screen affordance in
+   * Design mode, so requiring the board to be focused first would leave a
+   * mouse-only reader with no way in at all. The cost is that a second mounted
+   * viewport would double-fire this; one mounts per screen today (the
+   * comparison view shipped as panes INSIDE the single viewport, not as a
+   * second one), and the day that changes, this moves to the container the way
+   * pan already has.
    */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey)) return
-      const target = event.target
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return
-      }
+      if (isEditableKeyboardTarget(event.target)) return
       // `=` is the unshifted key most people press for "+".
       if (event.key === '+' || event.key === '=') {
         event.preventDefault()
@@ -1374,25 +1833,121 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [fitToView, zoomIn, zoomOut])
 
+  /**
+   * Keyboard pan, and a camera that follows focus.
+   *
+   * The board's cells are real buttons in the tab order, and the viewport is
+   * transform-based with its overflow hidden — so the browser's own
+   * scroll-into-view has nothing to scroll, and focus landed on cells nobody
+   * could see. Both halves here reach `panBy`, the pan primitive the pointer
+   * and the agent's `canvas_camera` already share; there is no second camera.
+   *
+   * Bound to the CONTAINER, not the window, which is what scopes it to the
+   * viewport the reader is actually in — two mounted viewports would
+   * otherwise both answer one arrow press. The container carries
+   * `tabIndex={-1}` so clicking the board focuses it without adding a tab
+   * stop; tab order is untouched by this.
+   */
+  useEffect(() => {
+    const el = containerNode
+    if (!el) return
+
+    /*
+      The camera's maths assumes an unscrolled container: every client-space
+      conversion in this file reads `getBoundingClientRect` and adds nothing
+      back for scroll. An `overflow: hidden` box still HAS scroll offsets,
+      and the browser writes to them when focus moves to a descendant that
+      is out of view — silently shifting the whole board a few hundred pixels
+      out from under the camera's idea of where it is. Zeroing them is the
+      cheapest way to keep that assumption true, and the `scroll` listener
+      catches the write we did not see coming.
+    */
+    // Written through the ref rather than through `el`: the node arrives here
+    // as state so the effect can depend on it, and state is not a thing to
+    // mutate. The ref holds the same node and is the handler's truth anyway.
+    const unscroll = () => {
+      const node = containerRef.current
+      if (!node) return
+      if (node.scrollLeft !== 0) node.scrollLeft = 0
+      if (node.scrollTop !== 0) node.scrollTop = 0
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (isEditableKeyboardTarget(event.target)) return
+      const step = resolveKeyboardPan(event)
+      if (!step) return
+      // Arrows scroll the page by default, and this container is the one
+      // place that must never scroll.
+      event.preventDefault()
+      panBy(step.dx, step.dy)
+    }
+
+    const onFocusIn = (event: FocusEvent) => {
+      unscroll()
+      const content = contentRef.current
+      const target = event.target
+      if (
+        !content ||
+        !(target instanceof HTMLElement) ||
+        !content.contains(target)
+      )
+        return
+      /*
+        Never mid-flight. A fit ease (⌘0, a navigation) has a destination the
+        reader asked for, and nudging the camera at a focus event that lands
+        during it fights that ease and restarts it from a moving camera —
+        the "glide, brake, glide" this file has fixed twice. The fit lands,
+        and the next focus move corrects from there.
+      */
+      if (fitAnimationRef.current !== null) return
+      /*
+        Keyboard focus only. `:focus-visible` is the browser's own answer to
+        "did this focus come from a key press", and a mouse click on a
+        partly-visible cell should open it, not also move the board under the
+        cursor. Engines that cannot answer get the movement — better a nudge
+        than a keyboard user stranded off-screen.
+      */
+      try {
+        if (!target.matches(':focus-visible')) return
+      } catch {
+        // Selector unsupported (jsdom, very old WebKit) — follow focus.
+      }
+      const { dx, dy } = computeFocusRevealPan(
+        target.getBoundingClientRect(),
+        el.getBoundingClientRect(),
+      )
+      if (dx === 0 && dy === 0) return
+      panBy(dx, dy)
+    }
+
+    unscroll()
+    el.addEventListener('keydown', onKeyDown)
+    el.addEventListener('focusin', onFocusIn)
+    el.addEventListener('scroll', unscroll)
+    return () => {
+      el.removeEventListener('keydown', onKeyDown)
+      el.removeEventListener('focusin', onFocusIn)
+      el.removeEventListener('scroll', unscroll)
+    }
+  }, [containerNode, panBy])
+
   return {
-    containerRef,
+    containerRef: attachContainer,
     contentRef,
     pan,
     zoom,
     isPanning,
+    isSpaceHeld,
     fitToView,
     focusCells,
     resetView,
     zoomIn,
     zoomOut,
+    panBy,
+    cancelCamera: cancelFitAnimation,
+    getCameraState,
     pointerHandlers: {
-      onPointerDown: handlePointerDown,
-      onPointerMove: handlePointerMove,
-      onPointerUp: handlePointerUp,
-      onPointerLeave: handlePointerUp,
-      // Touch streams can be cancelled by the OS (edge gestures, alerts) —
-      // without this a cancelled pinch strands ghost pointers in the map.
-      onPointerCancel: handlePointerUp,
       onClickCapture: handleClickCapture,
     },
   }

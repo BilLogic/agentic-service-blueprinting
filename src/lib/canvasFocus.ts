@@ -46,7 +46,9 @@ export function getCanvasFocusFitInsets(view: EditorView): CanvasFocusFitInsets 
 
   return {
     margin: 20,
-    topInset: 0,
+    // Keep bottom navigation clearance without shifting the selected board
+    // above the canvas center. Equal insets preserve the true visual center.
+    topInset: 56,
     bottomInset: 56,
   }
 }

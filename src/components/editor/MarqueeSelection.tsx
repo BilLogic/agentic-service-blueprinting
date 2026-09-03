@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
+import { getCanvasSpaceHeld } from '@/lib/canvasKeyboardState'
 import { pickModeForMarquee } from '@/lib/cellPickGrammar'
 
 /** Chrome a marquee must never start on — these own their own drags. */
@@ -58,7 +59,9 @@ export function MarqueeSelection() {
     if (!(root instanceof HTMLElement)) return
 
     const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) return
+      // Middle-button and Space temporarily belong to the camera even in
+      // Design + Select. The selected tool is not mutated.
+      if (event.button !== 0 || getCanvasSpaceHeld()) return
       const target = event.target
       if (target instanceof Element && target.closest(IGNORE)) return
 

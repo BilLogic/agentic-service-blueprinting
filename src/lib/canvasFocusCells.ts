@@ -8,13 +8,13 @@
  */
 
 export type FocusCellsResult =
-  | { kind: 'flown' }
+  | { kind: 'flown'; completion: 'completed' | 'cancelled' | 'superseded' }
   | { kind: 'miss'; missing: string[] }
 
 export type FocusCellsFn = (
   cellIds: string[],
   opts?: { animate?: boolean },
-) => FocusCellsResult
+) => FocusCellsResult | Promise<FocusCellsResult>
 
 const registry = new Map<string, FocusCellsFn>()
 
