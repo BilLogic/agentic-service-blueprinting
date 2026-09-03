@@ -14,8 +14,8 @@ begin;
 -- Service-replace: drop the prior sample service (cascades to all children).
 delete from public.services where id = 'f0000000-0000-4000-8000-000000000010';
 
-insert into public.services (id, name, summary) values
-  ('f0000000-0000-4000-8000-000000000010', 'Keeping a blueprint true', 'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.');
+insert into public.services (id, name, summary, entity_examples) values
+  ('f0000000-0000-4000-8000-000000000010', 'Keeping a blueprint true', 'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.', '{"service":"Keeping a blueprint true — this template mapped as its own service, so the board doubles as the documentation.","phase":"Setup — the one-time work of getting a real service onto the board and signed off.","scenario":"Map your service — the run that turns a folder of documents, or someone else’s diagram, into a validated board.","path":"From your documents — the ingest route that reads a corpus of service documents with per-claim provenance.","step":"Import and verify — the column where a validated file in a repository becomes rows in the database.","lane":"Blueprint owner — the row for the person driving the map, read across every step."}'::jsonb);
 
 insert into public.phases (id, service_id, name, summary, position) values
   ('f0000000-0000-4000-8000-000700010000', 'f0000000-0000-4000-8000-000000000010', 'Discover', 'The evaluation before any commitment: find the kit, run it with no backend, and decide whether it fits the team.', 1),

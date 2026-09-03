@@ -1,12 +1,6 @@
-import type { CSSProperties, MouseEvent } from 'react'
-import { Info } from 'lucide-react'
-import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
+import type { CSSProperties } from 'react'
+import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
 import { Badge } from '@/components/ui/badge'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { PATH_TYPE_COLORS } from '@/lib/pathTypeTheme'
 import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
@@ -22,11 +16,30 @@ type ScenarioTitleBadgeProps = {
   pathKind?: PathKind
   /** Panel chrome badge — darker gray from label rail, not primary/black. */
   tone?: 'default' | 'panel' | 'phase'
-  /** Optional parallel-scenario (or similar) note shown via an info icon in the badge. */
+  /**
+   * A further note about this instance — the parallel-scenario aside.
+   *
+   * It rides inside the same definition card as the name and the kind, rather
+   * than on its own ⓘ: one glyph cannot mean both "opens the panel" and "an
+   * aside", and this note is a fact about the same label.
+   */
   infoTooltip?: string | null
 }
 
-/** Default scenario badge with name + summary tooltip (phase overview). */
+/**
+ * The scenario's — or the phase's — name, and what that kind of thing IS.
+ *
+ * One badge for two kinds because they are the same object on the board: the
+ * label of a container, printed on the container's own edge. `tone="phase"`
+ * puts it on a phase frame and the kind follows from that, so the popover says
+ * PHASE over a phase and SCENARIO over a scenario, and neither has to be
+ * passed twice.
+ *
+ * The explanation is a POPOVER rather than a tooltip: a tooltip never opens on
+ * touch, so on a phone this badge would explain nothing at all. The name
+ * carries its definition, its own summary, and — where there is one — the
+ * parallel note, on hover, on focus and on tap.
+ */
 export function ScenarioTitleBadge({
   name,
   summary,
@@ -40,62 +53,35 @@ export function ScenarioTitleBadge({
   const pathAccent = pathKind ? PATH_TYPE_COLORS[pathKind] : undefined
   const panelTone = tone === 'panel' && !pathKind
   const phaseTone = tone === 'phase' && !pathKind
-  const infoText = infoTooltip?.trim() || null
-
-  const stopInfoEvent = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-  }
 
   return (
-    <Badge
-      data-blueprint-fill={pathAccent ? '' : undefined}
-      data-scenario-panel-title-badge={panelTone ? '' : undefined}
-      data-phase-title-badge={phaseTone ? '' : undefined}
-      className={cn(
-        'h-auto max-w-full cursor-default gap-1 overflow-visible border-transparent',
-        pathKind && 'font-semibold',
-        (panelTone || phaseTone) && 'font-semibold',
-        className,
-      )}
-      style={{
-        ...style,
-        ...(pathAccent
-          ? {
-              ...getBlueprintFillStyle(pathAccent),
-              borderColor: pathAccent,
-            }
-          : undefined),
-      }}
+    <EntityDefinitionPopover
+      kind={tone === 'phase' ? 'phase' : 'scenario'}
+      description={summary}
+      name={name}
+      showDescription
+      note={infoTooltip}
+      side={side}
     >
-      {infoText ? (
-        <Tooltip>
-          <TooltipTrigger
-            className={cn(
-              'inline-flex size-3.5 shrink-0 items-center justify-center rounded-full',
-              'text-current opacity-80 transition-opacity hover:opacity-100',
-              'border-0 bg-transparent p-0 shadow-none outline-none',
-              'focus-visible:ring-1 focus-visible:ring-current/50',
-            )}
-            aria-label="Parallel scenario information"
-            onPointerDown={stopInfoEvent}
-            onClick={stopInfoEvent}
-          >
-            <Info className="size-3" aria-hidden />
-          </TooltipTrigger>
-          <TooltipContent
-            side={side}
-            sideOffset={6}
-            className="max-w-xs text-center"
-          >
-            {infoText}
-          </TooltipContent>
-        </Tooltip>
-      ) : null}
-      <PathSummaryTooltip
-        summary={summary}
-        pathName={name}
-        showNameInTooltip
-        side={side}
+      <Badge
+        data-blueprint-fill={pathAccent ? '' : undefined}
+        data-scenario-panel-title-badge={panelTone ? '' : undefined}
+        data-phase-title-badge={phaseTone ? '' : undefined}
+        className={cn(
+          'h-auto max-w-full gap-1 overflow-visible border-transparent',
+          pathKind && 'font-semibold',
+          (panelTone || phaseTone) && 'font-semibold',
+          className,
+        )}
+        style={{
+          ...style,
+          ...(pathAccent
+            ? {
+                ...getBlueprintFillStyle(pathAccent),
+                borderColor: pathAccent,
+              }
+            : undefined),
+        }}
       >
         <span
           className={cn(
@@ -108,7 +94,7 @@ export function ScenarioTitleBadge({
         >
           {name}
         </span>
-      </PathSummaryTooltip>
-    </Badge>
+      </Badge>
+    </EntityDefinitionPopover>
   )
 }

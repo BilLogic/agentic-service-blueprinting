@@ -116,6 +116,20 @@ const SERVICE = {
   name: 'Keeping a blueprint true',
   summary:
     'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.',
+  // One authored example per core kind, grounding each generic definition in
+  // this deployment (the meta-blueprint). Shown under the kind's definition on
+  // the board; a re-map of a real service replaces them with its own.
+  entityExamples: {
+    service:
+      'Keeping a blueprint true — this template mapped as its own service, so the board doubles as the documentation.',
+    phase:
+      'Setup — the one-time work of getting a real service onto the board and signed off.',
+    scenario:
+      'Map your service — the run that turns a folder of documents, or someone else’s diagram, into a validated board.',
+    path: 'From your documents — the ingest route that reads a corpus of service documents with per-claim provenance.',
+    step: 'Import and verify — the column where a validated file in a repository becomes rows in the database.',
+    lane: 'Blueprint owner — the row for the person driving the map, read across every step.',
+  },
 }
 
 /** Fixed timestamp for generated derived rows — deterministic output. */
@@ -1656,6 +1670,17 @@ import type { Slice, Slide } from '@/types/database'
 
 export const SAMPLE_SERVICE_ID = '${SERVICE_ID}'
 
+/**
+ * The sample service's per-kind examples — the no-DB fallback for
+ * \`services.entity_examples\`, so a definition popover grounds its generic
+ * definition even with no backend configured.
+ */
+export const SAMPLE_ENTITY_EXAMPLES: Record<string, string> = ${JSON.stringify(
+  SERVICE.entityExamples,
+  null,
+  2,
+)}
+
 export type SamplePhase = {
   id: string
   name: string
@@ -1791,8 +1816,8 @@ begin;
 -- Service-replace: drop the prior sample service (cascades to all children).
 delete from public.services where id = ${q(SERVICE_ID)};
 
-insert into public.services (id, name, summary) values
-  (${q(SERVICE_ID)}, ${q(SERVICE.name)}, ${q(SERVICE.summary)});
+insert into public.services (id, name, summary, entity_examples) values
+  (${q(SERVICE_ID)}, ${q(SERVICE.name)}, ${q(SERVICE.summary)}, ${q(JSON.stringify(SERVICE.entityExamples))}::jsonb);
 
 insert into public.phases (id, service_id, name, summary, position) values
 ${sqlRows(

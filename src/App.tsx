@@ -4,6 +4,7 @@ import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { EditorProvider } from '@/contexts/EditorContext'
+import { EntityExamplesProvider } from '@/contexts/EntityExamplesContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
@@ -21,17 +22,24 @@ function App() {
        */}
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <SupabaseProvider>
-          <EditorProvider>
-            <ViewStateProvider>
-              <PathSelectionProvider>
-                <TooltipProvider delay={200}>
-                  <EditorErrorBoundary>
-                    <EditorShell />
-                  </EditorErrorBoundary>
-                </TooltipProvider>
-              </PathSelectionProvider>
-            </ViewStateProvider>
-          </EditorProvider>
+          {/*
+           * Above the editor so both the menubar identity headers and the
+           * canvas read one cached service query; the definition popovers on
+           * the board pick their per-kind example out of it by kind.
+           */}
+          <EntityExamplesProvider>
+            <EditorProvider>
+              <ViewStateProvider>
+                <PathSelectionProvider>
+                  <TooltipProvider delay={200}>
+                    <EditorErrorBoundary>
+                      <EditorShell />
+                    </EditorErrorBoundary>
+                  </TooltipProvider>
+                </PathSelectionProvider>
+              </ViewStateProvider>
+            </EditorProvider>
+          </EntityExamplesProvider>
         </SupabaseProvider>
       </ThemeProvider>
     </QueryClientProvider>

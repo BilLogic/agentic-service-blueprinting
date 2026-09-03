@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEvent } from 'react'
 import { X } from 'lucide-react'
-import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
+import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
 import { Badge } from '@/components/ui/badge'
 import { getPathBadgeStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
@@ -17,13 +17,13 @@ type PathLabelBadgeProps = {
   /** When set, shows a dismiss control that removes this path from the active set. */
   onRemove?: () => void
   /**
-   * Path summaries are scenario-specific — set false on overview/phase chrome.
+   * Path descriptions are scenario-specific — set false on overview/phase chrome.
    * Defaults to true.
    */
   showTooltip?: boolean
 }
 
-/** Path name pill with shadcn Badge styling, path-type color, and summary tooltip. */
+/** Path name pill with Badge styling, path-type color, and a definition popover. */
 export function PathLabelBadge({
   name,
   summary,
@@ -80,12 +80,14 @@ export function PathLabelBadge({
   if (!showTooltip) return badge
 
   return (
-    <PathSummaryTooltip
-      summary={summary}
-      pathName={name}
+    <EntityDefinitionPopover
+      kind="path"
+      description={summary}
+      name={name}
+      showDescription
       side={side}
     >
       {badge}
-    </PathSummaryTooltip>
+    </EntityDefinitionPopover>
   )
 }

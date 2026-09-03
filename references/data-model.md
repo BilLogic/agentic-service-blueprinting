@@ -67,7 +67,7 @@ erDiagram
   cells ||--o{ resources : "points at"
   cell_touchpoints ||--o{ resources : "points at"
 
-  services { uuid id PK  text name  text summary }
+  services { uuid id PK  text name  text summary  jsonb entity_examples "one free-text example per core kind (service, phase, scenario, path, step, lane), shown under each kind's definition" }
   business_models { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
   phases { uuid id PK  uuid service_id FK  text name  text summary  text business_impact  text operational_requirements  int position  uuid loops_to_phase_id FK "optional self-reference" }
   scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text layout "stacked | merged — what the scenario opens as" }
