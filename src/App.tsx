@@ -18,7 +18,7 @@ import { queryClient } from '@/lib/queryClient'
  * that skins the tree from the outermost level down. Both the named export
  * (for a host) and the default export (for `main.tsx`) resolve to this.
  */
-export function App({ config }: { config?: DeploymentConfig } = {}) {
+export function App({ config }: { config?: DeploymentConfig | null }) {
   return (
     <DeploymentConfigProvider config={config}>
       <QueryClientProvider client={queryClient}>
