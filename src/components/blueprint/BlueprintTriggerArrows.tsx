@@ -10,12 +10,13 @@ import {
   ARROW_VIEWPORT_PAD,
   buildArrowPath,
   buildBidirectionalArrowPath,
-  buildOverheadRailBusPath,
-  buildOverheadRailFanOutDropPath,
-  buildOverheadRailFanOutTrunkPath,
-  findBidirectionalTriggerPairs,
-  groupOverheadRailTriggers,
-  isWrapTrigger,
+  clearAnchorSlotPlan,
+  clearArrowCorridorPlan,
+  findBidirectionalDependencyPairs,
+  isWrapDependency,
+  planAnchorSlots,
+  planArrowConfluences,
+  planArrowCorridors,
 } from '@/lib/blueprintArrowGeometry'
 import {
   getPathArrowColor,
@@ -49,6 +50,11 @@ type BlueprintTriggerArrowsProps = {
   pathKind?: PathKind
   /** When set with pathKind, arrows use the stable path identity color. */
   pathName?: string
+  /**
+   * Per-scenario off-switch for the confluence/fan-out merge — on by default.
+   * False makes every same-side arrival keep its own head again.
+   */
+  mergeConfluences?: boolean
 }
 
 type ArrowSegment = {
@@ -89,6 +95,7 @@ export function BlueprintTriggerArrows({
   lane,
   pathKind = 'happy',
   pathName,
+  mergeConfluences = true,
 }: BlueprintTriggerArrowsProps) {
   const [segments, setSegments] = useState<ArrowSegment[]>([])
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -111,67 +118,52 @@ export function BlueprintTriggerArrows({
     }
 
     const next: ArrowSegment[] = []
-
-    const { busGroups, fanOutGroups, remaining } = groupOverheadRailTriggers(
-      arrowTriggers,
-      content,
-    )
-
-    for (const group of fanOutGroups) {
-      const targetEls = group.branches.map((branch) => branch.targetEl)
-      const trunk = buildOverheadRailFanOutTrunkPath(
-        group.sourceEl,
-        targetEls,
-        content,
-      )
-      if (trunk) {
-        next.push({
-          id: `${group.sourceCellId}-trunk`,
-          d: trunk,
-          colorKey: defaultColorKey,
-          arrowColor: defaultArrowColor,
-          opacity: 1,
-          showMarker: false,
-        })
-      }
-
-      for (const branch of group.branches) {
-        const d = buildOverheadRailFanOutDropPath(
-          group.sourceEl,
-          branch.targetEl,
-          content,
-        )
-        if (!d) continue
-
-        next.push({
-          id: branch.triggerId,
-          d,
-          colorKey: defaultColorKey,
-          arrowColor: defaultArrowColor,
-          opacity: 1,
-        })
-      }
-    }
-
-    for (const group of busGroups) {
-      const d = buildOverheadRailBusPath(
-        group.sourceEls,
-        group.targetEl,
-        content,
-      )
-      if (!d) continue
-
-      next.push({
-        id: group.triggerIds.join('-'),
-        d,
-        colorKey: defaultColorKey,
-        arrowColor: defaultArrowColor,
-        opacity: 1,
-      })
-    }
-
     const { pairs, remaining: unpaired } =
-      findBidirectionalTriggerPairs(remaining)
+      findBidirectionalDependencyPairs(arrowTriggers)
+
+    // Allocate anchor slots over the endpoints `buildArrowPath` will draw, so
+    // a contested cell side fans its arrows instead of stacking them. Both
+    // overlay lanes plan the same full set, so the slots agree across them.
+    planAnchorSlots(content, unpaired)
+
+    // Confluence + fan-out: ≥2 same-side arrivals (or departures) merge into
+    // one trunk with a single head — the generic mechanism that replaced the
+    // overhead-rail bus. The trunk rides the z-0 forward layer, so it is drawn
+    // only in the forward lane; the wrap lane drops the consumed forward deps
+    // through its own filter. `disabled` is the per-scenario off-switch.
+    const merge = planArrowConfluences(content, unpaired, {
+      disabled: !mergeConfluences,
+    })
+
+    // Co-traveller offsets over the runs this lane actually routes (the merged
+    // trunk is not a corridor run): two arrows sharing one detour corridor fan
+    // onto adjacent lanes instead of overdrawing one line.
+    planArrowCorridors(
+      content,
+      unpaired.filter((trigger) => !merge.consumed.has(trigger.id)),
+    )
+    const triggerOpacity = (id: string): number => {
+      const trigger = unpaired.find((entry) => entry.id === id)
+      return trigger && isColoredTrigger(trigger)
+        ? (trigger.opacity ?? 1)
+        : 1
+    }
+
+    if (lane === 'forward') {
+      for (const segment of merge.segments) {
+        const opacity = segment.memberDependencyIds.length
+          ? Math.max(...segment.memberDependencyIds.map(triggerOpacity))
+          : 1
+        next.push({
+          id: segment.id,
+          d: segment.d,
+          colorKey: defaultColorKey,
+          arrowColor: defaultArrowColor,
+          opacity,
+          showMarker: segment.showMarker,
+        })
+      }
+    }
 
     for (const pair of pairs) {
       const cellAEl = content.querySelector<HTMLElement>(
@@ -182,7 +174,7 @@ export function BlueprintTriggerArrows({
       )
       if (!cellAEl || !cellBEl) continue
 
-      const wrap = isWrapTrigger(cellAEl, cellBEl)
+      const wrap = isWrapDependency(cellAEl, cellBEl)
       if (lane === 'forward' && wrap) continue
       if (lane === 'wrap' && !wrap) continue
 
@@ -202,6 +194,9 @@ export function BlueprintTriggerArrows({
     }
 
     for (const trigger of unpaired) {
+      // A trigger a trunk already gathered must not also draw on its own.
+      if (merge.consumed.has(trigger.id)) continue
+
       const sourceEl = content.querySelector<HTMLElement>(
         `[data-blueprint-cell="${trigger.source_cell_id}"]`,
       )
@@ -210,11 +205,18 @@ export function BlueprintTriggerArrows({
       )
       if (!sourceEl || !targetEl) continue
 
-      const wrap = isWrapTrigger(sourceEl, targetEl)
+      const wrap = isWrapDependency(sourceEl, targetEl)
       if (lane === 'forward' && wrap) continue
       if (lane === 'wrap' && !wrap) continue
 
-      const d = buildArrowPath(sourceEl, targetEl, content)
+      const d = buildArrowPath(
+        sourceEl,
+        targetEl,
+        content,
+        trigger.source_cell_id,
+        trigger.target_cell_id,
+        trigger.id,
+      )
       if (!d) continue
 
       next.push({
@@ -225,6 +227,9 @@ export function BlueprintTriggerArrows({
         opacity: isColoredTrigger(trigger) ? (trigger.opacity ?? 1) : 1,
       })
     }
+
+    clearAnchorSlotPlan()
+    clearArrowCorridorPlan()
 
     // Equality-guarded: a ResizeObserver burst during camera-fit relayout
     // fires many notifications for identical geometry; fresh object
@@ -246,6 +251,7 @@ export function BlueprintTriggerArrows({
     defaultArrowColor,
     defaultColorKey,
     lane,
+    mergeConfluences,
     triggers,
   ])
 

@@ -1,8 +1,21 @@
 import {
-  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
   BLUEPRINT_WRAP_CORRIDOR_MARGIN,
   STEP_COLUMN_GAP,
 } from '@/lib/blueprintLayout'
+import {
+  allocateAnchorSlots,
+  allocateCorridorLanes,
+  anchorPointFor,
+  chooseCorridor,
+  planConfluences,
+  type Confluence,
+  type CorridorLaneAssignment,
+  type CorridorRun,
+  type Direction,
+  type Side,
+  type SlotAssignment,
+  type SlotRequest,
+} from '@/lib/arrowAnchorSlots'
 
 export type Point = { x: number; y: number }
 
@@ -16,6 +29,611 @@ export type LayoutBox = {
 export type CellAnchor = {
   source: Point
   target: Point
+}
+
+/* ---------------------------------------------------- anchor slots (#347)
+
+  A contested cell side hands out one ordered slot per endpoint instead of
+  stacking every arrow on the edge midpoint. The allocation itself lives in
+  the pure `arrowAnchorSlots` module (allocateAnchorSlots / anchorPointFor);
+  this file owns the wiring: classifying each endpoint's natural side,
+  planning the slots for a whole band, and translating an assignment back
+  into the point a builder anchors on.
+
+  Determinism is load-bearing — slots come from the caller's ordered trigger
+  list (`sortKey` = list index), never from Map or DOM order, so the same
+  data always draws the same picture across single, side-by-side, and merged.
+
+  A lone or uncontested endpoint keeps `count === 1` and stays on its
+  preferred side, so `anchorPointFor` lands it on the exact edge midpoint the
+  engine drew before — byte-for-byte. Only a contested side moves anything.
+*/
+
+/** One endpoint's slot on a cell, or absent when the band was not planned. */
+let activeAnchorPlan: Map<string, SlotAssignment> | null = null
+
+/** One run's corridor lane on the band, or absent when it was not planned. */
+let activeCorridorPlan: Map<string, CorridorLaneAssignment> | null = null
+
+/** A minimal source/target-cell shape a slot plan can be built from. */
+export type AnchorSlotDependency = {
+  id: string
+  source_cell_id: string
+  target_cell_id: string
+}
+
+function anchorPlanKey(dependencyId: string, direction: Direction): string {
+  return `${dependencyId}:${direction}`
+}
+
+/** The side each end of a dependency naturally anchors on, today. */
+function endpointSides(
+  sourceEl: HTMLElement,
+  targetEl: HTMLElement,
+  root: HTMLElement,
+): { sourceSide: Side; targetSide: Side } {
+  if (isWrapDependency(sourceEl, targetEl)) {
+    // A backward loop drops out of the source's bottom and rises into the
+    // target's bottom — both ends live on the bottom edge.
+    return { sourceSide: 'bottom', targetSide: 'bottom' }
+  }
+
+  const sourceStep = parseStepIndex(sourceEl)
+  const targetStep = parseStepIndex(targetEl)
+  if (sourceStep !== null && targetStep !== null && sourceStep === targetStep) {
+    const sourceBox = getCellContentBox(sourceEl, root)
+    const targetBox = getCellContentBox(targetEl, root)
+    const targetBelow =
+      targetBox.top + targetBox.height / 2 > sourceBox.top + sourceBox.height / 2
+    return targetBelow
+      ? { sourceSide: 'bottom', targetSide: 'top' }
+      : { sourceSide: 'top', targetSide: 'bottom' }
+  }
+
+  // Forward (adjacent, spanning, or cross-lane): out leaves the right face
+  // toward the later column, in arrives on the left face from the earlier one.
+  return { sourceSide: 'right', targetSide: 'left' }
+}
+
+/**
+ * Plan the anchor slots for one band's dependencies.
+ *
+ * Registers two endpoints per dependency (its out at the source, its in at
+ * the target), each on the side it anchors on today, ordered by list index.
+ * The result replaces the active plan, which `buildArrowPath` then consults.
+ * Pass the same list the arrow loop iterates, in the same order.
+ */
+export function planAnchorSlots(
+  root: HTMLElement,
+  dependencies: readonly AnchorSlotDependency[],
+): void {
+  const requests: SlotRequest[] = []
+  dependencies.forEach((dependency, index) => {
+    const sourceEl = root.querySelector<HTMLElement>(
+      `[data-blueprint-cell="${dependency.source_cell_id}"]`,
+    )
+    const targetEl = root.querySelector<HTMLElement>(
+      `[data-blueprint-cell="${dependency.target_cell_id}"]`,
+    )
+    if (!sourceEl || !targetEl) return
+
+    const { sourceSide, targetSide } = endpointSides(sourceEl, targetEl, root)
+    requests.push({
+      id: anchorPlanKey(dependency.id, 'out'),
+      cellId: dependency.source_cell_id,
+      direction: 'out',
+      preferredSide: sourceSide,
+      sortKey: index,
+    })
+    requests.push({
+      id: anchorPlanKey(dependency.id, 'in'),
+      cellId: dependency.target_cell_id,
+      direction: 'in',
+      preferredSide: targetSide,
+      sortKey: index,
+    })
+  })
+
+  activeAnchorPlan = allocateAnchorSlots(requests)
+}
+
+/** Forget the active plan, so an unplanned build reads no stale slots. */
+export function clearAnchorSlotPlan(): void {
+  activeAnchorPlan = null
+}
+
+function endpointSlot(
+  dependencyId: string | undefined,
+  direction: Direction,
+): SlotAssignment | undefined {
+  if (!activeAnchorPlan || dependencyId === undefined) return undefined
+  return activeAnchorPlan.get(anchorPlanKey(dependencyId, direction))
+}
+
+/** True once an endpoint's side is genuinely contested — the only time it moves. */
+function slotMoves(slot: SlotAssignment | undefined): slot is SlotAssignment {
+  return slot !== undefined && (slot.count > 1 || slot.displaced)
+}
+
+function anchorBoxFor(box: LayoutBox): {
+  left: number
+  right: number
+  top: number
+  bottom: number
+} {
+  return {
+    left: box.left,
+    right: box.right,
+    top: box.top,
+    bottom: box.top + box.height,
+  }
+}
+
+/**
+ * The Y an endpoint anchors on for a left/right (vertical) edge, or undefined
+ * when nothing moves it off the midpoint. Forward endpoints never displace —
+ * an out only ever shares a side with other outs — so the assignment's own
+ * side is honoured directly.
+ */
+function verticalEdgeSlotY(
+  box: LayoutBox,
+  slot: SlotAssignment | undefined,
+  naturalSide: Side,
+): number | undefined {
+  if (!slotMoves(slot)) return undefined
+  const side = slot.side === naturalSide ? slot.side : naturalSide
+  return anchorPointFor(anchorBoxFor(box), {
+    side,
+    index: slot.side === naturalSide ? slot.index : 1,
+    count: slot.side === naturalSide ? slot.count : 2,
+  }).y
+}
+
+/** How a wrap endpoint leaves/enters the bottom edge when its side is contested. */
+type WrapSlotLeg = { centerX?: number; forceSide?: 'right' }
+
+function wrapSlotLeg(
+  box: LayoutBox,
+  slot: SlotAssignment | undefined,
+): WrapSlotLeg {
+  if (!slotMoves(slot)) return {}
+  // The out yields when it contests an in on the bottom (a head keeps its
+  // side); the allocator slides it to the fallback side, which the leg
+  // renders as a side-gutter departure.
+  if (slot.displaced) return { forceSide: 'right' }
+  return {
+    centerX: anchorPointFor(anchorBoxFor(box), {
+      side: 'bottom',
+      index: slot.index,
+      count: slot.count,
+    }).x,
+  }
+}
+
+/* ------------------------------------------------ confluence + fan-out (#348)
+
+  When ≥2 triggers arrive at ONE target cell from the SAME side, their last
+  segments should merge into one path-coloured trunk with a single head — the
+  reader is told "these all cause that", which is one fact, not N. Fan-out is
+  the mirror: one source departing to ≥2 targets on one side shares a trunk that
+  fans into separate heads.
+
+  Auto-detected, no cell-id gate. `planConfluences` (arrivals) and its mirror
+  `groupFanOutDepartures` (departures) read the anchor plan the band already
+  allocated and report every cell+side that ≥2 endpoints share. This is the
+  geometry the retired overhead-rail bus special-cased for a heavily-crossed
+  row; it is now one instance of the generic mechanism.
+
+  Only forward (horizontal) arrivals/departures merge: a forward arrival lands
+  on the target's LEFT, a forward departure leaves the source's RIGHT, and a
+  horizontal trunk can only gather those. Backward loops (bottom) and same-
+  column connectors (top/bottom) keep their own heads — merging them would
+  invent a route that does not exist — so every non-forward situation draws
+  exactly as before.
+
+  Merging is applied ONLY when it reduces overlap: a lone arrival is never a
+  confluence (`planConfluences` already drops size-1 groups), and a group whose
+  gather cannot sit clear between its members and the shared edge declines the
+  merge and lets those members route individually.
+*/
+
+/** One drawn piece of a merged group — a shared trunk, or a member's leg. */
+export type ArrowMergeSegment = {
+  /** Stable, deterministic id (target/source-derived for a trunk, the member's
+   *  dependency id for a leg). */
+  id: string
+  d: string
+  /** A confluence trunk and a fan-out drop carry the head; a fan-out trunk and
+   *  a confluence tap do not. */
+  showMarker: boolean
+  /** Dependency ids whose colour/opacity this segment follows. A trunk lists
+   *  every member (shared colour when unanimous, else neutral; opacity = max);
+   *  a leg lists its one member. */
+  memberDependencyIds: string[]
+}
+
+export type ArrowMergePlan = {
+  segments: ArrowMergeSegment[]
+  /** Every member dependency id across all merged groups. The caller must NOT
+   *  also route these through `buildArrowPath`: the merge already draws them. */
+  consumed: Set<string>
+}
+
+const EMPTY_ARROW_MERGE_PLAN: ArrowMergePlan = {
+  segments: [],
+  consumed: new Set(),
+}
+
+/** The dependency id an endpoint id (`${dependencyId}:${direction}`) belongs to. */
+function dependencyIdOfEndpoint(endpointId: string): string {
+  const at = endpointId.lastIndexOf(':')
+  return at === -1 ? endpointId : endpointId.slice(0, at)
+}
+
+/** A cell's own card centre Y (not target-adjusted — the trunk is its own run). */
+function cellCardCenterY(box: LayoutBox): number {
+  return box.top + box.height / 2
+}
+
+/**
+ * Departures that share a source side — the mirror of `planConfluences`, which
+ * groups arrivals. Same contract: ≥2 endpoints on one cell+side, size-1 groups
+ * dropped, deterministic order independent of Map insertion.
+ */
+function groupFanOutDepartures(
+  assignments: Iterable<SlotAssignment>,
+): Confluence[] {
+  const groups = new Map<string, SlotAssignment[]>()
+  for (const assignment of assignments) {
+    if (assignment.direction !== 'out') continue
+    const key = `${assignment.cellId}:${assignment.side}`
+    const list = groups.get(key)
+    if (list) list.push(assignment)
+    else groups.set(key, [assignment])
+  }
+
+  const out: Confluence[] = []
+  for (const [key, members] of groups) {
+    if (members.length < 2) continue
+    const sorted = members.sort((a, b) => a.index - b.index)
+    out.push({
+      id: `fan-out:${key}`,
+      targetCellId: sorted[0].cellId,
+      side: sorted[0].side,
+      memberIds: sorted.map((member) => member.id),
+    })
+  }
+  return out.sort((a, b) => (a.id < b.id ? -1 : 1))
+}
+
+/** Fallback junction offset when no column gap is measurable (call-time so it
+ *  reads `ARROW_CORNER_RADIUS` after the module's consts have initialised). */
+function mergeJunctionMinOffset(): number {
+  return Math.max(28, ARROW_CORNER_RADIUS * 2.5)
+}
+
+type ConfluenceMember = {
+  dependencyId: string
+  sourceRight: number
+  sourceY: number
+}
+
+/**
+ * The merged trunk + per-source taps for one same-side confluence, or null when
+ * the gather cannot sit clear (in which case the members route individually and
+ * nothing is consumed).
+ */
+function buildConfluenceSegments(
+  group: Confluence,
+  root: HTMLElement,
+  cellById: (id: string) => HTMLElement | null,
+  depById: Map<string, AnchorSlotDependency>,
+): ArrowMergeSegment[] | null {
+  const targetEl = cellById(group.targetCellId)
+  if (!targetEl) return null
+  const targetBox = getCellContentBox(targetEl, root)
+  const entryX = targetBox.left - ARROW_CHEVRON_SIZE
+  const targetY = cellCardCenterY(targetBox)
+
+  const members: ConfluenceMember[] = []
+  let firstSourceEl: HTMLElement | null = null
+  for (const endpointId of group.memberIds) {
+    const dependencyId = dependencyIdOfEndpoint(endpointId)
+    const dependency = depById.get(dependencyId)
+    if (!dependency) return null
+    const sourceEl = cellById(dependency.source_cell_id)
+    if (!sourceEl) return null
+    firstSourceEl ??= sourceEl
+    const box = getCellContentBox(sourceEl, root)
+    members.push({
+      dependencyId,
+      sourceRight: box.right,
+      sourceY: cellCardCenterY(box),
+    })
+  }
+  if (members.length < 2 || !firstSourceEl) return null
+
+  const junctionX =
+    getPreTargetGapCenterX(root, firstSourceEl, targetEl) ??
+    entryX - mergeJunctionMinOffset()
+
+  // The trunk only reduces overlap when it can sit clear to the left of the
+  // target edge and to the right of every source; otherwise decline the merge.
+  if (entryX <= junctionX) return null
+  for (const member of members) {
+    if (junctionX <= member.sourceRight) return null
+  }
+
+  const memberIds = members.map((member) => member.dependencyId)
+  const segments: ArrowMergeSegment[] = []
+
+  // The trunk gathers along a vertical at the junction, then turns into the
+  // target with the single head. When the target Y is an extreme of the gather
+  // it is one rounded stroke; when it sits between members (both sides), the
+  // spine and the headed approach are two pieces.
+  const ys = members.map((member) => member.sourceY)
+  const spineTop = Math.min(...ys, targetY)
+  const spineBottom = Math.max(...ys, targetY)
+  const trunkId = `${group.targetCellId}-confluence-${group.side}`
+
+  if (spineTop < targetY && targetY < spineBottom) {
+    const spine = buildRoundedPolylinePath(
+      [
+        { x: junctionX, y: spineTop },
+        { x: junctionX, y: spineBottom },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    const approach = buildRoundedPolylinePath(
+      [
+        { x: junctionX, y: targetY },
+        { x: entryX, y: targetY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    if (!spine || !approach) return null
+    segments.push({
+      id: `${trunkId}-spine`,
+      d: spine,
+      showMarker: false,
+      memberDependencyIds: memberIds,
+    })
+    segments.push({
+      id: trunkId,
+      d: approach,
+      showMarker: true,
+      memberDependencyIds: memberIds,
+    })
+  } else {
+    const farEnd = spineTop === targetY ? spineBottom : spineTop
+    const trunk = buildRoundedPolylinePath(
+      [
+        { x: junctionX, y: farEnd },
+        { x: junctionX, y: targetY },
+        { x: entryX, y: targetY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    if (!trunk) return null
+    segments.push({
+      id: trunkId,
+      d: trunk,
+      showMarker: true,
+      memberDependencyIds: memberIds,
+    })
+  }
+
+  for (const member of members) {
+    const tap = buildRoundedPolylinePath(
+      [
+        { x: member.sourceRight, y: member.sourceY },
+        { x: junctionX, y: member.sourceY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    if (!tap) return null
+    segments.push({
+      id: member.dependencyId,
+      d: tap,
+      showMarker: false,
+      memberDependencyIds: [member.dependencyId],
+    })
+  }
+
+  return segments
+}
+
+type FanOutMember = {
+  dependencyId: string
+  entryX: number
+  targetY: number
+}
+
+/**
+ * The mirror of `buildConfluenceSegments`: one source's shared trunk (no head)
+ * plus a headed drop per target. Null when the gather cannot sit clear.
+ */
+function buildFanOutSegments(
+  group: Confluence,
+  root: HTMLElement,
+  cellById: (id: string) => HTMLElement | null,
+  depById: Map<string, AnchorSlotDependency>,
+): ArrowMergeSegment[] | null {
+  const sourceCellId = group.targetCellId
+  const sourceEl = cellById(sourceCellId)
+  if (!sourceEl) return null
+  const sourceBox = getCellContentBox(sourceEl, root)
+  const sourceRight = sourceBox.right
+  const sourceY = cellCardCenterY(sourceBox)
+
+  const members: FanOutMember[] = []
+  let firstTargetEl: HTMLElement | null = null
+  for (const endpointId of group.memberIds) {
+    const dependencyId = dependencyIdOfEndpoint(endpointId)
+    const dependency = depById.get(dependencyId)
+    if (!dependency) return null
+    const targetEl = cellById(dependency.target_cell_id)
+    if (!targetEl) return null
+    firstTargetEl ??= targetEl
+    const box = getCellContentBox(targetEl, root)
+    members.push({
+      dependencyId,
+      entryX: box.left - ARROW_CHEVRON_SIZE,
+      targetY: cellCardCenterY(box),
+    })
+  }
+  if (members.length < 2 || !firstTargetEl) return null
+
+  const junctionX =
+    getPreTargetGapCenterX(root, sourceEl, firstTargetEl) ??
+    sourceRight + mergeJunctionMinOffset()
+
+  if (junctionX <= sourceRight) return null
+  for (const member of members) {
+    if (member.entryX <= junctionX) return null
+  }
+
+  const memberIds = members.map((member) => member.dependencyId)
+  const segments: ArrowMergeSegment[] = []
+
+  const ys = members.map((member) => member.targetY)
+  const spineTop = Math.min(...ys, sourceY)
+  const spineBottom = Math.max(...ys, sourceY)
+  const trunkId = `${sourceCellId}-fan-out-${group.side}`
+
+  if (spineTop < sourceY && sourceY < spineBottom) {
+    const stub = buildRoundedPolylinePath(
+      [
+        { x: sourceRight, y: sourceY },
+        { x: junctionX, y: sourceY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    const spine = buildRoundedPolylinePath(
+      [
+        { x: junctionX, y: spineTop },
+        { x: junctionX, y: spineBottom },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    if (!stub || !spine) return null
+    segments.push({
+      id: `${trunkId}-stub`,
+      d: stub,
+      showMarker: false,
+      memberDependencyIds: memberIds,
+    })
+    segments.push({
+      id: trunkId,
+      d: spine,
+      showMarker: false,
+      memberDependencyIds: memberIds,
+    })
+  } else {
+    const farEnd = sourceY === spineTop ? spineBottom : spineTop
+    const trunk = buildRoundedPolylinePath(
+      [
+        { x: sourceRight, y: sourceY },
+        { x: junctionX, y: sourceY },
+        { x: junctionX, y: farEnd },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    if (!trunk) return null
+    segments.push({
+      id: trunkId,
+      d: trunk,
+      showMarker: false,
+      memberDependencyIds: memberIds,
+    })
+  }
+
+  for (const member of members) {
+    const drop = buildRoundedPolylinePath(
+      [
+        { x: junctionX, y: member.targetY },
+        { x: member.entryX, y: member.targetY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+    if (!drop) return null
+    segments.push({
+      id: member.dependencyId,
+      d: drop,
+      showMarker: true,
+      memberDependencyIds: [member.dependencyId],
+    })
+  }
+
+  return segments
+}
+
+/**
+ * Plan every same-side confluence and fan-out over the band's active anchor
+ * plan. Call AFTER `planAnchorSlots`, over the SAME dependency list — the merge
+ * reads the slots that pass allocated. `disabled` is the per-scenario
+ * off-switch: it returns an empty plan, so every member routes individually and
+ * the band draws exactly as it did before confluence.
+ *
+ * The result's `consumed` set names every dependency a trunk already draws; a
+ * caller iterating `buildArrowPath` must skip those.
+ */
+export function planArrowConfluences(
+  root: HTMLElement,
+  dependencies: readonly AnchorSlotDependency[],
+  options: { disabled?: boolean } = {},
+): ArrowMergePlan {
+  if (options.disabled || !activeAnchorPlan) return EMPTY_ARROW_MERGE_PLAN
+
+  const depById = new Map<string, AnchorSlotDependency>()
+  for (const dependency of dependencies) depById.set(dependency.id, dependency)
+
+  const cellCache = new Map<string, HTMLElement | null>()
+  const cellById = (id: string): HTMLElement | null => {
+    const cached = cellCache.get(id)
+    if (cached !== undefined) return cached
+    const el = root.querySelector<HTMLElement>(`[data-blueprint-cell="${id}"]`)
+    cellCache.set(id, el)
+    return el
+  }
+
+  const segments: ArrowMergeSegment[] = []
+  const consumed = new Set<string>()
+
+  // Confluence: forward arrivals land on 'left', the only side a horizontal
+  // trunk can gather.
+  for (const group of planConfluences(activeAnchorPlan.values())) {
+    if (group.side !== 'left') continue
+    const built = buildConfluenceSegments(group, root, cellById, depById)
+    if (!built) continue
+    segments.push(...built)
+    for (const endpointId of group.memberIds) {
+      consumed.add(dependencyIdOfEndpoint(endpointId))
+    }
+  }
+
+  // Fan-out: the mirror — forward departures leave on 'right'. A dependency the
+  // confluence already merged never merges twice.
+  for (const group of groupFanOutDepartures(activeAnchorPlan.values())) {
+    if (group.side !== 'right') continue
+    const liveMemberIds = group.memberIds.filter(
+      (endpointId) => !consumed.has(dependencyIdOfEndpoint(endpointId)),
+    )
+    if (liveMemberIds.length < 2) continue
+    const built = buildFanOutSegments(
+      { ...group, memberIds: liveMemberIds },
+      root,
+      cellById,
+      depById,
+    )
+    if (!built) continue
+    segments.push(...built)
+    for (const endpointId of liveMemberIds) {
+      consumed.add(dependencyIdOfEndpoint(endpointId))
+    }
+  }
+
+  return { segments, consumed }
 }
 
 /** Arrowhead size (userSpaceOnUse) — Lucide-style filled tip. */
@@ -42,7 +660,7 @@ export const ARROW_DETOUR_CLEARANCE = 8
 /** Target shorter than this fraction of source height → align to target center. */
 export const ARROW_TARGET_MUCH_SMALLER_RATIO = 0.65
 
-function isCrossLaneForwardTrigger(
+function isCrossLayerForwardDependency(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
 ): boolean {
@@ -51,117 +669,48 @@ function isCrossLaneForwardTrigger(
   if (sourceStep === null || targetStep === null) return false
   if (targetStep <= sourceStep) return false
 
-  const sourceRow = getLaneRow(sourceEl)
-  const targetRow = getLaneRow(targetEl)
+  const sourceRow = getLayerRow(sourceEl)
+  const targetRow = getLayerRow(targetEl)
   return Boolean(sourceRow && targetRow && sourceRow !== targetRow)
-}
-
-/** Is a horizontal run at `y` between two X values clear of every other card? */
-function isHorizontalRunClear(
-  root: HTMLElement,
-  fromX: number,
-  toX: number,
-  y: number,
-  exclude: readonly HTMLElement[],
-): boolean {
-  return (
-    getCellsOverlappingRect(
-      root,
-      {
-        left: Math.min(fromX, toX),
-        right: Math.max(fromX, toX),
-        top: y - ARROW_DETOUR_CLEARANCE,
-        bottom: y + ARROW_DETOUR_CLEARANCE,
-      },
-      exclude,
-    ).length === 0
-  )
 }
 
 /**
  * Forward cross-column connector between different lane rows: exit the source
- * horizontally, travel in a column gap, then rise or drop into the target.
- *
- * The long horizontal leg is the one that can strike a card, and which side it
- * is safe on depends on the board: the source's own row may carry the columns
- * the connector skips, or the target's may, or both. So the leg is placed on
- * whichever row is clear, and when neither is, the run moves out of the rows
- * entirely and crosses in the strip above the target lane. Travelling far along
- * a lane at a card's own centre line is never assumed.
+ * horizontally, travel in the column gap, then rise or drop into the target.
  */
-export function buildCrossLaneForwardArrowPath(
+export function buildCrossLayerForwardArrowPath(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
+  sourceSlotY?: number,
+  targetSlotY?: number,
 ): string {
   const sourceBox = getCellContentBox(sourceEl, root)
   const targetBox = getCellContentBox(targetEl, root)
-  const sourceY = sourceBox.top + sourceBox.height / 2
-  const targetY = targetBox.top + targetBox.height / 2
+  const sourceY = sourceSlotY ?? sourceBox.top + sourceBox.height / 2
+  const targetY = targetSlotY ?? targetBox.top + targetBox.height / 2
   const lineEndX = targetBox.left - ARROW_CHEVRON_SIZE
 
   const sourceStep = parseStepIndex(sourceEl)
-  const preTargetX =
+  const routeX =
     getPreTargetGapCenterX(root, sourceEl, targetEl) ??
     (sourceStep !== null ? getStepGapCenterX(root, sourceStep) : null) ??
     (sourceBox.right + targetBox.left) / 2
-  const exitGapX =
-    sourceStep !== null
-      ? getVerticalRouteRightGutterX(root, sourceStep, sourceEl)
-      : preTargetX
 
   if (lineEndX <= sourceBox.right) return ''
 
-  const ends = [sourceEl, targetEl]
-
-  // Drop late: the long leg runs along the SOURCE row to the gap before the
-  // target column. Only when that row is empty in between.
-  if (isHorizontalRunClear(root, sourceBox.right, preTargetX, sourceY, ends)) {
-    return buildRoundedPolylinePath(
-      [
-        { x: sourceBox.right, y: sourceY },
-        { x: preTargetX, y: sourceY },
-        { x: preTargetX, y: targetY },
-        { x: lineEndX, y: targetY },
-      ],
-      ARROW_CORNER_RADIUS,
-    )
-  }
-
-  // Drop early: leave through the gap right after the source and run the long
-  // leg along the TARGET row instead.
-  if (
-    exitGapX > sourceBox.right &&
-    isHorizontalRunClear(root, exitGapX, lineEndX, targetY, ends)
-  ) {
-    return buildRoundedPolylinePath(
-      [
-        { x: sourceBox.right, y: sourceY },
-        { x: exitGapX, y: sourceY },
-        { x: exitGapX, y: targetY },
-        { x: lineEndX, y: targetY },
-      ],
-      ARROW_CORNER_RADIUS,
-    )
-  }
-
-  // Both rows are occupied in between: cross above the target lane, where the
-  // row's own headroom leaves the strip clear, and drop in at the last gap.
-  const bandY = getLaneContentTop(targetEl, root) - ARROW_DETOUR_CLEARANCE
   return buildRoundedPolylinePath(
     [
       { x: sourceBox.right, y: sourceY },
-      { x: exitGapX, y: sourceY },
-      { x: exitGapX, y: bandY },
-      { x: preTargetX, y: bandY },
-      { x: preTargetX, y: targetY },
+      { x: routeX, y: sourceY },
+      { x: routeX, y: targetY },
       { x: lineEndX, y: targetY },
     ],
     ARROW_CORNER_RADIUS,
   )
 }
 
-function getLaneRow(el: HTMLElement): HTMLElement | null {
+function getLayerRow(el: HTMLElement): HTMLElement | null {
   return el.closest('[data-blueprint-row]')
 }
 
@@ -216,10 +765,10 @@ export function getPreTargetGapCenterX(
   const targetIdx = parseStepIndex(targetEl)
   if (targetIdx === null || targetIdx <= 0) return null
 
-  const laneRow = getLaneRow(sourceEl)
-  if (!laneRow) return null
+  const layerRow = getLayerRow(sourceEl)
+  if (!layerRow) return null
 
-  const leftEl = laneRow.querySelector<HTMLElement>(
+  const leftEl = layerRow.querySelector<HTMLElement>(
     `[data-blueprint-cell][data-step-index="${targetIdx - 1}"]`,
   )
 
@@ -324,11 +873,11 @@ export function getSameRowObstructingCells(
   const hi = Math.max(sourceIdx, targetIdx) - 1
   if (lo > hi) return []
 
-  const laneRow = getLaneRow(sourceEl)
-  if (!laneRow) return []
+  const layerRow = getLayerRow(sourceEl)
+  if (!layerRow) return []
 
   const obstructing: HTMLElement[] = []
-  laneRow.querySelectorAll<HTMLElement>('[data-blueprint-cell]').forEach((el) => {
+  layerRow.querySelectorAll<HTMLElement>('[data-blueprint-cell]').forEach((el) => {
     const idx = parseStepIndex(el)
     if (idx === null || idx < lo || idx > hi) return
     obstructing.push(el)
@@ -342,8 +891,8 @@ export function getSameRowObstructingCells(
  * center, but enter horizontally at the target's left edge, vertically
  * centered on the target's own card. The detour's final segment approaches
  * from the gutter side, so a top/bottom-center (vertical-entry) anchor would
- * leave the chevron riding along the target's top edge — for stacked pill
- * targets that puts the head in the gap between neighbouring pills.
+ * leave the chevron riding along the target's top edge — for stacked touchpoint
+ * targets that puts the head in the gap between neighbouring touchpoints.
  */
 export function getVerticalGutterDetourAnchors(
   sourceEl: HTMLElement,
@@ -690,41 +1239,199 @@ export function buildVerticalGutterDetourPath(
   )
 }
 
-/** Horizontal connector detours above skipped cells via column gutters. */
-export function buildHorizontalGutterDetourPath(
+/* --------------------------------------------------- gap-first corridors (#349)
+
+  A same-row forward run that a column blocks has to detour. The lane it
+  detours through used to be hand-pinned — always overhead, above the
+  obstruction — which squeezes into whatever room sits between the cards and
+  the band edge even when the underneath lane is wide open. `chooseCorridor`
+  (pure, in `arrowAnchorSlots`) replaces the pin: this half measures the clear
+  gap each lane affords within the run's own x-span and hands both candidates
+  to the scorer, which picks the roomier. Plan §3's gap-first order falls out
+  of that — the widest gap wins, and the behind-cell tuck only when neither
+  lane clears the run.
+*/
+
+/** Adjacent co-traveller lanes sit this far apart in the detour corridor. */
+export const ARROW_CORRIDOR_LANE_PITCH = 14
+
+/** A corridor narrower than this cannot hold the run clear of the cards. */
+const HORIZONTAL_DETOUR_MIN_ROOM = ARROW_DETOUR_CLEARANCE * 2
+
+type HorizontalDetourCorridor = {
+  routeY: number
+  sourceRight: number
+  exitGapX: number
+  riseX: number
+  entryX: number
+  lane: 'overhead' | 'underneath'
+  /** The detour line before any co-traveller offset. */
+  baseDetourY: number
+  /** The stretch of the corridor the run occupies (for co-traveller overlap). */
+  spanLeft: number
+  spanRight: number
+}
+
+/**
+ * The corridor a same-row obstructed forward run detours through, scored gap-
+ * first, or null when the run is not that shape. Pure geometry over the DOM —
+ * `planArrowCorridors` and `buildHorizontalGutterDetourPath` both call it, so
+ * the plan that assigns lanes and the builder that draws them agree on which
+ * corridor each run rides.
+ */
+function computeHorizontalDetourCorridor(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
-): string {
+): HorizontalDetourCorridor | null {
+  const obstructing = getSameRowObstructingCells(sourceEl, targetEl)
+  if (obstructing.length === 0) return null
+
+  const sourceStep = parseStepIndex(sourceEl)
+  if (sourceStep === null) return null
+
   const sourceBox = getCellContentBox(sourceEl, root)
   const targetBox = getCellContentBox(targetEl, root)
   const routeY = getArrowCenterY(sourceEl, targetEl, root)
   const entryX = targetBox.left - ARROW_CHEVRON_SIZE
-  const sourceStep = parseStepIndex(sourceEl)
-  if (sourceStep === null) return ''
-
-  const obstructing = getSameRowObstructingCells(sourceEl, targetEl)
-  let detourY = routeY
-  for (const el of obstructing) {
-    const box = getCellContentBox(el, root)
-    detourY = Math.min(detourY, box.top - ARROW_DETOUR_CLEARANCE)
-  }
-
   const exitGapX =
-    getStepGapCenterX(root, sourceStep) ??
-    sourceBox.right + STEP_COLUMN_GAP / 2
+    getStepGapCenterX(root, sourceStep) ?? sourceBox.right + STEP_COLUMN_GAP / 2
   const riseX =
     getPreTargetGapCenterX(root, sourceEl, targetEl) ??
     entryX - Math.max(28, ARROW_CORNER_RADIUS * 2.5)
 
+  const spanLeft = Math.min(exitGapX, riseX)
+  const spanRight = Math.max(exitGapX, riseX)
+
+  let obsTop = Infinity
+  let obsBottom = -Infinity
+  for (const el of obstructing) {
+    const box = getCellContentBox(el, root)
+    obsTop = Math.min(obsTop, box.top)
+    obsBottom = Math.max(obsBottom, box.top + box.height)
+  }
+
+  // The corridor's room is the clear gap between the obstruction band and the
+  // nearest card the run would meet in that direction, within its own x-span —
+  // so a lane a neighbouring card leans into reports a small gap and loses.
+  const rootBox = getElementLayoutBox(root, root)
+  let ceiling = rootBox.top
+  let floor = rootBox.top + rootBox.height
+  for (const el of queryBlueprintCells(root, root)) {
+    if (el === sourceEl || el === targetEl) continue
+    const box = getCellContentBox(el, root)
+    if (box.right <= spanLeft || box.left >= spanRight) continue
+    const cellBottom = box.top + box.height
+    if (cellBottom <= obsTop) ceiling = Math.max(ceiling, cellBottom)
+    else if (box.top >= obsBottom) floor = Math.min(floor, box.top)
+  }
+
+  const chosen = chooseCorridor(
+    [
+      { id: 'overhead', line: obsTop - ARROW_DETOUR_CLEARANCE, room: obsTop - ceiling },
+      { id: 'underneath', line: obsBottom + ARROW_DETOUR_CLEARANCE, room: floor - obsBottom },
+    ],
+    routeY,
+    HORIZONTAL_DETOUR_MIN_ROOM,
+  )
+  if (!chosen) return null
+
+  return {
+    routeY,
+    sourceRight: sourceBox.right,
+    exitGapX,
+    riseX,
+    entryX,
+    lane: chosen.id === 'underneath' ? 'underneath' : 'overhead',
+    baseDetourY: chosen.line,
+    spanLeft,
+    spanRight,
+  }
+}
+
+/**
+ * Plan the co-traveller offsets for one band's corridor detours.
+ *
+ * Collects every dependency that would take a horizontal gutter detour, scores
+ * the corridor each rides, and hands the runs to `allocateCorridorLanes` so two
+ * that share one lane fan onto adjacent lanes instead of drawing one doubled
+ * line. Call over the dependencies the band will actually route (confluence
+ * members excluded — a merged trunk is not a corridor run). The result replaces
+ * the active plan, which `buildHorizontalGutterDetourPath` then consults.
+ */
+export function planArrowCorridors(
+  root: HTMLElement,
+  dependencies: readonly AnchorSlotDependency[],
+): void {
+  const runs: CorridorRun[] = []
+  dependencies.forEach((dependency, index) => {
+    const sourceEl = root.querySelector<HTMLElement>(
+      `[data-blueprint-cell="${dependency.source_cell_id}"]`,
+    )
+    const targetEl = root.querySelector<HTMLElement>(
+      `[data-blueprint-cell="${dependency.target_cell_id}"]`,
+    )
+    if (!sourceEl || !targetEl) return
+
+    const corridor = computeHorizontalDetourCorridor(sourceEl, targetEl, root)
+    if (!corridor) return
+
+    runs.push({
+      id: dependency.id,
+      lane: corridor.lane,
+      line: corridor.baseDetourY,
+      start: corridor.spanLeft,
+      end: corridor.spanRight,
+      sortKey: index,
+    })
+  })
+
+  activeCorridorPlan = allocateCorridorLanes(runs)
+}
+
+/** Forget the active corridor plan, so an unplanned build reads no stale lane. */
+export function clearArrowCorridorPlan(): void {
+  activeCorridorPlan = null
+}
+
+/** The lane a run was assigned, or absent when its corridor was uncontested. */
+function corridorLaneFor(
+  dependencyId: string | undefined,
+): CorridorLaneAssignment | undefined {
+  if (!activeCorridorPlan || dependencyId === undefined) return undefined
+  return activeCorridorPlan.get(dependencyId)
+}
+
+/**
+ * Horizontal connector that detours around skipped cells, riding the gap-first
+ * corridor `computeHorizontalDetourCorridor` scored. When it shares that
+ * corridor with another run, the corridor plan nudges it onto an adjacent lane
+ * (`dependencyId` looks up its offset); a run sharing its corridor with nothing
+ * keeps lane 0 and draws exactly on the scored line.
+ */
+export function buildHorizontalGutterDetourPath(
+  sourceEl: HTMLElement,
+  targetEl: HTMLElement,
+  root: HTMLElement,
+  dependencyId?: string,
+): string {
+  const corridor = computeHorizontalDetourCorridor(sourceEl, targetEl, root)
+  if (!corridor) return ''
+
+  const lane = corridorLaneFor(dependencyId)
+  const laneDirection = corridor.lane === 'underneath' ? 1 : -1
+  const detourY =
+    corridor.baseDetourY +
+    (lane ? lane.index * ARROW_CORRIDOR_LANE_PITCH * laneDirection : 0)
+
   return buildRoundedPolylinePath(
     [
-      { x: sourceBox.right, y: routeY },
-      { x: exitGapX, y: routeY },
-      { x: exitGapX, y: detourY },
-      { x: riseX, y: detourY },
-      { x: riseX, y: routeY },
-      { x: entryX, y: routeY },
+      { x: corridor.sourceRight, y: corridor.routeY },
+      { x: corridor.exitGapX, y: corridor.routeY },
+      { x: corridor.exitGapX, y: detourY },
+      { x: corridor.riseX, y: detourY },
+      { x: corridor.riseX, y: corridor.routeY },
+      { x: corridor.entryX, y: corridor.routeY },
     ],
     ARROW_CORNER_RADIUS,
   )
@@ -737,8 +1444,7 @@ export function parseStepIndex(cellEl: HTMLElement): number | null {
   return Number.isFinite(index) ? index : null
 }
 
-/** A backward connector: the target sits in an earlier step column. */
-export function isWrapTrigger(
+export function isWrapDependency(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
 ): boolean {
@@ -909,88 +1615,6 @@ function measureCellContentBox(
 /** Inset from the interaction line for loop-back horizontal segments. */
 export const WRAP_LOOP_CORRIDOR_INSET = 10
 
-/** Inset above cell tops for in-lane loop-back horizontal segments. */
-export const IN_LANE_LOOP_TOP_INSET = 8
-
-/**
- * A backward connector that starts and ends on the SAME lane row: it has to
- * loop back over the cells it came from, which the corridor at the top of the
- * row is reserved for. Both facts come off the DOM — one lane row, target step
- * column earlier than the source's — which is exactly the rule
- * `laneHasInLaneLoopCorridor` applies to the data when it reserves that
- * corridor. The two must stay in step: an arrow routed through a corridor the
- * layout did not reserve would be drawn over the lane above.
- */
-export function isInLaneWrapTrigger(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-): boolean {
-  const sourceStep = parseStepIndex(sourceEl)
-  const targetStep = parseStepIndex(targetEl)
-  if (sourceStep === null || targetStep === null || targetStep >= sourceStep) {
-    return false
-  }
-
-  const sourceRow = getLaneRow(sourceEl)
-  const targetRow = getLaneRow(targetEl)
-  return Boolean(sourceRow && targetRow && sourceRow === targetRow)
-}
-
-/** Horizontal lane for in-lane loop arrows — centered in the in-lane corridor. */
-export function getInLaneLoopRouteY(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-  root: HTMLElement,
-): number {
-  const row = getLaneRow(sourceEl)
-  if (row) {
-    const loopCorridor = row.querySelector<HTMLElement>(
-      '[data-blueprint-loop-corridor="above"]',
-    )
-    if (loopCorridor) {
-      const corridorBox = getElementLayoutBox(loopCorridor, root)
-      return corridorBox.top + corridorBox.height / 2
-    }
-  }
-
-  const cellTop = Math.min(
-    getLaneContentTop(sourceEl, root),
-    getLaneContentTop(targetEl, root),
-  )
-  return cellTop - IN_LANE_LOOP_TOP_INSET
-}
-
-/**
- * In-lane loop-back: up from the source top, across inside the swimlane's own
- * corridor, then down into the target top.
- */
-export function buildInLaneTopWrapPath(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-  root: HTMLElement,
-): string {
-  const source = getCellTopCenter(sourceEl, root)
-  const target = getCellTopCenter(targetEl, root)
-  const routeY = getInLaneLoopRouteY(sourceEl, targetEl, root)
-
-  // Wrap runs right → left; target must sit in an earlier column.
-  if (target.x >= source.x) return ''
-
-  if (routeY >= source.y) return ''
-
-  const lineEndY = target.y - ARROW_CHEVRON_SIZE
-  if (lineEndY <= routeY) return ''
-
-  const exitLeg = buildWrapColumnLeg(sourceEl, root, routeY, 'exit', 'above')
-  const enterLeg = buildWrapColumnLeg(targetEl, root, routeY, 'enter', 'above')
-  if (!exitLeg || !enterLeg) return ''
-
-  return buildRoundedPolylinePath(
-    [...exitLeg, ...enterLeg],
-    ARROW_CORNER_RADIUS,
-  )
-}
-
 
 export type WrapCorridorBounds = {
   start: number
@@ -1014,24 +1638,6 @@ function getLaneContentBottom(
     bottom = Math.max(bottom, box.top + box.height)
   }
   return bottom
-}
-
-/**
- * Top edge of the highest cell card in a cell's lane row — the mirror of
- * `getLaneContentBottom`, for the rails that run ABOVE a lane. A stacked slot
- * makes a lower sub-cell's own top useless as a rail reference: the rail has
- * to clear the sub-cells above it too.
- */
-function getLaneContentTop(cellEl: HTMLElement, root: HTMLElement): number {
-  const box = getCellContentBox(cellEl, root)
-  const row = getLaneRow(cellEl)
-  let top = box.top
-  if (!row) return top
-  for (const el of queryBlueprintCells(row, root)) {
-    if (el === cellEl || el.contains(cellEl) || cellEl.contains(el)) continue
-    top = Math.min(top, getCellContentBox(el, root).top)
-  }
-  return top
 }
 
 /** Vertical span between a lane row bottom and the next wrap corridor or interaction line. */
@@ -1246,36 +1852,36 @@ export function buildVerticalArrowPath(
   return `M ${source.x} ${source.y} L ${source.x} ${lineEndY}`
 }
 
-export type BidirectionalTriggerLink = {
+export type BidirectionalDependencyLink = {
   id: string
   source_cell_id: string
   target_cell_id: string
 }
 
-export type BidirectionalTriggerPair<T extends BidirectionalTriggerLink> = {
+export type BidirectionalDependencyPair<T extends BidirectionalDependencyLink> = {
   first: T
   second: T
   cellAId: string
   cellBId: string
 }
 
-/** Pairs of triggers that connect the same two cells in opposite directions. */
-export function findBidirectionalTriggerPairs<T extends BidirectionalTriggerLink>(
-  triggers: T[],
-): { pairs: BidirectionalTriggerPair<T>[]; remaining: T[] } {
+/** Pairs of dependencies that connect the same two cells in opposite directions. */
+export function findBidirectionalDependencyPairs<T extends BidirectionalDependencyLink>(
+  dependencies: T[],
+): { pairs: BidirectionalDependencyPair<T>[]; remaining: T[] } {
   const pending = new Map<string, T>()
   const pairedIds = new Set<string>()
-  const pairs: BidirectionalTriggerPair<T>[] = []
+  const pairs: BidirectionalDependencyPair<T>[] = []
 
-  for (const trigger of triggers) {
-    const reverseKey = `${trigger.target_cell_id}->${trigger.source_cell_id}`
+  for (const dependency of dependencies) {
+    const reverseKey = `${dependency.target_cell_id}->${dependency.source_cell_id}`
     const reverse = pending.get(reverseKey)
     if (reverse) {
-      pairedIds.add(trigger.id)
+      pairedIds.add(dependency.id)
       pairedIds.add(reverse.id)
       pairs.push({
         first: reverse,
-        second: trigger,
+        second: dependency,
         cellAId: reverse.source_cell_id,
         cellBId: reverse.target_cell_id,
       })
@@ -1284,14 +1890,14 @@ export function findBidirectionalTriggerPairs<T extends BidirectionalTriggerLink
     }
 
     pending.set(
-      `${trigger.source_cell_id}->${trigger.target_cell_id}`,
-      trigger,
+      `${dependency.source_cell_id}->${dependency.target_cell_id}`,
+      dependency,
     )
   }
 
   return {
     pairs,
-    remaining: triggers.filter((trigger) => !pairedIds.has(trigger.id)),
+    remaining: dependencies.filter((dependency) => !pairedIds.has(dependency.id)),
   }
 }
 
@@ -1335,423 +1941,11 @@ export function buildBidirectionalArrowPath(
   const stepB = parseStepIndex(cellBEl)
   if (stepA === null || stepB === null || stepA !== stepB) return ''
 
-  const rowA = getLaneRow(cellAEl)
-  const rowB = getLaneRow(cellBEl)
+  const rowA = getLayerRow(cellAEl)
+  const rowB = getLayerRow(cellBEl)
   if (!rowA || !rowB || rowA === rowB) return ''
 
   return buildBidirectionalVerticalArrowPath(cellAEl, cellBEl, root)
-}
-
-/** Clearance kept between the overhead rail and the cards it runs above. */
-export const OVERHEAD_RAIL_CLEARANCE = 10
-
-/**
- * A forward connector that stays on ONE lane row and clears at least one whole
- * column on the way (`targetStep >= sourceStep + 2`). The cells it passes over
- * are in its way, so instead of running along the row it climbs into the
- * corridor above, crosses on the rail, and drops back down into the target.
- *
- * An adjacent hop (`targetStep === sourceStep + 1`) skips nothing and stays in
- * the column gap between the two cards.
- *
- * This is the DOM-side twin of `laneHasOverheadArrowCorridor`, which reserves
- * the corridor from the data by the identical rule. Change one and the other
- * has to move with it, or the rail gets drawn through the lane above.
- */
-export function isOverheadRailTrigger(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-): boolean {
-  const sourceStep = parseStepIndex(sourceEl)
-  const targetStep = parseStepIndex(targetEl)
-  if (sourceStep === null || targetStep === null) return false
-  if (targetStep < sourceStep + 2) return false
-
-  const sourceRow = getLaneRow(sourceEl)
-  const targetRow = getLaneRow(targetEl)
-  return Boolean(sourceRow && targetRow && sourceRow === targetRow)
-}
-
-/** Top-center anchor on the visible cell card. */
-export function getCellTopCenter(
-  cellEl: HTMLElement,
-  root: HTMLElement,
-): Point {
-  const box = getCellContentBox(cellEl, root)
-  return {
-    x: (box.left + box.right) / 2,
-    y: box.top,
-  }
-}
-
-/**
- * The strip a lane reserves above itself for overhead rails, when it has one.
- * The grids differ in where they hang it — the single-path grid puts it before
- * the row, the compare shell inside it — so both placements are looked for by
- * the marker rather than inferred from the row's own box.
- */
-function getOverheadRailCorridorBox(
-  cellEl: HTMLElement,
-  root: HTMLElement,
-): LayoutBox | null {
-  const row = getLaneRow(cellEl)
-  if (!row) return null
-
-  const inside = row.querySelector<HTMLElement>(
-    '[data-blueprint-rail-corridor="above"]',
-  )
-  if (inside) return getElementLayoutBox(inside, root)
-
-  let sibling = row.previousElementSibling
-  while (sibling instanceof HTMLElement) {
-    if (sibling.dataset.blueprintRailCorridor === 'above') {
-      return getElementLayoutBox(sibling, root)
-    }
-    if (
-      sibling.dataset.blueprintRow !== undefined ||
-      sibling.dataset.blueprintDivider !== undefined
-    ) {
-      break
-    }
-    sibling = sibling.previousElementSibling
-  }
-  return null
-}
-
-/**
- * Y of the rail shared by every overhead connector above a lane row — the
- * middle of the strip the layout reserved for it.
- *
- * Measuring the reserved strip rather than counting back from the cards is
- * what keeps the rail out of the OTHER corridor: a lane that also loops back
- * on itself carries a second, thinner strip between the rail's and its cards,
- * and a rail placed half a rail-margin above the card tops would land inside
- * it, drawn on top of the loop it was supposed to clear.
- */
-export function getOverheadRailY(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-  root: HTMLElement,
-): number {
-  const corridor =
-    getOverheadRailCorridorBox(sourceEl, root) ??
-    getOverheadRailCorridorBox(targetEl, root)
-  if (corridor) return corridor.top + corridor.height / 2
-
-  // Lane-wide tops, not the two cards' own: a merged slot stacks a sub-cell
-  // per path, so a rail measured off a lower sub-cell would run through the
-  // ones above it.
-  return (
-    Math.min(getLaneContentTop(sourceEl, root), getLaneContentTop(targetEl, root)) -
-    BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN / 2
-  )
-}
-
-/**
- * Single overhead-rail connector: up out of the source, across the rail, then
- * down into the target.
- *
- * Both climbs go through `buildWrapColumnLeg`, so a column that is not empty
- * between the card and the rail sends that end sideways into the gutter
- * instead. A merged slot stacks one sub-cell per path, and a lower sub-cell's
- * straight climb would otherwise pass through the faces of the sub-cells
- * sitting above it.
- */
-export function buildOverheadRailPath(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-  root: HTMLElement,
-): string {
-  const target = getCellTopCenter(targetEl, root)
-  const railY = getOverheadRailY(sourceEl, targetEl, root)
-
-  if (target.y - ARROW_CHEVRON_SIZE <= railY) return ''
-
-  const exitLeg = buildWrapColumnLeg(
-    sourceEl,
-    root,
-    railY,
-    'exit',
-    'above',
-    'forward',
-  )
-  const enterLeg = buildWrapColumnLeg(
-    targetEl,
-    root,
-    railY,
-    'enter',
-    'above',
-    'forward',
-  )
-  if (!exitLeg || !enterLeg) return ''
-
-  return buildRoundedPolylinePath(
-    [...exitLeg, ...enterLeg],
-    ARROW_CORNER_RADIUS,
-  )
-}
-
-/**
- * Merged bus for several overhead-rail triggers on one lane that share a
- * target: the leftmost source rises to the rail, the trunk runs to the target
- * column, intermediate sources get vertical taps, and the path ends with a
- * downward arrow into the target.
- */
-export function buildOverheadRailBusPath(
-  sourceEls: HTMLElement[],
-  targetEl: HTMLElement,
-  root: HTMLElement,
-): string {
-  if (sourceEls.length === 0) return ''
-
-  const sorted = [...sourceEls].sort(
-    (a, b) => (parseStepIndex(a) ?? 0) - (parseStepIndex(b) ?? 0),
-  )
-  const firstEl = sorted[0]
-  const first = getCellTopCenter(firstEl, root)
-  const target = getCellTopCenter(targetEl, root)
-  const railY = getOverheadRailY(firstEl, targetEl, root)
-  const lineEndY = target.y - ARROW_CHEVRON_SIZE
-
-  if (lineEndY <= railY) return ''
-
-  const mainPath = buildRoundedPolylinePath(
-    [
-      first,
-      { x: first.x, y: railY },
-      { x: target.x, y: railY },
-      { x: target.x, y: lineEndY },
-    ],
-    ARROW_CORNER_RADIUS,
-  )
-
-  const tapPaths = sorted.slice(1).map((el) => {
-    const leg = buildWrapColumnLeg(el, root, railY, 'exit', 'above', 'forward')
-    if (!leg) return ''
-    return buildRoundedPolylinePath([...leg].reverse(), ARROW_CORNER_RADIUS)
-  })
-
-  // Taps first so markerEnd lands on the main trunk's downward segment.
-  return [...tapPaths, mainPath].filter(Boolean).join(' ')
-}
-
-export type OverheadRailFanOutGroup = {
-  sourceCellId: string
-  sourceEl: HTMLElement
-  branches: Array<{ triggerId: string; targetEl: HTMLElement }>
-}
-
-/** Shared trunk: up from the source, then across above all branch targets. */
-export function buildOverheadRailFanOutTrunkPath(
-  sourceEl: HTMLElement,
-  targetEls: HTMLElement[],
-  root: HTMLElement,
-): string {
-  if (targetEls.length === 0) return ''
-
-  const source = getCellTopCenter(sourceEl, root)
-  const sortedTargets = [...targetEls].sort(
-    (a, b) => (parseStepIndex(a) ?? 0) - (parseStepIndex(b) ?? 0),
-  )
-  const lastTarget = sortedTargets[sortedTargets.length - 1]!
-  const railY = getOverheadRailY(sourceEl, lastTarget, root)
-  const rightX = Math.max(
-    ...sortedTargets.map((el) => getCellTopCenter(el, root).x),
-  )
-
-  return buildRoundedPolylinePath(
-    [source, { x: source.x, y: railY }, { x: rightX, y: railY }],
-    ARROW_CORNER_RADIUS,
-  )
-}
-
-/** Vertical drop from the overhead rail into a branch target. */
-export function buildOverheadRailFanOutDropPath(
-  sourceEl: HTMLElement,
-  targetEl: HTMLElement,
-  root: HTMLElement,
-): string {
-  const target = getCellTopCenter(targetEl, root)
-  const railY = getOverheadRailY(sourceEl, targetEl, root)
-  if (target.y - ARROW_CHEVRON_SIZE <= railY) return ''
-  const enterLeg = buildWrapColumnLeg(
-    targetEl,
-    root,
-    railY,
-    'enter',
-    'above',
-    'forward',
-  )
-  if (!enterLeg) return ''
-  return buildRoundedPolylinePath(enterLeg, ARROW_CORNER_RADIUS)
-}
-
-/** Trigger ids that share a source and fan out to multiple overhead-rail targets. */
-export function collectOverheadRailFanOutTriggerIds<
-  T extends OverheadRailTrigger,
->(triggers: readonly T[]): Set<string> {
-  const bySource = new Map<string, T[]>()
-
-  for (const trigger of triggers) {
-    const list = bySource.get(trigger.source_cell_id) ?? []
-    list.push(trigger)
-    bySource.set(trigger.source_cell_id, list)
-  }
-
-  const fanOutIds = new Set<string>()
-  for (const list of bySource.values()) {
-    const targetIds = new Set(list.map((trigger) => trigger.target_cell_id))
-    if (targetIds.size < 2) continue
-    for (const trigger of list) {
-      fanOutIds.add(trigger.id)
-    }
-  }
-
-  return fanOutIds
-}
-
-export type OverheadRailTrigger = {
-  id: string
-  source_cell_id: string
-  target_cell_id: string
-}
-
-/** Group overhead-rail triggers into merge buses and source fan-outs. */
-export function groupOverheadRailTriggers<T extends OverheadRailTrigger>(
-  triggers: T[],
-  content: HTMLElement,
-): {
-  busGroups: {
-    targetCellId: string
-    triggerIds: string[]
-    sourceEls: HTMLElement[]
-    targetEl: HTMLElement
-  }[]
-  fanOutGroups: OverheadRailFanOutGroup[]
-  remaining: T[]
-} {
-  const remaining: T[] = []
-  const railEntries: Array<{
-    trigger: T
-    sourceEl: HTMLElement
-    targetEl: HTMLElement
-  }> = []
-
-  /*
-    Which triggers belong on the rail is a question about step columns and lane
-    rows, and only the rendered grid knows those — so the cells are resolved
-    first and the single DOM rule decides, rather than a second rule guessing
-    from the ids. A trigger whose cells are not on the board (a collapsed lane,
-    a filtered path) is left to the generic router.
-  */
-  for (const trigger of triggers) {
-    const sourceEl = content.querySelector<HTMLElement>(
-      `[data-blueprint-cell="${trigger.source_cell_id}"]`,
-    )
-    const targetEl = content.querySelector<HTMLElement>(
-      `[data-blueprint-cell="${trigger.target_cell_id}"]`,
-    )
-    if (!sourceEl || !targetEl || !isOverheadRailTrigger(sourceEl, targetEl)) {
-      remaining.push(trigger)
-      continue
-    }
-
-    railEntries.push({ trigger, sourceEl, targetEl })
-  }
-
-  const fanOutTriggerIds = collectOverheadRailFanOutTriggerIds(
-    railEntries.map((entry) => entry.trigger),
-  )
-  const fanOutGroups: OverheadRailFanOutGroup[] = []
-  const bySource = new Map<
-    string,
-    {
-      sourceEl: HTMLElement
-      branches: Array<{ triggerId: string; targetEl: HTMLElement }>
-      targetIds: Set<string>
-    }
-  >()
-
-  for (const entry of railEntries) {
-    if (!fanOutTriggerIds.has(entry.trigger.id)) continue
-
-    const existing = bySource.get(entry.trigger.source_cell_id)
-    if (existing) {
-      if (!existing.targetIds.has(entry.trigger.target_cell_id)) {
-        existing.targetIds.add(entry.trigger.target_cell_id)
-        existing.branches.push({
-          triggerId: entry.trigger.id,
-          targetEl: entry.targetEl,
-        })
-      }
-    } else {
-      bySource.set(entry.trigger.source_cell_id, {
-        sourceEl: entry.sourceEl,
-        branches: [
-          { triggerId: entry.trigger.id, targetEl: entry.targetEl },
-        ],
-        targetIds: new Set([entry.trigger.target_cell_id]),
-      })
-    }
-  }
-
-  for (const [sourceCellId, group] of bySource) {
-    fanOutGroups.push({
-      sourceCellId,
-      sourceEl: group.sourceEl,
-      branches: [...group.branches].sort(
-        (a, b) =>
-          (parseStepIndex(a.targetEl) ?? 0) - (parseStepIndex(b.targetEl) ?? 0),
-      ),
-    })
-  }
-
-  const byTarget = new Map<
-    string,
-    { triggerIds: string[]; sourceEls: HTMLElement[]; targetEl: HTMLElement }
-  >()
-
-  for (const entry of railEntries) {
-    if (fanOutTriggerIds.has(entry.trigger.id)) continue
-
-    const existing = byTarget.get(entry.trigger.target_cell_id)
-    if (existing) {
-      existing.triggerIds.push(entry.trigger.id)
-      existing.sourceEls.push(entry.sourceEl)
-    } else {
-      byTarget.set(entry.trigger.target_cell_id, {
-        triggerIds: [entry.trigger.id],
-        sourceEls: [entry.sourceEl],
-        targetEl: entry.targetEl,
-      })
-    }
-  }
-
-  const busGroups = [...byTarget.entries()]
-    .filter(([, group]) => group.sourceEls.length >= 2)
-    .map(([targetCellId, group]) => ({
-      targetCellId,
-      triggerIds: group.triggerIds,
-      sourceEls: group.sourceEls,
-      targetEl: group.targetEl,
-    }))
-
-  for (const entry of railEntries) {
-    if (fanOutTriggerIds.has(entry.trigger.id)) continue
-
-    const busGroup = busGroups.find((group) =>
-      group.triggerIds.includes(entry.trigger.id),
-    )
-    if (busGroup) continue
-
-    remaining.push(entry.trigger)
-  }
-
-  return {
-    busGroups,
-    fanOutGroups,
-    remaining,
-  }
 }
 
 /** Connectors anchor to the outer edges of the visible cell cards. */
@@ -1794,12 +1988,14 @@ export function buildHorizontalArrowPath(
 
 /**
  * Forward connector between adjacent step columns on the same row, routed
- * through the center of the column gap between the two cards.
+ * through the center of the column gap (e.g. step 3 → 4 on one lane).
  */
 export function buildAdjacentColumnGapArrowPath(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
+  sourceSlotY?: number,
+  targetSlotY?: number,
 ): string {
   const sourceBox = getCellContentBox(sourceEl, root)
   const targetBox = getCellContentBox(targetEl, root)
@@ -1812,11 +2008,28 @@ export function buildAdjacentColumnGapArrowPath(
 
   if (entryX <= sourceBox.right) return ''
 
+  const sourceY = sourceSlotY ?? y
+  const targetY = targetSlotY ?? y
+
+  // Uncontested: one straight run at a single Y, byte-identical to before.
+  if (sourceY === targetY) {
+    return buildRoundedPolylinePath(
+      [
+        { x: sourceBox.right, y: sourceY },
+        { x: gapX, y: sourceY },
+        { x: entryX, y: sourceY },
+      ],
+      ARROW_CORNER_RADIUS,
+    )
+  }
+
+  // A contested end sits on its own slot, so the run jogs across in the gap.
   return buildRoundedPolylinePath(
     [
-      { x: sourceBox.right, y },
-      { x: gapX, y },
-      { x: entryX, y },
+      { x: sourceBox.right, y: sourceY },
+      { x: gapX, y: sourceY },
+      { x: gapX, y: targetY },
+      { x: entryX, y: targetY },
     ],
     ARROW_CORNER_RADIUS,
   )
@@ -1871,19 +2084,16 @@ export function buildRoundedPolylinePath(
 }
 
 /**
- * Orthogonal wrap: down from the source bottom into the space above the
- * interaction line, across, then up into the target bottom. A wrap whose two
- * ends share a lane row loops over that row instead, in its own corridor.
+ * Orthogonal wrap (e.g. step 8 → step 1): down from source bottom into the space
+ * above the interaction line, across, then up into the target bottom.
  */
 export function buildWrapArrowPath(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
+  sourceSlot?: SlotAssignment,
+  targetSlot?: SlotAssignment,
 ): string {
-  if (isInLaneWrapTrigger(sourceEl, targetEl)) {
-    return buildInLaneTopWrapPath(sourceEl, targetEl, root)
-  }
-
   const { source, target } = getWrapCellAnchors(sourceEl, targetEl, root)
   const corridorY = getWrapLoopRouteY(sourceEl, root)
 
@@ -1892,19 +2102,8 @@ export function buildWrapArrowPath(
     return ''
   }
 
-  /*
-    Each end meets the corridor on the side it actually faces. A loop back to
-    a lane at or above the source's own finds the corridor below both, and
-    both ends face down — the ordinary case. But a backward trigger can also
-    land on a lane BELOW the source, and then the corridor runs above the
-    target: entering it from underneath would take the arrow down through the
-    card and leave the head pointing at empty space past its far edge.
-  */
-  const sourceBox = getCellContentBox(sourceEl, root)
-  const targetBox = getCellContentBox(targetEl, root)
-  const sourceSide =
-    corridorY >= sourceBox.top + sourceBox.height ? 'below' : 'above'
-  const targetSide = corridorY <= targetBox.top ? 'above' : 'below'
+  const exitSlot = wrapSlotLeg(getCellContentBox(sourceEl, root), sourceSlot)
+  const enterSlot = wrapSlotLeg(getCellContentBox(targetEl, root), targetSlot)
 
   /*
     The drop to the corridor and the rise back out both travel INSIDE a step
@@ -1919,14 +2118,16 @@ export function buildWrapArrowPath(
     root,
     corridorY,
     'exit',
-    sourceSide,
+    'below',
+    exitSlot,
   )
   const enterLeg = buildWrapColumnLeg(
     targetEl,
     root,
     corridorY,
     'enter',
-    targetSide,
+    'below',
+    enterSlot,
   )
   // No clear leg on one side (a blocked column with no usable gutter — an
   // edge column of a one-column board). Drawing the straight leg anyway
@@ -1940,16 +2141,14 @@ export function buildWrapArrowPath(
 }
 
 /**
- * One end of a corridor route: the points that take it between a card and the
- * corridor — `below` the lane for a loop under it, `above` for an overhead
- * rail or an in-lane loop. Straight up or down the column when that stretch of
- * the column is clear, otherwise out of the card's side, into the gutter, and
+ * One end of a wrap: the points that take the route between a card and the
+ * corridor it runs along — `below` the lane for a loop under it, `above` for
+ * an overhead rail. Straight up or down the column when that stretch of the
+ * column is clear, otherwise out of the card's side, into the gutter, and
  * along there.
  *
- * `direction` says which way the corridor run travels, and the side detour
- * follows it so the route never doubles back: a `backward` wrap leaves by the
- * source's left edge and meets the target on its right, a `forward` rail does
- * the mirror.
+ * A wrap runs right → left, so the source leaves by its left edge and the
+ * target is met on its right edge — the detour never doubles back.
  */
 export function buildWrapColumnLeg(
   cellEl: HTMLElement,
@@ -1957,11 +2156,28 @@ export function buildWrapColumnLeg(
   corridorY: number,
   end: 'exit' | 'enter',
   side: 'below' | 'above' = 'below',
-  direction: 'backward' | 'forward' = 'backward',
+  slot: WrapSlotLeg = {},
 ): Point[] | null {
   const box = getCellContentBox(cellEl, root)
-  const centerX = (box.left + box.right) / 2
+  const centerX = slot.centerX ?? (box.left + box.right) / 2
   const edgeY = side === 'below' ? box.top + box.height : box.top
+
+  // A contested out yielded the bottom to an in and slid to the fallback
+  // side: leave through the card's right face and down the right gutter,
+  // mirroring the side-on arrival a blocked column already uses.
+  if (end === 'exit' && slot.forceSide === 'right') {
+    const stepIndex = parseStepIndex(cellEl) ?? 0
+    const midY = box.top + box.height / 2
+    const gutterX = getVerticalRouteRightGutterX(root, stepIndex, cellEl)
+    const entryX = box.right + ARROW_CHEVRON_SIZE
+    if (gutterX <= entryX) return null
+    return [
+      { x: entryX, y: midY },
+      { x: gutterX, y: midY },
+      { x: gutterX, y: corridorY },
+    ]
+  }
+
   const blocked =
     getCellsOverlappingRect(
       root,
@@ -1990,31 +2206,20 @@ export function buildWrapColumnLeg(
 
   const stepIndex = parseStepIndex(cellEl) ?? 0
   const midY = box.top + box.height / 2
-  // A backward route leaves left and arrives from the right; a forward one
-  // mirrors that. The tail starts ON the card edge — only the head end is held
-  // a chevron short, so the arrowhead lands on the edge instead of inside it.
-  const leavesLeft = direction === 'backward'
-
   if (end === 'exit') {
-    const gutterX = leavesLeft
-      ? getVerticalRouteGutterX(root, stepIndex, cellEl)
-      : getVerticalRouteRightGutterX(root, stepIndex, cellEl)
-    const edgeX = leavesLeft ? box.left : box.right
-    if (leavesLeft ? gutterX >= edgeX : gutterX <= edgeX) return null
+    const gutterX = getVerticalRouteGutterX(root, stepIndex, cellEl)
+    const entryX = box.left - ARROW_CHEVRON_SIZE
+    if (gutterX >= entryX) return null
     return [
-      { x: edgeX, y: midY },
+      { x: entryX, y: midY },
       { x: gutterX, y: midY },
       { x: gutterX, y: corridorY },
     ]
   }
 
-  const gutterX = leavesLeft
-    ? getVerticalRouteRightGutterX(root, stepIndex, cellEl)
-    : getVerticalRouteGutterX(root, stepIndex, cellEl)
-  const entryX = leavesLeft
-    ? box.right + ARROW_CHEVRON_SIZE
-    : box.left - ARROW_CHEVRON_SIZE
-  if (leavesLeft ? gutterX <= entryX : gutterX >= entryX) return null
+  const gutterX = getVerticalRouteRightGutterX(root, stepIndex, cellEl)
+  const entryX = box.right + ARROW_CHEVRON_SIZE
+  if (gutterX <= entryX) return null
   return [
     { x: gutterX, y: corridorY },
     { x: gutterX, y: midY },
@@ -2022,20 +2227,23 @@ export function buildWrapColumnLeg(
   ]
 }
 
-/**
- * The router: every trigger arrow's shape is decided here, from where its two
- * cells sit on the rendered grid. Same step column, adjacent columns, a
- * forward skip, a backward wrap, a hop between lanes — each has one route, and
- * the tests below run from the most specific shape to the least, so a trigger
- * reaches the plain horizontal line only when nothing narrower claims it.
- */
+/** Forward gap arrow, same-column vertical connector, or backward wrap. */
 export function buildArrowPath(
   sourceEl: HTMLElement,
   targetEl: HTMLElement,
   root: HTMLElement,
+  _sourceCellId?: string,
+  _targetCellId?: string,
+  dependencyId?: string,
 ): string {
   const sourceStep = parseStepIndex(sourceEl)
   const targetStep = parseStepIndex(targetEl)
+
+  // Anchor slots for this arrow's two endpoints, if the band was planned.
+  // Absent or uncontested (`count === 1`, not displaced) leaves every anchor
+  // on today's midpoint; only a contested side hands out a distinct slot.
+  const sourceSlot = endpointSlot(dependencyId, 'out')
+  const targetSlot = endpointSlot(dependencyId, 'in')
 
   if (
     sourceStep !== null &&
@@ -2077,29 +2285,42 @@ export function buildArrowPath(
     return buildVerticalArrowPath(anchors.source, anchors.target)
   }
 
-  if (isWrapTrigger(sourceEl, targetEl)) {
-    return buildWrapArrowPath(sourceEl, targetEl, root)
+  if (isWrapDependency(sourceEl, targetEl)) {
+    return buildWrapArrowPath(sourceEl, targetEl, root, sourceSlot, targetSlot)
   }
 
   if (
     sourceStep !== null &&
     targetStep !== null &&
     targetStep === sourceStep + 1 &&
-    getLaneRow(sourceEl) === getLaneRow(targetEl)
+    getLayerRow(sourceEl) === getLayerRow(targetEl)
   ) {
-    return buildAdjacentColumnGapArrowPath(sourceEl, targetEl, root)
+    return buildAdjacentColumnGapArrowPath(
+      sourceEl,
+      targetEl,
+      root,
+      verticalEdgeSlotY(getCellContentBox(sourceEl, root), sourceSlot, 'right'),
+      verticalEdgeSlotY(getCellContentBox(targetEl, root), targetSlot, 'left'),
+    )
   }
 
-  if (isOverheadRailTrigger(sourceEl, targetEl)) {
-    return buildOverheadRailPath(sourceEl, targetEl, root)
-  }
-
-  if (isCrossLaneForwardTrigger(sourceEl, targetEl)) {
-    return buildCrossLaneForwardArrowPath(sourceEl, targetEl, root)
+  if (isCrossLayerForwardDependency(sourceEl, targetEl)) {
+    return buildCrossLayerForwardArrowPath(
+      sourceEl,
+      targetEl,
+      root,
+      verticalEdgeSlotY(getCellContentBox(sourceEl, root), sourceSlot, 'right'),
+      verticalEdgeSlotY(getCellContentBox(targetEl, root), targetSlot, 'left'),
+    )
   }
 
   if (getSameRowObstructingCells(sourceEl, targetEl).length > 0) {
-    return buildHorizontalGutterDetourPath(sourceEl, targetEl, root)
+    return buildHorizontalGutterDetourPath(
+      sourceEl,
+      targetEl,
+      root,
+      dependencyId,
+    )
   }
 
   const anchors = getHorizontalCellAnchors(sourceEl, targetEl, root)

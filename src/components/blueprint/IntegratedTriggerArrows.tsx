@@ -10,12 +10,13 @@ import {
   ARROW_VIEWPORT_PAD,
   buildArrowPath,
   buildBidirectionalArrowPath,
-  buildOverheadRailBusPath,
-  buildOverheadRailFanOutDropPath,
-  buildOverheadRailFanOutTrunkPath,
-  findBidirectionalTriggerPairs,
-  groupOverheadRailTriggers,
-  isWrapTrigger,
+  clearAnchorSlotPlan,
+  clearArrowCorridorPlan,
+  findBidirectionalDependencyPairs,
+  isWrapDependency,
+  planAnchorSlots,
+  planArrowConfluences,
+  planArrowCorridors,
   runArrowMeasurementPass,
 } from '@/lib/blueprintArrowGeometry'
 import {
@@ -55,6 +56,12 @@ type IntegratedTriggerArrowsProps = {
   contentRef: RefObject<HTMLElement | null>
   scrollContainerRef: RefObject<HTMLElement | null>
   lane: ArrowLayer
+  /**
+   * Per-scenario off-switch for the confluence/fan-out merge. On by default
+   * (auto-detected); a scenario that wants every arrival to keep its own head
+   * passes false, and same-side arrivals draw individually again.
+   */
+  mergeConfluences?: boolean
 }
 
 type SimpleSegment = {
@@ -126,9 +133,9 @@ function resolveSegmentStyle(
 }
 
 /**
- * Arrow overlay for a path band: a forward lane and a wrap lane, plus the
- * merged overhead-rail routes, which are grouped across triggers rather than
- * drawn one at a time.
+ * Arrow overlay for a path band: forward and wrap lanes, plus the hand-tuned
+ * rail routes for the scenarios whose geometry the generic router cannot
+ * express. (The integrated grid's fork trunks retired with that grid.)
  */
 export function IntegratedTriggerArrows({
   triggers,
@@ -136,6 +143,7 @@ export function IntegratedTriggerArrows({
   contentRef,
   scrollContainerRef,
   lane,
+  mergeConfluences = true,
 }: IntegratedTriggerArrowsProps) {
   const [simpleSegments, setSimpleSegments] = useState<SimpleSegment[]>([])
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -179,119 +187,82 @@ export function IntegratedTriggerArrows({
       // full-DOM sweeps of the same unchanged tree.
       const cellElById = sharedCellIndex(content)
 
-      const { busGroups, fanOutGroups, remaining } = groupOverheadRailTriggers(
-        triggers,
+      const { pairs, remaining: unpaired } =
+        findBidirectionalDependencyPairs(triggers)
+
+      // Allocate anchor slots over the endpoints `buildArrowPath` will draw:
+      // a merged slot stacks a sub-cell per path, so a contested target fans
+      // its arrivals instead of stacking heads at one edge point.
+      planAnchorSlots(content, unpaired)
+
+      // Confluence + fan-out: ≥2 same-side arrivals (or departures) merge into
+      // one path-coloured trunk with a single head — this is the generic
+      // mechanism that replaced the hand-tuned overhead-rail bus. `disabled`
+      // is the per-scenario off-switch.
+      const merge = planArrowConfluences(content, unpaired, {
+        disabled: !mergeConfluences,
+      })
+
+      // Co-traveller offsets over the runs this lane routes (a merged trunk is
+      // not a corridor run): two arrows sharing one detour corridor fan onto
+      // adjacent lanes instead of overdrawing one line.
+      planArrowCorridors(
         content,
+        unpaired.filter((trigger) => !merge.consumed.has(trigger.id)),
       )
 
-      for (const group of fanOutGroups) {
-        const sampleTrigger = triggers.find((entry) =>
-          group.branches.some((branch) => branch.triggerId === entry.id),
-        )
-        const trunkStyle = resolveSegmentStyle(
-          sampleTrigger?.path_id ?? '',
-          pathById,
-        )
-        const targetEls = group.branches.map((branch) => branch.targetEl)
-        const trunk = buildOverheadRailFanOutTrunkPath(
-          group.sourceEl,
-          targetEls,
-          content,
-        )
-        if (trunk) {
-          segments.push({
-            id: `${group.sourceCellId}-trunk`,
-            d: trunk,
-            colorKey: trunkStyle.colorKey,
-            arrowColor: trunkStyle.arrowColor,
-            opacity: 1,
-            showMarker: false,
-          })
+      const triggerById = new Map(
+        triggers.map((trigger) => [trigger.id, trigger]),
+      )
+      const styleForMembers = (memberIds: readonly string[]) => {
+        const colorKeys = new Set<string>()
+        let arrowColor = ''
+        let opacity = 0
+        for (const memberId of memberIds) {
+          const trigger = triggerById.get(memberId)
+          if (!trigger) continue
+          const style = resolveSegmentStyle(trigger.path_id, pathById)
+          colorKeys.add(style.colorKey)
+          arrowColor = style.arrowColor
+          opacity = Math.max(opacity, trigger.opacity)
         }
-
-        for (const branch of group.branches) {
-          const trigger = triggers.find(
-            (entry) => entry.id === branch.triggerId,
-          )
-          const branchStyle = resolveSegmentStyle(trigger?.path_id ?? '', pathById)
-          const d = buildOverheadRailFanOutDropPath(
-            group.sourceEl,
-            branch.targetEl,
-            content,
-          )
-          if (!d) continue
-
-          segments.push({
-            id: branch.triggerId,
-            d,
-            colorKey: branchStyle.colorKey,
-            arrowColor: branchStyle.arrowColor,
-            opacity: trigger?.opacity ?? 1,
-          })
+        // A trunk wears the shared colour only when every member agrees; a
+        // mixed-path trunk falls back to the neutral stroke.
+        if (colorKeys.size === 1) {
+          return { colorKey: [...colorKeys][0]!, arrowColor, opacity: opacity || 1 }
+        }
+        const neutral = resolveSegmentStyle('', pathById)
+        return {
+          colorKey: neutral.colorKey,
+          arrowColor: neutral.arrowColor,
+          opacity: opacity || 1,
         }
       }
 
-      for (const group of busGroups) {
-        const triggersInGroup = triggers.filter((trigger) =>
-          group.triggerIds.includes(trigger.id),
-        )
-        const byPathId = new Map<
-          string,
-          { sourceEls: HTMLElement[]; opacity: number; triggerIds: string[] }
-        >()
-
-        for (const trigger of triggersInGroup) {
-          const sourceEl = cellElById.get(trigger.source_cell_id)
-          if (!sourceEl) continue
-
-          const existing = byPathId.get(trigger.path_id)
-          if (existing) {
-            existing.sourceEls.push(sourceEl)
-            existing.triggerIds.push(trigger.id)
-            existing.opacity = Math.max(existing.opacity, trigger.opacity)
-          } else {
-            byPathId.set(trigger.path_id, {
-              sourceEls: [sourceEl],
-              opacity: trigger.opacity,
-              triggerIds: [trigger.id],
-            })
-          }
-        }
-
-        for (const [pathId, pathGroup] of byPathId) {
-          const style = resolveSegmentStyle(pathId, pathById)
-          const targetEl =
-            triggersInGroup
-              .filter((trigger) => trigger.path_id === pathId)
-              .map((trigger) => cellElById.get(trigger.target_cell_id))
-              .find((el): el is HTMLElement => el !== undefined) ?? group.targetEl
-
-          const d = buildOverheadRailBusPath(
-            pathGroup.sourceEls,
-            targetEl,
-            content,
-          )
-          if (!d) continue
-
+      // Confluence/fan-out members are forward arrows (left/right sides), so
+      // the trunk rides the z-0 forward layer; drawing it in the wrap lane too
+      // would double it. The consumed forward deps are dropped from the wrap
+      // lane by its own wrap filter below.
+      if (lane === 'forward') {
+        for (const segment of merge.segments) {
+          const style = styleForMembers(segment.memberDependencyIds)
           segments.push({
-            id: `${group.targetCellId}-${pathId}`,
-            d,
+            id: segment.id,
+            d: segment.d,
             colorKey: style.colorKey,
             arrowColor: style.arrowColor,
-            opacity: pathGroup.opacity,
+            opacity: style.opacity,
+            showMarker: segment.showMarker,
           })
         }
       }
-
-      const { pairs, remaining: unpaired } =
-        findBidirectionalTriggerPairs(remaining)
 
       for (const pair of pairs) {
         const cellAEl = cellElById.get(pair.cellAId)
         const cellBEl = cellElById.get(pair.cellBId)
         if (!cellAEl || !cellBEl) continue
 
-        const wrap = isWrapTrigger(cellAEl, cellBEl)
+        const wrap = isWrapDependency(cellAEl, cellBEl)
         if (lane === 'forward' && wrap) continue
         if (lane === 'wrap' && !wrap) continue
 
@@ -310,15 +281,25 @@ export function IntegratedTriggerArrows({
       }
 
       for (const trigger of unpaired) {
+        // A trigger a trunk already gathered must not also draw on its own.
+        if (merge.consumed.has(trigger.id)) continue
+
         const sourceEl = cellElById.get(trigger.source_cell_id)
         const targetEl = cellElById.get(trigger.target_cell_id)
         if (!sourceEl || !targetEl) continue
 
-        const wrap = isWrapTrigger(sourceEl, targetEl)
+        const wrap = isWrapDependency(sourceEl, targetEl)
         if (lane === 'forward' && wrap) continue
         if (lane === 'wrap' && !wrap) continue
 
-        const d = buildArrowPath(sourceEl, targetEl, content)
+        const d = buildArrowPath(
+          sourceEl,
+          targetEl,
+          content,
+          trigger.source_cell_id,
+          trigger.target_cell_id,
+          trigger.id,
+        )
         if (!d) continue
 
         const style = resolveSegmentStyle(trigger.path_id, pathById)
@@ -331,6 +312,8 @@ export function IntegratedTriggerArrows({
         })
       }
 
+      clearAnchorSlotPlan()
+      clearArrowCorridorPlan()
       return segments
     })
 
@@ -339,7 +322,7 @@ export function IntegratedTriggerArrows({
       serializeSegments(prev) === nextKey ? prev : nextSimple,
     )
     measureSize()
-  }, [contentRef, lane, measureSize, pathById, triggers])
+  }, [contentRef, lane, measureSize, mergeConfluences, pathById, triggers])
 
   useEffect(() => {
     updateArrows()

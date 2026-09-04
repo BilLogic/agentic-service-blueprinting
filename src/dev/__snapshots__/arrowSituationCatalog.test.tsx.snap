@@ -1,0 +1,467 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`arrow situation catalog — golden geometry > S1 — Forward, adjacent column > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 220 90 Q 224 90 228 90 L 232 90",
+      "id": "s1-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S1 — Forward, adjacent column > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 220 90 Q 224 90 228 90 L 232 90",
+      "id": "s1-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S1 — Forward, adjacent column > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 220 90 Q 224 90 228 90 L 232 90",
+      "id": "s1-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S2 — Forward, skip ≥1 column > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 142 Q 224 148 230 148 L 426 148 Q 432 148 432 142 L 432 94 Q 432 90 436 90 L 440 90",
+      "id": "s2-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S2 — Forward, skip ≥1 column > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 142 Q 224 148 230 148 L 426 148 Q 432 148 432 142 L 432 94 Q 432 90 436 90 L 440 90",
+      "id": "s2-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S2 — Forward, skip ≥1 column > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 142 Q 224 148 230 148 L 426 148 Q 432 148 432 142 L 432 94 Q 432 90 436 90 L 440 90",
+      "id": "s2-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S3 — Backward (loop) within a lane > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 440 90 L 436 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 230 236 Q 224 236 224 230 L 224 94 Q 224 90 220 90 L 216 90",
+      "id": "s3-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S3 — Backward (loop) within a lane > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 536 140 L 536 160 Q 536 166 530 166 L 125 166 Q 120 166 120 161 L 120 156",
+      "id": "s3-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S3 — Backward (loop) within a lane > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 536 140 L 536 160 Q 536 166 530 166 L 125 166 Q 120 166 120 161 L 120 156",
+      "id": "s3-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S4 — Cross-lane, downward > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s4-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S4 — Cross-lane, downward > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s4-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S4 — Cross-lane, downward > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s4-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S5 — Cross-lane, upward > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 440 238 L 436 238 Q 432 238 432 242 L 432 378 Q 432 384 426 384 L 230 384 Q 224 384 224 378 L 224 94 Q 224 90 220 90 L 216 90",
+      "id": "s5-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S5 — Cross-lane, upward > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 536 288 L 536 308 Q 536 314 530 314 L 126 314 Q 120 314 120 308 L 120 156",
+      "id": "s5-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S5 — Cross-lane, upward > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 536 288 L 536 308 Q 536 314 530 314 L 126 314 Q 120 314 120 308 L 120 156",
+      "id": "s5-dep",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S6 — In + out on ONE cell, same side > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 440 90 L 436 90 Q 432 90 432 94 L 432 236 L 432 236 L 432 94 Q 432 90 428 90 L 424 90",
+      "id": "s6-in",
+    },
+    {
+      "d": "M 424 90 L 428 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 230 236 Q 224 236 224 230 L 224 94 Q 224 90 220 90 L 216 90",
+      "id": "s6-out",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S6 — In + out on ONE cell, same side > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 536 140 L 536 160 Q 536 166 530 166 L 333 166 Q 328 166 328 161 L 328 156",
+      "id": "s6-in",
+    },
+    {
+      "d": "M 424 90 L 428 90 Q 432 90 432 94 L 432 160 Q 432 166 426 166 L 125 166 Q 120 166 120 161 L 120 156",
+      "id": "s6-out",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S6 — In + out on ONE cell, same side > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 536 140 L 536 160 Q 536 166 530 166 L 333 166 Q 328 166 328 161 L 328 156",
+      "id": "s6-in",
+    },
+    {
+      "d": "M 424 90 L 428 90 Q 432 90 432 94 L 432 160 Q 432 166 426 166 L 125 166 Q 120 166 120 161 L 120 156",
+      "id": "s6-out",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S7 — N sources → one target, same side > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 224 90 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s7-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 224 90",
+      "id": "s7-a-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 200 238 L 224 238",
+      "id": "s7-b-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S7 — N sources → one target, same side > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 224 90 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s7-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 224 90",
+      "id": "s7-a-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 200 238 L 224 238",
+      "id": "s7-b-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S7 — N sources → one target, same side > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 224 90 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s7-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 224 90",
+      "id": "s7-a-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 200 238 L 224 238",
+      "id": "s7-b-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S8 — One source → N targets > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 238",
+      "id": "s8-source-fan-out-right",
+      "showMarker": false,
+    },
+    {
+      "d": "M 224 90 L 232 90",
+      "id": "s8-t1-dep",
+      "showMarker": true,
+    },
+    {
+      "d": "M 224 238 L 232 238",
+      "id": "s8-t2-dep",
+      "showMarker": true,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S8 — One source → N targets > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 238",
+      "id": "s8-source-fan-out-right",
+      "showMarker": false,
+    },
+    {
+      "d": "M 224 90 L 232 90",
+      "id": "s8-t1-dep",
+      "showMarker": true,
+    },
+    {
+      "d": "M 224 238 L 232 238",
+      "id": "s8-t2-dep",
+      "showMarker": true,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S8 — One source → N targets > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 238",
+      "id": "s8-source-fan-out-right",
+      "showMarker": false,
+    },
+    {
+      "d": "M 224 90 L 232 90",
+      "id": "s8-t1-dep",
+      "showMarker": true,
+    },
+    {
+      "d": "M 224 238 L 232 238",
+      "id": "s8-t2-dep",
+      "showMarker": true,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S9 — Merged view: aliased endpoints > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 224 90 L 224 234 Q 224 238 228 238 L 232 238",
+      "id": "s9-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 224 90",
+      "id": "s9-a-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 200 238 L 224 238",
+      "id": "s9-b-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S9 — Merged view: aliased endpoints > side-by-side 1`] = `
+{
+  "skipped": "side-by-side keeps each path in its own band, so no slot is shared and no endpoint aliases.",
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S9 — Merged view: aliased endpoints > single 1`] = `
+{
+  "skipped": "aliased endpoints exist only in the merged view — a single band has one cell per slot, so there is nothing to alias.",
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S10 — Chain A→B→C where B is both target and source > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 234 Q 224 238 220 238 L 216 238",
+      "id": "s10-ab",
+    },
+    {
+      "d": "M 200 238 L 218 238 Q 224 238 224 244 L 224 382 Q 224 386 220 386 L 216 386",
+      "id": "s10-bc",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S10 — Chain A→B→C where B is both target and source > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 120 140 L 120 172",
+      "id": "s10-ab",
+    },
+    {
+      "d": "M 120 288 L 120 320",
+      "id": "s10-bc",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S10 — Chain A→B→C where B is both target and source > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 120 140 L 120 172",
+      "id": "s10-ab",
+    },
+    {
+      "d": "M 120 288 L 120 320",
+      "id": "s10-bc",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S11 — Co-travellers share one detour corridor > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 212 Q 224 218 230 218 L 634 218 Q 640 218 640 212 L 640 94 Q 640 90 644 90 L 648 90",
+      "id": "s11-dep1",
+    },
+    {
+      "d": "M 408 90 L 426 90 Q 432 90 432 96 L 432 226 Q 432 232 438 232 L 842 232 Q 848 232 848 226 L 848 94 Q 848 90 852 90 L 856 90",
+      "id": "s11-dep2",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S11 — Co-travellers share one detour corridor > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 142 Q 224 148 230 148 L 634 148 Q 640 148 640 142 L 640 94 Q 640 90 644 90 L 648 90",
+      "id": "s11-dep1",
+    },
+    {
+      "d": "M 408 90 L 426 90 Q 432 90 432 96 L 432 156 Q 432 162 438 162 L 842 162 Q 848 162 848 156 L 848 94 Q 848 90 852 90 L 856 90",
+      "id": "s11-dep2",
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S11 — Co-travellers share one detour corridor > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 142 Q 224 148 230 148 L 634 148 Q 640 148 640 142 L 640 94 Q 640 90 644 90 L 648 90",
+      "id": "s11-dep1",
+    },
+    {
+      "d": "M 408 90 L 426 90 Q 432 90 432 96 L 432 156 Q 432 162 438 162 L 842 162 Q 848 162 848 156 L 848 94 Q 848 90 852 90 L 856 90",
+      "id": "s11-dep2",
+    },
+  ],
+}
+`;
