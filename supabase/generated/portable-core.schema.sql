@@ -26,6 +26,19 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: entity_status; Type: DOMAIN; Schema: public; Owner: -
+--
+
+CREATE DOMAIN public.entity_status AS text
+	CONSTRAINT entity_status_check CHECK ((VALUE = ANY (ARRAY['proposed'::text, 'planned'::text, 'built'::text, 'live'::text, 'at_risk'::text, 'deprecated'::text])));
+
+--
+-- Name: DOMAIN entity_status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON DOMAIN public.entity_status IS 'How far along the thing an entity describes is. One vocabulary shared by cells and paths — a second list would drift from the first within a month.';
+
+--
 -- Name: add_lane(uuid, text, text, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2395,6 +2408,7 @@ CREATE TABLE public.cells (
     origin text DEFAULT 'import'::text NOT NULL,
     cell_key text,
     "position" integer DEFAULT 0 NOT NULL,
+    status public.entity_status DEFAULT 'live'::text NOT NULL,
     CONSTRAINT cells_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text]))),
     CONSTRAINT cells_value_props_is_array CHECK ((jsonb_typeof(value_props) = 'array'::text))
 );
@@ -2464,6 +2478,12 @@ COMMENT ON COLUMN public.cells.cell_key IS 'Authored key: service/scenario/path/
 --
 
 COMMENT ON COLUMN public.cells."position" IS 'Ordering within one (lane, step) slot. 0 for single-cell slots; tech-lane touchpoints occupy 0..n.';
+
+--
+-- Name: COLUMN cells.status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.cells.status IS 'How far along the thing this cell describes is. Defaults to live — a current-state blueprint documents what is in use.';
 
 --
 -- Name: deleted_structure; Type: TABLE; Schema: public; Owner: -
@@ -2557,6 +2577,7 @@ CREATE TABLE public.lanes (
     kpis jsonb DEFAULT '[]'::jsonb NOT NULL,
     tools jsonb DEFAULT '[]'::jsonb NOT NULL,
     origin text DEFAULT 'import'::text NOT NULL,
+    stakeholder_id uuid,
     CONSTRAINT lanes_kpis_is_array CHECK ((jsonb_typeof(kpis) = 'array'::text)),
     CONSTRAINT lanes_lane_role_check CHECK (((lane_role IS NULL) OR (lane_role = ANY (ARRAY['customer_actions'::text, 'frontstage_actions'::text, 'backstage_actions'::text, 'partner_actions'::text, 'frontstage_touchpoints'::text, 'backstage_touchpoints'::text, 'support_actions'::text, 'storyboard'::text])))),
     CONSTRAINT lanes_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text]))),
@@ -2592,6 +2613,12 @@ COMMENT ON COLUMN public.lanes.kpis IS 'String array: metrics this lane''s team 
 --
 
 COMMENT ON COLUMN public.lanes.tools IS 'String array: systems/tools this lane''s actors use.';
+
+--
+-- Name: COLUMN lanes.stakeholder_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.lanes.stakeholder_id IS 'The actor whose work this lane holds, or null for a structural lane — the storyboard, the touchpoint rows — that names nobody. An association, not a parent: the lane is the service''s, the actor is the deployment''s.';
 
 --
 -- Name: path_steps; Type: TABLE; Schema: public; Owner: -
@@ -2631,6 +2658,7 @@ CREATE TABLE public.paths (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     origin text DEFAULT 'import'::text NOT NULL,
+    status public.entity_status DEFAULT 'live'::text NOT NULL,
     CONSTRAINT paths_kind_check CHECK ((kind = ANY (ARRAY['happy'::text, 'variant'::text, 'exception'::text]))),
     CONSTRAINT paths_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
@@ -2658,6 +2686,12 @@ COMMENT ON COLUMN public.paths.note IS 'Optional path note shown alongside path 
 --
 
 COMMENT ON COLUMN public.paths.kind IS 'happy, variant or exception. `variant` replaced `unhappy` and `alternative`, which were two spellings of the same thing; `exception` already carries "this went wrong".';
+
+--
+-- Name: COLUMN paths.status; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.paths.status IS 'How far along this route is. Defaults to live. A badge renders from this row, never from a prefix in the name.';
 
 --
 -- Name: phases; Type: TABLE; Schema: public; Owner: -
@@ -2962,6 +2996,51 @@ COMMENT ON COLUMN public.slides.illustration IS '{src, alt, source: generated|up
 COMMENT ON COLUMN public.slides.created_by IS 'The caller at insert; null for service-key writes.';
 
 --
+-- Name: stakeholders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stakeholders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    kind text NOT NULL,
+    summary text,
+    aliases text[] DEFAULT '{}'::text[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT stakeholders_kind_check CHECK ((kind = ANY (ARRAY['recipient'::text, 'staff'::text, 'partner'::text, 'provider'::text, 'team'::text])))
+);
+
+--
+-- Name: TABLE stakeholders; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.stakeholders IS 'Deployment-level cast list: one pool of actors a lane picks from, unique by name across the deployment. A lane references a stakeholder; no service owns one (ADR 0003).';
+
+--
+-- Name: COLUMN stakeholders.name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stakeholders.name IS 'The identity: unique across the deployment, so the same actor recurs across services by name rather than as one row per service.';
+
+--
+-- Name: COLUMN stakeholders.kind; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stakeholders.kind IS 'recipient | staff | partner | provider | team. Who this is to the service. A team is a group a lane can be; staff are the people in it, and they are actors too.';
+
+--
+-- Name: COLUMN stakeholders.summary; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stakeholders.summary IS 'Who this actor IS, for the deployment — not what they do at any one cell.';
+
+--
+-- Name: COLUMN stakeholders.aliases; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stakeholders.aliases IS 'Other spellings this blueprint has used for the same actor, so a match by name finds them.';
+
+--
 -- Name: steps; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3245,6 +3324,20 @@ ALTER TABLE ONLY public.slides
 
 ALTER TABLE ONLY public.slides
     ADD CONSTRAINT slides_position_unique UNIQUE (slice_id, "position") DEFERRABLE INITIALLY DEFERRED;
+
+--
+-- Name: stakeholders stakeholders_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stakeholders
+    ADD CONSTRAINT stakeholders_name_key UNIQUE (name);
+
+--
+-- Name: stakeholders stakeholders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stakeholders
+    ADD CONSTRAINT stakeholders_pkey PRIMARY KEY (id);
 
 --
 -- Name: steps steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3544,6 +3637,12 @@ CREATE TRIGGER set_slices_updated_at BEFORE UPDATE ON public.slices FOR EACH ROW
 CREATE TRIGGER set_slides_updated_at BEFORE UPDATE ON public.slides FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 --
+-- Name: stakeholders set_stakeholders_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER set_stakeholders_updated_at BEFORE UPDATE ON public.stakeholders FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+--
 -- Name: steps set_steps_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3638,6 +3737,13 @@ ALTER TABLE ONLY public.evidence
 
 ALTER TABLE ONLY public.lanes
     ADD CONSTRAINT lanes_path_id_fkey FOREIGN KEY (path_id) REFERENCES public.paths(id) ON DELETE CASCADE;
+
+--
+-- Name: lanes lanes_stakeholder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lanes
+    ADD CONSTRAINT lanes_stakeholder_id_fkey FOREIGN KEY (stakeholder_id) REFERENCES public.stakeholders(id);
 
 --
 -- Name: path_steps path_steps_path_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

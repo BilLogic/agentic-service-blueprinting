@@ -69,6 +69,7 @@ const ROUTING = [
   ['Cut a release', 'docs/engineering/releasing.md'],
   ['Can I rename this / is it a breaking change?', 'docs/adr/0001-two-contract-tiers-and-a-frozen-identifier-layer.md'],
   ['Why do skills/, references/, agents/, hooks/ and scripts/ sit at the root?', 'docs/adr/0002-plugin-contract-folder-names.md'],
+  ['Why does a service own its journey but share the catalog of tools and actors?', 'docs/adr/0003-a-service-owns-its-journey-and-shares-the-catalog.md'],
   ['Add or move a document', 'docs/guidelines/documentation.md'],
   ['Propose a change; what a commit and a pull request carry', 'docs/guidelines/contributing.md'],
   ['See what is already being worked on', 'GitHub issues — the queue is not in this repo'],

@@ -54,6 +54,19 @@ is still a placement: drawn dashed on the board, opening the same panel, and
 offered "Link to registry" there. Never matched to the entry it resembles by a
 rule; the choice is the author's.
 
+**Stakeholder** — an actor in the service: a recipient, staff, a partner, a
+provider or a team. One `stakeholders` row per name across the whole
+deployment — the cast list — carrying the actor's kind, summary and aliases
+once; no service owns one, and a service "has" an actor exactly when one of
+its lanes names it (ADR 0003). A lane names its actor by `stakeholder_id`; a
+structural lane — the storyboard, the touchpoint rows — names nobody.
+
+**Status** — how far along a cell or a path is, on one shared six-value
+vocabulary, the `entity_status` domain: `proposed`, `planned`, `built`,
+`live`, `at_risk`, `deprecated`. Default `live` — a current-state blueprint
+documents what is in use. Paths share it deliberately; a second vocabulary for
+the same question drifts from the first within a month.
+
 **Spec** — the descriptive detail hanging off a board object, as opposed to
 its place on the board. `cells.function` / `form` / `value_props` / `owner` /
 `perceived_owner`; `phases.business_impact` / `operational_requirements`;
