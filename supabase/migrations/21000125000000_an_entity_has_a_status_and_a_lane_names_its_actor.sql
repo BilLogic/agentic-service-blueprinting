@@ -33,6 +33,10 @@
 -- provider | team — and `team` is a kind of its own because a team is a group
 -- a lane can be, while `staff` are the people in it who ARE actors too.
 --
+-- The cast carries no `origin`. A touchpoint is minted from a cell's text, so
+-- import-or-app is a fact about how its row came to be; an actor is only ever
+-- picked, by an author, and the flag would distinguish nothing.
+--
 -- The touchpoint registry is not linked to the cast here. A touchpoint's owner
 -- is a join across two catalogs, and this core's touchpoints are still a
 -- service's (21000120000000) while the cast is the deployment's; the link
@@ -40,8 +44,12 @@
 --
 -- ── Replaying against an empty database ───────────────────────────────────
 --
--- A domain, two columns with a default, a table, a nullable column. Every one
--- is additive, so no row is touched and the schema version does not move —
+-- A domain, two columns with a default, a table, a nullable column and its
+-- index. Every one is additive, so no row is touched and the schema version
+-- does not move (the columns and the index are guarded with `if not exists`
+-- because a column add is the one statement here a partial re-run could
+-- repeat; the domain and the table are bare, as every sibling's are — the
+-- series is applied once, in order, never re-run) —
 -- this changes what a target CAN hold, not the shape of what the IR authors
 -- (the same stance as 21000121000000, 21000123000000, 21000124000000). The
 -- proof is an INVARIANT, never a census: the domain exists, both status
@@ -123,12 +131,19 @@ comment on column public.stakeholders.aliases is
 -- ---------------------------------------------------------------------------
 
 alter table public.lanes
-  add column if not exists stakeholder_id uuid references public.stakeholders (id);
+  add column if not exists stakeholder_id uuid
+    references public.stakeholders (id) on delete set null;
+
+-- The delete path and the picker both walk lanes by actor; every other
+-- foreign key in the series has its index.
+create index if not exists lanes_stakeholder_id_idx
+  on public.lanes (stakeholder_id);
 
 comment on column public.lanes.stakeholder_id is
   'The actor whose work this lane holds, or null for a structural lane — the '
   'storyboard, the touchpoint rows — that names nobody. An association, not a '
-  'parent: the lane is the service''s, the actor is the deployment''s.';
+  'parent: the lane is the service''s, the actor is the deployment''s, and an '
+  'actor taken out of the cast un-names its lanes rather than pinning itself.';
 
 -- @recipe — the cast's RLS and grants, the same shape as every other
 -- root-scoped catalog; the lane's actor is one more column the panel writes.
@@ -149,11 +164,20 @@ create policy stakeholders_delete_service_only on public.stakeholders
 
 grant select on public.stakeholders to anon, authenticated;
 grant insert, delete on public.stakeholders to authenticated;
+-- The platform's default privilege hands a new table's whole UPDATE to
+-- authenticated; take it back before naming the columns the panel may write,
+-- or the list narrows nothing there.
+revoke update on public.stakeholders from authenticated;
 grant update (name, kind, summary, aliases) on public.stakeholders to authenticated;
 revoke insert, update, delete, truncate on public.stakeholders from anon;
 revoke truncate on public.stakeholders from authenticated;
 
+-- The three columns the editors that follow will write. cells' table-wide
+-- UPDATE was revoked long ago, so its column grants ARE the surface; paths is
+-- granted the same way so the two behave alike on any host.
 grant update (stakeholder_id) on public.lanes to authenticated;
+grant update (status) on public.cells to authenticated;
+grant update (status) on public.paths to authenticated;
 -- @core
 
 -- ---------------------------------------------------------------------------
@@ -169,7 +193,7 @@ begin
   end if;
 
   for col in
-    select table_name, is_nullable, domain_name
+    select table_name, is_nullable, domain_name, column_default
       from information_schema.columns
      where table_schema = 'public'
        and table_name in ('cells', 'paths')
@@ -180,6 +204,9 @@ begin
     end if;
     if col.domain_name is distinct from 'entity_status' then
       raise exception 'proof: %.status is not on the entity_status domain', col.table_name;
+    end if;
+    if col.column_default not like '''live''%' then
+      raise exception 'proof: %.status must default to live — a current-state blueprint documents what is in use', col.table_name;
     end if;
   end loop;
 

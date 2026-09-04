@@ -4,6 +4,10 @@
 %%   + authoring foundation/operations + optional tier recipe 20260818*).
 %% Enums: scenarios.layout ∈ (stacked | merged) — what the scenario opens as; the header toggle writes it
 %%        paths.kind ∈ (happy | variant | exception)
+%%        cells.status ∈ (proposed | planned | built | live | at_risk | deprecated)
+%%        paths.status ∈ (proposed | planned | built | live | at_risk | deprecated)
+%%          — both on the entity_status domain, one vocabulary; default live
+%%        stakeholders.kind ∈ (recipient | staff | partner | provider | team)
 %%        origin (structure tables) ∈ (import | app); slices.authorship ∈ (generated | customized | human)
 %%        cell_dependencies.kind ∈ (leads_to | enables); resources.kind ∈ (link | attachment)
 %%        cell_touchpoints.role ∈ (core | peripheral) — null means nobody has judged the placement
@@ -40,6 +44,7 @@ erDiagram
   paths ||--o{ lanes : "has many"
   paths ||--o{ cells : "has many"
   lanes ||--o{ cells : "has many"
+  stakeholders |o--o{ lanes : "names its actor"
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
@@ -92,6 +97,7 @@ erDiagram
     text summary
     text note "optional, e.g. parallel-scenario context"
     text kind "happy | variant | exception"
+    text status "entity_status domain; default live"
     text origin "import | app"
   }
 
@@ -117,6 +123,7 @@ erDiagram
     text owner_team "spec: team that staffs/owns this lane"
     jsonb kpis "string array: metrics the lane team is measured on"
     jsonb tools "string array: systems/tools the lane actors use"
+    uuid stakeholder_id FK "the actor whose work this lane holds; null = a structural lane names nobody; on delete set null"
     text origin "import | app"
   }
 
@@ -135,6 +142,7 @@ erDiagram
     text owner "actual owning team/party"
     text perceived_owner "who the customer believes owns this moment"
     text cell_key "authored IR key; unique when set; null = not recoverable"
+    text status "entity_status domain; default live"
     text origin "import | app"
   }
 
@@ -146,6 +154,14 @@ erDiagram
     text summary "what this touchpoint IS, for the service"
     text url "where the touchpoint itself lives"
     text origin "import | app"
+  }
+
+  stakeholders {
+    uuid id PK
+    text name "the identity — unique across the whole deployment; no service owns one (ADR 0003)"
+    text kind "recipient | staff | partner | provider | team"
+    text summary "who this actor IS, for the deployment"
+    text[] aliases "other spellings this blueprint used for the same actor"
   }
 
   cell_touchpoints {

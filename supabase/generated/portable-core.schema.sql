@@ -2618,7 +2618,7 @@ COMMENT ON COLUMN public.lanes.tools IS 'String array: systems/tools this lane''
 -- Name: COLUMN lanes.stakeholder_id; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.lanes.stakeholder_id IS 'The actor whose work this lane holds, or null for a structural lane — the storyboard, the touchpoint rows — that names nobody. An association, not a parent: the lane is the service''s, the actor is the deployment''s.';
+COMMENT ON COLUMN public.lanes.stakeholder_id IS 'The actor whose work this lane holds, or null for a structural lane — the storyboard, the touchpoint rows — that names nobody. An association, not a parent: the lane is the service''s, the actor is the deployment''s, and an actor taken out of the cast un-names its lanes rather than pinning itself.';
 
 --
 -- Name: path_steps; Type: TABLE; Schema: public; Owner: -
@@ -3457,6 +3457,12 @@ CREATE INDEX lanes_path_id_idx ON public.lanes USING btree (path_id);
 CREATE INDEX lanes_path_row_idx ON public.lanes USING btree (path_id, "position");
 
 --
+-- Name: lanes_stakeholder_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX lanes_stakeholder_id_idx ON public.lanes USING btree (stakeholder_id);
+
+--
 -- Name: path_steps_path_column_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3743,7 +3749,7 @@ ALTER TABLE ONLY public.lanes
 --
 
 ALTER TABLE ONLY public.lanes
-    ADD CONSTRAINT lanes_stakeholder_id_fkey FOREIGN KEY (stakeholder_id) REFERENCES public.stakeholders(id);
+    ADD CONSTRAINT lanes_stakeholder_id_fkey FOREIGN KEY (stakeholder_id) REFERENCES public.stakeholders(id) ON DELETE SET NULL;
 
 --
 -- Name: path_steps path_steps_path_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

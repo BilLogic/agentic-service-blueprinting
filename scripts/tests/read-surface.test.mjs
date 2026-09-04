@@ -65,9 +65,12 @@ test('a tool listed twice is reported once', () => {
 // template did not — and three of them stopped being phantoms the moment the
 // tool rename landed, which is the honest hazard of writing a guard's fixture
 // out of another repository's roster. These are tools that exist THERE and
-// have no counterpart here, because they are backed by tables this template
-// does not carry: evidence rows, a stakeholder cast list, and a full-text
-// index. A fixture whose examples cannot quietly become real.
+// have no counterpart here. Two are backed by things this template does not
+// carry — evidence rows and a full-text index. The third names the cast list,
+// a table the core DOES carry since 21000125000000; it stays in the fixture
+// because no `list_stakeholders` tool exists here yet, and the day one lands
+// this test is where the drift is caught. A fixture whose examples cannot
+// quietly become real.
 test('a tool name invented anywhere in the prose is caught', () => {
   const markdown = [
     'Read the docs with parallel `get_reference` calls.',

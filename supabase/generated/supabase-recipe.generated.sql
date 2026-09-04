@@ -975,8 +975,17 @@ create policy stakeholders_delete_service_only on public.stakeholders
 
 grant select on public.stakeholders to anon, authenticated;
 grant insert, delete on public.stakeholders to authenticated;
+-- The platform's default privilege hands a new table's whole UPDATE to
+-- authenticated; take it back before naming the columns the panel may write,
+-- or the list narrows nothing there.
+revoke update on public.stakeholders from authenticated;
 grant update (name, kind, summary, aliases) on public.stakeholders to authenticated;
 revoke insert, update, delete, truncate on public.stakeholders from anon;
 revoke truncate on public.stakeholders from authenticated;
 
+-- The three columns the editors that follow will write. cells' table-wide
+-- UPDATE was revoked long ago, so its column grants ARE the surface; paths is
+-- granted the same way so the two behave alike on any host.
 grant update (stakeholder_id) on public.lanes to authenticated;
+grant update (status) on public.cells to authenticated;
+grant update (status) on public.paths to authenticated;

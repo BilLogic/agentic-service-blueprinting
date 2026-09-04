@@ -101,12 +101,19 @@ export function catalogValueSets(rows) {
  * domain `schemaInventory()` finds, in the shape `catalogValueSets()` builds.
  */
 export function catalogFromSchema(dump) {
-  const { values } = schemaInventory(dump)
+  const { values, typed } = schemaInventory(dump)
   const columns = new Map()
   const domains = new Map()
   for (const [key, set] of values) {
-    if (key.startsWith('domain ')) {
-      domains.set(key.slice('domain '.length), { name: key, values: set })
+    if (key.startsWith('domain ')) domains.set(key.slice('domain '.length), { name: key, values: set })
+  }
+  for (const [key, set] of values) {
+    if (key.startsWith('domain ')) continue
+    // A column typed by a domain IS that domain's set — the live catalog
+    // (`catalogValueSets`) hands back the same object for both, and so does this.
+    const domain = domains.get(typed.get(key))
+    if (domain) {
+      columns.set(key, domain)
       continue
     }
     const [table, column] = key.split('.')
