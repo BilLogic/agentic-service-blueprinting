@@ -32,11 +32,13 @@ export function DeploymentConfigProvider({
   config,
   children,
 }: {
-  config?: DeploymentConfig
+  config?: DeploymentConfig | null
   children: ReactNode
 }) {
-  // Resolve once per distinct config object. Standalone this is a stable
-  // `undefined`, so the resolved value never churns.
+  // Resolve once per distinct config OBJECT. Standalone this is a stable
+  // `undefined`, so the resolved value never churns. A host should pass a
+  // module-level config rather than an inline literal: a literal is a new
+  // object every render, the memo misses, and every reader re-renders.
   const resolved = useMemo(() => resolveDeploymentConfig(config), [config])
 
   return (

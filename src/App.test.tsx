@@ -48,3 +48,18 @@ describe('App (fallback render, zero config)', () => {
     expect(await screen.findAllByText(ORG_NAME)).not.toHaveLength(0)
   })
 })
+
+// The deployment seam, end to end: a host mounts the same App with a config,
+// and the wordmark is the host's. Module-level, as a host should pass it — an
+// inline literal is a new object every render.
+const hostConfig = { brand: { name: 'Acme Service Design' } }
+
+describe('App (mounted by a deployment)', () => {
+  it('renders the deployment brand in the app chrome', async () => {
+    render(<App config={hostConfig} />)
+    expect(await screen.findAllByText(hostConfig.brand.name)).not.toHaveLength(0)
+    // Only the wordmark reads the seam today; the cover's own heading still
+    // carries the template name until `content` is wired. Asserting its
+    // absence here would pin a surface the seam does not yet own.
+  })
+})
