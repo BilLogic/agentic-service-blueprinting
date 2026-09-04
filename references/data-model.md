@@ -58,6 +58,7 @@ erDiagram
   paths ||--o{ lanes : "has many"
   paths ||--o{ cells : "has many"
   lanes ||--o{ cells : "has many"
+  stakeholders |o--o{ lanes : "names its actor"
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
@@ -75,7 +76,7 @@ erDiagram
   steps { uuid id PK  uuid scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int position "unique per (path_id, position)" }
   lanes { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text lane_role "semantic role key; null = generic swimlane"  int position  text owner_team "from the closed list in lane-vocabulary.md; NULL on actor and storyboard lanes"  text kpis  text tools  uuid stakeholder_id FK }
-  stakeholders { uuid id PK  uuid service_id FK  text name  text kind "recipient | staff | partner | provider | team"  uuid parent_id FK "sub-teams roll up, e.g. Marketing to Design"  text note  text aliases }
+  stakeholders { uuid id PK  text name "the identity — unique across the deployment; no service owns one"  text kind "recipient | staff | partner | provider | team"  text summary "who this actor IS, for the deployment"  text[] aliases "other spellings this blueprint used for the same actor" }
   cells { uuid id PK  uuid path_id FK  uuid lane_id FK  uuid step_id FK  int position "a slot holds a LIST — unique (lane_id, step_id, position)"  text content "Cell Label - primary grid text"  text frame "one image for one cell; a step's frames across the lanes are its strip"  text summary "the tl;dr the detail fields add up to"  text function  text form  text value_props  text owner  text perceived_owner "who the reader THINKS owns it, when that differs"  entity_status status }
   touchpoints { uuid id PK  uuid service_id FK "unique (service_id, name)"  text name  text kind "app | document | physical | channel | service | other"  text summary "what this touchpoint IS, for the service"  text url  text origin }
   cell_touchpoints { uuid id PK  uuid cell_id FK  uuid touchpoint_id FK "the registry entry, or null for a name-only placement"  text name "set only when the registry lacks it — exactly one of touchpoint_id and name; matches a line of cells.content where the grid draws it as a pill"  int position  text summary "prose about this touchpoint at THIS moment"  text role "core | peripheral — or null, nobody has judged it"  text origin }
@@ -96,6 +97,7 @@ erDiagram
 | `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
 | `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `content` newline-separated items render as pills on pill-role lanes |
 | `touchpoints` | The service's touchpoint registry — the apps, documents, channels and things a moment happens through | One row per `(service_id, name)`. The import mints a row for every placement name it meets and links the placement; `kind`, `summary` and `url` are the touchpoint's own, once, not per cell |
+| `stakeholders` | The deployment's cast list — the actors a lane picks from | One pool, unique by `name` across the whole deployment; no `service_id` — a service "has" an actor exactly when one of its lanes names it (ADR 0003). `kind` is `recipient` \| `staff` \| `partner` \| `provider` \| `team`. A lane names its actor by `stakeholder_id`, null on a structural lane |
 | `cell_touchpoints` | One touchpoint, used at one cell | Owns the summary and role for THIS moment — the same tool describes a different screen at a different step. What it points at (its design link, its screenshots) are `resources` rows carrying `cell_touchpoint_id`; `21000119000000` moved the two URL columns there. Names its touchpoint one of two ways and exactly one (`cell_touchpoints_one_identity`): `touchpoint_id` into the registry, or `name` alone when the registry lacks it — a **name-only placement**, drawn dashed, offered "Link to registry" in the panel. `sync_cell_touchpoints` follows a cell's text: a new line mints a registry row, a line that left keeps its writing as a name-only row or goes |
 | `resources` | What a cell points at | Every row carries `cell_id`; a row a touchpoint placement owns carries `cell_touchpoint_id` as well, and the composite key `(cell_touchpoint_id, cell_id)` holds the two to one row. `kind` is `link` \| `attachment`; both carry a url. `featured` marks the one its owner leads with — one featured attachment per cell and per placement (a partial unique index), any number of featured links. The cell's list (`sync_cell_resources`) reconciles by id and refuses a placement's rows; the placement's list (`sync_placement_resources`) is theirs; `set_featured_resource` clears the previous preview in the same transaction |
 | `cell_dependencies` | Directed arrows cell → cell. `kind` is `leads_to` (this cell makes the other happen — drawn) or `enables` (this cell makes the other possible — recorded, never drawn). Not inverses: "follows" is `leads_to` read from the other end, and making something possible causes nothing | Unique pair, `source != target`, both cells must be on the same path |
@@ -144,11 +146,16 @@ erDiagram
   red), so **the name must carry the condition**, not the type: `Under 12
   hours`, not `Late call-off path`. A scenario with only one route names it
   `Standard`.
+- `stakeholders.kind`: `recipient` \| `staff` \| `partner` \| `provider` \|
+  `team`. Who this actor is to the service. `team` is a kind of its own
+  because a team is a group a lane can be, while `staff` are the people in it
+  — and they are actors too.
 - `status` (the `entity_status` domain, shared by `cells.status` and
   `paths.status`): `proposed` \| `planned` \| `built` \| `live` \| `at_risk` \|
   `deprecated`. Anything other than `live` is not what happens today — say so
-  when you report it. This replaced a `maturity` column and a family of
-  `(Planned)` title prefixes; if you see either, the board is stale.
+  when you report it. Default `live`. There is no `maturity` column and no
+  `(Planned)` name prefix — a file that carries either predates this
+  vocabulary, and the status belongs in the column.
 
 ## Integrity trigger (why import order matters)
 

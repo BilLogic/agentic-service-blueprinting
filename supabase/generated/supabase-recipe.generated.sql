@@ -951,3 +951,41 @@ begin
   end if;
 end
 $proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000125000000_an_entity_has_a_status_and_a_lane_names_its_actor.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the cast's RLS and grants, the same shape as every other
+-- root-scoped catalog; the lane's actor is one more column the panel writes.
+alter table public.stakeholders enable row level security;
+
+create policy stakeholders_select_anon on public.stakeholders
+  for select to anon using (true);
+create policy stakeholders_select_auth on public.stakeholders
+  for select to authenticated using (true);
+create policy stakeholders_insert_service_only on public.stakeholders
+  for insert to authenticated with check (public.is_service_account());
+create policy stakeholders_update_service_only on public.stakeholders
+  for update to authenticated
+  using (public.is_service_account())
+  with check (public.is_service_account());
+create policy stakeholders_delete_service_only on public.stakeholders
+  for delete to authenticated using (public.is_service_account());
+
+grant select on public.stakeholders to anon, authenticated;
+grant insert, delete on public.stakeholders to authenticated;
+-- The platform's default privilege hands a new table's whole UPDATE to
+-- authenticated; take it back before naming the columns the panel may write,
+-- or the list narrows nothing there.
+revoke update on public.stakeholders from authenticated;
+grant update (name, kind, summary, aliases) on public.stakeholders to authenticated;
+revoke insert, update, delete, truncate on public.stakeholders from anon;
+revoke truncate on public.stakeholders from authenticated;
+
+-- The three columns the editors that follow will write. cells' table-wide
+-- UPDATE was revoked long ago, so its column grants ARE the surface; paths is
+-- granted the same way so the two behave alike on any host.
+grant update (stakeholder_id) on public.lanes to authenticated;
+grant update (status) on public.cells to authenticated;
+grant update (status) on public.paths to authenticated;

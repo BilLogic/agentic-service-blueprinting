@@ -52,6 +52,10 @@ export function schemaInventory(dump) {
   const tables = new Set()
   const columns = new Set()
   const values = new Map()
+  // A column typed by a domain carries the domain's set, not a CHECK of its
+  // own: `status public.entity_status` says everything a CHECK would. Noted
+  // here and resolved once the domains below have been read.
+  const typed = new Map()
   const body = dump.replace(/^--.*$/gm, '')
   for (const m of body.matchAll(/CREATE TABLE public\.(\w+) \(\n([\s\S]*?)\n\);/g)) {
     tables.add(m[1])
@@ -60,6 +64,8 @@ export function schemaInventory(dump) {
       if (col && !/^(CONSTRAINT)$/.test(col[1])) columns.add(`${m[1]}.${col[1]}`)
       const inline = /^\s{4}\w+\s.*CHECK \(\(?(?:\(\w+ IS NULL\) OR \()?\(?(\w+) = ANY \(ARRAY\[([^\]]*)\]\)/.exec(line)
       if (inline) values.set(`${m[1]}.${inline[1]}`, valueList(inline[2]))
+      const viaDomain = /^\s{4}(\w+) public\.(\w+)\b/.exec(line)
+      if (viaDomain) typed.set(`${m[1]}.${viaDomain[1]}`, viaDomain[2])
     }
   }
   const CHECK =
@@ -68,7 +74,11 @@ export function schemaInventory(dump) {
   for (const m of body.matchAll(/CREATE DOMAIN public\.(\w+) AS \w+\n\s+CONSTRAINT \w+ CHECK \(\(VALUE = ANY \(ARRAY\[([^\]]*)\]\)/g)) {
     values.set(`domain ${m[1]}`, valueList(m[2]))
   }
-  return { tables, columns, values }
+  for (const [key, domain] of typed) {
+    const set = values.get(`domain ${domain}`)
+    if (set && !values.has(key)) values.set(key, set)
+  }
+  return { tables, columns, values, typed }
 }
 
 const valueList = (list) => new Set([...list.matchAll(/'((?:[^']|'')*)'/g)].map((v) => v[1].replaceAll("''", "'")))
