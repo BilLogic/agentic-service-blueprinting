@@ -207,6 +207,7 @@ export type Database = {
           frame: string | null
           position: number
           step_id: string
+          status: string
           updated_at: string
           value_props: Json
         }
@@ -226,6 +227,7 @@ export type Database = {
           frame?: string | null
           position?: number
           step_id: string
+          status?: string
           updated_at?: string
           value_props?: Json
         }
@@ -245,6 +247,7 @@ export type Database = {
           frame?: string | null
           position?: number
           step_id?: string
+          status?: string
           updated_at?: string
           value_props?: Json
         }
@@ -431,6 +434,7 @@ export type Database = {
           owner_team: string | null
           path_id: string
           position: number
+          stakeholder_id: string | null
           tools: Json
           updated_at: string
         }
@@ -444,6 +448,7 @@ export type Database = {
           owner_team?: string | null
           path_id: string
           position?: number
+          stakeholder_id?: string | null
           tools?: Json
           updated_at?: string
         }
@@ -457,6 +462,7 @@ export type Database = {
           owner_team?: string | null
           path_id?: string
           position?: number
+          stakeholder_id?: string | null
           tools?: Json
           updated_at?: string
         }
@@ -466,6 +472,13 @@ export type Database = {
             columns: ["path_id"]
             isOneToOne: false
             referencedRelation: "paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lanes_stakeholder_id_fkey"
+            columns: ["stakeholder_id"]
+            isOneToOne: false
+            referencedRelation: "stakeholders"
             referencedColumns: ["id"]
           },
         ]
@@ -519,6 +532,7 @@ export type Database = {
           origin: string
           kind: string
           scenario_id: string
+          status: string
           updated_at: string
         }
         Insert: {
@@ -530,6 +544,7 @@ export type Database = {
           origin?: string
           kind: string
           scenario_id: string
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -541,6 +556,7 @@ export type Database = {
           origin?: string
           kind?: string
           scenario_id?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -968,6 +984,36 @@ export type Database = {
           },
         ]
       }
+      stakeholders: {
+        Row: {
+          aliases: string[]
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       steps: {
         Row: {
           created_at: string
@@ -1320,10 +1366,20 @@ export const Constants = {
 // ---------------------------------------------------------------------------
 
 export type PathKind = 'happy' | 'variant' | 'exception'
+/** The `entity_status` domain, shared by `cells.status` and `paths.status`. */
+export type EntityStatus =
+  | 'proposed'
+  | 'planned'
+  | 'built'
+  | 'live'
+  | 'at_risk'
+  | 'deprecated'
+export type StakeholderKind = 'recipient' | 'staff' | 'partner' | 'provider' | 'team'
 
 export type Cell = Database['public']['Tables']['cells']['Row']
 export type CellDependency = Database['public']['Tables']['cell_dependencies']['Row']
 export type Lane = Database['public']['Tables']['lanes']['Row']
+export type Stakeholder = Database['public']['Tables']['stakeholders']['Row']
 export type Path = Database['public']['Tables']['paths']['Row']
 export type PathStep = Database['public']['Tables']['path_steps']['Row']
 export type Phase = Database['public']['Tables']['phases']['Row']
