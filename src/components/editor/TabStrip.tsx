@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { Info, Trash2, X } from 'lucide-react'
 import { ORG_NAME } from '@/config'
+import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { Button } from '@/components/ui/button'
 import { HomeNavButton, WorkspaceBadges } from '@/components/editor/EditorChrome'
 import { IconTooltip } from '@/components/editor/IconTooltip'
@@ -187,6 +188,11 @@ export function TabStrip({
   } = useViewState()
   const { canWrite } = useSupabase()
   const slices = useSlices()
+  // The wordmark is the first surface migrated onto the deployment seam
+  // (#331): the brand name comes from the resolved deployment config, which
+  // standalone resolves to ORG_NAME — so this renders identically here and is
+  // overridable by a host. Other ORG_NAME consumers migrate in later slices.
+  const brandName = useDeploymentConfig().brand?.name ?? ORG_NAME
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string
     title: string
@@ -363,7 +369,7 @@ export function TabStrip({
                 workspaceActive ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
-              {ORG_NAME}
+              {brandName}
             </button>
           </div>
       {tabs.map((tab) => {
