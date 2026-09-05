@@ -47,6 +47,70 @@
  * it cannot reach a database at all. A guard that passes when blind is not a
  * guard; that sentence is `sync-blueprint-contract.mjs`'s and it was written
  * after a check spent weeks exiting 0 without comparing anything.
+ *
+ * ── WORDS THAT KEEP A RETIRED SPELLING ─────────────────────────────
+ *
+ * This section is `CONTEXT.md`'s, word for word, until #137 moved it here. It
+ * lived in the glossary because the glossary was where a person went to ask
+ * why a sweep skipped a word; it lives here because this is the file that
+ * skips it. `RETIRED_IDENTIFIER_EXEMPTIONS` is a few lines below, so the reason
+ * and the code that acts on it are now one edit rather than two.
+ *
+ * Three words changed and no more, all of them deictic: the section said "the
+ * map above" and "the interface→schema map above" of documents that sat on the
+ * same page, and here it names them. A reference that points at nothing is the
+ * one thing a verbatim move cannot keep.
+ *
+ * Four, and each is a fact about the language rather than a queue. A rename sweep
+ * breaks all four, so they are written where the person running that sweep looks.
+ *
+ * **`slices.description`.** `21000108` renamed `description` to `summary` on the
+ * five tables where it named a one-line précis of a thing. A slice's description
+ * is not that — it is prose the author writes *about* the slice. The word was
+ * right in one place and wrong in five, so five moved. `tech_description`, a link
+ * type, was untouched for the same reason, and is now gone with the column that
+ * held it — `21000113000000` moved that prose onto `cell_touchpoints.summary`,
+ * where it is the one-line précis the word `summary` names. Because the word is
+ * still live on `slices`, the
+ * `description` row of the rename map enforces **no** identifier fragment at all;
+ * `21000108` carries its own assertion instead.
+ *
+ * **`evidence.proposition_question_key`, and the label above `cells.value_props`.**
+ * `propositions` became `business_model` because that word already meant a *cell's*
+ * value proposition. The column is not that table: it records which of the three
+ * validation questions an evidence row answers — `understand`, `value`,
+ * `usability` — and those three are propositions in the ordinary sense, claims the
+ * service is betting on. The rename moved the container, not the concept.
+ *
+ * Both enforced lists key on the **plural**, so nothing has to be exempted to keep
+ * either. The identifier list always did. The copy list held the singular as well
+ * until the interface→schema map had to name `cells.value_props`, which
+ * abbreviates "value proposition" and nothing else: a guard that flagged that
+ * label would have pushed a reader away from the name of the column they were
+ * editing. `scripts/tests/retired-copy.test.mjs` asserts the split — the plural
+ * still flagged on screen, the singular deliberately not — so the shorter list
+ * reads as the decision it is rather than as a word someone quietly dropped.
+ *
+ * **`CanvasAnnotationLayer`.** A rendering layer, unrelated to the lane the
+ * blueprint draws. `21000104` says so in its own header. It is a frontend
+ * identifier rather than a database name or anything a reader sees, so no check
+ * that reads the interface→schema map can reach it.
+ *
+ * **"derived layer", inside applied migrations and the changelog.** Two migration
+ * filenames (`20260729120000_derived_layer.sql`,
+ * `20260730090000_derived_layer_grants_hardening.sql`) and ten `--` comments
+ * across five applied files keep the retired words, along with the CHANGELOG
+ * entries for the releases that shipped them.
+ *
+ * The rule is the same in both places: **an applied or dated record keeps the
+ * spelling it was written with.** Every instance of this template has already run
+ * those files; rewriting them buys tidiness at the cost of making applied
+ * migrations mutable, which is a precedent worth more than the tidiness. A
+ * changelog entry is the same kind of object — it says what shipped, under the
+ * name it shipped with.
+ *
+ * Everything an agent or a reader is *shown* uses the current name. That is the
+ * line: the record keeps its spelling, the instruction does not.
  */
 import { execFileSync } from 'node:child_process'
 import { RETIRED_IDENTIFIER_FRAGMENTS, replacementFor } from './retired-vocabulary.mjs'
@@ -54,8 +118,9 @@ import { RETIRED_IDENTIFIER_FRAGMENTS, replacementFor } from './retired-vocabula
 /**
  * Identifiers allowed to keep a retired word, each with a reason and usually an
  * expiry. See `scripts/tests/retired-vocabulary.test.mjs` for the two rules that
- * keep the list honest: a permanent entry must be defined in `CONTEXT.md`, and
- * an entry whose subject no longer exists fails until someone deletes it.
+ * keep the list honest: a permanent entry must be explained in this file's own
+ * header — the "words that keep a retired spelling" section above — and an
+ * entry whose subject no longer exists fails until someone deletes it.
  *
  * EMPTY, and that is an outcome to protect rather than an accident. Two rows of
  * the rename map could have needed one and do not:

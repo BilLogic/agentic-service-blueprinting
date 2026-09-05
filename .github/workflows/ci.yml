@@ -111,6 +111,25 @@ jobs:
       - run: npm run check:negation
       - run: npm run check:pointers
 
+      # The glossary's own check (#137). `CONTEXT.md` is the first pointer the
+      # router fires, so a session that reads `AGENTS.md` reads this next — and
+      # it was two thirds reference material: a rename map, an interface-to-schema
+      # map and a section of reasoning about which words a sweep should skip,
+      # paid for by every session that opened the file to look up one word. All
+      # three are gone, to the checks that enforce them and to a generated
+      # document under references/. This is what stops the file growing them
+      # back: headings, prose and `**term** — definition` rows, with a failure
+      # for a code fence, for a table naming a column, and for a section that
+      # defines no term.
+      - run: npm run check:glossary
+
+      # The other half of that move: the interface-to-schema map is a disclosed
+      # reference now, and its two tables are RENDERED from
+      # scripts/interface-schema-map.mjs and the portable core's schema dump.
+      # A generated document rots without a guard, so this fails when the
+      # document is not what its sources render.
+      - run: npm run check:interface-map
+
   # The portability position, executed.
   #
   # The partition between the portable Postgres core and the Supabase recipe is

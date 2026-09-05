@@ -9,6 +9,25 @@ A term is defined here when getting it wrong changes what an agent writes to
 the database. Where a term is spelled differently in the database, the
 blueprint file and the app, every spelling is given.
 
+**This file is definitions and nothing else.** That constraint is its whole
+value: an agent or a person can read it end to end before touching anything,
+and it stays readable because it never grows a second job. It said so while
+three of its six sections were something else, which is how a promise nothing
+enforces ends up. `scripts/check-glossary-only.mjs` holds it there now, so the
+sentence has a build behind it rather than a habit.
+
+Three reference sections used to live here and now live where they are
+enforced. The rename map is
+[`scripts/retired-vocabulary.mjs`](scripts/retired-vocabulary.mjs), the one
+list three checks read, and its header carries why each name went and which
+renames the word lists deliberately leave out. The four words retired as
+identifiers rather than as words are the header of
+[`scripts/check-retired-identifiers.mjs`](scripts/check-retired-identifiers.mjs),
+beside the exemption list that applies them. Every panel label and the column
+behind it is
+[`references/interface-schema-map.md`](references/interface-schema-map.md),
+generated from the list CI acts on.
+
 ## The blueprint
 
 **Service** — the whole thing being blueprinted, and the top container. One
@@ -138,7 +157,8 @@ has no direct service binding and is hard-bound only to its slice. The exact
 keys and constraint topology live in `references/data-model.md`.
 
 **There is deliberately no collective noun for the four.** Two were tried and
-both claimed something untrue of half the set; the rename map below records
+both claimed something untrue of half the set;
+[`scripts/retired-vocabulary.mjs`](scripts/retired-vocabulary.mjs) records
 which, and why. What they have instead is an OWNER, and the write surface says who — because a
 table's owner is whoever may change it, not whoever reads it most:
 
@@ -214,282 +234,3 @@ it there.
 **Sprawl** — a document too long even when every line of it is live: attention
 thins across the whole of it. The cure is the ladder rather than a shorter
 sentence. Distinct from *bloat*, which is dead weight.
-
-## The rename map
-
-These renames landed across `21000103`–`21000122`. They are recorded here
-because this is the file a person reads to learn the vocabulary, and because a
-sweep that catches every occurrence of a retired word needs to know which
-occurrences are not residue. The last block closes the lane vocabulary
-(`21000122000000`): the tech lanes become touchpoints, `support_systems`
-splits into `support_actions` (people) and `backstage_touchpoints` (systems),
-`visual` becomes `storyboard`, `step_visual` is dropped, and the design system
-keeps one word for each of its two markers — `badge` for a descriptive one,
-`tag` for one of a set. The `pill`/`chip` row carries no migration because no
-database object ever bore either word; it is a component-and-copy rename that
-`tsc` and review hold.
-
-**These are the current names.** An `alter table … rename` moves the table and
-the column and nothing else — the index, the constraint, the policy, the
-trigger, the comment and every plpgsql body keep the name they were created
-with. `21000102`'s `__rename_schema_objects` moved those from the catalogue
-rather than from a hand-written list, and `scripts/check-retired-identifiers.mjs`
-now checks that nothing came back.
-
-| Was | Is | Migration |
-|---|---|---|
-| `layers`, `layer_role`, `cells.layer_id` | `lanes`, `lane_role`, `cells.lane_id` | `21000104000000` |
-| `cell_triggers` | `cell_dependencies` | `21000103000000` |
-| `service_lifecycles`, `*_service_lifecycle_id` | `services`, `service_id` | `21000106000000` |
-| `service_scenarios`, `*_service_scenario_id` | `scenarios`, `scenario_id` | `21000107000000` |
-| `row_position`, `column_position`, `slot_position`, `order_position` | `position` | `21000105000000` |
-| `description` | `summary` | `21000108000000` |
-| `propositions` | `business_model` | `21000111000000` |
-| `cell_dependencies.kind = 'trigger'`, `cell_dependencies.kind = 'needs'` | `cell_dependencies.kind = 'leads_to'`, `cell_dependencies.kind = 'enables'` | `21000114000000` |
-| `scenarios.layout = 'side-by-side'`, `scenarios.layout = 'integrated'` | `scenarios.layout = 'stacked'`, `scenarios.layout = 'stacked'` | `21000116000000` |
-| `paths.kind = 'unhappy'`, `paths.kind = 'alternative'` | `paths.kind = 'exception'`, `paths.kind = 'variant'` | `21000116000000` |
-| `scenarios.layout = 'single'` | `scenarios.layout = 'stacked'` | `21000117000000` |
-| `resources.kind = 'other'` | `resources.kind = 'attachment'` | `21000118000000` |
-| `cell_touchpoints.url`, `cell_touchpoints.screenshots` | `resources.url`, `resources.kind` | `21000119000000` |
-| `business_model` | `business_models` | `21000116000000` |
-| `findings`, `findings.check_name`, `findings.note` | `audit_findings`, `audit_findings.check_key`, `audit_findings.summary` | `21000116000000` |
-| `paths.path_type`, `slices.slice_type`, `scenarios.view_type` | `paths.kind`, `slices.kind`, `scenarios.layout` | `21000116000000` |
-| `cell_dependencies.label`, `slices.description`, `slices.origin` | `cell_dependencies.name`, `slices.summary`, `slices.authorship` | `21000116000000` |
-| `frontstage_tech`, `backstage_tech` | `frontstage_touchpoints`, `backstage_touchpoints` | `21000122000000` |
-| `support_systems` | `backstage_touchpoints` | `21000122000000` |
-| `visual`, `step_visual` | `storyboard` | `21000122000000` |
-| `pill`, `chip` | `badge`, `tag` |  |
-
-The reasoning, where it is worth knowing. `row` and `column` named how a lane
-and a step happen to be *drawn* today, and the axis is a rendering fact rather
-than a domain one. "Lifecycle" was not a level above the service — it *was* the
-service, wearing a longer name. `enables` was left alone, because it was already
-the plain word for what it means.
-
-`21000116000000` is one migration answering two complaints. **`_type` is a
-suffix apologising for a name**: `paths.path_type`, `slices.slice_type` and
-`scenarios.view_type` all said "the kind of thing this is" in a column that
-could say `kind`, which `cell_dependencies` already did. And **one word per meaning** — a `name` is
-what you navigate by, a `title` is authored content, a `summary` is the
-sentence that describes the thing, and a `note` is an aside beside it.
-`findings.note` was never an aside; it is the finding's own sentence.
-
-**Four of those words are retired as identifiers and NOT as words**, which is
-why their rows enforce nothing and this paragraph exists — a check that
-deliberately ignores a word has to say so, or the next person reads the silence
-as an oversight and closes it:
-
-- **`label`** — `cell_dependencies.label` became `.name`, but a form control
-  has a label and half this tree's components take one as a prop. What was
-  retired is the column, not the noun.
-- **`description`** — `package.json` has one, so does every tool spec. Only
-  `slices.description` moved, and `21000108000000` had already moved the rest.
-  The row is `cell_dependencies.label`, `slices.description`, `slices.origin`
-  together because one migration answered all three.
-- **`origin`** — still the live import-provenance column on `cells`, `phases`,
-  `scenarios`, `paths`, `lanes` and `steps`. Only `slices.origin` became
-  `authorship`, because on a slice the question is who WROTE it, not where it
-  came from — a person may author one outright.
-- **`business_model`** — the singular is the retired TABLE name and the live
-  domain term at once. `21000111000000` renamed `propositions` to it and took
-  the singular from the noun rather than from the convention around it; this
-  migration fixes the number without disturbing the word.
-
-`finding` is the same case: the bare word is the live domain term, defined
-above. What `21000116000000` retired is the bare TABLE name, which never said
-whose findings these were.
-
-**One rename in this vocabulary is not in the table**, because it never was an
-identifier and because it ended in no word at all. `evidence`, `findings`,
-`slices` and `slides` were the **derived layer**, then the *analysis tier*, and
-are now four records with an owner each — the table under "What the skills
-produce" above. Both collective nouns failed the same way, by claiming
-something untrue of half the set:
-
-- *derived layer* — only `findings` is derived; a person may author a slice.
-  And `layer` is the spelling `21000104000000` retired when `layers` became
-  `lanes`, so the word was built on a word this template had withdrawn. It was
-  still being shipped to agents in `skills/slice/SKILL.md`.
-- *analysis tier* — evidence is source material and a slice is a presentation
-  for an audience. Neither is analysis. It also collided with `tier`, which
-  already means an access level here (`20260818002000_service_account_tier`),
-  so one word named both what a reader may write and what they may write it
-  to.
-
-Nothing in the catalogue ever moved, which is why no migration carries either
-word. What enforces the replacement is not this vocabulary map but the write
-surface: `scripts/tests/who-writes-what.test.mjs` holds the ownership table
-against `WRITE_TOOL_NAMES`, so a renamed tool or an unowned new write fails
-`npm test`. That is the check neither collective noun ever had — both were
-adopted, both went stale, and nothing anywhere noticed.
-
-`scripts/retired-vocabulary.mjs` is the same map in machine-readable form, and
-`scripts/tests/retired-vocabulary.test.mjs` fails if the two disagree. Neither
-derives from the other on purpose: a prose table should not be load-bearing for
-CI, and a documented map that has drifted from the enforced one is a lie in the
-file people read to learn the words.
-
-## The interface→schema map
-
-Every word a panel puts in front of a reader, and the name behind it. The
-rename map above records the words that **changed**; this records what every
-current word is **bound to**, the agreements included. A table of divergences
-alone cannot say that the rest are fine — "not listed" would mean both
-"aligned" and "nobody looked", and that ambiguity is the state
-[#89](https://github.com/BilLogic/agentic-service-blueprinting/issues/89) was
-raised about: *"how come we have inconsistent naming from front and backend
-again (i.e., resources vs. links)?"* The complaint was never that the words
-differ. It was that no document said which of the differences were on purpose.
-
-The interface word is a **panel label** — the `label` and `title` props of the
-seven components that put a field's name in front of a reader, plus the text
-inside `PanelSectionLabel`, plus the cell panel's tab table. Two of the seven —
-`PanelTextareaField` and `StringListField` — only WRAP `Field` and forward the
-label through, which is why the subject is elements rather than files: a
-wrapper written after the list would otherwise carry words past every check
-that had ever looked. The schema word is a `table.column`, or a bare table where
-the label heads a whole relation rather than one field of it. The two **agree**
-when they are the same word once case, spaces and a foreign key's `_id` are set
-aside; singular and plural agree too, because the label over a relation names
-the thing and the table names the collection. Anything further apart than that
-owes the third column a reason.
-
-| The interface says | The schema says | Why they differ |
-|---|---|---|
-| **Content** | `cells.content` | — |
-| **Summary** | `cells.summary`, `paths.summary`, `phases.summary`, `scenarios.summary`, `services.summary`, `steps.summary` | — |
-| **Owner** | `cells.owner` | — |
-| **Perceived owner** | `cells.perceived_owner` | — |
-| **Function** | `cells.function` | — |
-| **Form** | `cells.form` | — |
-| **Value proposition** | `cells.value_props` | `props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens. |
-| **Dependencies** | `cell_dependencies` | The relation names both ends, because a dependency always runs from one cell to another. The tab is already standing inside a cell, so the prefix would be the one word on it that told a reader nothing. |
-| **Follows** | `cell_dependencies.kind` | Names a VALUE read from one end rather than a column: these rows are `kind = 'leads_to'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this. |
-| **Leads to** | `cell_dependencies.kind` | The same value from the other end — `kind = 'leads_to'` leaving, and here the label IS the value minus its underscore. What the pair carries that `kind` cannot is the direction, which is why the arriving end keeps a word of its own. |
-| **Enabled by** | `cell_dependencies.kind` | The recorded kind, arriving — `kind = 'enables'` with this cell as the target. The same one-row-two-ends rule as Follows: without its own word, a reader standing at the target reads "Enables › A" as this cell enabling A, the exact inversion the rename ended. |
-| **Enables** | `cell_dependencies.kind` | The word IS the value — `kind = 'enables'` leaving, the recorded dependency that never draws — and `kind` is the name of the place holding it. |
-| **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
-| **Evidence** | `evidence` | — |
-| **Resources** | `resources` | — |
-| **Actor** | `lanes.stakeholder_id` | The registry the key points into is `stakeholders`, and the word this vocabulary uses for a party standing in the room is actor: a lane names its actor, and a `team` is a stakeholder that can never be one. The label says the narrower word, which is the only one the board is about. |
-| **Owner team** | `lanes.owner_team` | — |
-| **KPIs** | `lanes.kpis` | — |
-| **Tools** | `lanes.tools` | — |
-| **Business impact** | `phases.business_impact` | — |
-| **Operational requirements** | `phases.operational_requirements` | — |
-| **Paths** | `paths` | — |
-| **Status** | `cells.status`, `paths.status` | — |
-| **Author note** | `paths.note` | `note` is this vocabulary's word for an author's aside, and the label says whose aside it is because it sits directly under Summary, which is the path's own sentence. That distinction is worth a word on screen and not worth a second column. |
-| **Funding** | `business_models.funding` | — |
-| **Pricing** | `business_models.pricing` | — |
-| **Delivery cost** | `business_models.delivery_cost` | — |
-| **Revenue model** | `business_models.revenue_model` | — |
-| **Partners** | `business_models.partners` | — |
-| **Examples** | `services.entity_examples` | The section heads a jsonb map, not a field, and the column carries an `entity_` qualifier the label drops: on the service panel the only examples in question are the board’s six entity kinds, so the qualifier is understood and the heading says the plain word. The six inputs beneath it name the kinds, not columns, so they carry no row of their own; this one row binds the whole map. |
-| **Position** | `path_steps.position` | — |
-| **Storyboard** | `lanes.lane_role` | The one row whose right-hand side is a VALUE rather than the name of a place to put one: `storyboard` is one of the eight `lane_role` admits, and this label heads the frames of the lanes carrying it. The word is in the schema; it is simply not a column name. |
-
-Eleven rows out of thirty-two carry a reason, and each one is a decision rather
-than an accident. That is the claim the table exists to make checkable, and
-[`scripts/tests/labels-name-their-columns.test.mjs`](scripts/tests/labels-name-their-columns.test.mjs)
-checks it four ways: every panel label has a row, every row is a label some
-panel still says, every row names something the schema has, and a divergent row
-carries a reason while an aligned row does not. The last pair is the one worth
-stating out loud. A reason recorded about a label that never diverged reads as
-a decision and settles nothing, and a reason column with decoration in it is a
-column readers learn to skip — taking the real ones with it.
-
-**Two labels were renamed rather than reasoned about**, which is the other half
-of what this table is for. The panel said **Text** where the column is
-`cells.content`, and **Value** where it is `cells.value_props`; both columns
-were already right while the words above them were not, so the labels now say
-Content and Value proposition. Neither is a migration — a label rename moves
-words on a screen — and neither needs a row in the rename map above, which
-records what the *schema* was called.
-
-**`Resources` was the sharp one, and the answer to it was not a rename.**
-`cells.links` carried two things a reader meets under two names — the `url`
-entries the Resources tab lists, and the `tech_description` entries the grid
-draws as a touchpoint's prose. One column, two concepts, named after neither.
-No label could fix that: `Links` over the tab would promise both and show one,
-and `Resources` on the column would be wrong for half its rows. So the map
-carried the divergence as a recorded decision and said the fix would be a
-schema change rather than a naming one.
-
-`21000113000000` made that change. `resources` holds what a cell — through
-one of its touchpoint placements, or on its own — points at, `cell_touchpoints`
-holds the per-moment summary and role, and `cells.links` is gone. **The row that
-carried the reason is deleted rather than rewritten**, which is what that
-promise meant: `Resources` and `resources` are the same word, so the row that
-remains is an aligned one like `Evidence`, and rule 4 forbids it a reason. The
-label stays in the map because every panel label must — a word nobody bound to
-a name is the defect the map exists to catch — but the divergence it was
-holding open has stopped existing rather than acquired a better excuse.
-
-**The subject is panel labels, and that is narrower than "words on screen" on
-purpose.** *Line of visibility* and *line of interaction* reach a reader as
-drawings rather than as the name of a field, and are derived from lane roles at
-render time, so there is nothing to bind them to. So it is for every heading
-that names a view rather than a field. A word that heads no field has no name
-to be bound to, and a rule pretending otherwise would be a rule nobody could
-satisfy — which is the failure mode that gets a check deleted rather than
-fixed.
-
-**The enforced half is a second list, deliberately, exactly as the rename map's
-is.** `LABEL_COLUMNS` in that test file is what CI reads; this table is what a
-person reads; neither derives from the other, and a parity test fails when they
-disagree — verbatim, reason text included, so editing one cell in one place
-goes red.
-
-## Words that keep a retired spelling
-
-Four, and each is a fact about the language rather than a queue. A rename sweep
-breaks all four, so they are written where the person running that sweep looks.
-
-**`slices.description`.** `21000108` renamed `description` to `summary` on the
-five tables where it named a one-line précis of a thing. A slice's description
-is not that — it is prose the author writes *about* the slice. The word was
-right in one place and wrong in five, so five moved. `tech_description`, a link
-type, was untouched for the same reason, and is now gone with the column that
-held it — `21000113000000` moved that prose onto `cell_touchpoints.summary`,
-where it is the one-line précis the word `summary` names. Because the word is
-still live on `slices`, the
-`description` row of the map above enforces **no** identifier fragment at all;
-`21000108` carries its own assertion instead.
-
-**`evidence.proposition_question_key`, and the label above `cells.value_props`.**
-`propositions` became `business_model` because that word already meant a *cell's*
-value proposition. The column is not that table: it records which of the three
-validation questions an evidence row answers — `understand`, `value`,
-`usability` — and those three are propositions in the ordinary sense, claims the
-service is betting on. The rename moved the container, not the concept.
-
-Both enforced lists key on the **plural**, so nothing has to be exempted to keep
-either. The identifier list always did. The copy list held the singular as well
-until the interface→schema map above had to name `cells.value_props`, which
-abbreviates "value proposition" and nothing else: a guard that flagged that
-label would have pushed a reader away from the name of the column they were
-editing. `scripts/tests/retired-copy.test.mjs` asserts the split — the plural
-still flagged on screen, the singular deliberately not — so the shorter list
-reads as the decision it is rather than as a word someone quietly dropped.
-
-**`CanvasAnnotationLayer`.** A rendering layer, unrelated to the lane the
-blueprint draws. `21000104` says so in its own header. It is a frontend
-identifier rather than a database name or anything a reader sees, so no check
-that reads the map above can reach it.
-
-**"derived layer", inside applied migrations and the changelog.** Two migration
-filenames (`20260729120000_derived_layer.sql`,
-`20260730090000_derived_layer_grants_hardening.sql`) and ten `--` comments
-across five applied files keep the retired words, along with the CHANGELOG
-entries for the releases that shipped them.
-
-The rule is the same in both places: **an applied or dated record keeps the
-spelling it was written with.** Every instance of this template has already run
-those files; rewriting them buys tidiness at the cost of making applied
-migrations mutable, which is a precedent worth more than the tidiness. A
-changelog entry is the same kind of object — it says what shipped, under the
-name it shipped with.
-
-Everything an agent or a reader is *shown* uses the current name. That is the
-line: the record keeps its spelling, the instruction does not.

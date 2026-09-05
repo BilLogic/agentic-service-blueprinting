@@ -1,18 +1,16 @@
 /**
- * The rename map, machine-readable — the one list the vocabulary checks agree on.
+ * The rename map — the one list the vocabulary checks agree on, and the only
+ * place the map is written down.
  *
- * `CONTEXT.md`'s "The rename map" section is the DOCUMENTED map and stays the
- * thing a person reads. This is the ENFORCED map. Neither derives from the
- * other, and `scripts/tests/retired-vocabulary.test.mjs` asserts they still say
- * the same thing.
- *
- * That the two are separate is the point. A prose document should not be
- * load-bearing for CI — reformatting a markdown table must not break a build,
- * and a check that parses prose acquires an exemption for every sentence that
- * merely mentions a word. But a documented map that has drifted from the
- * enforced one is a lie in the file people read to learn the vocabulary, so
- * divergence is itself a failure. Hence: two lists, one test holding them
- * together.
+ * It used to have a documented twin. `CONTEXT.md` carried the same table in
+ * prose, this file carried it in code, and
+ * `scripts/tests/retired-vocabulary.test.mjs` held the two together — two lists
+ * on purpose, so that reformatting a markdown table could not break a build
+ * while a drifted table could still fail one. #137 made the glossary a glossary
+ * again: a document that defines terms and stops. With the prose half gone
+ * there is no pair left to hold together, and this file is both halves at once
+ * — the list CI acts on, and the commentary a person reads to learn why a word
+ * left.
  *
  * Ported from an instance built on this template, whose renames these are —
  * and not copied: the rows differ, because `sets_off` and `cells.maturity`
@@ -22,14 +20,112 @@
  *   - `scripts/check-retired-identifiers.mjs`  (Check A — database identifiers)
  *   - `scripts/check-database-names.mjs`       (Check B — names inside strings)
  *   - `scripts/tests/retired-copy.test.mjs`    (Check C — words a person reads)
+ *   - `scripts/value-set-claims.mjs`           (retired VALUES in swept markdown)
+ *
+ * ── WHY EACH NAME WENT, AND WHICH ARE NOT IN THE WORD LISTS ────────────────
+ *
+ * The commentary below moved here from `CONTEXT.md` in #137, word for word,
+ * because every paragraph of it is about THESE lists: which renames are
+ * carried in the `retired` and `copy` word lists, which are deliberately
+ * absent, and what enforces the absent ones instead. The reasoning about words
+ * retired as IDENTIFIERS rather than as words — the four spellings a rename
+ * sweep breaks and why each stands where it does — sits in the header of
+ * `scripts/check-retired-identifiers.mjs`, beside the exemption list that
+ * applies it. What changed on the way is the deixis and nothing else: the
+ * opening sentence used to say the map was recorded in the file a person reads
+ * to learn the vocabulary, and three later phrases pointed at a table or a
+ * definition that sat on the same page. A reference that points at nothing is
+ * the one thing a verbatim move cannot keep.
+ *
+ * These renames landed across `21000103`–`21000122`. They are recorded with
+ * the map because a sweep that catches every occurrence of a retired word needs
+ * to know which occurrences are not residue. The last block closes the lane
+ * vocabulary (`21000122000000`): the tech lanes become touchpoints, `support_systems`
+ * splits into `support_actions` (people) and `backstage_touchpoints` (systems),
+ * `visual` becomes `storyboard`, `step_visual` is dropped, and the design system
+ * keeps one word for each of its two markers — `badge` for a descriptive one,
+ * `tag` for one of a set. The `pill`/`chip` row carries no migration because no
+ * database object ever bore either word; it is a component-and-copy rename that
+ * `tsc` and review hold.
+ *
+ * **These are the current names.** An `alter table … rename` moves the table and
+ * the column and nothing else — the index, the constraint, the policy, the
+ * trigger, the comment and every plpgsql body keep the name they were created
+ * with. `21000102`'s `__rename_schema_objects` moved those from the catalogue
+ * rather than from a hand-written list, and `scripts/check-retired-identifiers.mjs`
+ * now checks that nothing came back.
+ *
+ * The reasoning, where it is worth knowing. `row` and `column` named how a lane
+ * and a step happen to be *drawn* today, and the axis is a rendering fact rather
+ * than a domain one. "Lifecycle" was not a level above the service — it *was* the
+ * service, wearing a longer name. `enables` was left alone, because it was already
+ * the plain word for what it means.
+ *
+ * `21000116000000` is one migration answering two complaints. **`_type` is a
+ * suffix apologising for a name**: `paths.path_type`, `slices.slice_type` and
+ * `scenarios.view_type` all said "the kind of thing this is" in a column that
+ * could say `kind`, which `cell_dependencies` already did. And **one word per meaning** — a `name` is
+ * what you navigate by, a `title` is authored content, a `summary` is the
+ * sentence that describes the thing, and a `note` is an aside beside it.
+ * `findings.note` was never an aside; it is the finding's own sentence.
+ *
+ * **Four of those words are retired as identifiers and NOT as words**, which is
+ * why their rows enforce nothing and this paragraph exists — a check that
+ * deliberately ignores a word has to say so, or the next person reads the silence
+ * as an oversight and closes it:
+ *
+ * - **`label`** — `cell_dependencies.label` became `.name`, but a form control
+ *   has a label and half this tree's components take one as a prop. What was
+ *   retired is the column, not the noun.
+ * - **`description`** — `package.json` has one, so does every tool spec. Only
+ *   `slices.description` moved, and `21000108000000` had already moved the rest.
+ *   The row is `cell_dependencies.label`, `slices.description`, `slices.origin`
+ *   together because one migration answered all three.
+ * - **`origin`** — still the live import-provenance column on `cells`, `phases`,
+ *   `scenarios`, `paths`, `lanes` and `steps`. Only `slices.origin` became
+ *   `authorship`, because on a slice the question is who WROTE it, not where it
+ *   came from — a person may author one outright.
+ * - **`business_model`** — the singular is the retired TABLE name and the live
+ *   domain term at once. `21000111000000` renamed `propositions` to it and took
+ *   the singular from the noun rather than from the convention around it; this
+ *   migration fixes the number without disturbing the word.
+ *
+ * `finding` is the same case: the bare word is the live domain term, defined
+ * in `CONTEXT.md`. What `21000116000000` retired is the bare TABLE name, which
+ * never said whose findings these were.
+ *
+ * **One rename in this vocabulary is not in the table**, because it never was an
+ * identifier and because it ended in no word at all. `evidence`, `findings`,
+ * `slices` and `slides` were the **derived layer**, then the *analysis tier*, and
+ * are now four records with an owner each — the table under `CONTEXT.md`
+ * § What the skills produce. Both collective nouns failed the same way, by
+ * claiming something untrue of half the set:
+ *
+ * - *derived layer* — only `findings` is derived; a person may author a slice.
+ *   And `layer` is the spelling `21000104000000` retired when `layers` became
+ *   `lanes`, so the word was built on a word this template had withdrawn. It was
+ *   still being shipped to agents in `skills/slice/SKILL.md`.
+ * - *analysis tier* — evidence is source material and a slice is a presentation
+ *   for an audience. Neither is analysis. It also collided with `tier`, which
+ *   already means an access level here (`20260818002000_service_account_tier`),
+ *   so one word named both what a reader may write and what they may write it
+ *   to.
+ *
+ * Nothing in the catalogue ever moved, which is why no migration carries either
+ * word. What enforces the replacement is not this vocabulary map but the write
+ * surface: `scripts/tests/who-writes-what.test.mjs` holds the ownership table
+ * against `WRITE_TOOL_NAMES`, so a renamed tool or an unowned new write fails
+ * `npm test`. That is the check neither collective noun ever had — both were
+ * adopted, both went stale, and nothing anywhere noticed.
  */
 
 /**
- * One row per row of `CONTEXT.md`'s rename table, in the same order.
+ * One row per rename, ordered as the series landed them.
  *
- * `was` / `is` / `migrations` are the table's three columns, reduced to the
- * code spans they contain — the test compares exactly those, so prose around
- * them can be rewritten freely.
+ * `was` / `is` / `migrations` are the translation itself: the retired name, the
+ * name it carries today, and the migration that moved it. They are the whole of
+ * what the prose table used to say, which is why deleting that table cost
+ * nothing.
  *
  * `retired` is what the identifier checks actually match: SUBSTRINGS, not whole
  * words. A word-boundary pattern is what let `cells_layer_step_slot_unique`
@@ -37,7 +133,7 @@
  * regex — and `21000104`'s header records having to write that name its own
  * pattern for the same reason. Every fragment is asserted to be a substring of
  * one of the same row's `was` entries, so the enforced words cannot wander from
- * the documented ones.
+ * the names they came from.
  *
  * `copy` is the prose spelling of the same retirement, for the guard over words
  * a person reads on screen.
@@ -339,7 +435,8 @@ export function retiredFragmentsIn(identifier) {
  *   identifier  what is exempt, exactly as the check names it
  *   because     why, in a sentence a stranger can evaluate
  *   until       the issue that ends it. ABSENT MEANS PERMANENT, and a
- *               permanent entry must be defined in CONTEXT.md — see
+ *               permanent entry must be explained in the header of the check
+ *               that applies it — see
  *               `scripts/tests/retired-vocabulary.test.mjs`.
  *
  * @typedef {{ identifier: string, because: string, until?: string }} Exemption

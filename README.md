@@ -192,7 +192,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | [.claude-plugin/plugin.json](./.claude-plugin/plugin.json) | Claude Code plugin manifest — this is what makes the repo installable as a plugin |
 | [skills/](./skills/) | Four skills, one directory each (`map`, `slice`, `audit`, `whatif`): `SKILL.md` entry point plus that skill's own `references/` (playbooks, schemas, check docs) and `scripts/` |
 | [agents/](./agents/) | Five subagents: `document-reader`, `blueprint-reviewer` (adversarial pre-sign-off review), `render-checker`, `auditor` (one check at a time, blind to the others), `impact-tracer` (walks the dependency graph) |
-| [references/](./references/) | Shared core every skill uses: data model, blueprint schema, adapter contract, canvas adapter, lane-role & lane vocabularies, customization, audit playbook |
+| [references/](./references/) | Shared core every skill uses: data model, blueprint schema, adapter contract, canvas adapter, lane-role & lane vocabularies, the interface→schema map, customization, audit playbook |
 | [scripts/](./scripts/) | Shared blueprint pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, blueprint auto-validation on edit, service-role secret guard |
 | `src/components/blueprint/` | Blueprint grid, paths, dependency arrows (shadcn/ui + Tailwind v4; theme tokens in `src/styles/tokens.css`) |

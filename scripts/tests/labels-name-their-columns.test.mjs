@@ -3,19 +3,21 @@
  *
  * Raised by Bill: *"how come we have inconsistent naming from front and
  * backend again (i.e., resources vs. links)?"* The complaint was never that
- * the words differ. `CONTEXT.md` already records divergences it means — its
- * "Words that keep a retired spelling" section names three words that survive
- * a rename sweep and says, for each, why it is right where it stands. Those
- * are decisions, and they are written down. The defect is that **no document
+ * the words differ. This repository already records divergences it means — the
+ * "words that keep a retired spelling" section in the header of
+ * `scripts/check-retired-identifiers.mjs` names four words that survive a
+ * rename sweep and says, for each, why it is right where it stands. Those are
+ * decisions, and they are written down. The defect is that **no document
  * mapped interface words to column names**, so a reader could not tell a
- * decision from an accident: the rename map above covers schema→schema only.
+ * decision from an accident: the rename map covers schema→schema only.
  *
- * So `LABEL_COLUMNS` below is the enforced half of that map — every word a
- * panel puts in front of a reader, the schema name behind it, and a reason
- * wherever the two differ. `CONTEXT.md`'s "The interface→schema map" section
- * is the documented half, and a parity test holds them together in the shape
- * `retired-vocabulary.test.mjs` already uses for the rename map: two lists
- * that do not derive from each other, and a failure when they disagree.
+ * So `LABEL_COLUMNS` — `scripts/interface-schema-map.mjs`, re-exported below —
+ * is the enforced half of that map: every word a panel puts in front of a
+ * reader, the schema name behind it, and a reason wherever the two differ. The
+ * half a person reads is `references/interface-schema-map.md`, RENDERED from
+ * this one since #137 rather than hand-kept beside it, so the two cannot
+ * disagree about what the map says. What can still disagree is the rendering,
+ * which is what the last pair of tests in this file watches.
  *
  * FOUR RULES MAKE IT NON-VACUOUS, and each is a way the map could rot:
  *
@@ -56,6 +58,7 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { LABEL_COLUMNS } from '../interface-schema-map.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
@@ -63,14 +66,17 @@ const SRC = resolve(ROOT, 'src')
 const GUARD_FILE = relative(ROOT, new URL(import.meta.url).pathname).split('\\').join('/')
 const GUARD_SOURCE = readFileSync(new URL(import.meta.url), 'utf8')
 const RERUN = 'npm test -- scripts/tests/labels-name-their-columns.test.mjs'
+/** Where the map itself lives, since #137 — a row's failure names its row. */
+const MAP_FILE = 'scripts/interface-schema-map.mjs'
+const MAP_SOURCE = readFileSync(resolve(ROOT, MAP_FILE), 'utf8')
 
 function sourceLine(code, index) {
   return code.slice(0, Math.max(0, index)).split('\n').length
 }
 
 function mapRowLocation(label) {
-  const index = GUARD_SOURCE.indexOf(`label: '${label}'`)
-  return `${GUARD_FILE}:${sourceLine(GUARD_SOURCE, index)}`
+  const index = MAP_SOURCE.indexOf(`label: '${label}'`)
+  return `${MAP_FILE}:${sourceLine(MAP_SOURCE, index)}`
 }
 
 export function guardFailure(location, message) {
@@ -195,127 +201,14 @@ export function panelLabels(sources) {
 /* --------------------------------------------------------------- the map */
 
 /**
- * Every panel label, the schema name behind it, and why they differ.
+ * The map itself is `scripts/interface-schema-map.mjs`, re-exported here so
+ * the four rules below and their fixtures read the way they always have.
  *
- * `label` is matched against what a panel actually says, case-insensitively
- * and whole. `names` is one or more `table.column` names, or a bare table
- * where the label heads a whole relation rather than a field of one.
- * `because` is empty on every row whose label and name already agree, and
- * required on every row where they do not.
- *
- * ONE LABEL, SEVERAL NAMES is allowed, and a row is aligned only when it
- * aligns with EVERY name it lists — so a shared word cannot be smuggled past
- * this by pairing a divergence with an agreement.
- *
- * Ordered as a reader meets them: the cell's own fields, then the three
- * tabs and what stands under the first of them.
+ * It moved out of this file in #137, for the reason the document it renders
+ * gives: the half a person reads is now generated from the half CI acts on,
+ * and a generator cannot import a test file without running its tests.
  */
-export const LABEL_COLUMNS = Object.freeze(
-  [
-    { label: 'Content', names: ['cells.content'], because: '' },
-    {
-      label: 'Summary',
-      names: [
-        'cells.summary',
-        'paths.summary',
-        'phases.summary',
-        'scenarios.summary',
-        'services.summary',
-        'steps.summary',
-      ],
-      because: '',
-    },
-    { label: 'Owner', names: ['cells.owner'], because: '' },
-    { label: 'Perceived owner', names: ['cells.perceived_owner'], because: '' },
-    { label: 'Function', names: ['cells.function'], because: '' },
-    { label: 'Form', names: ['cells.form'], because: '' },
-    {
-      label: 'Value proposition',
-      names: ['cells.value_props'],
-      because:
-        '`props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens.',
-    },
-    {
-      label: 'Dependencies',
-      names: ['cell_dependencies'],
-      because:
-        'The relation names both ends, because a dependency always runs from one cell to another. The tab is already standing inside a cell, so the prefix would be the one word on it that told a reader nothing.',
-    },
-    {
-      label: 'Follows',
-      names: ['cell_dependencies.kind'],
-      because:
-        "Names a VALUE read from one end rather than a column: these rows are `kind = 'leads_to'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this.",
-    },
-    {
-      label: 'Leads to',
-      names: ['cell_dependencies.kind'],
-      because:
-        "The same value from the other end — `kind = 'leads_to'` leaving, and here the label IS the value minus its underscore. What the pair carries that `kind` cannot is the direction, which is why the arriving end keeps a word of its own.",
-    },
-    {
-      label: 'Enabled by',
-      names: ['cell_dependencies.kind'],
-      because:
-        'The recorded kind, arriving — `kind = \'enables\'` with this cell as the target. The same one-row-two-ends rule as Follows: without its own word, a reader standing at the target reads "Enables › A" as this cell enabling A, the exact inversion the rename ended.',
-    },
-    {
-      label: 'Enables',
-      names: ['cell_dependencies.kind'],
-      because:
-        "The word IS the value — `kind = 'enables'` leaving, the recorded dependency that never draws — and `kind` is the name of the place holding it.",
-    },
-    {
-      label: 'Tech in this step',
-      names: ['cells.content'],
-      because:
-        "Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from.",
-    },
-    { label: 'Evidence', names: ['evidence'], because: '' },
-    { label: 'Resources', names: ['resources'], because: '' },
-    {
-      label: 'Actor',
-      names: ['lanes.stakeholder_id'],
-      because:
-        'The registry the key points into is `stakeholders`, and the word this vocabulary uses for a party standing in the room is actor: a lane names its actor, and a `team` is a stakeholder that can never be one. The label says the narrower word, which is the only one the board is about.',
-    },
-    { label: 'Owner team', names: ['lanes.owner_team'], because: '' },
-    { label: 'KPIs', names: ['lanes.kpis'], because: '' },
-    { label: 'Tools', names: ['lanes.tools'], because: '' },
-    { label: 'Business impact', names: ['phases.business_impact'], because: '' },
-    {
-      label: 'Operational requirements',
-      names: ['phases.operational_requirements'],
-      because: '',
-    },
-    { label: 'Paths', names: ['paths'], because: '' },
-    { label: 'Status', names: ['cells.status', 'paths.status'], because: '' },
-    {
-      label: 'Author note',
-      names: ['paths.note'],
-      because:
-        "`note` is this vocabulary's word for an author's aside, and the label says whose aside it is because it sits directly under Summary, which is the path's own sentence. That distinction is worth a word on screen and not worth a second column.",
-    },
-    { label: 'Funding', names: ['business_models.funding'], because: '' },
-    { label: 'Pricing', names: ['business_models.pricing'], because: '' },
-    { label: 'Delivery cost', names: ['business_models.delivery_cost'], because: '' },
-    { label: 'Revenue model', names: ['business_models.revenue_model'], because: '' },
-    { label: 'Partners', names: ['business_models.partners'], because: '' },
-    {
-      label: 'Examples',
-      names: ['services.entity_examples'],
-      because:
-        'The section heads a jsonb map, not a field, and the column carries an `entity_` qualifier the label drops: on the service panel the only examples in question are the board’s six entity kinds, so the qualifier is understood and the heading says the plain word. The six inputs beneath it name the kinds, not columns, so they carry no row of their own; this one row binds the whole map.',
-    },
-    { label: 'Position', names: ['path_steps.position'], because: '' },
-    {
-      label: 'Storyboard',
-      names: ['lanes.lane_role'],
-      because:
-        'The one row whose right-hand side is a VALUE rather than the name of a place to put one: `storyboard` is one of the eight `lane_role` admits, and this label heads the frames of the lanes carrying it. The word is in the schema; it is simply not a column name.',
-    },
-  ].map((row) => Object.freeze({ ...row, names: Object.freeze(row.names) })),
-)
+export { LABEL_COLUMNS }
 
 /**
  * A word reduced to what a comparison can see: lower case, and every run of
@@ -403,8 +296,8 @@ test('every panel label is a word the map binds to the schema', () => {
       'A panel label is bound to nothing. This is #89 exactly: not that the word ' +
         'differs from its column, but that no document says which column it is, so ' +
         'nobody downstream can tell a decision from an accident. Add a row to ' +
-        "LABEL_COLUMNS and to CONTEXT.md's interface→schema map — with a reason if " +
-        `the two words differ:\n${rendered.join('\n')}`,
+        'LABEL_COLUMNS in scripts/interface-schema-map.mjs — with a reason if the two ' +
+        `words differ — then run \`npm run interface-map\`:\n${rendered.join('\n')}`,
     ),
   )
 })
@@ -556,7 +449,7 @@ test('every divergence is a decision somebody wrote down', () => {
     guardFailure(
       mapRowLocation(found[0]?.split(' → ')[0] ?? 'Content'),
       `A label differs from its name with no reason a stranger can evaluate: ${found.join('; ')}. ` +
-        "CONTEXT.md's retired-spelling entries are the shape: a word that stands where " +
+        "The sweep's retired-spelling entries are the shape: a word that stands where " +
         'it is, and the sentence saying why. That is what every divergence needs — a ' +
         'reason, or a rename.',
     ),
@@ -617,14 +510,31 @@ test('a row is divergent when ANY of its names disagrees', () => {
 
 /* ------------------------------------------- and the map a person reads */
 
-const CONTEXT = readFileSync(resolve(ROOT, 'CONTEXT.md'), 'utf8')
+/**
+ * The document the map renders into.
+ *
+ * It was a section of `CONTEXT.md` until #137 and a hand-kept twin of
+ * `LABEL_COLUMNS`; it is now `references/interface-schema-map.md`, and
+ * GENERATED from `LABEL_COLUMNS` by
+ * `scripts/generate-interface-schema-map.mjs`. That changes what this pair of
+ * tests is for rather than retiring it. The generator's own `--check` catches
+ * a document that stopped matching its source; what this catches is a
+ * RENDERING that stopped saying what the source says — a label emitted without
+ * its reason, a name lost out of a multi-name row — which `--check` cannot
+ * see, because `--check` compares the document to the same render.
+ */
+const DOCUMENT_FILE = 'references/interface-schema-map.md'
+const DOCUMENT = readFileSync(resolve(ROOT, DOCUMENT_FILE), 'utf8')
 
-/** The `| … | … | … |` rows under the interface→schema heading. */
-export function documentedRows(context = CONTEXT) {
-  const section = /##\s+The interface→schema map[^\n]*\n([\s\S]*?)(?:\n##\s|$)/.exec(context)
+/** The `| … | … | … |` rows of the binding table, parsed back into rows. */
+export function documentedRows(document = DOCUMENT) {
+  const section = /<!-- generated:binding[^>]*-->([\s\S]*?)<!-- \/generated:binding -->/.exec(document)
   assert.ok(
     section,
-    guardFailure('CONTEXT.md:1', 'CONTEXT.md has no "## The interface→schema map" section any more'),
+    guardFailure(
+      `${DOCUMENT_FILE}:1`,
+      `${DOCUMENT_FILE} has no <!-- generated:binding --> section any more`,
+    ),
   )
   return section[1]
     .split('\n')
@@ -639,19 +549,19 @@ export function documentedRows(context = CONTEXT) {
     }))
 }
 
-test('a missing documented map names its file, line, and focused rerun', () => {
+test('a missing rendered map names its file, line, and focused rerun', () => {
   assert.throws(
-    () => documentedRows('# Context without the interface map'),
+    () => documentedRows('# A reference without the generated table'),
     new RegExp(
       guardFailure(
-        'CONTEXT.md:1',
-        'CONTEXT.md has no "## The interface→schema map" section any more',
+        `${DOCUMENT_FILE}:1`,
+        `${DOCUMENT_FILE} has no <!-- generated:binding --> section any more`,
       ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
     ),
   )
 })
 
-test('the enforced interface map still matches the one CONTEXT.md documents', () => {
+test('the rendered map still says what LABEL_COLUMNS says', () => {
   const enforced = LABEL_COLUMNS.map((row) => ({
     label: row.label,
     names: [...row.names],
@@ -661,31 +571,31 @@ test('the enforced interface map still matches the one CONTEXT.md documents', ()
     enforced,
     documentedRows(),
     guardFailure(
-      `CONTEXT.md:${sourceLine(CONTEXT, CONTEXT.indexOf('## The interface→schema map'))}`,
-      "CONTEXT.md's interface→schema map and LABEL_COLUMNS disagree. Whichever moved, " +
-        'move the other: the documented map is what a person reads and this one is what ' +
-        'CI acts on, and a difference between them is a lie in the file people trust to ' +
-        'learn the vocabulary.',
+      `${DOCUMENT_FILE}:${sourceLine(DOCUMENT, DOCUMENT.indexOf('<!-- generated:binding'))}`,
+      `${DOCUMENT_FILE} and LABEL_COLUMNS disagree. If the map moved, run ` +
+        '`npm run interface-map`; if the RENDERING lost something on the way — a reason, ' +
+        'one name of a multi-name row — fix renderBinding, because the document is what a ' +
+        'person reads to learn the vocabulary.',
     ),
   )
 })
 
 test('the parity check goes red on a table that has drifted', () => {
   const drifted = [
-    '## The interface→schema map',
+    '<!-- generated:binding -->',
     '',
     '| The interface says | The schema says | Why they differ |',
     '|---|---|---|',
     '| **Content** | `cells.content` | — |',
     '',
-    '## Next section',
+    '<!-- /generated:binding -->',
   ].join('\n')
   assert.deepEqual(documentedRows(drifted), [
     { label: 'Content', names: ['cells.content'], because: '' },
   ])
   assert.notEqual(documentedRows(drifted).length, LABEL_COLUMNS.length)
 
-  // A reason dropped from the documented half is a drift too, and the least
+  // A reason dropped from the rendered half is a drift too, and the least
   // visible one: the table still has every row, and one of them has quietly
   // stopped explaining itself.
   const reasonless = drifted.replace(

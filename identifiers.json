@@ -41,6 +41,10 @@
       "path": "references/data-model.md"
     },
     {
+      "name": "interface-schema-map",
+      "path": "references/interface-schema-map.md"
+    },
+    {
       "name": "lane-roles",
       "path": "references/lane-roles.md"
     },

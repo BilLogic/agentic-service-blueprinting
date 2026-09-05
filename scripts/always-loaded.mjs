@@ -29,8 +29,9 @@
  *     which makes them the first three pointers to fire, not part of the tier.
  *     A session that touches no vocabulary and knows where it is going pays
  *     for none of them. They are also large — `CONTEXT.md` alone is roughly
- *     eight times the router — so counting them would make a budget on the
- *     router meaningless.
+ *     three times the router, and was eight times it before #137 cut the two
+ *     reference maps out — so counting them would make a budget on the router
+ *     meaningless.
  *   - `README.md`, `CONTRIBUTING.md` and `SECURITY.md` address a human
  *     arriving at the repository.
  *   - a skill's own `SKILL.md`, and everything under `references/`, loads when

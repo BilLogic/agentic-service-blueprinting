@@ -60,11 +60,14 @@ export function schemaInventory(dump) {
   for (const m of body.matchAll(/CREATE TABLE public\.(\w+) \(\n([\s\S]*?)\n\);/g)) {
     tables.add(m[1])
     for (const line of m[2].split('\n')) {
-      const col = /^\s{4}(\w+)\s/.exec(line)
+      // `"?` because pg_dump quotes a column whose name is a reserved word,
+      // and nine tables here have a `"position"`. Without it the inventory
+      // silently lacked every one of them.
+      const col = /^\s{4}"?(\w+)"?\s/.exec(line)
       if (col && !/^(CONSTRAINT)$/.test(col[1])) columns.add(`${m[1]}.${col[1]}`)
       const inline = /^\s{4}\w+\s.*CHECK \(\(?(?:\(\w+ IS NULL\) OR \()?\(?(\w+) = ANY \(ARRAY\[([^\]]*)\]\)/.exec(line)
       if (inline) values.set(`${m[1]}.${inline[1]}`, valueList(inline[2]))
-      const viaDomain = /^\s{4}(\w+) public\.(\w+)\b/.exec(line)
+      const viaDomain = /^\s{4}"?(\w+)"? public\.(\w+)\b/.exec(line)
       if (viaDomain) typed.set(`${m[1]}.${viaDomain[1]}`, viaDomain[2])
     }
   }

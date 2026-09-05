@@ -133,12 +133,16 @@ Two of them do not run in CI and are yours to run locally:
 checkout CI does not have. Both are in
 [checks.md § The database](./docs/engineering/checks.md).
 
-Two failures surprise people, so they are worth knowing up front. Editing
+Three failures surprise people, so they are worth knowing up front. Editing
 anything under `skills/` or `references/` without running
 `npm run sync:canvas-skills` fails `npm test` on the drift guard, because the
-app bundles a vendored copy of both. And adding a document under `docs/`
+app bundles a vendored copy of both. Adding a document under `docs/`
 without a `summary:` in its frontmatter fails `npm run check:docs-index`,
-which names the file.
+which names the file. And changing a panel label's binding in
+`scripts/interface-schema-map.mjs` without running `npm run interface-map`
+fails `npm run check:interface-map`, because
+[references/interface-schema-map.md](./references/interface-schema-map.md) is
+generated from that list rather than kept beside it.
 
 ## Where things are
 
