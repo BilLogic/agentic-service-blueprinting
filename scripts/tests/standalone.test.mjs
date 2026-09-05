@@ -11,7 +11,10 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { isScanned, scannedFiles, violationsIn } from '../check-standalone.mjs'
 
@@ -66,4 +69,27 @@ test('product vocabulary is not coupling and is deliberately unmatched', () => {
 test('the vendored mirror is skipped; its source is not', () => {
   assert.equal(isScanned('references/layer-roles.md'), true)
   assert.equal(isScanned('src/lib/agent/skill/references/layer-roles.md'), false)
+})
+
+test('an untracked file is in the subject — the sweep sees what a commit would', () => {
+  // A changeset written and checked before `git add` passed the script and
+  // failed CI (#180). The subject is tracked plus untracked-not-ignored, and
+  // the two never disagree because there is one function.
+  const root = mkdtempSync(join(tmpdir(), 'standalone-'))
+  try {
+    const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+    git('init', '-q')
+    writeFileSync(join(root, '.gitignore'), 'ignored.md\n')
+    writeFileSync(join(root, 'tracked.md'), 'fine\n')
+    git('add', '.gitignore', 'tracked.md')
+    writeFileSync(join(root, 'untracked.md'), 'fine\n')
+    writeFileSync(join(root, 'ignored.md'), 'fine\n')
+    const files = scannedFiles(root)
+    assert.ok(files.includes('tracked.md'))
+    assert.ok(files.includes('untracked.md'))
+    assert.ok(!files.includes('ignored.md'))
+    assert.equal(new Set(files).size, files.length)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })

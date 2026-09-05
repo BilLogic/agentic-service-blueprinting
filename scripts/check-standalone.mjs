@@ -101,13 +101,25 @@ export function isScanned(path) {
 }
 
 /** Tracked text files, minus the exclusions above. */
+/**
+ * Every file the sweep reads: tracked, plus untracked files git would not
+ * ignore. Tracked alone was a trap — a changeset written and checked locally
+ * before `git add` was invisible to `npm run check:standalone`, then failed
+ * `npm test` in CI the moment it was committed (#180, #181). The two subjects
+ * are one function, and that function sees what a commit would.
+ */
 export function scannedFiles(root = REPO_ROOT) {
-  const tracked = execFileSync('git', ['ls-files', '-z'], {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024,
+  const listed = execFileSync(
+    'git',
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
+  )
+  const seen = new Set()
+  return listed.split('\0').filter((path) => {
+    if (path === '' || seen.has(path) || !isScanned(path)) return false
+    seen.add(path)
+    return true
   })
-  return tracked.split('\0').filter((path) => path !== '' && isScanned(path))
 }
 
 /** Every `{ line, label, text }` in one file's source. */
@@ -136,7 +148,7 @@ function main() {
   }
 
   if (problems.length === 0) {
-    console.log(`no uno / PLUS / Ecoeled references in ${files.length} tracked files`)
+    console.log(`no uno / PLUS / Ecoeled references in ${files.length} files a commit would carry`)
     return
   }
 
