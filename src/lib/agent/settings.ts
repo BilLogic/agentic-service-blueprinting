@@ -38,16 +38,35 @@ export const DEFAULT_MODELS: Record<AgentProviderId, string> = {
   openai: MODEL_OPTIONS.openai[0],
 }
 
+/**
+ * How wide the agent searches when the caller names no service.
+ *
+ * `active` (the default) scopes every read to the ONE service on screen — the
+ * one the URL slug names — so a large deployment does not search every service
+ * on every question. `all` is the creator's opt-in to a deployment-wide default.
+ * A per-call `service` filter overrides this either way (one named service, or
+ * `all`). This replaces the old global single-service cache: the agent no
+ * longer assumes one service per deployment, it defaults to the active one.
+ */
+export type AgentServiceScopeMode = 'active' | 'all'
+
 export type AgentSettings = {
   provider: AgentProviderId
   /** Model override per provider; empty string = the provider's default. */
   models: Partial<Record<AgentProviderId, string>>
   keys: Partial<Record<AgentProviderId, string>>
+  /** Default search scope when a tool call names no service. */
+  serviceScope: AgentServiceScopeMode
 }
 
 const STORAGE_KEY = 'sb-agent-settings'
 
-const EMPTY: AgentSettings = { provider: 'google', models: {}, keys: {} }
+const EMPTY: AgentSettings = {
+  provider: 'google',
+  models: {},
+  keys: {},
+  serviceScope: 'active',
+}
 
 function read(): AgentSettings {
   try {
@@ -58,6 +77,7 @@ function read(): AgentSettings {
       provider: parsed.provider ?? 'google',
       models: parsed.models ?? {},
       keys: parsed.keys ?? {},
+      serviceScope: parsed.serviceScope === 'all' ? 'all' : 'active',
     }
   } catch {
     return EMPTY
@@ -100,6 +120,20 @@ export function saveAgentSettings(patch: Partial<AgentSettings>) {
 
 export function modelFor(settings: AgentSettings): string {
   return settings.models[settings.provider] || DEFAULT_MODELS[settings.provider]
+}
+
+/** The default search scope from a settings snapshot. */
+export function serviceScopeMode(settings: AgentSettings): AgentServiceScopeMode {
+  return settings.serviceScope ?? 'active'
+}
+
+/**
+ * The default search scope, read straight off the module snapshot — for the
+ * non-React dispatch path (`registry.ts`), which resolves a tool's scope with
+ * no hook in reach. Returns `active` in a non-browser context (EMPTY snapshot).
+ */
+export function getAgentServiceScopeMode(): AgentServiceScopeMode {
+  return snapshot.serviceScope ?? 'active'
 }
 
 export function hasKey(settings: AgentSettings): boolean {

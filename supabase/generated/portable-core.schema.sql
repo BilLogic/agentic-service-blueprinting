@@ -2880,7 +2880,8 @@ CREATE TABLE public.services (
     summary text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    entity_examples jsonb DEFAULT '{}'::jsonb NOT NULL
+    entity_examples jsonb DEFAULT '{}'::jsonb NOT NULL,
+    slug text
 );
 
 --
@@ -2894,6 +2895,12 @@ COMMENT ON TABLE public.services IS 'The service this blueprint describes, end t
 --
 
 COMMENT ON COLUMN public.services.entity_examples IS 'Per-service authored examples, one free-text value per core kind (service, phase, scenario, path, step, lane), shown under each kind''s definition to ground it in this deployment. Blueprint data, not app config: it rides the service block so a re-map round-trips it. A jsonb object with no CHECK — the six-key shape is the app''s, and an unwritten key simply does not render.';
+
+--
+-- Name: COLUMN services.slug; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.services.slug IS 'A service''s stable route slug: `/<slug>` opens it, and a scoped agent read names it. Its own identity, not derived from the name — a rename does not move the URL, and the unique constraint stops two services colliding. Backfilled from the name-derived slug (public.key_slug) when added; nullable so a cleared slug falls back to the name-derived route in the app. Editable by the deployer through a later panel write, which adds the UPDATE grant then.';
 
 --
 -- Name: slices; Type: TABLE; Schema: public; Owner: -
@@ -3310,6 +3317,19 @@ ALTER TABLE ONLY public.service_account_emails
 
 ALTER TABLE ONLY public.services
     ADD CONSTRAINT services_pkey PRIMARY KEY (id);
+
+--
+-- Name: services services_slug_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.services
+    ADD CONSTRAINT services_slug_key UNIQUE (slug);
+
+--
+-- Name: CONSTRAINT services_slug_key ON services; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON CONSTRAINT services_slug_key ON public.services IS 'One slug per service, per deployment. Two services whose names slugify alike are refused rather than colliding on a shared route.';
 
 --
 -- Name: slices slices_pkey; Type: CONSTRAINT; Schema: public; Owner: -

@@ -114,6 +114,10 @@ function registryId(name) {
 const SERVICE = {
   id: SERVICE_ID,
   name: 'Keeping a blueprint true',
+  // The route slug (21000130000000): a service's own identity, so the sample
+  // keeps its URL if somebody renames it. Spelled out rather than derived —
+  // the column exists precisely so the name is not the identity.
+  slug: 'keeping-a-blueprint-true',
   summary:
     'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.',
   // One authored example per core kind, grounding each generic definition in
@@ -1819,8 +1823,8 @@ begin;
 -- Service-replace: drop the prior sample service (cascades to all children).
 delete from public.services where id = ${q(SERVICE_ID)};
 
-insert into public.services (id, name, summary, entity_examples) values
-  (${q(SERVICE_ID)}, ${q(SERVICE.name)}, ${q(SERVICE.summary)}, ${q(JSON.stringify(SERVICE.entityExamples))}::jsonb);
+insert into public.services (id, name, slug, summary, entity_examples) values
+  (${q(SERVICE_ID)}, ${q(SERVICE.name)}, ${q(SERVICE.slug)}, ${q(SERVICE.summary)}, ${q(JSON.stringify(SERVICE.entityExamples))}::jsonb);
 
 insert into public.phases (id, service_id, name, summary, position) values
 ${sqlRows(

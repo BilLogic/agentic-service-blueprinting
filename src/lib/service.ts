@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { getActiveServiceSlug } from '@/contexts/activeServiceStore'
+import { resolveServiceBySlug } from '@/lib/serviceSlug'
 
 type Client = SupabaseClient<Database>
 
@@ -35,4 +37,50 @@ export async function resolveFirstServiceId(client: Client): Promise<string> {
   const id = await findFirstServiceId(client)
   if (!id) throw new Error('No service service exists in the database')
   return id
+}
+
+/**
+ * The active service's id — one lookup per slug, shared in flight.
+ *
+ * Errors are not cached; the next caller retries. Deliberately signal-less for
+ * the same reason as `findFirstServiceId`. Reset only exists for tests.
+ */
+const activeServiceIdBySlug = new Map<string, Promise<string | null>>()
+
+/** Evict one slug's cached lookup so the next caller retries. */
+function forgetActiveServiceId(slug: string): void {
+  activeServiceIdBySlug.delete(slug)
+}
+
+/** Test-only: clear the per-slug cache between cases. */
+export function __resetActiveServiceIdCache(): void {
+  activeServiceIdBySlug.clear()
+}
+
+/**
+ * The id of the service the app is looking at, honoring the slug in the URL.
+ *
+ * With no slug — the bare-root, single-service case — this is exactly
+ * `findFirstServiceId`, so single-service resolution is byte-for-byte today's.
+ * When a slug names a service, its id is resolved by matching the service's
+ * `slug` column (with a name-derived fallback for a null column — see
+ * `serviceSlug`), cached per slug and sharing one in-flight query.
+ */
+export function findActiveServiceId(client: Client): Promise<string | null> {
+  const slug = getActiveServiceSlug()
+  if (!slug) return findFirstServiceId(client)
+
+  let pending = activeServiceIdBySlug.get(slug)
+  if (!pending) {
+    pending = (async () => {
+      const { data, error } = await client.from('services').select('id, name, slug')
+      if (error) throw new Error(error.message)
+      return resolveServiceBySlug(data ?? [], slug)?.id ?? null
+    })().catch((error: unknown) => {
+      forgetActiveServiceId(slug)
+      throw error
+    })
+    activeServiceIdBySlug.set(slug, pending)
+  }
+  return pending
 }
