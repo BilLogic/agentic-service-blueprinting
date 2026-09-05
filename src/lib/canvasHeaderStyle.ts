@@ -117,6 +117,13 @@ export const CANVAS_HEADER_INFO = [
   'opacity-0 outline-none transition-opacity duration-(--motion-micro)',
   'focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50',
   '[@media(pointer:coarse)]:opacity-100',
+  // Invisible must also mean untouchable. On a fine pointer the glyph is
+  // transparent but kept its hit area, and its click stops propagation — so
+  // the corner of every header was a ~16px dead zone where a click opened
+  // nothing. It takes clicks only where it can be seen: a coarse pointer, or
+  // keyboard focus.
+  'pointer-events-none focus-visible:pointer-events-auto',
+  '[@media(pointer:coarse)]:pointer-events-auto',
 ].join(' ')
 
 /**
