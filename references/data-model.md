@@ -73,7 +73,7 @@ erDiagram
   phases { uuid id PK  uuid service_id FK  text name  text summary  text business_impact  text operational_requirements  int position  uuid loops_to_phase_id FK "optional self-reference" }
   scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text layout "stacked | merged — what the scenario opens as" }
   paths { uuid id PK  uuid scenario_id FK  text name "the CONDITION that routes you here, never the activity — the scenario already said that"  text summary "when this route applies"  text note "the author's aside: open questions, provenance, working state"  text kind "happy | variant | exception"  entity_status status }
-  steps { uuid id PK  uuid scenario_id FK "columns are scenario-scoped, shared across paths"  text name }
+  steps { uuid id PK  uuid scenario_id FK "columns are scenario-scoped, shared across paths"  text name  text summary "what this moment is, across every lane — the caption on the storyboard frame" }
   path_steps { uuid path_id PK_FK  uuid step_id PK_FK  int position "unique per (path_id, position)" }
   lanes { uuid id PK  uuid path_id FK  text name "display label - free-form, any language"  text lane_role "semantic role key; null = generic swimlane"  int position  text owner_team "from the closed list in lane-vocabulary.md; NULL on actor and storyboard lanes"  text kpis  text tools  uuid stakeholder_id FK }
   stakeholders { uuid id PK  text name "the identity — unique across the deployment; no service owns one"  text kind "recipient | staff | partner | provider | team"  text summary "who this actor IS, for the deployment"  text[] aliases "other spellings this blueprint used for the same actor" }
@@ -92,7 +92,7 @@ erDiagram
 | `phases` | Service stages, ordered by `position` | `loops_to_phase_id` self-reference renders the service loop |
 | `scenarios` | The unit users navigate; owns steps and paths | `layout` enum below |
 | `paths` | A journey variant within a scenario | `kind` enum below; optional `note` |
-| `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps` |
+| `steps` | Scenario-scoped step columns, SHARED across paths | A step exists once per scenario; paths select/ordr via `path_steps`. `summary` is the moment's one sentence across every lane, rendered as the storyboard caption |
 | `path_steps` | Which steps a path uses and in what column order | `position` unique per path |
 | `lanes` | Swimlanes, per PATH (each path carries its own lane rows) | `name` free-form any language; `lane_role` semantic key (see `references/lane-roles.md`) |
 | `cells` | Grid content at (lane × step) on a path | `unique (lane_id, step_id)`; `content` newline-separated items render as pills on pill-role lanes |

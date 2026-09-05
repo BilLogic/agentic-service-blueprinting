@@ -63,3 +63,56 @@ export function getLaneRole(lane: {
 }): string | null {
   return lane.role ?? LEGACY_NAME_TO_ROLE[lane.name] ?? null
 }
+
+/**
+ * The role in words, for a human reading a lane's properties.
+ *
+ * The enum key is a rendering contract (`frontstage_actions` decides where the
+ * visibility line draws); it is not an answer to "what is this row". The
+ * sentences come from `references/lane-roles.md`, which is the same source the
+ * agent reads, so the two never say different things about the same key.
+ *
+ * An unknown or absent role is not an error: a custom role and a null role
+ * both render as a generic swimlane, which is exactly what this says.
+ */
+const LANE_ROLE_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  [CUSTOMER_ACTIONS_ROLE]:
+    'Customer actions — the spine of the journey. The interaction line draws below it.',
+  [FRONTSTAGE_ACTIONS_ROLE]:
+    'Frontstage — staff actions the customer can see.',
+  [BACKSTAGE_ACTIONS_ROLE]: 'Backstage — staff actions out of sight.',
+  [FRONTSTAGE_TOUCHPOINTS_ROLE]:
+    'Frontstage touchpoints — what the customer meets: apps, documents, '
+    + 'places and channels.',
+  [BACKSTAGE_TOUCHPOINTS_ROLE]:
+    'Backstage touchpoints — the tools and artifacts staff use out of sight.',
+  [SUPPORT_ACTIONS_ROLE]:
+    'Support — teams, vendors and infrastructure behind the work.',
+  [PARTNER_ACTIONS_ROLE]:
+    'Partner — a party outside the service, acting where the customer can '
+    + 'see them.',
+  [STORYBOARD_ROLE]:
+    'Storyboard — the frames for each step, not text. A step’s frames across '
+    + 'the lanes are its strip.',
+}
+
+export function describeLaneRole(role: string | null | undefined): string {
+  if (!role) return 'A swimlane with no blueprint role.'
+  return LANE_ROLE_DESCRIPTIONS[role] ?? `Custom role: ${role}.`
+}
+
+/**
+ * The role as a BADGE — the name only, no explanation.
+ *
+ * The sentences above are one shape: "Name — what it means." A panel that
+ * shows a generic "Lane" badge AND that whole sentence underneath says the
+ * same thing twice at two sizes. So the badge takes the half before the dash
+ * and the sentence moves behind a hint, which is where an explanation belongs
+ * once the reader can see the answer.
+ */
+export function labelLaneRole(role: string | null | undefined): string {
+  if (!role) return 'Lane'
+  const described = LANE_ROLE_DESCRIPTIONS[role]
+  if (!described) return 'Lane'
+  return described.split('—')[0]!.trim()
+}

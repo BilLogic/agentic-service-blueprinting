@@ -989,3 +989,44 @@ revoke truncate on public.stakeholders from authenticated;
 grant update (stakeholder_id) on public.lanes to authenticated;
 grant update (status) on public.cells to authenticated;
 grant update (status) on public.paths to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000126000000_a_step_says_what_its_moment_is.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the write surface is the Supabase roles' business: `authenticated`
+-- is a role only the recipe creates, and a column grant is how this deployment
+-- says which fields a signed-in author may write directly.
+
+-- The step's caption. `steps` was revoked and re-granted column by column in
+-- 20260818000000, so its column grants ARE the surface and a new field has to
+-- be named or the panel's save is refused.
+grant update (summary) on public.steps to authenticated;
+
+-- The Service panel's two fields. `services` was never narrowed, so this adds
+-- a floor rather than replacing a posture — see the header.
+grant update (summary, entity_examples) on public.services to authenticated;
+
+-- The three columns the panels write, each reachable by the signed-in role.
+-- An invariant: it reads the same on a database where the grant was already
+-- wider as on one where this file is what put it there.
+do $recipe_proof$
+declare
+  target text;
+begin
+  foreach target in array array[
+    'steps.summary',
+    'services.summary',
+    'services.entity_examples'
+  ] loop
+    if not has_column_privilege(
+      'authenticated',
+      format('public.%I', split_part(target, '.', 1)),
+      split_part(target, '.', 2),
+      'UPDATE'
+    ) then
+      raise exception 'proof: authenticated cannot UPDATE public.%; the grant did not take', target;
+    end if;
+  end loop;
+end
+$recipe_proof$;
