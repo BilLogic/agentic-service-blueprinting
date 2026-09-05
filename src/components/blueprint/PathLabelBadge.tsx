@@ -1,5 +1,4 @@
-import type { CSSProperties, MouseEvent } from 'react'
-import { X } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
 import { Badge } from '@/components/ui/badge'
 import { getPathBadgeStyle } from '@/lib/pathColorTheme'
@@ -14,8 +13,6 @@ type PathLabelBadgeProps = {
   className?: string
   style?: CSSProperties
   side?: 'top' | 'bottom' | 'left' | 'right'
-  /** When set, shows a dismiss control that removes this path from the active set. */
-  onRemove?: () => void
   /**
    * Path descriptions are scenario-specific — set false on overview/phase chrome.
    * Defaults to true.
@@ -23,7 +20,19 @@ type PathLabelBadgeProps = {
   showTooltip?: boolean
 }
 
-/** Path name pill with Badge styling, path-type color, and a definition popover. */
+/**
+ * The path's name as a BADGE: what this band, column or cell belongs to.
+ *
+ * One per path, drawn from no set the reader picks from, and not clickable —
+ * so it takes the badge's geometry, the path-type colour, and what a path IS
+ * on hover, on focus and on tap. It carried a dismiss control until #182;
+ * nothing ever passed one, and a removable value is a TAG rather than a badge,
+ * which is a different component with a different promise (see
+ * `OwnerTagSelect`, the only one in the app).
+ *
+ * The explanation is a POPOVER rather than a tooltip since #140: a tooltip
+ * never opens on touch, so on a phone this badge explained nothing at all.
+ */
 export function PathLabelBadge({
   name,
   summary,
@@ -32,22 +41,19 @@ export function PathLabelBadge({
   className,
   style,
   side = 'top',
-  onRemove,
   showTooltip = true,
 }: PathLabelBadgeProps) {
-  const handleRemove = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    onRemove?.()
-  }
-
   const badge = (
     <Badge
       // Fill AND its derived ink come from this one attribute (blueprint.css).
       data-blueprint-fill
+      // One cursor whether or not there is an explanation behind it (#243).
+      // The help cursor used to be drawn only where the popover was shown,
+      // which was the right rule for a mark that promised something; with the
+      // mark gone there is nothing to withhold. The popover trigger still
+      // supplies `tabIndex`, so the explained case is reachable by keyboard.
       className={cn(
-        'max-w-full cursor-default border-transparent font-semibold',
-        onRemove ? 'gap-0.5 pl-1' : 'gap-1',
+        'max-w-full cursor-default gap-1 border-transparent font-semibold',
         compact ? 'h-5 px-2 py-0.5 text-xs' : 'h-auto px-2.5 py-1 text-sm',
         className,
       )}
@@ -56,23 +62,6 @@ export function PathLabelBadge({
         ...style,
       }}
     >
-      {onRemove ? (
-        <button
-          type="button"
-          className={cn(
-            'inline-flex size-3 shrink-0 items-center justify-center rounded-sm',
-            // Inherit the badge's paired ink, and wash the hover with it —
-            // a fixed white/20 is invisible on the light fills dark mode uses.
-            'transition-colors hover:bg-current/20',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current/70',
-          )}
-          aria-label={`Remove ${name}`}
-          onClick={handleRemove}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <X className="size-2.5" strokeWidth={2.75} aria-hidden />
-        </button>
-      ) : null}
       <span className="truncate leading-none tracking-tight">{name}</span>
     </Badge>
   )

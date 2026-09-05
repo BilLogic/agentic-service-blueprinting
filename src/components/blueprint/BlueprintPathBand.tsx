@@ -29,10 +29,6 @@ import {
 } from '@/lib/blueprintTheme'
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
-  COMPARE_PATH_SECTION_BOTTOM_INSET,
-  COMPARE_PATH_SECTION_INSET,
-  COMPARE_PATH_SECTION_TOP_INSET,
-  COMPARE_STACKED_HEADER_GAP,
   type BlueprintLabelRowSpec,
   getComparePathArrowData,
   resolveBlueprintLane,
@@ -167,27 +163,17 @@ export function BlueprintPathBand({
         compact={compact}
         showPathTypeBadge={showPathTypeBadge}
         extraTopInset={frameExtraTopInset}
+        excludeLabelRail={arrangement.kind === 'row'}
       />
       {arrangement.kind === 'row' ? (
         <>
           {/* The label rail re-emits per band: every band names its own
               lanes, in DOM order matching the path order. */}
-          {/* Bleed the rail to the frame's own edges: up through the gap
-              under the header (wrapped frames) or the plain top inset, and
-              down through the bottom inset — no white L-gaps inside the
-              frame. */}
-          <BlueprintStickyLabelBackdrop
-            rowCount={rows.length}
-            bleedTop={
-              frameExtraTopInset
-                ? COMPARE_STACKED_HEADER_GAP
-                : COMPARE_PATH_SECTION_TOP_INSET - 3
-            }
-            // Inset minus the frame's border (≤3px): the rail meets the
-            // border's inner edge, never paints over it.
-            bleedBottom={COMPARE_PATH_SECTION_BOTTOM_INSET - 3}
-            bleedLeft={COMPARE_PATH_SECTION_INSET - 3}
-          />
+          {/* No bleed. The bleeds existed to fill the frame's own insets in
+              this column, back when the outline ran UNDER the rail; the frame
+              now starts after the label track, so grey pushed past the row
+              tracks lands outside the outline instead of inside it. */}
+          <BlueprintStickyLabelBackdrop rowCount={rows.length} />
           {rows.map((row, rowIndex) =>
             row.kind === 'interaction' ||
             row.kind === 'visibility' ||
