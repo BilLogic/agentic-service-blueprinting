@@ -64,7 +64,7 @@ export function CompareLaneRowShell({
         : {})}
       className={cn(
         'flex h-full min-h-0 flex-col',
-        isDivider && 'relative z-[1] overflow-hidden bg-transparent',
+        isDivider && 'relative z-1 overflow-hidden bg-transparent',
         isLaneRow && 'overflow-visible',
       )}
       style={{

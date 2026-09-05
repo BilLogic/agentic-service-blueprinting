@@ -7,7 +7,7 @@ import {
 } from '@/lib/compareGridTracks'
 import type { CompareModel } from '@/lib/compareSlots'
 import {
-  COMPARE_LABEL_WIDTH,
+  COMPARE_LABEL_TRACK_WIDTH,
   buildSideBySideLabelRowSpecs,
   getCanonicalLanes,
   type BlueprintLabelRowSpec,
@@ -53,9 +53,9 @@ export function useCompareGridAxis(
   // whole subgrid per frame and draw arrows against intermediate geometry.
   const gridTemplateColumns = useMemo(() => {
     if (tracks.length === 0) {
-      return `${COMPARE_LABEL_WIDTH}px ${STEP_COLUMN_WIDTH}px`
+      return `${COMPARE_LABEL_TRACK_WIDTH}px ${STEP_COLUMN_WIDTH}px`
     }
-    return `${COMPARE_LABEL_WIDTH}px ${tracks
+    return `${COMPARE_LABEL_TRACK_WIDTH}px ${tracks
       .map(() => `${STEP_COLUMN_WIDTH}px`)
       .join(' ')}`
   }, [tracks])
