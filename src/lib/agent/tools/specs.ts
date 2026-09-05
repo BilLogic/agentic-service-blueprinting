@@ -249,7 +249,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'focus_cell',
     description:
-      'Scroll the open scenario\'s canvas to a specific cell — use to point at evidence when answering questions. The cell\'s scenario must be open first (open_scenario).',
+      'Focus the active canvas camera on a specific cell and wait for the move to complete — use to point at evidence when answering questions. The cell\'s scenario must be open first (open_scenario).',
     parameters: {
       type: 'object',
       properties: { cell_id: str('Cell id') },
