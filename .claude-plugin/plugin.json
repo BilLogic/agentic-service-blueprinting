@@ -1,6 +1,6 @@
 {
   "name": "sb",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Service blueprinting (sb): four skills — sb:map ingests/co-creates/translates/imports blueprints with hash-bound sign-off, sb:slice cuts stakeholder views, sb:audit runs a check roster into triageable findings, sb:whatif traces hypothetical changes before promotion. Five agents + three hooks around a validated JSON intermediate representation, presented with the bundled React blueprint template.",
   "author": {
     "name": "BilLogic (Bill & Meryem)",

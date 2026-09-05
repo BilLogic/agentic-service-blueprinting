@@ -1,5 +1,237 @@
 # Changelog
 
+## 1.5.1
+
+### Patch Changes
+
+- 6d76c42: `set_cell_dependency` is called with `name`, and the argument names are a check
+  now.
+
+  `21000116000000` renamed `cell_dependencies.label` to `.name` and moved the RPC
+  parameter with it, and `src/lib/authoringRpc.ts` kept posting `label`.
+  PostgREST resolves an RPC by matching the body's KEYS to a function's parameter
+  names, so a key the function does not have means no candidate matches at all:
+  the reply is `PGRST202 — could not find the function`, a 404 at the seam rather
+  than a null column. Every arrow saved from `CellDependencyEditor` failed, and so
+  did every `create_cell_dependency` the agent called. `client.rpc` is reached
+  through an `any` cast — the file says why, and it is a good reason — so nothing
+  in TypeScript could see it, and no guard was looking either.
+
+  The word moves end to end: the wrapper's input, `DraftDependency`,
+  `ExistingDependency`, the panel's field and its placeholder, and the generated
+  `Args` for the function. The agent tool keeps saying `label` and `registry.ts`
+  maps it, which is the deployment's spelling of the same seam: the word a model
+  is asked for is not the schema's, and moving a published surface for a spelling
+  costs more than the mapping does. `DeletionImpact.label` is untouched — that is
+  the deletion target's display label, and the deployment still spells it that
+  way.
+
+  **The guard that would have caught it**: `npm run check:rpc-arguments` reads
+  every RPC argument object in `authoringRpc.ts` — the `call`/`read` sites and
+  the revert specs, because an inverse posts the same body one undo later — and
+  holds their keys against the parameter lists parsed from
+  `supabase/generated/portable-core.schema.sql`. Three failures, each naming the
+  line: a key that is not a parameter, a parameter with no default the call omits,
+  and a function the dump does not have. The `p_` prefix is compared verbatim,
+  because PostgREST strips nothing and the `p_`-prefixed functions are called with
+  the prefix.
+
+  The rename map gains the other half of `21000115000000`: `slice_items` →
+  `slides`, and `slice_items.caption` → `slides.title`. It enforces nothing yet,
+  and the header says why rather than leaving the silence to be read as an
+  oversight — `slices_referencing` is `language sql`, so its body kept the text it
+  was created with and still selects `from public.slice_items`. Calling it raises
+  `42P01`. Keying the fragment today would fail the dump sweep on that defect
+  instead of on residue; finishing the rename is a migration of its own, and the
+  row is written down while that is true.
+
+  The plugin contract is untouched, so this is a patch: no identifier in
+  `identifiers.json` moves and no path in `check-reference-paths.mjs` does either.
+
+- 8f93a55: `slices_referencing` reads `slides`, and calling every `language sql` body is a
+  check now.
+
+  `21000115000000` renamed `slice_items` to `slides` and moved every dependent
+  name a catalogue holds — four constraints, two indexes, a trigger, four
+  permissive policies. It missed the one no catalogue holds: the text a function
+  body was created with. `slices_referencing` is `language sql`, so its body survived the
+  rename verbatim and still selected `from public.slice_items`:
+
+  ```
+  select public.slices_referencing(array[]::uuid[]);
+  ERROR:  relation "public.slice_items" does not exist
+  ```
+
+  `deletion_impact` reads that function for `affected_slices`, and `delete_cell`,
+  `delete_path`, `delete_scenario`, `remove_step`, `remove_lane` and
+  `remove_lanes` all read `deletion_impact` — so no structural delete could
+  succeed on a fresh core, and the confirm dialog raised `42P01` at the moment
+  somebody was deleting something. Creation was no defence: the body was valid the
+  day it was written, and the rename that falsified it validates nothing.
+
+  `21000129000000` recreates the one affected body — the definition the schema
+  dump holds, with the two occurrences of the relation written `public.slides` and
+  nothing else changed. The signature, `language sql stable`, the `search_path`
+  and the ACL are untouched: `create or replace function` keeps the object's
+  grants, which matters here because the function is in the portable core and its
+  `grant execute … to anon, authenticated` is in the Supabase recipe. Its proof
+  sweeps every body in `public` and then CALLS both functions, because a `language
+sql` body is text until something calls it.
+
+  The same rename also missed three names a catalogue _does_ hold — the optional
+  service-account tier (`20260818002000`) builds its RESTRICTIVE policies from a
+  table list that still read `slice_items`, so a database replaying the whole
+  series carried `slice_items_insert_service_only`,
+  `slice_items_update_service_only` and `slice_items_delete_service_only` on
+  `public.slides`, and `21000129000000` renames all three (a rename, so the
+  definitions stay byte-for-byte) in its recipe half, guarded by the catalogue
+  because the generated recipe already creates them under the current name.
+
+  The rename map's row flips with it: `slice_items` is in the `retired` list now,
+  and the header says what changed rather than leaving the old "enforces nothing
+  yet" to be read as an oversight. Flipping it found the second copy of the same
+  defect one estate over — `scripts/agent-harness/run.mjs` asked PostgREST for the
+  retired relation as an embed (`slice_items(…,caption,…)`, alongside `description`
+  and `origin` on `slices`), a string no compiler reads and `npm run
+check:database-names` does; it reads `slides(…,title,…)` from `summary` and
+  `authorship` now.
+
+  **The guard that would have caught it**: `npm run check:function-bodies` stands
+  up a fresh core + recipe + seed and CALLS every `language sql` function in
+  `public` — a typed null per argument, inside a rolled-back transaction — plus
+  `slices_referencing` and `deletion_impact` with real ids out of the seeded
+  content. Only the SQLSTATEs that mean "that is not there" fail it, so a function
+  raising its own exception on null input passes as tolerated. `--self-test`
+  plants the defect in its own order — a table, a body that reads it, then the
+  rename — and asserts the call is reported, because a run where every function
+  answered looks identical to a run that called none of them. It runs in the
+  `portable-core` CI job beside `check:seed-load`.
+
+  Neither of the two static sweeps could have found this. The dump regenerates
+  happily — a broken body dumps like any other — and
+  `scripts/tests/portable-schema.test.mjs` blanks single-quoted strings before
+  tokenising, which swallows the region inside a dollar-quoted body. Only
+  `check:identifiers`, reading `pg_proc.prosrc` on a live database, saw it, and
+  only once the word was retired.
+
+  The plugin contract is untouched, so this is a patch: no identifier in
+  `identifiers.json` moves and no path in `check-reference-paths.mjs` does either.
+
+- 6d80772: The harness reads `audit_findings` and its `summary`, and a query path is
+  checked against the schema now.
+
+  `21000116000000` renamed the `findings` table to `audit_findings` and
+  `findings.note` to `.summary`, and `scripts/agent-harness/run.mjs` kept asking
+  for `findings?select=…,note,…`. PostgREST answers that with a 404, so the
+  harness's `list_findings` case could only ever fail against a live project —
+  and the two lines above it were the same defect twice more: `realGetSlice`
+  selected `slices.description` and `slices.origin`, renamed by the same
+  migration to `summary` and `authorship`, and embedded `slice_items(…caption…)`,
+  which `21000115000000` renamed to `slides(…title…)`. Six dead names in one
+  file. The reads the app makes were already right; the harness mirrors them by
+  hand, which is what the header says and what nothing was holding it to.
+
+  No guard could see any of it. The rename map retires `check_name` and nothing
+  else from that row, on purpose — `finding` is the live domain word a panel has
+  to be able to say, and `note`, `description` and `origin` are live words
+  elsewhere in the tree. A word list is the wrong instrument for a name that is
+  still a word.
+
+  **The guard that would have caught it**: `npm run check:database-names` gains a
+  second assertion. A raw PostgREST query PATH — `<relation>?select=<columns>` —
+  puts a relation in the one position PostgREST reads as a relation, and
+  everything inside `select=` is either a column of it or an embed of another
+  relation, so both halves are held against
+  `supabase/generated/portable-core.schema.sql` rather than against the rename
+  map. A name the dump does not have fails whether or not anybody wrote it down
+  as retired, and a retired relation is still followed THROUGH the map, so the
+  dead table and its dead column are reported from one site instead of in two
+  rounds against a live database:
+
+  ```
+  scripts/agent-harness/run.mjs:274: PostgREST query string names `findings`,
+    which is not a table or view in the schema dump (→ `audit_findings`)
+  scripts/agent-harness/run.mjs:274: PostgREST query string selects `note`, which
+    is not a column of `audit_findings` (→ `audit_findings.summary`)
+  ```
+
+  The column half stops at the query path and stays there. A bare
+  `.select('id, name')` carries the same information, but the relation it belongs
+  to is the `.from(…)` on another line; a check that chased it would be reading a
+  query builder rather than a literal, and the first correct call it failed would
+  be the argument for switching it off. A view is a name whose columns are
+  unchecked — the projection is its own business — so a query still cannot name
+  one that is gone.
+
+  The plugin contract is untouched, so this is a patch: no identifier in
+  `identifiers.json` moves and no path in `check-reference-paths.mjs` does either.
+
+- The lockfile states the version too.
+
+  `npm run check:version` held three files to one number — `package.json`,
+  `.claude-plugin/plugin.json`, the CHANGELOG heading — and `package-lock.json`
+  sat outside it, still saying `0.5.0` five releases on. Every `npm install` in
+  a fresh worktree rewrote the two lockfile lines from the manifest and left a
+  dirty file for the next commit to carry or discard. The check now reads the
+  lockfile's two statements (its root and its `packages[""]` entry, which must
+  agree with each other before either is trusted), `--write` propagates into
+  them, and the tree says one number in all four places.
+
+- 5e43094: The template takes the deployment's names and its camera policy.
+
+  Two files converge outright. `PhaseOverviewPhaseLoopArrow` drew the phase loop
+  at `z-[60]`, sharing a layer with the annotation surface, which made the two
+  order by DOM position; it is `z-20` now, with the deployment's own sentence
+  saying why — above board content, below title badges and edit chrome.
+  `badgeGeometry.test.tsx` had two case names calling the default size "the
+  chip". Both files are byte-identical to the deployment's copies.
+
+  `chip` stops being a name here, which is the other half of the row #158 could
+  only take half of. Every spelling comes from the deployment: the cover's
+  copy button is `CoverCommandCopy` reading `content.commandCopy`
+  (`CoverCommandChip`, `coverContent.chip`), the menubar's count is
+  `CompareDifferencesCount`, and the ledger's two markers split along the
+  definition the rename map states — a `VerdictBadge` and a `CompareZoneBadge`
+  describe the thing they sit on, a `FilterTag` is one value out of a set. A
+  drag handle's group is `group/cell`, and the sample blueprint's findings panel
+  lists severity badges. `scripts/tests/pill-is-not-a-name.test.mjs` becomes
+  `scripts/tests/badge-and-tag.test.mjs` — the deployment's name for the same
+  guard — and its subject is now the row's whole pair.
+
+  `picture` moves only where the deployment moved it: `resolveCellDetailPictures`
+  is `resolveCellDetailImages`, and the panel's `detailImages` / `showImages` /
+  `imageBlock` follow. The word stays a name everywhere both repositories still
+  use it — `visualPictures`, `getTechItemDetailPictures`,
+  `BlueprintStepVisualPicture` — because a sweep past that point would diverge
+  from the deployment rather than converge on it. What the rename map gains is
+  the row for `cells.picture` → `cells.frame`, which `21000115000000` shipped
+  here and nothing recorded; `picture` is a substring of no surviving database
+  name, so unlike most of that block the row enforces.
+
+  Two edge names take the deployment's spelling: `linkLabel` → `linkName`, and
+  the lane's row position is `laneRowPosition` / `selectedLaneRowPosition` /
+  `getSelectedCellLaneRowPosition` in `blueprintCellConnections.ts`,
+  `CellDependencySections.tsx` and the cell panel.
+
+  `src/lib/canvasCameraPolicy.ts` arrives whole, with the behavioural test that
+  replaced asserting literals against a component's source text. Its three
+  functions — `getMinFitZoom`, `getSemanticZoomThreshold`,
+  `getFocusedComparisonCameraKey` — take over from `ServiceOverviewView`'s two
+  inline constants and its path-free camera key. The key is a widening rather
+  than a reversal: it returns `'stable'` outside a focused scenario, so a filter
+  toggle at the overview still keeps the reader's pan and zoom, while a focused
+  comparison changing its own geometry becomes the camera event it is.
+
+  Check C's extraction now strips comments, which is what its own header always
+  claimed. `JSX_TEXT` reads between a `>` and the next `<`, so a doc comment
+  containing a backticked `<textarea>` handed it a whole paragraph of prose as a
+  "reader-facing string" — the false positive its header says to answer by
+  narrowing the subject, never the word list.
+
+  The plugin contract is untouched, so this is a patch: no identifier in
+  `identifiers.json` moves and no path in `check-reference-paths.mjs` does
+  either.
+
 ## 1.5.0
 
 ### Minor Changes
