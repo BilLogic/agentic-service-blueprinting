@@ -148,7 +148,7 @@ function main() {
   }
 
   if (problems.length === 0) {
-    console.log(`no uno / PLUS / Ecoeled references in ${files.length} tracked files`)
+    console.log(`no uno / PLUS / Ecoeled references in ${files.length} files a commit would carry`)
     return
   }
 
