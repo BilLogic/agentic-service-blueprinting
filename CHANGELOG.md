@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.2.0
+
+### Minor Changes
+
+- ea3ceac: A step says what its moment is, and the service panel may write its own.
+
+  The first of four slices porting the entity panel editors (#357). One column
+  and three grants: `steps.summary` — the one sentence that makes a step's
+  column legible without reading five cells, rendered as the caption on the
+  storyboard frame — and UPDATE on `steps.summary`, `services.summary` and
+  `services.entity_examples` for the signed-in author, because the editors that
+  follow write these fields directly rather than through a definer function.
+
+  With it, the pure modules those editors stand on: `entityStatus` (the shared
+  vocabulary and its labels), `panelText`, `openPanelStore` (the cell-vs-entity
+  drawer arbiter), `panelEditorBusy`, `panelSheetSnap`, `canvasHeaderStyle`,
+  `usePanelFooterHost`, a `Select` primitive, and `describeLaneRole` /
+  `labelLaneRole`.
+
+  Every change is additive: no row is touched, no IR field moves, and the schema
+  version does not. Nothing renders differently yet — the shell, the panels and
+  the affordances are the next three slices.
+
+- dd18a6d: Every label is a door.
+
+  The last of four slices porting the entity panel editors (#357). The
+  service bar, the phase bar, a scenario's path heading, the lane labels and
+  the step headers each become an affordance: hover discloses the definition
+  card with the deployment's own example, and a click opens the matching
+  panel in the one drawer. The cell drawer and the entity drawer now exclude
+  each other from both sides, and a scenario board publishes its scope so the
+  lane and step openers know they are on one. A service identity header
+  arrives where the template rendered none.
+
+- 1b36c57: Five panels write what they show.
+
+  The third of four slices porting the entity panel editors (#357). Service,
+  Phase, Scenario, Lane and Step each gain a panel in the one drawer shell —
+  summary and business model for the service, the six per-kind examples,
+  business impact and operational requirements for a phase, a scenario's paths
+  with their kind, note and status, a lane's owner team, KPIs, tools and actor,
+  a step's caption — with the read hooks and the mutations under them, every
+  write recorded and revertible. `stakeholders` gets its picker, badge and
+  mutations. The drawer is mounted and inert: the affordances that open it are
+  the last slice.
+
+  One grant rode in: `phases.summary` had never been granted to the signed-in
+  author (the description → summary rename moved the word, not a grant that
+  did not exist), so the Phase panel's first field would have been the one it
+  could not save.
+
 ## 1.1.0
 
 ### Minor Changes
