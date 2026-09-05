@@ -22,6 +22,7 @@ import {
   generate,
   partition,
   renamesIn,
+  statements,
   supabaseLeaks,
   CORE_FILE,
   RECIPE_FILE,
@@ -58,9 +59,43 @@ test('the renames a core fragment performs are read out of it in order', () => {
   )
   assert.deepEqual(ops, [
     { kind: 'identifier', from: 'layers', to: 'lanes' },
-    { kind: 'identifier', from: 'layer_role', to: 'lane_role' },
+    { kind: 'column', table: 'lanes', from: 'layer_role', to: 'lane_role' },
     { kind: 'object-name', from: 'layer', to: 'lane' },
   ])
+})
+
+test('a column rename stops at the table it happened on', () => {
+  // 21000116000000 renamed `findings.note` to `summary`. `paths.note` is a
+  // different column that happens to share the spelling, and the grant list
+  // 20260818000000 wrote for `paths` predates the rename. A text-global rule
+  // rewrote that list to `(name, summary, summary, kind)` — two `summary`
+  // entries, no `note` — which dropped the grant on the column the path
+  // panel writes on every save.
+  const { recipe } = generate([
+    {
+      name: '001_tables.sql',
+      sql: [
+        'create table public.findings (id uuid, note text);',
+        'create table public.paths (id uuid, name text, note text);',
+        '-- @recipe',
+        'grant update (name, note) on public.paths to authenticated;',
+        'grant update (note) on public.findings to authenticated;',
+      ].join('\n'),
+    },
+    { name: '002_rename.sql', sql: 'alter table public.findings rename column note to summary;' },
+  ])
+  assert.match(recipe, /grant update \(name, note\) on public\.paths to authenticated;/)
+  assert.match(recipe, /grant update \(summary\) on public\.findings to authenticated;/)
+})
+
+test('a statement is cut at a semicolon, and never at one inside a body', () => {
+  const sql = [
+    'grant update (note) on public.paths to authenticated;',
+    "do $p$ begin raise exception 'a; b'; end $p$;",
+    'grant update (note) on public.findings to authenticated;',
+  ].join('\n')
+  assert.equal(statements(sql).length, 3)
+  assert.equal(statements(sql).join(''), sql)
 })
 
 test('an identifier rename stops at a word boundary; an object-name rename does not', () => {

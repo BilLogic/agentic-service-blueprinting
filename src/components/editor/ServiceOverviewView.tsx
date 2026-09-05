@@ -30,7 +30,7 @@ import {
   useBlueprintCellDetail,
 } from '@/contexts/BlueprintCellDetailContext'
 import { CanvasZoomChromeProvider } from '@/contexts/CanvasZoomChromeContext'
-import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
+import { useEntityDetail } from '@/contexts/EntityDetailContext'
 import {
   CANVAS_REVEAL_ARROWS,
   CANVAS_REVEAL_CELLS,
@@ -462,6 +462,25 @@ function ServiceOverviewViewImpl({
   // first moments after a load.
   const cellDetailResetKey = `service-canvas:${view}:${cameraTargetId ?? 'none'}:${focusNonce}`
 
+  /*
+    The entity panel clears on the same navigations, from up here.
+
+    Its provider is the shell's now — it has to span the sidebar and the chrome
+    — so it can no longer take this key as a prop. The canvas keeps the reset
+    anyway: an entity panel describes a lane, phase, scenario or step of the
+    board being looked at, and a navigation can leave it describing something
+    that is no longer on screen. Guarded against the FIRST run, which the prop
+    version never had to be: a panel opened from the sidebar is already open
+    when this canvas mounts, and closing it would undo the click that opened it.
+  */
+  const { closeEntity } = useEntityDetail()
+  const closedForKey = useRef(cellDetailResetKey)
+  useEffect(() => {
+    if (closedForKey.current === cellDetailResetKey) return
+    closedForKey.current = cellDetailResetKey
+    closeEntity()
+  }, [cellDetailResetKey, closeEntity])
+
   // Every fit up to and including the swap to content is a jump. The
   // skeleton fit frames a fresh mount (animating it would swoop in from
   // pan 0,0 / zoom 1) and the swap fit only corrects the skeleton's
@@ -773,16 +792,6 @@ function ServiceOverviewViewImpl({
 
   return (
     <CanvasZoomChromeProvider>
-      {/*
-        Outside the cell panel's provider so an entity affordance anywhere on
-        the canvas can reach it. Ungated on purpose: the SERVICE, PHASE and
-        SCENARIO titles are what the overview offers, and they are the whole
-        point of that view. The two AXIS headers inside a board — lane and
-        step — gate themselves instead, on `cellDetailEnabled` as well as on
-        their own board, because the flag alone is one boolean for the whole
-        canvas.
-      */}
-      <EntityDetailProvider resetKey={cellDetailResetKey}>
       <BlueprintCellDetailProvider
         resetKey={cellDetailResetKey}
         enabled={cellDetailEnabled}
@@ -1139,7 +1148,6 @@ function ServiceOverviewViewImpl({
           </div>
         </div>
       </BlueprintCellDetailProvider>
-      </EntityDetailProvider>
     </CanvasZoomChromeProvider>
   )
 }

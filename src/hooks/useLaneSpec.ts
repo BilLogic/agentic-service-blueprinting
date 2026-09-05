@@ -20,7 +20,6 @@ export type LaneSpec = {
    * other three saying something else.
    */
   siblingLaneIds: string[]
-  cellCount: number
 }
 
 /** jsonb arrays of loose shape — kept as the strings a human typed. */
@@ -33,12 +32,13 @@ function toStrings(value: unknown): string[] {
 }
 
 /**
- * One lane's spec, plus the scale of what a save touches.
+ * One lane's spec, and the sibling rows a save touches.
  *
- * Three round-trips rather than one: the sibling lanes cannot be found until
- * the lane's own scenario is known, and the cell count cannot be counted until
- * the siblings are. They are cheap (an id lookup, an indexed filter, a count
- * with `head`) and they run once when the panel opens.
+ * Two round-trips rather than one: the sibling lanes cannot be found until the
+ * lane's own scenario is known. There was a third — a count of the cells on
+ * those siblings — which the panel never rendered (`PanelIdentity` gets
+ * `meta=""`; the cells are on screen behind the drawer) and which has been
+ * dropped rather than left as a round trip nobody reads.
  */
 export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null> {
   const fallback = useCallback(() => null, [])
@@ -73,12 +73,6 @@ export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null>
 
       const siblingLaneIds = (siblings ?? []).map((row) => row.id)
 
-      const { count, error: countError } = await client
-        .from('cells')
-        .select('id', { count: 'exact', head: true })
-        .in('lane_id', siblingLaneIds.length > 0 ? siblingLaneIds : [laneId])
-      if (countError) throw new Error(countError.message)
-
       return {
         id: lane.id,
         name: lane.name,
@@ -91,7 +85,6 @@ export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null>
         scenarioName: path.scenarios.name,
         phaseName: path.scenarios.phases.name,
         siblingLaneIds,
-        cellCount: count ?? 0,
       }
     },
     fallback,

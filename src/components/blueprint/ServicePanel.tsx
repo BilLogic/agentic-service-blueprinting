@@ -150,12 +150,17 @@ function ServicePanelBody({
     }))
 
   const summaryChanged = form.summary !== baseline.summary
+  // A model nobody can read is a model nobody can have edited: the fields are
+  // not rendered, so this can only ever be false — but stating it here is what
+  // keeps the save from posting a row of empty strings over a model the reader
+  // was never shown.
   const modelChanged =
-    form.funding !== baseline.funding ||
-    form.pricing !== baseline.pricing ||
-    form.deliveryCost !== baseline.deliveryCost ||
-    form.revenueModel !== baseline.revenueModel ||
-    form.partners !== baseline.partners
+    service.businessModelVisible &&
+    (form.funding !== baseline.funding ||
+      form.pricing !== baseline.pricing ||
+      form.deliveryCost !== baseline.deliveryCost ||
+      form.revenueModel !== baseline.revenueModel ||
+      form.partners !== baseline.partners)
   const examplesChanged = ENTITY_KIND_ORDER.some(
     (kind) => form.entityExamples[kind] !== baseline.entityExamples[kind],
   )
@@ -195,6 +200,11 @@ function ServicePanelBody({
         )
       }
       invalidateQueries(`service-spec:first`)
+      // The examples live under their own key, which is a different prefix —
+      // `service-spec:` does not match `service-entity-examples:`. The board's
+      // entity popovers read that one, so without this they keep offering the
+      // old examples until a reload.
+      invalidateQueries('service-entity-examples')
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')
@@ -226,46 +236,60 @@ function ServicePanelBody({
         onChange={(next) => set('summary', next)}
       />
 
-      <PanelTextareaField
-        label="Funding"
-        hint="Where the money to run it comes from."
-        value={form.funding}
-        rows={2}
-        disabled={!canEdit}
-        onChange={(next) => set('funding', next)}
-      />
-      <PanelTextareaField
-        label="Pricing"
-        hint="What the recipient pays, if anything."
-        value={form.pricing}
-        rows={2}
-        disabled={!canEdit}
-        onChange={(next) => set('pricing', next)}
-      />
-      <PanelTextareaField
-        label="Delivery cost"
-        hint="What one unit of the service costs to deliver."
-        value={form.deliveryCost}
-        rows={2}
-        disabled={!canEdit}
-        onChange={(next) => set('deliveryCost', next)}
-      />
-      <PanelTextareaField
-        label="Revenue model"
-        hint="How it sustains itself over time."
-        value={form.revenueModel}
-        rows={2}
-        disabled={!canEdit}
-        onChange={(next) => set('revenueModel', next)}
-      />
-      <PanelTextareaField
-        label="Partners"
-        hint="Who outside the organisation it depends on."
-        value={form.partners}
-        rows={2}
-        disabled={!canEdit}
-        onChange={(next) => set('partners', next)}
-      />
+      {/*
+        The business model, shown only to a reader who can actually read it.
+
+        `business_models` is the one restricted table the panel touches: revoked
+        from `anon`, its select policy naming `authenticated`. A signed-out
+        reader's fetch is refused and `businessModelVisible` is false, and five
+        empty textareas would then be a lie in both directions — they read as an
+        unauthored service, and offer to write a row the save would be refused.
+        Absent is the honest rendering of "not yours to see".
+      */}
+      {service.businessModelVisible ? (
+        <>
+          <PanelTextareaField
+            label="Funding"
+            hint="Where the money to run it comes from."
+            value={form.funding}
+            rows={2}
+            disabled={!canEdit}
+            onChange={(next) => set('funding', next)}
+          />
+          <PanelTextareaField
+            label="Pricing"
+            hint="What the recipient pays, if anything."
+            value={form.pricing}
+            rows={2}
+            disabled={!canEdit}
+            onChange={(next) => set('pricing', next)}
+          />
+          <PanelTextareaField
+            label="Delivery cost"
+            hint="What one unit of the service costs to deliver."
+            value={form.deliveryCost}
+            rows={2}
+            disabled={!canEdit}
+            onChange={(next) => set('deliveryCost', next)}
+          />
+          <PanelTextareaField
+            label="Revenue model"
+            hint="How it sustains itself over time."
+            value={form.revenueModel}
+            rows={2}
+            disabled={!canEdit}
+            onChange={(next) => set('revenueModel', next)}
+          />
+          <PanelTextareaField
+            label="Partners"
+            hint="Who outside the organisation it depends on."
+            value={form.partners}
+            rows={2}
+            disabled={!canEdit}
+            onChange={(next) => set('partners', next)}
+          />
+        </>
+      ) : null}
 
       {/*
         The six examples, authored here and nowhere else (#302). Path has no

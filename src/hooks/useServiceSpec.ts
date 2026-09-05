@@ -12,7 +12,15 @@ export type ServiceSpec = {
   id: string
   name: string
   summary: string
-  /** How the service is funded, priced and delivered. One row, always present. */
+  /**
+   * How the service is funded, priced and delivered.
+   *
+   * Restricted: `business_models` is readable by `authenticated` only. A
+   * signed-out reader gets `businessModelVisible: false` and five empty
+   * strings, and the panel leaves the section out entirely rather than showing
+   * five blanks that look like an unauthored service.
+   */
+  businessModelVisible: boolean
   funding: string
   pricing: string
   deliveryCost: string
@@ -28,8 +36,18 @@ export type ServiceSpec = {
 /**
  * The service, and its business model.
  *
- * Two round-trips rather than one — the counts cannot be taken from the same
- * row — so this panel paints its placeholder like the other three.
+ * Three round-trips rather than one. The counts cannot be taken from the same
+ * row, so this panel paints its placeholder like the other three — and the
+ * business model has to be its OWN request rather than an embed, because it is
+ * the one restricted table in the set.
+ *
+ * `business_models` is revoked from `anon` (20260730090000) and its select
+ * policy names `authenticated`. Embedded in the `services` select, a signed-out
+ * reader's request is refused WHOLE — PostgREST returns 42501 for the join, not
+ * a null column — so the panel showed "permission denied for table
+ * business_models" and lost the summary and the examples, which anon may read
+ * perfectly well. Split out, the refusal costs exactly the thing that was
+ * restricted: `businessModelVisible` goes false and the rest still renders.
  */
 export function useServiceSpec(): QueryResult<ServiceSpec | null> {
   const fallback = useCallback(() => null, [])
@@ -46,17 +64,24 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
 
       const { data: service, error } = await client
         .from('services')
-        .select(
-          'id, name, summary, entity_examples, business_models(funding, pricing, delivery_cost, revenue_model, partners)',
-        )
+        .select('id, name, summary, entity_examples')
         .eq('id', serviceId)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!service) return null
 
-      const model = (Array.isArray(service.business_models)
-        ? service.business_models[0]
-        : service.business_models) as
+      // Its own request, and its own failure. A refusal here is the ordinary
+      // signed-out case rather than an error worth surfacing — the row exists,
+      // this reader may not see it — so it resolves to null and the panel
+      // renders everything else. A genuine outage takes the same branch, which
+      // is the right trade: an author who cannot read the model also cannot
+      // write it, and the save is what tells them so.
+      const { data: modelRow } = await client
+        .from('business_models')
+        .select('funding, pricing, delivery_cost, revenue_model, partners')
+        .eq('service_id', service.id)
+        .maybeSingle()
+      const model = modelRow as
         | {
             funding: string | null
             pricing: string | null
@@ -78,6 +103,7 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
         id: service.id as string,
         name: service.name as string,
         summary: (service.summary as string | null) ?? '',
+        businessModelVisible: Boolean(model),
         funding: model?.funding ?? '',
         pricing: model?.pricing ?? '',
         deliveryCost: model?.delivery_cost ?? '',

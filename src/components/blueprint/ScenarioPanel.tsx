@@ -60,8 +60,27 @@ export function ScenarioPanel({
       />
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">
         {scenario ? (
+          /*
+            Keyed on the PATH LIST, not just the scenario.
+
+            The body freezes a baseline and a per-path form at mount, and the
+            paths under a scenario are not fixed while the drawer is open: the
+            canvas agent's `create_path` and `duplicate_path` both invalidate
+            every query, so this panel refetches and re-renders against a
+            scenario carrying a path the form has never heard of. Keyed on the
+            id alone the body did not remount, and the first render of the new
+            path read `form.paths[id].status` on `undefined` — a TypeError, the
+            error boundary, and the whole drawer gone.
+
+            Remounting resets any unsaved edit in the panel, which is the
+            deliberate trade: a path list that changed underneath the author is
+            a different form, and silently keeping half of it — some rows from
+            the old baseline, some from the new — is the worse answer. The
+            common case is untouched, because nothing re-keys unless a path is
+            actually added or removed.
+          */
           <ScenarioPanelBody
-            key={scenario.id}
+            key={`${scenario.id}:${scenario.paths.map((path) => path.id).join(',')}`}
             scenario={scenario}
             onDone={onClose}
           />
@@ -131,9 +150,29 @@ function ScenarioPanelBody({
       },
     }))
 
+  /**
+   * The form's row for a path, or the path's own values.
+   *
+   * The key on this component means the two agree on every ordinary render.
+   * This is the guard for the render BETWEEN a refetch landing and the
+   * remount — one frame in which `scenario.paths` is already the new list and
+   * `form.paths` is still the old one. Falling back to the row's stored values
+   * renders that frame correctly instead of throwing out of it.
+   */
+  const pathForm = (path: ScenarioSpec['paths'][number]): PathForm =>
+    form.paths[path.id] ?? {
+      summary: path.summary,
+      note: path.note,
+      status: path.status,
+    }
+
+  // Only the paths the form and the scenario BOTH know about can have been
+  // edited: a path that appeared after mount has no baseline to differ from,
+  // and one that disappeared has no row left to write to.
   const changedPaths = scenario.paths.filter((path) => {
     const now = form.paths[path.id]
     const was = baseline.paths[path.id]
+    if (!now || !was) return false
     return (
       now.summary !== was.summary ||
       now.note !== was.note ||
@@ -168,6 +207,12 @@ function ScenarioPanelBody({
         )
       }
       invalidateQueries(`scenario-spec:${scenario.id}`)
+      // The scenario's summary is also cached under `service-phases`, which is
+      // where the overview, the phase menubar and the sticky header read it.
+      // Without this the drawer shows the new sentence and the canvas behind it
+      // shows the old one until a reload — `staleTime` is Infinity, so nothing
+      // else ever refetches it.
+      invalidateQueries('service-phases')
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')
@@ -248,11 +293,11 @@ function ScenarioPanelBody({
                     <div className="flex min-w-0">
                       {canEdit ? (
                         <StatusSelect
-                          value={form.paths[path.id].status}
+                          value={pathForm(path).status}
                           onChange={(next) => setPath(path.id, 'status', next)}
                         />
                       ) : (
-                        <StatusBadge status={form.paths[path.id].status} />
+                        <StatusBadge status={pathForm(path).status} />
                       )}
                     </div>
                   </div>
@@ -260,7 +305,7 @@ function ScenarioPanelBody({
                     label="Summary"
                     hint="The condition that puts someone on this route rather than one of its siblings."
                     placeholder="e.g. the student joins on time"
-                    value={form.paths[path.id].summary}
+                    value={pathForm(path).summary}
                     rows={2}
                     disabled={!canEdit}
                     onChange={(next) => setPath(path.id, 'summary', next)}
@@ -274,7 +319,7 @@ function ScenarioPanelBody({
                     label="Author note"
                     hint="An open question, provenance, working state. Not a fact about the service."
                     placeholder="e.g. confirm the 10-minute hold with ops"
-                    value={form.paths[path.id].note}
+                    value={pathForm(path).note}
                     rows={2}
                     disabled={!canEdit}
                     onChange={(next) => setPath(path.id, 'note', next)}

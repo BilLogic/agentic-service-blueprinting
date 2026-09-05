@@ -25,8 +25,6 @@ export type ScenarioSpec = {
   summary: string
   phaseName: string
   paths: ScenarioPathSpec[]
-  stepCount: number
-  cellCount: number
 }
 
 /**
@@ -78,25 +76,6 @@ export function useScenarioSpec(
           status: asEntityStatus(path.status) ?? DEFAULT_ENTITY_STATUS,
         }))
 
-      const { count: stepCount, error: stepError } = await client
-        .from('steps')
-        .select('id', { count: 'exact', head: true })
-        .eq('scenario_id', scenarioId)
-      if (stepError) throw new Error(stepError.message)
-
-      let cellCount = 0
-      if (paths.length > 0) {
-        const { count, error: cellError } = await client
-          .from('cells')
-          .select('id', { count: 'exact', head: true })
-          .in(
-            'path_id',
-            paths.map((path) => path.id),
-          )
-        if (cellError) throw new Error(cellError.message)
-        cellCount = count ?? 0
-      }
-
       const phase = scenario.phases as unknown as { name: string }
 
       return {
@@ -105,8 +84,6 @@ export function useScenarioSpec(
         summary: scenario.summary ?? '',
         phaseName: phase.name,
         paths,
-        stepCount: stepCount ?? 0,
-        cellCount,
       }
     },
     fallback,

@@ -19,6 +19,9 @@ const SERVICE = {
   id: 'svc-1',
   name: 'Home Retrofit',
   summary: 'We insulate homes.',
+  // A signed-in reader: `business_models` is readable and the five fields
+  // render. A signed-out one gets false and the section is left out entirely.
+  businessModelVisible: true,
   funding: '',
   pricing: '',
   deliveryCost: '',

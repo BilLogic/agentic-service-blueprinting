@@ -105,6 +105,11 @@ function PhasePanelBody({
     try {
       await updatePhaseSpec(client, phase.id, form, baseline)
       invalidateQueries(`phase-spec:${phase.id}`)
+      // `phases.summary` is also cached under `service-phases`, which feeds the
+      // overview, the phase menubar and the sticky header. Without this the
+      // drawer shows the new sentence and everything around it shows the old
+      // one until a reload.
+      invalidateQueries('service-phases')
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')

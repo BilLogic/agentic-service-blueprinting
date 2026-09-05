@@ -247,7 +247,7 @@ revoke insert, update, delete, truncate on public.deleted_structure
 grant update (content, summary) on public.cells to authenticated;
 grant update (name, lane_role) on public.lanes to authenticated;
 grant update (name) on public.steps to authenticated;
-grant update (name, summary, summary, kind) on public.paths to authenticated;
+grant update (name, summary, note, kind) on public.paths to authenticated;
 grant update (name, summary, layout) on public.scenarios to authenticated;
 
 -- cells/lanes/phases already carry update policies from the derived layer;
@@ -1047,6 +1047,41 @@ begin
   if not has_column_privilege('authenticated', 'public.phases', 'business_impact', 'UPDATE')
      or not has_column_privilege('authenticated', 'public.phases', 'operational_requirements', 'UPDATE') then
     raise exception 'proof: the phase panel''s existing columns lost their grant';
+  end if;
+end
+$recipe_proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000128000000_a_grant_is_not_a_policy.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- a policy names `authenticated`, a role only the recipe creates.
+-- Who may write a row is this deployment's enforcement of the contract, not
+-- part of the contract; another host expresses the same rule its own way.
+
+drop policy if exists "services_update_auth" on public.services;
+create policy "services_update_auth" on public.services
+  for update to authenticated using (true) with check (true);
+
+-- The question the panel's save asks, asked here: is there an UPDATE policy on
+-- `services` that a signed-in author is inside. Without one the save matches
+-- zero rows and reports a deletion that never happened.
+do $recipe_proof$
+begin
+  if not exists (
+    select 1 from pg_policies
+     where schemaname = 'public'
+       and tablename = 'services'
+       and cmd = 'UPDATE'
+       and 'authenticated' = any (roles)
+  ) then
+    raise exception 'proof: public.services has no UPDATE policy for authenticated; the grant is not a policy and the panel save would match zero rows';
+  end if;
+  -- The grant half, still there: this file adds the missing half, it does not
+  -- re-posture the surface 21000126000000 named.
+  if not has_column_privilege('authenticated', 'public.services', 'summary', 'UPDATE')
+     or not has_column_privilege('authenticated', 'public.services', 'entity_examples', 'UPDATE') then
+    raise exception 'proof: the service panel''s columns lost their grant';
   end if;
 end
 $recipe_proof$;

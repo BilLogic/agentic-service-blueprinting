@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import { STORYBOARD_LANE_ROLES } from '@/lib/blueprintLayout'
-import { getLaneRole } from '@/lib/laneRoles'
+import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 
 export type StepSpec = {
   id: string
@@ -13,7 +12,6 @@ export type StepSpec = {
   phaseName: string
   /** Path names that include this step, with its position on each. */
   positions: { pathName: string; position: number }[]
-  cellCount: number
   /**
    * The storyboard frames for this moment, with the lane each came from.
    *
@@ -64,12 +62,6 @@ export function useStepSpec(stepId: string | null): QueryResult<StepSpec | null>
         .sort((a, b) => a.paths.created_at.localeCompare(b.paths.created_at))
         .map((row) => ({ pathName: row.paths.name, position: row.position }))
 
-      const { count, error: countError } = await client
-        .from('cells')
-        .select('id', { count: 'exact', head: true })
-        .eq('step_id', stepId)
-      if (countError) throw new Error(countError.message)
-
       const { data: framed, error: frameError } = await client
         .from('cells')
         /*
@@ -104,11 +96,16 @@ export function useStepSpec(stepId: string | null): QueryResult<StepSpec | null>
       }>) {
         const frame = row.frame?.trim()
         if (!frame || seen.has(frame)) continue
-        const role = getLaneRole({
-          name: row.lanes.name,
-          role: row.lanes.lane_role,
-        })
-        if (!role || !(STORYBOARD_LANE_ROLES as readonly string[]).includes(role)) {
+        // The canvas's own rule, called rather than restated. Spelled out here
+        // it was a second copy that would go on answering the old question the
+        // day the rule changed — the panel and the board would then disagree
+        // about what a storyboard row is.
+        if (
+          !shouldUseStoryboardContent({
+            name: row.lanes.name,
+            role: row.lanes.lane_role,
+          })
+        ) {
           continue
         }
         seen.add(frame)
@@ -128,7 +125,6 @@ export function useStepSpec(stepId: string | null): QueryResult<StepSpec | null>
         scenarioName: scenario.name,
         phaseName: scenario.phases.name,
         positions,
-        cellCount: count ?? 0,
         frames,
       }
     },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { ServicePanel } from '@/components/blueprint/ServicePanel'
 import { LanePanel } from '@/components/blueprint/LanePanel'
 import { PhasePanel } from '@/components/blueprint/PhasePanel'
@@ -11,6 +11,7 @@ import {
 } from '@/components/blueprint/panelShell'
 import {
   useEntityDetail,
+  type EntityDetailKind,
   type EntityDetailSelection,
 } from '@/contexts/EntityDetailContext'
 import { useCanvasTopOffset } from '@/hooks/useCanvasTopOffset'
@@ -32,6 +33,29 @@ export function EntityDetailPanel() {
       <EntityDetailPanelBody />
     </DetailPanelErrorBoundary>
   )
+}
+
+/**
+ * One panel per kind, keyed by the kind itself.
+ *
+ * `Record<EntityDetailKind, …>` rather than a ladder of five `kind === '…'`
+ * tests: adding a sixth member to the union is then a compile error here
+ * instead of a drawer that opens empty. Every panel takes the same two props
+ * so the lookup can be rendered without knowing which one it found —
+ * `ServicePanel` accepts `id` and ignores it, because there is one service and
+ * the panel resolves it itself.
+ */
+const PANELS: Record<
+  EntityDetailKind,
+  ComponentType<{ id: string; onClose: () => void }>
+> = {
+  service: ({ onClose }) => <ServicePanel onClose={onClose} />,
+  lane: ({ id, onClose }) => <LanePanel laneId={id} onClose={onClose} />,
+  phase: ({ id, onClose }) => <PhasePanel phaseId={id} onClose={onClose} />,
+  scenario: ({ id, onClose }) => (
+    <ScenarioPanel scenarioId={id} onClose={onClose} />
+  ),
+  step: ({ id, onClose }) => <StepPanel stepId={id} onClose={onClose} />,
 }
 
 function EntityDetailPanelBody() {
@@ -74,27 +98,15 @@ function EntityDetailPanelBody() {
   */
   if (shown === null) return null
 
+  const Panel = PANELS[shown.kind]
+
   return (
     <PanelDrawerShell
       open={selection !== null}
       onCloseRequest={closeEntity}
       onClosed={() => setClosing(null)}
     >
-      {shown?.kind === 'service' ? (
-        <ServicePanel onClose={closeEntity} />
-      ) : null}
-      {shown?.kind === 'lane' ? (
-        <LanePanel laneId={shown.id} onClose={closeEntity} />
-      ) : null}
-      {shown?.kind === 'phase' ? (
-        <PhasePanel phaseId={shown.id} onClose={closeEntity} />
-      ) : null}
-      {shown?.kind === 'scenario' ? (
-        <ScenarioPanel scenarioId={shown.id} onClose={closeEntity} />
-      ) : null}
-      {shown?.kind === 'step' ? (
-        <StepPanel stepId={shown.id} onClose={closeEntity} />
-      ) : null}
+      <Panel id={shown.id} onClose={closeEntity} />
     </PanelDrawerShell>
   )
 }

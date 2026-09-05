@@ -118,19 +118,27 @@ export function EntityDetailProvider({
 }
 
 /**
- * Read the entity panel. Returns a closed, inert value outside the provider so
- * an affordance can sit on chrome that renders in both the canvas and the
- * places the provider does not reach, without every call site guarding.
+ * Read the entity panel. Throws outside the provider.
+ *
+ * It used to return a closed, inert value instead, so an affordance could sit
+ * on chrome the provider did not reach without every call site guarding. That
+ * was the wrong trade in the only case it applied to: the provider reached one
+ * tab body, and every affordance outside it — the sidebar's nav, the sticky
+ * header, the phase menubar, the breadcrumb — got a working button that did
+ * nothing at all when clicked. Silence is the one failure a UI cannot report.
+ *
+ * The provider is mounted on the shell now (`EditorShell`), above both the
+ * desktop and mobile trees, so anything rendered inside the app is inside it.
+ * A call from somewhere else is a mounting mistake, and throwing is how a
+ * mounting mistake gets found — on the first render, in development, with the
+ * component named.
  */
 export function useEntityDetail(): EntityDetailContextValue {
   const value = useContext(EntityDetailContext)
-  return value ?? INERT
-}
-
-const INERT: EntityDetailContextValue = {
-  selection: null,
-  openEntity: () => {},
-  toggleEntity: () => {},
-  closeEntity: () => {},
-  isOpen: false,
+  if (!value) {
+    throw new Error(
+      'useEntityDetail must be used inside an EntityDetailProvider — it is mounted on EditorShell.',
+    )
+  }
+  return value
 }

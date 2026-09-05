@@ -52,7 +52,32 @@ export function StakeholderSelect({
     says one thing, and "Regular Tutor" and "Staff" are two.
   */
   if (disabled) {
+    /*
+      "Nobody" is an ASSERTION, and only a successful read can make it.
+
+      The registry is a second query that starts after the lane's own resolves,
+      so there is always a window in which `stakeholders` is `[]` because it has
+      not arrived — not because the lane has no actor. Collapsing loading and
+      error into the empty list made the first render of EVERY lane say "Nobody
+      — a structural row.", including the lanes that name one, and a failed read
+      left that sentence standing permanently. Both are the panel stating a fact
+      about the service that it does not know.
+    */
+    if (result.status === 'loading') {
+      return <p className={PANEL_TEXT.meta}>Loading the cast…</p>
+    }
+    if (result.status === 'error') {
+      return (
+        <p className={PANEL_TEXT.meta}>
+          The cast could not be loaded: {result.message}
+        </p>
+      )
+    }
     if (!selected) {
+      // A read that succeeded, and a lane with no `stakeholder_id`: now the
+      // sentence is true. (A dangling id — a row deleted underneath the lane —
+      // reads the same way, which is the one case this cannot distinguish and
+      // the one where "nobody owns this" is also the honest answer.)
       return (
         <p className={PANEL_TEXT.value}>
           <span className="text-muted-foreground">Nobody — a structural row.</span>

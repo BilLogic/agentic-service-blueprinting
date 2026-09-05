@@ -100,9 +100,17 @@ export async function deleteStakeholder(
   client: Client,
   stakeholderId: string,
 ): Promise<void> {
-  const { error } = await client
+  const { data, error } = await client
     .from('stakeholders')
     .delete()
     .eq('id', stakeholderId)
+    .select('id')
   if (error) throw toAuthoringError(error)
+  // Like every sibling in this module, and for a sharper reason here: the
+  // delete policy on `stakeholders` admits service accounts only, so an
+  // ordinary signed-in author's delete matches zero rows and returns a 200.
+  // Unchecked, the undo reports success, `forgetChange` drops the ledger row,
+  // and the person who added someone by mistake is left with the row still in
+  // the cast and no entry left to try again from.
+  requireRowsWritten(data, 'stakeholder')
 }

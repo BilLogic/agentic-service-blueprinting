@@ -10,17 +10,16 @@ export type PhaseSpec = {
   /** The phase this one loops back to, by name — null when it runs once. */
   loopsToName: string | null
   serviceName: string
-  scenarioCount: number
-  cellCount: number
 }
 
 /**
- * One phase's spec, plus what it contains.
+ * One phase's spec.
  *
- * The cell count walks phase → scenarios → paths → cells, which PostgREST
- * cannot count through in one request. Two queries: the scenarios (needed for
- * the count shown in the panel anyway) and then a count of cells on their
- * paths.
+ * It used to carry a scenario count and a cell count too — the cell count
+ * walking phase → scenarios → paths → cells across two more requests. The
+ * panel never rendered either: `PanelIdentity` gets `meta=""` on purpose,
+ * because the scenarios are in the sidebar and the cells are on screen.
+ * Counting them was three round trips per drawer open for a number nobody saw.
  */
 export function usePhaseSpec(
   phaseId: string | null,
@@ -42,26 +41,6 @@ export function usePhaseSpec(
       if (error) throw new Error(error.message)
       if (!phase) return null
 
-      const { data: scenarios, error: scenarioError } = await client
-        .from('scenarios')
-        .select('id, paths(id)')
-        .eq('phase_id', phaseId)
-      if (scenarioError) throw new Error(scenarioError.message)
-
-      const pathIds = (scenarios ?? []).flatMap((scenario) =>
-        ((scenario.paths ?? []) as { id: string }[]).map((path) => path.id),
-      )
-
-      let cellCount = 0
-      if (pathIds.length > 0) {
-        const { count, error: countError } = await client
-          .from('cells')
-          .select('id', { count: 'exact', head: true })
-          .in('path_id', pathIds)
-        if (countError) throw new Error(countError.message)
-        cellCount = count ?? 0
-      }
-
       let loopsToName: string | null = null
       if (phase.loops_to_phase_id) {
         const { data: target } = await client
@@ -82,8 +61,6 @@ export function usePhaseSpec(
         businessImpact: phase.business_impact ?? '',
         operationalRequirements: phase.operational_requirements ?? '',
         loopsToName,
-        scenarioCount: (scenarios ?? []).length,
-        cellCount,
       }
     },
     fallback,

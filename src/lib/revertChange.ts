@@ -56,6 +56,25 @@ function stringArg(args: Record<string, unknown>, key: string): string {
 }
 
 /**
+ * A captured value that is allowed to be empty.
+ *
+ * `stringArg` refuses `''` because an identifier never legitimately is one.
+ * A one-column prose revert is the opposite case: "it had no summary before"
+ * is a real prior state and the commonest one — the FIRST edit of any field
+ * captures `''` as its previous value — so an empty string is the value, not
+ * a missing one. Every self-inverse summary case reads its arg through here;
+ * reading it through `stringArg` would make the first undo of a first summary
+ * throw instead of clearing the field.
+ */
+function optionalStringArg(args: Record<string, unknown>, key: string): string {
+  const value = args[key]
+  if (typeof value !== 'string') {
+    throw new Error(`This change's revert is missing its “${key}” value.`)
+  }
+  return value
+}
+
+/**
  * Execute a change's captured inverse.
  *
  * The revert's own writes pass `record: false` (or go straight to the
@@ -127,14 +146,7 @@ export async function executeRevert(
     }
     case 'update_scenario_spec': {
       const scenarioId = stringArg(revert.args, 'scenario_id')
-      // One column, and the captured value may legitimately be an empty
-      // string — "it had no summary before" is a state worth restoring, so
-      // this reads the arg directly rather than through `stringArg`, which
-      // refuses empties.
-      const summary = revert.args.summary
-      if (typeof summary !== 'string') {
-        throw new Error("This change's revert is missing its summary.")
-      }
+      const summary = optionalStringArg(revert.args, 'summary')
       await updateScenarioSummary(client, scenarioId, summary, undefined, {
         record: false,
       })
@@ -150,13 +162,7 @@ export async function executeRevert(
     }
     case 'update_step_spec': {
       const stepId = stringArg(revert.args, 'step_id')
-      // Empty is a real prior value — a step that had no summary is a state
-      // worth restoring — so this reads the arg directly rather than through
-      // `stringArg`, which refuses empties.
-      const summary = revert.args.summary
-      if (typeof summary !== 'string') {
-        throw new Error("This change's revert is missing its summary.")
-      }
+      const summary = optionalStringArg(revert.args, 'summary')
       await updateStepSummary(client, stepId, summary, undefined, {
         record: false,
       })
@@ -169,7 +175,7 @@ export async function executeRevert(
       // existed, so every service edit would record an undo that could only
       // 404. `revertCoverageContract` is the guard that says so.
       const serviceId = stringArg(revert.args, 'service_id')
-      const summary = stringArg(revert.args, 'summary')
+      const summary = optionalStringArg(revert.args, 'summary')
       await updateServiceSummary(client, serviceId, summary, undefined, {
         record: false,
       })
