@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
  * run something here would be worse than no button. Both labels come from the
  * content module; the component supplies only the composition.
  */
-export function CoverCommandChip({
+export function CoverCommandCopy({
   command,
   copyLabel,
   copiedLabel,
@@ -41,7 +41,7 @@ export function CoverCommandChip({
         timer.current = setTimeout(() => setCopied(false), 1600)
       })
       // A denied clipboard (permissions, embedded contexts) is not an error
-      // worth surfacing on an orientation page — the chip simply stays put.
+      // worth surfacing on an orientation page — the control simply stays put.
       .catch(() => {})
   }, [command])
 
@@ -62,7 +62,7 @@ export function CoverCommandChip({
       ) : (
         <Copy aria-hidden className="size-3.5 text-muted-foreground" />
       )}
-      {/* Announced on success only — the resting chip already reads its command. */}
+      {/* Announced on success only — the resting control already reads its command. */}
       <span aria-live="polite" className="sr-only">
         {copied ? copiedLabel : ''}
       </span>

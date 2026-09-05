@@ -38,12 +38,12 @@ type RowFlow = 'in' | 'out'
 function resolveRowDirection(
   connection: BlueprintCellConnection,
   flow: RowFlow,
-  selectedLanePosition: number,
+  selectedLaneRowPosition: number,
 ): RowDirection {
   if (connection.kind === 'interaction') {
     // Same step, different lane — vertical relationship.
-    if (selectedLanePosition < 0) return 'related'
-    return connection.lanePosition < selectedLanePosition
+    if (selectedLaneRowPosition < 0) return 'related'
+    return connection.laneRowPosition < selectedLaneRowPosition
       ? 'up'
       : 'down'
   }
@@ -108,9 +108,9 @@ function DependencyRow({
                 · Step {connection.stepIndex + 1}
               </span>
             </span>
-            {connection.linkLabel ? (
+            {connection.linkName ? (
               <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-px text-3xs leading-tight text-muted-foreground">
-                {connection.linkLabel}
+                {connection.linkName}
               </span>
             ) : null}
           </span>
@@ -178,7 +178,7 @@ type CellDependencySectionsProps = {
   /** Same-step tech without an explicit dependency (kept from panel v1). */
   otherTech: CellDependencyTechEntry[]
   /** Lane row position of the selected cell — orients up/down glyphs. */
-  selectedLanePosition?: number
+  selectedLaneRowPosition?: number
   className?: string
 } & SelectHandlers
 
@@ -192,7 +192,7 @@ type CellDependencySectionsProps = {
 export function CellDependencySections({
   connections,
   otherTech,
-  selectedLanePosition = -1,
+  selectedLaneRowPosition = -1,
   onCellSelect,
   onTechSelect,
   className,
@@ -239,7 +239,7 @@ export function CellDependencySections({
 
   const handlers = { onCellSelect, onTechSelect }
   const direction = (connection: BlueprintCellConnection, flow: RowFlow) =>
-    resolveRowDirection(connection, flow, selectedLanePosition)
+    resolveRowDirection(connection, flow, selectedLaneRowPosition)
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>

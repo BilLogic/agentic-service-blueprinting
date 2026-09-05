@@ -1,13 +1,13 @@
 import { cn } from '@/lib/utils'
 
 /**
- * The drawn zone chip — a mono digit in a bordered circle. One component
+ * The drawn zone badge — a mono digit in a bordered circle. One component
  * shared by the divergence strip, the ledger's zone groups and (if the
  * gate passes) the merged canvas's fork badges, so ①②③ always means the
  * same thing everywhere. Drawn, not unicode circled digits: those render
  * at wildly different weights across platforms and stop at ㊿.
  */
-export function CompareZoneChip({
+export function CompareZoneBadge({
   index,
   active = false,
   className,

@@ -30,7 +30,7 @@ const content = (over: Partial<CoverContent> = {}): CoverContent => ({
   lede: 'A lede with a **bold** term.',
   primaryCtaLabel: 'Open the blueprint',
   repoUrl: 'https://example.test/repo',
-  chip: { copyLabel: 'Copy', copiedLabel: 'Copied' },
+  commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
   states: { noSlices: 'No slices yet.' },
   tabs: [
     {

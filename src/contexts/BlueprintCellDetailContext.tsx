@@ -54,9 +54,9 @@ type BlueprintCellDetailContextValue = {
   enabled: boolean
   /**
    * The scenario the detail view is scoped to — the focused one, or the one a
-   * slice tab renders solo. `enabled` says the feature is live; this says
-   * WHICH of the mounted boards it is live on, and the two axis headers need
-   * both (see `scenarioBoardScopeContext`).
+   * slice tab / phone shell renders solo. `enabled` says the feature is live;
+   * this says WHICH of the mounted boards it is live on, and the two axis
+   * headers need both (see `scenarioBoardScopeContext`).
    */
   scenarioId: string | null
   blueprints: BlueprintData[]

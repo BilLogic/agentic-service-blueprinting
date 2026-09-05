@@ -12,14 +12,15 @@ export type BlueprintCellConnection = {
   dependencyId: string
   cellId: string
   laneName: string
-  lanePosition: number
+  laneRowPosition: number
   stepName: string
   stepIndex: number
   kind: BlueprintCellConnectionKind
-  /** Link semantics from the dependency row: makes it happen vs makes it possible. */
+  /** From the dependency row: `leads_to` (makes the next thing happen) vs
+   *  `enables` (must already be true, causes nothing). */
   linkKind: 'leads_to' | 'enables'
-  /** Short edge label chip (e.g. a channel tag like "Email"). */
-  linkLabel: string | null
+  /** The word on the arrow, as a badge (e.g. a channel name like "Email"). */
+  linkName: string | null
   /** Why-line shown under the dependency row. */
   linkNote: string | null
   isTech: boolean
@@ -69,7 +70,7 @@ function toConnection(
 
   const lane = resolveLane(blueprint, cell.lane_id)
   const laneName = lane?.name ?? 'Unknown lane'
-  const lanePosition = lane?.position ?? -1
+  const laneRowPosition = lane?.position ?? -1
   const isTech = lane ? shouldUseTouchpointCellContent(lane) : false
   const techItems = isTech ? getTouchpointItems(cell.content) : []
 
@@ -77,12 +78,12 @@ function toConnection(
     dependencyId: dependency.id,
     cellId,
     laneName,
-    lanePosition,
+    laneRowPosition,
     stepName: resolveStepName(blueprint, cell.step_id),
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
     linkKind: dependency.kind === 'enables' ? 'enables' : 'leads_to',
-    linkLabel: dependency.name ?? null,
+    linkName: dependency.name ?? null,
     linkNote: dependency.note ?? null,
     isTech,
     techItems,
@@ -230,7 +231,7 @@ export type DirectedFlowInteraction = BlueprintCellConnection & {
   direction: FlowInteractionDirection
 }
 
-export function getSelectedCellLanePosition(
+export function getSelectedCellLaneRowPosition(
   blueprint: BlueprintData,
   cellId: string,
 ): number {
@@ -240,17 +241,17 @@ export function getSelectedCellLanePosition(
 }
 
 function interactionDirectionFromRows(
-  linkedPosition: number,
-  selectedPosition: number,
+  linkedRowPosition: number,
+  selectedRowPosition: number,
 ): 'up' | 'down' {
-  if (linkedPosition < selectedPosition) return 'up'
+  if (linkedRowPosition < selectedRowPosition) return 'up'
   return 'down'
 }
 
 export function getDirectedInteractions(
   incoming: BlueprintCellConnection[],
   outgoing: BlueprintCellConnection[],
-  selectedLanePosition: number,
+  selectedLaneRowPosition: number,
 ): DirectedFlowInteraction[] {
   const byCellId = new Map<string, BlueprintCellConnection>()
 
@@ -264,8 +265,8 @@ export function getDirectedInteractions(
   return [...byCellId.values()].map((connection) => ({
     ...connection,
     direction: interactionDirectionFromRows(
-      connection.lanePosition,
-      selectedLanePosition,
+      connection.laneRowPosition,
+      selectedLaneRowPosition,
     ),
   }))
 }

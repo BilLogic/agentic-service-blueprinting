@@ -58,13 +58,34 @@ const PATTERNS = RETIRED_COPY_WORDS.map((word) => ({
   pattern: new RegExp(`\\b${word.replace(/\s+/g, '\\s+')}\\b`, 'i'),
 }))
 
+/**
+ * Comments removed, because the header says they are not the subject and the
+ * extraction has to agree with it.
+ *
+ * `JSX_TEXT` reads between a `>` and the next `<`, which a doc comment
+ * containing a backticked `` `<textarea>` `` opens: everything from there to
+ * the next real `<` — the whole of `panelShell.tsx`'s error-boundary
+ * paragraph — arrived as one "reader-facing string". A prose sentence is
+ * exactly what this guard is told not to read, and the fix the header names
+ * for a false positive is to narrow the SUBJECT.
+ *
+ * The same shape as `scripts/tests/badge-and-tag.test.mjs`'s, spelled out here
+ * rather than imported: a test file importing another test file registers that
+ * file's tests twice.
+ */
+export function stripComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
+
 /** Every `.tsx` in the app, as `{ file, code }`. */
 function appFiles() {
   return sourceFilesUnder('src')
     .filter((abs) => abs.endsWith('.tsx'))
     .map((abs) => ({
       file: relative(REPO_ROOT, abs).split('\\').join('/'),
-      code: readFileSync(abs, 'utf8'),
+      code: stripComments(readFileSync(abs, 'utf8')),
     }))
 }
 

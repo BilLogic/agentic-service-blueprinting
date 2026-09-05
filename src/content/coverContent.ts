@@ -30,7 +30,7 @@ export const coverContent: CoverContent = {
   lede: 'A structured map of how this service is delivered — every phase, every scenario, every path variant, down to what one actor does at one moment. It is data, not a diagram: agents read it, slices are cut from it, and changes are traced through it before anyone commits.',
   primaryCtaLabel: 'Open the blueprint',
   repoUrl: 'https://github.com/BilLogic/agentic-service-blueprinting',
-  chip: { copyLabel: 'Copy', copiedLabel: 'Copied' },
+  commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
   states: {
     noSlices: 'No slices in this workspace yet — `/sb:slice` cuts the first one.',
   },

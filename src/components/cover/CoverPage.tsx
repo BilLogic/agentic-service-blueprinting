@@ -114,7 +114,7 @@ export function CoverPageView({
                 sections={tab.sections}
                 link={tab.link}
                 repoUrl={content.repoUrl}
-                chip={content.chip}
+                commandCopy={content.commandCopy}
                 eagerFigures={index === 0}
               />
             </TabsContent>

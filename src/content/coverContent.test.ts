@@ -51,10 +51,10 @@ describe('coverContent', () => {
     expect(coverContent.primaryCtaLabel).toBe('Open the blueprint')
   })
 
-  it('carries the degraded-state and chip strings', () => {
+  it('carries the degraded-state and command-copy strings', () => {
     expect(coverContent.states.noSlices).toContain('/sb:slice')
-    expect(coverContent.chip.copiedLabel).toBe('Copied')
-    expect(coverContent.chip.copyLabel).toBe('Copy')
+    expect(coverContent.commandCopy.copiedLabel).toBe('Copied')
+    expect(coverContent.commandCopy.copyLabel).toBe('Copy')
   })
 
   it('every image has non-empty alt text describing what it shows', () => {

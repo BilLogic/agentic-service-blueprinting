@@ -249,7 +249,7 @@ export function SliceSlideEditor({
                     })
                   }}
                   className={cn(
-                    'group/chip flex cursor-grab items-center gap-1.5 rounded-md bg-muted/60 px-1.5 py-1 text-2xs active:cursor-grabbing',
+                    'group/cell flex cursor-grab items-center gap-1.5 rounded-md bg-muted/60 px-1.5 py-1 text-2xs active:cursor-grabbing',
                     cellDrop?.slide === index &&
                       cellDrop.index === cellIndex &&
                       'shadow-[0_-2px_0_0_var(--primary)]',
@@ -278,7 +278,7 @@ export function SliceSlideEditor({
                       aria-label="Remove cell from slice"
                       // Revealed on chip hover — a permanent ✕ per row is the
                       // loudest thing on a card that is mostly read.
-                      className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/chip:opacity-100 focus-visible:opacity-100 hover:text-foreground"
+                      className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/cell:opacity-100 focus-visible:opacity-100 hover:text-foreground"
                       onClick={(event) => {
                         event.stopPropagation()
                         removeCell(index, cell)

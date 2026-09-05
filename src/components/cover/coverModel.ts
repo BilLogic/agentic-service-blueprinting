@@ -90,7 +90,7 @@ export type CoverSection =
   | {
       kind: 'skill'
       id: string
-      /** The invocation, e.g. `/sb:map`. Rendered as a click-to-copy chip and
+      /** The invocation, e.g. `/sb:map`. Rendered as a click-to-copy control and
        * doubling as the panel's title. */
       command: string
       /** What the skill does AND what it leaves behind, as one paragraph.
@@ -121,8 +121,8 @@ export type CoverContent = {
   primaryCtaLabel: string
   /** Repository host root; guide links are dropped when it is absent. */
   repoUrl?: string
-  /** Labels for the click-to-copy command chips. */
-  chip: { copyLabel: string; copiedLabel: string }
+  /** Labels for the click-to-copy command control. */
+  commandCopy: { copyLabel: string; copiedLabel: string }
   /** Degraded-state sentences the surrounding app may show. */
   states: { noSlices: string }
   tabs: CoverTab[]

@@ -105,7 +105,7 @@ function CompareViewToggle({ slide }: { slide: NavItem }) {
  * app (this and each ledger group's trailing number), so it has to read as a
  * value rather than a label.
  */
-function CompareDifferencesChip({ slide }: { slide: NavItem }) {
+function CompareDifferencesCount({ slide }: { slide: NavItem }) {
   const { registration } = useCompareReviewState()
   const cellDetail = useBlueprintCellDetailOptional()
   if (!registration || registration.slideId !== slide.id || !cellDetail) {
@@ -113,7 +113,7 @@ function CompareDifferencesChip({ slide }: { slide: NavItem }) {
   }
   const count = countCompareDifferences(registration.model)
   const open = cellDetail.panelState?.surface === 'differences'
-  const chip = (
+  const control = (
     <Button
       type="button"
       variant="ghost"
@@ -150,7 +150,7 @@ function CompareDifferencesChip({ slide }: { slide: NavItem }) {
   return (
     <Tooltip>
       <TooltipTrigger render={<span className="inline-flex" />}>
-        {chip}
+        {control}
       </TooltipTrigger>
       <TooltipContent>
         {count === 0
@@ -183,7 +183,7 @@ export function CompareControlsCluster({
       onClick={(event) => event.stopPropagation()}
     >
       <CompareViewToggle slide={slide} />
-      <CompareDifferencesChip slide={slide} />
+      <CompareDifferencesCount slide={slide} />
     </div>
   )
 }

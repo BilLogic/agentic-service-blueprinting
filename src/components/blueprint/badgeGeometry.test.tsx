@@ -61,12 +61,12 @@ function geometryOf(ui: ReactElement) {
 describe('the size a wrapper asks for is the size it used to write', () => {
   const shapes: Array<[string, () => ReactElement, string[]]> = [
     [
-      'a bare badge is the chip',
+      'a bare badge is the default size',
       () => <Badge>Draft</Badge>,
       ['h-5', 'px-2', 'py-0.5', 'text-xs'],
     ],
     [
-      'a compact path label is the chip',
+      'a compact path label is the default size',
       () => (
         <PathLabelBadge
           name="Happy Path"
