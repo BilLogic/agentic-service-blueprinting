@@ -178,6 +178,9 @@ const {
   sampleListOwnerTags,
   sampleListScenarios,
   sampleListSlices,
+  sampleListLanes,
+  sampleListCellDependencies,
+  REFERENCE_NAMES,
 } = surface
 
 // ---------------------------------------------------------------------------
@@ -266,6 +269,109 @@ async function realGetSlice(sliceId) {
     .sort((a, b) => a.position - b.position)
     .map((s, i) => `slide ${i + 1}: cells [${(s.cell_ids ?? []).join(', ')}]${s.title ? ` title "${s.title}"` : ''}`)
   return `slice "${slice.title}" (${slice.id}) type=${slice.kind}\n${slides.join('\n') || '(no slides)'}`
+}
+
+// The bundled fixture is a board, not a deployment: it carries no cast, no
+// provenance and no business model, so a keyless run says so rather than
+// inventing rows.
+const NO_CAST = 'No stakeholders registered yet.'
+const NO_EVIDENCE = 'No evidence recorded yet.'
+
+async function realListLanes() {
+  const rows = await rest('lanes?select=name,lane_role&order=position')
+  const counts = new Map()
+  for (const row of rows ?? []) {
+    const key = JSON.stringify([row.name, row.lane_role ?? null])
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  if (!counts.size) return 'No lanes defined yet.'
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => {
+      const [name, role] = JSON.parse(key)
+      return `${name}${role ? ` (role ${role})` : ''} — ${count} lane${count === 1 ? '' : 's'}`
+    })
+    .join('\n')
+}
+
+async function realListCellDependencies(cellId) {
+  const scope = cellId
+    ? `&or=(source_cell_id.eq.${encodeURIComponent(String(cellId))},target_cell_id.eq.${encodeURIComponent(String(cellId))})`
+    : ''
+  const rows = await rest(
+    `cell_dependencies?select=id,source_cell_id,target_cell_id,kind,name&limit=200${scope}`,
+  )
+  if (!rows?.length)
+    return cellId ? `No links on cell ${cellId}.` : 'No links recorded yet.'
+  const header = cellId
+    ? `${rows.length} link(s) touching ${cellId}:`
+    : `${rows.length} link(s):`
+  return [
+    header,
+    ...rows.map(
+      (e) =>
+        `${e.source_cell_id} --${e.kind ?? 'leads_to'}--> ${e.target_cell_id}${e.name ? ` "${e.name}"` : ''} (${e.id})`,
+    ),
+  ].join('\n')
+}
+
+async function realListStakeholders() {
+  const rows = await rest(
+    'stakeholders?select=id,name,kind,summary,aliases&order=kind,name',
+  )
+  if (!rows?.length) return NO_CAST
+  return rows
+    .map(
+      (r) =>
+        `${r.name} (${r.kind}) [${r.id}]${(r.aliases ?? []).length ? ` — also written ${r.aliases.join(', ')}` : ''}${r.summary ? ` — ${r.summary}` : ''}`,
+    )
+    .join('\n')
+}
+
+const EVIDENCE_COLUMNS = 'id,cell_id,kind,title,ref,excerpt,observed_at'
+
+const evidenceLine = (r) =>
+  `[${r.kind}] "${r.title}"${r.ref ? ` ref=${r.ref}` : ''}${r.observed_at ? ` observed=${String(r.observed_at).slice(0, 10)}` : ''}${r.cell_id ? ` cell=${r.cell_id}` : ''} (${r.id})`
+
+async function realListEvidence(cellId) {
+  const scope = cellId ? `&cell_id=eq.${encodeURIComponent(String(cellId))}` : ''
+  const rows = await rest(
+    `evidence?select=${EVIDENCE_COLUMNS}&order=created_at.desc&limit=100${scope}`,
+  )
+  if (!rows?.length)
+    return cellId ? `No evidence attached to cell ${cellId}.` : NO_EVIDENCE
+  return [
+    `${rows.length} evidence row(s):`,
+    ...rows.map(evidenceLine),
+  ].join('\n')
+}
+
+async function realGetEvidence(ids) {
+  const wanted = Array.isArray(ids) ? ids : []
+  if (!wanted.length) return 'Pass at least one evidence id.'
+  const rows = await rest(
+    `evidence?select=${EVIDENCE_COLUMNS}&id=in.(${wanted.map(encodeURIComponent).join(',')})`,
+  )
+  if (!rows?.length) return 'No evidence with those ids.'
+  return rows
+    .map((r) =>
+      [evidenceLine(r), r.excerpt ? `  excerpt: ${r.excerpt}` : '']
+        .filter(Boolean)
+        .join('\n'),
+    )
+    .join('\n')
+}
+
+async function realGetBusinessModel() {
+  const rows = await rest(
+    'business_models?select=pricing,funding,partners,revenue_model,delivery_cost&limit=1',
+  )
+  const row = rows?.[0]
+  if (!row) return 'No business model recorded for this service yet.'
+  const filled = Object.entries(row).filter(([, v]) => v !== null && v !== '')
+  return filled.length
+    ? filled.map(([k, v]) => `${k}: ${v}`).join('\n')
+    : 'The business model row exists but is empty.'
 }
 
 async function realListFindings(statusFilter) {
@@ -398,6 +504,49 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
             : `No ${filter} findings.`
         return record.result
       }
+      case 'list_references':
+        // The app's own REFERENCE_NAMES, bundled with the tool declarations —
+        // one list, not two.
+        record.result = [...REFERENCE_NAMES].map((name) => `- ${name}`).join('\n')
+        return record.result
+      case 'list_lanes':
+        record.result = HAS_DB ? await realListLanes() : sampleListLanes()
+        return record.result
+      case 'list_cell_dependencies':
+        record.result = HAS_DB
+          ? await realListCellDependencies(args.cell_id)
+          : sampleListCellDependencies(args.cell_id)
+        return record.result
+      case 'list_stakeholders':
+        record.result = HAS_DB ? await realListStakeholders() : NO_CAST
+        return record.result
+      case 'list_evidence':
+        record.result = HAS_DB
+          ? await realListEvidence(args.cell_id)
+          : NO_EVIDENCE
+        return record.result
+      case 'get_evidence':
+        record.result = HAS_DB
+          ? await realGetEvidence(args.evidence_ids)
+          : NO_EVIDENCE
+        return record.result
+      case 'get_business_model':
+        record.result = HAS_DB
+          ? await realGetBusinessModel()
+          : 'No business model recorded for this service yet.'
+        return record.result
+      // The session store is browser state (localStorage plus a merged DB
+      // list), and the harness has no browser. Saying so is the honest
+      // rehearsal: the agent learns the tool exists and that this environment
+      // cannot answer it, rather than seeing a crash.
+      case 'list_sessions':
+        record.result =
+          'Past sessions are not available in this rehearsal environment (no browser session store).'
+        return record.result
+      case 'get_session':
+        record.result =
+          'Session transcripts are not available in this rehearsal environment (no browser session store).'
+        return record.result
       case 'get_ui_state':
         record.result = 'No UI state is being reported right now.'
         return record.result

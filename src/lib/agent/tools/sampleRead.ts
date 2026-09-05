@@ -5,8 +5,10 @@ import {
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
   formatBlueprints,
+  formatCellDependencies,
   formatCompareDiff,
   formatFields,
+  formatLaneVocabulary,
   formatOwnerTags,
   formatScenarioList,
   formatSliceDetail,
@@ -114,6 +116,40 @@ export function sampleGetSlice(sliceId: string): string {
   const slice = FALLBACK_SLICES.find((entry) => entry.id === sliceId)
   if (!slice) throw new Error(`No slice with id ${sliceId}.`)
   return formatSliceDetail(slice, FALLBACK_SLICE_ITEMS[sliceId] ?? [])
+}
+
+/**
+ * The lane vocabulary the sample board uses, counted the way `listLanes`
+ * counts it from the database: every lane on every sample path, grouped by
+ * (label, role). A sample lane appears once per path it is on, exactly as a
+ * row does.
+ */
+export function sampleListLanes(): string {
+  return formatLaneVocabulary(
+    allSampleBlueprints().flatMap((blueprint) =>
+      blueprint.lanes.map((lane) => ({
+        name: lane.name,
+        lane_role: lane.role ?? null,
+      })),
+    ),
+  )
+}
+
+/**
+ * The sample board's arrows. Same text as the live read, and the same
+ * source-first direction — these are the edges the sample canvas draws.
+ */
+export function sampleListCellDependencies(cellId?: string): string {
+  const edges = allSampleBlueprints().flatMap(
+    (blueprint) => blueprint.dependencies,
+  )
+  const scoped = cellId
+    ? edges.filter(
+        (edge) =>
+          edge.source_cell_id === cellId || edge.target_cell_id === cellId,
+      )
+    : edges
+  return formatCellDependencies(scoped, cellId)
 }
 
 /**

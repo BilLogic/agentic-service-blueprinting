@@ -25,11 +25,12 @@
  * `check:write-surface`'s subject, and reimplementing that scan here would be a
  * second reader to drift from the first.
  *
- * `evidence` claims NO tools, and rule 2 is what makes that row load-bearing
- * instead of decorative: nothing on the roster names evidence today, and the
- * day something does, this test fails until somebody says whose it is. That is
- * the check the collective nouns never had — both were adopted, both went
- * stale, and nothing anywhere noticed.
+ * Rule 2 has already done its one job. `evidence` claimed NO tools and was
+ * owned by "nobody" — true of the roster, not a position — until
+ * `create_evidence` and `update_evidence` landed, at which point this test
+ * failed until somebody said whose the table was. That is the check the
+ * collective nouns never had — both were adopted, both went stale, and nothing
+ * anywhere noticed.
  *
  * Run: npm test
  */
@@ -60,9 +61,13 @@ export const RECORD_OWNERS = [
     tools: ['create_finding', 'update_finding'],
     owner: 'the audit',
   },
-  // No tools, and that is the point rather than an omission: evidence is
-  // written by the panel, never by the agent. Rule 2 still watches the word.
-  { records: ['evidence'], tools: [], owner: 'nobody' },
+  // The cell is the claim the source grounds — see CONTEXT.md, where this row
+  // read "nobody" for as long as the panel was evidence's only writer.
+  {
+    records: ['evidence'],
+    tools: ['create_evidence', 'update_evidence'],
+    owner: 'the cell',
+  },
 ]
 
 /** The record words a tool name may carry, and so the rows that claim them. */
@@ -132,11 +137,12 @@ test('writesWithNoOwner names a write nobody claimed', () => {
   assert.deepEqual(writesWithNoOwner(rows, roster), ['delete_slice', 'set_finding_status'])
 })
 
-test('an evidence write tool would need an owner before it shipped', () => {
-  // The row claims no tools BECAUSE the agent cannot write evidence here. If
-  // that changes, "nobody" stops being a fact about the roster and becomes a
-  // claim someone has to make on purpose.
-  assert.deepEqual(writesWithNoOwner(RECORD_OWNERS, ['create_evidence']), ['create_evidence'])
+test('a further evidence write would need an owner before it shipped', () => {
+  // What happened once will happen again: the row now credits two tools, and a
+  // third arriving without a line here is the same silent hole rule 2 caught
+  // the first time. `delete_evidence` is the obvious next one and does not
+  // exist as a tool — the agent has no deletes at all.
+  assert.deepEqual(writesWithNoOwner(RECORD_OWNERS, ['delete_evidence']), ['delete_evidence'])
 })
 
 test('ownershipTable reads the rows, not the words around them', () => {

@@ -70,6 +70,7 @@ const EVERY_WRITE = Object.keys({
   create_stakeholder: true,
   update_stakeholder: true,
   add_evidence: true,
+  update_evidence: true,
   delete_evidence: true,
   set_cell_dependency: true,
   clear_cell_dependency: true,

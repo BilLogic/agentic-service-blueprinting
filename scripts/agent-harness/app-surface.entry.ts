@@ -21,7 +21,14 @@ export {
   sampleGetBlueprint,
   sampleGetCell,
   sampleGetSlice,
+  sampleListCellDependencies,
+  sampleListLanes,
   sampleListOwnerTags,
   sampleListScenarios,
   sampleListSlices,
 } from '@/lib/agent/tools/sampleRead'
+/**
+ * The reference vocabulary, so `list_references` answers from the app's own
+ * list rather than a second copy the harness would have to keep in step.
+ */
+export { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'

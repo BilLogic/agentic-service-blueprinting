@@ -12,6 +12,17 @@ import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 const str = (description: string) => ({ type: 'string', description })
 
 /**
+ * The service-scope filter shared by the reads that take one. It is a FILTER,
+ * not a navigation mode: omit it to stay within the active service (the one on
+ * screen), name a service to narrow to it, or pass "all" to reach across every
+ * service in the deployment. Inert on a single-service deployment, where every
+ * value names the same one service.
+ */
+const SERVICE_SCOPE_PARAM = str(
+  'Optional. Which service to search: a service name, or "all" for every service in the deployment. Omit to use the active service (the one on screen). Ignored when the deployment has only one service.',
+)
+
+/**
  * The mobile reading roster — the ONLY tools offered while the mobile shell
  * is up, for every tier including service accounts. Mobile is view-only by
  * decision (2026-08-08 plan): navigation, reading, and Q&A; no writes, no
@@ -24,13 +35,22 @@ const str = (description: string) => ({ type: 'string', description })
  */
 export const MOBILE_READ_TOOL_NAMES = new Set([
   'get_reference',
+  'list_references',
   'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
   'get_cell',
+  'list_lanes',
+  'list_cell_dependencies',
   'list_slices',
   'get_slice',
   'list_owner_tags',
+  'list_stakeholders',
+  'list_evidence',
+  'get_evidence',
+  'get_business_model',
+  'list_sessions',
+  'get_session',
   'get_ui_state',
   'get_change_history',
   'open_phase',
@@ -54,13 +74,18 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
  */
 export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
   'get_reference',
+  'list_references',
   'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
   'get_cell',
+  'list_lanes',
+  'list_cell_dependencies',
   'list_slices',
   'get_slice',
   'list_owner_tags',
+  'list_sessions',
+  'get_session',
   'get_ui_state',
   'open_phase',
   'open_scenario',
@@ -82,13 +107,22 @@ export const READ_TOOL_NAMES = new Set([
   // is the interface call.
   'list_ui_commands',
   'get_reference',
+  'list_references',
   'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
   'get_cell',
+  'list_lanes',
+  'list_cell_dependencies',
   'list_slices',
   'get_slice',
   'list_owner_tags',
+  'list_stakeholders',
+  'list_evidence',
+  'get_evidence',
+  'get_business_model',
+  'list_sessions',
+  'get_session',
   'get_ui_state',
   'get_change_history',
   'measure_deletion_impact',
@@ -132,8 +166,12 @@ export const WRITE_TOOL_NAMES = new Set([
   'create_slice',
   'update_slice',
   'replace_slides',
+  'create_evidence',
+  'update_evidence',
   'create_finding',
   'update_finding',
+  'create_stakeholder',
+  'update_stakeholder',
 ])
 
 export const TOOL_SPECS: ToolSpec[] = [
@@ -148,8 +186,12 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
   {
     name: 'list_scenarios',
-    description: 'List every phase and its scenarios, with ids.',
-    parameters: { type: 'object', properties: {} },
+    description:
+      'List every phase and its scenarios, with ids. This is your table of contents and your orientation read. Scoped to the active service by default; pass service to narrow or widen.',
+    parameters: {
+      type: 'object',
+      properties: { service: SERVICE_SCOPE_PARAM },
+    },
   },
   {
     name: 'get_blueprint',
@@ -208,6 +250,126 @@ export const TOOL_SPECS: ToolSpec[] = [
     description:
       'The owner tag vocabulary in use. ALWAYS read before writing owner or perceived_owner — reuse an existing tag unless creating one deliberately.',
     parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_stakeholders',
+    description:
+      "The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `tutor` and `Regular Tutor` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog; by default this shows the actors the active service's lanes actually pick, service:\"all\" the whole roster.",
+    parameters: {
+      type: 'object',
+      properties: { service: SERVICE_SCOPE_PARAM },
+    },
+  },
+  {
+    name: 'create_stakeholder',
+    description:
+      'Add someone to the cast. Rare and deliberate — a new row means a new ACTOR in the service, not a new spelling of one who exists. A different spelling belongs in the existing row\'s aliases via update_stakeholder.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: str('How this actor is written on the canvas, e.g. "Lead Tutor"'),
+        kind: str('recipient | staff | partner | provider'),
+        summary: str('Who they are, in one line; omit for none'),
+        aliases: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Other spellings already present in this blueprint',
+        },
+      },
+      required: ['name', 'kind'],
+    },
+  },
+  {
+    name: 'update_stakeholder',
+    description:
+      "Edit one member of the cast. Renaming also rewrites `slices.actor` on every slice linked to them — the registry owns that text. Read list_stakeholders first; the id is in its output.",
+    parameters: {
+      type: 'object',
+      properties: {
+        stakeholder_id: str('Stakeholder id'),
+        name: str('New name; omit to keep'),
+        kind: str('recipient | staff | partner | provider; omit to keep'),
+        summary: str('One line; omit to keep'),
+        aliases: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Replaces the alias list; omit to keep',
+        },
+      },
+      required: ['stakeholder_id'],
+    },
+  },
+  {
+    name: 'list_lanes',
+    description:
+      'The lane vocabulary actually in use, with how many lanes carry each label and role. Read before create_lane — reuse a label unless the new lane is genuinely a different kind of thing. Distinct from get_reference("lane-roles"), which says what the roles MEAN rather than which ones this blueprint uses.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_references',
+    description:
+      'The rulebook references available to get_reference, live. Use when unsure what guidance exists.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_cell_dependencies',
+    description:
+      'The dependencies: which cell sets off, or depends on, which other cell. `leads_to` means this cell makes the other one happen (drawn as an arrow); `enables` means the other must already be true (recorded, never drawn). Pass cell_id to get just the edges touching one cell — the whole graph is large. These are the same arrows the user sees on the canvas, and the read half of create_cell_dependency.',
+    parameters: {
+      type: 'object',
+      properties: {
+        cell_id: str('Restrict to edges into or out of this cell; omit for the whole graph (capped at 200)'),
+      },
+    },
+  },
+  {
+    name: 'list_evidence',
+    description:
+      'Sources the blueprint\'s claims rest on — interviews, analytics, docs, decisions. Pass cell_id for one cell\'s evidence. Read before asserting that a mapped moment is GROUNDED: a cell with no evidence is a claim, not a finding.',
+    parameters: {
+      type: 'object',
+      properties: {
+        cell_id: str('Restrict to evidence attached to this cell; omit for the newest 100 across the blueprint'),
+      },
+    },
+  },
+  {
+    name: 'get_evidence',
+    description:
+      'Named evidence rows in full, excerpt included. Use after list_evidence to read the sources you intend to cite.',
+    parameters: {
+      type: 'object',
+      properties: {
+        evidence_ids: {
+          type: 'array',
+          description: 'Evidence ids from list_evidence',
+          items: { type: 'string' },
+        },
+      },
+      required: ['evidence_ids'],
+    },
+  },
+  {
+    name: 'get_business_model',
+    description:
+      'The service\'s business model: pricing, revenue model, funding, partners, delivery cost. One row per service — no id to pass. Read before answering anything about how the service sustains itself.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'list_sessions',
+    description:
+      'Past chat sessions on this blueprint — titles, dates, edit counts, ids. Use when the user refers to something discussed earlier ("like we said last time"). Shows exactly the sessions the session switcher shows.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_session',
+    description:
+      'One past session\'s transcript, oldest turn first. Read after list_sessions when you need what was actually said, not just that a session exists.',
+    parameters: {
+      type: 'object',
+      properties: { session_id: str('Session id from list_sessions') },
+      required: ['session_id'],
+    },
   },
   {
     name: 'get_ui_state',
@@ -595,6 +757,38 @@ export const TOOL_SPECS: ToolSpec[] = [
           description: 'Filter; default open',
         },
       },
+    },
+  },
+  {
+    name: 'create_evidence',
+    description:
+      'Attach a source to a cell — the record of WHY a mapped moment is believed. kind is one of interview, survey, analytics, doc, meeting, decision, observation, other. Write evidence when the user tells you where something came from; never invent a source, and never attach one to a cell you have not read.',
+    parameters: {
+      type: 'object',
+      properties: {
+        cell_id: str('Cell the source supports'),
+        kind: str('interview | survey | analytics | doc | meeting | decision | observation | other'),
+        title: str('What the source IS, e.g. "Tutor onboarding interview #4" — required'),
+        ref: str('Link or locator, e.g. a URL or doc name; omit if none'),
+        excerpt: str('The quoted passage that carries the claim; omit if none'),
+      },
+      required: ['cell_id', 'kind', 'title'],
+    },
+  },
+  {
+    name: 'update_evidence',
+    description:
+      'Edit an evidence row: kind, title, ref, excerpt. Pass only the fields you mean to change — the rest are kept. To move a source to a DIFFERENT cell, add it there and remove it here; this tool does not re-point it.',
+    parameters: {
+      type: 'object',
+      properties: {
+        evidence_id: str('Evidence id from list_evidence'),
+        kind: str('interview | survey | analytics | doc | meeting | decision | observation | other; omit to keep'),
+        title: str('New title; omit to keep'),
+        ref: str('New link or locator; omit to keep'),
+        excerpt: str('New quoted passage; omit to keep'),
+      },
+      required: ['evidence_id'],
     },
   },
   {
