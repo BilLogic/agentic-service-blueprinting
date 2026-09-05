@@ -183,6 +183,38 @@ that cell came from, and when it was observed. A cell with no evidence is an
 assumption; that state is derived from the absence of evidence rows and is
 never stored as a flag.
 
+## The writing vocabulary
+
+Five words for how a document is written and reached, shared with the
+deployment this kit was generalised from so that one harness review of both
+repositories uses one language.
+
+**Pointer** — a line held in always-loaded context that names material outside
+it and the branch that should reach it: a row of `AGENTS.md` § Skill routing, a
+path beside a rule that holds for every skill. Its wording, not its target,
+decides whether a session gets there. What a pointer points at is a
+*reference* — which in this repository is also the name of a folder, and
+`references/` is exactly that: the rulebook a skill reaches by pointer.
+
+**Ladder** — where a piece of writing sits by how immediately a session needs
+it: an in-file step, then an in-file reference, then a **disclosed** reference
+behind a pointer. A skill's `SKILL.md` is the top rung of its own ladder, and
+the reference files it names are the rungs below.
+
+**Disclosed** — a reference pushed out of the always-loaded tier and behind a
+pointer, loaded only when that pointer fires. Everything under `docs/`,
+`skills/` and `references/` is disclosed; `AGENTS.md` is the tier itself, and
+`scripts/always-loaded.mjs` is the list that says which is which.
+
+**Leading word** — the first word of a routing item, chosen so that it is the
+word carrying the branch — *vocabulary*, *routing*, *editing* — and front-loaded
+so a scanned pointer triggers on it. `scripts/check-pointers.mjs` is what holds
+it there.
+
+**Sprawl** — a document too long even when every line of it is live: attention
+thins across the whole of it. The cure is the ladder rather than a shorter
+sentence. Distinct from *bloat*, which is dead weight.
+
 ## The rename map
 
 These renames landed across `21000103`–`21000122`. They are recorded here

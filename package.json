@@ -45,6 +45,9 @@
     "check:dependency-kinds": "node scripts/check-dependency-kinds.mjs",
     "check:doc-paths": "node scripts/check-doc-paths.mjs",
     "check:reference-paths": "node scripts/check-reference-paths.mjs",
+    "check:budget": "node scripts/check-router-budget.mjs",
+    "check:negation": "node scripts/check-negation-ratchet.mjs",
+    "check:pointers": "node scripts/check-pointers.mjs",
     "check:seed-load": "node scripts/check-seed-loads.mjs"
   },
   "dependencies": {
