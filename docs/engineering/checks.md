@@ -1,5 +1,5 @@
 ---
-summary: Every guard in CI, what each one is defending and what its failure means — the identifier manifest, the four version statements, adapter parity, the generated portable core, the reserved migration band, the IR round trip, the vendored-rulebook drift guard, the write and read surfaces, the paths the plugin surface names, the paths a deployment imports, the dependency vocabulary, the standalone sweep, the release tag, the docs index and the three checks that keep `AGENTS.md` a router.
+summary: Every guard in CI, what each one is defending and what its failure means — the identifier manifest, the four version statements, adapter parity, the generated portable core, the reserved migration band, the IR round trip, the vendored-rulebook drift guard, the write and read surfaces, the seed that has to load on a fresh core and the deployment seed that is the parity substrate, the paths the plugin surface names, the paths a deployment imports, the dependency vocabulary, the standalone sweep, the release tag, the docs index and the three checks that keep `AGENTS.md` a router.
 ---
 
 # The guard set
@@ -44,6 +44,7 @@ Procedure: [releasing.md](./releasing.md).
 | `npm run check:band` | A new upstream migration was stamped with the wall clock instead of allocated from the reserved band. Timestamp order is apply order, so an upstream file stamped below a fork's own migration lands before it and desyncs them. |
 | `npm run check:parity` | The SQL adapter and the no-database adapter project different field sets out of one blueprint. The contract calls the second one "not a degraded mode"; this is what makes that sentence true. |
 | `npm run check:seed-load` | The generated seed does not load onto a fresh core + recipe, or it loads but the **anon** key cannot read the content back. Stands up a database of its own (shim, the platform's SELECT default, core, recipe, seed), then reads every seeded table and the two render joins as `anon` — the role the deployed app's key resolves to. Every other database check reads as the owner, which cannot see the one failure the deployer feels: a table the recipe never exposed renders blank in the browser and stays green everywhere else. Needs a reachable Postgres and permission to create a database; in CI it is the `portable-core` job's service. |
+| `npm run check:deployment-seed-load` | *Not in CI — it needs a deployment's checkout.* A **deployment's own** seed does not load onto this template's portable core, or loads and does not render to `anon`. Same stack as the row above with the last step swapped: the deployment's seed replaces this repository's, loaded in the order the deployment itself states under `[db.seed]` in its `supabase/config.toml`. This is the behavioural-parity substrate a reconciliation ticket reads against — the sibling row proves the loop closes on content this repo generated, which the generator and the schema can hardly disagree about; only a real deployment's content answers whether the core is *sufficient*. It applies the seed with `ON_ERROR_STOP` **off** on purpose, because here the failing statements are the deliverable rather than a bug to stop at: every one is collected, grouped by reason with counts and examples, and knock-on failures (a foreign key whose row an earlier failure never inserted, the core's own `cells: …` raises, an aborted transaction block) are listed separately so the one root cause is not buried under the forty it caused. Point it at a deployment with `-- --seed <path>` or `DEPLOYMENT_SEED=<path>`; with neither it looks for a checkout beside this one that ships a `supabase/seed.sql` and states a different package name, and **skips with a message** when there is none or more than one. |
 | `npm run check:target` | *Not in CI — it needs a live project.* Asks the configured database for `public.schema_version` and distinguishes never migrated from stale from fine. Worth running once against any target, because the fallback renders perfectly over a database that was never migrated. |
 
 The `portable-core` CI job goes further than a diff: it applies the generated
@@ -53,6 +54,18 @@ inventories, loads the seed onto a third and reads it back as `anon`
 (`check:seed-load`) — then breaks the core on purpose and fails if either guard
 stayed green. A guard nobody has watched fail is a guard nobody knows the shape
 of.
+
+**The two local guards.** `check:target` and `check:deployment-seed-load` are
+the only checks in this document that CI does not run, and for the same reason
+in both cases: a CI runner has one repository and no live project, so neither
+has anything to look at. `check:deployment-seed-load` would therefore *skip* on
+every run — and a check that always skips is worse than absent, because the
+green tick reads as an answer. Run them by hand: `check:target` whenever you
+point a checkout at a database, and `check:deployment-seed-load` before a
+release, from a machine that has a deployment checked out beside this one. Its
+own parsing and skip logic are covered by
+`scripts/tests/deployment-seed-load.test.mjs`, which does run in CI — the part
+that can be wrong without a database is held there.
 
 ## 4. The pipeline, and the claims about the repo itself
 

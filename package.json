@@ -48,7 +48,8 @@
     "check:budget": "node scripts/check-router-budget.mjs",
     "check:negation": "node scripts/check-negation-ratchet.mjs",
     "check:pointers": "node scripts/check-pointers.mjs",
-    "check:seed-load": "node scripts/check-seed-loads.mjs"
+    "check:seed-load": "node scripts/check-seed-loads.mjs",
+    "check:deployment-seed-load": "node scripts/check-deployment-seed-loads.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
