@@ -55,7 +55,7 @@ export function resolveCellDetailPictures(input: {
   const resources = input.cellResources ?? []
   const content = input.cellContent?.trim() ?? ''
 
-  // The tool this panel is about: the clicked pill, else the cell's own name
+  // The tool this panel is about: the clicked touchpoint, else the cell's own name
   // when it holds exactly one touchpoint (content === the placement's name).
   const techItem = input.techItem?.trim() || null
   const icon =

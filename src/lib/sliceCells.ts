@@ -139,14 +139,14 @@ export function resolveSlideStrip(
   if (!blueprint) return []
 
   const cellById = new Map(blueprint.cells.map((cell) => [cell.id, cell]))
-  const visualLaneIds = new Set(
+  const storyboardLaneIds = new Set(
     blueprint.lanes
       .filter((lane) => shouldUseStoryboardContent(lane))
       .map((lane) => lane.id),
   )
-  const visualCellByStepId = new Map(
+  const storyboardCellByStepId = new Map(
     blueprint.cells
-      .filter((cell) => visualLaneIds.has(cell.lane_id))
+      .filter((cell) => storyboardLaneIds.has(cell.lane_id))
       .map((cell) => [cell.step_id, cell]),
   )
 
@@ -163,7 +163,7 @@ export function resolveSlideStrip(
     const cell = cellById.get(resolveBlueprintCellId(rawCellId))
     if (!cell) continue
     add(cell.frame)
-    add(visualCellByStepId.get(cell.step_id)?.frame)
+    add(storyboardCellByStepId.get(cell.step_id)?.frame)
   }
 
   return frames

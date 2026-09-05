@@ -329,7 +329,7 @@ export function BlueprintCellDetailProvider({
       }
 
       // The dependency table also includes technology in the selected step,
-      // even when no explicit trigger connects it to the active cell.
+      // even when no explicit dependency connects it to the active cell.
       const techLaneIds = new Set(
         blueprint.lanes
           .filter((lane) => shouldUseTouchpointCellContent(lane))

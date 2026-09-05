@@ -19,14 +19,14 @@
 // adopter authors has no slot concept).
 //
 // Dimensions:
-//   Find the kit and see what it does · A first look: 7 lanes, 5 steps, 15 cells, 10 triggers
-//   Map your service · From your documents: 8 lanes, 9 steps, 36 cells, 10 triggers
-//   Map your service · From someone else’s diagram: 8 lanes, 9 steps, 36 cells, 10 triggers
-//   Audit the check roster · Findings triaged: 7 lanes, 7 steps, 22 cells, 7 triggers
-//   Audit the check roster · A critical finding reopens: 7 lanes, 7 steps, 22 cells, 8 triggers
-//   Ideate a change (what-if) · Traced before it lands: 7 lanes, 7 steps, 20 cells, 8 triggers
-//   Slice for an audience · Stakeholder readout: 7 lanes, 8 steps, 24 cells, 10 triggers
-//   Keep it current · Update what changed: 7 lanes, 5 steps, 17 cells, 10 triggers
+//   Find the kit and see what it does · A first look: 7 lanes, 5 steps, 15 cells, 10 dependencies
+//   Map your service · From your documents: 8 lanes, 9 steps, 36 cells, 10 dependencies
+//   Map your service · From someone else’s diagram: 8 lanes, 9 steps, 36 cells, 10 dependencies
+//   Audit the check roster · Findings triaged: 7 lanes, 7 steps, 22 cells, 7 dependencies
+//   Audit the check roster · A critical finding reopens: 7 lanes, 7 steps, 22 cells, 8 dependencies
+//   Ideate a change (what-if) · Traced before it lands: 7 lanes, 7 steps, 20 cells, 8 dependencies
+//   Slice for an audience · Stakeholder readout: 7 lanes, 8 steps, 24 cells, 10 dependencies
+//   Keep it current · Update what changed: 7 lanes, 5 steps, 17 cells, 10 dependencies
 
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slice, Slide } from '@/types/database'
@@ -119,7 +119,7 @@ export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-110300060003","lane_id":"f0000000-0000-4000-8000-110100060000","step_id":"f0000000-0000-4000-8000-100200030000","content":"guide/01 — the blueprint model","frame":null,"summary":null,"resources":[{"id":null,"name":"guide/01 — The blueprint model","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/docs/guide/01-the-blueprint-model.md","placementId":null,"featured":false}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-110300060005","lane_id":"f0000000-0000-4000-8000-110100060000","step_id":"f0000000-0000-4000-8000-100200050000","content":"AGENTS.md\nguide/03 — the plugin","frame":null,"summary":"What a reader opens next: the conventions an agent follows in this repo, and how the kit ships as an installable plugin.","resources":[{"id":null,"name":"AGENTS.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/AGENTS.md","placementId":null,"featured":false},{"id":null,"name":"guide/03 — The plugin","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/docs/guide/03-the-plugin.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-110400010000","source_cell_id":"f0000000-0000-4000-8000-110300010001","target_cell_id":"f0000000-0000-4000-8000-110300010002"},
     {"id":"f0000000-0000-4000-8000-110400020000","source_cell_id":"f0000000-0000-4000-8000-110300010002","target_cell_id":"f0000000-0000-4000-8000-110300010003"},
     {"id":"f0000000-0000-4000-8000-110400030000","source_cell_id":"f0000000-0000-4000-8000-110300010003","target_cell_id":"f0000000-0000-4000-8000-110300010004"},
@@ -194,7 +194,7 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-210300070009","lane_id":"f0000000-0000-4000-8000-210100070000","step_id":"f0000000-0000-4000-8000-200200090000","content":"secret_guard.py — the service-role key never reaches disk or transcript","frame":null,"summary":"The guard runs in the owner’s harness, on their machine — the kit ships the hook, it never holds the key.","resources":[{"id":null,"name":"hooks/secret_guard.py","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/hooks/secret_guard.py","placementId":null,"featured":false}],"touchpoints":[],"owner":"The blueprint owner’s own machine","perceived_owner":"The kit"},
     {"id":"f0000000-0000-4000-8000-210300070010","lane_id":"f0000000-0000-4000-8000-210100070000","step_id":"f0000000-0000-4000-8000-200200100000","content":"deploy-notes.md","frame":"/cover/four-ways-in.svg","summary":null,"resources":[{"id":null,"name":"deploy-notes.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/map/references/deploy-notes.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-210400010000","source_cell_id":"f0000000-0000-4000-8000-210300040001","target_cell_id":"f0000000-0000-4000-8000-210300040002"},
     {"id":"f0000000-0000-4000-8000-210400020000","source_cell_id":"f0000000-0000-4000-8000-210300040004","target_cell_id":"f0000000-0000-4000-8000-210300060004"},
     {"id":"f0000000-0000-4000-8000-210400030000","source_cell_id":"f0000000-0000-4000-8000-210300060007","target_cell_id":"f0000000-0000-4000-8000-210300020007","name":"findings"},
@@ -269,7 +269,7 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-220300070009","lane_id":"f0000000-0000-4000-8000-220100070000","step_id":"f0000000-0000-4000-8000-200200090000","content":"secret_guard.py — the service-role key never reaches disk or transcript","frame":null,"summary":"The guard runs in the owner’s harness, on their machine — the kit ships the hook, it never holds the key.","resources":[{"id":null,"name":"hooks/secret_guard.py","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/hooks/secret_guard.py","placementId":null,"featured":false}],"touchpoints":[],"owner":"The blueprint owner’s own machine","perceived_owner":"The kit"},
     {"id":"f0000000-0000-4000-8000-220300070010","lane_id":"f0000000-0000-4000-8000-220100070000","step_id":"f0000000-0000-4000-8000-200200100000","content":"deploy-notes.md","frame":"/cover/four-ways-in.svg","summary":null,"resources":[{"id":null,"name":"deploy-notes.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/map/references/deploy-notes.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-220400010000","source_cell_id":"f0000000-0000-4000-8000-220300040001","target_cell_id":"f0000000-0000-4000-8000-220300040002"},
     {"id":"f0000000-0000-4000-8000-220400020000","source_cell_id":"f0000000-0000-4000-8000-220300040005","target_cell_id":"f0000000-0000-4000-8000-220300050005"},
     {"id":"f0000000-0000-4000-8000-220400030000","source_cell_id":"f0000000-0000-4000-8000-220300060005","target_cell_id":"f0000000-0000-4000-8000-220300040006","name":"structure"},
@@ -327,7 +327,7 @@ export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-310300060003","lane_id":"f0000000-0000-4000-8000-310100060000","step_id":"f0000000-0000-4000-8000-300200030000","content":"check-gap-sweep.md\ncheck-jargon-lint.md\ncheck-channel-conflict.md","frame":null,"summary":"Three of the roster’s eight checks. The roster is the directory listing, not this list — a check file that exists runs, or is reported skipped.","resources":[{"id":null,"name":"check-gap-sweep.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-gap-sweep.md","placementId":null,"featured":false},{"id":null,"name":"check-jargon-lint.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-jargon-lint.md","placementId":null,"featured":false}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-310300060005","lane_id":"f0000000-0000-4000-8000-310100060000","step_id":"f0000000-0000-4000-8000-300200050000","content":"check-perceived-owner.md\ncheck-value-ledger.md","frame":null,"summary":"Wave-2 checks read the cell spec columns, and skip gracefully — reported, never silent — when those columns are empty.","resources":[{"id":null,"name":"check-perceived-owner.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-perceived-owner.md","placementId":null,"featured":false},{"id":null,"name":"check-value-ledger.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-value-ledger.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-310400010000","source_cell_id":"f0000000-0000-4000-8000-310300030002","target_cell_id":"f0000000-0000-4000-8000-310300040002"},
     {"id":"f0000000-0000-4000-8000-310400020000","source_cell_id":"f0000000-0000-4000-8000-310300030003","target_cell_id":"f0000000-0000-4000-8000-310300050003"},
     {"id":"f0000000-0000-4000-8000-310400030000","source_cell_id":"f0000000-0000-4000-8000-310300050004","target_cell_id":"f0000000-0000-4000-8000-310300020005","name":"findings"},
@@ -382,7 +382,7 @@ export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-320300060003","lane_id":"f0000000-0000-4000-8000-320100060000","step_id":"f0000000-0000-4000-8000-300200030000","content":"check-gap-sweep.md\ncheck-jargon-lint.md\ncheck-channel-conflict.md","frame":null,"summary":"Three of the roster’s eight checks. The roster is the directory listing, not this list — a check file that exists runs, or is reported skipped.","resources":[{"id":null,"name":"check-gap-sweep.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-gap-sweep.md","placementId":null,"featured":false},{"id":null,"name":"check-jargon-lint.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-jargon-lint.md","placementId":null,"featured":false}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-320300060005","lane_id":"f0000000-0000-4000-8000-320100060000","step_id":"f0000000-0000-4000-8000-300200050000","content":"check-perceived-owner.md\ncheck-value-ledger.md","frame":null,"summary":"Wave-2 checks read the cell spec columns, and skip gracefully — reported, never silent — when those columns are empty.","resources":[{"id":null,"name":"check-perceived-owner.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-perceived-owner.md","placementId":null,"featured":false},{"id":null,"name":"check-value-ledger.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/audit/references/check-value-ledger.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-320400010000","source_cell_id":"f0000000-0000-4000-8000-320300030002","target_cell_id":"f0000000-0000-4000-8000-320300040002"},
     {"id":"f0000000-0000-4000-8000-320400020000","source_cell_id":"f0000000-0000-4000-8000-320300030003","target_cell_id":"f0000000-0000-4000-8000-320300050003"},
     {"id":"f0000000-0000-4000-8000-320400030000","source_cell_id":"f0000000-0000-4000-8000-320300050004","target_cell_id":"f0000000-0000-4000-8000-320300020005","name":"findings"},
@@ -418,7 +418,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-410300010001","lane_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200010000","content":"Asks what would happen if a step were removed, automated, or moved out of sight","frame":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300010004","lane_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200040000","content":"Reads the affected-cell list before forming an opinion","frame":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300010007","lane_id":"f0000000-0000-4000-8000-410100010000","step_id":"f0000000-0000-4000-8000-400200070000","content":"Accepts the option, or drops it and leaves the blueprint exactly as it was","frame":null,"summary":null,"resources":[],"touchpoints":[]},
-    {"id":"f0000000-0000-4000-8000-410300020003","lane_id":"f0000000-0000-4000-8000-410100020000","step_id":"f0000000-0000-4000-8000-400200030000","content":"Dependency tab\nTrigger arrows","frame":null,"summary":null,"resources":[],"touchpoints":[]},
+    {"id":"f0000000-0000-4000-8000-410300020003","lane_id":"f0000000-0000-4000-8000-410100020000","step_id":"f0000000-0000-4000-8000-400200030000","content":"Dependency tab\nDependency arrows","frame":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300020007","lane_id":"f0000000-0000-4000-8000-410100020000","step_id":"f0000000-0000-4000-8000-400200070000","content":"Nothing on the canvas changes until sb:map promotes an accepted change","frame":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030001","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200010000","content":"Picks the operation: replay, restage, or prioritize","frame":null,"summary":null,"resources":[],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300030002","lane_id":"f0000000-0000-4000-8000-410100030000","step_id":"f0000000-0000-4000-8000-400200020000","content":"Copies the blueprint into whatif/<key>/ — the hypothetical never touches the base","frame":null,"summary":null,"resources":[],"touchpoints":[]},
@@ -436,7 +436,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-410300060001","lane_id":"f0000000-0000-4000-8000-410100060000","step_id":"f0000000-0000-4000-8000-400200010000","content":"whatif-playbook.md","frame":null,"summary":null,"resources":[{"id":null,"name":"whatif-playbook.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/whatif/references/whatif-playbook.md","placementId":null,"featured":false}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-410300060006","lane_id":"f0000000-0000-4000-8000-410100060000","step_id":"f0000000-0000-4000-8000-400200060000","content":"audit-playbook.md §2–§4 — findings mechanics, shared with the audit","frame":null,"summary":null,"resources":[{"id":null,"name":"references/audit-playbook.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/references/audit-playbook.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-410400010000","source_cell_id":"f0000000-0000-4000-8000-410300030001","target_cell_id":"f0000000-0000-4000-8000-410300030002"},
     {"id":"f0000000-0000-4000-8000-410400020000","source_cell_id":"f0000000-0000-4000-8000-410300030003","target_cell_id":"f0000000-0000-4000-8000-410300050003"},
     {"id":"f0000000-0000-4000-8000-410400030000","source_cell_id":"f0000000-0000-4000-8000-410300050003","target_cell_id":"f0000000-0000-4000-8000-410300010004","name":"affected cells"},
@@ -495,7 +495,7 @@ export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-510300060001","lane_id":"f0000000-0000-4000-8000-510100060000","step_id":"f0000000-0000-4000-8000-500200010000","content":"slice-playbook.md","frame":null,"summary":null,"resources":[{"id":null,"name":"slice-playbook.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/slice/references/slice-playbook.md","placementId":null,"featured":false}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-510300060007","lane_id":"f0000000-0000-4000-8000-510100060000","step_id":"f0000000-0000-4000-8000-500200070000","content":"storyboard-prompts.md — optional imagery, only after the text path is complete","frame":null,"summary":null,"resources":[{"id":null,"name":"storyboard-prompts.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/slice/references/storyboard-prompts.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-510400010000","source_cell_id":"f0000000-0000-4000-8000-510300000001","target_cell_id":"f0000000-0000-4000-8000-510300010001","name":"show me my part"},
     {"id":"f0000000-0000-4000-8000-510400020000","source_cell_id":"f0000000-0000-4000-8000-510300030002","target_cell_id":"f0000000-0000-4000-8000-510300030003"},
     {"id":"f0000000-0000-4000-8000-510400030000","source_cell_id":"f0000000-0000-4000-8000-510300030004","target_cell_id":"f0000000-0000-4000-8000-510300040004"},
@@ -546,7 +546,7 @@ export const SAMPLE_KEEP_UPDATE_PATH_FALLBACK: BlueprintData = {
     {"id":"f0000000-0000-4000-8000-610300060002","lane_id":"f0000000-0000-4000-8000-610100060000","step_id":"f0000000-0000-4000-8000-600200020000","content":"workspace-state.md","frame":null,"summary":null,"resources":[{"id":null,"name":"workspace-state.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/skills/map/references/workspace-state.md","placementId":null,"featured":false}],"touchpoints":[]},
     {"id":"f0000000-0000-4000-8000-610300060003","lane_id":"f0000000-0000-4000-8000-610100060000","step_id":"f0000000-0000-4000-8000-600200030000","content":"customization.md — how a workspace is upgraded when the kit moves under it","frame":null,"summary":null,"resources":[{"id":null,"name":"references/customization.md","kind":"link","url":"https://github.com/BilLogic/agentic-service-blueprinting/blob/main/references/customization.md","placementId":null,"featured":false}],"touchpoints":[]},
   ],
-  triggers: [
+  dependencies: [
     {"id":"f0000000-0000-4000-8000-610400010000","source_cell_id":"f0000000-0000-4000-8000-610300010001","target_cell_id":"f0000000-0000-4000-8000-610300010003"},
     {"id":"f0000000-0000-4000-8000-610400020000","source_cell_id":"f0000000-0000-4000-8000-610300010003","target_cell_id":"f0000000-0000-4000-8000-610300010004"},
     {"id":"f0000000-0000-4000-8000-610400030000","source_cell_id":"f0000000-0000-4000-8000-610300010004","target_cell_id":"f0000000-0000-4000-8000-610300010005"},

@@ -11,7 +11,7 @@ import {
 } from '@/components/blueprint/CompareCellBlock'
 import { CompareLaneRowShell } from '@/components/blueprint/CompareLaneRowShell'
 import { CompareStepHeaderRow } from '@/components/blueprint/CompareTrackDecorations'
-import { IntegratedTriggerArrows } from '@/components/blueprint/IntegratedTriggerArrows'
+import { IntegratedDependencyArrows } from '@/components/blueprint/IntegratedDependencyArrows'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { useCompareGridAxis } from '@/hooks/useCompareGridAxis'
 import {
@@ -36,7 +36,7 @@ import {
   assembleMergedSlot,
   buildComparePathShortLabels,
   buildMergedArrowRemap,
-  remapMergedPathTriggers,
+  remapMergedPathDependencies,
   type MergedSlotAssembly,
   type MergedSlotCandidate,
   type MergedSubCell,
@@ -59,7 +59,7 @@ import {
   resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
 import { getPathColor } from '@/lib/pathColorTheme'
-import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
+import { resolveStoryboardStripEntries } from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
 import type {
   BlueprintCell,
@@ -191,7 +191,7 @@ export function MergedCompareGrid({
           if (variant === 'storyboard') {
             // A visual lane's face comes from the walkthrough lanes' frames,
             // not from its own cell text, so it merges on the frame set.
-            const frames = resolveVisualStepPictureEntries(
+            const frames = resolveStoryboardStripEntries(
               runtime.blueprint,
               stepId,
             )
@@ -242,24 +242,24 @@ export function MergedCompareGrid({
   */
   const arrowDataByPath = useMemo(() => {
     const remap = buildMergedArrowRemap(assemblyByKey.values())
-    // After the remap, two paths' triggers can land on the SAME drawn
+    // After the remap, two paths' dependencies can land on the SAME drawn
     // (source, target) pair — subset-shared endpoints alias onto one cell.
     // Draw that edge once: N identical strokes stack into one visually
     // "doubled" arrowhead and say nothing extra.
     const drawnEdges = new Set<string>()
     return blueprints.map((blueprint, index) => {
       const data = getComparePathArrowData(blueprint)
-      // Kind + label ride the dedupe key (todo 031): only triggers that
+      // Kind + label ride the dedupe key (todo 031): only dependencies that
       // draw the SAME edge with the same meaning collapse — two distinct
       // semantics between one remapped pair both survive. They live on
-      // the RAW blueprint triggers, so look them up by id.
-      const rawById = new Map(blueprint.triggers.map((raw) => [raw.id, raw]))
-      const remapped = remapMergedPathTriggers(data.triggers, remap, index === 0)
-      const triggers = remapped.filter((trigger) => {
-        const raw = rawById.get(trigger.id)
+      // the RAW blueprint dependencies, so look them up by id.
+      const rawById = new Map(blueprint.dependencies.map((raw) => [raw.id, raw]))
+      const remapped = remapMergedPathDependencies(data.dependencies, remap, index === 0)
+      const dependencies = remapped.filter((dependency) => {
+        const raw = rawById.get(dependency.id)
         const key = [
-          trigger.source_cell_id,
-          trigger.target_cell_id,
+          dependency.source_cell_id,
+          dependency.target_cell_id,
           raw?.kind ?? 'leads_to',
           raw?.name ?? '',
         ].join(' | ')
@@ -267,7 +267,7 @@ export function MergedCompareGrid({
         drawnEdges.add(key)
         return true
       })
-      return { path: blueprint.path, ...data, triggers }
+      return { path: blueprint.path, ...data, dependencies }
     })
   }, [assemblyByKey, blueprints])
 
@@ -346,10 +346,10 @@ export function MergedCompareGrid({
             ),
           )}
           {arrowDataByPath.map((data) => (
-            <IntegratedTriggerArrows
+            <IntegratedDependencyArrows
               key={`forward-${data.path.id}`}
               lane="forward"
-              triggers={data.triggers}
+              dependencies={data.dependencies}
               cells={data.cells}
               steps={data.steps}
               paths={[data.path]}
@@ -379,10 +379,10 @@ export function MergedCompareGrid({
             </CompareLaneRowShell>
           ))}
           {arrowDataByPath.map((data) => (
-            <IntegratedTriggerArrows
+            <IntegratedDependencyArrows
               key={`wrap-${data.path.id}`}
               lane="wrap"
-              triggers={data.triggers}
+              dependencies={data.dependencies}
               cells={data.cells}
               steps={data.steps}
               paths={[data.path]}
@@ -652,11 +652,11 @@ function MergedSubCellBlock({
   const cells = subCell.cellIds
     .map((cellId) => runtime.cellById.get(cellId))
     .filter((cell): cell is BlueprintCell => cell !== undefined)
-  const isVisual = variant === 'storyboard'
+  const isStoryboard = variant === 'storyboard'
   const cell = cells[0]
-  const cellId = cell?.id ?? (isVisual ? `storyboard-${subCell.stepId}` : undefined)
-  const visualPictures = isVisual
-    ? resolveVisualStepPictureEntries(blueprint, subCell.stepId)
+  const cellId = cell?.id ?? (isStoryboard ? `storyboard-${subCell.stepId}` : undefined)
+  const visualPictures = isStoryboard
+    ? resolveStoryboardStripEntries(blueprint, subCell.stepId)
     : undefined
 
   return (

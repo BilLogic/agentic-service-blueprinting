@@ -5,12 +5,12 @@ import type { TouchpointTone } from '@/lib/blueprintCellStyle'
  *
  * A touchpoint's colour is meant to be chosen by whoever owns the blueprint —
  * "our scheduling tool is blue" is a product fact, not a palette one. There is nowhere to
- * store that yet: a tech pill is a parsed substring of `cells.content`, so
+ * store that yet: a touchpoint is a parsed substring of `cells.content`, so
  * there is no row to attach a colour to. Until a `touchpoints` table exists,
  * this map is the seed, and `getTouchpointTone` already takes the override that
  * will carry the stored value.
  *
- * A pill renders at step 400, one paler than the step-500 lane it sits in, so
+ * A touchpoint renders at step 400, one paler than the step-500 lane it sits in, so
  * it reads as an object on the cell rather than as another cell.
  */
 export const TOUCHPOINT_COLORS = {
@@ -63,7 +63,7 @@ function hashLabel(label: string): number {
   return Math.abs(hash)
 }
 
-/** Resolve a raw pill label to its canonical registry key when possible. */
+/** Resolve a raw touchpoint label to its canonical registry key when possible. */
 export function normalizeTouchpointLabel(label: string): string {
   const trimmed = label.trim()
   const lower = trimmed.toLowerCase()
@@ -71,7 +71,7 @@ export function normalizeTouchpointLabel(label: string): string {
 }
 
 /**
- * The Radix family a tech pill draws from.
+ * The Radix family a touchpoint draws from.
  *
  * `chosen` wins when present — it is the seam the stored per-touchpoint colour
  * will arrive through, so adding the table later needs no restructuring here.

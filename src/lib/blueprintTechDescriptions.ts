@@ -52,7 +52,7 @@ function joinedSummariesForContentItems(
   return parts.length > 0 ? parts.join('\n\n') : null
 }
 
-/** Tech pill label for the detail panel heading. */
+/** Touchpoint label for the detail panel heading. */
 export function resolveTechCellDetailLabel(
   techItem: string | undefined,
   cell: Pick<BlueprintCell, 'content'>,
@@ -63,7 +63,7 @@ export function resolveTechCellDetailLabel(
   return items.length === 1 ? items[0]! : null
 }
 
-/** Detail panel body copy for a tech pill or single-tech cell. */
+/** Detail panel body copy for a touchpoint or single-tech cell. */
 export function resolveTechCellDetailText(
   techItem: string | undefined,
   cell: TouchpointBearingCell,
@@ -103,7 +103,7 @@ export function resolveTechCellDetailText(
   return content
 }
 
-/** External design reference (e.g. Figma) for a tech pill detail panel. */
+/** External design reference (e.g. Figma) for a touchpoint detail panel. */
 export function resolveTechCellDetailUrl(
   techItem: string | undefined,
   cell: Pick<BlueprintCell, 'content'> & {

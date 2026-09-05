@@ -26,7 +26,7 @@ import {
 } from '@/lib/pathColorTheme'
 import { getPathKindArrowColor } from '@/lib/pathTypeTheme'
 import { cn } from '@/lib/utils'
-import type { BlueprintCellTrigger } from '@/types/blueprint'
+import type { BlueprintCellDependency } from '@/types/blueprint'
 import type { PathKind } from '@/types/database'
 import {
   BlueprintArrowMarkerDefs,
@@ -35,18 +35,18 @@ import {
 
 type ArrowLayer = 'forward' | 'wrap'
 
-export type ColoredBlueprintTrigger = BlueprintCellTrigger & {
+export type ColoredBlueprintDependency = BlueprintCellDependency & {
   pathKind: PathKind
   opacity?: number
 }
 
-type BlueprintTriggerArrowsProps = {
-  triggers: BlueprintCellTrigger[] | ColoredBlueprintTrigger[]
+type BlueprintDependencyArrowsProps = {
+  dependencies: BlueprintCellDependency[] | ColoredBlueprintDependency[]
   contentRef: RefObject<HTMLElement | null>
   scrollContainerRef: RefObject<HTMLElement | null>
   /** forward = in column gaps behind cells; wrap = loop overlay on top */
   lane: ArrowLayer
-  /** Used when triggers do not include kind (single-path grids). */
+  /** Used when dependencies do not include kind (single-path grids). */
   pathKind?: PathKind
   /** When set with pathKind, arrows use the stable path identity color. */
   pathName?: string
@@ -77,10 +77,10 @@ function serializeSegments(segments: readonly ArrowSegment[]): string {
     .join('~')
 }
 
-function isColoredTrigger(
-  trigger: BlueprintCellTrigger,
-): trigger is ColoredBlueprintTrigger {
-  return 'pathKind' in trigger
+function isColoredDependency(
+  dependency: BlueprintCellDependency,
+): dependency is ColoredBlueprintDependency {
+  return 'pathKind' in dependency
 }
 
 /**
@@ -88,15 +88,15 @@ function isColoredTrigger(
  * path's colour and dash pattern, so arrows stay distinguishable where they
  * cross and in a monochrome print.
  */
-export function BlueprintTriggerArrows({
-  triggers,
+export function BlueprintDependencyArrows({
+  dependencies,
   contentRef,
   scrollContainerRef,
   lane,
   pathKind = 'happy',
   pathName,
   mergeConfluences = true,
-}: BlueprintTriggerArrowsProps) {
+}: BlueprintDependencyArrowsProps) {
   const [segments, setSegments] = useState<ArrowSegment[]>([])
   const [size, setSize] = useState({ width: 0, height: 0 })
   const markerId = useId().replace(/:/g, '')
@@ -110,16 +110,16 @@ export function BlueprintTriggerArrows({
 
   const updateArrows = useCallback(() => {
     const content = contentRef.current
-    // `needs` links are panel-only by design — arrows draw temporal triggers only.
-    const arrowTriggers = triggers.filter((t) => (t.kind ?? 'leads_to') === 'leads_to')
-    if (!content || arrowTriggers.length === 0) {
+    // `needs` links are panel-only by design — arrows draw temporal dependencies only.
+    const arrowDependencies = dependencies.filter((t) => (t.kind ?? 'leads_to') === 'leads_to')
+    if (!content || arrowDependencies.length === 0) {
       setSegments([])
       return
     }
 
     const next: ArrowSegment[] = []
     const { pairs, remaining: unpaired } =
-      findBidirectionalDependencyPairs(arrowTriggers)
+      findBidirectionalDependencyPairs(arrowDependencies)
 
     // Allocate anchor slots over the endpoints `buildArrowPath` will draw, so
     // a contested cell side fans its arrows instead of stacking them. Both
@@ -140,19 +140,19 @@ export function BlueprintTriggerArrows({
     // onto adjacent lanes instead of overdrawing one line.
     planArrowCorridors(
       content,
-      unpaired.filter((trigger) => !merge.consumed.has(trigger.id)),
+      unpaired.filter((dependency) => !merge.consumed.has(dependency.id)),
     )
-    const triggerOpacity = (id: string): number => {
-      const trigger = unpaired.find((entry) => entry.id === id)
-      return trigger && isColoredTrigger(trigger)
-        ? (trigger.opacity ?? 1)
+    const dependencyOpacity = (id: string): number => {
+      const dependency = unpaired.find((entry) => entry.id === id)
+      return dependency && isColoredDependency(dependency)
+        ? (dependency.opacity ?? 1)
         : 1
     }
 
     if (lane === 'forward') {
       for (const segment of merge.segments) {
         const opacity = segment.memberDependencyIds.length
-          ? Math.max(...segment.memberDependencyIds.map(triggerOpacity))
+          ? Math.max(...segment.memberDependencyIds.map(dependencyOpacity))
           : 1
         next.push({
           id: segment.id,
@@ -186,22 +186,22 @@ export function BlueprintTriggerArrows({
         d,
         colorKey: defaultColorKey,
         arrowColor: defaultArrowColor,
-        opacity: isColoredTrigger(pair.first)
+        opacity: isColoredDependency(pair.first)
           ? (pair.first.opacity ?? 1)
           : 1,
         dualMarker: true,
       })
     }
 
-    for (const trigger of unpaired) {
-      // A trigger a trunk already gathered must not also draw on its own.
-      if (merge.consumed.has(trigger.id)) continue
+    for (const dependency of unpaired) {
+      // A dependency a trunk already gathered must not also draw on its own.
+      if (merge.consumed.has(dependency.id)) continue
 
       const sourceEl = content.querySelector<HTMLElement>(
-        `[data-blueprint-cell="${trigger.source_cell_id}"]`,
+        `[data-blueprint-cell="${dependency.source_cell_id}"]`,
       )
       const targetEl = content.querySelector<HTMLElement>(
-        `[data-blueprint-cell="${trigger.target_cell_id}"]`,
+        `[data-blueprint-cell="${dependency.target_cell_id}"]`,
       )
       if (!sourceEl || !targetEl) continue
 
@@ -213,18 +213,18 @@ export function BlueprintTriggerArrows({
         sourceEl,
         targetEl,
         content,
-        trigger.source_cell_id,
-        trigger.target_cell_id,
-        trigger.id,
+        dependency.source_cell_id,
+        dependency.target_cell_id,
+        dependency.id,
       )
       if (!d) continue
 
       next.push({
-        id: trigger.id,
+        id: dependency.id,
         d,
         colorKey: defaultColorKey,
         arrowColor: defaultArrowColor,
-        opacity: isColoredTrigger(trigger) ? (trigger.opacity ?? 1) : 1,
+        opacity: isColoredDependency(dependency) ? (dependency.opacity ?? 1) : 1,
       })
     }
 
@@ -234,7 +234,7 @@ export function BlueprintTriggerArrows({
     // Equality-guarded: a ResizeObserver burst during camera-fit relayout
     // fires many notifications for identical geometry; fresh object
     // identities on each would re-render (and re-observe) in a loop. Same
-    // hardening as IntegratedTriggerArrows.
+    // hardening as IntegratedDependencyArrows.
     const nextKey = serializeSegments(next)
     setSegments((prev) =>
       serializeSegments(prev) === nextKey ? prev : next,
@@ -252,7 +252,7 @@ export function BlueprintTriggerArrows({
     defaultColorKey,
     lane,
     mergeConfluences,
-    triggers,
+    dependencies,
   ])
 
   useEffect(() => {

@@ -498,7 +498,7 @@ export function CompareDifferencesSurface({
         </div>
         <p className="flex items-center gap-1 text-3xs text-muted-foreground/80">
           <Info className="size-3 shrink-0" aria-hidden />
-          triggers/needs are not compared
+          dependency edges are not compared
         </p>
       </div>
 

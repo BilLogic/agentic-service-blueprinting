@@ -33,14 +33,14 @@ validator stops: it proves the IR is well-formed; you probe whether it is
 **Referential gaps** (beyond what the validator mechanically catches):
 - Steps declared but unused by any path; lanes with no cells at all;
   paths whose `path_steps` skip steps their narrative clearly needs.
-- Triggers that reference plausible-but-wrong cells (right lane, wrong
-  column); triggers missing where the content says "which kicks off…".
+- Dependencies that reference plausible-but-wrong cells (right lane, wrong
+  column); dependencies missing where the content says "which kicks off…".
 - Locale maps with missing or placeholder entries in a declared locale;
   CJK/EN pairs that don't say the same thing.
 
 **Journey-logic holes**:
 - Sequences that can't happen in the stated order; actors acting before
-  they plausibly know anything (no upstream trigger/cell).
+  they plausibly know anything (no upstream dependency/cell).
 - Dead ends: exception/unhappy paths that never resolve or rejoin.
 - The spine: does `customer_actions` sit on the actor whose journey this
   actually is? Interaction/visibility lines landing somewhere absurd?

@@ -22,7 +22,7 @@ What that buys you:
 
 ## See it live
 
-- **Run it yourself** — `npm install && npm run dev` boots the stock renderer over the bundled sample blueprint, no database needed: phases, side-by-side path comparisons, trigger arrows, and cell detail panels. Click any phase, then flip between paths. See [Run locally](#run-locally) below.
+- **Run it yourself** — `npm install && npm run dev` boots the stock renderer over the bundled sample blueprint, no database needed: phases, side-by-side path comparisons, dependency arrows, and cell detail panels. Click any phase, then flip between paths. See [Run locally](#run-locally) below.
 
 Demos of the blueprint in use (recordings coming soon):
 
@@ -73,9 +73,9 @@ The app is where people read, compare, and present. The in-app agent drafts chan
 
 ### Inside a single path
 
-![Inside a single path — lanes, steps, cells, triggers, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
+![Inside a single path — lanes, steps, cells, dependencies, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
 
-*Lanes are rows — one actor each, colored by semantic `lane_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **triggers** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (touchpoint lanes render their cells as touchpoints in the app).*
+*Lanes are rows — one actor each, colored by semantic `lane_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **dependencies** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (touchpoint lanes render their cells as touchpoints in the app).*
 
 *Two levels down — what a single cell holds, and how a slice is taken out of the blueprint — are in [guide/01 — The blueprint model](./docs/guide/01-the-blueprint-model.md).*
 
@@ -195,7 +195,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | [references/](./references/) | Shared core every skill uses: data model, blueprint schema, adapter contract, canvas adapter, lane-role & lane vocabularies, customization, audit playbook |
 | [scripts/](./scripts/) | Shared blueprint pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, blueprint auto-validation on edit, service-role secret guard |
-| `src/components/blueprint/` | Blueprint grid, paths, trigger arrows (shadcn/ui + Tailwind v4; theme tokens in `src/styles/tokens.css`) |
+| `src/components/blueprint/` | Blueprint grid, paths, dependency arrows (shadcn/ui + Tailwind v4; theme tokens in `src/styles/tokens.css`) |
 | `src/components/editor/` | Canvas/slide editor shell |
 | [src/lib/laneRoles.ts](./src/lib/laneRoles.ts) | `lane_role` rendering contract |
 | [src/data/blueprintFallbacks.ts](./src/data/blueprintFallbacks.ts) | Offline/no-DB fallback registry (sample content) |

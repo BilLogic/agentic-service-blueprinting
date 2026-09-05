@@ -97,7 +97,7 @@ import {
 } from '@/lib/blueprintTechDescriptions'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
-import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
+import { resolveStoryboardStripEntries } from '@/lib/visualWalkthrough'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
 import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
@@ -604,7 +604,7 @@ function BlueprintCellDetailPanelBody() {
     What the cell leads with (#110): the selected placement's featured
     attachment is the preview, every featured link — the placement's, then
     the cell's own — is a button named by its host. A placement is the row
-    whose name the selected pill shows.
+    whose name the selected touchpoint shows.
   */
   const selectedPlacementId = useMemo(() => {
     const techItem = selection?.techItem?.trim().toLowerCase()
@@ -694,7 +694,7 @@ function BlueprintCellDetailPanelBody() {
   const existingDependencies = useMemo<ExistingDependency[]>(
     () =>
       connections.outgoing.map((connection) => ({
-        id: connection.triggerId,
+        id: connection.dependencyId,
         targetCellId: connection.cellId,
         targetLabel: cellPositionLabel(
           connection.stepIndex,
@@ -729,7 +729,7 @@ function BlueprintCellDetailPanelBody() {
     const blueprint = getBlueprintForPath(blueprints, pathId)
     if (!blueprint) return []
 
-    return resolveVisualStepPictureEntries(blueprint, stepId)
+    return resolveStoryboardStripEntries(blueprint, stepId)
   }, [blueprints, pathEntry?.pathId, selection?.stepId])
 
   // Fully closed and the exit animation has completed — nothing to render.
@@ -959,7 +959,7 @@ function BlueprintCellDetailPanelBody() {
     )
   }
 
-  const isVisualLane = Boolean(
+  const isStoryboardLane = Boolean(
     selectedLane && shouldUseStoryboardContent(selectedLane),
   )
   const cellContent =
@@ -996,12 +996,12 @@ function BlueprintCellDetailPanelBody() {
       (placement) => placement.name === (selection.techItem ?? techDetailLabel),
     )?.iconUrl?.trim() || null
   const showPicture = Boolean(
-    (featured.preview || detailPictures?.length) && !isVisualLane,
+    (featured.preview || detailPictures?.length) && !isStoryboardLane,
   )
-  const showTechPill = Boolean(isTechLane && techDetailLabel)
-  // The touchpoint pill sits above the title on a touchpoint lane — decided by
+  const showTouchpoint = Boolean(isTechLane && techDetailLabel)
+  // The touchpoint sits above the title on a touchpoint lane — decided by
   // the lane's role (isTechLane), not by a hardcoded lane name (#326).
-  const showTechPillAboveTitle = showTechPill
+  const showTouchpointAboveTitle = showTouchpoint
 
   const handleConnectionSelect = (cellId: string) => {
     const pathId = pathEntry?.pathId
@@ -1123,7 +1123,7 @@ function BlueprintCellDetailPanelBody() {
   )
 
   /*
-    The placement's role, beside its pill (#111). Only when someone judged
+    The placement's role, beside its touchpoint (#111). Only when someone judged
     it — null is the unmarked majority and renders nothing, because a badge
     for "nobody decided" puts a decision on screen that nobody made.
   */
@@ -1136,7 +1136,7 @@ function BlueprintCellDetailPanelBody() {
       )?.role ?? null
     )
   })()
-  const selectedTechPill = showTechPill ? (
+  const selectedTouchpoint = showTouchpoint ? (
     <span className="flex min-w-0 flex-wrap items-center gap-1.5">
       <TouchpointCellFace
         item={techDetailLabel!}
@@ -1255,8 +1255,8 @@ function BlueprintCellDetailPanelBody() {
   // rule for the summary paragraph: a cell with no authored summary falls back
   // to its own content, and printing the title again as "summary" is the
   // same word twice pretending to be two facts.
-  const titleRepeatsPill =
-    showTechPill && techDetailLabel?.trim() === cellTitleText.trim()
+  const titleRepeatsTouchpoint =
+    showTouchpoint && techDetailLabel?.trim() === cellTitleText.trim()
   const summaryRepeatsTitle =
     detailSummaryText.trim() === cellTitleText.trim() ||
     detailSummaryText.trim() === cellContent.trim()
@@ -1269,18 +1269,18 @@ function BlueprintCellDetailPanelBody() {
         <FeaturedButtons buttons={featured.buttons} className="px-1" />
       ) : null}
       <div className="flex min-w-0 flex-col gap-2">
-        {showTechPillAboveTitle ? selectedTechPill : null}
+        {showTouchpointAboveTitle ? selectedTouchpoint : null}
         {/* In edit mode the form's TEXT field *is* the title; repeating it
             above the field would be the same word twice on one screen. */}
         {editingCell ? (
-          titleRepeatsPill ? null : laneChip
-        ) : titleRepeatsPill ? (
+          titleRepeatsTouchpoint ? null : laneChip
+        ) : titleRepeatsTouchpoint ? (
           laneChip
         ) : (
           titleRow
         )}
-        {showTechPill && !showTechPillAboveTitle ? selectedTechPill : null}
-        {editingCell && titleRepeatsPill ? laneChip : null}
+        {showTouchpoint && !showTouchpointAboveTitle ? selectedTouchpoint : null}
+        {editingCell && titleRepeatsTouchpoint ? laneChip : null}
       </div>
       {/* The summary paragraph is the reading view; the editor shows the
           same text inside its SUMMARY field instead. */}
@@ -1358,7 +1358,7 @@ function BlueprintCellDetailPanelBody() {
           </div>
         </DrawerHeader>
 
-        {isVisualLane ? (
+        {isStoryboardLane ? (
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">
             {titleRow}
             <VisualStepDetailStack entries={visualStepEntries} />

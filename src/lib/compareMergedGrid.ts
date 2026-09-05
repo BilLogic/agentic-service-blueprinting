@@ -1,5 +1,5 @@
 import { groupBy } from '@/lib/utils'
-import type { IntegratedBlueprintTrigger } from '@/types/integratedBlueprint'
+import type { IntegratedBlueprintDependency } from '@/types/integratedBlueprint'
 
 /**
  * Merged view (Compare v3, Phase 4b) — the pure derivations behind ONE
@@ -149,7 +149,7 @@ export function buildComparePathShortLabels(
 }
 
 /**
- * How each path's trigger arrows map onto what the merged grid actually
+ * How each path's dependency arrows map onto what the merged grid actually
  * renders.
  *
  * A shared slot draws ONE cell, so the other paths' cell ids have no DOM
@@ -201,28 +201,28 @@ export function buildMergedArrowRemap(
 }
 
 /**
- * Rewrite one path's triggers for the merged canvas: endpoints on hidden
+ * Rewrite one path's dependencies for the merged canvas: endpoints on hidden
  * shared cells move to the cell that is drawn, and a wholly-shared arrow
  * survives only for the primary path.
  */
-export function remapMergedPathTriggers(
-  triggers: readonly IntegratedBlueprintTrigger[],
+export function remapMergedPathDependencies(
+  dependencies: readonly IntegratedBlueprintDependency[],
   remap: MergedArrowRemap,
   isPrimaryPath: boolean,
-): IntegratedBlueprintTrigger[] {
-  const result: IntegratedBlueprintTrigger[] = []
-  for (const trigger of triggers) {
-    const sourceShared = remap.sharedCellIds.has(trigger.source_cell_id)
-    const targetShared = remap.sharedCellIds.has(trigger.target_cell_id)
+): IntegratedBlueprintDependency[] {
+  const result: IntegratedBlueprintDependency[] = []
+  for (const dependency of dependencies) {
+    const sourceShared = remap.sharedCellIds.has(dependency.source_cell_id)
+    const targetShared = remap.sharedCellIds.has(dependency.target_cell_id)
     if (sourceShared && targetShared && !isPrimaryPath) continue
     const source =
-      remap.aliasByCellId.get(trigger.source_cell_id) ?? trigger.source_cell_id
+      remap.aliasByCellId.get(dependency.source_cell_id) ?? dependency.source_cell_id
     const target =
-      remap.aliasByCellId.get(trigger.target_cell_id) ?? trigger.target_cell_id
+      remap.aliasByCellId.get(dependency.target_cell_id) ?? dependency.target_cell_id
     result.push(
-      source === trigger.source_cell_id && target === trigger.target_cell_id
-        ? trigger
-        : { ...trigger, source_cell_id: source, target_cell_id: target },
+      source === dependency.source_cell_id && target === dependency.target_cell_id
+        ? dependency
+        : { ...dependency, source_cell_id: source, target_cell_id: target },
     )
   }
   return result

@@ -428,7 +428,7 @@ import json, re, sys
 ts = open(sys.argv[1], encoding="utf-8").read()
 block = ts.split("GENERATED_PATH_FALLBACKS_BY_SCENARIO: Record<string, BlueprintData[]> =", 1)[1]
 data = json.loads(block.strip())
-edges = [e for paths in data.values() for path in paths for e in path["triggers"]]
+edges = [e for paths in data.values() for path in paths for e in path["dependencies"]]
 kinds = [e.get("kind") for e in edges]
 assert edges, "the no-DB adapter served no edges at all"
 assert kinds.count("enables") == 1, f"expected the fixture's one enables edge, got {kinds.count('enables')}"

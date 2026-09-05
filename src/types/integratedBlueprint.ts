@@ -3,7 +3,7 @@ import type { PathKind } from '@/types/database'
 
 /*
  * What survives of the integrated-grid vocabulary: the path-tagged shapes the
- * arrow overlay (`IntegratedTriggerArrows`) and its per-band mapper
+ * arrow overlay (`IntegratedDependencyArrows`) and its per-band mapper
  * (`getComparePathArrowData`) exchange. The merged grid itself — and the
  * `IntegratedBlueprintData` container, its opacity rules and the
  * `mergeIntegratedBlueprint` builder — retired with Compare v3's stacked
@@ -26,7 +26,7 @@ export type IntegratedBlueprintCell = {
   opacity: number
 }
 
-export type IntegratedBlueprintTrigger = {
+export type IntegratedBlueprintDependency = {
   id: string
   source_cell_id: string
   target_cell_id: string

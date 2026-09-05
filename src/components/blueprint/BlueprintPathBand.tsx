@@ -11,7 +11,7 @@ import {
   BlueprintSwimLaneDivider,
 } from '@/components/blueprint/BlueprintLabelRail'
 import { ComparePathSectionFrame } from '@/components/blueprint/ComparePathSectionFrame'
-import { IntegratedTriggerArrows } from '@/components/blueprint/IntegratedTriggerArrows'
+import { IntegratedDependencyArrows } from '@/components/blueprint/IntegratedDependencyArrows'
 import { BlueprintVisualPlayButton } from '@/components/blueprint/BlueprintVisualPlayButton'
 import {
   BLUEPRINT_LANE_ROW_GAP,
@@ -35,7 +35,7 @@ import {
   resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
 import { cn } from '@/lib/utils'
-import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
+import { resolveStoryboardStripEntries } from '@/lib/visualWalkthrough'
 import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
 import { buildVisualWalkthroughSession } from '@/lib/visualWalkthrough'
 import type { BlueprintData, BlueprintStep } from '@/types/blueprint'
@@ -80,7 +80,7 @@ type BlueprintPathBandProps = {
 }
 
 /**
- * One path's full lane-row band — section frame, trigger arrows, design-mode
+ * One path's full lane-row band — section frame, dependency arrows, design-mode
  * handles and the cells themselves. Both compare arrangements compose this
  * component; only the placement (`arrangement`) differs. The rendering of a
  * cell is identical in both, down to its `data-blueprint-cell` anchors.
@@ -210,9 +210,9 @@ export function BlueprintPathBand({
           )}
         </>
       ) : null}
-      <IntegratedTriggerArrows
+      <IntegratedDependencyArrows
         lane="forward"
-        triggers={arrowData.triggers}
+        dependencies={arrowData.dependencies}
         cells={arrowData.cells}
         steps={arrowData.steps}
         paths={arrowPaths}
@@ -237,9 +237,9 @@ export function BlueprintPathBand({
           }
         />
       ))}
-      <IntegratedTriggerArrows
+      <IntegratedDependencyArrows
         lane="wrap"
-        triggers={arrowData.triggers}
+        dependencies={arrowData.dependencies}
         cells={arrowData.cells}
         steps={arrowData.steps}
         paths={arrowPaths}
@@ -334,30 +334,30 @@ function CompareLaneRow({
     () => new Map(blueprint.steps.map((step, index) => [step.id, index])),
     [blueprint.steps],
   )
-  const isPillLane = shouldUseTouchpointCellContent(lane)
+  const isTouchpointLane = shouldUseTouchpointCellContent(lane)
   const laneStyle = getBlueprintLaneStyle(
     lane.name,
     getBlueprintLaneZone(lane, lanes),
     lane.role,
   )
   const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
-  const isVisualLane = shouldUseStoryboardContent(lane)
+  const isStoryboardLane = shouldUseStoryboardContent(lane)
   const renderPlay =
-    showPlay && isVisualLane && (playGutter > 0 || stackedTracks !== undefined)
+    showPlay && isStoryboardLane && (playGutter > 0 || stackedTracks !== undefined)
 
   const renderStepCell = (step: BlueprintStep, stepIndex: number) => {
     const cell = getCellAt(cellLookup, blueprintLane.id, step.id)
     // Tech slots hold one cell per touchpoint since the split.
-    const slotCells = isPillLane
+    const slotCells = isTouchpointLane
       ? getCellsAt(cellLookup, blueprintLane.id, step.id)
       : undefined
-    const variant = isVisualLane ? 'storyboard' : isPillLane ? 'touchpoints' : 'default'
-    const visualPictures = isVisualLane
-      ? resolveVisualStepPictureEntries(blueprint, step.id)
+    const variant = isStoryboardLane ? 'storyboard' : isTouchpointLane ? 'touchpoints' : 'default'
+    const visualPictures = isStoryboardLane
+      ? resolveStoryboardStripEntries(blueprint, step.id)
       : undefined
-    const showCell = isVisualLane
+    const showCell = isStoryboardLane
       ? (visualPictures?.length ?? 0) > 0
-      : isPillLane
+      : isTouchpointLane
         ? (slotCells ?? []).some((entry) =>
             hasBlueprintCellContent(entry.content, variant),
           )
@@ -384,7 +384,7 @@ function CompareLaneRow({
 
     return (
       <CompareCellBlock
-        cellId={cell?.id ?? (isVisualLane ? `storyboard-${step.id}` : undefined)}
+        cellId={cell?.id ?? (isStoryboardLane ? `storyboard-${step.id}` : undefined)}
         stepIndex={stepIndex}
         content={cell?.content}
         laneStyle={laneStyle}
@@ -394,7 +394,7 @@ function CompareLaneRow({
         visualPictures={visualPictures}
         slotCells={slotCells}
         selectionContext={
-          scenarioName && (cell?.id || isVisualLane)
+          scenarioName && (cell?.id || isStoryboardLane)
             ? {
                 scenarioName,
                 phaseName,

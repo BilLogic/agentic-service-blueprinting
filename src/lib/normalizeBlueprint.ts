@@ -4,7 +4,7 @@ import {
 } from '@/lib/entityStatus'
 import type {
   BlueprintCell,
-  BlueprintCellTrigger,
+  BlueprintCellDependency,
   BlueprintData,
   BlueprintLane,
   BlueprintStep,
@@ -16,7 +16,7 @@ import {
   type RawCellTouchpoint,
 } from '@/lib/cellTouchpoints'
 
-type RawOutgoingTrigger = {
+type RawOutgoingDependency = {
   id: string
   target_cell_id: string
   /** Fallback data omits these — default kind 'leads_to', name/note null. */
@@ -25,8 +25,8 @@ type RawOutgoingTrigger = {
   note?: string | null
 }
 
-/** Normalize a raw kind column value; anything unknown is a plain trigger. */
-function normalizeTriggerKind(kind: string | null | undefined): 'leads_to' | 'enables' {
+/** Normalize a raw kind column value; anything unknown is a plain dependency. */
+function normalizeDependencyKind(kind: string | null | undefined): 'leads_to' | 'enables' {
   return kind === 'enables' ? 'enables' : 'leads_to'
 }
 
@@ -43,7 +43,7 @@ export type RawCell = {
   resources?: RawCellResource[] | null
   /** `cell_touchpoints` rows embedded by the board query. */
   cell_touchpoints?: RawCellTouchpoint[] | null
-  outgoing?: RawOutgoingTrigger[] | null
+  outgoing?: RawOutgoingDependency[] | null
 }
 
 type RawPathStep = {
@@ -74,7 +74,7 @@ export type RawPath = {
   steps?: BlueprintStep[] | null
   path_steps?: RawPathStep[] | null
   cells?: RawCell[] | null
-  cell_dependencies?: BlueprintCellTrigger[] | null
+  cell_dependencies?: BlueprintCellDependency[] | null
 }
 
 /** Flatten path_steps junction rows into blueprint steps sorted by column. */
@@ -102,21 +102,21 @@ function resolveSteps(raw: RawPath): BlueprintStep[] {
   )
 }
 
-function flattenTriggersFromCells(cells: RawCell[]): BlueprintCellTrigger[] {
-  const triggers: BlueprintCellTrigger[] = []
+function flattenDependenciesFromCells(cells: RawCell[]): BlueprintCellDependency[] {
+  const dependencies: BlueprintCellDependency[] = []
   for (const cell of cells) {
     for (const outgoing of cell.outgoing ?? []) {
-      triggers.push({
+      dependencies.push({
         id: outgoing.id,
         source_cell_id: cell.id,
         target_cell_id: outgoing.target_cell_id,
-        kind: normalizeTriggerKind(outgoing.kind),
+        kind: normalizeDependencyKind(outgoing.kind),
         name: outgoing.name ?? null,
         note: outgoing.note ?? null,
       })
     }
   }
-  return triggers
+  return dependencies
 }
 
 /** Collapse duplicate swim lanes that share a name (e.g. legacy + fallback lane IDs). */
@@ -191,15 +191,15 @@ export function deduplicateBlueprintLanes(data: BlueprintData): BlueprintData {
 
   const cells = [...cellByLaneStep.values()]
   const cellIds = new Set(cells.map((cell) => cell.id))
-  const triggers = data.triggers.filter(
-    (trigger) =>
-      cellIds.has(trigger.source_cell_id) &&
-      cellIds.has(trigger.target_cell_id),
+  const dependencies = data.dependencies.filter(
+    (dependency) =>
+      cellIds.has(dependency.source_cell_id) &&
+      cellIds.has(dependency.target_cell_id),
   )
 
   keptLanes.sort((a, b) => a.position - b.position)
 
-  return { ...data, lanes: keptLanes, cells, triggers }
+  return { ...data, lanes: keptLanes, cells, dependencies }
 }
 
 export function sortBlueprintLanes(data: BlueprintData): BlueprintData {
@@ -237,15 +237,15 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     resources: cellResourcesFromRows(cell.resources),
     touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),
   }))
-  const triggers =
+  const dependencies =
     raw.cell_dependencies && raw.cell_dependencies.length > 0
-      ? raw.cell_dependencies.map((trigger) => ({
-          ...trigger,
-          kind: normalizeTriggerKind(trigger.kind),
-          name: trigger.name ?? null,
-          note: trigger.note ?? null,
+      ? raw.cell_dependencies.map((dependency) => ({
+          ...dependency,
+          kind: normalizeDependencyKind(dependency.kind),
+          name: dependency.name ?? null,
+          note: dependency.note ?? null,
         }))
-      : flattenTriggersFromCells(rawCells)
+      : flattenDependenciesFromCells(rawCells)
 
   return sortBlueprintLanes({
     path: {
@@ -259,7 +259,7 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     lanes,
     steps,
     cells,
-    triggers,
+    dependencies,
   })
 }
 

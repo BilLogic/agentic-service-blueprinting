@@ -35,7 +35,7 @@ import {
 import type {
   IntegratedBlueprintCell,
   IntegratedBlueprintStep,
-  IntegratedBlueprintTrigger,
+  IntegratedBlueprintDependency,
 } from '@/types/integratedBlueprint'
 import type { PathKind } from '@/types/database'
 
@@ -47,8 +47,8 @@ type IntegratedPathRef = {
   kind: PathKind
 }
 
-type IntegratedTriggerArrowsProps = {
-  triggers: IntegratedBlueprintTrigger[]
+type IntegratedDependencyArrowsProps = {
+  dependencies: IntegratedBlueprintDependency[]
   /** Accepted for parity with the band's arrow data; geometry reads the DOM. */
   cells?: IntegratedBlueprintCell[]
   steps?: IntegratedBlueprintStep[]
@@ -137,14 +137,14 @@ function resolveSegmentStyle(
  * rail routes for the scenarios whose geometry the generic router cannot
  * express. (The integrated grid's fork trunks retired with that grid.)
  */
-export function IntegratedTriggerArrows({
-  triggers,
+export function IntegratedDependencyArrows({
+  dependencies,
   paths = [],
   contentRef,
   scrollContainerRef,
   lane,
   mergeConfluences = true,
-}: IntegratedTriggerArrowsProps) {
+}: IntegratedDependencyArrowsProps) {
   const [simpleSegments, setSimpleSegments] = useState<SimpleSegment[]>([])
   const [size, setSize] = useState({ width: 0, height: 0 })
   const markerId = useId().replace(/:/g, '')
@@ -174,7 +174,7 @@ export function IntegratedTriggerArrows({
 
   const updateArrows = useCallback(() => {
     const content = contentRef.current
-    if (!content || triggers.length === 0) {
+    if (!content || dependencies.length === 0) {
       setSimpleSegments((prev) => (prev.length === 0 ? prev : []))
       return
     }
@@ -188,7 +188,7 @@ export function IntegratedTriggerArrows({
       const cellElById = sharedCellIndex(content)
 
       const { pairs, remaining: unpaired } =
-        findBidirectionalDependencyPairs(triggers)
+        findBidirectionalDependencyPairs(dependencies)
 
       // Allocate anchor slots over the endpoints `buildArrowPath` will draw:
       // a merged slot stacks a sub-cell per path, so a contested target fans
@@ -208,23 +208,23 @@ export function IntegratedTriggerArrows({
       // adjacent lanes instead of overdrawing one line.
       planArrowCorridors(
         content,
-        unpaired.filter((trigger) => !merge.consumed.has(trigger.id)),
+        unpaired.filter((dependency) => !merge.consumed.has(dependency.id)),
       )
 
-      const triggerById = new Map(
-        triggers.map((trigger) => [trigger.id, trigger]),
+      const dependencyById = new Map(
+        dependencies.map((dependency) => [dependency.id, dependency]),
       )
       const styleForMembers = (memberIds: readonly string[]) => {
         const colorKeys = new Set<string>()
         let arrowColor = ''
         let opacity = 0
         for (const memberId of memberIds) {
-          const trigger = triggerById.get(memberId)
-          if (!trigger) continue
-          const style = resolveSegmentStyle(trigger.path_id, pathById)
+          const dependency = dependencyById.get(memberId)
+          if (!dependency) continue
+          const style = resolveSegmentStyle(dependency.path_id, pathById)
           colorKeys.add(style.colorKey)
           arrowColor = style.arrowColor
-          opacity = Math.max(opacity, trigger.opacity)
+          opacity = Math.max(opacity, dependency.opacity)
         }
         // A trunk wears the shared colour only when every member agrees; a
         // mixed-path trunk falls back to the neutral stroke.
@@ -280,12 +280,12 @@ export function IntegratedTriggerArrows({
         })
       }
 
-      for (const trigger of unpaired) {
-        // A trigger a trunk already gathered must not also draw on its own.
-        if (merge.consumed.has(trigger.id)) continue
+      for (const dependency of unpaired) {
+        // A dependency a trunk already gathered must not also draw on its own.
+        if (merge.consumed.has(dependency.id)) continue
 
-        const sourceEl = cellElById.get(trigger.source_cell_id)
-        const targetEl = cellElById.get(trigger.target_cell_id)
+        const sourceEl = cellElById.get(dependency.source_cell_id)
+        const targetEl = cellElById.get(dependency.target_cell_id)
         if (!sourceEl || !targetEl) continue
 
         const wrap = isWrapDependency(sourceEl, targetEl)
@@ -296,19 +296,19 @@ export function IntegratedTriggerArrows({
           sourceEl,
           targetEl,
           content,
-          trigger.source_cell_id,
-          trigger.target_cell_id,
-          trigger.id,
+          dependency.source_cell_id,
+          dependency.target_cell_id,
+          dependency.id,
         )
         if (!d) continue
 
-        const style = resolveSegmentStyle(trigger.path_id, pathById)
+        const style = resolveSegmentStyle(dependency.path_id, pathById)
         segments.push({
-          id: trigger.id,
+          id: dependency.id,
           d,
           colorKey: style.colorKey,
           arrowColor: style.arrowColor,
-          opacity: trigger.opacity,
+          opacity: dependency.opacity,
         })
       }
 
@@ -322,7 +322,7 @@ export function IntegratedTriggerArrows({
       serializeSegments(prev) === nextKey ? prev : nextSimple,
     )
     measureSize()
-  }, [contentRef, lane, measureSize, mergeConfluences, pathById, triggers])
+  }, [contentRef, lane, measureSize, mergeConfluences, pathById, dependencies])
 
   useEffect(() => {
     updateArrows()

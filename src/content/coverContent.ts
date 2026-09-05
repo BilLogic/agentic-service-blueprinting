@@ -135,12 +135,12 @@ export const coverContent: CoverContent = {
           id: 'blueprints-path',
           heading: 'Inside a single path',
           paragraphs: [
-            'Lanes are rows, one actor each. Steps are columns, time running left to right. A **cell** is the intersection — what that actor does at that moment. Arrows are **triggers**: one cell setting another in motion.',
+            'Lanes are rows, one actor each. Steps are columns, time running left to right. A **cell** is the intersection — what that actor does at that moment. Arrows are **dependencies**: one cell setting another in motion.',
             "The divider lines — **line of interaction**, **line of visibility**, **line of internal interaction** — are derived from the lanes' roles rather than drawn on top of them, so they cannot drift out of agreement with the lanes they separate. Steps are canonical per scenario and each path includes a subset in its own order, which is what makes comparing two paths exact rather than approximate.",
           ],
           figure: {
             src: '/cover/blueprint-anatomy.svg',
-            alt: 'Inside a single path — lanes, steps, cells, triggers, and the derived divider lines',
+            alt: 'Inside a single path — lanes, steps, cells, dependencies, and the derived divider lines',
             width: 880,
             height: 544,
           },

@@ -2,14 +2,14 @@ import { buildBlueprintCellSelection, getTouchpointItems } from '@/lib/blueprint
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
-import type { BlueprintCell, BlueprintCellTrigger, BlueprintData } from '@/types/blueprint'
+import type { BlueprintCell, BlueprintCellDependency, BlueprintData } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 export type BlueprintCellConnectionKind = 'interaction' | 'connection'
 
 export type BlueprintCellConnection = {
-  triggerId: string
+  dependencyId: string
   cellId: string
   laneName: string
   lanePosition: number
@@ -57,7 +57,7 @@ function resolveStepIndex(blueprint: BlueprintData, stepId: string): number {
 
 function toConnection(
   blueprint: BlueprintData,
-  trigger: BlueprintCellTrigger,
+  dependency: BlueprintCellDependency,
   cellId: string,
   selectedStepIndex: number,
 ): BlueprintCellConnection | null {
@@ -74,16 +74,16 @@ function toConnection(
   const techItems = isTech ? getTouchpointItems(cell.content) : []
 
   return {
-    triggerId: trigger.id,
+    dependencyId: dependency.id,
     cellId,
     laneName,
     lanePosition,
     stepName: resolveStepName(blueprint, cell.step_id),
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
-    linkKind: trigger.kind === 'enables' ? 'enables' : 'leads_to',
-    linkLabel: trigger.name ?? null,
-    linkNote: trigger.note ?? null,
+    linkKind: dependency.kind === 'enables' ? 'enables' : 'leads_to',
+    linkLabel: dependency.name ?? null,
+    linkNote: dependency.note ?? null,
     isTech,
     techItems,
     contentPreview: contentPreview(cell.content),
@@ -111,21 +111,21 @@ export function getBlueprintCellConnections(
   const incoming: BlueprintCellConnection[] = []
   const outgoing: BlueprintCellConnection[] = []
 
-  for (const trigger of blueprint.triggers) {
-    if (trigger.target_cell_id === resolvedCellId) {
+  for (const dependency of blueprint.dependencies) {
+    if (dependency.target_cell_id === resolvedCellId) {
       const connection = toConnection(
         blueprint,
-        trigger,
-        trigger.source_cell_id,
+        dependency,
+        dependency.source_cell_id,
         selectedStepIndex,
       )
       if (connection) incoming.push(connection)
     }
-    if (trigger.source_cell_id === resolvedCellId) {
+    if (dependency.source_cell_id === resolvedCellId) {
       const connection = toConnection(
         blueprint,
-        trigger,
-        trigger.target_cell_id,
+        dependency,
+        dependency.target_cell_id,
         selectedStepIndex,
       )
       if (connection) outgoing.push(connection)

@@ -7,7 +7,7 @@
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .lead { stroke: #b6bac2; stroke-width: 1; fill: none; }
     .boundary { stroke: #8a8f98; stroke-width: 1.6; stroke-dasharray: 5 4; }
-    .trigger { stroke: #5a6472; stroke-width: 1.5; fill: none; marker-end: url(#arrT); }
+    .dependency { stroke: #5a6472; stroke-width: 1.5; fill: none; marker-end: url(#arrT); }
   </style>
   <defs>
     <marker id="arrT" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
@@ -83,11 +83,11 @@
   <line class="boundary" x1="110" y1="236" x2="690" y2="236"/>
   <line class="boundary" x1="110" y1="308" x2="690" y2="308"/>
 
-  <!-- Cells: consistent style, spread across lanes; one pair linked by a trigger -->
+  <!-- Cells: consistent style, spread across lanes; one pair linked by a dependency -->
   <rect x="334" y="120" width="100" height="40" rx="6" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
   <rect x="451" y="180" width="100" height="40" rx="6" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
   <rect x="451" y="252" width="100" height="40" rx="6" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
-  <path class="trigger" d="M501,222 L501,246"/>
+  <path class="dependency" d="M501,222 L501,246"/>
   <rect x="567" y="252" width="100" height="40" rx="6" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
   <rect x="334" y="324" width="100" height="40" rx="6" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>
   <rect x="567" y="384" width="100" height="40" rx="6" fill="#ffffff" stroke="#9aadbe" stroke-width="1.4"/>

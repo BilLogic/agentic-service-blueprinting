@@ -4,7 +4,7 @@
  * The prose about a touchpoint used to live in the `cells.links` array as an
  * entry typed `tech_description`, and it found its touchpoint by comparing its
  * `label` to a line of the cell's own `content`. There was no join but the
- * string: rename the pill in the grid and the paragraph behind it stopped
+ * string: rename the touchpoint in the grid and the paragraph behind it stopped
  * being found, silently. `cell_touchpoints` gives it an identity of its own.
  *
  * The behaviour worth pinning here is the part the reader sees — order, the
@@ -131,7 +131,7 @@ describe('what the panel reads off a placement', () => {
     ],
   }
 
-  it('answers with the summary of the pill that was clicked', () => {
+  it('answers with the summary of the touchpoint that was clicked', () => {
     expect(resolveTechCellDetailText('Work Order App', cell)).toBe(
       'Where a crew picks the job up.',
     )
@@ -154,8 +154,8 @@ describe('what the panel reads off a placement', () => {
     expect(placementResources(cell.resources, null)).toEqual([])
   })
 
-  it('falls back to the cell summary for a pill nothing is placed at', () => {
-    // The old shape's failure mode, now visible rather than silent: a pill
+  it('falls back to the cell summary for a touchpoint nothing is placed at', () => {
+    // The old shape's failure mode, now visible rather than silent: a touchpoint
     // whose placement was renamed away resolves to the cell's own summary
     // instead of to a paragraph that has quietly stopped being found.
     expect(resolveTechCellDetailText('SMS Gateway', cell)).toBe('SMS Gateway')

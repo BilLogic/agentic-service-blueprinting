@@ -112,7 +112,7 @@ in [`docs/erd.mmd`](../../erd.mmd).
 
 **Naming note:** DB table `steps` are blueprint **columns** (journey moments), not service phases. Phases live in `phases`.
 
-**Cascade deletes:** Deleting a service removes phases, scenarios, paths, lanes, steps, path_steps, cells, and triggers. Deleting a phase removes its descendants.
+**Cascade deletes:** Deleting a service removes phases, scenarios, paths, lanes, steps, path_steps, cells, and cell dependencies. Deleting a phase removes its descendants.
 
 **Path integrity:** `cells.path_id` must match `lanes.path_id`, and `cells.step_id` must appear in `path_steps` for that path (trigger `cells_validate_path_match`). Import order: `paths → steps → path_steps → lanes → cells → cell_dependencies`.
 

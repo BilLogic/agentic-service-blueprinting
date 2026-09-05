@@ -34,7 +34,7 @@ export const PATH_TYPE_COLORS: Record<PathKind, string> = {
 }
 
 /**
- * Stroke color for blueprint trigger arrows — step 1000, one notch lighter than
+ * Stroke color for blueprint dependency arrows — step 1000, one notch lighter than
  * the badge, so a stroke reads as related to the label it belongs to without
  * being the same value. Same family per path type as `PATH_TYPE_COLORS`.
  */
@@ -59,7 +59,7 @@ export function getPathColorKey(path: PathColorInput): string {
  * exactly the hue of the lane it crossed.
  *
  * Sharing the tone set rather than inventing a third one is safe because the
- * two never render at the same weight: a tone is a step-400 pill fill, a path
+ * two never render at the same weight: a tone is a step-400 touchpoint fill, a path
  * is a step-1100 line and badge. Seven hundred steps apart, they cannot be
  * mistaken for each other, and there is one palette to learn instead of two.
  *

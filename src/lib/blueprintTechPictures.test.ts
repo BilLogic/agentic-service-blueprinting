@@ -35,7 +35,7 @@ const screenshot = (over: Partial<CellResource> = {}): CellResource => ({
 })
 
 describe('resolveCellDetailPictures', () => {
-  it('leads with the touchpoint registry icon for the clicked pill', () => {
+  it('leads with the touchpoint registry icon for the clicked touchpoint', () => {
     expect(
       resolveCellDetailPictures({
         techItem: 'Zoom',
@@ -46,7 +46,7 @@ describe('resolveCellDetailPictures', () => {
     ).toEqual(['/touchpoint-logos/zoom-logo.png'])
   })
 
-  it('reads the icon off a single-touchpoint cell with no pill clicked', () => {
+  it('reads the icon off a single-touchpoint cell with no touchpoint clicked', () => {
     expect(
       resolveCellDetailPictures({
         cellContent: 'Zoom',
