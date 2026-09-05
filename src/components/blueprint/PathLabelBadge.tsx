@@ -47,6 +47,9 @@ export function PathLabelBadge({
     <Badge
       // Fill AND its derived ink come from this one attribute (blueprint.css).
       data-blueprint-fill
+      // The two shapes are `ui/badge.tsx`'s to name; this badge only says
+      // which one it is wearing (#149). Compact IS the badge's own size.
+      size={compact ? 'default' : 'comfortable'}
       // One cursor whether or not there is an explanation behind it (#243).
       // The help cursor used to be drawn only where the popover was shown,
       // which was the right rule for a mark that promised something; with the
@@ -54,7 +57,6 @@ export function PathLabelBadge({
       // supplies `tabIndex`, so the explained case is reachable by keyboard.
       className={cn(
         'max-w-full cursor-default gap-1 border-transparent font-semibold',
-        compact ? 'h-5 px-2 py-0.5 text-xs' : 'h-auto px-2.5 py-1 text-sm',
         className,
       )}
       style={{

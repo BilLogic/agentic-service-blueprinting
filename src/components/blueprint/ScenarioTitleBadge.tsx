@@ -67,8 +67,11 @@ export function ScenarioTitleBadge({
         data-blueprint-fill={pathAccent ? '' : undefined}
         data-scenario-panel-title-badge={panelTone ? '' : undefined}
         data-phase-title-badge={phaseTone ? '' : undefined}
+        // A container's title sits ON the container's edge, so it hugs its
+        // text rather than holding the chip's 20px (#149).
+        size="fitted"
         className={cn(
-          'h-auto max-w-full gap-1 overflow-visible border-transparent',
+          'max-w-full gap-1 overflow-visible border-transparent',
           pathKind && 'font-semibold',
           (panelTone || phaseTone) && 'font-semibold',
           className,
