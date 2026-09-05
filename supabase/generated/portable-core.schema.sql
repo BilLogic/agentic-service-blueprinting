@@ -3051,6 +3051,7 @@ CREATE TABLE public.steps (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     origin text DEFAULT 'import'::text NOT NULL,
+    summary text,
     CONSTRAINT steps_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
 
@@ -3065,6 +3066,12 @@ COMMENT ON TABLE public.steps IS 'Blueprint column (journey step) scoped to a se
 --
 
 COMMENT ON COLUMN public.steps.scenario_id IS 'Scenario that owns this canonical step';
+
+--
+-- Name: COLUMN steps.summary; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.steps.summary IS 'What this moment is, across every lane — the one sentence that makes the column legible without reading five cells. Shown as the caption on the storyboard frame. Null until an author writes it.';
 
 --
 -- Name: touchpoints; Type: TABLE; Schema: public; Owner: -
