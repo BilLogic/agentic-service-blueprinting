@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { OwnerTagSelect } from '@/components/blueprint/OwnerTagSelect'
+import {
+  CELL_PANEL_FOOTER_ID,
+  Field,
+  PANEL_TEXTAREA_CLASS,
+} from '@/components/blueprint/panelShell'
+import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
 import { invalidateCanvasBlueprintsForPath } from '@/hooks/useCanvasBlueprints'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCellContent } from '@/hooks/useCellContent'
@@ -23,14 +24,6 @@ import { RegistryLinks } from '@/components/blueprint/RegistryLinks'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseValueProps, type ValueProp } from '@/lib/valueProps'
 
-/**
- * The one place the panel's Save and Cancel live: a host element pinned to
- * the drawer's bottom edge, below the scroll region and the tabs. The form
- * portals its buttons here so they read as controls for the whole panel —
- * one Save for everything on it — instead of a row buried mid-scroll.
- */
-export const CELL_PANEL_FOOTER_ID = 'cell-panel-editor-footer'
-
 /** Where a not-yet-created cell would go — the draft the editor writes on Save. */
 export type DraftCellTarget = {
   pathId: string
@@ -41,40 +34,6 @@ export type DraftCellTarget = {
   stepIndex: number
   scenarioName?: string
   phaseName?: string
-}
-
-/** Label with its explanation folded into a hover tooltip, not inline text. */
-function Field({
-  label,
-  hint,
-  required = false,
-  children,
-}: {
-  label: string
-  hint?: string
-  /** Draws the asterisk — the only signal a field cannot be left empty. */
-  required?: boolean
-  children: React.ReactNode
-}) {
-  const labelText = (
-    <span className="w-fit text-2xs font-medium text-muted-foreground">
-      {label}
-      {required ? <span className="ml-0.5 text-destructive">*</span> : null}
-    </span>
-  )
-  return (
-    <div className="flex flex-col gap-1">
-      {hint ? (
-        <Tooltip>
-          <TooltipTrigger render={labelText} />
-          <TooltipContent side="left">{hint}</TooltipContent>
-        </Tooltip>
-      ) : (
-        labelText
-      )}
-      {children}
-    </div>
-  )
 }
 
 type FormState = {
@@ -204,11 +163,7 @@ function CellPanelEditorForm({
     audiencesResult.status === 'ready' ? audiencesResult.data : []
   // The footer host mounts in the same commit as this form; looked up once
   // after mount so the portal lands below the scroll region.
-  const [footerHost, setFooterHost] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot DOM lookup of the portal host; it only exists after the panel's first commit
-    setFooterHost(document.getElementById(CELL_PANEL_FOOTER_ID))
-  }, [])
+  const footerHost = usePanelFooterHost(CELL_PANEL_FOOTER_ID)
   /*
     Frozen at mount (state initializer, never re-set). The props keep
     tracking the live query — a ⌘Z revert of this same cell refetches it
@@ -357,7 +312,7 @@ function CellPanelEditorForm({
   return (
     <div
       className="flex flex-col gap-3"
-      data-cell-panel-editor=""
+      data-panel-editor=""
       // Read by the panel's dismiss paths: Escape while a save is in flight
       // must not close the drawer — "cancelled" a beat after clicking Create
       // would otherwise materialize the cell into a panel-less silence.
@@ -390,7 +345,7 @@ function CellPanelEditorForm({
             setSummaryTouched(true)
             set('summary', event.target.value)
           }}
-          className="w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={PANEL_TEXTAREA_CLASS}
         />
       </Field>
 
@@ -419,7 +374,7 @@ function CellPanelEditorForm({
           value={form.functionText}
           rows={2}
           onChange={(event) => set('functionText', event.target.value)}
-          className="w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={PANEL_TEXTAREA_CLASS}
         />
       </Field>
       <Field label="Form" hint="How it comes across.">
@@ -427,7 +382,7 @@ function CellPanelEditorForm({
           value={form.formText}
           rows={2}
           onChange={(event) => set('formText', event.target.value)}
-          className="w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={PANEL_TEXTAREA_CLASS}
         />
       </Field>
 

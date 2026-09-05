@@ -146,13 +146,30 @@ describe('the sheet remembers its stop for the session', () => {
   })
 })
 
-/*
-  `describe('the shell wires it up')` is NOT here yet.
+describe('the shell wires it up', () => {
+  const shell = src('components/blueprint/panelShell.tsx')
 
-  It asserts that `components/blueprint/panelShell.tsx` passes these stops only
-  in the sheet posture, records the stop on change, and sets no height of its
-  own. That shell does not exist in this package yet — it arrives with the
-  panel-shell extraction, and the assertions arrive with it. Stops that nothing
-  reads are still worth pinning: the numbers above are the decision, and this
-  file keeps them from drifting before the shell shows up to use them.
-*/
+  it('passes the stops only in the sheet posture', () => {
+    // A pinned desktop card has room for its whole content, and snap points
+    // would hand it a 100dvh height it must not have.
+    expect(shell).toMatch(
+      /snapPoints=\{mobile \? PANEL_SHEET_SNAP_POINTS : undefined\}/,
+    )
+    expect(shell).toMatch(/snapPoint=\{mobile \? snapPoint : undefined\}/)
+  })
+
+  it('records the stop on change', () => {
+    expect(shell).toContain('rememberSheetSnap(next)')
+  })
+
+  it('the sheet sets no height of its own', () => {
+    // Snap points need `--drawer-content-height: 100dvh` to survive; `!h-auto`
+    // is `height: auto !important` and beats it, which is why snap points
+    // could not work before this change.
+    const mobileClasses =
+      /mobile\s*\n?\s*\?[\s\S]*?'([^']*--drawer-inset:0px[^']*)'/.exec(shell)?.[1]
+    expect(mobileClasses, 'the mobile class string was not found').toBeTruthy()
+    expect(mobileClasses).not.toMatch(/h-auto/)
+    expect(mobileClasses).not.toMatch(/max-h-/)
+  })
+})

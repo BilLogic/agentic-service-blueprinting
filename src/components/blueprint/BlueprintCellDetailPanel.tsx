@@ -1,4 +1,4 @@
-import { Component, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import {
   ExternalLink,
@@ -18,10 +18,13 @@ import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
 import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
 import { CellOverviewSpec } from '@/components/blueprint/CellOverviewSpec'
 import { CellContentSection } from '@/components/blueprint/CellContentSection'
+import { CellPanelEditor } from '@/components/blueprint/CellPanelEditor'
 import {
   CELL_PANEL_FOOTER_ID,
-  CellPanelEditor,
-} from '@/components/blueprint/CellPanelEditor'
+  DetailPanelErrorBoundary,
+  PanelDrawerShell,
+  PanelFooterHost,
+} from '@/components/blueprint/panelShell'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
 import {
   FeaturedButtons,
@@ -36,20 +39,11 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
 import {
-  CANVAS_REGION_SELECTOR,
-  CELL_DETAIL_PANEL_BOTTOM_CLASS,
-  CELL_DETAIL_PANEL_TOP_CLASS,
-  CELL_DETAIL_PANEL_TOP_GAP_PX,
-  CELL_DETAIL_PANEL_TOP_VAR,
-} from '@/components/editor/menubarHeaderLayout'
-import {
   SegmentedControl,
   SegmentedControlItem,
 } from '@/components/editor/SegmentedControl'
 import { Button } from '@/components/ui/button'
 import {
-  Drawer,
-  DrawerContent,
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
@@ -68,6 +62,7 @@ import {
   type BlueprintPanelSurface,
 } from '@/contexts/BlueprintCellDetailContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
+import { useCanvasTopOffset } from '@/hooks/useCanvasTopOffset'
 import { useMobileShell } from '@/hooks/useMobileShell'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import {
@@ -103,6 +98,7 @@ import {
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import { resolveVisualStepPictureEntries } from '@/lib/visualWalkthrough'
+import { panelEditorBusy } from '@/lib/panelEditorBusy'
 import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
@@ -187,154 +183,6 @@ function resolveFigmaUrl(
 }
 
 /**
- * Publishes the canvas region's top edge so the portalled drawer can sit
- * below whatever chrome that surface stacks above it — the base view's navbar
- * alone, or a slice tab's header band on top of it. Re-measured on resize and
- * whenever the panel opens; the surface's own transitions (sidebar wipe, tab
- * strip) do not move the canvas top, so no observer is needed.
- */
-function useCanvasTopOffset(active: boolean) {
-  useEffect(() => {
-    if (!active) return
-
-    const measure = () => {
-      const canvas = document.querySelector(CANVAS_REGION_SELECTOR)
-      const top = canvas?.getBoundingClientRect().top ?? 0
-      document.documentElement.style.setProperty(
-        CELL_DETAIL_PANEL_TOP_VAR,
-        `${Math.max(0, top) + CELL_DETAIL_PANEL_TOP_GAP_PX}px`,
-      )
-    }
-
-    measure()
-    window.addEventListener('resize', measure)
-    return () => {
-      window.removeEventListener('resize', measure)
-      document.documentElement.style.removeProperty(CELL_DETAIL_PANEL_TOP_VAR)
-    }
-  }, [active])
-}
-
-/**
- * True while the panel's editor has a save in flight. Every dismiss path
- * (Escape, ✕-driven close requests) checks this: closing mid-save reads as
- * "cancelled", but the write lands anyway — for a draft that means a cell
- * materializing after the panel that explained it is gone.
- */
-function panelEditorBusy(): boolean {
-  return document.querySelector('[data-cell-panel-editor][data-busy]') !== null
-}
-
-/**
- * A render error in the drawer must cost the drawer, not the app.
- *
- * This panel is the one surface that renders arbitrary cell content —
- * frames, links, tech pills, prose — outside the canvas's providers, which
- * makes it the most likely place for a render throw. Without a boundary that
- * throw unmounted the entire editor to a white page, which is how a broken
- * pill icon read as "loading is broken". React error boundaries are still
- * class-only.
- */
-class CellDetailErrorBoundary extends Component<
-  { children: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false }
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-  componentDidCatch(error: unknown) {
-    console.error('[cell-detail] panel render failed:', error)
-  }
-  render() {
-    if (this.state.failed) {
-      return (
-        <div className="fixed right-4 bottom-16 z-40 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-md">
-          This cell's details failed to display. The canvas is unaffected.
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
-/**
- * The one drawer shell every surface of the panel renders through. Each
- * render branch (details, draft, placeholder, differences) returns this at
- * the same tree position, so React reconciles them as the SAME drawer —
- * a surface switch is a content swap inside the open drawer, never a
- * close-reopen.
- */
-function PanelDrawerShell({
-  open,
-  expanded,
-  onCloseRequest,
-  onClosed,
-  children,
-}: {
-  open: boolean
-  expanded: boolean
-  onCloseRequest: () => void
-  onClosed: () => void
-  children: ReactNode
-}) {
-  // Same drawer, two postures: the desktop right-pinned card, or — below
-  // md — a bottom sheet the width of the phone. One component, mirroring
-  // the AgentDock docked/floating precedent; the reconciliation guarantee
-  // above (same tree position) holds in both postures.
-  const mobile = useMobileShell()
-  return (
-    <Drawer
-      // Keyed on posture: a resize across the breakpoint while open would
-      // otherwise reinterpret an in-flight swipe's x-offset against the
-      // other posture's axis. A flip remounts the drawer clean instead.
-      key={mobile ? 'mobile' : 'desktop'}
-      open={open}
-      onOpenChange={(next) => {
-        // Only close *requests* (✕, Escape, swipe) arrive here, and with
-        // `open` derived from panelState they can only fire while the panel
-        // is open — the delayed-callback-wipes-new-selection class of bug
-        // died with the second owner.
-        if (!next && !panelEditorBusy()) onCloseRequest()
-      }}
-      onOpenChangeComplete={(next) => {
-        if (!next) onClosed()
-      }}
-      modal={false}
-      disablePointerDismissal
-      swipeDirection={mobile ? 'down' : 'right'}
-      // A bottom sheet says how to dismiss itself with a grab handle; the
-      // desktop inspector has its own ✕ and does not read as draggable.
-      showSwipeHandle={mobile}
-    >
-      <DrawerContent
-        data-cell-detail-panel=""
-        // The posture the MOTION keys off (animations.css): a sheet rises
-        // from the bottom edge, an inspector lifts in beside the cell it
-        // came from. Two vocabularies, one component.
-        data-cell-detail-posture={mobile ? 'sheet' : 'inspector'}
-        className={cn(
-          mobile
-            ? '!inset-x-0 !bottom-0 !top-auto !m-0 !h-auto max-h-[70svh] w-auto border-t border-border bg-popover shadow-sm after:hidden [--drawer-inset:0px]'
-            : cn(
-                CELL_DETAIL_PANEL_TOP_CLASS,
-                CELL_DETAIL_PANEL_BOTTOM_CLASS,
-                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-2xl border border-border bg-popover shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
-                expanded
-                  ? 'w-(--width-cell-panel-expanded)'
-                  : 'w-(--width-cell-panel)',
-              ),
-        )}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {children}
-      </DrawerContent>
-    </Drawer>
-  )
-}
-
-/**
  * The Details │ Differences switch — TOP-LEVEL panel chrome (the two
  * surfaces are siblings of the whole panel), rendered from two call sites:
  * the details branch's own header row and the differences DrawerHeader. ONE
@@ -374,9 +222,12 @@ function PanelSurfaceSwitcher({
  */
 export function BlueprintCellDetailPanel() {
   return (
-    <CellDetailErrorBoundary>
+    <DetailPanelErrorBoundary
+      logPrefix="cell-detail"
+      message="This cell's details failed to display. The canvas is unaffected."
+    >
       <BlueprintCellDetailPanelBody />
-    </CellDetailErrorBoundary>
+    </DetailPanelErrorBoundary>
   )
 }
 
@@ -1058,10 +909,7 @@ function BlueprintCellDetailPanelBody() {
           <CellPanelEditor cellId={null} draft={draft} onDone={clearSelection} />
         </div>
         {/* The editor portals Create/Cancel here — panel-level footing. */}
-        <div
-          id={CELL_PANEL_FOOTER_ID}
-          className="shrink-0 border-t border-muted px-4 py-3 empty:hidden"
-        />
+        <PanelFooterHost id={CELL_PANEL_FOOTER_ID} />
       </PanelDrawerShell>
     )
   }
@@ -1601,10 +1449,7 @@ function BlueprintCellDetailPanelBody() {
             {/* The editor portals Save/Cancel here — below the tabs, shared
                 footing for every property the panel holds. */}
             {editingCell ? (
-              <div
-                id={CELL_PANEL_FOOTER_ID}
-                className="shrink-0 border-t border-muted px-4 py-3 empty:hidden"
-              />
+              <PanelFooterHost id={CELL_PANEL_FOOTER_ID} />
             ) : null}
             <CellInSlicesFooter cellId={pathEntry?.cellId ?? null} />
           </>
