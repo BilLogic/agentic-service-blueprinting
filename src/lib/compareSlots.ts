@@ -119,7 +119,7 @@ const PUNCTUATION = /[.,;:!?'"‘’“”()[\]{}\-–—/\\]+/g
 
 /**
  * Alignment normalization: lowercase, strip punctuation and articles,
- * collapse whitespace. Pinned by tests on the real Ecoeled rename cases
+ * collapse whitespace. Pinned by tests on a deployment's real rename cases
  * (quote-only, trailing-period, and dropped-"the" step renames), which
  * would otherwise fabricate phantom remove+add column pairs.
  */

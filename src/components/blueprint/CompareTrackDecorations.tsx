@@ -1,3 +1,4 @@
+import { StepHeaderAffordance } from '@/components/blueprint/StepHeaderAffordance'
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 
 /**
@@ -16,22 +17,23 @@ export function CompareStepHeaderRow({
   return (
     <>
       {tracks.map((track, trackIndex) => (
-        <div
+        <StepHeaderAffordance
           key={track.key}
+          // A canonical column can carry a different step id per path; they
+          // are the same MOMENT, and the summary is stored once per step, so
+          // the first is the one to open.
+          stepId={Object.values(track.stepIdByPath)[0] ?? ''}
+          name={track.label}
           // `relative z-[1]`: when a path frame extends up to wrap this
           // row (single-path stacked, merged), the frame's opaque fill is
           // an absolutely-positioned later sibling — without a stacking
           // order the labels paint UNDER it and the header "vanishes".
-          className="relative z-[1] flex min-w-0 items-end justify-center gap-1 overflow-hidden rounded-md px-2 pb-1.5"
+          // `self-stretch`, not `self-end`: the target is the whole header
+          // block. The label still sits at the bottom of it — the button
+          // aligns its own content — so it reads where it always did.
+          className="z-[1] self-stretch"
           style={{ gridColumn: trackIndex + 2, gridRow: 1 }}
-        >
-          <span
-            className="truncate text-xs font-medium text-muted-foreground"
-            title={track.label}
-          >
-            {track.label}
-          </span>
-        </div>
+        />
       ))}
     </>
   )
