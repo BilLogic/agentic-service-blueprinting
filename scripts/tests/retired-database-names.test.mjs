@@ -17,8 +17,13 @@ import {
   databaseNames,
   findings,
   namedObjects,
+  postgrestQueries,
   qualifiedRelations,
+  schemaRelations,
+  selectTree,
+  strayNames,
   stringLiterals,
+  unknownNames,
   withoutComments,
   withoutHashComments,
 } from '../check-database-names.mjs'
@@ -141,4 +146,114 @@ test('Python is read by the qualified rule alone', () => {
   const code = 'q = "cells?select=id,phase:phases(name)"'
   assert.deepEqual(namedObjects(code, 'python'), [])
   assert.equal(namedObjects(code).length > 0, true)
+})
+
+/* ------------------------------------- the query path, against the schema */
+
+/**
+ * The second assertion, which is #173: the harness read `findings?select=…
+ * note…` for a release with every guard green, because the rename map retires
+ * neither word — `finding` is the live domain word and `note` is a live word
+ * everywhere else. What catches it is the schema dump, not a word list.
+ */
+const SCHEMA_FIXTURE = [
+  'CREATE TABLE public.audit_findings (',
+  '    id uuid DEFAULT gen_random_uuid() NOT NULL,',
+  '    check_key text NOT NULL,',
+  '    summary text,',
+  "    status text DEFAULT 'open'::text NOT NULL,",
+  "    CONSTRAINT audit_findings_status_check CHECK ((status = ANY (ARRAY['open'::text])))",
+  ');',
+  '',
+  'CREATE TABLE public.slices (',
+  '    id uuid NOT NULL,',
+  '    title text NOT NULL,',
+  '    summary text',
+  ');',
+  '',
+  'CREATE TABLE public.slides (',
+  '    id uuid NOT NULL,',
+  '    slice_id uuid NOT NULL,',
+  '    title text,',
+  ');',
+  '',
+  'CREATE VIEW public.evidence_counts AS',
+  ' SELECT cells.id FROM public.cells;',
+].join('\n')
+
+test('a table is its columns, a view is a name with no column list', () => {
+  const relations = schemaRelations(SCHEMA_FIXTURE)
+  assert.deepEqual([...relations.get('audit_findings')].sort(), [
+    'check_key',
+    'id',
+    'status',
+    'summary',
+  ])
+  // The CHECK constraint is not a column, and neither is the closing paren.
+  assert.equal(relations.get('audit_findings').has('CONSTRAINT'), false)
+  // A view exists and its columns are unchecked — the honest half of the
+  // answer, and the half that catches a query naming a relation that is gone.
+  assert.equal(relations.get('evidence_counts'), null)
+})
+
+test('a select list is a tree: columns, embeds, and what it refuses to guess', () => {
+  assert.deepEqual(selectTree('id,name,phase:phases(id,steps(name))'), [
+    { name: 'id', columns: null },
+    { name: 'name', columns: null },
+    {
+      name: 'phases',
+      columns: [
+        { name: 'id', columns: null },
+        { name: 'steps', columns: [{ name: 'name', columns: null }] },
+      ],
+    },
+  ])
+  // `*`, a JSON path and the `${…}` a template literal leaves behind are real
+  // things to select and none of them is a name a column list can answer, so
+  // the tree drops them rather than reporting a column nobody wrote.
+  assert.deepEqual(selectTree('*,value_props->>0,${column}'), [])
+})
+
+test('a query path names its own relation, so both halves can be checked', () => {
+  const code = [
+    'const rows = await rest(',
+    '  `findings?select=id,check_key,note,status&order=created_at.desc`,',
+    ')',
+  ].join('\n')
+  const [query] = postgrestQueries(code)
+  assert.equal(query.table, 'findings')
+  assert.equal(query.line, 2)
+  const relations = schemaRelations(SCHEMA_FIXTURE)
+  // The table AND the column, from one site: the two halves of one rename are
+  // one defect, so the retired table is followed through the map rather than
+  // ending the report.
+  assert.deepEqual(
+    unknownNames(query.table, query.columns, relations).map((one) => [
+      one.kind,
+      one.relation,
+      one.name,
+      one.renamed,
+    ]),
+    [
+      ['relation', null, 'findings', 'audit_findings'],
+      ['column', 'audit_findings', 'note', 'audit_findings.summary'],
+    ],
+  )
+})
+
+test('an embedded relation is checked, and a live name is not reported', () => {
+  const relations = schemaRelations(SCHEMA_FIXTURE)
+  const stale = selectTree('id,title,description,slice_items(id,title)')
+  assert.deepEqual(
+    unknownNames('slices', stale, relations).map((one) => [one.name, one.renamed]),
+    [
+      ['description', 'slices.summary'],
+      ['slice_items', 'slides'],
+    ],
+  )
+  assert.deepEqual(unknownNames('slices', selectTree('id,title,summary,slides(id,title)'), relations), [])
+})
+
+test('the whole repository names a relation and columns the dump declares', () => {
+  assert.deepEqual(strayNames(), [])
 })

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Check B — retired database names inside application string literals.
+ * Check B — database names inside application string literals.
  *
  * This is the class no compiler reaches. `src/types/database.ts` is generated
  * from a built database, so every table and column name arrives in TypeScript
@@ -21,7 +21,8 @@
  *   - embed hints inside `.select(…)`: the relation in `alias:relation(…)`,
  *     `relation(…)` and `relation!constraint(…)`
  *   - the same syntax inside a raw PostgREST query string — `…?select=…`,
- *     which is how the REST helpers in `scripts/` read
+ *     which is how the REST helpers in `scripts/` read, `scripts/agent-harness/`
+ *     included: its reads are real reads, against a live project
  *   - a SCHEMA-QUALIFIED relation, `public.<name>`, in SQL this repository
  *     GENERATES rather than stores
  *
@@ -39,10 +40,39 @@
  * `public.layers` in this repository are all either comments (stripped) or
  * fixtures in test files (out of subject).
  *
- * NOT every occurrence of a word, and not the column list. A check that
- * matched any string containing "layer" would need an exemption for every
- * sentence of prose in the repository, and each exemption is a place to hide
- * something real. The narrower subject needs none.
+ * NOT every occurrence of a word. A check that matched any string containing
+ * "layer" would need an exemption for every sentence of prose in the
+ * repository, and each exemption is a place to hide something real. The
+ * narrower subject needs none.
+ *
+ * SECOND ASSERTION: a PostgREST query path, against the schema dump.
+ *
+ * The rule above is a rename-map lookup, so it only ever sees a name somebody
+ * retired AS A WORD — and the map is right to retire few. #173 is the other
+ * half. `21000116000000` renamed the `findings` table to `audit_findings` and
+ * `findings.note` to `.summary`, and the map deliberately enforces neither
+ * fragment: `finding` is the live domain word a panel has to be able to say,
+ * and `note` is a live word everywhere else in the tree. So the eval harness
+ * went on reading `findings?select=…,note,…` with every guard green, and the
+ * same migration's `slices.description`, `slices.origin` and `21000115`'s
+ * `slice_items.caption` sat three lines above it for the same reason. Six
+ * dead names in one file, none of them a retired word.
+ *
+ * A raw query path is where this check can stop being lexical and be exact
+ * instead. `<relation>?select=<columns>` puts a relation in the one position
+ * PostgREST reads as a relation, and everything inside `select=` is either a
+ * column of it or an embed of another relation — so both halves can be held
+ * against `supabase/generated/portable-core.schema.sql`, the dump of what the
+ * migration series builds, which `check:portable-schema` keeps current and
+ * `check:rpc-arguments` already reads for its own signatures. A name the dump
+ * does not have fails, whether or not anybody wrote it down as retired.
+ *
+ * The COLUMN half stops at the query path, and stays there on purpose. A
+ * `.select('id, name')` string is the same information, but the relation it
+ * belongs to is the `.from(…)` on another line, and a check that chased it
+ * would be reading a query builder rather than a literal — the moment it
+ * guessed wrong it would fail a correct call, which is how a guard gets
+ * switched off. A query path carries its own relation, so nothing is guessed.
  *
  * Static, needs no database, runs in `gates`.
  *
@@ -50,10 +80,11 @@
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
+import { RENAME_MAP, replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 const ROOTS = ['src', 'scripts']
+const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 const SOURCE = /\.(?:[cm]?[jt]sx?|py)$/
 /**
  * Test files are out of subject.
@@ -337,6 +368,173 @@ export function findings() {
   return out
 }
 
+/* ------------------------------------------------------------ schema dump */
+
+/**
+ * Every relation the dump declares: name → its column names.
+ *
+ * A VIEW maps to `null` — its columns are the projection's business, and a
+ * parser that guessed at them would either invent columns or refuse real ones.
+ * `null` means "this relation exists, its columns are unchecked", which is the
+ * honest half of the answer and the half that matters: a query naming a view
+ * still has to name one that is there.
+ */
+export function schemaRelations(sql) {
+  const relations = new Map()
+  for (const table of sql.matchAll(/CREATE TABLE public\.([a-z_]+) \(([\s\S]*?)\n\);/g)) {
+    const columns = new Set()
+    for (const line of table[2].split('\n')) {
+      if (/^\s*CONSTRAINT\b/.test(line)) continue
+      const column = /^\s+"?([a-z_][a-z0-9_]*)"?\s/.exec(line)
+      if (column) columns.add(column[1])
+    }
+    relations.set(table[1], columns)
+  }
+  for (const view of sql.matchAll(/CREATE (?:MATERIALIZED )?VIEW public\.([a-z_]+) AS/g)) {
+    if (!relations.has(view[1])) relations.set(view[1], null)
+  }
+  return relations
+}
+
+/** The name the rename map pairs with a retired one, or null. */
+export function renamedTo(...spellings) {
+  for (const spelling of spellings) {
+    for (const row of RENAME_MAP) {
+      const at = row.was.indexOf(spelling)
+      if (at !== -1 && row.is[at]) return row.is[at]
+    }
+  }
+  return null
+}
+
+/* ------------------------------------------------------------ select list */
+
+/** Top-level commas of a select list — an embed's own commas are its. */
+function splitSelect(list) {
+  const out = []
+  let depth = 0
+  let start = 0
+  for (let i = 0; i < list.length; i += 1) {
+    if (list[i] === '(') depth += 1
+    else if (list[i] === ')') depth -= 1
+    else if (list[i] === ',' && depth === 0) {
+      out.push(list.slice(start, i))
+      start = i + 1
+    }
+  }
+  out.push(list.slice(start))
+  return out.filter((entry) => entry.trim())
+}
+
+/**
+ * The tree a `select=` clause describes: `{ name, columns }`, where `columns`
+ * is null for a plain column and the parsed list for an embedded relation.
+ *
+ * Anything that is not a bare identifier or an embed is DROPPED rather than
+ * guessed at — `*`, a JSON path (`value_props->>0`), a cast, and the `${…}` a
+ * template literal leaves behind when the query is assembled from variables.
+ * Each of those is a real thing to select and none of them is a name this
+ * check can hold against a column list, so the tree carries what it can prove
+ * and stays silent about the rest.
+ */
+export function selectTree(list) {
+  const out = []
+  for (const piece of splitSelect(list)) {
+    const embed =
+      /^\s*(?:[A-Za-z_]\w*\s*:\s*)?([A-Za-z_]\w*)\s*(?:!\s*[A-Za-z_]\w*\s*)?\(([\s\S]*)\)\s*$/.exec(
+        piece,
+      )
+    if (embed) {
+      out.push({ name: embed[1], columns: selectTree(embed[2]) })
+      continue
+    }
+    const column = /^\s*(?:[A-Za-z_]\w*\s*:\s*)?([A-Za-z_]\w*)\s*$/.exec(piece)
+    if (column) out.push({ name: column[1], columns: null })
+  }
+  return out
+}
+
+/**
+ * Every raw PostgREST query path in a file — `<relation>?select=<columns>`.
+ *
+ * The shape is what makes the second assertion possible: a literal opening
+ * `<identifier>?` names a RELATION in the position PostgREST reads it, and
+ * everything in its `select=` is either a column of that relation or an embed
+ * of another one. No other string in this repository can be read that
+ * confidently, which is why the column half of the check stops here.
+ */
+export function postgrestQueries(code) {
+  const out = []
+  for (const literal of stringLiterals(code)) {
+    const path = /^\/?([A-Za-z_]\w*)\?/.exec(literal.value)
+    if (!path) continue
+    const clause = selectClause(literal.value)
+    if (clause === null) continue
+    out.push({ line: literal.line, table: path[1], columns: selectTree(clause) })
+  }
+  return out
+}
+
+/**
+ * Every name in one query that the schema does not have, relation first.
+ *
+ * A relation the dump lacks is still followed THROUGH the rename map rather
+ * than abandoned, because the two halves of one rename are one defect: the
+ * table `findings` and the column `note` moved in the same migration, and a
+ * check that reported the table and then went quiet about the column would
+ * send somebody back for a second round trip against a live database.
+ */
+export function unknownNames(table, columns, relations) {
+  const known = relations.get(table)
+  const renamed = known === undefined ? renamedTo(table) : null
+  const resolved = known === undefined ? relations.get(renamed) : known
+  const out =
+    known === undefined ? [{ relation: null, name: table, renamed, kind: 'relation' }] : []
+  if (resolved === undefined || resolved === null) return out
+  const spelled = renamed ?? table
+  for (const entry of columns) {
+    if (entry.columns === null) {
+      if (resolved.has(entry.name)) continue
+      out.push({
+        relation: spelled,
+        name: entry.name,
+        renamed: renamedTo(`${table}.${entry.name}`, `${spelled}.${entry.name}`),
+        kind: 'column',
+      })
+      continue
+    }
+    out.push(...unknownNames(entry.name, entry.columns, relations))
+  }
+  return out
+}
+
+/**
+ * Every query in the tree naming something the schema dump does not have.
+ *
+ * Sites the retired-word pass already reported are dropped: one rename is one
+ * fix, and a name that is both retired and gone would otherwise be printed
+ * twice — the same reason `findings()` dedupes within itself.
+ */
+export function strayNames(reported = new Set()) {
+  const relations = schemaRelations(readFileSync(join(REPO_ROOT, SCHEMA), 'utf8'))
+  if (relations.size === 0) throw new Error(`no relations parsed from ${SCHEMA}`)
+  const out = []
+  for (const root of ROOTS) {
+    for (const file of sourceFilesUnder(root)) {
+      if (file.endsWith('.py')) continue
+      const relativePath = relative(REPO_ROOT, file).split('\\').join('/')
+      for (const query of postgrestQueries(readFileSync(file, 'utf8'))) {
+        for (const stray of unknownNames(query.table, query.columns, relations)) {
+          const identifier = `${relativePath}:${query.line} ${stray.name}`
+          if (reported.has(identifier)) continue
+          out.push({ ...stray, file: relativePath, line: query.line, identifier })
+        }
+      }
+    }
+  }
+  return out
+}
+
 function main() {
   const problems = findings()
   for (const problem of problems) {
@@ -346,11 +544,31 @@ function main() {
         `(${problem.words.join(', ')} → ${problem.replacement}). Nothing typechecks this.`,
     )
   }
-  if (problems.length > 0) {
-    console.error(`\n${problems.length} retired database name(s) inside string literals.`)
+  const strays = strayNames(new Set(problems.map((problem) => problem.identifier)))
+  for (const stray of strays) {
+    const what =
+      stray.kind === 'relation'
+        ? `names \`${stray.name}\`, which is not a table or view in ${SCHEMA}`
+        : `selects \`${stray.name}\`, which is not a column of \`${stray.relation}\` in ${SCHEMA}`
+    console.error(
+      `::error file=${stray.file},line=${stray.line}::PostgREST query string ${what}` +
+        `${stray.renamed ? ` (→ \`${stray.renamed}\`)` : ''}. Nothing typechecks this.`,
+    )
+  }
+  if (problems.length + strays.length > 0) {
+    if (problems.length > 0)
+      console.error(`\n${problems.length} retired database name(s) inside string literals.`)
+    if (strays.length > 0)
+      console.error(
+        `\n${strays.length} name(s) in a PostgREST query string that ${SCHEMA} does not have.` +
+          ` Fix the query, or regenerate the dump with \`npm run generate:portable-schema\`.`,
+      )
     process.exit(1)
   }
-  console.log('ok — every database name in a string literal is one the schema still has')
+  console.log(
+    'ok — every database name in a string literal is one the schema still has, and every' +
+      ' PostgREST query names a relation and columns the dump declares',
+  )
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main()
