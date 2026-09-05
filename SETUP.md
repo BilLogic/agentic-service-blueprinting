@@ -13,37 +13,108 @@ README's [Get set up](./README.md#get-set-up) is the shorter road.
 | Docker | only for a local database; the app runs without one |
 | Supabase CLI | only for a local database; installed as a dev dependency |
 
-## Run it
+## From clone to your own content
+
+Five steps, in order. Each one is a command and a thing you should see. If a
+step does not show you its result, stop on that step — every later step will
+look like it worked anyway, because this app renders bundled content whenever
+it cannot reach a database. That is the one trap on this path, and it is why
+each step below ends in something to *check* rather than something to look at.
+
+### 1. Clone it and install
 
 ```bash
+git clone https://github.com/BilLogic/agentic-service-blueprinting.git
+cd agentic-service-blueprinting
 npm install
+```
+
+**Success:** `npm install` finishes without an `npm ERR!` line.
+
+### 2. Run it with no database at all
+
+```bash
 npm run dev
 ```
 
-That is the whole first run. With no `VITE_SUPABASE_*` variables set the app
-runs in no-database mode against bundled sample content, so you see the
-renderer working before you wire anything up. The sample is the blueprint of
-this template itself, so it doubles as documentation.
+**Success:** <http://localhost:5173> shows a blueprint — a grid of lanes and
+steps. That content is bundled in the repository, so this works before you
+have configured anything. Stop here if all you want is to look at the
+renderer.
 
-## Add a database
+### 3. Set the two variables
 
-Only needed when you are changing the schema, the importer, or anything that
-writes.
+The app needs exactly two values to talk to a database. Copy the example file
+and fill them in:
 
 ```bash
 cp .env.example .env
-npm run supabase:start       # local stack, needs Docker
-npm run supabase:reset       # applies every migration, then the seed
-npm run dev
 ```
 
-Copy the `API URL` and `anon key` the CLI prints into `.env`, then run
-`npm run check:target`. Run it once even when the page looks right: the app
-falls back to bundled content whenever it cannot reach a project, so a
-database that was never migrated renders exactly like a working one.
+```env
+VITE_SUPABASE_URL=…
+VITE_SUPABASE_ANON_KEY=…
+```
 
-Column reference, row-level security and the desync runbook:
-[docs/connectors/supabase/database.md](./docs/connectors/supabase/database.md).
+Where they come from: for a local stack, `npm run supabase:start` prints
+`API URL` and `anon key`. For a hosted project, **Settings → API**. Nothing
+else in `.env` is required.
+
+**Success:** deliberately *not* "the page still renders" — it renders either
+way. Run this instead:
+
+```bash
+npm run check:target
+```
+
+It prints `the target carries schema_version …` when the database is reachable
+and migrated, and says plainly when it was never migrated or is stale.
+
+### 4. Replay the schema onto an empty database
+
+```bash
+npm run supabase:reset       # local stack: every migration, then the seed
+```
+
+For a hosted project: `supabase link`, then `supabase db push`, then
+`supabase db query --file supabase/seed.sql --linked`.
+
+**Success:** `npm run check:target` now prints a schema version, and:
+
+```bash
+npm run check:seed-load
+```
+
+prints `the generated seed loads on a fresh core + recipe and renders as
+anon`. That check builds a scratch database of its own and reads the content
+back with the same kind of key a browser holds, so a green line here means a
+visitor would see rows rather than a blank grid.
+
+### 5. Put your own content in
+
+`supabase/seed.sql` is a real blueprint — of this template itself — not
+filler. Replacing it is the whole adoption:
+
+```bash
+python3 scripts/validate_ir.py my-blueprint.json
+python3 scripts/generate_seed_sql.py my-blueprint.json --locale en --out supabase/seed.sql
+```
+
+(Or let the agent do it: the `sb:map` skill builds the blueprint file from your
+own documents.)
+
+**Success:** load it, then prove it renders to a keyless reader the same way
+step 4 did:
+
+```bash
+npm run check:deployment-seed-load -- --seed supabase/seed.sql
+```
+
+Every statement has to apply, every table the seed writes has to come back
+non-empty to the anon key, and the two joins the app renders — the blueprint
+grid and the service hierarchy — have to return rows. When a statement fails,
+the check names the file, the line and the reason, grouped so the one root
+cause is not buried under the forty rows that failed because of it.
 
 ## Before you push
 
@@ -55,6 +126,12 @@ npm run build
 
 Then the guard set — every check CI runs, what each one is defending, and how
 to read its failure: [docs/engineering/checks.md](./docs/engineering/checks.md).
+
+Two of them do not run in CI and are yours to run locally:
+`npm run check:target` needs a live project, and
+`npm run check:deployment-seed-load` needs a deployment's own seed — a
+checkout CI does not have. Both are in
+[checks.md § The database](./docs/engineering/checks.md).
 
 Two failures surprise people, so they are worth knowing up front. Editing
 anything under `skills/` or `references/` without running
@@ -69,3 +146,6 @@ which names the file.
 guides in [docs/guide/](./docs/guide/) walk the whole thing in four numbered
 parts; [docs/overview.md](./docs/overview.md) says what else `docs/` holds and
 what each folder is for.
+
+Column reference, row-level security and the desync runbook:
+[docs/connectors/supabase/database.md](./docs/connectors/supabase/database.md).
