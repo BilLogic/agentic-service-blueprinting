@@ -817,6 +817,7 @@ export type Database = {
           entity_examples: Json
           id: string
           name: string
+          slug: string | null
           updated_at: string
         }
         Insert: {
@@ -825,6 +826,7 @@ export type Database = {
           entity_examples?: Json
           id?: string
           name: string
+          slug?: string | null
           updated_at?: string
         }
         Update: {
@@ -833,6 +835,7 @@ export type Database = {
           entity_examples?: Json
           id?: string
           name?: string
+          slug?: string | null
           updated_at?: string
         }
         Relationships: []

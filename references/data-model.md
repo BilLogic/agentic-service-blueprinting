@@ -68,7 +68,7 @@ erDiagram
   cells ||--o{ resources : "points at"
   cell_touchpoints ||--o{ resources : "points at"
 
-  services { uuid id PK  text name  text summary  jsonb entity_examples "one free-text example per core kind (service, phase, scenario, path, step, lane), shown under each kind's definition" }
+  services { uuid id PK  text name  text slug "the route slug — unique across the deployment; null falls back to the name-derived one"  text summary  jsonb entity_examples "one free-text example per core kind (service, phase, scenario, path, step, lane), shown under each kind's definition" }
   business_models { uuid service_id PK_FK  text funding  text pricing  text delivery_cost  text revenue_model  text partners }
   phases { uuid id PK  uuid service_id FK  text name  text summary  text business_impact  text operational_requirements  int position  uuid loops_to_phase_id FK "optional self-reference" }
   scenarios { uuid id PK  uuid phase_id FK  text name  text summary  int position  text layout "stacked | merged — what the scenario opens as" }
@@ -88,7 +88,7 @@ erDiagram
 
 | Table | Purpose | Notes |
 | --- | --- | --- |
-| `services` | Top container (one per blueprint deployment, usually) | |
+| `services` | Top container (one per blueprint deployment, usually) | `slug` is the service's own route identity — `unique (slug)` across the deployment, so `/<slug>` opens it and a rename does not move the URL. Nullable: a null slug falls back to the name-derived one (`src/lib/serviceSlug.ts`, mirroring `public.key_slug`) |
 | `phases` | Service stages, ordered by `position` | `loops_to_phase_id` self-reference renders the service loop |
 | `scenarios` | The unit users navigate; owns steps and paths | `layout` enum below |
 | `paths` | A journey variant within a scenario | `kind` enum below; optional `note` |
