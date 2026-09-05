@@ -28,8 +28,6 @@ import {
 import type { PathListItem } from '@/lib/pathSelection'
 import { itemsInSelectionOrder } from '@/lib/pathSelection'
 import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
-import { cellResources } from '@/lib/cellResources'
-import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import type {
   IntegratedBlueprintCell,
   IntegratedBlueprintStep,
@@ -63,8 +61,6 @@ export function getComparePathArrowData(
       content: cell.content,
       frame: cell.frame,
       summary: cell.summary,
-      touchpoints: cellTouchpoints(cell),
-      resources: cellResources(cell),
       opacity: 1,
     })),
     triggers: triggers.map((trigger) => ({
@@ -80,9 +76,56 @@ export function getComparePathArrowData(
 
 export const COMPARE_CARD_GAP = 20
 export const COMPARE_CARD_PADDING_X = 12
-// 208: room for two-word lane names ("Front Stage Actions") and the
-// canonical "LINE OF …" divider labels without clipping at the rail edge.
-export const COMPARE_LABEL_WIDTH = 208
+/**
+ * The painted rail: room for two-word lane names ("Front Stage Actions") and,
+ * the binding case, the canonical "LINE OF …" divider captions.
+ *
+ * 208 -> 214 on 2026-08-21. "LINE OF INTERNAL INTERACTION" measures ~221px at
+ * `text-2xs` with its tracking and is `shrink-0` — it neither wraps nor
+ * truncates — so at 208 it overflowed the painted rail and the only thing
+ * between those words and the path outline was COMPARE_RAIL_GUTTER. That made
+ * the gutter carry a constraint it should not have, and forced it wide enough
+ * to leave the lane label stranded.
+ *
+ * 214 is what the caption needs once it shares the lane label's left inset
+ * (BLUEPRINT_SLOT_INSET_LEFT, 14px, down from 20). The caption now ends inside
+ * the rail, the gutter is free to be small, and both gaps land where they
+ * should — see COMPARE_RAIL_GUTTER.
+ */
+export const COMPARE_LABEL_WIDTH = 214
+/**
+ * The rail's grid TRACK is wider than the rail it paints.
+ *
+ * The rail used to be just another column, so the gap between it and the board
+ * was the same 24px used between two step columns — and the path outline,
+ * insetting itself back into that gap, landed 16px from the rail and 5px from
+ * the first cell. It read as an edge belonging to the rail rather than a frame
+ * around the board. This track keeps the two apart; the painted rail still
+ * stops at COMPARE_LABEL_WIDTH.
+ *
+ * 8 makes the frame sit evenly between what is outside it and what is inside:
+ *
+ *   lane label -> outline    BLUEPRINT_SLOT_INSET (14) + GUTTER (8)
+ *                            + (STEP_COLUMN_GAP - H_INSET) (8)   = 30
+ *   outline -> first cell    COMPARE_PATH_SECTION_H_INSET (16)
+ *                            + the cell's own inset (14)          = 30
+ *
+ * Two earlier values, both wrong for reasons worth keeping:
+ *
+ *   24 — sized so the long divider caption cleared the outline while it still
+ *        overflowed the painted rail. It bought that clearance by stranding
+ *        the lane label 46px from the frame.
+ *    6 — sized to make the lane label's two sides match. It got the lane row
+ *        right and left the caption 2px from the outline, reading as though
+ *        the words touched the board.
+ *
+ * Neither could be right, because the caption was wider than the rail it sat
+ * in. Widening COMPARE_LABEL_WIDTH to 214 removed that constraint from this
+ * constant, which is why 8 can now serve the geometry instead of the text.
+ */
+export const COMPARE_RAIL_GUTTER = 8
+export const COMPARE_LABEL_TRACK_WIDTH =
+  COMPARE_LABEL_WIDTH + COMPARE_RAIL_GUTTER
 export const COMPARE_PANEL_PADDING = 24
 /** Extra inset on the right edge of the compare blueprint grid. */
 export const COMPARE_PANEL_PADDING_RIGHT = 40
@@ -102,8 +145,16 @@ export function getCompareBoardWrapperPadding(): {
   }
 }
 export const COMPARE_PATH_SECTION_TOP_INSET = 20
-/** Horizontal inset for path section frames; bottom matches top for symmetric gray padding. */
-export const COMPARE_PATH_SECTION_INSET = 8
+/**
+ * Horizontal breathing room inside a path outline.
+ *
+ * One constant used to serve both axes at 8px, which after the 3px border
+ * left 5px between the outline and the first cell against 17px above it —
+ * a visibly squashed rectangle. The two axes are separate now.
+ */
+export const COMPARE_PATH_SECTION_H_INSET = 16
+/** @deprecated Split into COMPARE_PATH_SECTION_H_INSET and the top/bottom pair. */
+export const COMPARE_PATH_SECTION_INSET = COMPARE_PATH_SECTION_H_INSET
 export const COMPARE_PATH_SECTION_BOTTOM_INSET = COMPARE_PATH_SECTION_TOP_INSET
 /** Space reserved above compare body rows for section title badges. */
 export const COMPARE_PATH_IDENTITY_HEIGHT = COMPARE_PATH_SECTION_TOP_INSET
@@ -349,9 +400,37 @@ export function getScenarioSwimlaneBodyHeight(
 export function getScenarioBlueprintPanelHeight(
   options: ScenarioSwimlaneLayoutInput,
 ): number {
+  const visibleBlueprints = itemsInSelectionOrder(
+    options.selectedPathIds,
+    (id) => options.blueprintsByPathId.get(id),
+  ).filter((blueprint): blueprint is BlueprintData => blueprint !== undefined)
+
+  const scrollChrome = options.scrollChrome
+  if (visibleBlueprints.length > 0 && options.displayViewType === 'stacked') {
+    return getStackedComparePanelHeight(
+      visibleBlueprints,
+      options.compact,
+      scrollChrome,
+    )
+  }
+  if (visibleBlueprints.length > 1 && options.displayViewType === 'merged') {
+    return getMergedComparePanelHeight(
+      visibleBlueprints,
+      options.compact,
+      scrollChrome,
+    )
+  }
+  if (visibleBlueprints.length > 0 && options.displayViewType === 'merged') {
+    return getStackedComparePanelHeight(
+      visibleBlueprints,
+      options.compact,
+      scrollChrome,
+    )
+  }
+
   const swimlaneBodyHeight = getScenarioSwimlaneBodyHeight(options)
   if (swimlaneBodyHeight > 0) {
-    return getPanelHeightFromSwimlaneBody(swimlaneBodyHeight, options.scrollChrome)
+    return getPanelHeightFromSwimlaneBody(swimlaneBodyHeight, scrollChrome)
   }
 
   return COMPARE_MIN_PANEL_HEIGHT
@@ -457,9 +536,10 @@ export function laneHasInLaneLoopCorridor(
 
 /**
  * Canonical row needs the overhead rail when any compared variant routes a
- * forward in-lane trigger that clears at least one column — the arrow cannot
- * run along the row, so it climbs into the strip above it. Mirrors
- * `isOverheadRailTrigger`, which decides the same thing off the rendered grid.
+ * forward in-lane trigger that clears at least one column — the arrow
+ * cannot run along the row, so it climbs into the strip above it. Mirrors
+ * `laneHasOverheadArrowCorridor`, which decides the same thing for a single
+ * board.
  */
 export function laneHasOverheadRailCorridorAbove(
   canonicalLane: BlueprintLane,
@@ -552,7 +632,7 @@ export function getCompareDividerBandWidth(
   blueprints: BlueprintData[],
   compact = false,
 ): number {
-  if (blueprints.length === 0) return COMPARE_LABEL_WIDTH
+  if (blueprints.length === 0) return COMPARE_LABEL_TRACK_WIDTH
 
   const cardsWidth = blueprints.reduce(
     (sum, blueprint) => sum + getCompareCardWidth(blueprint.steps.length, compact),
@@ -560,7 +640,7 @@ export function getCompareDividerBandWidth(
   )
 
   return (
-    COMPARE_LABEL_WIDTH +
+    COMPARE_LABEL_TRACK_WIDTH +
     cardsWidth +
     blueprints.length * COMPARE_CARD_GAP
   )
@@ -675,7 +755,7 @@ export function getStackedCompareBandBodyHeight(
 /** Stacked board width for a canonical column count: rail + step columns. */
 export function getStackedCompareGridWidth(columnCount: number): number {
   return (
-    COMPARE_LABEL_WIDTH +
+    COMPARE_LABEL_TRACK_WIDTH +
     STEP_COLUMN_GAP +
     getStepColumnsWidth(Math.max(1, columnCount)) +
     COMPARE_PANEL_PADDING +
@@ -714,14 +794,13 @@ export function getStackedComparePanelHeight(
   blueprints: BlueprintData[],
   compact = false,
   /*
-    The scroll chrome this panel will ACTUALLY have. Defaulting it rather
-    than taking it makes the estimate describe a different panel from the
-    one that gets rendered: a height-locked panel in an aligned phase row
-    has no resize handle, so `getComparePanelScrollPaddingY()` with no
-    options budgets it a handle inset and an artboard buffer that never
-    render, and the surplus paints as dead gray under the board. The
-    measuring pass corrects it either way now, but a placeholder wrong by a
-    constant still costs one bad pre-paint frame.
+    The scroll chrome this panel will actually have. Defaulting it (rather
+    than taking it) is what put 64px of dead gray under every board in an
+    aligned phase row: those panels are height-locked and have no resize
+    handle, so `getComparePanelScrollPaddingY()` with no options budgeted
+    them a handle inset and an artboard buffer that never render. The
+    measuring pass corrects it now either way, but a placeholder that is
+    wrong by a constant still costs one bad pre-paint frame.
   */
   scrollChrome?: ComparePanelScrollChromeOptions,
 ): number {
