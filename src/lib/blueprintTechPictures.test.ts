@@ -10,7 +10,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { resolveCellDetailPictures } from '@/lib/blueprintTechPictures'
+import { resolveCellDetailImages } from '@/lib/blueprintTechPictures'
 import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 const placement = (over: Partial<CellTouchpoint> = {}): CellTouchpoint => ({
@@ -34,10 +34,10 @@ const screenshot = (over: Partial<CellResource> = {}): CellResource => ({
   ...over,
 })
 
-describe('resolveCellDetailPictures', () => {
+describe('resolveCellDetailImages', () => {
   it('leads with the touchpoint registry icon for the clicked touchpoint', () => {
     expect(
-      resolveCellDetailPictures({
+      resolveCellDetailImages({
         techItem: 'Zoom',
         cellContent: 'Zoom',
         cellTouchpoints: [placement({ iconUrl: '/touchpoint-logos/zoom-logo.png' })],
@@ -48,7 +48,7 @@ describe('resolveCellDetailPictures', () => {
 
   it('reads the icon off a single-touchpoint cell with no touchpoint clicked', () => {
     expect(
-      resolveCellDetailPictures({
+      resolveCellDetailImages({
         cellContent: 'Zoom',
         cellTouchpoints: [placement({ iconUrl: '/touchpoint-logos/zoom-logo.png' })],
         cellResources: [],
@@ -58,7 +58,7 @@ describe('resolveCellDetailPictures', () => {
 
   it('puts the stock icon ahead of a placement screenshot', () => {
     expect(
-      resolveCellDetailPictures({
+      resolveCellDetailImages({
         techItem: 'Zoom',
         cellContent: 'Zoom',
         cellTouchpoints: [placement({ iconUrl: '/touchpoint-logos/zoom-logo.png' })],
@@ -69,7 +69,7 @@ describe('resolveCellDetailPictures', () => {
 
   it('draws the frame when the touchpoint carries no icon', () => {
     expect(
-      resolveCellDetailPictures({
+      resolveCellDetailImages({
         techItem: 'Zoom',
         cellContent: 'Zoom',
         cellFrame: 'https://example.com/frame.png',

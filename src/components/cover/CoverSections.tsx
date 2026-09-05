@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { CoverCommandChip } from '@/components/cover/CoverCommandChip'
+import { CoverCommandCopy } from '@/components/cover/CoverCommandCopy'
 import { CoverFigure } from '@/components/cover/CoverFigure'
 import { renderInline } from '@/components/cover/coverInline'
 import type {
@@ -121,7 +121,7 @@ function FigureStack({
  * `text-sm sm:text-base`). A table is denser than a paragraph — two columns,
  * a header row, five-plus data rows in view at once — and running it at
  * paragraph size read heavier than the prose around it despite carrying
- * less per row. The rung below is still comfortably above the 3xs/2xs chip
+ * less per row. The rung below is still comfortably above the 3xs/2xs badge
  * sizes elsewhere on the page; it is one step, not a jump to caption text.
  */
 function DefsTable({
@@ -199,16 +199,16 @@ function GuideLink({ link, repoUrl }: { link: CoverGuideLink; repoUrl: string })
  * groups them). */
 function SkillPanel({
   section,
-  chip,
+  commandCopy,
   eager,
 }: {
   section: Extract<CoverSection, { kind: 'skill' }>
-  chip: { copyLabel: string; copiedLabel: string }
+  commandCopy: { copyLabel: string; copiedLabel: string }
   eager: boolean
 }) {
   /*
     Title, summary, illustration — then the copy action, below the
-    figure rather than riding on the title. The chip used to double as the
+    figure rather than riding on the title. The copy control used to double as the
     heading, which put a click-to-copy control at the top of the panel
     where a reader's eye lands first, ahead of any reason to copy it: you
     do not know you want the command until you have read what it does and
@@ -226,10 +226,10 @@ function SkillPanel({
         <CoverFigure figure={section.figure} eager={eager} />
       ) : null}
       <div>
-        <CoverCommandChip
+        <CoverCommandCopy
           command={section.command}
-          copyLabel={chip.copyLabel}
-          copiedLabel={chip.copiedLabel}
+          copyLabel={commandCopy.copyLabel}
+          copiedLabel={commandCopy.copiedLabel}
         />
       </div>
     </div>
@@ -248,11 +248,11 @@ function SkillPanel({
  */
 function SkillTabs({
   sections,
-  chip,
+  commandCopy,
   eagerFirst,
 }: {
   sections: Extract<CoverSection, { kind: 'skill' }>[]
-  chip: { copyLabel: string; copiedLabel: string }
+  commandCopy: { copyLabel: string; copiedLabel: string }
   eagerFirst: boolean
 }) {
   const [active, setActive] = useState(0)
@@ -286,7 +286,7 @@ function SkillTabs({
       </div>
       <SkillPanel
         section={current}
-        chip={chip}
+        commandCopy={commandCopy}
         eager={eagerFirst && active === 0}
       />
     </section>
@@ -298,14 +298,14 @@ export function CoverSections({
   sections,
   link,
   repoUrl,
-  chip,
+  commandCopy,
   eagerFigures = false,
 }: {
   intro?: string
   sections: CoverSection[]
   link?: CoverGuideLink
   repoUrl?: string
-  chip: { copyLabel: string; copiedLabel: string }
+  commandCopy: { copyLabel: string; copiedLabel: string }
   /** The visible-on-load tab decodes its first figure eagerly. */
   eagerFigures?: boolean
 }) {
@@ -408,7 +408,7 @@ export function CoverSections({
       {skillSections.length > 0 ? (
         <SkillTabs
           sections={skillSections}
-          chip={chip}
+          commandCopy={commandCopy}
           eagerFirst={eagerFigures && figuresSeen === 0}
         />
       ) : null}

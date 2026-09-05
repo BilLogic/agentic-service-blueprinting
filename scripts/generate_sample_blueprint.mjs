@@ -722,7 +722,7 @@ const SCENARIOS = [
         },
       },
 
-      { lane: 'surface', col: 5, content: 'Findings panel\nSeverity chips' },
+      { lane: 'surface', col: 5, content: 'Findings panel\nSeverity badges' },
       {
         lane: 'surface', col: 6,
         content: 'Triage controls (accept / dismiss / resolve)',

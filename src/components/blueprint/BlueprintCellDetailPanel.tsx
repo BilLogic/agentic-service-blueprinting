@@ -74,7 +74,7 @@ import {
   getBlueprintCellConnections,
   getBlueprintForPath,
   getLinkedTechFromConnections,
-  getSelectedCellLanePosition,
+  getSelectedCellLaneRowPosition,
   scrollBlueprintCellIntoView,
 } from '@/lib/blueprintCellConnections'
 import {
@@ -84,7 +84,7 @@ import {
 } from '@/lib/blueprintStepTech'
 import { shouldUseTouchpointCellContent, shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
-import { resolveCellDetailPictures } from '@/lib/blueprintTechPictures'
+import { resolveCellDetailImages } from '@/lib/blueprintTechPictures'
 import {
   getBlueprintLaneStyle,
   getBlueprintLaneZone,
@@ -528,7 +528,7 @@ function BlueprintCellDetailPanelBody() {
     )
   }, [blueprints, pathEntry?.pathId, selection?.laneName])
 
-  const laneChipStyle = useMemo(() => {
+  const laneBadgeStyle = useMemo(() => {
     const laneName = selection?.laneName
     if (!laneName) return null
 
@@ -628,12 +628,12 @@ function BlueprintCellDetailPanelBody() {
 
   // Lane row position of the selected cell — orients up/down direction
   // glyphs on same-step dependency rows.
-  const selectedLanePosition = useMemo(() => {
+  const selectedLaneRowPosition = useMemo(() => {
     const pathId = pathEntry?.pathId
     if (!resolvedCellId || !pathId) return -1
     const blueprint = getBlueprintForPath(blueprints, pathId)
     if (!blueprint) return -1
-    return getSelectedCellLanePosition(blueprint, resolvedCellId)
+    return getSelectedCellLaneRowPosition(blueprint, resolvedCellId)
   }, [blueprints, pathEntry?.pathId, resolvedCellId])
 
   /**
@@ -702,7 +702,7 @@ function BlueprintCellDetailPanelBody() {
           connection.laneName,
         ),
         kind: connection.linkKind,
-        label: connection.linkLabel,
+        label: connection.linkName,
       })),
     [connections.outgoing],
   )
@@ -980,7 +980,7 @@ function BlueprintCellDetailPanelBody() {
     techDetailLabel && detailBodyText.trim() === techDetailLabel
       ? ''
       : detailBodyText
-  const detailPictures = resolveCellDetailPictures({
+  const detailImages = resolveCellDetailImages({
     techItem: selection.techItem,
     cellContent: selection.paths[0]?.content,
     cellFrame: selection.paths[0]?.frame,
@@ -995,8 +995,8 @@ function BlueprintCellDetailPanelBody() {
     cellTouchpointList.find(
       (placement) => placement.name === (selection.techItem ?? techDetailLabel),
     )?.iconUrl?.trim() || null
-  const showPicture = Boolean(
-    (featured.preview || detailPictures?.length) && !isStoryboardLane,
+  const showImages = Boolean(
+    (featured.preview || detailImages?.length) && !isStoryboardLane,
   )
   const showTouchpoint = Boolean(isTechLane && techDetailLabel)
   // The touchpoint sits above the title on a touchpoint lane — decided by
@@ -1100,11 +1100,11 @@ function BlueprintCellDetailPanelBody() {
   // one role-colored badge (colored by lane_role, never by name).
   const cellTitleText =
     cellContent.split('\n')[0]?.trim() || selection.laneName
-  const laneChip = laneChipStyle ? (
+  const laneBadge = laneBadgeStyle ? (
     <span
       className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-3xs font-medium leading-tight"
       style={{
-        backgroundColor: laneChipStyle.lane,
+        backgroundColor: laneBadgeStyle.lane,
         color: BLUEPRINT_THEME.cellText,
       }}
       title={selection.laneName}
@@ -1118,7 +1118,7 @@ function BlueprintCellDetailPanelBody() {
       <p className="min-w-0 text-sm font-bold leading-snug tracking-tight text-foreground">
         {cellTitleText}
       </p>
-      {laneChip}
+      {laneBadge}
     </div>
   )
 
@@ -1155,10 +1155,10 @@ function BlueprintCellDetailPanelBody() {
     </span>
   ) : null
 
-  const pictureBlock = showPicture ? (
+  const imageBlock = showImages ? (
     <div className="flex w-full flex-col items-center gap-3">
       {(() => {
-        const frames = detailPictures ?? []
+        const frames = detailImages ?? []
         // A picture is a logo when it IS the touchpoint's registry icon (#326);
         // the filename convention stays a fallback for a logo carried as a
         // placement attachment.
@@ -1264,7 +1264,7 @@ function BlueprintCellDetailPanelBody() {
 
   const overviewContent = (
     <>
-      {pictureBlock}
+      {imageBlock}
       {!editingCell && featured.buttons.length > 0 ? (
         <FeaturedButtons buttons={featured.buttons} className="px-1" />
       ) : null}
@@ -1273,14 +1273,14 @@ function BlueprintCellDetailPanelBody() {
         {/* In edit mode the form's TEXT field *is* the title; repeating it
             above the field would be the same word twice on one screen. */}
         {editingCell ? (
-          titleRepeatsTouchpoint ? null : laneChip
+          titleRepeatsTouchpoint ? null : laneBadge
         ) : titleRepeatsTouchpoint ? (
-          laneChip
+          laneBadge
         ) : (
           titleRow
         )}
         {showTouchpoint && !showTouchpointAboveTitle ? selectedTouchpoint : null}
-        {editingCell && titleRepeatsTouchpoint ? laneChip : null}
+        {editingCell && titleRepeatsTouchpoint ? laneBadge : null}
       </div>
       {/* The summary paragraph is the reading view; the editor shows the
           same text inside its SUMMARY field instead. */}
@@ -1406,7 +1406,7 @@ function BlueprintCellDetailPanelBody() {
                       <CellDependencySections
                         connections={connections}
                         otherTech={otherTechEntries}
-                        selectedLanePosition={selectedLanePosition}
+                        selectedLaneRowPosition={selectedLaneRowPosition}
                         onCellSelect={handleConnectionSelect}
                         onTechSelect={handleTechSelect}
                       />

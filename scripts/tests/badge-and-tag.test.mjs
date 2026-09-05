@@ -1,6 +1,5 @@
 /**
- * Check D — "pill" is not a name in this app, and not only where it meant a
- * touchpoint.
+ * Check D — neither "chip" nor "pill" is a name in this app.
  *
  * The `pill`/`chip` row of `scripts/retired-vocabulary.mjs` enforces nothing in
  * the identifier sweep and says so: no database object was ever called either
@@ -30,13 +29,14 @@
  * definition — quote it accurately and are outside this file. They move when
  * the comment does.
  *
- * ONE WORD, NOT TWO. The row retires `chip` alongside `pill`, and `chip` is
- * still a live NAME here: `coverContent.chip` is the cover's copy-button
- * strings, named before the split and read by `coverContent.test.ts`. Bringing
- * it into this subject means renaming that key, which is its own change with
- * its own reason — not a line smuggled into this one. The instance's
- * `scripts/tests/badge-and-tag.test.mjs`, which this is modelled on, takes both
- * words because it renamed both first.
+ * BOTH WORDS, SINCE #324. `pill` came first (#158) because `chip` was still a
+ * live NAME here — `coverContent.chip`, the cover's copy-button strings, named
+ * before the design system split the two ideas. That rename is done: the key is
+ * `commandCopy`, the component is `CoverCommandCopy`, the ledger's markers are
+ * a `VerdictBadge`, a `FilterTag` and a `CompareZoneBadge`, and the deployment's
+ * spelling is what each of them took. So the subject is the row's whole pair
+ * now, which is what the instance's own `badge-and-tag.test.mjs` — the file
+ * this is modelled on and now named for — has held all along.
  *
  * Proved to go red below, in the shape the rest of this directory argues for:
  * a check that is green against this tree could equally be a check that
@@ -80,32 +80,33 @@ export function appSources() {
 
 /* ------------------------------------------------------- pill as a name */
 
-/** The word that stopped being a name. */
-export const RETIRED_DESIGN_WORD = 'pill'
+/** The two words that stopped being names. */
+export const RETIRED_DESIGN_WORDS = Object.freeze(['chip', 'pill'])
 
-const SAYS_PILL = new RegExp(RETIRED_DESIGN_WORD, 'i')
+const SAYS_RETIRED = new RegExp(`(${RETIRED_DESIGN_WORDS.join('|')})`, 'i')
 
-/** Every name in the tree that still says pill, with where it is. */
-export function namesThatSayPill(sources) {
+/** Every name in the tree that still says chip or pill, with where it is. */
+export function namesThatSayChipOrPill(sources) {
   const out = []
   for (const { file, code } of sources) {
-    if (SAYS_PILL.test(file)) out.push(`${file} — the file name`)
+    if (SAYS_RETIRED.test(file)) out.push(`${file} — the file name`)
     code.split('\n').forEach((line, index) => {
-      if (SAYS_PILL.test(line)) out.push(`${file}:${index + 1} ${line.trim()}`)
+      if (SAYS_RETIRED.test(line)) out.push(`${file}:${index + 1} ${line.trim()}`)
     })
   }
   return out
 }
 
-test('no name in the app says pill', () => {
-  const found = namesThatSayPill(appSources())
+test('no name in the app says chip or pill', () => {
+  const found = namesThatSayChipOrPill(appSources())
   assert.deepEqual(
     found,
     [],
-    'A name says "pill". The design system has two words: a BADGE describes ' +
-      'the thing it sits on, a TAG is one value out of a set. "Pill" was a ' +
-      'third name for those two ideas, and a touchpoint is a cell with a shape ' +
-      `variant rather than a shape of its own:\n${found.join('\n')}`,
+    'A name says "chip" or "pill". The design system has two words: a BADGE ' +
+      'describes the thing it sits on, a TAG is one value out of a set. Both ' +
+      'retired words were a third and fourth name for those two ideas, and a ' +
+      'touchpoint is a cell with a shape variant rather than a shape of its ' +
+      `own:\n${found.join('\n')}`,
   )
 })
 
@@ -115,11 +116,17 @@ test('the check goes red on a name that reintroduces the word', () => {
       file: 'src/components/editor/FloatingSidebarPill.tsx',
       code: 'export function FloatingSidebarPill() {}',
     },
+    {
+      file: 'src/components/cover/CoverCommandChip.tsx',
+      code: 'export const chip = 1',
+    },
     { file: 'src/lib/quiet.ts', code: "export const PILL_HEIGHT = 52\nconst x = 'pills'" },
   ]
-  assert.deepEqual(namesThatSayPill(planted), [
+  assert.deepEqual(namesThatSayChipOrPill(planted), [
     'src/components/editor/FloatingSidebarPill.tsx — the file name',
     'src/components/editor/FloatingSidebarPill.tsx:1 export function FloatingSidebarPill() {}',
+    'src/components/cover/CoverCommandChip.tsx — the file name',
+    'src/components/cover/CoverCommandChip.tsx:1 export const chip = 1',
     'src/lib/quiet.ts:1 export const PILL_HEIGHT = 52',
     "src/lib/quiet.ts:2 const x = 'pills'",
   ])
@@ -134,15 +141,15 @@ test('the check reads names and not comments', () => {
       file: 'src/components/editor/Quiet.tsx',
       code: [
         '/* The collapsed remnant used to be a pill with its own name. */',
-        'export function FloatingSidebarNavbar() {} // was a pill',
+        'export function FloatingSidebarNavbar() {} // was a chip',
       ].join('\n'),
     },
     {
       file: 'src/styles/quiet.css',
-      code: '/* a touchpoint, once a pill, sits a step paler */\n.cell { color: red; }',
+      code: '/* a touchpoint, once a chip, sits a step paler */\n.cell { color: red; }',
     },
   ].map(({ file, code }) => ({ file, code: stripComments(code) }))
-  assert.deepEqual(namesThatSayPill(quiet), [])
+  assert.deepEqual(namesThatSayChipOrPill(quiet), [])
 })
 
 test('the walk reads the tree it claims to', () => {

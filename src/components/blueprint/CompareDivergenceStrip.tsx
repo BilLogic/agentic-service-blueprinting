@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { CompareZoneChip } from '@/components/blueprint/CompareZoneChip'
+import { CompareZoneBadge } from '@/components/blueprint/CompareZoneBadge'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,7 +34,7 @@ type StripSegment = {
  * The divergence strip — a ~48px braid narrating the compared paths' fork/
  * rejoin topology, rendered in the compare panel chrome in BOTH modes.
  * NAVIGATION ONLY (locked decision): a neutral 3px spine where the paths
- * agree, per-path colored+dashed 2px tracks where they split, zone chips on
+ * agree, per-path colored+dashed 2px tracks where they split, zone badges on
  * divergent segments, and a `◀ step 1/6 ▶` stepper.
  *
  * TWO grains meet here. The SEGMENTS stay run-shaped — that is the topology
@@ -262,7 +262,7 @@ export function CompareDivergenceStrip({
                   className="absolute right-0 size-1.5 rounded-full border border-(--muted-foreground) bg-background"
                   style={{ top: TRACK_CENTER_Y - 3, translate: '50% 0' }}
                 />
-                <CompareZoneChip
+                <CompareZoneBadge
                   index={zone.index}
                   active={isActive}
                   className="absolute left-1/2 top-1 -translate-x-1/2"

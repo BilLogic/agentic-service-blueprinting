@@ -77,24 +77,12 @@ import {
   MOTION_STRUCTURAL_MS,
   prefersReducedMotion,
 } from '@/lib/motion'
+import {
+  getFocusedComparisonCameraKey,
+  getMinFitZoom,
+  getSemanticZoomThreshold,
+} from '@/lib/canvasCameraPolicy'
 import type { PathListItem } from '@/lib/pathSelection'
-/**
- * Floor for the phone's fit-to-view zoom — 3x the phone's own semantic
- * threshold below, so the frame the reader lands on always has cell text in
- * it with room to pinch out before the text goes. Roughly half a phase board
- * across on a 390px screen.
- */
-const MOBILE_MIN_FIT_ZOOM = 0.45
-
-/**
- * Where the phone's cells give up their text. Lower than the desktop 0.25
- * because a phone has ~3 device pixels per CSS pixel: at 0.15 the blurbs
- * are small but still ink on the screen, and a reader who pinches out to
- * see where they are keeps something to read. At 0.25 the whole board went
- * blank the moment they zoomed out at all, which reads as "this blueprint
- * has no content" rather than "you are too far out".
- */
-const MOBILE_SEMANTIC_ZOOM_THRESHOLD = 0.15
 
 /**
  * Which element's `transitionend` is allowed to close each reveal stage.
@@ -398,10 +386,13 @@ function ServiceOverviewViewImpl({
   // read. Floored, the camera frames the board's top-left at a legible
   // scale and the reader pans from there. Desktop keeps the true fit: a
   // laptop can hold a whole phase at a readable size.
-  const minFitZoom = mobileShell ? MOBILE_MIN_FIT_ZOOM : undefined
-  const semanticZoomThreshold = mobileShell
-    ? MOBILE_SEMANTIC_ZOOM_THRESHOLD
-    : undefined
+  const cameraSurface = {
+    mobileShell,
+    isDetail,
+    selectedPathCount: overviewSelectedPathIds.length,
+  }
+  const minFitZoom = getMinFitZoom(cameraSurface)
+  const semanticZoomThreshold = getSemanticZoomThreshold(cameraSurface)
 
   /*
     Skeleton geometry — real phase count and real scenarios per phase from
@@ -448,12 +439,19 @@ function ServiceOverviewViewImpl({
     [blueprintsByPathId, pathsByScenario, phases, slides, soloScenarioId],
   )
 
-  // Camera key. Deliberately excludes the selected path ids: toggling a path
-  // is a filter, not a navigation, and having it here threw away the user's
-  // pan/zoom on every checkbox. `focusNonce` bumps on each nav click so
-  // re-selecting the row you are already on recenters after panning away.
+  // Camera key. Path selection is stable in overview, where it behaves like a
+  // filter. Inside a focused scenario it changes the comparison's geometry,
+  // so it becomes an explicit camera-layout event: the viewport eases to the
+  // new fitted frame instead of letting ResizeObserver snap there afterward.
+  // `focusNonce` bumps on each nav click so re-selecting the current row also
+  // recenters after panning away.
+  const focusedComparisonCameraKey = getFocusedComparisonCameraKey({
+    isFocusedScenario: isSubslide(activeSlide),
+    selectedPathIds: overviewSelectedPathIds,
+    displayViewType: getScenarioDisplayViewType(activeSlide) ?? 'stacked',
+  })
   const fitKey = overviewReady
-    ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}`
+    ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}:${focusedComparisonCameraKey}`
     : `service-canvas:loading:${skeletonPhases.map((phase) => phase.scenarioCount).join('-') || 'unknown'}`
 
   // The cell-detail panel clears its selection when this changes, so it must

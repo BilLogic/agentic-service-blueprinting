@@ -44,7 +44,7 @@ function framePictures(cellFrame?: string | null): string[] | null {
   return [frame]
 }
 
-export function resolveCellDetailPictures(input: {
+export function resolveCellDetailImages(input: {
   techItem?: string | null
   cellContent?: string | null
   cellFrame?: string | null

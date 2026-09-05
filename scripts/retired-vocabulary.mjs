@@ -45,8 +45,8 @@
  * `visual` becomes `storyboard`, `step_visual` is dropped, and the design system
  * keeps one word for each of its two markers — `badge` for a descriptive one,
  * `tag` for one of a set. The `pill`/`chip` row carries no migration because no
- * database object ever bore either word; it is a component-and-copy rename that
- * `tsc` and review hold.
+ * database object ever bore either word; it is a component-and-copy rename,
+ * held by `scripts/tests/badge-and-tag.test.mjs` over every name under `src`.
  *
  * **These are the current names.** An `alter table … rename` moves the table and
  * the column and nothing else — the index, the constraint, the policy, the
@@ -242,6 +242,26 @@ export const RENAME_MAP = Object.freeze(
       copy: [],
     },
     {
+      // `21000115000000`, and the row was missing until #324 went looking for
+      // it. `picture` said what the thing is MADE OF where every neighbour
+      // says what it is FOR: one image on one cell is a `frame`, and a step's
+      // frames read across the lanes are its strip.
+      //
+      // The fragment enforces, unlike most of the block below it, because
+      // `picture` is a substring of nothing that survives in the schema — the
+      // column was the only database object that ever carried the word. The
+      // copy list is safe for the same reason one level out: no reader-facing
+      // string says it. What the word IS still doing here is naming things in
+      // the app — `visualPictures`, `getTechItemDetailPictures` — and neither
+      // list reaches those, which is the split this map keeps everywhere: a
+      // retired COLUMN is not a retired English word.
+      was: ['cells.picture'],
+      is: ['cells.frame'],
+      migrations: ['21000115000000'],
+      retired: ['picture'],
+      copy: ['picture', 'pictures'],
+    },
+    {
       was: ["scenarios.layout = 'side-by-side'", "scenarios.layout = 'integrated'"],
       is: ["scenarios.layout = 'stacked'", "scenarios.layout = 'stacked'"],
       migrations: ['21000116000000'],
@@ -385,11 +405,17 @@ export const RENAME_MAP = Object.freeze(
       prop, a constant, a variant string, a data attribute, a file name — held
       by review alone, which is how `FloatingSidebarPill`, `SliceRefocusPill`
       and `PathNotionPill` survived the touchpoint half of the rename. Since
-      #158 that half is `scripts/tests/pill-is-not-a-name.test.mjs`, whose
-      subject is every NAME under `src` with comments removed. It takes `pill`
-      and not `chip`: `coverContent.chip` is still a live name here, and
-      retiring it is its own change. The instance's
-      `scripts/tests/badge-and-tag.test.mjs` is the model and takes both.
+      #158 that half is a check, whose subject is every NAME under `src` with
+      comments removed; it took `pill` alone, because `coverContent.chip` was
+      still a live name here and retiring it was its own change.
+
+      #324 IS THAT CHANGE, and the check now takes both words under the name
+      the instance's own copy carries — `scripts/tests/badge-and-tag.test.mjs`.
+      Every spelling came from the deployment rather than being invented here:
+      the cover's copy button is `CoverCommandCopy` reading `commandCopy`, the
+      menubar's count is `CompareDifferencesCount`, and the ledger's markers
+      split along the definition above — a `VerdictBadge` and a
+      `CompareZoneBadge` describe, a `FilterTag` selects.
     */
     {
       was: ['pill', 'chip'],

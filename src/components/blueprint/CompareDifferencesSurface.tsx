@@ -47,7 +47,7 @@ type CompareDifferencesSurfaceProps = {
   onOpenCell: (selection: BlueprintCellSelection) => void
 }
 
-function VerdictChip({ verdict }: { verdict: CompareStatus }) {
+function VerdictBadge({ verdict }: { verdict: CompareStatus }) {
   if (verdict === 'only') {
     return (
       <span
@@ -118,7 +118,7 @@ const CompareDiffRow = memo(function CompareDiffRow({
         >
           {slot.laneLabel}
         </span>
-        <VerdictChip verdict={slot.verdict} />
+        <VerdictBadge verdict={slot.verdict} />
       </div>
       {pathIds.map((pathId) => {
         const entry = slot.perPath[pathId]
@@ -218,7 +218,7 @@ function DiffTable({
   )
 }
 
-function FilterChip({
+function FilterTag({
   label,
   pressed,
   onToggle,
@@ -273,7 +273,7 @@ export function CompareDifferencesSurface({
   const totalCount = useMemo(() => countCompareDifferences(model), [model])
 
   // Lane facets (order of first appearance) + swatch colors resolved the
-  // way the cell panel resolves its lane chip: lane_role first, name second.
+  // way the cell panel resolves its lane badge: lane_role first, name second.
   const { laneFacets, laneSwatchByKey } = useMemo(() => {
     const facets: Array<{ key: string; label: string }> = []
     const seen = new Set<string>()
@@ -365,9 +365,9 @@ export function CompareDifferencesSurface({
 
   /*
     Group header row: label first, the group's single post-filter count last
-    and right-aligned. No zone chip — the header already says "Step N", and a
+    and right-aligned. No zone badge — the header already says "Step N", and a
     second number beside it was the repetition the user called out. The strip
-    keeps its chips: there, ①②③ is the run topology, not a step.
+    keeps its badges: there, ①②③ is the run topology, not a step.
   */
   const groupHeader = (label: string, count: number, title?: string) => (
     <span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -448,7 +448,7 @@ export function CompareDifferencesSurface({
               </p>
               <div className="flex flex-wrap gap-1">
                 {laneFacets.map((facet) => (
-                  <FilterChip
+                  <FilterTag
                     key={facet.key}
                     label={facet.label}
                     pressed={filters.lanes.includes(facet.key)}
@@ -460,12 +460,12 @@ export function CompareDifferencesSurface({
                 Verdict
               </p>
               <div className="flex flex-wrap gap-1">
-                <FilterChip
+                <FilterTag
                   label="≠ divergent"
                   pressed={filters.verdicts.includes('divergent')}
                   onToggle={() => toggleVerdict('divergent')}
                 />
-                <FilterChip
+                <FilterTag
                   label="+ only in one path"
                   pressed={filters.verdicts.includes('only')}
                   onToggle={() => toggleVerdict('only')}
@@ -480,7 +480,7 @@ export function CompareDifferencesSurface({
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {stepGroups.map((group) => (
-                      <FilterChip
+                      <FilterTag
                         key={group.columnKey}
                         label={`${group.step} · ${group.label}`}
                         pressed={filters.steps.includes(group.columnKey)}
