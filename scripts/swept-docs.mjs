@@ -5,7 +5,9 @@
  * has. Two lists would drift the way two vocabularies do — a doc added to
  * one and not the other is a doc that half the guards read.
  *
- * WHAT IS SWEPT: the README and CONTEXT.md; `docs/` (the guide, the
+ * WHAT IS SWEPT: the README, CONTEXT.md and AGENTS.md — the router is the
+ * one file every session is handed without choosing, so a retired word there
+ * is loaded on every boot, and it was the one file no sweep read; `docs/` (the guide, the
  * connectors, engineering, guidelines, the overview); `references/`,
  * `skills/` and `agents/` — the plugin surface an installed agent actually
  * reads.
@@ -20,7 +22,7 @@
 import { readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-export const ROOT_DOCS = ['README.md', 'CONTEXT.md']
+export const ROOT_DOCS = ['README.md', 'CONTEXT.md', 'AGENTS.md']
 export const SWEPT_DIRS = ['docs', 'references', 'skills', 'agents']
 export const HISTORY = ['docs/adr', 'docs/plans']
 
