@@ -262,16 +262,16 @@ async function realGetSlice(sliceId) {
   )
   if (!rows?.[0]) throw new Error('No slice with that id.')
   const slice = rows[0]
-  const frames = [...(slice.slides ?? [])]
+  const slides = [...(slice.slides ?? [])]
     .sort((a, b) => a.position - b.position)
-    .map((f, i) => `frame ${i + 1}: cells [${(f.cell_ids ?? []).join(', ')}]${f.title ? ` title "${f.title}"` : ''}`)
-  return `slice "${slice.title}" (${slice.id}) type=${slice.kind}\n${frames.join('\n') || '(no frames)'}`
+    .map((s, i) => `slide ${i + 1}: cells [${(s.cell_ids ?? []).join(', ')}]${s.title ? ` title "${s.title}"` : ''}`)
+  return `slice "${slice.title}" (${slice.id}) type=${slice.kind}\n${slides.join('\n') || '(no slides)'}`
 }
 
 async function realListFindings(statusFilter) {
   // Mirrors read.ts: the capped read carries the TRUE TOTAL (count=exact)
   // and instructs the model to answer count questions from it.
-  const query = `findings?select=id,source,check_key,severity,note,status,cell_ids,created_at&order=created_at.desc&limit=100${statusFilter === 'all' ? '' : `&status=eq.${encodeURIComponent(statusFilter)}`}`
+  const query = `audit_findings?select=id,source,check_key,severity,summary,status,cell_ids,created_at&order=created_at.desc&limit=100${statusFilter === 'all' ? '' : `&status=eq.${encodeURIComponent(statusFilter)}`}`
   const response = await fetch(`${env.VITE_SUPABASE_URL}/rest/v1/${query}`, {
     headers: {
       apikey: env.VITE_SUPABASE_ANON_KEY,
@@ -293,7 +293,7 @@ async function realListFindings(statusFilter) {
     header,
     ...rows.map(
       (r) =>
-        `${r.id} [${r.severity}] ${r.check_key} (${r.source}, ${r.status}, ${String(r.created_at).slice(0, 10)}) cells:${(r.cell_ids ?? []).length}${r.note ? ` — ${r.note}` : ''}`,
+        `${r.id} [${r.severity}] ${r.check_key} (${r.source}, ${r.status}, ${String(r.created_at).slice(0, 10)}) cells:${(r.cell_ids ?? []).length}${r.summary ? ` — ${r.summary}` : ''}`,
     ),
   ].join('\n')
 }
