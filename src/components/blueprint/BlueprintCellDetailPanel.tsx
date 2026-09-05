@@ -1141,6 +1141,7 @@ function BlueprintCellDetailPanelBody() {
       <TouchpointCellFace
         item={techDetailLabel!}
         compact
+        inline
         className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
       />
       {selectedPlacementRole ? (

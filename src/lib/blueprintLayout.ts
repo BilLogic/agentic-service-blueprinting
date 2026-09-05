@@ -357,8 +357,13 @@ export const BLUEPRINT_CELL_GUTTER = 12
 export const BLUEPRINT_CELL_INNER_X = 16
 export const BLUEPRINT_CELL_INNER_Y = 12
 
-const TOUCHPOINT_ITEM_HEIGHT = 44
-const TOUCHPOINT_ITEM_HEIGHT_COMPACT = 34
+/**
+ * One touchpoint's height on the canvas, fixed rather than measured: the
+ * stack estimate below counts it, and a face that sizes itself to its own
+ * text makes the row track it reserved wrong on every cell with two lines.
+ */
+export const TOUCHPOINT_ITEM_HEIGHT = 44
+export const TOUCHPOINT_ITEM_HEIGHT_COMPACT = 34
 const TOUCHPOINT_STACK_GAP = 10
 const TOUCHPOINT_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
 
