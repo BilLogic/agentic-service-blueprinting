@@ -36,8 +36,10 @@
  * the files generated from them, and changelog entries for shipped releases all
  * say what was true when they were written. Rewriting an applied migration to
  * tidy a comment makes applied migrations mutable, which costs more than the
- * tidiness is worth. `CONTEXT.md`'s "Words that keep a retired spelling"
- * records the same rule in prose for the person running the next sweep.
+ * tidiness is worth. The "words that keep a retired spelling" section in the
+ * header of `scripts/check-retired-identifiers.mjs` records the same rule in
+ * prose for the person running the next sweep — it was `CONTEXT.md`'s until
+ * #137 moved it beside the check that acts on it.
  *
  * IF THIS PRODUCES A FALSE POSITIVE, NARROW THE SUBJECT — NEVER THE WORD LIST.
  * A retired word dropped to silence one legitimate use becomes a rule that
@@ -74,7 +76,9 @@ const EXEMPT = [
  * retired for the same reason: no one word is true of `evidence`, `findings`,
  * `slices` and `slides` at once. There is no third noun, so the replacement is
  * to name the record — or, where a sentence genuinely covers all four, to
- * enumerate them. `CONTEXT.md`'s rename map carries the argument.
+ * enumerate them. The header of `scripts/retired-vocabulary.mjs` carries the
+ * argument, which is also why that file is not swept: it is code, and the one
+ * place these two phrases are allowed to be written out.
  */
 const RETIRED_PROSE = [
   { pattern: /derived[\s-]+layer/gi, use: 'the record’s own name' },
@@ -181,20 +185,17 @@ test('no retired prose spelling reaches a published document', () => {
     }
     const rel = relative(REPO_ROOT, path)
     /*
-      `CONTEXT.md` documents its own retirements, and has to be able to name the
-      word it is retiring — "a sweep that catches every occurrence of a retired
-      word needs to know which occurrences are not residue" is that file's own
-      sentence about itself. So the sweep stops at the rename map rather than
-      skipping the file: the DEFINITIONS above it are still checked, and only the
-      sections whose subject IS the retired vocabulary are allowed to say it.
+      `CONTEXT.md` used to need a stopping point. It documented its own
+      retirements, and a file that names the word it is retiring cannot be swept
+      end to end, so this sweep ran only as far as its rename map. #137 moved
+      that map — and the two collective nouns' whole argument — into
+      `scripts/retired-vocabulary.mjs`, which is code and therefore outside the
+      published subject. So the glossary is swept whole, like every other
+      published document, and no document in the subject is allowed to say
+      either phrase.
     */
-    const stopAt =
-      rel === 'CONTEXT.md' && source.includes('## The rename map')
-        ? source.indexOf('## The rename map')
-        : Infinity
     for (const { pattern, use } of RETIRED_PROSE) {
       for (const match of source.matchAll(pattern)) {
-        if (match.index >= stopAt) continue
         // A migration FILENAME is an applied record too: the file is named
         // `..._derived_layer.sql` on every instance and renaming the reference
         // would point at a file that does not exist.

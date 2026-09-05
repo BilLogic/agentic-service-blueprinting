@@ -101,7 +101,27 @@ prohibition, a dead pointer, a buried trigger, an item that names nothing —
 against throwaway trees, so no failing branch needs a broken router committed
 to prove it.
 
-## 6. Adding one
+## 6. The glossary, and the map it stopped carrying
+
+`CONTEXT.md` is the first pointer the router fires, so a session that reads
+`AGENTS.md` reads this next. It was two thirds reference material until #137: a
+rename map, an interface-to-schema map and a section of reasoning about which
+words a sweep should skip, all paid for by every session that opened the file to
+look up one word. The rename map is now `scripts/retired-vocabulary.mjs` and the
+skip reasoning is the header of `scripts/check-retired-identifiers.mjs` — each
+beside the code that acts on it — and the interface map is
+`references/interface-schema-map.md`, one pointer away and generated.
+
+| Command | What goes red |
+| --- | --- |
+| `npm run check:glossary` | `CONTEXT.md` holds something that is not a definition. Three rules, each naming a way the file grew last time: a fenced code block (a snippet or a listing is the beginning of a reference document), a table row naming a `table.column` (a table of column names restates the catalogue, which is what the generated map is for), and a `##` section with no `**term** — definition` row in it (a section that defines no word is a body, and all three evicted sections failed this on the day they were written). Tables as such stay allowed — the glossary draws one, of who writes what, and no cell of it names a column. |
+| `npm run check:interface-map` | `references/interface-schema-map.md` is not what its sources render. Its binding table comes from `LABEL_COLUMNS` in `scripts/interface-schema-map.mjs` and its coverage line from the `COMMENT ON` statements in `supabase/generated/portable-core.schema.sql`; a label bound to a name that dump does not have fails here too. Run `npm run interface-map`. The rename map's two halves needed a parity test because both were hand-kept; a generated half cannot disagree with its source, so what is left to check is the rendering — `scripts/tests/labels-name-their-columns.test.mjs` holds the emitted rows against `LABEL_COLUMNS`, which is a difference `--check` cannot see because `--check` compares the document to the same render. |
+
+`scripts/tests/the-glossary-is-a-glossary.test.mjs` drives each rule from a
+fixture that breaks it, and asserts the committed file last, as one case rather
+than as the whole suite.
+
+## 7. Adding one
 
 A new guard belongs here when a claim in this repository is currently true and
 nothing would notice if it stopped being. Three rules the existing set follows:

@@ -238,7 +238,7 @@ function LanePanelBody({
       {/* ACTOR, not Stakeholder. The column is `lanes.stakeholder_id` and the
           registry it points into is `stakeholders`; the word on screen is the
           one the rest of this vocabulary uses for a party standing in the room
-          — see CONTEXT.md's interface→schema map, which records the divergence
+          — see references/interface-schema-map.md, which records the divergence
           and its reason. */}
       <Field
         label="Actor"

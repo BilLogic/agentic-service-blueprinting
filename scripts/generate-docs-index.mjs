@@ -48,6 +48,7 @@ const HISTORY_DIR = 'plans'
 const ROUTING = [
   ['What is this, and why would I want it?', 'README.md'],
   ['What does this word mean — lane, path, slice, dependency, finding?', 'CONTEXT.md'],
+  ['What does this panel label actually name in the schema?', 'references/interface-schema-map.md'],
   ['Get it running on my machine', 'SETUP.md'],
   ['I am an agent — which skill do I follow?', 'AGENTS.md'],
   ['Read the whole thing start to finish', 'docs/guide/'],

@@ -334,7 +334,7 @@ function CellPanelEditorForm({
 
       {/* The tl;dr that consolidates what the detailed fields (function,
           form, value proposition) spell out. Label and column are the same
-          word here; CONTEXT.md's interface→schema map says which are not.
+          word here; references/interface-schema-map.md says which are not.
           A leftover of the description→summary rename used to sit here
           saying "Summary", not "Summary" — both halves swept. */}
       <Field label="Summary" hint="The tl;dr — what the detailed fields below add up to.">

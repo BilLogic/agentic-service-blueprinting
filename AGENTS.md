@@ -19,6 +19,9 @@ because they bind before any pointer could fire. Three checks hold that shape:
   schema: `CONTEXT.md`. Definitions only, so it is cheap.
 - **Routing** — `INDEX.md` maps task to document. Generated from the docs' own
   frontmatter, so it states the tree as it is.
+- **Panel labels** — the word a field shows and the column behind it:
+  `references/interface-schema-map.md`. Generated, with a reason on each of the
+  eleven that diverge.
 - **Running it** — the local stack, and the guard set to run before pushing:
   `SETUP.md` § Before you push.
 
