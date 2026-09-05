@@ -16,7 +16,7 @@ import {
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { CanvasAnnotationProvider } from '@/contexts/CanvasAnnotationProvider'
 import { usePublishCanvasZoomChrome } from '@/contexts/CanvasZoomChromeContext'
-import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
+import { useCanvasAnnotationTool } from '@/contexts/canvasAnnotationContext'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { cn } from '@/lib/utils'
 
@@ -72,7 +72,7 @@ function ZoomPanViewportInner({
   onResetView,
   focusCellsKey,
 }: ZoomPanViewportProps) {
-  const { isAnnotating } = useCanvasAnnotations()
+  const { isAnnotating } = useCanvasAnnotationTool()
   const {
     containerRef,
     contentRef,

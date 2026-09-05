@@ -3,7 +3,7 @@ import {
   useBlueprintCellDetailOptional,
   useBlueprintCellPreviewHover,
 } from '@/contexts/BlueprintCellDetailContext'
-import { useCanvasAnnotationsOptional } from '@/contexts/canvasAnnotationContext'
+import { useCanvasAnnotationToolOptional } from '@/contexts/canvasAnnotationContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import {
   clickOpensDetail,
@@ -119,7 +119,7 @@ export function BlueprintCellButton({
   // Optional, not asserted: this button also renders inside the portalled
   // detail drawer, which is outside CanvasAnnotationProvider. The throwing
   // hook there was an app-wide white screen (see canvasAnnotationContext).
-  const annotationTool = useCanvasAnnotationsOptional()?.tool ?? null
+  const annotationTool = useCanvasAnnotationToolOptional()?.tool ?? null
   const pickCellId = resolvedCellId ?? cellId ?? null
   const pickOrder = pick && pickCellId ? pick.orderOf(pickCellId) : undefined
   const isPicked = Boolean(pick && pickCellId && pick.isPicked(pickCellId))

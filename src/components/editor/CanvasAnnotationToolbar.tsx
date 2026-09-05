@@ -19,7 +19,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
+import {
+  useCanvasAnnotations,
+  useCanvasAnnotationTool,
+} from '@/contexts/canvasAnnotationContext'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { AnnotationCaptureMenu } from '@/components/editor/AnnotationCaptureMenu'
 import {
@@ -166,7 +169,7 @@ function DrawSubpanel() {
     setPenColor,
     penStrokeWidth,
     setPenStrokeWidth,
-  } = useCanvasAnnotations()
+  } = useCanvasAnnotationTool()
 
   const penActive = tool === 'pen'
   const penOptionsDisabled = !penActive
@@ -247,8 +250,8 @@ function DrawSubpanel() {
 
 /** Floating tool palette for the annotation layer — tool, stroke weight, colour, clear. */
 export function CanvasAnnotationToolbar() {
-  const { tool, setTool, annotations, clearAnnotations } =
-    useCanvasAnnotations()
+  const { tool, setTool } = useCanvasAnnotationTool()
+  const { annotations, clearAnnotations } = useCanvasAnnotations()
   // The mobile shell is view-only for every tier — Edit is absent there,
   // same treatment as a session that cannot write.
   const mobileShell = useMobileShell()

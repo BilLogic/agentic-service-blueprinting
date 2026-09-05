@@ -14,9 +14,16 @@ import {
   ANNOTATION_INK,
   ANNOTATION_AGENT_INK,
 } from '@/lib/canvasAnnotations'
-import { CanvasAnnotationContext } from '@/contexts/canvasAnnotationContext'
-import { registerAgentAnnotator } from '@/lib/agent/uiBridge'
+import {
+  CanvasAnnotationContext,
+  CanvasAnnotationToolContext,
+} from '@/contexts/canvasAnnotationContext'
+import {
+  registerAgentAnnotator,
+  registerAgentUiContext,
+} from '@/lib/agent/uiBridge'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
+import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 
 type CanvasAnnotationProviderProps = {
   children: ReactNode
@@ -25,6 +32,7 @@ type CanvasAnnotationProviderProps = {
 export function CanvasAnnotationProvider({
   children,
 }: CanvasAnnotationProviderProps) {
+  const mode = useCanvasModeValue()
   const [tool, setTool] = useState<CanvasAnnotationTool>('select')
   const [penColor, setPenColor] = useState(ANNOTATION_INK)
   const [penStrokeWidth, setPenStrokeWidth] = useState(
@@ -66,17 +74,17 @@ export function CanvasAnnotationProvider({
   }, [])
 
   // The agent's marker pen: boxes around cells (+ an optional text note),
-  // in the same scratch lane, same data shape, same ephemerality as human
+  // in the same scratch layer, same data shape, same ephemerality as human
   // marks. Coordinates un-project the camera exactly like clientToLocal.
   useEffect(
     () =>
       registerAgentAnnotator((cellIds, note) => {
-        const lane = document.querySelector<HTMLElement>(
+        const layer = document.querySelector<HTMLElement>(
           '[data-canvas-annotation-layer]',
         )
-        if (!lane) return 'No annotatable canvas is open right now.'
-        const laneRect = lane.getBoundingClientRect()
-        const scale = laneRect.width / Math.max(lane.offsetWidth, 1)
+        if (!layer) return 'No annotatable canvas is open right now.'
+        const layerRect = layer.getBoundingClientRect()
+        const scale = layerRect.width / Math.max(layer.offsetWidth, 1)
         let drawn = 0
         let anchor: { x: number; y: number } | null = null
         for (const cellId of cellIds) {
@@ -85,8 +93,8 @@ export function CanvasAnnotationProvider({
           )
           if (!el) continue
           const rect = el.getBoundingClientRect()
-          const x = (rect.left - laneRect.left) / scale - 4
-          const y = (rect.top - laneRect.top) / scale - 4
+          const x = (rect.left - layerRect.left) / scale - 4
+          const y = (rect.top - layerRect.top) / scale - 4
           setAnnotations((current) => [
             ...current,
             {
@@ -127,20 +135,57 @@ export function CanvasAnnotationProvider({
     [],
   )
 
-  useEffect(
-    () =>
+  useEffect(() => {
+    const tools: CanvasAnnotationTool[] = [
+      'select',
+      'hand',
+      'pen',
+      'rect',
+      'ellipse',
+      'text',
+      'sticky',
+      'eraser',
+    ]
+    const unregister = [
       registerAgentUiCommand({
         name: 'clear_annotations',
-        summary: 'Erase every annotation mark from the canvas scratch lane.',
+        summary: 'Erase every annotation mark from the canvas scratch layer.',
         run: () => {
           clearAnnotations()
           return 'Annotations cleared.'
         },
       }),
-    [clearAnnotations],
+      registerAgentUiCommand({
+        name: 'set_canvas_tool',
+        summary:
+          'Choose the active canvas tool. arg: select | hand | pen | rect | ellipse | text | sticky | eraser',
+        run: (arg) => {
+          if (!tools.includes(arg as CanvasAnnotationTool))
+            return `Canvas tool unchanged. Choose one of: ${tools.join(', ')}.`
+          setTool(arg as CanvasAnnotationTool)
+          return `Canvas tool is now ${arg}.`
+        },
+      }),
+    ]
+    return () => unregister.forEach((remove) => remove())
+  }, [clearAnnotations])
+
+  useEffect(
+    () =>
+      registerAgentUiContext(
+        'canvas-tool',
+        () =>
+          `Canvas interaction: ${mode} mode, ${tool} tool, ${annotations.length} annotation(s).`,
+      ),
+    [annotations.length, mode, tool],
   )
 
-  const value = useMemo(
+  /**
+   * Two values, deliberately. The tool half is memoized on the tool fields
+   * alone, so a mark added or dragged cannot change its identity — which is
+   * what keeps a drag off the board's cells. See `canvasAnnotationContext`.
+   */
+  const toolValue = useMemo(
     () => ({
       tool,
       setTool,
@@ -148,6 +193,16 @@ export function CanvasAnnotationProvider({
       setPenColor,
       penStrokeWidth,
       setPenStrokeWidth,
+      // The hand is a *navigation* tool, not an annotation tool — counting
+      // it here disabled the viewport's drag-pan the moment the hand was
+      // picked, which is the exact gesture the hand exists to provide.
+      isAnnotating: tool !== 'select' && tool !== 'hand',
+    }),
+    [tool, penColor, penStrokeWidth],
+  )
+
+  const value = useMemo(
+    () => ({
       annotations,
       addAnnotation,
       updateAnnotation,
@@ -156,15 +211,8 @@ export function CanvasAnnotationProvider({
       clearAnnotations,
       selectedId,
       setSelectedId,
-      // The hand is a *navigation* tool, not an annotation tool — counting
-      // it here disabled the viewport's drag-pan the moment the hand was
-      // picked, which is the exact gesture the hand exists to provide.
-      isAnnotating: tool !== 'select' && tool !== 'hand',
     }),
     [
-      tool,
-      penColor,
-      penStrokeWidth,
       annotations,
       addAnnotation,
       updateAnnotation,
@@ -176,8 +224,10 @@ export function CanvasAnnotationProvider({
   )
 
   return (
-    <CanvasAnnotationContext.Provider value={value}>
-      {children}
-    </CanvasAnnotationContext.Provider>
+    <CanvasAnnotationToolContext.Provider value={toolValue}>
+      <CanvasAnnotationContext.Provider value={value}>
+        {children}
+      </CanvasAnnotationContext.Provider>
+    </CanvasAnnotationToolContext.Provider>
   )
 }
