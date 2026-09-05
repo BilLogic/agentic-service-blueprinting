@@ -1,3 +1,7 @@
+import {
+  asEntityStatus,
+  DEFAULT_ENTITY_STATUS,
+} from '@/lib/entityStatus'
 import type {
   BlueprintCell,
   BlueprintCellTrigger,
@@ -33,6 +37,8 @@ export type RawCell = {
   content: string
   frame?: string | null
   summary?: string | null
+  /** The `entity_status` column, as text; anything unknown reads as absent. */
+  status?: string | null
   /** `resources` rows embedded by the board query. */
   resources?: RawCellResource[] | null
   /** `cell_touchpoints` rows embedded by the board query. */
@@ -61,6 +67,8 @@ export type RawPath = {
   summary?: string | null
   note?: string | null
   kind: PathKind
+  /** The `entity_status` column, as text; anything unknown reads as `live`. */
+  status?: string | null
   lanes?: RawLane[] | null
   /** @deprecated Legacy shape; use path_steps */
   steps?: BlueprintStep[] | null
@@ -222,6 +230,10 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     content: cell.content,
     frame: cell.frame ?? null,
     summary: cell.summary ?? null,
+    // Narrowed rather than passed through: the column is a plain text with a
+    // check constraint, so a value the renderer has no treatment for should
+    // read as shipped rather than as an unrecognised marker.
+    status: asEntityStatus(cell.status),
     resources: cellResourcesFromRows(cell.resources),
     touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),
   }))
@@ -242,6 +254,7 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
       summary: raw.summary ?? null,
       note: raw.note ?? null,
       kind: raw.kind,
+      status: asEntityStatus(raw.status) ?? DEFAULT_ENTITY_STATUS,
     },
     lanes,
     steps,
