@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.3.0
+
+### Minor Changes
+
+- d772ff3: The agent drives the camera, and a focus is verified before it is reported.
+
+  A `canvas_camera` UI command (pan, zoom, fit, cancel) and an active-canvas
+  focus registry give the agent the same camera a person has. `focus_cell`,
+  `open_phase`, `open_scenario` and `open_cell_panel` now wait for the move
+  they started — bounded, and read from the camera's own state line — and
+  report a timeout, a miss or a superseded fly as exactly that, never as a
+  landing.
+
+- 9c2970c: The annotation state is two contexts.
+
+  One context value carried both the marks and the tool. The marks change on
+  every pointer sample of a drag; the tool changes when somebody clicks the
+  toolbar. A context consumer re-renders whenever the value's identity
+  changes, whichever field it reads, so dragging one sticky note re-rendered
+  every cell on the board. The tool, the pen settings and the `isAnnotating`
+  verdict now travel in `CanvasAnnotationToolContext`, read through
+  `useCanvasAnnotationTool` and its optional variant; the marks and their
+  mutators stay in `CanvasAnnotationContext`. The cells, the marquee, the pen
+  cursor and the viewport read only the slow half, and a subscription test
+  counts renders to prove a drag cannot reach them. The agent gains a
+  `set_canvas_tool` command and a `canvas-tool` line in its UI context.
+
 ## 1.2.0
 
 ### Minor Changes
