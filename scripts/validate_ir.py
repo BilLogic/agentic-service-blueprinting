@@ -641,7 +641,7 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
             continue
         # Uniqueness is (source, target, kind), matching the database's
         # cell_dependencies_source_target_kind_unique: one pair may carry an
-        # arrow AND a needs edge, and those are two rows, not a duplicate.
+        # arrow AND an `enables` edge, and those are two rows, not a duplicate.
         if (source, target, kind) in trigger_pairs:
             rep.error(
                 tjp,

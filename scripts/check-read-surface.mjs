@@ -40,9 +40,13 @@ const SPECS = 'src/lib/agent/tools/specs.ts'
  * Backticked snake_case tokens in the adapter that are NOT tool names.
  *
  * `position` is a column (the canvas dialect's cell slots); `whatif` is a
- * skill. Anything else the document spells this way is claimed to be a tool.
+ * skill; `leads_to` is a `cell_dependencies.kind` value, and it is spelled
+ * here rather than left bare because `scripts/check-dependency-kinds.mjs`
+ * holds the retired kinds to their code-span form and the live ones should
+ * read the same way. Anything else the document spells this way is claimed to
+ * be a tool.
  */
-const NOT_TOOLS = new Set(['position', 'whatif'])
+const NOT_TOOLS = new Set(['position', 'whatif', 'leads_to'])
 
 /** The tool names in `READ_TOOL_NAMES`. */
 export function declaredReadTools(source) {

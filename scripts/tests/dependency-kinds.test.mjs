@@ -8,6 +8,8 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import {
+  allowedBare,
+  bareMentions,
   compare,
   differences,
   documentedKinds,
@@ -18,7 +20,12 @@ import {
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 test('this tree documents the kind vocabulary its constraint enforces', () => {
-  assert.deepEqual(compare(ROOT), { undocumented: [], unknown: [], retired: [] })
+  assert.deepEqual(compare(ROOT), {
+    undocumented: [],
+    unknown: [],
+    retired: [],
+    bare: [],
+  })
 })
 
 test('the enforced values come out of the CHECK constraint', () => {
@@ -91,4 +98,80 @@ test('the database trigger these documents discuss is not a retired kind', () =>
   // word — narrowing the subject rather than dropping `trigger` from the list.
   const prose = 'The DB trigger cells_validate_path_match enforces, on insert:\n'
   assert.deepEqual(retiredMentions(['references/data-model.md'], () => prose), [])
+})
+
+// The defect #157 was filed for. `references/canvas-adapter.md` said
+// "trigger-vs-needs semantics" and `evals/behavioral/evals.json` said "Walks
+// trigger/needs edges" for a release after 21000114000000, and the code-span
+// assertion above could not see either — neither wears backticks.
+test('a retired kind spelled as a bare word is a finding', () => {
+  const eval_set = 'evals/behavioral/evals.json'
+  const read = () => '"Walks trigger/needs edges downstream (visited set)",\n'
+  assert.deepEqual(bareMentions([eval_set], read), [
+    {
+      file: eval_set,
+      line: 1,
+      found: 'trigger/needs',
+      instead: '`leads_to`/`enables`',
+    },
+  ])
+})
+
+test('the same line spelled in the live kinds passes', () => {
+  const read = () => '"Walks leads_to/enables edges downstream (visited set)",\n'
+  assert.deepEqual(bareMentions(['evals/behavioral/evals.json'], read), [])
+})
+
+test('the bare sweep reads the phrases, in and out of backticks', () => {
+  // Half the escapees quoted one word of the phrase and not the other, which
+  // is why the backticks in these patterns are optional rather than absent.
+  const lines = [
+    'Per-tool write rules (content required, trigger-vs-needs semantics,',
+    'and so is a `needs` edge either way — the canvas draws no arrow',
+    'the tracer walks trigger edges downstream',
+  ].join('\n')
+  assert.deepEqual(
+    bareMentions(['references/canvas-adapter.md'], () => lines).map((hit) => hit.found),
+    ['trigger-vs-needs', 'needs edge', 'trigger edge'],
+  )
+})
+
+test('a line matching two patterns is one finding, not two', () => {
+  // "trigger/needs edges" is both `trigger/needs` and `needs edge`. It is one
+  // mistake, and reporting it twice makes a two-line failure read as four
+  // documents.
+  const hits = bareMentions(['x.md'], () => 'Walks trigger/needs edges\n')
+  assert.equal(hits.length, 1)
+})
+
+test('the database trigger is out of reach of the phrases, not exempted', () => {
+  // `references/data-model.md` has a whole section on the integrity trigger
+  // `cells_validate_path_match`. No allowlist entry covers it — the patterns
+  // simply cannot reach a sentence about it, which is the whole reason they
+  // are phrases and not words.
+  const prose = [
+    'The DB trigger `cells_validate_path_match` enforces, on every cell insert:',
+    'a slice needs a cell that does not exist',
+    'Re-generations do not re-trigger the gate unless',
+  ].join('\n')
+  assert.deepEqual(bareMentions(['references/data-model.md'], () => prose), [])
+  assert.equal(allowedBare('references/data-model.md', prose), false)
+})
+
+test('a sentence about the retirement may spell the retired pair', () => {
+  // CONTEXT.md's glossary note and ir-schema.json's `kind` description both
+  // say which pair 21000114000000 withdrew. A check that flagged them would
+  // be asking the vocabulary not to explain itself.
+  const note = 'the retired `needs` edge pointed the other way, so 21000114 turned it'
+  assert.equal(allowedBare('references/ir-schema.json', note), true)
+  assert.deepEqual(bareMentions(['references/ir-schema.json'], () => `${note}\n`), [])
+})
+
+test("a user's own words in a skill-firing eval are not doctrine", () => {
+  // `evals/trigger/` holds the query a USER types, verbatim, decoys included.
+  // Holding those phrasings to the schema vocabulary would make the decoys
+  // less realistic, which is the one thing that set is for.
+  const query = '{"query": "walk the trigger/needs edges", "should_trigger": false},'
+  assert.equal(allowedBare('evals/trigger/map.json', query), true)
+  assert.equal(allowedBare('evals/behavioral/evals.json', query), false)
 })
