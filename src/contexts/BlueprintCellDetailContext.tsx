@@ -149,8 +149,15 @@ export function BlueprintCellDetailProvider({
   // drawer closes this one. Render-phase guarded set, same idiom as above —
   // and the panel state alone, because the claim has already moved and
   // releasing here would close the panel that just opened.
+  //
+  // `=== 'entity'`, not `!== 'cell'`: nobody owning the drawer is the
+  // ordinary state after a close, and several openers set the panel without
+  // claiming — the agent's `differences_open`, `setPanelSurface` — so a guard
+  // on "not mine" nulled those on the very next render while the agent
+  // reported the ledger open. Only another panel taking the drawer is a
+  // reason to leave it.
   const panelOwner = useSyncExternalStore(subscribePanelOwner, getPanelOwner)
-  if (panelOwner !== 'cell' && panelState !== null) {
+  if (panelOwner === 'entity' && panelState !== null) {
     setPanelState(null)
     setSelection(null)
     setDraftCell(null)
