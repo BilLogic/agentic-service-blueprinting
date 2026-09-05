@@ -248,7 +248,7 @@ function DrawSubpanel() {
   )
 }
 
-/** Floating tool palette for the annotation layer — tool, stroke weight, colour, clear. */
+/** Floating tool palette for the annotation lane — tool, stroke weight, colour, clear. */
 export function CanvasAnnotationToolbar() {
   const { tool, setTool } = useCanvasAnnotationTool()
   const { annotations, clearAnnotations } = useCanvasAnnotations()
@@ -409,7 +409,7 @@ export function CanvasAnnotationToolbar() {
  * question a reader has is "which one am I in", which a single button can only
  * answer by naming the other one.
  *
- * Icons only, and the active half carries a filled pill rather than a shade of
+ * Icons only, and the active half carries a solid fill rather than a shade of
  * grey — at the far end of the bar this is the control that has to read
  * without being looked for. The words moved into tooltips on a delay: two
  * always-on labels cost more width than the whole tool run beside them, and an
