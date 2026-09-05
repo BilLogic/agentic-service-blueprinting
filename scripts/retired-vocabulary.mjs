@@ -93,6 +93,20 @@
  * `finding` is the same case: the bare word is the live domain term, defined
  * in `CONTEXT.md`. What `21000116000000` retired is the bare TABLE name, which
  * never said whose findings these were.
+
+ * **`slice_items` enforces nothing YET, and that is a finding rather than a
+ * judgement.** The table became `slides` in `21000115000000`, which moved every
+ * dependent name it could see — the four constraints, the two indexes, the
+ * trigger, the four policies — and missed the one a catalogue sweep would have
+ * named: `slices_referencing`'s body is `language sql`, so the text it was
+ * created with survived the rename and still selects `from public.slice_items`.
+ * Calling it raises `42P01`, which takes `deletion_impact` and every delete RPC
+ * that reads it down with it. `scripts/agent-harness/run.mjs` asks PostgREST for
+ * the same relation as an embed. Keying `slice_item` today would therefore fail
+ * `scripts/tests/portable-schema.test.mjs` on that body — correctly, because the
+ * rename is unfinished. Finishing it is a migration of its own; this row is here
+ * so the rename is written down while that is true, and the fragment goes in the
+ * `retired` list with it.
  *
  * **One rename in this vocabulary is not in the table**, because it never was an
  * identifier and because it ended in no word at all. `evidence`, `findings`,
@@ -260,6 +274,23 @@ export const RENAME_MAP = Object.freeze(
       migrations: ['21000115000000'],
       retired: ['picture'],
       copy: ['picture', 'pictures'],
+    },
+    {
+      // The other half of `21000115000000`, and the half that had no row at
+      // all. A slide is one screen of a slice; `slice_items` named the row and
+      // let the schema's own prose call it a frame, which is the word for one
+      // image on one cell. `caption` became `title` under the same rule as the
+      // renames below it: a title is authored content, not structure.
+      //
+      // ENFORCES NOTHING YET — see the header. One function body still selects
+      // from the retired table, so the fragment would fail the dump sweep on a
+      // defect rather than on residue. It belongs in `retired` the moment the
+      // migration that finishes the rename lands.
+      was: ['slice_items', 'slice_items.caption'],
+      is: ['slides', 'slides.title'],
+      migrations: ['21000115000000'],
+      retired: [],
+      copy: [],
     },
     {
       was: ["scenarios.layout = 'side-by-side'", "scenarios.layout = 'integrated'"],

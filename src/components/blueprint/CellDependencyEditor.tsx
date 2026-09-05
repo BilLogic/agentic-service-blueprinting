@@ -25,7 +25,7 @@ export type ExistingDependency = {
   targetCellId: string
   targetLabel: string
   kind: string
-  label: string | null
+  name: string | null
 }
 
 /**
@@ -56,7 +56,7 @@ export function CellDependencyEditor({
     sourceCellId: source.cellId,
     targetCellId: null,
     kind: 'leads_to',
-    label: '',
+    name: '',
     note: '',
   })
   const [busy, setBusy] = useState(false)
@@ -81,11 +81,11 @@ export function CellDependencyEditor({
         sourceCellId: draft.sourceCellId,
         targetCellId: draft.targetCellId,
         kind: draft.kind,
-        label: draft.label,
+        name: draft.name,
         note: draft.note,
       })
       refresh()
-      setDraft((current) => ({ ...current, targetCellId: null, label: '' }))
+      setDraft((current) => ({ ...current, targetCellId: null, name: '' }))
     } catch (addError) {
       setError(addError instanceof Error ? addError.message : String(addError))
     } finally {
@@ -182,11 +182,11 @@ export function CellDependencyEditor({
       </select>
 
       <Input
-        value={draft.label}
-        placeholder="Label (optional)"
+        value={draft.name}
+        placeholder="Name (optional)"
         className="h-7 text-xs"
         onChange={(event) =>
-          setDraft((current) => ({ ...current, label: event.target.value }))
+          setDraft((current) => ({ ...current, name: event.target.value }))
         }
       />
 

@@ -413,7 +413,11 @@ export async function dispatchTool(
           sourceCellId: need(args, 'source_cell_id'),
           targetCellId: need(args, 'target_cell_id'),
           kind,
-          label: s(args, 'label') ?? null,
+          // The tool says `label` and the column says `name`. The word a model
+          // is asked for is not the schema's — renaming it would move a
+          // published surface for a spelling — so the mapping happens here,
+          // which is where every other tool-to-column difference does.
+          name: s(args, 'label') ?? null,
         })
         return `Dependency set (${id}).`
       }

@@ -37,6 +37,7 @@
     "generate:portable-core": "node scripts/generate-portable-core.mjs",
     "generate:portable-schema": "node scripts/generate-portable-schema.mjs",
     "check:write-surface": "node scripts/check-write-surface.mjs",
+    "check:rpc-arguments": "node scripts/check-rpc-arguments.mjs",
     "check:standalone": "node scripts/check-standalone.mjs",
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "docs:index": "node scripts/generate-docs-index.mjs",
