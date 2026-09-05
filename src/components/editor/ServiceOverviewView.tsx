@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
+import { EntityDetailPanel } from '@/components/blueprint/EntityDetailPanel'
 import { PhaseScenarioOverview } from '@/components/blueprint/PhaseScenarioOverview'
 import { CanvasPhaseSection } from '@/components/editor/CanvasPhaseSection'
 import { OverviewPhaseRowDivider } from '@/components/editor/OverviewPhaseRowDivider'
@@ -29,6 +30,7 @@ import {
   useBlueprintCellDetail,
 } from '@/contexts/BlueprintCellDetailContext'
 import { CanvasZoomChromeProvider } from '@/contexts/CanvasZoomChromeContext'
+import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
 import {
   CANVAS_REVEAL_ARROWS,
   CANVAS_REVEAL_CELLS,
@@ -771,6 +773,16 @@ function ServiceOverviewViewImpl({
 
   return (
     <CanvasZoomChromeProvider>
+      {/*
+        Outside the cell panel's provider so an entity affordance anywhere on
+        the canvas can reach it. Ungated on purpose: the SERVICE, PHASE and
+        SCENARIO titles are what the overview offers, and they are the whole
+        point of that view. The two AXIS headers inside a board — lane and
+        step — gate themselves instead, on `cellDetailEnabled` as well as on
+        their own board, because the flag alone is one boolean for the whole
+        canvas.
+      */}
+      <EntityDetailProvider resetKey={cellDetailResetKey}>
       <BlueprintCellDetailProvider
         resetKey={cellDetailResetKey}
         enabled={cellDetailEnabled}
@@ -1123,9 +1135,11 @@ function ServiceOverviewViewImpl({
               </div>
             ) : null}
             {cellDetailEnabled ? <BlueprintCellDetailPanel /> : null}
+            <EntityDetailPanel />
           </div>
         </div>
       </BlueprintCellDetailProvider>
+      </EntityDetailProvider>
     </CanvasZoomChromeProvider>
   )
 }

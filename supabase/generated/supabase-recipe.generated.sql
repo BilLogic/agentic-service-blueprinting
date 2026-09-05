@@ -1030,3 +1030,23 @@ begin
   end loop;
 end
 $recipe_proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000127000000_a_phase_may_say_what_it_is.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+grant update (summary) on public.phases to authenticated;
+
+do $recipe_proof$
+begin
+  if not has_column_privilege('authenticated', 'public.phases', 'summary', 'UPDATE') then
+    raise exception 'proof: authenticated cannot UPDATE public.phases.summary; the grant did not take';
+  end if;
+  -- The two the panel already wrote, still there: this file widens, it does
+  -- not re-posture.
+  if not has_column_privilege('authenticated', 'public.phases', 'business_impact', 'UPDATE')
+     or not has_column_privilege('authenticated', 'public.phases', 'operational_requirements', 'UPDATE') then
+    raise exception 'proof: the phase panel''s existing columns lost their grant';
+  end if;
+end
+$recipe_proof$;

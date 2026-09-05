@@ -63,6 +63,16 @@ export type WriteFn =
   | 'remove_placement'
   | 'restore_placement'
   | 'update_cell_spec'
+  | 'update_lane_spec'
+  | 'update_phase_spec'
+  | 'update_scenario_spec'
+  | 'update_service_summary'
+  | 'update_business_model'
+  | 'update_service_entity_examples'
+  | 'update_path_spec'
+  | 'update_step_spec'
+  | 'create_stakeholder'
+  | 'update_stakeholder'
   | 'add_evidence'
   | 'delete_evidence'
   | 'set_cell_dependency'
@@ -277,6 +287,16 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
   remove_placement: (entry) => `Removed “${String(entry.args.name ?? '')}” from a cell`,
   restore_placement: () => 'Put a placement back on its cell',
   update_cell_spec: () => 'Specified function & form',
+  update_lane_spec: () => 'Edited a lane’s actor, owner, KPIs & tools',
+  update_phase_spec: () => 'Edited a phase’s summary, impact & requirements',
+  update_scenario_spec: () => 'Edited a scenario’s summary',
+  update_service_summary: () => 'Edited the service’s summary',
+  update_business_model: () => 'Edited the business model',
+  update_service_entity_examples: () => 'Edited the entity examples',
+  update_path_spec: () => 'Edited a path’s summary & note',
+  update_step_spec: () => 'Edited a step’s summary',
+  create_stakeholder: (entry) => `Added stakeholder${named(entry)}`,
+  update_stakeholder: (entry) => `Edited stakeholder${named(entry)}`,
   add_evidence: (entry) =>
     titled(entry) ? `Added evidence “${titled(entry)}”` : 'Added an evidence source',
   delete_evidence: (entry) =>

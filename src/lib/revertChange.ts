@@ -14,6 +14,26 @@ import {
   type PlacementResourceRowInput,
 } from '@/lib/placementResourceMutations'
 import { updateCellSpec, type CellSpecUpdate } from '@/lib/cellSpecMutations'
+import { updateLaneSpec, type LaneSpecUpdate } from '@/lib/laneSpecMutations'
+import { updatePhaseSpec, type PhaseSpecUpdate } from '@/lib/phaseSpecMutations'
+import {
+  updatePathSpec,
+  updateScenarioSummary,
+  type PathSpecUpdate,
+} from '@/lib/scenarioSpecMutations'
+import {
+  updateBusinessModel,
+  updateServiceEntityExamples,
+  updateServiceSummary,
+  type BusinessModelUpdate,
+  type EntityExamplesUpdate,
+} from '@/lib/serviceSpecMutations'
+import { updateStepSummary } from '@/lib/stepSpecMutations'
+import {
+  deleteStakeholder,
+  updateStakeholder,
+  type StakeholderInput,
+} from '@/lib/stakeholderMutations'
 import { deleteEvidence, restoreEvidenceRow } from '@/lib/evidenceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { Database } from '@/types/database'
@@ -79,6 +99,112 @@ export async function executeRevert(
       const cellId = stringArg(revert.args, 'cell_id')
       const update = revert.args.update as CellSpecUpdate
       await updateCellSpec(client, cellId, update, undefined, { record: false })
+      return
+    }
+    case 'update_lane_spec': {
+      // Self-inverse, like update_cell_spec: the captured payload IS an
+      // update. The lane ids are captured too — the fan-out has to land on
+      // exactly the rows the save touched, not on whatever carries that label
+      // now.
+      const laneIds = revert.args.lane_ids
+      if (!Array.isArray(laneIds) || laneIds.length === 0) {
+        throw new Error("This change's revert is missing its lane ids.")
+      }
+      const update = revert.args.update as LaneSpecUpdate
+      await updateLaneSpec(client, laneIds as string[], update, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_phase_spec': {
+      // Self-inverse, like update_cell_spec.
+      const phaseId = stringArg(revert.args, 'phase_id')
+      const update = revert.args.update as PhaseSpecUpdate
+      await updatePhaseSpec(client, phaseId, update, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_scenario_spec': {
+      const scenarioId = stringArg(revert.args, 'scenario_id')
+      // One column, and the captured value may legitimately be an empty
+      // string — "it had no summary before" is a state worth restoring, so
+      // this reads the arg directly rather than through `stringArg`, which
+      // refuses empties.
+      const summary = revert.args.summary
+      if (typeof summary !== 'string') {
+        throw new Error("This change's revert is missing its summary.")
+      }
+      await updateScenarioSummary(client, scenarioId, summary, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_path_spec': {
+      const pathId = stringArg(revert.args, 'path_id')
+      const update = revert.args.update as PathSpecUpdate
+      await updatePathSpec(client, pathId, update, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_step_spec': {
+      const stepId = stringArg(revert.args, 'step_id')
+      // Empty is a real prior value — a step that had no summary is a state
+      // worth restoring — so this reads the arg directly rather than through
+      // `stringArg`, which refuses empties.
+      const summary = revert.args.summary
+      if (typeof summary !== 'string') {
+        throw new Error("This change's revert is missing its summary.")
+      }
+      await updateStepSummary(client, stepId, summary, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_service_summary': {
+      // Self-inverse, like update_cell_spec. Both service writes are direct
+      // table updates, not RPCs — without these two cases they fall to the
+      // default branch below and call a Postgres function that has never
+      // existed, so every service edit would record an undo that could only
+      // 404. `revertCoverageContract` is the guard that says so.
+      const serviceId = stringArg(revert.args, 'service_id')
+      const summary = stringArg(revert.args, 'summary')
+      await updateServiceSummary(client, serviceId, summary, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_business_model': {
+      const serviceId = stringArg(revert.args, 'service_id')
+      const update = revert.args.update as BusinessModelUpdate
+      await updateBusinessModel(client, serviceId, update, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'update_service_entity_examples': {
+      // Self-inverse, exactly like update_service_summary above: a direct
+      // `services` update, so the previous map is handed straight back rather
+      // than dispatched to an RPC that does not exist.
+      const serviceId = stringArg(revert.args, 'service_id')
+      const update = revert.args.update as EntityExamplesUpdate
+      await updateServiceEntityExamples(client, serviceId, update, undefined, {
+        record: false,
+      })
+      return
+    }
+    case 'delete_stakeholder': {
+      // Undo of "added someone to the cast".
+      await deleteStakeholder(client, stringArg(revert.args, 'stakeholder_id'))
+      return
+    }
+    case 'update_stakeholder': {
+      const stakeholderId = stringArg(revert.args, 'stakeholder_id')
+      const update = revert.args.update as StakeholderInput
+      await updateStakeholder(client, stakeholderId, update, undefined, {
+        record: false,
+      })
       return
     }
     case 'update_cell_resources': {
