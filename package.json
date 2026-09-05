@@ -44,6 +44,7 @@
     "check:read-surface": "node scripts/check-read-surface.mjs",
     "check:dependency-kinds": "node scripts/check-dependency-kinds.mjs",
     "check:doc-paths": "node scripts/check-doc-paths.mjs",
+    "check:reference-paths": "node scripts/check-reference-paths.mjs",
     "check:seed-load": "node scripts/check-seed-loads.mjs"
   },
   "dependencies": {

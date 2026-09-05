@@ -31,7 +31,10 @@ Rules that hold for every skill:
 - SKILL.md is the contract. Its ⚠ hard rules are not advisory; entry-state
   detection runs FIRST, always.
 - `references/`, `agents/`, `scripts/` paths in the skills resolve against
-  this repo root (or the workspace clone's own copies).
+  this repo root (or the workspace clone's own copies). Those paths are a
+  published interface — a deployment imports them by fixed path from a pinned
+  tag, so moving one is a version bump plus a matching consumer change:
+  [docs/adr/0004-reference-paths-are-a-published-interface.md](./docs/adr/0004-reference-paths-are-a-published-interface.md).
 - Sub-agent dispatch (auditor, impact-tracer, document-reader,
   blueprint-reviewer, render-checker): if your runtime has no sub-agent
   primitive, run the agent's `agents/<name>.md` prompt in a fresh context

@@ -83,6 +83,13 @@ jobs:
       # hands the agent a dead end mid-run.
       - run: npm run check:doc-paths
 
+      # The same assertion pointed outward: every path a DEPLOYMENT imports
+      # from this repo by fixed name still exists here. Those paths are a
+      # published interface (docs/adr/0004-reference-paths-are-a-published-
+      # interface.md), so a move fails this build rather than the consumer's,
+      # one pinned tag later.
+      - run: npm run check:reference-paths
+
       # Same reasoning, pointed at the database vocabulary instead of the file
       # tree: a relation named in a string literal is a path the type checker
       # cannot see, so a rename that TypeScript accepted still reaches Postgres
