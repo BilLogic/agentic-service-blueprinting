@@ -1,5 +1,139 @@
 # Changelog
 
+## 1.6.0
+
+### Minor Changes
+
+- 34513c7: A service has a slug, and the agent has a scope module to read by it.
+
+  ADR 3 says a deployment may hold more than one service: the journey is a hard
+  per-service boundary, the catalog is the deployment's. The schema had the
+  boundary and nothing to name a side of it — no way for a URL, or an agent read,
+  to say _which_ service. Two halves land here, and the read tools that will use
+  them do not.
+
+  **`services.slug`** (`21000130000000_a_service_has_a_slug`). A short, stable,
+  URL-safe identity of its own, `unique (slug)` across the deployment. Derived
+  from the name at read time would need no column and is the version worth
+  arguing against: it moves a service's URL every time somebody edits the name,
+  and it has nothing to say when two names slugify alike. The column fixes both.
+  It lands nullable, is backfilled through `public.key_slug` — the database's own
+  slugifier, the one `src/lib/serviceSlug.ts` documents itself as mirroring — and
+  takes the unique constraint only once it is populated. It STAYS nullable: the
+  reader keeps a name-derived fallback for a null, which is only meaningful if
+  null is reachable. No `grant update (slug)`, because nothing writes it yet; the
+  edit panel adds the grant and the policy together, the way the examples panel
+  did in `21000123000000` / `21000128000000`.
+
+  **The scope module.** `serviceSlug.ts` reads the column with that fallback,
+  `contexts/activeServiceStore.ts` (over `lib/serviceRoute.ts`) holds which slug
+  the app is looking at as a module-level fact — non-React fetchers resolve the
+  active service, which is the condition that rules context out — and
+  `lib/service.ts` gains `findActiveServiceId`, one shared lookup per slug.
+  `agent/tools/serviceScope.ts` is what a read will take: a `ServiceScope` that
+  is `all` or one named service, resolved from the tool's `service` argument and
+  the creator's default. A deployment with one service always resolves to `all`,
+  so single-service behaviour is byte-for-byte the unscoped read it is today and
+  none of the machinery runs. `serviceStakeholderIds` derives a service's cast by
+  walking phases → scenarios → paths → `lanes.stakeholder_id`, which is ADR 3's
+  implicit membership as a join — there is no `stakeholders.service_id` to filter
+  on, and the test asserts the catalog table is never queried.
+
+  **The creator's default is a setting.** `AgentSettings` gains
+  `serviceScope: 'active' | 'all'`, and `AgentScopeField` puts it beside the
+  provider and model rows. `active` keeps every answer inside the service on
+  screen so a large deployment does not search all of them on every question; a
+  per-call `service` filter overrides either way.
+
+  **The read tools are deliberately untouched.** Rewriting their bodies to take a
+  scope is the next step, and it wants a blueprint search that does not exist here
+  yet; this changeset delivers the module and its tests so that step has something
+  to build on. `touchpoints.service_id`, `touchpoints.stakeholder_id` and the
+  registry hook are out of scope too — the first is an owner call about whether
+  this template's per-service registry becomes the deployment-wide catalog ADR 3
+  gives stakeholders.
+
+  A schema column is a contract addition, so this is a minor. No identifier in
+  `identifiers.json` moves and no path in `check-reference-paths.mjs` does.
+
+- ecfa989: The agent reads the catalogs it could only write into, and every read takes a
+  service scope.
+
+  The deployment's tool roster is this one's plus fourteen. Thirteen of the
+  fourteen need no migration — `lanes`, `cell_dependencies`, `stakeholders`,
+  `evidence`, `business_models` and `agent_sessions` are all in the portable core
+  with the columns these reads select — so the template takes them, under the
+  deployment's exact names, descriptions and argument schemas.
+
+  **Nine reads.** `list_references` (the rulebook vocabulary, live),
+  `list_lanes` (the lane labels actually in use, distinct from the lane-roles
+  doc, which says what the roles MEAN), `list_cell_dependencies` (the read half
+  of `create_cell_dependency` — the agent could write an edge it had no way to
+  read back), `list_stakeholders`, `list_evidence` / `get_evidence`,
+  `get_business_model`, and `list_sessions` / `get_session`. The last two read
+  the session store the switcher reads rather than `agent_sessions`, which is
+  deliberately narrower than RLS permits: the agent sees exactly what the user
+  sees.
+
+  **Four writes.** `create_stakeholder` / `update_stakeholder` and
+  `create_evidence` / `update_evidence`, each dispatching onto the same wrapper
+  the panel calls, so the ledger entry and the captured inverse come free.
+  `updateEvidence` is new — an edit with no inverse would have been the one
+  change in the session log that could not be taken back — and lands with its
+  `WriteFn`, its describe line and its revert case.
+
+  **That gives evidence an owner.** CONTEXT.md's ownership table said
+  **nobody** wrote `evidence`, and that was a fact about the roster rather than a
+  position: the panel was its only writer. `who-writes-what`'s rule 2 — every
+  write tool naming one of these records is assigned an owner — is what forced
+  the answer rather than letting the row go quietly stale. Evidence belongs to
+  **the cell**: the claim the source grounds, and the one thing every evidence
+  row the agent can write names.
+
+  **Scope replaces the cache.** `registry.ts` held one `cachedServiceId`,
+  resolved once and reused for every write. It is gone. Reads take a
+  `ServiceScope` through `resolveServiceScope` — the tool's own `service`
+  argument first, then the creator's `serviceScope` setting, and always `all` on
+  a deployment with one service, so single-service behaviour is byte-for-byte the
+  unscoped read it was. Writes land on `resolveActiveServiceId`, the service on
+  screen. `list_scenarios` and `list_stakeholders` carry the filter: the first by
+  `phases.service_id`, because the journey is the hard per-service boundary; the
+  second by ADR 3's implicit-membership join, because the shared catalog has no
+  `service_id` to filter on. `readScope.test.ts` pins both.
+
+  **The no-database trial keeps its arm.** Every new read answers with a null
+  client. `list_lanes` and `list_cell_dependencies` gained sample readers over
+  the bundled board; `list_references`, `list_sessions` and `get_session` never
+  had a database behind them and serve the same implementation the live app does.
+  `list_stakeholders`, `list_evidence`, `get_evidence` and `get_business_model`
+  are deliberately off the trial roster — the sample is a board, not a
+  deployment, and it carries no cast, no provenance and no business model — so
+  they land on the honest "no database connected" sentence rather than an
+  invented empty one. `sampleTrial.test.ts` now walks every registered data tool
+  through a null client.
+
+  Out of scope, and named so nobody looks for them: `search_blueprint` (needs a
+  `public.search_blueprint` RPC this kit has no migration for), the
+  `list_blueprint` name (this repo keeps `list_scenarios` — it names what it
+  returns), the reference-doc import seam (the deployment's nineteenth doc,
+  `blueprint`, has no file here, so `REFERENCE_NAMES` stays at eighteen) and the
+  localStorage prefix (the template's `sb-` against the deployment's own).
+
+  Thirteen agent tool names are contract identifiers in `identifiers.json`, so
+  this is a minor. No existing identifier moves, and no path in
+  `check-reference-paths.mjs` does.
+
+### Patch Changes
+
+- d5b28b2: The standalone sweep sees what a commit would.
+
+  `npm run check:standalone` read tracked files only, so a changeset written
+  and checked before `git add` passed the script and failed `npm test` the
+  moment it was committed. The subject is now tracked plus untracked files
+  git would not ignore — one function, read by the script and the test alike —
+  with a test that builds a throwaway repository and proves an untracked file
+  is swept and an ignored one is not.
+
 ## 1.5.2
 
 ### Patch Changes
