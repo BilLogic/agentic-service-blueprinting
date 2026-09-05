@@ -245,6 +245,20 @@ jobs:
       - name: The generated seed loads on a fresh core and renders as anon
         run: npm run check:seed-load
 
+      # The one class of defect a dump cannot show and a catalogue sweep only
+      # sees when the word is already retired: a `language sql` body naming a
+      # relation a later rename moved. The body is text, resolved at call time,
+      # so the function exists, dumps cleanly and raises 42P01 on the first
+      # call — which is #171, where every structural delete was broken for four
+      # migrations. The self-test runs first, for the reason the vocabulary
+      # sweep's does: a run where every function answered looks identical to a
+      # run that called none of them.
+      - name: A sql function body that does not resolve fails, then none do
+        run: |
+          set -euo pipefail
+          npm run check:function-bodies -- --self-test
+          npm run check:function-bodies
+
       # The route a real Supabase project takes, in its own database.
       - name: Replay every migration in order, behind the shim
         run: |

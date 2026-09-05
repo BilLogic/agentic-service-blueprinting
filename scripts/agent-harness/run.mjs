@@ -258,13 +258,13 @@ async function realListSlices() {
 
 async function realGetSlice(sliceId) {
   const rows = await rest(
-    `slices?select=id,title,description,kind,actor,origin,slice_items(id,position,caption,narrative,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
+    `slices?select=id,title,summary,kind,actor,authorship,slides(id,position,title,narrative,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
   )
   if (!rows?.[0]) throw new Error('No slice with that id.')
   const slice = rows[0]
-  const frames = [...(slice.slice_items ?? [])]
+  const frames = [...(slice.slides ?? [])]
     .sort((a, b) => a.position - b.position)
-    .map((f, i) => `frame ${i + 1}: cells [${(f.cell_ids ?? []).join(', ')}]${f.caption ? ` caption "${f.caption}"` : ''}`)
+    .map((f, i) => `frame ${i + 1}: cells [${(f.cell_ids ?? []).join(', ')}]${f.title ? ` title "${f.title}"` : ''}`)
   return `slice "${slice.title}" (${slice.id}) type=${slice.kind}\n${frames.join('\n') || '(no frames)'}`
 }
 
