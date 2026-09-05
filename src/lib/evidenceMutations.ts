@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
+import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 
 type Client = SupabaseClient<Database>
 
@@ -75,6 +76,73 @@ export async function addEvidence(
     )
   }
   return data.id
+}
+
+export type EvidenceUpdate = {
+  kind?: EvidenceKind
+  title?: string
+  ref?: string | null
+  excerpt?: string | null
+}
+
+/**
+ * Edit one evidence row, capturing its prior values so the revert can put
+ * them back — the same shape `updateCellSpec` uses, and the reason this
+ * could not simply be a table write: an edit with no inverse would be the
+ * one change in the session log that cannot be taken back.
+ *
+ * Reads before writing so a partial patch keeps the fields it did not name.
+ */
+export async function updateEvidence(
+  client: Client,
+  evidenceId: string,
+  update: EvidenceUpdate,
+  options: { record?: boolean } = {},
+): Promise<void> {
+  const { data: before, error: readError } = await client
+    .from('evidence')
+    .select('id, kind, title, ref, excerpt')
+    .eq('id', evidenceId)
+    .maybeSingle()
+  if (readError) throw toAuthoringError(readError)
+  if (!before) throw new Error(`No evidence with id ${evidenceId}.`)
+
+  const next = {
+    kind: update.kind ?? before.kind,
+    title: update.title?.trim() || before.title,
+    ref: update.ref === undefined ? before.ref : update.ref?.trim() || null,
+    excerpt:
+      update.excerpt === undefined
+        ? before.excerpt
+        : update.excerpt?.trim() || null,
+  }
+
+  const { data, error } = await client
+    .from('evidence')
+    .update(next)
+    .eq('id', evidenceId)
+    .select('id')
+  if (error) throw toAuthoringError(error)
+  requireRowsWritten(data, 'evidence')
+
+  if (options.record !== false) {
+    recordChange(
+      'update_evidence',
+      { evidence_id: evidenceId, title: next.title },
+      {
+        fn: 'update_evidence',
+        args: {
+          evidence_id: evidenceId,
+          update: {
+            kind: before.kind as EvidenceKind,
+            title: before.title,
+            ref: before.ref,
+            excerpt: before.excerpt,
+          },
+        },
+      },
+    )
+  }
 }
 
 /**

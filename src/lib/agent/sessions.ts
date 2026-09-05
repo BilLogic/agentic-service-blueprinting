@@ -48,6 +48,20 @@ function write(next: AgentSession[]) {
   listeners.forEach((listener) => listener())
 }
 
+/**
+ * The session list as it stands, for callers outside React — the agent's
+ * `list_sessions` tool reads THIS rather than querying `agent_sessions`
+ * directly, and that is a scoping decision, not a convenience one. Reading
+ * the store the session switcher reads means the agent sees exactly what the
+ * USER sees, which is narrower than what the row-level gate permits
+ * (localStorage sessions the database never received, and no sessions from
+ * another browser the user has not hydrated). It is also why the tool works
+ * unchanged in the no-database trial: there is no query to fail.
+ */
+export function agentSessionsSnapshot(): AgentSession[] {
+  return snapshot
+}
+
 export function useAgentSessions(): AgentSession[] {
   return useSyncExternalStore(
     (listener) => {

@@ -4,6 +4,8 @@ import {
   sampleGetBlueprint,
   sampleGetCell,
   sampleGetSlice,
+  sampleListCellDependencies,
+  sampleListLanes,
   sampleListOwnerTags,
   sampleListScenarios,
   sampleListSlices,
@@ -13,6 +15,7 @@ import {
   SAMPLE_DEMO_SLICES,
 } from '@/data/sampleBlueprint'
 import {
+  INTERFACE_TOOL_NAMES,
   SAMPLE_TRIAL_TOOL_NAMES,
   TOOL_SPECS,
   WRITE_TOOL_NAMES,
@@ -124,10 +127,81 @@ describe('sample reads resolve from the bundled fallbacks', () => {
   })
 })
 
+describe('the sample answers the catalog reads it can', () => {
+  it('counts the lane vocabulary the sample board actually uses', () => {
+    const labels = new Set(
+      Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)
+        .flat()
+        .flatMap((blueprint) => blueprint.lanes.map((lane) => lane.name)),
+    )
+    expect(labels.size).toBeGreaterThan(0)
+    const text = sampleListLanes()
+    expect(text).not.toBe('No lanes defined yet.')
+    for (const label of labels) expect(text).toContain(label)
+  })
+
+  it('reads the sample arrows, whole and scoped to one cell', () => {
+    const edge = Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)
+      .flat()
+      .flatMap((blueprint) => blueprint.dependencies)[0]
+    expect(edge).toBeTruthy()
+    expect(sampleListCellDependencies()).toContain(edge!.id)
+    const scoped = sampleListCellDependencies(edge!.source_cell_id)
+    expect(scoped).toContain(edge!.target_cell_id)
+    expect(scoped).toContain(`touching ${edge!.source_cell_id}`)
+  })
+
+  it('says there are no links rather than nothing, for a cell with none', () => {
+    expect(sampleListCellDependencies('no-such-cell')).toBe(
+      'No links on cell no-such-cell.',
+    )
+  })
+})
+
 describe('trial dispatch never reaches a database', () => {
   it('answers reads from the sample with a null client', async () => {
     const text = await dispatchTool(null, 'session', 'list_scenarios', {})
     expect(text).toContain(Object.keys(SAMPLE_BLUEPRINTS_BY_SCENARIO)[0]!)
+  })
+
+  /**
+   * EVERY data tool, not just the roster: the trial registers only
+   * SAMPLE_TRIAL_TOOL_NAMES, but a model can still emit a name it invented or
+   * remembered from a database session. None of them may throw, and none may
+   * dereference a client that is null — an unhandled name has to come back as
+   * a sentence saying which environment this is.
+   *
+   * `INTERFACE_TOOL_NAMES` is excluded because those calls reach for a canvas
+   * through `document`, and this suite has no DOM; what they do with a null
+   * client is not a question about the trial's data path.
+   */
+  it('answers every registered data tool with a sentence, never a crash', async () => {
+    const cell = Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)[0]![0]!.cells[0]!
+    const stubs: Record<string, Record<string, unknown>> = {
+      get_reference: { name: 'lane-roles' },
+      get_blueprint: { scenario_id: 'nope' },
+      compare_blueprint: { scenario_id: 'nope' },
+      get_cell: { cell_id: cell.id },
+      get_slice: { slice_id: SAMPLE_DEMO_SLICES[0]!.id },
+      get_session: { session_id: 'nope' },
+      get_evidence: { evidence_ids: ['nope'] },
+      list_cell_dependencies: { cell_id: cell.id },
+      measure_deletion_impact: { kind: 'scenario', target_id: 'nope' },
+      create_cell_dependency: { source_cell_id: 'a', target_cell_id: 'b' },
+    }
+    const dataTools = TOOL_SPECS.filter(
+      (spec) => !INTERFACE_TOOL_NAMES.has(spec.name),
+    )
+    for (const spec of dataTools) {
+      const text = await dispatchTool(
+        null,
+        'session',
+        spec.name,
+        stubs[spec.name] ?? {},
+      )
+      expect(typeof text, spec.name).toBe('string')
+      expect(text.length, spec.name).toBeGreaterThan(0)
+    }
   })
 
   it('refuses an off-roster write in words, not a raw error', async () => {

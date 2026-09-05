@@ -74,6 +74,7 @@ export type WriteFn =
   | 'create_stakeholder'
   | 'update_stakeholder'
   | 'add_evidence'
+  | 'update_evidence'
   | 'delete_evidence'
   | 'set_cell_dependency'
   | 'clear_cell_dependency'
@@ -299,6 +300,10 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
   update_stakeholder: (entry) => `Edited stakeholder${named(entry)}`,
   add_evidence: (entry) =>
     titled(entry) ? `Added evidence “${titled(entry)}”` : 'Added an evidence source',
+  update_evidence: (entry) =>
+    titled(entry)
+      ? `Edited evidence “${titled(entry)}”`
+      : 'Edited an evidence source',
   delete_evidence: (entry) =>
     titled(entry)
       ? `Removed evidence “${titled(entry)}”`

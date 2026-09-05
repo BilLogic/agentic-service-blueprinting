@@ -17,6 +17,15 @@ import {
   replaceSlides,
   updateSliceMeta,
 } from '@/lib/sliceMutations'
+import {
+  createStakeholder,
+  updateStakeholder,
+} from '@/lib/stakeholderMutations'
+import {
+  addEvidence,
+  updateEvidence,
+  type EvidenceKind,
+} from '@/lib/evidenceMutations'
 import type { SliceKind } from '@/lib/sliceValidation'
 import { asUpdatedAtToken } from '@/lib/optimisticConcurrency'
 import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
@@ -50,19 +59,35 @@ import {
 import type { DeletableKind } from '@/lib/deletionSafety'
 import {
   getBlueprint,
+  getBusinessModel,
   getCell,
   getCompareDiff,
   getDeletionImpact,
+  getEvidence,
+  getSession,
+  listCellDependencies,
+  listEvidence,
+  listLanes,
   listOwnerTags,
+  listReferences,
   listScenarios,
+  listSessions,
   listSlices,
+  listStakeholders,
   readReference,
 } from '@/lib/agent/tools/read'
+import {
+  resolveActiveServiceId,
+  resolveServiceScope,
+} from '@/lib/agent/tools/serviceScope'
+import { getAgentServiceScopeMode } from '@/lib/agent/settings'
 import {
   sampleGetBlueprint,
   sampleGetCell,
   sampleGetCompareDiff,
   sampleGetSlice,
+  sampleListCellDependencies,
+  sampleListLanes,
   sampleListOwnerTags,
   sampleListScenarios,
   sampleListSlices,
@@ -74,20 +99,39 @@ type Client = SupabaseClient<Database>
 // Tool specs and rosters live in `specs.ts` (imported directly by their
 // consumers — one canonical path); this module owns only dispatch.
 
-// One service per deployment today; cached after the first ask.
-let cachedServiceId: string | null = null
-async function serviceId(client: Client): Promise<string> {
-  if (cachedServiceId) return cachedServiceId
-  const { data, error } = await client
-    .from('services')
-    .select('id')
-    .limit(1)
-    .maybeSingle()
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error('No service service exists yet.')
-  cachedServiceId = data.id
-  return data.id
-}
+// There is no global single-service cache any more: a deployment can hold more
+// than one service, so a READ scopes to the active service by default and a
+// WRITE lands on it. `serviceScope.ts` owns both resolutions — the read side
+// honours a per-call `service` argument and the creator's `serviceScope`
+// setting, and short-circuits to `all` whenever the deployment has one service,
+// which is byte-for-byte what the cache used to do.
+
+/** Mirrors the DB CHECK constraint so a bad kind fails before the insert. */
+const EVIDENCE_KINDS = new Set<string>([
+  'interview',
+  'survey',
+  'analytics',
+  'doc',
+  'meeting',
+  'decision',
+  'observation',
+  'other',
+])
+
+/**
+ * The kinds the agent may WRITE — the four ACTOR kinds, not the whole CHECK.
+ * `team` is legal in the column and deliberately absent here: a team is an
+ * accountable group, never a party who appears in a lane, and the agent's
+ * stakeholder tools exist to name the cast. An existing team row is still
+ * editable — `update_stakeholder` carries a kind it was not asked to change
+ * straight through rather than validating it.
+ */
+const AGENT_STAKEHOLDER_KINDS = new Set<string>([
+  'recipient',
+  'staff',
+  'partner',
+  'provider',
+])
 
 function s(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key]
@@ -98,6 +142,18 @@ function need(args: Record<string, unknown>, key: string): string {
   const value = s(args, key)
   if (!value) throw new Error(`Missing required argument "${key}".`)
   return value
+}
+
+/**
+ * The scope one read covers: the tool's own `service` argument first, then the
+ * creator's configured default. Resolved per call rather than cached, because
+ * the active service changes as the user navigates.
+ */
+function readScope(client: Client, args: Record<string, unknown>) {
+  return resolveServiceScope(client, {
+    serviceArg: s(args, 'service'),
+    defaultMode: getAgentServiceScopeMode(),
+  })
 }
 
 /**
@@ -114,12 +170,12 @@ export async function dispatchTool(
   // No-database trial: the read tools answer from the bundled sample, and
   // the roster the panel registered contains nothing else. A call from
   // outside it can only be a model inventing a name — say so plainly.
-  if (client === null) return dispatchSampleTool(name, args)
+  if (client === null) return dispatchSampleTool(agentSessionId, name, args)
   switch (name) {
     case 'get_reference':
       return readReference(need(args, 'name'))
     case 'list_scenarios':
-      return listScenarios(client)
+      return listScenarios(client, await readScope(client, args))
     case 'get_blueprint':
       return getBlueprint(client, need(args, 'scenario_id'))
     case 'compare_blueprint': {
@@ -149,6 +205,30 @@ export async function dispatchTool(
       return listSlices(client)
     case 'list_owner_tags':
       return listOwnerTags(client)
+    case 'list_stakeholders':
+      return listStakeholders(client, await readScope(client, args))
+    case 'list_lanes':
+      return listLanes(client)
+    case 'list_references':
+      return listReferences()
+    case 'list_cell_dependencies':
+      return listCellDependencies(client, s(args, 'cell_id'))
+    case 'list_evidence':
+      return listEvidence(client, s(args, 'cell_id'))
+    case 'get_evidence': {
+      const ids = Array.isArray(args.evidence_ids)
+        ? args.evidence_ids.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : []
+      return getEvidence(client, ids)
+    }
+    case 'get_business_model':
+      return getBusinessModel(client)
+    case 'list_sessions':
+      return listSessions(agentSessionId)
+    case 'get_session':
+      return getSession(need(args, 'session_id'))
     case 'get_ui_state': {
       const context = collectAgentUiContext()
       return context || 'No UI state is being reported right now.'
@@ -428,9 +508,67 @@ export async function dispatchTool(
         })
         return 'Path renamed.'
       }
+      case 'create_stakeholder': {
+        const kind = need(args, 'kind')
+        if (!AGENT_STAKEHOLDER_KINDS.has(kind))
+          throw new Error(
+            `kind must be one of ${[...AGENT_STAKEHOLDER_KINDS].join(', ')}.`,
+          )
+        const id = await createStakeholder(client, {
+          name: need(args, 'name'),
+          kind,
+          summary: s(args, 'summary') ?? null,
+          aliases: Array.isArray(args.aliases)
+            ? args.aliases.filter(
+                (value): value is string => typeof value === 'string',
+              )
+            : [],
+        })
+        return `Added stakeholder (${id}).`
+      }
+      case 'update_stakeholder': {
+        const stakeholderId = need(args, 'stakeholder_id')
+        // Read-modify-write, not a patch: the row is the unit that gets
+        // reverted, so the captured `previous` has to be the whole of it.
+        const { data: current, error } = await client
+          .from('stakeholders')
+          .select('name, kind, summary, aliases')
+          .eq('id', stakeholderId)
+          .maybeSingle()
+        if (error) throw new Error(error.message)
+        if (!current) throw new Error('No stakeholder with that id.')
+        const previous = {
+          name: current.name,
+          kind: current.kind,
+          summary: current.summary,
+          aliases: current.aliases ?? [],
+        }
+        const named = s(args, 'kind')
+        if (named && !AGENT_STAKEHOLDER_KINDS.has(named))
+          throw new Error(
+            `kind must be one of ${[...AGENT_STAKEHOLDER_KINDS].join(', ')}.`,
+          )
+        const kind = named ?? previous.kind
+        await updateStakeholder(
+          client,
+          stakeholderId,
+          {
+            name: s(args, 'name') ?? previous.name,
+            kind,
+            summary: s(args, 'summary') ?? previous.summary,
+            aliases: Array.isArray(args.aliases)
+              ? args.aliases.filter(
+                  (value): value is string => typeof value === 'string',
+                )
+              : previous.aliases,
+          },
+          previous,
+        )
+        return 'Stakeholder updated.'
+      }
       case 'create_phase': {
         const id = await createPhase(client, {
-          serviceId: await serviceId(client),
+          serviceId: await resolveActiveServiceId(client),
           name: need(args, 'name'),
           summary: s(args, 'summary') ?? null,
         })
@@ -481,7 +619,7 @@ export async function dispatchTool(
         if (cellIds.length === 0)
           throw new Error('cell_ids must be a non-empty array of existing cell ids.')
         const slice = await createSlice(client, {
-          serviceId: await serviceId(client),
+          serviceId: await resolveActiveServiceId(client),
           title: need(args, 'title'),
           summary: s(args, 'summary') ?? '',
           sliceKind: need(args, 'kind') as SliceKind,
@@ -530,6 +668,45 @@ export async function dispatchTool(
         await replaceSlides(client, sliceId, slides)
         return `Replaced the slice's slides (${slides.length}).`
       }
+      case 'create_evidence': {
+        const kind = need(args, 'kind')
+        if (!EVIDENCE_KINDS.has(kind)) {
+          throw new Error(
+            `kind must be one of ${[...EVIDENCE_KINDS].join(', ')} — the DB CHECK constraint rejects anything else.`,
+          )
+        }
+        const cellId = need(args, 'cell_id')
+        // Same wrapper, same service resolution and the same documented
+        // cell_key placeholder the cell panel uses — so an agent-added source
+        // lands in the session ledger and can be reverted exactly like a
+        // human-added one.
+        const id = await addEvidence(client, {
+          serviceId: await resolveActiveServiceId(client),
+          cellId,
+          cellKey: cellId,
+          kind: kind as EvidenceKind,
+          title: need(args, 'title'),
+          ref: s(args, 'ref') ?? null,
+          excerpt: s(args, 'excerpt') ?? null,
+          note: null,
+        })
+        return `Evidence added (${id}).`
+      }
+      case 'update_evidence': {
+        const kind = s(args, 'kind')
+        if (kind && !EVIDENCE_KINDS.has(kind)) {
+          throw new Error(
+            `kind must be one of ${[...EVIDENCE_KINDS].join(', ')} — the DB CHECK constraint rejects anything else.`,
+          )
+        }
+        await updateEvidence(client, need(args, 'evidence_id'), {
+          kind: kind as EvidenceKind | undefined,
+          title: s(args, 'title'),
+          ref: s(args, 'ref'),
+          excerpt: s(args, 'excerpt'),
+        })
+        return 'Evidence updated.'
+      }
       case 'create_finding': {
         const source = args.source === 'whatif' ? 'whatif' : 'audit'
         const checkKey = need(args, 'check_key')
@@ -547,7 +724,7 @@ export async function dispatchTool(
           throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
         const runId = s(args, 'run_id') ?? crypto.randomUUID()
         const fingerprint = await findingFingerprint(checkKey, cellIds, scope)
-        const service = await serviceId(client)
+        const service = await resolveActiveServiceId(client)
         const { data: existing, error: readError } = await client
           .from('audit_findings')
           .select('id, status')
@@ -618,6 +795,7 @@ export async function dispatchTool(
  * lands on the closing refusal rather than on a mutation.
  */
 async function dispatchSampleTool(
+  agentSessionId: string,
   name: string,
   args: Record<string, unknown>,
 ): Promise<string> {
@@ -644,6 +822,19 @@ async function dispatchSampleTool(
       return sampleGetSlice(need(args, 'slice_id'))
     case 'list_owner_tags':
       return sampleListOwnerTags()
+    case 'list_lanes':
+      return sampleListLanes()
+    case 'list_cell_dependencies':
+      return sampleListCellDependencies(s(args, 'cell_id'))
+    // Neither of these ever had a database behind it — the rulebook is
+    // bundled and the session store is the browser's — so the trial serves
+    // the same implementation the live app does, not a stand-in.
+    case 'list_references':
+      return listReferences()
+    case 'list_sessions':
+      return listSessions(agentSessionId)
+    case 'get_session':
+      return getSession(need(args, 'session_id'))
     case 'get_ui_state': {
       const context = collectAgentUiContext()
       return context || 'No UI state is being reported right now.'
@@ -657,6 +848,11 @@ async function dispatchSampleTool(
     case 'open_cell_panel':
       return agentOpenCellPanel(need(args, 'cell_id'))
     default:
+      // `list_stakeholders`, `list_evidence`, `get_evidence` and
+      // `get_business_model` land here on purpose: the bundled sample is a
+      // board, not a deployment, and it carries no cast, no provenance and no
+      // business model to answer from. Saying so is the honest answer — an
+      // invented one would teach the model the tables are empty.
       return `This session is running on the bundled SAMPLE blueprint with no database connected, so "${name}" does not exist here. Available: ${[...SAMPLE_TRIAL_TOOL_NAMES].join(', ')}. Connect a database to author.`
   }
 }

@@ -120,6 +120,131 @@ export function formatSliceDetail(
   return `slice "${slice.title}" (${slice.id}) type=${slice.kind}${slice.actor ? ` actor=${slice.actor}` : ''}\n${frames.join('\n') || '(no frames)'}`
 }
 
+/**
+ * The lane vocabulary in use, commonest first — one line per distinct
+ * (label, role) pair with how many lanes carry it.
+ */
+export function formatLaneVocabulary(
+  rows: ReadonlyArray<{ name: string; lane_role?: string | null }>,
+): string {
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    const key = JSON.stringify([row.name, row.lane_role ?? null])
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  if (counts.size === 0) return 'No lanes defined yet.'
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => {
+      const [name, role] = JSON.parse(key) as [string, string | null]
+      return `${name}${role ? ` (role ${role})` : ''} — ${count} lane${count === 1 ? '' : 's'}`
+    })
+    .join('\n')
+}
+
+/** The cast, one line each, with the other spellings the name has had. */
+export function formatStakeholderList(
+  rows: ReadonlyArray<{
+    id: string
+    name: string
+    kind: string
+    summary?: string | null
+    aliases?: string[] | null
+  }>,
+): string {
+  if (rows.length === 0) return 'No stakeholders registered yet.'
+  return rows
+    .map((row) => {
+      const aliases = (row.aliases ?? []).length
+        ? ` — also written ${(row.aliases ?? []).join(', ')}`
+        : ''
+      return `${row.name} (${row.kind}) [${row.id}]${aliases}${row.summary ? ` — ${row.summary}` : ''}`
+    })
+    .join('\n')
+}
+
+/**
+ * The dependency edges, source-first — the direction both kinds read in
+ * (`A leads_to B`, `A enables B`), so the arrow in the text points the way
+ * the arrow on the canvas does.
+ */
+export function formatCellDependencies(
+  rows: ReadonlyArray<{
+    id: string
+    source_cell_id: string
+    target_cell_id: string
+    kind?: string | null
+    name?: string | null
+  }>,
+  cellId?: string,
+): string {
+  if (rows.length === 0) {
+    return cellId ? `No links on cell ${cellId}.` : 'No links recorded yet.'
+  }
+  const header = cellId
+    ? `${rows.length} link(s) touching ${cellId}:`
+    : `${rows.length} link(s)${rows.length === 200 ? ' (capped at 200)' : ''}:`
+  const lines = rows.map((edge) => {
+    const name = edge.name ? ` "${edge.name}"` : ''
+    return `${edge.source_cell_id} --${edge.kind ?? 'leads_to'}--> ${edge.target_cell_id}${name} (${edge.id})`
+  })
+  return [header, ...lines].join('\n')
+}
+
+export type EvidenceLineRow = {
+  id: string
+  cell_id?: string | null
+  kind: string
+  title: string
+  ref?: string | null
+  excerpt?: string | null
+  observed_at?: string | null
+}
+
+/** One evidence row as a line — the shape both evidence readers render. */
+function evidenceLine(row: EvidenceLineRow): string {
+  const ref = row.ref ? ` ref=${row.ref}` : ''
+  const seen = row.observed_at ? ` observed=${row.observed_at.slice(0, 10)}` : ''
+  const cell = row.cell_id ? ` cell=${row.cell_id}` : ''
+  return `[${row.kind}] "${row.title}"${ref}${seen}${cell} (${row.id})`
+}
+
+export function formatEvidenceList(
+  rows: ReadonlyArray<EvidenceLineRow>,
+  cellId?: string,
+): string {
+  if (rows.length === 0) {
+    return cellId
+      ? `No evidence attached to cell ${cellId}.`
+      : 'No evidence recorded yet.'
+  }
+  return [
+    `${rows.length} evidence row(s)${rows.length === 100 ? ' (capped at 100)' : ''}:`,
+    ...rows.map(evidenceLine),
+  ].join('\n')
+}
+
+/**
+ * Named rows in full. Ids that matched nothing are reported rather than
+ * dropped — a silently short answer reads as "that source does not exist".
+ */
+export function formatEvidenceDetail(
+  rows: ReadonlyArray<EvidenceLineRow>,
+  requestedIds: readonly string[],
+): string {
+  if (rows.length === 0) return 'No evidence with those ids.'
+  const sections = rows.map((row) => {
+    const lines = [evidenceLine(row)]
+    if (row.excerpt) lines.push(`  excerpt: ${row.excerpt}`)
+    return lines.join('\n')
+  })
+  const missing = requestedIds.filter((id) => !rows.some((row) => row.id === id))
+  if (missing.length > 0) {
+    sections.push(`(no evidence with id: ${missing.join(', ')})`)
+  }
+  return sections.join('\n')
+}
+
 export function formatOwnerTags(
   rows: ReadonlyArray<{
     owner?: string | null

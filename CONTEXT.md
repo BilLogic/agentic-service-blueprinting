@@ -169,16 +169,23 @@ table's owner is whoever may change it, not whoever reads it most:
 | --- | --- | --- |
 | `slices`, `slides` | `create_slice`, `update_slice`, `replace_slides` | the slice |
 | `audit_findings` | `create_finding`, `update_finding` | the audit |
-| `evidence` | no agent tool at all — the panel writes it | **nobody** |
+| `evidence` | `create_evidence`, `update_evidence` | the cell |
 
-**Evidence is the one with no owner**, and here that is visible in the roster
-rather than argued: nothing in `WRITE_TOOL_NAMES` writes it. It is research
-provenance — recorded when a blueprint is imported, cited by a slice, weighed
-by an audit — and no ONE reader's work is what it is for. Naming it after the
-audit would be wrong in the direction a slice would notice first.
+**Evidence belongs to the cell**, not to whichever reader reaches for it. It
+is research provenance — recorded when a blueprint is imported, cited by a
+slice, weighed by an audit — and no ONE reader's work is what it is for, so
+naming it after the audit would be wrong in the direction a slice would notice
+first. The cell is the claim the source grounds, and it is the one thing every
+evidence row the agent can write names.
+
+That row said **nobody** until the agent gained `create_evidence` and
+`update_evidence`, and "nobody" was a fact about the roster rather than a
+position: the panel was the only writer, so no tool named the table. The
+moment one did, the honest answer had to be a real owner — which is what
+rule 2 of `who-writes-what` exists to force.
 
 So write the owner you mean — *the slice's record*, *the audit's findings*,
-*evidence*. Where a statement genuinely covers all four — a grant, a
+*the cell's evidence*. Where a statement genuinely covers all four — a grant, a
 migration's scope — enumerate them, which is four words against a category name
 that has twice had to be replaced.
 `scripts/tests/who-writes-what.test.mjs` holds the table above against

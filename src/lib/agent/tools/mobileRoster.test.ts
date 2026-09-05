@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   MOBILE_READ_TOOL_NAMES,
+  READ_TOOL_NAMES,
   TOOL_SPECS,
   WRITE_TOOL_NAMES,
 } from '@/lib/agent/tools/specs'
@@ -55,5 +56,17 @@ describe('mobile agent tool roster', () => {
     ]) {
       expect(MOBILE_READ_TOOL_NAMES.has(name), name).toBe(true)
     }
+  })
+
+  it('carries every read tool a phone can answer from', () => {
+    // Mobile is view-only, not read-poor: a phone asking who an actor is, or
+    // what a claim rests on, is exactly the Q&A the shell exists for. The two
+    // reads deliberately withheld are the desktop-surface ones the
+    // authoring-posture test above already names.
+    const withheld = new Set(['list_ui_commands'])
+    const missing = [...READ_TOOL_NAMES].filter(
+      (name) => !withheld.has(name) && !MOBILE_READ_TOOL_NAMES.has(name),
+    )
+    expect(missing).toEqual([])
   })
 })
