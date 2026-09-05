@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
+import { EntityDetailPanel } from '@/components/blueprint/EntityDetailPanel'
 import { PhaseScenarioOverview } from '@/components/blueprint/PhaseScenarioOverview'
 import { CanvasPhaseSection } from '@/components/editor/CanvasPhaseSection'
 import { OverviewPhaseRowDivider } from '@/components/editor/OverviewPhaseRowDivider'
@@ -29,6 +30,7 @@ import {
   useBlueprintCellDetail,
 } from '@/contexts/BlueprintCellDetailContext'
 import { CanvasZoomChromeProvider } from '@/contexts/CanvasZoomChromeContext'
+import { useEntityDetail } from '@/contexts/EntityDetailContext'
 import {
   CANVAS_REVEAL_ARROWS,
   CANVAS_REVEAL_CELLS,
@@ -459,6 +461,25 @@ function ServiceOverviewViewImpl({
   // navigation, and using it here silently deselected any cell picked in the
   // first moments after a load.
   const cellDetailResetKey = `service-canvas:${view}:${cameraTargetId ?? 'none'}:${focusNonce}`
+
+  /*
+    The entity panel clears on the same navigations, from up here.
+
+    Its provider is the shell's now — it has to span the sidebar and the chrome
+    — so it can no longer take this key as a prop. The canvas keeps the reset
+    anyway: an entity panel describes a lane, phase, scenario or step of the
+    board being looked at, and a navigation can leave it describing something
+    that is no longer on screen. Guarded against the FIRST run, which the prop
+    version never had to be: a panel opened from the sidebar is already open
+    when this canvas mounts, and closing it would undo the click that opened it.
+  */
+  const { closeEntity } = useEntityDetail()
+  const closedForKey = useRef(cellDetailResetKey)
+  useEffect(() => {
+    if (closedForKey.current === cellDetailResetKey) return
+    closedForKey.current = cellDetailResetKey
+    closeEntity()
+  }, [cellDetailResetKey, closeEntity])
 
   // Every fit up to and including the swap to content is a jump. The
   // skeleton fit frames a fresh mount (animating it would swoop in from
@@ -1123,6 +1144,7 @@ function ServiceOverviewViewImpl({
               </div>
             ) : null}
             {cellDetailEnabled ? <BlueprintCellDetailPanel /> : null}
+            <EntityDetailPanel />
           </div>
         </div>
       </BlueprintCellDetailProvider>

@@ -113,11 +113,22 @@ function trim(lines) {
  * grant written in 21000113000000 still named `screenshots` after
  * 21000119000000 dropped it, and the recipe refused to apply on top of the
  * core it was written for.
+ *
+ * A table rename is global — the name is unique in the schema, so every
+ * mention of it is a mention of that table. A COLUMN rename is not: a column
+ * name is unique only within its table, and `note`, `description`, `status`
+ * and `position` are each spelled the same way on several tables at once.
+ * So a column rename carries the table it happened on, and is applied only
+ * where that table is spoken of. Without the table it is a text rule with no
+ * idea what it is renaming — `findings.note → summary` in 21000116000000 read
+ * `grant update (name, description, note, path_type) on public.paths` and
+ * emitted `(name, summary, summary, kind)`, which silently deleted the grant
+ * on `paths.note` and refused every save the path panel makes.
  */
 export function renamesIn(sql) {
   const ops = []
   const table = /^\s*alter table (?:if exists )?(?:public\.)?(\w+)\s+rename to (\w+);/gim
-  const column = /^\s*alter table (?:if exists )?(?:public\.)?\w+\s+rename column\s+(\w+)\s+to\s+(\w+);/gim
+  const column = /^\s*alter table (?:if exists )?(?:public\.)?(\w+)\s+rename column\s+(\w+)\s+to\s+(\w+);/gim
   const objects = /^\s*select public\.__rename_schema_objects\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\);/gim
   // One `alter table` may drop several columns in one statement.
   const alter = /^\s*alter table (?:if exists )?(?:public\.)?(\w+)\b([^;]*);/gim
@@ -126,8 +137,8 @@ export function renamesIn(sql) {
   for (const [match, from, to] of sql.matchAll(table)) {
     found.push([sql.indexOf(match), { kind: 'identifier', from, to }])
   }
-  for (const [match, from, to] of sql.matchAll(column)) {
-    found.push([sql.indexOf(match), { kind: 'identifier', from, to }])
+  for (const [match, table_, from, to] of sql.matchAll(column)) {
+    found.push([sql.indexOf(match), { kind: 'column', table: table_, from, to }])
   }
   for (const [match, from, to] of sql.matchAll(objects)) {
     found.push([sql.indexOf(match), { kind: 'object-name', from, to }])
@@ -142,10 +153,64 @@ export function renamesIn(sql) {
   return ops
 }
 
+/**
+ * Cut a fragment into statements, so a column rename can ask which table a
+ * given piece of SQL is talking about.
+ *
+ * Splitting on `;` is only correct if the `;` inside a dollar-quoted function
+ * or `do` body does not count, and those bodies are everywhere in this schema.
+ * So the scan tracks the two quoting forms that can hide a semicolon —
+ * `'…'` (with `''` escaping) and `$tag$…$tag$` — and cuts nowhere else. The
+ * pieces include their delimiters and their leading comments, and joining them
+ * back reproduces the input exactly; a rule that only rewrites some of them
+ * therefore leaves the rest byte-identical.
+ */
+export function statements(sql) {
+  const pieces = []
+  let start = 0
+  let i = 0
+  while (i < sql.length) {
+    const char = sql[i]
+    if (char === "'") {
+      i += 1
+      while (i < sql.length && !(sql[i] === "'" && sql[i + 1] !== "'")) {
+        i += sql[i] === "'" ? 2 : 1
+      }
+      i += 1
+      continue
+    }
+    const tag = /^\$[A-Za-z_]\w*\$|^\$\$/.exec(sql.slice(i))
+    if (tag) {
+      const close = sql.indexOf(tag[0], i + tag[0].length)
+      i = close === -1 ? sql.length : close + tag[0].length
+      continue
+    }
+    if (char === ';') {
+      pieces.push(sql.slice(start, i + 1))
+      start = i + 1
+    }
+    i += 1
+  }
+  if (start < sql.length) pieces.push(sql.slice(start))
+  return pieces
+}
+
 /** One rename, applied to a recipe fragment that predates it. */
 export function applyRename(sql, op) {
   if (op.kind === 'identifier') {
     return sql.replace(new RegExp(`\\b${op.from}\\b`, 'g'), op.to)
+  }
+  if (op.kind === 'column') {
+    // Scoped to the table it happened on. A statement that never names the
+    // table cannot be naming that table's column, so it is left alone — which
+    // is what keeps `findings.note → summary` out of the grant list on
+    // `paths`. A statement that names two tables gets both their renames,
+    // which is the same answer the database gives: both columns did move.
+    const word = new RegExp(`\\b${op.from}\\b`, 'g')
+    const speaksOf = new RegExp(`\\b(?:public\\.)?${op.table}\\b`, 'i')
+    return statements(sql)
+      .map((piece) => (speaksOf.test(piece) ? piece.replace(word, op.to) : piece))
+      .join('')
   }
   if (op.kind === 'dropped-column') {
     // A column-scoped grant on the table loses the column from its list.

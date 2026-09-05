@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useEditor } from '@/contexts/EditorContext'
 import { MobileShell } from '@/components/mobile/MobileShell'
+import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
 import { useMobileShell } from '@/hooks/useMobileShell'
 import {
   RAIL_WIDTH,
@@ -90,7 +91,27 @@ function loadAsideWidth(): number {
  */
 export function EditorShell() {
   const mobile = useMobileShell()
-  return mobile ? <MobileShell /> : <DesktopEditorShell />
+  /*
+    The entity drawer's provider sits ABOVE both shells.
+
+    It used to be mounted inside `ServiceOverviewView`, which is one tab body.
+    Everything else that can carry an entity affordance renders outside it —
+    the sidebar's `SlideModeSidebarNav`, the sticky header and phase menubar,
+    the breadcrumb, the slice tab — and `useEntityDetail` returned an inert
+    value out there, so those affordances were silent no-ops rather than
+    errors. Hoisting the provider to the shell is what makes "open the lane
+    panel" mean the same thing from the sidebar as from the canvas; the hook
+    now throws outside it, so a call site the provider does not reach is a
+    crash in development rather than a dead button in production.
+
+    The PANEL stays where it is, in the canvas: the provider is state, the
+    panel is a drawer over the board.
+  */
+  return (
+    <EntityDetailProvider>
+      {mobile ? <MobileShell /> : <DesktopEditorShell />}
+    </EntityDetailProvider>
+  )
 }
 
 /**

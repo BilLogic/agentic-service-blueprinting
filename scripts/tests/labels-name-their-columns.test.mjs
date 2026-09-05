@@ -106,9 +106,28 @@ test('guard diagnostics name a source line and the focused rerun command', () =>
  * annotation toolbar says `label: 'Text'` about a drawing tool, and a rule
  * that reached it would flag copy that is right.
  */
-const LABEL_COMPONENTS = ['Field', 'SpecSection', 'OwnerCell', 'DependencyGroup']
+const LABEL_COMPONENTS = [
+  'Field',
+  'PanelTextareaField',
+  'PanelSectionLabel',
+  'SpecSection',
+  'StringListField',
+  'OwnerCell',
+  'DependencyGroup',
+]
 
-const LABEL_ELEMENT = new RegExp(`<(${LABEL_COMPONENTS.join('|')})\\b([^>]*)>`, 'g')
+/*
+  `StringListField` and `PanelTextareaField` are the argument for keeping this
+  subject element-shaped rather than file-shaped. Both WRAP `Field` and forward
+  the label through, so the words they carry — "KPIs", "Tools", every textarea
+  label on the entity panels — reached readers from outside every check that
+  had ever looked, not because anybody excluded them but because the wrappers
+  were written after the list was.
+*/
+const LABEL_ELEMENT = new RegExp(
+  `<(${LABEL_COMPONENTS.join('|')})\\b([^>]*)>([^<{]*)`,
+  'g',
+)
 const LABEL_PROP = /\b(label|title)\s*=\s*"([^"]*)"/
 
 /**
@@ -146,11 +165,16 @@ export function panelLabels(sources) {
   const out = []
   for (const { file, code } of sources) {
     for (const element of code.matchAll(LABEL_ELEMENT)) {
+      // A label arrives as a prop or as children. `PanelSectionLabel` is the
+      // second shape — it names a section with nothing behind it, and a
+      // prop-only reader saw a panel that had gone quiet rather than one that
+      // simply labels its sections a different way.
       const prop = LABEL_PROP.exec(element[2])
-      if (prop) {
-        const propIndex = element.index + element[0].indexOf(prop[0])
-        out.push({ file, line: sourceLine(code, propIndex), component: element[1], label: prop[2] })
-      }
+      const children = element[3]?.trim()
+      const label = prop ? prop[2] : children
+      if (!label) continue
+      const at = prop ? element.index + element[0].indexOf(prop[0]) : element.index
+      out.push({ file, line: sourceLine(code, at), component: element[1], label })
     }
     const start = code.indexOf(TAB_TABLE)
     if (start < 0) continue
@@ -189,7 +213,18 @@ export function panelLabels(sources) {
 export const LABEL_COLUMNS = Object.freeze(
   [
     { label: 'Content', names: ['cells.content'], because: '' },
-    { label: 'Summary', names: ['cells.summary'], because: '' },
+    {
+      label: 'Summary',
+      names: [
+        'cells.summary',
+        'paths.summary',
+        'phases.summary',
+        'scenarios.summary',
+        'services.summary',
+        'steps.summary',
+      ],
+      because: '',
+    },
     { label: 'Owner', names: ['cells.owner'], because: '' },
     { label: 'Perceived owner', names: ['cells.perceived_owner'], because: '' },
     { label: 'Function', names: ['cells.function'], because: '' },
@@ -238,6 +273,47 @@ export const LABEL_COLUMNS = Object.freeze(
     },
     { label: 'Evidence', names: ['evidence'], because: '' },
     { label: 'Resources', names: ['resources'], because: '' },
+    {
+      label: 'Actor',
+      names: ['lanes.stakeholder_id'],
+      because:
+        'The registry the key points into is `stakeholders`, and the word this vocabulary uses for a party standing in the room is actor: a lane names its actor, and a `team` is a stakeholder that can never be one. The label says the narrower word, which is the only one the board is about.',
+    },
+    { label: 'Owner team', names: ['lanes.owner_team'], because: '' },
+    { label: 'KPIs', names: ['lanes.kpis'], because: '' },
+    { label: 'Tools', names: ['lanes.tools'], because: '' },
+    { label: 'Business impact', names: ['phases.business_impact'], because: '' },
+    {
+      label: 'Operational requirements',
+      names: ['phases.operational_requirements'],
+      because: '',
+    },
+    { label: 'Paths', names: ['paths'], because: '' },
+    { label: 'Status', names: ['cells.status', 'paths.status'], because: '' },
+    {
+      label: 'Author note',
+      names: ['paths.note'],
+      because:
+        "`note` is this vocabulary's word for an author's aside, and the label says whose aside it is because it sits directly under Summary, which is the path's own sentence. That distinction is worth a word on screen and not worth a second column.",
+    },
+    { label: 'Funding', names: ['business_models.funding'], because: '' },
+    { label: 'Pricing', names: ['business_models.pricing'], because: '' },
+    { label: 'Delivery cost', names: ['business_models.delivery_cost'], because: '' },
+    { label: 'Revenue model', names: ['business_models.revenue_model'], because: '' },
+    { label: 'Partners', names: ['business_models.partners'], because: '' },
+    {
+      label: 'Examples',
+      names: ['services.entity_examples'],
+      because:
+        'The section heads a jsonb map, not a field, and the column carries an `entity_` qualifier the label drops: on the service panel the only examples in question are the board’s six entity kinds, so the qualifier is understood and the heading says the plain word. The six inputs beneath it name the kinds, not columns, so they carry no row of their own; this one row binds the whole map.',
+    },
+    { label: 'Position', names: ['path_steps.position'], because: '' },
+    {
+      label: 'Storyboard',
+      names: ['lanes.lane_role'],
+      because:
+        'The one row whose right-hand side is a VALUE rather than the name of a place to put one: `storyboard` is one of the eight `lane_role` admits, and this label heads the frames of the lanes carrying it. The word is in the schema; it is simply not a column name.',
+    },
   ].map((row) => Object.freeze({ ...row, names: Object.freeze(row.names) })),
 )
 

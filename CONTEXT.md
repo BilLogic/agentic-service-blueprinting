@@ -310,8 +310,12 @@ again (i.e., resources vs. links)?"* The complaint was never that the words
 differ. It was that no document said which of the differences were on purpose.
 
 The interface word is a **panel label** — the `label` and `title` props of the
-four components that put a field's name in front of a reader, plus the cell
-panel's tab table. The schema word is a `table.column`, or a bare table where
+seven components that put a field's name in front of a reader, plus the text
+inside `PanelSectionLabel`, plus the cell panel's tab table. Two of the seven —
+`PanelTextareaField` and `StringListField` — only WRAP `Field` and forward the
+label through, which is why the subject is elements rather than files: a
+wrapper written after the list would otherwise carry words past every check
+that had ever looked. The schema word is a `table.column`, or a bare table where
 the label heads a whole relation rather than one field of it. The two **agree**
 when they are the same word once case, spaces and a foreign key's `_id` are set
 aside; singular and plural agree too, because the label over a relation names
@@ -321,7 +325,7 @@ owes the third column a reason.
 | The interface says | The schema says | Why they differ |
 |---|---|---|
 | **Content** | `cells.content` | — |
-| **Summary** | `cells.summary` | — |
+| **Summary** | `cells.summary`, `paths.summary`, `phases.summary`, `scenarios.summary`, `services.summary`, `steps.summary` | — |
 | **Owner** | `cells.owner` | — |
 | **Perceived owner** | `cells.perceived_owner` | — |
 | **Function** | `cells.function` | — |
@@ -335,8 +339,25 @@ owes the third column a reason.
 | **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
 | **Evidence** | `evidence` | — |
 | **Resources** | `resources` | — |
+| **Actor** | `lanes.stakeholder_id` | The registry the key points into is `stakeholders`, and the word this vocabulary uses for a party standing in the room is actor: a lane names its actor, and a `team` is a stakeholder that can never be one. The label says the narrower word, which is the only one the board is about. |
+| **Owner team** | `lanes.owner_team` | — |
+| **KPIs** | `lanes.kpis` | — |
+| **Tools** | `lanes.tools` | — |
+| **Business impact** | `phases.business_impact` | — |
+| **Operational requirements** | `phases.operational_requirements` | — |
+| **Paths** | `paths` | — |
+| **Status** | `cells.status`, `paths.status` | — |
+| **Author note** | `paths.note` | `note` is this vocabulary's word for an author's aside, and the label says whose aside it is because it sits directly under Summary, which is the path's own sentence. That distinction is worth a word on screen and not worth a second column. |
+| **Funding** | `business_models.funding` | — |
+| **Pricing** | `business_models.pricing` | — |
+| **Delivery cost** | `business_models.delivery_cost` | — |
+| **Revenue model** | `business_models.revenue_model` | — |
+| **Partners** | `business_models.partners` | — |
+| **Examples** | `services.entity_examples` | The section heads a jsonb map, not a field, and the column carries an `entity_` qualifier the label drops: on the service panel the only examples in question are the board’s six entity kinds, so the qualifier is understood and the heading says the plain word. The six inputs beneath it name the kinds, not columns, so they carry no row of their own; this one row binds the whole map. |
+| **Position** | `path_steps.position` | — |
+| **Storyboard** | `lanes.lane_role` | The one row whose right-hand side is a VALUE rather than the name of a place to put one: `storyboard` is one of the eight `lane_role` admits, and this label heads the frames of the lanes carrying it. The word is in the schema; it is simply not a column name. |
 
-Six rows out of fourteen carry a reason, and each one is a decision rather
+Eleven rows out of thirty-two carry a reason, and each one is a decision rather
 than an accident. That is the claim the table exists to make checkable, and
 [`scripts/tests/labels-name-their-columns.test.mjs`](scripts/tests/labels-name-their-columns.test.mjs)
 checks it four ways: every panel label has a row, every row is a label some

@@ -31,6 +31,7 @@ import {
 } from '@/lib/compareReviewStore'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { setOpenCellId } from '@/lib/openCellStore'
+import { claimPanel, releasePanel } from '@/lib/openPanelStore'
 
 export type BlueprintCellPreviewHover = {
   cellId: string
@@ -110,6 +111,7 @@ export function BlueprintCellDetailProvider({
     setDraftCell(null)
     setPanelState(null)
     setPreviewHover(null)
+    releasePanel('cell')
   }, [resetKey])
 
   // The Differences surface only means something while a comparison is live
@@ -149,7 +151,20 @@ export function BlueprintCellDetailProvider({
     return () => setOpenCellId(null)
   }, [selection])
 
+  /*
+    Every opener claims the drawer, and the close releases it.
+
+    The cell panel and the entity panels are separate providers rendering into
+    the same screen position and portalling their Save row into the same DOM
+    id, so `openPanelStore` holds the single fact of who owns it and the loser
+    closes itself. The exclusion was one-sided: `EntityDetailContext` claimed
+    and released, this one never did, so the owner could only ever be `entity`
+    or nobody. Opening a cell while an entity panel was open left BOTH open,
+    two Save rows portalled into one host, and the entity panel's self-close
+    guard unable to fire because nothing had taken the drawer from it.
+  */
   const selectCell = useCallback((next: BlueprintCellSelection) => {
+    claimPanel('cell')
     setSelection(next)
     setDraftCell(null)
     setPanelState({ surface: 'details' })
@@ -157,6 +172,7 @@ export function BlueprintCellDetailProvider({
   }, [])
 
   const openDraftCell = useCallback((next: DraftCellTarget) => {
+    claimPanel('cell')
     setDraftCell(next)
     setSelection(null)
     setPanelState({ surface: 'details' })
@@ -173,9 +189,14 @@ export function BlueprintCellDetailProvider({
     setDraftCell(null)
     setPanelState(null)
     setPreviewHover(null)
+    // Guarded inside the store: a panel that has already lost the claim
+    // releases nothing, so a close running after another panel opened cannot
+    // hand the drawer back to nobody.
+    releasePanel('cell')
   }, [])
 
   const openDifferences = useCallback(() => {
+    claimPanel('cell')
     setPanelState({ surface: 'differences' })
   }, [])
 
