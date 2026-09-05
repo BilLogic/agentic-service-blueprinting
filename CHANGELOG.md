@@ -1,5 +1,281 @@
 # Changelog
 
+## 1.5.0
+
+### Minor Changes
+
+- e647d9b: An edge is a dependency.
+
+  The database has said `cell_dependencies` since `21000103`, and the domain
+  layer above it went on saying `trigger` — `BlueprintData.triggers`,
+  `BlueprintCellTrigger`, `IntegratedTriggerArrows`, `remapMergedPathTriggers`,
+  the doc comments explaining what an arrow is, the prose the reader meets on
+  the cover, and the tests. One concept, two words, with the seam falling
+  exactly where a person crosses from the schema to the code that reads it.
+
+  The word is now `dependency` everywhere it means the edge:
+  `BlueprintData.dependencies`, `BlueprintCellDependency`,
+  `IntegratedBlueprintDependency`, `IntegratedDependencyArrows`,
+  `BlueprintDependencyArrows` (both components renamed to match their type),
+  `remapMergedPathDependencies`, `blueprintLaneHasCorridorDependency`,
+  `blueprintHasInLaneDependency`, `flattenDependenciesFromCells`,
+  `normalizeDependencyKind`, `dependencyId`, `dependencyKeys`. `BlueprintData`
+  is a public read-surface type, so this is a breaking rename for anyone reading
+  it — hence a minor, and the map above is the whole of it.
+
+  `trigger` stays where it means a Postgres trigger — `cells_validate_path_match`
+  and the `updated_at` triggers — and where it means the thing a UI control
+  opens, or the word that carries a branch in the router. Those are three other
+  concepts that happen to share a spelling, and none of them is an edge.
+
+  The band vocabulary lands in the same pass. A storyboard lane is a storyboard
+  lane in code as well as on screen (`isStoryboardLane`,
+  `resolveStoryboardStripEntries`, `StoryboardFrameEntry`,
+  `StoryboardBlueprint`), and a touchpoint is a touchpoint rather than a "pill"
+  — `isTouchpointLane`, `touchpointLanes`, `titleRepeatsTouchpoint`, and the
+  comments around them. "Pill" was a third design-system word for what is either
+  a badge or a cell, and the shape has been a variant since the touchpoint split.
+
+### Patch Changes
+
+- 8bbe6c7: A badge is one size, in one place.
+
+  `PathLabelBadge`, `PathKindBadge` and `ScenarioTitleBadge` each wrote their
+  own height, padding and type scale around `<Badge>`, and the three did not
+  agree: all three called the small shape `compact` and all three meant
+  something different by it. `ui/badge.tsx` now carries a `size` variant —
+  `default`, `fitted`, `roomy`, `comfortable` — and the wrappers name a shape
+  instead of deriving one. Same pixels, pinned by `badgeGeometry.test.tsx`,
+  and a deployment's `one-badge-one-size` contract holds without an exemption
+  for these three files.
+
+- a6bdde2: A reference path is an interface.
+
+  A deployment imports twenty-two of this repo's documents by fixed path at
+  build time from a pinned tag — eighteen references and the four skill
+  bodies. Nothing here guarded those paths: a move landed green and was found
+  at the consumer's build. `check:reference-paths` holds the list and fails
+  this repo first, and ADR 0004 records the rule: moving one is a version bump
+  plus a matching consumer change, never a silent move.
+
+- 2fcfbc9: A retired kind has no quiet spelling.
+
+  `cell_dependencies.kind` has been `leads_to` and `enables` since
+  `21000114000000`, but two documents still taught the pair it replaced:
+  `references/canvas-adapter.md` promised "trigger-vs-needs semantics" and
+  `evals/behavioral/evals.json` graded the whatif skill on whether it "Walks
+  trigger/needs edges". `check:dependency-kinds` banned those words in their
+  code-span form and neither wore backticks, so both stayed green for a
+  release — and a third, the comment beside the adjacency walk in
+  `slice_tools.py`, was outside the sweep's markdown-only reach entirely.
+
+  All three now say `leads_to` and `enables`, and the check has a second
+  retired-spelling assertion that would have caught them: a short list of
+  phrases in which the two words can only be dependency kinds, swept over
+  `references/`, `skills/`, `agents/` and `evals/` — their JSON and Python
+  included. The phrases are narrow rather than the words, so the integrity
+  trigger `cells_validate_path_match` and the English verb stay out of reach
+  without an exemption; `BARE_ALLOWED` holds the two sentence kinds that do
+  need one, with a reason each.
+
+- 1ba2c9b: A deployment's own seed, loaded onto this template's portable core.
+
+  `check:seed-load` proves the loop closes on content this repository generated
+  itself, which the generator and the schema can hardly disagree about. The
+  question a reconciliation ticket actually asks is whether the portable core is
+  SUFFICIENT for the content a real deployment holds, and only a deployment's own
+  seed answers it.
+
+  `npm run check:deployment-seed-load` stands up the same fresh stack — shim,
+  platform default, core, recipe — and loads a deployment's seed in place of this
+  one's, in the order the deployment itself states under `[db.seed]` in its
+  `supabase/config.toml`. Then the same anon reads: every table the seed writes
+  comes back non-empty to the key a browser holds, and the blueprint grid and the
+  service hierarchy return rows.
+
+  It applies the seed with `ON_ERROR_STOP` off on purpose. Here the failing
+  statements are the deliverable, not a bug to stop at, so every one is collected
+  and grouped by reason with counts and examples — and knock-on failures (a
+  foreign key whose row an earlier failure never inserted, the core's own
+  row-validation raises, an aborted transaction block) are reported separately, so
+  the root cause is not buried under the forty rows it caused.
+
+  Point it at a deployment with `--seed <path>` or `DEPLOYMENT_SEED=<path>`; with
+  neither it finds a checkout beside this one that ships a `supabase/seed.sql` and
+  declares a different package name, and skips with a message when there is none
+  or more than one. CI checks out one repository, so it would skip on every run —
+  it is documented as a local guard instead, and its parsing and skip logic are
+  held by `scripts/tests/deployment-seed-load.test.mjs`, which does run in CI.
+
+  `SETUP.md` now carries the path it guards as a five-step checklist — clone, run
+  with no database, set the two variables, replay, your own content — each step
+  ending in something to check rather than something to look at, because this app
+  renders bundled content whenever it cannot reach a database and every step after
+  a silent failure still looks like it worked.
+
+- e4880a0: An entity carries its status in the types.
+
+  `entity_status` has been a domain on `cells.status` and `paths.status` since
+  migration `21000125`, and `src/lib/entityStatus.ts` has spelled the ladder for
+  the app the whole time — but no entity in `src/types/blueprint.ts` had a
+  status, so the board query never selected the column and the normalizer never
+  mapped it. A status a migration guarantees and no read carries is a column
+  nobody can see. `BlueprintPath` now requires `status`, `BlueprintCell` carries
+  an optional one, `PATH_BLUEPRINT_SELECT` asks for both columns, and
+  `normalizeBlueprint` narrows what comes back through `asEntityStatus` — a rung
+  the renderer has no treatment for reads as absent rather than as an
+  unrecognised marker, and a path with nothing said about it reads as `live`.
+  Both generators emit the same default, so an offline board says what the
+  database says.
+
+- 7ded4a7: `CONTEXT.md` becomes a glossary.
+
+  It was 31,839 characters, and three of its six sections were not definitions: a
+  rename map, an interface-to-schema map, and a section of reasoning about which
+  words a sweep should skip. Every session that opened the file to look up one
+  word paid for all three. It is 13,076 characters now, and each of the three
+  lives beside the thing it is about.
+
+  The rename map's prose table is deleted — `scripts/retired-vocabulary.mjs`
+  already carried the same rows in code, and a parity test held the two together.
+  With the prose half gone the pair is a single list, so that test goes and the
+  commentary moves into the data file's header: why each name went, and which
+  renames the `retired` and `copy` word lists deliberately leave out. The section
+  on words that keep a retired spelling moves, word for word, into the header of
+  `scripts/check-retired-identifiers.mjs`, beside the exemption list that applies
+  it — so a skipped word and the reason for skipping it are one edit.
+
+  The interface-to-schema map is now `references/interface-schema-map.md`,
+  reached by one pointer from the router and generated: its binding table from
+  `LABEL_COLUMNS` in the new `scripts/interface-schema-map.mjs`, and under it a
+  coverage line counting the `COMMENT ON` statements in
+  `supabase/generated/portable-core.schema.sql` and naming the eight bound names
+  that carry none. The comments are counted rather than reprinted, because two of
+  them are stale in a way the markdown sweeps cannot see — `paths` still calls its
+  kinds "happy, unhappy, exception, alternative" — and a generated reference that
+  teaches an agent a retired value is the defect this repo already has a check
+  for. It sits under `references/` so that a deployment that wants it can import
+  it at a path that holds still (ADR 0004); nothing imports it yet, so it is not
+  in `CONSUMER_IMPORTS`.
+
+  `npm run check:glossary` is what stops the file growing them back — headings,
+  prose and `**term** — definition` rows, failing on a code fence, on a table
+  naming a `table.column`, and on a section that defines no term — and
+  `npm run check:interface-map` holds the generated document to its sources. Both
+  join the guard set and both are driven from fixtures that break them.
+
+- e30cb9a: Pill is retired outside touchpoints too.
+
+  The deployment settled this word in two halves. #160 took the half where
+  "pill" meant a touchpoint — `isTouchpointLane`, `touchpointLanes`, the cell
+  variant — and left the other half standing: the three components that used
+  "pill" as a shape, and the forty-odd comments that named one. So the app went
+  on calling the collapsed sidebar's floating navbar a pill, the zoom control a
+  pill, the menubar's difference count a pill, and the cover's segmented row a
+  pill row, each of which is a badge, a button or a control and none of which is
+  a name the design system still has.
+
+  Three components take the deployment's spelling exactly:
+  `FloatingSidebarPill` → `FloatingSidebarNavbar` (exported from
+  `EditorChrome.tsx`, with its `data-editor-sidebar-pill` attribute now
+  `data-editor-sidebar-navbar`), `SliceRefocusPill` → `SliceRefocusButton`, and
+  `PathNotionPill` → `PathNotionToggle`. `FloatingSidebarNavbar` is exported
+  from `EditorChrome.tsx`, so a fork of `src` adopting these names lands the
+  import change with them — a visible merge conflict, which is what a template
+  refactor is allowed to be; the plugin contract is untouched, so this is a
+  patch. No path in `check-reference-paths.mjs`'s `CONSUMER_IMPORTS` moves:
+  nothing a deployment imports by fixed path from a pinned tag is touched.
+
+  Thirty-nine comments follow, each taking the sentence the deployment's copy of
+  the same file already reads; where the word meant a touchpoint inside `src` —
+  five comments in `blueprint.css` — it becomes `touchpoint`, which is what the
+  deployment's stylesheet says. The two cover figures name their lane labels
+  `badge` rather than `pill`.
+
+  `scripts/tests/pill-is-not-a-name.test.mjs` is what keeps it. The `pill`/`chip`
+  row of the rename map enforces no identifier — no database object ever bore
+  either word — and its copy list only reaches what a reader sees, so the app's
+  own names had nothing but review behind them, which is exactly how three
+  components survived #160. The new guard's subject is every name under `src`
+  with comments stripped, so a component, a prop, a constant, a variant string, a
+  data attribute or a file name written next week fails on the word. It takes
+  `pill` alone: `chip` is still a live name here (`coverContent.chip`) and
+  retiring it is its own change.
+
+  `lane_role`'s catalogue comment still reads "pill cells", because no migration
+  has moved it. The documents that quote it — `references/data-model.md`,
+  `references/ir-schema.json`, `agents/render-checker.md` — quote it accurately
+  and are unchanged, as the deployment's own mirrors of that comment are.
+
+- 27306f0: The settings surface is two halves with one seam.
+
+  `AgentSettingsFields` was one 323-line component holding two jobs that share
+  nothing: the auth drafts, the busy flag and the magic-link state on one side,
+  the provider/model/key trio on the other, with no state crossing between them.
+  It is now `AdminSessionFields` and `AgentProviderFields` — each reading only
+  the context field it needs — and a 62-line composer that owns what genuinely
+  spans both: the column, the headings, the rule between them and the gate that
+  decides whether the second half exists at all. The split is the one a
+  deployment built on this template already made, taken here byte for byte, so
+  the two files stop diverging; `agentSettingsFields.test.tsx` pins the seam by
+  asserting which half is on screen for whom.
+
+  The move carries a fix. The model-list fetch gated on `open` — the global
+  `window.open`, always truthy — so the `active` prop it meant to read never
+  gated anything, and a closed settings surface still made the provider
+  round-trip. It reads `active` now.
+
+  Template-only affordances stay in the composer, each marked: the no-database
+  sample trial (an unconfigured build opens the key field with no session to
+  gain, and shows a sentence where the sign-in form would be) and
+  `DevPortalSection`. The scope field of that deployment's split is not here —
+  it needs a multi-service model this template does not have yet.
+
+- 55fe7f4: The compare data layer says it once.
+
+  Three compare modules bucketed items by a derived key with the same
+  push-or-seed loop, written out longhand each time — and the merged grid
+  carried a parallel array beside its map, because the loop that seeds a
+  bucket is also the only place that knows the order. `groupBy` in `lib/utils`
+  says it once and iterates in first-seen order, so slots by column, the
+  column agreement groups, the ledger's accordion groups and the merged
+  signature groups all read as what they are. `compareSlots` also drops a dead
+  count guard — a one-path slot is `only`, never `divergent`, so the field
+  comparison never sees it — with a test that says so; and the path band and
+  the merged grid stop restating locally what the layout module already
+  exports.
+
+  One contract narrows: the scenario panel registers its compare review — the
+  `[≠ N]` chip, the ledger, the agent's compare commands — only while the
+  board is the focused scenario (`focusActive`), never by mount order. The
+  template's own overview already passes that flag, so nothing it renders
+  changes; a deployment that renders the panel solo must now say the board is
+  focused to get a review on it.
+
+- 10050b8: The router gets its three checks.
+
+  `AGENTS.md` is the whole always-loaded tier — the one file a session is handed
+  before it decides anything — and it was already close to a router. Nothing
+  held it there. It now stays under a stated char budget that fails downward as
+  well as up, its prohibition count only falls, and every pointer in it resolves,
+  leads with the word that carries the branch, and names a document at all.
+  Three items that were bodies rather than pointers moved out. § Rules that hold
+  for every skill is exempt from the trigger rules, because those bind before any
+  pointer could fire; their paths still have to resolve.
+
+  `check:budget`, `check:negation` and `check:pointers` join the guard set, all
+  three reading one list of what is in the tier
+  (`scripts/always-loaded.mjs`), and each is driven from a router that breaks it
+  rather than only from the one that passes. The writing vocabulary the three
+  share — pointer, ladder, disclosed, leading word, sprawl — enters `CONTEXT.md`.
+
+- 81541b2: The router is swept.
+
+  `AGENTS.md` is the one file every session is handed without choosing, and
+  it was the one file the vocabulary sweeps never read. It joins the swept
+  set, so a retired value stated in the router fails the build like it would
+  anywhere else.
+
 ## 1.4.0
 
 ### Minor Changes
