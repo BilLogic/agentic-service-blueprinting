@@ -32,7 +32,7 @@ export type CanvasFocusFitInsets = {
 /**
  * Breathing room around the framed target.
  * Focus uses a tight margin so the selected scenario fills the viewport
- * without clipping; bottom inset clears the prev/next nav pills.
+ * without clipping; bottom inset clears the prev/next nav controls.
  */
 export function getCanvasFocusFitInsets(view: EditorView): CanvasFocusFitInsets {
   if (view === 'home' || view === 'landing') {

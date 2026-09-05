@@ -9,7 +9,11 @@ import { CanvasSelectionProvider } from '@/components/editor/CanvasSelectionProv
 import { CanvasPenCursor } from '@/components/editor/CanvasPenCursor'
 import { EditorSequenceNav } from '@/components/editor/EditorSequenceNav'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
-import { registerFocusCells } from '@/lib/canvasFocusCells'
+import {
+  registerActiveFocusCells,
+  registerFocusCells,
+} from '@/lib/canvasFocusCells'
+import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { CanvasAnnotationProvider } from '@/contexts/CanvasAnnotationProvider'
 import { usePublishCanvasZoomChrome } from '@/contexts/CanvasZoomChromeContext'
 import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
@@ -80,6 +84,9 @@ function ZoomPanViewportInner({
     zoomOut,
     fitToView,
     focusCells,
+    panBy,
+    cancelCamera,
+    getCameraState,
   } = useZoomPanViewport({
     resetKey,
     panIgnoreSelector,
@@ -106,20 +113,77 @@ function ZoomPanViewportInner({
     return registerFocusCells(focusCellsKey, focusCells)
   }, [focusCells, focusCellsKey])
 
+  useEffect(() => registerActiveFocusCells(focusCells), [focusCells])
+
   // Agent parity: camera controls (otherwise keyboard-only ⌘+/⌘−/⌘0).
   useEffect(() => {
-    return registerAgentUiCommand({
-      name: 'zoom',
-      summary:
-        'Zoom the canvas camera. arg: in | out | fit (fit the current focus)',
-      run: (arg) => {
-        if (arg === 'in') zoomIn()
-        else if (arg === 'out') zoomOut()
-        else fitToView({ animate: true })
-        return `Camera: ${arg === 'in' || arg === 'out' ? `zoomed ${arg}` : 'fit to view'}.`
-      },
-    })
-  }, [zoomIn, zoomOut, fitToView])
+    // `fitToView` returns false when the canvas geometry could not be
+    // measured (zero-height container, target not mounted) — no move was
+    // started, so "completed" would be the false confidence this command
+    // exists to remove. Reduced motion commits synchronously and IS a
+    // completed fit.
+    const FIT_UNMEASURABLE =
+      'Camera unchanged: the canvas geometry could not be measured, so no fit was started. Retry once the canvas is visible.'
+    const waitForCamera = async () => {
+      const deadline = performance.now() + 1000
+      while (getCameraState().moving && performance.now() < deadline) {
+        await new Promise((done) => setTimeout(done, 16))
+      }
+      return getCameraState().moving ? 'timed out while moving' : 'completed'
+    }
+    const unregister = [
+      registerAgentUiCommand({
+        name: 'zoom',
+        summary:
+          'Zoom the active canvas camera. arg: in | out | fit (fit the current focus)',
+        run: async (arg) => {
+          if (arg === 'in') zoomIn()
+          else if (arg === 'out') zoomOut()
+          else {
+            if (!fitToView({ animate: true })) return FIT_UNMEASURABLE
+            return `Camera fit ${await waitForCamera()}.`
+          }
+          return `Camera: zoomed ${arg}.`
+        },
+      }),
+      registerAgentUiCommand({
+        name: 'canvas_camera',
+        summary:
+          'Control the active canvas camera. arg: pan <dx> <dy> (screen px) | zoom_in | zoom_out | fit | cancel',
+        run: async (arg) => {
+          const input = arg?.trim() ?? ''
+          if (input === 'zoom_in') zoomIn()
+          else if (input === 'zoom_out') zoomOut()
+          else if (input === 'fit') {
+            if (!fitToView({ animate: true })) return FIT_UNMEASURABLE
+            return `Camera fit ${await waitForCamera()}.`
+          }
+          else if (input === 'cancel') cancelCamera()
+          else if (input.startsWith('pan ')) {
+            const [, rawX, rawY] = input.split(/\s+/)
+            const dx = Number(rawX)
+            const dy = Number(rawY)
+            if (!Number.isFinite(dx) || !Number.isFinite(dy))
+              return 'Camera unchanged. Use: pan <dx> <dy> with finite screen-pixel numbers.'
+            panBy(dx, dy)
+          } else {
+            return 'Camera unchanged. arg must be pan <dx> <dy>, zoom_in, zoom_out, fit, or cancel.'
+          }
+          return `Camera command completed: ${input}.`
+        },
+      }),
+    ]
+    return () => unregister.forEach((remove) => remove())
+  }, [cancelCamera, fitToView, getCameraState, panBy, zoomIn, zoomOut])
+
+  useEffect(
+    () =>
+      registerAgentUiContext('canvas-camera', () => {
+        const camera = getCameraState()
+        return `Canvas camera: ${Math.round(camera.zoom * 100)}%, ${camera.moving ? 'moving' : 'idle'}${focusCellsKey ? `, active scenario ${focusCellsKey}` : ''}.`
+      }),
+    [focusCellsKey, getCameraState],
+  )
 
   return (
     // The mode provider is mounted per *surface* (EditorShell for the base

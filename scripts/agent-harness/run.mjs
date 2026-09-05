@@ -402,13 +402,13 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
         record.result = 'No UI state is being reported right now.'
         return record.result
       case 'open_phase':
-        record.result = 'Opened the phase on the canvas.'
+        record.result = 'Opened the phase and settled its canvas camera.'
         return record.result
       case 'open_scenario':
-        record.result = 'Opened the scenario on the canvas.'
+        record.result = 'Opened the scenario and settled its canvas camera.'
         return record.result
       case 'focus_cell':
-        record.result = 'Scrolled the canvas to the cell.'
+        record.result = 'Focused the active canvas camera on the cell.'
         return record.result
       default:
         record.result = `Tool "${name}" is not on the allow-list.`

@@ -28,11 +28,7 @@
  * bottom are kept deliberately narrow and carry their own failure messages
  * saying what to check in a browser, because narrow-and-loud is the most an
  * assertion at this altitude can be.
- *
- * (Authored with JSX in the deployment; the standalone tree writes the same
- * harness through `createElement` so the contract lives in a `.ts` file.)
  */
-import { createElement, type ReactElement } from 'react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, render } from '@testing-library/react'
@@ -62,22 +58,18 @@ afterEach(cleanup)
  * layout, so the three numbers `findScrollableRegions` reads are stamped on
  * by hand — the same trick `canvasScrollRegions.test.ts` uses.
  */
-function Harness({ mounted = true }: { mounted?: boolean }): ReactElement | null {
+function Harness({ mounted = true }: { mounted?: boolean }) {
   const { containerRef, contentRef } = useZoomPanViewport({})
   if (!mounted) return null
-  return createElement(
-    'div',
-    { ref: containerRef, 'data-testid': 'viewport' },
-    createElement(
-      'div',
-      { ref: contentRef },
-      createElement(
-        'div',
-        { 'data-testid': 'grid', style: { overflowY: 'auto' } },
-        createElement('button', { 'data-testid': 'cell' }, 'cell'),
-      ),
-      createElement('div', { 'data-testid': 'plain' }, 'plain canvas'),
-    ),
+  return (
+    <div ref={containerRef} data-testid="viewport">
+      <div ref={contentRef}>
+        <div data-testid="grid" style={{ overflowY: 'auto' }}>
+          <button data-testid="cell">cell</button>
+        </div>
+        <div data-testid="plain">plain canvas</div>
+      </div>
+    </div>
   )
 }
 
@@ -95,9 +87,7 @@ function stampOverflow(element: HTMLElement) {
 }
 
 function mountBoard(options?: { mounted?: boolean }) {
-  const view = render(
-    createElement(Harness, { mounted: options?.mounted ?? true }),
-  )
+  const view = render(<Harness mounted={options?.mounted ?? true} />)
   const at = (testId: string) =>
     document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
   const grid = at('grid')
@@ -222,10 +212,10 @@ describe('a container that mounts late', () => {
     // stable deps it is never retried. The wheel and gesture listeners escape
     // it by living on window; the three element-scoped effects escape it by
     // depending on the node.
-    const view = render(createElement(Harness, { mounted: false }))
+    const view = render(<Harness mounted={false} />)
     expect(document.querySelector('[data-testid="viewport"]')).toBeNull()
 
-    view.rerender(createElement(Harness, { mounted: true }))
+    view.rerender(<Harness mounted />)
     const cell = document.querySelector<HTMLElement>('[data-testid="cell"]')!
     const event = touch('touchmove', 2)
     cell.dispatchEvent(event)
