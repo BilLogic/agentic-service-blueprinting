@@ -85,7 +85,7 @@ export const SAMPLE_SCENARIOS: SampleScenario[] = [
 ]
 
 export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-110000000000","name":"A first look","summary":"Repository to running app to decision, with no account, no key, and no database anywhere.","note":null,"kind":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-110000000000","name":"A first look","summary":"Repository to running app to decision, with no account, no key, and no database anywhere.","note":null,"kind":"happy","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-110100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-110100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -134,7 +134,7 @@ export const SAMPLE_DISCOVER_FIRSTLOOK_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-210000000000","name":"From your documents","summary":"The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.","note":null,"kind":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-210000000000","name":"From your documents","summary":"The ingest route: a corpus of service documents, read by subagents, with per-claim provenance on every cell.","note":null,"kind":"happy","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-210100000000","name":"Journey figures","role":"storyboard","position":0},
     {"id":"f0000000-0000-4000-8000-210100010000","name":"Stakeholders","role":null,"position":1},
@@ -209,7 +209,7 @@ export const SAMPLE_MAP_SERVICE_DOCS_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-220000000000","name":"From someone else’s diagram","summary":"The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.","note":null,"kind":"variant"},
+  path: {"id":"f0000000-0000-4000-8000-220000000000","name":"From someone else’s diagram","summary":"The translate route: a FigJam, Miro or spreadsheet export mapped onto lane roles through a crosswalk, with the diagram’s gaps left visible.","note":null,"kind":"variant","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-220100000000","name":"Journey figures","role":"storyboard","position":0},
     {"id":"f0000000-0000-4000-8000-220100010000","name":"Stakeholders","role":null,"position":1},
@@ -284,7 +284,7 @@ export const SAMPLE_MAP_SERVICE_DIAGRAM_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-310000000000","name":"Findings triaged","summary":"Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.","note":null,"kind":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-310000000000","name":"Findings triaged","summary":"Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.","note":null,"kind":"happy","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-310100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-310100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -339,7 +339,7 @@ export const SAMPLE_AUDIT_TRIAGED_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-320000000000","name":"A critical finding reopens","summary":"A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.","note":null,"kind":"variant"},
+  path: {"id":"f0000000-0000-4000-8000-320000000000","name":"A critical finding reopens","summary":"A finding marked resolved before the fix landed: the next run re-detects the same fingerprint and reopens it.","note":null,"kind":"variant","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-320100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-320100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -395,7 +395,7 @@ export const SAMPLE_AUDIT_REOPENS_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-410000000000","name":"Traced before it lands","summary":"Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.","note":null,"kind":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-410000000000","name":"Traced before it lands","summary":"Hypothetical to traced consequences to an accepted change request, with the base blueprint untouched throughout.","note":null,"kind":"happy","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-410100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-410100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -449,7 +449,7 @@ export const SAMPLE_WHATIF_TRACED_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-510000000000","name":"Stakeholder readout","summary":"From “show me my part” to a presented, exportable slice that still points at its cells.","note":null,"kind":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-510000000000","name":"Stakeholder readout","summary":"From “show me my part” to a presented, exportable slice that still points at its cells.","note":null,"kind":"happy","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-510100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-510100010000","name":"Blueprint owner","role":"customer_actions","position":1},
@@ -510,7 +510,7 @@ export const SAMPLE_SLICE_READOUT_PATH_FALLBACK: BlueprintData = {
 }
 
 export const SAMPLE_KEEP_UPDATE_PATH_FALLBACK: BlueprintData = {
-  path: {"id":"f0000000-0000-4000-8000-610000000000","name":"Update what changed","summary":"The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.","note":null,"kind":"happy"},
+  path: {"id":"f0000000-0000-4000-8000-610000000000","name":"Update what changed","summary":"The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.","note":null,"kind":"happy","status":"live"},
   lanes: [
     {"id":"f0000000-0000-4000-8000-610100000000","name":"Stakeholders","role":null,"position":0},
     {"id":"f0000000-0000-4000-8000-610100010000","name":"Blueprint owner","role":"customer_actions","position":1},

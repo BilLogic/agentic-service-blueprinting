@@ -1,5 +1,6 @@
 import type { TouchpointRoleValue } from '@/lib/touchpointRole'
 import type { PathKind } from '@/types/database'
+import type { EntityStatus } from '@/lib/entityStatus'
 
 export type BlueprintPath = {
   id: string
@@ -7,6 +8,8 @@ export type BlueprintPath = {
   summary: string | null
   note: string | null
   kind: PathKind
+  /** How far along this route is. `live` unless somebody said otherwise. */
+  status: EntityStatus
 }
 
 export type BlueprintLane = {
@@ -160,6 +163,14 @@ export type BlueprintCell = {
   form?: string | null
   /** Value delivered, as `{ for, value }` pairs. */
   value_props?: { for: string; value: string }[]
+  /**
+   * Whether this cell describes something built. Absent means shipped.
+   *
+   * The state used to be a `Planned — ` prefix on `content`, which put a
+   * status inside a touchpoint NAME: a touchpoint read "Planned — swap flow UI"
+   * and the vocabulary gained a product called that. Fifty cells carried it.
+   */
+  status?: EntityStatus | null
 }
 
 export type BlueprintCellTrigger = {

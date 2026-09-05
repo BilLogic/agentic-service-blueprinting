@@ -1393,6 +1393,9 @@ function buildScenario(scenario) {
         summary: path.summary,
         note: null,
         kind: path.kind,
+        // The sample is the offline copy of a board whose rows all default to
+        // `live`; nothing here is a proposal, so nothing overrides it.
+        status: 'live',
       },
       lanes,
       steps: pathSteps,

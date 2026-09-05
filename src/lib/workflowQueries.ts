@@ -10,6 +10,7 @@ export const PATH_BLUEPRINT_SELECT = `
   summary,
   note,
   kind,
+  status,
   scenario_id,
   lanes (
     id,
@@ -32,6 +33,7 @@ export const PATH_BLUEPRINT_SELECT = `
     content,
     frame,
     summary,
+    status,
     resources!resources_cell_id_fkey (
       id,
       position,

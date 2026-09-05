@@ -61,6 +61,7 @@ function makeBlueprint(
       summary: null,
       note: null,
       kind: 'happy',
+      status: 'live',
     },
     lanes,
     steps: stepRows,

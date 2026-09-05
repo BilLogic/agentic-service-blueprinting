@@ -167,6 +167,9 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
             "summary": path["summary"],
             "note": path["note"],
             "kind": path["kind"],
+            # The IR authors no status: a blueprint an adopter imports states
+            # what the service does today, which is the column's own default.
+            "status": "live",
         },
         "lanes": [project(seed_lane_fields(lane, path)) for lane in path["lanes"]],
         # Steps in this path's column order (array index = position).
