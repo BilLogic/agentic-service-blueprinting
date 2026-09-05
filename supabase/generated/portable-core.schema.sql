@@ -1737,14 +1737,14 @@ CREATE FUNCTION public.slices_referencing(cell_ids uuid[]) RETURNS jsonb
         from public.cells c
         where c.id = any($1)
           and exists (
-            select 1 from public.slice_items i2
+            select 1 from public.slides i2
             where i2.slice_id = s.id and c.id = any(i2.cell_ids)
           )
       )
     ) as entry
     from public.slices s
     where exists (
-      select 1 from public.slice_items i
+      select 1 from public.slides i
       where i.slice_id = s.id and i.cell_ids && $1
     )
   ) rows;

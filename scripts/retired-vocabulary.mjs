@@ -94,19 +94,30 @@
  * in `CONTEXT.md`. What `21000116000000` retired is the bare TABLE name, which
  * never said whose findings these were.
 
- * **`slice_items` enforces nothing YET, and that is a finding rather than a
- * judgement.** The table became `slides` in `21000115000000`, which moved every
- * dependent name it could see — the four constraints, the two indexes, the
- * trigger, the four policies — and missed the one a catalogue sweep would have
- * named: `slices_referencing`'s body is `language sql`, so the text it was
- * created with survived the rename and still selects `from public.slice_items`.
- * Calling it raises `42P01`, which takes `deletion_impact` and every delete RPC
- * that reads it down with it. `scripts/agent-harness/run.mjs` asks PostgREST for
- * the same relation as an embed. Keying `slice_item` today would therefore fail
- * `scripts/tests/portable-schema.test.mjs` on that body — correctly, because the
- * rename is unfinished. Finishing it is a migration of its own; this row is here
- * so the rename is written down while that is true, and the fragment goes in the
- * `retired` list with it.
+ * **`slice_items` enforces, since `21000129000000` finished the rename.** The
+ * table became `slides` in `21000115000000`, which moved every dependent name a
+ * catalogue holds — the four constraints, the two indexes, the trigger, the four
+ * policies — and missed the one no catalogue holds: the text a function body was
+ * created with. `slices_referencing` is `language sql`, so its body survived the
+ * rename verbatim and still selected `from public.slice_items`; calling it
+ * raised `42P01`, which took `deletion_impact` and every delete RPC that reads
+ * it down with it (#171). The row therefore sat here for four migrations
+ * enforcing nothing, because keying the fragment would have failed
+ * `check:identifiers` on that BODY — its `function body` branch reads
+ * `pg_proc.prosrc`, so it saw the defect and correctly refused to call it
+ * residue. (Only that one. The static twin, `scripts/tests/portable-schema.test.mjs`,
+ * stays green either way: it blanks single-quoted strings before tokenising,
+ * and a dollar-quoted body full of `'…'` shifts the pairing enough to swallow
+ * the region the name sits in. A body is the one place the file-reading sweep
+ * cannot follow the catalogue-reading one — which is the same sentence this
+ * defect is written in, one estate over.)
+ *
+ * `21000129000000` rewrote the body, so the fragment is in the `retired` list
+ * now and the dump sweep is green on it. What the fragment caught on the way in
+ * is the second copy of the same defect, one estate over:
+ * `scripts/agent-harness/run.mjs` asked PostgREST for the retired relation as an
+ * embed, which is Check B's subject and no compiler's — it is `slides` there
+ * now. A guard flipped on is worth the finding it makes on its first run.
  *
  * **One rename in this vocabulary is not in the table**, because it never was an
  * identifier and because it ended in no word at all. `evidence`, `findings`,
@@ -282,15 +293,24 @@ export const RENAME_MAP = Object.freeze(
       // image on one cell. `caption` became `title` under the same rule as the
       // renames below it: a title is authored content, not structure.
       //
-      // ENFORCES NOTHING YET — see the header. One function body still selects
-      // from the retired table, so the fragment would fail the dump sweep on a
-      // defect rather than on residue. It belongs in `retired` the moment the
-      // migration that finishes the rename lands.
+      // ENFORCES, since `21000129000000` — see the header. The fragment was
+      // held out while `slices_referencing`'s body still selected from the
+      // retired table, because the dump sweep would have failed on that defect
+      // rather than on residue; the migration that rewrote the body is what
+      // lets it in. `slice_items` rather than `slice_item`: the plural is the
+      // name the table bore, and every dependent name 21000115 had to move
+      // (`slice_items_pkey`, `slice_items_slice_id_idx`) carries it as a
+      // substring anyway.
+      //
+      // `caption` is NOT a fragment. Text under an image is called a caption
+      // and `steps.summary`'s own comment says the word about a strip; what
+      // retired is the column, not the noun — the same split the `label` row
+      // below records.
       was: ['slice_items', 'slice_items.caption'],
       is: ['slides', 'slides.title'],
-      migrations: ['21000115000000'],
-      retired: [],
-      copy: [],
+      migrations: ['21000115000000', '21000129000000'],
+      retired: ['slice_items'],
+      copy: ['slice item', 'slice items'],
     },
     {
       was: ["scenarios.layout = 'side-by-side'", "scenarios.layout = 'integrated'"],
