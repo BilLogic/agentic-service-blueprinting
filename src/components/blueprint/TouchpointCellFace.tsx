@@ -4,6 +4,11 @@ import {
   blueprintCellButtonClassName,
   blueprintToneAttrs,
 } from '@/lib/blueprintCellStyle'
+import type { EntityStatus } from '@/lib/entityStatus'
+import {
+  TOUCHPOINT_ITEM_HEIGHT,
+  TOUCHPOINT_ITEM_HEIGHT_COMPACT,
+} from '@/lib/blueprintLayout'
 import { getTouchpointTone } from '@/lib/touchpointColors'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
@@ -15,11 +20,16 @@ type TouchpointCellFaceProps = {
   style?: CSSProperties
   opacity?: number
   asSpan?: boolean
+  /** Passed through so an unbuilt touchpoint does not read as a live one. */
+  status?: EntityStatus | null
   /**
-   * A placement the registry lacks (#112): the name is the author's, not
-   * the catalog's, and the face says so with a dashed border.
+   * A placement whose touchpoint the registry lacks (#112): the same face,
+   * dashed, so a reader sees the name is the author's and not the catalog's.
    */
   nameOnly?: boolean
+  /** Compact prose/list treatment; the canvas keeps a deterministic height. */
+  inline?: boolean
+  'aria-describedby'?: string
 }
 
 /**
@@ -33,16 +43,23 @@ export function TouchpointCellFace({
   style: styleProp,
   opacity,
   asSpan = false,
+  status,
   nameOnly = false,
+  inline = false,
+  'aria-describedby': ariaDescribedBy,
 }: TouchpointCellFaceProps) {
   const tone = getTouchpointTone(item)
+  const fixedHeight = compact
+    ? TOUCHPOINT_ITEM_HEIGHT_COMPACT
+    : TOUCHPOINT_ITEM_HEIGHT
+  const sizedStyle = {
+    ...(inline
+      ? undefined
+      : { height: fixedHeight, minHeight: fixedHeight, maxHeight: fixedHeight }),
+    ...styleProp,
+  } as CSSProperties
 
   if (asSpan) {
-    const style = {
-      ...(opacity != null && opacity < 1 ? { opacity } : undefined),
-      ...styleProp,
-    } as CSSProperties
-
     return (
       <span
         className={cn(
@@ -52,27 +69,38 @@ export function TouchpointCellFace({
           nameOnly && 'border-dashed',
           className,
         )}
-        style={style}
-        {...blueprintToneAttrs(tone)}
         {...(nameOnly ? { 'data-name-only': '' } : {})}
+        style={{
+          ...(opacity != null && opacity < 1 ? { opacity } : undefined),
+          ...sizedStyle,
+        }}
+        title={item}
+        aria-label={item}
+        aria-describedby={ariaDescribedBy}
+        {...blueprintToneAttrs(tone)}
       >
-        {item}
+        <span className="line-clamp-2 break-words">{item}</span>
       </span>
     )
   }
 
   return (
     <BlueprintCellButton
+      status={status}
       fill="frontstage-touchpoint"
       tone={tone}
       variant="touchpoint"
       compact={compact}
       opacity={opacity}
       className={cn('min-w-0 shrink-0 break-words', nameOnly && 'border-dashed', className)}
-      style={styleProp}
+      style={sizedStyle}
+      aria-label={item}
+      aria-describedby={ariaDescribedBy}
       nameOnly={nameOnly}
     >
-      {item}
+      <span className="line-clamp-2 break-words" title={item}>
+        {item}
+      </span>
     </BlueprintCellButton>
   )
 }
