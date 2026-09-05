@@ -2,8 +2,10 @@
 --
 -- 21000115000000 renamed the table to `slides` and moved every dependent name
 -- a catalogue can see — the four constraints, the two indexes, the trigger, the
--- four policies. It missed the one kind of name no catalogue holds: the text a
--- function body was created with.
+-- four PERMISSIVE policies. It missed two things: the three RESTRICTIVE policies
+-- the optional tier recipe had already created under the old name, and the one
+-- kind of name no catalogue holds at all — the text a function body was created
+-- with.
 --
 -- `slices_referencing` is `language sql`. A SQL body is stored verbatim and is
 -- not re-resolved when a relation it names is renamed, so the function survived
@@ -35,6 +37,31 @@
 -- the moved names changed and nothing else — so this is that fix, on the two
 -- occurrences this schema has.
 --
+-- ── The three policies the same rename left behind ────────────────────────
+--
+-- The catalogue pass 21000115 DID run was not complete either, and the sweep
+-- that reads a built database is what says so rather than a reading of the
+-- file. `20260818002000` — the OPTIONAL service-account tier, a recipe —
+-- creates a RESTRICTIVE insert/update/delete policy per table from a
+-- hand-written table list, and that list still read `slice_items`. So a
+-- database that replays the whole series carries
+-- `slice_items_insert_service_only`, `slice_items_update_service_only` and
+-- `slice_items_delete_service_only` on `public.slides`: 21000115 moved the four
+-- permissive policies it could name and never looked for the recipe's three.
+--
+-- They are RENAMED below rather than dropped and recreated. A rename keeps the
+-- policy's definition byte-for-byte — same command, same roles, the same
+-- `using` and `with check` expressions — and a recreate is an opportunity to
+-- write a different policy while claiming to move one.
+--
+-- The rename is in the RECIPE half, and guarded by a catalogue lookup, because
+-- only a replay ever holds the old names. The generated recipe follows the
+-- core's renames through every fragment that predates them
+-- (`scripts/generate-portable-core.mjs`), so on the two-halves database the
+-- tier's loop already created all three as `slides_*_service_only` and there is
+-- nothing to move. Both databases end on the same three names, which is what
+-- the assertion after the loop states.
+--
 -- ── What changes, and what deliberately does not ──────────────────────────
 --
 -- The body below is the definition the schema dump holds, with
@@ -51,12 +78,13 @@
 --
 -- ── Replaying against an empty database ───────────────────────────────────
 --
--- Core-only, and no table, column or row moves: the schema version does not
--- advance (the stance of 21000126000000 through 21000128000000). `create or
--- replace` makes a re-run a no-op. The proofs are invariants — no body in
--- `public` names the retired relation, and the two functions the defect
--- disabled answer when called — and both read the same on an empty replay as
--- on a populated target.
+-- No table, column or row moves: the schema version does not advance (the
+-- stance of 21000126000000 through 21000128000000). `create or replace` makes a
+-- re-run of the body a no-op, and the policy rename asks the catalogue first,
+-- so a second run finds nothing left to move. The proofs are invariants — no
+-- body in `public` names the retired relation, no policy carries it, and the
+-- two functions the defect disabled answer when called — and all three read the
+-- same on an empty replay as on a populated target.
 
 create or replace function public.slices_referencing(cell_ids uuid[])
 returns jsonb
@@ -118,6 +146,62 @@ begin
   select public.deletion_impact('lane', gen_random_uuid()) into v_impact;
   if v_impact -> 'affected_slices' is null then
     raise exception 'deletion_impact no longer reports affected_slices';
+  end if;
+end
+$$;
+
+-- @recipe — the three policies belong to the optional service-account tier
+-- (20260818002000), which is a recipe: they exist only on a database where that
+-- migration was applied, so the statement that moves them belongs to that half.
+--
+-- Guarded, because the generated recipe already speaks the current vocabulary:
+-- on the two-halves database the tier's loop created these three as
+-- `slides_*_service_only` and there is nothing here to rename. Only a replay of
+-- the series carries the old names, and `alter policy` has no `if exists`.
+do $$
+declare
+  v_command text;
+  v_old text;
+  v_new text;
+begin
+  foreach v_command in array array['insert', 'update', 'delete'] loop
+    v_old := 'slice_items_' || v_command || '_service_only';
+    v_new := 'slides_' || v_command || '_service_only';
+
+    if exists (
+      select 1
+        from pg_policy p
+        join pg_class c on c.oid = p.polrelid
+        join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public'
+         and c.relname = 'slides'
+         and p.polname = v_old
+    ) then
+      execute format('alter policy %I on public.slides rename to %I', v_old, v_new);
+    end if;
+  end loop;
+end
+$$;
+
+do $$
+declare
+  v_stale text;
+begin
+  -- The invariant rather than a census: NO policy in `public` names the retired
+  -- table. It reads the same on a replay, where three were just moved, as on
+  -- the two halves, where there was never anything to move — and it fails on
+  -- the next policy created from a list somebody forgot to update.
+  select string_agg(p.polname, ', ' order by p.polname) into v_stale
+    from pg_policy p
+    join pg_class c on c.oid = p.polrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and p.polname like '%slice_items%';
+
+  if v_stale is not null then
+    raise exception
+      'a policy still names public.slice_items, which is public.slides now: %',
+      v_stale;
   end if;
 end
 $$;

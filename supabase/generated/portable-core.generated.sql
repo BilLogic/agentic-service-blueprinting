@@ -7434,8 +7434,10 @@ $proof$;
 --
 -- 21000115000000 renamed the table to `slides` and moved every dependent name
 -- a catalogue can see — the four constraints, the two indexes, the trigger, the
--- four policies. It missed the one kind of name no catalogue holds: the text a
--- function body was created with.
+-- four PERMISSIVE policies. It missed two things: the three RESTRICTIVE policies
+-- the optional tier recipe had already created under the old name, and the one
+-- kind of name no catalogue holds at all — the text a function body was created
+-- with.
 --
 -- `slices_referencing` is `language sql`. A SQL body is stored verbatim and is
 -- not re-resolved when a relation it names is renamed, so the function survived
@@ -7467,6 +7469,31 @@ $proof$;
 -- the moved names changed and nothing else — so this is that fix, on the two
 -- occurrences this schema has.
 --
+-- ── The three policies the same rename left behind ────────────────────────
+--
+-- The catalogue pass 21000115 DID run was not complete either, and the sweep
+-- that reads a built database is what says so rather than a reading of the
+-- file. `20260818002000` — the OPTIONAL service-account tier, a recipe —
+-- creates a RESTRICTIVE insert/update/delete policy per table from a
+-- hand-written table list, and that list still read `slice_items`. So a
+-- database that replays the whole series carries
+-- `slice_items_insert_service_only`, `slice_items_update_service_only` and
+-- `slice_items_delete_service_only` on `public.slides`: 21000115 moved the four
+-- permissive policies it could name and never looked for the recipe's three.
+--
+-- They are RENAMED below rather than dropped and recreated. A rename keeps the
+-- policy's definition byte-for-byte — same command, same roles, the same
+-- `using` and `with check` expressions — and a recreate is an opportunity to
+-- write a different policy while claiming to move one.
+--
+-- The rename is in the RECIPE half, and guarded by a catalogue lookup, because
+-- only a replay ever holds the old names. The generated recipe follows the
+-- core's renames through every fragment that predates them
+-- (`scripts/generate-portable-core.mjs`), so on the two-halves database the
+-- tier's loop already created all three as `slides_*_service_only` and there is
+-- nothing to move. Both databases end on the same three names, which is what
+-- the assertion after the loop states.
+--
 -- ── What changes, and what deliberately does not ──────────────────────────
 --
 -- The body below is the definition the schema dump holds, with
@@ -7483,12 +7510,13 @@ $proof$;
 --
 -- ── Replaying against an empty database ───────────────────────────────────
 --
--- Core-only, and no table, column or row moves: the schema version does not
--- advance (the stance of 21000126000000 through 21000128000000). `create or
--- replace` makes a re-run a no-op. The proofs are invariants — no body in
--- `public` names the retired relation, and the two functions the defect
--- disabled answer when called — and both read the same on an empty replay as
--- on a populated target.
+-- No table, column or row moves: the schema version does not advance (the
+-- stance of 21000126000000 through 21000128000000). `create or replace` makes a
+-- re-run of the body a no-op, and the policy rename asks the catalogue first,
+-- so a second run finds nothing left to move. The proofs are invariants — no
+-- body in `public` names the retired relation, no policy carries it, and the
+-- two functions the defect disabled answer when called — and all three read the
+-- same on an empty replay as on a populated target.
 
 create or replace function public.slices_referencing(cell_ids uuid[])
 returns jsonb

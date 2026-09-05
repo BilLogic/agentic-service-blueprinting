@@ -7,8 +7,8 @@ check now.
 
 `21000115000000` renamed `slice_items` to `slides` and moved every dependent
 name a catalogue holds — four constraints, two indexes, a trigger, four
-policies. It missed the one no catalogue holds: the text a function body was
-created with. `slices_referencing` is `language sql`, so its body survived the
+permissive policies. It missed the one no catalogue holds: the text a function
+body was created with. `slices_referencing` is `language sql`, so its body survived the
 rename verbatim and still selected `from public.slice_items`:
 
 ```
@@ -31,6 +31,15 @@ grants, which matters here because the function is in the portable core and its
 `grant execute … to anon, authenticated` is in the Supabase recipe. Its proof
 sweeps every body in `public` and then CALLS both functions, because a `language
 sql` body is text until something calls it.
+
+The same rename also missed three names a catalogue *does* hold — the optional
+service-account tier (`20260818002000`) builds its RESTRICTIVE policies from a
+table list that still read `slice_items`, so a database replaying the whole
+series carried `slice_items_insert_service_only`,
+`slice_items_update_service_only` and `slice_items_delete_service_only` on
+`public.slides`, and `21000129000000` renames all three (a rename, so the
+definitions stay byte-for-byte) in its recipe half, guarded by the catalogue
+because the generated recipe already creates them under the current name.
 
 The rename map's row flips with it: `slice_items` is in the `retired` list now,
 and the header says what changed rather than leaving the old "enforces nothing

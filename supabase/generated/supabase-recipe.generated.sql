@@ -1085,3 +1085,63 @@ begin
   end if;
 end
 $recipe_proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000129000000_a_sql_body_keeps_the_name_it_was_written_with.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the three policies belong to the optional service-account tier
+-- (20260818002000), which is a recipe: they exist only on a database where that
+-- migration was applied, so the statement that moves them belongs to that half.
+--
+-- Guarded, because the generated recipe already speaks the current vocabulary:
+-- on the two-halves database the tier's loop created these three as
+-- `slides_*_service_only` and there is nothing here to rename. Only a replay of
+-- the series carries the old names, and `alter policy` has no `if exists`.
+do $$
+declare
+  v_command text;
+  v_old text;
+  v_new text;
+begin
+  foreach v_command in array array['insert', 'update', 'delete'] loop
+    v_old := 'slice_items_' || v_command || '_service_only';
+    v_new := 'slides_' || v_command || '_service_only';
+
+    if exists (
+      select 1
+        from pg_policy p
+        join pg_class c on c.oid = p.polrelid
+        join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public'
+         and c.relname = 'slides'
+         and p.polname = v_old
+    ) then
+      execute format('alter policy %I on public.slides rename to %I', v_old, v_new);
+    end if;
+  end loop;
+end
+$$;
+
+do $$
+declare
+  v_stale text;
+begin
+  -- The invariant rather than a census: NO policy in `public` names the retired
+  -- table. It reads the same on a replay, where three were just moved, as on
+  -- the two halves, where there was never anything to move — and it fails on
+  -- the next policy created from a list somebody forgot to update.
+  select string_agg(p.polname, ', ' order by p.polname) into v_stale
+    from pg_policy p
+    join pg_class c on c.oid = p.polrelid
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and p.polname like '%slice_items%';
+
+  if v_stale is not null then
+    raise exception
+      'a policy still names public.slice_items, which is public.slides now: %',
+      v_stale;
+  end if;
+end
+$$;
