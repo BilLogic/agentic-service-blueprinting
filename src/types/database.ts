@@ -1173,7 +1173,7 @@ export type Database = {
       set_cell_dependency: {
         Args: {
           kind?: string
-          label?: string
+          name?: string
           note?: string
           source_cell_id: string
           target_cell_id: string

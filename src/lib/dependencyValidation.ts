@@ -43,7 +43,8 @@ export type DraftDependency = {
   sourceCellId: string
   targetCellId: string | null
   kind: DependencyKind
-  label: string
+  /** The word on the arrow — `cell_dependencies.name`. */
+  name: string
   note: string
 }
 

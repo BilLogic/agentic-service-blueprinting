@@ -514,7 +514,8 @@ export function setCellDependency(
     sourceCellId: string
     targetCellId: string
     kind?: DependencyKind
-    label?: string | null
+    /** The word on the arrow. `cell_dependencies.name` since `21000116000000`. */
+    name?: string | null
     note?: string | null
   },
 ): Promise<string> {
@@ -522,7 +523,7 @@ export function setCellDependency(
     source_cell_id: input.sourceCellId,
     target_cell_id: input.targetCellId,
     kind: input.kind ?? 'leads_to',
-    label: input.label ?? null,
+    name: input.name ?? null,
     note: input.note ?? null,
   })
 }

@@ -59,6 +59,12 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run check:write-surface
+      # One level below the two surface guards: the write tools post their
+      # arguments BY NAME, and PostgREST resolves an RPC by matching those
+      # names to a function's parameters. A key the function does not have is
+      # a 404 at the seam, and #168 shipped one for a release — the panel could
+      # not save an arrow at all. Static, reads the committed schema dump.
+      - run: npm run check:rpc-arguments
       # The standalone claim: no tracked file names the deployment this kit
       # was generalised from.
       - run: npm run check:standalone
