@@ -23,7 +23,7 @@ type ScenarioTitleBadgeProps = {
    * than on its own ⓘ: one glyph cannot mean both "opens the panel" and "an
    * aside", and this note is a fact about the same label.
    */
-  infoTooltip?: string | null
+  note?: string | null
 }
 
 /**
@@ -48,7 +48,7 @@ export function ScenarioTitleBadge({
   side = 'top',
   pathKind,
   tone = 'default',
-  infoTooltip,
+  note,
 }: ScenarioTitleBadgeProps) {
   const pathAccent = pathKind ? PATH_TYPE_COLORS[pathKind] : undefined
   const panelTone = tone === 'panel' && !pathKind
@@ -60,7 +60,7 @@ export function ScenarioTitleBadge({
       description={summary}
       name={name}
       showDescription
-      note={infoTooltip}
+      note={note}
       side={side}
     >
       <Badge

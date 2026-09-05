@@ -9,15 +9,24 @@ import {
   blueprintPanelSectionFillColor,
 } from '@/lib/blueprintTheme'
 import {
-  COMPARE_PATH_SECTION_INSET,
+  COMPARE_PATH_SECTION_H_INSET,
   COMPARE_PATH_SECTION_TOP_INSET,
   COMPARE_PATH_SECTION_BOTTOM_INSET,
   COMPARE_STEP_HEADER_HEIGHT,
+  COMPARE_LABEL_TRACK_WIDTH,
 } from '@/lib/sideBySideCompareLayout'
+import { LANE_COLUMN_WIDTH, STEP_COLUMN_GAP } from '@/lib/blueprintLayout'
 import type { BlueprintData } from '@/types/blueprint'
 
 /** Uniform inset for single-path service blueprint section frames. */
 export const SERVICE_PATH_SECTION_INSET = 8
+/**
+ * The service grid's rail carries its own full-height divider, so the frame
+ * starts where the step columns start rather than insetting back over it.
+ * Without this the outline sat 8px INSIDE the rail, giving that view two
+ * vertical lines 8px apart describing one edge.
+ */
+export const SERVICE_PATH_SECTION_LEFT_INSET = 0
 
 type ComparePathSectionFrameProps = {
   blueprint: BlueprintData
@@ -38,6 +47,8 @@ type ComparePathSectionFrameProps = {
   showPathTypeBadge?: boolean
   /** Compare uses extra top inset for the title badge; service uses uniform inset. */
   variant?: 'compare' | 'service'
+  /** Row-axis labels sit outside the path boundary in every arrangement. */
+  excludeLabelRail?: boolean
 }
 
 /** Figma-style section: path-type outline, grouped fill, optional title on the top edge. */
@@ -48,24 +59,30 @@ export function ComparePathSectionFrame({
   showPathTypeBadge = false,
   variant = 'compare',
   extraTopInset = 0,
+  excludeLabelRail = false,
 }: ComparePathSectionFrameProps) {
   const { path } = blueprint
   const pathBorder = getPathTypeSectionBorderStyle(path.kind, path)
   const { borderColor, borderStyle, borderWidth } = pathBorder
   const sectionFill = blueprintPanelSectionFillColor()
   const useTypeBadge = showPathTypeBadge && shouldShowPathTypeBadge(path)
+  const labelAxisOffset = excludeLabelRail
+    ? variant === 'service'
+      ? LANE_COLUMN_WIDTH
+      : COMPARE_LABEL_TRACK_WIDTH + STEP_COLUMN_GAP
+    : 0
 
   const inset =
     variant === 'compare'
       ? {
           top: -COMPARE_PATH_SECTION_TOP_INSET - extraTopInset,
-          left: -COMPARE_PATH_SECTION_INSET,
-          right: -COMPARE_PATH_SECTION_INSET,
+          left: labelAxisOffset - COMPARE_PATH_SECTION_H_INSET,
+          right: -COMPARE_PATH_SECTION_H_INSET,
           bottom: -COMPARE_PATH_SECTION_BOTTOM_INSET,
         }
       : {
           top: -SERVICE_PATH_SECTION_INSET,
-          left: -SERVICE_PATH_SECTION_INSET,
+          left: labelAxisOffset - SERVICE_PATH_SECTION_LEFT_INSET,
           right: -SERVICE_PATH_SECTION_INSET,
           bottom: -SERVICE_PATH_SECTION_INSET,
         }
@@ -76,8 +93,8 @@ export function ComparePathSectionFrame({
       : -SERVICE_PATH_SECTION_INSET
   const titleLeft =
     variant === 'compare'
-      ? COMPARE_PATH_SECTION_INSET + 2
-      : SERVICE_PATH_SECTION_INSET + 2
+      ? labelAxisOffset - COMPARE_PATH_SECTION_H_INSET + 10
+      : labelAxisOffset - SERVICE_PATH_SECTION_LEFT_INSET + 10
 
   return (
     <>
@@ -97,6 +114,12 @@ export function ComparePathSectionFrame({
         // counterpart of the lane-label rail, one tint lighter so the two
         // axes read as related but distinct. Offset 3px inside the frame
         // edges so it never paints over the frame's border.
+        //
+        // Both axes at once: the band's left edge is taken from `inset.left`
+        // rather than from the inset constant, so when the frame starts after
+        // the label track the band starts there too. Written as a bare
+        // `-COMPARE_PATH_SECTION_H_INSET + 3` it painted the header tint
+        // straight across the lane-label rail.
         <div
           aria-hidden
           className="pointer-events-none absolute rounded-t-[9px]"

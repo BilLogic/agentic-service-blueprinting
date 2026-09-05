@@ -302,7 +302,7 @@ export function ResizableComparePanel({
         <ScenarioTitleBadge
           name={panelTitleLabel}
           summary={panelTitleSummary}
-          infoTooltip={panelTitleInfoTooltip}
+          note={panelTitleInfoTooltip}
           tone="panel"
           className="pointer-events-auto absolute z-30 max-w-[min(calc(100%-3rem),28rem)]"
           style={{
