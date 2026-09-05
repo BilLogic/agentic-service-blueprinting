@@ -1,5 +1,5 @@
 ---
-summary: Every guard in CI, what each one is defending and what its failure means — the identifier manifest, the four version statements, adapter parity, the generated portable core, the reserved migration band, the IR round trip, the vendored-rulebook drift guard, the write and read surfaces, the paths the plugin surface names, the paths a deployment imports, the dependency vocabulary, the standalone sweep, the release tag and the docs index.
+summary: Every guard in CI, what each one is defending and what its failure means — the identifier manifest, the four version statements, adapter parity, the generated portable core, the reserved migration band, the IR round trip, the vendored-rulebook drift guard, the write and read surfaces, the paths the plugin surface names, the paths a deployment imports, the dependency vocabulary, the standalone sweep, the release tag, the docs index and the three checks that keep `AGENTS.md` a router.
 ---
 
 # The guard set
@@ -64,7 +64,31 @@ of.
 | `bash scripts/tests/resource-split-migration.test.sh` | A populated replay of `21000113000000` lost the target of a legacy citation while moving it from `cells.links` to `evidence.ref`. Requires a local PostgreSQL server; CI runs it in the portable-core job. |
 | `npm run lint`, `npm run build` | ESLint, then a typecheck and a production build. |
 
-## 5. Adding one
+## 5. The router
+
+`AGENTS.md` is the whole always-loaded tier: the one file a session is handed
+before it decides anything, here and in a workspace scaffolded from here.
+`scripts/always-loaded.mjs` is the single list of what is in that tier and, at
+length, what is deliberately out — the plugin manifests included, because the
+host reads those at install time rather than handing them to a session. All
+three checks below read that one list, so a file added to the tier moves all
+three at once.
+
+| Command | What goes red |
+| --- | --- |
+| `npm run check:budget` | The always-loaded tier is over its stated char budget — or, just as loudly, so far under it that the budget has stopped describing the file. Every character of the router is paid for by every task, including the ones it has nothing to do with, so the ceiling is the price of the tier. It fails DOWNWARD too because a ceiling that only ever blocks is one nobody re-reads: the fix is a one-line edit to `BUDGET`, and it is what makes the number a promise rather than a decoration. The report names every file it counted and its size. |
+| `npm run check:negation` | Prohibition tokens across the tier rose above `RECORDED`. Steering by prohibition drags the forbidden behaviour into context and makes it more available, not less; the fix is to state the target behaviour. It is a ratchet, not a threshold — a threshold gets argued about and switched off, a ratchet only asks that the count fall — and a fall passes with a nudge to re-record. Quoted speech and code spans are exempt. A run measuring fewer files than `RECORDED.files` fails, because a corpus that lost a file would otherwise clear the ratchet every time with a smaller, greener number. |
+| `npm run check:pointers` | A pointer in the router does not resolve, buries its trigger word, or is missing entirely. Three silent failures, one sweep: a renamed path leaves the agent loading a document that is not there and guessing; an item opening with "Any" makes the agent read filler before it learns which branch it is on; and an item naming no document at all is a body living in the router, prose every session pays for. § Rules that hold for every skill is exempt from the last two — those bind before any pointer could fire, which is why they are inline — and their pointers still have to resolve. |
+
+The sweep is by structure rather than by a list of pointers, so a row added
+tomorrow is swept tomorrow, and a section pointer (`path.md` § Heading) is held
+against the heading as well as the file. `scripts/tests/the-router-is-a-router.test.mjs`
+drives each rule from a router that breaks it — a padded tier, an added
+prohibition, a dead pointer, a buried trigger, an item that names nothing —
+against throwaway trees, so no failing branch needs a broken router committed
+to prove it.
+
+## 6. Adding one
 
 A new guard belongs here when a claim in this repository is currently true and
 nothing would notice if it stopped being. Three rules the existing set follows:

@@ -96,6 +96,21 @@ jobs:
       # as a request for a table that is not there.
       - run: npm run check:database-names
 
+      # The router's three checks (#139). `AGENTS.md` is the whole always-loaded
+      # tier — the one file every session is handed before it decides anything,
+      # here and in a workspace scaffolded from here — so the properties that
+      # keep it a router are held rather than left to a reviewer: it stays under
+      # a stated char budget that ratchets DOWN as well as up, its prohibition
+      # count only falls, and every pointer in it resolves, leads with its
+      # trigger word and carries a document at all.
+      #
+      # They are cheap and static — three file reads, no database, no network —
+      # so they sit in this job beside the other vocabulary and path guards
+      # rather than in the Postgres one.
+      - run: npm run check:budget
+      - run: npm run check:negation
+      - run: npm run check:pointers
+
   # The portability position, executed.
   #
   # The partition between the portable Postgres core and the Supabase recipe is
