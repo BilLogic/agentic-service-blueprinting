@@ -175,7 +175,7 @@ function DependencyGroup({
 
 type CellDependencySectionsProps = {
   connections: BlueprintCellConnections
-  /** Same-step tech without an explicit trigger (kept from panel v1). */
+  /** Same-step tech without an explicit dependency (kept from panel v1). */
   otherTech: CellDependencyTechEntry[]
   /** Lane row position of the selected cell — orients up/down glyphs. */
   selectedLanePosition?: number
@@ -183,8 +183,8 @@ type CellDependencySectionsProps = {
 } & SelectHandlers
 
 /**
- * Dependencies tab: grouped SET OFF BY (incoming triggers) / SETS OFF
- * (outgoing triggers) / NEEDS (functional links, both directions). Rows keep
+ * Dependencies tab: grouped SET OFF BY (incoming dependencies) / SETS OFF
+ * (outgoing dependencies) / NEEDS (functional links, both directions). Rows keep
  * the hover-preview and click-to-navigate behavior, with the direction
  * glyphs and indented detail lines from the previous dependency table.
  * Read-only — link editing is an agent path.
@@ -247,7 +247,7 @@ export function CellDependencySections({
         <DependencyGroup title="Follows">
           {follows.map((connection) => (
             <DependencyRow
-              key={`in:${connection.triggerId}`}
+              key={`in:${connection.dependencyId}`}
               connection={connection}
               direction={direction(connection, 'in')}
               {...handlers}
@@ -259,7 +259,7 @@ export function CellDependencySections({
         <DependencyGroup title="Leads to">
           {leadsTo.map((connection) => (
             <DependencyRow
-              key={`out:${connection.triggerId}`}
+              key={`out:${connection.dependencyId}`}
               connection={connection}
               direction={direction(connection, 'out')}
               {...handlers}
@@ -271,7 +271,7 @@ export function CellDependencySections({
         <DependencyGroup title="Enabled by">
           {enabledBy.map((connection) => (
             <DependencyRow
-              key={`enabled-by:${connection.triggerId}`}
+              key={`enabled-by:${connection.dependencyId}`}
               connection={connection}
               direction={direction(connection, 'in')}
               {...handlers}
@@ -283,7 +283,7 @@ export function CellDependencySections({
         <DependencyGroup title="Enables">
           {enables.map((connection) => (
             <DependencyRow
-              key={`enables:${connection.triggerId}`}
+              key={`enables:${connection.dependencyId}`}
               connection={connection}
               direction={direction(connection, 'out')}
               {...handlers}

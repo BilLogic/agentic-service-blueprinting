@@ -37,7 +37,7 @@ export type VisualWalkthroughLaneEntry = {
   frame: string
 }
 
-export type VisualStepPictureEntry = {
+export type StoryboardFrameEntry = {
   laneName: string
   label: string
   frame: string
@@ -87,7 +87,7 @@ export function pickWalkthroughBlueprint(
   )
 }
 
-type VisualPictureBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
+type StoryboardBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
 
 /**
  * The lanes a walkthrough steps through, in board order: every lane that is
@@ -99,7 +99,7 @@ type VisualPictureBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
  * is the only rule that survives an adopter naming their lanes themselves.
  */
 function getWalkthroughLaneNames(
-  blueprint: VisualPictureBlueprint,
+  blueprint: StoryboardBlueprint,
 ): string[] {
   if (VISUAL_WALKTHROUGH_LANE_NAMES.length > 0) {
     return [...VISUAL_WALKTHROUGH_LANE_NAMES]
@@ -117,10 +117,10 @@ function resolveCellSummary(cell: BlueprintData['cells'][number] | undefined): s
   return cell?.summary?.trim() || cell?.content.trim() || ''
 }
 
-export function resolveVisualStepPictureEntries(
-  blueprint: VisualPictureBlueprint,
+export function resolveStoryboardStripEntries(
+  blueprint: StoryboardBlueprint,
   stepId: string,
-): VisualStepPictureEntry[] {
+): StoryboardFrameEntry[] {
   const cellLookup = buildCellLookup(blueprint.cells)
   const laneByName = new Map(blueprint.lanes.map((lane) => [lane.name, lane]))
 
@@ -144,7 +144,7 @@ export function resolveVisualStepPictureEntries(
 
 /** True when any walkthrough lane has a cell in this step. */
 export function stepHasVisualWalkthroughLaneCells(
-  blueprint: VisualPictureBlueprint,
+  blueprint: StoryboardBlueprint,
   stepId: string,
 ): boolean {
   const cellLookup = buildCellLookup(blueprint.cells)
@@ -158,11 +158,11 @@ export function stepHasVisualWalkthroughLaneCells(
   })
 }
 
-export function resolveVisualStepPictures(
-  blueprint: VisualPictureBlueprint,
+export function resolveStoryboardStrip(
+  blueprint: StoryboardBlueprint,
   stepId: string,
 ): string[] {
-  return resolveVisualStepPictureEntries(blueprint, stepId).map(
+  return resolveStoryboardStripEntries(blueprint, stepId).map(
     (entry) => entry.frame,
   )
 }
@@ -174,7 +174,7 @@ export function buildVisualWalkthroughSession(
   const steps = [...blueprint.steps]
     .sort((a, b) => a.position - b.position)
     .map((step, stepIndex) => {
-      const pictureEntries = resolveVisualStepPictureEntries(blueprint, step.id)
+      const pictureEntries = resolveStoryboardStripEntries(blueprint, step.id)
       return {
         stepIndex,
         stepName: step.name,

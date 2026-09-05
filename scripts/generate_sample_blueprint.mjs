@@ -13,7 +13,7 @@
  * Emits BOTH template sample artifacts from one source of truth:
  *   - src/data/sampleBlueprint.ts  — the offline / no-DB fallback module
  *   - supabase/seed.sql         — the equivalent database seed (service →
- *     phases → scenarios → paths/steps/lanes/cells/triggers → demo slices)
+ *     phases → scenarios → paths/steps/lanes/cells/dependencies → demo slices)
  *
  * What the content deliberately exercises (the template's rendering smoke):
  *   - four phases, six scenarios, incl. the phase loop
@@ -40,7 +40,7 @@
  *   - the cell spec: differing owner / perceived_owner pairs (the case the
  *     docs call the interesting one) and FUNCTION / FORM / VALUE blocks, in
  *     BOTH artifacts, so a keyless clone renders them like a seeded database
- *   - trigger kinds: forward cross-lane, same-column, opt-in spine chains,
+ *   - dependency kinds: forward cross-lane, same-column, opt-in spine chains,
  *     cross-lane UPWARD arrows, backward in-lane loops (rework + re-dispatch),
  *     and panel-only `enables` dependencies with labels and notes
  *   - resources pointing at REAL repo paths — every one is existsSync-checked
@@ -60,7 +60,7 @@
  * Deterministic UUIDs: f0000000-0000-4000-8000-<S><P><KK><AAAA><BBBB>
  *   S = scenario ordinal (0 = service-scoped), P = path ordinal
  *   (0 = scenario-scoped), KK = kind (00 path, 01 lane, 02 step, 03 cell,
- *   04 trigger, 05 slice, 06 slice item, 07 phase),
+ *   04 dependency, 05 slice, 06 slice item, 07 phase),
  *   AAAA/BBBB = row/column-and-slot (or index) slots.
  *
  * Usage: node scripts/generate_sample_blueprint.mjs
@@ -83,7 +83,7 @@ const KIND = {
   lane: 1,
   step: 2,
   cell: 3,
-  trigger: 4,
+  dependency: 4,
   slice: 5,
   sliceItem: 6,
   phase: 7,
@@ -367,7 +367,7 @@ const SCENARIOS = [
         ],
       },
     ],
-    triggers: [
+    dependencies: [
       { from: ['stakeholders', 1], to: ['owner', 1], label: 'have a look at this' },
       // Cross-lane UPWARD: the support lane answers back into the spine.
       { from: ['refs', 2], to: ['owner', 2], label: 'the pitch' },
@@ -634,7 +634,7 @@ const SCENARIOS = [
         resources: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
       },
     ],
-    triggers: [
+    dependencies: [
       { from: ['claude', 1], to: ['claude', 2] },
       { from: ['claude', 4], to: ['agents', 4], paths: ['DOCS'] },
       { from: ['claude', 5], to: ['scripts', 5], paths: ['DIAGRAM'] },
@@ -818,7 +818,7 @@ const SCENARIOS = [
         ],
       },
     ],
-    triggers: [
+    dependencies: [
       { from: ['claude', 2], to: ['scripts', 2] },
       { from: ['claude', 3], to: ['agents', 3] },
       // Cross-lane UPWARD: the auditors' findings surface into what the owner sees.
@@ -879,7 +879,7 @@ const SCENARIOS = [
       { lane: 'owner', col: 4, content: 'Reads the affected-cell list before forming an opinion' },
       { lane: 'owner', col: 7, content: 'Accepts the option, or drops it and leaves the blueprint exactly as it was' },
 
-      { lane: 'surface', col: 3, content: 'Dependency tab\nTrigger arrows' },
+      { lane: 'surface', col: 3, content: 'Dependency tab\nDependency arrows' },
       { lane: 'surface', col: 7, content: 'Nothing on the canvas changes until sb:map promotes an accepted change' },
 
       { lane: 'claude', col: 1, content: 'Picks the operation: replay, restage, or prioritize' },
@@ -938,7 +938,7 @@ const SCENARIOS = [
         resources: [repoLink('references/audit-playbook.md', 'references/audit-playbook.md')],
       },
     ],
-    triggers: [
+    dependencies: [
       { from: ['claude', 1], to: ['claude', 2] },
       { from: ['claude', 3], to: ['agents', 3] },
       // Cross-lane UPWARD: the tracer's result comes back up to the owner.
@@ -1068,7 +1068,7 @@ const SCENARIOS = [
         resources: [repoLink('storyboard-prompts.md', 'skills/slice/references/storyboard-prompts.md')],
       },
     ],
-    triggers: [
+    dependencies: [
       { from: ['stakeholders', 1], to: ['owner', 1], label: 'show me my part' },
       { from: ['claude', 2], to: ['claude', 3] },
       { from: ['claude', 4], to: ['scripts', 4] },
@@ -1172,7 +1172,7 @@ const SCENARIOS = [
         resources: [repoLink('references/customization.md', 'references/customization.md')],
       },
     ],
-    triggers: [
+    dependencies: [
       { from: ['stakeholders', 1], to: ['owner', 1], label: 'this is wrong now' },
       { from: ['claude', 2], to: ['claude', 3] },
       { from: ['claude', 5], to: ['surface', 5], label: 'read back' },
@@ -1347,7 +1347,7 @@ function buildScenario(scenario) {
     const cellId = (laneKey, col) =>
       fid(S, P, KIND.cell, laneByKey(scenario, laneKey).row, col)
 
-    const triggerSpecs = []
+    const dependencySpecs = []
     // Forward chain along the customer spine, OPT-IN per scenario: a ten-arrow
     // chain down one lane is a ruler, not a dependency graph, so only the
     // scenarios whose spine really is a sequence ask for it.
@@ -1357,28 +1357,28 @@ function buildScenario(scenario) {
         .map((cell) => cell.col)
         .sort((a, b) => a - b)
       for (let i = 0; i < spineCols.length - 1; i += 1) {
-        triggerSpecs.push({
+        dependencySpecs.push({
           from: [scenario.spineLane, spineCols[i]],
           to: [scenario.spineLane, spineCols[i + 1]],
         })
       }
     }
-    for (const trig of scenario.triggers) {
+    for (const trig of scenario.dependencies) {
       if (trig.paths && !trig.paths.includes(path.key)) continue
       // A column this path omits takes its arrows with it.
       if (skipped.has(trig.from[1]) || skipped.has(trig.to[1])) continue
       for (const [laneKey, col] of [trig.from, trig.to]) {
         if (!hasCell(laneKey, col)) {
           throw new Error(
-            `scenario ${scenario.key} path ${path.key}: trigger references missing cell (${laneKey}:${col})`,
+            `scenario ${scenario.key} path ${path.key}: dependency references missing cell (${laneKey}:${col})`,
           )
         }
       }
-      triggerSpecs.push(trig)
+      dependencySpecs.push(trig)
     }
 
-    const triggers = triggerSpecs.map((trig, index) => ({
-      id: fid(S, P, KIND.trigger, index + 1, 0),
+    const dependencies = dependencySpecs.map((trig, index) => ({
+      id: fid(S, P, KIND.dependency, index + 1, 0),
       source_cell_id: cellId(trig.from[0], trig.from[1]),
       target_cell_id: cellId(trig.to[0], trig.to[1]),
       ...(trig.kind === 'enables' ? { kind: 'enables' } : {}),
@@ -1400,7 +1400,7 @@ function buildScenario(scenario) {
       lanes,
       steps: pathSteps,
       cells,
-      triggers,
+      dependencies,
     }
   })
 
@@ -1621,8 +1621,8 @@ ${emitList(blueprint.steps, '    ')}
   cells: [
 ${emitList(blueprint.cells, '    ')}
   ],
-  triggers: [
-${emitList(blueprint.triggers, '    ')}
+  dependencies: [
+${emitList(blueprint.dependencies, '    ')}
   ],
 }
 `
@@ -1634,7 +1634,7 @@ const totals = built.flatMap(({ scenario, blueprints }) =>
     lanes: bp.lanes.length,
     steps: bp.steps.length,
     cells: bp.cells.length,
-    triggers: bp.triggers.length,
+    dependencies: bp.dependencies.length,
   })),
 )
 
@@ -1664,7 +1664,7 @@ const header = `// GENERATED by scripts/generate_sample_blueprint.mjs — edit t
 ${totals
   .map(
     (t) =>
-      `//   ${t.label}: ${t.lanes} lanes, ${t.steps} steps, ${t.cells} cells, ${t.triggers} triggers`,
+      `//   ${t.label}: ${t.lanes} lanes, ${t.steps} steps, ${t.cells} cells, ${t.dependencies} dependencies`,
   )
   .join('\n')}
 
@@ -1990,13 +1990,13 @@ ${sqlRows(resourceRows)};
 seedParts.push(`insert into public.cell_dependencies (id, source_cell_id, target_cell_id, kind, name, note) values
 ${sqlRows(
   allBlueprints.flatMap(({ bp }) =>
-    bp.triggers.map((trigger) => [
-      q(trigger.id),
-      q(trigger.source_cell_id),
-      q(trigger.target_cell_id),
-      q(trigger.kind ?? 'leads_to'),
-      q(trigger.label ?? null),
-      q(trigger.note ?? null),
+    bp.dependencies.map((dependency) => [
+      q(dependency.id),
+      q(dependency.source_cell_id),
+      q(dependency.target_cell_id),
+      q(dependency.kind ?? 'leads_to'),
+      q(dependency.label ?? null),
+      q(dependency.note ?? null),
     ]),
   ),
 )};
@@ -2046,5 +2046,5 @@ writeFileSync(SEED_OUT_PATH, seedParts.join('\n'))
 console.log(`Wrote ${OUT_PATH}`)
 console.log(`Wrote ${SEED_OUT_PATH}`)
 for (const t of totals) {
-  console.log(`  ${t.label}: ${t.lanes} lanes, ${t.steps} steps, ${t.cells} cells, ${t.triggers} triggers`)
+  console.log(`  ${t.label}: ${t.lanes} lanes, ${t.steps} steps, ${t.cells} cells, ${t.dependencies} dependencies`)
 }

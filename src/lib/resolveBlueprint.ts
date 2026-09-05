@@ -105,7 +105,7 @@ function fillMissingTouchpoints(
  * - Field values already present in the DB (non-empty after trim) are kept.
  * - Fallback values only fill DB fields that are null/empty (a placeholder
  *   step visual counts as empty when the fallback has a real frame).
- * - Fallback lanes/cells/steps/triggers/links that are entirely missing from
+ * - Fallback lanes/cells/steps/dependencies/links that are entirely missing from
  *   the DB are appended; nothing in the DB is removed or repositioned.
  */
 function mergeMissingBlueprintContent(
@@ -214,17 +214,17 @@ function mergeMissingBlueprintContent(
   }
   steps.sort((a, b) => a.position - b.position)
 
-  const triggerKeys = new Set(
-    data.triggers.map(
-      (trigger) => `${trigger.source_cell_id}:${trigger.target_cell_id}`,
+  const dependencyKeys = new Set(
+    data.dependencies.map(
+      (dependency) => `${dependency.source_cell_id}:${dependency.target_cell_id}`,
     ),
   )
-  const triggers = [...data.triggers]
-  for (const trigger of fallback.triggers) {
-    const key = `${trigger.source_cell_id}:${trigger.target_cell_id}`
-    if (!triggerKeys.has(key)) {
-      triggers.push(trigger)
-      triggerKeys.add(key)
+  const dependencies = [...data.dependencies]
+  for (const dependency of fallback.dependencies) {
+    const key = `${dependency.source_cell_id}:${dependency.target_cell_id}`
+    if (!dependencyKeys.has(key)) {
+      dependencies.push(dependency)
+      dependencyKeys.add(key)
     }
   }
 
@@ -233,10 +233,10 @@ function mergeMissingBlueprintContent(
     lanes.length !== data.lanes.length ||
     cells.length !== data.cells.length ||
     steps.length !== data.steps.length ||
-    triggers.length !== data.triggers.length
+    dependencies.length !== data.dependencies.length
 
   const merged = changed
-    ? { ...data, lanes, cells, steps, triggers }
+    ? { ...data, lanes, cells, steps, dependencies }
     : data
 
   return deduplicateBlueprintLanes(merged)

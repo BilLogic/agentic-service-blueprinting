@@ -6,7 +6,7 @@ import {
 } from '@/lib/blueprintLayout'
 import type { BlueprintLane } from '@/types/blueprint'
 
-// A plain act lane: text content, no visual/pill treatment.
+// A plain act lane: text content, no storyboard/touchpoint treatment.
 const ACT_LANE = { id: 'l1', name: 'Field Crew', role: null } as BlueprintLane
 
 // Pins the todo-026 estimator floor: the height estimate must be >= the

@@ -133,7 +133,7 @@ documented as unsupported; this diff is the safety net, not an endorsement.
 ### 6. Read-back verification after import
 After the transaction commits, read the target back and verify: row counts
 per table match the IR (paths, steps, path_steps, lanes, cells,
-cell_touchpoints, resources, triggers per scenario) plus spot-check content
+cell_touchpoints, resources, dependencies per scenario) plus spot-check content
 equality. No-DB equivalent: `tsc --noEmit`
 passes and the generated module's exported counts match the IR. **Import is
 not "done" until read-back matches** — this is the phase's deterministic exit

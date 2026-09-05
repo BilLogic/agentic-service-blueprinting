@@ -31,21 +31,21 @@ import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
 import type {
   IntegratedBlueprintCell,
   IntegratedBlueprintStep,
-  IntegratedBlueprintTrigger,
+  IntegratedBlueprintDependency,
 } from '@/types/integratedBlueprint'
 import type { SlideViewType } from '@/types/nav'
 
 export type ComparePathArrowData = {
-  triggers: IntegratedBlueprintTrigger[]
+  dependencies: IntegratedBlueprintDependency[]
   cells: IntegratedBlueprintCell[]
   steps: IntegratedBlueprintStep[]
 }
 
-/** One path's arrow inputs (fold's trigger-drop retired 2026-08-17). */
+/** One path's arrow inputs (fold's dependency-drop retired 2026-08-17). */
 export function getComparePathArrowData(
   blueprint: BlueprintData,
 ): ComparePathArrowData {
-  const { path, cells, triggers, steps } = blueprint
+  const { path, cells, dependencies, steps } = blueprint
 
   return {
     steps: steps.map((step) => ({
@@ -63,10 +63,10 @@ export function getComparePathArrowData(
       summary: cell.summary,
       opacity: 1,
     })),
-    triggers: triggers.map((trigger) => ({
-        id: trigger.id,
-        source_cell_id: trigger.source_cell_id,
-        target_cell_id: trigger.target_cell_id,
+    dependencies: dependencies.map((dependency) => ({
+        id: dependency.id,
+        source_cell_id: dependency.source_cell_id,
+        target_cell_id: dependency.target_cell_id,
         path_id: path.id,
         kind: path.kind,
         opacity: 1,
@@ -470,11 +470,11 @@ type InLaneLoopLayoutSource = {
   lanes: BlueprintLane[]
   steps: ReadonlyArray<{ id: string; position: number }>
   cells: ReadonlyArray<{ id: string; lane_id: string; step_id: string }>
-  triggers: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>
+  dependencies: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>
 }
 
 /**
- * Does one compared blueprint route a trigger that both starts and ends in
+ * Does one compared blueprint route a dependency that both starts and ends in
  * this lane, with its two step columns satisfying `matches`?
  *
  * The rule is read straight off the data — which lane a cell belongs to, and
@@ -483,7 +483,7 @@ type InLaneLoopLayoutSource = {
  * same lane, but they need not agree on its id, and a lane matched by identity
  * alone would silently report "no corridor" for every variant but one.
  */
-function blueprintLaneHasCorridorTrigger(
+function blueprintLaneHasCorridorDependency(
   canonicalLane: BlueprintLane,
   source: InLaneLoopLayoutSource,
   matches: (sourceColumn: number, targetColumn: number) => boolean,
@@ -494,9 +494,9 @@ function blueprintLaneHasCorridorTrigger(
     source.steps.map((step) => [step.id, step.position]),
   )
 
-  return source.triggers.some((trigger) => {
-    const sourceCell = cellById.get(trigger.source_cell_id)
-    const targetCell = cellById.get(trigger.target_cell_id)
+  return source.dependencies.some((dependency) => {
+    const sourceCell = cellById.get(dependency.source_cell_id)
+    const targetCell = cellById.get(dependency.target_cell_id)
     if (!sourceCell || !targetCell) return false
     if (
       sourceCell.lane_id !== lane.id ||
@@ -517,7 +517,7 @@ export function blueprintLaneHasBackwardInLaneLoop(
   canonicalLane: BlueprintLane,
   source: InLaneLoopLayoutSource,
 ): boolean {
-  return blueprintLaneHasCorridorTrigger(
+  return blueprintLaneHasCorridorDependency(
     canonicalLane,
     source,
     (sourceColumn, targetColumn) => targetColumn < sourceColumn,
@@ -536,7 +536,7 @@ export function laneHasInLaneLoopCorridor(
 
 /**
  * Canonical row needs the overhead rail when any compared variant routes a
- * forward in-lane trigger that clears at least one column — the arrow
+ * forward in-lane dependency that clears at least one column — the arrow
  * cannot run along the row, so it climbs into the strip above it. Mirrors
  * `laneHasOverheadArrowCorridor`, which decides the same thing for a single
  * board.
@@ -546,7 +546,7 @@ export function laneHasOverheadRailCorridorAbove(
   sources: readonly InLaneLoopLayoutSource[],
 ): boolean {
   return sources.some((source) =>
-    blueprintLaneHasCorridorTrigger(
+    blueprintLaneHasCorridorDependency(
       canonicalLane,
       source,
       (sourceColumn, targetColumn) => targetColumn >= sourceColumn + 2,

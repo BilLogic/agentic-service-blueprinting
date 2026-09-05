@@ -170,7 +170,7 @@ export const BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN = 32
 /**
  * Step column each cell in one lane sits in, keyed by cell id.
  *
- * Both lane corridors are decided by comparing the columns a trigger's two
+ * Both lane corridors are decided by comparing the columns a dependency's two
  * ends occupy, so the shape of that question is the same either way: restrict
  * to the lane, then resolve `step_id` through `steps.position`. Reading
  * the data this way (rather than parsing anything out of an id) is what keeps
@@ -196,11 +196,12 @@ function getLaneCellColumns(
 }
 
 /**
- * Does this blueprint hold a trigger that stays inside `laneId` and whose two
- * step columns satisfy `matches`? Triggers that leave the lane at either end
- * are not the lane's business — they are routed between rows, not around one.
+ * Does this blueprint hold a dependency that stays inside `laneId` and whose
+ * two step columns satisfy `matches`? Dependencies that leave the lane at
+ * either end are not the lane's business — they are routed between rows, not
+ * around one.
  */
-function blueprintHasInLaneTrigger(
+function blueprintHasInLaneDependency(
   data: BlueprintData,
   laneId: string,
   matches: (sourceColumn: number, targetColumn: number) => boolean,
@@ -208,15 +209,15 @@ function blueprintHasInLaneTrigger(
   const columnByCellId = getLaneCellColumns(data, laneId)
   if (columnByCellId.size === 0) return false
 
-  return data.triggers.some((trigger) => {
-    const sourceColumn = columnByCellId.get(trigger.source_cell_id)
-    const targetColumn = columnByCellId.get(trigger.target_cell_id)
+  return data.dependencies.some((dependency) => {
+    const sourceColumn = columnByCellId.get(dependency.source_cell_id)
+    const targetColumn = columnByCellId.get(dependency.target_cell_id)
     if (sourceColumn === undefined || targetColumn === undefined) return false
     return matches(sourceColumn, targetColumn)
   })
 }
 
-function anyBlueprintHasInLaneTrigger(
+function anyBlueprintHasInLaneDependency(
   lane: BlueprintLane,
   data: BlueprintData | readonly BlueprintData[] | undefined,
   matches: (sourceColumn: number, targetColumn: number) => boolean,
@@ -224,24 +225,26 @@ function anyBlueprintHasInLaneTrigger(
   if (!data) return false
   const blueprints = Array.isArray(data) ? data : [data]
   return blueprints.some((blueprint) =>
-    blueprintHasInLaneTrigger(blueprint, lane.id, matches),
+    blueprintHasInLaneDependency(blueprint, lane.id, matches),
   )
 }
 
 /**
- * A lane needs the overhead rail when one of its own triggers runs FORWARD and
- * clears at least one column on the way (target column >= source + 2). Such a
- * connector cannot travel along the row — the cells it skips are in the way —
- * so it climbs into a strip above the row, runs across, and drops back in.
+ * A lane needs the overhead rail when one of its own dependencies runs FORWARD
+ * and clears at least one column on the way (target column >= source + 2).
+ * Such a connector cannot travel along the row — the cells it skips are in the
+ * way — so it climbs into a strip above the row, runs across, and drops back
+ * in.
  *
- * The arrow side asks the same question of the DOM (`isOverheadRailTrigger`);
- * the two must agree or the rail would be drawn where no space was reserved.
+ * The arrow engine asks the same question of the rendered grid when it picks a
+ * detour lane; the two must agree or the rail would be drawn where no space
+ * was reserved.
  */
 export function laneHasOverheadArrowCorridor(
   lane: BlueprintLane,
   data?: BlueprintData | readonly BlueprintData[],
 ): boolean {
-  return anyBlueprintHasInLaneTrigger(
+  return anyBlueprintHasInLaneDependency(
     lane,
     data,
     (sourceColumn, targetColumn) => targetColumn >= sourceColumn + 2,
@@ -249,18 +252,16 @@ export function laneHasOverheadArrowCorridor(
 }
 
 /**
- * A lane needs the in-lane loop corridor when one of its own triggers runs
+ * A lane needs the in-lane loop corridor when one of its own dependencies runs
  * BACKWARD — its target sits in an earlier column than its source. That arrow
  * loops back over the row it started on, so the row reserves a thin strip
  * above itself for the horizontal leg.
- *
- * Mirrored on the arrow side by `isInLaneWrapTrigger`.
  */
 export function laneHasInLaneLoopCorridor(
   lane: BlueprintLane,
   data?: BlueprintData | readonly BlueprintData[],
 ): boolean {
-  return anyBlueprintHasInLaneTrigger(
+  return anyBlueprintHasInLaneDependency(
     lane,
     data,
     (sourceColumn, targetColumn) => targetColumn < sourceColumn,
@@ -310,7 +311,7 @@ export function countBlueprintWrapCorridorMargins(
 
 export const LANE_COLUMN_WIDTH = 220
 export const STEP_COLUMN_WIDTH = 220
-/** Visible space between step columns where trigger arrows are drawn. */
+/** Visible space between step columns where dependency arrows are drawn. */
 export const STEP_COLUMN_GAP = 24
 /** Left gutter on the white board so the play control clears storyboard cells. */
 export const STORYBOARD_PLAY_GUTTER = 28

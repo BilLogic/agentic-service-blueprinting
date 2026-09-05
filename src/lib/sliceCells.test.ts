@@ -59,7 +59,7 @@ const blueprint: BlueprintData = {
       links: [],
     },
   ],
-  triggers: [],
+  dependencies: [],
 } as unknown as BlueprintData
 
 describe('resolveSliceCells', () => {

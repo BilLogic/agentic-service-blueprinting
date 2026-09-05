@@ -1,6 +1,6 @@
 import {
   hasEmbeddedVisualFrame,
-  type VisualStepPictureEntry,
+  type StoryboardFrameEntry,
 } from '@/lib/visualWalkthrough'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
@@ -11,7 +11,7 @@ const PICTURE_CLASS =
   'absolute inset-0 h-full w-full object-contain object-center'
 
 type VisualStepDetailStackProps = {
-  entries: VisualStepPictureEntry[]
+  entries: StoryboardFrameEntry[]
   /** Side panel stacks vertically; presentation view lays cards out in a row. */
   orientation?: 'vertical' | 'horizontal'
   className?: string

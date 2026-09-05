@@ -173,7 +173,7 @@ export type BlueprintCell = {
   status?: EntityStatus | null
 }
 
-export type BlueprintCellTrigger = {
+export type BlueprintCellDependency = {
   id: string
   source_cell_id: string
   target_cell_id: string
@@ -190,5 +190,5 @@ export type BlueprintData = {
   lanes: BlueprintLane[]
   steps: BlueprintStep[]
   cells: BlueprintCell[]
-  triggers: BlueprintCellTrigger[]
+  dependencies: BlueprintCellDependency[]
 }

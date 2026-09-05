@@ -151,7 +151,7 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
         require(steps.has(cell.step_id), `cell ${cell.id} names a step not in the blueprint`)
       }
       const cells = new Set(blueprint.cells.map((cell) => cell.id))
-      for (const edge of blueprint.triggers) {
+      for (const edge of blueprint.dependencies) {
         require(
           cells.has(edge.source_cell_id) && cells.has(edge.target_cell_id),
           `edge ${edge.id} points outside its own blueprint`,

@@ -13,7 +13,7 @@ import { useSyncExternalStore } from 'react'
  * cell and copies the address bar should hand over the cell, not the homepage —
  * the same link the agent builds when it cites that cell.
  *
- * Deliberately just the id. The panel can show a tech pill inside a cell, a
+ * Deliberately just the id. The panel can show a touchpoint inside a cell, a
  * draft, or the compare ledger; none of those are a stable thing to link to.
  */
 

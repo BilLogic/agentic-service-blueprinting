@@ -26,17 +26,17 @@ function filterHiddenVisualLanes(
       .filter((cell) => hiddenLaneIds.has(cell.lane_id))
       .map((cell) => cell.id),
   )
-  const triggers = data.triggers.filter(
-    (trigger) =>
-      !hiddenCellIds.has(trigger.source_cell_id) &&
-      !hiddenCellIds.has(trigger.target_cell_id),
+  const dependencies = data.dependencies.filter(
+    (dependency) =>
+      !hiddenCellIds.has(dependency.source_cell_id) &&
+      !hiddenCellIds.has(dependency.target_cell_id),
   )
 
   return {
     ...data,
     lanes: data.lanes.filter((lane) => !hiddenLaneIds.has(lane.id)),
     cells,
-    triggers,
+    dependencies,
   }
 }
 

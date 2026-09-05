@@ -29,8 +29,8 @@ type BlueprintCellButtonProps = {
   /** What this lane is; blueprint.css turns the role into its steps. */
   fill: BlueprintLaneRole
   /**
-   * A touchpoint pill's chosen tone. Takes the place of the lane role when set —
-   * the two sets share no family, so a pill never reads as its lane.
+   * A touchpoint's chosen tone. Takes the place of the lane role when set —
+   * the two sets share no family, so a touchpoint never reads as its lane.
    */
   tone?: TouchpointTone
   compact?: boolean

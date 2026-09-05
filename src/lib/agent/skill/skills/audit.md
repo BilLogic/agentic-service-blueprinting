@@ -109,7 +109,7 @@ mentions it.
 
 | Wave | Check | Asks |
 | --- | --- | --- |
-| 1 | `gap-sweep` | Which experienced moments have no cell — empty stretches, dangling triggers, uncovered steps |
+| 1 | `gap-sweep` | Which experienced moments have no cell — empty stretches, dangling dependencies, uncovered steps |
 | 1 | `jargon-lint` | Which customer-facing cell texts use words the customer would never say |
 | 1 | `channel-conflict` | Where do simultaneous cells compete for the same actor or channel |
 | 1 | `obsolete-source` | Which cells model a surface or flow the mapped source no longer has (conditional on source access — playbook §1.5) |

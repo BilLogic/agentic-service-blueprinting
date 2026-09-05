@@ -57,8 +57,8 @@ export function CanvasCellContextMenu() {
         x: Math.min(event.clientX, window.innerWidth - MENU.width - 8),
         y: Math.min(event.clientY, window.innerHeight - MENU.height - 8),
         cellId,
-        // The element itself, not just its id: a pills cell shares its id
-        // with a wrapper div and with every sibling pill, and re-querying by
+        // The element itself, not just its id: a touchpoints cell shares its id
+        // with a wrapper div and with every sibling touchpoint, and re-querying by
         // id later finds the wrong one first.
         el: cell,
       })
@@ -126,10 +126,10 @@ export function CanvasCellContextMenu() {
   /**
    * Open the cell by asking the element that was right-clicked.
    *
-   * Held from the contextmenu event rather than re-queried by id — a pills
-   * cell shares its id with its wrapper and its sibling pills, and
+   * Held from the contextmenu event rather than re-queried by id — a touchpoints
+   * cell shares its id with its wrapper and its sibling touchpoints, and
    * `querySelector` returns whichever comes first, which is how "View cell
-   * detail" opened nothing (the wrapper has no handler) or the wrong pill.
+   * detail" opened nothing (the wrapper has no handler) or the wrong touchpoint.
    * Dispatched as a ⌘-click, which is the grammar's open-detail gesture —
    * the one click the button is guaranteed to read as "open, touch nothing".
    */

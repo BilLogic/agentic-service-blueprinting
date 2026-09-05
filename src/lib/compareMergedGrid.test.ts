@@ -3,11 +3,11 @@ import {
   assembleMergedSlot,
   buildComparePathShortLabels,
   buildMergedArrowRemap,
-  remapMergedPathTriggers,
+  remapMergedPathDependencies,
   type MergedSlotAssembly,
   type MergedSlotCandidate,
 } from '@/lib/compareMergedGrid'
-import type { IntegratedBlueprintTrigger } from '@/types/integratedBlueprint'
+import type { IntegratedBlueprintDependency } from '@/types/integratedBlueprint'
 
 const candidate = (
   pathId: string,
@@ -150,7 +150,7 @@ describe('buildMergedArrowRemap', () => {
 
   it('rewrites a hidden endpoint so the arrow still anchors', () => {
     const remap = buildMergedArrowRemap(assemblies)
-    const triggers: IntegratedBlueprintTrigger[] = [
+    const dependencies: IntegratedBlueprintDependency[] = [
       {
         id: 't1',
         source_cell_id: 'b1',
@@ -160,7 +160,7 @@ describe('buildMergedArrowRemap', () => {
         opacity: 1,
       },
     ]
-    const [remapped] = remapMergedPathTriggers(triggers, remap, false)
+    const [remapped] = remapMergedPathDependencies(dependencies, remap, false)
     expect(remapped.source_cell_id).toBe('a1')
     expect(remapped.target_cell_id).toBe('b2')
   })
@@ -188,7 +188,7 @@ describe('buildMergedArrowRemap', () => {
         },
       },
     ])
-    const trigger = (pathId: string, source: string, target: string) => ({
+    const dependency = (pathId: string, source: string, target: string) => ({
       id: `${pathId}-t`,
       source_cell_id: source,
       target_cell_id: target,
@@ -197,10 +197,10 @@ describe('buildMergedArrowRemap', () => {
       opacity: 1,
     })
     expect(
-      remapMergedPathTriggers([trigger('a', 'a1', 'a2')], remap, true),
+      remapMergedPathDependencies([dependency('a', 'a1', 'a2')], remap, true),
     ).toHaveLength(1)
     expect(
-      remapMergedPathTriggers([trigger('b', 'b1', 'b2')], remap, false),
+      remapMergedPathDependencies([dependency('b', 'b1', 'b2')], remap, false),
     ).toHaveLength(0)
   })
 
@@ -226,9 +226,9 @@ describe('buildMergedArrowRemap', () => {
     expect(remap.sharedCellIds.has('b3')).toBe(false)
   })
 
-  it('leaves untouched triggers referentially identical', () => {
+  it('leaves untouched dependencies referentially identical', () => {
     const remap = buildMergedArrowRemap(assemblies)
-    const trigger: IntegratedBlueprintTrigger = {
+    const dependency: IntegratedBlueprintDependency = {
       id: 't',
       source_cell_id: 'a2',
       target_cell_id: 'b2',
@@ -236,6 +236,6 @@ describe('buildMergedArrowRemap', () => {
       kind: 'happy',
       opacity: 1,
     }
-    expect(remapMergedPathTriggers([trigger], remap, true)[0]).toBe(trigger)
+    expect(remapMergedPathDependencies([dependency], remap, true)[0]).toBe(dependency)
   })
 })

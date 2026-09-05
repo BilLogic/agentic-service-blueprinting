@@ -108,7 +108,7 @@ def fallback_adapter_rows(model: dict, sql: dict) -> dict:
     for scenario in model["scenarios"]:
         for path in scenario["paths"]:
             data = blueprint_data_for_path(scenario, path)
-            for kind, key in (("lane", "lanes"), ("cell", "cells"), ("edge", "triggers")):
+            for kind, key in (("lane", "lanes"), ("cell", "cells"), ("edge", "dependencies")):
                 for row in data[key]:
                     rows[kind][row["id"]] = row
             for cell in data["cells"]:

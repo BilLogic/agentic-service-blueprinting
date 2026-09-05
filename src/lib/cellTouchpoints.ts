@@ -90,7 +90,7 @@ export function cellTouchpoints(
   return cell.touchpoints ?? []
 }
 
-/** The placement a pill's label names, or null when nothing is placed there. */
+/** The placement a touchpoint's label names, or null when nothing is placed there. */
 export function touchpointNamed(
   touchpoints: readonly CellTouchpoint[],
   name: string,

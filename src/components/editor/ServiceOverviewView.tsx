@@ -521,7 +521,7 @@ function ServiceOverviewViewImpl({
    *        stage 1  phase frames + lane structure
    *        stage 2  scenario panels rise in
    *        stage 3  cells fade in
-   *        stage 4  trigger arrows fade in
+   *        stage 4  dependency arrows fade in
    *        stage 5  done — attribute removed, reveal CSS stops matching
    *
    * The stability gate is what was missing in earlier cuts: beats keyed off

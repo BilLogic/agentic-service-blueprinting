@@ -88,25 +88,25 @@ export function CompareCellBlock({
     flushBottom ? 'pb-0' : compact ? 'pb-3' : 'pb-4',
   )
   const width = STEP_COLUMN_WIDTH
-  const isVisual = variant === 'storyboard'
+  const isStoryboard = variant === 'storyboard'
   const shellVerticalPad = compact ? 24 : 32
   const shellStyle = {
     width,
     minWidth: width,
     maxWidth: width,
-    ...(isVisual
+    ...(isStoryboard
       ? { maxHeight: getStoryboardCellButtonMaxHeight(compact) + shellVerticalPad }
       : undefined),
   }
   const shellClassName = cn(
     'relative z-[1] flex shrink-0 items-stretch',
     shellPadding,
-    isVisual && 'min-h-0 overflow-hidden',
+    isStoryboard && 'min-h-0 overflow-hidden',
   )
   // Visual faces are photographs — a colour wash over them reads as a bad
   // scan, so there the labels alone carry the affiliation.
   const washStyle =
-    isVisual || !pathWash
+    isStoryboard || !pathWash
       ? undefined
       : getPathWashStyle(pathRails?.map((rail) => rail.color))
 
@@ -148,8 +148,8 @@ export function CompareCellBlock({
               slotCell: undefined,
             }))
         ).map(({ item, slotCell }, index, all) => {
-          // A pill whose placement the registry lacks is drawn dashed
-          // (#112). Read from the cell the pill belongs to — its own slot
+          // A touchpoint whose placement the registry lacks is drawn dashed
+          // (#112). Read from the cell the touchpoint belongs to — its own slot
           // in a merged view, the block's cell otherwise.
           const placement = touchpointNamed(
             slotCell ? cellTouchpoints(slotCell) : selectionContext?.cellTouchpoints ?? [],
@@ -162,7 +162,7 @@ export function CompareCellBlock({
               item={item}
               nameOnly={nameOnly}
               style={washStyle}
-              // Identity is the split's point: each pill carries its own
+              // Identity is the split's point: each touchpoint carries its own
               // cell in the selection it hands to the panel and the picker.
               selectionContext={
                 slotCell

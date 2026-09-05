@@ -472,7 +472,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
       ),
     )
 
-  it('shares no family, so a pill can never read as its lane', () => {
+  it('shares no family, so a touchpoint can never read as its lane', () => {
     const lanes = familiesIn('lane')
     const tones = familiesIn('tone')
     expect(lanes.size).toBeGreaterThan(0)
