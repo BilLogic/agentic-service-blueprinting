@@ -137,7 +137,7 @@ export function CanvasDesignTools() {
               }
             }}
             // Never a filled button. Nothing in this bar is a page's primary
-            // action — it is a tool bar, and a solid brand pill in it reads
+            // action — it is a tool bar, and a solid brand button in it reads
             // as "press me" from the moment the canvas loads, long before
             // there is anything to press it about. Weight arrives with the
             // selection instead: ghost at rest, tinted and bordered once

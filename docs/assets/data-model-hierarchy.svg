@@ -5,7 +5,7 @@
     .titleDim { font-size: 10px; font-weight: 600; fill: #9ca3af; }
     .chip { font-size: 11px; font-weight: 600; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
-    .pill { font-size: 7.5px; font-weight: 700; fill: #4f4b47; }
+    .badge { font-size: 7.5px; font-weight: 700; fill: #4f4b47; }
     .seq { stroke: #b6bac2; stroke-width: 1.2; fill: none; marker-end: url(#triL); }
     .loop { stroke: #b6bac2; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; marker-end: url(#triL); }
     .zoom { stroke: #d4d4da; stroke-width: 1.2; fill: none; }
@@ -95,13 +95,13 @@
   <line class="boundary" x1="706" y1="426" x2="864" y2="426"/>
   <g>
     <rect x="717" y="359" width="42" height="13" rx="6.5" fill="#cfe6d9"/>
-    <text x="722" y="368.5" class="pill">Customer</text>
+    <text x="722" y="368.5" class="badge">Customer</text>
     <rect x="717" y="395" width="45" height="13" rx="6.5" fill="#f6e0bd"/>
-    <text x="722" y="404.5" class="pill">Frontstage</text>
+    <text x="722" y="404.5" class="badge">Frontstage</text>
     <rect x="717" y="431" width="43" height="13" rx="6.5" fill="#f2cfdf"/>
-    <text x="722" y="440.5" class="pill">Backstage</text>
+    <text x="722" y="440.5" class="badge">Backstage</text>
     <rect x="717" y="467" width="37" height="13" rx="6.5" fill="#d9d6ec"/>
-    <text x="722" y="476.5" class="pill">Support</text>
+    <text x="722" y="476.5" class="badge">Support</text>
   </g>
   <text x="785" y="550" text-anchor="middle" class="head">PATH</text>
   <text x="785" y="568" text-anchor="middle" class="sub">actors as lanes, moments as steps,</text>

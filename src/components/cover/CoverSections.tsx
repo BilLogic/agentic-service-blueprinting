@@ -242,7 +242,7 @@ function SkillPanel({
  * Deliberately NOT styled like `CoverTabStrip` — an underlined row reading
  * as a second, competing set of top-level tabs would make the page look
  * like it has two navigation systems fighting for the same rank. This is a
- * segmented control instead: a pill row on a recessed track, which reads as
+ * segmented control instead: a segmented row on a recessed track, which reads as
  * "a control that belongs to the section below it" rather than "another way
  * to leave this page."
  */

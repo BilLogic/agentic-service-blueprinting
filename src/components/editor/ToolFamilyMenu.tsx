@@ -36,7 +36,7 @@ export type FamilyTool = {
  * **The active family drops its chevron**, which is Figma again. A caret is an
  * offer to change tool, and the one family you have already chosen is the one
  * where that offer is least useful — so it is spent on the others, and the
- * active slot reads as a single solid pill instead of a pill with a seam in it.
+ * active slot reads as a single solid slot instead of one with a seam in it.
  * The list is not lost: clicking the face again opens it, because re-selecting
  * the tool you are already holding is the one click with nothing else to mean.
  */

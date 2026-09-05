@@ -101,7 +101,7 @@ function CompareViewToggle({ slide }: { slide: NavItem }) {
  * selected paths (the compare cluster gate), disabled at zero because "open
  * the empty ledger" is a dead end.
  *
- * The count is a pill, not prose — it is one of exactly two counts in the
+ * The count is a badge, not prose — it is one of exactly two counts in the
  * app (this and each ledger group's trailing number), so it has to read as a
  * value rather than a label.
  */
@@ -137,7 +137,7 @@ function CompareDifferencesChip({ slide }: { slide: NavItem }) {
         className={cn(
           'ml-0.5 rounded-full px-1.5 py-px font-mono text-3xs leading-none tabular-nums',
           // Resting: neutral. Pressed: brand tint one step stronger than the
-          // button's own selected fill, so the pill stays legible on it.
+          // button's own selected fill, so the count stays legible on it.
           open
             ? 'bg-sidebar-selected-rail/20 text-foreground'
             : 'bg-muted text-foreground',

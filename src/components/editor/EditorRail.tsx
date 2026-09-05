@@ -73,7 +73,7 @@ function RailButton({
 
 /**
  * The vertical icon rail. `topSlot` holds the sidebar's ONE collapse
- * toggle — same corner the floating pill occupies when collapsed.
+ * toggle — same corner the floating navbar occupies when collapsed.
  * `bottomSlot` is pinned under a spacer — the ⚙ settings entry lives there
  * so keys are reachable from any surface.
  */

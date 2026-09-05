@@ -189,7 +189,7 @@ function resolveFigmaUrl(
  * component, because two verbatim copies drifted apart once already.
  *
  * No count on the Differences tab: counts live in exactly two places
- * app-wide now — the menubar Diff pill and each ledger group's trailing
+ * app-wide now — the menubar Diff count and each ledger group's trailing
  * number.
  */
 function PanelSurfaceSwitcher({

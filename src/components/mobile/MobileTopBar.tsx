@@ -32,7 +32,7 @@ export function MobileTopBar({
 }) {
   return (
     // pl-1 keeps the menu icon's hit area flush with the edge glyph-aligned;
-    // pr-3 gives the right slot (path pill) real breathing room off the bezel.
+    // pr-3 gives the right slot (path control) real breathing room off the bezel.
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border pl-1 pr-3">
       <Button
         variant="ghost"

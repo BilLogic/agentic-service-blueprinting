@@ -379,8 +379,17 @@ export const RENAME_MAP = Object.freeze(
       called either word, so the identifier sweep has nothing to forbid, and a
       guard that cannot fire is a comment wearing a check's clothes. The copy
       list costs nothing — neither word reaches a reader today — and is what
-      keeps it that way. The component and prop renames are held by review and
-      by `tsc`, not by this map.
+      keeps it that way.
+
+      Between those two lists sat the app's own vocabulary — a component, a
+      prop, a constant, a variant string, a data attribute, a file name — held
+      by review alone, which is how `FloatingSidebarPill`, `SliceRefocusPill`
+      and `PathNotionPill` survived the touchpoint half of the rename. Since
+      #158 that half is `scripts/tests/pill-is-not-a-name.test.mjs`, whose
+      subject is every NAME under `src` with comments removed. It takes `pill`
+      and not `chip`: `coverContent.chip` is still a live name here, and
+      retiring it is its own change. The instance's
+      `scripts/tests/badge-and-tag.test.mjs` is the model and takes both.
     */
     {
       was: ['pill', 'chip'],

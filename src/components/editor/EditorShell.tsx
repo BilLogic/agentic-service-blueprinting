@@ -13,7 +13,7 @@ import { CoverPage } from '@/components/cover/CoverPage'
 import { coverContent } from '@/content/coverContent'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
-  FloatingSidebarPill,
+  FloatingSidebarNavbar,
   SidebarCollapseButton,
 } from '@/components/editor/EditorChrome'
 import { AgentDock, AgentDockDivider } from '@/components/editor/AgentDock'
@@ -175,7 +175,7 @@ function DesktopEditorShell() {
     [],
   )
 
-  // Presentation is full-bleed: the whole sidebar collapses (the pill hides
+  // Presentation is full-bleed: the whole sidebar collapses (the navbar hides
   // too — Return is the way back), on the same 320 ms width ease as a manual
   // collapse. It never unmounts, which is what keeps entering smooth.
   const presenting = activeTabKind === 'present' && !leavingPresent
@@ -183,7 +183,7 @@ function DesktopEditorShell() {
   // The cover page is a full-bleed reading surface: it has no phases to
   // navigate to yet, so a sidebar beside it is chrome for a workspace the
   // reader has not entered. It collapses like a presentation — the whole
-  // aside, rail included, and no pill either.
+  // aside, rail included, and no navbar either.
   const railOnly = presenting || sidebarCollapsed || isLanding
 
   /*
@@ -311,7 +311,7 @@ function DesktopEditorShell() {
   }, [presenting])
 
   // Publish the collapsed state so canvas navbars can host the expand
-  // control themselves — see sidebarCollapsedContext for why the pill is
+  // control themselves — see sidebarCollapsedContext for why the navbar is
   // now the fallback rather than the default.
   const expandSidebar = useCallback(() => {
     suppressCanvasResizeRefit()
@@ -319,7 +319,7 @@ function DesktopEditorShell() {
   }, [])
   useEffect(() => {
     // NOT `railOnly`: presentation also collapses the sidebar, but it hides
-    // the pill too (full-bleed). Telling the bands they are collapsed there
+    // the navbar too (full-bleed). Telling the bands they are collapsed there
     // would strand a presentation with no header and no Return — the band
     // must keep drawing itself when nothing else can carry it.
     setSidebarCollapsedState({
@@ -620,7 +620,7 @@ function DesktopEditorShell() {
           <>
             {/* Theme is a utility toggle, not a surface — it lives in the
                 rail's bottom group with the other toggles, not in the
-                collapsed pill, which is already the app's tightest 32px. */}
+                collapsed navbar, which is already the app's tightest 32px. */}
             <ThemeToggle size="icon-sm" />
             <AgentSettingsRailButton />
           </>
@@ -771,13 +771,13 @@ function DesktopEditorShell() {
           />
 
           {/*
-            Collapsed remnant: the floating pill over the canvas. Hidden
+            Collapsed remnant: the floating navbar over the canvas. Hidden
             while presenting (full-bleed; Return is the way back). Its
             toggle is the same single control the rail carries expanded.
           */}
           {railOnly && !presenting && !isLanding ? (
             <div className="pointer-events-none absolute left-3 top-3 z-30">
-              <FloatingSidebarPill onExpand={toggleSidebar} />
+              <FloatingSidebarNavbar onExpand={toggleSidebar} />
             </div>
           ) : null}
 

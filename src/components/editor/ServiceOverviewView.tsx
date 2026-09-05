@@ -853,7 +853,7 @@ function ServiceOverviewViewImpl({
             className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
             data-slide-canvas
             /*
-              Canvas chrome (annotation toolbar, zoom pill, sequence nav) is
+              Canvas chrome (annotation toolbar, zoom control, sequence nav) is
               furniture OF the canvas, and it renders as a sibling of the
               revealed board rather than inside it — so it needs its own
               handle.
@@ -870,7 +870,7 @@ function ServiceOverviewViewImpl({
             /*
               Dropped entirely once the reveal is done, exactly as the board
               root drops `data-canvas-reveal`: left on, its transition rule
-              keeps matching the toolbar and the zoom pill for the life of
+              keeps matching the toolbar and the zoom control for the life of
               the canvas. Nothing declares a competing opacity transition
               today, which is precisely why it would be found late.
             */
