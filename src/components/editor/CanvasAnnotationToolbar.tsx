@@ -19,7 +19,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
+import {
+  useCanvasAnnotations,
+  useCanvasAnnotationTool,
+} from '@/contexts/canvasAnnotationContext'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { AnnotationCaptureMenu } from '@/components/editor/AnnotationCaptureMenu'
 import {
@@ -166,7 +169,7 @@ function DrawSubpanel() {
     setPenColor,
     penStrokeWidth,
     setPenStrokeWidth,
-  } = useCanvasAnnotations()
+  } = useCanvasAnnotationTool()
 
   const penActive = tool === 'pen'
   const penOptionsDisabled = !penActive
@@ -245,10 +248,10 @@ function DrawSubpanel() {
   )
 }
 
-/** Floating tool palette for the annotation layer — tool, stroke weight, colour, clear. */
+/** Floating tool palette for the annotation lane — tool, stroke weight, colour, clear. */
 export function CanvasAnnotationToolbar() {
-  const { tool, setTool, annotations, clearAnnotations } =
-    useCanvasAnnotations()
+  const { tool, setTool } = useCanvasAnnotationTool()
+  const { annotations, clearAnnotations } = useCanvasAnnotations()
   // The mobile shell is view-only for every tier — Edit is absent there,
   // same treatment as a session that cannot write.
   const mobileShell = useMobileShell()
@@ -406,7 +409,7 @@ export function CanvasAnnotationToolbar() {
  * question a reader has is "which one am I in", which a single button can only
  * answer by naming the other one.
  *
- * Icons only, and the active half carries a filled pill rather than a shade of
+ * Icons only, and the active half carries a solid fill rather than a shade of
  * grey — at the far end of the bar this is the control that has to read
  * without being looked for. The words moved into tooltips on a delay: two
  * always-on labels cost more width than the whole tool run beside them, and an

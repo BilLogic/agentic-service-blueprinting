@@ -18,7 +18,10 @@ import {
   Strikethrough,
   Trash2,
 } from 'lucide-react'
-import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
+import {
+  useCanvasAnnotations,
+  useCanvasAnnotationTool,
+} from '@/contexts/canvasAnnotationContext'
 import {
   ANNOTATION_DEFAULT_FONT_SIZE,
   ANNOTATION_DEFAULT_STROKE,
@@ -1340,11 +1343,9 @@ function TextAnnotationNode({
  * so `zoom` is only needed where a hit radius must stay constant on screen.
  */
 export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
+  const { tool, setTool, penColor, penStrokeWidth, isAnnotating } =
+    useCanvasAnnotationTool()
   const {
-    tool,
-    setTool,
-    penColor,
-    penStrokeWidth,
     annotations,
     addAnnotation,
     updateAnnotation,
@@ -1352,7 +1353,6 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
     replaceAnnotations,
     selectedId,
     setSelectedId,
-    isAnnotating,
   } = useCanvasAnnotations()
   const laneRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)

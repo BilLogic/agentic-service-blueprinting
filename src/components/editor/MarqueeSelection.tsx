@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
+import { useCanvasAnnotationTool } from '@/contexts/canvasAnnotationContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { getCanvasSpaceHeld } from '@/lib/canvasKeyboardState'
@@ -43,7 +43,7 @@ type Rect = { left: number; top: number; width: number; height: number }
  */
 export function MarqueeSelection() {
   const mode = useCanvasModeValue()
-  const { tool } = useCanvasAnnotations()
+  const { tool } = useCanvasAnnotationTool()
   const pick = useCellPick()
   const [rect, setRect] = useState<Rect | null>(null)
   // Refs, not state: these change on every pointermove and must not re-render.

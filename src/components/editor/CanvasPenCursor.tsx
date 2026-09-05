@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Eraser, Pencil } from 'lucide-react'
-import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
+import { useCanvasAnnotationTool } from '@/contexts/canvasAnnotationContext'
 import { ANNOTATION_INK, ANNOTATION_PAPER } from '@/lib/canvasAnnotations'
 
 /** Fixed on-screen tool cursor size (px). */
@@ -22,7 +22,7 @@ type CursorTool = keyof typeof TOOL_HOTSPOT
  * lane hit-testing cannot clip or detach it from the pointer.
  */
 export function CanvasPenCursor() {
-  const { tool, penColor } = useCanvasAnnotations()
+  const { tool, penColor } = useCanvasAnnotationTool()
   const cursorRef = useRef<HTMLDivElement | null>(null)
   const cursorTool: CursorTool | null =
     tool === 'pen' || tool === 'eraser' ? tool : null
@@ -96,7 +96,7 @@ export function CanvasPenCursor() {
       aria-hidden
       hidden
       data-pen-cursor=""
-      className="pointer-events-none fixed top-0 left-0 z-[9999] will-change-transform"
+      className="pointer-events-none fixed top-0 left-0 z-9999 will-change-transform"
       style={{ transformOrigin: '0 0' }}
     >
       <Icon
