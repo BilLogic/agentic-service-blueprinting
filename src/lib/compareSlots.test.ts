@@ -133,6 +133,9 @@ describe('buildCompareModel — alignment and verdicts', () => {
 
     const fsShip = bySlot.get(makeSlotKey('fs', 'ship#0'))
     expect(fsShip?.perPath['crisis']).toEqual({ present: false })
+    // A one-path slot is `only`, never `divergent`, so the field comparison
+    // never runs on it — the count guard it used to carry was dead.
+    expect(fsShip?.differingFields).toEqual([])
   })
 
   it('pairs duplicate step names by occurrence', () => {

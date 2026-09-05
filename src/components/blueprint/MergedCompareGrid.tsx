@@ -49,7 +49,7 @@ import {
 import {
   COMPARE_HEADER_WRAP_EXTRA_INSET,
   COMPARE_PATH_SECTION_BOTTOM_INSET,
-  COMPARE_PATH_SECTION_INSET,
+  COMPARE_PATH_SECTION_H_INSET,
   COMPARE_PATH_SECTION_TOP_INSET,
   COMPARE_STACKED_HEADER_GAP,
   COMPARE_STEP_HEADER_HEIGHT,
@@ -307,7 +307,7 @@ export function MergedCompareGrid({
             rowCount={rows.length}
             bleedTop={COMPARE_STACKED_HEADER_GAP}
             bleedBottom={COMPARE_PATH_SECTION_BOTTOM_INSET - 3}
-            bleedLeft={COMPARE_PATH_SECTION_INSET - 3}
+            bleedLeft={COMPARE_PATH_SECTION_H_INSET - 3}
           />
           {rows.map((row, rowIndex) =>
             row.kind === 'interaction' ||
@@ -434,8 +434,8 @@ function MergedSectionFrame({
         className="pointer-events-none absolute rounded-xl border-2 border-border"
         style={{
           top: -COMPARE_PATH_SECTION_TOP_INSET - COMPARE_HEADER_WRAP_EXTRA_INSET,
-          left: -COMPARE_PATH_SECTION_INSET,
-          right: -COMPARE_PATH_SECTION_INSET,
+          left: -COMPARE_PATH_SECTION_H_INSET,
+          right: -COMPARE_PATH_SECTION_H_INSET,
           bottom: -COMPARE_PATH_SECTION_BOTTOM_INSET,
           backgroundColor: blueprintPanelSectionFillColor(),
         }}
@@ -451,8 +451,8 @@ function MergedSectionFrame({
             -COMPARE_PATH_SECTION_TOP_INSET -
             COMPARE_HEADER_WRAP_EXTRA_INSET +
             3,
-          left: -COMPARE_PATH_SECTION_INSET + 3,
-          right: -COMPARE_PATH_SECTION_INSET + 3,
+          left: -COMPARE_PATH_SECTION_H_INSET + 3,
+          right: -COMPARE_PATH_SECTION_H_INSET + 3,
           height: COMPARE_STEP_HEADER_HEIGHT - 3,
           backgroundColor: `color-mix(in oklab, ${blueprintPanelLabelRailColor()} 45%, transparent)`,
         }}
@@ -461,7 +461,7 @@ function MergedSectionFrame({
         className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-1.5"
         style={{
           top: -COMPARE_PATH_SECTION_TOP_INSET - COMPARE_HEADER_WRAP_EXTRA_INSET,
-          left: COMPARE_PATH_SECTION_INSET + 2,
+          left: COMPARE_PATH_SECTION_H_INSET + 2,
           transform: 'translateY(-50%)',
         }}
       >

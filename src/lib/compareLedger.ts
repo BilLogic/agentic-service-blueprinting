@@ -1,3 +1,4 @@
+import { groupBy } from '@/lib/utils'
 import {
   isDetailOnlyCompareSlot,
   normalizeCompareName,
@@ -112,13 +113,10 @@ export function deriveCompareStepGroups(model: CompareModel): CompareStepGroup[]
     }
   }
 
-  const slotsByColumn = new Map<string, CompareSlot[]>()
-  for (const slot of model.slots) {
-    if (!isZoneCompareSlot(slot)) continue
-    const list = slotsByColumn.get(slot.columnKey)
-    if (list) list.push(slot)
-    else slotsByColumn.set(slot.columnKey, [slot])
-  }
+  const slotsByColumn = groupBy(
+    model.slots.filter(isZoneCompareSlot),
+    (slot) => slot.columnKey,
+  )
 
   const groups: CompareStepGroup[] = []
   model.columns.forEach((column, index) => {
