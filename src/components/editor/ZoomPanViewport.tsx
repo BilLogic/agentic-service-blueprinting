@@ -117,6 +117,13 @@ function ZoomPanViewportInner({
 
   // Agent parity: camera controls (otherwise keyboard-only ⌘+/⌘−/⌘0).
   useEffect(() => {
+    // `fitToView` returns false when the canvas geometry could not be
+    // measured (zero-height container, target not mounted) — no move was
+    // started, so "completed" would be the false confidence this command
+    // exists to remove. Reduced motion commits synchronously and IS a
+    // completed fit.
+    const FIT_UNMEASURABLE =
+      'Camera unchanged: the canvas geometry could not be measured, so no fit was started. Retry once the canvas is visible.'
     const waitForCamera = async () => {
       const deadline = performance.now() + 1000
       while (getCameraState().moving && performance.now() < deadline) {
@@ -133,9 +140,8 @@ function ZoomPanViewportInner({
           if (arg === 'in') zoomIn()
           else if (arg === 'out') zoomOut()
           else {
-            fitToView({ animate: true })
-            const outcome = await waitForCamera()
-            return `Camera fit ${outcome}.`
+            if (!fitToView({ animate: true })) return FIT_UNMEASURABLE
+            return `Camera fit ${await waitForCamera()}.`
           }
           return `Camera: zoomed ${arg}.`
         },
@@ -149,7 +155,7 @@ function ZoomPanViewportInner({
           if (input === 'zoom_in') zoomIn()
           else if (input === 'zoom_out') zoomOut()
           else if (input === 'fit') {
-            fitToView({ animate: true })
+            if (!fitToView({ animate: true })) return FIT_UNMEASURABLE
             return `Camera fit ${await waitForCamera()}.`
           }
           else if (input === 'cancel') cancelCamera()
