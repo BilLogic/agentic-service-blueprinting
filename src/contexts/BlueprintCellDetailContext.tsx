@@ -31,7 +31,12 @@ import {
 } from '@/lib/compareReviewStore'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { setOpenCellId } from '@/lib/openCellStore'
-import { claimPanel, releasePanel } from '@/lib/openPanelStore'
+import {
+  claimPanel,
+  getPanelOwner,
+  releasePanel,
+  subscribePanelOwner,
+} from '@/lib/openPanelStore'
 
 export type BlueprintCellPreviewHover = {
   cellId: string
@@ -47,6 +52,13 @@ export type BlueprintPanelState = { surface: BlueprintPanelSurface }
 
 type BlueprintCellDetailContextValue = {
   enabled: boolean
+  /**
+   * The scenario the detail view is scoped to — the focused one, or the one a
+   * slice tab renders solo. `enabled` says the feature is live; this says
+   * WHICH of the mounted boards it is live on, and the two axis headers need
+   * both (see `scenarioBoardScopeContext`).
+   */
+  scenarioId: string | null
   blueprints: BlueprintData[]
   selection: BlueprintCellSelection | null
   selectCell: (selection: BlueprintCellSelection) => void
@@ -90,6 +102,8 @@ type BlueprintCellDetailProviderProps = {
   /** Clears the open panel when the active scenario or slide changes. */
   resetKey?: string
   enabled?: boolean
+  /** See `scenarioId` on the context value. */
+  scenarioId?: string | null
   blueprints?: BlueprintData[]
 }
 
@@ -97,6 +111,7 @@ export function BlueprintCellDetailProvider({
   children,
   resetKey,
   enabled = false,
+  scenarioId = null,
   blueprints = [],
 }: BlueprintCellDetailProviderProps) {
   const [selection, setSelection] = useState<BlueprintCellSelection | null>(null)
@@ -111,6 +126,8 @@ export function BlueprintCellDetailProvider({
     setDraftCell(null)
     setPanelState(null)
     setPreviewHover(null)
+    // A reset is a close: hand the drawer back so the next opener — cell or
+    // entity — starts from nobody owning it.
     releasePanel('cell')
   }, [resetKey])
 
@@ -126,6 +143,24 @@ export function BlueprintCellDetailProvider({
     ) !== null
   if (panelState?.surface === 'differences' && !compareActive) {
     setPanelState(selection ? { surface: 'details' } : null)
+  }
+
+  // One panel at a time: an entity panel (lane, phase, scenario) taking the
+  // drawer closes this one. Render-phase guarded set, same idiom as above —
+  // and the panel state alone, because the claim has already moved and
+  // releasing here would close the panel that just opened.
+  //
+  // `=== 'entity'`, not `!== 'cell'`: nobody owning the drawer is the
+  // ordinary state after a close, and several openers set the panel without
+  // claiming — the agent's `differences_open`, `setPanelSurface` — so a guard
+  // on "not mine" nulled those on the very next render while the agent
+  // reported the ledger open. Only another panel taking the drawer is a
+  // reason to leave it.
+  const panelOwner = useSyncExternalStore(subscribePanelOwner, getPanelOwner)
+  if (panelOwner === 'entity' && panelState !== null) {
+    setPanelState(null)
+    setSelection(null)
+    setDraftCell(null)
   }
 
   // Tell the agent's UI-context collector which cell the human has open in
@@ -151,18 +186,6 @@ export function BlueprintCellDetailProvider({
     return () => setOpenCellId(null)
   }, [selection])
 
-  /*
-    Every opener claims the drawer, and the close releases it.
-
-    The cell panel and the entity panels are separate providers rendering into
-    the same screen position and portalling their Save row into the same DOM
-    id, so `openPanelStore` holds the single fact of who owns it and the loser
-    closes itself. The exclusion was one-sided: `EntityDetailContext` claimed
-    and released, this one never did, so the owner could only ever be `entity`
-    or nobody. Opening a cell while an entity panel was open left BOTH open,
-    two Save rows portalled into one host, and the entity panel's self-close
-    guard unable to fire because nothing had taken the drawer from it.
-  */
   const selectCell = useCallback((next: BlueprintCellSelection) => {
     claimPanel('cell')
     setSelection(next)
@@ -189,9 +212,6 @@ export function BlueprintCellDetailProvider({
     setDraftCell(null)
     setPanelState(null)
     setPreviewHover(null)
-    // Guarded inside the store: a panel that has already lost the claim
-    // releases nothing, so a close running after another panel opened cannot
-    // hand the drawer back to nobody.
     releasePanel('cell')
   }, [])
 
@@ -333,6 +353,7 @@ export function BlueprintCellDetailProvider({
   const value = useMemo(
     () => ({
       enabled,
+      scenarioId,
       blueprints,
       selection,
       selectCell,
@@ -350,6 +371,7 @@ export function BlueprintCellDetailProvider({
     }),
     [
       enabled,
+      scenarioId,
       blueprints,
       selection,
       selectCell,

@@ -162,6 +162,8 @@ export function BlueprintDividerRow({
   )
 }
 
+import { EntityPropertiesButton } from '@/components/blueprint/EntityPropertiesButton'
+import { LaneHeaderAffordance } from '@/components/blueprint/LaneHeaderAffordance'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { cellsInLane } from '@/lib/canvasCellQuery'
@@ -257,7 +259,7 @@ export function BlueprintLabelRow({
       )}
       <div
         className={cn(
-          'relative flex min-h-0 flex-1 items-start gap-2 pl-5 pr-3',
+          'group/lane-header relative flex min-h-0 flex-1 items-start gap-2 pl-5 pr-3',
           compact ? 'pt-3' : 'pt-4',
         )}
       >
@@ -266,20 +268,42 @@ export function BlueprintLabelRow({
             <button
               type="button"
               onClick={selectLane}
-              className="group/lane min-w-0 flex-1 cursor-pointer rounded-sm text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words underline-offset-4 hover:underline"
+              data-blueprint-row-header=""
+              className="group/lane relative min-w-0 flex-1 cursor-pointer rounded-sm text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words underline-offset-4 hover:underline"
               style={{ color: labelColor }}
             >
               {row.label}
             </button>
           </IconTooltip>
+        ) : row.kind === 'lane' && row.lane ? (
+          // View mode: the label is inert prose, so the whole block becomes
+          // the way into the lane's properties.
+          <LaneHeaderAffordance
+            laneId={row.lane.id}
+            laneName={row.label}
+            color={labelColor}
+          />
         ) : (
           <span
-            className="min-w-0 flex-1 text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words"
+            data-blueprint-row-header=""
+            className="relative min-w-0 flex-1 text-left text-sm font-bold leading-snug tracking-tight whitespace-normal break-words"
             style={{ color: labelColor }}
           >
             {row.label}
           </span>
         )}
+        {/* Design mode only, and beside the selection handle rather than
+            inside it: there the label already means "select every cell in
+            this lane", and the two readings have to stay visibly separate.
+            In View mode the block itself opens the panel, so a second control
+            would be a duplicate. */}
+        {laneSelectable && row.lane ? (
+          <EntityPropertiesButton
+            kind="lane"
+            id={row.lane.id}
+            name={row.label}
+          />
+        ) : null}
         {BLUEPRINT_LANE_COLLAPSE_ENABLED &&
           row.kind === 'lane' &&
           row.lane &&

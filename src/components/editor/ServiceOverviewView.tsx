@@ -23,6 +23,7 @@ import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
 import { ServiceOverviewCanvasSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { NavbarZoomIndicator } from '@/components/editor/EditorZoomIndicator'
+import { ServiceOverviewHeader } from '@/components/editor/ServiceOverviewHeader'
 import { SlideStickyHeader } from '@/components/editor/SlideStickyHeader'
 import { ZoomPanViewport } from '@/components/editor/ZoomPanViewport'
 import {
@@ -752,6 +753,16 @@ function ServiceOverviewViewImpl({
     isBlueprintCellDetailEnabled() &&
     isDetail &&
     (focusedScenarioId !== null || soloScenarioId != null)
+  /*
+    WHICH scenario that is. `cellDetailEnabled` is one boolean for the whole
+    canvas and every scenario board stays mounted behind the focused one, so
+    the flag alone says "live" to all of them — every lane header and step
+    header wearing hover and a pointer, and a click on any of them opening a
+    panel reading "Nothing recorded for this lane yet." Each board compares
+    this id against its own (see `scenarioBoardScopeContext`), so only the
+    board the reader chose carries live axis headers.
+  */
+  const cellDetailScenarioId = focusedScenarioId ?? soloScenarioId ?? null
 
   const focusedHeader = useMemo(() => {
     if (!isDetail) return null
@@ -795,6 +806,7 @@ function ServiceOverviewViewImpl({
       <BlueprintCellDetailProvider
         resetKey={cellDetailResetKey}
         enabled={cellDetailEnabled}
+        scenarioId={cellDetailScenarioId}
         blueprints={cellDetailBlueprints}
       >
         <CanvasFocusEscapeHandler />
@@ -825,10 +837,18 @@ function ServiceOverviewViewImpl({
               paths={focusedHeader.paths}
               selectedPathIds={focusedHeader.selectedPathIds}
             />
-          ) : // Overview: no navbar. The workspace tab in the top nav already
-          // names the view; a bar holding only a repeated title read as a
-          // broken fragment. The zoom pill floats over the canvas instead.
-          null}
+          ) : (
+            /*
+              Overview: the service's own header.
+
+              This was deliberately empty — "a bar holding only a repeated
+              title read as a broken fragment" — and that was right while the
+              row had nothing to do. It now opens the service panel, which is
+              the second job it was waiting for, and it is the same title +
+              summary shape the phase and scenario headers use one level down.
+            */
+            <ServiceOverviewHeader />
+          )}
           <div
             className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
             data-slide-canvas

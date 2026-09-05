@@ -1,10 +1,7 @@
 import { Columns2, Diff, GitCompareArrows } from 'lucide-react'
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
-import { NavbarSlideTitleNav } from '@/components/editor/NavbarSlideTitleNav'
-import {
-  BLUEPRINT_MENUBAR_HEADER_CLASS,
-  BLUEPRINT_MENUBAR_TITLE_CLASS,
-} from '@/components/editor/menubarHeaderLayout'
+import { EntityHeader } from '@/components/blueprint/EntityHeader'
+import { BLUEPRINT_MENUBAR_HEADER_CLASS } from '@/components/editor/menubarHeaderLayout'
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -200,6 +197,7 @@ export function PhaseMenubarHeader({
   className,
 }: PhaseMenubarHeaderProps) {
   const label = getSlideDisplayLabel(slide, slides)
+  const isScenario = isSubslide(slide)
   const summary = resolveHeaderSummary(slide, paths, selectedPathIds)
 
   return (
@@ -210,13 +208,21 @@ export function PhaseMenubarHeader({
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className={BLUEPRINT_MENUBAR_TITLE_CLASS}>
-        <NavbarSlideTitleNav
-          label={label}
-          summary={summary}
-          className="shrink-0"
-        />
-      </div>
+      {/*
+        Title and summary as one block, the slice header band's shape adapted
+        to a 36px bar: identity first, then what this thing is, truncated. The
+        summary used to live only inside the title's hover tooltip, which is a
+        strange place for the one sentence that says what you are looking at.
+
+        The block itself is `EntityHeader`, shared with the service bar above
+        — same shape, same class, one place to change it.
+      */}
+      <EntityHeader
+        kind={isScenario ? 'scenario' : 'phase'}
+        id={slide.id}
+        label={label}
+        summary={summary}
+      />
       {/* Compare controls moved to the navbar's right cluster
           (CompareControlsCluster) — the title keeps the left edge to
           itself. */}

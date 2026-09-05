@@ -8,6 +8,7 @@ import {
   COMPARE_STRIP_HEIGHT,
 } from '@/components/blueprint/CompareDivergenceStrip'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
+import { ScenarioBoardScopeContext } from '@/contexts/scenarioBoardScopeContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
@@ -174,6 +175,22 @@ export function ScenarioBlueprintPanel({
   */
   const cellDetail = useBlueprintCellDetailOptional()
   const openDifferences = cellDetail?.openDifferences
+  /*
+    Is THIS board the one the detail view is scoped to? Every scenario stays
+    mounted behind the focused one, and the cell-detail provider's `enabled`
+    is a single boolean above all of them — which is why the two axis headers
+    would go live on every board at once, and why a lane header on a band the
+    reader had not chosen would open "Nothing recorded for this lane yet."
+    Published as a context rather than threaded as a prop: the headers sit
+    five components down (rail → band → grid → panel body) and nothing in
+    between has any business knowing about focus.
+
+    Not `focusActive` — that is the CAMERA's focus, and it is false on the one
+    board a slice tab renders solo, where the detail view is nonetheless
+    scoped to exactly that scenario.
+  */
+  const boardInDetailScope =
+    cellDetail?.scenarioId != null && cellDetail.scenarioId === slide.id
   const compareMode = compareModel ? displayViewType : null
   const previousCompareModeRef = useRef<SlideViewType | null>(null)
   useEffect(() => {
@@ -463,6 +480,7 @@ export function ScenarioBlueprintPanel({
   // chrome without a job.
   const stripVisible = compareModel !== null && displayViewType !== 'merged'
   return (
+    <ScenarioBoardScopeContext.Provider value={boardInDetailScope}>
     <ResizableComparePanel
       {...comparePanelProps}
       chromeBar={
@@ -506,5 +524,6 @@ export function ScenarioBlueprintPanel({
         />
       )}
     </ResizableComparePanel>
+    </ScenarioBoardScopeContext.Provider>
   )
 }

@@ -57,6 +57,10 @@ export const PATTERNS = [
   { label: 'uno-bot / uno-blueprint', test: /uno[-_]?(?:bot|blueprint)/i },
   { label: 'plus-uno', test: /plus[-_]uno/i },
   { label: 'PLUS (case-sensitive)', test: /\bPLUS\b/ },
+  // A second deployment's name. It has no English collisions, so a plain
+  // word boundary is enough; it is here because a test fixture carried it
+  // through a port once, and nothing else would have said so.
+  { label: 'Ecoeled', test: /\becoeled\b/i },
 ]
 
 /**
@@ -132,7 +136,7 @@ function main() {
   }
 
   if (problems.length === 0) {
-    console.log(`no uno / PLUS references in ${files.length} tracked files`)
+    console.log(`no uno / PLUS / Ecoeled references in ${files.length} tracked files`)
     return
   }
 

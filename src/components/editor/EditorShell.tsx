@@ -30,6 +30,7 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCellDeepLink } from '@/hooks/useCellDeepLink'
 import { setSidebarCollapsedState } from '@/contexts/sidebarCollapsedContext'
+import { setShellBooting } from '@/contexts/shellBootStore'
 import { SKELETON_HOLD_MS } from '@/components/ui/deferred-skeleton'
 import {
   CANVAS_REVEAL_CELLS,
@@ -287,6 +288,21 @@ function DesktopEditorShell() {
     the cost of the extra stage is an invisible element at opacity 0.
   */
   const sidebarBooting = boot === 'staging' && revealStage < CANVAS_REVEAL_LANES
+
+  /*
+    The identity bars above the canvas hold their own skeletons while this
+    lane is up, so the bar, the sidebar and the board arrive on one beat.
+    Published rather than passed: the bars sit deep inside canvas content,
+    the same distance away as the collapsed state above.
+
+    Cleared on unmount. A latch left `true` by a shell that has gone would
+    hold every bar that mounts afterwards, and nothing would ever set it
+    back — the boot machine only runs while this component does.
+  */
+  useEffect(() => {
+    setShellBooting(sidebarBooting)
+  }, [sidebarBooting])
+  useEffect(() => () => setShellBooting(false), [])
   const sidebarBootMounted = boot === 'staging'
 
   useEffect(() => {

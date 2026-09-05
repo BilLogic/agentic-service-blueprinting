@@ -72,7 +72,7 @@ function makeBlueprint(
 const pair = (a: BlueprintData, b: BlueprintData): CompareBlueprints => [a, b]
 
 describe('normalizeCompareName', () => {
-  // The three real Ecoeled rename shapes that fabricated phantom clusters.
+  // The three real rename shapes, from a deployment, that fabricated phantom clusters.
   it('aligns quote-only renames', () => {
     expect(normalizeCompareName("click on 'set goals' cta")).toBe(
       normalizeCompareName('click on set goals cta'),
