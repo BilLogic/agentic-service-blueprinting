@@ -48,8 +48,8 @@ Schema coverage (migrations 20260729120000_derived_layer +
     absent in the IR means 'leads_to', the column default). The kind is part of the
     edge's IDENTITY, not just its payload: the database's uniqueness key is
     (source_cell_id, target_cell_id, kind), so one pair may carry both an
-    arrow and a needs edge, and the UUIDv5 qualified key ends in `#<kind>` so
-    the two do not collide. label/note still have no IR shape.
+    arrow and an `enables` edge, and the UUIDv5 qualified key ends in
+    `#<kind>` so the two do not collide. label/note still have no IR shape.
   * DERIVED TABLES ARE NEVER SEEDED. slices/slides/findings/evidence/
     business_models is a runtime output of the sb:* skills, not IR-authored
     content — there is deliberately no IR shape for them. Seeds cannot break

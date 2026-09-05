@@ -199,8 +199,8 @@ def select_journey(index: dict, scenario_key: str, path_key: str, lane_key: str)
         raise SliceError(f"lane '{lane_key}' is not on path '{path_key}'")
 
     # Adjacency over the path's dependency edges, undirected: being triggered
-    # *by* the actor and triggering *them* are both contact, and so is a
-    # `needs` edge either way — the canvas draws no arrow for one, but a cell
+    # *by* the actor and triggering *them* are both contact, and so is an
+    # `enables` edge either way — the canvas draws no arrow for one, but a cell
     # that this actor's work depends on is still a cell in contact with it.
     touching: dict[tuple[str, str], set[tuple[str, str]]] = {}
     for trigger in path["triggers"]:

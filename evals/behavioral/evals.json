@@ -103,7 +103,7 @@
       "query": "What breaks if we remove the welcome call from onboarding?",
       "expected_behavior": [
         "Builds a hypothetical variant; the database is never written during analysis",
-        "Walks trigger/needs edges downstream (impact-tracer discipline: visited set, bounded depth)",
+        "Walks leads_to/enables edges downstream (impact-tracer discipline: visited set, bounded depth)",
         "Reports affected cells, broken assumptions, and where displaced demand lands, cited by cell key"
       ]
     },

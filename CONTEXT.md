@@ -129,8 +129,11 @@ The retired values — `cell_dependencies.kind = 'trigger'` and
 `cell_dependencies.kind = 'needs'` — are values, not identifiers, so the
 identifier sweep has no fragment to key on and the copy sweep no reader-facing
 word: a database *trigger* is a live subject in these documents, and "needs"
-is English. `scripts/check-dependency-kinds.mjs` holds them instead, in their
-code-span form, across every rulebook tree an agent or reader follows.
+is English. `scripts/check-dependency-kinds.mjs` holds them instead, across
+every rulebook tree an agent or reader follows — in their code-span form, and
+in the short list of phrases where either word can only be a dependency kind
+("trigger-vs-needs", the slashed pair, either word beside "edge"), which is
+what caught the two documents that spelled the pair with no backticks at all.
 
 The same is true of `scenarios.layout = 'side-by-side'`,
 `scenarios.layout = 'integrated'`, `paths.kind = 'unhappy'` and

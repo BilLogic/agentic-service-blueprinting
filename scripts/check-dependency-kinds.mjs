@@ -22,6 +22,15 @@
  *      a legitimate subject; "a slice needs a cell" is English), which is why
  *      the subject is the code span and not the word.
  *
+ *   3. THE RETIRED SPELLING, UNQUOTED. A code span is not the only way to
+ *      name a kind. "trigger-vs-needs semantics" and "Walks trigger/needs
+ *      edges" both taught the retired pair for a release after 21000114000000
+ *      and assertion 2 could not see either, because neither wears backticks.
+ *      `BARE` is the short list of PHRASES in which the two words can only be
+ *      dependency kinds, swept over `BARE_TREES` — and over their JSON and
+ *      their Python too, because one of the two escapees was an eval and the
+ *      other was a comment beside the code that walks the edges.
+ *
  * SOURCE OF TRUTH: `supabase/generated/portable-core.generated.sql`, not the
  * migrations directly. It is generated FROM the migrations, and CI runs
  * `npm run check:portable-core` — which regenerates and diffs it — before it
@@ -73,6 +82,77 @@ const RULEBOOK = ['references', 'skills', 'agents', 'docs/guide', 'docs/engineer
 const RETIRED = [
   [/`trigger`/g, '`trigger`', '`leads_to`'],
   [/`needs`/g, '`needs`', '`enables`'],
+]
+
+/**
+ * Trees the BARE-WORD sweep reads, and the extensions it reads there.
+ *
+ * Narrower than `RULEBOOK` in one direction and wider in two others. It drops
+ * `docs/`, whose engineering pages have to be able to WRITE the retired pair
+ * down to explain this check. It adds `evals/`, because an eval's
+ * `expected_behavior` is doctrine an agent is graded against and nothing was
+ * reading it. And it reads more than markdown: the two documents this
+ * assertion was written for are a JSON eval set and a `.md`, and a third hit
+ * was a Python comment beside the adjacency walk in `slice_tools.py`.
+ *
+ * `scripts/` is deliberately absent. `migrate_ir.py` describes the migration
+ * that TURNED THE `needs` EDGES AROUND; a record of a retired edge has to
+ * name it, and a sweep there would be a list of exemptions rather than a rule.
+ */
+const BARE_TREES = ['references', 'skills', 'agents', 'evals']
+const BARE_EXTENSIONS = ['.md', '.json', '.py', '.mjs', '.ts', '.sh', '.txt']
+
+/**
+ * Phrases in which `trigger` and `needs` can only be dependency kinds.
+ *
+ * PRECISE ON PURPOSE. A bare `\btrigger\b` sweep flags every line of
+ * `references/data-model.md`'s section on the integrity trigger
+ * `cells_validate_path_match`, and a bare `\bneeds\b` flags the English verb
+ * in "a slice needs a cell" — which is how assertion 2 ended up scoped to the
+ * code span in the first place. These four say *edge* or say *the other kind*,
+ * and neither word survives that company by accident.
+ *
+ * The optional backticks are what let one pattern cover `` `needs` edge `` and
+ * `needs edge` both: half the escapees quoted one word of the phrase and not
+ * the other, which is exactly why assertion 2 missed them.
+ */
+const BARE = [
+  [/`?trigger`?[-/ ]vs[-/ ]`?needs`?/gi, 'trigger-vs-needs', '`leads_to`-vs-`enables`'],
+  [/`?needs`?[-/ ]vs[-/ ]`?trigger`?/gi, 'needs-vs-trigger', '`enables`-vs-`leads_to`'],
+  [/`?trigger`?\/`?needs`?/gi, 'trigger/needs', '`leads_to`/`enables`'],
+  [/\btrigger`? edges?\b/gi, 'trigger edge', '`leads_to` edge'],
+  [/\bneeds`? edges?\b/gi, 'needs edge', '`enables` edge'],
+]
+
+/**
+ * Lines the bare-word sweep is documented to leave alone.
+ *
+ * Two entries, and each is a kind of sentence rather than a file someone got
+ * tired of fixing. `files` is matched against the repo-relative path and
+ * `text` against the line; an entry with `text: null` exempts the whole path.
+ *
+ * The database trigger is NOT here, and that is the point of `BARE` being
+ * phrases: `cells_validate_path_match` is a live subject in these documents
+ * and no pattern above can reach a sentence about it.
+ */
+const BARE_ALLOWED = [
+  {
+    files: /^evals\/trigger\//,
+    text: null,
+    why: "a skill-firing eval holds the QUERY A USER TYPES, verbatim. Users say"
+      + ' the retired word; holding their phrasings to the schema vocabulary'
+      + ' would make the decoys less realistic, which is the one thing that set'
+      + ' is for. What an eval asserts is swept — evals/behavioral/evals.json.',
+  },
+  {
+    files: /./,
+    text: /\bretired\b/i,
+    why: "a sentence about the retirement has to spell the retired word."
+      + " CONTEXT.md's glossary note and references/ir-schema.json's `kind`"
+      + ' description both say which pair 21000114000000 withdrew, and a check'
+      + ' that flagged them would be asking the vocabulary not to explain'
+      + ' itself.',
+  },
 ]
 
 /**
@@ -157,17 +237,67 @@ export function retiredMentions(files, read) {
   return hits
 }
 
+/** Every bare-sweep file, repo-relative — not only the markdown. */
+function bareFiles(root) {
+  const out = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir).sort()) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (BARE_EXTENSIONS.some((ext) => entry.endsWith(ext)))
+        out.push(relative(root, full))
+    }
+  }
+  for (const tree of BARE_TREES) walk(join(root, tree))
+  return out
+}
+
+/** Whether `BARE_ALLOWED` documents a reason to leave this line alone. */
+export function allowedBare(file, text) {
+  return BARE_ALLOWED.some(
+    (entry) => entry.files.test(file) && (entry.text === null || entry.text.test(text)),
+  )
+}
+
+/**
+ * `{ file, line, found, instead }` for every retired kind spelled as a bare
+ * word in one of the phrases only a dependency kind appears in.
+ *
+ * ONE FINDING PER LINE. "Walks trigger/needs edges" matches two patterns and
+ * is one mistake; reporting it twice makes a two-line failure read as four
+ * documents.
+ */
+export function bareMentions(files, read) {
+  const hits = []
+  for (const file of files) {
+    read(file)
+      .split('\n')
+      .forEach((text, index) => {
+        if (allowedBare(file, text)) return
+        for (const [pattern, found, instead] of BARE) {
+          pattern.lastIndex = 0
+          if (pattern.test(text)) {
+            hits.push({ file, line: index + 1, found, instead })
+            return
+          }
+        }
+      })
+  }
+  return hits
+}
+
 export function compare(root = REPO_ROOT) {
   const read = (path) => readFileSync(join(root, path), 'utf8')
   return {
     ...differences(documentedKinds(read(DATA_MODEL)), enforcedKinds(read(SCHEMA))),
     retired: retiredMentions(rulebookFiles(root), read),
+    bare: bareMentions(bareFiles(root), read),
   }
 }
 
 function main() {
-  const { undocumented, unknown, retired } = compare()
-  if (undocumented.length + unknown.length + retired.length === 0) {
+  const { undocumented, unknown, retired, bare } = compare()
+  if (undocumented.length + unknown.length + retired.length + bare.length === 0) {
     console.log(
       `${DATA_MODEL} states the kind vocabulary the constraint enforces, and no` +
         ` rulebook document contradicts it`,
@@ -180,7 +310,7 @@ function main() {
   for (const value of unknown) {
     console.error(`${DATA_MODEL} states kind '${value}', which the constraint refuses`)
   }
-  for (const { file, line, found, instead } of retired) {
+  for (const { file, line, found, instead } of [...retired, ...bare]) {
     console.error(`${file}:${line} says ${found}; the database calls it ${instead}`)
   }
   console.error(
