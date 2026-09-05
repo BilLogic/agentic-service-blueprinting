@@ -63,7 +63,7 @@ Out of scope, and named so nobody looks for them: `search_blueprint` (needs a
 `list_blueprint` name (this repo keeps `list_scenarios` — it names what it
 returns), the reference-doc import seam (the deployment's nineteenth doc,
 `blueprint`, has no file here, so `REFERENCE_NAMES` stays at eighteen) and the
-`sb-`/`uno-` localStorage prefix.
+localStorage prefix (the template's `sb-` against the deployment's own).
 
 Thirteen agent tool names are contract identifiers in `identifiers.json`, so
 this is a minor. No existing identifier moves, and no path in
