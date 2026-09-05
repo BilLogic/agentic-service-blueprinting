@@ -1,3 +1,4 @@
+import { groupBy } from '@/lib/utils'
 import type { IntegratedBlueprintTrigger } from '@/types/integratedBlueprint'
 
 /**
@@ -93,18 +94,9 @@ export function assembleMergedSlot(
 
   // Equal-signature candidates collapse into ONE drawn cell whatever the
   // slot's kind — two paths that say the same words never stack two copies.
-  const groups: MergedSlotCandidate[][] = []
-  const bySignature = new Map<string, MergedSlotCandidate[]>()
-  for (const candidate of present) {
-    const group = bySignature.get(candidate.signature)
-    if (group) {
-      group.push(candidate)
-    } else {
-      const fresh = [candidate]
-      bySignature.set(candidate.signature, fresh)
-      groups.push(fresh)
-    }
-  }
+  const groups = [
+    ...groupBy(present, (candidate) => candidate.signature).values(),
+  ]
 
   const allPresent = present.length === pathIds.length
   if (allPresent && groups.length === 1) {

@@ -1,3 +1,4 @@
+import { groupBy } from '@/lib/utils'
 import type { BlueprintData } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
@@ -365,7 +366,15 @@ export function buildCompareModel(blueprints: CompareBlueprints): CompareModel {
     }
 
     const differingFields: CompareField[] = []
-    if (verdict === 'divergent' && presentEntries.length > 1) {
+    // `divergent` implies at least two present entries: a slot exists only
+    // because a cell was inserted into it, so it can never be empty, and the
+    // single-entry case returned `'only'` above.
+    //
+    // The `&& presentEntries.length > 1` that used to guard this line was
+    // therefore dead. It was kept once on the belief that `every` over an
+    // empty array would carry an empty slot into this branch — true of `every`,
+    // but an empty slot cannot be constructed.
+    if (verdict === 'divergent') {
       for (const field of COMPARE_FIELDS) {
         const first = presentEntries[0].fieldSignatures[field]
         if (presentEntries.some((entry) => entry.fieldSignatures[field] !== first)) {
@@ -402,12 +411,7 @@ export function buildCompareModel(blueprints: CompareBlueprints): CompareModel {
   })
 
   // Columns: verdict rollup + agreement grouping.
-  const slotsByColumn = new Map<string, CompareSlot[]>()
-  for (const slot of slots) {
-    const list = slotsByColumn.get(slot.columnKey)
-    if (list) list.push(slot)
-    else slotsByColumn.set(slot.columnKey, [slot])
-  }
+  const slotsByColumn = groupBy(slots, (slot) => slot.columnKey)
 
   const columns: CompareColumn[] = columnSeeds.map((seed) => {
     const columnSlots = slotsByColumn.get(seed.key) ?? []
@@ -433,21 +437,18 @@ export function buildCompareModel(blueprints: CompareBlueprints): CompareModel {
 
     // Column signature per path: joined lane->signature pairs; absent
     // paths group together under a distinct absence marker.
-    const groupByColumnSignature = new Map<string, string[]>()
-    for (const pathId of pathIds) {
-      const signature = perPathPresent[pathId]
-        ? columnSlots
-            .map((slot) => {
-              const entry = slot.perPath[pathId]
-              return `${slot.laneKey}=${entry?.present ? entry.signature : ''}`
-            })
-            .join(KEY_SEPARATOR)
-        : `${KEY_SEPARATOR}absent`
-      const group = groupByColumnSignature.get(signature)
-      if (group) group.push(pathId)
-      else groupByColumnSignature.set(signature, [pathId])
-    }
-    const agreementGroups = [...groupByColumnSignature.values()]
+    const agreementGroups = [
+      ...groupBy(pathIds, (pathId) =>
+        perPathPresent[pathId]
+          ? columnSlots
+              .map((slot) => {
+                const entry = slot.perPath[pathId]
+                return `${slot.laneKey}=${entry?.present ? entry.signature : ''}`
+              })
+              .join(KEY_SEPARATOR)
+          : `${KEY_SEPARATOR}absent`,
+      ).values(),
+    ]
 
     return {
       columnKey: seed.key,

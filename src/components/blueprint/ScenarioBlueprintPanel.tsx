@@ -211,7 +211,10 @@ export function ScenarioBlueprintPanel({
     line register alongside.
   */
   useEffect(() => {
-    if (!compareModel) return
+    // Multiple compare-capable panels remain mounted in overview/phase views.
+    // Only the explicitly focused scenario may own singleton agent commands
+    // and the portalled review store; mount order is not active ownership.
+    if (!compareModel || !focusActive) return
     const unregisterStore = registerCompareReview({
       slideId: slide.id,
       scenarioName,
@@ -357,6 +360,7 @@ export function ScenarioBlueprintPanel({
   }, [
     compareModel,
     displayViewType,
+    focusActive,
     phaseName,
     scenarioName,
     slide.id,
