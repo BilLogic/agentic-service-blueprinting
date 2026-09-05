@@ -257,7 +257,7 @@ function FilterChip({
  * divergence strip reads too.
  *
  * Counts: exactly one per group, at the END of its header row, post-filter.
- * There is no total anywhere on this surface — the menubar Diff pill owns
+ * There is no total anywhere on this surface — the menubar Diff count owns
  * that number.
  */
 export function CompareDifferencesSurface({

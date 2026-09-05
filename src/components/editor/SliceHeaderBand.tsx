@@ -47,7 +47,7 @@ export function SliceHeaderBand({
   const description = detail.slice.summary?.trim()
   const PrimaryIcon = primaryAction.icon
 
-  // Collapsed: the floating pill is the only header on screen, so hand it
+  // Collapsed: the floating navbar is the only header on screen, so hand it
   // this slice's identity and primary action and draw nothing here.
   const { collapsed } = useSidebarCollapsedState()
   useCollapsedNavSummary(

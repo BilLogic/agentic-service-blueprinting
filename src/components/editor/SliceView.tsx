@@ -301,7 +301,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
         </VisualWalkthroughShell>
       </EditorDetailScope>
       {!focused && !editing && (
-        <SliceRefocusPill onRefocus={() => setFocused(true)} />
+        <SliceRefocusButton onRefocus={() => setFocused(true)} />
       )}
     </div>
   )
@@ -324,7 +324,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
  * only while de-focused. Carries `data-canvas-nav` so the outside-click
  * capture treats it as chrome (clicking it must not re-run de-focus logic).
  */
-function SliceRefocusPill({ onRefocus }: { onRefocus: () => void }) {
+function SliceRefocusButton({ onRefocus }: { onRefocus: () => void }) {
   return (
     // bottom-16 clears the annotation toolbar docked at the bottom center.
     <div

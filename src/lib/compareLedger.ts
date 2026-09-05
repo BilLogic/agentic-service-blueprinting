@@ -141,7 +141,7 @@ export function getDetailOnlyCompareSlots(
   return model.slots.filter(isDetailOnlyCompareSlot)
 }
 
-/** The menubar Diff pill's number — the comparison's completeness count. */
+/** The menubar Diff count's number — the comparison's completeness count. */
 export function countCompareDifferences(model: CompareModel): number {
   return model.slots.filter((slot) => slot.verdict !== 'shared').length
 }

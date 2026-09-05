@@ -71,7 +71,7 @@ function SequenceNavPreview({
           default `neutral` ramp — a premise that has been stale since the
           board moved onto the semantic tokens and started following the
           theme with the rest of the app (see `blueprintTheme.ts`, and its
-          deleted `canvasDark` / `labelRailDark` keys). A white pill on the
+          deleted `canvasDark` / `labelRailDark` keys). A white control on the
           dark board was the visible cost.
         */
         'border-border bg-card text-foreground shadow-sm',

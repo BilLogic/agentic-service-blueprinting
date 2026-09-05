@@ -49,7 +49,7 @@ import type { NavItem } from '@/types/nav'
  * mode, no editors, and the agent's tool roster is filtered to reading
  * (loop.ts).
  *
- * Paths are SINGLE-select on the phone: the top-bar pill picks exactly one,
+ * Paths are SINGLE-select on the phone: the top-bar control picks exactly one,
  * through the same PathSelection context the desktop's PATHS checkboxes
  * drive, defaulting to the last-viewed path per scenario.
  */
@@ -153,7 +153,7 @@ export function MobileShell() {
         : 'Service blueprint'
 
   // ONE path at a time (decided 2026-08-16, single-select confirmed
-  // 2026-08-17): the pill drives the same PathSelection context the desktop
+  // 2026-08-17): the control drives the same PathSelection context the desktop
   // PATHS checkboxes use — the canvas needs no mobile-specific plumbing —
   // but always replaces the whole selection with one path. Defaults to the
   // last-viewed path per scenario (localStorage), else the happy path.

@@ -123,22 +123,22 @@ export function WorkspaceBadges() {
 }
 
 /**
- * The collapsed sidebar's remnant: a floating pill over the canvas
- * (Figma's collapsed-file-chip). Clicking its toggle expands the sidebar
+ * The collapsed sidebar's remnant: a floating navbar over the canvas
+ * (Figma's collapsed-file control). Clicking its toggle expands the sidebar
  * back into flow — no hover-peek: one control, one behavior.
  *
- * While collapsed the pill IS the navbar: whatever band would have
+ * While collapsed this IS the navbar: whatever band would have
  * rendered under it hands over its identity and primary action and draws
  * nothing itself, so there is one header on screen instead of two
- * stacked ones. The pill widens to fit rather than the title truncating
+ * stacked ones. It widens to fit rather than the title truncating
  * to nothing — it is the only place that context lives at this width.
  */
-export function FloatingSidebarPill({ onExpand }: { onExpand: () => void }) {
+export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
   const { summary } = useSidebarCollapsedState()
   return (
     <div
       className="pointer-events-auto flex max-w-[min(36rem,calc(100vw-6rem))] items-center gap-1.5 rounded-lg border border-border bg-background/95 py-1 pl-3 pr-1 shadow-md backdrop-blur-sm"
-      data-editor-sidebar-pill
+      data-editor-sidebar-navbar
     >
       <p className="shrink-0 truncate text-xs font-medium text-foreground">
         {EDITOR_TITLE}

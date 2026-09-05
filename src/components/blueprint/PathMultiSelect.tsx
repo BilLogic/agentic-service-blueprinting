@@ -78,7 +78,7 @@ type PathMultiSelectProps = {
   hideLabel?: boolean
 }
 
-function PathNotionPill({
+function PathNotionToggle({
   path,
   checked,
   onToggle,
@@ -274,7 +274,7 @@ export function PathMultiSelect({
                   onToggle={onToggle}
                 />
               ) : isNotion ? (
-                <PathNotionPill
+                <PathNotionToggle
                   key={path.id}
                   path={path}
                   checked={selectedPathIds.includes(path.id)}

@@ -195,7 +195,7 @@ export function SliceHeaderBandSkeleton() {
         </div>
       </div>
       {/* Primary action — `size="sm"` is h-8, and it has an icon before its
-          label, so the skeleton carries both rather than one flat pill. */}
+          label, so the skeleton carries both rather than one flat bar. */}
       <div className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border px-3">
         <Skeleton className="size-3 shrink-0 rounded-sm" />
         <Skeleton className="h-3.5 w-14" />
