@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { parseServiceSlug, serviceRoutePath } from '@/lib/serviceRoute'
 
 /**
- * The active service's slug, as a module-level fact.
+ * The active service's slug, as a module-level fact (ADR 0005).
  *
  * Which service the app is looking at must survive a mount changing and be read
  * by non-React code: `lib/service.ts` resolves the active service's id inside

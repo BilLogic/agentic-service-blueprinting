@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * The sidebar's one disclosure vocabulary — used by the PHASES / PATHS
- * section headers, the phase rows inside them, and the slice type groups, so
+ * section headers, the phase rows inside them, and the slice kind groups, so
  * every twisty in the sidebar looks and behaves the same.
  *
  * Three rules, taken from Figma's lane tree:
@@ -60,7 +60,7 @@ const ROW_ACTION_SLOT_CLASS =
  *
  * **No fill of its own.** The row it sits in already lights up on hover, and a
  * second surface inside that one is the box-in-a-box the composer taught us to
- * stop drawing. Prominence comes from the *glyph*: quiet
+ * stop drawing. Emphasis comes from the *glyph*: quiet
  * `--sidebar-foreground/50` at rest, `--sidebar-selected-rail` — the brand hue
  * the sidebar already uses for "this one" on the selection rail — on hover and
  * on keyboard focus. It is the only saturated ink in the sidebar, so it reads
@@ -259,7 +259,7 @@ type NavSectionProps = {
 }
 
 /**
- * A sidebar section (PHASES, PATHS, a slice type group). The whole header row
+ * A sidebar section (PHASES, PATHS, a slice kind group). The whole header row
  * is the trigger — there is no second action competing with it — but it wears
  * the same left-hand, hover-revealed chevron as the rows inside it, and its
  * label starts at the same x as theirs.
