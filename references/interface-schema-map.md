@@ -42,6 +42,7 @@ owes the third column a reason.
 | **Enabled by** | `cell_dependencies.kind` | The recorded kind, arriving — `kind = 'enables'` with this cell as the target. The same one-row-two-ends rule as Follows: without its own word, a reader standing at the target reads "Enables › A" as this cell enabling A, the exact inversion the rename ended. |
 | **Enables** | `cell_dependencies.kind` | The word IS the value — `kind = 'enables'` leaving, the recorded dependency that never draws — and `kind` is the name of the place holding it. |
 | **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
+| **Registry** | `cell_touchpoints.touchpoint_id` | The control names what a reader is choosing FROM — the deployment's touchpoint registry — and the column is the key the choice lands in. The same split `Actor` draws over `lanes.stakeholder_id`: the label is the pool, the name is the pointer. |
 | **Evidence** | `evidence` | — |
 | **Resources** | `resources` | — |
 | **Actor** | `lanes.stakeholder_id` | The registry the key points into is `stakeholders`, and the word this vocabulary uses for a party standing in the room is actor: a lane names its actor, and a `team` is a stakeholder that can never be one. The label says the narrower word, which is the only one the board is about. |
@@ -123,7 +124,7 @@ document look complete.
 
 <!-- generated:coverage — npm run interface-map -->
 
-26 of 34 names carry a comment in the catalogue. Read them there — `\d+ <table>` in psql, or the `COMMENT ON` statements in the dump.
+27 of 35 names carry a comment in the catalogue. Read them there — `\d+ <table>` in psql, or the `COMMENT ON` statements in the dump.
 
 8 that carry none:
 

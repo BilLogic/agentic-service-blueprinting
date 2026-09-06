@@ -17,11 +17,13 @@ import { useCellContent } from '@/hooks/useCellContent'
 import { useCellSpec } from '@/hooks/useCellSpec'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
+import { useNameOnlyPlacements } from '@/hooks/useRegistryTouchpoints'
 import { upsertCell } from '@/lib/authoringRpc'
 import { CELL_CONTENT_MAX } from '@/lib/cellContentLimits'
 import { updateCellContent } from '@/lib/cellContentMutations'
-import { RegistryLinks } from '@/components/blueprint/RegistryLinks'
+import { RegistryLink } from '@/components/blueprint/RegistryLink'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
+import { parseCellContentItems } from '@/lib/parseCellContent'
 import { parseValueProps, type ValueProp } from '@/lib/valueProps'
 
 /** Where a not-yet-created cell would go — the draft the editor writes on Save. */
@@ -159,6 +161,8 @@ function CellPanelEditorForm({
 }) {
   const { client } = useSupabase()
   const audiencesResult = useValueAudiences()
+  const nameOnlyResult = useNameOnlyPlacements(cellId)
+  const nameOnly = nameOnlyResult.status === 'ready' ? nameOnlyResult.data : []
   const audiences =
     audiencesResult.status === 'ready' ? audiencesResult.data : []
   // The footer host mounts in the same commit as this form; looked up once
@@ -318,7 +322,34 @@ function CellPanelEditorForm({
       // would otherwise materialize the cell into a panel-less silence.
       data-busy={busy || undefined}
     >
-      {cellId ? <RegistryLinks cellId={cellId} /> : null}
+      {/*
+        One card per placement the registry lacks, above the fields, because
+        deciding what a name-only placement IS comes before editing the words
+        around it. Unlike everything else on this form these write straight
+        through — they are the placement's identity, not one of its fields —
+        so they refresh the board themselves. Removing one does not close the
+        panel: the panel is the cell's here, and the cell is still there.
+      */}
+      {cellId
+        ? nameOnly.map((placement) => (
+            <RegistryLink
+              key={placement.id}
+              placement={placement}
+              cellId={cellId}
+              shown={parseCellContentItems(form.content)}
+              onWritten={() => {
+                invalidateQueries(`name-only-placements:${cellId}`)
+                invalidateQueries(`registry-touchpoints:${cellId}`)
+                invalidateQueries(`cell-content:${cellId}`)
+                invalidateQueries('service-phases')
+                if (draft) invalidateCanvasBlueprintsForPath(draft.pathId)
+                // An existing cell's panel does not know its path, so every
+                // board query refetches — the way the editor's own save does.
+                else invalidateQueries('canvas-blueprints')
+              }}
+            />
+          ))
+        : null}
       <Field label="Content" hint="What this cell says on the grid." required>
         <Input
           value={form.content}
