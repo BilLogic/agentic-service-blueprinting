@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/ir-schema.json",
   "title": "Service Blueprint IR",
-  "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): service -> phases -> scenarios -> paths -> lanes/steps/cells/triggers. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (service/phase/scenario/path/lane/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, lane, step) key triple; dependency edges by their source->target cell pair AND their kind, matching the database's uniqueness key (source_cell_id, target_cell_id, kind). Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
+  "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): service -> phases -> scenarios -> paths -> lanes/steps/cells/dependencies. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (service/phase/scenario/path/lane/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, lane, step) key triple; dependency edges by their source->target cell pair AND their kind, matching the database's uniqueness key (source_cell_id, target_cell_id, kind). Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
   "type": "object",
   "required": [
     "schema_version",
@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.09",
         "2026.09.07",
         "2026.09.06",
         "2026.09.05",
@@ -27,7 +28,7 @@
         "2026.08.25",
         "2026.07.16"
       ],
-      "description": "Template schema version this IR was authored against, newest first — the FIRST entry is the version this template speaks, and validate_ir.py refuses any IR not at it, naming the migration. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). ⚠ Every value added here ships its migration step in scripts/migrate_ir.py in the SAME change — consumers hold signed-off data that cannot be re-derived, so a bump with no step is a bump with no answer (references/customization.md § The versioning rule). A version leaves this list when the migration that carries it forward stops existing."
+      "description": "Template schema version this IR was authored against, newest first — the FIRST entry is the version this template speaks, and validate_ir.py refuses any IR not at it, naming the migration. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). ⚠ Every value added here ships its migration step in scripts/migrate_ir.py in the SAME change — consumers hold signed-off data that cannot be re-derived, so a bump with no step is a bump with no answer (references/customization.md § The versioning rule). A version leaves this list when the migration that carries it forward stops existing. 2026.09.08 is absent and is not free: 21000122000000 stamps a database with it for the lane-role vocabulary, and neither this list nor scripts/migrate_ir.py ever learned the value. Adding it here would need the lane-role migration step that has never been written, and spending it on something else would give one stamp two shapes, so the dependency rename took the next number instead."
     },
     "locales": {
       "type": "array",
@@ -354,11 +355,12 @@
             "$ref": "#/$defs/cell"
           }
         },
-        "triggers": {
+        "dependencies": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/trigger"
-          }
+            "$ref": "#/$defs/dependency"
+          },
+          "description": "Directed dependency edges between cells on THIS path. Called `triggers` until 2026.09.09: the database has said `cell_dependencies` since 21000103000000 and the domain layer since release 1.5.0, and the interchange format was the estate left over. scripts/migrate_ir.py carries a document authored with the old name across."
         }
       }
     },
@@ -505,7 +507,7 @@
         }
       }
     },
-    "trigger": {
+    "dependency": {
       "type": "object",
       "required": [
         "source",
@@ -528,7 +530,7 @@
           "description": "What kind of dependency this edge is. leads_to: the source makes the target HAPPEN, and the canvas draws an arrow. enables: the source makes the target POSSIBLE without causing it, and the canvas draws nothing — it reads in the cell panel only. Both read source-first and upstream-first, so an edge's direction can be read without checking its kind; the retired `needs` pointed the other way, which is why 2026.09.01 turned those edges around rather than renaming them where they lay. ABSENCE MEANS 'leads_to': that is the cell_dependencies.kind column default and the meaning every edge authored before 2026.08.26 already carried, so a file of bare edges migrates by its stamp alone. The pair alone is no longer an identity — a source->target pair may carry BOTH kinds as two rows, so the UUIDv5 derivation and the duplicate check both read the kind."
         }
       },
-      "description": "Directed dependency edge between two cells on the SAME path (cross-path edges are invalid). source != target, whatever the kind. `kind: leads_to` (the default) is the drawn arrow this array is named after; `kind: enables` is the panel-only dependency the database has stored since cell_dependencies grew the column, and which the IR could not express — and therefore silently dropped on export — until 2026.08.26."
+      "description": "Directed dependency edge between two cells on the SAME path (cross-path edges are invalid). source != target, whatever the kind. `kind: leads_to` (the default) is the drawn arrow, and the kind this array held alone when it was called `triggers`; `kind: enables` is the panel-only dependency the database has stored since cell_dependencies grew the column, and which the IR could not express — and therefore silently dropped on export — until 2026.08.26."
     },
     "registryTouchpoint": {
       "type": "object",

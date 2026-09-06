@@ -160,6 +160,16 @@ A version leaves the enum only when its migration stops existing, which is
 also when an IR at that version stops being upgradable and the workspace must
 check out the template revision that wrote it.
 
+**The rule has been broken once, at `2026.09.08`, and the value is spent
+rather than free.** `21000122000000` stamps a migrated database with it for
+the lane-role vocabulary, and neither the enum nor `scripts/migrate_ir.py`
+ever learned the value — so a workspace cannot author an IR against it, and a
+target carrying it reads as a version this template does not speak. The
+dependency rename that follows it took `2026.09.09` instead of the collision:
+one stamp naming two shapes would be worse than the gap. Closing the gap means
+writing the lane-role step `21000122000000` never shipped, which is that
+migration's debt and not the next bump's.
+
 ### Sign-off across a bump
 
 Sign-off binds to a SHA-256 of a scenario's subtree

@@ -11,7 +11,9 @@
 # deterministic UUIDv5 ids across runs, per-locale divergence, --verify
 # companion); generators refusing an invalid IR without writing output;
 # fallback TS generation + `tsc` type-check + --register round-trip against
-# src/data/blueprintFallbacks.ts (restored afterwards); a dependency edge's
+# src/data/blueprintFallbacks.ts (restored afterwards); an IR authored with the
+# retired `path.triggers` spelling still loading, by being carried across the
+# 2026.09.09 rename; a dependency edge's
 # `kind` round-tripping through both adapters, including an `enables` edge and
 # the identity that keeps both kinds of one pair apart; schema-version
 # migration (a superseded IR is refused by name, migrate_ir.py carries it
@@ -102,10 +104,10 @@ bad = json.loads(json.dumps(base))
 scenario(bad)["paths"][0]["path_steps"].append("report")
 json.dump(bad, open(f"{tmp}/bad2.json", "w", encoding="utf-8"), ensure_ascii=False)
 
-# bad3: cross-path trigger — (field-tech, verify) is a cell on as-done only,
-# referenced from a trigger on as-designed.
+# bad3: cross-path dependency — (field-tech, verify) is a cell on as-done
+# only, referenced from an edge on as-designed.
 bad = json.loads(json.dumps(base))
-scenario(bad)["paths"][0]["triggers"].append(
+scenario(bad)["paths"][0]["dependencies"].append(
     {
         "source": {"lane": "citizen", "step": "report"},
         "target": {"lane": "field-tech", "step": "verify"},
@@ -126,7 +128,7 @@ expect_invalid() {
 
 expect_invalid "validator-bad1 (cell step missing from path_steps)" "$TMP/bad1.json" "cells_validate_path_match"
 expect_invalid "validator-bad2 (duplicate position in path_steps)" "$TMP/bad2.json" "duplicate step 'report' in path_steps"
-expect_invalid "validator-bad3 (cross-path trigger)" "$TMP/bad3.json" "cross-path triggers are invalid"
+expect_invalid "validator-bad3 (cross-path dependency)" "$TMP/bad3.json" "cross-path edges are invalid"
 
 # The version field was checked for being a STRING and nothing else, so an IR
 # authored against a shape the database does not have validated cleanly.
@@ -339,10 +341,10 @@ import generate_seed_sql, validate_ir
 
 doc = json.load(open(sample, encoding="utf-8"))
 first_path = doc["service"]["phases"][0]["scenarios"][0]["paths"][0]
-arrow = next(t for t in first_path["triggers"] if t.get("kind", "leads_to") == "leads_to")
+arrow = next(e for e in first_path["dependencies"] if e.get("kind", "leads_to") == "leads_to")
 
 both = copy.deepcopy(doc)
-both["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"].append(
+both["service"]["phases"][0]["scenarios"][0]["paths"][0]["dependencies"].append(
     {"source": arrow["source"], "target": arrow["target"], "kind": "enables"}
 )
 report = validate_ir.Report("both-kinds")
@@ -350,7 +352,7 @@ validate_ir.validate_document(both, report)
 assert not report.errors, f"one pair with both kinds must validate: {report.errors}"
 
 model = generate_seed_sql.build_model(both, "en")
-edges = [e for p in model["scenarios"][0]["paths"] for e in p["triggers"]]
+edges = [e for p in model["scenarios"][0]["paths"] for e in p["dependencies"]]
 pair = [
     e for e in edges
     if (e["source_cell_id"], e["target_cell_id"])
@@ -362,7 +364,7 @@ assert {e["kind"] for e in pair} == {"leads_to", "enables"}, "kind lost between 
 
 # A genuine duplicate — same pair, SAME kind — is still a duplicate.
 dup = copy.deepcopy(both)
-dup["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"].append(
+dup["service"]["phases"][0]["scenarios"][0]["paths"][0]["dependencies"].append(
     {"source": arrow["source"], "target": arrow["target"]}
 )
 report = validate_ir.Report("dup")
@@ -371,7 +373,7 @@ assert any("duplicate leads_to edge" in e for e in report.errors), report.errors
 
 # An unknown kind is refused, naming both legal values.
 bad = copy.deepcopy(doc)
-bad["service"]["phases"][0]["scenarios"][0]["paths"][0]["triggers"][0]["kind"] = "causes"
+bad["service"]["phases"][0]["scenarios"][0]["paths"][0]["dependencies"][0]["kind"] = "causes"
 report = validate_ir.Report("bad-kind")
 validate_ir.validate_document(bad, report)
 assert any("'causes' is not one of ['leads_to', 'enables']" in e for e in report.errors), report.errors
@@ -626,8 +628,8 @@ if python3 "$SLICE_TOOLS" sql --ir "$SAMPLE" --slices "$TMP/slice-bad.json" --lo
 fi
 pass "slice-sql-guard (invalid slice file produces no SQL)"
 
-# Journey selection is arrow-derived: a lane with no triggers to the actor
-# must not appear in any frame.
+# Journey selection is arrow-derived: a lane with no dependency edge to the
+# actor must not appear in any frame.
 python3 - "$SAMPLE" "$SLICE_FILE" <<'PY' || fail "slice-journey-arrows: uncited companion cell in a frame"
 import json, sys
 ir = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -636,9 +638,9 @@ entry = doc["slices"][0]
 scenario = ir["service"]["phases"][0]["scenarios"][0]
 path = next(p for p in scenario["paths"] if p["key"] == entry["path"])
 linked = set()
-for trigger in path.get("triggers", []):
+for edge in path.get("dependencies", []):
     for end in ("source", "target"):
-        linked.add((trigger[end]["lane"], trigger[end]["step"]))
+        linked.add((edge[end]["lane"], edge[end]["step"]))
 for frame in entry["frames"]:
     for key in frame["cells"][1:]:
         lane, step = key.split("/")[4:6]
@@ -646,7 +648,7 @@ for frame in entry["frames"]:
             print(f"uncited companion: {key}", file=sys.stderr)
             sys.exit(1)
 PY
-pass "slice-journey-arrows (companions come from recorded triggers only)"
+pass "slice-journey-arrows (companions come from recorded dependencies only)"
 
 # Step and lane selections stay inside their column / row.
 python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
@@ -930,6 +932,8 @@ grep -q "2026.08.26 -> 2026.08.27" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the business-model step — $(cat "$TMP/migrate.out")"
 grep -q "2026.08.27 -> 2026.08.31" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the links split — $(cat "$TMP/migrate.out")"
+grep -q "2026.09.07 -> 2026.09.09" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the dependency rename — $(cat "$TMP/migrate.out")"
 python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
 import json, sys
 migrated = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -941,14 +945,16 @@ current = json.load(open(sys.argv[2], encoding="utf-8"))
 # `leads_to` and materializing that would rewrite every signed scenario's hash.
 expected = json.loads(json.dumps(current))
 path = expected["service"]["phases"][0]["scenarios"][0]["paths"][0]
-path["triggers"] = [t for t in path["triggers"] if t.get("kind", "leads_to") != "enables"]
+path["dependencies"] = [
+    e for e in path["dependencies"] if e.get("kind", "leads_to") != "enables"
+]
 assert migrated == expected, "migrated IR differs from the current fixture"
 assert not [
     t
     for phase in migrated["service"]["phases"]
     for scenario in phase["scenarios"]
     for pa in scenario["paths"]
-    for t in pa.get("triggers", [])
+    for t in pa.get("dependencies", [])
     if "kind" in t
 ], "the migration wrote a defaulted kind into the tree"
 # The links split, end to end. One array of two shapes became two arrays of
@@ -974,8 +980,93 @@ assert "summary" in touchpoint and "description" not in touchpoint, (
 PYMIG
 pass "migrate-forward (the oldest fixture chains through every step and validates)"
 
+# ---------------------------------------------------------------------------
+# 8b. A document written with `path.triggers` still loads
+# ---------------------------------------------------------------------------
+#
+# The whole point of a wire-format rename being a schema bump. Consumers hold
+# hand-signed-off IR authored against 2026.09.07, where a path's edge array was
+# called `triggers`, and "re-author it" is not an available answer — so the
+# refusal has to name the way forward and the way forward has to arrive at the
+# current shape exactly.
+#
+# The fixture is built by running the 2026.09.09 step BACKWARDS over the
+# current sample: the array goes back to `triggers` and the stamp back to
+# 2026.09.07, so the document under test is the real predecessor rather than a
+# hand-written approximation that could drift from it. `triggers` is written
+# back in the MIDDLE of the path object, before `cells`, because the position is
+# part of the contract: `migrate_ir.rename` keeps a renamed field among its
+# siblings, so the diff a person reviews is the one line whose name changed
+# rather than every line between it and the end of the file.
+python3 - "$SAMPLE" "$TMP" <<'PY' || fail "migrate-triggers-fixture: could not build the 2026.09.07 document"
+import json, sys
+
+sample, tmp = sys.argv[1], sys.argv[2]
+doc = json.load(open(sample, encoding="utf-8"))
+doc["schema_version"] = "2026.09.07"
+seen = 0
+for phase in doc["service"]["phases"]:
+    for scenario in phase["scenarios"]:
+        for path in scenario["paths"]:
+            if "dependencies" not in path:
+                continue
+            edges = path.pop("dependencies")
+            rebuilt = {}
+            for key, value in path.items():
+                if key == "cells":
+                    rebuilt["triggers"] = edges
+                rebuilt[key] = value
+            path.clear()
+            path.update(rebuilt)
+            seen += 1
+assert seen >= 2, f"the sample carries {seen} edge arrays; expected at least 2"
+json.dump(doc, open(f"{tmp}/old-spelling.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+
+# The refusal comes first: a 2026.09.07 document is not a 2026.09.09 document,
+# and the validator says so by name rather than by failing on an unknown key.
+if python3 "$VALIDATE" "$TMP/old-spelling.json" > "$TMP/old-spelling.out" 2>&1; then
+  fail "migrate-triggers-refusal: a document spelling the array triggers must not validate"
+fi
+grep -q "migrate_ir.py" "$TMP/old-spelling.out" \
+  || fail "migrate-triggers-refusal: the message must name the upgrade — $(cat "$TMP/old-spelling.out")"
+[ "$(grep -c '^ERROR' "$TMP/old-spelling.out")" = 1 ] \
+  || fail "migrate-triggers-refusal: the stamp is the only complaint — $(cat "$TMP/old-spelling.out")"
+if grep -q "triggers" "$TMP/old-spelling.out"; then
+  fail "migrate-triggers-refusal: the renamed field leaked into the report — $(cat "$TMP/old-spelling.out")"
+fi
+pass "migrate-triggers-refusal (an IR spelling the array triggers is refused by name)"
+
+# And then the carry: one hop, landing on the current fixture exactly.
+python3 "$MIGRATE" "$TMP/old-spelling.json" --write > "$TMP/migrate-triggers.out" 2>&1 \
+  || fail "migrate-triggers: migration failed — $(cat "$TMP/migrate-triggers.out")"
+grep -q "2026.09.07 -> 2026.09.09" "$TMP/migrate-triggers.out" \
+  || fail "migrate-triggers: the rename step did not run — $(cat "$TMP/migrate-triggers.out")"
+python3 "$VALIDATE" "$TMP/old-spelling.json" > "$TMP/migrate-triggers-valid.out" 2>&1 \
+  || fail "migrate-triggers: the carried IR does not validate — $(cat "$TMP/migrate-triggers-valid.out")"
+python3 - "$TMP/old-spelling.json" "$SAMPLE" <<'PY' || fail "migrate-triggers: the carry did not land on the current fixture"
+import json, sys
+
+carried = json.load(open(sys.argv[1], encoding="utf-8"))
+current = json.load(open(sys.argv[2], encoding="utf-8"))
+assert carried == current, "the carried document differs from the current fixture"
+
+# Position, not merely presence: the array kept the slot `triggers` occupied.
+for phase in carried["service"]["phases"]:
+    for scenario in phase["scenarios"]:
+        for path in scenario["paths"]:
+            keys = list(path)
+            assert "triggers" not in keys, f"a triggers array survived the carry: {keys}"
+            if "dependencies" not in keys:
+                continue
+            assert keys.index("dependencies") == keys.index("cells") - 1, (
+                f"dependencies moved out of the slot triggers held: {keys}"
+            )
+PY
+pass "migrate-triggers (a 2026.09.07 document carries forward, in place, to the current fixture)"
+
 # The two steps that write nothing, on their own. 2026.08.25 -> 2026.08.26
-# adds an optional field whose absence already meant `trigger`, and
+# adds an optional field whose absence already meant the drawn kind, and
 # 2026.08.26 -> 2026.08.27 renamed a table the IR never carried: neither
 # touches a scenario subtree, so every recorded sign-off hash is byte-identical
 # afterwards. That is the honest content_preserving=True, and it is checked
@@ -1148,6 +1239,11 @@ turned = 0
 for phase in doc["service"]["phases"]:
     for scenario in phase["scenarios"]:
         for path in scenario["paths"]:
+            # At 2026.08.31 the array was still `triggers`; the rename comes
+            # two steps later. `migrate_ir.rename` is the same helper the
+            # forward step uses, so the array goes back into the slot it will
+            # come out of and the round trip can be compared for equality.
+            migrate_ir.rename(path, "dependencies", "triggers")
             for edge in path.get("triggers", []):
                 if edge.get("kind") == "enables":
                     edge["kind"] = "needs"

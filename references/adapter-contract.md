@@ -20,9 +20,13 @@ zero configuration, Supabase opted into.
 
 **Same IR in, same render out — checked, not claimed.** Both v1 adapters
 project one shared model through one shared field list
-(`generate_seed_sql.seed_cell_fields` / `seed_trigger_fields`), and
+(`generate_seed_sql.seed_cell_fields` / `seed_dependency_fields`), and
 `scripts/adapter_parity.py` runs an IR through both and compares every
-field. It exists because the sentence was false for months while nothing
+field. The second of those two was `seed_trigger_fields` until IR
+`2026.09.09`, when a path's `triggers` array became its `dependencies` — the
+word the database has used since `21000103000000` — and the field function
+moved with the field it reads. A consumer that calls it by name changes one
+import. It exists because the sentence was false for months while nothing
 failed: each generator wrote its own field list by hand, they drifted, and
 the no-DB side quietly stopped carrying `cell_key`, `position`, every
 cell spec field, and the edge `kind` — losing an adopter their cell specs
