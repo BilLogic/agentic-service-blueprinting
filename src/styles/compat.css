@@ -1,10 +1,33 @@
 /*
  * Backwards-compatibility aliases. Mirrors packages/ui/build/css/source/compat.css.
  *
- * These give Supabase's documented vocabulary the same spelling it has in their
- * docs, so a snippet borrowed from them resolves here. Nothing new should reach
- * for these — prefer the semantic token they point at. The file goes away once
- * it is empty.
+ * Supabase's documented vocabulary, spelled their way, so a snippet lifted from
+ * their docs or a component vendored out of their tree resolves here without
+ * being rewritten first. Upstream ships around thirty of these; we carry the
+ * three that name a colour we also have.
+ *
+ * ALIAS ONLY. Every declaration here is a bare `var()` at a name `semantic.css`
+ * declares. Nothing in this file may introduce a value, and an alias whose
+ * target is renamed gets updated or deleted — never repointed at a different
+ * colour, which would quietly make the two spellings mean two things.
+ * `compatLayer.test.ts` holds both halves, and holds that no name declared here
+ * is also registered in `theme.css`: `--color-foreground-contrast` was, at the
+ * identical value, and since `theme.css` imports later this file's copy could
+ * never win. It was not an alias at all — same word, same order, no second
+ * vocabulary involved — so it is gone and `theme.css:34` keeps the name.
+ *
+ * THE EXIT CONDITION, and why it is not "when consumers reach zero". Nothing in
+ * this repo consumes these names, and that is the intended state, not a
+ * countdown: our own code writes the semantic name, and a `text-foreground-light`
+ * turning up in `src/` would be a review comment rather than a reason to keep
+ * the file. What the file is for is the borrowed snippet, so the count that
+ * retires an alias is upstream's — an alias goes when upstream stops publishing
+ * that name, and the file goes when the last alias does. Dated below so the
+ * next reader can check whether that has already happened rather than assuming
+ * it has not.
+ *
+ * Forked 2026-08-04 (a169838); last compared against supabase/supabase @ master
+ * on 2026-08-22, which still publishes all three.
  *
  * Kept out of semantic.css so the core model reads as just inputs → derivations.
  * Must be imported after semantic.css.
@@ -13,5 +36,4 @@
   --color-foreground-light: var(--muted-foreground);
   --color-foreground-lighter: var(--tertiary-foreground);
   --color-foreground-muted: var(--tertiary-foreground);
-  --color-foreground-contrast: var(--foreground-contrast);
 }

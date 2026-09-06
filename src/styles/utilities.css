@@ -5,7 +5,7 @@
  * the one Supabase's file uses for all nineteen of its entries. It is not
  * cosmetic: an `@utility` participates in the variant machinery (so
  * `hover:`/`dark:` compose with it) and sorts with the rest of the utility
- * lane, where a hand-written class in the lane gets neither.
+ * layer, where a hand-written class in the layer gets neither.
  *
  * Plain `@layer utilities` rules below are the ones that are NOT utilities —
  * a rule keyed on a document-level attribute has no class to modify.
@@ -19,6 +19,25 @@
 
 @keyframes delayed-appear {
   to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The reduced-motion branch, which this file has been missing since the
+ * utility landed — `motion.test.ts` read `animations.css` and `blueprint.css`
+ * and never opened this one, so the only animated surface outside those two
+ * files was the one surface with no reduced-motion answer.
+ *
+ * `animation: none` alone would be worse than the animation: the utility opens
+ * at `opacity: 0` and relies on the keyframe's `forwards` to reach 1, so
+ * cancelling the animation without restoring opacity hides the loading
+ * indicator entirely. Unlayered on purpose — an unlayered rule beats the
+ * utilities layer the `@utility` compiles into.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .delayed-appear {
+    animation: none;
     opacity: 1;
   }
 }

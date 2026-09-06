@@ -6,7 +6,7 @@
  * as the same system rather than as per-screen inventions.
  *
  * The CSS side of these numbers lives in `styles/animations.css` as the
- * `--motion-*` tokens (plus `--ease-structural` in `@theme`); the values here
+ * `--motion-*` tokens (plus the `--ease-*` keys in `@theme`); the values here
  * are for the JS that has to wait for them. A drift test pins the two files
  * to each other — change both or the suite fails.
  */
@@ -19,8 +19,9 @@ export const MOTION_STRUCTURAL_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const MOTION_FADE_MS = 200
 export const MOTION_FADE_STAGGER_MS = 75
 
-/** Camera eases (rAF, `easeInOutCubic`). */
+/** Programmatic camera travel and the fades that visually accompany it. */
 export const MOTION_CAMERA_MS = 420
+export const MOTION_CAMERA_EASE = 'cubic-bezier(0.37, 0, 0.63, 1)'
 
 /** Micro-interactions: hover, badges, threshold fades. */
 export const MOTION_MICRO_MS = 150
