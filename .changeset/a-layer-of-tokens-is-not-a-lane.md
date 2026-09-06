@@ -20,7 +20,10 @@ and is never read. Narrowing the pattern instead would have let
 `aria-label="Add a layer"` through, which is the retired name on screen and
 the one case that check plants to prove itself.
 
-Beside it now sits a guard on the residue itself — a word that exists in no
+A changeset, the CHANGELOG and the guard's own test may quote the residue —
+a note explaining the fix has to name both spellings, and a dated record keeps
+the words it was written with. Beside Check C now sits a guard on the residue
+itself — a word that exists in no
 dictionary (`laneed`, `unlaneed`) and one phrase whose meaning the rename
 inverted (`semantic lane` with no role after it, which is why `lane_role` and
 "semantic lane roles" pass) — over every file a commit would carry, so the

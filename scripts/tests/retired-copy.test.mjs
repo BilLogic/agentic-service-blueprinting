@@ -329,8 +329,25 @@ const MANGLED = [
   { pattern: /\bsemantic lane(?![_ ]roles?\b)/i, meant: 'semantic layer' },
 ]
 
-/** This file writes every shape down, so it cannot be its own subject. */
-const MANGLE_SWEEP_SELF = 'scripts/tests/retired-copy.test.mjs'
+/**
+ * Documents that must be able to write the residue down.
+ *
+ * This file plants every shape to prove the sweep reads it. A changeset and
+ * the CHANGELOG are the same case one step out: the note explaining that
+ * "tabs laneed" became "tabs layered" has to quote both, and CONTEXT.md's
+ * standing rule — an applied or dated record keeps the spelling it was
+ * written with — already covers the second. Neither is prose an agent or a
+ * reader is taught from, which is what the sweep is protecting.
+ */
+const MANGLE_EXEMPT = [
+  'scripts/tests/retired-copy.test.mjs',
+  'CHANGELOG.md',
+]
+
+/** Whether a path is one of those documents. */
+export function mangleExempt(path) {
+  return MANGLE_EXEMPT.includes(path) || path.startsWith('.changeset/')
+}
 
 export function mangledIn(source) {
   const hits = []
@@ -344,7 +361,7 @@ export function mangledIn(source) {
 
 test('a rename left no mangled English behind', () => {
   const found = scannedFiles(REPO_ROOT)
-    .filter((path) => path !== MANGLE_SWEEP_SELF)
+    .filter((path) => !mangleExempt(path))
     .flatMap((path) => {
       let source
       try {
@@ -356,6 +373,17 @@ test('a rename left no mangled English behind', () => {
       return mangledIn(source).map((hit) => `${path}:${hit.line} — meant "${hit.meant}"`)
     })
   assert.deepEqual(found, [])
+})
+
+test('the documents that record a rename may quote what it mangled', () => {
+  // By path rule, not by line: a changeset explaining the fix quotes the
+  // broken word and the right one in the same sentence, and no pattern
+  // separates that from the wreckage itself.
+  assert.ok(mangleExempt('.changeset/a-layer-of-tokens-is-not-a-lane.md'))
+  assert.ok(mangleExempt('CHANGELOG.md'))
+  assert.ok(mangleExempt('scripts/tests/retired-copy.test.mjs'))
+  assert.ok(!mangleExempt('docs/engineering/checks.md'))
+  assert.ok(!mangleExempt('src/styles/animations.css'))
 })
 
 test('the sweep reads the residue and not the column it resembles', () => {
