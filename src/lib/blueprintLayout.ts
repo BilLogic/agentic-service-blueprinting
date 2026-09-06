@@ -473,12 +473,20 @@ export function getMaxTouchpointCountInLane(
   // Summed per *slot*, not maxed per cell: since the split a slot holds one
   // cell per touchpoint, and a row sized to the tallest single cell would be
   // one touchpoint tall over a stack of three.
+  //
+  // Placements where the cell has them, the text where it does not — the same
+  // reading `getTouchpointNames` does, because this count has to agree with
+  // the list that gets drawn. A name-only placement (#112) is a face the text
+  // never names, and a stack sized from the text alone would clip it.
   const perStep = new Map<string, number>()
   for (const cell of data.cells) {
-    if (cell.lane_id === laneId && cell.content?.trim()) {
-      const count = parseCellContentItems(cell.content).length
-      perStep.set(cell.step_id, (perStep.get(cell.step_id) ?? 0) + count)
-    }
+    if (cell.lane_id !== laneId) continue
+    const count = cell.touchpoints?.length
+      ? cell.touchpoints.length
+      : cell.content?.trim()
+        ? parseCellContentItems(cell.content).length
+        : 0
+    if (count > 0) perStep.set(cell.step_id, (perStep.get(cell.step_id) ?? 0) + count)
   }
   let max = 0
   for (const total of perStep.values()) max = Math.max(max, total)
