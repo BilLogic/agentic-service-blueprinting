@@ -1,7 +1,7 @@
 <svg viewBox="0 -40 880 292" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <style>
     .title { font-size: 11px; font-weight: 700; fill: #273036; }
-    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .badge { font-size: 10px; font-weight: 600; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .rail { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -50,15 +50,15 @@
   <text x="540" y="46" class="sub" font-size="8.5" fill="#6b7280">gap sweep</text>
   <line x1="630" y1="42" x2="646" y2="42" stroke="#e2e4e9"/>
   <rect x="646" y="32" width="202" height="20" rx="5" fill="#fbe9f0" stroke="#f2cfdf"/>
-  <text x="656" y="45" class="chip" font-size="8">a step with nothing behind it</text>
+  <text x="656" y="45" class="badge" font-size="8">a step with nothing behind it</text>
   <text x="540" y="73" class="sub" font-size="8.5" fill="#6b7280">channel conflict</text>
   <line x1="630" y1="69" x2="646" y2="69" stroke="#e2e4e9"/>
   <rect x="646" y="59" width="202" height="20" rx="5" fill="#fbe9f0" stroke="#f2cfdf"/>
-  <text x="656" y="72" class="chip" font-size="8">two channels say different things</text>
+  <text x="656" y="72" class="badge" font-size="8">two channels say different things</text>
   <text x="540" y="100" class="sub" font-size="8.5" fill="#6b7280">perceived owner</text>
   <line x1="630" y1="96" x2="646" y2="96" stroke="#e2e4e9"/>
   <rect x="646" y="86" width="202" height="20" rx="5" fill="#fbe9f0" stroke="#f2cfdf"/>
-  <text x="656" y="99" class="chip" font-size="8">credit goes to the wrong team</text>
+  <text x="656" y="99" class="badge" font-size="8">credit goes to the wrong team</text>
   <text x="540" y="127" class="sub" font-size="8.5" fill="#6b7280">value ledger</text>
   <line x1="630" y1="123" x2="646" y2="123" stroke="#e2e4e9"/>
   <circle cx="656" cy="123" r="6" fill="#e8f3ed" stroke="#9dbfa9"/>

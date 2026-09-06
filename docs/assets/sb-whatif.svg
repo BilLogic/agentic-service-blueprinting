@@ -1,7 +1,7 @@
 <svg viewBox="0 -40 880 292" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <style>
     .title { font-size: 11px; font-weight: 700; fill: #273036; }
-    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .badge { font-size: 10px; font-weight: 600; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .rail { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -56,7 +56,7 @@
   <rect x="584" y="56" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
   <rect x="599" y="66" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
   <rect x="584" y="66" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
-  <text x="628" y="58" class="chip" font-size="9.5">move it to another channel</text>
+  <text x="628" y="58" class="badge" font-size="9.5">move it to another channel</text>
   <text x="628" y="73" class="sub" font-size="9">7 cells reached, 2 assumptions break</text>
   <rect x="540" y="96" width="308" height="56" rx="8" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
   <rect x="552" y="107" width="60" height="34" fill="#ffffff" stroke="#d4d4da"/>
@@ -66,7 +66,7 @@
   <rect x="554" y="110" width="11" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
   <rect x="569" y="120" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
   <rect x="584" y="120" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
-  <text x="628" y="122" class="chip" font-size="9.5">let the customer do it themselves</text>
+  <text x="628" y="122" class="badge" font-size="9.5">let the customer do it themselves</text>
   <text x="628" y="137" class="sub" font-size="9">4 cells reached, 1 assumption breaks</text>
   <rect x="540" y="160" width="308" height="56" rx="8" fill="#fafbfc" stroke="#c9ccd4" stroke-dasharray="4 3"/>
   <rect x="552" y="171" width="60" height="34" fill="#ffffff" stroke="#d4d4da"/>
@@ -75,6 +75,6 @@
   <line x1="597" y1="171" x2="597" y2="205" stroke="#e2e4e9"/>
   <rect x="554" y="174" width="11" height="6" fill="#d9e4ea" stroke="#9aadbe"/>
   <rect x="569" y="184" width="11" height="6" fill="#fdf1e3" stroke="#d4b483"/>
-  <text x="628" y="186" class="chip" font-size="9.5">keep it for some customers only</text>
+  <text x="628" y="186" class="badge" font-size="9.5">keep it for some customers only</text>
   <text x="628" y="201" class="sub" font-size="9">2 cells reached, nothing downstream</text>
 </svg>

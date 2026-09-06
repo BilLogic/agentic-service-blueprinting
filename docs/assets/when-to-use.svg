@@ -1,6 +1,6 @@
 <svg viewBox="0 -40 880 406" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <style>
-    .chip { font-size: 10.5px; font-weight: 700; fill: #273036; }
+    .badge { font-size: 10.5px; font-weight: 700; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .who { fill: #eef0f4; stroke: #c9ccd4; stroke-width: 1.2; }
     .read { stroke: #8a8f98; stroke-width: 1.2; fill: none; marker-end: url(#aRead); }
@@ -53,7 +53,7 @@
     <path d="M80,80 C110,84 176,88 200,89"/>
     <path d="M78,86 C94,98 108,108 128,111"/>
   </g>
-  <text x="32" y="140" class="chip">Onboarding</text>
+  <text x="32" y="140" class="badge">Onboarding</text>
   <text x="32" y="154" class="sub">the whole service before you touch any of it</text>
 
   <!-- ==================== 2 · stakeholder reviews ==================== -->
@@ -81,7 +81,7 @@
   </g>
   <rect x="656" y="98" width="48" height="16" rx="3" fill="#3f4952" stroke="#8f98a3" stroke-width="1.2"/>
   <path class="read" d="M534,76 C548,76 550,78 562,78"/>
-  <text x="468" y="140" class="chip">Stakeholder Alignment</text>
+  <text x="468" y="140" class="badge">Stakeholder Alignment</text>
   <text x="468" y="154" class="sub">one audience sees only what concerns them</text>
 
   <!-- ==================== 3 · weighing a change ==================== -->
@@ -118,7 +118,7 @@
     <path d="M178,256 C208,262 212,282 236,284"/>
     <path d="M308,252 C320,252 324,252 336,252"/>
   </g>
-  <text x="32" y="314" class="chip">Decision Evaluation</text>
+  <text x="32" y="314" class="badge">Decision Evaluation</text>
   <text x="32" y="328" class="sub">what a change breaks, before you make it</text>
 
   <!-- ==================== 4 · keeping it current ==================== -->
@@ -162,6 +162,6 @@
   </g>
   <path class="read" d="M502,246 C512,246 516,248 528,248"/>
   <path class="read" d="M662,252 C672,252 676,252 686,252"/>
-  <text x="468" y="314" class="chip">Context Management</text>
+  <text x="468" y="314" class="badge">Context Management</text>
   <text x="468" y="328" class="sub">what no longer holds since the last change</text>
 </svg>

@@ -15,6 +15,15 @@
  * plus the file names themselves. Test files are in — a test asserting against
  * a retired name carries it as surely as the component would.
  *
+ * AND THE COVER FIGURES' CLASS NAMES, SINCE #188 — `docs/assets/*.svg`, which
+ * are authored by hand and ship byte-for-byte. They are a third subject rather
+ * than an extension of the first, because a figure is styled only by its own
+ * `<style>` block and reads nothing from `src`; the walk and the two
+ * assertions that read them are at the foot of this file, under their own
+ * heading. `chip` survived #324 and #358 in fifty-one of those class strings,
+ * which is the same lesson one file type over: a rename is held by whatever
+ * opens the file, and nothing had ever opened these for a name.
+ *
  * COMMENTS ARE THE SECOND SUBJECT, SINCE #358. They were excluded on the
  * argument that a codebase is allowed to say why a word left, and that a guard
  * reading comments could not be satisfied by any tree that explains its own
@@ -60,6 +69,8 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { RENAME_MAP } from '../retired-vocabulary.mjs'
+import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 const SRC = resolve(ROOT, 'src')
@@ -128,10 +139,35 @@ export function appSources() {
 
 /* --------------------------------------------- chip and pill, as names */
 
-/** The two words that stopped being names. */
-export const RETIRED_DESIGN_WORDS = Object.freeze(['chip', 'pill'])
+/**
+ * The words that stopped being names, read OFF the rename map rather than
+ * copied out of it.
+ *
+ * The selector is the map's own shape and not a position in it: a row with an
+ * empty `retired` list renamed no database object, and a row with an empty
+ * `migrations` list was never applied to a database at all. A row that is both
+ * renamed the app's own vocabulary and nothing else — which is precisely the
+ * kind of rename no schema and no generated type can hold, and precisely what
+ * this file exists to hold instead. `pill`/`chip` is that row today, and if a
+ * second is ever added these walks take it on the day the map does.
+ */
+export const RETIRED_DESIGN_WORDS = Object.freeze(
+  RENAME_MAP.filter(
+    (row) => row.retired.length === 0 && row.migrations.length === 0,
+  ).flatMap((row) => row.was),
+)
 
 const SAYS_RETIRED = new RegExp(`(${RETIRED_DESIGN_WORDS.join('|')})`, 'i')
+
+test('the retired pair is derived from the rename map', () => {
+  // The derivation is the one part of this file that can go wrong quietly. A
+  // row edited so that it no longer matches leaves a SMALLER set, and a
+  // smaller set is a check that has stopped covering a word without saying so.
+  // (An empty set is the loud failure: the pattern becomes `()`, which matches
+  // every name in the tree.) So the pair is stated once, here, as a fact about
+  // the map rather than as the list the walks read.
+  assert.deepEqual([...RETIRED_DESIGN_WORDS].sort(), ['chip', 'pill'])
+})
 
 /** Every name in the tree that still says chip or pill, with where it is. */
 export function namesThatSayChipOrPill(sources) {
@@ -301,4 +337,214 @@ test('the walk reads the tree it claims to', () => {
   assert.ok(
     sources.some(({ code }) => code.includes('export function FloatingSidebarNavbar')),
   )
+})
+
+/* ----------------------------------- chip and pill, in a figure's classes */
+
+/**
+ * THE FIGURES ARE THE THIRD SUBJECT, SINCE #188.
+ *
+ * `docs/assets/*.svg` are the cover page's diagrams, and they are AUTHORED —
+ * `scripts/sync-cover-assets.mjs` copies them to `public/cover/` and changes
+ * nothing on the way, so what is written here is what ships. Each carries its
+ * own `<style>` block, and `CoverFigure` serves it through an `<img>`, which
+ * seals page CSS out of the file. That block is therefore not one stylesheet
+ * among several: it is the whole of the styling that will ever reach the
+ * figure. A class name in one of these files is a name in exactly the sense
+ * the two walks above use the word — something the next person editing the
+ * figure learns the vocabulary from — and until this change it was held by
+ * nothing but review.
+ *
+ * Review lost. `chip` stopped being a name under `src` in #324 and left its
+ * comments in #358, and forty-one `class="chip"` attributes and ten `.chip`
+ * rules sat in these figures through both sweeps, because no check had ever
+ * opened an SVG looking for a NAME. `retired-copy.test.mjs` does open them,
+ * and is right not to have caught this: its subject is the words a reader
+ * sees, which in an SVG means the text nodes and not the attributes. The
+ * class strings sat in the gap between two checks that were each correct
+ * about their own subject.
+ *
+ * TWO ASSERTIONS OVER ONE WALK, which is the shape the pair above already has.
+ *
+ *   1. NO RETIRED WORD IN A CLASS NAME. The subject is both places a figure
+ *      can write one — the rule in its `<style>` block and the token in a
+ *      `class` attribute. Both, because a rename that moves one and not the
+ *      other is the mistake this change itself had to avoid, and a guard
+ *      reading only the attributes would have called such a rename done.
+ *
+ *   2. EVERY CLASS USED HAS A RULE IN THE SAME FILE. This is what makes the
+ *      first assertion impossible to satisfy by halves: rename the rule alone
+ *      and the attributes are left styling nothing, rename the attributes
+ *      alone and the rule is. It can be an assertion at all only because of
+ *      the `<img>` seal — with no second place a rule could be hiding, "not
+ *      in this file" is the whole of "nowhere". The same sentence about a
+ *      class under `src` would be unwritable, where a rule may come from any
+ *      of Tailwind's generated utilities.
+ *
+ * THE CONVERSE IS DELIBERATELY NOT ASSERTED. A rule that no attribute uses is
+ * left alone, and four stand today — `uiTitle` in the cell figure, `spoke` in
+ * three of the skill figures. A rule nobody uses styles nothing and teaches
+ * nobody, because a name is learned where it is USED; sweeping the four would
+ * be a second finding with a different subject, and this file's header already
+ * says that the answer to a subject reaching too far is to narrow it.
+ */
+
+const FIGURES = resolve(ROOT, 'docs', 'assets')
+
+/** The contents of a `<style>` block. */
+const STYLE_BLOCK = /<style>([\s\S]*?)<\/style>/g
+
+/**
+ * A class selector inside one. The leading letter is what keeps this off a
+ * decimal: `letter-spacing: .07em` and `opacity: .9` are the two shapes these
+ * files carry, and a digit follows the dot in both.
+ */
+const CLASS_RULE = /\.([A-Za-z][\w-]*)/g
+
+/** A `class` attribute, whose value may hold several names. */
+const CLASS_ATTRIBUTE = /\sclass="([^"]*)"/g
+
+/** The 1-based line `index` falls on. */
+function lineAt(source, index) {
+  return source.slice(0, index).split('\n').length
+}
+
+function figureFiles() {
+  return readdirSync(FIGURES)
+    .filter((name) => name.endsWith('.svg'))
+    .sort()
+    .map((name) => ({
+      file: `docs/assets/${name}`,
+      code: readFileSync(join(FIGURES, name), 'utf8'),
+    }))
+}
+
+/**
+ * Each figure's class vocabulary, split the way the two assertions need it:
+ * the names its stylesheet DEFINES and the names its markup USES, each
+ * carrying the line it first appears on so a failure names a place.
+ */
+export function figureClasses(files = figureFiles()) {
+  return files.map(({ file, code }) => {
+    const defined = new Map()
+    for (const block of code.matchAll(STYLE_BLOCK)) {
+      const start = block.index + block[0].indexOf(block[1])
+      for (const rule of block[1].matchAll(CLASS_RULE)) {
+        if (!defined.has(rule[1])) defined.set(rule[1], lineAt(code, start + rule.index))
+      }
+    }
+    const used = new Map()
+    for (const attribute of code.matchAll(CLASS_ATTRIBUTE)) {
+      const at = attribute.index + attribute[0].indexOf('class=')
+      for (const name of attribute[1].trim().split(/\s+/)) {
+        if (name && !used.has(name)) used.set(name, lineAt(code, at))
+      }
+    }
+    return { file, defined, used }
+  })
+}
+
+/** Every figure class name that still says chip or pill, with where it is. */
+export function figureNamesThatSayChipOrPill(figures) {
+  const out = []
+  for (const { file, defined, used } of figures) {
+    for (const [name, line] of defined) {
+      if (SAYS_RETIRED.test(name)) out.push(`${file}:${line} .${name} — the rule`)
+    }
+    for (const [name, line] of used) {
+      if (SAYS_RETIRED.test(name)) out.push(`${file}:${line} class="${name}"`)
+    }
+  }
+  return out
+}
+
+/** Every class a figure uses that its own stylesheet never gives a rule. */
+export function figureClassesWithNoRule(figures) {
+  const out = []
+  for (const { file, defined, used } of figures) {
+    for (const [name, line] of used) {
+      if (!defined.has(name)) out.push(`${file}:${line} class="${name}"`)
+    }
+  }
+  return out
+}
+
+test('no class name in a figure says chip or pill', () => {
+  const found = figureNamesThatSayChipOrPill(figureClasses())
+  assert.deepEqual(
+    found,
+    [],
+    'A class in a cover figure says "chip" or "pill". These files are authored ' +
+      'and ship as written, so the name is what the next person editing the ' +
+      'figure will copy. The design system has two words: a BADGE describes ' +
+      'the thing it sits on, a TAG is one value out of a set. Move the rule ' +
+      `and the attributes together — a half-rename fails the check below:\n${found.join('\n')}`,
+  )
+})
+
+test('every class a figure uses is defined by that figure', () => {
+  const found = figureClassesWithNoRule(figureClasses())
+  assert.deepEqual(
+    found,
+    [],
+    'A cover figure uses a class its own `<style>` block never defines, so the ' +
+      'attribute styles nothing. An `<img>` seals page CSS out of these files, ' +
+      'which leaves no other stylesheet that could be carrying the rule — the ' +
+      `usual cause is a rename that moved the rule and left the markup:\n${found.join('\n')}`,
+  )
+})
+
+test('the figure checks go red on a class that reintroduces the word', () => {
+  // Both halves of a rename, planted separately, so neither assertion can be
+  // satisfied by doing half the work: the first figure renamed its rule and
+  // kept its attributes, the second did the reverse.
+  const planted = figureClasses([
+    {
+      file: 'docs/assets/planted-rule-moved.svg',
+      code: [
+        '<svg>',
+        '  <style>',
+        '    .badge { font-size: 10px; }',
+        '    .mono { font-family: monospace; }',
+        '  </style>',
+        '  <text class="chip">Phase 1</text>',
+        '  <text class="chip mono">a step</text>',
+        '</svg>',
+      ].join('\n'),
+    },
+    {
+      file: 'docs/assets/planted-markup-moved.svg',
+      code: [
+        '<svg>',
+        '  <style>',
+        '    .pill { font-size: 10px; }',
+        '    .badge { font-size: 10px; }',
+        '  </style>',
+        '  <text class="badge">Phase 1</text>',
+        '</svg>',
+      ].join('\n'),
+    },
+  ])
+  // Each name is reported once per file, at the line it first appears on, so
+  // the two `chip` attributes below are one finding and not two.
+  assert.deepEqual(figureNamesThatSayChipOrPill(planted), [
+    'docs/assets/planted-rule-moved.svg:6 class="chip"',
+    'docs/assets/planted-markup-moved.svg:3 .pill — the rule',
+  ])
+  assert.deepEqual(figureClassesWithNoRule(planted), [
+    'docs/assets/planted-rule-moved.svg:6 class="chip"',
+  ])
+})
+
+test('the figure walk reads the figures it claims to', () => {
+  // A reader that opened nothing, or that found no classes in what it opened,
+  // would satisfy both assertions above in silence — the failure mode every
+  // check in this directory is written against.
+  const figures = figureClasses()
+  assert.equal(figures.length, COVER_ASSET_MANIFEST.length)
+  const used = figures.reduce((total, { used: names }) => total + names.size, 0)
+  assert.ok(used > 80, `the figures parsed to ${used} class names`)
+  // The word this change moved the corpus to, in the two places it can sit.
+  assert.ok(figures.some(({ defined }) => defined.has('badge')))
+  assert.ok(figures.some(({ used: names }) => names.has('badge')))
 })
