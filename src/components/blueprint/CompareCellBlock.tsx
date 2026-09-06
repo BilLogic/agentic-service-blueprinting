@@ -4,6 +4,8 @@ import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpo
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
   STEP_COLUMN_WIDTH,
+  NARRATIVE_CELL_HEIGHT,
+  NARRATIVE_CELL_HEIGHT_COMPACT,
   getStoryboardCellButtonMaxHeight,
   type BlueprintCellVariant,
 } from '@/lib/blueprintLayout'
@@ -12,8 +14,12 @@ import {
   getTouchpointNames,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import type { BlueprintLaneStyle } from '@/lib/blueprintTheme'
-import { getPathWashStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
@@ -22,6 +28,7 @@ import {
   isNameOnlyPlacement,
   touchpointNamed,
 } from '@/lib/cellTouchpoints'
+import { useId, useState, type CSSProperties } from 'react'
 
 /**
  * One cell of a compare grid — the same face in every arrangement (stacked
@@ -31,22 +38,29 @@ import {
  */
 
 /**
- * The merged view's path affiliation mark: a low-alpha WASH of the path
- * colour painted on the cell face itself (never a separate box — the wash
- * inherits the face's exact bounds and radius), plus the path's short
- * label. Only sub-cells of a DIVERGENT slot carry them — a fully-shared
- * cell belongs to every path and is drawn bare. A sub-cell shared by a
- * SUBSET of paths carries one mark per member: the wash splits into
- * vertical stripes and the labels line up left-to-right.
+ * One segment of the merged view's path-membership outline. The outline sits
+ * on the cell edge without repainting its lane fill; exact membership is
+ * disclosed with full path names on hover and keyboard focus.
  */
-export type CompareCellPathRail = {
+export type CompareCellPathMembership = {
   color: string
-  /** Short label ("HP") — see `buildComparePathShortLabels`. */
-  label: string
-  /** Full path name, for the label's tooltip/title. */
+  /** Full path name shown in the membership tooltip. */
   pathName: string
 }
 
+function membershipOutlineBackground(
+  memberships: readonly CompareCellPathMembership[],
+): string {
+  if (memberships.length === 1) return memberships[0].color
+
+  const slice = 100 / memberships.length
+  const stops = memberships.flatMap((membership, index) => {
+    const start = (slice * index).toFixed(3)
+    const end = (slice * (index + 1)).toFixed(3)
+    return [`${membership.color} ${start}%`, `${membership.color} ${end}%`]
+  })
+  return `conic-gradient(from -45deg, ${stops.join(', ')})`
+}
 
 export function CompareCellBlock({
   cellId,
@@ -59,8 +73,8 @@ export function CompareCellBlock({
   selectionContext,
   storyboardPictures,
   slotCells,
-  pathRails,
-  pathWash = true,
+  status,
+  pathMembership,
 }: {
   cellId?: string
   stepIndex: number
@@ -73,15 +87,19 @@ export function CompareCellBlock({
   storyboardPictures?: Array<{ frame: string; label: string }>
   /** Every cell in a tech slot — one per touchpoint since the split. */
   slotCells?: BlueprintCell[]
-  /** Member paths of a divergent sub-cell — one wash stripe + label each. */
-  pathRails?: readonly CompareCellPathRail[]
-  /**
-   * Fully-shared cells show every path's LABEL but skip the wash — the
-   * wash means "this face belongs to a strict subset of the paths", and
-   * tinting cells that belong to everyone would repaint most of the board.
-   */
-  pathWash?: boolean
+  /** Unbuilt cells wear a dashed, drained face — see BlueprintCellButton. */
+  status?: BlueprintCell['status']
+  /** Member paths of this rendered cell — one outline segment each. */
+  pathMembership?: readonly CompareCellPathMembership[]
 }) {
+  const membershipDescriptionId = useId()
+  const [membershipTooltipOpen, setMembershipTooltipOpen] = useState(false)
+  const hasMembershipOutline = Boolean(
+    pathMembership && pathMembership.length > 0,
+  )
+  const ariaDescribedBy = hasMembershipOutline
+    ? membershipDescriptionId
+    : undefined
   const shellPadding = cn(
     compact ? 'px-3' : 'px-3.5',
     compact ? 'pt-3' : 'pt-4',
@@ -89,27 +107,29 @@ export function CompareCellBlock({
   )
   const width = STEP_COLUMN_WIDTH
   const isStoryboard = variant === 'storyboard'
+  const narrativeHeight = compact
+    ? NARRATIVE_CELL_HEIGHT_COMPACT
+    : NARRATIVE_CELL_HEIGHT
   const shellVerticalPad = compact ? 24 : 32
   const shellStyle = {
     width,
     minWidth: width,
     maxWidth: width,
+    ...(hasMembershipOutline
+      ? {
+          '--background-compare-membership-outline':
+            membershipOutlineBackground(pathMembership!),
+        }
+      : undefined),
     ...(isStoryboard
       ? { maxHeight: getStoryboardCellButtonMaxHeight(compact) + shellVerticalPad }
       : undefined),
-  }
+  } as CSSProperties
   const shellClassName = cn(
     'relative z-[1] flex shrink-0 items-stretch',
     shellPadding,
     isStoryboard && 'min-h-0 overflow-hidden',
   )
-  // Storyboard faces are photographs — a colour wash over them reads as a bad
-  // scan, so there the labels alone carry the affiliation.
-  const washStyle =
-    isStoryboard || !pathWash
-      ? undefined
-      : getPathWashStyle(pathRails?.map((rail) => rail.color))
-
   const innerContent =
     variant === 'storyboard' ? (
       <div className="relative flex h-full min-h-0 max-h-full w-full flex-1 overflow-hidden">
@@ -124,7 +144,11 @@ export function CompareCellBlock({
           }
           cellId={cellId}
           stepIndex={stepIndex}
-          className="flex-1"
+          className={cn(
+            'flex-1',
+            hasMembershipOutline && 'compare-membership-outline',
+          )}
+          aria-describedby={ariaDescribedBy}
         />
       </div>
     ) : variant === 'touchpoints' ? (
@@ -161,7 +185,10 @@ export function CompareCellBlock({
               key={`${slotCell?.id ?? 'anon'}-${item}-${index}`}
               item={item}
               nameOnly={nameOnly}
-              style={washStyle}
+              className={
+                hasMembershipOutline ? 'compare-membership-outline' : undefined
+              }
+              aria-describedby={ariaDescribedBy}
               // Identity is the split's point: each touchpoint carries its own
               // cell in the selection it hands to the panel and the picker.
               selectionContext={
@@ -182,6 +209,7 @@ export function CompareCellBlock({
               sliceSequenceBadge={
                 index === 0 || slotCell?.id !== all[index - 1]?.slotCell?.id
               }
+              status={slotCell?.status ?? status}
             />
           ) : (
             <TouchpointCellFace
@@ -189,8 +217,11 @@ export function CompareCellBlock({
               item={item}
               compact={compact}
               nameOnly={nameOnly}
-              className="shrink-0"
-              style={washStyle}
+              className={cn(
+                'shrink-0',
+                hasMembershipOutline && 'compare-membership-outline',
+              )}
+              aria-describedby={ariaDescribedBy}
             />
           )
         })}
@@ -206,35 +237,73 @@ export function CompareCellBlock({
         }
         cellId={cellId}
         stepIndex={stepIndex}
-        style={washStyle}
+        status={status}
+        className={cn(
+          'flex-none overflow-hidden',
+          hasMembershipOutline && 'compare-membership-outline',
+        )}
+        style={{
+          height: narrativeHeight,
+          minHeight: narrativeHeight,
+          maxHeight: narrativeHeight,
+        }}
+        aria-describedby={ariaDescribedBy}
       >
-        <p className="w-full whitespace-pre-wrap">{content}</p>
+        <p className="line-clamp-4 w-full whitespace-pre-wrap">{content}</p>
       </BlueprintCellButton>
     )
 
-  return (
-    <div className={shellClassName} style={shellStyle}>
-      {pathRails && pathRails.length > 0 ? (
-        // Affiliation by WASH (plan 2026-08-17-002 U3, revised): the wash
-        // rides the cell face's own background (see `getPathWashStyle`), so
-        // there is no separate tint box to misalign. The short labels stay —
-        // they are the non-color identification the dashed/solid pairing
-        // used to carry (SC 1.4.1) — one per member path.
-        <span className="pointer-events-none absolute left-2.5 top-0 z-[3] flex gap-1.5">
-          {pathRails.map((rail) => (
-            <span
-              key={rail.label}
-              title={rail.pathName}
-              className="font-mono text-3xs font-semibold tabular-nums"
-              style={{ color: rail.color }}
-            >
-              {rail.label}
-              <span className="sr-only">{` (${rail.pathName})`}</span>
-            </span>
-          ))}
+  const shell = (
+    <div
+      className={shellClassName}
+      style={shellStyle}
+      onFocusCapture={
+        hasMembershipOutline ? () => setMembershipTooltipOpen(true) : undefined
+      }
+      onBlurCapture={
+        hasMembershipOutline
+          ? (event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setMembershipTooltipOpen(false)
+              }
+            }
+          : undefined
+      }
+    >
+      {hasMembershipOutline ? (
+        <span id={membershipDescriptionId} className="sr-only">
+          {`Used in paths: ${pathMembership!.map((membership) => membership.pathName).join(', ')}`}
         </span>
       ) : null}
       {innerContent}
     </div>
+  )
+
+  if (!hasMembershipOutline) return shell
+
+  return (
+    <Tooltip
+      open={membershipTooltipOpen}
+      onOpenChange={setMembershipTooltipOpen}
+    >
+      <TooltipTrigger render={shell} tabIndex={-1} />
+      <TooltipContent
+        side="top"
+        sideOffset={6}
+        className="flex max-w-72 flex-col items-start gap-1.5 text-left"
+      >
+        <span className="text-contrast/70">Used in</span>
+        {pathMembership!.map((membership) => (
+          <span key={membership.pathName} className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className="size-2 shrink-0 rounded-full ring-1 ring-contrast/25"
+              style={{ backgroundColor: membership.color }}
+            />
+            <span>{membership.pathName}</span>
+          </span>
+        ))}
+      </TooltipContent>
+    </Tooltip>
   )
 }

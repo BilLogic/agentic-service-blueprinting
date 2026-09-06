@@ -22,7 +22,7 @@ What that buys you:
 
 ## See it live
 
-- **Run it yourself** — `npm install && npm run dev` boots the stock renderer over the bundled sample blueprint, no database needed: phases, side-by-side path comparisons, dependency arrows, and cell detail panels. Click any phase, then flip between paths. See [Run locally](#run-locally) below.
+- **Run it yourself** — `npm install && npm run dev` boots the stock renderer over the bundled sample blueprint, no database needed: phases, path comparisons on one shared step axis, dependency arrows, and cell detail panels. Click any phase, then flip between paths. See [Run locally](#run-locally) below.
 
 Demos of the blueprint in use (recordings coming soon):
 

@@ -7,7 +7,7 @@ import {
 } from '@/components/blueprint/BlueprintLabelRail'
 import {
   CompareCellBlock,
-  type CompareCellPathRail,
+  type CompareCellPathMembership,
 } from '@/components/blueprint/CompareCellBlock'
 import { CompareLaneRowShell } from '@/components/blueprint/CompareLaneRowShell'
 import { CompareStepHeaderRow } from '@/components/blueprint/CompareTrackDecorations'
@@ -34,7 +34,6 @@ import {
 import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
   assembleMergedSlot,
-  buildComparePathShortLabels,
   buildMergedArrowRemap,
   remapMergedPathDependencies,
   type MergedSlotAssembly,
@@ -89,7 +88,7 @@ type MergedPathRuntime = {
   cellById: Map<string, BlueprintCell>
   stepById: Map<string, BlueprintStep>
   stepIndexById: Map<string, number>
-  rail: CompareCellPathRail
+  membership: CompareCellPathMembership
 }
 
 /**
@@ -98,10 +97,10 @@ type MergedPathRuntime = {
  * the stacked bands use), and per SLOT (lane × canonical column):
  *
  * - the paths agree ⇒ ONE cell, drawn exactly like a normal blueprint cell,
- *   with no path rail: it belongs to every path
+ *   with every member path represented on its rounded outline
  * - the paths disagree, or only some have anything ⇒ each present path's
  *   cell(s) stack vertically inside that one slot, each carrying a
- *   path-coloured (colour + dash) rail and the path's short label
+ *   path-coloured rounded outline; full names are disclosed on hover/focus
  *
  * The slot grows only where the paths disagree, and that vertical swell IS
  * the diff signal — no extra paint beyond the column tint. Every sub-cell
@@ -138,9 +137,6 @@ export function MergedCompareGrid({
   )
 
   const runtimeByPathId = useMemo(() => {
-    const shortLabels = buildComparePathShortLabels(
-      blueprints.map((blueprint) => blueprint.path),
-    )
     return new Map<string, MergedPathRuntime>(
       blueprints.map((blueprint) => {
         const { path } = blueprint
@@ -153,9 +149,8 @@ export function MergedCompareGrid({
             stepIndexById: new Map(
               blueprint.steps.map((step, index) => [step.id, index]),
             ),
-            rail: {
+            membership: {
               color: getPathColor(path),
-              label: shortLabels.get(path.id) ?? path.name.slice(0, 2),
               pathName: path.name,
             },
           },
@@ -421,9 +416,6 @@ function MergedSectionFrame({
   blueprints: BlueprintData[]
   compact?: boolean
 }) {
-  const shortLabels = buildComparePathShortLabels(
-    blueprints.map((blueprint) => blueprint.path),
-  )
   return (
     <>
       {/* The merged board is ONE frame, so — like a single-path board —
@@ -468,7 +460,7 @@ function MergedSectionFrame({
         {blueprints.map(({ path }) => (
           <PathLabelBadge
             key={path.id}
-            name={`${shortLabels.get(path.id) ?? ''} ${path.name}`.trim()}
+            name={path.name}
             summary={path.summary}
             pathKind={path.kind}
             compact={compact}
@@ -534,17 +526,19 @@ function MergedLaneRow({
             : assembly.kind === 'shared'
               ? [assembly.representative]
               : assembly.subCells
-        // Every drawn cell names its member paths — a fully-shared cell
-        // carries ALL the labels (the clear "shared by both" statement),
-        // while only strict-subset cells additionally wear the wash.
-        const withWash = assembly?.kind === 'split'
-        const railsFor = (
+        // Every drawn cell states its membership positively — a
+        // fully-shared cell wears every path's segment, which is the plain
+        // "used in both" statement, and a subset cell wears only its own.
+        const membershipFor = (
           subCell: MergedSubCell,
-        ): CompareCellPathRail[] | undefined => {
-          const rails = subCell.pathIds
-            .map((pathId) => runtimeByPathId.get(pathId)?.rail)
-            .filter((rail): rail is CompareCellPathRail => rail !== undefined)
-          return rails.length > 0 ? rails : undefined
+        ): CompareCellPathMembership[] | undefined => {
+          const memberships = subCell.pathIds
+            .map((pathId) => runtimeByPathId.get(pathId)?.membership)
+            .filter(
+              (membership): membership is CompareCellPathMembership =>
+                membership !== undefined,
+            )
+          return memberships.length > 0 ? memberships : undefined
         }
 
         return (
@@ -566,8 +560,7 @@ function MergedLaneRow({
                 variant={variant}
                 compact={compact}
                 flushBottom={flushBottom}
-                pathRails={railsFor(subCells[0])}
-                pathWash={withWash}
+                pathMembership={membershipFor(subCells[0])}
                 scenarioName={scenarioName}
                 phaseName={phaseName}
               />
@@ -584,8 +577,7 @@ function MergedLaneRow({
                     variant={variant}
                     compact={compact}
                     flushBottom={flushBottom}
-                    pathRails={railsFor(subCell)}
-                    pathWash={withWash}
+                    pathMembership={membershipFor(subCell)}
                     scenarioName={scenarioName}
                     phaseName={phaseName}
                   />
@@ -610,8 +602,7 @@ function MergedSubCellBlock({
   variant,
   compact,
   flushBottom,
-  pathRails,
-  pathWash = true,
+  pathMembership,
   scenarioName,
   phaseName,
 }: {
@@ -624,9 +615,8 @@ function MergedSubCellBlock({
   variant: BlueprintCellVariant
   compact?: boolean
   flushBottom?: boolean
-  /** One entry per member path of this sub-cell (label; wash if pathWash). */
-  pathRails?: readonly CompareCellPathRail[]
-  pathWash?: boolean
+  /** One entry per member path of this rendered sub-cell. */
+  pathMembership?: readonly CompareCellPathMembership[]
   scenarioName?: string
   phaseName?: string
 }) {
@@ -670,8 +660,7 @@ function MergedSubCellBlock({
       flushBottom={flushBottom}
       storyboardPictures={storyboardPictures}
       slotCells={variant === 'touchpoints' ? cells : undefined}
-      pathRails={pathRails}
-      pathWash={pathWash}
+      pathMembership={pathMembership}
       selectionContext={
         scenarioName && cellId
           ? {

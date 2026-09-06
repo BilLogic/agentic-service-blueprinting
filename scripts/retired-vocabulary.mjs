@@ -544,8 +544,8 @@ export const RENAME_MAP = Object.freeze(
       Every spelling came from the deployment rather than being invented here:
       the cover's copy button is `CoverCommandCopy` reading `commandCopy`, the
       menubar's count is `CompareDifferencesCount`, and the ledger's markers
-      split along the definition above — a `VerdictBadge` and a
-      `CompareZoneBadge` describe, a `FilterTag` selects.
+      split along the definition above — a `VerdictBadge` describes, a
+      `FilterTag` selects.
     */
     {
       was: ['pill', 'chip'],

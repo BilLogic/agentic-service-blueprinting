@@ -23,8 +23,9 @@ export const TOUCHPOINT_CELL_LANE_ROLES = [
 /** Roles rendered as storyboard frame rows instead of text cells. */
 export const STORYBOARD_LANE_ROLES = [STORYBOARD_ROLE] as const
 
-export const STORYBOARD_ROW_MIN_HEIGHT = 132
-export const STORYBOARD_ROW_MIN_HEIGHT_COMPACT = 108
+/** 192px inner face at 4:3 plus the service/compare shell's vertical padding. */
+export const STORYBOARD_ROW_MIN_HEIGHT = 176
+export const STORYBOARD_ROW_MIN_HEIGHT_COMPACT = 168
 
 /** Max height for the storyboard cell button inside a swimlane row (excludes shell padding). */
 export function getStoryboardCellButtonMaxHeight(compact = false): number {
@@ -99,16 +100,22 @@ export function shouldShowVisibilityLineAfter(
 }
 
 /**
- * Support handoff lanes that sit below backstage actions. `support_actions`
- * is the canonical role — the teams, vendors and infrastructure behind the
- * work; a board may also carry a null-role "Support Actions" swimlane, which
- * anchors the divider by name.
+ * Support handoff lanes, which sit below backstage actions.
+ *
+ * This used to compare `lane.name` against two English strings, as a fallback
+ * for lanes carrying no role. `lanes.name` is free-form in any language, so
+ * renaming or translating one deleted a divider from the board with nothing
+ * reporting it — and a template cannot key its layout off the label one
+ * deployment happens to use.
+ *
+ * The role is the whole test now. A board whose rows predate `lane_role`
+ * still resolves through `LEGACY_NAME_TO_ROLE`, which every lane in the
+ * hand-written fallback blueprints already goes through, so a name can still
+ * stand in for a missing role — in exactly one declared place, rather than in
+ * a comparison local to this file that no other divider had.
  */
 function isSupportHandoffLane(lane: LaneRoleSource): boolean {
-  if (getLaneRole(lane) === SUPPORT_ACTIONS_ROLE) return true
-  return (
-    lane.name === 'Support Actions' || lane.name === 'Tech Support Actions'
-  )
+  return getLaneRole(lane) === SUPPORT_ACTIONS_ROLE
 }
 
 /**
@@ -351,19 +358,33 @@ export const BLUEPRINT_ARTBOARD_HEIGHT_BUFFER = 32
 /** Safety margin for horizontal grid bleed on canvas artboards. */
 export const BLUEPRINT_ARTBOARD_WIDTH_BUFFER = 32
 
+/**
+ * Half the hit target for an insert affordance, on BOTH axes.
+ *
+ * The line drawn is 1px; the target is 16. That gap is the whole difference
+ * between an affordance people use and one they fight, and it is what Figma's
+ * row/column inserts do — the visible mark is a hairline, the thing you have
+ * to hit is a finger's width.
+ *
+ * Declared here because it was declared separately in BlueprintColumnHandles
+ * and BlueprintLaneHandles, same name and same value in two files — so a
+ * column insert 8px wide beside a lane insert 10px tall was a bug nothing
+ * would have caught.
+ */
+export const BLUEPRINT_INSERT_HIT_HALF = 8
+
 /** Outer gutter around each cell (Tailwind p-3 ≈ 12px per side). */
 export const BLUEPRINT_CELL_GUTTER = 12
 /** Default cell inner content padding (px-4 py-3). */
 export const BLUEPRINT_CELL_INNER_X = 16
 export const BLUEPRINT_CELL_INNER_Y = 12
 
-/**
- * One touchpoint's height on the canvas, fixed rather than measured: the
- * stack estimate below counts it, and a face that sizes itself to its own
- * text makes the row track it reserved wrong on every cell with two lines.
- */
-export const TOUCHPOINT_ITEM_HEIGHT = 44
-export const TOUCHPOINT_ITEM_HEIGHT_COMPACT = 34
+/** Stable canvas face for narrative cells; complete prose lives in detail. */
+export const NARRATIVE_CELL_HEIGHT = 128
+export const NARRATIVE_CELL_HEIGHT_COMPACT = 96
+/** Stable technology face; two label lines fit without changing row geometry. */
+export const TOUCHPOINT_ITEM_HEIGHT = 52
+export const TOUCHPOINT_ITEM_HEIGHT_COMPACT = 42
 const TOUCHPOINT_STACK_GAP = 10
 const TOUCHPOINT_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
 
@@ -451,21 +472,6 @@ export function getEffectiveLineCount(content: string, compact = false): number 
   }, 0)
 }
 
-function getTextBlockMinHeight(lineCount: number, compact = false): number {
-  const base = compact ? BLUEPRINT_ROW_MIN_HEIGHT : BLUEPRINT_ROW_MIN_HEIGHT - 16
-  if (lineCount <= 1) return base
-
-  // Non-compact cells render text-sm at leading-relaxed: 14px × 1.625 =
-  // 22.75px per line, not the 20px this assumed (todo 026 — the second
-  // half of the undershoot that let tall cells cross their lane band).
-  const lineHeight = compact ? 14 : 22.75
-  const innerPadding = compact ? 20 : 24
-  const wrappedHeight =
-    BLUEPRINT_CELL_GUTTER * 2 + innerPadding + lineCount * lineHeight
-
-  return Math.max(base, wrappedHeight)
-}
-
 export function getMaxTouchpointCountInLane(
   data: BlueprintData,
   laneId: string,
@@ -506,20 +512,6 @@ export function getTouchpointStackMinHeight(
   )
 }
 
-function getMaxLineCountInLane(
-  data: BlueprintData,
-  laneId: string,
-  compact = false,
-): number {
-  let max = 1
-  for (const cell of data.cells) {
-    if (cell.lane_id === laneId && cell.content?.trim()) {
-      max = Math.max(max, getEffectiveLineCount(cell.content, compact))
-    }
-  }
-  return max
-}
-
 /** Minimum inner content height for a single cell (excludes compare shell padding). */
 export function getCellContentMinHeight(
   lane: BlueprintLane,
@@ -541,18 +533,19 @@ export function getCellContentMinHeight(
     )
   }
 
-  const lineCount = Math.max(1, getEffectiveLineCount(content, compact))
-  return getTextBlockMinHeight(lineCount, compact)
+  return compact ? NARRATIVE_CELL_HEIGHT_COMPACT : NARRATIVE_CELL_HEIGHT
 }
 
 function getDefaultCellMinHeight(
-  lane: BlueprintLane,
-  data: BlueprintData,
+  _lane: BlueprintLane,
+  _data: BlueprintData,
   compact = false,
 ): number {
-  const base = compact ? BLUEPRINT_ROW_MIN_HEIGHT : BLUEPRINT_ROW_MIN_HEIGHT - 16
-  const lineCount = getMaxLineCountInLane(data, lane.id, compact)
-  return Math.max(base, getTextBlockMinHeight(lineCount, compact))
+  const faceHeight = compact
+    ? NARRATIVE_CELL_HEIGHT_COMPACT
+    : NARRATIVE_CELL_HEIGHT
+  const shellPadding = compact ? 24 : 32
+  return faceHeight + shellPadding
 }
 
 export function getLaneRowMinHeight(
