@@ -160,15 +160,26 @@ A version leaves the enum only when its migration stops existing, which is
 also when an IR at that version stops being upgradable and the workspace must
 check out the template revision that wrote it.
 
-**The rule has been broken once, at `2026.09.08`, and the value is spent
-rather than free.** `21000122000000` stamps a migrated database with it for
+**The rule was broken once, at `2026.09.08`, and what it cost is worth
+keeping.** `21000122000000` stamped a migrated database with that value for
 the lane-role vocabulary, and neither the enum nor `scripts/migrate_ir.py`
-ever learned the value — so a workspace cannot author an IR against it, and a
-target carrying it reads as a version this template does not speak. The
-dependency rename that follows it took `2026.09.09` instead of the collision:
-one stamp naming two shapes would be worse than the gap. Closing the gap means
-writing the lane-role step `21000122000000` never shipped, which is that
-migration's debt and not the next bump's.
+ever learned it — so no workspace could author an IR against the version, and
+a target that had run every migration in order read as a version this template
+does not speak. `scripts/check-target-schema.mjs` exists to catch a target
+that is behind, and for two releases it was failing the one that was exactly
+right. The dependency rename that followed took `2026.09.09` rather than the
+collision, because one stamp naming two shapes is worse than a gap.
+
+The gap is closed. `to_2026_09_08` is the step that migration never shipped —
+it renames a lane role carried by its retired spelling, which is what makes a
+`2026.09.07` file importable into a database whose CHECK now refuses the old
+word. The value was **added** to the enum, never moved: it is stamped inside
+an applied migration and inside the generated portable core, and an applied
+record keeps the spelling it was written with. Two lessons survive it. A bump
+that lands in a migration is a bump, even when the change looks like it only
+touched database identifiers — the wire format shares that namespace. And a
+gap costs more the longer it stands: the debt was two releases old before
+anyone ran the check against a freshly replayed database.
 
 ### Sign-off across a bump
 
