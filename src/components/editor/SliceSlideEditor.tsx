@@ -18,7 +18,7 @@ import type { Json } from '@/types/database'
  * removes cells by clicking, this strip decides grouping and order.
  *
  * Two drag targets, deliberately distinct:
- * - a **cell chip** moves between slides (the "which slide is this in"
+ * - a **cell badge** moves between slides (the "which slide is this in"
  *   question);
  * - a **slide header** reorders slides (the "what order do they play in"
  *   question).
@@ -239,7 +239,7 @@ export function SliceSlideEditor({
                   onDragOver={(event: DragEvent) => {
                     if (dragging?.kind !== 'cell') return
                     event.preventDefault()
-                    // Top half inserts before this chip, bottom half after —
+                    // Top half inserts before this badge, bottom half after —
                     // one drag is the whole reordering grammar.
                     const box = event.currentTarget.getBoundingClientRect()
                     const before = event.clientY < box.top + box.height / 2
@@ -276,7 +276,7 @@ export function SliceSlideEditor({
                       variant="ghost"
                       size="icon-xs"
                       aria-label="Remove cell from slice"
-                      // Revealed on chip hover — a permanent ✕ per row is the
+                      // Revealed on badge hover — a permanent ✕ per row is the
                       // loudest thing on a card that is mostly read.
                       className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/cell:opacity-100 focus-visible:opacity-100 hover:text-foreground"
                       onClick={(event) => {

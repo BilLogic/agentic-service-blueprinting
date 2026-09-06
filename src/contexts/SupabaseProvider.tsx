@@ -154,7 +154,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   const isDevAuthoring = hasDevAuthoringKey()
   // Only ever true on a dev server, and never while anything can actually
   // write — a session that saves for real is not a preview of one, and the
-  // "nothing saves" chip lying over working saves would be worse than either
+  // "nothing saves" banner lying over working saves would be worse than either
   // state alone.
   const isEditPreview =
     hasDevAuthoringUi() && !isDevAuthoring && session === null

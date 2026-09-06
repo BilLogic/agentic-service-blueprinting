@@ -1186,7 +1186,7 @@ function AgentChatView({
           {/* ONE field, the DS's own: InputGroup draws the border and the
               focus treatment (a single soft ring on the control, the same
               geometry every other input in the app has), and the recognized
-              /command rides in an addon INSIDE it as an accent chip
+              /command rides in an addon INSIDE it as an accent badge
               (Claude's grammar — the token visibly stopped being text).
               The old hand-rolled wrapper stacked a 1px border and a 2px ring
               on a borderless textarea: the box-around-a-box. */}
@@ -1220,7 +1220,7 @@ function AgentChatView({
               value={draft}
               onChange={(event) => {
                 const value = event.target.value
-                // Typing a full command + space converts it into the chip
+                // Typing a full command + space converts it into the badge
                 // on the spot — the token is recognized, not just text.
                 if (!pendingSkill) {
                   const token = /^\/([\w:]+)\s([\s\S]*)$/.exec(value)

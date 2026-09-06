@@ -203,7 +203,7 @@ export function ScenarioBlueprintPanel({
 
   /*
     Publish THE compare context (model + blueprints + scenario identity) to
-    the cross-surface store — the menubar [≠ N] chip, the portalled ledger
+    the cross-surface store — the menubar [≠ N] count, the portalled ledger
     drawer and the agent all read from it. Exactly one panel qualifies at a
     time (only the focused scenario leaves the overview's shared-row
     contract), so the registration is effectively a singleton. Agent parity

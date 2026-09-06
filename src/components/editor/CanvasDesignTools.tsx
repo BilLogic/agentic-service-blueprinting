@@ -58,7 +58,7 @@ export function CanvasDesignTools() {
     slice" there reads as an invitation to make a slice out of a slice,
     which is exactly the confusion it caused. That surface's own strip
     (screens, captions, storyboards) is the verb; the bar contributes only
-    the shared chrome (save state, preview chip).
+    the shared chrome (save state, preview badge).
   */
   const gathering = pick?.gathers ?? false
   const picked = pick?.picked ?? NO_PICKS

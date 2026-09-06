@@ -276,7 +276,7 @@ function BlueprintCellDetailPanelBody() {
   */
   const mobile = useMobileShell()
   /**
-   * One-shot "← Back to Differences" chip: set when the ledger's ⇱ opens a
+   * One-shot "← Back to Differences" button: set when the ledger's ⇱ opens a
    * cell in Details, cleared when used — and whenever the panel leaves
    * Details, so it can never go stale.
    */
@@ -376,7 +376,7 @@ function BlueprintCellDetailPanelBody() {
     })
   }
 
-  // One-shot hygiene for the return chip (guarded render-phase set).
+  // One-shot hygiene for the return button (guarded render-phase set).
   if (
     returnToDifferences &&
     (activeSurface !== 'details' || !comparing)

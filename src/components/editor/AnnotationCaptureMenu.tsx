@@ -134,8 +134,8 @@ export function AnnotationCaptureMenu() {
         </DropdownMenuItem>
         {/*
           Structure, not pixels: the marks resolve to the cells they overlap
-          plus their text, land on the composer as a removable chip, and the
-          chip lists exactly what will travel. Hidden without write access —
+          plus their text, land on the composer as a removable attachment, and the
+          attachment lists exactly what will travel. Hidden without write access —
           the agent surface does not exist on the read-only site.
         */}
         {canWrite ? (

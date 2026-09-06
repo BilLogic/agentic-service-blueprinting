@@ -53,7 +53,7 @@ type SlicePresentationProps = {
 /**
  * Presentation tab: a dark full-bleed stage (the root carries the `.dark`
  * token class regardless of app theme) with the illustration as the star
- * when present, title as headline, cell chips as a subtle bottom row, a
+ * when present, title as headline, cell badges as a subtle bottom row, a
  * dim mini-map locator bottom-right, and a filmstrip of cells bracketed per
  * slide. Slides render synchronously from the cached useSlice data —
  * navigation never refetches. Keyboard is scoped to the container (tabIndex
@@ -158,7 +158,7 @@ export function SlicePresentation({
   }
 
   // All-or-nothing: the stage waits for the blueprint too, otherwise every
-  // cell chip paints "Removed cell" for a beat before the cells land.
+  // cell badge paints "Removed cell" for a beat before the cells land.
   if (
     result.status === 'loading' ||
     scenarioResult.status === 'loading' ||
@@ -329,7 +329,7 @@ export function SlicePresentation({
           />
         </div>
 
-        {/* Cell chips — subtle row at the bottom of the stage. */}
+        {/* Cell badges — subtle row at the bottom of the stage. */}
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 px-24 pt-3 pb-4">
           {item.cell_ids.map((cellId) => (
             <button

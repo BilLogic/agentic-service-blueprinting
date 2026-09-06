@@ -85,13 +85,13 @@ export type TranscriptEvent =
   | {
       kind: 'user'
       text: string
-      /** Slash-skill id when the message invoked one (rendered as a chip). */
+      /** Slash-skill id when the message invoked one (rendered as a badge). */
       skill?: string
-      /** Attachment chip label when the message carried one. */
+      /** Attachment label when the message carried one. */
       attachmentLabel?: string
       /** The attachment's model-facing payload (annotation structure) —
        * persisted so a reloaded transcript rebuilds the SAME model turn
-       * the live send used, not just the chip. */
+       * the live send used, not just the label. */
       attachmentPayload?: string
     }
   | { kind: 'assistant'; text: string }
