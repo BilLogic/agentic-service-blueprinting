@@ -645,7 +645,7 @@
    *   1  phase frames + lane structure fade in
    *   2  scenario panels rise in
    *   3  cells fade in
-   *   4  trigger arrows fade in
+   *   4  dependency arrows fade in
    *
    * The attribute is REMOVED at stage 5, so none of this matches afterwards:
    * the cells' own transition-property list and the panels' hover

@@ -31,8 +31,8 @@ package is deliberately not required):
                 step must be in that path's path_steps (previewing the DB
                 cells_validate_path_match trigger, which would otherwise
                 abort mid-import); no duplicate steps in path_steps
-                (duplicate position); triggers reference existing
-                cells on the SAME path (cross-path triggers are invalid);
+                (duplicate position); dependency edges reference existing
+                cells on the SAME path (cross-path edges are invalid);
                 source != target; a dependency edge's optional `kind` is
                 one of leads_to/enables, and (source, target, kind) is unique
                 — the database's own uniqueness key, so one pair may carry
@@ -519,7 +519,7 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
     check_extra_keys(
         path,
         {"key", "name", "summary", "note", "kind", "variant_label",
-         "lanes", "path_steps", "cells", "triggers"},
+         "lanes", "path_steps", "cells", "dependencies"},
         jp, rep,
     )
     path_key = check_key(path.get("key"), f"{jp}.key", rep) if "key" in path else None
@@ -605,26 +605,26 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
                 "trigger would abort this import mid-transaction",
             )
 
-    # Triggers -------------------------------------------------------------------
-    triggers = path.get("triggers", [])
-    if not isinstance(triggers, list):
-        rep.error(f"{jp}.triggers", "'triggers' must be an array")
-        triggers = []
-    trigger_pairs: dict = {}
-    for i, trigger in enumerate(triggers):
-        tjp = f"{jp}.triggers[{i}]"
-        if not isinstance(trigger, dict):
-            rep.error(tjp, f"trigger must be an object, got {type_name(trigger)}")
+    # Dependencies ---------------------------------------------------------------
+    dependencies = path.get("dependencies", [])
+    if not isinstance(dependencies, list):
+        rep.error(f"{jp}.dependencies", "'dependencies' must be an array")
+        dependencies = []
+    edge_pairs: dict = {}
+    for i, edge in enumerate(dependencies):
+        tjp = f"{jp}.dependencies[{i}]"
+        if not isinstance(edge, dict):
+            rep.error(tjp, f"dependency must be an object, got {type_name(edge)}")
             continue
-        check_extra_keys(trigger, {"source", "target", "kind"}, tjp, rep)
+        check_extra_keys(edge, {"source", "target", "kind"}, tjp, rep)
         for field in ("source", "target"):
-            if field not in trigger:
+            if field not in edge:
                 rep.error(tjp, f"missing required field '{field}'")
-        source = check_cell_ref(trigger.get("source"), f"{tjp}.source", rep) if "source" in trigger else None
-        target = check_cell_ref(trigger.get("target"), f"{tjp}.target", rep) if "target" in trigger else None
+        source = check_cell_ref(edge.get("source"), f"{tjp}.source", rep) if "source" in edge else None
+        target = check_cell_ref(edge.get("target"), f"{tjp}.target", rep) if "target" in edge else None
         # Absent is 'leads_to' — the column default, and what every edge
         # authored before the kind existed already meant.
-        kind = trigger.get("kind", DEFAULT_DEPENDENCY_KIND)
+        kind = edge.get("kind", DEFAULT_DEPENDENCY_KIND)
         if kind not in DEPENDENCY_KINDS:
             rep.error(
                 f"{tjp}.kind",
@@ -637,26 +637,26 @@ def validate_path(path, jp: str, rep: Report, locales: list, scenario_step_keys:
         if source is None or target is None:
             continue
         if source == target:
-            rep.error(tjp, f"trigger source equals target (lane '{source[0]}', step '{source[1]}') — self-triggers are invalid")
+            rep.error(tjp, f"dependency source equals target (lane '{source[0]}', step '{source[1]}') — a self-edge is invalid")
             continue
         # Uniqueness is (source, target, kind), matching the database's
         # cell_dependencies_source_target_kind_unique: one pair may carry an
         # arrow AND an `enables` edge, and those are two rows, not a duplicate.
-        if (source, target, kind) in trigger_pairs:
+        if (source, target, kind) in edge_pairs:
             rep.error(
                 tjp,
                 f"duplicate {kind} edge {source} -> {target} — first declared at "
-                f"{trigger_pairs[(source, target, kind)]}",
+                f"{edge_pairs[(source, target, kind)]}",
             )
         else:
-            trigger_pairs[(source, target, kind)] = tjp
+            edge_pairs[(source, target, kind)] = tjp
         for end_name, (lane_key, step_key) in (("source", source), ("target", target)):
             if (lane_key, step_key) not in cell_pairs:
                 rep.error(
                     f"{tjp}.{end_name}",
-                    f"trigger {end_name} references cell (lane '{lane_key}', step '{step_key}') "
-                    f"which does not exist on path '{path_key}' — triggers must connect two cells "
-                    "on the SAME path (cross-path triggers are invalid)",
+                    f"dependency {end_name} references cell (lane '{lane_key}', step '{step_key}') "
+                    f"which does not exist on path '{path_key}' — a dependency must connect two "
+                    "cells on the SAME path (cross-path edges are invalid)",
                 )
 
 

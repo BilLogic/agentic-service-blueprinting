@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.07'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.09'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,17 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.07'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // A path's `triggers` array is its `dependencies` (#159). The database has
+  // said `cell_dependencies` since 21000103000000 and this app's own domain
+  // layer since release 1.5.0; the IR was the last estate still spelling it the
+  // retired way, and the owner settled all three together. A field rename, so
+  // every authored value stays put and a signed scenario re-anchors.
+  //
+  // 2026.09.08 is missing from this list on purpose and is not free:
+  // 21000122000000 stamps a database with it for the lane-role vocabulary and
+  // never taught the IR the value, so no file can be authored against it and no
+  // step carries one forward. That gap belongs to that migration.
+  '2026.09.09',
   // A touchpoint is a thing the service owns (#112): the `touchpoints`
   // registry, optional in the IR; placements still name theirs by name and
   // the import mints the rest. Nothing authored moves.

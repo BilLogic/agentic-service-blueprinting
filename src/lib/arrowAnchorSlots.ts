@@ -37,7 +37,7 @@ export type AnchorBox = {
 }
 
 export type SlotRequest = {
-  /** Unique per endpoint. A trigger contributes two: its out and its in. */
+  /** Unique per endpoint. A dependency contributes two: its out and its in. */
   id: string
   cellId: string
   direction: Direction

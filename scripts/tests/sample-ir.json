@@ -1,5 +1,5 @@
 {
-  "schema_version": "2026.09.07",
+  "schema_version": "2026.09.09",
   "locales": [
     "en",
     "zh"
@@ -307,7 +307,7 @@
                     }
                   }
                 ],
-                "triggers": [
+                "dependencies": [
                   {
                     "source": {
                       "lane": "citizen",
@@ -508,7 +508,7 @@
                     }
                   }
                 ],
-                "triggers": [
+                "dependencies": [
                   {
                     "source": {
                       "lane": "citizen",

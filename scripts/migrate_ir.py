@@ -534,6 +534,49 @@ def to_2026_09_07(doc: dict) -> None:
     return
 
 
+def to_2026_09_09(doc: dict) -> None:
+    """2026.09.07 → 2026.09.09 — a path's `triggers` are its `dependencies`.
+
+    One straight rename of one array, and the last estate to take a word the
+    other two settled long ago. The database has held `cell_dependencies` since
+    `21000103000000`; the app's domain layer took `dependency` at release 1.5.0;
+    the interchange format went on saying `triggers`, which meant the field a
+    person hand-edits was the one place the retired word survived. The owner
+    settled all three together, and this step is the wire-format half of it
+    (#159).
+
+    A rename rather than a search-and-replace, because a wire-format field IS a
+    schema version: `scripts/validate_ir.py` refuses a document at any older
+    stamp and names this script, and this step is what that refusal is for. An
+    IR authored with `triggers` still loads — it loads by being carried here
+    first, which is the same contract every bump above has.
+
+    `rename` keeps the array where it sat among its siblings, so the diff a
+    person reviews is the one line whose name changed rather than every line
+    between it and the end of the file. Every authored VALUE stays where it is,
+    so the step is content-preserving; the subtree bytes do move, so a signed
+    scenario re-anchors under `--workspace` exactly as the `layers` → `lanes`
+    rename did.
+
+    WHY 2026.09.09 AND NOT 2026.09.08. The version namespace is shared with the
+    database — `check-target-schema.mjs` reads a live target's
+    `public.schema_version` against the enum in `references/ir-schema.json` —
+    and `21000122000000` already stamped `2026.09.08` for the lane-role
+    vocabulary without ever adding the value here or writing a step for it.
+    Spending `2026.09.08` on this rename would give one stamp two shapes. The
+    hole it leaves is that migration's to close, not this one's.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if not isinstance(scenario, dict):
+                continue
+            for path in scenario.get("paths", []) or []:
+                rename(path, "triggers", "dependencies")
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -619,6 +662,15 @@ STEPS = (
         "still name their touchpoint by name and the import mints the rest, "
         "so only the stamp moves",
         to_2026_09_07,
+    ),
+    Step(
+        "2026.09.07",
+        "2026.09.09",
+        "a path's `triggers` array is its `dependencies` — the word the "
+        "database has used since 21000103000000 and the app since 1.5.0, "
+        "reaching the interchange format last (2026.09.08 is the database's "
+        "lane-role stamp and was not free)",
+        to_2026_09_09,
     ),
 )
 

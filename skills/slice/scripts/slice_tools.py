@@ -94,7 +94,7 @@ def index_ir(doc: dict) -> dict:
                     # registered has no column and cannot be selected.
                     "step_order": list(path["path_steps"]),
                     "cells": cells,
-                    "triggers": path.get("triggers", []),
+                    "dependencies": path.get("dependencies", []),
                 }
 
             scenarios[scenario_key] = {
@@ -198,14 +198,14 @@ def select_journey(index: dict, scenario_key: str, path_key: str, lane_key: str)
     if lane_key not in path["lanes"]:
         raise SliceError(f"lane '{lane_key}' is not on path '{path_key}'")
 
-    # Adjacency over the path's dependency edges, undirected: being triggered
-    # *by* the actor and triggering *them* are both contact, and so is an
-    # `enables` edge either way — the canvas draws no arrow for one, but a cell
-    # that this actor's work depends on is still a cell in contact with it.
+    # Adjacency over the path's dependency edges, undirected: an edge that
+    # arrives at the actor and one that leaves them are both contact, and so is
+    # an `enables` edge either way — the canvas draws no arrow for one, but a
+    # cell that this actor's work depends on is still a cell in contact with it.
     touching: dict[tuple[str, str], set[tuple[str, str]]] = {}
-    for trigger in path["triggers"]:
-        source = (trigger["source"]["lane"], trigger["source"]["step"])
-        target = (trigger["target"]["lane"], trigger["target"]["step"])
+    for edge in path["dependencies"]:
+        source = (edge["source"]["lane"], edge["source"]["step"])
+        target = (edge["target"]["lane"], edge["target"]["step"])
         touching.setdefault(source, set()).add(target)
         touching.setdefault(target, set()).add(source)
 

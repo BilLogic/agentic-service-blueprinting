@@ -14,7 +14,7 @@ transactional scenario-replace semantics:
     statement aborts the whole import and leaves the target untouched;
   * scenario-scoped delete-and-reinsert: each scenario in the IR is deleted by
     its UUIDv5 id (FK cascades remove paths/steps/path_steps/lanes/cells/
-    triggers), then reinserted in dependency order
+    dependencies), then reinserted in dependency order
     paths -> steps -> path_steps -> lanes -> cells -> cell_dependencies;
   * service/phases are shared across scenarios and therefore UPSERTED
     (`on conflict (id) do update`), never deleted;
@@ -218,19 +218,24 @@ def seed_lane_fields(lane: dict, path: dict) -> dict:
     }
 
 
-def seed_trigger_fields(trigger: dict) -> dict:
+def seed_dependency_fields(edge: dict) -> dict:
     """One edge as `cell_dependencies` column -> value.
 
     `kind` is emitted explicitly even though 'leads_to' is the column default,
     because an IR edge can now be either kind and the row should say which.
     label and note still have no IR shape and stay at their defaults on both
     adapters, which is parity by absence rather than by accident.
+
+    Called `seed_trigger_fields` until IR 2026.09.09. The name is part of the
+    adapter contract's parity claim (references/adapter-contract.md § 1), so it
+    moved with the field it reads rather than being left as the one place a
+    consumer still meets the retired word.
     """
     return {
-        "id": trigger["id"],
-        "source_cell_id": trigger["source_cell_id"],
-        "target_cell_id": trigger["target_cell_id"],
-        "kind": trigger["kind"],
+        "id": edge["id"],
+        "source_cell_id": edge["source_cell_id"],
+        "target_cell_id": edge["target_cell_id"],
+        "kind": edge["kind"],
     }
 
 
@@ -503,22 +508,23 @@ def build_model(doc: dict, locale: str) -> dict:
                         }
                     )
 
-                triggers = []
-                for trigger in path.get("triggers", []):
-                    src = (trigger["source"]["lane"], trigger["source"]["step"])
-                    tgt = (trigger["target"]["lane"], trigger["target"]["step"])
+                dependencies = []
+                for edge in path.get("dependencies", []):
+                    src = (edge["source"]["lane"], edge["source"]["step"])
+                    tgt = (edge["target"]["lane"], edge["target"]["step"])
                     # Absent kind means 'leads_to' — the column default, and
                     # what every edge authored before 2026.08.26 meant.
-                    kind = trigger.get("kind", "leads_to")
+                    kind = edge.get("kind", "leads_to")
                     # The kind is in the qualified key because it is in the
                     # identity: cell_dependencies is unique on
                     # (source, target, kind), so the same pair can hold an
                     # arrow AND an enables edge and they need distinct ids.
                     tr_q = f"{pa_q}/{src[0]}/{src[1]}->{tgt[0]}/{tgt[1]}#{kind}"
-                    triggers.append(
+                    dependencies.append(
                         {
                             # The namespace label stays "trigger" through the
-                            # 2026.09.01 rename. It is UUIDv5 input, not
+                            # 2026.09.01 rename of the kinds and the 2026.09.09
+                            # rename of this array. It is UUIDv5 input, not
                             # vocabulary: changing it would give every existing
                             # edge a new id and stop re-imports being
                             # idempotent, which is the one property this
@@ -541,7 +547,7 @@ def build_model(doc: dict, locale: str) -> dict:
                         "lanes": lanes,
                         "path_steps": path_steps,
                         "cells": cells,
-                        "triggers": triggers,
+                        "dependencies": dependencies,
                     }
                 )
 
@@ -731,13 +737,13 @@ insert into public.lanes ({', '.join(seed_lane_fields(scenario['paths'][0]['lane
                 + ";\n"
             )
 
-        trigger_fields = [
-            seed_trigger_fields(t) for p in scenario["paths"] for t in p["triggers"]
+        dependency_fields = [
+            seed_dependency_fields(e) for p in scenario["paths"] for e in p["dependencies"]
         ]
-        if trigger_fields:
+        if dependency_fields:
             parts.append(
-                f"\ninsert into public.cell_dependencies ({', '.join(trigger_fields[0])}) values\n"
-                + values_rows([sql_row(fields) for fields in trigger_fields])
+                f"\ninsert into public.cell_dependencies ({', '.join(dependency_fields[0])}) values\n"
+                + values_rows([sql_row(fields) for fields in dependency_fields])
                 + ";\n"
             )
 
@@ -759,7 +765,7 @@ def emit_verify_sql(model: dict, ir_name: str) -> str:
             "path_steps": sum(len(p["path_steps"]) for p in scenario["paths"]),
             "lanes": sum(len(p["lanes"]) for p in scenario["paths"]),
             "cells": sum(len(p["cells"]) for p in scenario["paths"]),
-            "cell_dependencies": sum(len(p["triggers"]) for p in scenario["paths"]),
+            "cell_dependencies": sum(len(p["dependencies"]) for p in scenario["paths"]),
             "cell_touchpoints": sum(
                 len(c["touchpoints"]) for p in scenario["paths"] for c in p["cells"]
             ),
@@ -970,10 +976,11 @@ def main(argv=None) -> int:
     print(f"Wrote {out_path}")
     for scenario in model["scenarios"]:
         cells = sum(len(p["cells"]) for p in scenario["paths"])
-        triggers = sum(len(p["triggers"]) for p in scenario["paths"])
+        dependencies = sum(len(p["dependencies"]) for p in scenario["paths"])
         print(
             f"  scenario {scenario['key']} ({scenario['id']}): "
-            f"{len(scenario['paths'])} paths, {len(scenario['steps'])} steps, {cells} cells, {triggers} triggers"
+            f"{len(scenario['paths'])} paths, {len(scenario['steps'])} steps, {cells} cells, "
+            f"{dependencies} dependencies"
         )
 
     if args.verify:

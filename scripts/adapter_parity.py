@@ -48,7 +48,7 @@ from generate_seed_sql import (  # noqa: E402
     seed_lane_fields,
     seed_resource_fields,
     seed_touchpoint_fields,
-    seed_trigger_fields,
+    seed_dependency_fields,
 )
 
 DEFAULT_IR = Path(__file__).resolve().parent / "tests" / "sample-ir.json"
@@ -84,8 +84,8 @@ def sql_adapter_rows(model: dict) -> dict:
                     rows["touchpoint"][touchpoint["id"]] = seed_touchpoint_fields(
                         touchpoint, cell
                     )
-            for trigger in path["triggers"]:
-                rows["edge"][trigger["id"]] = seed_trigger_fields(trigger)
+            for edge in path["dependencies"]:
+                rows["edge"][edge["id"]] = seed_dependency_fields(edge)
     return rows
 
 
@@ -213,7 +213,7 @@ def main(argv=None) -> int:
             print(f"  {line}", file=sys.stderr)
         print(
             "\nBoth adapters project the same model through "
-            "generate_seed_sql.seed_cell_fields / seed_trigger_fields. "
+            "generate_seed_sql.seed_cell_fields / seed_dependency_fields. "
             "A field belongs in that projection or in neither adapter.",
             file=sys.stderr,
         )

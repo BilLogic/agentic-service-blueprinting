@@ -87,7 +87,7 @@ what the cited cells actually contain.
 - **Invented interaction.** A journey frame may only pair the actor's cell
   with cells the blueprint records a `leads_to` edge between. A companion cell
   present because it "seems related" is an invention wearing a citation.
-  Check the IR's `triggers`, not your sense of what usually happens.
+  Check the IR's `dependencies`, not your sense of what usually happens.
 - **Verbatim excerpts.** Grep the slice file and its doc for sentences
   lifted from evidence, interview notes, or proposition figures. Slices are
   public-read; excerpts must not appear at all. Also flag participant names,

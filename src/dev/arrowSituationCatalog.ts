@@ -19,7 +19,7 @@
  * materialised into a real element tree whose rects are pinned to the
  * fixture's boxes — stubbed in jsdom, and equally exact in the browser because
  * the same boxes drive absolute positioning there. The catalog uses generic
- * synthetic cell ids (never the real trigger UUIDs or the numeric cell-id
+ * synthetic cell ids (never the real dependency UUIDs or the numeric cell-id
  * suffixes the hand-tuned routes key on), so it exercises the GENERIC router —
  * the part every view shares and every Direction-B slice touches.
  *

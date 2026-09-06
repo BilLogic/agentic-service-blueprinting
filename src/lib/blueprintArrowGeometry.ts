@@ -40,7 +40,7 @@ export type CellAnchor = {
   planning the slots for a whole band, and translating an assignment back
   into the point a builder anchors on.
 
-  Determinism is load-bearing — slots come from the caller's ordered trigger
+  Determinism is load-bearing — slots come from the caller's ordered dependency
   list (`sortKey` = list index), never from Map or DOM order, so the same
   data always draws the same picture across single, side-by-side, and merged.
 
@@ -212,7 +212,7 @@ function wrapSlotLeg(
 
 /* ------------------------------------------------ confluence + fan-out (#348)
 
-  When ≥2 triggers arrive at ONE target cell from the SAME side, their last
+  When ≥2 dependencies arrive at ONE target cell from the SAME side, their last
   segments should merge into one path-coloured trunk with a single head — the
   reader is told "these all cause that", which is one fact, not N. Fan-out is
   the mirror: one source departing to ≥2 targets on one side shares a trunk that
