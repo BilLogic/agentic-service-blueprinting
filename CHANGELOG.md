@@ -1,5 +1,220 @@
 # Changelog
 
+## 1.8.1
+
+### Patch Changes
+
+- 77f5feb: A registry row's id is the deployment's, and its identity is its name.
+
+  `scripts/generate_seed_sql.py` derived a registry row's id from
+  `entity_uuid(locale, "registry-touchpoint", f"{service_key}#{name}")`. The
+  service key was part of the input, so **two services minted two ids for one
+  tool**. That was consistent while `unique (service_id, name)` gave each service
+  its own row, and wrong the moment `21000131000000` made the catalog one
+  deployment-level pool under `unique (name)`: seeding a second service into a
+  target that already held the first was refused by `touchpoints_name_key`, in as
+  many words (#201).
+
+  **Two changes, and the second is the one that matters.** The derivation drops
+  the service key, so a registry id is deployment-stable — the same identity the
+  constraint asserts. And the seed stops treating that id as a lookup key: the
+  registry upsert reconciles `on conflict (name)`, and a placement resolves its
+  `touchpoint_id` by reading the row back rather than writing a derived id at it.
+  A derived id is now only what a row that does not yet exist is **born** with.
+
+  That is what makes two things true at once, and only the second needed working
+  out. A second service's seed lands on the row that is already there instead of
+  being refused — the model ADR 0003 states, which the seeder could not express.
+  And a target seeded **before** the derivation changed stays idempotent: its
+  rows keep the ids they were born with, and a re-import updates them in place.
+
+  **No migration, and the reason is worth recording.** The issue proposed a
+  migration to remap every existing registry id. It cannot be written. The old
+  id is `uuid5(ns, f"{locale}:registry-touchpoint:{service_key}#{name}")`, and
+  the database holds neither input: there is no `locale` column anywhere — the
+  adapter contract says so under Per-locale artifacts — and the seed writes
+  `services (id, name, summary)`, never the IR key the derivation used. A
+  template migration could compute neither the id it must find nor the id it must
+  write. Resolving by name needs neither, which is why it is the fix rather than
+  a way around one.
+
+  **What an import may overwrite.** It wins where it SAYS something and says
+  nothing where it was merely minted: an entry the IR never listed arrives as
+  kind `other` with no summary and no home — "nobody has judged this yet" rather
+  than a judgement — so it does not erase what a curator, or another service's
+  IR, already recorded under that name. The merge is `21000131000000`'s own, the
+  one it used when it folded each service's rows into the shared pool.
+
+  What moved with it:
+
+  `scripts/generate_seed_sql.py` the derivation, the name-keyed upsert,
+  `registry_lookup` and the `Sql` escape
+  that lets one column be a subquery
+  `references/adapter-contract.md` § 4 states the registry's identity rule
+  and the merge, where a reader looking for
+  idempotence will find it
+
+  Proven against a local Postgres 17 on this template's own portable core. Two
+  services whose IRs name the same tool now seed into one target and share one
+  registry row, where the second used to be refused. A target seeded with the
+  PRE-change generator then takes the post-change seed twice: one registry row,
+  still carrying the id it was born with, one placement resolving to it, and an
+  app-curated `kind` and `summary` intact across both runs.
+  `scripts/tests/run_tests.sh` adds `seed-registry-id` — two services differing
+  only in their key mint one registry id, and the locale is still in the
+  derivation, so two locales in one target would not collide — and asserts on the
+  emitted SQL that the registry upserts on the name and that no placement writes
+  a derived id.
+
+- 77f5feb: A schema version a migration stamps belongs in the list of versions this
+  template speaks.
+
+  `21000122000000` stamps a migrated database with `2026.09.08`, and so does the
+  generated portable core. The value was never added to the enum in
+  `references/ir-schema.json`, to `scripts/migrate_ir.py`, or to
+  `src/lib/backend/schemaVersion.ts`. So a target that had run every migration in
+  order read as INCOMPATIBLE to `scripts/check-target-schema.mjs` — a check
+  written to catch a target that is BEHIND, failing the one that was exactly
+  right, for two releases (#197).
+
+  **The step is not an identity bump, and reading the migration is what settles
+  it.** `21000122000000` closed `lanes.lane_role` to eight values with a CHECK
+  constraint, renaming the roles it retired on the way in. The IR's
+  `lanes[].role` IS that column: the schema field says `lanes.lane_role` in as
+  many words, and `seed_lane_fields` writes the authored string straight into it
+  with nothing in between that normalises anything. A document authored at
+  `2026.09.07` may therefore carry a role by its retired spelling, and that
+  document now meets a database that refuses the word. `to_2026_09_08` renames
+  it — five pairs, transcribed from `scripts/retired-vocabulary.mjs`, which is
+  the one list this repository keeps of what a retired word became:
+
+  `frontstage_tech` → `frontstage_touchpoints`
+  `backstage_tech` → `backstage_touchpoints`
+  `support_systems` → `backstage_touchpoints`
+  `visual` → `storyboard`
+  `step_visual` → `storyboard`
+
+  A lane's role is authored content inside a scenario's subtree, so the step
+  declares itself **not content-preserving** — the second step ever to do so,
+  after the edge turnaround at `2026.09.01`. That declaration is watched per
+  scenario: a file carrying one of the five keeps its recorded sign-off hash and
+  reads as stale until someone re-signs it, and a file carrying none of them
+  hashes identically on both sides and re-anchors as usual. Most files are the
+  second kind.
+
+  **What the step deliberately does not do.** The migration also sets to null
+  every role outside the closed eight, an adopter's own word included; it had to,
+  because `add constraint` validates every existing row as it is added. A
+  document being carried forward is under no such duress, and at the IR level a
+  custom role is still legal — the schema admits any `^[a-z0-9][a-z0-9_]*$`, and
+  `scripts/validate_ir.py` passes a role far from every canonical one in silence,
+  on purpose. Nulling one here would delete authored content the validator had
+  just blessed, and would settle by deletion a question nobody has asked: whether
+  the IR closes the set the way the database does. A file that keeps a custom
+  role is refused by the target's CHECK, loudly and with the value named, which
+  is a better answer than a classification that quietly disappears.
+
+  **Added, never moved.** The stamp sits inside an applied migration and inside
+  the generated portable core, and an applied record keeps the spelling it was
+  written with. `2026.09.09` stays where it is, so the chain now runs `.07` →
+  `.08` → `.09` — ordered, continuous, and still a chain in which each step knows
+  only its own predecessor.
+
+  What moved with it:
+
+  `references/ir-schema.json` `2026.09.08` in the enum, and the
+  description states why it arrived late
+  `scripts/migrate_ir.py` `RETIRED_LANE_ROLES` and
+  `to_2026_09_08`; `to_2026_09_09` steps
+  from `.08` and records what closed
+  the hole it left
+  `src/lib/backend/schemaVersion.ts` the version, with the reason
+  `references/customization.md` § The versioning rule now records how
+  the debt was paid, not only that it was
+  owed
+
+  Proven by `scripts/tests/run_tests.sh` § 8c (`migrate-lane-roles`): a
+  `2026.09.07` document carrying one lane per retired spelling carries forward,
+  validates, lands every role inside the closed set, and leaves the custom role
+  beside them untouched. `scripts/tests/target-schema.test.mjs` adds the
+  regression the issue was found by — a target reporting `2026.09.08` is
+  compatible. `scripts/tests/run_tests.sh` § 8 asserts both hops of the chain
+  rather than the one that used to skip.
+
+- 6b8074b: Seven of the eleven non-theme stylesheets become one implementation, and the
+  four that do not are all blocked by one thing.
+
+  The deployment this kit was generalised from measures the same stylesheets
+  through the same reader now that both repositories share `lib/tokenModel.ts`
+  (ADR 0006). That is what made this checkable rather than hopeful: every sheet
+  below was compared by what its declarations RESOLVE to at the root under each
+  theme, before and after, and no name in either theme changed value.
+
+  **What the template took, and why each was a gap rather than a preference.**
+
+  `base.css` the mono seam, filled. `theme.css` has always read
+  `var(--font-source-code-pro, …)` and this package has
+  always shipped the face; nothing ever injected it, so
+  the seam named in one file was answered in neither.
+  `utilities.css` a reduced-motion branch for `delayed-appear`, which
+  was the one animated surface in the tree with no
+  reduced-motion answer.
+  `unset-tw-colors.css` the reset list, corrected. `crimson`, `gold`,
+  `tomato` and `scale` are our own family names and
+  never Tailwind's, so those four lines cleared nothing
+  while stating something false about the framework.
+  `compat.css` the alias layer's rules, and one alias fewer:
+  `--color-foreground-contrast` sat here at exactly the
+  value `theme.css` registers, and `theme.css` imports
+  later, so this file's copy could never win. It was not
+  an alias at all.
+  `animations.css` the `--ease-camera` key beside the `--motion-camera`
+  duration that was already here, and the skeleton's
+  breath — `animate-pulse` snaps between both extremes,
+  which on a panel full of bars reads as flicker.
+  `tailwind.config.css` three `@source not` lines. Tailwind scans every
+  non-gitignored file from the project root, so a class
+  named in a document, a test or a script generates that
+  class — including, in a guard that lists the shapes it
+  FORBIDS, the very vocabulary it exists to forbid.
+  `theme.css` four type rungs the ladder was missing at both ends.
+
+  **Two comments went the other way**, because the template's wording was the
+  truer one for a file two repositories share: Ubuntu Sans is the _default_ face
+  here, not a brand face, and a fork is told what to swap alongside it.
+
+  **The tests came with the files they pin.** A shared implementation whose test
+  stays behind is a shared implementation nobody holds to the same promise, so
+  `tailwindColorReset.test.ts` and `compatLayer.test.ts` arrive too — the first
+  reads Tailwind's own `theme.css` out of `node_modules` and holds the reset list
+  against it in both directions, the second forbids an alias that carries a value
+  and an alias shadowing a name `theme.css` already registers, which is what
+  keeps the deletion above from coming back.
+
+  `motion.test.ts` moved from a regex over one file to a question asked of the
+  token model. Its selector pattern could not read `[data-slot='skeleton']` — it
+  stopped at the hyphen and threw on the value — and a guard that names its own
+  files only ever covers the surfaces that existed when it was written. It reads
+  every stylesheet the entry imports now, so the next animated surface is covered
+  wherever someone puts it. `motion.ts` gains `MOTION_CAMERA_EASE` to match.
+
+  One census became an invariant: `tokenModel.test.ts` asserted that
+  `unset-tw-colors.css` holds seventeen resets. WHICH families belong there is a
+  question with an oracle — the framework's own theme file — and
+  `tailwindColorReset.test.ts` now answers it, so the count is gone and the shape
+  is what remains.
+
+  **What did not converge, and the single reason three of the four share.**
+  `colors.css` and `print.css` differ ONLY in per-deployment brand values —
+  seven ramp steps written as literals rather than as indirections through the
+  dials in `themes/`, and in `print.css` a block that must restate them because
+  `themes/dark.css` sets its own copies with no `@media screen` around them.
+  `semantic.css` differs in where three dials live, which is the same question
+  seen from the other side. All three wait on the brand seam, which is settled
+  separately and deliberately leaves `themes/*.css` each deployment's own.
+  `blueprint.css` is the fourth, and it waits on work still open elsewhere plus a
+  lane role the template's schema does not carry.
+
 ## 1.8.0
 
 ### Minor Changes
