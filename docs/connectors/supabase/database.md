@@ -106,7 +106,7 @@ in [`docs/erd.mmd`](../../erd.mmd).
 | Path column order | `path_steps` | `position` per `(path_id, step_id)` |
 | Cell | `cells` | unique `(lane_id, step_id, position)` per path; slot 0 default, tech-lane touchpoints occupy 0..n |
 | Cell dependency | `cell_dependencies` | unique `(source_cell_id, target_cell_id, kind)`; `kind`: trigger \| needs |
-| Touchpoint | `touchpoints` | the service's registry; unique `(service_id, name)`; `kind` is `app`, `document`, `physical`, `channel`, `service` or `other` |
+| Touchpoint | `touchpoints` | the deployment's registry; unique `(name)` across the whole deployment (ADR 0003); `kind` is `app`, `document`, `physical`, `channel`, `service` or `other` |
 | Touchpoint placement | `cell_touchpoints` | `touchpoint_id` into the registry OR `name` alone (`cell_touchpoints_one_identity`); unique `(cell_id, touchpoint_id)` and `(cell_id, lower(name))`; owns the summary and role for that moment — what it points at is `resources` rows carrying its id |
 | Resource | `resources` | every row carries its cell; a placement's carries `cell_touchpoint_id` as well, held to the placement's cell by a composite key |
 
@@ -152,14 +152,13 @@ Both were one `links` JSONB array until `21000113000000`, which split it into
 two tables because it held two unrelated things under a name that described
 one of them.
 
-`touchpoints` — the service's registry:
+`touchpoints` — the deployment's registry:
 
 | Column | Required | Description |
 | --- | --- | --- |
-| `service_id` | yes | The service that owns it |
-| `name` | yes | Unique per service; placements match it case-insensitively |
+| `name` | yes | The identity: unique across the whole deployment, so a second service reuses an entry by naming the same tool the same way. Placements match it case-insensitively |
 | `kind` | yes (default `other`) | `app` \| `document` \| `physical` \| `channel` \| `service` \| `other` |
-| `summary` | no | What this touchpoint IS, for the service |
+| `summary` | no | What this touchpoint IS, for the deployment |
 | `url` | no | Where the touchpoint itself lives |
 
 `cell_touchpoints` — one touchpoint, used at one cell:

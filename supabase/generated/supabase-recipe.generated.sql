@@ -1145,3 +1145,28 @@ begin
   end if;
 end
 $$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000131000000_a_touchpoint_belongs_to_the_deployment.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the ACL the two rewrites had to preserve, asserted where the
+-- roles exist. `create or replace` keeps a function's ACL, so nothing is
+-- re-granted here; this is the check that the sentence is true.
+do $posture$
+declare
+  fn text;
+begin
+  foreach fn in array array[
+    'public.sync_cell_touchpoints(uuid, text[])',
+    'public.set_placement_touchpoint(uuid, uuid, text)'
+  ] loop
+    if not has_function_privilege('authenticated', fn::regprocedure, 'execute') then
+      raise exception 'authenticated lost execute on %', fn;
+    end if;
+    if has_function_privilege('anon', fn::regprocedure, 'execute') then
+      raise exception 'anon gained execute on %', fn;
+    end if;
+  end loop;
+end
+$posture$;

@@ -110,15 +110,15 @@ deferral, not a corner.
   `stakeholders_name_key` is `unique (name)` across the whole deployment. A lane
   names its actor by a nullable `lanes.stakeholder_id`; a structural lane names
   nobody.
-- **`touchpoints` makes the same move in a later migration**, dropping its
-  `service_id` and re-uniquing on `(name)`. Until then the registry is a
-  service's, the touchpoint sync mints `on conflict (service_id, name)`, and
-  `CONTEXT.md`'s touchpoint entry keeps saying "per service" — that entry
-  reverses in the migration that drops the column, which is where the argument
-  is written.
-- **`touchpoints.stakeholder_id` waits for that move.** A link from a
+- **`touchpoints` made the same move in `21000131000000`**, dropping its
+  `service_id`, re-uniquing on `(name)`, and folding two services' rows of one
+  name into one on the way. That migration carries the argument, the touchpoint
+  sync mints `on conflict (name)` after it, and `CONTEXT.md`'s touchpoint entry
+  reversed with it.
+- **`touchpoints.stakeholder_id` was waiting for that move.** A link from a
   service-scoped tool to a deployment-scoped actor is the incoherence the first
-  argument above names; it is added once both ends are the deployment's.
+  argument above names; both ends are the deployment's from `21000131000000`
+  onwards, so the column is free to be added.
 - The **registry becomes a deployment-level library**: a catalog can hold a tool
   or actor no current journey uses, which at deployment scope is a feature (a
   shelf of the org's tools), not an accidental accumulation.

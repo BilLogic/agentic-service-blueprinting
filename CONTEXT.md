@@ -58,10 +58,11 @@ whether cells render as pills, and where the dividing lines fall.
 of a lane and a step on a path. A cell is the unit everything else points at
 — a slice quotes cells, a finding names cells, evidence attaches to a cell.
 
-**Touchpoint** — a thing the service owns that a moment happens through: an
-app, a document, a physical object, a channel. One `touchpoints` row per
-service and name — the registry — carrying the touchpoint's kind, summary and
-home once, not per cell.
+**Touchpoint** — a thing a moment happens through: an app, a document, a
+physical object, a channel. One `touchpoints` row per name across the whole
+deployment — the registry — carrying the touchpoint's kind, summary and home
+once, not per cell; a service has a touchpoint exactly when one of its cells
+places it (ADR 0003).
 
 **Placement** — one touchpoint used at one cell: a `cell_touchpoints` row with
 the summary and role for THAT moment, and the resources it points at hanging
