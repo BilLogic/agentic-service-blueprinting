@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { ResizableComparePanel } from '@/components/blueprint/ResizableComparePanel'
 import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
-import { SideBySideCompareGrid } from '@/components/blueprint/SideBySideCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { ScenarioBoardScopeContext } from '@/contexts/scenarioBoardScopeContext'
@@ -30,7 +29,6 @@ import {
   getComparePanelHeight,
   getComparePanelWidth,
   getMergedComparePanelHeight,
-  getPanelHeightFromSwimlaneBody,
   getStackedComparePanelHeight,
   getStackedComparePanelWidth,
 } from '@/lib/sideBySideCompareLayout'
@@ -61,8 +59,6 @@ type ScenarioBlueprintPanelProps = {
   sectionTitleLabel?: string
   /** Fixed panel height (phase overview uses the max across scenarios). */
   lockedPanelHeight?: number
-  /** Fixed white swimlane board height shared across a phase row. */
-  fixedSwimlaneBodyHeight?: number
   /** When true, panel height does not grow with measured content. */
   lockPanelHeight?: boolean
   /** When set, clicking the panel opens this scenario. */
@@ -88,7 +84,6 @@ export function ScenarioBlueprintPanel({
   scrollContainerRef: scrollContainerRefProp,
   sectionTitleLabel,
   lockedPanelHeight,
-  fixedSwimlaneBodyHeight,
   lockPanelHeight = false,
   onNavigate,
   displayViewType: displayViewTypeProp,
@@ -114,19 +109,10 @@ export function ScenarioBlueprintPanel({
     storedViewType === 'merged' && selectedPathIds.length < 2
       ? 'stacked'
       : storedViewType
-  // One path stacked is one band — there is no third arrangement.
+  // One path stacked is one band — there is no third arrangement, and no
+  // second one either: an overview tile draws the board smaller, never
+  // differently.
   const useSideBySideLayout = selectedPathIds.length > 0
-  /*
-    Two arrangements of the same path bands. Overview rows render under a
-    shared-row-height contract (locked heights, phase-uniform view type) and
-    keep the horizontal layout; the focused scenario view — no overview
-    constraints — stacks the bands vertically on one canonical step axis.
-  */
-  const isOverviewConstrained =
-    lockedPanelHeight !== undefined ||
-    fixedSwimlaneBodyHeight !== undefined ||
-    displayViewTypeProp !== undefined
-  const useStackedArrangement = useSideBySideLayout && !isOverviewConstrained
 
   const visibleBlueprints = useMemo(
     () =>
@@ -145,11 +131,11 @@ export function ScenarioBlueprintPanel({
     flash divergences.
   */
   const compareModel = useMemo(() => {
-    if (!useStackedArrangement) return null
+    if (!useSideBySideLayout) return null
     if (visibleBlueprints.length < 2) return null
     if (visibleBlueprints.length !== selectedPathIds.length) return null
     return buildCompareModel(visibleBlueprints as CompareBlueprints)
-  }, [selectedPathIds.length, useStackedArrangement, visibleBlueprints])
+  }, [selectedPathIds.length, useSideBySideLayout, visibleBlueprints])
 
   /*
     Merged = ONE COMBINED BLUEPRINT (Phase 4b). `MergedCompareGrid` renders
@@ -368,12 +354,11 @@ export function ScenarioBlueprintPanel({
     single path or a half-loaded pair has nothing to merge and falls back to
     the stacked bands (which read fine with one band).
   */
-  const mergedModel =
-    useStackedArrangement && displayViewType === 'merged' ? compareModel : null
+  const mergedModel = displayViewType === 'merged' ? compareModel : null
 
-  // Arrangement is part of the key: switching stacked bands ⇄ overview row
-  // re-measures instead of keeping the other arrangement's size.
-  const compareFitContentKey = `${slide.id}:${selectedPathIds.join(',')}:${displayViewType}:${useStackedArrangement ? 'bands' : 'row'}:${paths.length}`
+  // View mode owns arrangement; camera focus only changes the viewport
+  // transform. This key therefore stays stable across overview ⇄ focus.
+  const compareFitContentKey = `${slide.id}:${selectedPathIds.join(',')}:${displayViewType}:${paths.length}`
   const stackedColumnCount =
     compareModel?.columns.length ??
     visibleBlueprints.reduce((sum, blueprint) => sum + blueprint.steps.length, 0)
@@ -387,27 +372,23 @@ export function ScenarioBlueprintPanel({
   const scrollChrome = { lockHeight: lockPanelHeight }
   const panelHeight =
     lockedPanelHeight ??
-    (fixedSwimlaneBodyHeight !== undefined
-      ? getPanelHeightFromSwimlaneBody(fixedSwimlaneBodyHeight, scrollChrome)
-      : mergedModel !== null
-        ? // Merged is about one band tall; the swell over divergent slots
-          // comes from the panel's measurement, not from this floor.
-          getMergedComparePanelHeight(visibleBlueprints, false, scrollChrome)
-        : useStackedArrangement
-          ? getStackedComparePanelHeight(visibleBlueprints, false, scrollChrome)
-          : getComparePanelHeight(visibleBlueprints, false, scrollChrome))
-
-  const fillSwimlaneHeight = fixedSwimlaneBodyHeight !== undefined
+    (mergedModel !== null
+      ? // Merged is about one band tall; the swell over divergent slots
+        // comes from the panel's measurement, not from this floor.
+        getMergedComparePanelHeight(visibleBlueprints, false, scrollChrome)
+      : useSideBySideLayout
+        ? getStackedComparePanelHeight(visibleBlueprints, false, scrollChrome)
+        : getComparePanelHeight(visibleBlueprints, false, scrollChrome))
 
   const comparePanelProps = {
     // Compare-grid estimates run hot (the height one predates
     // classification collapsing stacked slots). A floor set from a hot
     // estimate is dead gray space — the measured content rules instead.
-    minWidth: useStackedArrangement
+    minWidth: useSideBySideLayout
       ? getStackedComparePanelWidth(stackedColumnCount)
       : getComparePanelWidth(visibleBlueprints),
     minHeight: panelHeight,
-    defaultWidth: useStackedArrangement
+    defaultWidth: useSideBySideLayout
       ? getStackedComparePanelWidth(stackedColumnCount)
       : getComparePanelWidth(visibleBlueprints),
     defaultHeight: panelHeight,
@@ -431,7 +412,7 @@ export function ScenarioBlueprintPanel({
   // — a band-by-band trickle would reshuffle canonical columns per arrival.
   const stackedStillLoading =
     loading &&
-    useStackedArrangement &&
+    useSideBySideLayout &&
     selectedPathIds.length >= 2 &&
     visibleBlueprints.length < selectedPathIds.length
 
@@ -475,41 +456,52 @@ export function ScenarioBlueprintPanel({
     )
   }
 
+  if (useSideBySideLayout) {
+    return (
+      <ScenarioBoardScopeContext.Provider value={boardInDetailScope}>
+        <ResizableComparePanel
+          {...comparePanelProps}
+          fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
+        >
+          {mergedModel !== null ? (
+            <MergedCompareGrid
+              blueprints={visibleBlueprints}
+              model={mergedModel}
+              scrollContainerRef={scrollContainerRef}
+              scenarioName={scenarioName}
+              phaseName={phaseName}
+            />
+          ) : (
+            <StackedCompareGrid
+              blueprints={visibleBlueprints}
+              model={compareModel}
+              scrollContainerRef={scrollContainerRef}
+              scenarioName={scenarioName}
+              phaseName={phaseName}
+              sectionTitleLabel={sectionTitleLabel}
+            />
+          )}
+        </ResizableComparePanel>
+      </ScenarioBoardScopeContext.Provider>
+    )
+  }
+
   return (
+    /* No path selected: the same scope, an empty board — see the branch above. */
     <ScenarioBoardScopeContext.Provider value={boardInDetailScope}>
-    <ResizableComparePanel
-      {...comparePanelProps}
-      fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
-    >
-      {mergedModel !== null ? (
-        <MergedCompareGrid
-          blueprints={visibleBlueprints}
-          model={mergedModel}
-          scrollContainerRef={scrollContainerRef}
-          scenarioName={scenarioName}
-          phaseName={phaseName}
-        />
-      ) : useStackedArrangement ? (
-        <StackedCompareGrid
-          blueprints={visibleBlueprints}
-          model={compareModel}
-          scrollContainerRef={scrollContainerRef}
-          scenarioName={scenarioName}
-          phaseName={phaseName}
-          sectionTitleLabel={sectionTitleLabel}
-        />
-      ) : (
-        <SideBySideCompareGrid
-          blueprints={visibleBlueprints}
-          scrollContainerRef={scrollContainerRef}
-          scenarioName={scenarioName}
-          phaseName={phaseName}
-          sectionTitleLabel={sectionTitleLabel}
-          fixedSwimlaneBodyHeight={fixedSwimlaneBodyHeight}
-          fillSwimlaneHeight={fillSwimlaneHeight}
-        />
-      )}
-    </ResizableComparePanel>
+      <ResizableComparePanel
+        {...comparePanelProps}
+        fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}:none`}
+      >
+        {/*
+          Nothing, on purpose. This branch is reached only with no visible
+          blueprint. It used to map that empty list over the horizontal
+          overview arrangement, which no path can reach now that a scenario
+          is one board drawn at one size. The empty state is the same empty
+          state; the second renderer that drew it is gone.
+        */}
+        <div className="flex flex-row items-start gap-6" />
+      </ResizableComparePanel>
     </ScenarioBoardScopeContext.Provider>
   )
 }

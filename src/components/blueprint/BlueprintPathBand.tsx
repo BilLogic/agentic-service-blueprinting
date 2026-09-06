@@ -74,7 +74,6 @@ type BlueprintPathBandProps = {
   scenarioName?: string
   phaseName?: string
   showPathTypeBadge?: boolean
-  fillSwimlaneHeight?: boolean
   /** Extend the section frame upward to wrap the step-header row (px). */
   frameExtraTopInset?: number
 }
@@ -96,7 +95,6 @@ export function BlueprintPathBand({
   scenarioName,
   phaseName,
   showPathTypeBadge = false,
-  fillSwimlaneHeight = false,
 }: BlueprintPathBandProps) {
   const bandRef = useRef<HTMLDivElement>(null)
   const fallbackScrollRef = useRef<HTMLDivElement>(null)
@@ -229,7 +227,6 @@ export function BlueprintPathBand({
           compact={compact}
           scenarioName={scenarioName}
           phaseName={phaseName}
-          fillSwimlaneHeight={fillSwimlaneHeight}
           playGutter={playGutter}
           showPlay={showPlay}
           stackedTracks={
@@ -258,7 +255,6 @@ function CompareCardRow({
   compact,
   scenarioName,
   phaseName,
-  fillSwimlaneHeight = false,
   playGutter = 0,
   showPlay = false,
   stackedTracks,
@@ -270,7 +266,6 @@ function CompareCardRow({
   compact?: boolean
   scenarioName?: string
   phaseName?: string
-  fillSwimlaneHeight?: boolean
   playGutter?: number
   showPlay?: boolean
   stackedTracks?: readonly CompareGridTrack[]
@@ -289,7 +284,6 @@ function CompareCardRow({
           compact={compact}
           scenarioName={scenarioName}
           phaseName={phaseName}
-          fillSwimlaneHeight={fillSwimlaneHeight}
           playGutter={playGutter}
           showPlay={showPlay}
           stackedTracks={stackedTracks}
@@ -306,7 +300,6 @@ function CompareLaneRow({
   compact,
   scenarioName,
   phaseName,
-  fillSwimlaneHeight = false,
   playGutter = 0,
   showPlay = false,
   stackedTracks,
@@ -317,7 +310,6 @@ function CompareLaneRow({
   compact?: boolean
   scenarioName?: string
   phaseName?: string
-  fillSwimlaneHeight?: boolean
   playGutter?: number
   showPlay?: boolean
   stackedTracks?: readonly CompareGridTrack[]
@@ -448,8 +440,7 @@ function CompareLaneRow({
     return (
       <div
         className={cn(
-          'relative flex items-stretch rounded-sm',
-          fillSwimlaneHeight ? 'h-full min-h-0 w-full' : 'shrink-0',
+          'relative flex items-stretch rounded-sm shrink-0',
         )}
         style={{ backgroundColor: 'transparent' }}
       >
@@ -499,8 +490,7 @@ function CompareLaneRow({
   return (
     <div
       className={cn(
-        'relative flex items-stretch rounded-sm',
-        fillSwimlaneHeight ? 'h-full min-h-0 w-full' : 'shrink-0',
+        'relative flex items-stretch rounded-sm shrink-0',
       )}
       style={{
         backgroundColor: 'transparent',
