@@ -771,7 +771,6 @@ export type Database = {
           kind: string
           name: string
           origin: string
-          service_id: string
           summary: string | null
           updated_at: string
           url: string | null
@@ -783,7 +782,6 @@ export type Database = {
           kind?: string
           name: string
           origin: string
-          service_id: string
           summary?: string | null
           updated_at?: string
           url?: string | null
@@ -795,20 +793,11 @@ export type Database = {
           kind?: string
           name?: string
           origin?: string
-          service_id?: string
           summary?: string | null
           updated_at?: string
           url?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "touchpoints_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       services: {
         Row: {

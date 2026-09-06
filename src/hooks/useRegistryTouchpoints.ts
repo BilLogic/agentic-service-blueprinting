@@ -4,12 +4,17 @@ import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 export type RegistryTouchpoint = { id: string; name: string; kind: string }
 
 /**
- * The registry a cell's service keeps: every touchpoint it could be linked
- * to (#112).
+ * The registry a placement can link to: every touchpoint in the deployment
+ * (#112).
  *
- * Keyed by the cell because that is what the panel has. The service is
- * reached through the cell's path, scenario and phase — two reads, one key —
- * rather than threaded through six components that never needed it before.
+ * The registry is the deployment's, not the service's (ADR 0003, landed by
+ * `21000131000000`), so the read is unscoped — a touchpoint minted for one
+ * service is reachable from any of them, which is the whole point of a shared
+ * pool. It resolved a cell's owning service through its path, scenario and
+ * phase before that; the join went with the column.
+ *
+ * Still keyed by the cell, because that is what the panel has and the key
+ * keeps each panel's query cached separately.
  */
 export function useRegistryTouchpoints(
   cellId: string | null,
@@ -18,20 +23,9 @@ export function useRegistryTouchpoints(
   return useSupabaseQuery<RegistryTouchpoint[]>(
     cellId ? `registry-touchpoints:${cellId}` : null,
     async (client) => {
-      const { data: cell, error: cellError } = await client
-        .from('cells')
-        .select('paths ( scenarios ( phases ( service_id ) ) )')
-        .eq('id', cellId!)
-        .maybeSingle()
-      if (cellError) throw cellError
-      const serviceId = (
-        cell as { paths?: { scenarios?: { phases?: { service_id?: string | null } | null } | null } | null } | null
-      )?.paths?.scenarios?.phases?.service_id
-      if (!serviceId) return []
       const { data, error } = await client
         .from('touchpoints')
         .select('id, name, kind')
-        .eq('service_id', serviceId)
         .order('name')
       if (error) throw error
       return (data ?? []).map((row) => ({ id: row.id, name: row.name, kind: row.kind }))
