@@ -1,6 +1,6 @@
 import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 import { placementResources, touchpointNamed } from '@/lib/cellTouchpoints'
-import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
+import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 
 /**
  * Detail-panel frames come from the touchpoint placed at this cell — no
@@ -40,7 +40,7 @@ function iconFor(
 
 function framePictures(cellFrame?: string | null): string[] | null {
   const frame = cellFrame?.trim()
-  if (!frame || isBlueprintStepVisualPlaceholder(frame)) return null
+  if (!frame || isBlueprintStepStoryboardPlaceholder(frame)) return null
   return [frame]
 }
 

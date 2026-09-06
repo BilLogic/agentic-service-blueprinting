@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
+import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import {
   Carousel,
@@ -24,22 +24,22 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { useVisualWalkthrough } from '@/contexts/VisualWalkthroughContext'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
-import type { VisualWalkthroughLaneEntry } from '@/lib/visualWalkthrough'
-import { VISUAL_LANE_SHORT_LABELS } from '@/lib/visualWalkthrough'
+import { useStoryboardWalkthrough } from '@/contexts/StoryboardWalkthroughContext'
+import { isBlueprintStoryboardWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
+import type { StoryboardWalkthroughLaneEntry } from '@/lib/storyboardWalkthrough'
+import { STORYBOARD_LANE_SHORT_LABELS } from '@/lib/storyboardWalkthrough'
 import { cn } from '@/lib/utils'
 
 function WalkthroughStepSlide({
   step,
 }: {
   step: {
-    laneEntries: VisualWalkthroughLaneEntry[]
+    laneEntries: StoryboardWalkthroughLaneEntry[]
   }
 }) {
   const entries = step.laneEntries.map((entry) => ({
     laneName: entry.laneName,
-    label: VISUAL_LANE_SHORT_LABELS[entry.laneName] ?? entry.laneName,
+    label: STORYBOARD_LANE_SHORT_LABELS[entry.laneName] ?? entry.laneName,
     frame: entry.frame,
     summary: entry.content,
   }))
@@ -47,13 +47,13 @@ function WalkthroughStepSlide({
   if (entries.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No visuals for this step.
+        No storyboard frames for this step.
       </p>
     )
   }
 
   return (
-    <VisualStepDetailStack
+    <StoryboardStepDetailStack
       entries={entries}
       orientation="horizontal"
       className="h-full"
@@ -61,9 +61,9 @@ function WalkthroughStepSlide({
   )
 }
 
-/** Full-screen step-by-step walkthrough of a path's visuals, driven by the walkthrough context. */
-export function VisualWalkthroughModal() {
-  const { session, isOpen, closeWalkthrough, goToStep } = useVisualWalkthrough()
+/** Full-screen step-by-step walkthrough of a path's storyboard, driven by the walkthrough context. */
+export function StoryboardWalkthroughModal() {
+  const { session, isOpen, closeWalkthrough, goToStep } = useStoryboardWalkthrough()
   const [api, setApi] = useState<CarouselApi>()
   const [stepIndex, setStepIndex] = useState(0)
 
@@ -115,7 +115,7 @@ export function VisualWalkthroughModal() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [api, closeWalkthrough, isOpen])
 
-  if (!isBlueprintVisualWalkthroughEnabled()) return null
+  if (!isBlueprintStoryboardWalkthroughEnabled()) return null
 
   const pathName = session?.pathName.trim() ?? ''
   const scenarioName = session?.scenarioName?.trim() ?? ''
@@ -133,7 +133,7 @@ export function VisualWalkthroughModal() {
     >
       {session ? (
         <DialogContent
-          data-visual-walkthrough-modal=""
+          data-storyboard-walkthrough-modal=""
           className="flex h-[min(85vh,36rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border p-0 shadow-sm sm:max-w-5xl"
           aria-label="Presentation"
         >

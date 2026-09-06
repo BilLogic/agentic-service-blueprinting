@@ -130,7 +130,7 @@ function CanvasFocusEscapeHandler() {
 
       if (
         document.querySelector(
-          '[data-visual-walkthrough-modal], [role="dialog"][data-state="open"]',
+          '[data-storyboard-walkthrough-modal], [role="dialog"][data-state="open"]',
         )
       ) {
         return
@@ -984,7 +984,7 @@ function ServiceOverviewViewImpl({
                       handler enough — but it also means this hears EVERY
                       opacity transition anywhere in a 663-cell subtree, and
                       the board is full of them: the scenario title badge's
-                      hover, the visual play button's, the column and lane
+                      hover, the storyboard play button's, the column and lane
                       handles, the empty-cell slots, the slice sequence
                       badge's threshold fade. A reader whose cursor is
                       resting over the canvas (where they just clicked) and

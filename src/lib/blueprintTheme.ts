@@ -209,7 +209,7 @@ function cellStyleFromFill(
 
 const LANE_STYLES: Record<string, BlueprintLaneStyle> = {
   Visual: cellStyleFromFill('storyboard'),
-  'Step Visual': cellStyleFromFill('storyboard'),
+  Storyboard: cellStyleFromFill('storyboard'),
   'Front Stage Tech': cellStyleFromFill('frontstage-touchpoint',
     BLUEPRINT_LABEL_TEXT.customerFacing,
   ),

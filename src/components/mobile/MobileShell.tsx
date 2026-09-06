@@ -11,7 +11,7 @@ import { MobileAgentFab } from '@/components/mobile/MobileAgentFab'
 import { MobilePathSelector } from '@/components/mobile/MobilePathSelector'
 import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
-import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
+import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWalkthroughShell'
 import { Button } from '@/components/ui/button'
 import { SlicePresentation } from '@/components/editor/SlicePresentation'
 import { SliceView } from '@/components/editor/SliceView'
@@ -335,7 +335,7 @@ export function MobileShell() {
                 />
               </div>
             ) : hasSelection ? (
-              <VisualWalkthroughShell>
+              <StoryboardWalkthroughShell>
                 <div
                   className="absolute inset-0 flex min-h-0 flex-col"
                   data-editor-view
@@ -363,7 +363,7 @@ export function MobileShell() {
                     renderHeader={() => null}
                   />
                 </div>
-              </VisualWalkthroughShell>
+              </StoryboardWalkthroughShell>
             ) : (
               <MobileEmptyState onOpenNav={() => setNavOpen(true)} />
             )}

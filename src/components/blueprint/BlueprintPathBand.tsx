@@ -12,7 +12,7 @@ import {
 } from '@/components/blueprint/BlueprintLabelRail'
 import { ComparePathSectionFrame } from '@/components/blueprint/ComparePathSectionFrame'
 import { IntegratedDependencyArrows } from '@/components/blueprint/IntegratedDependencyArrows'
-import { BlueprintVisualPlayButton } from '@/components/blueprint/BlueprintVisualPlayButton'
+import { BlueprintStoryboardPlayButton } from '@/components/blueprint/BlueprintStoryboardPlayButton'
 import {
   BLUEPRINT_LANE_ROW_GAP,
   STEP_COLUMN_GAP,
@@ -35,9 +35,9 @@ import {
   resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
 import { cn } from '@/lib/utils'
-import { resolveStoryboardStripEntries } from '@/lib/visualWalkthrough'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
-import { buildVisualWalkthroughSession } from '@/lib/visualWalkthrough'
+import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
+import { isBlueprintStoryboardWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
+import { buildStoryboardWalkthroughSession } from '@/lib/storyboardWalkthrough'
 import type { BlueprintData, BlueprintStep } from '@/types/blueprint'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
@@ -109,8 +109,8 @@ export function BlueprintPathBand({
   // every render, and `observe()` fires immediately — which renders again.
   const arrowPaths = useMemo(() => [blueprint.path], [blueprint.path])
   const showPlay =
-    isBlueprintVisualWalkthroughEnabled() &&
-    buildVisualWalkthroughSession(blueprint).steps.length > 0
+    isBlueprintStoryboardWalkthroughEnabled() &&
+    buildStoryboardWalkthroughSession(blueprint).steps.length > 0
   // The stacked arrangement cannot shift cells right for the play control —
   // cells must stay on the canonical column tracks — so the control hangs in
   // the rail gap instead (see CompareLaneRow).
@@ -352,11 +352,11 @@ function CompareLaneRow({
       ? getCellsAt(cellLookup, blueprintLane.id, step.id)
       : undefined
     const variant = isStoryboardLane ? 'storyboard' : isTouchpointLane ? 'touchpoints' : 'default'
-    const visualPictures = isStoryboardLane
+    const storyboardPictures = isStoryboardLane
       ? resolveStoryboardStripEntries(blueprint, step.id)
       : undefined
     const showCell = isStoryboardLane
-      ? (visualPictures?.length ?? 0) > 0
+      ? (storyboardPictures?.length ?? 0) > 0
       : isTouchpointLane
         ? (slotCells ?? []).some((entry) =>
             hasBlueprintCellContent(entry.content, variant),
@@ -391,7 +391,7 @@ function CompareLaneRow({
         variant={variant}
         compact={compact}
         flushBottom={flushBottom}
-        visualPictures={visualPictures}
+        storyboardPictures={storyboardPictures}
         slotCells={slotCells}
         selectionContext={
           scenarioName && (cell?.id || isStoryboardLane)
@@ -429,7 +429,7 @@ function CompareLaneRow({
         top: compact ? 10 : 14,
       }}
     >
-      <BlueprintVisualPlayButton
+      <BlueprintStoryboardPlayButton
         blueprint={blueprint}
         scenarioName={scenarioName}
         phaseName={phaseName}

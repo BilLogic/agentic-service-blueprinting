@@ -229,7 +229,7 @@ export function SlicePresentation({
 
   // Stage media resolution: an authored illustration wins; otherwise fall
   // back to the slide's own cell slides (member cells first, then the
-  // Visual-lane cell of the same step); no media → title-slide layout.
+  // storyboard-lane cell of the same step); no media → title-slide layout.
   const illustration = parseSliceIllustration(item.illustration)
   const framePictures = illustration
     ? []

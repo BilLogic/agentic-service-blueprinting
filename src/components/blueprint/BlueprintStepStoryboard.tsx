@@ -1,17 +1,17 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import { getStoryboardCellButtonMaxHeight } from '@/lib/blueprintLayout'
 import type { BlueprintLaneRole } from '@/lib/blueprintCellStyle'
-import { hasEmbeddedVisualFrame } from '@/lib/visualWalkthrough'
+import { hasEmbeddedStoryboardFrame } from '@/lib/storyboardWalkthrough'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
-export type BlueprintStepVisualPicture = {
+export type BlueprintStepStoryboardPicture = {
   frame: string
   label?: string
 }
 
-type BlueprintStepVisualProps = {
+type BlueprintStepStoryboardProps = {
   compact?: boolean
   className?: string
   fill?: BlueprintLaneRole
@@ -19,24 +19,24 @@ type BlueprintStepVisualProps = {
   cellId?: string
   stepIndex?: number
   opacity?: number
-  frames?: readonly string[] | readonly BlueprintStepVisualPicture[]
+  frames?: readonly string[] | readonly BlueprintStepStoryboardPicture[]
   /** Larger walkthrough/presentation layout — images scale to fit without clipping. */
   presentation?: boolean
 }
 
 function normalizePictures(
-  frames: readonly string[] | readonly BlueprintStepVisualPicture[],
-): BlueprintStepVisualPicture[] {
+  frames: readonly string[] | readonly BlueprintStepStoryboardPicture[],
+): BlueprintStepStoryboardPicture[] {
   return frames.map((entry) =>
     typeof entry === 'string' ? { frame: entry } : entry,
   )
 }
 
-function VisualPictureStrip({
+function StoryboardPictureStrip({
   frames,
   className,
 }: {
-  frames: readonly BlueprintStepVisualPicture[]
+  frames: readonly BlueprintStepStoryboardPicture[]
   className?: string
 }) {
   const showLabels =
@@ -62,7 +62,7 @@ function VisualPictureStrip({
               decoding="async"
               className={cn(
                 'max-h-full max-w-full rounded-sm object-contain object-center',
-                hasEmbeddedVisualFrame(entry.frame) && 'scale-[1.08]',
+                hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
               )}
             />
           </div>
@@ -77,8 +77,8 @@ function VisualPictureStrip({
   )
 }
 
-/** Visual-lane cell: the screenshots for a step, laid out inside a cell face. */
-export function BlueprintStepVisual({
+/** Storyboard-lane cell: the screenshots for a step, laid out inside a cell face. */
+export function BlueprintStepStoryboard({
   compact = false,
   className,
   fill = 'storyboard',
@@ -88,17 +88,22 @@ export function BlueprintStepVisual({
   opacity,
   frames,
   presentation = false,
-}: BlueprintStepVisualProps) {
+}: BlueprintStepStoryboardProps) {
   const displayPictures = normalizePictures(frames ?? [])
   const hasRealPictures = displayPictures.length > 0
   // Counts what is actually here — images for one step, not people. The old
   // wording ("Step visuals for 1 users") got both halves wrong, and a screen
-  // reader read it out on every visual cell on the board.
+  // reader read it out on every storyboard cell on the board.
+  //
+  // SINGULAR, and the rename is why. One cell is one step's storyboard
+  // holding several images; "Step storyboards, 3 images" would have said
+  // there are three of them, which is the word replaced without the sentence
+  // read.
   const ariaLabel = hasRealPictures
     ? displayPictures.length === 1
-      ? 'Step visual'
-      : `Step visuals, ${displayPictures.length} images`
-    : 'Empty step visual'
+      ? 'Step storyboard'
+      : `Step storyboard, ${displayPictures.length} images`
+    : 'Empty step storyboard'
   const inlineMaxHeight = getStoryboardCellButtonMaxHeight(compact)
 
   if (!hasRealPictures) {
@@ -117,7 +122,7 @@ export function BlueprintStepVisual({
         role="img"
         aria-label={ariaLabel}
       >
-        <VisualPictureStrip frames={displayPictures} />
+        <StoryboardPictureStrip frames={displayPictures} />
       </div>
     )
   }
@@ -142,7 +147,7 @@ export function BlueprintStepVisual({
       opacity={opacity}
       aria-label={ariaLabel}
     >
-      <VisualPictureStrip frames={displayPictures} />
+      <StoryboardPictureStrip frames={displayPictures} />
     </BlueprintCellButton>
   )
 }

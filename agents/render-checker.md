@@ -31,7 +31,7 @@ view × every path. Do not sample; the point is exhaustiveness. Per scenario:
    - `merged`: confirm the compared paths render as one grid.
 3. Spot-check against the IR: lane display names (right language for the
    locale under test), step headers, 2–3 known cell labels, divider lines
-   present where roles imply them, pill lanes rendering pills, visual rows
+   present where roles imply them, pill lanes rendering pills, storyboard rows
    rendering images, dependency arrows drawn.
 4. Screenshot each scenario × layout (and each path); save to a
    `render-check/` directory in the workspace with self-describing names

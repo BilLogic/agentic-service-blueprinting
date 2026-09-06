@@ -57,7 +57,7 @@
   [data-canvas-nav],
   [data-slide-canvas] > [data-slide-sticky-header],
   [data-cell-detail-panel],
-  [data-visual-walkthrough-modal],
+  [data-storyboard-walkthrough-modal],
   [data-print-hide] {
     display: none !important;
   }
@@ -103,7 +103,7 @@
     break-inside: avoid;
   }
 
-  /* Visual-row screenshots must fit their cells / the page. */
+  /* Storyboard-row screenshots must fit their cells / the page. */
   img {
     max-width: 100% !important;
   }

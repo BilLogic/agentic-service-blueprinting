@@ -1,5 +1,5 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
-import { BlueprintStepVisual } from '@/components/blueprint/BlueprintStepVisual'
+import { BlueprintStepStoryboard } from '@/components/blueprint/BlueprintStepStoryboard'
 import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpointCell'
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
@@ -57,7 +57,7 @@ export function CompareCellBlock({
   compact,
   flushBottom,
   selectionContext,
-  visualPictures,
+  storyboardPictures,
   slotCells,
   pathRails,
   pathWash = true,
@@ -70,7 +70,7 @@ export function CompareCellBlock({
   compact?: boolean
   flushBottom?: boolean
   selectionContext?: BlueprintCellSelectionContext
-  visualPictures?: Array<{ frame: string; label: string }>
+  storyboardPictures?: Array<{ frame: string; label: string }>
   /** Every cell in a tech slot — one per touchpoint since the split. */
   slotCells?: BlueprintCell[]
   /** Member paths of a divergent sub-cell — one wash stripe + label each. */
@@ -103,7 +103,7 @@ export function CompareCellBlock({
     shellPadding,
     isStoryboard && 'min-h-0 overflow-hidden',
   )
-  // Visual faces are photographs — a colour wash over them reads as a bad
+  // Storyboard faces are photographs — a colour wash over them reads as a bad
   // scan, so there the labels alone carry the affiliation.
   const washStyle =
     isStoryboard || !pathWash
@@ -113,10 +113,10 @@ export function CompareCellBlock({
   const innerContent =
     variant === 'storyboard' ? (
       <div className="relative flex h-full min-h-0 max-h-full w-full flex-1 overflow-hidden">
-        <BlueprintStepVisual
+        <BlueprintStepStoryboard
           compact={compact}
           fill={laneStyle.lane}
-          frames={visualPictures}
+          frames={storyboardPictures}
           selection={
             selectionContext
               ? buildBlueprintCellSelection(selectionContext)
