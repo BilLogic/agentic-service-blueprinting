@@ -1,157 +1,50 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { CELL_STEP } from '@/lib/blueprintCellStyle'
 import {
   PATH_TYPE_COLORS,
   getPathColor,
   getPathDashArray,
 } from '@/lib/pathColorTheme'
+import {
+  chromaCeiling,
+  contrast,
+  derivedFillInk,
+  dial,
+  hslToRgb,
+  inSrgbGamut,
+  oklch,
+  oklchHue,
+  oklchToLinearSrgb,
+  palette,
+  resolvePaletteToken,
+  resolveValue,
+  stylesheet,
+} from '@/lib/tokenModel'
 
 /**
  * The app resolves every colour through `var()`, so nothing in the browser can
- * be measured from here. This suite resolves the same tokens against
- * `colors.css` and measures the pairs the interface actually renders.
+ * be measured from here. This suite resolves the same tokens against the
+ * stylesheets and measures the pairs the interface actually renders.
  *
  * It replaces a runtime contrast solver that computed ring lightness per cell.
  * The solver only ever saw light mode — it took a hex fill, and dark mode never
  * produced one. Reading the stylesheet checks both themes, which is the part
  * that was missing rather than the part that was expensive.
+ *
+ * The colour maths, the ramps and the cascade all come from `tokenModel` now.
+ * This file used to carry its own resolver — HSL and OKLCH conversions, a
+ * `colors.css` reader, a contrast solver, and a dial reader that took the
+ * first `--name:` match in one theme file. That last one is the shape ADR 6
+ * retires: it could tell you what a file said and never what the cascade
+ * produced, which is a different number wherever more than one rule declares a
+ * name. The maths below is unchanged; the reader is shared, so widening it
+ * widens every rule at once.
  */
-
-const COLORS_CSS = fileURLToPath(
-  new URL('../styles/colors.css', import.meta.url),
-)
-const SEMANTIC_CSS = fileURLToPath(
-  new URL('../styles/semantic.css', import.meta.url),
-)
-const LIGHT_THEME_CSS = fileURLToPath(
-  new URL('../styles/themes/light.css', import.meta.url),
-)
-const DARK_THEME_CSS = fileURLToPath(
-  new URL('../styles/themes/dark.css', import.meta.url),
-)
-
-type Rgb = [number, number, number]
-
-function hslToRgb(h: number, s: number, l: number): Rgb {
-  const sat = s / 100
-  const light = l / 100
-  const c = (1 - Math.abs(2 * light - 1)) * sat
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
-  const m = light - c / 2
-  const [r, g, b] =
-    h < 60
-      ? [c, x, 0]
-      : h < 120
-        ? [x, c, 0]
-        : h < 180
-          ? [0, c, x]
-          : h < 240
-            ? [0, x, c]
-            : h < 300
-              ? [x, 0, c]
-              : [c, 0, x]
-  return [r + m, g + m, b + m]
-}
-
-/**
- * OKLCH → linear sRGB (Björn Ottosson's matrices). The brand tokens are the
- * one part of the system authored in OKLCH rather than picked off the HSL
- * ramps, so they need their own resolver; `resolve()` below only speaks
- * `--color-family-step`.
- */
-function oklchToLinearSrgb(l: number, c: number, hDeg: number): Rgb {
-  const h = (hDeg * Math.PI) / 180
-  const a = c * Math.cos(h)
-  const b = c * Math.sin(h)
-  const lc = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3
-  const mc = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3
-  const sc = (l - 0.0894841775 * a - 1.291485548 * b) ** 3
-  return [
-    4.0767416621 * lc - 3.3077115913 * mc + 0.2309699292 * sc,
-    -1.2684380046 * lc + 2.6097574011 * mc - 0.3413193965 * sc,
-    -0.0041960863 * lc - 0.7034186147 * mc + 1.707614701 * sc,
-  ]
-}
-
-const inSrgbGamut = (rgb: Rgb) => rgb.every((v) => v >= -1e-6 && v <= 1 + 1e-6)
-
-/**
- * The other direction: gamma-encoded sRGB → OKLCH hue in degrees. Needed
- * because the `--brand-*` ramp is authored as HSL literals, so its OKLCH hue
- * — the thing `--primary` has to agree with — is not readable off the page.
- */
-function oklchHue([r, g, b]: Rgb): number {
-  const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
-  const [R, G, B] = [lin(r), lin(g), lin(b)]
-  const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B)
-  const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B)
-  const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B)
-  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s
-  const bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
-  return ((Math.atan2(bb, a) * 180) / Math.PI + 360) % 360
-}
-
-/** Gamma-encoded sRGB, so these values can meet the `Rgb` the solver expects. */
-function oklch(l: number, c: number, hDeg: number): Rgb {
-  return oklchToLinearSrgb(l, c, hDeg).map((v) => {
-    const clamped = Math.min(1, Math.max(0, v))
-    return clamped <= 0.0031308
-      ? 12.92 * clamped
-      : 1.055 * clamped ** (1 / 2.4) - 0.055
-  }) as Rgb
-}
-
-/** Largest in-gamut chroma at this lightness and hue, to 4dp. */
-function chromaCeiling(l: number, hDeg: number): number {
-  let lo = 0
-  let hi = 0.5
-  for (let i = 0; i < 60; i++) {
-    const mid = (lo + hi) / 2
-    if (inSrgbGamut(oklchToLinearSrgb(l, mid, hDeg))) lo = mid
-    else hi = mid
-  }
-  return lo
-}
-
-function relativeLuminance([r, g, b]: Rgb): number {
-  const channel = (v: number) =>
-    v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
-}
-
-function contrast(a: Rgb, b: Rgb): number {
-  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort(
-    (x, y) => y - x,
-  )
-  return Number(((hi + 0.05) / (lo + 0.05)).toFixed(2))
-}
-
-/** `--color-{family}-{step}` values for one theme, keyed `family-step`. */
-function readScale(theme: 'light' | 'dark'): Map<string, Rgb> {
-  const css = readFileSync(COLORS_CSS, 'utf8')
-  const start = css.indexOf(theme === 'light' ? ':root {' : '@media screen {')
-  const block = theme === 'light' ? css.slice(start, css.indexOf('@media screen {')) : css.slice(start)
-  const scale = new Map<string, Rgb>()
-  const declaration =
-    /--color-([a-z]+)-(\d+):\s*hsla?\(\s*([\d.]+)(?:deg)?,\s*([\d.]+)%,\s*([\d.]+)%/g
-  for (const [, family, step, h, s, l] of block.matchAll(declaration)) {
-    scale.set(`${family}-${step}`, hslToRgb(Number(h), Number(s), Number(l)))
-  }
-  return scale
-}
-
-const THEMES = { light: readScale('light'), dark: readScale('dark') }
+const THEMES = { light: palette('light'), dark: palette('dark') }
 
 /** Resolve a `var(--color-family-step)` string against one theme. */
-function resolve(token: string, theme: 'light' | 'dark'): Rgb {
-  const match = /--color-([a-z]+-\d+)/.exec(token)
-  if (!match) throw new Error(`not a palette token: ${token}`)
-  const value = THEMES[theme].get(match[1])
-  if (!value) throw new Error(`missing from colors.css: ${match[1]}`)
-  return value
-}
+const resolve = resolvePaletteToken
 
 describe('palette', () => {
   it.each(['light', 'dark'] as const)('%s scale parsed', (theme) => {
@@ -174,46 +67,58 @@ describe('brand fill', () => {
    * the ramp-hue agreement) are written to hold at chroma 0 and to bite the
    * moment a fork turns the dials up, which is exactly when they matter.
    */
-  const semantic = readFileSync(SEMANTIC_CSS, 'utf8')
-  const light = readFileSync(LIGHT_THEME_CSS, 'utf8')
-  const dark = readFileSync(DARK_THEME_CSS, 'utf8')
+  const semantic = stylesheet('semantic.css').text
+  const light = stylesheet('themes/light.css').text
 
-  const dial = (css: string, name: string) => {
-    const match = new RegExp(`--${name}:\\s*([\\d.]+)`).exec(css)
-    if (!match) throw new Error(`dial not found: --${name}`)
-    return Number(match[1])
-  }
-
-  const HUE = dial(light, 'hue')
-  const SURFACE = dial(light, 'surface')
-
-  // --primary: oklch(var(--primary-lightness) var(--primary-chroma) var(--primary-hue))
-  const declared =
-    /--primary:\s*oklch\(\s*var\(--primary-lightness\)\s+var\(--primary-chroma\)\s+var\(--primary-hue\)\s*\)/.exec(
-      semantic,
+  /*
+   * The seam itself: `--primary` is still the three dials and nothing else.
+   *
+   * Asserted as a SHAPE rather than a value, because the value is what a fork
+   * is invited to change. If someone replaces the derivation with a literal,
+   * every dial below stops driving anything and the assertions in this block
+   * would go on passing against numbers nothing reads.
+   */
+  it('is still derived from the per-theme dials', () => {
+    expect(semantic).toMatch(
+      /--primary:\s*oklch\(\s*var\(--primary-lightness\)\s+var\(--primary-chroma\)\s+var\(--primary-hue\)\s*\)/,
     )
-  if (!declared) {
-    throw new Error(
-      '--primary is no longer derived from the per-theme dials; the seam moved',
-    )
-  }
+  })
+
+  /*
+   * Every number below comes through the cascade, not off a page.
+   *
+   * `dial()` asks what wins at the root under a theme, which is a different
+   * question from what one file says — and the difference is not academic
+   * here. `print.css` declares `--hue`, `--surface` and eleven more dials
+   * inside `@media print`, and `themes/light.css` declares most of them under
+   * a bare `:root` that matches under dark as well. A reader that took the
+   * first match in a file would answer both cases wrong.
+   */
+  const HUE = dial('--hue', 'light')
 
   const THEME_DIALS = {
     light: {
-      L: dial(light, 'primary-lightness'),
-      C: dial(light, 'primary-chroma'),
-      ringL: dial(light, 'ring-lightness'),
-      surface: SURFACE,
-      css: light,
+      L: dial('--primary-lightness', 'light'),
+      C: dial('--primary-chroma', 'light'),
+      ringL: dial('--ring-lightness', 'light'),
+      surface: dial('--surface', 'light'),
+      surfaceHue: dial('--surface-hue', 'light'),
     },
     dark: {
-      L: dial(dark, 'primary-lightness'),
-      C: dial(dark, 'primary-chroma'),
-      ringL: dial(dark, 'ring-lightness'),
-      surface: dial(dark, 'surface'),
-      css: dark,
+      L: dial('--primary-lightness', 'dark'),
+      C: dial('--primary-chroma', 'dark'),
+      ringL: dial('--ring-lightness', 'dark'),
+      surface: dial('--surface', 'dark'),
+      surfaceHue: dial('--surface-hue', 'dark'),
     },
   } as const
+
+  it('runs both themes on one brand hue', () => {
+    // A hue that differs between themes is a brand that changes when the
+    // lights go out. The dial is mode-invariant by design and both theme
+    // files say so in a comment; this is the part that holds them to it.
+    expect(dial('--hue', 'dark')).toBe(HUE)
+  })
 
   it('ships hue-neutral, so nothing inherits a previous brand', () => {
     // The one assertion that is about the TEMPLATE rather than the mechanism:
@@ -221,8 +126,8 @@ describe('brand fill', () => {
     // is the point — a brand should never arrive by accident.
     expect(THEME_DIALS.light.C).toBe(0)
     expect(THEME_DIALS.dark.C).toBe(0)
-    expect(dial(light, 'chroma')).toBe(0)
-    expect(dial(dark, 'chroma')).toBe(0)
+    expect(dial('--chroma', 'light')).toBe(0)
+    expect(dial('--chroma', 'dark')).toBe(0)
   })
 
   it('inverts the fill between themes, since a neutral one has to', () => {
@@ -240,7 +145,9 @@ describe('brand fill', () => {
     // compared as CONVERTED. Greyscale steps carry no hue to compare, so the
     // check applies to whatever steps a fork has actually tinted.
     const steps = [
-      ...light.matchAll(/--brand-(\d00):\s*([\d.]+)deg\s+([\d.]+)%\s+([\d.]+)%/g),
+      ...light.matchAll(
+        /--brand-(\d00):\s*([\d.]+)deg\s+([\d.]+)%\s+([\d.]+)%/g,
+      ),
     ]
     expect(steps.length).toBeGreaterThanOrEqual(5)
     const tinted = steps.filter(([, , , s]) => Number(s) > 0)
@@ -251,9 +158,17 @@ describe('brand fill', () => {
   })
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
-    const { L, C, ringL, surface } = THEME_DIALS[theme]
+    const { L, C, ringL, surface, surfaceHue } = THEME_DIALS[theme]
     const fill = oklch(L, C, HUE)
-    const canvas = oklch(surface, 0, HUE)
+    const canvas = oklch(surface, 0, surfaceHue)
+
+    it('resolves to the triple its dials describe', () => {
+      // The cascade's own answer, not a restatement of the dials: this is what
+      // `--primary` computes to at the root under this theme, and it is the
+      // value every measurement below is really about.
+      const resolved = resolveValue('--primary', theme)
+      expect(resolved).toBe(`oklch( ${L} ${C} ${HUE} )`)
+    })
 
     it('leaves the fill itself un-gamut-mapped', () => {
       // Headroom is why a fork should set chroma as a fraction of the ceiling
@@ -342,39 +257,13 @@ describe('blueprint cells', () => {
   })
 })
 
-/**
- * The ink `[data-blueprint-fill]` derives for a fill, mirrored in JS.
- *
- * The CSS is `oklch(from <fill> clamp(0.12, calc((0.62 - l) * 100), 0.99)
- * calc(c * 0.08) h)` — Supabase's `*-foreground` formula. The clamp is a
- * step function in practice: any fill below L 0.62 gets L 0.99 ink, anything
- * above gets 0.12, because the multiplier is 100. Chroma drops to 8% so the
- * ink is tinted rather than stark, and the hue rides along.
- *
- * Mirrored here rather than asserted against one hard-coded ink, because a
- * hard-coded ink is exactly what this pairing replaced: `text-white` measured
- * 1.17-2.33:1 in dark mode, and a test that only knew about one value could
- * not have caught it.
+/*
+ * The ink `[data-blueprint-fill]` derives for a fill is mirrored in JS by
+ * `derivedFillInk` in `tokenModel`, rather than asserted against one
+ * hard-coded ink — a hard-coded ink is exactly what this pairing replaced.
+ * `text-white` measured 1.17-2.33:1 in dark mode, and a test that only knew
+ * about one value could not have caught it.
  */
-function derivedFillInk(fill: Rgb): Rgb {
-  const [l, c, h] = oklchFromSrgb(fill)
-  const inkL = Math.min(0.99, Math.max(0.12, (0.62 - l) * 100))
-  return oklch(inkL, c * 0.08, h)
-}
-
-/** Gamma-encoded sRGB -> OKLCH triple (the inverse `oklch()` above needs). */
-function oklchFromSrgb([r, g, b]: Rgb): [number, number, number] {
-  const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
-  const [R, G, B] = [lin(r), lin(g), lin(b)]
-  const l_ = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B)
-  const m_ = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B)
-  const s_ = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B)
-  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_
-  const A = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_
-  const B2 = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
-  return [L, Math.hypot(A, B2), ((Math.atan2(B2, A) * 180) / Math.PI + 360) % 360]
-}
-
 describe('path badges', () => {
   const paths = Object.entries(PATH_TYPE_COLORS)
 
@@ -456,11 +345,39 @@ describe('path badges', () => {
   })
 })
 
+/**
+ * Board chrome — the ink-on-ground pairs the frame actually renders.
+ *
+ * These are CROSS-FAMILY pairs: a gray ink on a slate ground. Every other
+ * assertion in this file measures a pair whose halves come from the same
+ * primitive family, which is the sampling that let the divider caption run at
+ * 2.64:1 inside a file that measures contrast a hundred times. A guard picks
+ * the region where its property already holds unless something makes it look
+ * elsewhere.
+ *
+ * The floor is 4.5:1 because both of these are text, and small text: the
+ * divider caption is an uppercase badge at the bottom of the type scale.
+ * Neither is anywhere near the large-text threshold.
+ */
+describe.each(['light', 'dark'] as const)('board chrome: %s', (theme) => {
+  const pairs: ReadonlyArray<readonly [string, string, string]> = [
+    [
+      'divider caption',
+      BLUEPRINT_THEME.dividerLabel,
+      BLUEPRINT_THEME.dividerBg,
+    ],
+    ['label rail header', BLUEPRINT_THEME.headerText, BLUEPRINT_THEME.labelRail],
+  ]
+
+  it.each(pairs)('%s clears AA on its own row', (_name, ink, ground) => {
+    expect(
+      contrast(resolve(ink, theme), resolve(ground, theme)),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 describe('lane roles and touchpoint tones stay disjoint', () => {
-  const css = readFileSync(
-    fileURLToPath(new URL('../styles/blueprint.css', import.meta.url)),
-    'utf8',
-  )
+  const css = stylesheet('blueprint.css').text
   const familiesIn = (attr: string) =>
     new Set(
       [
@@ -480,7 +397,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
     expect([...lanes].filter((f) => tones.has(f))).toEqual([])
   })
 
-  it('keeps named paths off the lane families too', () => {
+  it('keeps the open set off the lane families', () => {
     // A custom-named path is drawn as a line across the lanes it touches.
     // Before the open set moved onto the tone families, most such paths
     // rendered in the hue of a lane they crossed.
@@ -493,27 +410,102 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
     expect(pathFamilies.size).toBeGreaterThan(1)
     expect([...pathFamilies].filter((f) => lanes.has(f))).toEqual([])
   })
+
+  /*
+   * The claim this file used to make, and the one it can actually hold.
+   *
+   * The test above was titled "keeps NAMED paths off the lane families" and
+   * sampled forty synthetic names all hard-coded to `kind: 'variant'`.
+   * `getPathColor` short-circuits every other kind straight to
+   * `PATH_TYPE_COLORS`, so the sample could only ever produce the seven open
+   * families — the one set that is disjoint from the lanes by construction.
+   * `happy` and `exception` were structurally unreachable through it, and
+   * `happy` is green against the green `actor` lane.
+   *
+   * Widening the sample fails, and that failure is the finding. The honest fix
+   * is to narrow the claim rather than reshuffle the palette: eight lane
+   * families plus seven touchpoint tones is fifteen, and there is no spare
+   * hue for green or blue to move to. What CAN be held is that the overlap is
+   * exactly this list, known, and drawn at a weight nothing can confuse with a
+   * lane fill.
+   */
+  const KNOWN_LANE_OVERLAP = ['happy', 'variant']
+
+  it('names every path type that shares a lane family', () => {
+    const lanes = familiesIn('lane')
+    const overlapping = Object.entries(PATH_TYPE_COLORS)
+      .filter(([, token]) => lanes.has(/--color-([a-z]+)-/.exec(token)![1]))
+      .map(([type]) => type)
+    expect(overlapping).toEqual(KNOWN_LANE_OVERLAP)
+  })
+
+  it('draws every overlap at a different weight from the lane it crosses', () => {
+    // What makes the collisions survivable: the path is a line at the text
+    // step, the lane is a fill six steps lighter. Same family, nothing like
+    // the same colour.
+    const laneFill = Number(CELL_STEP.surface)
+    for (const type of KNOWN_LANE_OVERLAP) {
+      const step = Number(
+        /--color-[a-z]+-(\d+)/.exec(
+          PATH_TYPE_COLORS[type as keyof typeof PATH_TYPE_COLORS],
+        )![1],
+      )
+      expect(step).toBeGreaterThan(laneFill)
+    }
+  })
+
+  /*
+   * The constraint nobody had written down: the palette is FULL.
+   *
+   * Eight families to lanes, seven to touchpoint tones, fifteen in all and one
+   * spare. It is invisible until someone tries to add a tenth lane and finds
+   * there is nowhere for it to go — and it is the reason the fix above is a
+   * narrowed claim rather than a reallocation.
+   */
+  it('states its own allocation, so a lane with no hue fails before it is drawn', () => {
+    const lanes = familiesIn('lane')
+    const tones = familiesIn('tone')
+    expect(lanes.size).toBe(8)
+    expect(tones.size).toBe(7)
+    expect(new Set([...lanes, ...tones]).size).toBe(15)
+  })
 })
 
-describe('interaction states', () => {
-  const css = readFileSync(
-    fileURLToPath(new URL('../styles/blueprint.css', import.meta.url)),
-    'utf8',
-  )
-  /** Every `[data-blueprint-lane]` rule, as role → { property: family-step }. */
-  const laneRules = [
-    ...css.matchAll(/\[data-blueprint-lane='([a-z-]+)'\] \{([^}]*)\}/g),
+/*
+ * Lanes AND touchpoint tones. The tones used to get set membership and a
+ * `size > 0` guard while the lanes got a completeness check plus hover,
+ * pressed, ring and text contrast in both themes — and the gap was
+ * structural, not incidental: the regex below matched
+ * `[data-blueprint-lane=…]` only, so all seven tones were excluded from every
+ * contrast assertion in the file. Seven of our fifteen allocated families were
+ * exempt from every check. They set the same seven properties from the same
+ * ramps and render as cell surfaces exactly the way lanes do; there was never
+ * a reason beyond the shape of one regex.
+ */
+describe.each([
+  ['lane', 8],
+  ['tone', 7],
+] as const)('interaction states: %s', (attr, expectedCount) => {
+  const css = stylesheet('blueprint.css').text
+  /** Every `[data-blueprint-*]` rule, as role → { property: family-step }. */
+  const roleRules = [
+    ...css.matchAll(
+      new RegExp(`\\[data-blueprint-${attr}='([a-z-]+)'\\] \\{([^}]*)\\}`, 'g'),
+    ),
   ].map(([, role, body]) => ({
     role,
     props: Object.fromEntries(
-      [...body.matchAll(/(--[a-z-]+-blueprint-cell[a-z-]*):\s*var\(--color-([a-z]+-\d+)\)/g)]
-        .map(([, prop, token]) => [prop, token]),
+      [
+        ...body.matchAll(
+          /(--[a-z-]+-blueprint-cell[a-z-]*):\s*var\(--color-([a-z]+-\d+)\)/g,
+        ),
+      ].map(([, prop, token]) => [prop, token]),
     ) as Record<string, string>,
   }))
 
-  // Every property a lane role must define. Kept in step with the consumers:
-  // a token nothing reads does not belong on the list, because then the test
-  // is asserting the stylesheet against itself rather than against the app.
+  // Every property a role must define. Kept in step with the consumers: a
+  // token nothing reads does not belong on the list, because then the test is
+  // asserting the stylesheet against itself rather than against the app.
   const REQUIRED = [
     '--background-blueprint-cell',
     '--background-blueprint-cell-origin',
@@ -524,9 +516,11 @@ describe('interaction states', () => {
     '--foreground-blueprint-cell',
   ]
 
-  it('defines every state on every lane role', () => {
-    expect(laneRules).toHaveLength(8)
-    for (const { role, props } of laneRules) {
+  it('defines every state on every role', () => {
+    // The count is asserted so a role added to the type without a CSS block
+    // fails here rather than rendering an unstyled row.
+    expect(roleRules).toHaveLength(expectedCount)
+    for (const { role, props } of roleRules) {
       for (const key of REQUIRED) {
         expect(`${role}:${key}`).toBe(props[key] ? `${role}:${key}` : 'MISSING')
       }
@@ -534,28 +528,36 @@ describe('interaction states', () => {
   })
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
-    it.each(laneRules.map((r) => [r.role, r] as const))(
+    it.each(roleRules.map((r) => [r.role, r] as const))(
       '%s: hover and pressed each move further from rest',
       (_role, { props }) => {
         const at = (key: string) =>
           THEMES[theme].get(props[key]) as [number, number, number]
         const rest = at('--background-blueprint-cell')
         // A state nobody can see is not a state.
-        expect(contrast(rest, at('--background-blueprint-cell-hover'))).toBeGreaterThan(1.03)
+        expect(
+          contrast(rest, at('--background-blueprint-cell-hover')),
+        ).toBeGreaterThan(1.03)
         expect(
           contrast(rest, at('--background-blueprint-cell-pressed')),
-        ).toBeGreaterThan(contrast(rest, at('--background-blueprint-cell-hover')))
+        ).toBeGreaterThan(
+          contrast(rest, at('--background-blueprint-cell-hover')),
+        )
       },
     )
 
-    it.each(laneRules.map((r) => [r.role, r] as const))(
+    it.each(roleRules.map((r) => [r.role, r] as const))(
       '%s: text stays legible on the hover and pressed surfaces too',
       (_role, { props }) => {
         const at = (key: string) =>
           THEMES[theme].get(props[key]) as [number, number, number]
         const text = at('--foreground-blueprint-cell')
-        expect(contrast(text, at('--background-blueprint-cell-hover'))).toBeGreaterThanOrEqual(4.5)
-        expect(contrast(text, at('--background-blueprint-cell-pressed'))).toBeGreaterThanOrEqual(4.5)
+        expect(
+          contrast(text, at('--background-blueprint-cell-hover')),
+        ).toBeGreaterThanOrEqual(4.5)
+        expect(
+          contrast(text, at('--background-blueprint-cell-pressed')),
+        ).toBeGreaterThanOrEqual(4.5)
       },
     )
   })

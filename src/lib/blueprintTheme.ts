@@ -52,7 +52,23 @@ export const BLUEPRINT_THEME = {
   labelRail: 'var(--color-slate-500)',
   canvasBorder: 'var(--color-slate-700)',
   divider: 'var(--color-slate-800)',
-  dividerLabel: 'var(--color-gray-900)',
+  /*
+   * The divider caption's ink, and it is a TEXT step for that reason.
+   *
+   * This was step 900 — Radix's low-contrast *solid* step, not a text step —
+   * set on an uppercase badge at the bottom of the type scale, rendered
+   * directly on the `dividerBg` row. It measured 2.64:1 in light and 2.74:1 in
+   * dark against the 4.5:1 that type this size requires. Step 1100, the
+   * obvious next rung, does not clear it either: 4.11:1 in light. Step 1200 is
+   * the smallest rung that clears AA in both themes (14.65 / 11.61), and
+   * `palette.test.ts` measures the pair rather than trusting the step number.
+   *
+   * It survived because every contrast assertion in this system used to
+   * compare two halves of the SAME primitive family, and this pair is a gray
+   * ink on a slate ground. A guard samples the region where its property
+   * already holds unless something makes it look elsewhere.
+   */
+  dividerLabel: 'var(--color-gray-1200)',
   /** Figma-style interaction / visibility line badge. */
   dividerBadgeBg: 'var(--color-slate-1200)',
   dividerBg: 'var(--color-slate-500)',

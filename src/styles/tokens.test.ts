@@ -1,70 +1,60 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import {
+  consumers,
+  declarationsIn,
+  declaredNames,
+  dial,
+  namesIn,
+  resolveValue,
+  rulesDeclaring,
+  stylesheet,
+  winningDeclaration,
+} from '@/lib/tokenModel'
 
 /**
- * Token drift guard for the ported design-system foundation. The app
- * resolves every colour through `var()`, so an accidentally deleted or
- * renamed token fails silently in the browser (the property just doesn't
- * apply). This suite parses the stylesheets directly:
+ * Token drift guard for the ported design-system foundation. The app resolves
+ * every colour through `var()`, so a deleted or renamed token fails silently
+ * in the browser — the property simply does not apply. These are the rules
+ * that catch that:
  *
- *  - every bare `var(--x)` reference in any stylesheet must resolve to a
- *    declaration somewhere in src/styles/,
- *  - every custom-property reference in a component must resolve to a
- *    stylesheet declaration, an inline declaration in TS, or a runtime
- *    property injected by a library (allowlisted by prefix),
- *  - the theme dial set the semantic layer derives from must exist in both
- *    themes, and every blueprint component token a lane rule promises must
- *    actually be declared for every lane role,
- *  - the motion tokens in animations.css must agree with lib/motion.ts.
+ *  - every bare `var(--x)` in a stylesheet resolves to a declaration
+ *    somewhere, and so does every custom-property reference in source,
+ *  - the theme dials the semantic layer derives from exist in both themes and
+ *    resolve to a number under each,
+ *  - every semantic token is declared, at a scope a subtree can re-derive at,
+ *  - the blueprint's per-role component tokens hand over token references and
+ *    nothing else, and stay unreachable at the root so their fallback arm
+ *    remains the default,
+ *  - the motion tokens in animations.css agree with `lib/motion.ts`.
+ *
+ * What changed here is not the rules, it is the reader. This file used to open
+ * every stylesheet itself, concatenate them, and sweep the result for
+ * `--name:` — which can say whether a name is written down somewhere and can
+ * never say what it resolves to, under which theme, at which scope. Two of the
+ * rules below could only be approximated on that reading, and one of them was
+ * quietly dead. The sample now comes from `tokenModel` (ADR 6), so widening it
+ * widens every rule that asks.
  */
 
-const STYLES_DIR = fileURLToPath(new URL('.', import.meta.url))
-const SRC_DIR = fileURLToPath(new URL('..', import.meta.url))
-
-function walk(dir: string, ext: string[]): string[] {
-  const out: string[] = []
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name)
-    if (entry.isDirectory()) out.push(...walk(path, ext))
-    else if (ext.some((e) => entry.name.endsWith(e))) out.push(path)
-  }
-  return out
-}
-
-const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
-
-const CSS_FILES = walk(STYLES_DIR, ['.css'])
-const CSS = CSS_FILES.map((f) => stripComments(readFileSync(f, 'utf8'))).join(
-  '\n',
-)
-const TS = walk(SRC_DIR, ['.ts', '.tsx'])
-  .filter((f) => !f.endsWith('.test.ts') && !f.endsWith('.test.tsx'))
-  .map((f) => readFileSync(f, 'utf8'))
-  .join('\n')
-
-/** Custom properties declared anywhere in the stylesheets (including inside
- * `@theme` blocks — those teach Tailwind the name and, for plain `@theme`,
- * emit the property). */
-const cssDeclarations = new Set(
-  [...CSS.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]),
-)
-
-/** Custom properties declared from TS: inline style objects
- * (`'--x': value`), Tailwind arbitrary properties (`[--x:value]`),
- * imperative `setProperty('--x', …)` calls, and the named constants those
- * calls go through (`const FOO_VAR = '--x'`) — a token set through a named
- * constant is still declared by this app, and reading only literal
- * `setProperty` calls would miss every one of them. */
-const tsDeclarations = new Set([
-  ...[...TS.matchAll(/['"](--[\w-]+)['"]\s*:/g)].map((m) => m[1]),
-  ...[...TS.matchAll(/\[(--[\w-]+):/g)].map((m) => m[1]),
-  ...[...TS.matchAll(/setProperty\(\s*['"](--[\w-]+)['"]/g)].map((m) => m[1]),
-  ...[...TS.matchAll(/=\s*['"](--[\w-]+)['"]/g)].map((m) => m[1]),
-])
-
-/** Properties injected at runtime by libraries (never declared in source). */
+/**
+ * Properties injected at runtime by a library, never declared in this tree.
+ *
+ * Two shapes, and the difference is not cosmetic. The PREFIXES are namespaces
+ * a library owns wholesale — Tailwind's internals, the drawer's stacking
+ * state — where enumerating the members would be a list nobody could maintain.
+ * The NAMES are the Base UI positioner variables, which are a fixed published
+ * set, so they are named individually: a typo in `--anchor-width` should fail
+ * this rule rather than slip through a prefix that happens to cover it.
+ *
+ * The Base UI list arrived with the fix to this file's second rule. That rule
+ * meant to cover Tailwind's bare-value shorthand — `w-(--anchor-width)`,
+ * `origin-(--transform-origin)` — and its pattern required a LETTER before
+ * the parenthesis, where every such utility ends in a hyphen. It therefore
+ * matched nothing the `var()` pattern beside it had not already matched, and
+ * nineteen references in eight files were outside every rule in this file for
+ * as long as it has existed. They are inside it now, and this is what they
+ * resolve against.
+ */
 const RUNTIME_PREFIXES = [
   '--tw-', // Tailwind internal
   '--drawer-', // shadcn/base-ui drawer state
@@ -74,42 +64,71 @@ const RUNTIME_PREFIXES = [
   '--radix-', // radix primitives
 ]
 
-function resolves(token: string): boolean {
-  return (
-    cssDeclarations.has(token) ||
-    tsDeclarations.has(token) ||
-    RUNTIME_PREFIXES.some((p) => token.startsWith(p))
-  )
-}
+const RUNTIME_NAMES = [
+  // @base-ui/react positioner and popup measurements, written onto the
+  // positioner element by the primitive itself. See its `*CssVars` modules.
+  '--anchor-width',
+  '--available-width',
+  '--available-height',
+  '--transform-origin',
+  '--positioner-width',
+  '--positioner-height',
+  '--popup-width',
+  '--popup-height',
+  '--collapsible-panel-height',
+]
 
-/** Prefixes left behind when a token name is built by interpolation. */
+/**
+ * Prefixes left behind when a token name is built by interpolation.
+ *
+ * `var(--color-${family}-${step})` arrives here truncated at the
+ * interpolation. The families and steps it composes from are covered by
+ * `palette.test.ts`, which resolves the real token against `colors.css`.
+ */
 const COMPOSED_TOKEN_PREFIXES = ['--color-']
+
+const declared = declaredNames()
+
+const resolves = (name: string): boolean =>
+  declared.has(name) ||
+  RUNTIME_NAMES.includes(name) ||
+  RUNTIME_PREFIXES.some((prefix) => name.startsWith(prefix))
+
+const report = (entries: ReturnType<typeof consumers>) => [
+  ...new Set(
+    entries.map((entry) => `${entry.file}:${entry.line} ${entry.name}`),
+  ),
+]
 
 describe('token resolution', () => {
   it('resolves every bare var(--x) reference in the stylesheets', () => {
-    const unresolved = new Set(
-      [...CSS.matchAll(/var\((--[\w-]+)\)/g)]
-        .map((m) => m[1])
-        .filter((t) => !resolves(t)),
+    // Bare, because `var(--x, 12px)` still renders when nothing declares
+    // `--x` — the fallback arm is the value. The model records the comma, so
+    // this rule can say which of the two it means instead of matching on the
+    // shape of the closing parenthesis.
+    const unresolved = consumers().filter(
+      (entry) =>
+        entry.kind === 'stylesheet' &&
+        !entry.hasFallback &&
+        !resolves(entry.name),
     )
-    expect([...unresolved]).toEqual([])
+    expect(report(unresolved)).toEqual([])
   })
 
-  it('resolves every custom-property reference in components', () => {
-    const refs = new Set([
-      // var(--x) inside class strings and style values
-      ...[...TS.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]),
-      // Tailwind shorthand: duration-(--motion-micro), w-(--sidebar-width)…
-      ...[...TS.matchAll(/[a-z]\((--[\w-]+)\)/g)].map((m) => m[1]),
-    ])
-    const unresolved = [...refs]
-      // Names composed at runtime — `var(--color-${family}-${step})` — arrive
-      // here truncated at the interpolation. The families and steps they
-      // compose from are covered by palette.test.ts, which resolves the real
-      // token against colors.css.
-      .filter((token) => !COMPOSED_TOKEN_PREFIXES.includes(token))
-      .filter((t) => !resolves(t))
-    expect(unresolved).toEqual([])
+  it('resolves every custom-property reference in source', () => {
+    // Both ways a component can reach one: `var(--x)` inside a class string or
+    // a style value, and Tailwind v4's bare-value shorthand, where the utility
+    // itself stands in for `var`. Fallbacks are NOT excused here — a component
+    // naming a token this app owns should name one that exists, and the
+    // blueprint cell tokens, whose fallback arm is deliberately the default
+    // state, are declared per role in `blueprint.css` either way.
+    const unresolved = consumers().filter(
+      (entry) =>
+        entry.kind === 'source' &&
+        !COMPOSED_TOKEN_PREFIXES.includes(entry.name) &&
+        !resolves(entry.name),
+    )
+    expect(report(unresolved)).toEqual([])
   })
 })
 
@@ -118,12 +137,6 @@ describe('token resolution', () => {
  * must be declared in both theme files or a whole derivation chain
  * silently collapses in one mode.
  * ------------------------------------------------------------------ */
-const LIGHT = stripComments(
-  readFileSync(join(STYLES_DIR, 'themes/light.css'), 'utf8'),
-)
-const DARK = stripComments(
-  readFileSync(join(STYLES_DIR, 'themes/dark.css'), 'utf8'),
-)
 
 const DIALS = [
   '--hue',
@@ -193,58 +206,81 @@ const SEMANTIC_TOKENS = [
   '--chart-5',
 ]
 
-const SEMANTIC = stripComments(
-  readFileSync(join(STYLES_DIR, 'semantic.css'), 'utf8'),
-)
-
 describe('theme dials and semantic layer', () => {
-  it('declares every dial in both themes', () => {
-    for (const dial of DIALS) {
-      expect(LIGHT.includes(`${dial}:`), `light missing ${dial}`).toBe(true)
-      expect(DARK.includes(`${dial}:`), `dark missing ${dial}`).toBe(true)
-    }
+  it('declares every dial in both theme files', () => {
+    const light = namesIn('themes/light.css')
+    const dark = namesIn('themes/dark.css')
+    expect(DIALS.filter((name) => !light.has(name))).toEqual([])
+    expect(DIALS.filter((name) => !dark.has(name))).toEqual([])
   })
 
+  it.each(['light', 'dark'] as const)(
+    'resolves every dial to a number under %s',
+    (theme) => {
+      // The half the old reading could not do. Presence in a file is not the
+      // same fact as winning at the root: `print.css` restates thirteen of
+      // these inside `@media print`, and `themes/light.css` declares most of
+      // them under a bare `:root` that matches under dark as well.
+      const broken = DIALS.filter((name) => {
+        try {
+          return !Number.isFinite(dial(name, theme))
+        } catch {
+          return true
+        }
+      })
+      expect(broken).toEqual([])
+    },
+  )
+
   it('declares --radius in the light theme root', () => {
-    expect(LIGHT).toMatch(/--radius:\s*[\d.]+rem/)
+    expect(winningDeclaration('--radius', 'light')?.file).toBe(
+      'themes/light.css',
+    )
+    expect(resolveValue('--radius', 'light')).toMatch(/^[\d.]+rem$/)
   })
 
   it('derives every semantic token in semantic.css', () => {
-    for (const token of SEMANTIC_TOKENS) {
-      expect(SEMANTIC.includes(`${token}:`), `semantic missing ${token}`).toBe(
-        true,
-      )
-    }
+    const semantic = namesIn('semantic.css')
+    expect(SEMANTIC_TOKENS.filter((name) => !semantic.has(name))).toEqual([])
   })
 
-  it('re-derives under .dark and .light subtree scopes', () => {
-    // Custom properties resolve var() at computed-value time, before
-    // inheritance — a subtree that re-declares a dial (presentation stage)
-    // needs the derivations re-declared at that scope.
-    expect(SEMANTIC).toMatch(/:root\s*,\s*\.dark\s*,\s*\.light\s*\{/)
+  it('re-derives every semantic token under .dark and .light subtree scopes', () => {
+    // Custom properties resolve `var()` at computed-value time, before
+    // inheritance — a subtree that re-declares a dial (the presentation stage)
+    // needs the derivations re-declared at that scope, or it inherits the
+    // ancestor's already-computed colours.
+    //
+    // The old reading of this rule checked that a `:root, .dark, .light` block
+    // existed SOMEWHERE in the file. Now that the model records the selector
+    // each declaration sits under, the rule can ask the question it always
+    // meant: is every one of these tokens inside such a block.
+    const scoped = new Map(
+      declarationsIn('semantic.css').map((entry) => [entry.name, entry.selector]),
+    )
+    const misscoped = SEMANTIC_TOKENS.filter((name) => {
+      const selector = scoped.get(name) ?? ''
+      return !(
+        selector.includes(':root') &&
+        selector.includes('.dark') &&
+        selector.includes('.light')
+      )
+    })
+    expect(misscoped).toEqual([])
   })
 })
 
 /* ------------------------------------------------------------------ *
- * Blueprint component tokens. A cell's resting colour comes from its LANE,
- * which comes from data, so blueprint.css hands the value to the shared
- * rules through `--{property}-blueprint-{part}` custom properties declared
- * per `[data-blueprint-lane]`. Nothing type-checks that contract — a lane
- * that declares six of the seven just renders a fallback — so it is checked
- * here: every lane role promises the same set.
+ * Blueprint component tokens. A cell's resting colour comes from its LANE or
+ * its touchpoint TONE, which comes from data, so blueprint.css hands the value
+ * to the shared rules through `--{property}-blueprint-{part}` custom
+ * properties declared per role. Nothing type-checks that contract.
+ *
+ * Which roles exist, and that each declares the full set, is asserted in
+ * `palette.test.ts` — beside the contrast measurements that make the same
+ * parse worth doing — and deliberately not restated here. What lives here is
+ * the pair of rules about the VALUES those declarations carry, which is a
+ * different question from which of them are present.
  * ------------------------------------------------------------------ */
-const BLUEPRINT = stripComments(
-  readFileSync(join(STYLES_DIR, 'blueprint.css'), 'utf8'),
-)
-
-/** The per-lane declaration blocks, keyed by the lane role they style. */
-const LANE_BLOCKS = new Map(
-  [
-    ...BLUEPRINT.matchAll(
-      /\[data-blueprint-lane='([a-z-]+)'\]\s*\{([^}]*)\}/g,
-    ),
-  ].map(([, role, body]) => [role, body]),
-)
 
 const CELL_TOKENS = [
   '--background-blueprint-cell',
@@ -256,87 +292,77 @@ const CELL_TOKENS = [
   '--foreground-blueprint-cell',
 ]
 
+const ROLE_SELECTOR = /^\[data-blueprint-(?:lane|tone)='[a-z-]+'\]$/
+
 describe('blueprint component tokens', () => {
-  it('styles every lane role the cell styling module knows about', async () => {
-    const { CELL_STEP } = await import('@/lib/blueprintCellStyle')
-    expect(CELL_STEP).toBeDefined()
-    expect(LANE_BLOCKS.size).toBeGreaterThanOrEqual(8)
-  })
-
-  it('declares the full cell token set on every lane', () => {
-    for (const [role, body] of LANE_BLOCKS) {
-      for (const token of CELL_TOKENS) {
-        expect(
-          body.includes(`${token}:`),
-          `lane '${role}' is missing ${token}`,
-        ).toBe(true)
-      }
-    }
-  })
-
   it('assigns only token references, never a raw colour', () => {
     // The whole point of the tier: a component token hands over a value that
     // was chosen in colors.css or semantic.css. A literal here would be a
     // colour invented at the consumer, invisible to both themes' palettes.
-    for (const [role, body] of LANE_BLOCKS) {
-      for (const [, token, value] of body.matchAll(
-        /(--[\w-]+):\s*([^;]+);/g,
-      )) {
-        expect(
-          value.trim().startsWith('var(') ||
-            value.trim().startsWith('color-mix('),
-          `lane '${role}' assigns a literal to ${token}: ${value.trim()}`,
-        ).toBe(true)
-      }
-    }
+    //
+    // Every role block, lanes and touchpoint tones alike. The old reading
+    // matched `[data-blueprint-lane]` only, so the seven tone blocks — which
+    // set the same seven properties from the same ramps — were outside it.
+    const literals = declarationsIn('blueprint.css')
+      .filter((entry) => ROLE_SELECTOR.test(entry.selector))
+      .filter((entry) => !/^(?:var\(|color-mix\()/.test(entry.value))
+      .map((entry) => `${entry.selector} ${entry.name}: ${entry.value}`)
+    expect(literals).toEqual([])
   })
 
-  it('declares no blueprint cell token at :root', () => {
-    // Every consumer reads these as `var(--…-blueprint-…, fallback)`, and the
-    // fallback arm IS the default state. A root declaration would make the
-    // property always resolve, so the default would become unreachable.
-    const rootBlocks = [...BLUEPRINT.matchAll(/:root\s*\{([^}]*)\}/g)]
-    for (const [, body] of rootBlocks) {
-      for (const token of CELL_TOKENS) {
-        expect(body.includes(`${token}:`), `${token} declared at :root`).toBe(
-          false,
-        )
-      }
-    }
-  })
+  it.each(['light', 'dark'] as const)(
+    'leaves no blueprint cell token reachable at the root under %s',
+    (theme) => {
+      // Every consumer reads these as `var(--…-blueprint-…, fallback)`, and
+      // the fallback arm IS the default state. A declaration that won at the
+      // root would make the property always resolve, so the default would
+      // become unreachable.
+      //
+      // Asked of the cascade rather than of one `:root { … }` block, which is
+      // what the old reading could see: a declaration under `.dark`, or under
+      // `html.light`, or in a later sheet, would have passed that check and
+      // broken the app in exactly the way it was written to prevent.
+      const reachable = CELL_TOKENS.filter((name) =>
+        winningDeclaration(name, theme),
+      )
+      expect(reachable).toEqual([])
+    },
+  )
 })
 
 /* ------------------------------------------------------------------ *
  * Motion vocabulary: animations.css and lib/motion.ts state the same
  * numbers; change both together or this fails.
  * ------------------------------------------------------------------ */
-const ANIMATIONS = stripComments(
-  readFileSync(join(STYLES_DIR, 'animations.css'), 'utf8'),
-)
+
+const MOTION_TOKENS = [
+  '--motion-structural',
+  '--motion-fade',
+  '--motion-fade-stagger',
+  '--motion-camera',
+  '--motion-micro',
+]
 
 describe('motion tokens', () => {
-  const pairs: Array<[string, RegExp]> = [
-    ['--motion-structural', /--motion-structural:\s*(\d+)ms/],
-    ['--motion-fade', /--motion-fade:\s*(\d+)ms/],
-    ['--motion-fade-stagger', /--motion-fade-stagger:\s*(\d+)ms/],
-    ['--motion-camera', /--motion-camera:\s*(\d+)ms/],
-    ['--motion-micro', /--motion-micro:\s*(\d+)ms/],
-  ]
-
-  it('declares all five motion durations', () => {
-    for (const [token, re] of pairs) {
-      expect(ANIMATIONS, `animations.css missing ${token}`).toMatch(re)
+  it('declares all five motion durations in animations.css', () => {
+    for (const name of MOTION_TOKENS) {
+      const rules = rulesDeclaring(name)
+      expect(rules.map((rule) => rule.file), name).toEqual(['animations.css'])
+      expect(rules[0].value, name).toMatch(/^\d+ms$/)
     }
   })
 
   it('agrees with lib/motion.ts', async () => {
     const motion = await import('../lib/motion')
-    const value = (re: RegExp) => Number(ANIMATIONS.match(re)?.[1])
-    expect(value(pairs[0][1])).toBe(motion.MOTION_STRUCTURAL_MS)
-    expect(value(pairs[1][1])).toBe(motion.MOTION_FADE_MS)
-    expect(value(pairs[2][1])).toBe(motion.MOTION_FADE_STAGGER_MS)
-    expect(value(pairs[3][1])).toBe(motion.MOTION_CAMERA_MS)
-    expect(value(pairs[4][1])).toBe(motion.MOTION_MICRO_MS)
-    expect(ANIMATIONS).toContain(motion.MOTION_STRUCTURAL_EASE)
+    const ms = (name: string) =>
+      Number(/^(\d+)ms$/.exec(rulesDeclaring(name)[0].value)![1])
+    expect(ms('--motion-structural')).toBe(motion.MOTION_STRUCTURAL_MS)
+    expect(ms('--motion-fade')).toBe(motion.MOTION_FADE_MS)
+    expect(ms('--motion-fade-stagger')).toBe(motion.MOTION_FADE_STAGGER_MS)
+    expect(ms('--motion-camera')).toBe(motion.MOTION_CAMERA_MS)
+    expect(ms('--motion-micro')).toBe(motion.MOTION_MICRO_MS)
+    expect(stylesheet('animations.css').text).toContain(
+      motion.MOTION_STRUCTURAL_EASE,
+    )
   })
 })

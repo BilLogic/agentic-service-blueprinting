@@ -16,9 +16,16 @@
      themes/light.css. The brand hue is mode-invariant, so these two must
      move together. */
   --hue: 159;
-  /* `--surface-hue` is left at its `var(--hue)` default; at chroma 0 the dark
-     surfaces are exact greys. A branded fork raises this to let them carry a
-     trace of the brand hue. */
+  /* `--surface-hue` is not restated here, and what that MEANS is the warm 34
+     from themes/light.css — not semantic.css's `var(--hue)` default. That
+     file declares it under `:root, .light`, and a bare `:root` matches under
+     dark too, so with nothing later to take it back the dark surfaces run on
+     light's warm-grey hue. Moot while `--chroma` is 0, where every surface is
+     an exact grey whatever the hue says; a branded fork that wants the dark
+     surfaces on a different tint from light's has to declare the dial here.
+     (The cascade is what says this, not the file — `tokenModel.resolveValue`
+     is where to check it, and it is what corrected the claim this comment
+     used to make.) */
   --chroma: 0;
   --surface: 0.19;
   --elevation-step: 0.025;
