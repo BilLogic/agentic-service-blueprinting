@@ -3,6 +3,17 @@
   "private": true,
   "version": "1.6.0",
   "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./styles.css": "./src/styles/tailwind.config.css",
+    "./*": "./*"
+  },
   "scripts": {
     "predev": "node scripts/sync-cover-assets.mjs",
     "dev": "vite",
