@@ -10,7 +10,7 @@ import {
  * that is, and what the registry says this one IS.
  *
  * Two sections, and they are the reason this is a card rather than a sentence.
- * The name alone left a reader knowing that `Regular Tutor` owns the lane and
+ * The name alone left a reader knowing that `Blueprint owner` owns the lane and
  * not knowing that "Staff" means somebody inside the organisation who can own
  * one at all — a distinction the schema turns on, because a `team` reaches a
  * lane through `owner_team` and is never its stakeholder. Category above
@@ -19,8 +19,8 @@ import {
  * The instance definition is read from `stakeholders.summary` and is never
  * copied onto the thing that displays it. That is the whole reason the badge
  * takes a stakeholder rather than a string: a stakeholder is service-level and
- * owns many rows — `Regular Tutor` owns 37 lanes — so a copy per row would be
- * 37 chances to disagree with the one place the definition is authored.
+ * owns many rows — one actor owning 37 lanes is ordinary — so a copy per row
+ * would be 37 chances to disagree with the one place the definition is authored.
  *
  * The definition hangs off the badge itself rather than an ⓘ beside it, for
  * the reason `PanelKindBadge` was built: the badge IS the name whose meaning

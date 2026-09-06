@@ -8,7 +8,7 @@ import { createContext, useContext } from 'react'
  * `BlueprintCellDetailProvider`'s `enabled` cannot answer this. It is a single
  * provider-wide boolean mounted once above the whole canvas, so focusing one
  * scenario turned the axis headers live on every board still mounted: with
- * Standard Scheduling focused, 176 lane headers and 125 step headers across 23
+ * one scenario focused, 176 lane headers and 125 step headers across 23 other
  * boards wore hover, a focus ring and a pointer. Clicking one on a band the
  * reader had never chosen opened a panel reading "Nothing recorded for this
  * lane yet." — an affordance offering emptiness on somebody else's board.

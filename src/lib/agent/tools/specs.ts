@@ -254,7 +254,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'list_stakeholders',
     description:
-      "The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `tutor` and `Regular Tutor` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog; by default this shows the actors the active service's lanes actually pick, service:\"all\" the whole roster.",
+      "The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `owner` and `Blueprint owner` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog; by default this shows the actors the active service's lanes actually pick, service:\"all\" the whole roster.",
     parameters: {
       type: 'object',
       properties: { service: SERVICE_SCOPE_PARAM },
@@ -267,7 +267,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: {
       type: 'object',
       properties: {
-        name: str('How this actor is written on the canvas, e.g. "Lead Tutor"'),
+        name: str('How this actor is written on the canvas, e.g. "Blueprint owner"'),
         kind: str('recipient | staff | partner | provider'),
         summary: str('Who they are, in one line; omit for none'),
         aliases: {
@@ -768,7 +768,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         cell_id: str('Cell the source supports'),
         kind: str('interview | survey | analytics | doc | meeting | decision | observation | other'),
-        title: str('What the source IS, e.g. "Tutor onboarding interview #4" — required'),
+        title: str('What the source IS, e.g. "Onboarding interview #4" — required'),
         ref: str('Link or locator, e.g. a URL or doc name; omit if none'),
         excerpt: str('The quoted passage that carries the claim; omit if none'),
       },

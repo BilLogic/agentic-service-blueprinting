@@ -16,7 +16,7 @@ export type LaneSpec = {
   /**
    * Every lane in this scenario carrying the same label — the rows a save
    * writes to. A lane belongs to ONE path, so a scenario with four paths has
-   * four "Regular Tutor" lanes and editing the one you clicked would leave the
+   * four "Blueprint owner" lanes and editing the one you clicked would leave the
    * other three saying something else.
    */
   siblingLaneIds: string[]

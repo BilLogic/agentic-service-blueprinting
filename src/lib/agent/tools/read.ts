@@ -172,8 +172,8 @@ export async function listLanes(client: Client): Promise<string> {
  *
  * The registry is the answer to "who is this lane for?" and "who receives
  * this value?" — one list, with the other spellings each name has been
- * written as. Read it before inventing an audience: `tutor` and `Regular
- * Tutor` are one person, and the aliases column is where that is recorded.
+ * written as. Read it before inventing an audience: `owner` and `Blueprint
+ * owner` are one person, and the aliases column is where that is recorded.
  *
  * The cast is a DEPLOYMENT-LEVEL catalog (ADR 0003) — no stakeholder carries a
  * `service_id`. Scoped to one service, membership is IMPLICIT and derived by
