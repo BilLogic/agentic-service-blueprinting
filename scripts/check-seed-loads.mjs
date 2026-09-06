@@ -108,15 +108,13 @@ export const POPULATED = [
  * inserted around) would not.
  *
  * `@registry` and `@placement` are the touchpoint registry the same way the
- * app reaches it (#325). The registry is the SERVICE's — `touchpoints` carries
- * `service_id` — so `useRegistryTouchpoints` resolves a cell's owning service
- * (cell → path → scenario → phase → `service_id`) and lists that service's
- * touchpoints; `@registry` runs exactly that per-service join, so the read that
- * feeds the registry UI is proven to reach a cell's registry as anon, scoped to
- * the service that owns it. `@placement` is the other half — a cell's placement
- * joined to its registry row, the name / kind / icon a touchpoint cell renders
+ * app reaches it (#325). The registry is the DEPLOYMENT's (ADR 0003), so
+ * `useRegistryTouchpoints` reads `touchpoints` unscoped and `@registry` is the
+ * same unscoped read: non-zero proves the anon key sees the entries a panel
+ * offers to link to. `@placement` is the other half — a cell's placement joined
+ * to its registry row, the name / kind / icon a touchpoint cell renders
  * (`cellTouchpointsFromRows`). A deployment's touchpoints render through this
- * template's registry exactly when both joins return rows to the deployed key.
+ * template's registry exactly when both reads return rows to the deployed key.
  */
 export const RENDER_READS = {
   '@grid':
@@ -135,16 +133,10 @@ export const RENDER_READS = {
   // is the deployed key seeing it — the value a deployment renders off the row
   // rather than a tool name matched against a table baked into code.
   '@icon': `select count(*) from public.touchpoints where icon_url = '${'/touchpoint-logos/example-logo.png'}'`,
-  // The registry a cell can link to, resolved per-service the way the hook does:
-  // a cell reaches its service through its path, and the registry is that
-  // service's touchpoints. Non-zero proves the anon key can walk the whole
-  // scope and read the touchpoints filtered by the service it lands on.
-  '@registry':
-    'select count(*) from public.cells c ' +
-    'join public.paths p on p.id = c.path_id ' +
-    'join public.scenarios sc on sc.id = p.scenario_id ' +
-    'join public.phases ph on ph.id = sc.phase_id ' +
-    'join public.touchpoints tp on tp.service_id = ph.service_id',
+  // The registry a cell can link to, read the way the hook reads it: unscoped,
+  // because no service owns a registry row (ADR 0003). Non-zero proves the anon
+  // key sees the entries the panel offers.
+  '@registry': 'select count(*) from public.touchpoints',
   // A placement joined to its registry row — the name the touchpoint cell shows
   // in the registry's spelling, not the placement's own. The embed the board
   // query names `touchpoints`, run here as the join it compiles to.
@@ -161,7 +153,7 @@ export const RENDER_READS = {
 export const RENDER_READ_NAMES = {
   '@grid': 'the blueprint grid',
   '@hierarchy': 'the service hierarchy',
-  '@registry': 'the touchpoint registry a cell links to',
+  '@registry': 'the touchpoint registry a panel offers to link to',
   '@placement': "a cell's touchpoint placement",
 }
 

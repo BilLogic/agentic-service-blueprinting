@@ -1658,7 +1658,6 @@ CREATE FUNCTION public.set_placement_touchpoint(p_placement_id uuid, p_touchpoin
     AS $$
 declare
   v_row public.cell_touchpoints;
-  v_service_id uuid;
 begin
   if not public.is_service_account() then
     raise exception 'This account cannot edit the blueprint' using errcode = '42501';
@@ -1673,15 +1672,11 @@ begin
   end if;
 
   if p_touchpoint_id is not null then
-    select ph.service_id into v_service_id
-      from public.cells c
-      join public.paths p on p.id = c.path_id
-      join public.scenarios s on s.id = p.scenario_id
-      join public.phases ph on ph.id = s.phase_id
-     where c.id = v_row.cell_id;
+    -- The registry is the deployment's (ADR 0003), so an entry is in it
+    -- or it is not; there is no service to scope the lookup by.
     if not exists (select 1 from public.touchpoints tp
-                    where tp.id = p_touchpoint_id and tp.service_id = v_service_id) then
-      raise exception 'that touchpoint is not in this service''s registry';
+                    where tp.id = p_touchpoint_id) then
+      raise exception 'that touchpoint is not in the registry';
     end if;
     if exists (select 1 from public.cell_touchpoints x
                 where x.cell_id = v_row.cell_id and x.touchpoint_id = p_touchpoint_id and x.id <> v_row.id) then
@@ -1703,7 +1698,7 @@ $$;
 -- Name: FUNCTION set_placement_touchpoint(p_placement_id uuid, p_touchpoint_id uuid, p_name text); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.set_placement_touchpoint(p_placement_id uuid, p_touchpoint_id uuid, p_name text) IS 'Names a placement''s touchpoint one way — a registry id, or a name the registry lacks — and returns the previous pair, which is the inverse.';
+COMMENT ON FUNCTION public.set_placement_touchpoint(p_placement_id uuid, p_touchpoint_id uuid, p_name text) IS 'Names a placement''s touchpoint one way — an entry in the deployment''s registry, or a name the registry lacks — and returns the previous pair, which is the inverse.';
 
 --
 -- Name: set_updated_at(); Type: FUNCTION; Schema: public; Owner: -
@@ -1858,7 +1853,6 @@ CREATE FUNCTION public.sync_cell_touchpoints(p_cell_id uuid, p_names text[]) RET
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
 declare
-  v_service_id uuid;
   v_lane_role  text;
   v_bearing    boolean;
   v_removed    jsonb;
@@ -1868,8 +1862,8 @@ begin
     raise exception 'This account cannot edit the blueprint' using errcode = '42501';
   end if;
 
-  select ph.service_id, ln.lane_role
-    into v_service_id, v_lane_role
+  select ln.lane_role
+    into v_lane_role
     from public.cells c
     join public.lanes ln on ln.id = c.lane_id
     join public.paths p on p.id = c.path_id
@@ -1877,7 +1871,7 @@ begin
     join public.phases ph on ph.id = s.phase_id
    where c.id = p_cell_id;
 
-  if v_service_id is null then
+  if not found then
     raise exception 'cell % is not attached to a service', p_cell_id;
   end if;
 
@@ -1900,10 +1894,10 @@ begin
        group by name
     ) deduped;
 
-  insert into public.touchpoints (service_id, name, origin)
-  select v_service_id, w.name, 'app'
+  insert into public.touchpoints (name, origin)
+  select w.name, 'app'
     from jsonb_to_recordset(v_wanted) as w(name text, position int)
-  on conflict (service_id, name) do nothing;
+  on conflict (name) do nothing;
 
   -- A name typed back links the name-only row that was keeping its
   -- writing, rather than inserting a second row beside it.
@@ -1913,7 +1907,7 @@ begin
          updated_at    = now()
     from jsonb_to_recordset(v_wanted) as w(name text, position int)
     join public.touchpoints tp
-      on tp.service_id = v_service_id and tp.name = w.name
+      on tp.name = w.name
    where ct.cell_id = p_cell_id
      and ct.touchpoint_id is null
      and lower(ct.name) = lower(w.name)
@@ -1998,7 +1992,7 @@ begin
   select p_cell_id, tp.id, w.position, 'app'
     from jsonb_to_recordset(v_wanted) as w(name text, position int)
     join public.touchpoints tp
-      on tp.service_id = v_service_id and tp.name = w.name
+      on tp.name = w.name
    where not exists (
      select 1 from public.cell_touchpoints ct
       where ct.cell_id = p_cell_id and ct.touchpoint_id = tp.id
@@ -2012,7 +2006,7 @@ $$;
 -- Name: FUNCTION sync_cell_touchpoints(p_cell_id uuid, p_names text[]); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.sync_cell_touchpoints(p_cell_id uuid, p_names text[]) IS 'Brings a cell''s placements into line with its text. A new name mints a registry row; a name typed back links the name-only row; a removed placement with anything on it becomes name-only, one with nothing is deleted. Returns what it removed, for restore_cell_touchpoints.';
+COMMENT ON FUNCTION public.sync_cell_touchpoints(p_cell_id uuid, p_names text[]) IS 'Brings a cell''s placements into line with its text. A new name mints a registry row for the deployment; a name typed back links the name-only row; a removed placement with anything on it becomes name-only, one with nothing is deleted. Returns what it removed, for restore_cell_touchpoints.';
 
 --
 -- Name: sync_placement_resources(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
@@ -3086,7 +3080,6 @@ COMMENT ON COLUMN public.steps.summary IS 'What this moment is, across every lan
 
 CREATE TABLE public.touchpoints (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    service_id uuid NOT NULL,
     name text NOT NULL,
     kind text DEFAULT 'other'::text NOT NULL,
     summary text,
@@ -3103,7 +3096,13 @@ CREATE TABLE public.touchpoints (
 -- Name: TABLE touchpoints; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.touchpoints IS 'The service''s registry of touchpoints — the apps, documents, channels and things a moment happens through. One row per (service, name); a placement in cell_touchpoints is one use of one at one cell.';
+COMMENT ON TABLE public.touchpoints IS 'The deployment''s registry of touchpoints — the apps, documents, channels and things a moment happens through. One row per name across the whole deployment; a service references an entry, no service owns one (ADR 0003). A placement in cell_touchpoints is one use of one at one cell.';
+
+--
+-- Name: COLUMN touchpoints.name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.name IS 'The identity: unique across the deployment, so a second service reuses an entry by naming the same tool the same way rather than minting its own, and a rename moves the tool everywhere it appears.';
 
 --
 -- Name: COLUMN touchpoints.kind; Type: COMMENT; Schema: public; Owner: -
@@ -3115,7 +3114,7 @@ COMMENT ON COLUMN public.touchpoints.kind IS 'app | document | physical | channe
 -- Name: COLUMN touchpoints.summary; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.touchpoints.summary IS 'What this touchpoint IS, for the service — not what it does at any one cell.';
+COMMENT ON COLUMN public.touchpoints.summary IS 'What this touchpoint IS, for the deployment — not what it does at any one cell.';
 
 --
 -- Name: COLUMN touchpoints.url; Type: COMMENT; Schema: public; Owner: -
@@ -3374,18 +3373,24 @@ ALTER TABLE ONLY public.steps
     ADD CONSTRAINT steps_pkey PRIMARY KEY (id);
 
 --
+-- Name: touchpoints touchpoints_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.touchpoints
+    ADD CONSTRAINT touchpoints_name_key UNIQUE (name);
+
+--
+-- Name: CONSTRAINT touchpoints_name_key ON touchpoints; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON CONSTRAINT touchpoints_name_key ON public.touchpoints IS 'One row per touchpoint name, deployment-wide. Distinct tools take distinct names; an identical name means the identical thing.';
+
+--
 -- Name: touchpoints touchpoints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.touchpoints
     ADD CONSTRAINT touchpoints_pkey PRIMARY KEY (id);
-
---
--- Name: touchpoints touchpoints_service_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.touchpoints
-    ADD CONSTRAINT touchpoints_service_id_name_key UNIQUE (service_id, name);
 
 --
 -- Name: agent_messages_session_idx; Type: INDEX; Schema: public; Owner: -
@@ -3854,13 +3859,6 @@ ALTER TABLE ONLY public.slides
 
 ALTER TABLE ONLY public.steps
     ADD CONSTRAINT steps_scenario_id_fkey FOREIGN KEY (scenario_id) REFERENCES public.scenarios(id) ON DELETE CASCADE;
-
---
--- Name: touchpoints touchpoints_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.touchpoints
-    ADD CONSTRAINT touchpoints_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
 
 --
 -- PostgreSQL database dump complete

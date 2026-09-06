@@ -326,10 +326,11 @@ def build_model(doc: dict, locale: str) -> dict:
         "scenarios": [],
     }
 
-    # The service's touchpoint registry: the entries the IR lists, then every
+    # The deployment's touchpoint registry: the entries the IR lists, then every
     # placement name the IR uses that they do not cover, minted with kind
     # `other`. Matched case-insensitively, the way the database's fold does,
-    # and keyed on the lowered name so a re-import lands on the same row.
+    # and keyed on the lowered name so a re-import lands on the same row. No
+    # service owns a registry row (ADR 0003), so none is named here.
     registry: dict = {}
 
     def registry_entry(name: str, listed: dict | None = None) -> dict:
@@ -337,7 +338,6 @@ def build_model(doc: dict, locale: str) -> dict:
         if key not in registry:
             registry[key] = {
                 "id": entity_uuid(locale, "registry-touchpoint", f"{lc_q}#{key}"),
-                "service_id": model["service"]["id"],
                 "name": name.strip(),
                 "kind": (listed or {}).get("kind") or "other",
                 "summary": text((listed or {}).get("summary")),
@@ -627,12 +627,12 @@ on conflict (id) do update
     if model["touchpoints"]:
         parts.append(
             f"""
--- The service's touchpoint registry (shared, upserted) -------------------------
+-- The deployment's touchpoint registry (shared, upserted) ---------------------
 
-insert into public.touchpoints (id, service_id, name, kind, summary, url, origin) values
+insert into public.touchpoints (id, name, kind, summary, url, origin) values
 {values_rows(
     [
-        [q(tp['id']), q(tp['service_id']), q(tp['name']), q(tp['kind']), q(tp['summary']), q(tp['url']), q(tp['origin'])]
+        [q(tp['id']), q(tp['name']), q(tp['kind']), q(tp['summary']), q(tp['url']), q(tp['origin'])]
         for tp in model['touchpoints']
     ]
 )}

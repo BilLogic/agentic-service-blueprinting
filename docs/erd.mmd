@@ -48,7 +48,6 @@ erDiagram
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
-  services ||--o{ touchpoints : "registry"
   touchpoints ||--o{ cell_touchpoints : "placed as"
   cells ||--o{ cell_touchpoints : "places"
   cells ||--o{ resources : "points at"
@@ -149,10 +148,9 @@ erDiagram
 
   touchpoints {
     uuid id PK
-    uuid service_id FK "unique (service_id, name)"
-    text name "the registry's spelling; placements match it case-insensitively"
+    text name "the identity — unique across the whole deployment; no service owns one (ADR 0003). The registry's spelling; placements match it case-insensitively"
     text kind "app | document | physical | channel | service | other"
-    text summary "what this touchpoint IS, for the service"
+    text summary "what this touchpoint IS, for the deployment"
     text url "where the touchpoint itself lives"
     text origin "import | app"
   }

@@ -98,9 +98,10 @@ function fid(scenarioOrdinal, pathOrdinal, kind, a = 0, b = 0) {
 const SERVICE_ID = 'f0000000-0000-4000-8000-000000000010'
 
 /**
- * The service's touchpoint registry, minted from every placement name the
+ * The deployment's touchpoint registry, minted from every placement name the
  * cells below use — the way an import does. One row per spelling; ids are
- * deterministic so the seed and the fallback name the same entry.
+ * deterministic so the seed and the fallback name the same entry. No service
+ * owns a registry row (ADR 0003), so the rows carry no service.
  */
 const REGISTRY_IDS = new Map()
 function registryId(name) {
@@ -1944,16 +1945,25 @@ ${sqlRows(
 // this seed points at one of these rows, and a generated default keeps the
 // emitter from minting a second id space nobody reads. Placements first —
 // a resource may hang off one.
-// The registry first — a placement names an entry in it.
+// The registry first — a placement names an entry in it. It is upserted rather
+// than replaced: the registry is the deployment's (ADR 0003), so the service
+// delete above no longer cascades to it and wiping it would take another
+// service's entries with it. The same stance scripts/generate_seed_sql.py
+// takes on the registry it emits.
 const registryRows = [...REGISTRY_IDS.entries()].map(([, id]) => {
   const name = allBlueprints
     .flatMap(({ bp }) => bp.cells.flatMap((cell) => cell.touchpoints ?? []))
     .find((placement) => placement.touchpointId === id)?.name
-  return [q(id), q(SERVICE_ID), q(name), q('other'), 'null', 'null', q('import')]
+  return [q(id), q(name), q('other'), 'null', 'null', q('import')]
 })
 if (registryRows.length > 0) {
-  seedParts.push(`insert into public.touchpoints (id, service_id, name, kind, summary, url, origin) values
-${sqlRows(registryRows)};
+  seedParts.push(`insert into public.touchpoints (id, name, kind, summary, url, origin) values
+${sqlRows(registryRows)}
+on conflict (id) do update
+  set name = excluded.name,
+      kind = excluded.kind,
+      summary = excluded.summary,
+      url = excluded.url;
 `)
 }
 

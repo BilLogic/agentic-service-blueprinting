@@ -116,6 +116,12 @@ export const LABEL_COLUMNS = Object.freeze(
       because:
         "Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from.",
     },
+    {
+      label: 'Registry',
+      names: ['cell_touchpoints.touchpoint_id'],
+      because:
+        'The control names what a reader is choosing FROM — the deployment\'s touchpoint registry — and the column is the key the choice lands in. The same split `Actor` draws over `lanes.stakeholder_id`: the label is the pool, the name is the pointer.',
+    },
     { label: 'Evidence', names: ['evidence'], because: '' },
     { label: 'Resources', names: ['resources'], because: '' },
     {
