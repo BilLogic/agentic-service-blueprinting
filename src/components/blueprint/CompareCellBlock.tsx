@@ -4,6 +4,8 @@ import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpo
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
   STEP_COLUMN_WIDTH,
+  NARRATIVE_CELL_HEIGHT,
+  NARRATIVE_CELL_HEIGHT_COMPACT,
   getStoryboardCellButtonMaxHeight,
   type BlueprintCellVariant,
 } from '@/lib/blueprintLayout'
@@ -71,6 +73,7 @@ export function CompareCellBlock({
   selectionContext,
   storyboardPictures,
   slotCells,
+  status,
   pathMembership,
 }: {
   cellId?: string
@@ -84,6 +87,8 @@ export function CompareCellBlock({
   storyboardPictures?: Array<{ frame: string; label: string }>
   /** Every cell in a tech slot — one per touchpoint since the split. */
   slotCells?: BlueprintCell[]
+  /** Unbuilt cells wear a dashed, drained face — see BlueprintCellButton. */
+  status?: BlueprintCell['status']
   /** Member paths of this rendered cell — one outline segment each. */
   pathMembership?: readonly CompareCellPathMembership[]
 }) {
@@ -102,6 +107,9 @@ export function CompareCellBlock({
   )
   const width = STEP_COLUMN_WIDTH
   const isStoryboard = variant === 'storyboard'
+  const narrativeHeight = compact
+    ? NARRATIVE_CELL_HEIGHT_COMPACT
+    : NARRATIVE_CELL_HEIGHT
   const shellVerticalPad = compact ? 24 : 32
   const shellStyle = {
     width,
@@ -201,6 +209,7 @@ export function CompareCellBlock({
               sliceSequenceBadge={
                 index === 0 || slotCell?.id !== all[index - 1]?.slotCell?.id
               }
+              status={slotCell?.status ?? status}
             />
           ) : (
             <TouchpointCellFace
@@ -228,12 +237,19 @@ export function CompareCellBlock({
         }
         cellId={cellId}
         stepIndex={stepIndex}
+        status={status}
         className={cn(
+          'flex-none overflow-hidden',
           hasMembershipOutline && 'compare-membership-outline',
         )}
+        style={{
+          height: narrativeHeight,
+          minHeight: narrativeHeight,
+          maxHeight: narrativeHeight,
+        }}
         aria-describedby={ariaDescribedBy}
       >
-        <p className="w-full whitespace-pre-wrap">{content}</p>
+        <p className="line-clamp-4 w-full whitespace-pre-wrap">{content}</p>
       </BlueprintCellButton>
     )
 

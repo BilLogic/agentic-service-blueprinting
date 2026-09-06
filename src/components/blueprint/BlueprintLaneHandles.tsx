@@ -1,3 +1,4 @@
+import { BLUEPRINT_INSERT_HIT_HALF } from '@/lib/blueprintLayout'
 import {
   useLayoutEffect,
   useRef,
@@ -15,9 +16,6 @@ import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { addLane } from '@/lib/authoringRpc'
 
 type Boundary = { at: number; y: number }
-
-/** Hit band half-height around a boundary, wider than the drawn line. */
-const INSERT_HIT_HALF_PX = 8
 
 /**
  * Insert handles between lanes — the missing "add row".
@@ -140,8 +138,8 @@ export function BlueprintLaneHandles({
           key={boundary.at}
           className="group/lane-insert pointer-events-auto absolute left-0 flex w-full items-center"
           style={{
-            top: boundary.y - INSERT_HIT_HALF_PX,
-            height: INSERT_HIT_HALF_PX * 2,
+            top: boundary.y - BLUEPRINT_INSERT_HIT_HALF,
+            height: BLUEPRINT_INSERT_HIT_HALF * 2,
           }}
         >
           <IconTooltip label="Insert a lane here">

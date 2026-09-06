@@ -379,6 +379,7 @@ function CompareLaneRow({
         cellId={cell?.id ?? (isStoryboardLane ? `storyboard-${step.id}` : undefined)}
         stepIndex={stepIndex}
         content={cell?.content}
+        status={cell?.status}
         laneStyle={laneStyle}
         variant={variant}
         compact={compact}
