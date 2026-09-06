@@ -446,6 +446,8 @@
 }
 
 /*
+ * The type scale's own rungs, at both ends of Tailwind's.
+ *
  * Sub-xs type steps. Tailwind's scale bottoms out at text-xs (12px); the
  * editor's dense chrome (badges, kickers, axis labels) uses 11px and 10px
  * constantly, so the two sizes are named rather than repeated as
@@ -454,8 +456,42 @@
  * replaced — call sites keep their own leading-* / inherited line-height.
  * A plain @theme block (not `inline`) because these are literal values, not
  * indirections into semantic tokens.
+ *
+ * The 9px and 8px rungs are the same argument one step further down, and they
+ * are two rungs rather than one because the two sizes are not
+ * interchangeable: 9px is the digit inside a size-4 sequence badge, where the
+ * glyph has to clear the circle's padding, and 8px is a nowrap caption under a
+ * storyboard-lane thumbnail, where any growth is a clipped label. Collapsing
+ * them would be a design change nobody asked for, and the ladder stays uniform
+ * at one step per rung: 11, 10, 9, 8.
+ *
+ * --text-5xl is that same argument at the other end. Two display headings sit
+ * above the body ladder — the scenario slide title at 40px and the cover
+ * title at 36px — and both were written out, as text-[2.5rem] and
+ * text-[2.25rem]. In rem, which is how they slipped past a font-size guard
+ * scoped to px. 36px needed nothing: it is Tailwind's text-4xl exactly, and
+ * ScenarioSlideHeader already reaches for that rung two headings further
+ * down. 40px had no name at all.
+ *
+ * It is a retune of Tailwind's 5xl (3rem) rather than a new name, which is
+ * what --radius-2xl / -3xl / -4xl above already do to Tailwind's fixed
+ * 16 / 24 / 32 — the large rungs are this app's ladder, not upstream's. 48px
+ * is a size nothing here renders, and a rung nothing renders is an invitation
+ * to render it. Nothing in the tree wrote text-5xl before this change, so
+ * retuning it resized nothing; the slide title below now writes it, and
+ * writes it at the 40px it already rendered.
+ *
+ * The --line-height pairing is unset for the same reason the rungs above
+ * declare none. Tailwind ships one with its own 5xl (1.0), and both display
+ * headings set their own leading — leading-[1.15] and sm:leading-tight — so
+ * the pairing is dead weight that would only ever surface at a third call
+ * site, as a heading whose line-height silently collapsed to 1.
  */
 @theme {
   --text-2xs: 0.6875rem; /* 11px */
   --text-3xs: 0.625rem; /* 10px */
+  --text-4xs: 0.5625rem; /* 9px */
+  --text-5xs: 0.5rem; /* 8px */
+  --text-5xl: 2.5rem; /* 40px */
+  --text-5xl--line-height: initial;
 }

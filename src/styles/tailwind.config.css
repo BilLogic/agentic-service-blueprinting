@@ -6,6 +6,46 @@
  * entry pure removes a whole class of ordering mistake.
  */
 @import 'tailwindcss';
+/*
+ * Prose is not source. Tailwind v4 auto-detects sources from the project root
+ * and scans every non-gitignored file, `docs/**` included — so a class name
+ * written in a planning document generates that class in the compiled output.
+ * That is not hypothetical: a risk note in
+ * `docs/plans/2026-08-22-001-refactor-one-visual-vocabulary-plan.md` warning
+ * that `--field` was live via `bg-field` was the ONLY occurrence of `bg-field`
+ * in the repo, and so generated the evidence for its own warning.
+ *
+ * Any check that reads liveness off compiled output has to control what went
+ * into the build (ADR 0001), and this line is that control.
+ */
+@source not '../../docs';
+/*
+ * Nor are the guards, and they are the worse offender. `tokenDiscipline.test.ts`
+ * lists the class shapes it FORBIDS so it can fail on them, and Tailwind
+ * scanned that list and shipped fourteen of them: the bare rungs
+ * (`rounded-t`, `rounded-l`), the off-scale z arbitraries, the hand-tuned
+ * border alphas, a raw ramp step. The guard against a vocabulary was minting
+ * that vocabulary into the stylesheet it guards. `compareReviewStore.test.ts`
+ * added `col-3` the same way, `coverFigure.test.tsx` a bare `zoom-in`, and
+ * `scripts/agent-harness/cases.mjs` a fixture whose English word `paused` is a
+ * `tw-animate-css` utility.
+ *
+ * A `@theme` key goes the same route: a variable whose name appears in scanned
+ * source is kept, so a test explaining why a token has no consumer puts that
+ * token back into the build.
+ *
+ * Same mechanism as the `docs/` line above, one directory closer. A class or a
+ * token named in a test is named as evidence, never as something the app
+ * renders. Removing these fifteen costs the app nothing — verified by set-diff
+ * against compiled output, not by reading the glob — and takes 1.4 kB with it.
+ *
+ * This is the second time the hazard has been found by hand. The durable check
+ * is a rule over the compiled artifact, which ADR 0001 wants in `tokenModel`
+ * and the deletion phase has to build; until it exists, `@source not` is the
+ * only thing holding the line and nothing fails if a glob stops matching.
+ */
+@source not '../**/*.test.{ts,tsx}';
+@source not '../../scripts';
 /* JS plugins. Tailwind v4 supports `@plugin` for both v3-style JS plugins and
  * v4-native packages. */
 @plugin '@tailwindcss/typography';
