@@ -56,8 +56,8 @@
  * live NAME here — `coverContent.chip`, the cover's copy-button strings, named
  * before the design system split the two ideas. That rename is done: the key is
  * `commandCopy`, the component is `CoverCommandCopy`, the ledger's markers are
- * a `VerdictBadge`, a `FilterTag` and a `CompareZoneBadge`, and the deployment's
- * spelling is what each of them took. So the subject is the row's whole pair
+ * a `VerdictBadge` and a `FilterTag`, and the deployment's spelling is what
+ * each of them took. So the subject is the row's whole pair
  * now, which is what the instance's own `badge-and-tag.test.mjs` — the file
  * this is modelled on and now named for — has held all along.
  *

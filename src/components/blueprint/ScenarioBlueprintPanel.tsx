@@ -3,10 +3,6 @@ import { ResizableComparePanel } from '@/components/blueprint/ResizableComparePa
 import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
 import { SideBySideCompareGrid } from '@/components/blueprint/SideBySideCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
-import {
-  CompareDivergenceStrip,
-  COMPARE_STRIP_HEIGHT,
-} from '@/components/blueprint/CompareDivergenceStrip'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { ScenarioBoardScopeContext } from '@/contexts/scenarioBoardScopeContext'
 import { useEditor } from '@/contexts/EditorContext'
@@ -269,7 +265,7 @@ export function ScenarioBlueprintPanel({
     const unregisterJump = registerAgentUiCommand({
       name: 'jump_divergence',
       summary:
-        "Fly the camera to a divergent STEP of the compared paths and mark it active (the ledger opens that step's group; in Stacked the strip highlights it too). arg: next | prev | <step number> — the canonical step number the ledger shows as \"Step N\".",
+        "Fly the camera to a divergent STEP of the compared paths and mark it active (the ledger opens that step's group). arg: next | prev | <step number> — the canonical step number the ledger shows as \"Step N\".",
       run: async (arg) => {
         const state = getCompareReviewState()
         const registration = state.registration
@@ -479,24 +475,10 @@ export function ScenarioBlueprintPanel({
     )
   }
 
-  // Strip in STACKED only: merged already reads as one combined board
-  // (labels + wash carry divergence); the zone strip on top of it was
-  // chrome without a job.
-  const stripVisible = compareModel !== null && displayViewType !== 'merged'
   return (
     <ScenarioBoardScopeContext.Provider value={boardInDetailScope}>
     <ResizableComparePanel
       {...comparePanelProps}
-      chromeBar={
-        stripVisible ? (
-          <CompareDivergenceStrip
-            model={compareModel}
-            blueprints={visibleBlueprints}
-            slideId={slide.id}
-          />
-        ) : undefined
-      }
-      chromeBarHeight={stripVisible ? COMPARE_STRIP_HEIGHT : 0}
       fitContentKey={`${compareFitContentKey}:${visibleBlueprints.map((b) => b.path.id).join(',')}`}
     >
       {mergedModel !== null ? (
