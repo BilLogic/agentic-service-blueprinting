@@ -62,11 +62,15 @@ describe('the declaration reader', () => {
   })
 
   it('reads a Tailwind namespace reset as a declaration', () => {
-    // `unset-tw-colors.css` is seventeen `--color-amber-*: initial` resets and
-    // nothing else. A name pattern that stopped at the hyphen made the whole
-    // file invisible, which is a file the cascade depends on being there.
+    // `unset-tw-colors.css` is `--color-amber-*: initial` resets and nothing
+    // else. A name pattern that stopped at the hyphen made the whole file
+    // invisible, which is a file the cascade depends on being there.
+    //
+    // The shape is the assertion, never the count: WHICH families belong on
+    // the list is `tailwindColorReset.test.ts`'s question, and it answers it
+    // against Tailwind's own theme rather than against a number written here.
     const resets = declarationsIn('unset-tw-colors.css')
-    expect(resets).toHaveLength(17)
+    expect(resets.length).toBeGreaterThan(0)
     expect(resets.every((entry) => entry.name.endsWith('-*'))).toBe(true)
     expect(resets.every((entry) => entry.value === 'initial')).toBe(true)
   })
