@@ -534,8 +534,93 @@ def to_2026_09_07(doc: dict) -> None:
     return
 
 
+#: What a retired lane role became, transcribed from
+#: `scripts/retired-vocabulary.mjs` — the one list this repository keeps of
+#: what each retired word turned into. Restated here rather than read, because
+#: that list is JavaScript and every script in this directory is stdlib Python;
+#: `21000122000000` restates it in SQL for the same reason.
+RETIRED_LANE_ROLES = {
+    "frontstage_tech": "frontstage_touchpoints",
+    "backstage_tech": "backstage_touchpoints",
+    "support_systems": "backstage_touchpoints",
+    "visual": "storyboard",
+    "step_visual": "storyboard",
+}
+
+
+def to_2026_09_08(doc: dict) -> None:
+    """2026.09.07 → 2026.09.08 — the tech lanes were never only tech.
+
+    `21000122000000` closed `lanes.lane_role` to eight values and renamed the
+    roles it retired on the way in. This is the wire-format half of that
+    migration, written two releases after it (#197): the migration stamped a
+    database with `2026.09.08` and taught neither the enum in
+    `references/ir-schema.json` nor this script the value, so a correctly
+    migrated target read as INCOMPATIBLE to `scripts/check-target-schema.mjs`
+    — a check that exists to catch a target which is behind, failing the one
+    that was exactly right.
+
+    THIS IS NOT AN IDENTITY BUMP, and reading the migration is what settles
+    it. The IR's `lanes[].role` is that column: the schema field says
+    `lanes.lane_role` in as many words, `seed_lane_fields` in
+    `scripts/generate_seed_sql.py` writes the authored string straight into
+    it, and nothing between the two normalises anything. So a document
+    authored at `2026.09.07` may carry a role by its retired spelling, and
+    that document now meets a database whose CHECK constraint refuses the
+    word. Renaming it here is the whole of what keeps such a file importable.
+
+    The five renames are `RETIRED_LANE_ROLES` above, and each carries the
+    migration's own reasoning. A "tech" lane never held only software — it
+    held the things a moment happens THROUGH, which is a touchpoint.
+    `support_systems` did two jobs at once, back-office people and back-office
+    systems, and every lane wearing it in this template is the systems half.
+    `visual` said what the MEDIUM is where every sibling role says what the
+    row is FOR, and `step_visual` named a storyboard variation a step never
+    carried.
+
+    WHAT THIS STEP DOES NOT DO, and why that is a judgement rather than an
+    omission. The migration also sets to NULL every role outside the closed
+    eight, an adopter's own word included. It had to: `add constraint`
+    validates every existing row as it is added, so a lane already in the
+    table had to be re-classified or the migration would abort. A document
+    being carried forward is under no such duress, and at the IR level a
+    custom role is still legal — `references/ir-schema.json` admits any
+    `^[a-z0-9][a-z0-9_]*$`, and `scripts/validate_ir.py` passes a role far
+    from every canonical one in silence, on purpose. Nulling one here would
+    delete authored content the validator had just blessed, and would settle
+    by deletion a question nobody has asked: whether the IR closes the set the
+    way the database does. A file that keeps a custom role is refused by the
+    target's CHECK, loudly and with the value named, which is a better answer
+    than a classification that quietly disappears.
+
+    A lane's role is authored content and lives inside a scenario's subtree,
+    so this step declares itself NOT content-preserving — the second step ever
+    to do so, after the `needs` turnaround at 2026.09.01. The declaration is
+    watched per scenario rather than applied in bulk: a scenario holding a
+    renamed lane keeps its recorded hash and reads as stale until someone
+    re-signs it, and a document carrying none of the five hashes identically
+    on both sides and re-anchors as usual. Most files are the second kind.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if not isinstance(scenario, dict):
+                continue
+            for path in scenario.get("paths", []) or []:
+                if not isinstance(path, dict):
+                    continue
+                for lane in path.get("lanes", []) or []:
+                    if not isinstance(lane, dict):
+                        continue
+                    role = lane.get("role")
+                    if isinstance(role, str) and role in RETIRED_LANE_ROLES:
+                        lane["role"] = RETIRED_LANE_ROLES[role]
+
+
 def to_2026_09_09(doc: dict) -> None:
-    """2026.09.07 → 2026.09.09 — a path's `triggers` are its `dependencies`.
+    """2026.09.08 → 2026.09.09 — a path's `triggers` are its `dependencies`.
 
     One straight rename of one array, and the last estate to take a word the
     other two settled long ago. The database has held `cell_dependencies` since
@@ -558,13 +643,23 @@ def to_2026_09_09(doc: dict) -> None:
     scenario re-anchors under `--workspace` exactly as the `layers` → `lanes`
     rename did.
 
-    WHY 2026.09.09 AND NOT 2026.09.08. The version namespace is shared with the
-    database — `check-target-schema.mjs` reads a live target's
-    `public.schema_version` against the enum in `references/ir-schema.json` —
-    and `21000122000000` already stamped `2026.09.08` for the lane-role
-    vocabulary without ever adding the value here or writing a step for it.
-    Spending `2026.09.08` on this rename would give one stamp two shapes. The
-    hole it leaves is that migration's to close, not this one's.
+    WHY 2026.09.09 AND NOT 2026.09.08, AND WHAT CLOSED THE HOLE. The version
+    namespace is shared with the database — `check-target-schema.mjs` reads a
+    live target's `public.schema_version` against the enum in
+    `references/ir-schema.json` — and `21000122000000` had already stamped
+    `2026.09.08` for the lane-role vocabulary without ever adding the value
+    here or writing a step for it. Spending `2026.09.08` on this rename would
+    have given one stamp two shapes, so this step took the next number and
+    left the hole for the migration that made it.
+
+    That hole is closed (#197). `to_2026_09_08` above is the lane-role step
+    `21000122000000` never shipped, and this step's predecessor is now that
+    version rather than `2026.09.07`. The value was ADDED to the enum rather
+    than moved into place: it is stamped inside an applied migration and
+    inside the generated portable core, and an applied record keeps the
+    spelling it was written with. So the chain runs `.07` → `.08` → `.09`,
+    continuous and in order, and a document two hops behind still needs to
+    know only about its own predecessor.
     """
     service = doc.get("service")
     if not isinstance(service, dict):
@@ -665,11 +760,23 @@ STEPS = (
     ),
     Step(
         "2026.09.07",
+        "2026.09.08",
+        "the lane vocabulary closes: the tech roles become touchpoints, "
+        "support_systems folds into backstage touchpoints and the storyboard "
+        "role takes its own name — the wire-format half of 21000122000000, "
+        "written after the fact (#197)",
+        to_2026_09_08,
+        # A lane's role is authored content, and it lives inside a scenario's
+        # subtree. A file carrying one of the five re-signs; a file carrying
+        # none of them hashes identically and re-anchors.
+        content_preserving=False,
+    ),
+    Step(
+        "2026.09.08",
         "2026.09.09",
         "a path's `triggers` array is its `dependencies` — the word the "
         "database has used since 21000103000000 and the app since 1.5.0, "
-        "reaching the interchange format last (2026.09.08 is the database's "
-        "lane-role stamp and was not free)",
+        "reaching the interchange format last",
         to_2026_09_09,
     ),
 )

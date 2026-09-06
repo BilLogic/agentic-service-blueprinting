@@ -29,12 +29,22 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // layer since release 1.5.0; the IR was the last estate still spelling it the
   // retired way, and the owner settled all three together. A field rename, so
   // every authored value stays put and a signed scenario re-anchors.
-  //
-  // 2026.09.08 is missing from this list on purpose and is not free:
-  // 21000122000000 stamps a database with it for the lane-role vocabulary and
-  // never taught the IR the value, so no file can be authored against it and no
-  // step carries one forward. That gap belongs to that migration.
   '2026.09.09',
+  // The lane vocabulary closes (#197). 21000122000000 renamed the roles it
+  // retired, folded the back-office systems role into backstage touchpoints,
+  // gave the storyboard row its own name, and closed `lanes.lane_role` to
+  // eight values with a CHECK — then stamped a database with this version and
+  // taught no list of versions the value. So a target that had run every
+  // migration in order read as INCOMPATIBLE here and to
+  // scripts/check-target-schema.mjs: a check written to catch a target that is
+  // behind was failing the one that was exactly right.
+  //
+  // The value is ADDED to this list rather than moved into place. It is
+  // stamped inside an applied migration and inside the generated portable
+  // core, and an applied record keeps the spelling it was written with — so
+  // 2026.09.09 stays where it is and the chain runs .07 -> .08 -> .09. A file
+  // that authored a lane role by its retired spelling moves.
+  '2026.09.08',
   // A touchpoint is a thing the service owns (#112): the `touchpoints`
   // registry, optional in the IR; placements still name theirs by name and
   // the import mints the rest. Nothing authored moves.

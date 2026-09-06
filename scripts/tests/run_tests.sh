@@ -13,7 +13,9 @@
 # fallback TS generation + `tsc` type-check + --register round-trip against
 # src/data/blueprintFallbacks.ts (restored afterwards); an IR authored with the
 # retired `path.triggers` spelling still loading, by being carried across the
-# 2026.09.09 rename; a dependency edge's
+# 2026.09.09 rename; a lane role carried by a spelling the closed vocabulary
+# retired being renamed by the 2026.09.08 step while a custom role is left
+# alone; a dependency edge's
 # `kind` round-tripping through both adapters, including an `enables` edge and
 # the identity that keeps both kinds of one pair apart; schema-version
 # migration (a superseded IR is refused by name, migrate_ir.py carries it
@@ -205,9 +207,23 @@ for path in sys.argv[1:]:
     assert delete_pos < min(positions), f"{path}: delete must precede child inserts"
     assert positions == sorted(positions), f"{path}: insert order violates paths->steps->path_steps->lanes->cells->cell_dependencies"
 
-    # Service, the touchpoint registry and phases are upserts; scenario
-    # children are plain inserts.
-    assert body.count("on conflict (id) do update") == 3, f"{path}: service+touchpoints+phases must be the only upserts"
+    # Service and phases are upserts keyed on the derived id; scenario children
+    # are plain inserts.
+    assert body.count("on conflict (id) do update") == 2, f"{path}: service+phases must be the only id-keyed upserts"
+
+    # The registry reconciles on the NAME, because that is the identity
+    # `unique (name)` asserts (#201). Keyed on the derived id it refused a
+    # second service's seed outright, and it could not land on a target whose
+    # rows predate the deployment-stable derivation.
+    assert body.count("on conflict (name) do update") == 1, f"{path}: the registry must upsert on the name"
+    registry = body.index("insert into public.touchpoints ")
+    assert body.index("on conflict (name) do update") > registry, f"{path}: the name-keyed upsert is not the registry's"
+
+    # A placement points at whatever row the target actually holds under that
+    # name — read back, never written as the derived literal.
+    assert "(select id from public.touchpoints where name = " in body, (
+        f"{path}: a placement writes a derived registry id instead of resolving one"
+    )
 
 en = open(sys.argv[1], encoding="utf-8").read()
 zh = open(sys.argv[2], encoding="utf-8").read()
@@ -229,6 +245,43 @@ python3 "$SEED_GEN" "$SAMPLE" --locale en --out "$TMP/seed.en.2.sql" > /dev/null
 diff -q "$TMP/seed.en.sql" "$TMP/seed.en.2.sql" > /dev/null \
   || fail "seed-deterministic: two runs differ"
 pass "seed-deterministic (identical output across runs — idempotent UUIDv5 ids)"
+
+# A registry row's id is the DEPLOYMENT's, not the seeding service's (#201).
+# The derivation took `f"{service_key}#{name}"`, so two services minted two ids
+# for one tool. That was consistent under `unique (service_id, name)` and wrong
+# the moment 21000131000000 made the catalog one deployment-level pool: seeding
+# a second service into a target holding the first was refused by
+# `touchpoints_name_key`. The id is what a row that does not yet exist is born
+# with, and the constraint says a name is the identity — so the two must agree.
+python3 - "$REPO_ROOT" "$SAMPLE" <<'PY' || fail "seed-registry-id: the derivation is not deployment-stable"
+import copy, json, sys
+
+repo, sample = sys.argv[1:3]
+sys.path.insert(0, f"{repo}/scripts")
+from generate_seed_sql import build_model
+
+doc = json.load(open(sample, encoding="utf-8"))
+other = copy.deepcopy(doc)
+other["service"]["key"] = doc["service"]["key"] + "-second"
+other["service"]["name"] = {k: v + " (second)" for k, v in doc["service"]["name"].items()}
+
+mine = build_model(doc, "en")
+theirs = build_model(other, "en")
+assert mine["touchpoints"], "the sample seeds no registry row; this test proves nothing"
+assert mine["service"]["id"] != theirs["service"]["id"], (
+    "the two services share an id — the fixture did not diverge"
+)
+by_name = lambda model: {tp["name"]: tp["id"] for tp in model["touchpoints"]}
+assert by_name(mine) == by_name(theirs), (
+    f"one tool, two ids: {by_name(mine)} vs {by_name(theirs)}"
+)
+
+# And still per-locale: two targets, one per locale, must not share a row id.
+assert by_name(mine) != by_name(build_model(doc, "zh")), (
+    "the locale left the derivation; en and zh would collide in one target"
+)
+PY
+pass "seed-registry-id (one tool, one registry id across services; still per-locale)"
 
 if python3 "$SEED_GEN" "$TMP/bad1.json" --locale en --out "$TMP/seed.bad.sql" > /dev/null 2>&1; then
   fail "seed-invalid-ir: expected refusal"
@@ -932,7 +985,9 @@ grep -q "2026.08.26 -> 2026.08.27" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the business-model step — $(cat "$TMP/migrate.out")"
 grep -q "2026.08.27 -> 2026.08.31" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the links split — $(cat "$TMP/migrate.out")"
-grep -q "2026.09.07 -> 2026.09.09" "$TMP/migrate.out" \
+grep -q "2026.09.07 -> 2026.09.08" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the lane-role step — $(cat "$TMP/migrate.out")"
+grep -q "2026.09.08 -> 2026.09.09" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the dependency rename — $(cat "$TMP/migrate.out")"
 python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
 import json, sys
@@ -998,6 +1053,13 @@ pass "migrate-forward (the oldest fixture chains through every step and validate
 # part of the contract: `migrate_ir.rename` keeps a renamed field among its
 # siblings, so the diff a person reviews is the one line whose name changed
 # rather than every line between it and the end of the file.
+#
+# Reverting one step and stamping two back is deliberate. 2026.09.07 ->
+# 2026.09.08 renames a lane role carried by its retired spelling, and this
+# sample carries none, so the sample is byte-identical at both versions and
+# the stamp is the only thing that distinguishes them. The carry below
+# therefore runs two hops and lands on the current fixture exactly. The lane
+# roles that DO move get their own document in 8c.
 python3 - "$SAMPLE" "$TMP" <<'PY' || fail "migrate-triggers-fixture: could not build the 2026.09.07 document"
 import json, sys
 
@@ -1040,7 +1102,7 @@ pass "migrate-triggers-refusal (an IR spelling the array triggers is refused by 
 # And then the carry: one hop, landing on the current fixture exactly.
 python3 "$MIGRATE" "$TMP/old-spelling.json" --write > "$TMP/migrate-triggers.out" 2>&1 \
   || fail "migrate-triggers: migration failed — $(cat "$TMP/migrate-triggers.out")"
-grep -q "2026.09.07 -> 2026.09.09" "$TMP/migrate-triggers.out" \
+grep -q "2026.09.08 -> 2026.09.09" "$TMP/migrate-triggers.out" \
   || fail "migrate-triggers: the rename step did not run — $(cat "$TMP/migrate-triggers.out")"
 python3 "$VALIDATE" "$TMP/old-spelling.json" > "$TMP/migrate-triggers-valid.out" 2>&1 \
   || fail "migrate-triggers: the carried IR does not validate — $(cat "$TMP/migrate-triggers-valid.out")"
@@ -1064,6 +1126,101 @@ for phase in carried["service"]["phases"]:
             )
 PY
 pass "migrate-triggers (a 2026.09.07 document carries forward, in place, to the current fixture)"
+
+# ---------------------------------------------------------------------------
+# 8c. A 2026.09.07 document carrying a lane role by its retired spelling (#197)
+# ---------------------------------------------------------------------------
+#
+# 21000122000000 closed `lanes.lane_role` to eight values and renamed the ones
+# it retired. It stamped a database 2026.09.08 and taught no version list the
+# value, so for two releases a correctly migrated target read as incompatible
+# and no step carried a document across the rename. This is that step, tested
+# the way it will actually be met: a file authored before the vocabulary
+# closed, carrying roles the target's CHECK constraint now refuses.
+#
+# The document is the current sample with five lanes re-spelled and the stamp
+# wound back — one lane per retired role, so a rename that goes missing names
+# itself. `compliance_review` rides along untouched on purpose: it is the case
+# the step deliberately leaves alone, because a custom role is legal in the IR
+# and deleting one would settle by deletion a question nobody has asked.
+python3 - "$SAMPLE" "$TMP" <<'PY' || fail "migrate-lane-roles-fixture: could not build the 2026.09.07 document"
+import json, sys
+
+sample, tmp = sys.argv[1], sys.argv[2]
+doc = json.load(open(sample, encoding="utf-8"))
+doc["schema_version"] = "2026.09.07"
+
+# The pairs this fixture plants, and what each must become.
+retired = ["frontstage_tech", "backstage_tech", "support_systems", "visual", "step_visual"]
+lanes = [
+    lane
+    for phase in doc["service"]["phases"]
+    for scenario in phase["scenarios"]
+    for path in scenario["paths"]
+    for lane in path["lanes"]
+]
+assert len(lanes) >= len(retired), f"the sample carries {len(lanes)} lanes; need {len(retired)}"
+for lane, role in zip(lanes, retired):
+    lane["role"] = role
+# The array goes back to `triggers` too — the document is at 2026.09.07, so it
+# has to be a 2026.09.07 document in every field, not only in the one under
+# test.
+for phase in doc["service"]["phases"]:
+    for scenario in phase["scenarios"]:
+        for path in scenario["paths"]:
+            if "dependencies" not in path:
+                continue
+            edges = path.pop("dependencies")
+            rebuilt = {}
+            for key, value in path.items():
+                if key == "cells":
+                    rebuilt["triggers"] = edges
+                rebuilt[key] = value
+            path.clear()
+            path.update(rebuilt)
+json.dump(doc, open(f"{tmp}/lane-roles.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+PY
+
+python3 "$MIGRATE" "$TMP/lane-roles.json" --write > "$TMP/migrate-lane-roles.out" 2>&1 \
+  || fail "migrate-lane-roles: migration failed — $(cat "$TMP/migrate-lane-roles.out")"
+grep -q "2026.09.07 -> 2026.09.08" "$TMP/migrate-lane-roles.out" \
+  || fail "migrate-lane-roles: the lane-role step did not run — $(cat "$TMP/migrate-lane-roles.out")"
+python3 "$VALIDATE" "$TMP/lane-roles.json" > "$TMP/migrate-lane-roles-valid.out" 2>&1 \
+  || fail "migrate-lane-roles: the carried IR does not validate — $(cat "$TMP/migrate-lane-roles-valid.out")"
+python3 - "$TMP/lane-roles.json" <<'PY' || fail "migrate-lane-roles: the roles did not land on the closed set"
+import json, sys
+
+carried = json.load(open(sys.argv[1], encoding="utf-8"))
+lanes = [
+    lane
+    for phase in carried["service"]["phases"]
+    for scenario in phase["scenarios"]
+    for path in scenario["paths"]
+    for lane in path["lanes"]
+]
+expected = [
+    "frontstage_touchpoints",
+    "backstage_touchpoints",
+    "backstage_touchpoints",
+    "storyboard",
+    "storyboard",
+]
+got = [lane.get("role") for lane in lanes[: len(expected)]]
+assert got == expected, f"lane roles landed on {got}, expected {expected}"
+
+# The closed set, as 21000122000000 states it. Anything the step leaves has to
+# be a role the database admits, or a custom one it deliberately did not touch.
+closed = {
+    "customer_actions", "frontstage_actions", "backstage_actions",
+    "partner_actions", "frontstage_touchpoints", "backstage_touchpoints",
+    "support_actions", "storyboard",
+}
+survivors = {lane.get("role") for lane in lanes} - closed - {None}
+assert survivors == {"compliance_review"}, (
+    f"the step touched a role it should not have, or missed one: {survivors}"
+)
+PY
+pass "migrate-lane-roles (a retired lane role carries forward; a custom role is left alone)"
 
 # The two steps that write nothing, on their own. 2026.08.25 -> 2026.08.26
 # adds an optional field whose absence already meant the drawn kind, and
