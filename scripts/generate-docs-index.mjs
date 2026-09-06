@@ -72,6 +72,7 @@ const ROUTING = [
   ['Why do skills/, references/, agents/, hooks/ and scripts/ sit at the root?', 'docs/adr/0002-plugin-contract-folder-names.md'],
   ['Why does a service own its journey but share the catalog of tools and actors?', 'docs/adr/0003-a-service-owns-its-journey-and-shares-the-catalog.md'],
   ['May I move a file under references/ or skills/?', 'docs/adr/0004-reference-paths-are-a-published-interface.md'],
+  ['Where does state shared across surfaces live?', 'docs/adr/0005-cross-surface-state-is-a-module-store.md'],
   ['Add or move a document', 'docs/guidelines/documentation.md'],
   ['Propose a change; what a commit and a pull request carry', 'docs/guidelines/contributing.md'],
   ['See what is already being worked on', 'GitHub issues — the queue is not in this repo'],

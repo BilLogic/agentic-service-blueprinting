@@ -178,6 +178,27 @@ export const RENAME_MAP = Object.freeze(
       // `21000104`'s header says so explicitly. It is an identifier in the
       // frontend, not a database name and not reader-facing copy, so neither
       // check that reads this row can reach it.
+      //
+      // BOTH LISTS STAND, AND THE TWO SENSES ARE SEPARATED BY SUBJECT (#327).
+      // `21000104` was carried into the prose as a word replacement, so eleven
+      // sentences that used `layer` in its ordinary sense came out with `lane`
+      // substituted into the middle of an English word or an unrelated idea —
+      // a stylesheet not inside an `@layer`, the tabs stacked over the base
+      // view, the design system's own token tier. Restoring them raised the
+      // question of whether the copy list has to learn which sense it is
+      // looking at, and the answer is that it does not: what `21000104`
+      // retired is the COLUMN, not the English word, and Check C already draws
+      // that line on the axis its own header names. Its subject is JSX text
+      // and the five reader-facing props with comments removed, so a token
+      // tier — which lives in a comment, a `.ts` module or a stylesheet —
+      // reaches no reader and is never read. The alternative was to narrow the
+      // pattern to `layer` beside "swimlane" / "role" / "row" / "stage" /
+      // "blueprint", and that is the move the header forbids: it would let
+      // `aria-label="Add a layer"` through, which is the retired NAME on
+      // screen and the one case Check C plants to prove itself.
+      // `scripts/tests/retired-copy.test.mjs` holds both halves, and a third
+      // guard beside them fails on the shape a mechanical rename leaves behind
+      // so this class cannot recur on the next one.
       copy: ['layer', 'layers'],
     },
     {

@@ -124,7 +124,7 @@
  * So: a short lift from the right (10px) plus a fade and a hair of scale,
  * entering on --motion-fade and leaving on the shorter --motion-micro. Exit
  * beats enter, the usual asymmetry — arriving is an event, leaving is not.
- * These rules are deliberately unlaneed so they win over the primitive's
+ * These rules are deliberately unlayered so they win over the primitive's
  * Tailwind utilities without !important; only --closed-transform and the
  * transition are touched, so the swipe-driven open transform (and with it
  * swipe-to-dismiss) is untouched.

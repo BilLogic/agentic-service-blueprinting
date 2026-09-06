@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import { parseUrlViewState, type UrlViewState } from '@/lib/urlViewState'
 
 /**
- * Tab model for the editor shell — slice focus / presentation tabs laneed
+ * Tab model for the editor shell — slice focus / presentation tabs layered
  * over the base blueprint view. The blueprint/home view is not a tab: it is
  * the base state, represented by `activeKey === null` (and shown whenever no
  * tab is active). Pure reducer + key helpers live here (unit-testable, no

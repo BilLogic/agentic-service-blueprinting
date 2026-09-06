@@ -14,7 +14,7 @@
    * BRAND SEAM — the block an adopter edits to rebrand the app chrome.
    *
    * The template ships hue-neutral: every chroma dial below is 0, so the
-   * whole semantic lane renders greyscale and `--hue` is visually moot. It
+   * whole semantic layer renders greyscale and `--hue` is visually moot. It
    * is pinned to 159 — the `--brand-hue-reference` in semantic.css — so the
    * status-hue harmony pull is exactly zero and warning / destructive /
    * info / success sit on their category anchors.

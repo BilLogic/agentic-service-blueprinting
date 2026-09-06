@@ -124,7 +124,7 @@
    * declaration in colors.css — which is also what lets the plain `.dark` rule
    * there re-point every step without a second `@theme` block.
    *
-   * Components must not use these. They exist so the semantic lane above has
+   * Components must not use these. They exist so the semantic layer above has
    * primitives to derive from.
    */
   --color-amber-100: var(--color-amber-100);

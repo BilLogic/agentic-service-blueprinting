@@ -270,7 +270,7 @@ All blueprint tables have RLS **enabled** with public `SELECT` policies, and
 the `anon` role stays read-only: a deployed site can render everything but
 write nothing. **Anything you deploy with an anon key is publicly readable.**
 
-Writes are laneed on top for signed-in sessions (`authenticated`):
+Writes are layered on top for signed-in sessions (`authenticated`):
 
 - **Structure goes through RPCs, not tables.** The authoring-operations
   migration ships `SECURITY DEFINER` functions (create/duplicate/rename/

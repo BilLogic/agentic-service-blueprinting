@@ -1303,7 +1303,7 @@ function BlueprintCellDetailPanelBody() {
       ) : (
         <>
           {/* Basic info (text, summary, owners) first; the function/form/
-              value spec is a deeper lane of the same cell and reads below it. */}
+              value spec is a deeper layer of the same cell and reads below it. */}
           <CellContentSection cellId={resolvedCellId} />
           <CellOverviewSpec cellId={resolvedCellId} />
         </>

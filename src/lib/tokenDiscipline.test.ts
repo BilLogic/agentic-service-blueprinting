@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
  * The token-discipline rule, enforced.
  *
  * `docs/engineering/standards.md` states it plainly — components consume the
- * SEMANTIC lane, never the primitive ramps ("`text-warning`, not
+ * SEMANTIC layer, never the primitive ramps ("`text-warning`, not
  * `text-amber-1100`"), and no raw colour values where a token exists. Both
  * halves are convention, not types, and both had drifted: four components had
  * picked steps straight off the amber and violet ramps, three more were on
@@ -79,7 +79,7 @@ function code(source: string): string {
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
-test('components take colour from the semantic lane, not the primitive ramps', () => {
+test('components take colour from the semantic layer, not the primitive ramps', () => {
   const ramps = [...PRIMITIVE_RAMPS, ...FOREIGN_RAMPS].join('|')
   const pattern = new RegExp(
     `\\b(?:${UTILITY_PREFIXES})-(?:${ramps})-[0-9]{2,4}\\b`,

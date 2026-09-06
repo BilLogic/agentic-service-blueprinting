@@ -29,6 +29,7 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
+import { scannedFiles } from '../check-standalone.mjs'
 import { sourceFilesUnder } from '../check-database-names.mjs'
 import { RETIRED_COPY_WORDS } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
@@ -298,4 +299,77 @@ test('every authored figure is covered, and there are some', () => {
   const files = figureFiles()
   assert.equal(files.length, COVER_ASSET_MANIFEST.length)
   assert.ok(figureStrings(files).length > 100, 'the figures parsed to almost no text')
+})
+
+/**
+ * The shape a MECHANICAL rename leaves behind.
+ *
+ * `21000104` renamed `layers` to `lanes`, and the prose was carried over by
+ * word replacement, so eleven sentences using `layer` in its ordinary English
+ * sense came out with `lane` substituted into the middle of a word or an
+ * unrelated idea: "tabs laneed", "deliberately unlaneed", "the semantic lane"
+ * of design tokens. Every one passed `tsc`, every check, and review — a
+ * comment is not the subject of any of them (#327).
+ *
+ * These three patterns are not about `lane`. They are about the residue: a
+ * word that exists in no dictionary, and one phrase whose meaning the rename
+ * inverted. The list grows the next time a rename mangles something, which is
+ * the point — a sweep that only knows the last one is a fixed bug, not a
+ * guard.
+ *
+ * `semantic lane_role` and `semantic lane roles` are deliberately NOT residue:
+ * the column is named that, and roles that are semantic is what this codebase
+ * means by the phrase. The negative lookahead is what tells the two apart —
+ * the residue is `semantic lane` standing where a TIER was meant, with no role
+ * after it.
+ */
+const MANGLED = [
+  { pattern: /\blaneed\b/i, meant: 'layered' },
+  { pattern: /\bunlaneed\b/i, meant: 'unlayered' },
+  { pattern: /\bsemantic lane(?![_ ]roles?\b)/i, meant: 'semantic layer' },
+]
+
+/** This file writes every shape down, so it cannot be its own subject. */
+const MANGLE_SWEEP_SELF = 'scripts/tests/retired-copy.test.mjs'
+
+export function mangledIn(source) {
+  const hits = []
+  source.split('\n').forEach((line, index) => {
+    for (const { pattern, meant } of MANGLED) {
+      if (pattern.test(line)) hits.push({ line: index + 1, meant })
+    }
+  })
+  return hits
+}
+
+test('a rename left no mangled English behind', () => {
+  const found = scannedFiles(REPO_ROOT)
+    .filter((path) => path !== MANGLE_SWEEP_SELF)
+    .flatMap((path) => {
+      let source
+      try {
+        source = readFileSync(resolve(REPO_ROOT, path), 'utf8')
+      } catch {
+        return [] // a submodule, or a path removed between listing and here
+      }
+      if (source.includes('\0')) return [] // binary
+      return mangledIn(source).map((hit) => `${path}:${hit.line} — meant "${hit.meant}"`)
+    })
+  assert.deepEqual(found, [])
+})
+
+test('the sweep reads the residue and not the column it resembles', () => {
+  assert.deepEqual(
+    mangledIn(
+      [
+        'tabs laneed over the base view',
+        'deliberately unlaneed so they win',
+        'the semantic lane above has one job',
+        'the semantic lane_role, never the display name',
+        'Semantic lane roles — the contract between content and rendering',
+        'a lane is a row of the blueprint',
+      ].join('\n'),
+    ).map((hit) => `${hit.line}:${hit.meant}`),
+    ['1:layered', '2:unlayered', '3:semantic layer'],
+  )
 })

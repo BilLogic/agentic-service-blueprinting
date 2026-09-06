@@ -62,7 +62,7 @@ export class EditorErrorBoundary extends Component<Props, State> {
             happening on one phase or scenario, that view may be too heavy for
             this device.
           </p>
-          <p className="w-full truncate rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+          <p className="w-full truncate rounded-sm bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
             {error.message}
           </p>
           <div className="flex items-center gap-2">
