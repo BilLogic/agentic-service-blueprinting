@@ -17,7 +17,7 @@ import assert from 'node:assert/strict'
  * literals inline.
  *
  * So: a grep with a reason. It fails on the next one instead of waiting for
- * someone to notice a chip that does not track its role, or a "frozen" surface
+ * someone to notice a badge that does not track its role, or a "frozen" surface
  * that quietly flipped with the theme.
  */
 const COMPONENTS = resolve(__dirname, '../components')

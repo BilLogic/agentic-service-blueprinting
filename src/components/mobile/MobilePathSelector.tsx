@@ -11,7 +11,7 @@ import type { PathListItem } from '@/lib/pathSelection'
 /**
  * The top-bar path control (plan 2026-08-16-002 Phase 3): the phone reads
  * one path at a time, so the thing that picks it lives in the chrome, not
- * as a chip row inside the reader's scroll. A control naming the current path;
+ * as a badge row inside the reader's scroll. A control naming the current path;
  * tapping it opens the scenario's few paths (happy / unhappy / exception).
  * The shell decides when to render this — only surfaces with a path
  * dimension get a selector at all.
@@ -28,7 +28,7 @@ export function MobilePathSelector({
   const active = paths.find((path) => path.id === activePathId) ?? paths[0]
   if (!active) return null
 
-  // One path: still SAY which path this is, but as a read-only chip — a
+  // One path: still SAY which path this is, but as a read-only badge — a
   // menu with a single choice is a control that answers nothing.
   if (paths.length === 1) {
     return (

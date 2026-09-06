@@ -19,7 +19,7 @@ type BlueprintPanelLoadingSkeletonProps = {
    * Defaults to 640.
    */
   width?: number | null
-  /** Show a title chip above the panel. */
+  /** Show a title badge above the panel. */
   showTitle?: boolean
 }
 
@@ -179,7 +179,7 @@ export function SliceHeaderBandSkeleton() {
       <div className="min-w-0 flex-1">
         {/*
           Title row: an `h2 text-sm font-semibold` line box (20px) beside a
-          `Badge` — which is a real chip with its own height and radius, not
+          `Badge` — which is a real badge with its own height and radius, not
           a bar. Skeletoning the badge as a plain rectangle was what made
           this band read as an empty container rather than as chrome with
           content in it.
@@ -245,7 +245,7 @@ const PRESENTATION_SKELETON_FRAMES = [2, 3, 1]
 
 /**
  * Presentation tab placeholder — header band, stage (frame counter, media
- * area, title + narrative lines, cell-chip row) and filmstrip, at the
+ * area, title + narrative lines, cell-badge row) and filmstrip, at the
  * loaded stage's own paddings. The root pins `.dark` exactly as the real
  * stage does, so the skeleton paints in stage tokens whatever the app theme.
  */
@@ -270,7 +270,7 @@ export function SlicePresentationLoadingSkeleton() {
           </div>
           <Skeleton className="h-[68px] w-10 shrink-0 self-center" />
         </div>
-        {/* Cell-chip row at the bottom of the stage. */}
+        {/* Cell-badge row at the bottom of the stage. */}
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 px-24 pt-3 pb-4">
           <Skeleton className="h-6 w-36 rounded-full" />
           <Skeleton className="h-6 w-28 rounded-full" />

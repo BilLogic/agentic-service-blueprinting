@@ -218,7 +218,7 @@ export function PathMultiSelect({
   const isBar = layout === 'bar'
   const isNotion = layout === 'notion'
   const isToolbar = layout === 'toolbar'
-  // Vertical (filter popover) and chip layouts stay one column; only the
+  // Vertical (filter popover) and badge layouts stay one column; only the
   // horizontal picker groups happy/unhappy into side-by-side columns.
   const columns =
     isVertical || isBar || isNotion || isToolbar

@@ -21,7 +21,7 @@ const SIMULATED_TIER_LABEL: Record<DevSimulatedTier, string> = {
 
 /**
  * The simulation's persistent tell, in the workspace badge row beside the
- * authoring / edit-preview chips.
+ * authoring / edit-preview badges.
  *
  * Its own colour on purpose. Amber there means "this is live, be careful";
  * this one means "what you are seeing is not your account" — a different

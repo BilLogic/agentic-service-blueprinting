@@ -18,13 +18,13 @@ const badgeVariants = cva(
           Supabase's own badge formula for this role, verbatim from their
           `shadcn/ui/badge.tsx`: `bg-warning/10 text-warning-600 border
           border-warning-500`. Added because two call sites were hand-rolling a
-          tinted amber chip straight off the PRIMITIVE amber ramp — a tier-1
+          tinted amber badge straight off the PRIMITIVE amber ramp — a tier-1
           leak that also had to restate its own dark mode.
 
           The ink is step 600, not `text-warning`. That is the whole trick: the
           mid role colour (oklch L 0.68) on its own 10% wash measures ~2.3:1,
           while step 600 measures ~3.4:1 — still under AA for body copy, and
-          what Supabase ships. It replaces a chip that measured ~1.9:1.
+          what Supabase ships. It replaces a badge that measured ~1.9:1.
         */
         warning:
           "border border-warning-500 bg-warning/10 text-warning-600 focus-visible:ring-warning-500/40 [a]:hover:bg-warning/20",
@@ -50,11 +50,11 @@ const badgeVariants = cva(
         than in the wrapper that happens to want it.
       */
       size: {
-        /** The badge: a chip held at 20px however short its label is. */
+        /** The default: held at 20px however short its label is. */
         default: "h-5 px-2 py-0.5 text-xs",
-        /** The same chip, sized to its text rather than held at 20px. */
+        /** The same shape, sized to its text rather than held at 20px. */
         fitted: "h-auto px-2 py-0.5 text-xs",
-        /** Roomier, at the chip's type scale. */
+        /** Roomier, at the default's type scale. */
         roomy: "h-auto px-2.5 py-1 text-xs",
         /** Roomier, one step up the type scale. */
         comfortable: "h-auto px-2.5 py-1 text-sm",

@@ -79,7 +79,7 @@ export function SliceHeaderBand({
             {detail.slice.title}
           </h2>
           {/* A raw `kind` enum, not a written label — mono so it reads
-              as the stored value it is, on a real filled chip. */}
+              as the stored value it is, on a real filled badge. */}
           <Badge
             variant="secondary"
             className="shrink-0 border-muted bg-foreground/5 font-mono text-muted-foreground"
@@ -91,7 +91,7 @@ export function SliceHeaderBand({
           <p className="min-w-0 truncate text-xs text-muted-foreground">
             {description || '—'}
           </p>
-          {/* Warning reads as a tinted chip rather than amber body copy: step
+          {/* Warning reads as a tinted badge rather than amber body copy: step
               600 is a fill weight and `--warning` is the solid-fill role —
               neither clears 4.5:1 as text on the card. */}
           {missingCellCount > 0 && (

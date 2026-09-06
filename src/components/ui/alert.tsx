@@ -8,14 +8,14 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        // The icon is a filled chip in every variant — status variants take
+        // The icon sits on a filled square in every variant — status variants take
         // their role's fill, and `default` takes the INVERTED fill, which is
         // upstream's own recipe (`[&>svg]:bg-foreground [&>svg]:text-background`).
         // Without it `default` was the one alert whose icon was a bare glyph.
         default:
           "bg-card text-card-foreground *:[svg]:rounded-sm *:[svg]:bg-foreground *:[svg]:p-0.5 *:[svg]:text-contrast",
         // Supabase's own recipe: tint the surface and the border, keep the copy
-        // at `--foreground`, and let the icon carry the status as a filled chip.
+        // at `--foreground`, and let the icon carry the status as a filled square.
         // Step 600 is a fill weight, not a text weight — reading body copy off
         // it measures 2.96:1 on the step-200 surface.
         destructive:
@@ -25,7 +25,7 @@ const alertVariants = cva(
         // Same recipe, different mechanism: `info` and `success` have no
         // numeric ramp, so the tinted surface is a 15% alpha of the role and
         // the edge is the `--border-{role}` token, which is that role at 30%.
-        // The icon chip still takes the solid fill and its own on-colour.
+        // The icon's square still takes the solid fill and its own on-colour.
         info: "border-border-info bg-info/15 text-foreground *:[svg]:rounded-sm *:[svg]:bg-info *:[svg]:p-0.5 *:[svg]:text-info-foreground",
         success:
           "border-border-success bg-success/15 text-foreground *:[svg]:rounded-sm *:[svg]:bg-success *:[svg]:p-0.5 *:[svg]:text-success-foreground",

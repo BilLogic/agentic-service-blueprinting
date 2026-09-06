@@ -3,15 +3,15 @@ import { useSyncExternalStore } from 'react'
 /**
  * The hand-off shelf between the canvas and the composer. Capturing
  * annotations (or anything else later) parks ONE pending attachment here;
- * the composer shows it as a removable chip and folds `payload` into the
- * next message. Structure, not a screenshot — everything that travels can
+ * the composer shows it as a removable attachment and folds `payload` into
+ * the next message. Structure, not a screenshot — everything that travels can
  * be listed to the person sending it (see annotationCapture.ts).
  */
 export type AgentAttachment = {
   kind: 'annotations'
-  /** Chip text, e.g. "3 marks on Intake Call". */
+  /** Attachment label, e.g. "3 marks on Intake Call". */
   label: string
-  /** Human-readable lines shown in the chip tooltip / transcript. */
+  /** Human-readable lines shown in the attachment's tooltip / transcript. */
   lines: string[]
   /** The structured text the model receives. */
   payload: string

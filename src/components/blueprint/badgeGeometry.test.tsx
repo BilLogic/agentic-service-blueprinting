@@ -92,7 +92,8 @@ describe('the size a wrapper asks for is the size it used to write', () => {
     ],
     [
       // The one the issue did not expect: this wrapper's `compact` kept the
-      // roomy padding and moved only the type scale, so it is NOT the chip.
+      // roomy padding and moved only the type scale, so it is NOT the
+      // default size.
       'a compact path kind keeps the roomy padding',
       () => <PathKindBadge pathKind="happy" compact />,
       ['h-auto', 'px-2.5', 'py-1', 'text-xs'],
@@ -103,7 +104,7 @@ describe('the size a wrapper asks for is the size it used to write', () => {
       ['h-auto', 'px-2.5', 'py-1', 'text-sm'],
     ],
     [
-      // A container's title hugs its text: the chip's padding at the chip's
+      // A container's title hugs its text: the default size's padding at its
       // type scale, but 16px rather than a held 20px.
       'a scenario title is fitted',
       () => <ScenarioTitleBadge name="Warm-Up" />,

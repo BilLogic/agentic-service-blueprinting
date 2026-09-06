@@ -68,7 +68,7 @@ export function ScenarioTitleBadge({
         data-scenario-panel-title-badge={panelTone ? '' : undefined}
         data-phase-title-badge={phaseTone ? '' : undefined}
         // A container's title sits ON the container's edge, so it hugs its
-        // text rather than holding the chip's 20px (#149).
+        // text rather than holding the default size's 20px (#149).
         size="fitted"
         className={cn(
           'max-w-full gap-1 overflow-visible border-transparent',
