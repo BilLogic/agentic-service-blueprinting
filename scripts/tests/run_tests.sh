@@ -207,9 +207,23 @@ for path in sys.argv[1:]:
     assert delete_pos < min(positions), f"{path}: delete must precede child inserts"
     assert positions == sorted(positions), f"{path}: insert order violates paths->steps->path_steps->lanes->cells->cell_dependencies"
 
-    # Service, the touchpoint registry and phases are upserts; scenario
-    # children are plain inserts.
-    assert body.count("on conflict (id) do update") == 3, f"{path}: service+touchpoints+phases must be the only upserts"
+    # Service and phases are upserts keyed on the derived id; scenario children
+    # are plain inserts.
+    assert body.count("on conflict (id) do update") == 2, f"{path}: service+phases must be the only id-keyed upserts"
+
+    # The registry reconciles on the NAME, because that is the identity
+    # `unique (name)` asserts (#201). Keyed on the derived id it refused a
+    # second service's seed outright, and it could not land on a target whose
+    # rows predate the deployment-stable derivation.
+    assert body.count("on conflict (name) do update") == 1, f"{path}: the registry must upsert on the name"
+    registry = body.index("insert into public.touchpoints ")
+    assert body.index("on conflict (name) do update") > registry, f"{path}: the name-keyed upsert is not the registry's"
+
+    # A placement points at whatever row the target actually holds under that
+    # name — read back, never written as the derived literal.
+    assert "(select id from public.touchpoints where name = " in body, (
+        f"{path}: a placement writes a derived registry id instead of resolving one"
+    )
 
 en = open(sys.argv[1], encoding="utf-8").read()
 zh = open(sys.argv[2], encoding="utf-8").read()
@@ -231,6 +245,43 @@ python3 "$SEED_GEN" "$SAMPLE" --locale en --out "$TMP/seed.en.2.sql" > /dev/null
 diff -q "$TMP/seed.en.sql" "$TMP/seed.en.2.sql" > /dev/null \
   || fail "seed-deterministic: two runs differ"
 pass "seed-deterministic (identical output across runs — idempotent UUIDv5 ids)"
+
+# A registry row's id is the DEPLOYMENT's, not the seeding service's (#201).
+# The derivation took `f"{service_key}#{name}"`, so two services minted two ids
+# for one tool. That was consistent under `unique (service_id, name)` and wrong
+# the moment 21000131000000 made the catalog one deployment-level pool: seeding
+# a second service into a target holding the first was refused by
+# `touchpoints_name_key`. The id is what a row that does not yet exist is born
+# with, and the constraint says a name is the identity — so the two must agree.
+python3 - "$REPO_ROOT" "$SAMPLE" <<'PY' || fail "seed-registry-id: the derivation is not deployment-stable"
+import copy, json, sys
+
+repo, sample = sys.argv[1:3]
+sys.path.insert(0, f"{repo}/scripts")
+from generate_seed_sql import build_model
+
+doc = json.load(open(sample, encoding="utf-8"))
+other = copy.deepcopy(doc)
+other["service"]["key"] = doc["service"]["key"] + "-second"
+other["service"]["name"] = {k: v + " (second)" for k, v in doc["service"]["name"].items()}
+
+mine = build_model(doc, "en")
+theirs = build_model(other, "en")
+assert mine["touchpoints"], "the sample seeds no registry row; this test proves nothing"
+assert mine["service"]["id"] != theirs["service"]["id"], (
+    "the two services share an id — the fixture did not diverge"
+)
+by_name = lambda model: {tp["name"]: tp["id"] for tp in model["touchpoints"]}
+assert by_name(mine) == by_name(theirs), (
+    f"one tool, two ids: {by_name(mine)} vs {by_name(theirs)}"
+)
+
+# And still per-locale: two targets, one per locale, must not share a row id.
+assert by_name(mine) != by_name(build_model(doc, "zh")), (
+    "the locale left the derivation; en and zh would collide in one target"
+)
+PY
+pass "seed-registry-id (one tool, one registry id across services; still per-locale)"
 
 if python3 "$SEED_GEN" "$TMP/bad1.json" --locale en --out "$TMP/seed.bad.sql" > /dev/null 2>&1; then
   fail "seed-invalid-ir: expected refusal"

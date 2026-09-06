@@ -127,6 +127,29 @@ by UUIDv5 IDs derived from IR keys + locale (NFC-normalized) plus
 scenario-replace semantics. `import → edit IR → re-import` is the standing
 integration test.
 
+**The touchpoint registry is the exception, and its identity is the name.**
+A registry row belongs to the deployment rather than to any service (ADR
+0003), and `unique (name)` is what the database asserts about it. So the
+registry row is reconciled on its NAME — `on conflict (name) do update` — and
+a placement resolves its `touchpoint_id` by reading the row back rather than
+writing a derived id at it. The derived id is what a row that does not yet
+exist is BORN with, nothing more.
+
+That is what makes two things true at once. Seeding a second service into a
+target that already holds the first lands on the row that is there instead of
+being refused by the unique constraint — which is the model ADR 0003 states
+and, until #201, the one thing the seeder could not express, because the id
+was derived from the seeding service's key. And a target seeded before that
+derivation changed stays idempotent: its rows keep the ids they were born
+with, and a re-import updates them in place.
+
+An import wins where it SAYS something and says nothing where it was merely
+minted. An entry the IR never listed arrives as kind `other` with no summary
+and no home — "nobody has judged this yet" rather than a judgement — so it
+does not erase what a curator, or another service's IR, already recorded under
+that name. The merge is `21000131000000`'s own, the one it used when it folded
+each service's rows into the shared pool.
+
 ### 5. Pre-import read-back diff
 Before replacing, compare current target content against the last-imported
 state (hash/counts in workspace state). If they differ — e.g. manual Supabase
