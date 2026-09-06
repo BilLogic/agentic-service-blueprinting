@@ -62,7 +62,7 @@ function makeBlueprint(
     steps: stepRows,
     cells: blueprintCells,
     dependencies: (options.dependencies ?? []).map((dependency, index) => ({
-      id: `${pathId}-trigger-${index}`,
+      id: `${pathId}-dependency-${index}`,
       source_cell_id: dependency.source,
       target_cell_id: dependency.target,
       kind: dependency.kind,

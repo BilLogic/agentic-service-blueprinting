@@ -144,6 +144,28 @@
  * against `WRITE_TOOL_NAMES`, so a renamed tool or an unowned new write fails
  * `npm test`. That is the check neither collective noun ever had — both were
  * adopted, both went stale, and nothing anywhere noticed.
+ *
+ * **THE EDGE LIST FINISHED ITS RENAME IN THREE ESTATES, AND THE ROW NOW HOLDS
+ * ALL THREE.** `21000103000000` renamed the table in `2026.07`, release 1.5.0
+ * renamed the domain layer above it (`BlueprintData.dependencies`,
+ * `remapMergedPathDependencies`, and the prose around the arrows), and the
+ * INTERCHANGE FORMAT was the estate left over: `references/ir-schema.json` went
+ * on calling a path's edge array `triggers`, and every reader of an IR file
+ * with it. The owner settled the word for all three at once; the wire-format
+ * half is #159.
+ *
+ * `path.triggers` therefore sits on the `cell_triggers` row rather than on one
+ * of its own: it is the same concept in a fourth spelling, not a fourth rename.
+ * It enforces nothing here, and could not. The `retired` list matches
+ * SUBSTRINGS of database identifiers, and a JSON member of an authored file is
+ * neither an identifier the sweep reads nor a word a reader meets on screen;
+ * the `copy` list would have to key on the bare word `triggers`, which is a
+ * database trigger's plural in half the documents in this tree. What holds the
+ * wire format instead is the thing that holds every wire format — a schema
+ * version. `references/ir-schema.json` names the array `dependencies` at
+ * `2026.09.09`, `scripts/validate_ir.py` refuses a file at any older stamp, and
+ * `scripts/migrate_ir.py` carries an old document across; the fixtures at
+ * `2026.07.16` and `2026.08.25` keep the old spelling and prove the carry.
  */
 
 /**
@@ -204,13 +226,22 @@ export const RENAME_MAP = Object.freeze(
       copy: ['layer', 'layers'],
     },
     {
-      was: ['cell_triggers'],
-      is: ['cell_dependencies'],
+      // Three estates, one word, and the `is` column is where they agree.
+      // `21000103000000` moved the table; release 1.5.0 moved the domain layer
+      // above it; and the IR's `path.triggers` — the interchange format, and
+      // the last estate still spelling it the old way — became
+      // `path.dependencies` at IR schema version `2026.09.09` (#159).
+      was: ['cell_triggers', 'path.triggers'],
+      is: ['cell_dependencies', 'path.dependencies'],
       migrations: ['21000103000000'],
       retired: ['cell_trigger'],
       // Not `trigger` alone: a database trigger (`cells_validate_path_match`)
       // is a live subject in these documents, and the kind value that carried
-      // the word has its own row below.
+      // the word has its own row below. `path.triggers` adds no fragment and no
+      // copy word either — a member of an authored JSON file is neither an
+      // identifier the sweep reads nor a word on screen, and the schema version
+      // is what holds a wire format. The header says which version and which
+      // fixtures prove the carry.
       copy: ['cell trigger', 'cell triggers'],
     },
     {

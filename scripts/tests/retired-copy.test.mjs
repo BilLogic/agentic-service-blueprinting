@@ -340,6 +340,21 @@ test('every authored figure is covered, and there are some', () => {
  * because both halves of those are ordinary English and the only rule that
  * separates them is the list of sentences they came from — a fixed bug rather
  * than a guard.
+ *
+ * THE LIST GREW AGAIN FOR `trigger` → `dependency` (#159), and this time
+ * BEFORE the rename rather than after it. The two words differ from the pairs
+ * above in the way that
+ * matters here: `trigger` is a VERB as well as a noun, and the sentences the
+ * rename passes through use it as one — `slice_tools.py` describes an actor
+ * "being triggered by" a cell and "triggering" another, two lines from the
+ * `path["triggers"]` array whose name really did move. A word replacement over
+ * that file makes non-words of both inflections, and `dependency` has no verb
+ * form to make them out of, so no sentence in this tree can want either. That
+ * is the same reliability test the -ly and -ise shapes above pass, which is why
+ * these two are worth keying on and why no pattern is offered for the noun: a
+ * "dependency arrow" and a "dependency edge" are exactly what this vocabulary
+ * now means, and a guard that flagged them would forbid the word the rename
+ * installed.
  */
 const MANGLED = [
   { pattern: /\blaneed\b/i, meant: 'layered' },
@@ -348,6 +363,8 @@ const MANGLED = [
   { pattern: /\bstoryboardly\b/i, meant: 'visually' },
   { pattern: /\bstoryboardi[sz](?:e|es|ed|ing|ation|ations)\b/i, meant: 'visualise / visualisation' },
   { pattern: /\bstoryboard elements?\b/i, meant: 'visual element' },
+  { pattern: /\bdependencyed\b/i, meant: 'triggered' },
+  { pattern: /\bdependencying\b/i, meant: 'triggering' },
 ]
 
 /**
@@ -420,6 +437,24 @@ test('the sweep reads the residue and not the column it resembles', () => {
       ].join('\n'),
     ).map((hit) => `${hit.line}:${hit.meant}`),
     ['1:layered', '2:unlayered', '3:semantic layer'],
+  )
+})
+
+test('the sweep reads what a trigger → dependency replacement would leave', () => {
+  // The verb forms only. The noun phrases below them are the vocabulary this
+  // rename installs, so all three have to pass — a guard that flagged
+  // "dependency edge" would forbid the settled word.
+  assert.deepEqual(
+    mangledIn(
+      [
+        'being dependencyed by the actor is contact',
+        'the cell dependencying them is contact too',
+        'a dependency edge between two cells on the same path',
+        'when two dependencies arrive at one target cell',
+        'the dependency arrows fade in last',
+      ].join('\n'),
+    ).map((hit) => `${hit.line}:${hit.meant}`),
+    ['1:triggered', '2:triggering'],
   )
 })
 
