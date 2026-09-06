@@ -1,7 +1,7 @@
 import {
-  hasEmbeddedVisualFrame,
+  hasEmbeddedStoryboardFrame,
   type StoryboardFrameEntry,
-} from '@/lib/visualWalkthrough'
+} from '@/lib/storyboardWalkthrough'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
@@ -10,7 +10,7 @@ const PICTURE_FRAME_CLASS =
 const PICTURE_CLASS =
   'absolute inset-0 h-full w-full object-contain object-center'
 
-type VisualStepDetailStackProps = {
+type StoryboardStepDetailStackProps = {
   entries: StoryboardFrameEntry[]
   /** Side panel stacks vertically; presentation view lays cards out in a row. */
   orientation?: 'vertical' | 'horizontal'
@@ -18,11 +18,11 @@ type VisualStepDetailStackProps = {
 }
 
 /** The screenshots for one step, stacked for the side panel or laid out in a row for presentation. */
-export function VisualStepDetailStack({
+export function StoryboardStepDetailStack({
   entries,
   orientation = 'vertical',
   className,
-}: VisualStepDetailStackProps) {
+}: StoryboardStepDetailStackProps) {
   if (entries.length === 0) {
     return null
   }
@@ -52,7 +52,7 @@ export function VisualStepDetailStack({
               decoding="async"
               className={cn(
                 PICTURE_CLASS,
-                hasEmbeddedVisualFrame(entry.frame) && 'scale-[1.08]',
+                hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
               )}
             />
           </div>
@@ -95,7 +95,7 @@ export function VisualStepDetailStack({
               decoding="async"
               className={cn(
                 PICTURE_CLASS,
-                hasEmbeddedVisualFrame(entry.frame) && 'scale-[1.08]',
+                hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
               )}
             />
           </div>

@@ -322,11 +322,32 @@ test('every authored figure is covered, and there are some', () => {
  * means by the phrase. The negative lookahead is what tells the two apart —
  * the residue is `semantic lane` standing where a TIER was meant, with no role
  * after it.
+ *
+ * THE LIST GREW FOR `visual` → `storyboard` (#391), which is the same hazard
+ * with a wider blast radius: `visual` is an ordinary English adjective in this
+ * tree in a dozen places a rename has no business touching — a panel is
+ * `visually` de-emphasised, WebKit's `visual` viewport is a platform term, a
+ * divider band has a `visual` width. Two of the three shapes below are the
+ * non-words a word replacement makes of the -ly and -ise families, and those
+ * are the reliable half: no dictionary has them, so no sentence can want them.
+ *
+ * The third is the `semantic lane` case one rename over. A storyboard is made
+ * of FRAMES — `21000115000000` settled that word, and the rename map's
+ * `cells.picture` row says why — so "storyboard element" is never what a
+ * sentence in this repository means; it is "visual element" with the noun
+ * swapped, which is the shape `agents/document-reader.md` would have taken.
+ * No pattern is offered for "storyboard centre" or "storyboard order",
+ * because both halves of those are ordinary English and the only rule that
+ * separates them is the list of sentences they came from — a fixed bug rather
+ * than a guard.
  */
 const MANGLED = [
   { pattern: /\blaneed\b/i, meant: 'layered' },
   { pattern: /\bunlaneed\b/i, meant: 'unlayered' },
   { pattern: /\bsemantic lane(?![_ ]roles?\b)/i, meant: 'semantic layer' },
+  { pattern: /\bstoryboardly\b/i, meant: 'visually' },
+  { pattern: /\bstoryboardi[sz](?:e|es|ed|ing|ation|ations)\b/i, meant: 'visualise / visualisation' },
+  { pattern: /\bstoryboard elements?\b/i, meant: 'visual element' },
 ]
 
 /**
@@ -399,5 +420,33 @@ test('the sweep reads the residue and not the column it resembles', () => {
       ].join('\n'),
     ).map((hit) => `${hit.line}:${hit.meant}`),
     ['1:layered', '2:unlayered', '3:semantic layer'],
+  )
+})
+
+test('the sweep reads what a visual → storyboard replacement leaves', () => {
+  // The shapes #391 could have produced, against the words it must not touch.
+  // `storyboards` is a real plural and `storyboard frame` is the settled
+  // phrase, so both have to pass — a guard that flagged them would be read as
+  // forbidding the word the rename installed.
+  assert.deepEqual(
+    mangledIn(
+      [
+        'this panel is storyboardly de-emphasized',
+        'a storyboardisation of the journey',
+        'we storyboardize the strip on mount',
+        'spatial/storyboard elements that do not fit the grid',
+        'a storyboard element',
+        'the board carries two storyboards',
+        'a storyboard frame is one image on one cell',
+        'the storyboard row draws nothing of its own',
+      ].join('\n'),
+    ).map((hit) => `${hit.line}:${hit.meant}`),
+    [
+      '1:visually',
+      '2:visualise / visualisation',
+      '3:visualise / visualisation',
+      '4:visual element',
+      '5:visual element',
+    ],
   )
 })

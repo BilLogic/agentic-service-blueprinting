@@ -1,12 +1,12 @@
-import { isBlueprintVisualLaneEnabled } from '@/lib/blueprintDisplayFlags'
+import { isBlueprintStoryboardLaneEnabled } from '@/lib/blueprintDisplayFlags'
 import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 import type { BlueprintData } from '@/types/blueprint'
 
-function filterHiddenVisualLanes(
+function filterHiddenStoryboardLanes(
   data: BlueprintData,
   scenarioId?: string,
 ): BlueprintData {
-  if (isBlueprintVisualLaneEnabled(scenarioId)) {
+  if (isBlueprintStoryboardLaneEnabled(scenarioId)) {
     return data
   }
 
@@ -45,5 +45,5 @@ export function applyBlueprintDisplayFilters(
   scenarioId?: string,
   _pathId?: string,
 ): BlueprintData {
-  return filterHiddenVisualLanes(data, scenarioId)
+  return filterHiddenStoryboardLanes(data, scenarioId)
 }

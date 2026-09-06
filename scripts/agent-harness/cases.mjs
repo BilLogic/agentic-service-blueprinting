@@ -13,7 +13,8 @@
  * on ONE 7-lane roster: Stakeholders, Blueprint owner, App &
  * skill surface, Claude in the IDE, Pipeline scripts, Subagent fleet,
  * References & guardrails. The cases mostly target "Map your service" (the
- * sb:map pipeline in phase Setup; the one board that adds a visual row, so
+ * sb:map pipeline in phase Setup; the one board that adds a storyboard row,
+ * so
  * 8 lanes; 10 scenario columns, of which each of its two paths — From your
  * documents / From someone else's diagram — takes 9) and "Audit the check
  * roster" (phase Operate; 7 lanes, 7 steps such as "Export once" and

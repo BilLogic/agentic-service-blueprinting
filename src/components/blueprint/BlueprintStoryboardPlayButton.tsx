@@ -1,13 +1,13 @@
 import { Play } from 'lucide-react'
 import { useContext } from 'react'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { VisualWalkthroughContext } from '@/contexts/VisualWalkthroughContext'
-import { isBlueprintVisualWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
-import { pickWalkthroughBlueprint } from '@/lib/visualWalkthrough'
+import { StoryboardWalkthroughContext } from '@/contexts/StoryboardWalkthroughContext'
+import { isBlueprintStoryboardWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
+import { pickWalkthroughBlueprint } from '@/lib/storyboardWalkthrough'
 import type { BlueprintData } from '@/types/blueprint'
 import { cn } from '@/lib/utils'
 
-type BlueprintVisualPlayButtonProps = {
+type BlueprintStoryboardPlayButtonProps = {
   blueprint?: BlueprintData | null
   blueprints?: BlueprintData[]
   scenarioName?: string
@@ -16,32 +16,32 @@ type BlueprintVisualPlayButtonProps = {
 }
 
 /**
- * Opens the visual walkthrough for a path. Renders nothing when the feature is
+ * Opens the storyboard walkthrough for a path. Renders nothing when the feature is
  * off or when the surface sits outside a walkthrough provider (the homepage
  * renders grids that way).
  */
-export function BlueprintVisualPlayButton({
+export function BlueprintStoryboardPlayButton({
   blueprint,
   blueprints,
   scenarioName,
   phaseName,
   className,
-}: BlueprintVisualPlayButtonProps) {
-  const walkthrough = useContext(VisualWalkthroughContext)
+}: BlueprintStoryboardPlayButtonProps) {
+  const walkthrough = useContext(StoryboardWalkthroughContext)
   const walkthroughBlueprints =
     blueprints?.length ? blueprints : blueprint ? [blueprint] : []
   const activeBlueprint =
     blueprint ?? pickWalkthroughBlueprint(walkthroughBlueprints)
   const pathLabel = activeBlueprint?.path.name?.trim()
 
-  if (!isBlueprintVisualWalkthroughEnabled()) return null
+  if (!isBlueprintStoryboardWalkthroughEnabled()) return null
   // Homepage / other surfaces may render grids outside the walkthrough provider.
   if (!walkthrough) return null
 
   const { openWalkthrough } = walkthrough
   const playLabel = pathLabel
-    ? `Play ${pathLabel} visual walkthrough`
-    : 'Play visual walkthrough'
+    ? `Play ${pathLabel} storyboard walkthrough`
+    : 'Play storyboard walkthrough'
 
   return (
     <IconTooltip label={playLabel}>

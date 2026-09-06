@@ -20,7 +20,7 @@ import { AgentDock, AgentDockDivider } from '@/components/editor/AgentDock'
 import { EditorRail, type SidebarSurface } from '@/components/editor/EditorRail'
 import { AgentSettingsRailButton } from '@/components/editor/AgentPanel'
 import { ThemeToggle } from '@/components/editor/ThemeToggle'
-import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
+import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWalkthroughShell'
 import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'
 import { SlideModeSidebarNav } from '@/components/editor/SlideModeView'
 import { SlicePresentation } from '@/components/editor/SlicePresentation'
@@ -831,7 +831,7 @@ function ActiveTabContent({
     ) : (
       // No provider here: the base surface's mode is the shell's, so the
       // sidebar and this canvas are always in the same one.
-      <VisualWalkthroughShell>
+      <StoryboardWalkthroughShell>
         <div
           className="absolute inset-0 flex min-h-0 flex-col"
           data-editor-view
@@ -840,7 +840,7 @@ function ActiveTabContent({
               drives its boot lane — see `onRevealStage`. */}
           <ServiceOverviewView onRevealStage={onRevealStage} />
         </div>
-      </VisualWalkthroughShell>
+      </StoryboardWalkthroughShell>
     )
   }
   switch (tab.kind) {

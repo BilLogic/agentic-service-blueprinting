@@ -42,8 +42,10 @@
  * to know which occurrences are not residue. The last block closes the lane
  * vocabulary (`21000122000000`): the tech lanes become touchpoints, `support_systems`
  * splits into `support_actions` (people) and `backstage_touchpoints` (systems),
- * `visual` becomes `storyboard`, `step_visual` is dropped, and the design system
- * keeps one word for each of its two markers — `badge` for a descriptive one,
+ * `visual` becomes `storyboard` (the app's own half of that one — file names,
+ * components, a data attribute — followed in #391, held by no list here),
+ * `step_visual` is dropped, and the design system keeps one word for each of
+ * its two markers — `badge` for a descriptive one,
  * `tag` for one of a set. The `pill`/`chip` row carries no migration because no
  * database object ever bore either word; it is a component-and-copy rename,
  * held by `scripts/tests/badge-and-tag.test.mjs` over every name under `src`.
@@ -298,9 +300,11 @@ export const RENAME_MAP = Object.freeze(
       // column was the only database object that ever carried the word. The
       // copy list is safe for the same reason one level out: no reader-facing
       // string says it. What the word IS still doing here is naming things in
-      // the app — `visualPictures`, `getTechItemDetailPictures` — and neither
-      // list reaches those, which is the split this map keeps everywhere: a
-      // retired COLUMN is not a retired English word.
+      // the app — `storyboardPictures`, `getTechItemDetailPictures` — and
+      // neither list reaches those, which is the split this map keeps
+      // everywhere: a retired COLUMN is not a retired English word. (The first
+      // of those examples was `visualPictures` until #391 moved the app's half
+      // of the row below; the word this row is about did not move with it.)
       was: ['cells.picture'],
       is: ['cells.frame'],
       migrations: ['21000115000000'],
@@ -451,6 +455,29 @@ export const RENAME_MAP = Object.freeze(
     // already used. `step_visual` named no lane here — a step never carried its
     // own storyboard variation — and is dropped, its concept folded into
     // `storyboard`.
+    //
+    // BOTH LISTS ALREADY STOOD WHEN `21000122000000` LANDED, AND NEITHER OF
+    // THEM COULD SEE THE APP (#391). Check A reads database identifiers and
+    // Check C reads JSX text and five props, so between them sat what the
+    // `pill`/`chip` row calls the app's own vocabulary — a component, a file
+    // name, a data attribute, a flag — and the whole walkthrough surface was
+    // still spelled `Visual` two migrations later. It is `Storyboard` now:
+    // eight files renamed, `data-storyboard-walkthrough-modal`, and
+    // `BLUEPRINT_STORYBOARD_WALKTHROUGH_ENABLED` — which is still `false`, and
+    // the machinery under it deliberately retained. The lists did not change;
+    // the tree caught up with them.
+    //
+    // WHAT DID NOT MOVE, and why each is a judgement rather than a miss.
+    // `Visual` stays as a key of `LEGACY_NAME_TO_ROLE` and `LANE_STYLES`: it
+    // is a lane DISPLAY NAME in data that predates `lane_role`, and a shim
+    // that stops recognising the name it exists for recognises nothing.
+    // `/step-visual-placeholder.svg` stays for the same reason one level down
+    // — it is a sentinel VALUE a `cells.frame` may carry, so renaming the
+    // asset would silently turn every placeholder into a real frame. And the
+    // ordinary English adjective stays wherever it is one: a panel is
+    // `visually` de-emphasised, the WebKit `visual` viewport is a platform
+    // term, and a divider band has a `visual` width. That last class is what
+    // `MANGLED` in `scripts/tests/retired-copy.test.mjs` grew three shapes for.
     {
       was: ['visual', 'step_visual'],
       is: ['storyboard'],

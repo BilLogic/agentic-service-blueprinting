@@ -549,7 +549,7 @@ export function PanelKindBadge({
         `bg-primary`, and a same-specificity arbitrary-property class lost to
         it — measured, the badge came out brand teal on every lane. The values
         are the tokens `[data-blueprint-lane]` publishes, so nothing here is a
-        colour; this is the same idiom BlueprintStepVisual uses for the
+        colour; this is the same idiom BlueprintStepStoryboard uses for the
         presentation frame.
       */
       style={{

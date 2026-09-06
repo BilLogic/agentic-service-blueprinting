@@ -102,7 +102,7 @@ When the org does want stage imagery, source it (cheapest first):
 Store images the adapter can serve (e.g. Supabase Storage for live-DB, or a
 `public/` asset path for the fallback build) and put the resolved URL in
 `frame`. Add images incrementally — a text-complete blueprint with empty
-visual rows is a valid, shippable deliverable.
+storyboard rows is a valid, shippable deliverable.
 
 ## ⚠ Exit condition (deterministic)
 

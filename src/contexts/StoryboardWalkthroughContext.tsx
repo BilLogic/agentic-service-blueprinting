@@ -9,21 +9,21 @@ import {
 } from 'react'
 import type { BlueprintData } from '@/types/blueprint'
 import {
-  buildVisualWalkthroughSession,
+  buildStoryboardWalkthroughSession,
   filterWalkthroughBlueprints,
-  type VisualWalkthroughContextMeta,
-  type VisualWalkthroughSession,
-} from '@/lib/visualWalkthrough'
+  type StoryboardWalkthroughContextMeta,
+  type StoryboardWalkthroughSession,
+} from '@/lib/storyboardWalkthrough'
 
-type VisualWalkthroughContextValue = {
-  session: VisualWalkthroughSession | null
+type StoryboardWalkthroughContextValue = {
+  session: StoryboardWalkthroughSession | null
   availableBlueprints: BlueprintData[]
   stepIndex: number
   isOpen: boolean
   openWalkthrough: (
     blueprint: BlueprintData,
     allBlueprints?: BlueprintData[],
-    meta?: VisualWalkthroughContextMeta,
+    meta?: StoryboardWalkthroughContextMeta,
   ) => void
   closeWalkthrough: () => void
   switchPath: (pathId: string) => void
@@ -32,19 +32,19 @@ type VisualWalkthroughContextValue = {
   goToStep: (index: number) => void
 }
 
-export const VisualWalkthroughContext =
-  createContext<VisualWalkthroughContextValue | null>(null)
+export const StoryboardWalkthroughContext =
+  createContext<StoryboardWalkthroughContextValue | null>(null)
 
-type VisualWalkthroughProviderProps = {
+type StoryboardWalkthroughProviderProps = {
   children: ReactNode
   resetKey?: string
 }
 
-export function VisualWalkthroughProvider({
+export function StoryboardWalkthroughProvider({
   children,
   resetKey,
-}: VisualWalkthroughProviderProps) {
-  const [session, setSession] = useState<VisualWalkthroughSession | null>(null)
+}: StoryboardWalkthroughProviderProps) {
+  const [session, setSession] = useState<StoryboardWalkthroughSession | null>(null)
   const [availableBlueprints, setAvailableBlueprints] = useState<
     BlueprintData[]
   >([])
@@ -60,7 +60,7 @@ export function VisualWalkthroughProvider({
     (
       blueprint: BlueprintData,
       allBlueprints?: BlueprintData[],
-      meta?: VisualWalkthroughContextMeta,
+      meta?: StoryboardWalkthroughContextMeta,
     ) => {
       const candidates = filterWalkthroughBlueprints(
         allBlueprints?.length ? allBlueprints : [blueprint],
@@ -70,7 +70,7 @@ export function VisualWalkthroughProvider({
         candidates[0]
       if (!activeBlueprint) return
 
-      const nextSession = buildVisualWalkthroughSession(activeBlueprint, meta)
+      const nextSession = buildStoryboardWalkthroughSession(activeBlueprint, meta)
       if (nextSession.steps.length === 0) return
 
       setAvailableBlueprints(candidates)
@@ -87,7 +87,7 @@ export function VisualWalkthroughProvider({
       )
       if (!blueprint) return
 
-      const nextSession = buildVisualWalkthroughSession(blueprint, {
+      const nextSession = buildStoryboardWalkthroughSession(blueprint, {
         scenarioName: session?.scenarioName,
         phaseName: session?.phaseName,
       })
@@ -153,17 +153,17 @@ export function VisualWalkthroughProvider({
   )
 
   return (
-    <VisualWalkthroughContext.Provider value={value}>
+    <StoryboardWalkthroughContext.Provider value={value}>
       {children}
-    </VisualWalkthroughContext.Provider>
+    </StoryboardWalkthroughContext.Provider>
   )
 }
 
-export function useVisualWalkthrough() {
-  const context = useContext(VisualWalkthroughContext)
+export function useStoryboardWalkthrough() {
+  const context = useContext(StoryboardWalkthroughContext)
   if (!context) {
     throw new Error(
-      'useVisualWalkthrough must be used within VisualWalkthroughProvider',
+      'useStoryboardWalkthrough must be used within StoryboardWalkthroughProvider',
     )
   }
   return context

@@ -1,6 +1,6 @@
 import { getLaneRole, STORYBOARD_ROLE } from '@/lib/laneRoles'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
-import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
+import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { pickPreferredPath } from '@/lib/pathSelection'
 import type { BlueprintData } from '@/types/blueprint'
 import type { PathKind } from '@/types/database'
@@ -8,16 +8,16 @@ import type { PathKind } from '@/types/database'
 /**
  * The lanes a walkthrough steps through, named by the blueprint rather than
  * by this module: an adopter's actor lanes carry their own names, so the
- * roster is discovered from the data (see `getVisualWalkthroughLaneNames`)
+ * roster is discovered from the data (see `getWalkthroughLaneNames`)
  * and this constant stays empty as the pinned-order override.
  *
  * A fork that wants a fixed lane order for its walkthrough lists its lane
  * names here; anything listed wins, anything else follows board order.
  */
-export const VISUAL_WALKTHROUGH_LANE_NAMES: readonly string[] = []
+export const STORYBOARD_WALKTHROUGH_LANE_NAMES: readonly string[] = []
 
 /** Short lane labels for the walkthrough chrome; defaults to the lane name. */
-export const VISUAL_LANE_SHORT_LABELS: Record<string, string> = {}
+export const STORYBOARD_LANE_SHORT_LABELS: Record<string, string> = {}
 
 /**
  * Whether a step's frame already has a border drawn into the artwork, so the
@@ -27,11 +27,11 @@ export const VISUAL_LANE_SHORT_LABELS: Record<string, string> = {}
  * No path convention in the template: an adopter whose artwork bakes in a
  * border keys it off their own asset paths.
  */
-export function hasEmbeddedVisualFrame(_frame: string): boolean {
+export function hasEmbeddedStoryboardFrame(_frame: string): boolean {
   return false
 }
 
-export type VisualWalkthroughLaneEntry = {
+export type StoryboardWalkthroughLaneEntry = {
   laneName: string
   content: string
   frame: string
@@ -44,24 +44,24 @@ export type StoryboardFrameEntry = {
   summary: string
 }
 
-export type VisualWalkthroughStep = {
+export type StoryboardWalkthroughStep = {
   stepIndex: number
   stepName: string
-  laneEntries: VisualWalkthroughLaneEntry[]
+  laneEntries: StoryboardWalkthroughLaneEntry[]
   frames: string[]
 }
 
-export type VisualWalkthroughSession = {
+export type StoryboardWalkthroughSession = {
   pathId: string
   pathName: string
   pathSummary: string | null
   pathKind: PathKind
   scenarioName?: string
   phaseName?: string
-  steps: VisualWalkthroughStep[]
+  steps: StoryboardWalkthroughStep[]
 }
 
-export type VisualWalkthroughContextMeta = {
+export type StoryboardWalkthroughContextMeta = {
   scenarioName?: string
   phaseName?: string
 }
@@ -70,7 +70,7 @@ export function filterWalkthroughBlueprints(
   blueprints: BlueprintData[],
 ): BlueprintData[] {
   return blueprints.filter(
-    (blueprint) => buildVisualWalkthroughSession(blueprint).steps.length > 0,
+    (blueprint) => buildStoryboardWalkthroughSession(blueprint).steps.length > 0,
   )
 }
 
@@ -91,18 +91,18 @@ type StoryboardBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
 
 /**
  * The lanes a walkthrough steps through, in board order: every lane that is
- * NOT one of the visual rows — those hold the artwork the walkthrough shows,
+ * NOT one of the storyboard rows — those hold the artwork the walkthrough shows,
  * so stepping through them would show each frame next to itself.
  *
- * `VISUAL_WALKTHROUGH_LANE_NAMES` overrides this when a fork pins its own
+ * `STORYBOARD_WALKTHROUGH_LANE_NAMES` overrides this when a fork pins its own
  * roster; empty (the template default) means "whatever the board has", which
  * is the only rule that survives an adopter naming their lanes themselves.
  */
 function getWalkthroughLaneNames(
   blueprint: StoryboardBlueprint,
 ): string[] {
-  if (VISUAL_WALKTHROUGH_LANE_NAMES.length > 0) {
-    return [...VISUAL_WALKTHROUGH_LANE_NAMES]
+  if (STORYBOARD_WALKTHROUGH_LANE_NAMES.length > 0) {
+    return [...STORYBOARD_WALKTHROUGH_LANE_NAMES]
   }
 
   return blueprint.lanes
@@ -130,11 +130,11 @@ export function resolveStoryboardStripEntries(
     const cell = getCellAt(cellLookup, lane.id, stepId)
     if (!cell?.content.trim()) return []
     const frame = cell.frame?.trim()
-    if (!frame || isBlueprintStepVisualPlaceholder(frame)) return []
+    if (!frame || isBlueprintStepStoryboardPlaceholder(frame)) return []
     return [
       {
         laneName: name,
-        label: VISUAL_LANE_SHORT_LABELS[name] ?? name,
+        label: STORYBOARD_LANE_SHORT_LABELS[name] ?? name,
         frame,
         summary: resolveCellSummary(cell),
       },
@@ -143,7 +143,7 @@ export function resolveStoryboardStripEntries(
 }
 
 /** True when any walkthrough lane has a cell in this step. */
-export function stepHasVisualWalkthroughLaneCells(
+export function stepHasStoryboardWalkthroughLaneCells(
   blueprint: StoryboardBlueprint,
   stepId: string,
 ): boolean {
@@ -167,10 +167,10 @@ export function resolveStoryboardStrip(
   )
 }
 
-export function buildVisualWalkthroughSession(
+export function buildStoryboardWalkthroughSession(
   blueprint: BlueprintData,
-  meta?: VisualWalkthroughContextMeta,
-): VisualWalkthroughSession {
+  meta?: StoryboardWalkthroughContextMeta,
+): StoryboardWalkthroughSession {
   const steps = [...blueprint.steps]
     .sort((a, b) => a.position - b.position)
     .map((step, stepIndex) => {

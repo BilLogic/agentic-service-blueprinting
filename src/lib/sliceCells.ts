@@ -3,7 +3,7 @@ import {
   getFallbackPathsForScenario,
 } from '@/data/blueprintFallbacks'
 import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
-import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
+import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { FALLBACK_NAV, getBlueprintScenarioId } from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
@@ -127,10 +127,10 @@ export function resolveSliceCells(
 
 /**
  * The STRIP for one slide: the frames of the cells it references, in their
- * order. Each member cell's own `frame` first, then the Visual-lane cell of
- * the same step — a step's frame usually sits on the Visual lane rather than
- * on the acting cell. Placeholder tokens are skipped and duplicates collapse,
- * so what the slide shows is exactly what its cells carry.
+ * order. Each member cell's own `frame` first, then the storyboard-lane cell
+ * of the same step — a step's frame usually sits on the storyboard lane rather
+ * than on the acting cell. Placeholder tokens are skipped and duplicates
+ * collapse, so what the slide shows is exactly what its cells carry.
  */
 export function resolveSlideStrip(
   blueprint: BlueprintData | null,
@@ -154,7 +154,7 @@ export function resolveSlideStrip(
   const seen = new Set<string>()
   const add = (frame: string | null | undefined) => {
     const src = frame?.trim()
-    if (!src || isBlueprintStepVisualPlaceholder(src) || seen.has(src)) return
+    if (!src || isBlueprintStepStoryboardPlaceholder(src) || seen.has(src)) return
     seen.add(src)
     frames.push(src)
   }

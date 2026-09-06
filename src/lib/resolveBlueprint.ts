@@ -3,7 +3,7 @@ import {
   getRawBlueprintFallback,
 } from '@/data/blueprintFallbacks'
 import { applyBlueprintDisplayFilters } from '@/lib/applyBlueprintDisplayFilters'
-import { isBlueprintStepVisualPlaceholder } from '@/lib/blueprintVisualPlaceholder'
+import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import {
   deduplicateBlueprintLanes,
   normalizeBlueprint,
@@ -104,7 +104,7 @@ function fillMissingTouchpoints(
  * Merge policy (applies only when the blueprint source is 'database'):
  * - Field values already present in the DB (non-empty after trim) are kept.
  * - Fallback values only fill DB fields that are null/empty (a placeholder
- *   step visual counts as empty when the fallback has a real frame).
+ *   step storyboard counts as empty when the fallback has a real frame).
  * - Fallback lanes/cells/steps/dependencies/links that are entirely missing from
  *   the DB are appended; nothing in the DB is removed or repositioned.
  */
@@ -154,8 +154,8 @@ function mergeMissingBlueprintContent(
       const cellFrame = cell.frame?.trim()
       if (
         !cellFrame ||
-        (isBlueprintStepVisualPlaceholder(cellFrame) &&
-          !isBlueprintStepVisualPlaceholder(fallbackCell.frame))
+        (isBlueprintStepStoryboardPlaceholder(cellFrame) &&
+          !isBlueprintStepStoryboardPlaceholder(fallbackCell.frame))
       ) {
         next = { ...next, frame: fallbackCell.frame }
         changed = true

@@ -37,7 +37,7 @@ import {
 } from '@/lib/touchpointRole'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
-import { VisualStepDetailStack } from '@/components/blueprint/VisualStepDetailStack'
+import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -97,7 +97,7 @@ import {
 } from '@/lib/blueprintTechDescriptions'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
-import { resolveStoryboardStripEntries } from '@/lib/visualWalkthrough'
+import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
 import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
@@ -721,7 +721,7 @@ function BlueprintCellDetailPanelBody() {
     }
   }, [pathEntry?.pathId, resolvedCellId, selection])
 
-  const visualStepEntries = useMemo(() => {
+  const storyboardStepEntries = useMemo(() => {
     const stepId = selection?.stepId
     const pathId = pathEntry?.pathId
     if (!stepId || !pathId) return []
@@ -1362,7 +1362,7 @@ function BlueprintCellDetailPanelBody() {
         {isStoryboardLane ? (
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">
             {titleRow}
-            <VisualStepDetailStack entries={visualStepEntries} />
+            <StoryboardStepDetailStack entries={storyboardStepEntries} />
           </div>
         ) : (
           <>

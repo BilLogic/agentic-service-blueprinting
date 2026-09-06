@@ -28,7 +28,7 @@
  *     compare views show every verdict: fully shared columns (quiet),
  *     divergent columns, path-only cells, path-only STEPS (each Map path
  *     omits the other's column), and shared slots inside divergent columns
- *   - pill lanes (newline multi-pill AND slot-sibling cells) and a visual row
+ *   - pill lanes (newline multi-pill AND slot-sibling cells) and a storyboard row
  *     carrying four REAL figures
  *
  * The sample content is English-only, deliberately. Non-ASCII rendering is a
@@ -151,7 +151,7 @@ const repoLink = (name, path) => {
   return { id: null, name, kind: 'link', url: `${REPO_URL}/${path}`, placementId: null, featured: false }
 }
 
-/** Figures for the visual row — served from /cover/ by scripts/sync-cover-assets.mjs. */
+/** Figures for the storyboard row — served from /cover/ by scripts/sync-cover-assets.mjs. */
 const figure = (name) => {
   if (!existsSync(join(REPO_ROOT, 'docs', 'assets', name))) {
     throw new Error(`figure("${name}"): docs/assets/${name} does not exist`)
@@ -235,9 +235,10 @@ const LANES = [
 ]
 
 /**
- * The one documented exception: `Map your service` carries a visual row on
- * top, pushing the roster to rows 1–7. Four real figures, so the `visual`
- * role is demonstrated on the one board where journey imagery earns a row —
+ * The one documented exception: `Map your service` carries a storyboard row
+ * on top, pushing the roster to rows 1–7. Four real figures, so the
+ * `storyboard` role is demonstrated on the one board where journey imagery
+ * earns a row —
  * rather than an empty band on half of them.
  */
 const MAP_LANES = [
@@ -440,9 +441,10 @@ const SCENARIOS = [
     ],
     lanes: MAP_LANES,
     cells: [
-      // The visual row draws NOTHING of its own: src/lib/visualWalkthrough.ts
-      // collects the frames hanging off the OTHER lanes' cells at the same
-      // column and lays them out in the visual lane. So the four figures are
+      // The storyboard row draws NOTHING of its own:
+      // src/lib/storyboardWalkthrough.ts collects the frames hanging off the
+      // OTHER lanes' cells at the same column and lays them out in the
+      // storyboard lane. So the four figures are
       // attached below, to the cells whose moment they actually illustrate.
 
       // The Stakeholders lane is deliberately quiet on this board and the two
@@ -486,7 +488,7 @@ const SCENARIOS = [
       {
         lane: 'claude', col: 1,
         content: 'Loads the sb:map skill and its elicitation protocol',
-        // Journey figure for this column — the visual row picks it up.
+        // Journey figure for this column — the storyboard row picks it up.
         frame: figure('sb-map.svg'),
       },
       {

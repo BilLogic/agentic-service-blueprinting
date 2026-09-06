@@ -423,7 +423,7 @@
         },
         "content": {
           "$ref": "#/$defs/localeText",
-          "description": "Cell label, the primary grid text. Newline-separated items render as pills on pill-role lanes. Omit (or empty strings) for visual-row picture cells."
+          "description": "Cell label, the primary grid text. Newline-separated items render as pills on pill-role lanes. Omit (or empty strings) for storyboard-row picture cells."
         },
         "summary": {
           "$ref": "#/$defs/localeText",
@@ -431,7 +431,7 @@
         },
         "frame": {
           "type": "string",
-          "description": "The frame: one image on this cell (visual rows and illustrated cells). A step's frames across the lanes are its strip."
+          "description": "The frame: one image on this cell (storyboard rows and illustrated cells). A step's frames across the lanes are its strip."
         },
         "resources": {
           "type": "array",

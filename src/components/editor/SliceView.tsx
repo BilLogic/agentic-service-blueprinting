@@ -7,7 +7,7 @@ import {
   type PointerEvent,
 } from 'react'
 import { Check, Play } from 'lucide-react'
-import { VisualWalkthroughShell } from '@/components/blueprint/VisualWalkthroughShell'
+import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWalkthroughShell'
 import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
 import {
   SliceHeaderBandSkeleton,
@@ -53,7 +53,7 @@ const SLICE_LOAD_STAGES_SCENARIO = [
 ]
 
 const FOCUS_CLICK_IGNORE =
-  '[data-cell-detail-panel], [data-editor-navbar], [data-canvas-nav], [data-zoom-indicator], [data-annotation-toolbar], [data-visual-walkthrough-modal]'
+  '[data-cell-detail-panel], [data-editor-navbar], [data-canvas-nav], [data-zoom-indicator], [data-annotation-toolbar], [data-storyboard-walkthrough-modal]'
 
 type SliceViewProps = {
   sliceId: string
@@ -276,7 +276,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
       onClickCapture={editing ? undefined : handleFocusClickCapture}
     >
       <EditorDetailScope slideId={scenarioId}>
-        <VisualWalkthroughShell>
+        <StoryboardWalkthroughShell>
           <div
             className="absolute inset-0 flex min-h-0 flex-col"
             data-editor-view
@@ -298,7 +298,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
               }
             />
           </div>
-        </VisualWalkthroughShell>
+        </StoryboardWalkthroughShell>
       </EditorDetailScope>
       {!focused && !editing && (
         <SliceRefocusButton onRefocus={() => setFocused(true)} />

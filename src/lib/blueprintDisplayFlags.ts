@@ -7,23 +7,23 @@
  * template cannot carry.
  */
 
-/** Visual swimlane rows on the blueprint grid. */
-export const BLUEPRINT_VISUAL_LANE_UI_ENABLED = true
+/** Storyboard swimlane rows on the blueprint grid. */
+export const BLUEPRINT_STORYBOARD_LANE_UI_ENABLED = true
 
 /** Cell click → detail side panel. */
 export const BLUEPRINT_CELL_DETAIL_UI_ENABLED = true
 
 /** Presentation mode (play button + modal). */
-// Off: the ▶ sat inside the Visual lane of every blueprint looking like part
+// Off: the ▶ sat inside the Storyboard lane of every blueprint looking like part
 // of the diagram, and the walkthrough it opened duplicated what presentation
 // mode already does better. The machinery stays for a future surface that
 // earns it; the flag is the single switch every grid reads.
-export const BLUEPRINT_VISUAL_WALKTHROUGH_ENABLED = false
+export const BLUEPRINT_STORYBOARD_WALKTHROUGH_ENABLED = false
 
-export function isBlueprintVisualLaneEnabled(
+export function isBlueprintStoryboardLaneEnabled(
   _scenarioId?: string | null,
 ): boolean {
-  return BLUEPRINT_VISUAL_LANE_UI_ENABLED
+  return BLUEPRINT_STORYBOARD_LANE_UI_ENABLED
 }
 
 export function isBlueprintCellDetailEnabled(
@@ -32,6 +32,6 @@ export function isBlueprintCellDetailEnabled(
   return BLUEPRINT_CELL_DETAIL_UI_ENABLED
 }
 
-export function isBlueprintVisualWalkthroughEnabled(): boolean {
-  return BLUEPRINT_VISUAL_WALKTHROUGH_ENABLED
+export function isBlueprintStoryboardWalkthroughEnabled(): boolean {
+  return BLUEPRINT_STORYBOARD_WALKTHROUGH_ENABLED
 }

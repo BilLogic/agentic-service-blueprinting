@@ -24,8 +24,8 @@ export type MergedSubCellMember = {
   readonly pathId: string
   /** That path's step id backing this canonical column. */
   readonly stepId: string
-  /** Real cell ids — never merged, never synthesized (bar the visual-lane
-   *  `visual-<stepId>` anchor the stacked grid already uses). */
+  /** Real cell ids — never merged, never synthesized (bar the storyboard-lane
+   *  `storyboard-<stepId>` anchor the stacked grid already uses). */
   readonly cellIds: readonly string[]
 }
 

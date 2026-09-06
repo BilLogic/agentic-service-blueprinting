@@ -26,7 +26,7 @@
  *   --background-blueprint-cell-pressed      pressed surface   "
  *   --ring-blueprint-cell                    outline + focus   "
  *   --ring-blueprint-cell-soft               "                 "
- *   --background-blueprint-cell-panel        opt-in override   set by BlueprintStepVisual
+ *   --background-blueprint-cell-panel        opt-in override   set by BlueprintStepStoryboard
  *   --background-blueprint-panel-label-rail  panel hover       set by the hover rule below
  *   --background-blueprint-panel-canvas      "                 "
  *   --background-blueprint-panel-section     "                 "
