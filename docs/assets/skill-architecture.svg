@@ -1,7 +1,7 @@
 <svg viewBox="0 -40 880 548" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <style>
     .title { font-size: 11px; font-weight: 700; fill: #273036; }
-    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .badge { font-size: 10px; font-weight: 600; fill: #273036; }
     .sub { font-size: 9px; fill: #9ca3af; }
     .tree { font-size: 8.5px; fill: #6b7280; }
     .doc { font-size: 9px; fill: #273036; }
@@ -126,15 +126,15 @@
   <!-- ==================== column 3: the agents ==================== -->
   <g>
     <rect x="618" y="30" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4b483" stroke-width="1.2"/>
-    <text x="741" y="59" class="chip mono" font-size="9" text-anchor="middle">document-reader</text>
+    <text x="741" y="59" class="badge mono" font-size="9" text-anchor="middle">document-reader</text>
     <rect x="618" y="133" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4b483" stroke-width="1.2"/>
-    <text x="741" y="162" class="chip mono" font-size="9" text-anchor="middle">blueprint-reviewer</text>
+    <text x="741" y="162" class="badge mono" font-size="9" text-anchor="middle">blueprint-reviewer</text>
     <rect x="618" y="236" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4b483" stroke-width="1.2"/>
-    <text x="741" y="265" class="chip mono" font-size="9" text-anchor="middle">render-checker</text>
+    <text x="741" y="265" class="badge mono" font-size="9" text-anchor="middle">render-checker</text>
     <rect x="618" y="340" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4b483" stroke-width="1.2"/>
-    <text x="741" y="369" class="chip mono" font-size="9" text-anchor="middle">auditor</text>
+    <text x="741" y="369" class="badge mono" font-size="9" text-anchor="middle">auditor</text>
     <rect x="618" y="443" width="246" height="48" rx="8" fill="#ffffff" stroke="#d4b483" stroke-width="1.2"/>
-    <text x="741" y="472" class="chip mono" font-size="9" text-anchor="middle">impact-tracer</text>
+    <text x="741" y="472" class="badge mono" font-size="9" text-anchor="middle">impact-tracer</text>
   </g>
 
   <!-- ============ skill links shared doc: one rail per skill, one stub per doc ============ -->

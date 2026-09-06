@@ -1,7 +1,7 @@
 <svg viewBox="0 -44 880 334" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <style>
     .title { font-size: 11px; font-weight: 700; fill: #273036; }
-    .chip { font-size: 10.5px; font-weight: 700; fill: #273036; }
+    .badge { font-size: 10.5px; font-weight: 700; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .up { stroke: #b6bac2; stroke-width: 1.2; fill: none; marker-end: url(#triF); }
@@ -28,7 +28,7 @@
       <rect x="32" y="67" width="56" height="7" fill="#ecebf5"/>
       <rect x="32" y="46" width="56" height="28" fill="none" stroke="#d4d4da"/>
     </g>
-    <text x="32" y="92" class="chip">the app</text>
+    <text x="32" y="92" class="badge">the app</text>
     <text x="32" y="106" class="sub">read, compare, present</text>
   </g>
 
@@ -43,7 +43,7 @@
       <rect x="248" y="46" width="38" height="28" fill="none" stroke="#d4d4da"/>
     </g>
     <rect x="292" y="46" width="22" height="28" rx="3" fill="#fdf1e3" stroke="#d4b483"/>
-    <text x="248" y="92" class="chip">the in-app agent</text>
+    <text x="248" y="92" class="badge">the in-app agent</text>
     <text x="248" y="106" class="sub">ask, and it drafts the change</text>
   </g>
 
@@ -53,7 +53,7 @@
     <text x="464" y="56" class="sub mono" font-size="9" fill="#8a8f98">&#8250;</text>
     <rect x="476" y="48" width="86" height="9" rx="3" fill="#eceef2"/>
     <rect x="464" y="66" width="120" height="6" rx="3" fill="#f4f5f7"/>
-    <text x="464" y="92" class="chip">agentic tools</text>
+    <text x="464" y="92" class="badge">agentic tools</text>
     <text x="464" y="106" class="sub">map and audit from your IDE or CLI</text>
   </g>
 
@@ -65,7 +65,7 @@
     <rect x="688" y="59" width="34" height="4" rx="2" fill="#eceef2"/>
     <rect x="738" y="56" width="30" height="14" rx="7" fill="#fdf1e3" stroke="#d4b483"/>
     <path d="M746,63 h6 M752,60 l4,3 -4,3" fill="none" stroke="#d4b483" stroke-width="1.2"/>
-    <text x="680" y="92" class="chip">the Slack bot</text>
+    <text x="680" y="92" class="badge">the Slack bot</text>
     <text x="680" y="106" class="sub">answers, and links to the cell</text>
   </g>
 

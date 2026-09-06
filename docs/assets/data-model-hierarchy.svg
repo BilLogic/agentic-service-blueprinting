@@ -3,7 +3,7 @@
     .head { font-size: 10px; font-weight: 700; letter-spacing: .09em; fill: #8a8f98; }
     .title { font-size: 11px; font-weight: 700; fill: #273036; }
     .titleDim { font-size: 10px; font-weight: 600; fill: #9ca3af; }
-    .chip { font-size: 11px; font-weight: 600; fill: #273036; }
+    .phaseBadge { font-size: 11px; font-weight: 600; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .badge { font-size: 7.5px; font-weight: 700; fill: #4f4b47; }
     .seq { stroke: #b6bac2; stroke-width: 1.2; fill: none; marker-end: url(#triL); }
@@ -26,19 +26,19 @@
   <text x="26" y="23" class="title">Service</text>
   <rect x="16" y="40" width="176" height="200" rx="10" fill="#fafbfc" stroke="#c9ccd4" stroke-width="1.3"/>
   <rect x="32" y="64" width="144" height="26" rx="7" fill="#d9e4ea" stroke="#9aadbe" stroke-width="1.3"/>
-  <text x="44" y="81" class="chip">Phase 1</text>
+  <text x="44" y="81" class="phaseBadge">Phase 1</text>
   <path class="seq" d="M104,92 L104,107"/>
   <rect x="32" y="110" width="144" height="26" rx="7" fill="#e9eff4" stroke="#b6c7d2"/>
-  <text x="44" y="127" class="chip" fill="#4b5563">Phase 2</text>
+  <text x="44" y="127" class="phaseBadge" fill="#4b5563">Phase 2</text>
   <path class="seq" d="M104,138 L104,153"/>
   <rect x="32" y="156" width="144" height="26" rx="7" fill="#e9eff4" stroke="#b6c7d2"/>
-  <text x="44" y="173" class="chip" fill="#4b5563">Phase 3</text>
+  <text x="44" y="173" class="phaseBadge" fill="#4b5563">Phase 3</text>
   <path class="loop" d="M32,169 L24,169 L24,77 L29,77"/>
   <text x="104" y="258" text-anchor="middle" class="head">SERVICE</text>
   <text x="104" y="276" text-anchor="middle" class="sub">maps to multiple phases,</text>
   <text x="104" y="289" text-anchor="middle" class="sub">in chronological order (can loop)</text>
 
-  <!-- Zoom: Phase 1 chip projects into the Phase panel -->
+  <!-- Zoom: the Phase 1 badge projects into the Phase panel -->
   <path class="zoom" d="M176,64 L244,128"/>
   <path class="zoom" d="M176,90 L244,328"/>
 

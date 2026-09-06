@@ -1,7 +1,7 @@
 <svg viewBox="0 -40 880 292" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
   <style>
     .title { font-size: 11px; font-weight: 700; fill: #273036; }
-    .chip { font-size: 10px; font-weight: 600; fill: #273036; }
+    .badge { font-size: 10px; font-weight: 600; fill: #273036; }
     .sub { font-size: 9.5px; fill: #9ca3af; }
     .rail { font-size: 9.5px; font-weight: 700; letter-spacing: .07em; fill: #8a8f98; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -27,7 +27,7 @@
   <rect x="76" y="89" width="140" height="86" rx="6" fill="#fafbfc" stroke="#d4d4da"/>
   <text x="84" y="102" class="sub mono" font-size="8.5">journey map (figjam)</text>
   <rect x="94" y="107" width="140" height="86" rx="6" fill="#ffffff" stroke="#c9ccd4"/>
-  <text x="102" y="120" class="chip mono" font-size="9">research-notes.md</text>
+  <text x="102" y="120" class="badge mono" font-size="9">research-notes.md</text>
   <line x1="104" y1="137" x2="216" y2="137" stroke="#eceef2" stroke-width="4"/>
   <line x1="104" y1="149" x2="196" y2="149" stroke="#eceef2" stroke-width="4"/>
   <line x1="104" y1="161" x2="208" y2="161" stroke="#eceef2" stroke-width="4"/>
@@ -45,7 +45,7 @@
   <rect x="547" y="52" width="15" height="3" rx="1.5" fill="#eceef2"/>
   <circle cx="580" cy="60" r="6.5" fill="#e8f3ed" stroke="#9dbfa9"/>
   <path d="M577,60 L579,62.5 L584,56.5" fill="none" stroke="#4f5f52" stroke-width="1.4"/>
-  <text x="596" y="46" class="chip mono" font-size="9">blueprint/blueprint.json</text>
+  <text x="596" y="46" class="badge mono" font-size="9">blueprint/blueprint.json</text>
   <line x1="524" y1="74" x2="864" y2="74" stroke="#e2e4e9"/>
   <text x="540" y="96" class="sub" font-size="8">phases</text>
   <path class="spoke" d="M596,92 H836"/>
