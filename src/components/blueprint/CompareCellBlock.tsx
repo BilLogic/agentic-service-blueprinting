@@ -9,7 +9,7 @@ import {
 } from '@/lib/blueprintLayout'
 import {
   buildBlueprintCellSelection,
-  getTouchpointItems,
+  getTouchpointNames,
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
 import type { BlueprintLaneStyle } from '@/lib/blueprintTheme'
@@ -138,12 +138,12 @@ export function CompareCellBlock({
       >
         {(slotCells && slotCells.length > 0
           ? slotCells.flatMap((slotCell) =>
-              getTouchpointItems(slotCell.content ?? '').map((item) => ({
+              getTouchpointNames(slotCell).map((item) => ({
                 item,
                 slotCell,
               })),
             )
-          : getTouchpointItems(content).map((item) => ({
+          : getTouchpointNames({ content }).map((item) => ({
               item,
               slotCell: undefined,
             }))

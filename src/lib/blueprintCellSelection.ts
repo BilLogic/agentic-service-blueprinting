@@ -78,8 +78,29 @@ export function buildTouchpointSelection(
   }
 }
 
-export function getTouchpointItems(content: string | undefined): string[] {
-  return parseCellContentItems(content ?? '')
+/**
+ * The touchpoint names a cell shows, in order.
+ *
+ * Reads placements when the cell has them and falls back to splitting the
+ * text when it does not. The fallback is not dead code: compare slots and
+ * the hand-written fixtures hand this function a cell that never went
+ * through the normalizer, and splitting the text is what those sources
+ * mean. Where placements exist they win, because they are what the board is
+ * drawn from and what an author's edit writes.
+ *
+ * A name-only placement (#112) is what makes that preference load-bearing
+ * rather than tidy: its name is in no text, so a reader that split the text
+ * would drop it silently. Whether a name IS one is not answered here — that
+ * is `isNameOnlyPlacement` in `cellTouchpoints.ts`, which reads the row as
+ * well as the registry link, and so does not mistake a fallback placement,
+ * which has neither, for one.
+ */
+export function getTouchpointNames(cell: {
+  content?: string | null
+  touchpoints?: readonly { name: string }[]
+}): string[] {
+  if (cell.touchpoints?.length) return cell.touchpoints.map((entry) => entry.name)
+  return parseCellContentItems(cell.content ?? '')
 }
 
 export function isSameBlueprintCellSelection(

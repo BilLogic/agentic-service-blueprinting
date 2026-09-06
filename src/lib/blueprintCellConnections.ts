@@ -1,4 +1,4 @@
-import { buildBlueprintCellSelection, getTouchpointItems } from '@/lib/blueprintCellSelection'
+import { buildBlueprintCellSelection, getTouchpointNames } from '@/lib/blueprintCellSelection'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
@@ -72,7 +72,7 @@ function toConnection(
   const laneName = lane?.name ?? 'Unknown lane'
   const laneRowPosition = lane?.position ?? -1
   const isTech = lane ? shouldUseTouchpointCellContent(lane) : false
-  const techItems = isTech ? getTouchpointItems(cell.content) : []
+  const techItems = isTech ? getTouchpointNames(cell) : []
 
   return {
     dependencyId: dependency.id,

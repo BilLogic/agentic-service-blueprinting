@@ -1,6 +1,6 @@
 import {
   buildTouchpointSelection,
-  getTouchpointItems,
+  getTouchpointNames,
 } from '@/lib/blueprintCellSelection'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
@@ -42,7 +42,7 @@ export function getBlueprintStepTechItems(
     )
     if (!cell) continue
 
-    for (const item of getTouchpointItems(cell.content)) {
+    for (const item of getTouchpointNames(cell)) {
       if (
         exclude &&
         resolveBlueprintCellId(exclude.cellId) === cell.id &&
@@ -81,7 +81,7 @@ export function buildTouchpointSelectionForItem(
   const step = blueprint.steps[stepIndex]
   if (!lane || !step || stepIndex < 0) return null
 
-  if (!getTouchpointItems(cell.content).includes(techItem)) return null
+  if (!getTouchpointNames(cell).includes(techItem)) return null
 
   return buildTouchpointSelection(
     {
