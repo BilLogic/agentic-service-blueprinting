@@ -1,5 +1,89 @@
 # Changelog
 
+## 1.6.4
+
+### Patch Changes
+
+- 80f4e67: A badge is not a chip, in the figures either.
+
+  #324 stopped `chip` being a name under `src` and #358 stopped it being a
+  comment there, and both sweeps walked past `docs/assets/`. Fifty-one class
+  strings in the cover figures still said the retired word — forty-one
+  `class="chip"` attributes and ten `.chip` rules across ten of the thirteen
+  files — because no check had ever opened an SVG looking for a NAME.
+  `retired-copy.test.mjs` does open them and was right not to catch this: its
+  subject is the words a reader sees, which in an SVG means the text nodes.
+
+  The figures are AUTHORED, so this is an edit to the source and not to an
+  output: `scripts/sync-cover-assets.mjs` copies `docs/assets/` to `public/cover/`
+  and changes nothing, and `public/cover/` is generated and gitignored. Nine
+  files take `badge` straight — the marker those rounded rects draw is the one
+  this design system calls a badge, one per thing and never drawn from a set.
+  `data-model-hierarchy.svg` is the tenth and could not: it already HAD a
+  `.badge`, at 7.5px, on the lane markers in its miniature path panel, which is
+  the same thing `blueprint-anatomy.svg` calls a badge. Its phase markers are
+  badges too, so they say which badge they are and became `.phaseBadge` rather
+  than collapsing two rules with different metrics into one name. Every rule and
+  every attribute moved together, so the diff is fifty-three lines for
+  fifty-three and no figure renders a pixel differently.
+
+  `scripts/tests/badge-and-tag.test.mjs` gains a third subject, which is the
+  half that stops this recurring. A figure is styled only by its own `<style>`
+  block — `CoverFigure` serves it through an `<img>`, which seals page CSS out —
+  so two assertions hold over one walk of the class vocabulary. No class name
+  may say a retired word, in either place a figure can write one: the rule in
+  the stylesheet and the token in a `class` attribute. And every class a figure
+  uses must have a rule in that same file, which is what makes the first
+  assertion impossible to satisfy by halves — rename the rule alone and the
+  attributes style nothing, rename the attributes alone and the rule does. The
+  converse is deliberately not asserted, and four unused rules stand today: a
+  rule nobody uses teaches nobody, because a name is learned where it is used.
+
+  The word list stopped being a literal in the same change. `RETIRED_DESIGN_WORDS`
+  is now read off `RENAME_MAP` by the map's own shape — the rows that retired no
+  database identifier and carry no migration, which is exactly the kind of rename
+  no schema and no generated type can hold and precisely what this file exists to
+  hold instead. It selects the `pill`/`chip` row today, a test states that as a
+  fact about the map, and a second such row would be picked up on the day it
+  lands.
+
+- 0a8a77d: The selection seam reads a cell, not a string.
+
+  `getTouchpointItems` took a cell's `content` and split it, so the touchpoint
+  names the board drew were whatever the grid's text happened to say. That is
+  one of the two sources a cell has, and since placements became rows it is the
+  weaker one: a NAME-ONLY placement (#112) names its touchpoint by name alone,
+  because the registry has no entry for it, and nothing obliges the cell's text
+  to repeat that name. Split the text and the placement is not merely undrawn —
+  it is unreachable, because the same list is what the panel and the touchpoint
+  picker select from. `getTouchpointNames` replaces it and takes the cell:
+  placements where the cell has them, the text where it does not.
+
+  All five call sites had the cell in hand already — `blueprintCellConnections`,
+  twice in `blueprintStepTech`, and the slot-cell branch of `CompareCellBlock` —
+  save one, the branch of `CompareCellBlock` that has only a bare `content`
+  string, which passes `{ content }` and gets the old reading, correctly: a
+  compare slot's face is assembled from text and there are no placements there
+  to prefer.
+
+  The text fallback is therefore not dead code and is asserted as behaviour, not
+  tolerated as a leftover. The hand-written fixture boards and the compare slots
+  hand these readers a cell that never went through the normalizer, and
+  splitting the text is what those sources mean.
+
+  `getMaxTouchpointCountInLane` moves with it. The row height a touchpoint lane
+  reserves is a count of the same list, and leaving it reading the text alone
+  would have drawn each name-only face into a row with no space for it — the
+  count and the list have to agree or the fix is a clipping bug. It now counts
+  placements where a cell has them and the text where it does not, which is the
+  reading `getTouchpointNames` does.
+
+  Whether a name IS a name-only placement is still `isNameOnlyPlacement` in
+  `cellTouchpoints.ts`, and deliberately stays there. That predicate reads the
+  row as well as the registry link, so a fallback placement — no row and no
+  registry — is not mistaken for one; a second predicate keyed on the registry
+  link alone would disagree with it on every fixture board.
+
 ## 1.6.3
 
 ### Patch Changes
