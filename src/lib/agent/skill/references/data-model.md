@@ -143,9 +143,9 @@ erDiagram
   per scenario — the route things take when nothing intervenes. An `exception`
   is a route taken because something went wrong; a `variant` is a different but
   equally valid way through. Colour follows type (`happy` green, `exception`
-  red), so **the name must carry the condition**, not the type: `Under 12
-  hours`, not `Late call-off path`. A scenario with only one route names it
-  `Standard`.
+  red), so **the name must carry the condition**, not the type: `A critical
+  finding reopens`, not `Exception path`. A scenario with only one route names
+  it `Standard`.
 - `stakeholders.kind`: `recipient` \| `staff` \| `partner` \| `provider` \|
   `team`. Who this actor is to the service. `team` is a kind of its own
   because a team is a group a lane can be, while `staff` are the people in it

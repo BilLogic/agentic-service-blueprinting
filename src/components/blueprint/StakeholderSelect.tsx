@@ -49,7 +49,7 @@ export function StakeholderSelect({
     whose meaning belongs on its own hover.
 
     The kind stays beside the badge as text rather than joining it: a badge
-    says one thing, and "Regular Tutor" and "Staff" are two.
+    says one thing, and "Blueprint owner" and "Staff" are two.
   */
   if (disabled) {
     /*

@@ -29,7 +29,7 @@ export const STAKEHOLDER_KIND_LABELS: Record<StakeholderKind, string> = {
  * What each kind of party IS, for the category half of the stakeholder card.
  *
  * The registry had a label for every kind and a meaning for none, so a reader
- * hovering `Regular Tutor` learned its own one-liner and never learned what
+ * hovering `Blueprint owner` learned its own one-liner and never learned what
  * "Staff" commits it to. Five sentences, written for #243.
  *
  * The distinction they carry is the one the union above documents, and it is
@@ -57,7 +57,7 @@ export const STAKEHOLDER_KIND_MEANING: Record<StakeholderKind, string> = {
  * agreed with none of them — `lanes.name`, `cells.value_props[].for`,
  * `slices.actor` and the business model's partners. Every surface that used to
  * suggest from whatever strings happened to be in the data reads this instead,
- * so "tutor" and "Regular Tutor" stop being two people.
+ * so "owner" and "Blueprint owner" stop being two people.
  *
  * The read is deliberately unscoped, and under the shared catalog (ADR 0003)
  * that is now CORRECT rather than a latent bug: the stakeholder pool is the

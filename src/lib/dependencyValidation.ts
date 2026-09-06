@@ -20,7 +20,7 @@ export const DEPENDENCY_KINDS: DependencyKind[] = ['leads_to', 'enables']
  * BOTH READ SOURCE-FIRST AND UPSTREAM-FIRST, which is why the second is
  * `enables` and not `needs`. Makes it HAPPEN versus makes it POSSIBLE:
  *
- *   "Creates breakout rooms"          leads to   "Reminds tutors to check them"
+ *   "Read the sources"                leads to   "Draft the structure"
  *   "generate_sample_blueprint.mjs"   enables    "npm run dev with no .env"
  *
  * `needs` pointed the other way — B comes first, B is required by A — so an

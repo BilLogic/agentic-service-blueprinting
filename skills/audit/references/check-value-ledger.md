@@ -37,8 +37,8 @@ blueprint's own scaffolding, 224 of 299 lane rows. Never ask who they are for.
   them → info; per-lane grouped finding.
 - A STAKEHOLDER who appears as a lane but is never named as a value audience
   anywhere → warn; scope-key fingerprint; summary asks "who is this lane for?".
-  `Supervisor` is the live example: one lane, a real actor, zero value
-  entries — a true finding this check could not previously make.
+  A lane naming a real actor with zero value entries is the live example —
+  a true finding this check could not previously make.
 - Value claimed for an audience that resolves to no stakeholder → info, and
   say which: it is either a missing alias or a missing member of the cast.
 - Value claimed for a stakeholder the scenario never touches → info.

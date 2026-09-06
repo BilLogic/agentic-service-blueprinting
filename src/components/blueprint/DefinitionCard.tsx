@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
  * One part of a definition: the word, and what it means.
  *
  * `eyebrow` is a category ("Path", "Staff", "Live") or an instance's own name
- * ("Happy Path", "Regular Tutor"). Both are set the same way, which is the
+ * ("Happy Path", "Blueprint owner"). Both are set the same way, which is the
  * whole point — see `DefinitionCard`.
  */
 export type DefinitionSection = {

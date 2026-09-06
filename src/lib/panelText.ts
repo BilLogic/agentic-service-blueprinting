@@ -21,8 +21,8 @@ export const PANEL_TEXT = {
    * 2026-08-21. Both are display-type devices — they exist to pull a large
    * heading back together, where default tracking reads loose. At 14px they do
    * the opposite, and this "title" is very often a whole sentence rather than
-   * a short name ("Pings the assigned tutor if a late joiner has not been
-   * moved to their breakout room."). Negative tracking plus 1.375 leading on a
+   * a short name ("Watches one frame at a time, and follows the locator back
+   * to where it sits on the board."). Negative tracking plus 1.375 leading on a
    * semibold sentence is the worst of the available combinations: the letters
    * crowd and the lines crowd at once. Default tracking, normal leading.
    */

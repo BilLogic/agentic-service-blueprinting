@@ -21,7 +21,7 @@ export type LaneSpecUpdate = {
 /**
  * Write a lane's spec columns — to EVERY lane in the scenario with this label.
  *
- * A lane row belongs to one path, so "Regular Tutor" in a four-path scenario
+ * A lane row belongs to one path, so "Blueprint owner" in a four-path scenario
  * is four rows. Writing only the row the panel was opened from would leave the
  * same lane claiming a different owner depending on which path you were
  * looking at, which is not a state a reader could make sense of. The panel

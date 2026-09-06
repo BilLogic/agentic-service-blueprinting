@@ -133,6 +133,13 @@ Two of them do not run in CI and are yours to run locally:
 checkout CI does not have. Both are in
 [checks.md § The database](./docs/engineering/checks.md).
 
+Two guards read the tree for what it must NOT carry, and they are the pair
+worth running before a comment goes in: `npm run check:standalone` for the
+deployment's NAMES and `npm run check:content-coupling` for its CONTENT — a
+cell id pasted out of its database, one of its lane actors, one of its
+scenarios. The second names the file, the line, the value and the pattern that
+caught it.
+
 Three failures surprise people, so they are worth knowing up front. Editing
 anything under `skills/` or `references/` without running
 `npm run sync:canvas-skills` fails `npm test` on the drift guard, because the
