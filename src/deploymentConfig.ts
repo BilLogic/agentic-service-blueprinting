@@ -34,16 +34,18 @@
  * `config.ts` directly. They migrate onto this type in later slices; until
  * then setting them changes nothing.
  *
- * NOT EXPRESSIBLE AT ALL, and the harder half: the two DECLARED FORK SEAMS,
- * `lib/storageNamespace.ts` (`STORAGE_PREFIX`) and
- * `lib/agent/tools/referenceDocs.ts` with `referenceNamesExtra.ts`. Both are
- * module constants an adopter is told to EDIT, which is the right shape for
- * an app that copies this repo and the wrong one for a host that mounts it:
- * a host cannot edit a module it imports. The prefix in particular is not
- * cosmetic — two installations served from one origin read each other's
- * settings and sessions without it. So either those two seams grow fields
- * here, or a mounting host has no way to reach them. Folding them in is
- * outstanding work, not a decision this file has already made.
+ * NOT A FIELD HERE, AND DELIBERATELY: the localStorage namespace. A config is
+ * read when `App` RENDERS, and the namespace is settled long before that —
+ * six modules build their storage key while the import graph evaluates, and
+ * two of them read localStorage there to seed a store snapshot. A field whose
+ * value arrives one lifecycle too late would be honoured by nothing and would
+ * fail silently, with two installations on one origin sharing a namespace. So
+ * a host calls `configureStorageNamespace` from a module it imports before
+ * this package, and `lib/storageNamespace.ts` carries the reasoning and the
+ * guard that makes a late call throw. Timing is the whole of the argument: it
+ * is not that the prefix is unimportant, it is that a render-time seam cannot
+ * carry an import-time value.
+ *
  */
 import { ORG_NAME } from './config'
 
