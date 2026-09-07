@@ -7,7 +7,6 @@ import { CanvasEmptyState } from '@/components/editor/CanvasEmptyState'
 import { useEditor } from '@/contexts/EditorContext'
 import { useAlignedPhaseRowPanelHeight } from '@/hooks/useAlignedPhaseRowPanelHeight'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
-import { useMobileShell } from '@/hooks/useMobileShell'
 import { defaultSelectedPathIds } from '@/lib/pathSelection'
 import type { PathListItem } from '@/lib/pathSelection'
 import { COMPARE_MIN_PANEL_HEIGHT } from '@/lib/sideBySideCompareLayout'
@@ -51,6 +50,11 @@ type PhaseScenarioOverviewProps = {
   dimAllScenarios?: boolean
   /** Slice-tab scope: mount only this scenario's artboard. */
   onlyScenarioId?: string | null
+  /**
+   * Opens a scenario from the canvas. OPTIONAL: mobile passes nothing, so a
+   * tap on a board cannot move between scenarios — the drawer owns that.
+   */
+  openDetail?: (scenarioId: string) => void
 }
 
 function PhaseScenarioConnector({ width }: { width: number }) {
@@ -118,24 +122,9 @@ export function PhaseScenarioOverview({
   focusedScenarioId = null,
   dimAllScenarios = false,
   onlyScenarioId = null,
+  openDetail,
 }: PhaseScenarioOverviewProps) {
-  const { getScenarioDisplayViewType, openDetail } = useEditor()
-  /*
-    THE CANVAS DOES NOT NAVIGATE ON A PHONE.
-
-    Every move between scenarios and between phases belongs to the drawer
-    there. Scoping the mobile canvas to one scenario removes the siblings
-    there are to tap, but that is a statement about what is currently
-    RENDERED; this is a statement about what a tap MEANS, and it is the one
-    that survives someone widening the scope later.
-
-    Undefined rather than a no-op: `navigable` in `ResizableComparePanel` is
-    gated on the handler existing, so the panel is genuinely inert — no
-    `role="button"`, no pointer cursor, no aria-label promising a
-    destination — instead of a button that swallows taps. Panning and
-    pinching over it are unaffected, and so is opening a cell.
-  */
-  const canvasNavigates = !useMobileShell()
+  const { getScenarioDisplayViewType } = useEditor()
   const isOverview = variant === 'overview'
 
   /*
@@ -438,8 +427,18 @@ export function PhaseScenarioOverview({
               lockPanelHeight={alignPanelHeights}
               excludeFromRowHeight={isExcluded(scenario.id)}
               displayViewType={scenarioViewType}
+              /*
+                No opener means no navigation. The view above decides that —
+                on a phone every move between scenarios belongs to the
+                drawer — and withholding the handler is what makes the panel
+                genuinely inert: `navigable` in `ResizableComparePanel` is
+                gated on it existing, so there is no `role="button"`, no
+                pointer cursor and no aria-label promising a destination,
+                instead of a button that swallows taps. Panning and pinching
+                over it are unaffected, and so is opening a cell.
+              */
               onNavigate={
-                canvasNavigates ? () => openDetail(scenario.id) : undefined
+                openDetail ? () => openDetail(scenario.id) : undefined
               }
               dimmed={
                 dimAllScenarios ||

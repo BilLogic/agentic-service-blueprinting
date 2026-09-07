@@ -14,6 +14,11 @@ import { describe, expect, it } from 'vitest'
  * is currently RENDERED; withholding the handler says what a tap MEANS, and
  * it is the one that survives someone widening the scope later.
  *
+ * The second statement is made ONCE, by the view that owns the canvas, and
+ * travels down as a prop — so this holds the prop rather than a viewport
+ * check inside the phase frame. That is what lets the same withholding cover
+ * the phase frame, which is not a scenario and was never covered by scoping.
+ *
  * Neither is observable in jsdom: the scope needs a real breakpoint and the
  * inertness needs a rendered board, so both are held to the source.
  */
@@ -44,20 +49,28 @@ describe('mobile canvas scope', () => {
 })
 
 describe('mobile canvas navigation', () => {
-  it('passes no navigate handler for a scenario panel', () => {
-    expect(PHASE_OVERVIEW).toContain('const canvasNavigates = !useMobileShell()')
-    expect(PHASE_OVERVIEW).toContain(
-      'canvasNavigates ? () => openDetail(scenario.id) : undefined',
-    )
-  })
-
-  it('passes no navigate handler for the phase frame either', () => {
+  it('decides at the view that owns the canvas, once', () => {
     /*
-      The phase frame is a navigation target in its own right and it is NOT a
-      scenario, so scoping the canvas to one scenario does not cover it.
+      ONE gate, and it is here rather than inside the phase frame. The frame
+      and the scenario panels inside it used to answer the same question in
+      two places, and only one of the two covered the frame — which is a
+      navigation target in its own right and is NOT a scenario, so scoping
+      the canvas to one scenario never covered it.
     */
     expect(OVERVIEW_VIEW).toContain(
-      'onOpenPhase={mobileShell ? undefined : openDetail}',
+      'const canvasNavigate = mobileShell ? undefined : openDetail',
+    )
+    expect(OVERVIEW_VIEW).toContain('onOpenPhase={canvasNavigate}')
+    expect(OVERVIEW_VIEW).toContain('openScenario={canvasNavigate}')
+  })
+
+  it('leaves the phase frame with no opener of its own', () => {
+    // Withheld, not defaulted: an `?? openDetail` anywhere below the gate
+    // would put navigation back on the phone without touching the gate.
+    expect(PHASE_OVERVIEW).not.toContain('useMobileShell')
+    expect(PHASE_OVERVIEW).toContain('openDetail?: (scenarioId: string) => void')
+    expect(PHASE_OVERVIEW).toContain(
+      'openDetail ? () => openDetail(scenario.id) : undefined',
     )
     expect(OVERVIEW_VIEW).toContain(
       'onNavigate={onOpenPhase ? () => onOpenPhase(phase.id) : undefined}',

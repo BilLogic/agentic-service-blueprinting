@@ -10,6 +10,7 @@ import {
   SIDEBAR_MIN_WIDTH,
 } from '@/lib/layoutTokens'
 import { CoverPage } from '@/components/cover/CoverPage'
+import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { coverContent } from '@/content/coverContent'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
@@ -17,7 +18,7 @@ import {
   SidebarCollapseButton,
 } from '@/components/editor/EditorChrome'
 import { AgentDock, AgentDockDivider } from '@/components/editor/AgentDock'
-import { EditorRail, type SidebarSurface } from '@/components/editor/EditorRail'
+import { EditorRail, type SidebarPanel } from '@/components/editor/EditorRail'
 import { AgentSettingsRailButton } from '@/components/editor/AgentPanel'
 import { ThemeToggle } from '@/components/editor/ThemeToggle'
 import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWalkthroughShell'
@@ -61,6 +62,7 @@ import {
   SHELL_ENTRANCE_STEP_MS,
   prefersReducedMotion,
 } from '@/lib/motion'
+import { describeSidebar } from '@/lib/shellContext'
 import { storageKey } from '@/lib/storageNamespace'
 import { cn } from '@/lib/utils'
 
@@ -142,15 +144,32 @@ function DesktopEditorShell() {
   // hands back with a cited cell. Mounted here because it needs the editor's
   // navigation and the boot URL state, and both live at this level.
   useCellDeepLink()
+  /*
+    Collapse, and only ever because the reader asked.
+
+    The sidebar is in flow at every width now (#305): collapse and expand push
+    the canvas the same way whether the window is wide or narrow, and there is
+    no viewport gate that shuts the aside on the reader's behalf. So this is a
+    plain boolean — no `auto`/`narrow` bookkeeping to tell a gate's collapse
+    from a reader's, because the gate is gone.
+  */
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const setCollapsedByUser = useCallback((collapsed: boolean) => {
+    // The width ease resizes the canvas container. Chrome moving, not the
+    // reader navigating — the camera holds still.
+    suppressCanvasResizeRefit()
+    setSidebarCollapsed(collapsed)
+  }, [])
   const isLanding = view === 'landing'
 
   const activeTabKind = activeTab?.kind ?? null
 
-  // The rail picks a surface. Slice/present tab activation auto-selects ◇,
+  // The rail picks a panel. Slice/present tab activation auto-selects ◇,
   // exactly as the old horizontal tabs did (initializer covers remounts
   // while a tab is already active, e.g. returning from a presentation).
-  const [surface, setSurface] = useState<SidebarSurface>(
+  // ✦ is NOT in this state — it toggles the chat, which sits under whichever
+  // panel is open, so it never displaces one.
+  const [panel, setPanel] = useState<SidebarPanel>(
     activeTabKind !== null ? 'slices' : 'blueprints',
   )
   const agentPlacement = useAgentPlacement()
@@ -159,7 +178,7 @@ function DesktopEditorShell() {
   const [lastTabKind, setLastTabKind] = useState(activeTabKind)
   if (lastTabKind !== activeTabKind) {
     setLastTabKind(activeTabKind)
-    if (activeTabKind !== null) setSurface('slices')
+    if (activeTabKind !== null) setPanel('slices')
   }
 
   // Leaving presentation runs before the tab actually switches: tabs unmount
@@ -184,8 +203,27 @@ function DesktopEditorShell() {
   // The cover page is a full-bleed reading surface: it has no phases to
   // navigate to yet, so a sidebar beside it is chrome for a workspace the
   // reader has not entered. It collapses like a presentation — the whole
-  // aside, rail included, and no navbar either.
-  const railOnly = presenting || sidebarCollapsed || isLanding
+  // aside, rail included, and no navbar either — down to zero width, which
+  // is what the name below tracks: not "just the rail" (there is no rail
+  // left to be only), but the aside gone entirely.
+  const asideHidden = presenting || sidebarCollapsed || isLanding
+  /*
+    Collapsed BY THE READER, which is not the same as an aside that is off
+    screen.
+
+    NOT `asideHidden`: presentation hides the sidebar too, and hides the navbar
+    with it (full-bleed). Telling the bands they are collapsed there would
+    strand a presentation with no header and no Return — the band must keep
+    drawing itself when nothing else can carry it. The landing view is the same
+    argument again.
+
+    ONE binding because it was three copies of one sentence, and one of the
+    three was wrong: the agent's shell context asked plain `asideHidden`, so a
+    reader mid-presentation was told the sidebar was collapsed and to expand a
+    control that was not on screen. Three readers of a fact is fine; three
+    spellings of it is how they disagree.
+  */
+  const collapsedByReader = sidebarCollapsed && !presenting && !isLanding
 
   /*
     Entering the workspace from the cover, in two separated concerns.
@@ -220,20 +258,20 @@ function DesktopEditorShell() {
     restarts its reveal at stage 0 — so keying the lane on the stage alone
     dropped the full boot skeleton over an already populated sidebar every
     time the reader came back from a slice tab. The stage says "this canvas
-    is staging"; this says "and the sidebar is staging with it", which is
-    true exactly once per entry from the cover.
+    is at rung zero"; this says "and the sidebar is skeletoning with it",
+    which is true exactly once per entry from the cover.
 
     `armed` is the state that earns the extra step. On the frame the reader
     leaves the cover, the base canvas has not mounted yet, so the published
     stage is still the previous surface's `done` — a plain latch would read
     that stale value and retire the boot before it began. Armed waits to
-    OBSERVE a staging stage before it commits to one.
+    OBSERVE rung zero before it commits to one.
 
     Declared ahead of the flip below because the flip writes it: a `const`
     binding read above its declaration is a runtime ReferenceError, and this
     one runs during render on the first frame of every entry.
   */
-  const [boot, setBoot] = useState<'off' | 'armed' | 'staging'>(() =>
+  const [boot, setBoot] = useState<'off' | 'armed' | 'skeletoning'>(() =>
     isLanding ? 'off' : 'armed',
   )
   const [lastLanding, setLastLanding] = useState(isLanding)
@@ -251,7 +289,7 @@ function DesktopEditorShell() {
   }, [entrance])
 
   /*
-    The boot skeleton is an OPAQUE LANE over the whole sidebar, not a
+    The boot skeleton is an OPAQUE LAYER over the whole sidebar, not a
     placeholder inside each section.
 
     Two things were wrong with per-section skeletons. Only the row lists
@@ -274,8 +312,8 @@ function DesktopEditorShell() {
     across renders and does not defeat `memo(ServiceOverviewView)`.
   */
   const [revealStage, setRevealStage] = useState(CANVAS_REVEAL_DONE)
-  if (boot === 'armed' && revealStage < CANVAS_REVEAL_PANELS) setBoot('staging')
-  else if (boot === 'staging' && revealStage >= CANVAS_REVEAL_CELLS) {
+  if (boot === 'armed' && revealStage < CANVAS_REVEAL_PANELS) setBoot('skeletoning')
+  else if (boot === 'skeletoning' && revealStage >= CANVAS_REVEAL_CELLS) {
     setBoot('off')
   }
   /*
@@ -288,46 +326,20 @@ function DesktopEditorShell() {
     instead of completing it. That is the same tie the loading bar hit, and
     the cost of the extra stage is an invisible element at opacity 0.
   */
-  const sidebarBooting = boot === 'staging' && revealStage < CANVAS_REVEAL_LANES
-
-  /*
-    The identity bars above the canvas hold their own skeletons while this
-    lane is up, so the bar, the sidebar and the board arrive on one beat.
-    Published rather than passed: the bars sit deep inside canvas content,
-    the same distance away as the collapsed state above.
-
-    Cleared on unmount. A latch left `true` by a shell that has gone would
-    hold every bar that mounts afterwards, and nothing would ever set it
-    back — the boot machine only runs while this component does.
-  */
-  useEffect(() => {
-    setShellBooting(sidebarBooting)
-  }, [sidebarBooting])
-  useEffect(() => () => setShellBooting(false), [])
-  const sidebarBootMounted = boot === 'staging'
+  const sidebarBooting = boot === 'skeletoning' && revealStage < CANVAS_REVEAL_LANES
+  const sidebarBootMounted = boot === 'skeletoning'
 
   useEffect(() => {
     // Entering and leaving presentation both resize the canvas container.
     suppressCanvasResizeRefit()
   }, [presenting])
 
-  // Publish the collapsed state so canvas navbars can host the expand
-  // control themselves — see sidebarCollapsedContext for why the navbar is
-  // now the fallback rather than the default.
-  const expandSidebar = useCallback(() => {
-    suppressCanvasResizeRefit()
-    setSidebarCollapsed(false)
-  }, [])
-  useEffect(() => {
-    // NOT `railOnly`: presentation also collapses the sidebar, but it hides
-    // the navbar too (full-bleed). Telling the bands they are collapsed there
-    // would strand a presentation with no header and no Return — the band
-    // must keep drawing itself when nothing else can carry it.
-    setSidebarCollapsedState({
-      collapsed: railOnly && !presenting && !isLanding,
-      expand: expandSidebar,
-    })
-  }, [railOnly, presenting, isLanding, expandSidebar])
+  // Picking anything in the rail while collapsed also opens the panel —
+  // choosing a surface you cannot see is not a choice.
+  const revealSidebar = useCallback(() => {
+    if (!sidebarCollapsed) return
+    setCollapsedByUser(false)
+  }, [sidebarCollapsed, setCollapsedByUser])
 
   // Hand the agent its navigation hands: open_phase / open_scenario tools
   // land on the same callbacks the sidebar rows use.
@@ -338,14 +350,11 @@ function DesktopEditorShell() {
         selectScenario,
         openAgentSurface: () => {
           toggleAgentOpen(true)
-          setSidebarCollapsed(false)
+          setCollapsedByUser(false)
         },
-        setSidebarCollapsed: (collapsed) => {
-          suppressCanvasResizeRefit()
-          setSidebarCollapsed(collapsed)
-        },
+        setSidebarCollapsed: setCollapsedByUser,
       }),
-    [selectPhase, selectScenario],
+    [selectPhase, selectScenario, setCollapsedByUser],
   )
 
   // The read side: what the shell itself knows about what's on screen.
@@ -364,7 +373,13 @@ function DesktopEditorShell() {
     activeTab
       ? `Active tab: ${activeTab.kind} for slice ${activeTab.sliceId}`
       : 'Active tab: base blueprint view (no slice tab)',
-    `Sidebar: ${surface} surface${railOnly ? ', collapsed' : ''}${presenting ? ', presenting' : ''}`,
+    describeSidebar({
+      panel,
+      collapsed: collapsedByReader,
+      // No overlay posture any more: the sidebar is always in flow (#305).
+      overlay: false,
+      presenting,
+    }),
     `Agent chat: ${agentPlacement.open ? `${agentPlacement.mode} (visible)` : 'hidden'}`,
   ].join('\n')
   const shellContextRef = useRef(shellContext)
@@ -410,10 +425,10 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'activate_base_tab',
-        summary: 'Bring the base blueprint view forward (deactivate any slice tab).',
+        summary: 'Return to the base blueprint tab and its zoomed-out overview.',
         run: () => {
           commands.current.activateBase()
-          return 'Base blueprint view is active.'
+          return 'Base blueprint overview is active.'
         },
       }),
       registerAgentUiCommand({
@@ -459,10 +474,14 @@ function DesktopEditorShell() {
       }),
       registerAgentUiCommand({
         name: 'set_scenario_view',
-        summary: 'Switch the SELECTED scenario between its two layouts and store the choice, so it opens that way next time. arg: stacked | merged (merged needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also opens the difference ledger.',
+        summary: 'Switch the SELECTED scenario between its two displays. arg: stacked | merged (needs 2+ visible paths). stacked = one full band per path on a shared step axis. merged = the paths combined into ONE blueprint: one lane rail, one step axis, cells the paths agree on drawn once, divergent slots stacking each path\'s version. Entering merged also applies the reading preset — shared steps fold and the difference ledger opens; returning to stacked unfolds. Legacy aliases accepted: side-by-side = stacked, integrated = merged. For an editor this is a recorded write of scenarios.layout — the scenario opens that way next time; for a viewer it lasts the session.',
         run: (arg) =>
+          // 'side-by-side'/'integrated' are the pre-v3 tokens. The column no
+          // longer holds them, but they are kept as documented aliases so older
+          // prompts and transcripts still resolve to a view rather than failing.
+          // The editor context decides whether this is a row or a session.
           commands.current.setScenarioView(
-            arg === 'merged' ? 'merged' : 'stacked',
+            arg === 'merged' || arg === 'integrated' ? 'merged' : 'stacked',
           ),
       }),
     ]
@@ -470,10 +489,7 @@ function DesktopEditorShell() {
   }, [])
 
   const toggleSidebar = () => {
-    // The width ease resizes the canvas container for 320 ms. That is
-    // chrome moving, not the user navigating — the camera holds still.
-    suppressCanvasResizeRefit()
-    setSidebarCollapsed((collapsed) => !collapsed)
+    setCollapsedByUser(!sidebarCollapsed)
   }
 
   // Shared drag-resize. During a drag the width transition is off —
@@ -509,6 +525,33 @@ function DesktopEditorShell() {
       return width
     })
   }
+
+  /*
+    Publish whether the aside is collapsed BY THE READER to the canvas's own
+    chrome, so canvas navbars can answer it themselves — see
+    sidebarCollapsedContext for why the navbar is now the fallback rather than
+    the default. One fact now: collapsed, host the expand control. The overlay
+    inset that used to ride along is gone with the overlay posture (#305) — the
+    aside is in flow at every width, so no bar surrenders a margin to it.
+  */
+  useEffect(() => {
+    setSidebarCollapsedState({ collapsed: collapsedByReader })
+  }, [collapsedByReader])
+
+  /*
+    The identity bars above the canvas hold their own skeletons while this
+    lane is up, so the bar, the sidebar and the board arrive on one beat
+    (#253). Published rather than passed: the bars sit deep inside canvas
+    content, the same distance away as the collapsed state above.
+
+    Cleared on unmount. A latch left `true` by a shell that has gone would
+    hold every bar that mounts afterwards, and nothing would ever set it
+    back — the boot machine only runs while this component does.
+  */
+  useEffect(() => {
+    setShellBooting(sidebarBooting)
+  }, [sidebarBooting])
+  useEffect(() => () => setShellBooting(false), [])
 
   /**
    * Return: exit presentation onto that slice's focus tab, creating the tab
@@ -551,12 +594,13 @@ function DesktopEditorShell() {
     goLanding()
   }
 
-  // The workspace tab from the cover page: the same entry the cover's own
-  // button uses (`enterCanvas`, which suppresses the fit animation), not a
-  // second way in with different motion.
+  // The workspace tab always means the blueprint's starting view. From the
+  // cover it enters without a boot swoop; from any canvas level it uses the
+  // same animated overview return as Home, Escape, and the breadcrumb.
   const goWorkspace = () => {
     activateTab(null)
     if (isLanding) enterCanvas()
+    else goHome()
   }
 
   // Latest handlers for the registered shell commands (declared above);
@@ -564,7 +608,7 @@ function DesktopEditorShell() {
   // effect (refs are not written during render).
   const shellCommands: ShellCommands = {
     goOverview,
-    activateBase: () => activateTab(null),
+    activateBase: goWorkspace,
     openSliceTab: (sliceId, present) =>
       openTab({ kind: present ? 'present' : 'slice', sliceId }),
     closeSliceTab: (sliceId) => {
@@ -577,11 +621,11 @@ function DesktopEditorShell() {
       return 'Left the presentation onto the slice tab.'
     },
     togglePhase: (phaseId) => togglePhaseExpanded(phaseId),
-    setScenarioView: (layout) => {
+    setScenarioView: (viewType) => {
       const scenario = slides.find((slide) => slide.id === selectedScenarioId)
       if (!scenario) return 'No scenario is selected — open one first.'
-      setScenarioDisplayViewType(scenario.id, layout)
-      return `Scenario view set to ${layout === 'merged' ? 'Merged' : 'Stacked'}.`
+      setScenarioDisplayViewType(scenario.id, viewType)
+      return `Scenario view set to ${viewType === 'merged' ? 'Merged' : 'Stacked'}.`
     },
   }
   useEffect(() => {
@@ -600,19 +644,19 @@ function DesktopEditorShell() {
   const sidebarBody = (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-row">
       <EditorRail
-        surface={surface}
+        panel={panel}
         agentActive={agentPlacement.open}
         showAgent={canAgent}
-        onSelectSurface={(next) => {
-          // ✦ toggles the chat's presence; the other two still pick the
-          // panel underneath it, so "chat while looking at the nav" is
-          // the default posture rather than a swap away from it.
-          if (next === 'agent') toggleAgentOpen()
-          else setSurface(next)
-          if (sidebarCollapsed) {
-            suppressCanvasResizeRefit()
-            setSidebarCollapsed(false)
-          }
+        onSelectPanel={(next) => {
+          setPanel(next)
+          revealSidebar()
+        }}
+        // ✦ toggles the chat's presence; the panel buttons still pick what
+        // sits underneath it, so "chat while looking at the nav" is the
+        // default posture rather than a swap away from it.
+        onToggleAgent={() => {
+          toggleAgentOpen()
+          revealSidebar()
         }}
         topSlot={
           <SidebarCollapseButton collapsed={false} onToggle={toggleSidebar} />
@@ -636,7 +680,7 @@ function DesktopEditorShell() {
           }
           className="flex min-h-0 min-w-0 flex-1 flex-col"
         >
-          <SlideModeSidebarNav surface={surface === 'agent' ? 'blueprints' : surface} />
+          <SlideModeSidebarNav panel={panel} />
         </SidebarProvider>
         {agentDocked ? <AgentDockDivider columnRef={panelColumnRef} /> : null}
         <AgentDock visible={canAgent && agentDocked} />
@@ -670,18 +714,22 @@ function DesktopEditorShell() {
         <div className="relative flex min-h-0 min-w-0 flex-1">
           <aside
             className={cn(
+              // In flow at every width (#305): collapse and expand push the
+              // canvas the same way whether the window is wide or narrow.
+              // There is no overlay posture, no gate, and no floating column —
+              // the aside is a plain relative shell column.
               'relative z-20 shrink-0 overflow-hidden bg-sidebar',
-              !railOnly && 'border-r border-border',
+              !asideHidden && 'border-r border-border',
             )}
             style={{
-              width: railOnly ? 0 : asideWidth,
+              width: asideHidden ? 0 : asideWidth,
               transitionProperty:
                 resizing || entrance === 'pending' ? 'none' : 'width',
               transitionDuration: `${MOTION_STRUCTURAL_MS}ms`,
               transitionTimingFunction: MOTION_STRUCTURAL_EASE,
             }}
             data-editor-sidebar=""
-            data-collapsed={railOnly ? '' : undefined}
+            data-collapsed={asideHidden ? '' : undefined}
             aria-label="Workspace navigation"
           >
             {/*
@@ -693,12 +741,12 @@ function DesktopEditorShell() {
               className={cn(
                 'flex h-full min-h-0 flex-row',
                 'transition-[opacity,transform] duration-(--motion-fade) ease-out motion-reduce:transition-none',
-                railOnly
+                asideHidden
                   ? 'pointer-events-none -translate-x-2 opacity-0'
                   : 'translate-x-0 opacity-100 delay-75',
               )}
               style={{ width: asideWidth }}
-              aria-hidden={railOnly}
+              aria-hidden={asideHidden}
             >
               {sidebarBody}
             </div>
@@ -706,7 +754,7 @@ function DesktopEditorShell() {
               The boot lane. `bg-sidebar` over the aside's own background,
               at the aside's full width so the rail is covered too.
             */}
-            {sidebarBootMounted && !railOnly ? (
+            {sidebarBootMounted && !asideHidden ? (
               <div
                 className={cn(
                   'absolute inset-y-0 left-0 z-10 bg-sidebar',
@@ -744,7 +792,7 @@ function DesktopEditorShell() {
 
             {/* Drag the aside's right edge to resize; width is remembered
                 per surface. Hidden while collapsed — there is no edge. */}
-            {!railOnly ? (
+            {!asideHidden ? (
               <div
                 role="separator"
                 aria-orientation="vertical"
@@ -776,7 +824,7 @@ function DesktopEditorShell() {
             while presenting (full-bleed; Return is the way back). Its
             toggle is the same single control the rail carries expanded.
           */}
-          {railOnly && !presenting && !isLanding ? (
+          {collapsedByReader ? (
             <div className="pointer-events-none absolute left-3 top-3 z-30">
               <FloatingSidebarNavbar onExpand={toggleSidebar} />
             </div>
@@ -795,13 +843,31 @@ function DesktopEditorShell() {
                 className="absolute inset-0"
                 data-editor-content=""
               >
-                <ActiveTabContent
-                  tab={activeTab}
-                  isLanding={isLanding}
-                  leavingPresent={leavingPresent}
-                  onReturn={exitPresentation}
-                  onRevealStage={setRevealStage}
-                />
+                {/*
+                  A second boundary, inside the one App.tsx puts around the
+                  whole shell. That outer one is the last line before a white
+                  screen, and it takes the tab strip, the sidebar, the rail
+                  and the agent dock down with the board — which is the wrong
+                  trade for a throw that came from one canvas. A crash here
+                  costs the reader the view they were on and nothing else:
+                  the chrome stays, and every other tab is one click away.
+
+                  `resetKey` is the content key, so navigating is enough to
+                  recover — the boundary's own documented contract, and the
+                  reason a single throw does not read as "the app crashes
+                  constantly". This does not soften ADR 0004: the board is
+                  still always fully mounted, and this unmounts it only for a
+                  throw the alternative would have unmounted anyway.
+                */}
+                <EditorErrorBoundary resetKey={contentKey}>
+                  <ActiveTabContent
+                    tab={activeTab}
+                    isLanding={isLanding}
+                    leavingPresent={leavingPresent}
+                    onReturn={exitPresentation}
+                    onRevealStage={setRevealStage}
+                  />
+                </EditorErrorBoundary>
               </div>
             </div>
           </main>

@@ -17,13 +17,20 @@ import { cn } from '@/lib/utils'
  * radio group made it look mutually exclusive with the panel it actually
  * accompanies, so it moved down with the other utilities and wears a
  * filled tint + presence dot instead of the rail bar.
+ *
+ * The types say the same thing. `SidebarPanel` is the radio group and only
+ * the radio group; ✦ has its own `onToggleAgent`. It was briefly a third
+ * member of this union, which meant every consumer carried an
+ * `Exclude<…, 'agent'>` or a coercion to strip a value the state could never
+ * hold — the rail's own handler intercepted it and toggled the chat instead
+ * of selecting it.
  */
-export type SidebarSurface = 'blueprints' | 'slices' | 'agent'
+export type SidebarPanel = 'blueprints' | 'slices'
 
 export const EDITOR_RAIL_WIDTH_CLASS = 'w-12'
 
 const PANEL_SURFACES: Array<{
-  id: Exclude<SidebarSurface, 'agent'>
+  id: SidebarPanel
   label: string
   icon: typeof LayoutGrid
 }> = [
@@ -78,15 +85,18 @@ function RailButton({
  * so keys are reachable from any surface.
  */
 export function EditorRail({
-  surface,
-  onSelectSurface,
+  panel,
+  onSelectPanel,
+  onToggleAgent,
   showAgent,
   agentActive,
   topSlot,
   bottomSlot,
 }: {
-  surface: SidebarSurface
-  onSelectSurface: (surface: SidebarSurface) => void
+  panel: SidebarPanel
+  onSelectPanel: (panel: SidebarPanel) => void
+  /** ✦ — turns the chat on and off. Never selects a panel. */
+  onToggleAgent: () => void
   /** Deployed read-only builds hide the agent surface entirely. */
   showAgent: boolean
   /**
@@ -118,8 +128,8 @@ export function EditorRail({
           <RailButton
             key={id}
             label={label}
-            selected={surface === id}
-            onClick={() => onSelectSurface(id)}
+            selected={panel === id}
+            onClick={() => onSelectPanel(id)}
           >
             <Icon className="size-4" aria-hidden />
           </RailButton>
@@ -130,7 +140,7 @@ export function EditorRail({
             <RailButton
               label={agentActive ? 'Hide the agent' : 'Show the agent'}
               toggled={agentActive === true}
-              onClick={() => onSelectSurface('agent')}
+              onClick={onToggleAgent}
             >
               <Sparkles className="size-4" aria-hidden />
             </RailButton>

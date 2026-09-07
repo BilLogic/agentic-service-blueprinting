@@ -165,6 +165,8 @@ type ServicePhaseSectionProps = {
   onlyScenarioId?: string | null
   /** OPTIONAL: mobile passes nothing — the drawer owns navigation there. */
   onOpenPhase?: (phaseId: string) => void
+  /** OPTIONAL, and the same gate one level down: opens a scenario. */
+  openScenario?: (scenarioId: string) => void
 }
 
 function ServicePhaseSection({
@@ -175,6 +177,7 @@ function ServicePhaseSection({
   getSelectedPathIds,
   displayViewType,
   onOpenPhase,
+  openScenario,
   showFlowArrow = false,
   isFlowArrowAnchor = false,
   isLoopArrowFrom = false,
@@ -215,6 +218,7 @@ function ServicePhaseSection({
         focusedScenarioId={focusedScenarioId}
         onlyScenarioId={onlyScenarioId}
         loading={false}
+        openDetail={openScenario}
       />
     </CanvasPhaseSection>
   )
@@ -307,6 +311,32 @@ function ServiceOverviewViewImpl({
     skipCanvasFitAnimation,
     consumeCanvasFitAnimationSkip,
   } = useEditor()
+
+  /*
+    THE CANVAS DOES NOT NAVIGATE ON A PHONE.
+
+    Every move between scenarios and between phases belongs to the drawer
+    there. Scoping the mobile canvas to one scenario already removes the
+    siblings you could tap, but that is a statement about what is currently
+    rendered, and this is a statement about what a tap MEANS — the two want
+    to be separate, because it is the second one that survives someone
+    widening the scope later. It also covers the phase frame, which is a
+    navigation target of its own and is not a scenario at all.
+
+    One gate, at the view that owns the canvas, rather than a second
+    `useMobileShell()` inside the phase frame: the frame and the scenario
+    panels inside it were answering the same question in two places, and only
+    one of the two covered the frame.
+
+    Undefined rather than a no-op: `navigable` in `ResizableComparePanel` and
+    `CanvasPhaseSection` is gated on the handler existing, so this makes the
+    surfaces genuinely inert — no `role="button"`, no pointer cursor, no
+    aria-label promising a destination — instead of buttons that swallow
+    taps. Panning and pinching over them are unaffected; the pan handler
+    never consulted these.
+  */
+  const canvasNavigate = mobileShell ? undefined : openDetail
+
   const allPhases = useMemo(() => getMainSlides(slides), [slides])
   const soloPhase = useMemo(() => {
     if (soloScenarioId)
@@ -1044,19 +1074,8 @@ function ServiceOverviewViewImpl({
                             blueprintsByPathId={blueprintsByPathId}
                             getSelectedPathIds={resolveSelectedPathIds}
                             displayViewType={overviewViewType}
-                            /*
-                              The phase frame is a navigation target in its
-                              own right, and it is not a scenario — so
-                              scoping the mobile canvas to one scenario does
-                              not cover it. On a phone every move between
-                              phases belongs to the drawer, and passing no
-                              handler leaves the frame inert rather than a
-                              button that swallows taps: `navigable` is
-                              gated on the handler existing, so there is no
-                              `role="button"`, no pointer cursor and no
-                              aria-label promising a destination.
-                            */
-                            onOpenPhase={mobileShell ? undefined : openDetail}
+                            onOpenPhase={canvasNavigate}
+                            openScenario={canvasNavigate}
                             dimmed={dimPhase}
                             focusActive={phaseIsFocused}
                             focusedScenarioId={
