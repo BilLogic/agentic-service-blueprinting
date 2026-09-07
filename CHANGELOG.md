@@ -1,5 +1,218 @@
 # Changelog
 
+## 1.9.0
+
+### Minor Changes
+
+- 2facf2e: A lane role is refused where the author can still fix it, not by a constraint
+  mid-import.
+
+  Two documents in this repository said opposite things, and both said them
+  deliberately. `references/ir-schema.json` and `scripts/validate_ir.py` took any
+  lane role matching `^[a-z0-9][a-z0-9_]*$` — the schema is an authoring contract
+  and did not want to be a taxonomy. `references/lane-roles.md` and the
+  `lanes_lane_role_check` constraint closed the set at eight. So a document
+  validated and was then refused on import, and the refusal arrived as a Postgres
+  constraint violation rather than as anything the authoring tools had said
+  (#204):
+
+      ERROR: new row for relation "lanes" violates check constraint
+      "lanes_lane_role_check" … compliance_review
+
+  That error at least names the value. Meeting it after validation has passed is
+  the wrong moment.
+
+  **The schema closes.** Of the three answers — close the schema, open the
+  constraint, or document the gap and live with it — closing is the one the rest
+  of this repository already assumes. The constraint, the `lanes.lane_role`
+  column comment, `docs/erd.mmd` and `references/lane-roles.md` all state the set
+  as closed; `lane_role` is read as exhaustive by code that switches on it, so
+  opening the column would have meant auditing every such reader for a value none
+  had ever seen. Closing costs one bump and a step.
+  `references/ir-schema.json` now carries the eight as an `enum` on
+  `$defs/lane.properties.role`, `null` included, and `scripts/validate_ir.py`
+  errors on a ninth with the offending value, the lane carrying it, all eight
+  legal values and the fact that `null` is the answer for a lane none of them
+  names.
+
+  **⚠ BREAKING for anyone holding an IR file with a role outside the eight.** IR
+  schema version `2026.09.10`, and `python3 scripts/migrate_ir.py <ir-file>
+--workspace blueprint-workspace.json --write` carries a document across it.
+  `to_2026_09_10` nulls a role outside the set — the generic swimlane it already
+  drew as, no style of its own and no divider anchored on it, which is also the
+  answer `21000122000000` gave the rows it found. The lane's `display_name` is
+  untouched, and that is what makes this a reclassification rather than a
+  deletion: the meaning of a compliance lane lives in the name a reader sees, and
+  the role only ever said what the renderer must do about the row. A role is
+  authored content inside a scenario's subtree, so the step is **not
+  content-preserving** — the third, after the edge turnaround at `2026.09.01` and
+  the rename at `2026.09.08`. Watched per scenario as those are: a scenario
+  holding a nulled role keeps its recorded hash and reads as stale until someone
+  re-signs it, and a document carrying none — which is every document a target
+  ever accepted — hashes identically and re-anchors.
+
+  No migration stamps `2026.09.10`, and none needs to: nothing in the database
+  changed, and a target sitting at `2026.09.08` is still one this checkout
+  speaks. `2026.09.09` set that precedent — a wire-format bump with no DDL behind
+  it — and this is the second.
+
+  **The eight now live in four places, and something holds them together.** The
+  authority is `lanes_lane_role_check` in `supabase/generated/portable-core.schema.sql`.
+  JSON Schema cannot import a list and neither can a stdlib-only Python script,
+  so closing the schema made two more copies of the roster — and a duplicated
+  list with nothing holding it is exactly how this drift started.
+  `scripts/tests/lane-role-roster.test.mjs` compares the enum in
+  `references/ir-schema.json`, `CANONICAL_ROLES` in `scripts/validate_ir.py` and
+  `CANONICAL_LANE_ROLES` in `src/lib/laneRoles.ts` to the constraint, set for
+  set, off the committed dump — so it runs on every pull request with no
+  database, beside the ERD sweep that already holds `docs/erd.mmd` the same way.
+
+  `to_2026_09_08` parked this question on purpose and is unchanged; its docstring
+  now records where the answer landed instead of pointing at an open one.
+
+  What moved with it:
+
+  `references/ir-schema.json` the role `enum`; `2026.09.10` at the
+  head of the version enum
+  `scripts/validate_ir.py` a ninth role is an error, not a
+  silent pass; the closed set is
+  documented where the file states what
+  it checks
+  `scripts/migrate_ir.py` `to_2026_09_10`, the carry
+  `src/lib/backend/schemaVersion.ts` `2026.09.10` supported and spoken
+  `references/lane-roles.md` says authoring refuses a ninth, and
+  § Adding a role lists the multi-file
+  act that adds one
+  `references/customization.md` § Lane roles no longer advises minting
+  an org-defined role
+  `skills/map/…/translate-playbook.md` a foreign lane the eight do not name
+  maps to `null`, keeping its own label
+  `skills/map/…/crosswalk-schema.json` the `custom_role` disposition is
+  `generic_lane`
+  `skills/map/…/elicitation-protocol.md` non-spine actors get `null`
+
+  Proven by `scripts/tests/run_tests.sh`: `validator-bad4` asserts the refusal,
+  `validator-bad4-message` asserts the message says everything the author needs
+  to fix it without opening another document, and § 8c carries a `2026.09.07`
+  document holding five retired spellings AND one role from outside the set —
+  the first five renamed by `to_2026_09_08`, the sixth nulled by
+  `to_2026_09_10`, its display name intact.
+
+- 504684a: A touchpoint names its owner.
+
+  `21000131000000` made the touchpoint registry the deployment's and wrote its own
+  promissory note in the header: "A touchpoint will carry a `stakeholder_id` — its
+  owner. […] The link waits for both ends to be the deployment's, and after this
+  file they are." Both ends are, so `21000201000000` adds the link.
+
+  `touchpoints.stakeholder_id` is a nullable `uuid` referencing
+  `public.stakeholders (id)`, with `touchpoints_stakeholder_id_idx` beside it and
+  `update (stakeholder_id)` granted to `authenticated` in the recipe half. Null is
+  the ordinary state, not a gap: `sync_cell_touchpoints` mints a registry row from
+  a cell's text with no owner at all, and "nobody has said yet" is what that row
+  means.
+
+  The delete action is `set null`, which is where this file deliberately parts
+  company with the deployment it generalises. The deployment writes the reference
+  with no delete action — NO ACTION, so removing an actor who owns a touchpoint is
+  refused — while `lanes.stakeholder_id` in `21000125000000` already committed
+  this template to the opposite rule, in as many words: "an actor taken out of the
+  cast un-names its lanes rather than pinning itself." Carrying the deployment's
+  shape across would leave the cast holding two contradictory opinions about what
+  deleting an actor means, un-naming lanes and refusing touchpoints in the same
+  breath. One rule, applied to both things that reference the cast. The migration
+  asserts the delete action rather than merely describing it, so the choice cannot
+  quietly drift back.
+
+  Nothing authored moves. An IR describes one service and has never had a field
+  for who owns a tool, so `registryTouchpoint` is unchanged and the schema version
+  stays where `21000122000000` left it — the stance `21000123000000`,
+  `21000130000000` and `21000131000000` each took. Both seed generators write
+  `(id, name, kind, summary, url, origin)` and are unaffected by a nullable column
+  they do not name.
+
+  The ERD, `references/data-model.md` and the Supabase connector's column table
+  gain the column and the `stakeholders |o--o{ touchpoints` edge. While there,
+  `references/data-model.md` loses a stale `services ||--o{ touchpoints : "registry"`
+  edge that `21000131000000` should have taken with it when it dropped
+  `touchpoints.service_id` — the ERD had already been corrected, and the two
+  diagrams disagreed.
+
+- de07cfc: The compare header row leaves the path frame, and the panel takes the
+  deployment's fixes.
+
+  `COMPARE_HEADER_WRAP_EXTRA_INSET` and its three call sites are gone: the
+  step-header row stays outside the frame, visible, which is the settled answer to
+  a question the layout had been carrying both ways. `ResizableComparePanel` gains
+  a layout-effect measure, two state-identity bails, drag teardown on one pointer
+  with `pointercancel` and unmount, a locked-only estimate floor and opacity-only
+  dimming; `ScenarioBlueprintPanel` gains the memo split and a completion-aware
+  jump summary. `MergedSectionFrame` takes the rail-outside geometry.
+
+- de07cfc: The reference specifiers and the storage prefix become declared forks.
+
+  Two things could never be the same in this kit and in an app built from it: where
+  the agent's reference documents are resolved from, and the prefix on every
+  localStorage key. Each is now a small module of its own —
+  `src/lib/agent/tools/referenceDocs.ts` and `src/lib/storageNamespace.ts` — so the
+  large files above them stop diverging over it. `read.ts` keeps its drift throw and
+  its reader and knows nothing about resolution; every storage key is emitted by
+  `storageKey(name)` and is byte-for-byte what it was, so nothing stored in a
+  browser needs migrating.
+
+  The extras array that adds a deployment's own reference document is a third leaf,
+  `referenceNamesExtra.ts`, rather than living in `referenceDocs.ts`: the eval
+  harnesses bundle `specs.ts` with rolldown rather than Vite, so there is no `?raw`
+  loader on that path and one import would have broken `agent:harness`.
+
+### Patch Changes
+
+- cbc06fb: The last style guard takes the token model, and the widening finds what the
+  shape predicts.
+
+  `src/lib/tokenDiscipline.test.ts` was the one guard ADR 6 left on a reader of
+  its own: it walked `src/components/**.tsx`, 185 files out of 399, so anything a
+  class string said in `lib/`, `hooks/`, `contexts/`, `content/`, `types/` or
+  `dev/` was outside every style rule in this repository. It reads
+  `tokenModel` now, which means it reads the whole tree, and widening the sample
+  once widens every rule that asks.
+
+  Two defects were sitting in the unread part. `lib/filterToolbarButton.ts`
+  carried `border-border/60` and `border-border/50` — the exact pattern the
+  neutral-edge rule forbids, in a directory that rule did not look at; both
+  states take the named `border-muted` rung now, which is tuned to land on the
+  `/60` alpha, so the checked edge is pixel-identical. All twenty-seven hex
+  matches in the tree are in `src/dev/`: twenty-one real colours in the dev-only
+  `/proto/arrows` instrument, which Vite drops from a production build, and six
+  `(#NNN)` issue references in fixture prose. Both files are exempted by name and
+  with a reason, and a rule beside them fails if an exemption stops matching, so
+  a dead carve-out cannot outlive the thing it excused.
+
+  Three rules arrive with the conversion, and all three found call sites written
+  against rungs `styles/theme.css` already declares — the sheet converged with
+  the deployment's under #327 S3, so the vocabulary was there and nothing held
+  anything to it. Nine bare `rounded` utilities (Tailwind hardcodes 4px there and
+  `--radius` cannot reach it) take `rounded-sm`, which is the only one of the
+  three that moves a pixel: `calc(var(--radius) - 4px)` against `--radius:
+0.625rem` is 6px, so those nine corners round two pixels more and, unlike
+  before, follow the dial when it turns. Five bracketed z-indexes take the bare
+  integer Tailwind v4 wants, compiling to the identical `z-index`; and four
+  font-size literals — `text-[8px]`, `text-[9px]`, `text-[2.5rem]` and
+  `sm:text-[2.25rem]` — take `text-5xs`, `text-4xs`, `text-5xl` and
+  `sm:text-4xl`, each compiling to the same size it replaced. The two
+  `text-[0.8rem]` in `components/ui/` are exempt: `components.json` points the
+  shadcn CLI at that directory, so a retune there is deleted by the next
+  `npx shadcn add`.
+
+  `stripComments` in `tokenModel` now blanks block comments instead of deleting
+  them, and `tokenModel.test.ts` holds it to that. Deleting them collapsed every
+  newline in a file's header, so every line number the model reported after it
+  was wrong — `dev/ArrowSituationCatalogPage.tsx` opens with a thirteen-line
+  header, and its `#2563eb` on line 28 was being reported at line 15, on an
+  import. Nothing failed while it was wrong, because a passing rule reports no
+  lines at all. A guard that names the wrong line is a guard someone stops
+  trusting, and converting this file is what made it start naming lines.
+
 ## 1.8.1
 
 ### Patch Changes
