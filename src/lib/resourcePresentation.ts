@@ -10,10 +10,11 @@
  * Stored nowhere on purpose (#110). A `host` column would be a second copy
  * of the url's own host, wrong the moment the url is edited; and "what kind
  * of file is this" is a property of the bytes at the other end, which the
- * url already names. Every featured link gets a button, whatever it
- * points at; the panel's Figma special case (`isFigmaUrl`, so that only a
- * Figma link could be "the design") lasts until #111 turns a placement's
- * link into a featured resource.
+ * url already names. Every featured link gets a button, whatever it points
+ * at. The one Figma special case the panel carried — `isFigmaUrl`, so that
+ * only a Figma link could be "the design" — retires with this file: a
+ * placement's link is a featured resource now, and electing one vendor's
+ * url as the design was a deployment's policy written into a renderer.
  */
 import { hostOf } from '@/lib/cellResources'
 import type { CellResource } from '@/types/blueprint'
