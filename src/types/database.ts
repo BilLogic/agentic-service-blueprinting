@@ -771,6 +771,7 @@ export type Database = {
           kind: string
           name: string
           origin: string
+          stakeholder_id: string | null
           summary: string | null
           updated_at: string
           url: string | null
@@ -782,6 +783,7 @@ export type Database = {
           kind?: string
           name: string
           origin: string
+          stakeholder_id?: string | null
           summary?: string | null
           updated_at?: string
           url?: string | null
@@ -793,11 +795,20 @@ export type Database = {
           kind?: string
           name?: string
           origin?: string
+          stakeholder_id?: string | null
           summary?: string | null
           updated_at?: string
           url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "touchpoints_stakeholder_id_fkey"
+            columns: ["stakeholder_id"]
+            isOneToOne: false
+            referencedRelation: "stakeholders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
