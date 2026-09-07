@@ -85,6 +85,7 @@ erDiagram
     uuid phase_id FK
     text name
     text summary
+    text note "the aside beside the summary — most often what else may run at the same time; held once here rather than copied onto each path"
     int position
     text layout "stacked | merged — what the scenario opens as"
     text origin "import | app"
@@ -153,6 +154,9 @@ erDiagram
     text kind "app | document | physical | channel | service | other"
     text summary "what this touchpoint IS, for the deployment"
     text url "where the touchpoint itself lives"
+    text icon_url "a stable URL for its stock icon or logo; null draws nothing"
+    text tone "the palette family its face is drawn in — the deployment's own choice; null means no preference and the renderer falls back deterministically. Deliberately unconstrained: the tone vocabulary belongs to the token model (ADR 0006)"
+    text[] aliases "the other spellings that mean this row; null means none considered, which is why it is nullable where stakeholders.aliases is NOT NULL DEFAULT '{}'"
     uuid stakeholder_id FK "the actor who owns it, or null — nobody has said yet; on delete set null"
     text origin "import | app"
   }

@@ -8539,3 +8539,349 @@ begin
   end if;
 end
 $proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000203000000_a_touchpoint_carries_its_tone.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- A touchpoint carries its tone.
+--
+-- Authored 2026-09-06. The version is an allocation counter, not a date.
+--
+-- `src/lib/touchpointColors.ts` holds a literal mapping a tool's NAME to the
+-- colour family its face is drawn in: `Zoom` is indigo, `Notion` is gold. The
+-- file's own header has said since it was written that this is a stopgap — "a
+-- touchpoint's colour is meant to be chosen by whoever owns the blueprint",
+-- and there was nowhere to store it because a touchpoint was then a substring
+-- parsed out of `cells.content` with no row to hang anything on. There has
+-- been a row since `21000120000000`, and a deployment-owned one since
+-- `21000131000000`. This is the column.
+--
+-- ── Why a map in code cannot be the answer ─────────────────────────────────
+--
+-- The literal is a template's guess at what an adopter's tools are called, and
+-- it is only ever right about the handful any service might use. A deployment
+-- built on this template has its own twenty: an internal app, a campus system,
+-- a partner's employer portal. None of those can be shipped upstream without
+-- putting one adopter's vocabulary in every other adopter's build, so the
+-- MACHINERY stays shared — alias resolution, case folding, the deterministic
+-- fallback for a name the map does not carry — and the VALUES become each
+-- deployment's, sourced from a column rather than from code. Without this
+-- column `touchpointColors.ts` is a file every adopter has to fork.
+--
+-- ── Why `tone`, and why no CHECK constraint ────────────────────────────────
+--
+-- `tone` is the word the code already uses: `TouchpointTone` in
+-- `src/lib/blueprintCellStyle.ts`, `data-blueprint-tone` on the rendered face.
+-- Naming the column anything else would mint a second word for one thing,
+-- which is the failure `21000116000000` swept the schema for.
+--
+-- The value names a palette FAMILY — `crimson`, `gold`, `indigo`, `purple`,
+-- `red`, `tomato`, `yellow` — and not a colour. Which step of that family a
+-- face is painted at is the renderer's decision and stays there.
+--
+-- No CHECK constraint enumerates those seven, deliberately. The tone
+-- vocabulary belongs to the token model, which ADR 0006 makes the single style
+-- seam. A CHECK here would be a second copy of that list, in a place no test
+-- reads, free to drift from the one the renderer compiles against — and a
+-- deployment that adds an eighth family would have to ship a migration to use
+-- a colour. The column stores what the author chose; the renderer decides what
+-- it can draw, and falls back deterministically for anything it does not know,
+-- exactly as it already does for a tool the map never named.
+--
+-- ── No new grant ───────────────────────────────────────────────────────────
+--
+-- The registry's table-level SELECT policy and grant, written in
+-- `21000120000000`, already cover a new column, so nothing here belongs to the
+-- recipe half and the file is entirely core. No UPDATE grant either:
+-- `authenticated` is granted UPDATE per column, and the column an editing
+-- surface writes gets its grant in the migration that brings that surface —
+-- `21000127000000` is the shape.
+--
+-- ── Replaying against an empty database ────────────────────────────────────
+--
+-- One additive column, nullable, no default beyond NULL, `if not exists` so a
+-- re-run is a no-op. It replays clean against an empty database.
+--
+-- The proof is an INVARIANT, never a census: the column exists and is
+-- nullable. Nullable is load-bearing rather than incidental — null means the
+-- author expressed no preference, and that is the state every existing row is
+-- in, so a NOT NULL column would either fail the add or invent a default
+-- colour for tools nobody had chosen one for.
+
+alter table public.touchpoints
+  add column if not exists tone text;
+
+comment on column public.touchpoints.tone is
+  'The palette family this touchpoint''s face is drawn in — the deployment''s '
+  'own choice, one of the renderer''s tone names (crimson, gold, indigo, '
+  'purple, red, tomato, yellow). A product fact ("our scheduling tool is '
+  'blue"), not a styling one, which is why it is a row and not a literal in '
+  'touchpointColors.ts. Deliberately unconstrained: the tone vocabulary '
+  'belongs to the token model (ADR 0006) and a CHECK here would be a second '
+  'copy of it, free to drift. Null means no preference — the renderer falls '
+  'back deterministically, exactly as it does for a tool the seed map never '
+  'named.';
+
+do $proof$
+begin
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'touchpoints'
+       and column_name = 'tone'
+  ) then
+    raise exception
+      'proof: touchpoints.tone did not take';
+  end if;
+
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'touchpoints'
+       and column_name = 'tone'
+       and is_nullable = 'NO'
+  ) then
+    raise exception
+      'proof: touchpoints.tone must be nullable — null is "the author chose no colour", which is what every existing row means';
+  end if;
+end
+$proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000204000000_a_touchpoint_answers_to_more_than_one_name.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- A touchpoint answers to more than one name.
+--
+-- Authored 2026-09-06. The version is an allocation counter, not a date.
+--
+-- The other half of the literal `21000203000000` began unwinding.
+-- `src/lib/touchpointColors.ts` carries `TECH_LABEL_ALIASES` beside its colour
+-- map: a second table, this one from an old spelling to the canonical name. A
+-- deployment that stopped using one of two merged tools wants a slice written
+-- before the merge to find the one that is left rather than mint a second. A
+-- label that carried its own specification — a portal named for the view it
+-- opened on — wants to resolve to the THING, because which view is the
+-- placement summary's job. A lower-case spelling wants to resolve at all,
+-- because a cell was typed by a person.
+--
+-- Every one of those is a fact about one deployment's own history, and none of
+-- it is knowledge a renderer should hold. The alias RESOLUTION is generic
+-- machinery and stays in code; the alias LIST is each deployment's, sourced
+-- from a column. This is that column.
+--
+-- A touchpoint's `name` is its identity, unique deployment-wide
+-- (`21000120000000`, ADR 0003). `aliases` are the other spellings that mean
+-- the same row — the same shape `stakeholders.aliases` has carried since
+-- `21000125000000`, where lane and cell text is matched against
+-- `unnest(aliases)` to find the stakeholder a human wrote a nickname for.
+--
+-- ── Nullable, where the sibling column is NOT NULL ─────────────────────────
+--
+-- `stakeholders.aliases` is `text[] not null default '{}'`. This one is a
+-- plain nullable `text[]`, and the difference is deliberate enough to be worth
+-- writing down rather than leaving a reader to notice it as an inconsistency.
+--
+-- The slice this file belongs to adds columns and nothing else, and every
+-- column it adds is nullable, so that the whole change is one shape: an add
+-- that cannot fail on a populated table and cannot invent a value for a row
+-- nobody has authored yet. On this column null carries a meaning the empty
+-- array does not — "no aliases have been considered for this touchpoint", as
+-- against "considered, and there are none" — which is the state all of today's
+-- rows are in.
+--
+-- The cost is that a reader must write `coalesce(aliases, '{}')` where the
+-- stakeholder reader writes `aliases`. That is one function's worth of care in
+-- `touchpointColors.ts` against a NOT NULL that would have to be added,
+-- defaulted and backfilled here. Narrowing this to `not null default '{}'`
+-- later is a one-line follow-up that no existing row can fail, so the looser
+-- shape forecloses nothing.
+--
+-- ── What is NOT constrained, and why ───────────────────────────────────────
+--
+-- Nothing here stops an alias colliding with another touchpoint's `name`, or
+-- with another touchpoint's alias. Such a constraint is real and wanted, and
+-- it belongs with the resolver that would be ambiguous without it. Written as
+-- a database rule instead, it would refuse a WRITE rather than settle a READ,
+-- and a board must draw rather than throw when two rows disagree — so the
+-- resolver decides (a name beats another row's alias) and says so where the
+-- decision is made. There is no index either: a registry of this size resolves
+-- by sequential scan, and an index chosen before a query exists is a guess
+-- about the query.
+--
+-- ── No new grant ───────────────────────────────────────────────────────────
+--
+-- The registry's table-level SELECT policy and grant, written in
+-- `21000120000000`, already cover a new column, so nothing here belongs to the
+-- recipe half. No UPDATE grant: the editing surface brings its own column
+-- grant when it arrives, the way `21000127000000` did.
+--
+-- ── Replaying against an empty database ────────────────────────────────────
+--
+-- One additive column, nullable, no default beyond NULL, `if not exists` so a
+-- re-run is a no-op. It replays clean against an empty database.
+--
+-- The proof is an INVARIANT, never a census: the column exists, it is
+-- nullable, and it is an array of text rather than a single text. The last of
+-- those is worth asserting because `text` and `text[]` are both plausible
+-- spellings of "the other names", and a scalar column would silently accept
+-- the first alias and lose the rest.
+
+alter table public.touchpoints
+  add column if not exists aliases text[];
+
+comment on column public.touchpoints.aliases is
+  'The other spellings that mean this touchpoint — an older name the service '
+  'has stopped using, a label that carried its own specification, a '
+  'lower-case one a person typed into a cell. The name is the identity; these '
+  'resolve to it. The deployment''s own history, which is why it is a column '
+  'and not a literal in touchpointColors.ts. Nullable rather than NOT NULL '
+  'DEFAULT ''{}'' like stakeholders.aliases: null means no aliases have been '
+  'considered, which is what every row means until somebody says otherwise. '
+  'Uniqueness against other names and aliases is not constrained here — that '
+  'rule settles a read, so it belongs with the resolver, which resolves a '
+  'collision in favour of the name.';
+
+do $proof$
+declare
+  v_type text;
+  v_nullable text;
+begin
+  select data_type, is_nullable
+    into v_type, v_nullable
+    from information_schema.columns
+   where table_schema = 'public'
+     and table_name = 'touchpoints'
+     and column_name = 'aliases';
+
+  if v_type is null then
+    raise exception
+      'proof: touchpoints.aliases did not take';
+  end if;
+
+  if v_type <> 'ARRAY' then
+    raise exception
+      'proof: touchpoints.aliases is %, not an array — a scalar column keeps the first alias and loses the rest', v_type;
+  end if;
+
+  if v_nullable = 'NO' then
+    raise exception
+      'proof: touchpoints.aliases must be nullable — null is "no aliases considered", which is what every existing row means';
+  end if;
+end
+$proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000205000000_a_scenario_says_what_runs_beside_it.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- A scenario says what runs beside it.
+--
+-- Authored 2026-09-06. The version is an allocation counter, not a date.
+--
+-- Some scenarios can run at the same time as each other, and a board that
+-- says so says it in a sentence: "this scenario can run in parallel with the
+-- goal-setting and help-request scenarios." A deployment built on this
+-- template kept that sentence in a `Record<string, string>` keyed on hardcoded
+-- scenario UUIDs, and read it twice — once onto the blueprint fallbacks, once
+-- as a sidebar tooltip.
+--
+-- It is a per-scenario display value written in code, which is the class this
+-- schema keeps moving out: the vocabulary and the per-scenario display flags
+-- belong to the board, not to the build. A deployment whose scenarios do not
+-- overlap gets somebody else's three sentences; a deployment that adds a
+-- fourth overlapping scenario has to ship a TypeScript change to say so.
+--
+-- ── The note is a scenario's, and today it is written onto its paths ───────
+--
+-- `paths.note` already exists, and its own comment names this exact use:
+-- "optional path note shown alongside path metadata (e.g. parallel scenario
+-- context)". So the sentence has a home — the wrong one. Parallelism is a fact
+-- about the SCENARIO, and a reader that keeps it on paths copies the same
+-- string onto every path of it: a scenario's happy path and its alternate path
+-- both carry the identical sentence. Two rows that must agree and nothing
+-- making them, which is the shape a single column fixes.
+--
+-- `paths.note` is untouched. A path keeps its own note for what is true of
+-- that route and not of its siblings; this column is for what is true of all
+-- of them. A path note that merely repeats its scenario's is now redundant
+-- rather than wrong, and clearing one is a data decision each deployment makes
+-- about its own board.
+--
+-- ── Why `note` and not a flag ──────────────────────────────────────────────
+--
+-- The obvious alternative was a structured one — `parallel_with uuid[]`, and
+-- let the renderer compose the sentence. It is the better model and it is not
+-- this change. Composing that sentence means owning its grammar in every
+-- language a deployment authors in ("with the goal-setting and help-request
+-- scenarios" is an English list with an English conjunction), and the board's
+-- names are already free-form and any language (see `lanes.name`,
+-- `21000104000000`). A note the author writes is a note the author can write
+-- correctly. The column is prose because the value is prose.
+--
+-- Naming it `note` rather than inventing a word is the rule `21000116000000`
+-- settled: `summary` is the thing's own description, `note` is the aside
+-- beside it, and `phases`, `paths` and `cells` already spell it that way. A
+-- scenario's `summary` is what the scenario IS; this is what a reader should
+-- know about it besides.
+--
+-- ── No new grant ───────────────────────────────────────────────────────────
+--
+-- `scenarios` already grants SELECT to anon and to authenticated at the table
+-- level, so a new column is readable the moment it exists and nothing here
+-- belongs to the recipe half. No UPDATE grant: `20260818000000` granted
+-- `update` on exactly the three columns a panel writes — today `name`,
+-- `summary` and `layout`, after the renames — and a fourth column joins that
+-- list in the migration that brings the field which writes it.
+--
+-- ── Replaying against an empty database ────────────────────────────────────
+--
+-- One additive column, nullable, no default beyond NULL, `if not exists` so a
+-- re-run is a no-op. It replays clean against an empty database.
+--
+-- The proof is an INVARIANT, never a census: the column exists and is
+-- nullable. Asserting that any scenario CARRIES a note would be a census —
+-- true of one populated database on the day and false of every empty replay.
+
+alter table public.scenarios
+  add column if not exists note text;
+
+comment on column public.scenarios.note is
+  'An aside about the scenario, beside the summary that says what it is: most '
+  'often what else may be running at the same time ("this scenario can run in '
+  'parallel with goal setting and help requests"). Blueprint data, not app '
+  'configuration — it replaces the Record keyed on hardcoded scenario ids that '
+  'a deployment would otherwise keep in code. A scenario''s fact, held once, '
+  'rather than the same sentence copied onto each of its paths through '
+  'paths.note. Free prose in the author''s own language rather than a '
+  'structured flag the renderer would have to compose a sentence from.';
+
+do $proof$
+begin
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'scenarios'
+       and column_name = 'note'
+  ) then
+    raise exception
+      'proof: scenarios.note did not take';
+  end if;
+
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'scenarios'
+       and column_name = 'note'
+       and is_nullable = 'NO'
+  ) then
+    raise exception
+      'proof: scenarios.note must be nullable — most scenarios have nothing to say beside their summary';
+  end if;
+end
+$proof$;

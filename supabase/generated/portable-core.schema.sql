@@ -2945,6 +2945,7 @@ CREATE TABLE public.scenarios (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     origin text DEFAULT 'import'::text NOT NULL,
+    note text,
     CONSTRAINT scenarios_layout_check CHECK ((layout = ANY (ARRAY['stacked'::text, 'merged'::text]))),
     CONSTRAINT scenarios_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
@@ -2960,6 +2961,12 @@ COMMENT ON TABLE public.scenarios IS 'Scenario within a phase';
 --
 
 COMMENT ON COLUMN public.scenarios.layout IS 'How this scenario opens: stacked = one full band per path on a shared step axis; merged = the paths combined into one blueprint. The header toggle writes it, so a scenario left merged opens merged.';
+
+--
+-- Name: COLUMN scenarios.note; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.scenarios.note IS 'An aside about the scenario, beside the summary that says what it is: most often what else may be running at the same time ("this scenario can run in parallel with goal setting and help requests"). Blueprint data, not app configuration — it replaces the Record keyed on hardcoded scenario ids that a deployment would otherwise keep in code. A scenario''s fact, held once, rather than the same sentence copied onto each of its paths through paths.note. Free prose in the author''s own language rather than a structured flag the renderer would have to compose a sentence from.';
 
 --
 -- Name: schema_version; Type: TABLE; Schema: public; Owner: -
@@ -3226,6 +3233,8 @@ CREATE TABLE public.touchpoints (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     icon_url text,
     stakeholder_id uuid,
+    tone text,
+    aliases text[],
     CONSTRAINT touchpoints_kind_check CHECK ((kind = ANY (ARRAY['app'::text, 'document'::text, 'physical'::text, 'channel'::text, 'service'::text, 'other'::text]))),
     CONSTRAINT touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
@@ -3271,6 +3280,18 @@ COMMENT ON COLUMN public.touchpoints.icon_url IS 'A stable URL for the touchpoin
 --
 
 COMMENT ON COLUMN public.touchpoints.stakeholder_id IS 'The actor who owns this touchpoint — who runs the app, publishes the document, staffs the channel — or null when nobody has said yet, which is the ordinary state for a row the sync minted from a cell''s text. An association, not a parent: both the tool and the actor are the deployment''s (ADR 0003), and an actor taken out of the cast un-names its touchpoints rather than pinning itself, exactly as it un-names its lanes.';
+
+--
+-- Name: COLUMN touchpoints.tone; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.tone IS 'The palette family this touchpoint''s face is drawn in — the deployment''s own choice, one of the renderer''s tone names (crimson, gold, indigo, purple, red, tomato, yellow). A product fact ("our scheduling tool is blue"), not a styling one, which is why it is a row and not a literal in touchpointColors.ts. Deliberately unconstrained: the tone vocabulary belongs to the token model (ADR 0006) and a CHECK here would be a second copy of it, free to drift. Null means no preference — the renderer falls back deterministically, exactly as it does for a tool the seed map never named.';
+
+--
+-- Name: COLUMN touchpoints.aliases; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.aliases IS 'The other spellings that mean this touchpoint — an older name the service has stopped using, a label that carried its own specification, a lower-case one a person typed into a cell. The name is the identity; these resolve to it. The deployment''s own history, which is why it is a column and not a literal in touchpointColors.ts. Nullable rather than NOT NULL DEFAULT ''{}'' like stakeholders.aliases: null means no aliases have been considered, which is what every row means until somebody says otherwise. Uniqueness against other names and aliases is not constrained here — that rule settles a read, so it belongs with the resolver, which resolves a collision in favour of the name.';
 
 --
 -- Name: agent_messages agent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
