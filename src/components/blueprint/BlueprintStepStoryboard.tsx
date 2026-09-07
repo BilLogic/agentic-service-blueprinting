@@ -22,6 +22,7 @@ type BlueprintStepStoryboardProps = {
   frames?: readonly string[] | readonly BlueprintStepStoryboardPicture[]
   /** Larger walkthrough/presentation layout — images scale to fit without clipping. */
   presentation?: boolean
+  'aria-describedby'?: string
 }
 
 function normalizePictures(
@@ -88,6 +89,7 @@ export function BlueprintStepStoryboard({
   opacity,
   frames,
   presentation = false,
+  'aria-describedby': ariaDescribedBy,
 }: BlueprintStepStoryboardProps) {
   const displayPictures = normalizePictures(frames ?? [])
   const hasRealPictures = displayPictures.length > 0
@@ -146,6 +148,7 @@ export function BlueprintStepStoryboard({
       stepIndex={stepIndex}
       opacity={opacity}
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
     >
       <StoryboardPictureStrip frames={displayPictures} />
     </BlueprintCellButton>

@@ -3,6 +3,11 @@ import { BlueprintStepStoryboard } from '@/components/blueprint/BlueprintStepSto
 import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpointCell'
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   STEP_COLUMN_WIDTH,
   NARRATIVE_CELL_HEIGHT,
   NARRATIVE_CELL_HEIGHT_COMPACT,
@@ -15,10 +20,9 @@ import {
   type BlueprintCellSelectionContext,
 } from '@/lib/blueprintCellSelection'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+  BLUEPRINT_SLOT_INSET,
+  BLUEPRINT_SLOT_INSET_COMPACT,
+} from '@/lib/canvasHeaderStyle'
 import type { BlueprintLaneStyle } from '@/lib/blueprintTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell } from '@/types/blueprint'
@@ -101,7 +105,7 @@ export function CompareCellBlock({
     ? membershipDescriptionId
     : undefined
   const shellPadding = cn(
-    compact ? 'px-3' : 'px-3.5',
+    compact ? BLUEPRINT_SLOT_INSET_COMPACT : BLUEPRINT_SLOT_INSET,
     compact ? 'pt-3' : 'pt-4',
     flushBottom ? 'pb-0' : compact ? 'pb-3' : 'pb-4',
   )
