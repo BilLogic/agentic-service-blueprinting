@@ -34,7 +34,8 @@
  * `config.ts` directly. They migrate onto this type in later slices; until
  * then setting them changes nothing.
  *
- * NOT A FIELD HERE, AND DELIBERATELY: the localStorage namespace. A config is
+ * NOT FIELDS HERE, AND DELIBERATELY: the localStorage namespace, and the
+ * agent's extra reference documents. A config is
  * read when `App` RENDERS, and the namespace is settled long before that —
  * six modules build their storage key while the import graph evaluates, and
  * two of them read localStorage there to seed a store snapshot. A field whose
@@ -42,9 +43,22 @@
  * fail silently, with two installations on one origin sharing a namespace. So
  * a host calls `configureStorageNamespace` from a module it imports before
  * this package, and `lib/storageNamespace.ts` carries the reasoning and the
- * guard that makes a late call throw. Timing is the whole of the argument: it
- * is not that the prefix is unimportant, it is that a render-time seam cannot
- * carry an import-time value.
+ * guard that makes a late call throw.
+ *
+ * The reference documents fail the same test for the same reason. The record
+ * the agent serves, the vocabulary that names it, and the `get_reference` tool
+ * description that quotes that vocabulary to the model are all built while
+ * `referenceDocs.ts`, `referenceNames.ts` and `specs.ts` evaluate. A document
+ * handed over at render time would be served by a tool that never mentions it.
+ * So a deployment registers its own with `registerReferenceDocs`, from the
+ * same pre-import module — `lib/agent/tools/referenceRegistry.ts` carries that
+ * reasoning, and `bootstrap.ts` is the entry point both are reached through.
+ *
+ * Timing is the whole of the argument in both cases: it is not that these
+ * values are unimportant, it is that a render-time seam cannot carry an
+ * import-time value. Nothing is lost by their being calls — they are typed,
+ * they are reviewable at the one place the two repos meet, and getting them
+ * wrong throws.
  *
  */
 import { ORG_NAME } from './config'

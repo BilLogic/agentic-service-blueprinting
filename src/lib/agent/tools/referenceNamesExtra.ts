@@ -1,6 +1,11 @@
 /**
- * Reference documents an ADOPTING APP serves that this kit has none of — the
- * leaf half of the reference-docs fork seam.
+ * Reference documents an app that COPIES this kit serves and the kit has none
+ * of — the leaf half of the reference-docs fork seam.
+ *
+ * A deployment that MOUNTS the package uses the other seam and leaves this
+ * file alone: it cannot edit a constant it imported, and it does not need to —
+ * `registerReferenceDocs` (see `referenceRegistry.ts`) takes its documents and
+ * `referenceNames.ts` splices their names into the same slot as this list.
  *
  * Empty here, and that is the honest statement rather than a stub: this kit
  * describes no particular service, so it has nothing service-specific to add
