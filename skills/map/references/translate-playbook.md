@@ -25,10 +25,12 @@ Write a crosswalk file in the workspace `blueprint/` dir conforming to
 `skills/map/references/crosswalk-schema.json`:
 
 - **Lanes → lanes/roles.** Map to canonical roles where semantics match
-  (their "Customer" → `customer_actions`); create **org-defined custom
-  roles** where they don't (Shostack's *physical evidence* → a custom
-  `physical_evidence` role rendering as a generic lane). Keep THEIR display
-  names — that's the point of the display-name/role split.
+  (their "Customer" → `customer_actions`); give the lane a **null role**
+  where they don't (Shostack's *physical evidence* → a generic lane still
+  labelled physical evidence). The vocabulary is closed at eight and
+  authoring refuses a ninth, so a lane none of them names carries its meaning
+  in its display name. Keep THEIR display names — that's the point of the
+  display-name/role split.
 - **N:1 merges**: several source lanes may map to one target lane; each
   mapping gets a `merge_note` explaining how cell content combines.
 - **Columns → steps**, in order.
@@ -36,7 +38,7 @@ Write a crosswalk file in the workspace `blueprint/` dir conforming to
   single-flow source is one happy path.
 - **⚠ REQUIRED — the unmapped bucket**: every source element with no
   mapping goes in `unmapped` with kind, reason, and disposition
-  (pending / excluded / custom_role / merged / deferred). **Nothing is ever
+  (pending / excluded / generic_lane / merged / deferred). **Nothing is ever
   silently dropped.** "Excluded" requires the user's explicit consent.
 
 The crosswalk is reusable: the same org's next board translates with the

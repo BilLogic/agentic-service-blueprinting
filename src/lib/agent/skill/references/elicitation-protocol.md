@@ -56,8 +56,9 @@ scenario-scoped columns.
 > "Who/what supports it all — vendors, infra, internal teams?" (`support_actions`)
 > "Do you want an image row for snapshots per step?" (`storyboard`)
 
-Assign roles per `references/lane-roles.md`; non-spine actors get null or
-custom roles.
+Assign roles per `references/lane-roles.md`. The vocabulary is closed at
+eight, so non-spine actors get `null` — a generic swimlane, named by its
+display name in whatever language the room speaks.
 
 ## Q6 — Cells (walk the grid)
 

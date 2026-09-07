@@ -207,9 +207,10 @@ const phaseByKey = Object.fromEntries(PHASES.map((p) => [p.key, p]))
  * `assertLaneRoster` below turns both into errors rather than review notes.
  */
 const LANES = [
-  // A named custom role, not null: lane-roles.md asks for one whenever the
-  // lane means something. It renders as a generic swimlane and anchors no
-  // divider line. This is the lane that is deliberately quiet on three boards.
+  // A null role, which is what lane-roles.md asks for whenever the lane means
+  // something the closed eight do not name: the meaning lives in the display
+  // name, and the row renders as a generic swimlane anchoring no divider line.
+  // This is the lane that is deliberately quiet on three boards.
   { row: 0, key: 'stakeholders', name: 'Stakeholders', role: null },
   /*
     The spine lane, present on every board.

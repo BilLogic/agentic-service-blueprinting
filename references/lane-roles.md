@@ -19,9 +19,10 @@ contract; it broke every non-English blueprint.
 ## Canonical vocabulary
 
 The set is **closed**: `lanes_lane_role_check` accepts exactly these eight
-roles or `null`. A lane whose role is not one of them is rejected on write —
-an unconstrained column is how a lane goes unclassified, and the divider lines
-are drawn from the role.
+roles or `null`, and so does the IR. A lane whose role is not one of them is
+refused at authoring time by `scripts/validate_ir.py` — an unconstrained
+column is how a lane goes unclassified, and the divider lines are drawn from
+the role.
 
 | Role | Rendering | Typical lane |
 | --- | --- | --- |
@@ -67,17 +68,57 @@ elicitation), or to none.
 
 ## No custom roles
 
-The vocabulary is closed. A lane that means something the eight roles do not
-name uses `null` (a generic swimlane) — a "Stakeholders" band, an actor lane
-named for a person. `null` is legal on purpose and is exactly how such a lane
-already rendered: no role style, no divider anchored on it. The old advice to
-mint an org-defined role (`physical_evidence`, `compliance_review`,
-`partner_ops`) no longer holds at the database, because an unconstrained
-column is how thirty-six support lanes once went unclassified.
+The vocabulary is closed, at the database and in the IR. A lane that means
+something the eight roles do not name uses `null` (a generic swimlane) — a
+"Stakeholders" band, an actor lane named for a person, a compliance review.
+`null` is legal on purpose and is exactly how such a lane already rendered: no
+role style, no divider anchored on it. The lane's meaning lives in its
+`display_name`, which is free-form in any language and is what a reader
+actually sees; the role only says what the renderer must do about the row, and
+for these lanes there is nothing to do. The old advice to mint an org-defined
+role (`physical_evidence`, `compliance_review`, `partner_ops`) no longer
+holds, because an unconstrained column is how thirty-six support lanes once
+went unclassified.
+
+**Authoring refuses a ninth.** `references/ir-schema.json` carries the eight
+as an enum and `scripts/validate_ir.py` errors on anything else, naming the
+value, the lane it is on and all eight legal values. This closed in #204:
+until then the schema took any `^[a-z0-9][a-z0-9_]*$` and the validator passed
+a ninth role in silence, so a document validated and was then refused by
+`lanes_lane_role_check` part-way through its import — the value named, but at
+the one moment its author could no longer act on it. A file authored before
+that, carrying a role outside the set, is carried across by
+`scripts/migrate_ir.py` (`to_2026_09_10`), which nulls the role and leaves the
+display name alone; the scenarios it touches go back through review, because
+a role is authored content.
 
 All layout logic is role-agnostic where it can be: e.g. backward in-lane
 loop corridors are computed from dependency geometry for ANY lane, `null`
 role included (`blueprintLaneHasBackwardInLaneLoop`).
+
+## Adding a role
+
+A ninth role is a deliberate act across several files, and it is not finished
+until all of them agree — `scripts/tests/lane-role-roster.test.mjs` compares
+every copy of the roster to the constraint and fails the build otherwise.
+In order:
+
+1. **The constraint.** A migration that drops and re-adds
+   `lanes_lane_role_check` with the new value, and updates the
+   `lanes.lane_role` column comment (it lists the values too). It stamps a new
+   `schema_version`.
+2. **The wire format.** The `enum` on `$defs.lane.properties.role` in
+   `references/ir-schema.json`, plus that version in the `schema_version` enum
+   and its step in `scripts/migrate_ir.py` — the hard rule of
+   `references/customization.md` § The versioning rule.
+3. **The validator.** `CANONICAL_ROLES` in `scripts/validate_ir.py`.
+4. **The renderer.** `CANONICAL_LANE_ROLES` and `LANE_ROLE_DESCRIPTIONS` in
+   `src/lib/laneRoles.ts`, and a fill in `src/lib/blueprintTheme.ts`.
+5. **The documents.** The table above, `docs/erd.mmd` (held to the constraint
+   by `scripts/tests/erd-enums.test.mjs`) and `README.md`.
+
+A role that only needs a different label, not different rendering, is not a
+new role: rename the lane.
 
 ## Legacy name shim
 

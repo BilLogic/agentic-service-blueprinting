@@ -39,7 +39,7 @@
     "unmapped": {
       "type": "array",
       "items": { "$ref": "#/$defs/unmappedElement" },
-      "description": "REQUIRED bucket (may be empty) for every source element with no mapping. Typical dispositions: promote to an org-defined custom role, exclude with the user's consent, or leave pending for a follow-up pass."
+      "description": "REQUIRED bucket (may be empty) for every source element with no mapping. Typical dispositions: carry it as a generic lane (null role, the org's own label), exclude with the user's consent, or leave pending for a follow-up pass."
     }
   },
   "$defs": {
@@ -52,7 +52,7 @@
         "target_lane": { "type": "string", "description": "Target lane key in the IR." },
         "target_role": {
           "type": ["string", "null"],
-          "description": "Semantic role for the target lane (canonical or org-defined custom, e.g. Shostack's physical evidence -> a custom physical_evidence role). null = generic swimlane."
+          "description": "Semantic role for the target lane: one of the eight canonical roles, or null. The set is closed (see references/lane-roles.md and the role enum in references/ir-schema.json) — a source lane none of the eight names, such as Shostack's physical evidence, maps to null and keeps its own display name, which is a generic swimlane."
         },
         "target_display_name": {
           "type": "object",
@@ -93,8 +93,8 @@
         "kind": { "enum": ["lane", "column", "path", "annotation", "region", "other"] },
         "reason": { "type": "string" },
         "disposition": {
-          "enum": ["pending", "excluded", "custom_role", "merged", "deferred"],
-          "description": "pending = awaiting user decision; excluded = user consented to drop; custom_role = will become an org-defined role; merged = folded into a mapped element; deferred = later scenario/session."
+          "enum": ["pending", "excluded", "generic_lane", "merged", "deferred"],
+          "description": "pending = awaiting user decision; excluded = user consented to drop; generic_lane = will be carried as a lane with a null role, keeping the source label (the role vocabulary is closed, so there is no org-defined role to promote it to); merged = folded into a mapped element; deferred = later scenario/session."
         }
       }
     }

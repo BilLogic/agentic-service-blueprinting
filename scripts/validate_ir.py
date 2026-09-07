@@ -25,7 +25,7 @@ package is deliberately not required):
                 field names moved and every one of them would be reported as
                 an unknown key.
   Structure   — required fields, types, enums (layout/kind/link
-                type), key/locale/role patterns, locale-map shape,
+                type/lane role), key and locale patterns, locale-map shape,
                 additionalProperties: false.
   Integrity   — every cell's (path, lane, step) references exist; a cell's
                 step must be in that path's path_steps (previewing the DB
@@ -38,13 +38,22 @@ package is deliberately not required):
                 — the database's own uniqueness key, so one pair may carry
                 both an arrow and an enables edge; unique keys at every level;
                 phase.loops_to resolves.
-  Warnings    — unknown lane roles near a canonical role ("did you
-                mean…?" via edit distance; genuinely custom roles are legal
-                and pass silently); role-less lanes whose display name
-                looks like it wanted a canonical role (legacy-name shim
-                candidates, incl. a small CJK map); locale-coverage gaps in
-                localeText fields; scale soft-warnings (>20 lanes or
-                >30 steps per path) — never caps.
+  Warnings    — role-less lanes whose display name looks like it wanted a
+                canonical role (legacy-name shim candidates, incl. a small
+                CJK map); locale-coverage gaps in localeText fields; scale
+                soft-warnings (>20 lanes or >30 steps per path) — never caps.
+
+A lane role outside the canonical eight is an ERROR, and was a silent pass
+until #204. The two halves of the contract had drifted apart: this validator
+and references/ir-schema.json took any ^[a-z0-9][a-z0-9_]*$, while
+references/lane-roles.md and the lanes_lane_role_check constraint closed the
+set at eight. So a document validated here and was then refused by Postgres
+mid-import, naming the value in a constraint violation — loud, but at the one
+moment the author can no longer do anything about it. The schema closed
+rather than the constraint opening, because every other statement of the set
+— the constraint, the column comment, the ERD, references/lane-roles.md —
+already called it closed, and because lane_role is a switch other code reads
+as exhaustive.
 
 Diagnostics are human-readable, one per line, with file:jsonpath locations:
 
@@ -63,6 +72,12 @@ from pathlib import Path
 # Vocabulary (mirrors references/ir-schema.json + references/lane-roles.md)
 # ---------------------------------------------------------------------------
 
+#: The lane vocabulary, and the whole of it — the set lanes_lane_role_check
+#: has admitted since 21000122000000. A role outside it is refused here, at
+#: authoring time (#204); null is legal and means a generic swimlane. This is
+#: one of four copies of the same eight (the constraint, the enum in
+#: references/ir-schema.json, CANONICAL_LANE_ROLES in src/lib/laneRoles.ts),
+#: and scripts/tests/lane-role-roster.test.mjs holds all four to each other.
 CANONICAL_ROLES = (
     "customer_actions",
     "frontstage_actions",
@@ -103,7 +118,6 @@ DEFAULT_DEPENDENCY_KIND = "leads_to"
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 LOCALE_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
-ROLE_RE = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 
 SCALE_MAX_LANES = 20
 SCALE_MAX_STEPS = 30
@@ -406,17 +420,28 @@ def validate_lane(lane, jp: str, rep: Report, locales: list, rows_seen: dict):
 
     role = lane.get("role")
     if "role" in lane and role is not None:
-        if not isinstance(role, str) or not ROLE_RE.match(role):
-            rep.error(f"{jp}.role", f"role '{role}' does not match ^[a-z0-9][a-z0-9_]*$")
-        elif role not in CANONICAL_ROLES:
-            suggestion = suggest_role(role)
+        if not isinstance(role, str) or role not in CANONICAL_ROLES:
+            # The message has to be enough on its own: the reader is holding a
+            # file that just failed, and the alternative to naming all eight is
+            # sending them to a document to find out what the ninth should have
+            # been. `null` is named too, because it is the answer for a lane the
+            # eight do not describe and it is easy to read a closed set as
+            # "pick the nearest" instead.
+            suggestion = suggest_role(role) if isinstance(role, str) else None
+            said = [
+                f"role {role!r} on lane '{lane.get('key')}' is not one of the "
+                "eight this vocabulary admits: " + ", ".join(CANONICAL_ROLES) + "."
+            ]
             if suggestion:
-                rep.warn(
-                    f"{jp}.role",
-                    f"unknown role '{role}' — did you mean '{suggestion}'? "
-                    "(org-defined custom roles are legal; ignore if intentional)",
-                )
-            # A role far from every canonical role is a legal custom role: silent.
+                said.append(f"Did you mean '{suggestion}'?")
+            said.append(
+                "Use null for a lane none of the eight names — it draws as a "
+                "generic swimlane and anchors no divider line, which is how a "
+                "role outside the set already drew. The set is closed by "
+                "lanes_lane_role_check, so an import would refuse this value "
+                "(references/lane-roles.md)."
+            )
+            rep.error(f"{jp}.role", " ".join(said))
     else:
         # Role-less lane: warn when the display name looks like it wanted a
         # canonical role (the legacy magic-name contract — see lane-roles.md).

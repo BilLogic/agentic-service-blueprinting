@@ -73,7 +73,7 @@ these, which are where the system actually breaks**:
 - ⚠ **REQUIRED — validate before import.** Run `scripts/validate_ir.py` and
   require exit 0 before any adapter runs. It catches what the DB trigger
   would abort mid-import (cells without path_steps, cross-path dependencies,
-  duplicate columns, unknown roles).
+  duplicate columns, a lane role outside the closed eight).
 - ⚠ **REQUIRED — never import unsigned IR.** The sign-off content hash in
   `blueprint-workspace.json` must match the current IR file; on mismatch,
   refuse and re-enter review. Never record the hash without explicit user
@@ -134,7 +134,7 @@ definition needed.
 | Anything touching an import target | `references/adapter-contract.md` |
 | Reading/writing workspace state or sign-off | `skills/map/references/workspace-state.md` |
 | Before anything goes public; deploy gotchas | `skills/map/references/deploy-notes.md` (⚠ public-exposure warning lives here) |
-| Theming, custom roles, portfolio/client conventions, template upgrades | `references/customization.md` |
+| Theming, lane roles, portfolio/client conventions, template upgrades | `references/customization.md` |
 | Generating the workspace handoff doc | `assets/HANDOFF.md.template` |
 
 Correctness-critical steps (validation, seed-SQL/fallback generation,

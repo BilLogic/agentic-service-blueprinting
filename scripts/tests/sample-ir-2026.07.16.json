@@ -73,7 +73,7 @@
                   {
                     "key": "compliance",
                     "display_name": { "en": "Compliance Review", "zh": "合规审查" },
-                    "role": "compliance_review",
+                    "role": null,
                     "row": 4
                   }
                 ],
@@ -219,7 +219,7 @@
                   {
                     "key": "compliance",
                     "display_name": { "en": "Compliance Review", "zh": "合规审查" },
-                    "role": "compliance_review",
+                    "role": null,
                     "row": 4
                   }
                 ],
