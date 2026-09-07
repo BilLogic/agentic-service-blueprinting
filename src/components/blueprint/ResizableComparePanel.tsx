@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -99,22 +100,57 @@ export function ResizableComparePanel({
   const measuredContentHeight = measuredContent.height
   const [userSize, setUserSize] = useState({ width: 0, height: 0 })
 
-  useEffect(() => {
-    if (lockHeight) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset of the user's drag-resize when the fit key or defaults change; part of the panel's measurement flow
-    setUserSize({ width: 0, height: 0 })
-  }, [fitContentKey, defaultWidth, defaultHeight, lockHeight])
+  /** Teardown for an in-flight corner drag, so unmount can end it. */
+  const releaseDragRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => releaseDragRef.current?.(), [])
 
   useEffect(() => {
+    if (lockHeight) return
+    // A fresh object never bails React's `Object.is` check, so this used to
+    // re-render every unlocked panel on the board on every content-key
+    // change — one paint after the layout effect below had already measured,
+    // landing inside the camera's settle window N times over.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate reset of the user's drag-resize when the fit key or defaults change; part of the panel's measurement flow
+    setUserSize((current) =>
+      current.width === 0 && current.height === 0
+        ? current
+        : { width: 0, height: 0 },
+    )
+  }, [fitContentKey, defaultWidth, defaultHeight, lockHeight])
+
+  /*
+    The first measurement after a content change runs BEFORE paint.
+
+    `targetHeight` below is a `Math.max` of the estimate and the last
+    measurement, so the panel answers growth in the commit that causes it
+    (the estimate rises immediately) but could only answer SHRINKAGE once a
+    new measurement arrived — until then the stale, larger measurement kept
+    winning the max. As a passive effect that measurement landed a paint
+    late, which is why the two directions did not behave alike: adding a
+    path resized the panel at once, removing one left it at the old size for
+    a frame and then snapped. The camera fit, which waits for this size to
+    settle, inherited the asymmetry exactly.
+
+    A layout effect measures and re-renders inside the same frame as the
+    commit, so both directions are one visual step. The ResizeObserver stays
+    asynchronous — it is for growth that happens later (images, fonts), not
+    for the change we already know about.
+  */
+  useLayoutEffect(() => {
     const element = contentMeasureRef.current
     if (!element) return
 
     const measure = () => {
       // Layout size only. `scrollHeight` also counts arrow overlays and path
       // frames that bleed past the board, which would pad the panel with gray.
-      setMeasuredContent({
-        width: element.offsetWidth,
-        height: element.offsetHeight,
+      setMeasuredContent((current) => {
+        const width = element.offsetWidth
+        const height = element.offsetHeight
+        // Bail on an unchanged measurement: this runs on every content key
+        // change and a needless state write would re-render the whole board.
+        return current.width === width && current.height === height
+          ? current
+          : { width, height }
       })
     }
 
@@ -154,9 +190,17 @@ export function ResizableComparePanel({
     resolvedMinWidth,
     measuredPanelWidth ?? defaultWidth ?? resolvedMinWidth,
   )
+  /*
+    The estimate floors a LOCKED panel and only a locked panel. Locked means
+    this panel belongs to an aligned phase row, where the height it is handed
+    is the row's shared contract — measured, and a real floor. Unlocked, that
+    same argument is nothing but the pre-measure estimate, and keeping it as
+    a floor is exactly the mistake the width axis above already documents:
+    the compare-grid height estimate runs hot, so the floor showed up as dead
+    gray under the board rather than as a panel that hugs its content.
+  */
   const targetHeight = Math.max(
-    resolvedMinHeight,
-    lockHeight ? (defaultHeight ?? resolvedMinHeight) : 0,
+    lockHeight ? resolvedMinHeight : COMPARE_MIN_PANEL_HEIGHT,
     measuredPanelHeight ?? defaultHeight ?? resolvedMinHeight,
   )
   const size = {
@@ -191,7 +235,27 @@ export function ResizableComparePanel({
         height: size.height,
       }
 
+      /*
+        The drag is bound to ONE pointer id, and its teardown is idempotent
+        and reachable from three directions.
+
+        Every listener here used to be unfiltered, so any pointerup from any
+        pointer ran the teardown — and `releasePointerCapture` THROWS
+        `NotFoundError` for an id this button never captured, which skipped
+        both `removeEventListener` calls that followed it. Put a second
+        finger on the board mid-drag (the viewport turns it into a pinch and
+        captures it), lift that finger first, and `onMove` stays on `window`
+        for the rest of the session holding a stale `resizeStart`: the panel
+        then resizes itself on any later mouse move, with no button held.
+        `pointercancel` (an OS edge swipe, the notification shade) and an
+        unmount mid-drag stranded it the same way, by never firing a
+        pointerup at all.
+      */
+      const pointerId = e.pointerId
+      const target = e.currentTarget
+
       const onMove = (moveEvent: PointerEvent) => {
+        if (moveEvent.pointerId !== pointerId) return
         setUserSize({
           width: Math.max(
             resolvedMinWidth,
@@ -206,16 +270,32 @@ export function ResizableComparePanel({
         })
       }
 
-      const target = e.currentTarget
-
-      const onUp = (upEvent: PointerEvent) => {
-        target.releasePointerCapture(upEvent.pointerId)
+      const endDrag = () => {
+        try {
+          target.releasePointerCapture(pointerId)
+        } catch {
+          // Already released, or never captured — the teardown below is the
+          // part that matters and must not be skipped for it.
+        }
         window.removeEventListener('pointermove', onMove)
-        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointerup', onPointerEnd)
+        window.removeEventListener('pointercancel', onPointerEnd)
+        releaseDragRef.current = null
       }
 
+      const onPointerEnd = (endEvent: PointerEvent) => {
+        if (endEvent.pointerId !== pointerId) return
+        endDrag()
+      }
+
+      // Unmount mid-drag never fires a pointer event; the effect below calls
+      // this instead.
+      releaseDragRef.current?.()
+      releaseDragRef.current = endDrag
+
       window.addEventListener('pointermove', onMove)
-      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointerup', onPointerEnd)
+      window.addEventListener('pointercancel', onPointerEnd)
     },
     [resolvedMinHeight, resolvedMinWidth, size.height, size.width],
   )
@@ -276,9 +356,9 @@ export function ResizableComparePanel({
   return (
     <div
       className={cn(
-        'relative shrink-0 transition-[opacity,filter] duration-(--motion-fade) ease-out',
-        dimmed &&
-          'opacity-30 saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
+        'relative shrink-0 transition-opacity duration-(--motion-camera) ease-camera',
+        dimmed && 'opacity-30',
+        dimmed && navigable && 'hover:opacity-70 focus-within:opacity-70',
         className,
       )}
       data-focus-slide-id={focusSlideId}
@@ -290,7 +370,13 @@ export function ResizableComparePanel({
           summary={panelTitleSummary}
           note={panelTitleInfoTooltip}
           tone="panel"
-          className="pointer-events-auto absolute z-30 max-w-[min(calc(100%-3rem),28rem)]"
+          className={cn(
+            'pointer-events-auto absolute z-30 max-w-[min(calc(100%-3rem),28rem)]',
+            // The focused scenario's label steps up a size. On a board of
+            // twenty-two panels the one you are IN should say so at a glance,
+            // and the badge is the only chrome each panel carries.
+            focusActive && 'px-2.5 py-1 text-sm',
+          )}
           style={{
             top: 0,
             left: COMPARE_PANEL_PADDING,

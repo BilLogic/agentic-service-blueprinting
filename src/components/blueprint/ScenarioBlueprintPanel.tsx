@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react'
+import { memo, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { ResizableComparePanel } from '@/components/blueprint/ResizableComparePanel'
 import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
@@ -47,7 +47,7 @@ import {
 import { BlueprintPanelLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import type { BlueprintData } from '@/types/blueprint'
 
-type ScenarioBlueprintPanelProps = {
+export type ScenarioBlueprintPanelProps = {
   slide: NavItem
   slides: NavItem[]
   paths: PathListItem[]
@@ -73,8 +73,25 @@ type ScenarioBlueprintPanelProps = {
   excludeFromRowHeight?: boolean
 }
 
+type ScenarioBlueprintPanelBodyProps = ScenarioBlueprintPanelProps & {
+  getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType | undefined
+}
+
 /** One scenario's blueprint inside a compare panel — title badge, filters and grid. */
 export function ScenarioBlueprintPanel({
+  ...props
+}: ScenarioBlueprintPanelProps) {
+  const { getScenarioDisplayViewType } = useEditor()
+  return (
+    <ScenarioBlueprintPanelBody
+      {...props}
+      getScenarioDisplayViewType={getScenarioDisplayViewType}
+    />
+  )
+}
+
+/** Heavy panel body isolated from the combined navigation context. */
+export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBody({
   slide,
   slides,
   paths,
@@ -90,8 +107,8 @@ export function ScenarioBlueprintPanel({
   dimmed = false,
   focusActive = false,
   excludeFromRowHeight = false,
-}: ScenarioBlueprintPanelProps) {
-  const { getScenarioDisplayViewType } = useEditor()
+  getScenarioDisplayViewType,
+}: ScenarioBlueprintPanelBodyProps) {
   const internalScrollRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = scrollContainerRefProp ?? internalScrollRef
 
@@ -101,7 +118,9 @@ export function ScenarioBlueprintPanel({
     ? getSlideDisplayLabel(parentPhase, slides)
     : undefined
   const storedViewType =
-    displayViewTypeProp ?? getScenarioDisplayViewType(slide)
+    // The deployment's context answers `undefined` for a scenario that has
+    // made no choice, so the default lands here rather than in the reader.
+    displayViewTypeProp ?? getScenarioDisplayViewType(slide) ?? 'stacked'
   // Compare needs two sides. The toggle hides below 2 selected paths, but
   // the stored override survives — falling back here keeps a scenario from
   // being stranded in a compare it can no longer leave.
@@ -286,9 +305,9 @@ export function ScenarioBlueprintPanel({
         return `${group.headerLabel} — divergent step ${targetIndex + 1} of ${stepGroups.length}, ${group.slots.length} difference${
           group.slots.length === 1 ? '' : 's'
         }${
-          outcome?.kind === 'flown'
+          outcome?.kind === 'flown' && outcome.completion === 'completed'
             ? ' — camera flown to it.'
-            : ' — marked active, but its cells are not on the current canvas.'
+            : ` — marked active, but the camera ${outcome?.kind === 'flown' ? outcome.completion : 'could not resolve its cells'}.`
         }`
       },
     })
@@ -422,10 +441,10 @@ export function ScenarioBlueprintPanel({
   ) {
     return (
       <div
-        className="flex flex-col gap-2 transition-[opacity,filter] duration-(--motion-fade) ease-out"
+        className="flex flex-col gap-2 transition-opacity duration-(--motion-fade) ease-out"
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
-        style={dimmed ? { opacity: 0.3, filter: 'saturate(0.5)' } : undefined}
+        style={dimmed ? { opacity: 0.3 } : undefined}
         role="status"
         aria-busy="true"
         aria-label="Loading blueprint"
@@ -444,10 +463,10 @@ export function ScenarioBlueprintPanel({
 
     return (
       <div
-        className="flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-[opacity,filter] duration-(--motion-fade) ease-out"
+        className="flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-opacity duration-(--motion-fade) ease-out"
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
-        style={dimmed ? { opacity: 0.3, filter: 'saturate(0.5)' } : undefined}
+        style={dimmed ? { opacity: 0.3 } : undefined}
       >
         <p className="text-sm text-muted-foreground">
           No blueprint data for this scenario yet.
@@ -504,4 +523,4 @@ export function ScenarioBlueprintPanel({
       </ResizableComparePanel>
     </ScenarioBoardScopeContext.Provider>
   )
-}
+})
