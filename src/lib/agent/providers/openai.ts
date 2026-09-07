@@ -109,7 +109,7 @@ export const openaiAdapter: AgentProviderAdapter = {
       try {
         args = JSON.parse(call.function.arguments) as Record<string, unknown>
       } catch {
-        // Malformed arguments reach the tool layer as empty args; the tool's
+        // Malformed arguments reach the tool lane as empty args; the tool's
         // own validation reports the miss back to the model.
       }
       parts.push({ type: 'tool_call', id: call.id, name: call.function.name, args })
