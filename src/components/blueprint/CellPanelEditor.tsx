@@ -22,6 +22,16 @@ import { upsertCell } from '@/lib/authoringRpc'
 import { CELL_CONTENT_MAX } from '@/lib/cellContentLimits'
 import { updateCellContent } from '@/lib/cellContentMutations'
 import { RegistryLink } from '@/components/blueprint/RegistryLink'
+import { RoleSelect } from '@/components/blueprint/RoleSelect'
+import { PlacementResourcesList } from '@/components/blueprint/PlacementResourcesList'
+import {
+  placementSurvivesContent,
+  updateTouchpointPlacement,
+  type PlacementDetailColumns,
+  type PlacementDetailDraft,
+} from '@/lib/touchpointMutations'
+import { PANEL_TEXT } from '@/lib/panelText'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseCellContentItems } from '@/lib/parseCellContent'
 import { parseValueProps, type ValueProp } from '@/lib/valueProps'
@@ -46,6 +56,56 @@ type FormState = {
   functionText: string
   formText: string
   valueProps: ValueProp[]
+  /**
+   * The selected touchpoint's own detail, when a touchpoint was clicked to
+   * open this panel. Part of the SAME form state as the cell's fields, and
+   * deliberately so: the panel is showing one cell and one of its
+   * placements, and two Save buttons for what a reader experiences as one
+   * screen is the arrangement this editor was built to end.
+   */
+  placement: PlacementDetailDraft
+}
+
+/** An unmarked, unwritten placement — the state a cell with none selected sits in. */
+const EMPTY_PLACEMENT: PlacementDetailDraft = {
+  summary: '',
+  role: null,
+}
+
+/**
+ * The columns to restore, read back out of the FROZEN baseline draft.
+ *
+ * Not off the `placement` prop, which keeps tracking the live query: a revert
+ * of this same cell refetches it and changes the prop mid-edit, and an
+ * inverse captured from it would then promise to restore values that were
+ * already gone when editing began. Same reason the baseline is frozen at all.
+ *
+ * The round trip through the draft normalises an empty string to null, which
+ * is the shape the column holds anyway — the read path checks for null, and
+ * restoring `''` where the row had NULL would be restoring a second spelling
+ * of empty that nothing else in the app writes.
+ */
+function placementColumns(draft: PlacementDetailDraft): PlacementDetailColumns {
+  return {
+    summary: draft.summary || null,
+    role: draft.role,
+  }
+}
+
+/**
+ * The form's fields for a placement, seeded from its OWN values.
+ *
+ * Never from `resolveTouchpointDetail`'s resolved text, which falls back to
+ * the cell's summary when the placement has none: seeding with that would
+ * copy the cell's sentence onto the placement the first time anybody pressed
+ * Save, and the two would then say the same thing forever without anyone
+ * having decided that they should.
+ */
+function placementDraft(placement: CellTouchpoint): PlacementDetailDraft {
+  return {
+    summary: placement.summary ?? '',
+    role: placement.role,
+  }
 }
 
 /**
@@ -64,12 +124,29 @@ type FormState = {
 export function CellPanelEditor({
   cellId,
   draft,
+  placement = null,
+  placementResources = [],
   fallbackSummary = '',
   onDone,
 }: {
   /** Existing cell to edit; null when creating from a draft target. */
   cellId: string | null
   draft?: DraftCellTarget
+  /**
+   * The touchpoint placement the panel was opened on, when a touchpoint was
+   * clicked. Its detail fields join this form.
+   *
+   * A placement with no `id` is not editable and is passed through as absent:
+   * that is a board with no database behind it, where the placements come out
+   * of the bundled sample content and there is no row to write into.
+   */
+  placement?: CellTouchpoint | null
+  /**
+   * The cell's resources, from which the placement's list keeps its own. Read
+   * here, written by `PlacementResourcesList` on its own button — see the
+   * note at the list.
+   */
+  placementResources?: readonly CellResource[]
   /**
    * What the panel displays as this cell's summary when the column is
    * empty (tech cells keep prose in `links`). Seeded into the field so the
@@ -82,6 +159,8 @@ export function CellPanelEditor({
   const { configured } = useSupabase()
   const contentResult = useCellContent(configured && cellId ? cellId : null)
   const specResult = useCellSpec(configured && cellId ? cellId : null)
+  // A placement is editable only when it has a row behind it.
+  const editable = placement?.id ? placement : null
 
   if (cellId) {
     if (contentResult.status === 'loading' || specResult.status === 'loading') {
@@ -111,13 +190,20 @@ export function CellPanelEditor({
       functionText: spec?.function ?? '',
       formText: spec?.form ?? '',
       valueProps: parseValueProps(spec?.value_props ?? null),
+      placement: editable ? placementDraft(editable) : EMPTY_PLACEMENT,
     }
 
     return (
       <CellPanelEditorForm
-        key={cellId}
+        // Keyed on the placement as well as the cell: clicking a second
+        // touchpoint on the same cell keeps the same cell id, and without the
+        // placement in the key the frozen baseline below would still describe
+        // the touchpoint the author had finished with.
+        key={editable ? `${cellId}:${editable.id}` : cellId}
         cellId={cellId}
         draft={undefined}
+        placement={editable}
+        placementResources={placementResources}
         baseline={baseline}
         seededSummary={content.summary ?? fallbackSummary}
         onDone={onDone}
@@ -139,8 +225,13 @@ export function CellPanelEditor({
         functionText: '',
         formText: '',
         valueProps: [],
+        // A cell that does not exist yet holds no placements: its touchpoints
+        // come into being when its text is first saved and synced.
+        placement: EMPTY_PLACEMENT,
       }}
       seededSummary=""
+      placement={null}
+      placementResources={[]}
       onDone={onDone}
     />
   )
@@ -149,12 +240,17 @@ export function CellPanelEditor({
 function CellPanelEditorForm({
   cellId,
   draft,
+  placement,
+  placementResources,
   baseline: baselineProp,
   seededSummary,
   onDone,
 }: {
   cellId: string | null
   draft: DraftCellTarget | undefined
+  /** Non-null only when it carries a row id — see CellPanelEditor. */
+  placement: CellTouchpoint | null
+  placementResources: readonly CellResource[]
   baseline: FormState
   seededSummary: string
   onDone: () => void
@@ -203,6 +299,15 @@ function CellPanelEditorForm({
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
 
+  const setPlacement = <K extends keyof PlacementDetailDraft>(
+    key: K,
+    value: PlacementDetailDraft[K],
+  ) =>
+    setForm((current) => ({
+      ...current,
+      placement: { ...current.placement, [key]: value },
+    }))
+
   const blocked = !form.content.trim()
 
   const effectiveSummary = summaryTouched
@@ -217,6 +322,10 @@ function CellPanelEditorForm({
     form.functionText !== baseline.functionText ||
     form.formText !== baseline.formText ||
     JSON.stringify(form.valueProps) !== JSON.stringify(baseline.valueProps)
+  const placementChanged =
+    Boolean(placement) &&
+    (form.placement.summary !== baseline.placement.summary ||
+      form.placement.role !== baseline.placement.role)
 
   const handleSave = async () => {
     if (!client || busy || blocked) return
@@ -283,6 +392,30 @@ function CellPanelEditorForm({
               }
             : undefined,
           { record: Boolean(cellId) },
+        )
+      }
+
+      /*
+        The placement, after the cell — and after the sync the cell's save
+        runs, which is what makes the order load-bearing rather than tidy.
+
+        `updateCellContent` calls `sync_cell_touchpoints`, and a save that
+        removed this touchpoint's name from the text deletes its placement
+        along with everything written about it. Writing the detail first would
+        write words onto a row about to be destroyed; writing it afterwards
+        without asking would fail on zero rows, on a save that did exactly
+        what the author asked for. So it asks.
+      */
+      if (
+        placement?.id &&
+        placementChanged &&
+        placementSurvivesContent(form.content, placement.name)
+      ) {
+        await updateTouchpointPlacement(
+          client,
+          { id: placement.id, cellId: targetId, name: placement.name },
+          form.placement,
+          placementColumns(baseline.placement),
         )
       }
 
@@ -362,6 +495,68 @@ function CellPanelEditorForm({
           onChange={(event) => set('content', event.target.value)}
         />
       </Field>
+
+      {/*
+        The placement, directly under the text that lists it.
+
+        Enclosed and headed rather than mixed into the cell's fields, because
+        these belong to a DIFFERENT thing: the cell is the moment, the
+        placement is one touchpoint used at it, and the same tool at the next
+        step keeps its own words. Two fields called Summary on one screen is
+        exactly why the group draws a border and says whose it is.
+
+        Directly under Content and not at the bottom because the author
+        reached this panel by clicking that touchpoint. Making them scroll
+        past six of the cell's fields to reach the thing they clicked is how
+        an editor teaches people it is not for them.
+      */}
+      {placement ? (
+        <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
+          <div className="flex flex-col gap-0.5">
+            <span className={PANEL_TEXT.sectionLabel}>
+              “{placement.name}” at this step
+            </span>
+            <p className="text-3xs text-muted-foreground">
+              This touchpoint’s own words here. The same tool at another
+              step keeps its own.
+            </p>
+          </div>
+          <Field
+            label="Summary"
+            hint="What this touchpoint does at this moment — the screen, the message, the part of it being used."
+          >
+            <textarea
+              value={form.placement.summary}
+              rows={3}
+              onChange={(event) => setPlacement('summary', event.target.value)}
+              className={PANEL_TEXTAREA_CLASS}
+            />
+          </Field>
+          <Field
+            label="Role"
+            hint="Whether the moment happens through this touchpoint or merely alongside it. Most placements are never marked, and leaving it unmarked is not the same as calling it peripheral."
+          >
+            <RoleSelect
+              value={form.placement.role}
+              aria-label="Role"
+              onChange={(next) => setPlacement('role', next)}
+            />
+          </Field>
+          {/*
+            The one exception to "one Save": the list has its own. A reorder
+            is a whole-list fact and featuring is one row's flag that the
+            database settles in its own transaction — folding either into the
+            field Save would make that button write things it cannot show as
+            unsaved. The list says so on its own button.
+          */}
+          {placement.id && cellId ? (
+            <PlacementResourcesList
+              placement={{ id: placement.id, cellId, name: placement.name }}
+              resources={placementResources}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {/* The tl;dr that consolidates what the detailed fields (function,
           form, value proposition) spell out. Label and column are the same

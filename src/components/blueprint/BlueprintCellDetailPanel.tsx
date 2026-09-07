@@ -1334,6 +1334,11 @@ function BlueprintCellDetailPanelBody() {
       {editingCell ? (
         <CellPanelEditor
           cellId={resolvedCellId}
+          // The placement the reader clicked, so its detail fields join the
+          // cell's form under one Save rather than arriving as a second
+          // editor with a second Save button.
+          placement={selectedPlacement}
+          placementResources={cellResourceList}
           // Never seed the field with the title wearing a summary's
           // clothes — only prose that actually says more than the cell text.
           fallbackSummary={
