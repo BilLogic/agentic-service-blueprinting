@@ -1088,6 +1088,7 @@ function ServiceOverviewViewImpl({
                             )}
                             isFlowArrowAnchor={isOverviewFlowArrowAnchorPhase(
                               phase,
+                              slides,
                             )}
                             isLoopArrowFrom={
                               phase.id === postToPreLoop?.fromPhaseId

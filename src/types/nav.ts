@@ -16,13 +16,6 @@ export type EditorView = 'landing' | 'home' | 'detail'
  */
 export type SlideViewType = 'stacked' | 'merged'
 
-export const SLIDE_VIEW_TYPES: SlideViewType[] = ['stacked', 'merged']
-
-export const SLIDE_VIEW_TYPE_LABELS: Record<SlideViewType, string> = {
-  stacked: 'Stacked',
-  merged: 'Merged',
-}
-
 export type NavItem = {
   id: string
   index: number
@@ -149,9 +142,21 @@ export function getBlueprintScenarioId(slide: NavItem): string | undefined {
   return undefined
 }
 
+/**
+ * A raw `scenarios.layout` as a SlideViewType.
+ *
+ * Not a translation — the stored tokens ARE these tokens. It is a guard: a row
+ * outside the CHECK constraint falls back to the stacked view rather than
+ * crashing a render, which is the behaviour the old vocabulary map provided and
+ * the only part of it worth keeping. `single`, which the column held until
+ * 21000117000000, lands here too: a one-path scenario is stacked with one band.
+ */
+export function asSlideViewType(raw: string): SlideViewType {
+  return raw === 'merged' ? 'merged' : 'stacked'
+}
+
 export function getSlideViewType(slide: NavItem): SlideViewType {
-  // `slide.layout` is the stored value itself; `phasesToSlides` only guards
-  // against a token nothing can render.
+  // Already the stored token — see asSlideViewType.
   return slide.layout ?? 'stacked'
 }
 
