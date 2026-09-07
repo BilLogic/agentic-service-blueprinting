@@ -29,6 +29,7 @@ import { ServiceOverviewHeader } from '@/components/editor/ServiceOverviewHeader
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { setSidebarCollapsedState } from '@/contexts/sidebarCollapsedContext'
 import { SlideStickyHeader } from '@/components/editor/SlideStickyHeader'
+import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import type { NavItem } from '@/types/nav'
@@ -114,20 +115,27 @@ const skeleton = () =>
  */
 function mountShell(client: QueryClient) {
   /*
-    Inside the entity panel's provider, which `EditorShell` mounts above every
-    tree in the app. The header's title is an affordance that reads the panel
-    through `useEntityDetail`, and that hook throws outside the provider rather
-    than returning an inert value — so a surface rendered on its own brings it.
+    Inside two providers, for the same reason in both cases. The entity panel's
+    is mounted by `EditorShell` above every tree in the app, and the header's
+    title is an affordance that reads the panel through `useEntityDetail`. The
+    deployment config's is mounted by `App` above that, and the navbar's
+    wordmark reads it through `useWorkspaceTitle`. Both hooks throw outside
+    their provider rather than returning an inert value — the wordmark's throw
+    is the load-bearing one, because a host that forgot to wrap would otherwise
+    ship its chrome quietly labelled with somebody else's name. A surface
+    rendered on its own brings what it reads.
   */
   return render(
-    <EntityDetailProvider>
-      <QueryClientProvider client={client}>
-        <TooltipProvider>
-          <ServiceOverviewHeader />
-          <FloatingSidebarNavbar onExpand={() => {}} />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </EntityDetailProvider>,
+    <DeploymentConfigProvider>
+      <EntityDetailProvider>
+        <QueryClientProvider client={client}>
+          <TooltipProvider>
+            <ServiceOverviewHeader />
+            <FloatingSidebarNavbar onExpand={() => {}} />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </EntityDetailProvider>
+    </DeploymentConfigProvider>,
   )
 }
 
