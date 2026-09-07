@@ -17,13 +17,14 @@ import { SlideNav } from '@/components/editor/SlideNav'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { SidebarContent } from '@/components/ui/sidebar'
 import { useViewState } from '@/contexts/viewStateStore'
+import type { SidebarPanel } from '@/components/editor/EditorRail'
 
 /** Sidebar body for slide mode: the blueprint and slice trees. */
 export function SlideModeSidebarNav({
-  surface,
+  panel,
 }: {
-  /** Which nav surface the rail selected — this component renders both non-agent ones. */
-  surface: 'blueprints' | 'slices'
+  /** Which panel surface the rail selected — this component renders both. */
+  panel: SidebarPanel
 }) {
   const {
     slides,
@@ -87,7 +88,7 @@ export function SlideModeSidebarNav({
   )
   return (
     <SidebarContent className="px-2 pt-1 pb-1">
-      {surface === 'blueprints' ? (
+      {panel === 'blueprints' ? (
         <>
           <NavSection
             title="Phases"
