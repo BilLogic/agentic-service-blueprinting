@@ -1,0 +1,101 @@
+/**
+ * One roster of lane roles, in the four places that have to state it.
+ *
+ * `lanes_lane_role_check` has closed `lanes.lane_role` to eight values since
+ * `21000122000000`. The wire format did not follow: `references/ir-schema.json`
+ * took any `^[a-z0-9][a-z0-9_]*$` and `scripts/validate_ir.py` passed a ninth
+ * role in silence, so a document validated at authoring time and was refused
+ * by a constraint violation part-way through its import (#204). The schema
+ * closed rather than the constraint opening — but JSON Schema cannot import a
+ * list, and neither can a stdlib-only Python script, so closing it MADE two
+ * more copies of the eight.
+ *
+ * A duplicated list with nothing holding it is how the first drift started, so
+ * this is what holds them: the constraint in the generated portable core is the
+ * authority, and the three copies are compared to it set for set. The dump is
+ * a committed file, so this runs on every pull request with no database.
+ */
+import { test } from 'vitest'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { SCHEMA, schemaInventory } from '../check-instance-vocabulary.mjs'
+
+const ROOT = new URL('../../', import.meta.url)
+const read = (path) => readFileSync(fileURLToPath(new URL(path, ROOT)), 'utf8')
+
+/** The values `lanes_lane_role_check` accepts, read off the committed dump. */
+function constraintRoles() {
+  const values = schemaInventory(read('supabase/generated/portable-core.schema.sql')).values.get(
+    'lanes.lane_role',
+  )
+  assert.ok(values, 'the portable core states no CHECK on lanes.lane_role')
+  return [...values]
+}
+
+/** The enum `references/ir-schema.json` puts on a lane's `role`. */
+function schemaRoles() {
+  const schema = JSON.parse(read('references/ir-schema.json'))
+  return schema.$defs.lane.properties.role.enum
+}
+
+/**
+ * `CANONICAL_ROLES` in the validator, read as text.
+ *
+ * The alternative is running python3 from a vitest worker to print it, which
+ * makes a check of the roster into a check of the interpreter on the machine.
+ */
+function validatorRoles() {
+  const body = /^CANONICAL_ROLES = \(([^)]*)\)/m.exec(read('scripts/validate_ir.py'))
+  assert.ok(body, 'scripts/validate_ir.py no longer declares CANONICAL_ROLES as a literal tuple')
+  return [...body[1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1])
+}
+
+/**
+ * `CANONICAL_LANE_ROLES` in the app's contract, whose entries are the exported
+ * constants rather than literals — so the constants are resolved first.
+ */
+function appRoles() {
+  const source = read('src/lib/laneRoles.ts')
+  const literals = new Map(
+    [...source.matchAll(/export const ([A-Z][A-Z_]*) = '([a-z_]+)'/g)].map((m) => [m[1], m[2]]),
+  )
+  const listed = /export const CANONICAL_LANE_ROLES = \[([^\]]*)\]/.exec(source)
+  assert.ok(listed, 'src/lib/laneRoles.ts no longer declares CANONICAL_LANE_ROLES as an array')
+  return (listed[1].match(/[A-Z][A-Z_]+/g) ?? []).map((name) => {
+    const value = literals.get(name)
+    assert.ok(value, `CANONICAL_LANE_ROLES names ${name}, which is not an exported role constant`)
+    return value
+  })
+}
+
+const sorted = (roles) => [...roles].sort()
+
+test('the constraint states eight roles, and null besides', () => {
+  // The count is asserted because every comparison below is against this list:
+  // a dump that parsed to nothing would make the whole file pass in silence.
+  assert.equal(constraintRoles().length, 8)
+})
+
+test('references/ir-schema.json admits the eight the constraint admits, and null', () => {
+  const enumerated = schemaRoles()
+  assert.ok(
+    enumerated.includes(null),
+    'a lane with no blueprint role is legal on purpose — see references/lane-roles.md',
+  )
+  assert.deepEqual(
+    sorted(enumerated.filter((role) => role !== null)),
+    sorted(constraintRoles()),
+    'the IR schema and lanes_lane_role_check disagree about the lane vocabulary, which is ' +
+      'the drift #204 closed: a document validates and is then refused on import. Adding a ' +
+      'role is a multi-file act — see references/lane-roles.md.',
+  )
+})
+
+test('scripts/validate_ir.py refuses by the same list', () => {
+  assert.deepEqual(sorted(validatorRoles()), sorted(constraintRoles()))
+})
+
+test('src/lib/laneRoles.ts renders by the same list', () => {
+  assert.deepEqual(sorted(appRoles()), sorted(constraintRoles()))
+})

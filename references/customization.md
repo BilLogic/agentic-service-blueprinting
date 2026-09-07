@@ -17,11 +17,15 @@ migration in the same change.
 
 ## Lane roles
 
-The canonical vocabulary + org-defined custom roles are documented in
-`references/lane-roles.md`. Customization summary: display names are
-free-form in any language; custom roles are just strings (they render as
-generic swimlanes); no role is mandatory. Prefer creating a custom role over
-`null` when the lane has org-specific meaning — it keeps semantics in data.
+The canonical vocabulary is documented in `references/lane-roles.md`, and it
+is **closed**: eight roles or `null`, at the database and in the IR alike.
+Customization summary: display names are free-form in any language and are
+where a lane's own meaning belongs; no role is mandatory; a lane none of the
+eight names takes `null` and renders as a generic swimlane. There is no
+org-defined role to mint — authoring refuses a ninth value rather than letting
+a document validate and then be refused on import (#204), and adding one to
+the set is a deliberate multi-file act, listed in `references/lane-roles.md`
+§ Adding a role.
 
 ## Theming & branding
 

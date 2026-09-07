@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.09'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.10'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,15 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.09'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // `lanes[].role` closes to the eight (#204). 21000122000000 closed the
+  // column at the database in 2026.09.08 and the wire format never followed,
+  // so a document could validate against references/ir-schema.json and then be
+  // refused by the CHECK part-way through an import. The schema now carries
+  // the eight as an enum and the step nulls anything else — a generic
+  // swimlane, which is how such a role already drew. No migration stamps this
+  // version: nothing in the database changed, so a target at 2026.09.08 is
+  // still one this checkout speaks.
+  '2026.09.10',
   // A path's `triggers` array is its `dependencies` (#159). The database has
   // said `cell_dependencies` since 21000103000000 and this app's own domain
   // layer since release 1.5.0; the IR was the last estate still spelling it the

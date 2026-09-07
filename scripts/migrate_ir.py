@@ -578,20 +578,25 @@ def to_2026_09_08(doc: dict) -> None:
     row is FOR, and `step_visual` named a storyboard variation a step never
     carried.
 
-    WHAT THIS STEP DOES NOT DO, and why that is a judgement rather than an
-    omission. The migration also sets to NULL every role outside the closed
+    WHAT THIS STEP DOES NOT DO, and where the question it parked was
+    answered. The migration also sets to NULL every role outside the closed
     eight, an adopter's own word included. It had to: `add constraint`
     validates every existing row as it is added, so a lane already in the
     table had to be re-classified or the migration would abort. A document
-    being carried forward is under no such duress, and at the IR level a
-    custom role is still legal — `references/ir-schema.json` admits any
-    `^[a-z0-9][a-z0-9_]*$`, and `scripts/validate_ir.py` passes a role far
-    from every canonical one in silence, on purpose. Nulling one here would
-    delete authored content the validator had just blessed, and would settle
-    by deletion a question nobody has asked: whether the IR closes the set the
-    way the database does. A file that keeps a custom role is refused by the
-    target's CHECK, loudly and with the value named, which is a better answer
-    than a classification that quietly disappears.
+    being carried forward is under no such duress, so this step renames the
+    five and leaves anything else alone — deleting a role here would have
+    settled by deletion a question nobody had asked: whether the IR closes the
+    set the way the database does.
+
+    That question was asked, and answered yes (#204). Leaving the IR open let
+    a document validate and then be refused by the target's CHECK, which is
+    the value named at the one moment the author can do nothing about it. So
+    `references/ir-schema.json` now carries the eight as an enum,
+    `scripts/validate_ir.py` refuses a ninth, and `to_2026_09_10` below is
+    where a role outside the set becomes null — the same answer this migration
+    gave the rows it found, asked at the version boundary where a carried
+    document can hear it. This step is unchanged: its hop is the rename, and a
+    step only ever answers for its own predecessor.
 
     A lane's role is authored content and lives inside a scenario's subtree,
     so this step declares itself NOT content-preserving — the second step ever
@@ -670,6 +675,74 @@ def to_2026_09_09(doc: dict) -> None:
                 continue
             for path in scenario.get("paths", []) or []:
                 rename(path, "triggers", "dependencies")
+
+
+def to_2026_09_10(doc: dict) -> None:
+    """2026.09.09 → 2026.09.10 — the lane vocabulary closes in the wire format too.
+
+    `21000122000000` closed `lanes.lane_role` to eight values with a CHECK and
+    `to_2026_09_08` above carried the retired spellings across it. What neither
+    did was close the WIRE FORMAT: `references/ir-schema.json` went on admitting
+    any `^[a-z0-9][a-z0-9_]*$` and `scripts/validate_ir.py` passed a ninth role
+    in silence. So a document could validate and still be refused on import, and
+    the refusal arrived as a constraint violation half-way through the write —
+    the value named, but at the one moment its author can no longer fix it
+    (#204).
+
+    Three answers were on the table: close the schema, open the constraint, or
+    document the gap and live with it. The schema closes. Everything else here
+    already states the set as closed — the constraint, the `lanes.lane_role`
+    column comment, `docs/erd.mmd`, `references/lane-roles.md` — and
+    `lane_role` is read as exhaustive by code that switches on it, so opening
+    the column would have meant auditing every such reader for a value that had
+    never reached it.
+
+    This step is what closing costs a document that is already authored. A role
+    outside the eight becomes `null` — a generic swimlane, which is precisely
+    how that role already drew: no style of its own, no divider anchored on it.
+    That is the same answer `21000122000000` gave the rows it found, and it is
+    given here at a version boundary, where the migration report names the file
+    and `--workspace` puts the affected scenarios back through review, rather
+    than by a Postgres error mid-import.
+
+    THE LANE'S NAME IS UNTOUCHED, and that is the whole reason nulling is not
+    the deletion it looks like. `display_name` is free-form in any language and
+    carries what the lane MEANS ("Compliance Review"); `role` carries what the
+    renderer must do about it, and there was never anything for it to do. The
+    reader of a migrated file still sees the compliance lane. What goes is a
+    key no target would have stored.
+
+    A role is authored content inside a scenario's subtree, so the step is
+    `content_preserving = False` — the third, after the edge turnaround at
+    2026.09.01 and the rename at 2026.09.08. Watched per scenario as those are:
+    a scenario holding a nulled role keeps its recorded hash and reads as stale
+    until someone re-signs it, and a document carrying none — which is most of
+    them, the eight having been the only importable values all along — hashes
+    identically on both sides and re-anchors as usual.
+
+    NO MIGRATION STAMPS THIS VERSION, and none needs to: the database has
+    refused the ninth value since `21000122000000` stamped `2026.09.08`. The
+    version namespace is shared, `scripts/check-target-schema.mjs` accepts any
+    version this checkout speaks, and a target sitting at `2026.09.08` stays
+    compatible. `2026.09.09` set that precedent — a wire-format bump with no
+    DDL behind it — and this is the second.
+    """
+    service = doc.get("service")
+    if not isinstance(service, dict):
+        return
+    for phase in service.get("phases", []) or []:
+        for scenario in phase.get("scenarios", []) or []:
+            if not isinstance(scenario, dict):
+                continue
+            for path in scenario.get("paths", []) or []:
+                if not isinstance(path, dict):
+                    continue
+                for lane in path.get("lanes", []) or []:
+                    if not isinstance(lane, dict):
+                        continue
+                    role = lane.get("role")
+                    if role is not None and role not in validate_ir.CANONICAL_ROLES:
+                        lane["role"] = None
 
 
 STEPS = (
@@ -778,6 +851,18 @@ STEPS = (
         "database has used since 21000103000000 and the app since 1.5.0, "
         "reaching the interchange format last",
         to_2026_09_09,
+    ),
+    Step(
+        "2026.09.09",
+        "2026.09.10",
+        "lanes[].role closes to the eight the database has admitted since "
+        "21000122000000: a role outside the set becomes null, the generic "
+        "swimlane it already drew as (#204)",
+        to_2026_09_10,
+        # A lane's role is authored content inside a scenario's subtree. A file
+        # carrying a role outside the eight re-signs; a file carrying none —
+        # which is every file a target ever accepted — hashes identically.
+        content_preserving=False,
     ),
 )
 

@@ -6,7 +6,8 @@
 # Usage: bash scripts/tests/run_tests.sh
 #
 # Covers: validator pass on the bilingual sample fixture; validator FAIL with
-# the right messages on three crafted-bad mutations; YAML-support branch;
+# the right messages on four crafted-bad mutations, one of them a lane role
+# outside the closed eight; YAML-support branch;
 # seed SQL for en + zh (transaction wrapper, balanced quotes, insert order,
 # deterministic UUIDv5 ids across runs, per-locale divergence, --verify
 # companion); generators refusing an invalid IR without writing output;
@@ -14,8 +15,9 @@
 # src/data/blueprintFallbacks.ts (restored afterwards); an IR authored with the
 # retired `path.triggers` spelling still loading, by being carried across the
 # 2026.09.09 rename; a lane role carried by a spelling the closed vocabulary
-# retired being renamed by the 2026.09.08 step while a custom role is left
-# alone; a dependency edge's
+# retired being renamed by the 2026.09.08 step, and a role outside the eight
+# being nulled by the 2026.09.10 step that closed the wire format; a
+# dependency edge's
 # `kind` round-tripping through both adapters, including an `enables` edge and
 # the identity that keeps both kinds of one pair apart; schema-version
 # migration (a superseded IR is refused by name, migrate_ir.py carries it
@@ -84,7 +86,7 @@ grep -q "OK" "$TMP/valid.out" || fail "validator-sample: no OK line"
 pass "validator-sample (bilingual fixture validates cleanly)"
 
 # ---------------------------------------------------------------------------
-# 2. Validator rejects three crafted-bad mutations with the right messages
+# 2. Validator rejects four crafted-bad mutations with the right messages
 # ---------------------------------------------------------------------------
 
 python3 - "$SAMPLE" "$TMP" <<'PY'
@@ -116,6 +118,15 @@ scenario(bad)["paths"][0]["dependencies"].append(
     }
 )
 json.dump(bad, open(f"{tmp}/bad3.json", "w", encoding="utf-8"), ensure_ascii=False)
+
+# bad4: a lane role outside the closed eight. This passed in SILENCE until
+# #204 — the schema took any ^[a-z0-9][a-z0-9_]*$ while lanes_lane_role_check
+# took eight values — so the document validated here and was refused by
+# Postgres part-way through its import, which is the one moment its author
+# can do nothing about it.
+bad = json.loads(json.dumps(base))
+scenario(bad)["paths"][0]["lanes"][-1]["role"] = "compliance_review"
+json.dump(bad, open(f"{tmp}/bad4.json", "w", encoding="utf-8"), ensure_ascii=False)
 PY
 
 expect_invalid() {
@@ -131,6 +142,21 @@ expect_invalid() {
 expect_invalid "validator-bad1 (cell step missing from path_steps)" "$TMP/bad1.json" "cells_validate_path_match"
 expect_invalid "validator-bad2 (duplicate position in path_steps)" "$TMP/bad2.json" "duplicate step 'report' in path_steps"
 expect_invalid "validator-bad3 (cross-path dependency)" "$TMP/bad3.json" "cross-path edges are invalid"
+expect_invalid "validator-bad4 (lane role outside the closed eight)" "$TMP/bad4.json" "is not one of the eight"
+
+# The message is the whole of what the author gets, so it is checked as such:
+# the offending value, the lane carrying it, every legal value, and the fact
+# that null is one of them. A reader who has to open another document to find
+# out what the ninth role should have been has been told the wrong thing.
+python3 "$VALIDATE" "$TMP/bad4.json" > "$TMP/bad4.out" 2>&1 || true
+for needle in "compliance_review" "on lane 'compliance'" "customer_actions" \
+  "frontstage_actions" "backstage_actions" "partner_actions" \
+  "frontstage_touchpoints" "backstage_touchpoints" "support_actions" \
+  "storyboard" "Use null" "lanes_lane_role_check"; do
+  grep -q "$needle" "$TMP/bad4.out" \
+    || fail "validator-bad4: the message does not say '$needle' — $(cat "$TMP/bad4.out")"
+done
+pass "validator-bad4-message (the value, the lane, all eight, and null)"
 
 # The version field was checked for being a STRING and nothing else, so an IR
 # authored against a shape the database does not have validated cleanly.
@@ -1128,7 +1154,8 @@ PY
 pass "migrate-triggers (a 2026.09.07 document carries forward, in place, to the current fixture)"
 
 # ---------------------------------------------------------------------------
-# 8c. A 2026.09.07 document carrying a lane role by its retired spelling (#197)
+# 8c. A 2026.09.07 document carrying lane roles the closed set refuses
+#     (#197, #204)
 # ---------------------------------------------------------------------------
 #
 # 21000122000000 closed `lanes.lane_role` to eight values and renamed the ones
@@ -1138,11 +1165,18 @@ pass "migrate-triggers (a 2026.09.07 document carries forward, in place, to the 
 # the way it will actually be met: a file authored before the vocabulary
 # closed, carrying roles the target's CHECK constraint now refuses.
 #
-# The document is the current sample with five lanes re-spelled and the stamp
-# wound back — one lane per retired role, so a rename that goes missing names
-# itself. `compliance_review` rides along untouched on purpose: it is the case
-# the step deliberately leaves alone, because a custom role is legal in the IR
-# and deleting one would settle by deletion a question nobody has asked.
+# The document is the current sample with the stamp wound back and six lanes
+# re-spelled: five retired roles, one per lane so that a rename which goes
+# missing names itself, and one role from outside the set entirely.
+#
+# The two are answered by different steps, which is why they ride in one
+# carry. `to_2026_09_08` renames the five and leaves the sixth exactly where
+# it is — it declined to delete a role no question had been asked about.
+# #204 asked it: leaving the IR open let a document validate and then be
+# refused by the CHECK mid-import, so the schema closed, and `to_2026_09_10`
+# is where a role outside the eight becomes null. The lane's display name
+# survives that, which is what makes it a reclassification and not a
+# deletion.
 python3 - "$SAMPLE" "$TMP" <<'PY' || fail "migrate-lane-roles-fixture: could not build the 2026.09.07 document"
 import json, sys
 
@@ -1159,9 +1193,12 @@ lanes = [
     for path in scenario["paths"]
     for lane in path["lanes"]
 ]
-assert len(lanes) >= len(retired), f"the sample carries {len(lanes)} lanes; need {len(retired)}"
+assert len(lanes) >= len(retired) + 1, f"the sample carries {len(lanes)} lanes; need {len(retired) + 1}"
 for lane, role in zip(lanes, retired):
     lane["role"] = role
+# And one role from outside the eight, on the last lane: the case the CHECK
+# constraint refuses on import and the wire format used to accept in silence.
+lanes[-1]["role"] = "compliance_review"
 # The array goes back to `triggers` too — the document is at 2026.09.07, so it
 # has to be a 2026.09.07 document in every field, not only in the one under
 # test.
@@ -1184,7 +1221,9 @@ PY
 python3 "$MIGRATE" "$TMP/lane-roles.json" --write > "$TMP/migrate-lane-roles.out" 2>&1 \
   || fail "migrate-lane-roles: migration failed — $(cat "$TMP/migrate-lane-roles.out")"
 grep -q "2026.09.07 -> 2026.09.08" "$TMP/migrate-lane-roles.out" \
-  || fail "migrate-lane-roles: the lane-role step did not run — $(cat "$TMP/migrate-lane-roles.out")"
+  || fail "migrate-lane-roles: the rename step did not run — $(cat "$TMP/migrate-lane-roles.out")"
+grep -q "2026.09.09 -> 2026.09.10" "$TMP/migrate-lane-roles.out" \
+  || fail "migrate-lane-roles: the closing step did not run — $(cat "$TMP/migrate-lane-roles.out")"
 python3 "$VALIDATE" "$TMP/lane-roles.json" > "$TMP/migrate-lane-roles-valid.out" 2>&1 \
   || fail "migrate-lane-roles: the carried IR does not validate — $(cat "$TMP/migrate-lane-roles-valid.out")"
 python3 - "$TMP/lane-roles.json" <<'PY' || fail "migrate-lane-roles: the roles did not land on the closed set"
@@ -1208,19 +1247,29 @@ expected = [
 got = [lane.get("role") for lane in lanes[: len(expected)]]
 assert got == expected, f"lane roles landed on {got}, expected {expected}"
 
-# The closed set, as 21000122000000 states it. Anything the step leaves has to
-# be a role the database admits, or a custom one it deliberately did not touch.
+# The role from outside the set is gone, and its LANE is not: nulling a role
+# says the renderer has nothing to do with this row, while the display name
+# stays what a reader sees. Asserted together, because the reclassification is
+# only defensible while both halves hold.
+outsider = lanes[-1]
+assert outsider.get("role") is None, (
+    f"a role outside the eight survived the carry: {outsider.get('role')!r}"
+)
+assert outsider["display_name"], "the lane lost its display name with its role"
+
+# The closed set, as 21000122000000 states it and as references/ir-schema.json
+# now states it too. After the carry nothing outside it is left anywhere.
 closed = {
     "customer_actions", "frontstage_actions", "backstage_actions",
     "partner_actions", "frontstage_touchpoints", "backstage_touchpoints",
     "support_actions", "storyboard",
 }
 survivors = {lane.get("role") for lane in lanes} - closed - {None}
-assert survivors == {"compliance_review"}, (
-    f"the step touched a role it should not have, or missed one: {survivors}"
+assert survivors == set(), (
+    f"a role the vocabulary does not admit survived the carry: {survivors}"
 )
 PY
-pass "migrate-lane-roles (a retired lane role carries forward; a custom role is left alone)"
+pass "migrate-lane-roles (a retired role is renamed, and one from outside the eight is nulled)"
 
 # The two steps that write nothing, on their own. 2026.08.25 -> 2026.08.26
 # adds an optional field whose absence already meant the drawn kind, and
