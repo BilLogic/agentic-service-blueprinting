@@ -5,6 +5,7 @@ import {
   saveAgentSettings,
   serviceScopeMode,
 } from '@/lib/agent/settings'
+import { storageKey } from '@/lib/storageNamespace'
 
 /*
  * The creator's default-scope config. It replaces the old hardcoded
@@ -29,7 +30,7 @@ describe('agent default service scope', () => {
     saveAgentSettings({ serviceScope: 'all' })
     expect(getAgentServiceScopeMode()).toBe('all')
     // Written through to storage under the same key the rest of the settings use.
-    const stored = JSON.parse(window.localStorage.getItem('sb-agent-settings') ?? '{}')
+    const stored = JSON.parse(window.localStorage.getItem(storageKey('agent-settings')) ?? '{}')
     expect(stored.serviceScope).toBe('all')
   })
 

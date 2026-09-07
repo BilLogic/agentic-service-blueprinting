@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { storageKey } from '@/lib/storageNamespace'
 
 /**
  * Developer portal — a CLIENT-SIDE tier simulator.
@@ -34,9 +35,9 @@ export type DevSimulation = {
   tier: DevSimulatedTier
 }
 
-const STORAGE_KEY = 'sb-dev-simulation'
+const STORAGE_KEY = storageKey('dev-simulation')
 /** The tri-state key this replaced: `'admin' | 'viewer'`, absent when off. */
-const LEGACY_STORAGE_KEY = 'sb-dev-tier-override'
+const LEGACY_STORAGE_KEY = storageKey('dev-tier-override')
 
 export const SIMULATION_OFF: DevSimulation = { on: false, tier: 'regular' }
 

@@ -22,30 +22,13 @@ import {
 } from '@/lib/deletionSafety'
 import { agentSessionsSnapshot } from '@/lib/agent/sessions'
 import { loadPersistedEvents } from '@/lib/agent/persistence'
+import { REFERENCE_DOCS } from '@/lib/agent/tools/referenceDocs'
 import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 import {
   SCOPE_ALL,
   serviceStakeholderIds,
   type ServiceScope,
 } from '@/lib/agent/tools/serviceScope'
-import canvasAdapter from '@/lib/agent/skill/references/canvas-adapter.md?raw'
-import dataModel from '@/lib/agent/skill/references/data-model.md?raw'
-import elicitationProtocol from '@/lib/agent/skill/references/elicitation-protocol.md?raw'
-import cocreatePlaybook from '@/lib/agent/skill/references/cocreate-playbook.md?raw'
-import laneVocabulary from '@/lib/agent/skill/references/lane-vocabulary.md?raw'
-import laneRoles from '@/lib/agent/skill/references/lane-roles.md?raw'
-import auditPlaybook from '@/lib/agent/skill/references/audit-playbook.md?raw'
-import whatifPlaybook from '@/lib/agent/skill/references/whatif-playbook.md?raw'
-import checkGapSweep from '@/lib/agent/skill/references/check-gap-sweep.md?raw'
-import checkJargonLint from '@/lib/agent/skill/references/check-jargon-lint.md?raw'
-import checkChannelConflict from '@/lib/agent/skill/references/check-channel-conflict.md?raw'
-import checkKpiAlignment from '@/lib/agent/skill/references/check-kpi-alignment.md?raw'
-import checkPerceivedOwner from '@/lib/agent/skill/references/check-perceived-owner.md?raw'
-import checkValueLedger from '@/lib/agent/skill/references/check-value-ledger.md?raw'
-import checkFeeVisibility from '@/lib/agent/skill/references/check-fee-visibility.md?raw'
-import checkObsoleteSource from '@/lib/agent/skill/references/check-obsolete-source.md?raw'
-import slicePlaybook from '@/lib/agent/skill/references/slice-playbook.md?raw'
-import sliceTemplates from '@/lib/agent/skill/references/slice-templates.md?raw'
 
 type Client = SupabaseClient<Database>
 
@@ -66,44 +49,33 @@ const UUID =
 
 /**
  * The same reference files the IDE skills read from disk, served as a tool.
- * One progressive-disclosure mechanism, two consumers: editing a file in
- * the plugin repo upgrades both (vendored here by scripts/sync-agent-skill).
+ * One progressive-disclosure mechanism, two consumers.
+ *
+ * WHERE those files come from is a DECLARED FORK SEAM: `referenceDocs.ts`
+ * is the only module that names their paths, because a vendored tree and an
+ * installed package can never spell the same specifier. Read its header
+ * before adding, moving or overriding a document — this file deliberately
+ * knows nothing about any of that, and that ignorance is what lets it be
+ * shared verbatim.
+ *
+ * The names live in `referenceNames.ts` (a leaf module, so specs.ts can
+ * quote them without the seam's `?raw` import graph). `referenceDocs.ts`
+ * holds the documents themselves; the init-time check below keeps the two in
+ * lockstep. It is the fastest failure for a reference added on one side and
+ * not the other — the throw happens at module init, before any test that
+ * touches the tools can get further.
  */
-const REFERENCES: Record<string, string> = {
-  'canvas-adapter': canvasAdapter,
-  'lane-roles': laneRoles,
-  'lane-vocabulary': laneVocabulary,
-  'elicitation-protocol': elicitationProtocol,
-  'cocreate-playbook': cocreatePlaybook,
-  'data-model': dataModel,
-  'audit-playbook': auditPlaybook,
-  'whatif-playbook': whatifPlaybook,
-  'check-gap-sweep': checkGapSweep,
-  'check-jargon-lint': checkJargonLint,
-  'check-channel-conflict': checkChannelConflict,
-  'check-kpi-alignment': checkKpiAlignment,
-  'check-perceived-owner': checkPerceivedOwner,
-  'check-value-ledger': checkValueLedger,
-  'check-fee-visibility': checkFeeVisibility,
-  'check-obsolete-source': checkObsoleteSource,
-  'slice-playbook': slicePlaybook,
-  'slice-templates': sliceTemplates,
-}
-
-// The names live in `referenceNames.ts` (a leaf module, so specs.ts can
-// quote them without this file's ?raw import graph). This record is the
-// documents themselves; the init-time check keeps the two in lockstep.
 {
-  const here = Object.keys(REFERENCES).sort().join(',')
+  const here = Object.keys(REFERENCE_DOCS).sort().join(',')
   const published = [...REFERENCE_NAMES].sort().join(',')
   if (here !== published)
     throw new Error(
-      'REFERENCES (read.ts) and REFERENCE_NAMES (referenceNames.ts) drifted — add the reference to both.',
+      'REFERENCE_DOCS (referenceDocs.ts) and REFERENCE_NAMES (referenceNames.ts) drifted — add the reference to both.',
     )
 }
 
 export function readReference(name: string): string {
-  const doc = REFERENCES[name]
+  const doc = REFERENCE_DOCS[name]
   if (doc) return doc
   return `Unknown reference "${name}". Available: ${REFERENCE_NAMES.join(', ')}`
 }

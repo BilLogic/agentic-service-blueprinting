@@ -5,6 +5,7 @@ import {
   resolveDefaultPathId,
   writeLastViewedPath,
 } from '@/lib/mobilePathMemory'
+import { storageKey } from '@/lib/storageNamespace'
 import type { PathKind } from '@/types/database'
 
 // Pins the Phase-3 default rule (plan 2026-08-16-002): last-viewed wins
@@ -55,7 +56,7 @@ describe('path memory storage', () => {
   })
 
   it('corrupt storage degrades to null instead of throwing', () => {
-    window.localStorage.setItem('sb-mobile-paths', '{not json')
+    window.localStorage.setItem(storageKey('mobile-paths'), '{not json')
     expect(readLastViewedPath('sc-1')).toBeNull()
   })
 })

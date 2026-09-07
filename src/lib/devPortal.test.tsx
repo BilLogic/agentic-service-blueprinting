@@ -20,6 +20,7 @@ import {
   setDevSimulationOn,
   SIMULATION_OFF,
 } from '@/lib/devPortal'
+import { storageKey } from '@/lib/storageNamespace'
 
 /**
  * The developer portal's contract, pinned.
@@ -123,17 +124,17 @@ describe('the stored value survives the tri-state it replaced', () => {
 
   it('boots a browser holding only the legacy key, then retires it', () => {
     window.localStorage.clear()
-    window.localStorage.setItem('sb-dev-tier-override', 'viewer')
+    window.localStorage.setItem(storageKey('dev-tier-override'), 'viewer')
     expect(
       parseStoredSimulation(
-        window.localStorage.getItem('sb-dev-simulation'),
-        window.localStorage.getItem('sb-dev-tier-override'),
+        window.localStorage.getItem(storageKey('dev-simulation')),
+        window.localStorage.getItem(storageKey('dev-tier-override')),
       ),
     ).toEqual({ on: true, tier: 'regular' })
 
     setDevSimulationOn(false)
-    expect(window.localStorage.getItem('sb-dev-tier-override')).toBeNull()
-    expect(window.localStorage.getItem('sb-dev-simulation')).toBe(
+    expect(window.localStorage.getItem(storageKey('dev-tier-override'))).toBeNull()
+    expect(window.localStorage.getItem(storageKey('dev-simulation'))).toBe(
       '{"on":false,"tier":"regular"}',
     )
   })
@@ -142,11 +143,11 @@ describe('the stored value survives the tri-state it replaced', () => {
 describe('the simulation persists', () => {
   it('remembers the tier across an off/on cycle', () => {
     setDevSimulatedTier('admin')
-    expect(window.localStorage.getItem('sb-dev-simulation')).toBe(
+    expect(window.localStorage.getItem(storageKey('dev-simulation'))).toBe(
       '{"on":true,"tier":"admin"}',
     )
     setDevSimulationOn(false)
-    expect(window.localStorage.getItem('sb-dev-simulation')).toBe(
+    expect(window.localStorage.getItem(storageKey('dev-simulation'))).toBe(
       '{"on":false,"tier":"admin"}',
     )
     setDevSimulationOn(true)

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { AGENT_FLOAT_DEFAULT, AGENT_FLOAT_MIN } from '@/lib/layoutTokens'
+import { storageKey } from '@/lib/storageNamespace'
 
 /**
  * Where the agent chat lives — and the fact that it is ONE surface with two
@@ -24,7 +25,7 @@ export type AgentPlacement = {
   float: { x: number; y: number; width: number; height: number }
 }
 
-const STORAGE_KEY = 'sb-agent-placement'
+const STORAGE_KEY = storageKey('agent-placement')
 
 export const DOCK_MIN_RATIO = 0.2
 export const DOCK_MAX_RATIO = 0.8
