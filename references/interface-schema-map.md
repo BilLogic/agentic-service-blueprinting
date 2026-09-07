@@ -36,6 +36,7 @@ owes the third column a reason.
 | **Function** | `cells.function` | — |
 | **Form** | `cells.form` | — |
 | **Value proposition** | `cells.value_props` | `props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens. |
+| **Touchpoint** | `touchpoints` | — |
 | **Dependencies** | `cell_dependencies` | The relation names both ends, because a dependency always runs from one cell to another. The tab is already standing inside a cell, so the prefix would be the one word on it that told a reader nothing. |
 | **Follows** | `cell_dependencies.kind` | Names a VALUE read from one end rather than a column: these rows are `kind = 'leads_to'` arriving. The schema stores one row and the panel shows it twice, once from each end, so the label has to say which end a reader is standing at — and no column could be called this. |
 | **Leads to** | `cell_dependencies.kind` | The same value from the other end — `kind = 'leads_to'` leaving, and here the label IS the value minus its underscore. What the pair carries that `kind` cannot is the direction, which is why the arriving end keeps a word of its own. |
@@ -124,7 +125,7 @@ document look complete.
 
 <!-- generated:coverage — npm run interface-map -->
 
-27 of 35 names carry a comment in the catalogue. Read them there — `\d+ <table>` in psql, or the `COMMENT ON` statements in the dump.
+28 of 36 names carry a comment in the catalogue. Read them there — `\d+ <table>` in psql, or the `COMMENT ON` statements in the dump.
 
 8 that carry none:
 

@@ -17,13 +17,11 @@ import { describe, expect, it } from 'vitest'
 import {
   cellTouchpoints,
   cellTouchpointsFromRows,
+  findCellPlacement,
   placementResources,
+  resolveTouchpointDetail,
   touchpointNamed,
 } from '@/lib/cellTouchpoints'
-import {
-  resolveTechCellDetailText,
-  resolveTechCellDetailUrl,
-} from '@/lib/blueprintTechDescriptions'
 
 const placement = (over: Partial<ReturnType<typeof base>> = {}) => ({
   ...base(),
@@ -34,7 +32,7 @@ const base = () => ({
   touchpointId: null,
   name: 'GIS Portal',
   kind: null,
-  summary: 'Public map-based intake channel.',
+  summary: 'Public map-based intake channel.' as string | null,
   role: null as 'core' | 'peripheral' | null,
 })
 
@@ -132,19 +130,27 @@ describe('what the panel reads off a placement', () => {
   }
 
   it('answers with the summary of the touchpoint that was clicked', () => {
-    expect(resolveTechCellDetailText('Work Order App', cell)).toBe(
+    expect(resolveTouchpointDetail(cell, 'Work Order App')?.text).toBe(
       'Where a crew picks the job up.',
     )
   })
 
-  it('gives the design link of THIS moment, not of the cell — the featured one first', () => {
-    expect(resolveTechCellDetailUrl('GIS Portal', cell)).toBe(
-      'https://example.com/design/gis',
-    )
-    // The second placement of the same cell has none of its own, and does not
-    // inherit the first one's or the cell's — which is the whole reason a
-    // resource carries the placement it belongs to.
-    expect(resolveTechCellDetailUrl('Work Order App', cell)).toBeNull()
+  it('picks the row, and reads it, as two separate answers', () => {
+    // `findCellPlacement` says WHICH row; `resolveTouchpointDetail` says what
+    // it reads as. The editor needs the first — seeding a form with the
+    // second's fallback is how a cell's sentence gets saved onto a placement
+    // that never said it.
+    expect(findCellPlacement(cell, 'Work Order App')?.id).toBe('ct-2')
+    expect(findCellPlacement(cell, 'SMS Gateway')).toBeNull()
+  })
+
+  it('resolves a single-touchpoint cell without being told which', () => {
+    const one = { summary: null, touchpoints: [placement()] }
+    expect(findCellPlacement(one)?.name).toBe('GIS Portal')
+    // Several, and it refuses rather than guessing at the first: one
+    // touchpoint's screenshot under another's heading is the confusion a
+    // placement row exists to end.
+    expect(findCellPlacement(cell)).toBeNull()
   })
 
   it('lists a placement\u2019s resources featured first', () => {
@@ -158,7 +164,22 @@ describe('what the panel reads off a placement', () => {
     // The old shape's failure mode, now visible rather than silent: a touchpoint
     // whose placement was renamed away resolves to the cell's own summary
     // instead of to a paragraph that has quietly stopped being found.
-    expect(resolveTechCellDetailText('SMS Gateway', cell)).toBe('SMS Gateway')
+    expect(resolveTouchpointDetail(cell, 'SMS Gateway')).toBeNull()
     expect(touchpointNamed(cell.touchpoints, 'SMS Gateway')).toBeNull()
+    // A placement with no words of its own reads as the cell's, then as its
+    // own name — the one rule, for every touchpoint.
+    const bare = {
+      summary: 'The intake surfaces.',
+      touchpoints: [placement({ summary: null })],
+    }
+    expect(resolveTouchpointDetail(bare, 'GIS Portal')?.text).toBe(
+      'The intake surfaces.',
+    )
+    expect(
+      resolveTouchpointDetail(
+        { summary: null, touchpoints: [placement({ summary: null })] },
+        'GIS Portal',
+      )?.text,
+    ).toBe('GIS Portal')
   })
 })

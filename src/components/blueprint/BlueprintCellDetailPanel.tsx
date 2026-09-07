@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { ArrowLeft } from 'lucide-react'
+import { describeLaneRole, getLaneRole } from '@/lib/laneRoles'
 import { CellDependencyEditor } from '@/components/blueprint/CellDependencyEditor'
 import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
 import { CellDependencySections } from '@/components/blueprint/CellDependencySections'
@@ -21,8 +22,11 @@ import { CellPanelEditor } from '@/components/blueprint/CellPanelEditor'
 import {
   CELL_PANEL_FOOTER_ID,
   DetailPanelErrorBoundary,
+  Field,
   PanelDrawerShell,
   PanelFooterHost,
+  PanelIdentity,
+  PanelKindBadge,
 } from '@/components/blueprint/panelShell'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
 import {
@@ -35,7 +39,6 @@ import {
   TOUCHPOINT_ROLE_LABEL,
 } from '@/lib/touchpointRole'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
 import {
   SegmentedControl,
@@ -82,21 +85,24 @@ import {
   scrollBlueprintTouchpointCellIntoView,
 } from '@/lib/blueprintStepTech'
 import { shouldUseTouchpointCellContent, shouldUseStoryboardContent } from '@/lib/blueprintLayout'
-import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
 import { resolveCellDetailImages } from '@/lib/blueprintTechPictures'
 import {
   getBlueprintLaneStyle,
   getBlueprintLaneZone,
 } from '@/lib/blueprintTheme'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import {
-  resolveTechCellDetailLabel,
-  resolveTechCellDetailText,
-} from '@/lib/blueprintTechDescriptions'
 import { cellResources } from '@/lib/cellResources'
-import { cellTouchpoints } from '@/lib/cellTouchpoints'
+import {
+  cellTouchpoints,
+  findCellPlacement,
+  resolveTouchpointDetail,
+} from '@/lib/cellTouchpoints'
 import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
+import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
+import { PANEL_TERMS } from '@/lib/panelTerms'
+import { PANEL_TEXT } from '@/lib/panelText'
+import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { DependencyEndpoint } from '@/lib/dependencyValidation'
@@ -249,6 +255,12 @@ function BlueprintCellDetailPanelBody() {
     about what the agent can reach, not about which chrome is on screen.
   */
   const mobile = useMobileShell()
+  /*
+    The touchpoint badge's colour, taken here rather than beside the badge:
+    the label it is about is derived far below, past an early return, and a
+    hook cannot go there. The resolver is a function for exactly that reason.
+  */
+  const resolveTouchpointTone = useTouchpointToneResolver()
   /**
    * One-shot "← Back to Differences" button: set when the ledger's ⇱ opens a
    * cell in Details, cleared when used — and whenever the panel leaves
@@ -489,24 +501,23 @@ function BlueprintCellDetailPanelBody() {
     [connections],
   )
 
-  const selectedLane = useMemo((): { name: string; role?: string | null } | null => {
-    const laneName = selection?.laneName
+  /*
+    ONE lane resolution for the whole panel.
+
+    The lane a cell sits in answers three questions — which row record it is
+    (storyboard/touchpoint content rules), what colour the badge wears, and
+    what the row MEANS on hover — and each used to walk `blueprint.lanes` for
+    itself. Three lookups of one fact is three chances to disagree.
+
+    Reads the DRAFT's lane when there is no selection: a cell being created
+    sits in a real row, and the badge above the new-cell form is the same
+    badge the panel shows once it is saved.
+  */
+  const laneResolution = useMemo(() => {
+    const laneName = selection?.laneName ?? draft?.laneName
     if (!laneName) return null
 
-    const pathId = pathEntry?.pathId
-    const blueprint = pathId ? getBlueprintForPath(blueprints, pathId) : null
-    return (
-      blueprint?.lanes.find((lane) => lane.name === laneName) ?? {
-        name: laneName,
-      }
-    )
-  }, [blueprints, pathEntry?.pathId, selection?.laneName])
-
-  const laneBadgeStyle = useMemo(() => {
-    const laneName = selection?.laneName
-    if (!laneName) return null
-
-    const pathId = pathEntry?.pathId
+    const pathId = pathEntry?.pathId ?? draft?.pathId
     const blueprint = pathId ? getBlueprintForPath(blueprints, pathId) : null
     const laneRecord =
       blueprint?.lanes.find((lane) => lane.name === laneName) ?? null
@@ -514,9 +525,48 @@ function BlueprintCellDetailPanelBody() {
       laneRecord && blueprint
         ? getBlueprintLaneZone(laneRecord, blueprint.lanes)
         : 'frontstage'
-    // Keyed by lane_role — the name argument is only the legacy fallback.
-    return getBlueprintLaneStyle(laneName, zone, laneRecord?.role)
-  }, [blueprints, pathEntry?.pathId, selection?.laneName])
+    return {
+      laneName,
+      /**
+       * The row record, or a name-only stand-in when the lane is unknown.
+       *
+       * The stand-in spells `role: null` rather than omitting the key, so
+       * that both arms of the union answer the question "what role is this
+       * lane?". A reader of `lane.role` gets the honest answer — none
+       * recorded — where an absent key would be a type error at every call
+       * site that asks.
+       */
+      lane: laneRecord ?? { name: laneName, role: null },
+      // Keyed by lane_role — the name argument is only the legacy fallback.
+      style: getBlueprintLaneStyle(laneName, zone, laneRecord?.role),
+      /* What the badge MEANS, for its hover. Resolved the way the canvas
+         resolves it: the explicit role if the row carries one, else the
+         legacy name map. */
+      description: describeLaneRole(
+        getLaneRole({ name: laneName, role: laneRecord?.role ?? null }),
+      ),
+    }
+  }, [blueprints, draft?.laneName, draft?.pathId, pathEntry?.pathId, selection?.laneName])
+
+  const selectedLane = selection ? (laneResolution?.lane ?? null) : null
+
+  /*
+    The lane badge, tinted with that lane's own cell colour. Defined here
+    rather than in the details branch because the DRAFT branch renders it
+    too — the row a new cell is being written into is the first thing that
+    branch says, and it used to say it through a hand-rolled span whose
+    `backgroundColor: style.lane` was a role key ("actor"), not a colour.
+    The browser dropped the declaration and the badge rendered untinted,
+    which is the fault `PanelKindBadge` exists to have fixed once.
+  */
+  const laneBadge = laneResolution ? (
+    <PanelKindBadge
+      label={laneResolution.laneName}
+      laneRole={laneResolution.style.lane}
+      title={laneResolution.laneName}
+      description={laneResolution.description}
+    />
+  ) : null
 
   const otherTechEntries = useMemo(() => {
     const laneNameByCellId = new Map<string, string>()
@@ -570,29 +620,61 @@ function BlueprintCellDetailPanelBody() {
   }, [connections.incoming, connections.outgoing, linkedTechItems, stepTechItems])
 
   /*
+    The placement row this panel is about.
+
+    One resolution, by `findCellPlacement`, where the panel used to run three
+    name matches of its own — one for the featured preview, one for the role
+    badge, one for the pictures — each with its own idea of trimming and
+    case. The row is what the summary, the role, the icon and the featured
+    attachment all belong to, so it is resolved once and read from.
+  */
+  const selectedPlacement = useMemo(
+    () =>
+      selectedCell
+        ? findCellPlacement(
+            { touchpoints: selectedCell.touchpoints },
+            selection?.techItem,
+          )
+        : null,
+    [selectedCell, selection?.techItem],
+  )
+
+  /*
+    The READING of that row, which is a different thing from the row.
+
+    `resolveTouchpointDetail` falls back to the cell's summary where the
+    placement has none, which is right for a reader and wrong for a form:
+    seeding an editor with the fallback is how a cell's sentence ends up
+    written onto a placement that never said it. The editor takes the row.
+  */
+  const touchpointDetail = useMemo(
+    () =>
+      selectedCell
+        ? resolveTouchpointDetail(
+            {
+              summary: selectedCell.summary,
+              touchpoints: selectedCell.touchpoints,
+            },
+            selection?.techItem,
+          )
+        : null,
+    [selectedCell, selection?.techItem],
+  )
+
+  /*
     What the cell leads with (#110): the selected placement's featured
     attachment is the preview, every featured link — the placement's, then
-    the cell's own — is a button named by its host. A placement is the row
-    whose name the selected touchpoint shows.
+    the cell's own — is a button named by its host.
   */
-  const selectedPlacementId = useMemo(() => {
-    const techItem = selection?.techItem?.trim().toLowerCase()
-    if (!techItem) return null
-    return (
-      cellTouchpointList.find(
-        (touchpoint) => touchpoint.name.trim().toLowerCase() === techItem,
-      )?.id ?? null
-    )
-  }, [cellTouchpointList, selection?.techItem])
   const featured = useMemo(
     () =>
       selection
         ? featuredPresentation({
-            placementId: selectedPlacementId,
+            placementId: selectedPlacement?.id ?? null,
             resources: cellResourceList,
           })
         : { preview: null, buttons: [] },
-    [cellResourceList, selection, selectedPlacementId],
+    [cellResourceList, selection, selectedPlacement],
   )
 
   // Lane row position of the selected cell — orients up/down direction
@@ -935,22 +1017,36 @@ function BlueprintCellDetailPanelBody() {
     selection.paths[0]?.content.trim() ||
     selection.techItem ||
     ''
-  const detailBodyText = selectedCell
-    ? resolveTechCellDetailText(selection.techItem, selectedCell)
-    : cellContent
+  const detailBodyText = touchpointDetail?.text ?? cellContent
   const isTechLane = Boolean(
     selectedLane && shouldUseTouchpointCellContent(selectedLane),
   )
+  /*
+    The touchpoint's name, where there IS one to name.
+
+    `isTechLane` alone was the test, and it is right for the general case: on
+    an actor lane a cell's content is a sentence, and naming it "the
+    touchpoint" would be the label join a placement row exists to unwind. But
+    it is wrong for a cell that carries a real placement on a lane that does
+    not draw touchpoints — a document or a recording attached to a support
+    row — which had its summary rendered while the name it belongs to was
+    suppressed.
+
+    A row id is what tells the two apart: only a real `cell_touchpoints` row
+    has one. So the field appears wherever the placement is real, which is
+    also what gives the role badge below a reader on those cells — a control
+    an author can set and nobody can see is the shape this panel exists to
+    avoid, and it would have been reintroduced here.
+  */
+  const hasRealPlacement = Boolean(selectedPlacement?.id)
   const techDetailLabel =
-    isTechLane && selectedCell
-      ? resolveTechCellDetailLabel(selection.techItem, selectedCell)
-      : null
+    isTechLane || hasRealPlacement ? (touchpointDetail?.name ?? null) : null
   const detailSummaryText =
     techDetailLabel && detailBodyText.trim() === techDetailLabel
       ? ''
       : detailBodyText
   const detailImages = resolveCellDetailImages({
-    techItem: selection.techItem,
+    techItem: touchpointDetail?.name ?? selection.techItem,
     cellContent: selection.paths[0]?.content,
     cellFrame: selection.paths[0]?.frame,
     cellTouchpoints: cellTouchpointList,
@@ -960,17 +1056,14 @@ function BlueprintCellDetailPanelBody() {
   // placement's screenshots are the fallback until #111 moves them here.
   // The stock logo for the touchpoint this panel is about — a string on the
   // registry row now (#326), not a tool name matched against a table in code.
-  const techLogoUrl =
-    cellTouchpointList.find(
-      (placement) => placement.name === (selection.techItem ?? techDetailLabel),
-    )?.iconUrl?.trim() || null
+  const techLogoUrl = selectedPlacement?.iconUrl?.trim() || null
   const showImages = Boolean(
     (featured.preview || detailImages?.length) && !isStoryboardLane,
   )
-  const showTouchpoint = Boolean(isTechLane && techDetailLabel)
-  // The touchpoint sits above the title on a touchpoint lane — decided by
-  // the lane's role (isTechLane), not by a hardcoded lane name (#326).
-  const showTouchpointAboveTitle = showTouchpoint
+  // Widened from "is a touchpoint lane" to "names a touchpoint at all", so a
+  // real placement on a lane that draws no touchpoints still shows its name
+  // — see `hasRealPlacement`.
+  const showTouchpoint = Boolean(techDetailLabel)
 
   const handleConnectionSelect = (cellId: string) => {
     const pathId = pathEntry?.pathId
@@ -1069,61 +1162,6 @@ function BlueprintCellDetailPanelBody() {
   // one role-colored badge (colored by lane_role, never by name).
   const cellTitleText =
     cellContent.split('\n')[0]?.trim() || selection.laneName
-  const laneBadge = laneBadgeStyle ? (
-    <span
-      className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-3xs font-medium leading-tight"
-      style={{
-        backgroundColor: laneBadgeStyle.lane,
-        color: BLUEPRINT_THEME.cellText,
-      }}
-      title={selection.laneName}
-    >
-      {selection.laneName}
-    </span>
-  ) : null
-
-  const titleRow = (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <p className="min-w-0 text-sm font-bold leading-snug tracking-tight text-foreground">
-        {cellTitleText}
-      </p>
-      {laneBadge}
-    </div>
-  )
-
-  /*
-    The placement's role, beside its touchpoint (#111). Only when someone judged
-    it — null is the unmarked majority and renders nothing, because a badge
-    for "nobody decided" puts a decision on screen that nobody made.
-  */
-  const selectedPlacementRole = (() => {
-    const techItem = techDetailLabel?.trim().toLowerCase()
-    if (!techItem) return null
-    return (
-      cellTouchpointList.find(
-        (touchpoint) => touchpoint.name.trim().toLowerCase() === techItem,
-      )?.role ?? null
-    )
-  })()
-  const selectedTouchpoint = showTouchpoint ? (
-    <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <TouchpointCellFace
-        item={techDetailLabel!}
-        compact
-        inline
-        className="w-fit shrink-0 !px-2 !py-0.5 !text-3xs leading-none"
-      />
-      {selectedPlacementRole ? (
-        <span
-          className="inline-flex h-5 shrink-0 items-center rounded-full border border-border px-2 text-3xs font-medium text-muted-foreground"
-          title={TOUCHPOINT_ROLE_DEFINITION[selectedPlacementRole]}
-          data-touchpoint-role={selectedPlacementRole}
-        >
-          {TOUCHPOINT_ROLE_LABEL[selectedPlacementRole]}
-        </span>
-      ) : null}
-    </span>
-  ) : null
 
   const imageBlock = showImages ? (
     <div className="flex w-full flex-col items-center gap-3">
@@ -1194,33 +1232,105 @@ function BlueprintCellDetailPanelBody() {
     detailSummaryText.trim() === cellContent.trim()
   const editingCell = canEdit && resolvedCellId !== null
 
+  /* The LANE badge leads, on a touchpoint cell as on every other kind. It is
+     the row the reader clicked in, and the tool badge beside it is one of
+     possibly several things that row holds — so the tool reading first made a
+     touchpoint cell the only cell whose identity block started somewhere
+     other than its lane. */
+  const identityBadges = (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">{laneBadge}</div>
+  )
+
+  /*
+    The touchpoint, as a LABELLED field rather than a second badge beside the
+    lane.
+
+    Two badges in a row read as two facts of the same kind — "this row, and
+    also this row" — when they are a lane and the tool used in it. Naming the
+    field says which is which, and it matches how Owner already presents a
+    value: label above, value below. The definition rides the label's own
+    hint popover, the affordance every other field label uses.
+  */
+  const touchpointField = showTouchpoint ? (
+    <Field label="Touchpoint" hint={PANEL_TERMS.touchpoint}>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <PanelKindBadge
+          label={techDetailLabel!}
+          tone={resolveTouchpointTone(techDetailLabel!)}
+          title={techDetailLabel!}
+        />
+        {/*
+          ROLE, beside the name it qualifies, and ONLY when somebody set it.
+
+          Nothing renders for the unmarked case — no badge, no dash, no
+          "Unmarked". Most placements will never be marked, and a grey badge
+          on all of them would put a judgement on screen that nobody made,
+          which is the specific misreading the column has to avoid. Absence is
+          the honest rendering of "not judged", and it is what tells the
+          unmarked case apart from a placement someone deliberately called
+          peripheral.
+
+          Nor while EDITING: the form below carries the same fact as a
+          control, and a badge beside a select for one value is two mechanisms
+          for one fact.
+        */}
+        {!editingCell && touchpointDetail?.role ? (
+          <PanelKindBadge
+            label={TOUCHPOINT_ROLE_LABEL[touchpointDetail.role]}
+            title={TOUCHPOINT_ROLE_LABEL[touchpointDetail.role]}
+            description={TOUCHPOINT_ROLE_DEFINITION[touchpointDetail.role]}
+          />
+        ) : null}
+      </div>
+    </Field>
+  ) : null
+
   const overviewContent = (
     <>
       {imageBlock}
       {!editingCell && featured.buttons.length > 0 ? (
         <FeaturedButtons buttons={featured.buttons} className="px-1" />
       ) : null}
-      <div className="flex min-w-0 flex-col gap-2">
-        {showTouchpointAboveTitle ? selectedTouchpoint : null}
-        {/* In edit mode the form's TEXT field *is* the title; repeating it
+      {/*
+        Identity, then prose — one group, tight spacing.
+
+        A touchpoint cell used to STACK a round tool badge above a differently
+        sized lane badge, and the summary then floated away from both behind a
+        `-mt-3` correction. Two badges naming two things about one cell belong
+        side by side at one size, and the sentence about the cell belongs
+        directly under the name of it.
+      */}
+      <div className="flex min-w-0 flex-col gap-1.5">
+        {/* In edit mode the form's CONTENT field *is* the title; repeating it
             above the field would be the same word twice on one screen. */}
         {editingCell ? (
-          titleRepeatsTouchpoint ? null : laneBadge
-        ) : titleRepeatsTouchpoint ? (
-          laneBadge
+          identityBadges
         ) : (
-          titleRow
+          <PanelIdentity
+            badge={identityBadges}
+            // Empty when the touchpoint field below already carries it.
+            title={titleRepeatsTouchpoint ? '' : cellTitleText}
+            meta={
+              selection.paths.length > 1
+                ? `${selection.paths.length} paths`
+                : ''
+            }
+          />
         )}
-        {showTouchpoint && !showTouchpointAboveTitle ? selectedTouchpoint : null}
-        {editingCell && titleRepeatsTouchpoint ? laneBadge : null}
+        {touchpointField}
+        {/* LABELLED, like every other panel's summary. This was the one place
+            in five panels where a field's read-only rendering skipped the
+            label and printed bare prose, which is why "Summary" appeared on
+            some things and not others. The editor shows the same text inside
+            its own Summary field. */}
+        {!editingCell && detailSummaryText.trim() && !summaryRepeatsTitle ? (
+          <Field label="Summary" hint="What the detail fields add up to.">
+            <p className={cn('whitespace-pre-wrap', PANEL_TEXT.value)}>
+              {detailSummaryText.trim()}
+            </p>
+          </Field>
+        ) : null}
       </div>
-      {/* The summary paragraph is the reading view; the editor shows the
-          same text inside its SUMMARY field instead. */}
-      {!editingCell && detailSummaryText.trim() && !summaryRepeatsTitle ? (
-        <p className="-mt-3 text-sm whitespace-pre-wrap text-foreground/75">
-          {detailSummaryText.trim()}
-        </p>
-      ) : null}
       {editingCell ? (
         <CellPanelEditor
           cellId={resolvedCellId}
@@ -1292,7 +1402,12 @@ function BlueprintCellDetailPanelBody() {
 
         {isStoryboardLane ? (
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">
-            {titleRow}
+            {/*
+              A storyboard cell titles itself with the STEP, not the lane: the
+              frames below belong to the moment, not to the row they were
+              drawn on.
+            */}
+            <PanelIdentity badge={laneBadge} title={selection.stepName} meta="" />
             <StoryboardStepDetailStack entries={storyboardStepEntries} />
           </div>
         ) : (

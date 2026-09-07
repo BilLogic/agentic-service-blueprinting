@@ -80,6 +80,7 @@ export const LABEL_COLUMNS = Object.freeze(
       because:
         '`props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens.',
     },
+    { label: 'Touchpoint', names: ['touchpoints'], because: '' },
     {
       label: 'Dependencies',
       names: ['cell_dependencies'],

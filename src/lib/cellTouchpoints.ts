@@ -21,7 +21,7 @@
  */
 import type { BlueprintCell, CellResource, CellTouchpoint } from '@/types/blueprint'
 import { orderedNamedRows } from '@/lib/orderedNamedRows'
-import { normalizeRole } from '@/lib/touchpointRole'
+import { normalizeRole, type TouchpointRoleValue } from '@/lib/touchpointRole'
 
 /** A `cell_touchpoints` row as the board query selects it. */
 export type RawCellTouchpoint = {
@@ -96,4 +96,76 @@ export function touchpointNamed(
   name: string,
 ): CellTouchpoint | null {
   return touchpoints.find((placement) => placement.name === name) ?? null
+}
+
+/** What the detail panel shows for one touchpoint at one cell. */
+export type TouchpointDetail = {
+  /**
+   * The placement row behind this, when there is one. Null on a board with
+   * no database — and the panel keys the placement editor's availability on
+   * it, so "there is nothing to save into" is answered by the same value
+   * that says "there is no row".
+   */
+  id: string | null
+  name: string
+  /** The placement's own words, else the cell's, else the name. */
+  text: string
+  kind: string | null
+  role: TouchpointRoleValue
+}
+
+/**
+ * WHICH placement a selection means, before anything is derived from it.
+ *
+ * Split from `resolveTouchpointDetail` below because the editor and the
+ * reader need different things from the same choice. The reader wants the
+ * resolved detail, where an empty summary falls back to the cell's; the
+ * editor wants the placement's OWN summary, empty and all, because seeding a
+ * form with the cell's sentence would save that sentence onto the placement
+ * the first time anybody pressed Save. One selection rule, two readings of
+ * the row it picks.
+ *
+ * With no name given, a cell holding exactly one touchpoint resolves it —
+ * that is the single-tool cell the panel opens directly. A cell holding
+ * several resolves nothing rather than guessing at the first, because
+ * showing one touchpoint's screenshot under another's heading is the
+ * confusion a placement row exists to end.
+ */
+export function findCellPlacement(
+  cell: { touchpoints: readonly CellTouchpoint[] },
+  name?: string | null,
+): CellTouchpoint | null {
+  const wanted = name?.trim()
+  if (wanted) {
+    return cell.touchpoints.find((entry) => entry.name === wanted) ?? null
+  }
+  return cell.touchpoints.length === 1 ? cell.touchpoints[0] : null
+}
+
+/**
+ * The detail for one touchpoint at one cell, or null when there isn't one.
+ *
+ * Replaces the resolvers that read a cell's link array by label
+ * (`blueprintTechDescriptions.ts`), which had no join but the string: a
+ * rename in the grid orphaned the paragraph behind it and nothing said so.
+ * A placement carries its own summary, so the rule is the same for every
+ * touchpoint: its words, else the cell's, else its name.
+ *
+ * Which placement it is about is `findCellPlacement`'s answer, not a second
+ * copy of the same rule.
+ */
+export function resolveTouchpointDetail(
+  cell: { summary?: string | null; touchpoints: readonly CellTouchpoint[] },
+  name?: string | null,
+): TouchpointDetail | null {
+  const placement = findCellPlacement(cell, name)
+  if (!placement) return null
+
+  return {
+    id: placement.id,
+    name: placement.name,
+    text: placement.summary?.trim() || cell.summary?.trim() || placement.name,
+    kind: placement.kind,
+    role: placement.role,
+  }
 }
