@@ -3088,6 +3088,7 @@ CREATE TABLE public.touchpoints (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     icon_url text,
+    stakeholder_id uuid,
     CONSTRAINT touchpoints_kind_check CHECK ((kind = ANY (ARRAY['app'::text, 'document'::text, 'physical'::text, 'channel'::text, 'service'::text, 'other'::text]))),
     CONSTRAINT touchpoints_origin_check CHECK ((origin = ANY (ARRAY['import'::text, 'app'::text])))
 );
@@ -3127,6 +3128,12 @@ COMMENT ON COLUMN public.touchpoints.url IS 'Where the touchpoint itself lives, 
 --
 
 COMMENT ON COLUMN public.touchpoints.icon_url IS 'A stable URL for the touchpoint''s stock icon or logo — the mark a well-known tool shows in the detail panel. A property of the thing the service owns, authored once per (service, name), not per placement. Blueprint data, not app config: the template ships it null and draws nothing, and a deployment seeds its own asset URL. The renderer reads this row rather than matching a tool name against a table baked into code.';
+
+--
+-- Name: COLUMN touchpoints.stakeholder_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.touchpoints.stakeholder_id IS 'The actor who owns this touchpoint — who runs the app, publishes the document, staffs the channel — or null when nobody has said yet, which is the ordinary state for a row the sync minted from a cell''s text. An association, not a parent: both the tool and the actor are the deployment''s (ADR 0003), and an actor taken out of the cast un-names its touchpoints rather than pinning itself, exactly as it un-names its lanes.';
 
 --
 -- Name: agent_messages agent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3579,6 +3586,12 @@ CREATE INDEX slides_slice_id_idx ON public.slides USING btree (slice_id);
 CREATE INDEX steps_scenario_id_idx ON public.steps USING btree (scenario_id);
 
 --
+-- Name: touchpoints_stakeholder_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX touchpoints_stakeholder_id_idx ON public.touchpoints USING btree (stakeholder_id);
+
+--
 -- Name: cells cells_validate_path_match; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3859,6 +3872,13 @@ ALTER TABLE ONLY public.slides
 
 ALTER TABLE ONLY public.steps
     ADD CONSTRAINT steps_scenario_id_fkey FOREIGN KEY (scenario_id) REFERENCES public.scenarios(id) ON DELETE CASCADE;
+
+--
+-- Name: touchpoints touchpoints_stakeholder_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.touchpoints
+    ADD CONSTRAINT touchpoints_stakeholder_id_fkey FOREIGN KEY (stakeholder_id) REFERENCES public.stakeholders(id) ON DELETE SET NULL;
 
 --
 -- PostgreSQL database dump complete

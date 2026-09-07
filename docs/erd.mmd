@@ -45,6 +45,7 @@ erDiagram
   paths ||--o{ cells : "has many"
   lanes ||--o{ cells : "has many"
   stakeholders |o--o{ lanes : "names its actor"
+  stakeholders |o--o{ touchpoints : "owns"
   steps ||--o{ cells : "has many"
   cells ||--o{ cell_dependencies : "source"
   cells ||--o{ cell_dependencies : "target"
@@ -152,6 +153,7 @@ erDiagram
     text kind "app | document | physical | channel | service | other"
     text summary "what this touchpoint IS, for the deployment"
     text url "where the touchpoint itself lives"
+    uuid stakeholder_id FK "the actor who owns it, or null — nobody has said yet; on delete set null"
     text origin "import | app"
   }
 

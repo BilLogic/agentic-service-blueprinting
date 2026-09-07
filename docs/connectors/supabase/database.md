@@ -160,6 +160,7 @@ one of them.
 | `kind` | yes (default `other`) | `app` \| `document` \| `physical` \| `channel` \| `service` \| `other` |
 | `summary` | no | What this touchpoint IS, for the deployment |
 | `url` | no | Where the touchpoint itself lives |
+| `stakeholder_id` | no | The actor who owns this touchpoint, into the deployment's cast — null when nobody has said yet, which is how the sync mints one. An actor taken out of the cast un-names its touchpoints (`on delete set null`) rather than being refused, the same rule `lanes.stakeholder_id` runs on |
 
 `cell_touchpoints` — one touchpoint, used at one cell:
 

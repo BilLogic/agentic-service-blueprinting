@@ -1170,3 +1170,13 @@ begin
   end loop;
 end
 $posture$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000201000000_a_touchpoint_names_its_owner.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the owner is one more column the registry panel writes, and
+-- `authenticated` is the caller class that writes it. The table's other
+-- column grants were written in `21000120000000`; this extends that surface
+-- by one column and changes nothing else about the posture.
+grant update (stakeholder_id) on public.touchpoints to authenticated;
