@@ -1,6 +1,7 @@
 import { Home, PanelLeft, Play } from 'lucide-react'
 import { DevTierOverrideBadge } from '@/components/editor/DevPortal'
 import { IconTooltip } from '@/components/editor/IconTooltip'
+import { PathSelectorMenu } from '@/components/editor/PathSelectorMenu'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ORG_NAME } from '@/config'
@@ -135,11 +136,22 @@ export function WorkspaceBadges() {
  */
 export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
   const { summary } = useSidebarCollapsedState()
+  // On a scenario the collapsed bar carries the path selector as a trailing
+  // control (#305), so paths can be switched without expanding the sidebar. A
+  // phase hands over an empty list and this stays hidden — the same control,
+  // mounted only where it applies.
+  const paths = summary?.paths
   return (
+    // `pl-1 pr-3` is the mirror of what it was: the icon button carries its
+    // own padding, so the tight side is whichever end the toggle is on.
     <div
-      className="pointer-events-auto flex max-w-[min(36rem,calc(100vw-6rem))] items-center gap-1.5 rounded-lg border border-border bg-background/95 py-1 pl-3 pr-1 shadow-md backdrop-blur-sm"
+      className="pointer-events-auto flex max-w-[min(36rem,calc(100vw-6rem))] items-center gap-1.5 rounded-lg border border-border bg-background/95 py-1 pl-1 pr-3 shadow-md backdrop-blur-sm"
       data-editor-sidebar-navbar
     >
+      {/* First, not last. This is the control that brings the sidebar back,
+          and the sidebar comes back at the left edge — a toggle at the far
+          right sat as far from the thing it summons as this strip allows. */}
+      <SidebarCollapseButton collapsed onToggle={onExpand} size="icon-sm" />
       <p className="shrink-0 truncate text-xs font-medium text-foreground">
         {EDITOR_TITLE}
       </p>
@@ -167,7 +179,13 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
           ) : null}
         </>
       ) : null}
-      <SidebarCollapseButton collapsed onToggle={onExpand} size="icon-sm" />
+      {/* The path selector, mounted only when a scenario handed its paths
+          over. `PathSelectorMenu` itself returns nothing for an empty list, so
+          the gate here keeps it off the DOM entirely on a phase rather than
+          mounting a control that renders nothing. */}
+      {paths && paths.length > 0 ? (
+        <PathSelectorMenu options={paths} />
+      ) : null}
     </div>
   )
 }

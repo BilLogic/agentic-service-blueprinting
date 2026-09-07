@@ -311,23 +311,22 @@ function DesktopEditorShell() {
     suppressCanvasResizeRefit()
   }, [presenting])
 
-  // Publish the collapsed state so canvas navbars can host the expand
-  // control themselves — see sidebarCollapsedContext for why the navbar is
-  // now the fallback rather than the default.
-  const expandSidebar = useCallback(() => {
-    suppressCanvasResizeRefit()
-    setSidebarCollapsed(false)
-  }, [])
+  /*
+    Publish whether the aside is collapsed BY THE READER to the canvas's own
+    chrome, so canvas navbars can answer it themselves — see
+    sidebarCollapsedContext for why the navbar is now the fallback rather than
+    the default. One fact now: collapsed, host the expand control.
+
+    NOT `railOnly`: presentation also collapses the sidebar, but it hides the
+    navbar too (full-bleed). Telling the bands they are collapsed there would
+    strand a presentation with no header and no Return — the band must keep
+    drawing itself when nothing else can carry it.
+  */
   useEffect(() => {
-    // NOT `railOnly`: presentation also collapses the sidebar, but it hides
-    // the navbar too (full-bleed). Telling the bands they are collapsed there
-    // would strand a presentation with no header and no Return — the band
-    // must keep drawing itself when nothing else can carry it.
     setSidebarCollapsedState({
       collapsed: railOnly && !presenting && !isLanding,
-      expand: expandSidebar,
     })
-  }, [railOnly, presenting, isLanding, expandSidebar])
+  }, [railOnly, presenting, isLanding])
 
   // Hand the agent its navigation hands: open_phase / open_scenario tools
   // land on the same callbacks the sidebar rows use.
