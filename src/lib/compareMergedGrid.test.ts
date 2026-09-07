@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   assembleMergedSlot,
-  buildComparePathShortLabels,
   buildMergedArrowRemap,
   remapMergedPathDependencies,
   type MergedSlotAssembly,
@@ -92,31 +91,6 @@ describe('assembleMergedSlot', () => {
       [candidate('a', 'same'), candidate('b', 'same'), candidate('ghost', 'other')],
     )
     expect(assembly.kind).toBe('shared')
-  })
-})
-
-describe('buildComparePathShortLabels', () => {
-  it('uses word initials', () => {
-    const labels = buildComparePathShortLabels([
-      { id: '1', name: 'Happy Path' },
-      { id: '2', name: 'Alternate Path' },
-    ])
-    expect(labels.get('1')).toBe('HP')
-    expect(labels.get('2')).toBe('AP')
-  })
-
-  it('disambiguates colliding initials', () => {
-    const labels = buildComparePathShortLabels([
-      { id: '1', name: 'Happy Path' },
-      { id: '2', name: 'Hidden Payment' },
-    ])
-    expect(labels.get('1')).toBe('HP')
-    expect(labels.get('2')).toBe('HP2')
-  })
-
-  it('falls back for names with no letters', () => {
-    const labels = buildComparePathShortLabels([{ id: '1', name: '—' }])
-    expect(labels.get('1')).toBe('P1')
   })
 })
 

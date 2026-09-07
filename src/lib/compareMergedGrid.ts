@@ -121,34 +121,6 @@ function toSubCell(group: readonly MergedSlotCandidate[]): MergedSubCell {
 }
 
 /**
- * Short per-path labels for the sub-cell rails — word initials ("Happy
- * Path" → HP), uppercased, deduplicated with a 1-based ordinal suffix so
- * two paths never share a label (the rail carries colour + dash too, but
- * the label must still be readable on its own).
- */
-export function buildComparePathShortLabels(
-  paths: ReadonlyArray<{ id: string; name: string }>,
-): Map<string, string> {
-  const labels = new Map<string, string>()
-  const used = new Set<string>()
-  paths.forEach((path, index) => {
-    const initials = path.name
-      .split(/\s+/)
-      .map((word) => word.replace(/[^\p{L}\p{N}]/gu, '').charAt(0))
-      .filter(Boolean)
-      .join('')
-      .toUpperCase()
-      .slice(0, 3)
-    const base = initials || `P${index + 1}`
-    let label = base
-    if (used.has(label)) label = `${base}${index + 1}`
-    used.add(label)
-    labels.set(path.id, label)
-  })
-  return labels
-}
-
-/**
  * How each path's dependency arrows map onto what the merged grid actually
  * renders.
  *

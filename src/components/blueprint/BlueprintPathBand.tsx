@@ -23,6 +23,8 @@ import {
   shouldUseTouchpointCellContent,
   shouldUseStoryboardContent,
 } from '@/lib/blueprintLayout'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import { buildCellLookup, getCellAt, getCellsAt } from '@/lib/normalizeBlueprint'
 import {
   getBlueprintLaneStyle,
@@ -39,8 +41,6 @@ import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { isBlueprintStoryboardWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
 import { buildStoryboardWalkthroughSession } from '@/lib/storyboardWalkthrough'
 import type { BlueprintData, BlueprintStep } from '@/types/blueprint'
-import { cellResources } from '@/lib/cellResources'
-import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 /**
  * How one band is placed inside its parent grid.
@@ -395,8 +395,8 @@ function CompareLaneRow({
                 cellContent: cell?.content ?? '',
                 cellFrame: cell?.frame ?? null,
                 cellSummary: cell?.summary ?? null,
-                cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
-                cellResources: cell ? cellResources(cell) : undefined,
+                cellTouchpoints: cellTouchpoints(cell ?? {}),
+                cellResources: cellResources(cell ?? {}),
                 pathId: blueprint.path.id,
                 pathName: blueprint.path.name,
                 pathSummary: blueprint.path.summary,

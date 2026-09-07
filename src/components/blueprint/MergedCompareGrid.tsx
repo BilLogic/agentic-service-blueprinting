@@ -56,6 +56,8 @@ import {
   getMergedCompareRowTrackCss,
   resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
+import { cellResources } from '@/lib/cellResources'
+import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import { getPathColor } from '@/lib/pathColorTheme'
 import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { cn } from '@/lib/utils'
@@ -65,8 +67,6 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
-import { cellResources } from '@/lib/cellResources'
-import { cellTouchpoints } from '@/lib/cellTouchpoints'
 
 type MergedCompareGridProps = {
   /** In selection order — the order sub-cells stack in and the legend reads. */
@@ -248,7 +248,11 @@ export function MergedCompareGrid({
       // semantics between one remapped pair both survive. They live on
       // the RAW blueprint dependencies, so look them up by id.
       const rawById = new Map(blueprint.dependencies.map((raw) => [raw.id, raw]))
-      const remapped = remapMergedPathDependencies(data.dependencies, remap, index === 0)
+      const remapped = remapMergedPathDependencies(
+        data.dependencies,
+        remap,
+        index === 0,
+      )
       const dependencies = remapped.filter((dependency) => {
         const raw = rawById.get(dependency.id)
         const key = [
@@ -531,7 +535,10 @@ function MergedLaneRow({
                 aria-hidden
                 data-compare-column-spacer=""
                 className="shrink-0"
-                style={{ width: STEP_COLUMN_WIDTH, minWidth: STEP_COLUMN_WIDTH }}
+                style={{
+                  width: STEP_COLUMN_WIDTH,
+                  minWidth: STEP_COLUMN_WIDTH,
+                }}
               />
             ) : subCells.length === 1 ? (
               <MergedSubCellBlock
@@ -660,8 +667,8 @@ function MergedSubCellBlock({
               cellContent: cell?.content ?? '',
               cellFrame: cell?.frame ?? null,
               cellSummary: cell?.summary ?? null,
-              cellTouchpoints: cell ? cellTouchpoints(cell) : undefined,
-              cellResources: cell ? cellResources(cell) : undefined,
+              cellTouchpoints: cellTouchpoints(cell ?? {}),
+              cellResources: cellResources(cell ?? {}),
               pathId: blueprint.path.id,
               pathName: blueprint.path.name,
               pathSummary: blueprint.path.summary,
