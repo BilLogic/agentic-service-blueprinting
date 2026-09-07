@@ -4,6 +4,7 @@ import {
   loadPersistedSessions,
   persistSession,
 } from '@/lib/agent/persistence'
+import { storageKey } from '@/lib/storageNamespace'
 
 /**
  * Agent sessions. localStorage is the always-there lane; when the session
@@ -22,7 +23,7 @@ export type AgentSession = {
   changeCount: number
 }
 
-const STORAGE_KEY = 'sb-agent-sessions'
+const STORAGE_KEY = storageKey('agent-sessions')
 
 function read(): AgentSession[] {
   try {

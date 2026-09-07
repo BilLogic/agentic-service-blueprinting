@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { storageKey } from '@/lib/storageNamespace'
 
 /**
  * BYO-key agent settings. Keys live in localStorage and nowhere else — not
@@ -59,7 +60,7 @@ export type AgentSettings = {
   serviceScope: AgentServiceScopeMode
 }
 
-const STORAGE_KEY = 'sb-agent-settings'
+const STORAGE_KEY = storageKey('agent-settings')
 
 const EMPTY: AgentSettings = {
   provider: 'google',

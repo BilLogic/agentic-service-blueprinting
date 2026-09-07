@@ -61,6 +61,7 @@ import {
   SHELL_ENTRANCE_STEP_MS,
   prefersReducedMotion,
 } from '@/lib/motion'
+import { storageKey } from '@/lib/storageNamespace'
 import { cn } from '@/lib/utils'
 
 /**
@@ -69,7 +70,7 @@ import { cn } from '@/lib/utils'
  * `lib/layoutTokens` — one home for every shell width the runtime does
  * math on.
  */
-const WIDTH_STORAGE_KEY = 'sb-sidebar-width'
+const WIDTH_STORAGE_KEY = storageKey('sidebar-width')
 
 function loadAsideWidth(): number {
   try {

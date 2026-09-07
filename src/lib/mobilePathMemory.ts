@@ -1,4 +1,5 @@
 import { pickPreferredPath } from '@/lib/pathSelection'
+import { storageKey } from '@/lib/storageNamespace'
 import type { PathKind } from '@/types/database'
 
 /**
@@ -6,11 +7,12 @@ import type { PathKind } from '@/types/database'
  * Phase 3): the top-bar selector reads one path at a time, and coming back
  * to a scenario should land on the path the user was reading, not reset to
  * the happy path. One localStorage key holding a scenario→path map — the
- * same shape as the agent stores (`sb-agent-*`), and like them it degrades
- * to in-memory defaults when storage is unavailable (private mode, quota).
+ * same shape as the agent stores (`agent-*` in the same namespace), and like
+ * them it degrades to in-memory defaults when storage is unavailable
+ * (private mode, quota).
  */
 
-const STORAGE_KEY = 'sb-mobile-paths'
+const STORAGE_KEY = storageKey('mobile-paths')
 
 function readMap(): Record<string, string> {
   if (typeof window === 'undefined') return {}
