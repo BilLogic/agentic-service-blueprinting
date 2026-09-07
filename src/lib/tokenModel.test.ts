@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   consumersOf,
   declarationsIn,
   resolveValue,
   rulesDeclaring,
   sourceFiles,
+  sourceMatching,
+  stripComments,
   stylesheet,
   stylesheets,
   winningDeclaration,
@@ -110,7 +115,23 @@ describe('the cascade', () => {
   })
 })
 
+/**
+ * The source reader, and the property the style rules cannot check about
+ * themselves: that a reported `file:line` is the line the reader means.
+ *
+ * `stripComments` used to DELETE block comments rather than blank them, so
+ * every newline inside a file's header vanished and every line number after it
+ * shifted up by the header's height. Nothing failed, because a passing rule
+ * reports no lines at all — the drift only shows once a rule starts failing,
+ * which is the moment the number has to be right. Converting the token
+ * discipline guard onto this model is that moment: it names a file and a line
+ * for every offender it finds, and `dev/ArrowSituationCatalogPage.tsx` opens
+ * with a thirteen-line header, so its `#2563eb` on line 28 was being reported
+ * at line 15, on an import statement.
+ */
 describe('the source reader', () => {
+  const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
   it('reads the whole of src, not a chosen list of roots', () => {
     // The rule this model absorbed already read every `.ts`/`.tsx` under
     // `src`. Sampling less while claiming to generalise would have been a
@@ -122,6 +143,31 @@ describe('the source reader', () => {
     }
     expect(files.some((file) => file.file === 'App.tsx')).toBe(true)
     expect(files.some((file) => file.file.includes('.test.'))).toBe(false)
+  })
+
+  it('keeps every line, so a stripped file numbers the same as the raw one', () => {
+    for (const source of sourceFiles()) {
+      const raw = readFileSync(resolve(SRC, source.file), 'utf8')
+      expect(source.code.split('\n')).toHaveLength(raw.split('\n').length)
+    }
+  })
+
+  it('reports a match at the line it sits on in the file on disk', () => {
+    // One end-to-end check through the same path a rule takes, rather than
+    // trusting the line-count equality above to imply it.
+    const matches = sourceMatching(/ARROW_COLOR = /g)
+    expect(matches.length).toBeGreaterThan(0)
+    for (const match of matches) {
+      const [file, line] = match.split(':')
+      const raw = readFileSync(resolve(SRC, file), 'utf8').split('\n')
+      expect(raw[Number(line) - 1]).toContain('ARROW_COLOR = ')
+    }
+  })
+
+  it('still blanks what a comment says, so a comment is not a use', () => {
+    const stripped = stripComments('const a = 1 /* text-red-500 */\nconst b = 2\n')
+    expect(stripped).not.toContain('text-red-500')
+    expect(stripped.split('\n')).toHaveLength(3)
   })
 
   it('sees a name read from source and from nowhere else', () => {

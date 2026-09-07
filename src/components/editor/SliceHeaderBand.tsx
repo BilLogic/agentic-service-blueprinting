@@ -95,7 +95,7 @@ export function SliceHeaderBand({
               600 is a fill weight and `--warning` is the solid-fill role —
               neither clears 4.5:1 as text on the card. */}
           {missingCellCount > 0 && (
-            <span className="shrink-0 rounded border border-warning-400 bg-warning-200 px-1.5 py-0.5 text-xs text-foreground">
+            <span className="shrink-0 rounded-sm border border-warning-400 bg-warning-200 px-1.5 py-0.5 text-xs text-foreground">
               {missingCellCount} {missingCellCount === 1 ? 'cell' : 'cells'} no
               longer in the blueprint
             </span>

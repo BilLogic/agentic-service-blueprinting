@@ -183,7 +183,7 @@ function PathCheckbox({
         id={inputId}
         type="checkbox"
         className={cn(
-          'shrink-0 rounded border-input accent-foreground',
+          'shrink-0 rounded-sm border-input accent-foreground',
           dense ? 'size-3' : 'size-4',
         )}
         checked={checked}

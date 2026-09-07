@@ -475,11 +475,21 @@ function tsFiles(dir: string): string[] {
   })
 }
 
-/** A comment naming the class it replaced is not a use of that class. */
+/**
+ * A comment naming the class it replaced is not a use of that class.
+ *
+ * Block comments are BLANKED rather than deleted, for the same reason
+ * `blankComments` blanks them in the stylesheets: every newline has to
+ * survive, or every line number this model reports after a file's header
+ * comment is wrong. It used to delete them, and the drift was not small —
+ * `dev/ArrowSituationCatalogPage.tsx` opens with a thirteen-line header, so
+ * the `#2563eb` on its line 28 was reported at line 15, pointing the reader
+ * at an import. Nothing failed while it was wrong, because a passing rule
+ * reports no lines at all; the number only has to be right at the moment a
+ * rule starts failing, which is the moment nobody is checking it.
+ */
 export function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+  return blankComments(source).replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
 let cachedSourceDeclarations: SourceDeclaration[] | null = null

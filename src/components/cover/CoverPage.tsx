@@ -78,7 +78,7 @@ export function CoverPageView({
         */}
         <header className="flex flex-col items-start gap-5 pb-10">
           <div className="flex flex-col gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.25rem] sm:leading-tight">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl sm:leading-tight">
               {content.title ?? ORG_NAME}
             </h1>
             <p

@@ -42,7 +42,7 @@ export function ScenarioSlideHeader({
           <p className="mb-1 text-sm text-muted-foreground">{phaseLabel}</p>
         )}
         <div className="flex items-center gap-2">
-          <h1 className="text-[2.5rem] font-bold leading-[1.15] tracking-tight text-foreground">
+          <h1 className="text-5xl font-bold leading-[1.15] tracking-tight text-foreground">
             {title}
           </h1>
         </div>

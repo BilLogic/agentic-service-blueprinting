@@ -25,7 +25,7 @@ export function renderInline(text: string): ReactNode {
       return (
         <code
           key={index}
-          className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[0.85em]"
+          className="rounded-sm bg-muted/60 px-1 py-0.5 font-mono text-[0.85em]"
         >
           {part.slice(1, -1)}
         </code>

@@ -1308,7 +1308,7 @@ function TextAnnotationNode({
               annotation.strike && 'line-through',
               showChrome
                 ? 'border-0 bg-transparent text-inherit'
-                : 'rounded border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
+                : 'rounded-sm border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
             )}
             style={{ fontSize: annotation.fontSize }}
             onChange={(e) => onUpdate({ text: e.target.value })}
@@ -2025,7 +2025,7 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
       ref={laneRef}
       data-canvas-annotation-layer=""
       className={cn(
-        'absolute inset-0 z-[60] touch-none',
+        'absolute inset-0 z-60 touch-none',
         laneInteractive ? 'pointer-events-auto' : 'pointer-events-none',
         tool === 'pen' && 'cursor-none [&_*]:!cursor-none',
         (tool === 'rect' || tool === 'ellipse') && 'cursor-crosshair',

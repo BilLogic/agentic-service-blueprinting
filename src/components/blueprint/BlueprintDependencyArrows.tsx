@@ -329,7 +329,7 @@ export function BlueprintDependencyArrows({
       data-blueprint-arrows=""
       className={cn(
         'pointer-events-none absolute overflow-visible',
-        lane === 'forward' ? 'z-[2]' : 'z-[30]',
+        lane === 'forward' ? 'z-2' : 'z-30',
       )}
       style={svgStyle}
       overflow="visible"
