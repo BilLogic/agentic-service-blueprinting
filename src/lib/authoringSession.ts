@@ -62,6 +62,8 @@ export type WriteFn =
   | 'set_placement_touchpoint'
   | 'remove_placement'
   | 'restore_placement'
+  | 'rename_touchpoint'
+  | 'update_touchpoint_placement'
   | 'update_cell_spec'
   | 'update_lane_spec'
   | 'update_phase_spec'
@@ -287,6 +289,23 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
       : `Named a placement “${String(entry.args.name ?? '')}”`,
   remove_placement: (entry) => `Removed “${String(entry.args.name ?? '')}” from a cell`,
   restore_placement: () => 'Put a placement back on its cell',
+  rename_touchpoint: (entry) => {
+    // Named by how far it reached, because that is the whole point of the
+    // registry: one edit moves every touchpoint that says the word, and the
+    // row is where a person finds out how many that was.
+    const cells = Array.isArray(entry.args.cell_ids) ? entry.args.cell_ids.length : 0
+    const to = renameTo(entry)
+    if (cells === 0) return `Renamed a touchpoint${to}`
+    return `Renamed a touchpoint${to} (${cells} ${cells === 1 ? 'cell' : 'cells'})`
+  },
+  // Named by the touchpoint, because a cell can hold several and "edited a
+  // touchpoint" beside a run of them tells nobody which. The words belong to
+  // this touchpoint AT THIS CELL — the same tool at the next step keeps its
+  // own.
+  update_touchpoint_placement: (entry) =>
+    typeof entry.args.name === 'string' && entry.args.name
+      ? `Edited “${entry.args.name}” at this cell`
+      : 'Edited a touchpoint at this cell',
   update_cell_spec: () => 'Specified function & form',
   update_lane_spec: () => 'Edited a lane’s actor, owner, KPIs & tools',
   update_phase_spec: () => 'Edited a phase’s summary, impact & requirements',

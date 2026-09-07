@@ -1154,6 +1154,39 @@ end;
 $$;
 
 --
+-- Name: rename_content_item(text, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rename_content_item(p_content text, p_from text, p_to text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    SET search_path TO 'pg_catalog', 'pg_temp'
+    AS $_$
+  select coalesce(
+    string_agg(
+      case
+        -- A delimiter travels through unchanged, which is what keeps
+        -- "A,\nB" from coming back as "A, B".
+        when m.token[1] in (E'\n', ',') then m.token[1]
+        when btrim(m.token[1], E' \t\r\n') = p_from
+          -- Surrounding whitespace is the author's, not ours.
+          then substring(m.token[1] from '^[ \t\r\n]*')
+               || p_to
+               || substring(m.token[1] from '[ \t\r\n]*$')
+        else m.token[1]
+      end,
+      '' order by m.ord),
+    p_content)
+  from regexp_matches(p_content, E'[^\n,]+|[\n,]', 'g')
+       with ordinality as m(token, ord);
+$_$;
+
+--
+-- Name: FUNCTION rename_content_item(p_content text, p_from text, p_to text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.rename_content_item(p_content text, p_from text, p_to text) IS 'Replace one whole item in a delimited cell content string. The match is against the trimmed item, never a substring, so renaming Zoom leaves Zoom Recording alone.';
+
+--
 -- Name: rename_owner_tag(text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1297,6 +1330,110 @@ begin
   end if;
 end;
 $$;
+
+--
+-- Name: rename_touchpoint(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rename_touchpoint(p_touchpoint_id uuid, p_name text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  v_name     text := btrim(coalesce(p_name, ''));
+  v_previous text;
+  v_written  int;
+  v_cells    uuid[] := '{}';
+  v_stale    int;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint' using errcode = '42501';
+  end if;
+
+  if v_name = '' then
+    raise exception 'a touchpoint needs a name — an empty one is a blank pill';
+  end if;
+
+  -- Locked, because everything below is decided from this row's old name.
+  select name into v_previous
+    from public.touchpoints
+   where id = p_touchpoint_id
+     for update;
+
+  if v_previous is null then
+    raise exception 'touchpoint % does not exist', p_touchpoint_id;
+  end if;
+
+  update public.touchpoints
+     set name = v_name,
+         updated_at = now()
+   where id = p_touchpoint_id;
+
+  -- A zero-row write is a failure, not a no-op. The select above already found
+  -- the row, so nought here means it went in the moment between — and the
+  -- caller is about to record an inverse for a rename that never happened.
+  get diagnostics v_written = row_count;
+  if v_written <> 1 then
+    raise exception 'renaming touchpoint % wrote % rows', p_touchpoint_id, v_written;
+  end if;
+
+  -- Renaming a touchpoint to what it is already called is a no-op on the text,
+  -- and running the rewrite anyway would trip the post-condition below on
+  -- every cell. The registry write above still happened, so the caller gets a
+  -- truthful answer either way.
+  if v_previous <> v_name then
+    with bearing as (
+      -- Identity, not text search. A cell bears this touchpoint because a
+      -- placement says so.
+      select ct.cell_id from public.cell_touchpoints ct
+       where ct.touchpoint_id = p_touchpoint_id
+    ),
+    rewritten as (
+      update public.cells c
+         set content = public.rename_content_item(c.content, v_previous, v_name)
+        from bearing b
+       where c.id = b.cell_id
+         and c.content
+             is distinct from public.rename_content_item(c.content, v_previous, v_name)
+      returning c.id
+    )
+    select coalesce(array_agg(id), '{}'::uuid[]) into v_cells from rewritten;
+
+    -- The post-condition, and the reason the rewrite cannot fail quietly. If
+    -- the item match ever stopped matching, every statement above would still
+    -- succeed, no cell would change, and the rename would go back to being
+    -- undone by the next content save — the exact defect, restored, with a
+    -- green call to show for it.
+    select count(*) into v_stale
+      from public.cell_touchpoints ct
+      join public.cells c on c.id = ct.cell_id
+     where ct.touchpoint_id = p_touchpoint_id
+       and exists (
+         select 1
+           from unnest(regexp_split_to_array(c.content, E'[\n,]')) as item
+          where btrim(item, E' \t\r\n') = v_previous
+       );
+    if v_stale <> 0 then
+      raise exception
+        '% cells still name "%" after renaming it to "%"',
+        v_stale, v_previous, v_name;
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'touchpoint_id', p_touchpoint_id,
+    'name', v_name,
+    'previous_name', v_previous,
+    'cell_ids', to_jsonb(v_cells)
+  );
+end
+$$;
+
+--
+-- Name: FUNCTION rename_touchpoint(p_touchpoint_id uuid, p_name text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.rename_touchpoint(p_touchpoint_id uuid, p_name text) IS 'Rename a touchpoint: the registry row and the matching item in every bearing cell''s content, in one transaction. Returns the previous name and the cells rewritten, so the caller can record an inverse that restores both halves.';
 
 --
 -- Name: reorder_lanes(uuid, text[]); Type: FUNCTION; Schema: public; Owner: -

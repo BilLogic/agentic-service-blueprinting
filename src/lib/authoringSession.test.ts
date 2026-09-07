@@ -58,6 +58,8 @@ const EVERY_WRITE = Object.keys({
   set_placement_touchpoint: true,
   remove_placement: true,
   restore_placement: true,
+  rename_touchpoint: true,
+  update_touchpoint_placement: true,
   update_cell_spec: true,
   update_lane_spec: true,
   update_phase_spec: true,

@@ -1180,3 +1180,34 @@ $posture$;
 -- column grants were written in `21000120000000`; this extends that surface
 -- by one column and changes nothing else about the posture.
 grant update (stakeholder_id) on public.touchpoints to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000202000000_a_rename_moves_the_word_in_every_cell.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- who may call it. The same posture as every other placement
+-- function in `21000120000000`: closed to `public` and `anon`, open to
+-- `authenticated`, with the service-account guard inside the body deciding
+-- which authenticated caller may actually author.
+revoke execute on function public.rename_content_item(text, text, text) from public, anon;
+grant execute on function public.rename_content_item(text, text, text) to authenticated;
+revoke execute on function public.rename_touchpoint(uuid, text) from public, anon;
+grant execute on function public.rename_touchpoint(uuid, text) to authenticated;
+
+-- The other half of this slice is a placement's per-moment writing, which
+-- `src/lib/touchpointMutations.ts` saves as a column-scoped update rather than
+-- through a function — it writes two columns of one row by id and needs no
+-- transaction to do it. `21000119000000` granted `role` when the column
+-- arrived; `summary` was granted to nobody, because until now nothing wrote
+-- it outside `sync_cell_touchpoints` and `restore_cell_touchpoints`, which are
+-- SECURITY DEFINER and never consulted a column grant.
+--
+-- Column privileges are checked against the SET LIST, not against what the
+-- statement changes, so a writer naming both columns is refused on `summary`
+-- before it reaches a single row. The grant lands in the same slice as the
+-- writer on purpose: a write surface with no writer is a row every posture
+-- check has to account for before any mutation touches the column.
+--
+-- `cell_touchpoints_update_service_only` still stands over it, so this widens
+-- WHICH COLUMN an author may write and not WHO may write one.
+grant update (summary) on public.cell_touchpoints to authenticated;
