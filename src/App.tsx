@@ -7,6 +7,7 @@ import { EditorProvider } from '@/contexts/EditorContext'
 import { EntityExamplesProvider } from '@/contexts/EntityExamplesContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
+import { TouchpointRegistryProvider } from '@/contexts/TouchpointRegistryProvider'
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import { queryClient } from '@/lib/queryClient'
 
@@ -28,17 +29,24 @@ function App() {
            * the board pick their per-kind example out of it by kind.
            */}
           <EntityExamplesProvider>
-            <EditorProvider>
-              <ViewStateProvider>
-                <PathSelectionProvider>
-                  <TooltipProvider delay={200}>
-                    <EditorErrorBoundary>
-                      <EditorShell />
-                    </EditorErrorBoundary>
-                  </TooltipProvider>
-                </PathSelectionProvider>
-              </ViewStateProvider>
-            </EditorProvider>
+            {/*
+             * One unscoped read of `touchpoints.tone` and `.aliases` for the
+             * whole session, published to the module store every touchpoint
+             * face resolves its colour through (#326 S6).
+             */}
+            <TouchpointRegistryProvider>
+              <EditorProvider>
+                <ViewStateProvider>
+                  <PathSelectionProvider>
+                    <TooltipProvider delay={200}>
+                      <EditorErrorBoundary>
+                        <EditorShell />
+                      </EditorErrorBoundary>
+                    </TooltipProvider>
+                  </PathSelectionProvider>
+                </ViewStateProvider>
+              </EditorProvider>
+            </TouchpointRegistryProvider>
           </EntityExamplesProvider>
         </SupabaseProvider>
       </ThemeProvider>
