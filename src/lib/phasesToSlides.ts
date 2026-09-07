@@ -1,5 +1,5 @@
 import type { Phase, Scenario } from '@/types/database'
-import { SLIDE_VIEW_TYPES, type NavItem, type SlideViewType } from '@/types/nav'
+import { asSlideViewType, type NavItem } from '@/types/nav'
 
 export type ScenarioRow = Pick<
   Scenario,
@@ -40,12 +40,10 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         label: scenario.name,
         summary: scenario.summary,
         parentId: phase.id,
-        // No seam any more: 21000116000000 moved the rows, so the column
-        // holds the client's own vocabulary. Unknown values still fall back
-        // to 'stacked' rather than leaking a token nothing can render.
-        layout: SLIDE_VIEW_TYPES.includes(scenario.layout as SlideViewType)
-          ? (scenario.layout as SlideViewType)
-          : 'stacked',
+        // One vocabulary: the column holds the client's own tokens, so there
+        // is no seam to cross — but a row outside the CHECK still falls back
+        // rather than rendering nothing.
+        layout: asSlideViewType(scenario.layout),
       })
     })
   })
