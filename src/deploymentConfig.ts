@@ -20,6 +20,30 @@
  * `?raw` — until a built distribution exists. The host also imports the
  * stylesheet, `agentic-service-blueprinting/styles.css`; `App` deliberately
  * does not, so a host owns the one place its CSS is loaded.
+ *
+ * ── WHAT THIS TYPE DOES NOT COVER ─────────────────────────────────────────
+ *
+ * Stated here because the header above reads like a complete boundary and is
+ * not one, and a seam that overstates its reach is the defect it exists to
+ * prevent.
+ *
+ * WIRED TODAY: `brand.name`, and only that — the app-chrome wordmark reads it
+ * (`components/editor/TabStrip.tsx`). `brand.logo`, `brand.accent` and both
+ * `content` fields are declared shape with no reader: the cover heading, the
+ * workspace breadcrumb and the editor title still take `ORG_NAME` from
+ * `config.ts` directly. They migrate onto this type in later slices; until
+ * then setting them changes nothing.
+ *
+ * NOT EXPRESSIBLE AT ALL, and the harder half: the two DECLARED FORK SEAMS,
+ * `lib/storageNamespace.ts` (`STORAGE_PREFIX`) and
+ * `lib/agent/tools/referenceDocs.ts` with `referenceNamesExtra.ts`. Both are
+ * module constants an adopter is told to EDIT, which is the right shape for
+ * an app that copies this repo and the wrong one for a host that mounts it:
+ * a host cannot edit a module it imports. The prefix in particular is not
+ * cosmetic — two installations served from one origin read each other's
+ * settings and sessions without it. So either those two seams grow fields
+ * here, or a mounting host has no way to reach them. Folding them in is
+ * outstanding work, not a decision this file has already made.
  */
 import { ORG_NAME } from './config'
 
