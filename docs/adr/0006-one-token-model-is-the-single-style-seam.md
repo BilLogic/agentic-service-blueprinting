@@ -6,7 +6,7 @@ summary: Style enforcement rides one queryable token model instead of a reader p
 
 **Status** Accepted — 2026-09-06
 **Context** `src/lib/tokenModel.ts`, `src/styles/tokens.test.ts`,
-`src/lib/palette.test.ts`
+`src/lib/palette.test.ts`, `src/lib/tokenDiscipline.test.ts`
 
 ## Context
 
@@ -118,12 +118,18 @@ while claiming to generalise would have narrowed a live guard.
   stand as the evidence that the token it names is live.
   `styles/tailwind.config.css` carries no `@source` exclusion for `docs/`, so
   adding one is step one of that phase rather than a detail inside it.
-- **`lib/tokenDiscipline.test.ts` still carries its own reader.** It is the one
-  guard not converted here, and it is the remaining instance of the shape this
-  record retires: it walks `src/components/**.tsx`, so anything a class string
-  in `lib/`, `hooks/` or `contexts/` says is outside it. Converting it is a
-  change to what it samples and therefore its own change, not a rider on this
-  one. Until it lands, the claim above holds for three of four style guards.
+- **`lib/tokenDiscipline.test.ts` is converted, and the claim now holds for
+  all four style guards.** It was the one guard left on its own reader, walking
+  `src/components/**.tsx`, and converting it was held back as its own change
+  because it changes what the guard samples. That change has landed. The
+  widening from 185 files to 399 found what the shape predicts: the two
+  hand-tuned neutral-edge alphas the rule forbids were in
+  `lib/filterToolbarButton.ts`, a directory the walk did not read, and all
+  twenty-seven hex matches were in `src/dev/`, which sat outside every style
+  rule in the repository. Three further rules came with the conversion —
+  radius, z-index and font-size rungs — and each found call sites written
+  against rungs `styles/theme.css` already declared, which is what a token with
+  no guard behind it decays into.
 - **A rule can now be wrong in a new way.** The model is code, and a blind spot
   in it is a blind spot in everything at once — which is the trade against
   three readers failing independently. `src/lib/tokenModel.test.ts` is the

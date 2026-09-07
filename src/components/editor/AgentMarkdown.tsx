@@ -56,7 +56,7 @@ export function AgentMarkdown({
             return (
               <code
                 className={cn(
-                  'rounded bg-muted px-1 py-0.5 font-mono text-[0.8em]',
+                  'rounded-sm bg-muted px-1 py-0.5 font-mono text-[0.8em]',
                   isBlock && 'block overflow-x-auto p-2',
                 )}
               >

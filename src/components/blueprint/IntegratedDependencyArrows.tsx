@@ -404,11 +404,11 @@ export function IntegratedDependencyArrows({
       data-blueprint-arrows=""
       className={cn(
         'pointer-events-none absolute overflow-visible',
-        // z-0, UNDER the z-[1] cells: a run that crosses a cell tucks
+        // z-0, UNDER the z-1 cells: a run that crosses a cell tucks
         // behind it instead of striking through its face — lines are
         // always behind the blocks. The wrap lane stays above: it rides
         // the empty corridors outside the rows by construction.
-        lane === 'forward' ? 'z-0' : 'z-[30]',
+        lane === 'forward' ? 'z-0' : 'z-30',
       )}
       style={svgStyle}
       overflow="visible"

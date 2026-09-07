@@ -185,13 +185,13 @@ export function SliceHeaderBandSkeleton() {
           content in it.
         */}
         <div className="flex min-w-0 items-center gap-2">
-          <Skeleton className="h-5 w-48 max-w-full rounded" />
+          <Skeleton className="h-5 w-48 max-w-full rounded-sm" />
           <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
         </div>
         {/* Caption row: `text-xs` line box (16px), inset by the 2px the
             real row carries. */}
         <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
-          <Skeleton className="h-4 w-72 max-w-full rounded" />
+          <Skeleton className="h-4 w-72 max-w-full rounded-sm" />
         </div>
       </div>
       {/* Primary action — `size="sm"` is h-8, and it has an icon before its

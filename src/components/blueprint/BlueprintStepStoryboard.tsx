@@ -67,7 +67,7 @@ function StoryboardPictureStrip({
             />
           </div>
           {showLabels && entry.label?.trim() ? (
-            <p className="w-full shrink-0 whitespace-nowrap px-0.5 text-center text-[8px] font-medium leading-none tracking-tight text-foreground/80">
+            <p className="w-full shrink-0 whitespace-nowrap px-0.5 text-center text-5xs font-medium leading-none tracking-tight text-foreground/80">
               {entry.label}
             </p>
           ) : null}
