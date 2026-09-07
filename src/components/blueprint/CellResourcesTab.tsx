@@ -26,8 +26,6 @@ type CellResourcesTabProps = {
   /** Canonical cell id; null for fallback-only cells (read-only then). */
   cellId: string | null
   resources: CellResource[]
-  /** Figma link resolved by the panel (added when not already listed). */
-  figmaUrl: string | null
 }
 
 /**
@@ -63,11 +61,15 @@ function placementRows(resources: CellResource[]): CellResource[] {
  * A placement's rows arrive in the same list since #110 — the cell reads
  * everything it points at, through its touchpoints too — and are listed
  * here without inputs: the touchpoint's own editor is where they change.
+ *
+ * A row nobody linked is a row nobody linked. The tab used to grow a
+ * synthetic "Figma" entry for whatever url a vendor-name regex two files
+ * away had elected as "the design", which put a link in this list that the
+ * cell's own list did not hold and that Save could not have written.
  */
 export function CellResourcesTab({
   cellId,
   resources,
-  figmaUrl,
 }: CellResourcesTabProps) {
   const { client, canWrite } = useSupabase()
   const mode = useCanvasModeValue()
@@ -91,10 +93,6 @@ export function CellResourcesTab({
     if (!url) return []
     return [{ id: resource.id ?? `resource-${index}`, name: resource.name, url, kind: resource.kind }]
   })
-
-  if (figmaUrl && !rows.some((row) => row.url === figmaUrl)) {
-    rows.push({ id: 'resource-figma', name: 'Figma', url: figmaUrl, kind: 'link' })
-  }
 
   if (rows.length === 0) {
     return (

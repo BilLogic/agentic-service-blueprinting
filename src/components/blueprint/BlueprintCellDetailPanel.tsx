@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import {
-  ExternalLink,
   FileSearch,
   Link2,
   PanelRightClose,
@@ -93,13 +92,11 @@ import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import {
   resolveTechCellDetailLabel,
   resolveTechCellDetailText,
-  resolveTechCellDetailUrl,
 } from '@/lib/blueprintTechDescriptions'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
-import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { DependencyEndpoint } from '@/lib/dependencyValidation'
@@ -157,29 +154,6 @@ const PANEL_TABS: Array<{
 type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'frame'> & {
   touchpoints: CellTouchpoint[]
   resources: CellResource[]
-}
-
-function isFigmaUrl(url: string): boolean {
-  return /figma\.com/i.test(url)
-}
-
-function resolveFigmaUrl(
-  techItem: string | undefined,
-  cell: PanelCell | null,
-  resources: readonly CellResource[],
-): string | null {
-  if (cell) {
-    const fromTouchpoint = resolveTechCellDetailUrl(techItem, cell)
-    if (fromTouchpoint && isFigmaUrl(fromTouchpoint)) return fromTouchpoint
-  }
-
-  for (const resource of resources) {
-    const url = resource.url?.trim()
-    if (!url) continue
-    if (isFigmaUrl(url) || /figma/i.test(resource.name)) return url
-  }
-
-  return null
 }
 
 /**
@@ -594,11 +568,6 @@ function BlueprintCellDetailPanelBody() {
 
     return entries
   }, [connections.incoming, connections.outgoing, linkedTechItems, stepTechItems])
-
-  const figmaUrl = useMemo(() => {
-    if (!selection) return null
-    return resolveFigmaUrl(selection.techItem, selectedCell, cellResourceList)
-  }, [cellResourceList, selectedCell, selection])
 
   /*
     What the cell leads with (#110): the selected placement's featured
@@ -1191,50 +1160,13 @@ function BlueprintCellDetailPanelBody() {
                 mediaClassName={CELL_DETAIL_PICTURE_CLASS}
               />
             ) : null}
+            {/* Every screenshot in the same plain frame. Nothing elects one
+                url as "the design" — a featured attachment is what a cell
+                leads with, and `featuredPresentation` decides that without
+                naming a vendor. */}
             {screenshots
               .filter((src) => src !== featured.preview?.url)
-              .map((src) =>
-              figmaUrl ? (
-                <a
-                  key={src}
-                  href={figmaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    CELL_DETAIL_PICTURE_FRAME_CLASS,
-                    'group block cursor-pointer',
-                  )}
-                  aria-label="View in Figma"
-                >
-                  <img
-                    src={src}
-                    alt=""
-                    className={cn(
-                      CELL_DETAIL_PICTURE_CLASS,
-                      'transition-[filter,opacity] duration-(--motion-fade)',
-                      'group-hover:opacity-80 group-hover:grayscale-[15%]',
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'absolute inset-0 z-10 flex items-center justify-center',
-                      'bg-black/55 opacity-0 transition-opacity duration-(--motion-fade)',
-                      'group-hover:opacity-100',
-                    )}
-                    aria-hidden
-                  >
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 text-2xs font-semibold text-white',
-                        'transition-opacity duration-(--motion-fade)',
-                      )}
-                    >
-                      View in Figma
-                      <ExternalLink className="size-2.5 text-white" />
-                    </span>
-                  </span>
-                </a>
-              ) : (
+              .map((src) => (
                 <div key={src} className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
                   <img
                     src={src}
@@ -1242,8 +1174,7 @@ function BlueprintCellDetailPanelBody() {
                     className={CELL_DETAIL_PICTURE_CLASS}
                   />
                 </div>
-              ),
-            )}
+              ))}
           </>
         )
       })()}
@@ -1441,7 +1372,6 @@ function BlueprintCellDetailPanelBody() {
                     <CellResourcesTab
                       cellId={resolvedCellId}
                       resources={cellResourceList}
-                      figmaUrl={figmaUrl}
                     />
                   ) : null}
                 </div>
