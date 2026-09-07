@@ -1165,6 +1165,14 @@ export type Database = {
         Args: { layout: string; scenario_id: string }
         Returns: undefined
       }
+      rename_content_item: {
+        Args: { p_content: string; p_from: string; p_to: string }
+        Returns: string
+      }
+      rename_touchpoint: {
+        Args: { p_touchpoint_id: string; p_name: string }
+        Returns: Json
+      }
       reorder_lanes: {
         Args: { lane_names: string[]; scenario_id: string }
         Returns: undefined

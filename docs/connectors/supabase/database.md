@@ -173,13 +173,26 @@ one of them.
 | `summary` | no | Prose about this touchpoint at THIS moment |
 | `role` | no | `core` \| `peripheral` — whether the moment happens through this touchpoint or it is merely present. Null = nobody has judged it, and renders nothing |
 
-Five structural writes, SECURITY DEFINER behind `is_service_account()` since
-`21000120000000`: `sync_cell_touchpoints` follows a cell's text (a new line
-mints a registry row and a placement; a line that left keeps its writing as a
-name-only row, or goes), `restore_cell_touchpoints` is its inverse,
+Six structural writes, SECURITY DEFINER behind `is_service_account()`, five
+since `21000120000000`: `sync_cell_touchpoints` follows a cell's text (a new
+line mints a registry row and a placement; a line that left keeps its writing as
+a name-only row, or goes), `restore_cell_touchpoints` is its inverse,
 `set_placement_touchpoint` links a placement to the registry or names it,
-`remove_placement` / `restore_placement` take a name-only row off a cell and
-put it back, resources included.
+`remove_placement` / `restore_placement` take a name-only row off a cell and put
+it back, resources included. `rename_touchpoint` (`21000202000000`) is the
+sixth: it moves the registry row AND the matching item in every bearing cell's
+`content`, in one transaction, because a rename that stopped at the row would be
+undone by the next content save. It decides which cells from the placements
+rather than from a text search, matches a whole item so renaming `Zoom` leaves
+`Zoom Recording` alone (`rename_content_item` is the pure half), and returns the
+previous name and the cells it rewrote so a caller can record an inverse that
+restores both halves.
+
+A placement's own two columns are written directly rather than through a
+function — `summary` and `role`, by placement id — since neither needs a
+transaction. `21000119000000` granted `role` to `authenticated` and
+`21000202000000` granted `summary`; `cell_touchpoints_update_service_only`
+decides who, and the column list decides what.
 
 A placement's design link and screenshots are `resources` rows carrying its
 `cell_touchpoint_id` — a featured `link`, and `attachment`s with the first

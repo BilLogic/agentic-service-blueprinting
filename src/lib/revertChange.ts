@@ -13,6 +13,10 @@ import {
   writePlacementResources,
   type PlacementResourceRowInput,
 } from '@/lib/placementResourceMutations'
+import {
+  restoreTouchpointPlacement,
+  type PlacementDetailColumns,
+} from '@/lib/touchpointMutations'
 import { updateCellSpec, type CellSpecUpdate } from '@/lib/cellSpecMutations'
 import { updateLaneSpec, type LaneSpecUpdate } from '@/lib/laneSpecMutations'
 import { updatePhaseSpec, type PhaseSpecUpdate } from '@/lib/phaseSpecMutations'
@@ -237,6 +241,27 @@ export async function executeRevert(
       const placementId = stringArg(revert.args, 'placement_id')
       const resources = revert.args.resources as PlacementResourceRowInput[]
       await writePlacementResources(client, placementId, resources ?? [])
+      return
+    }
+    case 'restore_touchpoint_placement': {
+      // Undo of "edited a touchpoint at this cell". The captured payload is
+      // the detail COLUMNS as the database held them, written back verbatim
+      // rather than rebuilt through the input validator — undo has to be able
+      // to reach data that was already there. Same rule, same reason, as
+      // update_cell_resources.
+      //
+      // Keyed on the placement id, so a revert after the touchpoint was
+      // reordered or the registry entry renamed still lands on the row the
+      // edit came from rather than on whatever now spells the same.
+      const detailPlacementId = stringArg(revert.args, 'placement_id')
+      const captured = revert.args.columns as Partial<PlacementDetailColumns> | undefined
+      if (!captured || typeof captured !== 'object') {
+        throw new Error('This change’s captured placement detail is malformed.')
+      }
+      await restoreTouchpointPlacement(client, detailPlacementId, {
+        summary: captured.summary ?? null,
+        role: captured.role ?? null,
+      })
       return
     }
     case 'delete_evidence': {
