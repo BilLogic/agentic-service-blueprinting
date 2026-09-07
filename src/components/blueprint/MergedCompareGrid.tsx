@@ -25,7 +25,6 @@ import {
   type BlueprintCellVariant,
 } from '@/lib/blueprintLayout'
 import {
-  blueprintPanelLabelRailColor,
   blueprintPanelSectionFillColor,
   getBlueprintLaneStyle,
   getBlueprintLaneZone,
@@ -46,7 +45,7 @@ import {
   type CompareModel,
 } from '@/lib/compareSlots'
 import {
-  COMPARE_HEADER_WRAP_EXTRA_INSET,
+  COMPARE_LABEL_TRACK_WIDTH,
   COMPARE_PATH_SECTION_BOTTOM_INSET,
   COMPARE_PATH_SECTION_H_INSET,
   COMPARE_PATH_SECTION_TOP_INSET,
@@ -294,9 +293,8 @@ export function MergedCompareGrid({
             marginTop: COMPARE_STACKED_HEADER_GAP,
           }}
         >
-          <MergedSectionFrame blueprints={blueprints} compact={compact} />
-          {tracks.map(() => null
-          )}
+          <MergedSectionFrame blueprints={blueprints} />
+          {tracks.map(() => null)}
           {/* One lane rail for the whole comparison — the point of merging. */}
           <BlueprintStickyLabelBackdrop
             rowCount={rows.length}
@@ -411,49 +409,35 @@ function resolveMergedCellVariant(lane: BlueprintLane): BlueprintCellVariant {
  */
 function MergedSectionFrame({
   blueprints,
-  compact,
 }: {
   blueprints: BlueprintData[]
-  compact?: boolean
 }) {
   return (
     <>
-      {/* The merged board is ONE frame, so — like a single-path board —
-          the step-header row lives inside it: no container of its own
-          (plan 2026-08-17-002 U1). */}
+      {/* Axis labels stay outside the data boundary in every arrangement. */}
       <div
         aria-hidden
         className="pointer-events-none absolute rounded-xl border-2 border-border"
         style={{
-          top: -COMPARE_PATH_SECTION_TOP_INSET - COMPARE_HEADER_WRAP_EXTRA_INSET,
-          left: -COMPARE_PATH_SECTION_H_INSET,
+          top: -COMPARE_PATH_SECTION_TOP_INSET,
+          left:
+            COMPARE_LABEL_TRACK_WIDTH +
+            STEP_COLUMN_GAP -
+            COMPARE_PATH_SECTION_H_INSET,
           right: -COMPARE_PATH_SECTION_H_INSET,
           bottom: -COMPARE_PATH_SECTION_BOTTOM_INSET,
           backgroundColor: blueprintPanelSectionFillColor(),
         }}
       />
-      {/* Header band — same treatment as the single-path frame: the
-          lane-rail's horizontal counterpart, one tint lighter, held 3px
-          inside the frame edges so the border stays untouched. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute rounded-t-[9px]"
-        style={{
-          top:
-            -COMPARE_PATH_SECTION_TOP_INSET -
-            COMPARE_HEADER_WRAP_EXTRA_INSET +
-            3,
-          left: -COMPARE_PATH_SECTION_H_INSET + 3,
-          right: -COMPARE_PATH_SECTION_H_INSET + 3,
-          height: COMPARE_STEP_HEADER_HEIGHT - 3,
-          backgroundColor: `color-mix(in oklab, ${blueprintPanelLabelRailColor()} 45%, transparent)`,
-        }}
-      />
       <div
         className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-1.5"
         style={{
-          top: -COMPARE_PATH_SECTION_TOP_INSET - COMPARE_HEADER_WRAP_EXTRA_INSET,
-          left: COMPARE_PATH_SECTION_H_INSET + 2,
+          top: -COMPARE_PATH_SECTION_TOP_INSET,
+          left:
+            COMPARE_LABEL_TRACK_WIDTH +
+            STEP_COLUMN_GAP -
+            COMPARE_PATH_SECTION_H_INSET +
+            10,
           transform: 'translateY(-50%)',
         }}
       >
@@ -463,7 +447,6 @@ function MergedSectionFrame({
             name={path.name}
             summary={path.summary}
             pathKind={path.kind}
-            compact={compact}
           />
         ))}
       </div>

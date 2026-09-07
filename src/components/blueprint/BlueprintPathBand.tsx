@@ -74,8 +74,6 @@ type BlueprintPathBandProps = {
   scenarioName?: string
   phaseName?: string
   showPathTypeBadge?: boolean
-  /** Extend the section frame upward to wrap the step-header row (px). */
-  frameExtraTopInset?: number
 }
 
 /**
@@ -90,7 +88,6 @@ export function BlueprintPathBand({
   rows,
   arrangement,
   compact,
-  frameExtraTopInset,
   scrollContainerRef,
   scenarioName,
   phaseName,
@@ -158,7 +155,6 @@ export function BlueprintPathBand({
         blueprint={blueprint}
         compact={compact}
         showPathTypeBadge={showPathTypeBadge}
-        extraTopInset={frameExtraTopInset}
         excludeLabelRail={arrangement.kind === 'row'}
       />
       {arrangement.kind === 'row' ? (
