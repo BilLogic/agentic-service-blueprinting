@@ -259,6 +259,39 @@
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
 
+  /*
+   * The identity fill, beside the action fill and not the same colour.
+   *
+   * `--brand` and `--primary` are both the accent hue; what separates them is
+   * a pair of dials each. Primary is the accent tuned until the filled control
+   * clears its contrast floor — which is why a neutral one has to invert
+   * between modes — and brand is the accent at the vividness the identity was
+   * authored at, which does not have to move when the lights go out.
+   *
+   * Derived, and deliberately not an alias of a ramp step. The step it
+   * replaces was a per-theme HSL literal, so a rebrand meant re-typing a
+   * lightness curve; two dials is the whole edit now. It is also what lets the
+   * ink below flip: an alias inherits a colour with no lightness the ink can
+   * read, which is the same defect a fixed on-colour has.
+   */
+  --brand: oklch(var(--brand-lightness) var(--brand-chroma) var(--primary-hue));
+  /*
+   * Ink on the identity fill, by the same flip every other role's on-colour
+   * uses. Interchangeability is the point of the vocabulary: a component
+   * written against one role re-points at another by changing one word, and it
+   * cannot if one role derives its ink differently from the rest.
+   *
+   * The flip's documented weak point is the accepted cost of that. A fill near
+   * L 0.6 is the worst ground either polarity of ink has, and a neutral brand
+   * sits there: no ink of any lightness clears 4.5:1 on a mid grey, so the
+   * floor a role fill can hold is the 3:1 for large text and UI. A deployment
+   * that authors a real accent moves off the trough by moving the dials.
+   */
+  --brand-foreground: oklch(
+    from var(--brand) clamp(0.205, calc((0.62 - l) * 100), 0.985) calc(c * 0.08)
+      h
+  );
+
   /* --- Interaction states ----------------------------------------------
    * There are none here, deliberately. Supabase's semantic.css defines no
    * hover, pressed, selected or disabled colour: across their whole system

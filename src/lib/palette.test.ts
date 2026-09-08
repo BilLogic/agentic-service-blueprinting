@@ -21,6 +21,7 @@ import {
   oklchHue,
   oklchToLinearSrgb,
   palette,
+  resolveColor,
   resolvePaletteToken,
   resolveValue,
   stylesheet,
@@ -576,5 +577,50 @@ describe.each([
         ).toBeGreaterThanOrEqual(4.5)
       },
     )
+  })
+})
+
+/**
+ * Identity and action are two fills.
+ *
+ * `--brand` and `--primary` share the accent hue and nothing else. If they
+ * resolve to one colour the split is decoration, and every component that
+ * reaches for one of them is really reaching for the other.
+ *
+ * Measured off the cascade rather than recomputed from the dials, so a change
+ * to the derivation is visible here rather than mirrored here.
+ */
+describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
+  const brand = resolveColor('--brand', theme)
+  const primary = resolveColor('--primary', theme)
+
+  it('is a different colour from the action fill', () => {
+    // 1.5:1 is not a legibility floor, it is a "these are two colours" floor.
+    // The pair is at 4.43 light and 3.21 dark today; a fork that dialled brand
+    // onto primary would land at 1.
+    expect(contrast(brand, primary)).toBeGreaterThan(1.5)
+  })
+
+  it('keeps the colour the ramp anchor carried, so bg-brand renders unchanged', () => {
+    // The utility repointed from `hsl(var(--brand-default))` to the derived
+    // fill. Same colour or the repoint moved something on screen, which is the
+    // one thing this whole migration promised not to do.
+    const anchor = /^([\d.]+)deg ([\d.]+)% ([\d.]+)%$/.exec(
+      (resolveValue('--brand-default', theme) ?? '').trim(),
+    )
+    expect(anchor).not.toBeNull()
+    const [h, s, l] = anchor!.slice(1).map(Number)
+    expect(contrast(brand, hslToRgb(h, s, l))).toBe(1)
+  })
+
+  it('carries ink at the floor a mid-lightness fill can hold', () => {
+    // 3:1, not the 7:1 `--primary` clears. The on-colour flip is shared by
+    // every role so the roles stay interchangeable, and its worst ground is a
+    // fill near L 0.6 — which is exactly where a neutral identity sits. No ink
+    // of any lightness clears 4.5:1 on a mid grey; a deployment that authors a
+    // real accent moves off the trough by moving the dials.
+    expect(
+      contrast(resolveColor('--brand-foreground', theme), brand),
+    ).toBeGreaterThanOrEqual(3)
   })
 })

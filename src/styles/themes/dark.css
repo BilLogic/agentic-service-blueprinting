@@ -51,6 +51,11 @@
      fill, dark ink on it (semantic.css derives the flip). */
   --primary-lightness: 0.922;
   --primary-chroma: 0;
+  /* Brand identity keeps one lightness across both modes — see the note in
+     themes/light.css. The filled control inverts because a neutral one must;
+     the identity does not, because 0.594 reads on both canvases. */
+  --brand-lightness: 0.594;
+  --brand-chroma: 0;
   /* 0.62 on the charcoal canvas: 5.07:1, clearing SC 1.4.11 with headroom. */
   --ring-lightness: 0.62;
 

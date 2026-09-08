@@ -154,6 +154,12 @@ const DIALS = [
   '--tertiary-foreground-level',
   '--primary-lightness',
   '--primary-chroma',
+  // Brand's own pair. Not in MODE_INVARIANT_DIALS even though both themes
+  // carry one value here: what the rule below asserts is that a dial is
+  // written in both files, and a deployment whose identity fill wants a
+  // different lightness per mode is still declaring the same dial.
+  '--brand-lightness',
+  '--brand-chroma',
   '--ring-lightness',
   '--warning-lightness',
   '--destructive-lightness',
@@ -187,6 +193,8 @@ const SEMANTIC_TOKENS = [
   '--primary',
   '--primary-foreground',
   '--primary-border',
+  '--brand',
+  '--brand-foreground',
   '--secondary',
   '--secondary-foreground',
   '--muted',

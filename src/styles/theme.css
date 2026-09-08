@@ -101,7 +101,12 @@
 
   /* Stepped semantic ramps — per-theme HSL literals from themes/{light,dark}.css.
      200 = subtle surface, 500 = border, 600 = text. */
-  --color-brand: hsl(var(--brand-default));
+  /* `bg-brand` now reads the derived identity fill rather than the ramp's
+     anchor step. Same colour: the brand lightness dial is the OKLCH lightness
+     that step already carried. `--brand-link` stays on the ramp until the
+     role ink it becomes has taken its call sites. */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-brand-link: hsl(var(--brand-link));
   --color-warning-200: hsl(var(--warning-200));
   --color-warning-300: hsl(var(--warning-300));

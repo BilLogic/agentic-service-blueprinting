@@ -62,6 +62,20 @@
   --primary-lightness: 0.205;
   --primary-chroma: 0;
   /*
+   * Brand identity, at its authored vividness (BRAND SEAM). Its own pair
+   * rather than a reuse of the primary dials: primary is the accent tuned
+   * until the filled control clears its contrast floor, and brand is the
+   * accent as the identity wears it. Share one pair and the two roles resolve
+   * to one colour, and the distinction becomes decoration.
+   *
+   * 0.594 is the OKLCH lightness of the grey the `--brand-default` ramp step
+   * has always carried, so the identity fill keeps the colour it had. Chroma
+   * 0 for the same reason the primary pair is 0: the template ships neutral.
+   * Mode-invariant here, and written in both files rather than left to leak.
+   */
+  --brand-lightness: 0.594;
+  --brand-chroma: 0;
+  /*
    * Focus ring / selection chrome lightness. 0.58, not the mid-grey 0.708 a
    * neutral palette reaches for first: at 0.708 the ring measures 2.56:1 on
    * this near-white canvas and fails SC 1.4.11's 3:1 for a non-text
