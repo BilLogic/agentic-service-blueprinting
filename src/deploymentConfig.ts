@@ -60,6 +60,23 @@
  * they are reviewable at the one place the two repos meet, and getting them
  * wrong throws.
  *
+ * NOT A GAP, THOUGH IT LOOKED LIKE ONE: the provider tree. `App` renders a
+ * fixed one, and a config object cannot express a provider tree, so the
+ * obvious reading is that a deployment with providers of its own needs a
+ * composition seam here — a `children` slot, a render prop, a list of
+ * providers to interleave. It was checked rather than assumed, and the four
+ * providers and components that prompted the question turned out to name no
+ * deployment, no deployment's vocabulary, and no table this schema lacks.
+ * Every one was a generic behaviour this side was simply missing, and each
+ * has now landed here: the slug-to-service resolver, the scenario-switch
+ * collapse, the write-failure notice and its store. A seam invented for that
+ * difference would have had exactly one user and would have been holding a
+ * difference that was not one. If a real fork in the tree ever appears, the
+ * argument for a seam has to be made again on its own evidence — this is not
+ * a precedent that the tree can never need one, only a finding that it did
+ * not need one here. `App.tsx` carries the order the two trees settled on and
+ * the reasoning behind each position.
+ *
  */
 import { ORG_NAME } from './config'
 

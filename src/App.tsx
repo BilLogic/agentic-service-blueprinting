@@ -21,6 +21,49 @@ import { queryClient } from '@/lib/queryClient'
  * defaults; mounted by an external deployment it takes a `DeploymentConfig`
  * that skins the tree from the outermost level down. Both the named export
  * (for a host) and the default export (for `main.tsx`) resolve to this.
+ *
+ * ── THE ORDER OF THE TREE, AND WHY IT IS THIS ONE ─────────────────────────
+ *
+ * Written down because it was not obvious, and because two installations had
+ * quietly settled on two different orders. Almost none of these providers
+ * consume one another — every one of them reads React context from outside
+ * this file or from nothing at all — so the tree has very few FORCED edges
+ * and a great many arbitrary ones, which is exactly the condition under which
+ * an order drifts and nobody notices.
+ *
+ * The forced edges, all of them:
+ *
+ *   - `QueryClientProvider` and `SupabaseProvider` above the three reading
+ *     providers (active service, entity examples, touchpoint registry).
+ *     `useSupabaseQuery` reads both; without either it has no client and no
+ *     cache.
+ *   - `PathSelectionProvider` above `ScenarioPathSelectionReset`, which throws
+ *     outside it, and `EditorProvider` above it too — that read is null-safe,
+ *     so out of place it would not throw, it would simply never fire.
+ *   - `EditorErrorBoundary` NOT above `WriteFailureNotices`. See its comment
+ *     below; this is the one edge in the tree that is a behaviour rather than
+ *     a wiring requirement.
+ *
+ * Everything else is settled by band, outermost to innermost:
+ *
+ *   1. The DEPLOYMENT SEAM. `DeploymentConfigProvider` is outermost because
+ *      every band below may be skinned by it and none of it may be skinned
+ *      half way down.
+ *   2. INFRASTRUCTURE — the query cache, the theme, the database client.
+ *      Nothing here renders anything the reader sees.
+ *   3. SHARED READS — the active service, then the two session-wide reads
+ *      that hang off it. One query each, cached and shared by everything
+ *      below, which is the whole reason they are providers rather than hooks
+ *      at the call sites.
+ *   4. INTERACTION STATE — the editor, the view state, the path selection.
+ *      What the reader is looking at and what they have chosen.
+ *   5. PRESENTATION — the tooltip delay, then the boundary and the shell.
+ *
+ * The rule that decides the arbitrary edges is that a band may read the bands
+ * outside it and never the ones inside. Read top to bottom, the tree goes from
+ * what is true of the whole installation to what is true of this moment on
+ * this screen. When something new needs a home, place it in its band; if it
+ * belongs to two, it is doing two things.
  */
 export function App({ config }: { config?: DeploymentConfig | null }) {
   return (
