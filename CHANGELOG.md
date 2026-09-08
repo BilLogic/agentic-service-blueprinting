@@ -1,5 +1,567 @@
 # Changelog
 
+## 1.12.10
+
+### Patch Changes
+
+- 3ab0896: The rename map says which name became which, and a fold says its destination
+  once. `scripts/retired-vocabulary.mjs` recorded each rename as a `was` array
+  beside an `is` array, which reads positionally because nothing else is on
+  offer — and two parallel arrays cannot express a fold, which is the commonest
+  kind of rename.
+
+  The path-kind row is where that told a lie. It said `unhappy` / `alternative`
+  on one side and `exception` / `variant` on the other, so the map claimed
+  `unhappy` became `exception`. `21000116000000` runs one statement —
+  `set kind = 'variant' where kind in ('unhappy', 'alternative')` — and both
+  spellings landed on `variant`. `exception` already existed, carries "this went
+  wrong", and was never a destination; the migration's own note says so. The row
+  had been carried across from the deployment's map, where the same pair is
+  correct, because that database's `20260821220000` really did send `unhappy` to
+  `exception` and `alternative` to `variant`. Two histories, one row, and nothing
+  holding either against the SQL that ran.
+
+  The map is a list of PAIRS now. Each retired name says where it went, several
+  may name the same destination, and a name that was dropped rather than renamed
+  says `null` and why. `kept` is the other half of a fold and the half the old
+  shape had nowhere to put: a value that already existed on the column, kept its
+  own meaning, and was never landed on. `was` and `is` are derived from the
+  pairs, so the two lists cannot drift from them or from each other.
+
+  Two more rows were reading wrong under the same shape. The placement row paired
+  `cell_touchpoints.screenshots` with `resources.kind`, and no screenshot ever
+  became a kind — every url and every screenshot is copied into `resources.url`,
+  and `kind` is what tells a link from an attachment afterwards. The design
+  system's row implied `pill` became `badge` and `chip` became `tag`; neither
+  word maps onto one, which is why the deployment's own `coverContent.chip`
+  became `commandCopy`. Both now say what happened.
+
+  Three readers had inherited the positional guess and no longer do:
+  `value-set-claims`, which is what tells an author what a retired value became;
+  `check-database-names`, which names the replacement in its failure; and
+  `check-instance-vocabulary`, which keeps the old reading only for the
+  instance's map, whose shape offers nothing else.
+
+  `scripts/tests/the-map-is-what-the-sql-did.test.mjs` is the guard. It reads
+  each row's migrations down to their top-level statements — comments and
+  dollar-quoted bodies removed — and asks whether the `update` or `rename` that
+  would perform each pair is there. A pair no single statement performs carries a
+  `because`, and the excuse is held to being true: declaring one on a pair whose
+  statement is in the file fails. Nothing in it counts anything, so a rename
+  added tomorrow is checked tomorrow without the file changing. Its header
+  records what it cannot see — it proves a statement was written, not that it
+  took effect, which is `check:identifiers` against a live catalogue.
+
+- cbdbe4b: A lane is a row of the board again, and a layer is everything else. The rename
+  that moved the table `layers` to `lanes` was carried into the prose by word
+  replacement, so every sentence using `layer` in one of its ordinary senses came
+  out saying `lane`. An earlier pass restored eleven of them. Ninety more had
+  survived.
+
+  The cover page was the one a reader met: "All four sit on one shared context
+  lane" printed two entries above the same file defining `lane` as "One actor
+  across the whole journey". The README said it twice more, once in a figure's
+  alt text.
+
+  Behind that, the damage ran in families rather than in scattered lines, which
+  is why counting occurrences under-reported it. The **boot layer** — the opaque
+  cover the sidebar draws over itself while the canvas stages — was called a
+  lane in twenty-two places across the shell, the skeletons, four panels and
+  five test names, in a file whose own paragraph two lines up says "The boot
+  skeleton is an OPAQUE LAYER over the whole sidebar". The **canvas reveal's**
+  rungs, which open one after another on `transitionend`, were lanes in fifteen
+  more; the board's actual lane rows fade in at rung one, so both words were
+  correct in that comment and only one of them was in the right place. The
+  **chrome layer**, the **compositing** boundary WebKit will not resolve across,
+  the agent runtime's **tool layer**, the design system's **token tier**, and
+  Figma's **layer tree** account for the rest. Outside `src`, the same replacement
+  turned a note recording a past rename into `` `lane-roles` -> `lane-roles` ``,
+  a rename to itself.
+
+  Two bindings were renamed rather than reworded. `getLaneScale`, `laneRef` and
+  `laneInteractive` in the annotation layer, and `laneElement`/`laneRect` beside
+  them, name a handle on one element — which is a layer; a lane is a row of data
+  drawn by many elements across the whole width of the board and has no single
+  element to hold. Nothing reaches them by string, so the compiler carried the
+  rename; the DOM contract `[data-canvas-annotation-layer]`, which IS addressed
+  by string, already said layer and is untouched. The second was worse hidden:
+  the arrow overlay's prop was declared `lane: ArrowLayer` and compared against
+  `'forward'` and `'wrap'` on `z-0` and `z-30`, so one file used `lane=` for a
+  stacking layer and for a board row seventy lines apart.
+
+  Where a sentence is true under either reading it was left alone. Ten comments
+  in the reveal code say "lanes" about the board and stay that way, including
+  "phase frames + lane structure" one comment above six that had to change.
+
+  ## The guard, which is the part that lasts
+
+  `scripts/tests/a-lane-is-not-a-layer.test.mjs` asserts that nothing called a
+  lane is a layer, over every scanned file, **comments included**. That inverts
+  the sibling check next door, whose header says prose may use an English word
+  and a name may not misuse one. That rule is right for a word the domain does
+  not own; `lane` is this vocabulary's own word, so here the damage IS in the
+  prose, and a guard reading names only would have found three of ninety.
+
+  It decides by the company the word keeps. A lane is a row of the board: it is
+  not composited, it does not stack, it is not a rung of an animation and it is
+  not a tier of software. So `lane` may not stand in the vocabulary of the
+  cascade, of paint, of stacking or of an architectural tier. Every pattern names
+  a concept rather than a site — "boot lane" is forbidden because a row of the
+  board does not boot, not because twenty-two files said it, and the check has no
+  idea how many exist.
+
+  Four cheaper shapes were tried against the whole tree first and are recorded in
+  the header so the next person does not re-derive them. Position does not
+  separate the senses: in one stylesheet, forty of the forty-four correct uses
+  are in comments and so are all nine wrong ones. A per-file sense declaration
+  fails one level up, because ninety-one of the hundred and eighty-nine files
+  that use the word hold no lane identifier at all and still discuss lanes
+  correctly, and the three worst-hit files carry both senses, one of them inside
+  a single sentence. The pre-rename tree is not an oracle either, though it
+  settled a dozen calls: before the rename `layer` was BOTH words, the schema's
+  name for a row and the stacking sense, so only its negative direction is
+  sound. And an allowlist of modifiers is unbuildable, because what precedes
+  "lane" in this tree is overwhelmingly determiners and ordinary adjectives.
+
+  What it cannot see is stated in its header rather than hidden. Measured against
+  the sentences actually repaired, the patterns catch a little under half; the
+  rest are anaphora — a paragraph naming "the boot layer" once and saying "the
+  lane" four sentences later. No line-local rule reaches that, and resolving it
+  needs a parser and a model of the paragraph. What makes the limit tolerable is
+  that anaphora does not arrive alone: the paragraph almost always names the
+  thing once, and naming it is what trips the check.
+
+  The residue sweep beside it gained the fix for a blind spot it had all along. A
+  `semantic lane` had been sitting in the customization reference since the
+  rename, invisible because the phrase WRAPPED — "so the whole semantic" ended
+  one line and "lane renders greyscale" began the next, and a per-line test
+  cannot see a phrase no line contains. It now reads each line joined to the one
+  after it, with the continuation's comment marker stripped, and reports only
+  matches that genuinely straddle the boundary so a wrapped paragraph is not
+  blamed twice.
+
+  `CONTEXT.md` now defines **layer** — as explicitly _not_ a domain word, which
+  is the entry that was missing. The glossary is what the next sweep checks
+  itself against, and the word this vocabulary keeps colliding with had no entry
+  in it.
+
+- 3721967: A row shape pinned in prose is checked against the schema.
+
+  `agents/auditor.md` tells a model exactly which keys to produce for a findings
+  row, and `audit_tools.py` validates against that shape. When `21000116000000`
+  renamed `check_name` to `check_key` and `note` to `summary`, the document went
+  on asking for the old two — a call the validator raises `KeyError` on, arriving
+  as the model being wrong rather than the prose being stale.
+
+  `npm run check:pinned-shapes` binds a fenced block to a relation and holds its
+  keys against `supabase/generated/portable-core.schema.sql`, both directions: a
+  key that is not a column, and a required column the shape never names.
+
+  The binding is per fence and deliberately short. Three of the four fenced
+  blocks in `agents/`, `skills/` and `references/` document an agent's own output
+  or a workspace state file rather than a database row, so treating every fenced
+  key as a column would be wrong three times in four. Binding to a relation is
+  also what makes `note` catchable at all: it is a live column on `paths`,
+  `scenarios` and `cell_dependencies`, and wrong only here.
+
+- aa2b358: ADR 0007 says "boot layer" where the rename had left "boot lane", and main is green again.
+- b6840ca: Any image worth looking at now opens, and once open it behaves like an image
+  viewer.
+
+  An image in this app used to be either too small to read or not openable at
+  all. A cover figure authored at 880px is shrunk to the prose measure, so the
+  labels inside it are legible in the source file and not on the page. A
+  storyboard frame in a detail stack is a picture of a real screen at a size
+  where a reader can see that something is written on it without being able to
+  read a word. A screenshot attached to a cell rendered at whatever the panel's
+  column allowed, and a featured attachment — the one picture a placement chose
+  to lead with — got a thumbnail and no way past it.
+
+  Click any of them and the image fills the screen, fit to the viewport. From
+  there the wheel or a trackpad pinch zooms toward the cursor, a click toggles
+  between fit and the stop above it, and dragging pans once past fit. On a
+  phone, pinch and drag do the same work. The cursor says which of those is
+  available, so the gestures do not have to be found by accident. Closing is
+  unambiguous and never a dead end: click the surrounding margin, press Escape,
+  or use the corner button that stays visible at every scale. A click on the
+  image itself never closes, because the image is now the thing being operated.
+
+  Where a picture has siblings — the row of lane frames in a storyboard stack,
+  several screenshots on one cell — the viewer steps between them with the
+  arrow keys, on-screen buttons, or a horizontal swipe, and a counter says which
+  one of how many is showing. Each step returns to fit, so no sibling arrives
+  already scrolled to a corner of the last one.
+
+  Two pictures deliberately stay shut. Logos and logomarks are iconography
+  rather than content, and a brand mark that opened fullscreen would teach the
+  reader that the openable affordance is decoration. The storyboard's horizontal
+  layout is only ever drawn inside the walkthrough deck, which already binds the
+  arrow keys and Escape on the window — a viewer inside it would fight the deck
+  for all three. Those frames open in the vertical stack instead, so nothing
+  becomes unviewable.
+
+  Nothing about the data model moves. A frame has no caption anywhere in the
+  schema and did not get one for the sake of a label: an opened cell screenshot
+  is named by the cell's own content sentence, which is what the picture shows.
+
+- 161326e: The components that composed role colour by hand now ask for a job. Five files
+  stop reaching past the semantic tier into a ramp step, which leaves the stepped
+  role ramps with no consumer in the tree at all.
+
+  **`alert.tsx` is the case the vocabulary was minted for.** It drew one job with
+  two mechanisms, because two of its four status roles had a numeric ramp and two
+  did not: destructive and warning took a 400 edge on a 200 surface, while info
+  and success drew the same idea as the fill at fifteen percent alpha. Both are
+  `--surface-{role}` and `--border-{role}` now, the filled icon square is the
+  role's own fill with its own on-colour, and the four variants read as four
+  values of one recipe rather than as two recipes that happen to agree.
+
+  **The swap is invisible where it was engineered to be.** The role edge was
+  retargeted to sit one step off its own tint precisely so this change would not
+  turn a hairline into a rule around the box. Measured per site, in both themes,
+  the alert border moves from 1.29, 1.21, 1.34 and 1.30 to one against its tint —
+  destructive and warning, light then dark — to 1.28, 1.27, 1.22 and 1.24. The
+  band the ramp steps drew, held by a derivation instead of by four literals.
+
+  **Two things move on purpose, and both are legibility.** The alpha tint could
+  not hold an edge at all: composited on itself in dark, the info and success
+  borders measured 1.01:1 and 1.03:1 — a border that was not there. On the opaque
+  tint they measure 1.23:1 and 1.27:1, inside the band with the other two. And
+  the icon square used to write the role's TINT as the glyph colour on the role's
+  own step-600 fill, one colour on another: 2.96:1 for warning, 5.18 for
+  destructive in light. The fill's on-colour is what that job is for, and it
+  reads 6.89 and 5.74, with all four status roles clearing 4.4:1 in both
+  themes.
+
+  **The tinted warning badge changes visibly, and it is the one place to look.**
+  Its ink was a ramp step chosen for being the least illegible option available —
+  2.8:1 in light, 5.2:1 in dark, and the comment beside it said so. There is no
+  job name for a middle of a scale, because a middle of a scale is what this
+  vocabulary exists to stop naming. The ink is now the ink for a colour sitting
+  on its own tint, at 13.1:1 and 9.2:1, and the ground under it is the opaque
+  tint rather than a ten-percent wash — which is what gives any of those numbers
+  a ground to be measured against. Amber body copy becomes a dark amber word on a
+  pale amber tint. Every badge with `variant="warning"` moves with it.
+
+  `StatusBadge` was one of the call sites re-deriving that shape out of a tint and
+  an edge; it asks for the variant now. Its word goes from `--foreground` on the
+  tint, at 20:1, to the role's own ink at 13:1 — ordinary copy on a coloured
+  badge becoming a word that carries the status itself.
+
+  **A measurement the vocabulary should answer for.** `--surface-{role}` is
+  derived from the page, so on a card it is nearly invisible in dark: 1.02:1
+  against `--card` for all seven roles, where the card itself sits 1.09:1 off the
+  page. Every tinted surface in this change inherits it, and the role's edge is
+  what carries the shape there. It is a property of the derivation rather than of
+  these call sites, and it is the same in light only because card and page nearly
+  coincide there.
+
+  No token is deleted and no Tailwind registration is removed. The stepped ramps have no call site
+  now, which is the precondition the deletion pass was waiting on.
+
+- fc48367: `create_slice` and `update_slice` now advertise the argument they read.
+
+  Both declared `description` and read `summary`. Nothing connected the two:
+  `specs.ts` builds a JSON schema out of string literals and `registry.ts` reads
+  `args['summary']` out of a `Record<string, unknown>`, so both files typecheck
+  no matter what they say. A model that filled in the field the schema offered
+  created a slice with an empty summary and was told it had been created.
+  `update_slice` failed worse — it kept the old summary and reported success, so
+  an edit meant to change the text changed nothing.
+
+  The schema now offers `summary`, which is the column it writes. The handler
+  still reads `description` as well, so a model taught the old wire keeps the
+  word that used to be dropped rather than losing it a second time.
+
+  The general form is now checked. `scripts/tool-arguments.mjs` reads both files
+  and compares argument names per tool, in both directions: an argument declared
+  and never read is the silent drop, and one read and never declared is an
+  argument a model can only send by accident. Aliases are listed with a reason
+  and only ever excuse the second direction — a name the schema knows and the
+  handler does not is the defect itself, so there is no way to excuse one.
+
+- bf59efa: A cell panel's slice footer shows a skeleton while the slices load, instead of appearing after them and pushing the panel.
+- c880fd7: The path classifier is spelled `kind` everywhere, not `type` in half the names.
+
+  `20260830190000` folded the schema's classifiers onto one word: `paths.path_type`
+  became `paths.kind`. The type followed — `PathKind` was already the spelling in
+  every file — but the constants, the theme module and seven camelCase members did
+  not, so one concept was spoken about in two words that a reader had to learn were
+  the same.
+
+  Renamed: `PATH_TYPE_COLORS`, `PATH_TYPE_ARROW_COLORS`, `PATH_TYPE_LABELS`,
+  `PATH_TYPE_SHORT_LABELS` and `BLUEPRINT_ARROW_PATH_TYPES` onto `KIND`;
+  `src/lib/pathTypeTheme.ts` to `pathKindTheme.ts`; and `showPathTypeBadge`,
+  `shouldShowPathTypeBadge`, `getPathTypeSectionBorderStyle`,
+  `isGenericPathTypeName`, `getPathTypeSuffixIfNeeded`, `defaultPathTypeMarkerIds`
+  and `defaultPathTypeMarkerColors` with them. `PathTypeBadgeProps` and
+  `PathTypeColorKeyProps` sat inside files already named `PathKind*`.
+
+  `pathColorTheme.ts` is untouched — "path colour theme" carries no classifier
+  word. Nor is `path_type` where it names history: `paths_path_type_check` is the
+  constraint's real name, and the rename map and the IR migration script have to
+  be able to say the retired word to retire it.
+
+  Behaviour is unchanged; every renamed symbol keeps its value and its callers.
+
+- 4565a50: Every coloured role now offers the same seven names, so an author picks a
+  colour by naming the job rather than by reading a number off a ramp.
+
+  Seven roles — `primary`, `brand`, `warning`, `destructive`, `info`, `success`,
+  `secondary` — and seven names each. The fill (`--{role}`), ink on that fill
+  (`--{role}-foreground`), the resting tint (`--surface-{role}`), ink on that
+  tint (`--text-on-surface-{role}`), role ink on the neutral page
+  (`--text-{role}`), the edge (`--border-{role}`) and the transient state
+  (`--wash-{role}`). Roughly seventeen of the forty-nine existed; this fills the
+  rest and publishes a Tailwind utility for each.
+
+  **What a reader sees change.** Almost nothing, and that is deliberate: this is
+  the expand half of a migration, so the new names land beside the old ones and
+  the call sites move separately. Two things do move on screen.
+
+  The info and success alerts are the only live consumers of a role border, and
+  theirs becomes solid: the fill at thirty percent alpha drew a different colour
+  on every ground it crossed, which is why components reached past it for a ramp
+  step. It is also quieter. A role border is not what identifies a control or its
+  state — the tinted surface and the filled icon square carry the variant, and
+  the edge can go without the alert becoming unreadable — so the target is the
+  interval this system's recipe uses rather than the 3:1 a required boundary has
+  to clear. That recipe puts a role border one step off the surface it edges,
+  which across its own four alert variants measures 1.21:1 to 1.34:1. Every role
+  here lands between 1.22:1 and 1.28:1 against its own tint, in both themes. On
+  the ground those two alerts draw on today the edge measures 1.23:1 and 1.19:1
+  in light, against 1.45 and 1.43 for the alpha it replaces; in dark it measures
+  1.09 and 1.08 against 1.67 and 1.88, because those two still tint with
+  `bg-{role}/15`, which sits lighter than `--surface-{role}`. That gap closes
+  when the call sites move onto the tint.
+
+  And `--border-brand` was derived from the primary fill while brand had no fill
+  of its own; it is derived from `--brand` now, which is the colour its name
+  always claimed. Nothing consumes that one yet.
+
+  Everything else holds exactly: every custom property under `src/styles`,
+  resolved in both themes, with no value moved except those five borders.
+  Seventy-two names arrive and twenty leave, and the twenty are the brand ramp
+  and nothing else.
+
+  **What an author gets that did not exist.** A name for role ink on a neutral
+  ground. `text-destructive` is written at about twenty call sites, all of them
+  on the page rather than on a tint, and it resolves to the solid fill — a
+  colour tuned for ink to sit on top of it, never measured as ink. `--text-role`
+  is that measurement: 8.4:1 to 13.5:1 against the page across both themes. A
+  resting tint for every role, so nobody hand-composes `bg-success/10` at the
+  call site again. And a transient wash distinct from the tint, so hover does
+  not reuse the surface it sits on.
+
+  **Brand becomes two dials, and the ramp goes.** `--brand-lightness` and
+  `--brand-chroma` sit in both theme files beside the primary pair, and `--brand`
+  derives from them. Rebranding used to mean re-typing a seven-step lightness
+  curve per theme; it is two numbers now.
+
+  So the ramp goes with it — `--color-brand-100` through `-1200`, the
+  `--brand-200..600` literals in both theme files and in the print block that
+  restated them, `--brand-default`, and `--color-brand-link`. Nothing outside
+  those declarations read any of them, here or in the deployment that pins this
+  package, so nothing on screen moves. It is a rule and not a tidy-up: a
+  primitive family is named for its hue — amber, violet, teal — because the hue
+  is all it knows about itself, and a family named for a ROLE cannot follow an
+  accent, which is exactly what a rebrand asks of it. The role keeps its name in
+  the semantic layer, where the value is derived.
+
+  `brand-link` had no consumer either, and the job it named already has a derived
+  name: role ink on a neutral ground is `--text-brand`. Deleting it is cheaper
+  than deriving a colour nobody has asked for and nobody would measure.
+
+  `bg-brand` renders the colour it always has — #7e7e7e in both themes here,
+  since the lightness dial is the OKLCH lightness the anchor step carried. With
+  the ramp gone there is no step left to compare it against, so the rule that
+  claimed it becomes the derivation instead: the fill is the accent at the two
+  brand dials, on the one hue the filled control also runs on.
+
+  Every one of the new names is derived from the role's own accent, and none
+  aliases a hue primitive. Status hues are pulled a fraction toward the brand and
+  then clamped to their category, so a re-branded deployment's warning still
+  reads as a warning; a fixed ramp cannot follow an accent, and aliasing one
+  would have deleted that mechanism. The ramps stay for categorical colour —
+  lane identity, path variants, annotation swatches — which carries no meaning
+  and correctly reaches the primitive layer.
+
+  The contrast claims are measurements rather than assertions. The token model
+  learned to resolve a declaration to a colour — `calc`, `clamp`, relative colour
+  syntax, both alpha spellings — so a rule reads what the cascade produces
+  instead of restating the arithmetic in TypeScript beside it. Every floor was
+  re-measured with the accent, chroma and hue a branded deployment ships, and
+  holds there too.
+
+  Completeness is an invariant, not a census: the rule is driven off the role
+  list, so adding an eighth role covers it automatically and fails until all
+  seven of its names are declared and registered.
+
+- 2afde98: The documents an agent reads call the findings table by its name.
+
+  `21000116000000` renamed `findings` to `audit_findings`. Twelve places across
+  `CONTEXT.md`, the two reference contracts, both audit-writing skills and the
+  whatif change-request schema went on naming the old table — and one of them,
+  the adapter contract's column-scoped UPDATE list, still named `note` for the
+  column that is now `summary`.
+
+  Three occurrences deliberately keep the old word, because each names the past
+  rather than the schema: the migration-history row for
+  `20260729120000_derived_layer.sql`, which created a table called `findings`;
+  the sentence in `docs/engineering/checks.md` explaining the rename itself; and
+  `recordFindings`, whose port really is called `findings` in `ports.ts`.
+
+- fc48367: The findings-row shape in `agents/auditor.md` names the columns it writes to.
+
+  It said `check_name` and `note` while claiming to be "the same shape
+  `audit_tools.py --help` documents", two renames after `21000116000000` made
+  those `check_key` and `summary`. An auditor following the document to the
+  letter produced a row `audit_tools.py` raises `KeyError: 'check_key'` on.
+
+  `findingFingerprint`'s parameter and the findings row in
+  `references/data-model.md` carried the same two retired words.
+
+  Shipped in #289 without a changeset; recorded here.
+
+- db56975: The warning and destructive ramps are gone, and the shape that let them exist
+  is now checked rather than described.
+
+  Two roles carried a five-step ramp of raw HSL triples — `--warning-200`
+  through `--warning-600` and the same for `destructive` — declared in both
+  theme files and restated a third time inside the print block, so a reader
+  looking one up found three declarations of it. A sixth token,
+  `--destructive-default`, sat beside them: named for a POSITION on that ramp
+  rather than for a job, identical in both themes, and read by nothing at all.
+  The components that used to reach for these ask for a job now, so all thirty-
+  two declarations are deleted.
+
+  Ten more lines went with them, and those are the ones that could only be
+  removed here. `theme.css` registered every step into Tailwind's colour
+  namespace as `--color-warning-200: hsl(var(--warning-200))`, which is the
+  entire reason `bg-warning-200` and `border-destructive-400` were ever legal
+  classes. The hue primitive families stay: they are the right home for colour
+  that carries no meaning, and this template ships them neutral as its brand
+  seam. A ramp named for a ROLE is a different thing, and it was living in the
+  dial file as raw literals — two tiers below where a meaning belongs.
+
+  **Nothing renders differently.** The compiled stylesheet was built from the
+  tree before and after and diffed: three hunks, one per site that declared the
+  ramps, removing exactly those thirty-two declarations and no other byte. The
+  registrations produced no output to begin with — `@theme inline` emits no
+  custom property, it only tells Tailwind a name exists — and the compiled sheet
+  contained no `.bg-`, `.text-`, `.border-` or `.ring-{role}-{step}` selector
+  before the change either, because nothing was writing one.
+
+  ## The guard, which is the part that lasts
+
+  Deleting the registrations fixes today and does nothing about tomorrow: the
+  next person can add them straight back. `src/styles/theme.shape.test.ts`
+  asserts the shape of EVERY colour entry in that file, so a registration added
+  next quarter is checked next quarter without the test changing and without it
+  knowing how many entries there are or what any of them is called.
+
+  A colour registration is one of exactly two things. It is a **namespace
+  declaration**, `--color-X: var(--color-X)` — self-referential on purpose, so
+  the name exists and its value resolves in `colors.css`; the hue families are
+  204 of these. Or it is an **indirection**, `--color-X: var(--Y)` where `--Y` is
+  a semantic token: one bare `var()`, no function wrapped round it, no fallback
+  arm, nothing beside it, and no declaration of `--Y` in the dial or primitive
+  layers. There are 99 of these. `hsl(var(--warning-200))` fails the first half
+  of that; `var(--warning-200)`, which is what unwrapping it by hand produces,
+  fails the second. Both halves are needed, because the second shape is what a
+  plausible repair looks like.
+
+  The rule reads the token model rather than opening the stylesheet, which the
+  decision that one token model is the single style seam already asks of any new
+  rule — and which matters concretely here, since two declarations in this file
+  wrap across lines and a per-line sweep cannot tell a declaration from the same
+  characters inside the paragraph above it.
+
+  Three cheaper rules are recorded in the header so the next person does not
+  re-derive them. A list of forbidden names is a census: true of the ten lines
+  that prompted it, silent about the eleventh. "No `hsl(` on the right" catches
+  the exact wreckage and nothing adjacent — `rgb(`, `oklch(`, `color-mix(` and a
+  bare hex literal all walk past.
+
+  The third is the interesting one, and it is a finding rather than a rejected
+  sketch. "No numeric suffix on the left" was the form the rule was first
+  proposed in, and 204 legitimate entries carry one — every step of every hue
+  family — so the rule as stated would condemn the layer it was written to
+  protect. The number was never what was wrong. `--color-amber-100` is a
+  position on a ramp and is supposed to be; what was wrong with
+  `--color-warning-200` is that a ROLE is a meaning, and a meaning has jobs
+  rather than positions. The five chart-series keys settle it: numbered, not
+  self-referential, flagged by a digit rule, and entirely correct — their number
+  is a series identity, they point at semantic tokens, and they compute nothing.
+  Asking about reach and shape instead of digits covers all of it with no
+  exception list at all.
+
+  What the rule does not claim is stated in its header rather than hidden. The
+  subject is the colour namespaces; the radius ladder's `calc()` rungs are
+  a real derivation it is meant to have, and the literal measures beside them
+  are a different question. A colour namespace not containing the word
+  `color` — Tailwind's `--fill-*` and `--stroke-*` — is outside the pattern; this
+  file registers none today.
+
+  A deployment that has forked this template carries the same declarations in
+  its own theme files and print block. They are unread there too, and they go
+  when it takes this change.
+
+- 1eb250d: The step panel's lane frames now open, and step to one another in lane order.
+
+  A step panel draws one frame per lane — the same moment as each actor saw it,
+  side by side in a row that exists to be compared. Until now that row was the
+  one place in the app where the pictures were smallest and the least openable:
+  each frame is 128px wide at 4:3, which is enough to see that a screen has
+  something written on it and not enough to read a word of it. The image viewer
+  had already been wired to the cover figures, the featured resources, the
+  storyboard detail stack and the cell panel's screenshots; this row was the
+  motivating case for the whole feature and was the one still left inert.
+
+  Click a frame and it fills the screen, fit to the viewport, with the same
+  gestures every other openable image has. From there the arrow keys, the two
+  on-screen buttons or a horizontal swipe walk along the row — the same moment,
+  the next actor — and the counter says which of how many. Each step returns to
+  fit, so no lane arrives already scrolled to a corner of the last one, and
+  stepping wraps at both ends because a row of three actors is something a
+  reader cycles rather than traverses.
+
+  The row is handed to the viewer as an ordered array plus the index of the
+  frame that was clicked. It is not discovered by scanning the container, and
+  the distinction is the point of this change rather than an implementation
+  detail: the order of these frames is lane order, and lane order is what makes
+  stepping mean anything. A scan would reproduce it today and only by accident,
+  until the day a wrapper element or a CSS reorder quietly rearranged it and the
+  viewer went on claiming to walk the lanes.
+
+  Each frame's accessible name is its lane's, the caption already printed under
+  it. No field was added to any record to supply one: a frame carries no caption
+  anywhere in the schema, and what the picture shows is the moment the panel's
+  summary already describes — the lane only says whose view of it this is.
+
+- 604a780: A blueprint cell's lane rule states five properties, not seven:
+  `--background-blueprint-cell-origin` and `--ring-blueprint-cell-soft` are gone,
+  because neither carried a value of its own.
+
+  Both had readers, which is what made them look real. The button's `blueprint`
+  variant chained through `-origin` on its resting and hover fills and through
+  `-soft` on all three of its ring, border and pressed-ring colours, and the
+  board's preview-hover and connected-emphasis rules read one apiece. But every
+  link in every one of those chains was a `var(name, fallback)`, and the fallback
+  was the twin: `-origin` falling through to `--background-blueprint-cell`,
+  `-soft` to `--ring-blueprint-cell`.
+
+  So the question was only ever whether some role gave a twin a different value.
+  Measured through the token model across all sixteen role blocks — nine lanes
+  and seven touchpoint tones — in both themes: sixteen of sixteen identical for
+  each pair, textually and as resolved sRGB. Every chain resolves to the same
+  colour with the two names absent and the fallback taken, so nothing on the
+  board changes.
+
+  Two names for one value is what one authored accent per role exists to remove,
+  and the same deletion already stands in the deployment this design system is
+  shared with. The lane rule now reads the same in both.
+
 ## 1.12.9
 
 ### Patch Changes
@@ -891,8 +1453,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                              ERROR: new row for relation "lanes" violates check constraint
-                              "lanes_lane_role_check" … compliance_review
+                                ERROR: new row for relation "lanes" violates check constraint
+                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
