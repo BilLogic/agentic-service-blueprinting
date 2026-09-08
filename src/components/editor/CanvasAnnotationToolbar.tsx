@@ -248,7 +248,7 @@ function DrawSubpanel() {
   )
 }
 
-/** Floating tool palette for the annotation lane — tool, stroke weight, colour, clear. */
+/** Floating tool palette for the annotation layer — tool, stroke weight, colour, clear. */
 export function CanvasAnnotationToolbar() {
   const { tool, setTool } = useCanvasAnnotationTool()
   const { annotations, clearAnnotations } = useCanvasAnnotations()

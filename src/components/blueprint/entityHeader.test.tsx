@@ -293,7 +293,7 @@ describe('the bar arrives with the shell around it', () => {
     was the one nobody was waiting on.
 
     What is asserted is the beat, not the mechanism: given an answered query,
-    whether a name is on screen depends on the shell's lane.
+    whether a name is on screen depends on the shell's layer.
   */
   const ready = (
     <EntityHeader
@@ -305,14 +305,14 @@ describe('the bar arrives with the shell around it', () => {
     />
   )
 
-  it('holds an answered query behind the shell’s boot lane', () => {
+  it('holds an answered query behind the shell’s boot layer', () => {
     setShellBooting(true)
     renderWithEntityDetail(ready)
     expect(skeleton()).not.toBeNull()
     expect(screen.queryByText('Home Retrofit')).toBeNull()
   })
 
-  it('and shows it the moment that lane lifts', () => {
+  it('and shows it the moment that layer lifts', () => {
     setShellBooting(true)
     renderWithEntityDetail(ready)
     act(() => setShellBooting(false))
@@ -320,7 +320,7 @@ describe('the bar arrives with the shell around it', () => {
     expect(screen.getByText('Home Retrofit')).not.toBeNull()
   })
 
-  it('keeps skeletoning when the lane lifts first and the query has not answered', () => {
+  it('keeps skeletoning when the layer lifts first and the query has not answered', () => {
     // The other order. Whichever wait is longer is the one the reader sees.
     setShellBooting(true)
     renderWithEntityDetail(<EntityHeader kind="service" status="loading" />)
@@ -328,7 +328,7 @@ describe('the bar arrives with the shell around it', () => {
     expect(skeleton()).not.toBeNull()
   })
 
-  it('waits on the query alone where no shell publishes a lane', () => {
+  it('waits on the query alone where no shell publishes a layer', () => {
     // The mobile shell, and this file's every other render. A bar with
     // nothing to wait for must not wait forever.
     renderWithEntityDetail(ready)

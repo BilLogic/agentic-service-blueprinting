@@ -1658,7 +1658,7 @@ let activeMeasurementPass: MeasurementPass | null = null
  * Wrapping an update in a pass makes each element measured exactly once for the
  * duration. Safe because a pass only ever reads layout — nothing inside mutates
  * the DOM, so no cached box can go stale mid-pass. Passes nest (the two arrow
- * lanes each run their own) and a pass that sees a different root than the one
+ * layers each run their own) and a pass that sees a different root than the one
  * it started on drops its caches rather than mixing two coordinate spaces.
  */
 export function runArrowMeasurementPass<T>(run: () => T): T {

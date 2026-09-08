@@ -136,7 +136,7 @@ export function PhaseOverviewPhaseLoopArrow({
 
   return (
     <svg
-      // Arrow lane (stage 4), same as every other connector.
+      // Arrow layer (stage 4), same as every other connector.
       data-blueprint-arrows=""
       // Structural connector: above board content, but below title badges,
       // edit chrome, and the z-60 annotation surface. Sharing z-60 with

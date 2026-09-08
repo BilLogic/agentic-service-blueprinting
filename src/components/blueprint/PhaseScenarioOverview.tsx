@@ -67,7 +67,7 @@ function PhaseScenarioConnector({ width }: { width: number }) {
       aria-hidden
     >
       {/*
-        The reveal's arrow lane (stage 4). This connector was the one
+        The reveal's arrow layer (stage 4). This connector was the one
         untagged link on the board: it draws BETWEEN scenario panels, so it
         sits in the phase's flex row rather than inside either panel's
         blueprint, and it was surfacing with the lanes at stage 1 — an arrow

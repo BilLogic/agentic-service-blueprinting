@@ -160,7 +160,7 @@ export function PanelDrawerShell({
   // the AgentDock docked/floating precedent; the reconciliation guarantee
   // above (same tree position) holds in both postures.
   const mobile = useMobileShell()
-  // The shell's boot lane. A panel opened by a deep link otherwise
+  // The shell's boot layer. A panel opened by a deep link otherwise
   // lands before the sidebar, the bar and the canvas it sits over. This is a
   // hold on WHEN, never a second opinion on WHETHER: `open` keeps its single
   // owner upstream, and a drawer that has not opened yet has nothing to

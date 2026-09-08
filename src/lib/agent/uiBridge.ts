@@ -3,7 +3,7 @@ import { resolveActiveFocusCells } from '@/lib/canvasFocusCells'
 /**
  * The agent's hands on the UI itself — camera and navigation, not data.
  * The shell registers the editor's navigation callbacks here so the tool
- * lane (plain functions, no React) can drive them when the user says
+ * layer (plain functions, no React) can drive them when the user says
  * "take me to the intake scenario".
  *
  * Deliberately tiny: navigation only. Anything that *changes* data goes
@@ -219,7 +219,7 @@ export function agentAnnotateCells(cellIds: string[], note?: string): string {
 // canvas viewport, cell panel, design-mode picker) each register a
 // contributor that describes their live state in a line or two; the agent
 // panel and the get_ui_state tool collect them all. Same shape as the
-// navigation bridge: module registry, so the tool lane needs no React.
+// navigation bridge: module registry, so the tool layer needs no React.
 // ---------------------------------------------------------------------------
 
 type UiContextContributor = () => string | null

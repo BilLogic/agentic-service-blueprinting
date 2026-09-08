@@ -24,7 +24,7 @@ import { useShellBooting } from '@/contexts/shellBootStore'
  */
 export function PathSelectorMenu({ options }: { options: PathOption[] }) {
   const { activePathKeys, togglePathKey } = usePathSelectionContext()
-  // The shell's boot lane. The control has no loading of its own — its
+  // The shell's boot layer. The control has no loading of its own — its
   // options arrive with the board — so left alone it painted the moment they
   // landed, beside a sidebar and an identity bar still in skeleton. It keeps
   // the bar's beat by sharing the bar's hold session.

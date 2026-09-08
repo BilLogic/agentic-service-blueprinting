@@ -1,14 +1,14 @@
 import type { CanvasAnnotation } from '@/lib/canvasAnnotations'
 
 /**
- * Getting marks *out* of the scratch lane.
+ * Getting marks *out* of the scratch layer.
  *
  * Annotations are deliberately not persisted. Saving every stroke would turn
  * markup into a record, and that changes what it is: people stop scribbling
  * once a scribble is permanent and shared, and costing nothing is the whole
- * value of the lane.
+ * value of the layer.
  *
- * So the lane stays ephemeral and capture becomes a decision. This is what
+ * So the layer stays ephemeral and capture becomes a decision. This is what
  * that decision produces.
  */
 

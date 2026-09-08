@@ -231,7 +231,7 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         // Only when the canvas itself is the surface being escaped. With a
-        // dialog, popover or menu open, Escape belongs to that lane — one
+        // dialog, popover or menu open, Escape belongs to that layer — one
         // keystroke must not both close a sheet and wipe a selection that
         // took minutes to gather across blueprints.
         if (event.defaultPrevented) return

@@ -125,7 +125,7 @@ export function SlideModeSidebarNav({
               This covers a SLOW QUERY only. The boot case — entering the
               workspace from the cover, where this used to slide in already
               full of rows while the canvas was still behind its loading
-              bar — belongs to the sidebar's boot lane in EditorShell,
+              bar — belongs to the sidebar's boot layer in EditorShell,
               which covers this whole panel and lifts with the canvas.
             */}
             <DeferredSkeleton

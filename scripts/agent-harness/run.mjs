@@ -777,7 +777,7 @@ async function openaiChat({ system, messages, tools, model, noTools }) {
     try {
       parsed = JSON.parse(call.function.arguments)
     } catch {
-      // Malformed args reach the tool lane as empty args.
+      // Malformed args reach the tool layer as empty args.
     }
     parts.push({ call: { id: call.id, name: call.function.name, args: parsed } })
   }

@@ -59,9 +59,9 @@ Each is walked, with its own figure, in [guide/03 — The plugin](./docs/guide/0
 
 ## Where the blueprint is used
 
-![Ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot, over one shared context lane](./docs/assets/four-ways-in.svg)
+![Ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot, over one shared context layer](./docs/assets/four-ways-in.svg)
 
-The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. The Slack bot on top answers questions and links back to the exact cell. All four work from one shared context lane, so what any of them reads is what the others wrote. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
+The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. The Slack bot on top answers questions and links back to the exact cell. All four work from one shared context layer, so what any of them reads is what the others wrote. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
 
 ## The blueprint model
 
@@ -199,7 +199,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | `src/components/editor/` | Canvas/slide editor shell |
 | [src/lib/laneRoles.ts](./src/lib/laneRoles.ts) | `lane_role` rendering contract |
 | [src/data/blueprintFallbacks.ts](./src/data/blueprintFallbacks.ts) | Offline/no-DB fallback registry (sample content) |
-| [supabase/migrations/](./supabase/migrations/) | Schema migrations — base template plus the authoring and agent-surface lanes |
+| [supabase/migrations/](./supabase/migrations/) | Schema migrations — base template plus the authoring and agent-surface layers |
 | [supabase/seed.sql](./supabase/seed.sql) | Generated sample seed |
 | [supabase/generated/](./supabase/generated/) | The portable core and the Supabase recipe, generated from the migrations' partition marks |
 | [docs/guide/](./docs/guide/) | The four guides: the model, using it, the plugin, operations |

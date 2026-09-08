@@ -164,7 +164,7 @@ export function getPathDashArray(path: PathColorInput): string | undefined {
 }
 
 /**
- * Same, from the `${type}:${name}` key the arrow lanes already carry on each
+ * Same, from the `${type}:${name}` key the arrow layers already carry on each
  * segment. Bare `'happy'` (no colon) is the legacy default-path key.
  */
 export function getPathDashArrayFromKey(colorKey: string): string | undefined {

@@ -1611,7 +1611,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * it decides whether a touch belongs to the page or to the browser, and
    * the board is the one place where that consultation is unreliable:
    * `[data-zoom-pan-content]` carries a transform, so it is a composited
-   * lane, and WebKit does not dependably resolve the property across that
+   * layer, and WebKit does not dependably resolve the property across that
    * boundary (blueprint.css says the same thing from the CSS side). When it
    * resolves to `auto`, the browser takes the touch and answers with
    * `pointercancel` — a finger on empty canvas pans, the identical finger on
@@ -1620,7 +1620,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    *
    * `preventDefault` is not a declaration; it is the answer to a question
    * already asked, on an event the browser has already delivered, and no
-   * lane boundary sits between the two. Belt and braces with the CSS: the
+   * layer boundary sits between the two. Belt and braces with the CSS: the
    * declaration keeps the compositor from ever starting the gesture on the
    * fast path, this keeps it from finishing one it started anyway.
    *

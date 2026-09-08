@@ -4,7 +4,7 @@
  *
  * The collapse hand-off stands: at COLLAPSED width the bar renders nothing and
  * gives its identity to the floating navbar instead, so there is one chrome
- * lane at any width — the failure this file was first written against was a
+ * layer at any width — the failure this file was first written against was a
  * service title simply lost when the sidebar collapsed, while
  * `SlideStickyHeader` and `SliceHeaderBand` had been handing theirs over all
  * along.
@@ -165,7 +165,7 @@ afterEach(() => {
 })
 
 describe('the service bar, collapsed', () => {
-  it('renders nothing at all — one chrome lane at any width', async () => {
+  it('renders nothing at all — one chrome layer at any width', async () => {
     await mountWithService()
     expect(bar()).not.toBeNull()
 

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
  * Whether the shell is showing its once-per-entry boot skeleton.
  *
  * `EditorShell` owns the boot latch and publishes it here; the identity bars
- * read it to hold their own skeletons until the shell lifts its lane, so the
+ * read it to hold their own skeletons until the shell lifts its layer, so the
  * screen assembles as one thing rather than three racing.
  *
  * A module store rather than context, for the same reason
@@ -21,7 +21,7 @@ import { useSyncExternalStore } from 'react'
  * the same chain and still not a cycle.
  *
  * It defaults to false and stays false unless a shell publishes otherwise, so
- * a bar on a surface with no boot lane — the mobile shell, a bar under test —
+ * a bar on a surface with no boot layer — the mobile shell, a bar under test —
  * waits on its query and on nothing else.
  */
 let booting = false

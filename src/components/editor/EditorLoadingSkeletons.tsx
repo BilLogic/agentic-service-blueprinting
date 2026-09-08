@@ -322,7 +322,7 @@ const SESSION_EARLIER_SKELETON_ROWS = [
 
 /**
  * One collapsible nav section — header plus rows — at the real component's
- * measured geometry, so nothing moves when the boot lane lifts.
+ * measured geometry, so nothing moves when the boot layer lifts.
  *
  * The numbers are `SidebarNav`'s: a 29px header (a 16px chevron slot at
  * `pl-1`, then the title's line box), and 32px rows whose label starts 24px
@@ -365,10 +365,10 @@ function BootRailIconSkeleton({ hit }: { hit: string }) {
  * SESSIONS headers, the section chevrons and every control painted and
  * live over a screen that was still loading — a half-built panel beside a
  * progress bar. And because each list ran its own swap, the two halves
- * resolved on their own clocks. One opaque lane over the real sidebar
+ * resolved on their own clocks. One opaque layer over the real sidebar
  * fixes both by construction: everything behind it is covered, and it
  * lifts in a single fade, so every part of the sidebar resolves on exactly
- * the same beat as the canvas's first lane.
+ * the same beat as the canvas's first layer.
  *
  * Every box here is the real component's, measured: the rail's paddings and
  * its 24/36/28px hit areas, `SidebarContent`'s `px-2 pt-1 pb-1`, the dock's

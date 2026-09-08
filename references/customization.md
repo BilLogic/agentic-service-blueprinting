@@ -37,7 +37,7 @@ the set is a deliberate multi-file act, listed in `references/lane-roles.md`
   adopter edits are marked **BRAND SEAM**, and there are two of them:
   `src/styles/themes/light.css` and `src/styles/themes/dark.css`. The
   template ships hue-neutral — every chroma dial is 0, so the whole semantic
-  lane renders greyscale. To rebrand: set `--hue` to your brand's OKLCH hue,
+  layer renders greyscale. To rebrand: set `--hue` to your brand's OKLCH hue,
   raise `--chroma` (surfaces) and `--primary-chroma` (the filled control),
   and replace the greyscale `--brand-*` ramp with your tint family, keeping
   its light → dark ordering. Everything else derives — the border, the

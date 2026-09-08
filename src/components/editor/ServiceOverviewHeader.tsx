@@ -50,7 +50,7 @@ export function ServiceOverviewHeader() {
 
   /*
     Collapsed: the floating navbar carries this bar's identity instead, and
-    this bar draws nothing — one chrome lane at any width, which is what
+    this bar draws nothing — one chrome layer at any width, which is what
     `SlideStickyHeader` and `SliceHeaderBand` already do and what the service
     bar had no reference to at all, so its title was simply lost.
 

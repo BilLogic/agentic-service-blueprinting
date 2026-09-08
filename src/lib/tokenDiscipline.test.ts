@@ -67,7 +67,7 @@ const PRIMITIVE_RAMPS = [
 
 /**
  * Ramps Tailwind ships and this design system does not unset — so they
- * resolve, silently, to colours that belong to no lane at all. The frozen
+ * resolve, silently, to colours that belong to no layer at all. The frozen
  * canvas/annotation surfaces are what kept reaching for these; they have
  * named tokens now (`--background-canvas-chrome`, `--background-annotation-chrome`).
  */
