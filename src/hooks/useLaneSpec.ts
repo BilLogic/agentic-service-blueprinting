@@ -45,7 +45,7 @@ export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null>
 
   return useSupabaseQuery<LaneSpec | null>(
     `lane-spec:${laneId ?? 'none'}`,
-    async (client) => {
+    async (client, signal) => {
       if (!laneId) return null
 
       const { data: lane, error } = await client
@@ -54,6 +54,7 @@ export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null>
           'id, name, lane_role, owner_team, kpis, tools, stakeholder_id, paths!inner(scenario_id, scenarios!inner(name, phases!inner(name)))',
         )
         .eq('id', laneId)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!lane) return null
@@ -69,6 +70,7 @@ export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null>
         .select('id, paths!inner(scenario_id)')
         .eq('name', lane.name)
         .eq('paths.scenario_id', scenarioId)
+        .abortSignal(signal)
       if (siblingError) throw new Error(siblingError.message)
 
       const siblingLaneIds = (siblings ?? []).map((row) => row.id)

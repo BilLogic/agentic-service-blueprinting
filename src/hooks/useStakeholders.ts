@@ -68,12 +68,13 @@ export function useStakeholders(): QueryResult<Stakeholder[]> {
 
   return useSupabaseQuery<Stakeholder[]>(
     'stakeholders',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('stakeholders')
         .select('*')
         .order('kind')
         .order('name')
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
       return data ?? []
     },

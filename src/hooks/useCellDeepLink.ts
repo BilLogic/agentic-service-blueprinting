@@ -54,11 +54,12 @@ export function useCellDeepLink(): void {
 
   const scenario = useSupabaseQuery<string>(
     cellId === null ? null : `cell-deep-link:${cellId}`,
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('cells')
         .select('id, paths(scenario_id)')
         .eq('id', cellId as string)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
 

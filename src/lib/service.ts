@@ -10,6 +10,9 @@ type Client = SupabaseClient<Database>
  * and concurrent callers share one in-flight query, so the `useSlices` /
  * `useServicePhases` / evidence-insert chains do not each hit
  * `services`. Errors are not cached; the next caller retries.
+ *
+ * Deliberately takes no abort signal: the promise is shared, so one caller
+ * leaving its view would cancel the lookup every other caller is awaiting.
  */
 let firstServiceId: Promise<string | null> | null = null
 
@@ -65,6 +68,10 @@ export function __resetActiveServiceIdCache(): void {
  * When a slug names a service, its id is resolved by matching the service's
  * `slug` column (with a name-derived fallback for a null column — see
  * `serviceSlug`), cached per slug and sharing one in-flight query.
+ *
+ * Signal-less on purpose (see `findFirstServiceId`); wrap the wait in
+ * `awaitOrAbort` so a caller leaving its view stops waiting without cancelling
+ * the shared lookup.
  */
 export function findActiveServiceId(client: Client): Promise<string | null> {
   const slug = getActiveServiceSlug()
@@ -83,4 +90,35 @@ export function findActiveServiceId(client: Client): Promise<string | null> {
     activeServiceIdBySlug.set(slug, pending)
   }
   return pending
+}
+
+/**
+ * Await a shared lookup without inheriting its uncancellability.
+ *
+ * `findFirstServiceId` deliberately takes no signal — the promise is shared,
+ * so one caller leaving its view would cancel the lookup every other caller is
+ * awaiting. That is right for the *lookup* and wrong for the *wait*: inside
+ * `withSupabaseTimeout` the deadline aborts a controller the shared request
+ * never sees, so the read that was supposed to be bounded sat in `loading`
+ * until the network answered.
+ *
+ * This settles the caller's wait when the signal fires and leaves the shared
+ * request running for whoever else is waiting on it.
+ */
+export function awaitOrAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason ?? new Error('aborted'))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason ?? new Error('aborted'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error as Error)
+      },
+    )
+  })
 }

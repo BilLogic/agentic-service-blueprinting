@@ -1,4 +1,13 @@
 import { QueryClient } from '@tanstack/react-query'
+import { SupabaseTimeoutError } from '@/lib/supabaseFetchTimeout'
+
+/**
+ * How long an unused response is kept before it is collected. Long enough
+ * that the tabs and panels people move between stay warm, short enough that
+ * a day-long session does not accumulate every cell's evidence, every slice
+ * and every per-scenario payload it ever opened.
+ */
+const CACHE_RETENTION_MS = 30 * 60 * 1000
 
 /**
  * The read policy, named so a test can build a throwaway client that behaves
@@ -13,15 +22,31 @@ export const QUERY_DEFAULTS = {
    * a mutation calls `invalidateQueries`.
    */
   staleTime: Infinity,
-  gcTime: Infinity,
+  /*
+   * Staleness and collection are separate decisions, and only the first
+   * one the header above argues for. `gcTime: Infinity` meant nothing was
+   * ever released: a long session held every response it had ever made,
+   * mounted or not. Collection costs nothing while a query is mounted —
+   * the clock only starts once the last observer unmounts — and a
+   * refetch after half an hour away is not a refetch anyone waits on.
+   */
+  gcTime: CACHE_RETENTION_MS,
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
   /*
-   * `raceSupabaseQuery` already bounds each attempt with a timeout, and a
-   * failed read falls back to the bundled fixture rather than blocking the
-   * UI. Retrying would just delay that fallback by the retry schedule.
+   * One retry, and only for a deadline.
+   *
+   * `withSupabaseTimeout` bounds each attempt and aborts the request it
+   * bounded, so a timeout means this attempt was too slow — not that the
+   * database refused. Left unretried, that verdict stuck: stale time is
+   * infinite and errors win over stale data, so the view showed a timeout
+   * and the bundled fixture until a mutation invalidated it or the page
+   * was reloaded. Everything else (a constraint, a policy, a missing row)
+   * answers the same way however often it is asked, so it is not retried
+   * and the fallback is not delayed.
    */
-  retry: false,
+  retry: (failureCount: number, error: Error) =>
+    failureCount < 1 && error instanceof SupabaseTimeoutError,
 }
 
 /**

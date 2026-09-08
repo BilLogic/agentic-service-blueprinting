@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import { resolveFirstServiceId } from '@/lib/service'
+import { awaitOrAbort, resolveFirstServiceId } from '@/lib/service'
 import type { EntityExamples } from '@/lib/panelTerms'
 
 // Re-exported from its canonical home in `panelTerms`, beside the kinds it is
@@ -56,16 +56,17 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
     // The key stays constant: a deployment maps one service, and `ServicePanel`
     // invalidates this literal key.
     'service-spec:first',
-    async (client) => {
+    async (client, signal) => {
       // The same first-service lookup every other read uses — the settled id
       // is cached module-level, so the panel does not add a `services` query
       // of its own to the ones the canvas already made.
-      const serviceId = await resolveFirstServiceId(client)
+      const serviceId = await awaitOrAbort(resolveFirstServiceId(client), signal)
 
       const { data: service, error } = await client
         .from('services')
         .select('id, name, summary, entity_examples')
         .eq('id', serviceId)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!service) return null
@@ -80,6 +81,7 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
         .from('business_models')
         .select('funding, pricing, delivery_cost, revenue_model, partners')
         .eq('service_id', service.id)
+        .abortSignal(signal)
         .maybeSingle()
       const model = modelRow as
         | {
@@ -96,6 +98,7 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
         .from('phases')
         .select('id, scenarios(id)')
         .eq('service_id', service.id)
+        .abortSignal(signal)
       if (phaseError) throw new Error(phaseError.message)
 
       const rows = phases ?? []

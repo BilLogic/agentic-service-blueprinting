@@ -27,11 +27,12 @@ export function useSlice(sliceId: string): QueryResult<SliceDetail> {
 
   return useSupabaseQuery<SliceDetail>(
     `slice:${sliceId}`,
-    async (client) => {
+    async (client, signal) => {
       const { data: slice, error: sliceError } = await client
         .from('slices')
         .select('*')
         .eq('id', sliceId)
+        .abortSignal(signal)
         .maybeSingle()
       if (sliceError) throw new Error(sliceError.message)
       if (!slice) throw new Error('Slice not found')
@@ -41,6 +42,7 @@ export function useSlice(sliceId: string): QueryResult<SliceDetail> {
         .select('*')
         .eq('slice_id', sliceId)
         .order('position', { ascending: true })
+        .abortSignal(signal)
       if (itemsError) throw new Error(itemsError.message)
 
       return { slice, items: items ?? [] }

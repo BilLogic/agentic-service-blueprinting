@@ -29,12 +29,13 @@ export function useEvidence(cellId: string): QueryResult<Evidence[]> {
 
   return useSupabaseQuery<Evidence[]>(
     `evidence:${cellId}`,
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('evidence')
         .select('*')
         .eq('cell_id', cellId)
         .order('created_at', { ascending: false })
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
       return data ?? []
     },

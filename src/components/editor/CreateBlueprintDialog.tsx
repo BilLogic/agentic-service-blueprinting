@@ -44,12 +44,13 @@ function useLaneSources() {
   const fallback = useCallback((): LaneSource[] => [], [])
   return useSupabaseQuery<LaneSource[]>(
     'lane-sources',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('paths')
         .select(
           'id,name,lanes(id),scenario:scenarios(name,phase:phases(name))',
         )
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
       return (data ?? [])
         .map((row) => {
