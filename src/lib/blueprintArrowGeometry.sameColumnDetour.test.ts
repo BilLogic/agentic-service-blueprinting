@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 
 /**
- * Which way a detoured same-column connector points its head (#450).
+ * Which way a detoured same-column connector points its head.
+ *
+ * Written for the bug where it pointed the wrong way: on one board of a
+ * deployment built on this template, eleven arrows ended with a leftward final
+ * segment along a path holding no backward dependency whatsoever.
  *
  * Two cells in one step column but different lanes are joined by a vertical
  * connector, and a card standing between them forces the run out through a
