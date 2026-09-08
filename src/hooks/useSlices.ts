@@ -24,7 +24,7 @@ const slicesFallback = (): SliceListEntry[] =>
   }))
 
 /**
- * All slices for one service service, ordered by position, each carrying
+ * All slices for one service, ordered by position, each carrying
  * its frames' cell ids. With no explicit `serviceId`, the first service
  * by `created_at` is used — the same resolution as `useServicePhases`.
  */
