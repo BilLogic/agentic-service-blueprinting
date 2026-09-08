@@ -2,7 +2,7 @@ import { BRAND, type Brand } from '@/config'
 import { hexToRgb, oklchFromSrgb } from '@/lib/oklch'
 
 /**
- * The reader for `brand.accent` (#214).
+ * The reader for `brand.accent`.
  *
  * The seam offered the field and nothing read it, which is worse than not
  * offering it: a deployment could set an accent and watch nothing happen. This
@@ -87,9 +87,9 @@ export function brandAccentHue(accent: string): number {
  * The BLOCK does default, to `BRAND` — the installation's own, from
  * `config.ts` — so a caller holding no config can ask for the accent this
  * build is branded on: a host's bootstrap, running before React exists, is the
- * case (#230). That default is not the trap above, because it is reached only
- * by omitting the argument. A block that carries the field as `undefined`
- * still means no accent, and still writes nothing.
+ * case. That default is not the trap above, because it is reached only by
+ * omitting the argument. A block that carries the field as `undefined` still
+ * means no accent, and still writes nothing.
  */
 export function applyBrandAccent(
   root: StyleTarget,

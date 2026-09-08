@@ -145,13 +145,13 @@ export type ResolvedDeploymentConfig = {
  *
  * NONE OF THE THREE VALUES IS A LITERAL, and none may become one — that is
  * what makes this constant the only thing a deployment built on this template
- * has to fork, and `config.ts` the only file it has to edit (#230). The
- * workspace title is `coverContent.title`, the one module an installation
- * writes its own copy in, so a name typed here cannot end up on a board it
- * does not describe. The accent is `BRAND.accent`, because `config.ts` is
- * where a deployer writes the colour and `styles/themes/*.css` is where the
- * ramp drawn at that hue is authored; a hex repeated here would be a third
- * place for the three to disagree.
+ * has to fork, and `config.ts` the only file it has to edit. The workspace
+ * title is `coverContent.title`, the one module an installation writes its
+ * own copy in, so a name typed here cannot end up on a board it does not
+ * describe. The accent is `BRAND.accent`, because `config.ts` is where a
+ * deployer writes the colour and `styles/themes/*.css` is where the ramp
+ * drawn at that hue is authored; a hex repeated here would be a third place
+ * for the three to disagree.
  *
  * Both of those resolve to `undefined` in this repository, and that is the
  * template's honest state rather than an oversight: `coverContent.ts` omits

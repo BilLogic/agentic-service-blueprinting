@@ -473,8 +473,8 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 /*
- * Three distinct row states (nav plan D8), where hover and selected used to
- * share `--sidebar-accent` and therefore looked identical:
+ * Three distinct row states, where hover and selected used to share
+ * `--sidebar-accent` and therefore looked identical:
  *
  * - SELECTED (`data-active`): brand-tint fill + 2px left rail + medium weight.
  * - HOVER: the neutral `--sidebar-accent` lift, clearly weaker than selected.

@@ -44,12 +44,12 @@ export type EntityHeaderProps = {
  * `DeferredSkeleton` states.
  *
  * That is a different question from WHEN the session may end, and the two were
- * answered as one until #253. This bar waits on its query AND on the shell's
- * boot lane, so the bar, the sidebar and the board arrive on one beat instead
- * of the bar finishing first over a screen that is still loading.
+ * once answered as one. This bar waits on its query AND on the shell's boot
+ * lane, so the bar, the sidebar and the board arrive on one beat instead of the
+ * bar finishing first over a screen that is still loading.
  */
 /**
- * Shared with `PathSelectorMenu` (#265): the path control sits in the same bar, so the
+ * Shared with `PathSelectorMenu`: the path control sits in the same bar, so the
  * two are one waterfall stage of one surface — the case a shared key is
  * reserved for. One session, one beat, one fade.
  */
@@ -86,12 +86,12 @@ function EntityHeaderSkeleton() {
  * A reader who has never seen a service blueprint cannot tell a scenario bar
  * from a phase bar: both are a bold name over a sentence. The badge says which
  * without being hovered, and carries that kind's definition for the reader who
- * then wants one (#240).
+ * then wants one.
  *
  * NEUTRAL by decision, not by omission. The grid already spends colour on lane
  * role and path kind. The diagram assets do carry a per-entity tint, but those
- * are hardcoded hexes in `docs/assets` with no token behind them, so adopting
- * them would invent a THIRD colour axis rather than reuse either existing one.
+ * are hardcoded hexes with no token behind them, so adopting them would invent
+ * a THIRD colour axis rather than reuse either existing one.
  * `outline` is the badge's own neutral variant; the ink drops to
  * `text-muted-foreground` so the word does not compete with the semibold name
  * beside it. Nothing here touches the badge's size — one size for every badge
@@ -104,8 +104,8 @@ function EntityHeaderSkeleton() {
  * "the badge does not open the panel" true by construction rather than by a
  * `stopPropagation` somebody can delete.
  *
- * No `cursor-help`: it is on its way out everywhere (#243) along with the
- * dotted cue and the ⓘ, and adding one here only to delete it next is churn.
+ * No `cursor-help`: it is on its way out everywhere along with the dotted cue
+ * and the ⓘ, and adding one here only to delete it next is churn.
  *
  * The accessible name is the kind THEN the entity's own name, so a screen
  * reader gets the pairing a sighted reader gets from the two sitting side by
@@ -141,8 +141,8 @@ function EntityKindBadge({
  *
  * ONE component for three surfaces — the service overview, a phase, a
  * scenario. The same block was written three times, and only one of the three
- * owned a query, which is exactly why only that one was broken (#234). It
- * takes a RESOLVED identity and never a query: the service surface unpacks
+ * owned a query, which is exactly why only that one was broken. It takes a
+ * RESOLVED identity and never a query: the service surface unpacks
  * `useServiceSpec`, the phase and scenario surfaces unpack the props they
  * already hold, and this component never learns which is which.
  *

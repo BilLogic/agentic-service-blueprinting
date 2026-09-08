@@ -41,11 +41,10 @@ function InfoGlyph() {
  * The step column header: the name, what a step IS, and the way into it.
  *
  * Same treatment as the lane's row header — same size, weight, radius, padding,
- * states and the same three doors (#306): a click anywhere opens the panel, a
- * hover of the whole block surfaces the definition, and a touch ⓘ reveals it
- * where hover cannot. Centred rather than top-left, because that is what a
- * column label is. See `LaneHeaderAffordance` for the z-order fix the label
- * used to hide.
+ * states and the same three doors: a click anywhere opens the panel, a hover of
+ * the whole block surfaces the definition, and a touch ⓘ reveals it where hover
+ * cannot. Centred rather than top-left, because that is what a column label is.
+ * See `LaneHeaderAffordance` for the z-order fix the label used to hide.
  *
  * The ⓘ is positioned rather than laid out: an icon in the flex row shifts the
  * label off the column's centre by half its width. Out of flow, the label

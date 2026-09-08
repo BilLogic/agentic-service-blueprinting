@@ -16,7 +16,7 @@ const src = (relative: string) =>
 /**
  * THE CAP IS THE POINT OF THIS FILE.
  *
- * The first attempt at #133 shipped a snap point of `1` and a test asserting
+ * The first attempt shipped a snap point of `1` and a test asserting
  * the sheet's own class string carried no `max-h-`. That was true and
  * irrelevant: the ceiling lives in the vendored popup, as
  * `--drawer-content-max-height: calc(100dvh - 6rem)` on the y axis. The sheet

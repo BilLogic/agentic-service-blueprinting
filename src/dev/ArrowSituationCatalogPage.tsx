@@ -1,5 +1,5 @@
 /**
- * Dev-only situation catalog page (#346) — the visual half of the parity net.
+ * Dev-only situation catalog page — the visual half of the parity net.
  *
  * Renders every situation (S1–S10 from the plan, plus S11's co-traveller
  * corridor) across the three view modes, drawing the arrows the engine
@@ -248,8 +248,8 @@ export function ArrowSituationCatalogPage() {
         </h1>
         <p style={{ fontSize: 13, color: '#475569', margin: 0, maxWidth: 820 }}>
           The trigger-line plan&rsquo;s S1–S10 catalog, plus S11&rsquo;s
-          co-traveller corridor (#349), drawn with the current arrow engine.
-          This is the record the Direction-B parity gate diffs against (#346).
+          co-traveller corridor, drawn with the current arrow engine.
+          This is the record the Direction-B parity gate diffs against.
           Dev-only route — it ships nothing to production.
         </p>
       </header>

@@ -17,7 +17,7 @@ export type AgentUiBridge = {
   /**
    * Collapse/expand the sidebar. A shell with no sidebar to drive returns
    * its own honest message instead of letting the default "Sidebar
-   * collapsed." claim success for a no-op (todo 027).
+   * collapsed." claim success for a no-op.
    */
   setSidebarCollapsed: (collapsed: boolean) => void | string
 }

@@ -18,7 +18,7 @@ const ACT_LANE = { id: 'l1', name: 'Whoever acts here', role: null } as Blueprin
 const WORST_257 =
   'Cancels the session when the student does not arrive within the first ten minutes, records the cancellation reason in the portal, notifies the supervisor on duty, and follows up with the family about rescheduling options before the end of the school day.'
 
-describe('cell height estimation (todo 026)', () => {
+describe('cell height estimation', () => {
   it('long narrative content uses the same fixed canvas face as short copy', () => {
     expect(WORST_257.length).toBeGreaterThanOrEqual(250)
     expect(getCellContentMinHeight(ACT_LANE, WORST_257)).toBe(

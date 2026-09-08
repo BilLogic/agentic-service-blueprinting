@@ -128,7 +128,7 @@ export async function updateBusinessModel(
 }
 
 /**
- * The six per-kind examples, written together as one jsonb object (#302).
+ * The six per-kind examples, written together as one jsonb object.
  *
  * One column, one write, like `updateServiceSummary` beside it: the set is a
  * single value the app owns the shape of, so a partial save has no meaning —

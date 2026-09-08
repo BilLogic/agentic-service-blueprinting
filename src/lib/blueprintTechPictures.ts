@@ -6,9 +6,9 @@ import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardP
  * Detail-panel frames come from the touchpoint placed at this cell — no
  * hardcoded logo registry. Falls back to the cell's own frame.
  *
- * A placement's pictures are its attachments (#111): resources on the cell
- * that carry the placement's id, featured first. The `screenshots` column
- * they replaced was one array where the old link entry carried `frame` and
+ * A placement's pictures are its attachments: resources on the cell that
+ * carry the placement's id, featured first. The `screenshots` column they
+ * replaced was one array where the old link entry carried `frame` and
  * `frames` and the reader had to prefer one over the other.
  */
 function attachmentsFor(
@@ -27,9 +27,9 @@ function attachmentsFor(
 
 /**
  * The touchpoint's own stock icon, read off the registry row the placement
- * names (#326). This is where a tool's logo lives now — one string in a
- * column — rather than a tool name matched against a table baked into the
- * renderer. Null where the placement's touchpoint carries none.
+ * names. This is where a tool's logo lives now — one string in a column —
+ * rather than a tool name matched against a table baked into the renderer.
+ * Null where the placement's touchpoint carries none.
  */
 function iconFor(
   touchpoints: readonly CellTouchpoint[],

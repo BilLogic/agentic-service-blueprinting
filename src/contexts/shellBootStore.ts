@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
  *
  * `EditorShell` owns the boot latch and publishes it here; the identity bars
  * read it to hold their own skeletons until the shell lifts its lane, so the
- * screen assembles as one thing rather than three racing (#253).
+ * screen assembles as one thing rather than three racing.
  *
  * A module store rather than context, for the same reason
  * `sidebarCollapsedContext` is one: the bars live deep inside canvas content,

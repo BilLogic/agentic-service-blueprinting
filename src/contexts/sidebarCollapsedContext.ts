@@ -25,7 +25,7 @@ export type CollapsedNavSummary = {
   action?: { label: string; onClick: () => void }
   /**
    * The scenario's paths, so the collapsed navbar can carry the path selector
-   * without the sidebar being expanded (#305). Present only when a SCENARIO is
+   * without the sidebar being expanded. Present only when a SCENARIO is
    * the surface being described — a phase publishes none, which is exactly why
    * the selector self-hides there. The floating navbar mounts `PathSelectorMenu`
    * with these, and that control returns nothing when the list is empty.

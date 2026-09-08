@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 /**
  * The one trigger every select in a panel wears — `OwnerTagSelect` and
  * `OptionSelect` alike. Status sat between Owner and Perceived owner as a
- * native `<select>` (#256): the browser drew its own chevron, its own focus
+ * native `<select>`: the browser drew its own chevron, its own focus
  * ring and its own line box, so three controls in one column read as two
  * designs, and `h-7 w-fit text-xs` clipped "Live — in use today" along the
  * bottom and re-sized the row every time the value changed. One class, in

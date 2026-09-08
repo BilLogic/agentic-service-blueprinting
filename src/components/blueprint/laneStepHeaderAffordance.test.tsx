@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * A lane or step header reads right on every input (#306).
+ * A lane or step header reads right on every input.
  *
  * The bug: the name span painted above the `absolute inset-0` opener, so a
  * click on the word — the natural target — hit the name and was lost, never

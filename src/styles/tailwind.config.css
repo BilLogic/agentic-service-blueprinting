@@ -10,13 +10,14 @@
  * Prose is not source. Tailwind v4 auto-detects sources from the project root
  * and scans every non-gitignored file, `docs/**` included — so a class name
  * written in a planning document generates that class in the compiled output.
- * That is not hypothetical: a risk note in
- * `docs/plans/2026-08-22-001-refactor-one-visual-vocabulary-plan.md` warning
- * that `--field` was live via `bg-field` was the ONLY occurrence of `bg-field`
- * in the repo, and so generated the evidence for its own warning.
+ * That is not hypothetical: a planning document's risk note warning that
+ * `--field` was live via `bg-field` was the ONLY occurrence of `bg-field` in
+ * the repo, and so generated the evidence for its own warning.
  *
  * Any check that reads liveness off compiled output has to control what went
- * into the build (ADR 0001), and this line is that control.
+ * into the build. The decision that one token model is the single seam for
+ * style enforcement names that control as its own prerequisite, and this line
+ * is it.
  */
 @source not '../../docs';
 /*
@@ -40,9 +41,10 @@
  * against compiled output, not by reading the glob — and takes 1.4 kB with it.
  *
  * This is the second time the hazard has been found by hand. The durable check
- * is a rule over the compiled artifact, which ADR 0001 wants in `tokenModel`
- * and the deletion phase has to build; until it exists, `@source not` is the
- * only thing holding the line and nothing fails if a glob stops matching.
+ * is a rule over the compiled artifact — what the one-token-model decision
+ * wants in `tokenModel`, and what the deletion phase has to build. Until it
+ * exists, `@source not` is the only thing holding the line and nothing fails
+ * if a glob stops matching.
  */
 @source not '../**/*.test.{ts,tsx}';
 @source not '../../scripts';

@@ -9,13 +9,12 @@ import {
 import { cn } from '@/lib/utils'
 
 /**
- * Determinate canvas-load progress (plan 2026-08-17-001): mark, 2 px track,
- * stage label — centered over the canvas pad while the shaped skeleton
- * holds the geometry. Every tick is a completed query stage; there is no
- * timer fill, so a stalled stage shows a stalled bar, which is the honest
- * signal. Rendered inside the skeleton's own DeferredSkeleton session, so
- * it inherits the 250 ms hold (fast loads never see it) and leaves in the
- * same commit the content fades in.
+ * Determinate canvas-load progress: mark, 2 px track, stage label — centered
+ * over the canvas pad while the shaped skeleton holds the geometry. Every tick
+ * is a completed query stage; there is no timer fill, so a stalled stage shows
+ * a stalled bar, which is the honest signal. Rendered inside the skeleton's
+ * own DeferredSkeleton session, so it inherits the 250 ms hold (fast loads
+ * never see it) and leaves in the same commit the content fades in.
  *
  * Presentation only (`aria-hidden`): the skeleton wrapper already carries
  * `role="status"` + the sr-only "Loading…", and a second announcement per
@@ -103,7 +102,7 @@ export function CanvasLoadProgress({
   // Anchors always win over the creep, completion snaps to full, and the
   // creep's CONTRIBUTION is re-clamped to the current cap at render time —
   // if the real target regresses (the scenario set grew mid-load), a stale
-  // high creep cannot overstate progress (todo 031).
+  // high creep cannot overstate progress.
   const display = complete
     ? 100
     : Math.min(Math.max(percent, creep), Math.min(percent + 12, 94))

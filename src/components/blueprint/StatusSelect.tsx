@@ -16,7 +16,7 @@ const OPTIONS = ENTITY_STATUS.map((status) => ({
  * It shipped read-only: a `StatusBadge` in both View and Edit mode, so the
  * one governed vocabulary on the board was the one thing an author could not
  * set from the panel. Six fixed options, no search, no multi-select — the
- * shape `OptionSelect` exists for (#256).
+ * shape `OptionSelect` exists for.
  */
 export function StatusSelect({
   value,

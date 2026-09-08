@@ -30,7 +30,7 @@ export const STAKEHOLDER_KIND_LABELS: Record<StakeholderKind, string> = {
  *
  * The registry had a label for every kind and a meaning for none, so a reader
  * hovering `Blueprint owner` learned its own one-liner and never learned what
- * "Staff" commits it to. Five sentences, written for #243.
+ * "Staff" commits it to. Five sentences, one per kind.
  *
  * The distinction they carry is the one the union above documents, and it is
  * the reason the schema has two columns rather than one: the first four are

@@ -6,8 +6,8 @@
  * write their own height, padding and type scale around `<Badge>`, and the
  * three of them did not agree: all three called their small shape "compact"
  * and all three meant something different by it. The sizes now live in
- * `ui/badge.tsx` as a `size` variant (#149), which is only an improvement if
- * the pixels did not move — so this file pins the four utilities each shape
+ * `ui/badge.tsx` as a `size` variant, which is only an improvement if the
+ * pixels did not move — so this file pins the four utilities each shape
  * resolves to, for every value of `compact` the app passes.
  *
  * IT READS THE RESOLVED CLASS LIST, not the source. `cn` is tailwind-merge, so

@@ -149,8 +149,8 @@ export function SlideModeSidebarNav({
           </NavSection>
 
           {/* The PATHS section moved to the canvas top bar as the compact
-              multi-select (PathSelectorMenu, plan 2026-08-17-002 U2) — one
-              owner for "which paths am I reading". */}
+              multi-select (PathSelectorMenu) — one owner for "which paths
+              am I reading". */}
 
           <CreatePhaseDialog
             serviceId={serviceId}

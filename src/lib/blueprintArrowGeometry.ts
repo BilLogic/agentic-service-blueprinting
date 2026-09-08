@@ -31,7 +31,7 @@ export type CellAnchor = {
   target: Point
 }
 
-/* ---------------------------------------------------- anchor slots (#347)
+/* ----------------------------------------------------------- anchor slots
 
   A contested cell side hands out one ordered slot per endpoint instead of
   stacking every arrow on the edge midpoint. The allocation itself lives in
@@ -210,7 +210,7 @@ function wrapSlotLeg(
   }
 }
 
-/* ------------------------------------------------ confluence + fan-out (#348)
+/* ------------------------------------------------------- confluence + fan-out
 
   When ≥2 dependencies arrive at ONE target cell from the SAME side, their last
   segments should merge into one path-coloured trunk with a single head — the
@@ -1239,7 +1239,7 @@ export function buildVerticalGutterDetourPath(
   )
 }
 
-/* --------------------------------------------------- gap-first corridors (#349)
+/* ---------------------------------------------------------- gap-first corridors
 
   A same-row forward run that a column blocks has to detour. The lane it
   detours through used to be hand-pinned — always overhead, above the
@@ -1247,7 +1247,7 @@ export function buildVerticalGutterDetourPath(
   the band edge even when the underneath lane is wide open. `chooseCorridor`
   (pure, in `arrowAnchorSlots`) replaces the pin: this half measures the clear
   gap each lane affords within the run's own x-span and hands both candidates
-  to the scorer, which picks the roomier. Plan §3's gap-first order falls out
+  to the scorer, which picks the roomier. The gap-first order falls out
   of that — the widest gap wins, and the behind-cell tuck only when neither
   lane clears the run.
 */

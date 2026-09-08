@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 /**
- * Golden-geometry parity net for the arrow router (#346).
+ * Golden-geometry parity net for the arrow router.
  *
  * For every S1–S10 situation, across all three view modes, this freezes the
  * `d` strings the CURRENT engine produces. The snapshots are the "before"

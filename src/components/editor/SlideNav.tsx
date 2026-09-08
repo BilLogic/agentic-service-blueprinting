@@ -30,7 +30,7 @@ type SlideNavProps = {
    * expansion state died on every mode switch, skeleton swap, and
    * presentation tab, since all of those unmount the sidebar. It is also
    * deliberately never derived from selection — that is what makes
-   * collapsing a phase leave the camera alone (nav plan D3).
+   * collapsing a phase leave the camera alone.
    */
   expandedPhaseIds: ReadonlySet<string>
   onSelectPhase: (phaseId: string) => void

@@ -9,7 +9,7 @@
  * `SlideStickyHeader` and `SliceHeaderBand` had been handing theirs over all
  * along.
  *
- * The overlay posture is GONE (#305). The sidebar is in flow at every width;
+ * The overlay posture is GONE. The sidebar is in flow at every width;
  * it no longer draws over the canvas on a narrow viewport, so the bar no
  * longer surrenders a left margin to it. What this file now pins is the
  * inverse of the old inset claim: the bar sits flush left at every width, and
@@ -66,7 +66,7 @@ const SERVICE_SUMMARY = 'Rooftop solar, end to end.'
 
 type Result = { data: unknown; error: { message: string } | null }
 
-/** Just enough PostgREST for `useServiceSpec` — the shape #237's test pins. */
+/** Just enough PostgREST for `useServiceSpec` — the shape this file pins. */
 function fakeSupabase() {
   const rows: Record<string, unknown[]> = {
     services: [

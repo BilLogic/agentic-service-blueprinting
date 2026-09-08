@@ -7,8 +7,7 @@ import type { AgentUiBridge } from '@/lib/agent/uiBridge'
  * phase and scenario opens are plain selections — the camera move is the
  * surface change. The ✦ sheet is the agent surface. The sidebar tool has
  * no sidebar to drive here and SAYS SO — the returned message overrides
- * `agentSetSidebar`'s default success claim (closes todo 027's
- * dishonest-stub item).
+ * `agentSetSidebar`'s default success claim.
  */
 export function makeMobileAgentBridge({
   selectPhase,

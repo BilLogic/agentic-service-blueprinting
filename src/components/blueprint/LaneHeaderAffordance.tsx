@@ -40,13 +40,13 @@ function InfoGlyph() {
 /**
  * The lane's name, what a lane IS, and the way into this one's properties.
  *
- * Three readers, three doors (#306). A pointer reader clicks anywhere on the
- * block — the label included — to open the panel, and rests on it to learn
- * what a lane is; the definition opens on a hover of the WHOLE block, not of
- * one word. A keyboard reader tabs to the opener to open the panel and to the
- * ⓘ to read the definition. A touch reader, who has no hover and whose tap is
- * already the panel's, gets the ⓘ — invisible on a device that hovers, drawn
- * only where hover is not.
+ * Three readers, three doors. A pointer reader clicks anywhere on the block —
+ * the label included — to open the panel, and rests on it to learn what a lane
+ * is; the definition opens on a hover of the WHOLE block, not of one word. A
+ * keyboard reader tabs to the opener to open the panel and to the ⓘ to read
+ * the definition. A touch reader, who has no hover and whose tap is already
+ * the panel's, gets the ⓘ — invisible on a device that hovers, drawn only
+ * where hover is not.
  *
  * The z-order bug the label used to hide: the name painted above the opener
  * (`z-10`) and swallowed its own click. `pointer-events-none` on the name lets
