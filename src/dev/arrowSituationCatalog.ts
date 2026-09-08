@@ -213,6 +213,14 @@ function addNeighbourBand(board: BoardSpec): BoardSpec {
  * every cell an arrow touches gains a stacked neighbour directly beneath it.
  * Where a route ran straight down that column it now meets the neighbour and
  * detours through a gutter — the merged behaviour the plan calls out.
+ *
+ * A stack is taller than the lane row that held one card, and the merged
+ * grid's row tracks are `minmax(_, auto)`: a slot that grows makes its row
+ * taller and pushes every later lane down. So the lanes are re-spaced here
+ * too, each keeping the gap it had below its predecessor. Stacking without
+ * re-spacing overlapped one lane's sub-cell with the next lane's card — two
+ * cards sharing the same pixels, which no grid can produce — and the packed
+ * column that came out of it left an arriving head nowhere at all to land.
  */
 function addMergedStacks(board: BoardSpec): BoardSpec {
   const next = cloneBoard(board)
@@ -221,6 +229,12 @@ function addMergedStacks(board: BoardSpec): BoardSpec {
     touched.add(d.source_cell_id)
     touched.add(d.target_cell_id)
   }
+
+  const extentOf = (row: FixtureRow) => ({
+    top: Math.min(...row.cells.map((c) => c.box.top)),
+    bottom: Math.max(...row.cells.map((c) => c.box.top + c.box.height)),
+  })
+  const before = next.rows.map(extentOf)
 
   for (const row of next.rows) {
     const additions: FixtureCell[] = []
@@ -239,6 +253,27 @@ function addMergedStacks(board: BoardSpec): BoardSpec {
     }
     row.cells = [...row.cells, ...additions]
   }
+
+  // Top-down, so a lane is re-seated only after everything above it is.
+  const order = next.rows
+    .map((_row, index) => index)
+    .sort((a, b) => before[a]!.top - before[b]!.top)
+
+  let previousIndex: number | null = null
+  let previousBottom = 0
+  let shift = 0
+  for (const index of order) {
+    const row = next.rows[index]!
+    if (previousIndex !== null) {
+      const gap = before[index]!.top - before[previousIndex]!.bottom
+      shift = Math.max(0, previousBottom + gap - before[index]!.top)
+      for (const c of row.cells) c.box.top += shift
+    }
+    previousIndex = index
+    previousBottom = extentOf(row).bottom
+  }
+
+  next.rootBox = { ...next.rootBox, height: next.rootBox.height + shift }
   return next
 }
 

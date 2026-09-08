@@ -70,7 +70,7 @@ exports[`arrow situation catalog — golden geometry > S3 — Backward (loop) wi
 {
   "segments": [
     {
-      "d": "M 440 90 L 436 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 230 236 Q 224 236 224 230 L 224 94 Q 224 90 220 90 L 216 90",
+      "d": "M 440 90 L 436 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 125 236 Q 120 236 120 231 L 120 226",
       "id": "s3-dep",
     },
   ],
@@ -103,7 +103,7 @@ exports[`arrow situation catalog — golden geometry > S4 — Cross-lane, downwa
 {
   "segments": [
     {
-      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 234 Q 224 238 228 238 L 232 238",
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 304 Q 224 308 228 308 L 232 308",
       "id": "s4-dep",
     },
   ],
@@ -136,7 +136,7 @@ exports[`arrow situation catalog — golden geometry > S5 — Cross-lane, upward
 {
   "segments": [
     {
-      "d": "M 440 238 L 436 238 Q 432 238 432 242 L 432 378 Q 432 384 426 384 L 230 384 Q 224 384 224 378 L 224 94 Q 224 90 220 90 L 216 90",
+      "d": "M 440 308 L 436 308 Q 432 308 432 312 L 432 448 Q 432 454 426 454 L 126 454 Q 120 454 120 448 L 120 226",
       "id": "s5-dep",
     },
   ],
@@ -169,11 +169,11 @@ exports[`arrow situation catalog — golden geometry > S6 — In + out on ONE ce
 {
   "segments": [
     {
-      "d": "M 440 90 L 436 90 Q 432 90 432 94 L 432 236 L 432 236 L 432 94 Q 432 90 428 90 L 424 90",
+      "d": "M 440 90 L 436 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 333 236 Q 328 236 328 231 L 328 226",
       "id": "s6-in",
     },
     {
-      "d": "M 424 90 L 428 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 230 236 Q 224 236 224 230 L 224 94 Q 224 90 220 90 L 216 90",
+      "d": "M 424 90 L 428 90 Q 432 90 432 94 L 432 230 Q 432 236 426 236 L 125 236 Q 120 236 120 231 L 120 226",
       "id": "s6-out",
     },
   ],
@@ -214,7 +214,7 @@ exports[`arrow situation catalog — golden geometry > S7 — N sources → one 
 {
   "segments": [
     {
-      "d": "M 224 90 L 224 234 Q 224 238 228 238 L 232 238",
+      "d": "M 224 90 L 224 304 Q 224 308 228 308 L 232 308",
       "id": "s7-target-confluence-left",
       "showMarker": true,
     },
@@ -224,7 +224,7 @@ exports[`arrow situation catalog — golden geometry > S7 — N sources → one 
       "showMarker": false,
     },
     {
-      "d": "M 200 238 L 224 238",
+      "d": "M 200 308 L 224 308",
       "id": "s7-b-dep",
       "showMarker": false,
     },
@@ -280,7 +280,7 @@ exports[`arrow situation catalog — golden geometry > S8 — One source → N t
 {
   "segments": [
     {
-      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 238",
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 308",
       "id": "s8-source-fan-out-right",
       "showMarker": false,
     },
@@ -290,7 +290,7 @@ exports[`arrow situation catalog — golden geometry > S8 — One source → N t
       "showMarker": true,
     },
     {
-      "d": "M 224 238 L 232 238",
+      "d": "M 224 308 L 232 308",
       "id": "s8-t2-dep",
       "showMarker": true,
     },
@@ -346,7 +346,7 @@ exports[`arrow situation catalog — golden geometry > S9 — Merged view: alias
 {
   "segments": [
     {
-      "d": "M 224 90 L 224 234 Q 224 238 228 238 L 232 238",
+      "d": "M 224 90 L 224 304 Q 224 308 228 308 L 232 308",
       "id": "s9-target-confluence-left",
       "showMarker": true,
     },
@@ -356,7 +356,7 @@ exports[`arrow situation catalog — golden geometry > S9 — Merged view: alias
       "showMarker": false,
     },
     {
-      "d": "M 200 238 L 224 238",
+      "d": "M 200 308 L 224 308",
       "id": "s9-b-dep",
       "showMarker": false,
     },
@@ -380,11 +380,11 @@ exports[`arrow situation catalog — golden geometry > S10 — Chain A→B→C w
 {
   "segments": [
     {
-      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 234 Q 224 238 220 238 L 216 238",
+      "d": "M 200 90 L 218 90 Q 224 90 224 96 L 224 224 Q 224 230 218 230 L 126 230 Q 120 230 120 236 L 120 242",
       "id": "s10-ab",
     },
     {
-      "d": "M 200 238 L 218 238 Q 224 238 224 244 L 224 382 Q 224 386 220 386 L 216 386",
+      "d": "M 200 308 L 218 308 Q 224 308 224 314 L 224 442 Q 224 448 218 448 L 126 448 Q 120 448 120 454 L 120 460",
       "id": "s10-bc",
     },
   ],
