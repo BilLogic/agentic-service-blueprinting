@@ -49,7 +49,7 @@ Per scenario, in this order (mirrors the elicitation protocol):
    for tech lanes.
 3. Cells — walk the grid lane by lane; empty cells are fine and normal.
 4. Paths — after the happy path exists, ask what goes wrong / what's the
-   workaround; alternative/exception paths reuse scenario steps via
+   workaround; variant/exception paths reuse scenario steps via
    `path_steps` and may add their own.
 5. Dependencies — "what kicks off what?" — only where arrows genuinely add
    information (same-path only).

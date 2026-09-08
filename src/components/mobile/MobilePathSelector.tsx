@@ -12,7 +12,7 @@ import type { PathListItem } from '@/lib/pathSelection'
  * The top-bar path control: the phone reads one path at a time, so the
  * thing that picks it lives in the chrome, not as a badge row inside the
  * reader's scroll. A control naming the current path; tapping it opens
- * the scenario's few paths (happy / unhappy / exception). The shell
+ * the scenario's few paths (happy / variant / exception). The shell
  * decides when to render this — only surfaces with a path dimension get a
  * selector at all.
  */

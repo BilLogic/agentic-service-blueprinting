@@ -15,7 +15,7 @@ type PathKindBadgeProps = {
   side?: 'top' | 'bottom' | 'left' | 'right'
 }
 
-/** Compact badge showing path type (Happy, Unhappy, etc.) on overview path frames. */
+/** Compact badge showing path kind (Happy, Variant, Exception) on overview path frames. */
 export function PathKindBadge({
   pathKind,
   summary,

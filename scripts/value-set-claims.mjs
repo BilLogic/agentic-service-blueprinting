@@ -43,6 +43,11 @@
  * correction verb AND the migration that did it — is history, and the
  * exemption is no wider than that sentence.
  *
+ * BOTH MEDIA KEY ON A MARK — the backtick, or a list's punctuation — and a
+ * value is a value without one. `retiredValuesInCompany()` below is the half
+ * that has no mark to key on, and it is scoped by COMPANY instead; its own
+ * header says how, and why that is the only scope available to it.
+ *
  * Pure: reads text and a catalog snapshot, touches nothing. Ported from the
  * instance, where the catalog is read live through `public.value_sets()`;
  * here it is read off `supabase/generated/portable-core.schema.sql`, the
@@ -152,6 +157,89 @@ export function retiredValues(map = RENAME_MAP) {
     }
   }
   return retired
+}
+
+/* --------------------------------------------------- the company it keeps */
+
+/**
+ * The forms of a table's name a sentence or a figure may use: the plural the
+ * schema spells it with, the singular a reader writes, and either of those
+ * with the underscores of a compound name written as spaces or hyphens —
+ * "cell dependency" is what a paragraph calls `cell_dependencies`.
+ */
+const tableForms = (table) =>
+  [table, table.replace(/ies$/, 'y').replace(/s$/, '')].map(
+    (form) => new RegExp(`\\b${form.replace(/_/g, '[ _-]')}\\b`, 'i'),
+  )
+
+const UNIT_WORD = /[a-z][a-z0-9_-]*/g
+
+/**
+ * Retired values a unit of text offers as live, scoped by the company they keep.
+ *
+ * `valueSetFindings()` above reads a MARK: a code span in markdown, a list's
+ * bracket or slash or pipe in a catalog comment. Neither mark is required to
+ * teach a value. "Dead ends: exception/unhappy paths" wears no backticks, and
+ * a figure that labels three boxes `Path · happy`, `Path · exception`,
+ * `Path · unhappy` wears no punctuation at all — both name a path kind, and
+ * one of the three is a kind the CHECK constraint refuses.
+ *
+ * WHY COMPANY AND NOT THE WORD. Of the eight values this map retires, seven
+ * are ordinary English in this tree — `single`, `other`, `needs`, `trigger`,
+ * `integrated`, `alternative`, `side-by-side`. A bare-word sweep for them over
+ * the swept documents returns eleven hits of which two are defects; the guard
+ * would be a list of exemptions on its first run. So the subject is narrowed
+ * rather than the word list, which is the rule
+ * `scripts/tests/retired-copy.test.mjs` states for the same hazard.
+ *
+ * TWO SIGNALS, BOTH REQUIRED, and each is about the value's OWN column:
+ *
+ *   NAMED   the unit names the table the value was retired from. "unhappy
+ *           paths" is about `paths.kind`; "a single scenario" is not about
+ *           `resources.kind`.
+ *   BESIDE  the unit carries a value that column still accepts. `exception`
+ *           beside `unhappy`, `happy` beside `unhappy` — a word standing in
+ *           an enumeration of a column's values is being offered as one.
+ *
+ * Either alone is not enough and the measurement says so: `named` alone adds
+ * nine sentences about database triggers, single scenarios and side-by-side
+ * comparison; `beside` alone reads "a single source of truth … the stacked
+ * column headers" as a layout claim. Together they returned three findings
+ * across the swept documents and the figures, and all three were defects.
+ *
+ * NOTHING HERE COUNTS ANYTHING. The rule is per value, per column, per unit;
+ * a value the map retires tomorrow is swept tomorrow without this function
+ * changing, and this function has no idea how many sites exist today.
+ *
+ * WHAT IT CANNOT SEE, STATED RATHER THAN HIDDEN. A sentence that names a
+ * table and one of its live values in ordinary English, and happens to use a
+ * retired value as English too, is a false positive this rule cannot rule out
+ * — "a scenario laid out side by side, stacked or merged" would be one. None
+ * exists today; when one does, the fix is the sentence or a narrower unit,
+ * never a shorter word list. And ANAPHORA is invisible to it: a paragraph
+ * that establishes the column and then says the retired word two sentences
+ * later keeps a scope this rule does not carry across the boundary.
+ *
+ * `unit` is one sentence of a document, or one whole figure — a diagram has
+ * no sentences, and its `<text>` nodes are read together because they label
+ * boxes drawn beside each other.
+ */
+export function retiredValuesInCompany(unit, catalog, retired = retiredValues()) {
+  const words = new Set(unit.toLowerCase().match(UNIT_WORD) ?? [])
+  const found = []
+  for (const [value, { column, is, migration }] of retired) {
+    if (!words.has(value)) continue
+    const live = catalog.columns.get(column)
+    // A column that still accepts the value has not retired it here. The map
+    // is the instance's history as well as this template's, and a fold that
+    // has not landed yet is not a stale word — the same rule `valueSetFindings`
+    // applies to a scoped list.
+    if (!live || live.values.has(value)) continue
+    const named = tableForms(column.split('.')[0]).some((form) => form.test(unit))
+    const beside = [...live.values].some((other) => other !== value && words.has(other))
+    if (named && beside) found.push({ value, column, is, migration })
+  }
+  return found
 }
 
 /* ------------------------------------------------------------- sentences */

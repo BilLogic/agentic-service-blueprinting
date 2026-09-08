@@ -67,12 +67,12 @@
   <rect x="514" y="264" width="120" height="96" rx="8" fill="#eef0f4" stroke="#ccd2da"/>
   <text x="526" y="280" class="titleDim">Path · exception</text>
   <rect x="500" y="282" width="120" height="96" rx="8" fill="#f4f5f7" stroke="#ccd2da"/>
-  <text x="512" y="298" class="titleDim">Path · unhappy</text>
+  <text x="512" y="298" class="titleDim">Path · variant</text>
   <rect x="486" y="300" width="120" height="96" rx="8" fill="#fdf1e3" stroke="#d4b483" stroke-width="1.4"/>
   <text x="498" y="318" class="title">Path · happy</text>
   <text x="560" y="436" text-anchor="middle" class="head">SCENARIO</text>
   <text x="560" y="454" text-anchor="middle" class="sub">branches into path variants</text>
-  <text x="560" y="467" text-anchor="middle" class="sub">(e.g., happy vs. unhappy)</text>
+  <text x="560" y="467" text-anchor="middle" class="sub">(e.g., happy vs. exception)</text>
 
   <!-- Zoom: Path · happy card projects into the Path panel -->
   <path class="zoom" d="M606,300 L700,308"/>
