@@ -74,6 +74,37 @@
  * guessed wrong it would fail a correct call, which is how a guard gets
  * switched off. A query path carries its own relation, so nothing is guessed.
  *
+ * THIRD ASSERTION: a written column list, against the same dump.
+ *
+ * A query path is not the only string that carries its own relation. So does
+ * the SQL this repository GENERATES: `insert into public.<table> (<columns>)`
+ * names the relation and its columns in one statement, and `update
+ * public.<table> set <column> = …` does the same. The qualified-relation rule
+ * above already reads the TABLE out of those statements; it just had nothing
+ * to say about the names inside the parentheses.
+ *
+ * #277 is what that missed. `21000116000000` renamed `slices.description` to
+ * `summary` and `slices.origin` to `authorship`, and
+ * `skills/slice/scripts/slice_tools.py` went on emitting the retired pair in
+ * its column list — an INSERT Postgres rejects outright. Neither word is in
+ * the rename map's word lists and neither can be: `description` and `origin`
+ * are live columns elsewhere in this schema, which is why
+ * `scripts/tests/retired-database-names.test.mjs` asserts
+ * `retiredFragmentsIn('slices.description')` is empty. The dump is what
+ * separates them, per table, exactly as it does for the query path.
+ *
+ * ASSEMBLED LISTS ARE DROPPED RATHER THAN GUESSED AT — the rule `selectTree`
+ * states for the same reason. `insert into public.lanes ({', '.join(fields)})`
+ * has a column list this check cannot read, so it reads none: a list is taken
+ * only when every piece of it is a bare identifier. Twenty-six statements in
+ * this tree are literal and five are assembled.
+ *
+ * `skills/` IS IN THE SUBJECT, and was not before. The two shipped skill
+ * scripts are the most exposed code in the repository — a model runs them
+ * against a real database — and no database-name guard walked them at all.
+ * Adding the root costs nothing on the first two assertions: both were already
+ * clean there.
+ *
  * Static, needs no database, runs in `gates`.
  *
  * Run: node scripts/check-database-names.mjs   (also: npm run check:database-names)
@@ -83,7 +114,8 @@ import { join, relative, resolve } from 'node:path'
 import { RENAME_MAP, replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
-const ROOTS = ['src', 'scripts']
+// `skills/` carries the two scripts a model runs against a live database.
+const ROOTS = ['src', 'scripts', 'skills']
 const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 const SOURCE = /\.(?:[cm]?[jt]sx?|py)$/
 /**
@@ -542,6 +574,129 @@ export function strayNames(reported = new Set()) {
   return out
 }
 
+/* --------------------------------------------------- generated SQL writes */
+
+/**
+ * The same source with adjacent string literals joined, line numbers intact.
+ *
+ * A statement too long for one line is written as two literals — Python
+ * concatenates them implicitly, JavaScript with `+` — and the seam is
+ * invisible to a pattern that reads one literal at a time. `slice_tools.py`
+ * is that shape exactly: `"insert into public.slices "` on one line and
+ * `"(id, service_id, kind, …) values ("` on the next, so the relation and its
+ * column list live in different strings. A rule matching either alone sees a
+ * table with no columns, or a column list belonging to nothing.
+ *
+ * The quotes become SPACES rather than vanishing, and newlines are kept — the
+ * rule `withoutHashComments` states: a finding that points at the wrong line
+ * is worse than a finding nobody can find.
+ */
+export function joinAdjacentLiterals(code) {
+  return code.replace(/(['"])[ \t\r\n]*\+?[ \t\r\n]*\1/g, (match) =>
+    match.replace(/[^\n]/g, ' '),
+  )
+}
+
+/** `insert into public.<table> (<columns>)` — the list is parenthesised and flat. */
+const INSERT_LIST = /insert\s+into\s+public\.([a-z_][a-z0-9_]*)\s*\(([^)]*)\)/gi
+/** `update public.<table> set …` up to the clause that ends the assignments. */
+const UPDATE_SET =
+  /update\s+public\.([a-z_][a-z0-9_]*)\s+set\s+([\s\S]*?)(?:\bwhere\b|\breturning\b|;)/gi
+/** `<column> =` at the head of a SET clause or after one of its commas. */
+const ASSIGNED = /(?:^|,)\s*"?([a-z_][a-z0-9_]*)"?\s*=/g
+/** A column list piece that is a bare name — quoted only because `position` is reserved. */
+const COLUMN_TOKEN = /^"?([a-z_][a-z0-9_]*)"?$/
+
+/**
+ * Every relation a file WRITES in generated SQL, with the columns it names.
+ *
+ * `verb` is `insert` or `update`. Both statements carry their own relation, so
+ * nothing about the binding is guessed — which is the property the query-path
+ * rule needed and a `.select()` string does not have.
+ *
+ * A column list is read only when EVERY piece of it is a bare identifier.
+ * `insert into public.lanes ({', '.join(fields)})` is assembled from a
+ * variable, and a check that read `{'` as a column would fail a correct
+ * generator on its first run. Dropping it is the same refusal `selectTree`
+ * makes about a cast or a JSON path: carry what can be proved, stay silent
+ * about the rest.
+ */
+export function writtenColumns(code, language = 'javascript') {
+  const bare = joinAdjacentLiterals(
+    language === 'python' ? withoutHashComments(code) : withoutComments(code),
+  )
+  const at = (index) => (bare.slice(0, index).match(/\n/g) ?? []).length + 1
+  const out = []
+  for (const match of bare.matchAll(INSERT_LIST)) {
+    const pieces = match[2].split(',').map((piece) => piece.trim()).filter(Boolean)
+    if (pieces.length === 0 || !pieces.every((piece) => COLUMN_TOKEN.test(piece))) continue
+    out.push({
+      line: at(match.index),
+      table: match[1],
+      columns: pieces.map((piece) => COLUMN_TOKEN.exec(piece)[1]),
+      verb: 'insert',
+    })
+  }
+  for (const match of bare.matchAll(UPDATE_SET)) {
+    const columns = [...match[2].matchAll(ASSIGNED)].map((one) => one[1])
+    if (columns.length === 0) continue
+    out.push({ line: at(match.index), table: match[1], columns, verb: 'update' })
+  }
+  return out.sort((a, b) => a.line - b.line || a.table.localeCompare(b.table))
+}
+
+/**
+ * Every generated write naming a relation or column the schema dump lacks.
+ *
+ * A VIEW is skipped once named: `schemaRelations` maps it to `null` because a
+ * projection's columns are its own business, and inventing them here would
+ * either refuse real columns or accept absent ones.
+ */
+export function strayWrites(reported = new Set()) {
+  const relations = schemaRelations(readFileSync(join(REPO_ROOT, SCHEMA), 'utf8'))
+  if (relations.size === 0) throw new Error(`no relations parsed from ${SCHEMA}`)
+  const out = []
+  for (const root of ROOTS) {
+    for (const file of sourceFilesUnder(root)) {
+      const relativePath = relative(REPO_ROOT, file).split('\\').join('/')
+      const language = file.endsWith('.py') ? 'python' : 'javascript'
+      for (const write of writtenColumns(readFileSync(file, 'utf8'), language)) {
+        const known = relations.get(write.table)
+        const site = (name) => `${relativePath}:${write.line} ${name}`
+        if (known === undefined) {
+          if (reported.has(site(write.table))) continue
+          out.push({
+            file: relativePath,
+            line: write.line,
+            verb: write.verb,
+            relation: null,
+            name: write.table,
+            renamed: renamedTo(write.table),
+            kind: 'relation',
+            identifier: site(write.table),
+          })
+          continue
+        }
+        if (known === null) continue
+        for (const column of write.columns) {
+          if (known.has(column) || reported.has(site(column))) continue
+          out.push({
+            file: relativePath,
+            line: write.line,
+            verb: write.verb,
+            relation: write.table,
+            name: column,
+            renamed: renamedTo(`${write.table}.${column}`),
+            kind: 'column',
+            identifier: site(column),
+          })
+        }
+      }
+    }
+  }
+  return out
+}
+
 function main() {
   const problems = findings()
   for (const problem of problems) {
@@ -562,7 +717,20 @@ function main() {
         `${stray.renamed ? ` (→ \`${stray.renamed}\`)` : ''}. Nothing typechecks this.`,
     )
   }
-  if (problems.length + strays.length > 0) {
+  const writes = strayWrites(
+    new Set([...problems.map((problem) => problem.identifier), ...strays.map((stray) => stray.identifier)]),
+  )
+  for (const write of writes) {
+    const what =
+      write.kind === 'relation'
+        ? `names \`${write.name}\`, which is not a table or view in ${SCHEMA}`
+        : `writes \`${write.name}\`, which is not a column of \`${write.relation}\` in ${SCHEMA}`
+    console.error(
+      `::error file=${write.file},line=${write.line}::generated ${write.verb.toUpperCase()} ${what}` +
+        `${write.renamed ? ` (→ \`${write.renamed}\`)` : ''}. Postgres rejects the statement; nothing here typechecks.`,
+    )
+  }
+  if (problems.length + strays.length + writes.length > 0) {
     if (problems.length > 0)
       console.error(`\n${problems.length} retired database name(s) inside string literals.`)
     if (strays.length > 0)
@@ -570,11 +738,17 @@ function main() {
         `\n${strays.length} name(s) in a PostgREST query string that ${SCHEMA} does not have.` +
           ` Fix the query, or regenerate the dump with \`npm run generate:portable-schema\`.`,
       )
+    if (writes.length > 0)
+      console.error(
+        `\n${writes.length} name(s) in generated SQL that ${SCHEMA} does not have.` +
+          ` Fix the statement, or regenerate the dump with \`npm run generate:portable-schema\`.`,
+      )
     process.exit(1)
   }
   console.log(
-    'ok — every database name in a string literal is one the schema still has, and every' +
-      ' PostgREST query names a relation and columns the dump declares',
+    'ok — every database name in a string literal is one the schema still has, every' +
+      ' PostgREST query names a relation and columns the dump declares, and every generated' +
+      ' INSERT and UPDATE writes columns the dump has',
   )
 }
 

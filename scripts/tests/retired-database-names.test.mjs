@@ -15,6 +15,7 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   databaseNames,
+  joinAdjacentLiterals,
   findings,
   namedObjects,
   postgrestQueries,
@@ -22,10 +23,12 @@ import {
   schemaRelations,
   selectTree,
   strayNames,
+  strayWrites,
   stringLiterals,
   unknownNames,
   withoutComments,
   withoutHashComments,
+  writtenColumns,
 } from '../check-database-names.mjs'
 import { retiredFragmentsIn } from '../retired-vocabulary.mjs'
 
@@ -256,4 +259,81 @@ test('an embedded relation is checked, and a live name is not reported', () => {
 
 test('the whole repository names a relation and columns the dump declares', () => {
   assert.deepEqual(strayNames(), [])
+})
+
+/* ------------------------------------- the generated write, against the schema */
+
+/**
+ * The third assertion, which is #277: `21000116000000` renamed
+ * `slices.description` to `summary` and `slices.origin` to `authorship`, and
+ * `slice_tools.py` went on emitting the retired pair inside an INSERT column
+ * list. No word list can reach it — the test above asserts
+ * `retiredFragmentsIn('slices.description')` is empty on purpose, because
+ * `description` and `origin` are live columns elsewhere in this schema. The
+ * dump separates them per table.
+ */
+test('a statement split across two literals is one statement', () => {
+  // The shape verbatim: the relation in one literal, its column list in the
+  // next, which is how Python writes a line too long to fit.
+  const code = [
+    'lines.append(',
+    '    "insert into public.slices "',
+    '    "(id, title, description) values ("',
+    ')',
+  ].join('\n')
+  assert.deepEqual(writtenColumns(code, 'python'), [
+    { line: 2, table: 'slices', columns: ['id', 'title', 'description'], verb: 'insert' },
+  ])
+  // Blanked, not removed: the seam keeps its newline so line 2 stays line 2.
+  assert.equal(joinAdjacentLiterals(code).split('\n').length, code.split('\n').length)
+})
+
+test('an assembled column list is dropped rather than guessed at', () => {
+  // `insert into public.lanes ({', '.join(fields)})` — the columns are in a
+  // variable. A check that read `{'` as a column would fail a correct
+  // generator the first time it ran.
+  assert.deepEqual(
+    writtenColumns('f"insert into public.lanes ({\', \'.join(fields)}) values"', 'python'),
+    [],
+  )
+  // The same statement written out is read.
+  assert.deepEqual(
+    writtenColumns('"insert into public.lanes (id, name) values"', 'python').map((one) => one.columns),
+    [['id', 'name']],
+  )
+})
+
+test('an UPDATE names its columns too, and stops at the clause that ends them', () => {
+  const code = 'sql(`update public.phases set summary = $1, position = $2 where id = $3`)'
+  assert.deepEqual(writtenColumns(code), [
+    { line: 1, table: 'phases', columns: ['summary', 'position'], verb: 'update' },
+  ])
+  // `where id = …` is a predicate, not an assignment: `id` is not reported.
+  assert.equal(writtenColumns(code)[0].columns.includes('id'), false)
+})
+
+test('a generated write is held against the dump, per table', () => {
+  const relations = schemaRelations(SCHEMA_FIXTURE)
+  const written = writtenColumns(
+    '"insert into public.slices (id, title, description, origin) values ("',
+    'python',
+  )
+  const stray = written[0].columns.filter((column) => !relations.get('slices').has(column))
+  assert.deepEqual(stray, ['description', 'origin'])
+  // The live spellings are not reported, and the fixture proves the rule is
+  // about THIS table: `summary` is a column of `slices` and of nothing else here.
+  assert.deepEqual(
+    writtenColumns('"insert into public.slices (id, title, summary) values ("', 'python')[0]
+      .columns.filter((column) => !relations.get('slices').has(column)),
+    [],
+  )
+})
+
+test('a comment naming a write is not a write', () => {
+  assert.deepEqual(writtenColumns('# insert into public.slices (description)', 'python'), [])
+  assert.deepEqual(writtenColumns('// insert into public.slices (description)'), [])
+})
+
+test('every generated INSERT and UPDATE in this repository writes columns the dump has', () => {
+  assert.deepEqual(strayWrites(), [])
 })
