@@ -341,11 +341,14 @@ auto-repaired, or hidden behind a mandatory transaction wrapper.
 
 ### 4. Read timeout
 
-Every app read races a **10-second timeout**
+Every app read runs under a **10-second deadline**
 (`SUPABASE_FETCH_TIMEOUT_MS` in `src/lib/supabaseFetchTimeout.ts`); a
-read that exceeds it is treated as failed and the app falls back or
-errors. A live backend must answer blueprint reads comfortably inside
-that budget.
+read that exceeds it is **aborted**, retried once, and then treated as
+failed, at which point the app falls back or errors. The same deadline
+carries the caller's own cancellation, so a read whose view has gone
+away is aborted rather than left on the wire. A live backend must
+answer blueprint reads comfortably inside that budget, and must accept
+a cancelled request rather than completing it.
 
 ### 5. Findings dedupe semantics and operators
 
