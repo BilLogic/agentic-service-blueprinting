@@ -252,7 +252,8 @@ export function PathMultiSelect({
   const isNotion = layout === 'notion'
   const isToolbar = layout === 'toolbar'
   // Vertical (filter popover) and badge layouts stay one column; only the
-  // horizontal picker groups happy/unhappy into side-by-side columns.
+  // horizontal picker splits the kinds into side-by-side columns, by
+  // `PATH_COLUMN_BY_KIND`.
   const columns =
     isVertical || isBar || isNotion || isToolbar
       ? [paths]

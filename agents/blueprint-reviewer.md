@@ -41,7 +41,7 @@ validator stops: it proves the IR is well-formed; you probe whether it is
 **Journey-logic holes**:
 - Sequences that can't happen in the stated order; actors acting before
   they plausibly know anything (no upstream dependency/cell).
-- Dead ends: exception/unhappy paths that never resolve or rejoin.
+- Dead ends: exception/variant paths that never resolve or rejoin.
 - The spine: does `customer_actions` sit on the actor whose journey this
   actually is? Interaction/visibility lines landing somewhere absurd?
 - Role smells: prose in touchpoint lanes (`*_touchpoints`), touchpoint
