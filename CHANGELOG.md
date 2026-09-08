@@ -1,5 +1,110 @@
 # Changelog
 
+## 1.13.2
+
+### Patch Changes
+
+- 3a1f1d1: A write that is refused is translated, never forwarded raw.
+
+  `AuthoringError` and `toAuthoringError` have been here since the authoring path
+  was built, and two of the modules that write around them: thirteen throws
+  raised `new Error(error.message)`, which sends the database's own text to the
+  panel — `new row violates row-level security policy for table "phases"` is not
+  a sentence to show a reader — and discards `.raw`, the only place the original
+  survives. `sliceMutations.ts` had twelve of them and `cellSpecMutations.ts` the
+  thirteenth.
+
+  `src/lib/writeTranslationContract.test.ts` is what keeps it true. The rule is
+  scoped to the modules that WRITE and deliberately no wider: a hook raising
+  `error.message` from a `.select()` is a different problem with a different
+  answer, and a rule over every file would be a list of exemptions instead. The
+  writers are matched by shape — `lib/*Mutations.ts`, anchored at `lib/` so a
+  `components/FooMutations.ts` cannot route around the test — plus
+  `authoringRpc.ts` named, and both halves are asserted to still match something
+  so a rename fails loudly rather than emptying the set.
+
+  The regex is exercised on strings it never read off disk, because a source
+  scan passes just as happily when it matches nothing: the two raw shapes fail,
+  and a translated throw and a hand-written sentence pass.
+
+  Measured rather than estimated. Under this rule the repository had thirteen
+  offenders in two files; the same regex over all of `src/` returns seventy-two,
+  and the other fifty-nine are reads, which is the reason for the scope.
+
+  `src/lib/cellSpecMutations.ts` is byte-identical to the deployment's copy as a
+  result, so it can be held to this one.
+
+  NOT changed, and it is a real choice: `optimisticConcurrency.ts` still raises
+  around the translator, and its comment says why — the PostgREST error is left
+  to the caller, which knows whether it wants `toAuthoringError`. The deployment
+  translates there instead. That is a difference of position rather than drift,
+  and it is decided on its own.
+
+- 9bddd24: Two sentences in shared source stop naming an address that resolves only in a
+  deployment, and the surface is measured rather than asserted.
+
+  `src/styles/semantic.css` said "Sidebar selection language (nav plan D8)". D8
+  is a row of a plan document in the deployment this vocabulary was ported from;
+  nothing here resolves it. The sentence now states the decision — hover and
+  selected are distinguished, and this is how — which is what a reader of the
+  token needs and what the paragraph beneath it already explains.
+
+  `src/lib/sliceValidation.ts` had the opposite defect: the deployment's copy
+  carries an explanation this one lacked, that `slices.origin` became
+  `slices.authorship` and why the validator therefore reads what it reads. Both
+  halves are true here. Only the migration filename was unportable, so the
+  explanation arrives stated without one, pointing at
+  `scripts/retired-vocabulary.mjs` — the durable place a reader goes for the
+  history, which is the pattern the fold-migration citation established.
+
+  The wording was checked against the deployment's copy rather than assumed: with
+  this comment in place the two files differ in nothing else, so the deployment
+  can adopt it verbatim and hold the file.
+
+  THE SWEEP, because four instances of one shape is a pattern and the count is
+  what says whether it needs a guard. Over the adoption surface — 199 files this
+  repository ships that the deployment also has and has not yet held to this copy
+  — there are 244 addresses: 80 bare issue numbers, and 25 that resolve to
+  nothing here. Twenty-two of the 25 are test fixtures (`docs/a.md`,
+  `docs/gone.md`, planted SVG paths) or deliberate cross-repo statements about
+  the deployment's own database, correctly framed as such. Exactly one was the
+  defect, and it is the one fixed above.
+
+  A GUARD IS NOT WORTH IT, on that measurement. The standing backlog is one file:
+  of the 199, exactly one is already byte-identical and unheld, and it is
+  `semantic.css`. A rule refusing repo-local addresses in shared source would
+  return 80 issue-number findings on its first run, nearly all of them in
+  `scripts/` — this repository's own checks, citing this repository's own issues,
+  correctly. Eighty exemptions on a first run is a list of sites, not a rule.
+
+  The asymmetry is real and it is closed elsewhere: this repository cannot know
+  which of its files a deployment will hold, and the deployment's reconciled list
+  already records each blocked file with its reason. That is where the discovery
+  happens, and filing it back is how it gets fixed — which is what happened here.
+
+- 7294437: `readWriteOutcome` translates the error it is handed, rather than leaving it to
+  the caller.
+
+  The previous comment argued the other way: the PostgREST error was left to the
+  caller, "which knows whether it wants `toAuthoringError`". In practice a caller
+  that knows is a caller that remembers, and the guarantee a reader wants is the
+  simpler one — a refused write is phrased for a person no matter which module
+  raised it. The function already sits on the write path of every module that
+  checks a row count, so translating here is what makes the rule hold without
+  each caller re-deciding it.
+
+  The parameter widens from `{ message: string }` to `PostgrestError | Error`,
+  which is what `toAuthoringError` takes and what callers were already passing.
+
+  The sentence beneath now says what became true rather than what is left over: a
+  PostgREST error never reaches the row-count check, because this function has
+  already translated it.
+
+  The deployment had reached this position first, so the file is byte-identical
+  to its copy and can be held to it. The divergence was a difference of position
+  rather than drift, and it was settled by its owner rather than by whichever
+  side was edited last.
+
 ## 1.13.1
 
 ### Patch Changes
@@ -1739,8 +1844,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                    ERROR: new row for relation "lanes" violates check constraint
-                                    "lanes_lane_role_check" … compliance_review
+                                      ERROR: new row for relation "lanes" violates check constraint
+                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
