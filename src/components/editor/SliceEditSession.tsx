@@ -8,7 +8,6 @@ import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import type { SliceDetail } from '@/hooks/useSlice'
-import { errorMessage } from '@/lib/utils'
 import {
   replaceSlides,
   sliceToken,
@@ -19,6 +18,7 @@ import {
   validateDraftSlice,
   type DraftSlide,
 } from '@/lib/sliceValidation'
+import { errorMessage } from '@/lib/utils'
 
 /** The saved slice, as slides the editor can mutate. */
 function toDraftSlides(detail: SliceDetail): DraftSlide[] {

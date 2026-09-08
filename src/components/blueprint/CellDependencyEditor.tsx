@@ -102,9 +102,7 @@ export function CellDependencyEditor({
       await clearCellDependency(client, dependencyId)
       refresh()
     } catch (removeError) {
-      setError(
-        errorMessage(removeError),
-      )
+      setError(errorMessage(removeError))
     } finally {
       setBusy(false)
     }

@@ -99,9 +99,7 @@ export function CreateVersionDialog({
       onOpenChange(false)
       onCreated?.(pathId)
     } catch (createError) {
-      setError(
-        errorMessage(createError),
-      )
+      setError(errorMessage(createError))
     } finally {
       setBusy(false)
     }

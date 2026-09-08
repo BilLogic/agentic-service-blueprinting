@@ -434,9 +434,7 @@ function RenameDialog({
       invalidateStructure()
       onOpenChange(false)
     } catch (renameError) {
-      onError(
-        errorMessage(renameError),
-      )
+      onError(errorMessage(renameError))
     } finally {
       setBusy(false)
     }

@@ -59,9 +59,7 @@ export function CreatePhaseDialog({
       onOpenChange(false)
       onCreated?.(phaseId)
     } catch (createError) {
-      setError(
-        errorMessage(createError),
-      )
+      setError(errorMessage(createError))
     } finally {
       setBusy(false)
     }

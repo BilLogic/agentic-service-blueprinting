@@ -747,9 +747,7 @@ function ChangeRow({
         setBusy(false)
       }
     } catch (revertError) {
-      setError(
-        errorMessage(revertError),
-      )
+      setError(errorMessage(revertError))
       setBusy(false)
     }
   }

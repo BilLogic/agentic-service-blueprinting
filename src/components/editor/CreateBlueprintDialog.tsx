@@ -15,7 +15,6 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { createScenario } from '@/lib/authoringRpc'
-import { errorMessage } from '@/lib/utils'
 import {
   DEFAULT_LANE_SET,
   LAYOUT_LABELS,
@@ -27,6 +26,7 @@ import {
   validateDraftBlueprint,
   type DraftBlueprint,
 } from '@/lib/blueprintValidation'
+import { errorMessage } from '@/lib/utils'
 
 /** A version that lanes can be copied from, labelled by where it lives. */
 type LaneSource = {
@@ -159,9 +159,7 @@ export function CreateBlueprintDialog({
       onOpenChange(false)
       onCreated?.(created.scenario_id)
     } catch (createError) {
-      setError(
-        errorMessage(createError),
-      )
+      setError(errorMessage(createError))
     } finally {
       setBusy(false)
     }

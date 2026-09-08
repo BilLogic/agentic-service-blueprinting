@@ -124,9 +124,7 @@ export function BlueprintLaneHandles({
       setNaming(null)
       setName('')
     } catch (laneError) {
-      setError(
-        errorMessage(laneError),
-      )
+      setError(errorMessage(laneError))
     } finally {
       setBusy(false)
     }

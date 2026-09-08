@@ -488,9 +488,7 @@ function CellPanelEditorForm({
       if (aliveRef.current) onDone()
     } catch (saveError) {
       if (aliveRef.current) {
-        setError(
-          errorMessage(saveError),
-        )
+        setError(errorMessage(saveError))
       }
     } finally {
       if (aliveRef.current) setBusy(false)

@@ -103,9 +103,7 @@ export function OwnerTagSelect({
       if (value === from) onChange(next)
       setRenaming(null)
     } catch (renameError) {
-      setError(
-        errorMessage(renameError),
-      )
+      setError(errorMessage(renameError))
     } finally {
       setBusy(false)
     }
