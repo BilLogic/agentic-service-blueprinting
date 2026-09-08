@@ -1,8 +1,14 @@
 /* Tailwind v4 design-token map. Mirrors packages/config/css/theme.css.
  *
- * Every entry is `--color-X: var(--X)` — an indirection from the semantic
- * token declared in semantic.css into Tailwind's namespace, so `bg-canvas`,
- * `text-muted-foreground` etc. are generated.
+ * Every colour entry is one of two shapes, and `theme.shape.test.ts` holds it
+ * to them. Most are an indirection, `--color-X: var(--Y)` — a single bare
+ * reference to the semantic token declared in semantic.css, lifted into
+ * Tailwind's namespace so `bg-canvas`, `text-muted-foreground` etc. are
+ * generated. The rest are the self-referential namespace declarations for the
+ * hue families, `--color-X: var(--color-X)`, whose block below says why. What
+ * neither shape does is compute: a value that assembles a colour, or that
+ * reads a per-theme dial, is the semantic layer's job arriving one tier too
+ * low.
  *
  * NOTE: `@theme inline` keys are NOT emitted as custom properties. Never write
  * `var(--color-canvas)` in hand-authored CSS — reference the underlying dial or
@@ -156,10 +162,9 @@
      hue and never for a role. `brand-link` went with it: role ink on a
      neutral ground is `--text-brand` now, which is what a link wanted. The
      warning and destructive ramps followed for the same reason, and their
-     registrations went with them: this file maps a semantic name onto
-     Tailwind's namespace and does no colour arithmetic, so an entry that
-     wrapped a raw HSL triple was doing the semantic layer's job one tier too
-     low. Every entry here is `--color-X: var(--X)`, and a check holds it. */
+     ten registrations went with them: each read a raw HSL triple out of a
+     theme file and wrapped it in `hsl()`, which is the one thing this file
+     may not do. */
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
 
