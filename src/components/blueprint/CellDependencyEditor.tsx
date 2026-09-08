@@ -19,6 +19,7 @@ import {
   type DraftDependency,
 } from '@/lib/dependencyValidation'
 import type { DependencyKind } from '@/lib/authoringRpc'
+import { errorMessage } from '@/lib/utils'
 
 export type ExistingDependency = {
   id: string
@@ -87,7 +88,7 @@ export function CellDependencyEditor({
       refresh()
       setDraft((current) => ({ ...current, targetCellId: null, name: '' }))
     } catch (addError) {
-      setError(addError instanceof Error ? addError.message : String(addError))
+      setError(errorMessage(addError))
     } finally {
       setBusy(false)
     }
@@ -102,7 +103,7 @@ export function CellDependencyEditor({
       refresh()
     } catch (removeError) {
       setError(
-        removeError instanceof Error ? removeError.message : String(removeError),
+        errorMessage(removeError),
       )
     } finally {
       setBusy(false)

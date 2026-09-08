@@ -15,6 +15,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { createScenario } from '@/lib/authoringRpc'
+import { errorMessage } from '@/lib/utils'
 import {
   DEFAULT_LANE_SET,
   LAYOUT_LABELS,
@@ -159,7 +160,7 @@ export function CreateBlueprintDialog({
       onCreated?.(created.scenario_id)
     } catch (createError) {
       setError(
-        createError instanceof Error ? createError.message : String(createError),
+        errorMessage(createError),
       )
     } finally {
       setBusy(false)

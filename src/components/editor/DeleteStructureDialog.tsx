@@ -15,6 +15,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { deletePath, deleteScenario } from '@/lib/authoringRpc'
 import { deleteSlice } from '@/lib/sliceMutations'
+import { errorMessage } from '@/lib/utils'
 import {
   DELETION_NOUNS,
   confirmationMatches,
@@ -106,7 +107,7 @@ export function DeleteStructureDialog({
       })
       .catch((error: unknown) => {
         if (cancelled) return
-        setReadError(error instanceof Error ? error.message : String(error))
+        setReadError(errorMessage(error))
       })
     return () => {
       cancelled = true
@@ -144,7 +145,7 @@ export function DeleteStructureDialog({
       onDeleted?.(archiveId)
     } catch (deleteError) {
       setWriteError(
-        deleteError instanceof Error ? deleteError.message : String(deleteError),
+        errorMessage(deleteError),
       )
     } finally {
       setBusy(false)

@@ -17,6 +17,7 @@ import { findFirstServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
 import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
+import { errorMessage } from '@/lib/utils'
 
 /** One slide per cell. The starting shape, and the only one worth seeding. */
 function seedSlides(cellIds: readonly string[]): DraftSlide[] {
@@ -144,7 +145,7 @@ export function CreateSliceSheet({
       openTab({ kind: 'slice', sliceId: slice.id })
     } catch (createError) {
       const message =
-        createError instanceof Error ? createError.message : String(createError)
+        errorMessage(createError)
       // In the preview state every write comes back "permission denied", and
       // raw PostgREST text reads like a bug when it is actually the answer.
       setError(

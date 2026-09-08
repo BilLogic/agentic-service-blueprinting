@@ -26,7 +26,7 @@ import { executeRevert } from '@/lib/revertChange'
 import { reportWriteFailure } from '@/lib/writeFailures'
 import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { cn } from '@/lib/utils'
+import { cn, errorMessage } from '@/lib/utils'
 
 /** Server snapshot for SSR — there is no session before hydration. */
 const EMPTY: ChangeEntry[] = []
@@ -208,7 +208,7 @@ function useUndoHotkey(changes: ChangeEntry[]) {
               return 'That change was already being taken back — nothing else happened.'
             return `Reverted: ${describeChange(last)}`
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error)
+            const message = errorMessage(error)
             throw new Error(`Undo failed and nothing changed: ${message}`, {
               cause: error,
             })
@@ -309,7 +309,7 @@ async function revertAgentSession(
         }
       } catch (error) {
         leftBehind.push(
-          `${label} — ${error instanceof Error ? error.message : String(error)}`,
+          `${label} — ${errorMessage(error)}`,
         )
       }
     }
@@ -499,7 +499,7 @@ export function SessionChangesSheet() {
           failed.push({
             id: entry.id,
             label: describeChange(entry),
-            reason: error instanceof Error ? error.message : String(error),
+            reason: errorMessage(error),
             kind: 'failed',
           })
         }
@@ -748,7 +748,7 @@ function ChangeRow({
       }
     } catch (revertError) {
       setError(
-        revertError instanceof Error ? revertError.message : String(revertError),
+        errorMessage(revertError),
       )
       setBusy(false)
     }

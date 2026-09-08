@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { useSyncExternalStore } from 'react'
+import { errorMessage } from '@/lib/utils'
 import type { Database } from '@/types/database'
 import { anthropicAdapter } from '@/lib/agent/providers/anthropic'
 import { googleAdapter } from '@/lib/agent/providers/google'
@@ -561,7 +562,7 @@ export async function sendToAgent(input: {
             result: detailText(output),
           })
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
+          const message = errorMessage(error)
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,
@@ -627,7 +628,7 @@ export async function sendToAgent(input: {
         text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
       })
     } else {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = errorMessage(error)
       push(sessionId, { kind: 'status', text: `Provider error: ${message}` })
     }
   } finally {

@@ -14,6 +14,7 @@ import { useCellPick } from '@/contexts/cellPickContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { addLane } from '@/lib/authoringRpc'
+import { errorMessage } from '@/lib/utils'
 
 type Boundary = { at: number; y: number }
 
@@ -124,7 +125,7 @@ export function BlueprintLaneHandles({
       setName('')
     } catch (laneError) {
       setError(
-        laneError instanceof Error ? laneError.message : String(laneError),
+        errorMessage(laneError),
       )
     } finally {
       setBusy(false)

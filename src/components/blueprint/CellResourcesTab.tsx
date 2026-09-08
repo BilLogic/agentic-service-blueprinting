@@ -13,6 +13,7 @@ import {
 } from '@/lib/cellContentMutations'
 import { validateResourceUrl } from '@/lib/resourceUrl'
 import { safeExternalHref } from '@/lib/sliceCells'
+import { errorMessage } from '@/lib/utils'
 import type { CellResource } from '@/types/blueprint'
 
 type ResourceRow = {
@@ -183,7 +184,7 @@ function CellResourcesEditor({
       invalidateQueries(`cell-content:${cellId}`)
       setSaved(true)
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : String(saveError))
+      setError(errorMessage(saveError))
     } finally {
       setBusy(false)
     }
@@ -216,7 +217,7 @@ function CellResourcesEditor({
           : [...current, { id: null, kind: 'attachment', name: uploaded.name, url: uploaded.url }],
       )
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : String(uploadError))
+      setError(errorMessage(uploadError))
     } finally {
       setUploading(false)
     }

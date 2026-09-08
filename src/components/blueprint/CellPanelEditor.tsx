@@ -37,6 +37,7 @@ import {
   type PlacementDetailDraft,
 } from '@/lib/touchpointMutations'
 import { PANEL_TEXT } from '@/lib/panelText'
+import { errorMessage } from '@/lib/utils'
 import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseCellContentItems } from '@/lib/parseCellContent'
@@ -488,7 +489,7 @@ function CellPanelEditorForm({
     } catch (saveError) {
       if (aliveRef.current) {
         setError(
-          saveError instanceof Error ? saveError.message : String(saveError),
+          errorMessage(saveError),
         )
       }
     } finally {

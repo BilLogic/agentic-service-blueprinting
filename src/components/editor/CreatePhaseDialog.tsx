@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPhase } from '@/lib/authoringRpc'
+import { errorMessage } from '@/lib/utils'
 
 /**
  * A new phase at the end of the service.
@@ -59,7 +60,7 @@ export function CreatePhaseDialog({
       onCreated?.(phaseId)
     } catch (createError) {
       setError(
-        createError instanceof Error ? createError.message : String(createError),
+        errorMessage(createError),
       )
     } finally {
       setBusy(false)

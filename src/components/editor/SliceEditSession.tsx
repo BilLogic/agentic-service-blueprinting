@@ -8,6 +8,7 @@ import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import type { SliceDetail } from '@/hooks/useSlice'
+import { errorMessage } from '@/lib/utils'
 import {
   replaceSlides,
   sliceToken,
@@ -156,7 +157,7 @@ export function SliceEditSession({
       invalidateQueries(`slice:${detail.slice.id}`)
       onClose()
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : String(saveError))
+      setError(errorMessage(saveError))
     } finally {
       setBusy(false)
     }

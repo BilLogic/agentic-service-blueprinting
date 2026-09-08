@@ -12,7 +12,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useOwnerTags } from '@/hooks/useOwnerTags'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { recordChange } from '@/lib/authoringSession'
-import { cn } from '@/lib/utils'
+import { cn, errorMessage } from '@/lib/utils'
 
 /**
  * Owner as a tag, not free text.
@@ -104,7 +104,7 @@ export function OwnerTagSelect({
       setRenaming(null)
     } catch (renameError) {
       setError(
-        renameError instanceof Error ? renameError.message : String(renameError),
+        errorMessage(renameError),
       )
     } finally {
       setBusy(false)
