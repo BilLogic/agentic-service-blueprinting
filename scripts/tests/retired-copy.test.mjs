@@ -379,6 +379,7 @@ const MANGLED = [
  */
 const MANGLE_EXEMPT = [
   'scripts/tests/retired-copy.test.mjs',
+  'scripts/tests/a-lane-is-not-a-layer.test.mjs',
   'CHANGELOG.md',
 ]
 
@@ -387,11 +388,44 @@ export function mangleExempt(path) {
   return MANGLE_EXEMPT.includes(path) || path.startsWith('.changeset/')
 }
 
+/**
+ * A line's continuation, with whatever marker starts it taken off.
+ *
+ * ` * lane renders greyscale` continues a doc comment; `  lane renders` a
+ * wrapped markdown paragraph. Neither marker is part of the sentence.
+ */
+const CONTINUATION = /^\s*(?:\*|\/\/|#|-|>)?\s*/
+
+/**
+ * Each line, and each line joined to the one after it.
+ *
+ * `semantic lane` reached `references/customization.md` and survived every
+ * run of this sweep, because the phrase WRAPPED: "so the whole semantic"
+ * ended one line and "lane renders greyscale" began the next, and a per-line
+ * test cannot see a phrase that no single line contains. Only the multi-word
+ * patterns can be split this way — a wrap cannot break `laneed` — but the
+ * sweep does not have to know which is which, so both are read the same way.
+ *
+ * A hit is reported on the FIRST of the two lines, which is where a reader
+ * starts reading the sentence.
+ *
+ * The join is only allowed to report a match that STRADDLES the boundary —
+ * one that neither line carries by itself. Without that, a line whose
+ * NEIGHBOUR contains the whole phrase gets blamed for it, and every wrapped
+ * paragraph reports its residue twice, on the line above it and on itself.
+ */
 export function mangledIn(source) {
   const hits = []
-  source.split('\n').forEach((line, index) => {
+  const lines = source.split('\n')
+  lines.forEach((line, index) => {
+    const next = lines[index + 1]
+    const tail = next === undefined ? '' : next.replace(CONTINUATION, '')
+    const joined = `${line} ${tail}`.replace(/\s+/g, ' ')
     for (const { pattern, meant } of MANGLED) {
       if (pattern.test(line)) hits.push({ line: index + 1, meant })
+      else if (pattern.test(joined) && !pattern.test(tail)) {
+        hits.push({ line: index + 1, meant })
+      }
     }
   })
   return hits
@@ -437,6 +471,33 @@ test('the sweep reads the residue and not the column it resembles', () => {
       ].join('\n'),
     ).map((hit) => `${hit.line}:${hit.meant}`),
     ['1:layered', '2:unlayered', '3:semantic layer'],
+  )
+})
+
+test('the sweep reads a phrase the wrap broke in half', () => {
+  // The shape that got past it. `references/customization.md` carried
+  // "the whole semantic / lane renders greyscale" across a wrap for as long
+  // as this sweep has existed, and every run read both halves and saw
+  // nothing wrong with either.
+  assert.deepEqual(
+    mangledIn(
+      [
+        '  template ships hue-neutral — every chroma dial is 0, so the whole semantic',
+        '  lane renders greyscale. To rebrand: set `--hue` to your OKLCH hue,',
+      ].join('\n'),
+    ).map((hit) => `${hit.line}:${hit.meant}`),
+    ['1:semantic layer'],
+  )
+  // A doc comment's continuation marker is not part of the sentence.
+  assert.deepEqual(
+    mangledIn(['   * the design system\'s own semantic', '   * lane above has one job'].join('\n'))
+      .map((hit) => `${hit.line}:${hit.meant}`),
+    ['1:semantic layer'],
+  )
+  // And the column the phrase resembles still passes when IT wraps.
+  assert.deepEqual(
+    mangledIn(['  * the semantic', '  * lane_role, never the display name'].join('\n')),
+    [],
   )
 })
 

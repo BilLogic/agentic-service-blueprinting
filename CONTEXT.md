@@ -54,6 +54,15 @@ display label is free text in any language; its behaviour comes from a
 separate semantic role key (`lane_role`), which is what decides colour,
 whether cells render as pills, and where the dividing lines fall.
 
+**Layer** — *not* a domain word, and listed here because it is the one this
+vocabulary keeps colliding with. A layer is anything stacked, staged,
+composited or tiered: the CSS cascade's `@layer`, a composited paint layer,
+the opaque cover a boot skeleton draws over the sidebar, a rung of the canvas
+reveal, a design-token tier, an architectural tier such as the tool layer.
+The table `layers` became `lanes`, which retired the NAME and not the English
+word — a layer is never a row of the board, and a lane is never stacked on
+anything.
+
 **Cell** — what one actor does at one moment: the content at the intersection
 of a lane and a step on a path. A cell is the unit everything else points at
 — a slice quotes cells, a finding names cells, evidence attaches to a cell.
