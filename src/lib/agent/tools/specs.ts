@@ -588,7 +588,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       type: 'object',
       properties: {
         title: str('Slice title'),
-        description: str('One-line description; omit for none'),
+        summary: str('One-line summary; omit for none'),
         kind: {
           type: 'string',
           enum: ['journey', 'lane', 'step', 'custom'],
@@ -606,13 +606,13 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
   {
     name: 'update_slice',
-    description: "Edit a slice's own fields: title, description, actor, type.",
+    description: "Edit a slice's own fields: title, summary, actor, kind.",
     parameters: {
       type: 'object',
       properties: {
         slice_id: str('Slice id from list_slices'),
         title: str('omit to keep'),
-        description: str('omit to keep'),
+        summary: str('omit to keep'),
         actor: str('omit to keep'),
         kind: { type: 'string', enum: ['journey', 'lane', 'step', 'custom'], description: 'omit to keep' },
       },
