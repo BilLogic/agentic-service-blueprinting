@@ -19,12 +19,13 @@ export function useScenarioPaths(scenarioId: string | null) {
   const fallback = useCallback((): ScenarioPaths | null => null, [])
   return useSupabaseQuery<ScenarioPaths>(
     scenarioId ? `scenario-paths:${scenarioId}` : null,
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('paths')
         .select('id,name,scenarios(name)')
         .eq('scenario_id', scenarioId ?? '')
         .order('name')
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
       const rows = data ?? []
       const scenario = rows[0]?.scenarios as { name?: string } | null

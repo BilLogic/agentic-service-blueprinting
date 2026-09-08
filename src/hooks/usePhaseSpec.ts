@@ -28,7 +28,7 @@ export function usePhaseSpec(
 
   return useSupabaseQuery<PhaseSpec | null>(
     `phase-spec:${phaseId ?? 'none'}`,
-    async (client) => {
+    async (client, signal) => {
       if (!phaseId) return null
 
       const { data: phase, error } = await client
@@ -37,6 +37,7 @@ export function usePhaseSpec(
           'id, name, summary, business_impact, operational_requirements, loops_to_phase_id, services!inner(name)',
         )
         .eq('id', phaseId)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!phase) return null
@@ -47,6 +48,7 @@ export function usePhaseSpec(
           .from('phases')
           .select('name')
           .eq('id', phase.loops_to_phase_id)
+          .abortSignal(signal)
           .maybeSingle()
         loopsToName = target?.name ?? null
       }

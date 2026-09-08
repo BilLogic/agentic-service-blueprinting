@@ -13,11 +13,12 @@ export function useValueAudiences(): QueryResult<string[]> {
 
   return useSupabaseQuery<string[]>(
     'value-audiences',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('cells')
         .select('value_props')
         .not('value_props', 'is', null)
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
 
       const audiences = new Set<string>()

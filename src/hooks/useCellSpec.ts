@@ -28,12 +28,13 @@ export function useCellSpec(cellId: string | null): QueryResult<CellSpec | null>
 
   return useSupabaseQuery<CellSpec | null>(
     `cell-spec:${cellId ?? 'none'}`,
-    async (client) => {
+    async (client, signal) => {
       if (!cellId) return null
       const { data, error } = await client
         .from('cells')
         .select(CELL_SPEC_SELECT)
         .eq('id', cellId)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
       return data ?? null

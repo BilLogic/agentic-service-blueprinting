@@ -30,7 +30,7 @@ export function useSliceScenarioId(
 
   return useSupabaseQuery<string>(
     cellIds === null ? null : sliceScenarioKey(cellIds),
-    async (client) => {
+    async (client, signal) => {
       if (!cellIds || cellIds.length === 0) {
         throw new Error('The slice has no cells')
       }
@@ -39,6 +39,7 @@ export function useSliceScenarioId(
         .from('cells')
         .select('id, paths(scenario_id)')
         .in('id', [...cellIds])
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
 
       const scenarioId = (data ?? []).find((row) => row.paths !== null)?.paths

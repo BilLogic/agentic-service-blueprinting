@@ -25,7 +25,7 @@ export function useArchiveAvailable(): boolean {
   const fallback = useCallback(() => false, [])
   const result = useSupabaseQuery<boolean>(
     'archive-available',
-    async (client) => {
+    async (client, signal) => {
       // Cast for the same reason `authoringRpc` casts `rpc`: the generated
       // `Database` type is regenerated from whichever schema was linked last,
       // and this hook exists precisely to answer the case where the table is
@@ -35,6 +35,7 @@ export function useArchiveAvailable(): boolean {
       const { error } = await (client.from as any)('deleted_structure')
         .select('id')
         .limit(1)
+        .abortSignal(signal)
       return !error
     },
     fallback,

@@ -15,11 +15,12 @@ export function useOwnerTags(): QueryResult<string[]> {
 
   return useSupabaseQuery<string[]>(
     'owner-tags',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('cells')
         .select('owner, perceived_owner')
         .or('owner.not.is.null,perceived_owner.not.is.null')
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
 
       const tags = new Set<string>()

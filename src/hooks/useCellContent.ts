@@ -58,12 +58,13 @@ export function useCellContent(
 
   return useSupabaseQuery<CellContent | null>(
     `cell-content:${cellId ?? 'none'}`,
-    async (client) => {
+    async (client, signal) => {
       if (!cellId) return null
       const { data, error } = await client
         .from('cells')
         .select(CELL_CONTENT_SELECT)
         .eq('id', cellId)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!data) return null

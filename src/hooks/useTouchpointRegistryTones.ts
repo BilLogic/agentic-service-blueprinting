@@ -33,11 +33,12 @@ export function useTouchpointRegistryTones(): QueryResult<
 
   return useSupabaseQuery<readonly TouchpointRegistryEntry[]>(
     'touchpoint-registry-tones',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('touchpoints')
         .select('name, tone, aliases')
         .order('name')
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
       return (data ?? []).map((row) => ({
         name: row.name,

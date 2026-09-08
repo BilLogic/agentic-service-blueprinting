@@ -42,7 +42,7 @@ export function useScenarioSpec(
 
   return useSupabaseQuery<ScenarioSpec | null>(
     `scenario-spec:${scenarioId ?? 'none'}`,
-    async (client) => {
+    async (client, signal) => {
       if (!scenarioId) return null
 
       const { data: scenario, error } = await client
@@ -51,6 +51,7 @@ export function useScenarioSpec(
           'id, name, summary, phases!inner(name), paths(id, name, kind, status, summary, note, created_at)',
         )
         .eq('id', scenarioId)
+        .abortSignal(signal)
         .maybeSingle()
       if (error) throw new Error(error.message)
       if (!scenario) return null

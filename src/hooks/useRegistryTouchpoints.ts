@@ -22,11 +22,12 @@ export function useRegistryTouchpoints(
   const fallback = useCallback(() => [], [])
   return useSupabaseQuery<RegistryTouchpoint[]>(
     cellId ? `registry-touchpoints:${cellId}` : null,
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('touchpoints')
         .select('id, name, kind')
         .order('name')
+        .abortSignal(signal)
       if (error) throw error
       return (data ?? []).map((row) => ({ id: row.id, name: row.name, kind: row.kind }))
     },
@@ -43,13 +44,14 @@ export function useNameOnlyPlacements(
   const fallback = useCallback(() => [], [])
   return useSupabaseQuery<NameOnlyPlacement[]>(
     cellId ? `name-only-placements:${cellId}` : null,
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('cell_touchpoints')
         .select('id, name')
         .eq('cell_id', cellId!)
         .is('touchpoint_id', null)
         .order('position')
+        .abortSignal(signal)
       if (error) throw error
       return (data ?? []).flatMap((row) =>
         row.name ? [{ id: row.id, name: row.name }] : [],

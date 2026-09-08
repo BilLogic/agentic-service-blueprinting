@@ -24,12 +24,13 @@ export function useServiceEntityExamples(): QueryResult<EntityExamples> {
 
   return useSupabaseQuery<EntityExamples>(
     'service-entity-examples:first',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('services')
         .select('id, entity_examples')
         .order('created_at', { ascending: true })
         .limit(1)
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
       const row = data?.[0]
       return (row?.entity_examples as EntityExamples | null) ?? {}

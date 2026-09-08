@@ -80,11 +80,12 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
     // and the URL slug below, so a switch re-picks without refetching. The key
     // is constant — `switchService` invalidates the board caches, not this one.
     'active-service',
-    async (client) => {
+    async (client, signal) => {
       const { data, error } = await client
         .from('services')
         .select('id, name, slug')
         .order('created_at')
+        .abortSignal(signal)
       if (error) throw new Error(error.message)
 
       return (data ?? []).map((row) => ({
