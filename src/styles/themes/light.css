@@ -25,11 +25,13 @@
    * status-hue harmony pull is exactly zero and warning / destructive /
    * info / success sit on their category anchors.
    *
-   * To rebrand: set `--hue` to your brand's OKLCH hue, raise `--chroma`
-   * (surfaces) and `--primary-chroma` (the filled control), and replace the
-   * greyscale `--brand-*` ramp below with your tint family. `--hue` must
-   * stay the OKLCH hue of that ramp, or the filled control drifts off the
-   * brand every other surface wears.
+   * To rebrand: set `--hue` to your brand's OKLCH hue and raise the three
+   * chroma dials — `--chroma` for surfaces, `--primary-chroma` for the filled
+   * control, `--brand-chroma` for the identity fill — turning the lightness
+   * beside each if that fill wants to sit higher or lower. Every role in the
+   * semantic layer follows. There is no ramp to re-type here: a stepped family
+   * is named for its hue and lives in colors.css, and the app chrome derives
+   * from these dials rather than from steps.
    * ---------------------------------------------------------------------- */
   --hue: 159;
   /* Warm grey canvas, decoupled from the brand hue — running the neutral ramp
@@ -62,6 +64,21 @@
   --primary-lightness: 0.205;
   --primary-chroma: 0;
   /*
+   * Brand identity, at its authored vividness (BRAND SEAM). Its own pair
+   * rather than a reuse of the primary dials: primary is the accent tuned
+   * until the filled control clears its contrast floor, and brand is the
+   * accent as the identity wears it. Share one pair and the two roles resolve
+   * to one colour, and the distinction becomes decoration.
+   *
+   * 0.594 is the OKLCH lightness of the grey the ramp's anchor step carried
+   * before the ramp went, so the identity fill keeps the colour it had.
+   * Chroma 0 for the same reason the primary pair is 0: the template ships
+   * neutral. Mode-invariant here, and written in both files rather than left
+   * to leak.
+   */
+  --brand-lightness: 0.594;
+  --brand-chroma: 0;
+  /*
    * Focus ring / selection chrome lightness. 0.58, not the mid-grey 0.708 a
    * neutral palette reaches for first: at 0.708 the ring measures 2.56:1 on
    * this near-white canvas and fails SC 1.4.11's 3:1 for a non-text
@@ -80,24 +97,22 @@
   --success-lightness: 0.55;
 
   /*
-   * Stepped numeric scales — per-theme HSL literals, mapped to utilities in
-   * theme.css and consumed by colors.css via `hsl(var(--brand-N))`.
-   *
-   * Neutral brand ramp (BRAND SEAM): the lightness curve of the Supabase
-   * ramp with saturation removed. 400 is the anchor step; 500/600/link run
-   * dark enough to serve as text and links on the light canvas. A rebrand
-   * swaps these for a tint family with the same light → dark ordering.
+   * How far a role's edge sits off that role's own tint, as a fraction of the
+   * canvas → ink span. Deliberately small: the edge is not what identifies an
+   * alert, so it stays a short step toward the role's ink rather than reading
+   * as a rule around the box. semantic.css carries the reasoning, the band and
+   * the sweep; this is the number, and it is per theme because the span it is
+   * a fraction of is.
    */
-  --brand-link: 0deg 0% 26%;
-  --brand-default: 0deg 0% 49.5%;
-  --brand-600: 0deg 0% 24%;
-  --brand-500: 0deg 0% 41.1%;
-  --brand-400: 0deg 0% 72.4%;
-  --brand-300: 0deg 0% 86.5%;
-  --brand-200: 0deg 0% 93.1%;
+  --role-edge-step: 0.08;
 
-  /* Warning / destructive tint ramps, taken from Supabase's light theme:
-     200 = subtle surface, 500 = border, 600 = text. */
+  /* Stepped numeric scales — per-theme HSL literals, mapped to utilities in
+     theme.css and consumed by colors.css via `hsl(var(--{role}-N))`.
+
+     Warning / destructive tint ramps, taken from Supabase's light theme:
+     200 = subtle surface, 500 = border, 600 = text. Both stay for as long as
+     the components reading them do; the brand ramp that stood above them had
+     no reader left. */
   --warning-600: 30.3deg 80.3% 47.8%;
   --warning-500: 36.3deg 85.7% 67.1%;
   --warning-400: 41.9deg 100% 81.8%;

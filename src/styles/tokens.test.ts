@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   consumers,
+  consumersOf,
   declarationsIn,
   declaredNames,
   dial,
+  missingRoleTokens,
   namesIn,
   resolveValue,
+  ROLES,
+  roleTokens,
   rulesDeclaring,
   stylesheet,
   winningDeclaration,
@@ -154,7 +158,18 @@ const DIALS = [
   '--tertiary-foreground-level',
   '--primary-lightness',
   '--primary-chroma',
+  // Brand's own pair. Not in MODE_INVARIANT_DIALS even though both themes
+  // carry one value here: what the rule below asserts is that a dial is
+  // written in both files, and a deployment whose identity fill wants a
+  // different lightness per mode is still declaring the same dial.
+  '--brand-lightness',
+  '--brand-chroma',
   '--ring-lightness',
+  // How far a role's edge sits off that role's own tint. A dial and not a
+  // derivation — the two modes carry different fractions, for the reasons
+  // semantic.css states beside the sweep — so print.css has to take it back
+  // the way it takes back every other dial the themes disagree about.
+  '--role-edge-step',
   '--warning-lightness',
   '--destructive-lightness',
   '--info-lightness',
@@ -187,6 +202,8 @@ const SEMANTIC_TOKENS = [
   '--primary',
   '--primary-foreground',
   '--primary-border',
+  '--brand',
+  '--brand-foreground',
   '--secondary',
   '--secondary-foreground',
   '--muted',
@@ -436,14 +453,15 @@ describe('the print override', () => {
   it.each([
     ['--primary', 'the filled control'],
     ['--ring', 'the focus ring'],
-    ['--brand-link', 'a link'],
+    ['--brand', 'the identity fill'],
   ])('prints %s — %s — from dark exactly as light mode renders it', (token) => {
     // The three the bug was reported through, asserted where a reader sees
-    // them: on the derived colour, not on the dial underneath it. (`--ring`
-    // and `--primary` are `semantic.css` derivations; `theme.css` registers
-    // the link as `--color-brand-link: hsl(var(--brand-link))`, inside an
-    // `@theme inline` block that is not part of the root cascade — which is
-    // why the dial, not the registration, is what can be measured here.)
+    // them: on the derived colour, not on the dial underneath it. All three
+    // are `semantic.css` derivations now — the link that used to stand here
+    // was a ramp step registered as `--color-brand-link`, inside an `@theme
+    // inline` block that is not part of the root cascade, so only its dial
+    // could be measured from here. The ramp is gone and `--brand` is a
+    // derivation, so this rule reads the colour for all three.
     const light = resolveValue(token, 'light')
     // A token neither side can resolve would pass this by agreeing on
     // `undefined`, which is how the registered `--color-*` name slipped
@@ -548,5 +566,83 @@ describe('motion tokens', () => {
     expect(stylesheet('animations.css').text).toContain(
       motion.MOTION_STRUCTURAL_EASE,
     )
+  })
+})
+
+/**
+ * The role vocabulary: seven roles, seven names each, one shape.
+ *
+ * Asserted as an INVARIANT of the vocabulary and never as a census of it.
+ * "Every role declares all seven" survives an eighth role being added and
+ * starts failing the moment that role is short a name; "there are forty-nine
+ * role tokens" is true once and wrong for every edit afterwards. That is the
+ * distinction this codebase learned the expensive way in its migration ledger,
+ * and it is the reason the rule is driven off `ROLES` rather than off a list
+ * of names written out here.
+ */
+describe('the role vocabulary', () => {
+  it('declares all seven names for every role', () => {
+    expect(missingRoleTokens()).toEqual([])
+  })
+
+  it('fails when a role arrives with fewer than seven', () => {
+    // The rule held to its own job. A completeness check that cannot be made
+    // to fail is not a completeness check, and the failure mode it has to
+    // catch is the realistic one: not a role with nothing declared, but a role
+    // with six of the seven, which is what a hand-written role looks like.
+    const short = new Set([...declaredNames(), ...roleTokens('ghost')])
+    short.delete('--wash-ghost')
+    expect(missingRoleTokens([...ROLES, 'ghost'], short)).toEqual(['--wash-ghost'])
+  })
+
+  it('makes every role name reachable as a utility', () => {
+    // A name nothing can be written against is a name that does not exist. The
+    // Tailwind map is the only route from a semantic token to a class, so the
+    // rule is that every one of the forty-nine is read there — and it is
+    // driven off the role list, so an eighth role has to be registered as well
+    // as declared.
+    const unregistered = ROLES.flatMap((role) =>
+      roleTokens(role).filter(
+        (name) =>
+          !consumersOf(name).some((entry) => entry.file.endsWith('theme.css')),
+      ),
+    )
+    expect(unregistered).toEqual([])
+  })
+
+  it.each(['light', 'dark'] as const)(
+    'resolves every role name to a colour under %s',
+    (theme) => {
+      // Declared is not the same fact as resolves. A name whose derivation
+      // reaches a `var()` that only one theme declares is declared in the file
+      // and resolves to nothing in the other, which is the failure the dial
+      // rules above exist for and which reaches these names too.
+      const unresolved = ROLES.flatMap((role) =>
+        roleTokens(role).filter((name) => resolveValue(name, theme) === undefined),
+      )
+      expect(unresolved).toEqual([])
+    },
+  )
+
+  it('derives every role name in semantic.css, inside the re-scoped block', () => {
+    // Custom properties resolve their `var()`s at computed-value time, before
+    // inheritance, so a subtree that re-declares a dial needs the derivations
+    // re-declared at that scope. A role name outside that block inherits the
+    // ancestor's already-computed colour and quietly ignores the theme it is
+    // sitting in.
+    const scoped = new Map(
+      declarationsIn('semantic.css').map((entry) => [entry.name, entry.selector]),
+    )
+    const misplaced = ROLES.flatMap((role) =>
+      roleTokens(role).filter((name) => {
+        const selector = scoped.get(name) ?? ''
+        return !(
+          selector.includes(':root') &&
+          selector.includes('.dark') &&
+          selector.includes('.light')
+        )
+      }),
+    )
+    expect(misplaced).toEqual([])
   })
 })

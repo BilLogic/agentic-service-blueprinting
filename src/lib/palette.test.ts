@@ -15,12 +15,12 @@ import {
   contrast,
   derivedFillInk,
   dial,
-  hslToRgb,
   inSrgbGamut,
   oklch,
-  oklchHue,
   oklchToLinearSrgb,
   palette,
+  resolveColor,
+  resolveColorValue,
   resolvePaletteToken,
   resolveValue,
   stylesheet,
@@ -68,12 +68,11 @@ describe('brand fill', () => {
    * The template ships the seam neutral (`--primary-chroma: 0`), so most of
    * what is asserted here is the DERIVATION rather than a particular colour:
    * a fork raises the chroma dial and these same assertions become the guard
-   * that its brand fill is still legible. Two of them (the gamut headroom and
-   * the ramp-hue agreement) are written to hold at chroma 0 and to bite the
-   * moment a fork turns the dials up, which is exactly when they matter.
+   * that its brand fill is still legible. The gamut-headroom one is written to
+   * hold at chroma 0 and to bite the moment a fork turns the dials up, which
+   * is exactly when it matters.
    */
   const semantic = stylesheet('semantic.css').text
-  const light = stylesheet('themes/light.css').text
 
   /*
    * The seam itself: `--primary` is still the three dials and nothing else.
@@ -143,24 +142,21 @@ describe('brand fill', () => {
     expect(THEME_DIALS.dark.L).toBeGreaterThan(THEME_DIALS.dark.surface)
   })
 
-  it('sits on the brand ramp rather than beside it', () => {
-    // A hue dial that drifts off the `--brand-*` ramp puts the filled control
-    // on a different brand from every other surface in the app — the failure
-    // this guard exists for. The ramp is authored as HSL literals, so it is
-    // compared as CONVERTED. Greyscale steps carry no hue to compare, so the
-    // check applies to whatever steps a fork has actually tinted.
-    const steps = [
-      ...light.matchAll(
-        /--brand-(\d00):\s*([\d.]+)deg\s+([\d.]+)%\s+([\d.]+)%/g,
-      ),
-    ]
-    expect(steps.length).toBeGreaterThanOrEqual(5)
-    const tinted = steps.filter(([, , , s]) => Number(s) > 0)
-    for (const [, , h, s, l] of tinted) {
-      const hue = oklchHue(hslToRgb(Number(h), Number(s), Number(l)))
-      expect(Math.abs(hue - HUE)).toBeLessThan(0.5)
-    }
-  })
+  it.each(['light', 'dark'] as const)(
+    'puts the filled control and the identity on one hue: %s',
+    (theme) => {
+      // A filled control on a different brand from every other surface in the
+      // app is the failure this guards. It used to be asked of a `--brand-*`
+      // ramp of HSL literals sitting beside the dial, converted and compared;
+      // the ramp is gone, because a stepped family is named for a hue and
+      // never for a role, so the question is now asked of the two fills
+      // themselves. They agree by construction — both read `--hue` — and this
+      // is what holds them to it if one of them is ever given a hue of its
+      // own.
+      expect(resolveColorValue('--primary', theme).h).toBe(HUE)
+      expect(resolveColorValue('--brand', theme).h).toBe(HUE)
+    },
+  )
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
     const { L, C, ringL, surface, surfaceHue } = THEME_DIALS[theme]
@@ -576,5 +572,169 @@ describe.each([
         ).toBeGreaterThanOrEqual(4.5)
       },
     )
+  })
+})
+
+/**
+ * Identity and action are two fills.
+ *
+ * `--brand` and `--primary` share the accent hue and nothing else. If they
+ * resolve to one colour the split is decoration, and every component that
+ * reaches for one of them is really reaching for the other.
+ *
+ * Measured off the cascade rather than recomputed from the dials, so a change
+ * to the derivation is visible here rather than mirrored here.
+ */
+describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
+  const brand = resolveColor('--brand', theme)
+  const primary = resolveColor('--primary', theme)
+
+  it('is a different colour from the action fill', () => {
+    // 1.5:1 is not a legibility floor, it is a "these are two colours" floor.
+    // The pair is at 4.43 light and 3.21 dark today; a fork that dialled brand
+    // onto primary would land at 1.
+    expect(contrast(brand, primary)).toBeGreaterThan(1.5)
+  })
+
+  it('is the accent at the lightness the dials authorise, and nothing else', () => {
+    // `bg-brand` repointed from a ramp step, `hsl(var(--brand-default))`, to
+    // this derivation, and then the ramp was deleted — so the step it used to
+    // read is no longer there to compare against. What replaces that
+    // comparison is the derivation itself: the fill is the accent at the two
+    // brand dials, and a theme that wants a different identity turns those
+    // two numbers rather than re-typing seven.
+    const value = resolveColorValue('--brand', theme)
+    expect(value.l).toBeCloseTo(dial('--brand-lightness', theme), 6)
+    expect(value.c).toBeCloseTo(dial('--brand-chroma', theme), 6)
+    expect(value.h).toBeCloseTo(dial('--hue', theme), 6)
+    expect(value.alpha).toBe(1)
+  })
+
+  it('carries ink at the floor a mid-lightness fill can hold', () => {
+    // 3:1, not the 7:1 `--primary` clears. The on-colour flip is shared by
+    // every role so the roles stay interchangeable, and its worst ground is a
+    // fill near L 0.6 — which is exactly where a neutral identity sits. No ink
+    // of any lightness clears 4.5:1 on a mid grey; a deployment that authors a
+    // real accent moves off the trough by moving the dials.
+    expect(
+      contrast(resolveColor('--brand-foreground', theme), brand),
+    ).toBeGreaterThanOrEqual(3)
+  })
+})
+
+/**
+ * The role vocabulary, measured on the grounds each name claims.
+ *
+ * Every one of these is a contrast claim the name itself makes:
+ * `--text-{role}` says it is ink on the page, `--text-on-surface-{role}` says
+ * it is ink on the role's own tint. A name that says where it sits can be
+ * held to it, which is the point of naming the job rather than the position —
+ * `--destructive-600` claimed nothing, so nothing could be checked.
+ *
+ * Both grounds are resolved from the cascade rather than assumed, so a retune
+ * of the tint moves the measurement of the ink that sits on it.
+ */
+const ROLE_NAMES = [
+  'primary',
+  'brand',
+  'warning',
+  'destructive',
+  'info',
+  'success',
+  'secondary',
+] as const
+
+describe.each(['light', 'dark'] as const)('role ink: %s', (theme) => {
+  const page = resolveColor('--background', theme)
+
+  it.each(ROLE_NAMES)('%s reads as ink on the page', (role) => {
+    // 4.5:1 — body text, because that is what these are for. The name this
+    // replaces at the call site is `text-destructive`, which resolves to the
+    // solid fill: a colour tuned for ink to sit ON it, never measured as ink.
+    expect(
+      contrast(resolveColor(`--text-${role}`, theme), page),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(ROLE_NAMES)('%s reads as ink on its own tint', (role) => {
+    // The ground here is the role's tint, not the page. A status word on a
+    // ten-percent wash of itself measures about 2.3:1, which is the defect
+    // that made two ink names necessary rather than one.
+    const tint = resolveColor(`--surface-${role}`, theme)
+    expect(
+      contrast(resolveColor(`--text-on-surface-${role}`, theme), tint),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(ROLE_NAMES)('%s tints without becoming a fill', (role) => {
+    // A resting tint has to be visible and has to stay a surface. The band is
+    // where the hand-composed `bg-{role}/10` and `/15` call sites this name
+    // replaces already sat, measured: 1.10 to 1.33 against the page.
+    const tint = resolveColor(`--surface-${role}`, theme)
+    expect(contrast(tint, page)).toBeGreaterThan(1.05)
+    expect(contrast(tint, page)).toBeLessThan(1.5)
+  })
+
+  it.each(ROLE_NAMES)('%s washes over a surface rather than replacing it', (role) => {
+    // The wash is translucent by construction, which is the whole difference
+    // between it and the tint — it is painted over a surface that already
+    // exists. Measured as a composite on the page, because that is the only
+    // way a translucent colour has a value at all.
+    const wash = resolveColor(`--wash-${role}`, theme, { over: page })
+    expect(contrast(wash, page)).toBeGreaterThan(1)
+    expect(contrast(wash, page)).toBeLessThan(1.5)
+  })
+})
+
+/**
+ * The role edge, and how quiet it stays.
+ *
+ * Not a 3:1 rule. SC 1.4.11 asks that of a boundary REQUIRED to identify a
+ * control or its state, and this is not one — an alert carries its variant in
+ * a tinted surface and a filled icon square, and the border can go without the
+ * variant becoming unreadable. Held to that floor the edge would read as a
+ * rule around the box, several times louder than the neutral hairline drawn
+ * beside it.
+ *
+ * What it is held to instead is the interval the recipe this system follows
+ * uses: a role border one step off the surface it edges, which measured across
+ * that theme's own four alert variants spans 1.21:1 to 1.34:1 against the
+ * surface underneath. Both ends matter. Too little and there is no edge; too
+ * much and it stops being one.
+ *
+ * The ground is the role's own tint, because that is what the edge is a step
+ * off. Its distance from the page follows from that and is asserted as a
+ * direction rather than a number.
+ */
+describe.each(['light', 'dark'] as const)('role edge: %s', (theme) => {
+  const page = resolveColor('--background', theme)
+
+  it.each(ROLE_NAMES)('%s sits one quiet step off its own tint', (role) => {
+    // 1.22 to 1.28 across all fourteen today, inside the band at both ends.
+    const ratio = contrast(
+      resolveColor(`--border-${role}`, theme),
+      resolveColor(`--surface-${role}`, theme),
+    )
+    expect(ratio).toBeGreaterThanOrEqual(1.2)
+    expect(ratio).toBeLessThanOrEqual(1.35)
+  })
+
+  it.each(ROLE_NAMES)('%s steps away from the page, not back toward it', (role) => {
+    // The direction, which no ratio can carry on its own: contrast is
+    // unsigned, so an edge that stepped the wrong way would satisfy the band
+    // above while landing between the tint and the canvas. The tint is already
+    // a step off the page and the edge is a step further along the same span.
+    const tint = resolveColor(`--surface-${role}`, theme)
+    expect(
+      contrast(resolveColor(`--border-${role}`, theme), page),
+    ).toBeGreaterThan(contrast(tint, page))
+  })
+
+  it.each(ROLE_NAMES)('%s is solid, so its value does not depend on what is behind it', (role) => {
+    // The whole reason the alpha form failed. A translucent border is a
+    // different colour on every surface it crosses, and `resolveColor` refuses
+    // to measure one without a ground — so this is the assertion, not a
+    // separate check of the declaration text.
+    expect(() => resolveColor(`--border-${role}`, theme)).not.toThrow()
   })
 })

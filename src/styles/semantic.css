@@ -259,6 +259,39 @@
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
 
+  /*
+   * The identity fill, beside the action fill and not the same colour.
+   *
+   * `--brand` and `--primary` are both the accent hue; what separates them is
+   * a pair of dials each. Primary is the accent tuned until the filled control
+   * clears its contrast floor — which is why a neutral one has to invert
+   * between modes — and brand is the accent at the vividness the identity was
+   * authored at, which does not have to move when the lights go out.
+   *
+   * Derived, and deliberately not an alias of a ramp step. The step it
+   * replaces was a per-theme HSL literal, so a rebrand meant re-typing a
+   * lightness curve; two dials is the whole edit now. It is also what lets the
+   * ink below flip: an alias inherits a colour with no lightness the ink can
+   * read, which is the same defect a fixed on-colour has.
+   */
+  --brand: oklch(var(--brand-lightness) var(--brand-chroma) var(--primary-hue));
+  /*
+   * Ink on the identity fill, by the same flip every other role's on-colour
+   * uses. Interchangeability is the point of the vocabulary: a component
+   * written against one role re-points at another by changing one word, and it
+   * cannot if one role derives its ink differently from the rest.
+   *
+   * The flip's documented weak point is the accepted cost of that. A fill near
+   * L 0.6 is the worst ground either polarity of ink has, and a neutral brand
+   * sits there: no ink of any lightness clears 4.5:1 on a mid grey, so the
+   * floor a role fill can hold is the 3:1 for large text and UI. A deployment
+   * that authors a real accent moves off the trough by moving the dials.
+   */
+  --brand-foreground: oklch(
+    from var(--brand) clamp(0.205, calc((0.62 - l) * 100), 0.985) calc(c * 0.08)
+      h
+  );
+
   /* --- Interaction states ----------------------------------------------
    * There are none here, deliberately. Supabase's semantic.css defines no
    * hover, pressed, selected or disabled colour: across their whole system
@@ -481,26 +514,293 @@
       calc(c * 0.08) h
   );
 
-  /*
-   * Status border tokens for subtle / tinted surfaces.
+  /* --- The seven jobs, for every role ----------------------------------
+   * A role offers exactly seven names, and an author picks one by answering
+   * what this colour is sitting on rather than by reading a number off a ramp:
    *
-   * These are for a status role that has no numeric ramp. `destructive` and
-   * `warning` do have one — `alert.tsx` borders those variants with
-   * `-400`, a step tuned against its own `-200` fill — so their two tokens here
-   * are superseded in practice and kept because Supabase declares the same
-   * four. `info` and `success` have no ramp, so these are the only way to draw
-   * a tinted edge that tracks the role.
+   *   --{role}                  the solid fill, where the colour is the message
+   *   --{role}-foreground       ink on that solid
+   *   --surface-{role}          the resting tint
+   *   --text-on-surface-{role}  ink on that tint
+   *   --text-{role}             role ink on a NEUTRAL ground
+   *   --border-{role}           an edge, against neutral or tint
+   *   --wash-{role}             a transient state over an existing surface
    *
-   * `--border-success` is the one Supabase does not have, because they have no
-   * success role at all. It exists so every status role that can tint a surface
-   * borders it the same way, rather than success alone reaching for an inline
-   * alpha at the call site.
+   * Two of them are inks because they are two problems. Ink on a badge sits on
+   * a wash of its own colour; ink in a sentence sits on the page. The gap is
+   * measurable — a status word on a ten-percent wash of itself reads about
+   * 2.3:1, where a value tuned for that ground reads about 3.4 — and the
+   * neutral-ground one is the name that has never existed, which is why
+   * `text-destructive` resolves today to a fill that was tuned for ink to sit
+   * ON it rather than to BE it.
+   *
+   * Every one is derived from the role's own fill, and none aliases a hue
+   * primitive. That is load-bearing rather than tidy: the status hues above
+   * are pulled a fraction toward the brand and then clamped to their category,
+   * so a re-branded deployment's warning still reads as a warning. A fixed
+   * ramp cannot follow an accent, so aliasing one would delete that mechanism.
+   * The ramps in colors.css stay for CATEGORICAL colour — lane identity, path
+   * variants, annotation swatches — which carries no meaning and correctly
+   * reaches the primitive layer.
+   *
+   * The lightnesses are mixes along the same signed surface → foreground span
+   * every neutral in this file runs on, so each job lands the same distance
+   * from the canvas in both modes without a per-theme literal.
    */
-  --border-destructive: oklch(from var(--destructive) l c h / 30%);
-  --border-warning: oklch(from var(--warning) l c h / 30%);
-  --border-info: oklch(from var(--info) l c h / 30%);
-  --border-success: oklch(from var(--success) l c h / 30%);
-  --border-brand: oklch(from var(--primary) l c h / 30%);
+  /* A tint has to be a surface a component can put ink on, so it is opaque
+     rather than the fill at an alpha: an alpha composites against whatever
+     happens to be behind it, and then the ink measurement has no ground. */
+  --role-tint-mix: 0.06;
+  /* Role ink on the page. Far enough along the span to clear AA on the canvas
+     in both modes, and short of the fill's own lightness — which is what makes
+     it ink rather than a smaller fill. */
+  --role-ink-mix: 0.76;
+  /* Role ink on the role's tint. Further along than the ink above, because the
+     tint is already a step off the canvas and eats the difference. */
+  --role-ink-on-tint-mix: 0.82;
+  /* The transient state: hover, pressed, selected. Translucent on purpose — it
+     is painted OVER a surface that already exists rather than replacing one,
+     which is the whole difference between it and the tint. Four times the
+     neutral elevation lift, because a hue at the neutral alpha is invisible,
+     and derived from that lift so a theme with a heavier step gets a heavier
+     wash.
+
+     Derived from the role's INK rather than its fill, which is the move the
+     neutral state surfaces already make: `--muted` is translucent
+     `--foreground`, not a lightened surface, because an overlay composites
+     against whatever is beneath it and therefore darkens in light and lightens
+     in dark. A wash of the FILL cannot do that for a role whose fill is
+     already a surface — `--secondary` rounds up against L=1 in light, so a
+     wash of it over the page measures 1.00:1 and is a token that does
+     nothing. */
+  --role-wash-alpha: calc(var(--muted-alpha) * 4);
+
+  --surface-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+
+  --text-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+
+  --text-on-surface-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+
+  --wash-primary: oklch(
+    from var(--text-primary) l c h / var(--role-wash-alpha)
+  );
+  --wash-brand: oklch(from var(--text-brand) l c h / var(--role-wash-alpha));
+  --wash-warning: oklch(
+    from var(--text-warning) l c h / var(--role-wash-alpha)
+  );
+  --wash-destructive: oklch(
+    from var(--text-destructive) l c h / var(--role-wash-alpha)
+  );
+  --wash-info: oklch(from var(--text-info) l c h / var(--role-wash-alpha));
+  --wash-success: oklch(
+    from var(--text-success) l c h / var(--role-wash-alpha)
+  );
+  --wash-secondary: oklch(
+    from var(--text-secondary) l c h / var(--role-wash-alpha)
+  );
+
+  /*
+   * The edge, for every role, and solid.
+   *
+   * These existed for four of the seven and were uniform — the fill at thirty
+   * percent alpha — and an alpha composites against whatever happens to be
+   * behind it, so the token had no value until it was painted and the same
+   * declaration drew a different colour on every ground it crossed. That is
+   * why components reached past it for a ramp step. Solid is the fix, and the
+   * step below is what makes the colour a decision rather than an accident.
+   *
+   * Quiet on purpose, and not to a non-text floor. SC 1.4.11 asks 3:1 of a
+   * boundary REQUIRED to identify a control or its state, and this is not one:
+   * an alert says what it is with a tinted surface and a filled icon square,
+   * and take the border away and the variant still reads. Aim the floor here
+   * and the edge stops being an edge — it becomes a rule around the box,
+   * several times louder than the neutral hairline the same page draws beside
+   * it at about 1.2:1.
+   *
+   * The recipe this file follows puts a role border ONE STEP off the surface
+   * it edges — a 400 weight on a 200 surface — and measured off that theme's
+   * own files its four alert variants land at 1.21, 1.29, 1.30 and 1.34 to
+   * one. That is the interval copied here: the role's own tint, stepped
+   * toward the ink, carrying a little more of the role's colour.
+   *
+   * The interval and not the literals, because a fixed ramp cannot follow an
+   * accent — which is the whole reason these are named jobs rather than
+   * numbered steps. And the step rides `--contrast-border` on the way, which
+   * that recipe has no equivalent of: a reader who has turned the contrast
+   * preference up gets a firmer edge here for the same reason every neutral
+   * border above gets one.
+   *
+   * `--border-brand` derived from `--primary` while brand had no fill of its
+   * own. It reads `--brand` now — through its tint, like the rest — which is
+   * the colour its name always claimed.
+   *
+   * Two border jobs survive on purpose and neither is this one.
+   * `--primary-border` is the hairline that edges the filled control, measured
+   * against the FILL rather than against the page. And the vendored form
+   * controls draw an invalid outline with the fill itself at full strength,
+   * which is a different decision from an edge that has to stay quiet.
+   */
+  /* The contrast preference, as a multiplier on a distance rather than as an
+     alpha. It reads the LINEAR rung: the square above exists to push an
+     alpha's travel to the top of the range, and this is a lightness step.
+     Normalised at `--contrast: 0.5` — the baseline this file documents — so
+     the per-theme step below is the step a reader sees at baseline and the
+     preference scales it from there. */
+  --role-edge-contrast: calc(
+    var(--contrast-border-linear) /
+      (var(--contrast-border-floor) + (1 - var(--contrast-border-floor)) * 0.5)
+  );
+  --role-edge-travel: calc(
+    var(--tone-span) * var(--role-edge-step) * var(--role-edge-contrast)
+  );
+  /* How far off its own tint the edge sits, as a fraction of the same signed
+     surface → foreground span the rest of the vocabulary runs on. Per theme,
+     because the span it is a fraction of is per theme — 0.895 from canvas to
+     ink in light, 0.76 in dark — and because the two modes start from
+     different `--contrast`, so the fraction that produces one interval is not
+     one number.
+
+     Swept rather than picked. At the pair the theme files carry, every role
+     in both modes lands between 1.22:1 and 1.28:1 against its own tint, with
+     room on both sides of the band; light 0.10 leaves it at the top
+     (destructive 1.37) and dark 0.07 at the bottom (destructive 1.15). One
+     shared fraction is not impossible — 0.092 holds both modes inside — but
+     it puts light against the ceiling at 1.34 and buys nothing.
+
+     Chroma is three times the tint's, +0.039 on an expressive role, which
+     sits inside the +0.023 to +0.079 the recipe's own four pairs span and
+     stops short of the ceiling the dark amber edge hits at +0.045 — past
+     which the number in the file and the colour on the screen part company. */
+  --border-primary: oklch(
+    from var(--surface-primary) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
+  --border-brand: oklch(
+    from var(--surface-brand) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
+  --border-warning: oklch(
+    from var(--surface-warning) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
+  --border-destructive: oklch(
+    from var(--surface-destructive) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
+  --border-info: oklch(
+    from var(--surface-info) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
+  --border-success: oklch(
+    from var(--surface-success) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
+  --border-secondary: oklch(
+    from var(--surface-secondary) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
+  );
 
   /*
    * Selection chrome for canvas annotations (outline, resize handles).

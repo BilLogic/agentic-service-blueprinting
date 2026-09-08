@@ -51,6 +51,11 @@
      fill, dark ink on it (semantic.css derives the flip). */
   --primary-lightness: 0.922;
   --primary-chroma: 0;
+  /* Brand identity keeps one lightness across both modes — see the note in
+     themes/light.css. The filled control inverts because a neutral one must;
+     the identity does not, because 0.594 reads on both canvases. */
+  --brand-lightness: 0.594;
+  --brand-chroma: 0;
   /* 0.62 on the charcoal canvas: 5.07:1, clearing SC 1.4.11 with headroom. */
   --ring-lightness: 0.62;
 
@@ -59,16 +64,16 @@
   --info-lightness: 0.7;
   --success-lightness: 0.76;
 
-  /* Stepped numeric scales — inverted relative to light (200 darkest,
-     600 lightest), same construction as themes/light.css. */
-  --brand-link: 0deg 0% 58.3%;
-  --brand-default: 0deg 0% 49.5%;
-  --brand-600: 0deg 0% 58.3%;
-  --brand-500: 0deg 0% 18.2%;
-  --brand-400: 0deg 0% 11.4%;
-  --brand-300: 0deg 0% 9.9%;
-  --brand-200: 0deg 0% 8.3%;
+  /* The same job as light's 0.08, at a larger fraction of a shorter span: this
+     one runs 0.76 from canvas to ink where light's runs 0.895, and this mode
+     starts from `--contrast: 0.5` rather than 0.53. It lands the smaller
+     lightness step of the two — 0.070 against light's 0.076. */
+  --role-edge-step: 0.092;
 
+  /* Stepped numeric scales — inverted relative to light (200 darkest,
+     600 lightest), same construction as themes/light.css. The brand ramp that
+     opened this block is gone: a stepped family is named for a hue, and the
+     identity fill is derived from the two dials above. */
   --warning-600: 38.9deg 100% 42.9%;
   --warning-500: 34.8deg 90.9% 21.6%;
   --warning-400: 33.2deg 100% 14.5%;

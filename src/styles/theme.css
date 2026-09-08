@@ -78,11 +78,16 @@
    */
   --text-color-contrast: var(--foreground-contrast);
 
-  /* Status border tokens for tinted surfaces (border-destructive, border-warning…) */
-  --color-border-destructive: var(--border-destructive);
+  /* The role edge, for every role: `border-border-{role}`. Registered in the
+     all-utilities namespace rather than `--border-color-*` because the edge is
+     also drawn as a ring and an outline at some call sites. */
+  --color-border-primary: var(--border-primary);
+  --color-border-brand: var(--border-brand);
   --color-border-warning: var(--border-warning);
+  --color-border-destructive: var(--border-destructive);
   --color-border-info: var(--border-info);
   --color-border-success: var(--border-success);
+  --color-border-secondary: var(--border-secondary);
   /*
    * `--color-border-*` generates EVERY utility (bg-, text-, ring-, and the
    * functional `hairline-*`), which is why the annotation plate line needs
@@ -97,12 +102,63 @@
   --color-border-muted: var(--border-muted);
   --color-border-control-hover: var(--border-control-hover);
   --color-border-annotation-plate: var(--border-annotation-plate);
-  --color-border-brand: var(--border-brand);
+
+  /*
+   * The rest of the role vocabulary: the resting tint, the two inks and the
+   * transient wash, for all seven roles.
+   *
+   * The ink registrations deliberately do NOT claim `text-{role}`. That
+   * utility exists today, resolves to the role's solid fill, and is written at
+   * call sites across the tree; the `--text-color-*` namespace wins over
+   * `--color-*` for text utilities, so registering the new ink there would
+   * repoint every one of those call sites in the same change that mints the
+   * token. Expand, then migrate, then contract: the names land beside the old
+   * ones here, the call sites move next, and `text-{role}` is repointed once
+   * nothing is left reading the fill through it.
+   *
+   * So role ink is reachable as `text-text-{role}` — the shape
+   * `border-border-{role}` above already has — and ink on the role's tint,
+   * which collides with nothing, gets the clean `text-on-surface-{role}` in
+   * the text-only namespace where an ink belongs.
+   */
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-brand: var(--surface-brand);
+  --color-surface-warning: var(--surface-warning);
+  --color-surface-destructive: var(--surface-destructive);
+  --color-surface-info: var(--surface-info);
+  --color-surface-success: var(--surface-success);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-wash-primary: var(--wash-primary);
+  --color-wash-brand: var(--wash-brand);
+  --color-wash-warning: var(--wash-warning);
+  --color-wash-destructive: var(--wash-destructive);
+  --color-wash-info: var(--wash-info);
+  --color-wash-success: var(--wash-success);
+  --color-wash-secondary: var(--wash-secondary);
+  --color-text-primary: var(--text-primary);
+  --color-text-brand: var(--text-brand);
+  --color-text-warning: var(--text-warning);
+  --color-text-destructive: var(--text-destructive);
+  --color-text-info: var(--text-info);
+  --color-text-success: var(--text-success);
+  --color-text-secondary: var(--text-secondary);
+  --text-color-on-surface-primary: var(--text-on-surface-primary);
+  --text-color-on-surface-brand: var(--text-on-surface-brand);
+  --text-color-on-surface-warning: var(--text-on-surface-warning);
+  --text-color-on-surface-destructive: var(--text-on-surface-destructive);
+  --text-color-on-surface-info: var(--text-on-surface-info);
+  --text-color-on-surface-success: var(--text-on-surface-success);
+  --text-color-on-surface-secondary: var(--text-on-surface-secondary);
 
   /* Stepped semantic ramps — per-theme HSL literals from themes/{light,dark}.css.
      200 = subtle surface, 500 = border, 600 = text. */
-  --color-brand: hsl(var(--brand-default));
-  --color-brand-link: hsl(var(--brand-link));
+  /* `bg-brand` reads the derived identity fill. Same colour the ramp's anchor
+     step carried — the brand lightness dial is that step's OKLCH lightness —
+     and the ramp itself is gone, because a primitive family is named for a
+     hue and never for a role. `brand-link` went with it: role ink on a
+     neutral ground is `--text-brand` now, which is what a link wanted. */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-warning-200: hsl(var(--warning-200));
   --color-warning-300: hsl(var(--warning-300));
   --color-warning-400: hsl(var(--warning-400));
@@ -115,7 +171,7 @@
   --color-destructive-600: hsl(var(--destructive-600));
 
   /*
-   * Radix / scale / brand step registration.
+   * Radix / scale step registration.
    *
    * Self-referential on purpose, and copied from Supabase's own theme.css:
    * `@theme inline` never emits a custom property, it only tells Tailwind the
@@ -331,18 +387,6 @@
   --color-scale-1000: var(--color-scale-1000);
   --color-scale-1100: var(--color-scale-1100);
   --color-scale-1200: var(--color-scale-1200);
-  --color-brand-100: var(--color-brand-100);
-  --color-brand-200: var(--color-brand-200);
-  --color-brand-300: var(--color-brand-300);
-  --color-brand-400: var(--color-brand-400);
-  --color-brand-500: var(--color-brand-500);
-  --color-brand-600: var(--color-brand-600);
-  --color-brand-700: var(--color-brand-700);
-  --color-brand-800: var(--color-brand-800);
-  --color-brand-900: var(--color-brand-900);
-  --color-brand-1000: var(--color-brand-1000);
-  --color-brand-1100: var(--color-brand-1100);
-  --color-brand-1200: var(--color-brand-1200);
   --color-tertiary-foreground: var(--tertiary-foreground);
   --color-border: var(--border);
   --color-input: var(--input);

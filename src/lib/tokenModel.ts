@@ -1,7 +1,14 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { hslToRgb, type Rgb } from '@/lib/oklch'
+import {
+  composite,
+  hexToRgb,
+  hslToRgb,
+  oklchFromSrgb,
+  oklchInGamut,
+  type Rgb,
+} from '@/lib/oklch'
 
 /**
  * One queryable model of the visual vocabulary. Test-time only.
@@ -729,6 +736,7 @@ export function sourceMatching(pattern: RegExp): string[] {
 export type { Rgb } from '@/lib/oklch'
 export {
   chromaCeiling,
+  composite,
   contrast,
   derivedFillInk,
   hexToRgb,
@@ -737,6 +745,7 @@ export {
   oklch,
   oklchFromSrgb,
   oklchHue,
+  oklchInGamut,
   oklchToLinearSrgb,
   relativeLuminance,
 } from '@/lib/oklch'
@@ -784,4 +793,410 @@ export function dial(name: string, theme: Theme): number {
   if (!number)
     throw new Error(`dial ${name} is not numeric under ${theme}: ${value}`)
   return Number(number[0])
+}
+
+// ---------------------------------------------------------------------------
+// Colour
+// ---------------------------------------------------------------------------
+
+/**
+ * A colour as CSS computes it: OKLCH plus alpha, and deliberately NOT gamut
+ * mapped.
+ *
+ * Relative colour syntax reads `l`, `c` and `h` off the origin colour before
+ * any mapping happens, so a chain that multiplies chroma and then divides it
+ * again has to be carried at full precision or the round trip loses colour the
+ * browser never lost. Mapping is what `toRgb` does, once, at the end.
+ */
+export type ColorValue = { l: number; c: number; h: number; alpha: number }
+
+/**
+ * What `name` resolves to as a colour, at the root, under `theme`.
+ *
+ * `resolveValue` already chases `var()` to a literal; what it hands back is
+ * still CSS — `oklch(from oklch(0.68 0.14 clamp(65, calc(75 + 0), 95))
+ * calc(l - 0.4) calc(c * 0.9) h)` is a real value in this system. Everything
+ * below evaluates that: `calc`, `clamp`, `min`, `max`, percentages, relative
+ * colour syntax, `oklch()`, `hsl()` and hex.
+ *
+ * This is why it belongs on the model rather than in a test. Every contrast
+ * rule until now re-derived the arithmetic of the declaration it was measuring
+ * — writing `Math.min(0.985, Math.max(0.205, (0.62 - L) * 100))` in TypeScript
+ * beside the `clamp()` in CSS — so a rule could go on passing after the
+ * declaration it claims to measure had changed underneath it. Reading the
+ * cascade's own answer removes the second copy.
+ */
+export function resolveColorValue(
+  name: string,
+  theme: Theme,
+  medium: Medium = 'screen',
+): ColorValue {
+  const value = resolveValue(name, theme, medium)
+  if (value === undefined) throw new Error(`not declared: ${name}`)
+  return parseColor(value, name)
+}
+
+/**
+ * `name` as sRGB under `theme`, chroma-reduced into the gamut.
+ *
+ * A translucent token needs the ground it is painted on: pass `over` and the
+ * result is the composite, omit it and a translucent token throws rather than
+ * quietly measuring as though it were opaque. That silent read is the shape of
+ * the defect this vocabulary exists to end — an alpha measured against nothing
+ * is a number with no ground under it.
+ */
+export function resolveColor(
+  name: string,
+  theme: Theme,
+  options: { over?: Rgb; medium?: Medium } = {},
+): Rgb {
+  const { l, c, h, alpha } = resolveColorValue(
+    name,
+    theme,
+    options.medium ?? 'screen',
+  )
+  const rgb = oklchInGamut(l, c, h)
+  if (alpha >= 1) return rgb
+  if (!options.over)
+    throw new Error(
+      `${name} is translucent under ${theme} (alpha ${alpha}); pass \`over\``,
+    )
+  return composite(rgb, alpha, options.over)
+}
+
+/** A CSS colour string as OKLCH + alpha. Exported so a literal is measurable. */
+export function parseColor(text: string, what = 'value'): ColorValue {
+  const tokens = lex(text)
+  const reader = { tokens, at: 0, depth: 0 }
+  const colour = readColor(reader, what)
+  if (reader.at !== tokens.length)
+    throw new Error(`trailing input in ${what}: ${text}`)
+  return colour
+}
+
+type Lexeme = { kind: 'number' | 'word' | 'punct'; text: string; value: number }
+/**
+ * `depth` is what tells an alpha separator from a division.
+ *
+ * At the top of a component slot `/` opens the alpha, and CSS requires real
+ * division to be written inside `calc()`. Track the bracket depth and both
+ * readings are available to the same parser: `oklch(from x l calc(c / 2) h /
+ * 30%)` divides once and separates once, and neither is a guess.
+ */
+type Reader = { tokens: Lexeme[]; at: number; depth: number }
+
+const NUMBER = /^[0-9.]+(%|deg|grad|rad|turn)?/
+const WORD = /^[a-zA-Z][a-zA-Z0-9-]*/
+const HEX = /^#[0-9a-fA-F]{3,8}/
+
+function lex(text: string): Lexeme[] {
+  const out: Lexeme[] = []
+  let rest = text.trim()
+  while (rest.length > 0) {
+    const head = rest[0]
+    if (/\s/.test(head)) {
+      rest = rest.slice(1)
+      continue
+    }
+    if (head === '#') {
+      const hex = HEX.exec(rest)
+      if (!hex) throw new Error(`bad hex in: ${text}`)
+      out.push({ kind: 'word', text: hex[0], value: NaN })
+      rest = rest.slice(hex[0].length)
+      continue
+    }
+    if ('()+*/,'.includes(head)) {
+      out.push({ kind: 'punct', text: head, value: NaN })
+      rest = rest.slice(1)
+      continue
+    }
+    // A `-` starts a negative literal only where a value may start; between
+    // two values it is CSS `calc()` subtraction, which the grammar reads as an
+    // operator. `calc(l - 0.4)` and `oklch(-0.1 0 0)` are both real.
+    if (head === '-' && !endsValue(out) && NUMBER.test(rest.slice(1))) {
+      const number = NUMBER.exec(rest.slice(1)) as RegExpExecArray
+      out.push(...[numberLexeme('-' + number[0])])
+      rest = rest.slice(1 + number[0].length)
+      continue
+    }
+    if (head === '-' || head === '%') {
+      out.push({ kind: 'punct', text: head, value: NaN })
+      rest = rest.slice(1)
+      continue
+    }
+    const number = NUMBER.exec(rest)
+    if (number) {
+      out.push(numberLexeme(number[0]))
+      rest = rest.slice(number[0].length)
+      continue
+    }
+    const word = WORD.exec(rest)
+    if (word) {
+      out.push({ kind: 'word', text: word[0], value: NaN })
+      rest = rest.slice(word[0].length)
+      continue
+    }
+    throw new Error(`cannot read: ${rest.slice(0, 24)} (in ${text})`)
+  }
+  return out
+}
+
+/**
+ * A percentage is carried as its fraction, so `20% * 0.5` is 0.1 and an alpha
+ * slot needs no unit knowledge at all. The two component slots that count in
+ * hundreds — HSL saturation and lightness — multiply back where they are read,
+ * which is the one place the convention has to be undone.
+ */
+function numberLexeme(text: string): Lexeme {
+  const percent = text.endsWith('%')
+  const number = Number(text.replace(/(%|deg|grad|rad|turn)$/, ''))
+  return { kind: 'number', text, value: percent ? number / 100 : number }
+}
+
+/** True where the token just read ends a value, so the next `-` is an operator. */
+function endsValue(out: Lexeme[]): boolean {
+  const last = out[out.length - 1]
+  if (!last) return false
+  if (last.kind === 'number') return true
+  if (last.kind === 'word') return true
+  return last.text === ')'
+}
+
+function peek(reader: Reader): Lexeme | undefined {
+  return reader.tokens[reader.at]
+}
+
+function take(reader: Reader, text: string): void {
+  const next = reader.tokens[reader.at]
+  if (!next || next.text !== text)
+    throw new Error(`expected ${text}, got ${next?.text ?? 'end'}`)
+  reader.at += 1
+}
+
+const COLOR_FUNCTIONS = new Set(['oklch', 'hsl', 'hsla'])
+
+function readColor(reader: Reader, what: string): ColorValue {
+  const head = peek(reader)
+  if (!head) throw new Error(`empty colour in ${what}`)
+  if (head.text.startsWith('#')) {
+    reader.at += 1
+    const [l, c, h] = oklchFromSrgb(hexToRgb(head.text))
+    return { l, c, h, alpha: 1 }
+  }
+  if (!COLOR_FUNCTIONS.has(head.text))
+    throw new Error(`not a colour in ${what}: ${head.text}`)
+  reader.at += 1
+  take(reader, '(')
+  const colour =
+    head.text === 'oklch' ? readOklch(reader, what) : readHsl(reader)
+  take(reader, ')')
+  return colour
+}
+
+function readOklch(reader: Reader, what: string): ColorValue {
+  let origin: ColorValue | undefined
+  if (peek(reader)?.text === 'from') {
+    reader.at += 1
+    origin = readColor(reader, what)
+  }
+  const scope = origin ?? { l: NaN, c: NaN, h: NaN, alpha: NaN }
+  const l = readExpression(reader, scope)
+  const c = readExpression(reader, scope)
+  const h = readExpression(reader, scope)
+  // CSS gives a relative colour the origin's own alpha when the slot is
+  // omitted, which is why `--sidebar-primary: var(--primary)` and
+  // `oklch(from var(--primary) l c h)` are the same colour and not two.
+  const alpha = readAlpha(reader, scope, origin?.alpha ?? 1)
+  return { l, c, h, alpha }
+}
+
+function readHsl(reader: Reader): ColorValue {
+  const scope = { l: NaN, c: NaN, h: NaN, alpha: NaN }
+  const h = readExpression(reader, scope)
+  skipComma(reader)
+  const s = readExpression(reader, scope) * 100
+  skipComma(reader)
+  const light = readExpression(reader, scope) * 100
+  // `hsla(0, 0%, 0%, 0.05)` puts the alpha behind a comma and `hsl(0deg 0% 0%
+  // / 5%)` behind a slash. Both spellings are in this tree — the legacy
+  // palette export uses the first — so both are read here.
+  const comma = peek(reader)?.text === ','
+  if (comma) reader.at += 1
+  const alpha = comma ? readExpression(reader, scope) : readAlpha(reader, scope, 1)
+  const [l, c, hue] = oklchFromSrgb(hslToRgb(h, s, light))
+  return { l, c, h: hue, alpha }
+}
+
+function skipComma(reader: Reader): void {
+  if (peek(reader)?.text === ',') reader.at += 1
+}
+
+function readAlpha(
+  reader: Reader,
+  scope: ColorValue,
+  fallback: number,
+): number {
+  if (peek(reader)?.text !== '/') return fallback
+  reader.at += 1
+  return readExpression(reader, scope)
+}
+
+/*
+ * The expression grammar CSS numeric functions actually use:
+ *
+ *   expression := term (('+' | '-') term)*
+ *   term       := factor (('*' | '/') factor)*
+ *   factor     := number | 'l' | 'c' | 'h' | 'alpha' | '(' expression ')'
+ *               | 'calc' '(' expression ')'
+ *               | ('clamp' | 'min' | 'max') '(' expression (',' …)* ')'
+ *
+ * `l`, `c`, `h` and `alpha` are the relative-colour keywords, and they are the
+ * reason `scope` is threaded through: inside `oklch(from X …)` they name X's
+ * own components, and outside one they are not defined at all — which is what
+ * the NaN scope makes true rather than silently zero.
+ */
+function readExpression(reader: Reader, scope: ColorValue): number {
+  let total = readTerm(reader, scope)
+  for (;;) {
+    const next = peek(reader)
+    if (!next || (next.text !== '+' && next.text !== '-')) return total
+    if (reader.depth === 0) return total
+    reader.at += 1
+    const right = readTerm(reader, scope)
+    total = next.text === '+' ? total + right : total - right
+  }
+}
+
+function readTerm(reader: Reader, scope: ColorValue): number {
+  let total = readFactor(reader, scope)
+  for (;;) {
+    const next = peek(reader)
+    if (!next || (next.text !== '*' && next.text !== '/')) return total
+    if (reader.depth === 0) return total
+    reader.at += 1
+    const right = readFactor(reader, scope)
+    total = next.text === '*' ? total * right : total / right
+  }
+}
+
+const KEYWORDS = new Set(['l', 'c', 'h', 'alpha'])
+const VARIADIC = new Set(['min', 'max', 'clamp'])
+
+function readFactor(reader: Reader, scope: ColorValue): number {
+  const head = peek(reader)
+  if (!head) throw new Error('expression ended early')
+  if (head.kind === 'number') {
+    reader.at += 1
+    return head.value
+  }
+  if (head.text === '-') {
+    reader.at += 1
+    return -readFactor(reader, scope)
+  }
+  if (head.text === '(') {
+    reader.at += 1
+    reader.depth += 1
+    const inner = readExpression(reader, scope)
+    reader.depth -= 1
+    take(reader, ')')
+    return inner
+  }
+  if (head.text === 'calc') {
+    reader.at += 1
+    take(reader, '(')
+    reader.depth += 1
+    const inner = readExpression(reader, scope)
+    reader.depth -= 1
+    take(reader, ')')
+    return inner
+  }
+  if (VARIADIC.has(head.text)) {
+    reader.at += 1
+    take(reader, '(')
+    reader.depth += 1
+    const args = [readExpression(reader, scope)]
+    while (peek(reader)?.text === ',') {
+      reader.at += 1
+      args.push(readExpression(reader, scope))
+    }
+    reader.depth -= 1
+    take(reader, ')')
+    if (head.text === 'min') return Math.min(...args)
+    if (head.text === 'max') return Math.max(...args)
+    return Math.min(Math.max(args[0], args[1]), args[2])
+  }
+  if (KEYWORDS.has(head.text)) {
+    reader.at += 1
+    const component = scope[head.text as keyof ColorValue]
+    if (Number.isNaN(component))
+      throw new Error(`${head.text} used outside a relative colour`)
+    return component
+  }
+  throw new Error(`cannot evaluate: ${head.text}`)
+}
+
+// ---------------------------------------------------------------------------
+// The role vocabulary
+// ---------------------------------------------------------------------------
+
+/**
+ * The coloured roles. A role is a meaning, never a position on a ramp.
+ *
+ * Adding one here is the whole edit a new role costs on this side: every rule
+ * that reads this list covers it from that moment, and fails until all seven
+ * of its names are declared.
+ */
+export const ROLES = [
+  'primary',
+  'brand',
+  'warning',
+  'destructive',
+  'info',
+  'success',
+  'secondary',
+] as const
+
+export type Role = (typeof ROLES)[number]
+
+/**
+ * The seven jobs, as the templates that build a role's names.
+ *
+ * An author picks one by answering what the colour is sitting on — the solid,
+ * the tint, or the page — rather than by reading a number. That is the whole
+ * difference between this list and a ramp.
+ */
+export const ROLE_JOBS = [
+  (role: string) => `--${role}`,
+  (role: string) => `--${role}-foreground`,
+  (role: string) => `--surface-${role}`,
+  (role: string) => `--text-on-surface-${role}`,
+  (role: string) => `--text-${role}`,
+  (role: string) => `--border-${role}`,
+  (role: string) => `--wash-${role}`,
+] as const
+
+/** The seven names one role must declare. */
+export function roleTokens(role: string): string[] {
+  return ROLE_JOBS.map((job) => job(role))
+}
+
+/**
+ * The role names that are not declared anywhere in the stylesheets.
+ *
+ * An invariant rather than a census, which is the difference between a rule
+ * that survives the next unrelated edit and one that breaks on it. "Every role
+ * declares all seven" holds when an eighth role arrives and starts failing the
+ * moment that role is short a name; "there are forty-nine role tokens" is true
+ * once and wrong forever after.
+ *
+ * `declared` is a parameter so the rule itself can be tested against a set it
+ * did not read off disk — a rule nothing can make fail is not a rule.
+ */
+export function missingRoleTokens(
+  roles: readonly string[] = ROLES,
+  declared: ReadonlySet<string> = declaredNames(),
+): string[] {
+  return roles.flatMap((role) =>
+    roleTokens(role).filter((name) => !declared.has(name)),
+  )
 }
