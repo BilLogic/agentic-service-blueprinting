@@ -1,4 +1,5 @@
 import { ExternalLink, FileText, Play } from 'lucide-react'
+import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { cn } from '@/lib/utils'
 import { safeExternalHref } from '@/lib/sliceCells'
 import type {
@@ -72,9 +73,33 @@ export function FeaturedPreviewFrame({
       </a>
     )
   }
+  /*
+    A featured image opens. A featured image is the one picture a placement
+    chose to lead with, so a preview that could only ever be looked at at
+    thumbnail size was a promise the panel did not keep.
+
+    The trigger sits INSIDE the frame rather than replacing it: the frame is
+    what fixes every preview to one 4:3 box, the media class positions
+    against it, and `data-featured-preview` is the marker that says which
+    medium was drawn. `relative` is stated here rather than assumed from
+    `frameClassName`, which is optional.
+
+    The name is the resource's own, and the inner image keeps `alt=""` — the
+    button carries the name now, and announcing it twice is noise.
+  */
   return (
-    <div className={frameClassName} data-featured-preview="image">
-      <img src={preview.url} alt="" className={mediaClassName} />
+    <div
+      className={cn('relative', frameClassName)}
+      data-featured-preview="image"
+    >
+      <ZoomableImage
+        src={preview.url}
+        alt={preview.name}
+        triggerLabel={`Expand: ${preview.name}`}
+        triggerClassName="absolute inset-0 block cursor-pointer"
+      >
+        <img src={preview.url} alt="" className={mediaClassName} />
+      </ZoomableImage>
     </div>
   )
 }
