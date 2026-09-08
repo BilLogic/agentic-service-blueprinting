@@ -135,3 +135,13 @@ deferral, not a corner.
 - **The name-collision authoring nicety** — guiding an author who names a new
   tool with a name the deployment already uses for a different one — is UX, not
   model, and needs no record until it is built.
+
+## How a shared file cites this
+
+`src/hooks/useStakeholders.ts` is shared byte-for-byte with the deployment
+this template is imported into, and each repository numbers its own ADRs — the
+same decision is a different number on each side. A shared file therefore
+**names the decision and never numbers it**: "the decision that a service owns
+its journey and shares the catalog", not an ADR number that is right in at most
+one of the two copies. The rule holds for every ADR citation that reaches a
+shared file, not only this one.
