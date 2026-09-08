@@ -1,5 +1,96 @@
 # Changelog
 
+## 1.12.5
+
+### Patch Changes
+
+- 34e8200: A detoured same-column arrow stops pointing its head backward along the time axis.
+
+  Two cells in one step column but different lanes are joined by a vertical
+  connector. When another card sits between them the straight run would strike
+  through that card's text, so the route brackets out through a column gutter
+  instead: out of one card's side, along the gutter, and back into the other
+  card's matching side.
+
+  Which gutter it took was decided by reach — the nearer one won. That meant the
+  head's direction was decided by reach too. A side-on arrival out of the RIGHT
+  gutter draws its last stub leftward, and the markers are `orient="auto"`, so
+  the head followed that stub and pointed backward along a grid whose one
+  ordering claim is that time runs left to right. A same-step connector does not
+  move in time at all, so that head was a plain lie about the dependency. It was
+  also inconsistent with the connector's own undetoured form, which ends
+  vertically with the head pointing down or up. Measured on one board of a
+  deployment built on this template: eleven arrows ended with a leftward final
+  segment, on a path containing no backward dependencies whatsoever.
+
+  An arriving end now turns back into its card VERTICALLY where there is room —
+  onto the edge facing the other cell first, so the head reads exactly as the
+  undetoured connector's does, and onto the far edge as a second chance, where a
+  head pointing the other way up still says nothing false about a horizontal
+  ordering. A departing end carries no head and still leaves side-on, which is
+  what made this route preferable to leaving through an edge another card leans
+  against.
+
+  Where both horizontal edges are walled in, the arrival falls back to the side
+  entry it always used, and the gutter preference changes to make that fallback
+  safe: the LEFT gutter now wins outright rather than the nearer one, because its
+  stub always travels forward. The nearer gutter was at most a fraction of a
+  column gap closer.
+
+  The new legs are swept for clearance as they will actually be drawn.
+  `isSameColumnSideRouteClear` only ever covered the mid-height stubs and the
+  stretch of gutter between them, and a vertical arrival leaves the gutter
+  somewhere else — an arrival on the far edge leaves it beyond the pair
+  altogether. When that sweep is not clear the pair falls back to the two side
+  stubs, which the route's own test does cover.
+
+  With both ends side-on the path is the one this builder has always drawn, point
+  for point, and the undetoured vertical connector is untouched.
+
+  **This is a narrowing, not a proof.** Where the right gutter is the only route
+  and both horizontal edges are walled, the fallback still draws a backward head:
+  six connectors in the golden geometry snapshot end that way, all in the
+  `integrated` view mode, in S3, S5 and two each in S6 and S10. They passed
+  before this change and pass after it — the snapshot was never in its scope.
+  Refusing to draw them was tried and rejected, because it removes the six
+  arrows along with the six heads, and a plain A→B→C chain silently losing both
+  its connectors is worse than a head that leans the wrong way. Giving a walled
+  cell somewhere to land is issue #250.
+
+- 1639de9: The radius dial is declared in both theme files, not one.
+
+  `--radius` was declared in `styles/themes/light.css` and nowhere else. It
+  reached dark mode anyway, because that file's selector list opens on a bare
+  `:root`: everything in it applies under `.dark` too, and dark never took it
+  back. The corner radius was therefore correct in both modes for a reason
+  nobody wrote down, and one that reads the same as a mistake.
+
+  The same mechanism has already shipped a defect here. `--surface-hue` is
+  declared only in the light file, so the warm `34` it carries is what every dark
+  surface runs on — invisible today because `--chroma` is `0` and every surface
+  is an exact grey whatever the hue says, and documented in
+  `styles/themes/dark.css` only after `tokenModel.resolveValue` corrected the
+  claim the comment there used to make. A mode-invariant value parked in the
+  leaky spot is the next one of those waiting to happen: it looks deliberate
+  from the light file and is unreadable from the dark one.
+
+  `styles/themes/dark.css` now declares `--radius: 0.625rem`, the value the light
+  file has always carried, so both files answer the question and the selector's
+  behaviour stops mattering for it. That is the rule `--hue` already follows — it
+  is stated identically in both files, and both say in a comment that it is
+  mode-invariant. Nothing about what renders changes: radius resolves to
+  `0.625rem` in either theme, before and after, and print is untouched because
+  `styles/print.css` restates thirteen dials and radius is not among them.
+
+  `styles/tokens.test.ts` gains the invariant behind that arrangement. A
+  mode-invariant dial is one whose own theme file wins in its own theme — so
+  removing `--radius` from either file fails, because the survivor would then be
+  leaking across to cover for the missing one, which is the arrangement the rule
+  exists to forbid — and the two declarations must resolve to the same value.
+  `--hue` and `--radius` are the two named today, and a third is a string. It
+  replaces an assertion that only asked whether light declared radius at the
+  root, which the leak satisfied.
+
 ## 1.12.4
 
 ### Patch Changes
@@ -461,8 +552,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                    ERROR: new row for relation "lanes" violates check constraint
-                    "lanes_lane_role_check" … compliance_review
+                      ERROR: new row for relation "lanes" violates check constraint
+                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
