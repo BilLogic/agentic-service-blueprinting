@@ -237,9 +237,9 @@ describe('theme dials and semantic layer', () => {
     'resolves every dial to a number under %s',
     (theme) => {
       // The half the old reading could not do. Presence in a file is not the
-      // same fact as winning at the root: `print.css` restates thirteen of
-      // these inside `@media print`, and `themes/light.css` declares most of
-      // them under a bare `:root` that matches under dark as well.
+      // same fact as winning at the root: `print.css` restates most of these
+      // inside `@media print`, and `themes/light.css` declares most of them
+      // under a bare `:root` that matches under dark as well.
       const broken = DIALS.filter((name) => {
         try {
           return !Number.isFinite(dial(name, theme))
@@ -301,6 +301,155 @@ describe('theme dials and semantic layer', () => {
       )
     })
     expect(misscoped).toEqual([])
+  })
+})
+
+/* ------------------------------------------------------------------ *
+ * The print override.
+ *
+ * `print.css` forces the light palette onto paper by restating dials
+ * inside `@media print`, under `:root, .dark` — the `.dark` arm is what
+ * takes the dark theme's declarations back, and it can only take back a
+ * name it mentions. So the block has to mention every dial the two themes
+ * disagree about, and the header comment in `print.css` said so in prose.
+ * Prose does not run, and the block fell nineteen dials behind: a page
+ * printed from dark mode kept dark's `--primary-lightness` (0.922) on the
+ * light print ground (0.968), and dark's brand, warning and destructive
+ * ramps with it.
+ *
+ * These are that sentence as assertions. Deliberately invariants and not a
+ * census: nothing below counts the entries in the block or names the dials
+ * it should hold, so a dial added to the theme files at differing values is
+ * inside the first rule the day it is added — which is exactly what a count
+ * of thirteen could not do.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Every dial, read off the theme files rather than listed here.
+ *
+ * `DIALS` above is a hand-kept list, and it is the right shape for what it
+ * asserts — those fifteen are the inputs `semantic.css` derives from, and
+ * naming them is how a rename gets caught. It is the wrong shape here. A
+ * hand-kept list is the failure this file is guarding against.
+ */
+function themeDials(): string[] {
+  return [
+    ...new Set([
+      ...namesIn('themes/light.css'),
+      ...namesIn('themes/dark.css'),
+    ]),
+  ].sort()
+}
+
+/**
+ * The dials print sets to a value that is neither theme's, and why.
+ *
+ * Print is not light mode on paper — it is light mode on a sheet that is
+ * already white, so the ground drops off the near-white ceiling to leave the
+ * elevation ladder somewhere to climb. Those two are the whole of the
+ * deviation, and stating them here is what lets the rule below be "every
+ * other dial prints at its light value" instead of a list of hopes.
+ *
+ * A dial restated in the print block at the DARK value would satisfy the
+ * mode-independence rule perfectly well — both modes would agree, on the
+ * wrong colour. This is what stops that.
+ */
+const PAPER_TUNED: Record<string, string> = {
+  // The light theme's 0.995 leaves no room above it: a raised surface rounds
+  // up against L=1 and the ladder flattens. On paper the plates have to be
+  // visible, so the ground drops and the step shrinks to match.
+  '--surface': '0.968',
+  '--elevation-step': '0.009',
+}
+
+describe('the print override', () => {
+  it('resolves every dial to one value, whichever mode the page was in', () => {
+    // The invariant. A page prints the same whether the reader had dark mode
+    // on or not, and no list here has to be updated for that to keep being
+    // true of a dial nobody has written yet.
+    const modeBound = themeDials()
+      .map((name) => ({
+        name,
+        light: resolveValue(name, 'light', 'print'),
+        dark: resolveValue(name, 'dark', 'print'),
+      }))
+      .filter((entry) => entry.light !== entry.dark)
+      .map(
+        (entry) =>
+          `${entry.name}: ${entry.light} from light, ${entry.dark} from dark`,
+      )
+    expect(modeBound).toEqual([])
+  })
+
+  it.each(['light', 'dark'] as const)(
+    'prints every dial at its light-theme value, from %s',
+    (theme) => {
+      // And the value they agree on is the light theme's, for everything
+      // except the two paper tunings above.
+      const wrong = themeDials()
+        .filter((name) => !(name in PAPER_TUNED))
+        .map((name) => ({
+          name,
+          printed: resolveValue(name, theme, 'print'),
+          light: resolveValue(name, 'light'),
+        }))
+        .filter((entry) => entry.printed !== entry.light)
+        .map(
+          (entry) =>
+            `${entry.name}: prints ${entry.printed}, light is ${entry.light}`,
+        )
+      expect(wrong).toEqual([])
+    },
+  )
+
+  it('deviates from the light theme only where PAPER_TUNED says so', () => {
+    // The ledger is held from both ends, so it cannot keep an entry for a
+    // deviation that has since been undone.
+    const deviating = themeDials().filter(
+      (name) =>
+        resolveValue(name, 'light', 'print') !== resolveValue(name, 'light'),
+    )
+    expect(deviating.sort()).toEqual(Object.keys(PAPER_TUNED).sort())
+    for (const [name, value] of Object.entries(PAPER_TUNED)) {
+      expect(resolveValue(name, 'dark', 'print')).toBe(value)
+    }
+  })
+
+  it('restates nothing the dark theme does not take over', () => {
+    // The other end of the same rule. `.dark` can only take back a name the
+    // block mentions, and the block has no business mentioning anything else:
+    // a restatement of a dial both themes already agree on is a second copy
+    // with nothing holding it, and the first rule above is what now enforces
+    // "the two themes agree" — so the defensive copy buys nothing and rots.
+    // This is the general form of the `--radius` rule above.
+    const restated = declarationsIn('print.css').filter((rule) =>
+      rule.context.some((at) => /^@media\b/.test(at) && /\bprint\b/.test(at)),
+    )
+    const unnecessary = [...new Set(restated.map((rule) => rule.name))]
+      .filter((name) => !(name in PAPER_TUNED))
+      .filter(
+        (name) => resolveValue(name, 'light') === resolveValue(name, 'dark'),
+      )
+    expect(unnecessary.sort()).toEqual([])
+  })
+
+  it.each([
+    ['--primary', 'the filled control'],
+    ['--ring', 'the focus ring'],
+    ['--brand-link', 'a link'],
+  ])('prints %s — %s — from dark exactly as light mode renders it', (token) => {
+    // The three the bug was reported through, asserted where a reader sees
+    // them: on the derived colour, not on the dial underneath it. (`--ring`
+    // and `--primary` are `semantic.css` derivations; `theme.css` registers
+    // the link as `--color-brand-link: hsl(var(--brand-link))`, inside an
+    // `@theme inline` block that is not part of the root cascade — which is
+    // why the dial, not the registration, is what can be measured here.)
+    const light = resolveValue(token, 'light')
+    // A token neither side can resolve would pass this by agreeing on
+    // `undefined`, which is how the registered `--color-*` name slipped
+    // through when it was written that way.
+    expect(light).toBeDefined()
+    expect(resolveValue(token, 'dark', 'print')).toBe(light)
   })
 })
 

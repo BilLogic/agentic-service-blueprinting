@@ -26,9 +26,12 @@ import { hslToRgb, type Rgb } from '@/lib/oklch'
  * Three things in this tree defeat the simpler readers it replaces, and each
  * one is why a piece of the parser below looks the way it does:
  *
- *  - `print.css` declares `--hue`, `--surface`, `--contrast` and ten more
- *    dials inside `@media print`. A reader with no at-rule context reports
- *    `print.css` as the winner for every one of them, in both themes.
+ *  - `print.css` declares `--surface`, `--contrast` and most of the dial set
+ *    inside `@media print`, and `colors.css` wraps its entire dark palette in
+ *    `@media screen`. A reader with no at-rule context reports `print.css` as
+ *    the winner for every dial in both themes, and cannot see that the light
+ *    ramps are what reach paper. Both are asked about deliberately, so the
+ *    printed page is a cascade with an answer rather than a blind spot.
  *  - Forty-two declarations in this tree are wrapped across lines, thirty-six
  *    of them in `semantic.css` — `--primary` itself among them, along with
  *    `--primary-foreground`, `--border` and `--input`. A per-line regex cannot
@@ -57,6 +60,18 @@ const STYLES = resolve(SRC, 'styles')
 const ENTRY = resolve(STYLES, 'tailwind.config.css')
 
 export type Theme = 'light' | 'dark'
+
+/**
+ * Which output medium the cascade is being read for.
+ *
+ * `screen` sets `@media print` blocks aside; `print` sets `@media screen`
+ * blocks aside and lets the print block win. Both halves matter, and neither
+ * is decoration: `print.css` restates dials inside `@media print`, and
+ * `colors.css` wraps its ENTIRE dark palette in `@media screen` precisely so
+ * that the light ramps above it are what reaches paper. A reader with one
+ * medium can describe neither arrangement.
+ */
+export type Medium = 'screen' | 'print'
 
 /**
  * Which layer a name is declared in. A name may appear in exactly one.
@@ -375,34 +390,52 @@ function appliesAtRoot(selector: string, theme: Theme): boolean {
 }
 
 /**
+ * Does the at-rule context wrapping a declaration apply on `medium`?
+ *
+ * Only the root cascade counts, so anything nested under a selector rather
+ * than an at-rule is out whichever medium is asked for. Among the at-rules,
+ * a query naming one medium and not the other applies on that one alone;
+ * everything else (`@supports`, `@layer`, a width query, `screen, print`)
+ * applies on both.
+ */
+function appliesOn(context: string[], medium: Medium): boolean {
+  return context.every((rule) => {
+    if (!rule) return true
+    if (!/^@(media|supports|layer)\b/.test(rule)) return false
+    if (!/^@media\b/.test(rule)) return true
+    const print = /\bprint\b/.test(rule)
+    const screen = /\bscreen\b/.test(rule)
+    if (print === screen) return true
+    return medium === 'print' ? print : screen
+  })
+}
+
+/**
  * The declaration that wins at the root element under `theme`, or undefined.
  *
  * This is the question no reader in this repo could answer before: not what a
  * file says about `--surface-hue`, but what `--surface-hue` resolves to once
- * `print.css`'s `@media print` block has been set aside and source order has
- * broken the `:root`/`.dark` tie.
+ * the medium's at-rules have been sorted out and source order has broken the
+ * `:root`/`.dark` tie.
+ *
+ * `medium` is what makes the printed page measurable. On `screen` the
+ * `@media print` block in `print.css` is set aside; on `print` it is the
+ * override that wins, and `colors.css`'s `@media screen` dark palette is the
+ * thing set aside instead. Printing from dark mode is a real cascade with a
+ * real answer, and asking for it is how a rule can hold that answer to
+ * something.
  */
 export function winningDeclaration(
   name: string,
   theme: Theme,
+  medium: Medium = 'screen',
 ): Declaration | undefined {
   const order = new Map(stylesheets().map((sheet) => [sheet.file, sheet.order]))
   let winner: Declaration | undefined
   for (const entry of declarations()) {
     if (entry.name !== name) continue
     if (!Number.isFinite(order.get(entry.file) ?? Infinity)) continue
-    if (
-      entry.context.some(
-        (rule) => /^@media\b/.test(rule) && /\bprint\b/.test(rule),
-      )
-    )
-      continue
-    if (
-      entry.context.some(
-        (rule) => rule && !/^@(media|supports|layer)\b/.test(rule),
-      )
-    )
-      continue
+    if (!appliesOn(entry.context, medium)) continue
     if (!appliesAtRoot(entry.selector, theme)) continue
     winner = entry
   }
@@ -413,25 +446,41 @@ export function winningDeclaration(
  * The value of `name` at the root under `theme`, with `var()` chased through.
  *
  * Falls back to a `var()`'s own default (`var(--x, 12px)`) when the referenced
- * name resolves to nothing, which is what the browser does.
+ * name resolves to nothing, which is what the browser does. `medium` selects
+ * which cascade is being asked about — the screen one by default, the printed
+ * one on request.
  */
 export function resolveValue(
   name: string,
   theme: Theme,
-  seen: Set<string> = new Set(),
+  medium: Medium = 'screen',
+): string | undefined {
+  return resolveIn(name, theme, medium, new Set())
+}
+
+function resolveIn(
+  name: string,
+  theme: Theme,
+  medium: Medium,
+  seen: Set<string>,
 ): string | undefined {
   if (seen.has(name)) return undefined
   seen.add(name)
-  const declaration = winningDeclaration(name, theme)
+  const declaration = winningDeclaration(name, theme, medium)
   if (!declaration) return undefined
-  return substitute(declaration.value, theme, seen)
+  return substitute(declaration.value, theme, medium, seen)
 }
 
-function substitute(value: string, theme: Theme, seen: Set<string>): string {
+function substitute(
+  value: string,
+  theme: Theme,
+  medium: Medium,
+  seen: Set<string>,
+): string {
   return value.replace(
     /var\(\s*(--[a-zA-Z0-9-]+)\s*(?:,\s*([^()]*))?\)/g,
     (whole, referenced: string, fallback: string | undefined) => {
-      const resolved = resolveValue(referenced, theme, new Set(seen))
+      const resolved = resolveIn(referenced, theme, medium, new Set(seen))
       if (resolved !== undefined) return resolved
       if (fallback !== undefined) return fallback.trim()
       return whole
