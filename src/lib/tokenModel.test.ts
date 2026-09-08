@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import {
   consumersOf,
   declarationsIn,
+  declaredNames,
   resolveValue,
   rulesDeclaring,
   sourceFiles,
@@ -170,13 +171,27 @@ describe('the source reader', () => {
     expect(stripped.split('\n')).toHaveLength(3)
   })
 
-  it('sees a name read from source and from nowhere else', () => {
-    // Liveness cannot be read off the stylesheets: `--colors-white` is
-    // declared in `global.css` and read exactly once, from a JSX attribute.
-    // A stylesheet-only scan would report it as dead.
-    const reads = consumersOf('--colors-white')
-    expect(reads.filter((entry) => entry.kind === 'stylesheet')).toEqual([])
-    expect(reads.filter((entry) => entry.kind === 'source').length).toBe(1)
+  it('sees a name read from source and not from any stylesheet', () => {
+    // Liveness cannot be read off the stylesheets. `--colors-white` is
+    // declared in `global.css` and read from a JSX attribute in
+    // `CanvasPenCursor` — a read no stylesheet scan can see, whatever else it
+    // finds. It used to be read from source and NOWHERE else, which made it
+    // the whole example; the annotation-chrome ink ladder now takes it from
+    // `semantic.css` too, so the example is stated as the property rather
+    // than as that one name's census, and survives the next ladder.
+    expect(
+      consumersOf('--colors-white').filter((entry) => entry.kind === 'source')
+        .length,
+    ).toBe(1)
+
+    const sourceOnly = [...declaredNames()].filter((name) => {
+      const reads = consumersOf(name)
+      return (
+        reads.some((entry) => entry.kind === 'source') &&
+        !reads.some((entry) => entry.kind === 'stylesheet')
+      )
+    })
+    expect(sourceOnly.length).toBeGreaterThan(0)
   })
 
   it('sees Tailwind bare-value shorthand as a read', () => {

@@ -32,9 +32,12 @@
    * brand every other surface wears.
    * ---------------------------------------------------------------------- */
   --hue: 159;
-  /* Warm grey canvas, decoupled from the brand hue (`--surface-hue` defaults to
-     `--hue`; overriding it is the point of splitting the two). Moot while
-     `--chroma` is 0, but it is what a tinted light theme would turn. */
+  /* Warm grey canvas, decoupled from the brand hue — running the neutral ramp
+     off a hue of its own is the point of splitting `--surface-hue` from
+     `--hue`. Declared in themes/dark.css too, at this same value: the two are
+     free to differ, and a dial that arrives in the other mode by leak reads
+     the same as one that arrived by mistake. Moot while `--chroma` is 0, but
+     it is what a tinted light theme would turn. */
   --surface-hue: 34;
   --chroma: 0;
   /*

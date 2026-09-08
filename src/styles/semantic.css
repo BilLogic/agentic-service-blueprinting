@@ -2,8 +2,38 @@
  * Core semantic colour system. Mirrors packages/ui/build/css/source/semantic.css.
  *
  * Themes declare a small set of dial inputs; every semantic colour below is
- * derived from them in OKLCH. Dials live in `themes/`, derivations live here —
- * a name should never be declared in both.
+ * derived from them in OKLCH. Dials live in `themes/`, derivations live here.
+ *
+ * THE INVARIANT, STATED PRECISELY. "A name is never declared in both" was the
+ * short form, and it was already false when it was written — `--surface-hue`,
+ * `--primary-hue` and `--radius` all sat here as well. The rule that is
+ * actually true, and that the theme-dial assertions hold:
+ *
+ *   - a derivation is declared HERE and nowhere else (`--primary-hue`, which
+ *     is `var(--hue)` rather than a number);
+ *   - an authored dial is declared in BOTH theme files, at each theme's own
+ *     value — the SAME value in each when no theme turns it (parity, so the
+ *     `:root` in light's selector list cannot hand dark a value it never
+ *     asked for; that was the warm-brown defect, and it is the whole reason a
+ *     mode-invariant dial is written twice rather than once);
+ *   - a dial only one theme turns has its other value HERE (`--field-alpha`).
+ *
+ * `--radius`, `--primary-lightness`, `--primary-chroma` and `--ring-lightness`
+ * were the standing exception to the second rule, on a fourth bullet reading
+ * "a dial neither theme turns is not a dial, and lives HERE". The decision to
+ * move the authored knobs out of the derivation layer retired it: the axis
+ * that decides the home is authored versus derived, not mode-varying versus
+ * mode-invariant. All four are literals a deployment picks, this file is the
+ * layer that derives, and leaving them here is what stopped it from being
+ * reconcilable with the copy it is shared with. They are now declared in both
+ * theme files, at one value.
+ *
+ * What is forbidden is the remaining combination: a value declared here AND in
+ * every theme file. Light's block matches bare `:root` and imports after this
+ * file, so such a declaration can never win under either theme — it is a
+ * default that reads like a fallback and is not one. `--surface-hue` was
+ * exactly that, and a comment in `themes/dark.css` asserting the same untrue
+ * fallback is what hid the defect for months.
  *
  * The stepped numeric scales (brand / warning / destructive) are NOT derived
  * here. They are per-theme HSL literals in the theme files, mapped to utilities
@@ -30,8 +60,15 @@
    * ramp (backgrounds, text, borders) and `--primary-hue` drives the brand, so
    * a theme can run a warm-grey surface against a cool brand without the two
    * being locked together.
+   *
+   * Only `--primary-hue` is declared here, and it belongs here because it is
+   * a derivation and not a number: `var(--hue)`, so both modes run the brand
+   * at whatever the themes set, and the split exists so that one of them could
+   * stop. `--surface-hue` is the opposite case — both theme files declare it,
+   * each at its own value, so a third declaration on this block is unreachable
+   * under either theme, and it sat here unreachable for months. See the
+   * invariant at the top of this file.
    */
-  --surface-hue: var(--hue);
   --primary-hue: var(--hue);
 
   /* --- Contrast ---------------------------------------------------------
@@ -152,33 +189,43 @@
   /* --- Brand / primary -------------------------------------------------- */
   /*
    * The filled control, driven by the dials in themes/ rather than a literal
-   * (BRAND SEAM). The template ships neutral — `--primary-chroma: 0` — so
-   * `--primary` is near-black ink in light and near-white in dark, since
-   * `--primary-lightness` flips per theme. A branded fork raises the chroma
-   * dial and the whole family (border, on-colour, ring, sidebar selection)
-   * follows without another edit.
+   * (BRAND SEAM). Raise the chroma dial and the whole family — border,
+   * on-colour, ring, sidebar selection — follows without another edit.
    *
-   * A neutral primary HAS to invert with the theme: a mode-invariant fill
-   * only works when it carries chroma to separate it from the canvas. Keep
-   * that in mind when rebranding — a light brand fill wants the light-theme
-   * lightness in BOTH theme files, and the `--primary-foreground` flip below
-   * will follow it.
+   * A neutral primary HAS to invert with the theme. At `--primary-chroma: 0`
+   * nothing but lightness separates the fill from the canvas, so `--primary`
+   * is near-black ink in light and near-white in dark, and it is
+   * `--primary-lightness` flipping per theme that makes that work. A
+   * mode-invariant fill only becomes possible once the fill carries chroma.
+   * Keep that in mind when rebranding — a light brand fill wants the
+   * light-theme lightness in BOTH theme files, and the `--primary-foreground`
+   * flip below will follow it.
    *
-   * `--primary` stays a computed triple rather than aliasing `--brand-400`:
-   * the ramp inverts between themes while the on-colour must stay legible
-   * against whatever the fill resolves to, and the flip below is what buys
-   * that. `--hue` is pinned to the ramp's own hue in themes/light.css, so
+   * `--primary` stays a computed triple rather than aliasing a `--brand-*`
+   * step: the ramp inverts between themes while the on-colour must stay
+   * legible against whatever the fill resolves to, and the flip below is what
+   * buys that. `--hue` is pinned to the ramp's own hue in themes/light.css, so
    * the fill can never drift off the brand the rest of the app wears.
    *
-   * Derived tokens, all measured after CSS Color 4 gamut mapping:
-   *   --primary-border  a flat one-shade-darker hairline; the edge is carried
-   *     by the −0.12 lightness step, and at chroma 0 the ×1.25 buys nothing.
+   * Derived tokens, both measured after CSS Color 4 gamut mapping:
+   *   --primary-border  a flat one-shade-darker hairline. The edge is carried
+   *     entirely by the −0.12 lightness step: the ×1.25 chroma bump lands on
+   *     the sRGB ceiling for a vivid brand and buys nothing at all at chroma 0,
+   *     so it is never what makes the hairline visible.
    *   --ring  reads `--ring-lightness` so the focus affordance clears SC
    *     1.4.11's 3:1 in both themes instead of inheriting a fill lightness
    *     that only works in one.
    * The multipliers stay ratios rather than literals: a hardcoded ceiling
    * would be wrong the moment `--hue` or `--primary-chroma` moves, and the
-   * browser's own chroma reduction is already the behaviour we want. */
+   * browser's own chroma reduction is already the behaviour we want.
+   *
+   * The L, the C and the H this fill is made of are the `--primary-lightness`,
+   * `--primary-chroma` and `--hue` dials, and `--ring`'s is `--ring-lightness`.
+   * All four were spelled out here as literals until they were named, and were
+   * declared on this block until the authored knobs moved into both theme
+   * files. A retune argues about those numbers, so it is argued where they are
+   * declared: this file says only what derives from them, and says it for
+   * every deployment at once. */
   --primary: oklch(
     var(--primary-lightness) var(--primary-chroma) var(--primary-hue)
   );
@@ -191,6 +238,19 @@
    * ceiling, near-white) and hugely negative for a light one (→ the 0.205
    * floor, dark ink). A trace of the fill's chroma keeps a branded fill's
    * ink off flat grey; at chroma 0 it is exact grey.
+   *
+   * The flip is the mechanism rather than a fixed dark ink, and that is a
+   * decision rather than an accident of how this got written. A fixed ink is
+   * only ever right for the accents that happen to be light: measured across
+   * the accent range it falls to 3.19:1 at L 0.45 and 1.11:1 at L 0.15 —
+   * black text on a black button — and it fails silently, the same shape as
+   * the warm-grey surface defect. Since a deployment authors its own accent,
+   * that is not hypothetical; it is what the first dark brand would hit.
+   * The flip holds above 3.43:1 across the whole range.
+   *
+   * Its own weak point, accepted: that 3.43:1 sits at L 0.60, just under the
+   * threshold — clear of the 3:1 floor for UI and large text, short of 4.5:1
+   * for body. If it bites, move the threshold; do not reinstate a fixed ink.
    */
   --primary-foreground: oklch(
     from var(--primary) clamp(0.205, calc((0.62 - l) * 100), 0.985)
@@ -233,14 +293,15 @@
    * ring-ring/50`, a decorative glow. Inheriting `--primary`'s L 0.874 at 55%
    * would put the affordance around 1.2:1 on the light canvas, failing WCAG 2.2
    * SC 1.4.11 (non-text contrast, 3:1). Dropping to the per-theme
-   * `--ring-lightness` clears it while
-   * staying unmistakably the brand hue; the `/50` at the utility site still
-   * produces the softer glow, so one token serves both.
+   * `--ring-lightness` clears it while staying unmistakably the brand hue; the
+   * `/50` at the utility site still produces the softer glow, so one token
+   * serves both.
    *
-   * This never renders over a blueprint cell: those resolve
-   * `--ring-blueprint-cell-soft`, which the `[data-blueprint-lane]` rules in
-   * blueprint.css always set, so the fallback in
-   * `var(--ring-blueprint-cell-soft, var(--ring))` is unreachable. `--ring` only ever sits on app chrome.
+   * This never renders over a blueprint cell: those resolve a
+   * `--ring-blueprint-cell*` token of the board's own, which the
+   * `[data-blueprint-lane]` rules in blueprint.css always set, so the
+   * `var(--ring)` written beside it as a fallback is unreachable. `--ring`
+   * only ever sits on app chrome.
    */
   /*
    * The soft rung, below `--border`.
@@ -472,9 +533,52 @@
    * ink light-on-light in dark mode.
    */
   --background-annotation-chrome: hsl(var(--colors-gray-dark-300));
+  /*
+   * The ink ladder for that bar, mode-invariant like the bar itself.
+   *
+   * The surface had a name and its foreground did not, so one component spells
+   * absolute white dozens of times, at nine different alphas, none of which
+   * says what job it is doing. That is the defect the neutral-edge rung rule
+   * already names one plane along ("a strength with no name and no way to
+   * reuse it", `tokenDiscipline.test.ts`): a strength with no name cannot be
+   * reused and cannot be ruled on, so a guard against absolute colour has
+   * nothing to offer an author but an exemption until a ladder like this one
+   * exists.
+   *
+   * Every rung is that same white at an alpha the call sites already carry, so
+   * moving onto one is a rename and not a retune. `--colors-white` is
+   * global.css's fixed primitive — the one `CanvasPenCursor` already takes for
+   * the same reason — so no rung can flip when the presentation stage goes
+   * `.dark`.
+   *
+   * Ink first, then edges weakest to strongest, then the two washes and the
+   * focus ring. `-secondary` is the resting ink of an icon-only control, which
+   * lifts to the primary on hover; `-tertiary` is a section caption or the word
+   * a control shows when nothing is chosen.
+   *
+   * `-overlay` and `--wash-annotation-chrome` land on the same alpha and are
+   * still two names: one is the edge of a floating menu (the mode-invariant
+   * twin of `--border-overlay` above), the other is the transient fill a
+   * control takes under the pointer. Sharing a value is not sharing a job.
+   */
+  --foreground-annotation-chrome: hsl(var(--colors-white));
+  --foreground-annotation-chrome-secondary: hsl(var(--colors-white) / 0.85);
+  --foreground-annotation-chrome-tertiary: hsl(var(--colors-white) / 0.55);
+  --border-annotation-chrome-overlay: hsl(var(--colors-white) / 0.1);
+  --border-annotation-chrome-divider: hsl(var(--colors-white) / 0.2);
+  --border-annotation-chrome-selected: hsl(var(--colors-white) / 0.25);
+  --border-annotation-chrome: hsl(var(--colors-white) / 0.3);
+  --wash-annotation-chrome: hsl(var(--colors-white) / 0.1);
+  --wash-annotation-chrome-strong: hsl(var(--colors-white) / 0.15);
+  --ring-annotation-chrome: hsl(var(--colors-white) / 0.4);
   /* Ink for a note drawn ON the board, not on the dark bar — the note's own
      fill comes from the annotation palette, so its ink is fixed too. */
   --foreground-annotation-plate: hsl(var(--colors-gray-dark-100));
+  /* And the paper under it: the backing behind text being edited, and the
+     resize handles on a selected note. Fixed for the same reason the ink is —
+     it sits on the board, whose cells carry every hue in the palette, not on a
+     surface that inverts. */
+  --background-annotation-plate: hsl(var(--colors-white));
   /*
    * The hairline separating a note from the board under it.
    *
