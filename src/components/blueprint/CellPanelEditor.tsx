@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { OwnerTagSelect } from '@/components/blueprint/OwnerTagSelect'
+import { StatusSelect } from '@/components/blueprint/StatusSelect'
 import {
   CELL_PANEL_FOOTER_ID,
   Field,
@@ -13,6 +14,7 @@ import {
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
 import { invalidateCanvasBlueprintsForPath } from '@/hooks/useCanvasBlueprints'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { useCellContent } from '@/hooks/useCellContent'
 import { useCellSpec } from '@/hooks/useCellSpec'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
@@ -21,6 +23,10 @@ import { useNameOnlyPlacements } from '@/hooks/useRegistryTouchpoints'
 import { upsertCell } from '@/lib/authoringRpc'
 import { CELL_CONTENT_MAX } from '@/lib/cellContentLimits'
 import { updateCellContent } from '@/lib/cellContentMutations'
+import {
+  DEFAULT_ENTITY_STATUS,
+  type EntityStatus,
+} from '@/lib/entityStatus'
 import { RegistryLink } from '@/components/blueprint/RegistryLink'
 import { RoleSelect } from '@/components/blueprint/RoleSelect'
 import { PlacementResourcesList } from '@/components/blueprint/PlacementResourcesList'
@@ -56,6 +62,8 @@ type FormState = {
   functionText: string
   formText: string
   valueProps: ValueProp[]
+  /** How far along the thing this cell describes is (`cells.status`). */
+  status: EntityStatus
   /**
    * The selected touchpoint's own detail, when a touchpoint was clicked to
    * open this panel. Part of the SAME form state as the cell's fields, and
@@ -109,6 +117,36 @@ function placementDraft(placement: CellTouchpoint): PlacementDetailDraft {
 }
 
 /**
+ * The cell's status, read off the board the panel was opened from.
+ *
+ * `useCellContent` asks `cells` for four columns and this is a fifth, which
+ * looks like the obvious place for it. It is not: the board query already
+ * selects `status`, the normalizer already maps it, and
+ * `entityStatusContract.test.ts` already holds both of those true — so the
+ * value is in memory before the panel opens, and a second read would pay a
+ * round-trip to fetch what the app has. It is also the direction a deployment
+ * built on this template has already gone, having replaced that per-cell
+ * query with a board read outright.
+ *
+ * Null means the board does not hold this cell — the sample-content board,
+ * where `useCellContent` has no row either and the editor renders nothing for
+ * an existing cell. `live` then comes from the column's own default rather
+ * than from a guess about a row.
+ */
+function useCellStatusFromBoard(cellId: string | null): EntityStatus | null {
+  const detail = useBlueprintCellDetailOptional()
+  const blueprints = detail?.blueprints
+  return useMemo(() => {
+    if (!cellId || !blueprints) return null
+    for (const blueprint of blueprints) {
+      const found = blueprint.cells.find((cell) => cell.id === cellId)
+      if (found) return found.status ?? null
+    }
+    return null
+  }, [cellId, blueprints])
+}
+
+/**
  * The whole cell in one form, one Save.
  *
  * This replaced two stacked editors (content/owners and function/form/
@@ -159,6 +197,7 @@ export function CellPanelEditor({
   const { configured } = useSupabase()
   const contentResult = useCellContent(configured && cellId ? cellId : null)
   const specResult = useCellSpec(configured && cellId ? cellId : null)
+  const boardStatus = useCellStatusFromBoard(configured ? cellId : null)
   // A placement is editable only when it has a row behind it.
   const editable = placement?.id ? placement : null
 
@@ -190,6 +229,7 @@ export function CellPanelEditor({
       functionText: spec?.function ?? '',
       formText: spec?.form ?? '',
       valueProps: parseValueProps(spec?.value_props ?? null),
+      status: boardStatus ?? DEFAULT_ENTITY_STATUS,
       placement: editable ? placementDraft(editable) : EMPTY_PLACEMENT,
     }
 
@@ -225,6 +265,9 @@ export function CellPanelEditor({
         functionText: '',
         formText: '',
         valueProps: [],
+        // The column's own default, so a cell created without touching the
+        // control reads the same as one the importer wrote.
+        status: DEFAULT_ENTITY_STATUS,
         // A cell that does not exist yet holds no placements: its touchpoints
         // come into being when its text is first saved and synced.
         placement: EMPTY_PLACEMENT,
@@ -317,7 +360,8 @@ function CellPanelEditorForm({
     form.content !== baseline.content ||
     effectiveSummary !== baseline.summary ||
     form.owner !== baseline.owner ||
-    form.perceivedOwner !== baseline.perceivedOwner
+    form.perceivedOwner !== baseline.perceivedOwner ||
+    form.status !== baseline.status
   const specChanged =
     form.functionText !== baseline.functionText ||
     form.formText !== baseline.formText ||
@@ -350,7 +394,8 @@ function CellPanelEditorForm({
         Boolean(
           form.summary.trim() ||
             form.owner.trim() ||
-            form.perceivedOwner.trim(),
+            form.perceivedOwner.trim() ||
+            form.status !== DEFAULT_ENTITY_STATUS,
         )
       if ((cellId && contentChanged) || (!cellId && (draftExtras || !creating))) {
         await updateCellContent(
@@ -361,6 +406,7 @@ function CellPanelEditorForm({
             summary: cellId ? effectiveSummary : form.summary,
             owner: form.owner,
             perceivedOwner: form.perceivedOwner,
+            status: form.status,
           },
           cellId
             ? {
@@ -368,6 +414,10 @@ function CellPanelEditorForm({
                 summary: baseline.summary,
                 owner: baseline.owner,
                 perceivedOwner: baseline.perceivedOwner,
+                // The status as it stood, so the inverse restores five fields
+                // and not four. `CellContentUpdate` requires it, which is what
+                // makes that a compile error rather than a quiet omission.
+                status: baseline.status,
               }
             : undefined,
           // The create already logs "Added a cell"; its field fill-in is
@@ -572,6 +622,16 @@ function CellPanelEditorForm({
             set('summary', event.target.value)
           }}
           className={PANEL_TEXTAREA_CLASS}
+        />
+      </Field>
+
+      <Field
+        label="Status"
+        hint="How far along the thing this cell describes is, from proposed to live to on its way out."
+      >
+        <StatusSelect
+          value={form.status}
+          onChange={(next) => set('status', next)}
         />
       </Field>
 

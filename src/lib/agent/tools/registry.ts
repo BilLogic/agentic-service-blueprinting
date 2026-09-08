@@ -43,6 +43,7 @@ import {
   updateCellContent,
   type CellContentUpdate,
 } from '@/lib/cellContentMutations'
+import { DEFAULT_ENTITY_STATUS, asEntityStatus } from '@/lib/entityStatus'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { checkCellContentLength } from '@/lib/cellContentLimits'
 import { findingFingerprint } from '@/lib/findingFingerprint'
@@ -400,7 +401,7 @@ export async function dispatchTool(
         const cellId = need(args, 'cell_id')
         const { data, error } = await client
           .from('cells')
-          .select('content, summary, owner, perceived_owner, function, form, value_props')
+          .select('content, summary, owner, perceived_owner, status, function, form, value_props')
           .eq('id', cellId)
           .maybeSingle()
         if (error) throw new Error(error.message)
@@ -436,6 +437,12 @@ export async function dispatchTool(
             summary: data.summary ?? '',
             owner: data.owner ?? '',
             perceivedOwner: data.perceived_owner ?? '',
+            // Read and handed straight back. The tool takes no
+            // `status` argument, so this write must not move one: an edit to
+            // a cell's wording that quietly marked a proposed surface live
+            // would be the sentence the agent never said out loud. Widening
+            // the tool is a separate decision about the agent's surface.
+            status: asEntityStatus(data.status) ?? DEFAULT_ENTITY_STATUS,
           }
           await updateCellContent(
             client,
@@ -445,6 +452,7 @@ export async function dispatchTool(
               summary: s(args, 'summary') ?? previous.summary,
               owner: s(args, 'owner') ?? previous.owner,
               perceivedOwner: s(args, 'perceived_owner') ?? previous.perceivedOwner,
+              status: previous.status,
             },
             previous,
           )

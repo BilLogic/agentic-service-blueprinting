@@ -360,7 +360,7 @@ const save = (client: unknown, content: string) =>
   updateCellContent(
     client as never,
     'cell-1',
-    { content, summary: '', owner: '', perceivedOwner: '' },
+    { content, summary: '', owner: '', perceivedOwner: '', status: 'live' },
     undefined,
     { record: false },
   )
