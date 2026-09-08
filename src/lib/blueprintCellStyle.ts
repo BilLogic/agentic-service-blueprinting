@@ -36,6 +36,8 @@ export type BlueprintLaneRole =
   | 'backstage-action'
   /** Support processes and resources behind the internal line. */
   | 'support'
+  /** A party outside the service, acting where the customer can see them. */
+  | 'partner-action'
 
 export const BLUEPRINT_LANE_ROLES = [
   'storyboard',
@@ -46,6 +48,7 @@ export const BLUEPRINT_LANE_ROLES = [
   'backstage-touchpoint',
   'backstage-action',
   'support',
+  'partner-action',
 ] as const satisfies readonly BlueprintLaneRole[]
 
 /**
