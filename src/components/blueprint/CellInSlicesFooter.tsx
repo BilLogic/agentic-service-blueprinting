@@ -4,6 +4,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSlices, type SliceListEntry } from '@/hooks/useSlices'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
@@ -42,12 +44,27 @@ export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
 
   if (!cellId) return null
 
+  /*
+    Loading is NOT "no matches".
+
+    These three branches used to collapse into one empty array, so a panel
+    opened while `slices` was still in flight returned null and the footer
+    appeared afterwards, shoving everything above it. `useSlices` is one
+    service-wide query with staleTime Infinity, so this happens exactly once
+    per session, on the first cell panel opened — small, and worth not doing.
+  */
+  if (slices.status === 'loading') {
+    return (
+      <div className="shrink-0 border-t border-border px-4 py-2">
+        <DeferredSkeleton loading skeleton={<Skeleton className="h-4 w-24" />}>
+          {null}
+        </DeferredSkeleton>
+      </div>
+    )
+  }
+
   const rows: SliceListEntry[] =
-    slices.status === 'ready'
-      ? slices.data
-      : slices.status === 'error'
-        ? (slices.fallback ?? [])
-        : []
+    slices.status === 'ready' ? slices.data : (slices.fallback ?? [])
 
   const matches = slicesContainingCell(rows, cellId)
   if (matches.length === 0) return null
