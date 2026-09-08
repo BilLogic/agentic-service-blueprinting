@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   consumers,
+  consumersOf,
   declarationsIn,
   declaredNames,
   dial,
@@ -586,6 +587,21 @@ describe('the role vocabulary', () => {
     const short = new Set([...declaredNames(), ...roleTokens('ghost')])
     short.delete('--wash-ghost')
     expect(missingRoleTokens([...ROLES, 'ghost'], short)).toEqual(['--wash-ghost'])
+  })
+
+  it('makes every role name reachable as a utility', () => {
+    // A name nothing can be written against is a name that does not exist. The
+    // Tailwind map is the only route from a semantic token to a class, so the
+    // rule is that every one of the forty-nine is read there — and it is
+    // driven off the role list, so an eighth role has to be registered as well
+    // as declared.
+    const unregistered = ROLES.flatMap((role) =>
+      roleTokens(role).filter(
+        (name) =>
+          !consumersOf(name).some((entry) => entry.file.endsWith('theme.css')),
+      ),
+    )
+    expect(unregistered).toEqual([])
   })
 
   it.each(['light', 'dark'] as const)(

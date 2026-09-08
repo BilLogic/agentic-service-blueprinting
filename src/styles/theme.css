@@ -78,11 +78,16 @@
    */
   --text-color-contrast: var(--foreground-contrast);
 
-  /* Status border tokens for tinted surfaces (border-destructive, border-warning…) */
-  --color-border-destructive: var(--border-destructive);
+  /* The role edge, for every role: `border-border-{role}`. Registered in the
+     all-utilities namespace rather than `--border-color-*` because the edge is
+     also drawn as a ring and an outline at some call sites. */
+  --color-border-primary: var(--border-primary);
+  --color-border-brand: var(--border-brand);
   --color-border-warning: var(--border-warning);
+  --color-border-destructive: var(--border-destructive);
   --color-border-info: var(--border-info);
   --color-border-success: var(--border-success);
+  --color-border-secondary: var(--border-secondary);
   /*
    * `--color-border-*` generates EVERY utility (bg-, text-, ring-, and the
    * functional `hairline-*`), which is why the annotation plate line needs
@@ -97,7 +102,53 @@
   --color-border-muted: var(--border-muted);
   --color-border-control-hover: var(--border-control-hover);
   --color-border-annotation-plate: var(--border-annotation-plate);
-  --color-border-brand: var(--border-brand);
+
+  /*
+   * The rest of the role vocabulary: the resting tint, the two inks and the
+   * transient wash, for all seven roles.
+   *
+   * The ink registrations deliberately do NOT claim `text-{role}`. That
+   * utility exists today, resolves to the role's solid fill, and is written at
+   * call sites across the tree; the `--text-color-*` namespace wins over
+   * `--color-*` for text utilities, so registering the new ink there would
+   * repoint every one of those call sites in the same change that mints the
+   * token. Expand, then migrate, then contract: the names land beside the old
+   * ones here, the call sites move next, and `text-{role}` is repointed once
+   * nothing is left reading the fill through it.
+   *
+   * So role ink is reachable as `text-text-{role}` — the shape
+   * `border-border-{role}` above already has — and ink on the role's tint,
+   * which collides with nothing, gets the clean `text-on-surface-{role}` in
+   * the text-only namespace where an ink belongs.
+   */
+  --color-surface-primary: var(--surface-primary);
+  --color-surface-brand: var(--surface-brand);
+  --color-surface-warning: var(--surface-warning);
+  --color-surface-destructive: var(--surface-destructive);
+  --color-surface-info: var(--surface-info);
+  --color-surface-success: var(--surface-success);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-wash-primary: var(--wash-primary);
+  --color-wash-brand: var(--wash-brand);
+  --color-wash-warning: var(--wash-warning);
+  --color-wash-destructive: var(--wash-destructive);
+  --color-wash-info: var(--wash-info);
+  --color-wash-success: var(--wash-success);
+  --color-wash-secondary: var(--wash-secondary);
+  --color-text-primary: var(--text-primary);
+  --color-text-brand: var(--text-brand);
+  --color-text-warning: var(--text-warning);
+  --color-text-destructive: var(--text-destructive);
+  --color-text-info: var(--text-info);
+  --color-text-success: var(--text-success);
+  --color-text-secondary: var(--text-secondary);
+  --text-color-on-surface-primary: var(--text-on-surface-primary);
+  --text-color-on-surface-brand: var(--text-on-surface-brand);
+  --text-color-on-surface-warning: var(--text-on-surface-warning);
+  --text-color-on-surface-destructive: var(--text-on-surface-destructive);
+  --text-color-on-surface-info: var(--text-on-surface-info);
+  --text-color-on-surface-success: var(--text-on-surface-success);
+  --text-color-on-surface-secondary: var(--text-on-surface-secondary);
 
   /* Stepped semantic ramps — per-theme HSL literals from themes/{light,dark}.css.
      200 = subtle surface, 500 = border, 600 = text. */
