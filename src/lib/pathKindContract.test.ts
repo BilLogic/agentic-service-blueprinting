@@ -10,9 +10,14 @@ import type { PathKind as DatabasePathKind } from '@/types/database'
   ONE MEMBER, ONE ENTRY.
 
   `paths.kind` is a CHECK constraint — `paths_kind_check check (kind in
-  ('happy', 'variant', 'exception'))`, written by 21000116000000 when
-  `unhappy` and `alternative` collapsed into `variant`. The app carries that
-  vocabulary in two shapes, and only one of them is checked by the compiler.
+  ('happy', 'variant', 'exception'))` — and `variant` is a fold: older
+  spellings were rewritten into it. WHICH spelling went where is a fact about
+  one database's own history, and the deployments of this template do not
+  share one, so it is not stated here — nor is the migration that did it,
+  which is a filename in one repository and nothing in the next. The rename
+  map in `scripts/retired-vocabulary.mjs` records this repository's, and is
+  read against the migrations that ran HERE. The app carries that vocabulary
+  in two shapes, and only one of them is checked by the compiler.
 
   A `Record<PathKind, …>` cannot hold a member twice: a repeated key is a
   syntax the type system rejects, so the label and colour maps defend
