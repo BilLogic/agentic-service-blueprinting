@@ -23,16 +23,20 @@
      themes/light.css. The brand hue is mode-invariant, so these two must
      move together. */
   --hue: 159;
-  /* `--surface-hue` is not restated here, and what that MEANS is the warm 34
-     from themes/light.css — not semantic.css's `var(--hue)` default. That
-     file declares it under `:root, .light`, and a bare `:root` matches under
-     dark too, so with nothing later to take it back the dark surfaces run on
-     light's warm-grey hue. Moot while `--chroma` is 0, where every surface is
-     an exact grey whatever the hue says; a branded fork that wants the dark
-     surfaces on a different tint from light's has to declare the dial here.
-     (The cascade is what says this, not the file — `tokenModel.resolveValue`
-     is where to check it, and it is what corrected the claim this comment
-     used to make.) */
+  /* The warm 34 from themes/light.css, restated rather than inherited.
+     Restating changes nothing about what renders: this dial had no
+     declaration here, and what that MEANT was already 34 — not semantic.css's
+     old `var(--hue)` default, which could never win, because themes/light.css
+     declares the dial under `:root, .light` and a bare `:root` matches under
+     dark too, so with nothing later to take it back the dark surfaces already
+     ran on light's warm-grey hue. (The cascade is what says this, not the
+     file — `tokenModel.resolveValue` is where to check it, and it is what
+     corrected the claim this comment used to make.) Writing it down is what
+     turns that leak into a decision, and it is what let the unreachable
+     default in semantic.css go. Moot while `--chroma` is 0, where every
+     surface is an exact grey whatever the hue says; a fork that wants the dark
+     surfaces on a different tint from light's turns this number. */
+  --surface-hue: 34;
   --chroma: 0;
   --surface: 0.19;
   --elevation-step: 0.025;

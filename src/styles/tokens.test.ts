@@ -140,6 +140,11 @@ describe('token resolution', () => {
 
 const DIALS = [
   '--hue',
+  // Declared in both theme files since the unreachable `var(--hue)` default in
+  // semantic.css went. It is a dial and not a derivation — a theme picks the
+  // neutral ramp's hue — and each theme picks its own, so it belongs here and
+  // not in MODE_INVARIANT_DIALS.
+  '--surface-hue',
   '--chroma',
   '--surface',
   '--elevation-step',
