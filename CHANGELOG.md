@@ -1,5 +1,288 @@
 # Changelog
 
+## 1.13.0
+
+### Minor Changes
+
+- d94dd9d: **Breaking, for slice files.** The slice authoring format's keys are the names
+  of the columns they write.
+
+  | was           | is           | column              |
+  | ------------- | ------------ | ------------------- |
+  | `type`        | `kind`       | `slices.kind`       |
+  | `description` | `summary`    | `slices.summary`    |
+  | `origin`      | `authorship` | `slices.authorship` |
+  | `order`       | `position`   | `slices.position`   |
+  | `frames`      | `slides`     | table `slides`      |
+
+  `select --type` is `select --kind` with it.
+
+  An author had to hold two vocabularies to write one file, and `slice_tools.py`
+  carried a comment explaining the split rather than fixing it. `frames` was the
+  worst of the five: `frame` is a real and different thing — `cells.frame` is one
+  image on one cell — so the format used a live word for the neighbouring
+  concept, one line above `insert into public.slides`.
+
+  There is no alias. A file using a retired key is refused by name and told which
+  word replaced which, rather than failing on a missing required property.
+
+### Patch Changes
+
+- 4e9f639: Generated SQL is held to the columns the schema has.
+
+  `skills/slice/scripts/slice_tools.py` emitted `insert into public.slices (…,
+description, …, origin, …)`. `21000116000000` renamed those columns to
+  `summary` and `authorship`, so every slice the skill imported was an INSERT
+  Postgres rejects — a model running the shipped script against a real database,
+  and the failure arriving as the model being wrong.
+
+  No word list could reach it. `description` and `origin` are live columns
+  elsewhere in this schema, which is why the rename map deliberately enforces
+  neither fragment and `retiredFragmentsIn('slices.description')` is asserted
+  empty. Only the schema dump separates them, per table.
+
+  `npm run check:database-names` grows a third assertion for that. A query path
+  was not the only string carrying its own relation: `insert into public.<table>
+(<columns>)` and `update public.<table> set <column> = …` do too, so both are
+  held against `supabase/generated/portable-core.schema.sql`. Twenty-six
+  statements in this tree are literal and read; five are assembled from a
+  variable and dropped rather than guessed at, the refusal `selectTree` already
+  makes. Adjacent string literals are joined first — the relation and its column
+  list are in different strings whenever the statement needs two lines, which is
+  the shape the defect was hiding in.
+
+  `skills/` joins the check's roots. The two shipped skill scripts are the most
+  exposed code here and no database-name guard walked them at all; both
+  pre-existing assertions were already clean there, so the root costs nothing.
+
+  `references/data-model.md` documented the same two dead columns in its `slices`
+  row, and its vendored copy follows from `sync-canvas-skills.mjs`.
+
+- 638b63a: The two exemptions in the var-resolution rule are named, and the divergences
+  from upstream are written down together.
+
+  The rule that every bare `var()` in a stylesheet resolves to a real declaration
+  has been here since the design-system port, and it already permitted both
+  things it has to permit. Neither said so. `var(--x, fallback)` was excused by a
+  comment; a token a component sets on its own element was excused by nothing at
+  all — it rode on the token model folding stylesheet and TypeScript declarations
+  into one set, and a tidy-up that made the rule stylesheet-only would have
+  condemned three live references in `blueprint.css` with nothing to point at.
+  Both arms are now named at the rule, each is asserted to still be carrying
+  something, and the predicate is exercised on references it did not read off
+  disk: a dangling name fails in either kind, the override seam passes only in a
+  stylesheet, and a component's own declaration counts as a declaration.
+
+  `docs/adr/0008` records the vocabulary's relationship to the system it was
+  ported from: a primitive is named for its hue, a semantic token for its job
+  with no ramp number, brand is not a hue, and where upstream wrote a literal we
+  derive while taking the judgement behind it. Five divergences are stated with
+  the measurement behind each — the stepped scales, the two brand words, the
+  focus ring, the radius dial, and the alert border, where the judgement that an
+  edge should be quiet is taken and the ramp step it is spelled with is not.
+
+  `semantic.css` said the role ramps were per-theme literals in the theme files.
+  They were removed with the rungs; the header now says so.
+
+- 3721967: A row shape pinned in prose is checked against the schema.
+
+  `agents/auditor.md` tells a model exactly which keys to produce for a findings
+  row, and `audit_tools.py` validates against that shape. When `21000116000000`
+  renamed `check_name` to `check_key` and `note` to `summary`, the document went
+  on asking for the old two — a call the validator raises `KeyError` on, arriving
+  as the model being wrong rather than the prose being stale.
+
+  `npm run check:pinned-shapes` binds a fenced block to a relation and holds its
+  keys against `supabase/generated/portable-core.schema.sql`, both directions: a
+  key that is not a column, and a required column the shape never names.
+
+  The binding is per fence and deliberately short. Three of the four fenced
+  blocks in `agents/`, `skills/` and `references/` document an agent's own output
+  or a workspace state file rather than a database row, so treating every fenced
+  key as a column would be wrong three times in four. Binding to a relation is
+  also what makes `note` catchable at all: it is a live column on `paths`,
+  `scenarios` and `cell_dependencies`, and wrong only here.
+
+- e0511c2: A portable contract test states the fold without naming an address — or a
+  history that is not shared.
+
+  `pathKindContract.test.ts` asserts that each array-shaped path-kind roster holds
+  each of its members once, deliberately not a census, and it is the only consumer
+  of `BLUEPRINT_ARROW_PATH_KINDS`. Every symbol it imports exists in the
+  deployment, and it passes there unchanged: it is exactly the test that would
+  have caught the roster that read `['happy', 'exception', 'exception',
+'variant', 'variant']` — five entries for three kinds, absorbed by
+  `Object.fromEntries` so nothing rendered wrong, and found by hand. The
+  deployment refused to copy it, and was right to: its header named the fold
+  migration `21000116000000`, a filename that resolves to nothing on the other
+  side, and one of the repo-local identities the reconciled allowlist exists to
+  keep out of shared prose.
+
+  Replacing the address with the fact it stood for would have been the obvious
+  fix and would have been worse. The fold is not the same fact in the two
+  repositories. Here `21000116000000` runs one statement and sends both `unhappy`
+  and `alternative` to `variant`; the deployment's `one_spelling_each` ran two
+  updates and sent `unhappy` to `exception` and `alternative` and `custom` to
+  `variant`. Both rename maps say so, each about its own database. A sentence
+  reading "`unhappy` and `alternative` collapsed into `variant`" is true in this
+  tree and false in the next one — and a wrong address misleads nobody for long,
+  while a wrong fact is believed.
+
+  So the header states what both databases share and nothing more: `paths.kind` is
+  a CHECK constraint, `paths_kind_check check (kind in ('happy', 'variant',
+'exception'))` on both sides, and `variant` is a fold destination on both sides.
+  Which older spelling went where is left to `scripts/retired-vocabulary.mjs`,
+  read against the migrations that ran in the repository the reader is standing
+  in — which is what that map's own comment already says a reader has to do. The
+  file now carries no repo-local citation at all, by the deployment's own scanner,
+  and can be adopted verbatim.
+
+  The sweep the ticket asked for was run, in the direction the enrolment gate
+  measures: the deployment's tree against the pinned template package, over 924
+  in-scope paths with 338 already enrolled. Fourteen unenrolled files are
+  byte-identical or differ by prose alone. **Three** are held back by exactly one
+  repo-local citation — `MobileNavSheet.tsx` (`plan 2026-08-16-002`),
+  `findingFingerprint.ts` (`§2`) and `sliceValidation.ts` (migration
+  `20260830190000`) — and none by more than one. All three citations are in the
+  deployment's copy; this template's copies are already clean, so all three are
+  deployment-side edits and none of them is this repository's to make. Eleven more
+  carry no citation and are enrollable now for the cost of the allowlist line.
+
+- 3df7841: `unhappy` is not a path kind. `21000116000000` folded it and `alternative` onto
+  `variant`, and the CHECK constraint has named `happy`, `variant`, `exception`
+  ever since. Three surfaces went on offering the retired spelling as live, and
+  what they have in common is that each wears no mark a sweep could key on.
+
+  An agent's review lens said "Dead ends: exception/unhappy paths"; a co-creation
+  playbook said "alternative/exception paths reuse scenario steps". Both are
+  prose without backticks, and the value sweep finds a value set by its code
+  spans, so it had nothing to read. An authored figure labelled three stacked
+  boxes `Path · exception`, `Path · variant`, `Path · unhappy` and captioned them
+  "happy vs. unhappy" — that drawing renders on the cover page inside the app, so
+  a reader meets it, and no vocabulary sweep opened an SVG for values at all. A
+  component's doc comment glossed the badge as "(Happy, Unhappy, etc.)" beside a
+  labels map whose keys are the three live kinds.
+
+  A sixth site turned up on a last sweep and is the same shape as the fourth: a
+  picker's comment said it "groups happy/unhappy into side-by-side columns" while
+  the code assigns a column per kind through a total map of the three live ones.
+
+  All six sites now say what the column accepts. The figure's caption became
+  "happy vs. exception" rather than "happy vs. variant", because the line above it
+  already says the scenario branches into path variants and the stutter would
+  read as a typo.
+
+  Two of the three shapes are now swept, and the third is recorded as unreachable
+  rather than left silent.
+
+  `retiredValuesInCompany()` is the new rule, beside the value-set grammar it
+  extends. A retired value counts as a live claim when the text names the table it
+  was retired from AND carries a value that column still accepts — "unhappy
+  paths" beside "exception". Both signals are required and the measurement is why:
+  seven of the eight values this map retires are ordinary English in this tree, so
+  a bare-word sweep for them returns eleven findings of which two are defects,
+  and the guard would be a list of exemptions on its first run. `named` alone adds
+  sentences about database triggers and side-by-side comparison; `beside` alone
+  reads "a single source of truth … the stacked column headers" as a layout
+  claim. Together they returned three findings and all three were defects — two of
+  which no one had reported.
+
+  The rule asks the rename map what is retired and the schema dump what is live,
+  so nothing in it counts sites or names a word. A value folded next month is
+  swept next month without the file changing, and a column that still accepts a
+  value is not a finding, which is what keeps a fold the instance shipped and this
+  template has not from failing here.
+
+  Two subjects. Every swept document, sentence by sentence, with the same
+  exemption the value sweep allows — a sentence recording the retirement proves it
+  with a correction verb and the migration that ran. And every authored figure,
+  read whole: a drawing has no sentences, and three `<text>` nodes labelling three
+  boxes drawn behind one another are one enumeration.
+
+  The third shape is a comment inside a component, and it is not swept on evidence
+  rather than on effort. Under `src/` the retired words are live: the app matches
+  `'unhappy path'` and `'alternative path'` against the name an author types,
+  because the fold took the kind and left the names alone. The same rule over
+  every comment there returns ten sentences of which two are defects; the other
+  eight are the app explaining what it translates, and a comment beside code says
+  what changed without citing the migration that changed it, so the correction
+  exemption cannot see them. Eight exemptions on a first run is a list of sites.
+  Both defects were fixed by hand and the guard says out loud that it does not
+  hold that shape, alongside the two blind spots the rule itself has — a sentence
+  using a retired value as English beside its own table, and a scope carried
+  across a sentence boundary.
+
+- 936c8b3: A step's frames follow lane position, and the order is a guarantee.
+
+  `useStepSpec` reads a step's storyboard frames through an embedded
+  `lanes(name, position, lane_role)` select and never sorted them, so the row the
+  step panel draws was in whatever order the query plan produced. Nothing looked
+  broken, because the rendered row and the image viewer's sibling group are built
+  from the same array and therefore agreed with each other — on an order nobody
+  chose. A step panel draws one frame per lane precisely so the same moment can be
+  compared across actors, and which actor is a position on the board; a new index
+  or a different server could have reordered it silently.
+
+  The frame assembly moves into `storyboardFramesFromCells`, a pure function that
+  sorts on a TOTAL key — position, then lane name, then the frame — so the result
+  is a function of the rows and not of their arrival. The sort runs before the
+  dedupe: paths share their imagery, so the surviving row decides which lane a
+  frame is captioned with, and that is now the first lane in the order rather than
+  the first row off the wire.
+
+  The sort is in the hook, not in the query, which is where this codebase already
+  puts it: `normalizeBlueprint` sorts the same embedded `lanes` by the same column
+  in JavaScript, the agent's scenario listing sorts its embedded scenarios the
+  same way, and no query in the tree orders an embedded resource. One convention,
+  followed rather than a second one introduced.
+
+  Every other reader of `lanes` was checked. The canvas and the agent's blueprint
+  reads share one select and both normalize, which sorts; the harness sorts in
+  JavaScript; the lane panel's sibling query returns a SET of rows to write to,
+  where order carries no meaning; and the blueprint dialog counts lanes. This was
+  the only gap.
+
+  The test is an invariant, not a fixture: over generated inputs, frames never
+  place a lower lane after a higher one, and every permutation of a row set
+  returns the same frames. A fixture was rejected because it is the shape that
+  would have passed the defect — rows written down in lane order are satisfied by
+  a function that returns its input untouched.
+
+- e03d42f: `inline` decides what a utility compiles to; the content scan decides what the
+  artifact carries.
+
+  Four comments across `theme.css`, `colors.css` and `theme.shape.test.ts` said
+  an `@theme inline` block emits no custom properties. A fifth, further down
+  `theme.css`, said it does, and the built CSS agreed with the fifth. Neither
+  claim was the mechanism. `inline` decides what a UTILITY compiles to — the
+  value rather than the registered name, which is why a colour utility resolves
+  straight to its semantic token — and emission is settled afterwards by
+  Tailwind's content scan: a `@theme` key whose name the scan finds is emitted
+  at `:root, :host` under `@layer theme`, and a key it never finds is dropped.
+  Two hundred and twelve of this file's three hundred and twenty keys are in the
+  artifact, and no two families are there for the same reason.
+
+  What counts as finding a name depends on the file. A stylesheet offers a name
+  only inside a `var()`; a `.tsx` or a `.md` offers it however it is written,
+  comments and prose included. So the hue registrations are always emitted —
+  their value spells their own name — while three others were in the artifact
+  for no reason but a sentence somewhere: the canvas registration because this
+  file's own warning against reading it spelled the read, the sans-font key
+  because the comment explaining why it must not self-reference spelled the
+  self-reference, and one retired alias because a CHANGELOG entry names it. The
+  first of those goes with the rewritten warning. It is the one declaration this
+  change removes from the compiled CSS, twenty-nine bytes, and nothing read it.
+
+  `declarerOf` still treats every `@theme` name as a declaration, and now says
+  why rather than leaving it as the thing nobody had checked. The dangling case
+  a stricter rule would have to catch — a stylesheet reading a registered but
+  unemitted name — cannot be constructed, because reading a name is one of the
+  things that emits it, and the files the token model samples are a subset of
+  the files Tailwind scans. Every read a rule can see is a read that emits what
+  it reads. That subset relation is now a test rather than a claim: it fails if
+  a fourth scan exclusion appears, and it fails if the sample widens to take in
+  the test files, which is the direction the model's own header calls safe.
+
 ## 1.12.10
 
 ### Patch Changes
@@ -1434,8 +1717,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                ERROR: new row for relation "lanes" violates check constraint
-                                "lanes_lane_role_check" … compliance_review
+                                  ERROR: new row for relation "lanes" violates check constraint
+                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
