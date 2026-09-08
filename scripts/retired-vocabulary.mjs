@@ -21,6 +21,12 @@
  *   - `scripts/check-database-names.mjs`       (Check B — names inside strings)
  *   - `scripts/tests/retired-copy.test.mjs`    (Check C — words a person reads)
  *   - `scripts/value-set-claims.mjs`           (retired VALUES in swept markdown)
+ *   - `scripts/check-instance-vocabulary.mjs`  (the instance's map, against this schema)
+ *
+ * Held against the SQL that ran by
+ * `scripts/tests/the-map-is-what-the-sql-did.test.mjs`, which reads
+ * `supabase/migrations/` and fails a row that claims a rename the series never
+ * performed. Its header says what it can and cannot see.
  *
  * ── WHY EACH NAME WENT, AND WHICH ARE NOT IN THE WORD LISTS ────────────────
  *
@@ -171,17 +177,44 @@
 /**
  * One row per rename, ordered as the series landed them.
  *
- * `was` / `is` / `migrations` are the translation itself: the retired name, the
- * name it carries today, and the migration that moved it. They are the whole of
- * what the prose table used to say, which is why deleting that table cost
- * nothing.
+ * `renames` / `migrations` are the translation itself: where each retired name
+ * went, and the migration that moved it. They are the whole of what the prose
+ * table used to say, which is why deleting that table cost nothing.
+ *
+ * `renames` IS A LIST OF PAIRS AND NOT TWO LISTS SIDE BY SIDE, since #279. It
+ * used to be a `was` array beside an `is` array, which reads positionally
+ * because nothing else is on offer — and a positional reading cannot say what
+ * a FOLD did. `21000116000000` turned both `unhappy` and `alternative` into
+ * `variant`; the two arrays said `unhappy` / `alternative` on one side and
+ * `exception` / `variant` on the other, so the map claimed `unhappy` became
+ * `exception` — a value that already existed, meant something else, and was
+ * never a destination. The instance's map says exactly that and is right
+ * about its own database, whose `20260821220000` really did send `unhappy` to
+ * `exception`; this row was carried across from it and the divergence came
+ * with it. A fold is the commonest kind of rename, and a shape that cannot
+ * express one aims the sweeps that read it in a direction the database never
+ * went. Two entries may name the same `to`, and that is the fold, said out
+ * loud.
+ *
+ * A pair's `to` may be `null`: the name was DROPPED rather than renamed.
+ *
+ * A pair's `because` is present exactly when no single statement in the row's
+ * migrations performs it — a JSON member of an authored file, a column copied
+ * into another table rather than renamed, a name dropped. It is an excuse and
+ * it is held to being true: `scripts/tests/the-map-is-what-the-sql-did.test.mjs`
+ * fails a `because` on a pair whose statement is right there in the migration.
+ *
+ * `kept` is the other half of a fold, and the half the old shape had nowhere to
+ * put: a value that already existed on the same column, kept its own meaning,
+ * and was never a destination. Only the path-kind row carries one, because that
+ * is the row where a non-destination sitting in the `is` column was the lie.
  *
  * `retired` is what the identifier checks actually match: SUBSTRINGS, not whole
  * words. A word-boundary pattern is what let `cells_layer_step_slot_unique`
  * survive `\mlayer_id\M` upstream — `_` is a word constituent in Postgres
  * regex — and `21000104`'s header records having to write that name its own
  * pattern for the same reason. Every fragment is asserted to be a substring of
- * one of the same row's `was` entries, so the enforced words cannot wander from
+ * one of the same row's retired names, so the enforced words cannot wander from
  * the names they came from.
  *
  * `copy` is the prose spelling of the same retirement, for the guard over words
@@ -190,12 +223,20 @@
  * A row may enforce NOTHING — an empty `retired` and `copy` — when the retired
  * spelling is still a live word elsewhere in the schema. That is a judgement
  * recorded in the row, not an omission, and the test requires the row to say so.
+ *
+ * `was` and `is` are DERIVED from `renames` and kept for the four readers that
+ * ask "which names left" and "which names stand" without caring which became
+ * which. Deriving them is what stops the two lists drifting from the pairs, and
+ * what makes `is` say `variant` once where the old shape said it twice.
  */
 export const RENAME_MAP = Object.freeze(
   [
     {
-      was: ['layers', 'layer_role', 'cells.layer_id'],
-      is: ['lanes', 'lane_role', 'cells.lane_id'],
+      renames: [
+        { from: 'layers', to: 'lanes' },
+        { from: 'layer_role', to: 'lane_role' },
+        { from: 'cells.layer_id', to: 'cells.lane_id' },
+      ],
       migrations: ['21000104000000'],
       retired: ['layer'],
       // `CanvasAnnotationLayer` is a RENDERING layer and an unrelated concept —
@@ -239,13 +280,23 @@ export const RENAME_MAP = Object.freeze(
       copy: ['layer', 'layers'],
     },
     {
-      // Three estates, one word, and the `is` column is where they agree.
+      // Three estates, one word, and each pair's `to` is where they agree.
       // `21000103000000` moved the table; release 1.5.0 moved the domain layer
       // above it; and the IR's `path.triggers` — the interchange format, and
       // the last estate still spelling it the old way — became
       // `path.dependencies` at IR schema version `2026.09.09` (#159).
-      was: ['cell_triggers', 'path.triggers'],
-      is: ['cell_dependencies', 'path.dependencies'],
+      renames: [
+        { from: 'cell_triggers', to: 'cell_dependencies' },
+        {
+          from: 'path.triggers',
+          to: 'path.dependencies',
+          because:
+            'the IR is an authored file, not a database object. No migration ' +
+            'renames a JSON member, and what holds a wire format is its schema ' +
+            'version — `references/ir-schema.json` names the array ' +
+            '`dependencies` at `2026.09.09`.',
+        },
+      ],
       migrations: ['21000103000000'],
       retired: ['cell_trigger'],
       // Not `trigger` alone: a database trigger (`cells_validate_path_match`)
@@ -258,8 +309,10 @@ export const RENAME_MAP = Object.freeze(
       copy: ['cell trigger', 'cell triggers'],
     },
     {
-      was: ['service_lifecycles', '*_service_lifecycle_id'],
-      is: ['services', 'service_id'],
+      renames: [
+        { from: 'service_lifecycles', to: 'services' },
+        { from: '*_service_lifecycle_id', to: 'service_id' },
+      ],
       migrations: ['21000106000000'],
       // `lifecycle` bare, not `service_lifecycle`: `21000106` ran a second
       // pass on the bare word precisely because objects carried it without the
@@ -268,22 +321,30 @@ export const RENAME_MAP = Object.freeze(
       copy: ['lifecycle', 'lifecycles'],
     },
     {
-      was: ['service_scenarios', '*_service_scenario_id'],
-      is: ['scenarios', 'scenario_id'],
+      renames: [
+        { from: 'service_scenarios', to: 'scenarios' },
+        { from: '*_service_scenario_id', to: 'scenario_id' },
+      ],
       migrations: ['21000107000000'],
       retired: ['service_scenario'],
       copy: ['service scenario', 'service scenarios'],
     },
     {
-      was: ['row_position', 'column_position', 'slot_position', 'order_position'],
-      is: ['position'],
+      // Four names, one destination — the first fold in the series, and the
+      // one the old two-array shape happened to state correctly because four
+      // against one leaves nothing to pair off.
+      renames: [
+        { from: 'row_position', to: 'position' },
+        { from: 'column_position', to: 'position' },
+        { from: 'slot_position', to: 'position' },
+        { from: 'order_position', to: 'position' },
+      ],
       migrations: ['21000105000000'],
       retired: ['row_position', 'column_position', 'slot_position', 'order_position'],
       copy: ['row position', 'column position', 'slot position', 'order position'],
     },
     {
-      was: ['description'],
-      is: ['summary'],
+      renames: [{ from: 'description', to: 'summary' }],
       migrations: ['21000108000000'],
       // ENFORCES NOTHING, deliberately. `description` is a word rather than an
       // identifier: `21000108` renamed it on five tables and its own header
@@ -297,8 +358,7 @@ export const RENAME_MAP = Object.freeze(
       copy: [],
     },
     {
-      was: ['propositions'],
-      is: ['business_model'],
+      renames: [{ from: 'propositions', to: 'business_model' }],
       migrations: ['21000111000000'],
       // The PLURAL, in both lists, and this is not a pattern narrowed to dodge
       // a case. The retired IDENTIFIER is the table `propositions`. Singular
@@ -327,8 +387,14 @@ export const RENAME_MAP = Object.freeze(
       // because `enables` reads source-first and `needs` did not. Not a copy
       // word and not an identifier fragment — `scripts/check-dependency-kinds.mjs`
       // sweeps the code-span form through every rulebook tree instead.
-      was: ["cell_dependencies.kind = 'trigger'", "cell_dependencies.kind = 'needs'"],
-      is: ["cell_dependencies.kind = 'leads_to'", "cell_dependencies.kind = 'enables'"],
+      //
+      // Two pairs and no fold: these two really are one-for-one, which is
+      // exactly the claim the pair shape lets this row make and the old one
+      // could only imply.
+      renames: [
+        { from: "cell_dependencies.kind = 'trigger'", to: "cell_dependencies.kind = 'leads_to'" },
+        { from: "cell_dependencies.kind = 'needs'", to: "cell_dependencies.kind = 'enables'" },
+      ],
       migrations: ['21000114000000'],
       retired: [],
       copy: [],
@@ -349,8 +415,7 @@ export const RENAME_MAP = Object.freeze(
       // everywhere: a retired COLUMN is not a retired English word. (The first
       // of those examples was `visualPictures` until #391 moved the app's half
       // of the row below; the word this row is about did not move with it.)
-      was: ['cells.picture'],
-      is: ['cells.frame'],
+      renames: [{ from: 'cells.picture', to: 'cells.frame' }],
       migrations: ['21000115000000'],
       retired: ['picture'],
       copy: ['picture', 'pictures'],
@@ -375,36 +440,60 @@ export const RENAME_MAP = Object.freeze(
       // and `steps.summary`'s own comment says the word about a strip; what
       // retired is the column, not the noun — the same split the `label` row
       // below records.
-      was: ['slice_items', 'slice_items.caption'],
-      is: ['slides', 'slides.title'],
+      renames: [
+        { from: 'slice_items', to: 'slides' },
+        { from: 'slice_items.caption', to: 'slides.title' },
+      ],
       migrations: ['21000115000000', '21000129000000'],
       retired: ['slice_items'],
       copy: ['slice item', 'slice items'],
     },
     {
-      was: ["scenarios.layout = 'side-by-side'", "scenarios.layout = 'integrated'"],
-      is: ["scenarios.layout = 'stacked'", "scenarios.layout = 'stacked'"],
+      // A fold: one `update … where layout in ('side-by-side', 'integrated')`,
+      // both landing on `stacked`. The old shape could only say this by
+      // writing `stacked` twice, which reads as two renames that happen to
+      // agree rather than as one statement moving two values.
+      renames: [
+        { from: "scenarios.layout = 'side-by-side'", to: "scenarios.layout = 'stacked'" },
+        { from: "scenarios.layout = 'integrated'", to: "scenarios.layout = 'stacked'" },
+      ],
       migrations: ['21000116000000'],
       retired: [],
       copy: [],
     },
     {
-      was: ["paths.kind = 'unhappy'", "paths.kind = 'alternative'"],
-      is: ["paths.kind = 'exception'", "paths.kind = 'variant'"],
+      // THE FOLD THIS SHAPE EXISTS FOR (#279). `21000116000000` runs one
+      // statement — `set kind = 'variant' where kind in ('unhappy',
+      // 'alternative')` — so BOTH spellings land on `variant`. `exception` is
+      // in `kept` and not on the right of any pair: it already existed, it
+      // carries "this went wrong", and the migration's own note is that
+      // `unhappy` was only ever a second spelling of `variant` with a mood
+      // attached. Read positionally, the two-array form said `unhappy` became
+      // `exception`, which would send a sweep looking for the wrong word on
+      // the wrong rows.
+      //
+      // The instance's map really does say `unhappy` → `exception`, and is
+      // right: its `20260821220000` ran two updates and sent `unhappy` one way
+      // and `alternative` the other. Two databases, two histories, one row
+      // carried across — which is why a map has to be read against the
+      // migrations that ran HERE.
+      renames: [
+        { from: "paths.kind = 'unhappy'", to: "paths.kind = 'variant'" },
+        { from: "paths.kind = 'alternative'", to: "paths.kind = 'variant'" },
+      ],
+      kept: ["paths.kind = 'exception'"],
       migrations: ['21000116000000'],
       retired: [],
       copy: [],
     },
     {
-      was: ["scenarios.layout = 'single'"],
-      is: ["scenarios.layout = 'stacked'"],
+      renames: [{ from: "scenarios.layout = 'single'", to: "scenarios.layout = 'stacked'" }],
       migrations: ['21000117000000'],
       retired: [],
       copy: [],
     },
     {
-      was: ["resources.kind = 'other'"],
-      is: ["resources.kind = 'attachment'"],
+      renames: [{ from: "resources.kind = 'other'", to: "resources.kind = 'attachment'" }],
       migrations: ['21000118000000'],
       retired: [],
       copy: [],
@@ -412,19 +501,41 @@ export const RENAME_MAP = Object.freeze(
     {
       // #111. A placement is summary + role. Its two URL columns — the
       // screenshots of the tool at this moment, and where it lives — became
-      // attachments and a featured link in `resources`, carrying the
-      // placement's id. No identifier retires: `url` is a live column on
-      // `resources`, and `screenshots` is English elsewhere in these
-      // documents (a render check takes them).
-      was: ['cell_touchpoints.url', 'cell_touchpoints.screenshots'],
-      is: ['resources.url', 'resources.kind'],
+      // rows in `resources` carrying the placement's id. No identifier
+      // retires: `url` is a live column on `resources`, and `screenshots` is
+      // English elsewhere in these documents (a render check takes them).
+      //
+      // BOTH COLUMNS LAND ON `resources.url`, which is the fold the old shape
+      // got wrong in a second way (#279): it paired `screenshots` with
+      // `resources.kind`, and no screenshot ever became a kind. Every url and
+      // every element of every `screenshots[]` is copied into `resources.url`;
+      // `resources.kind` is what tells the two apart afterwards — `link` for
+      // the featured one the placement led with, `attachment` for each
+      // screenshot in author order.
+      renames: [
+        {
+          from: 'cell_touchpoints.url',
+          to: 'resources.url',
+          because:
+            '21000119000000 does not rename this column, it COPIES it: an ' +
+            'insert makes a featured `link` resource on the placement, and the ' +
+            'column is then dropped.',
+        },
+        {
+          from: 'cell_touchpoints.screenshots',
+          to: 'resources.url',
+          because:
+            'an array became rows, not a column: each element is inserted as ' +
+            'an `attachment` resource on the placement in author order, and ' +
+            'the column is then dropped.',
+        },
+      ],
       migrations: ['21000119000000'],
       retired: [],
       copy: [],
     },
     {
-      was: ['business_model'],
-      is: ['business_models'],
+      renames: [{ from: 'business_model', to: 'business_models' }],
       migrations: ['21000116000000'],
       // Plural, like every other table. `21000111000000` took the singular
       // from the noun rather than from the convention around it, which is why
@@ -434,8 +545,11 @@ export const RENAME_MAP = Object.freeze(
       copy: [],
     },
     {
-      was: ['findings', 'findings.check_name', 'findings.note'],
-      is: ['audit_findings', 'audit_findings.check_key', 'audit_findings.summary'],
+      renames: [
+        { from: 'findings', to: 'audit_findings' },
+        { from: 'findings.check_name', to: 'audit_findings.check_key' },
+        { from: 'findings.note', to: 'audit_findings.summary' },
+      ],
       migrations: ['21000116000000'],
       // `finding` alone is NOT retired — it is the live domain word, defined
       // in CONTEXT.md, and a panel has to be able to say it. What is retired
@@ -445,18 +559,26 @@ export const RENAME_MAP = Object.freeze(
       copy: ['check name'],
     },
     {
-      was: ['paths.path_type', 'slices.slice_type', 'scenarios.view_type'],
-      is: ['paths.kind', 'slices.kind', 'scenarios.layout'],
+      renames: [
+        { from: 'paths.path_type', to: 'paths.kind' },
+        { from: 'slices.slice_type', to: 'slices.kind' },
+        { from: 'scenarios.view_type', to: 'scenarios.layout' },
+      ],
       migrations: ['21000116000000'],
       // `_type` is a suffix apologising for a name. All three said "the kind
       // of thing this is" in a column that could say `kind`, which
-      // `cell_dependencies` already did.
+      // `cell_dependencies` already did. Two of the three land on a column
+      // called `kind` and the third does not, which is a coincidence the pair
+      // shape states and the two-array form left the reader to work out.
       retired: ['path_type', 'slice_type', 'view_type'],
       copy: ['path type', 'slice type', 'view type'],
     },
     {
-      was: ['cell_dependencies.label', 'slices.description', 'slices.origin'],
-      is: ['cell_dependencies.name', 'slices.summary', 'slices.authorship'],
+      renames: [
+        { from: 'cell_dependencies.label', to: 'cell_dependencies.name' },
+        { from: 'slices.description', to: 'slices.summary' },
+        { from: 'slices.origin', to: 'slices.authorship' },
+      ],
       migrations: ['21000116000000'],
       // One word per meaning: a `name` is navigated by, a `title` is authored,
       // a `summary` describes, a `note` is an aside.
@@ -476,8 +598,10 @@ export const RENAME_MAP = Object.freeze(
     // and the lane LABELS ("Front Stage Tech") are free-form text the migration
     // does not touch, so the copy guard reads the ROLE aloud and not the label.
     {
-      was: ['frontstage_tech', 'backstage_tech'],
-      is: ['frontstage_touchpoints', 'backstage_touchpoints'],
+      renames: [
+        { from: 'frontstage_tech', to: 'frontstage_touchpoints' },
+        { from: 'backstage_tech', to: 'backstage_touchpoints' },
+      ],
       migrations: ['21000122000000'],
       retired: ['frontstage_tech', 'backstage_tech'],
       copy: ['frontstage tech', 'backstage tech'],
@@ -486,10 +610,11 @@ export const RENAME_MAP = Object.freeze(
     // systems. The people are `support_actions` (a new role for a lane an
     // adopter may add); the systems are touchpoints, and every support_systems
     // lane in this template is a systems lane, so each becomes
-    // `backstage_touchpoints`.
+    // `backstage_touchpoints`. Two rows therefore land on the same word without
+    // being the same fold, which is why they stay two rows: `backstage_tech`
+    // above was a spelling, this is a split.
     {
-      was: ['support_systems'],
-      is: ['backstage_touchpoints'],
+      renames: [{ from: 'support_systems', to: 'backstage_touchpoints' }],
       migrations: ['21000122000000'],
       retired: ['support_systems'],
       copy: ['support systems'],
@@ -523,8 +648,18 @@ export const RENAME_MAP = Object.freeze(
     // term, and a divider band has a `visual` width. That last class is what
     // `MANGLED` in `scripts/tests/retired-copy.test.mjs` grew three shapes for.
     {
-      was: ['visual', 'step_visual'],
-      is: ['storyboard'],
+      renames: [
+        { from: 'visual', to: 'storyboard' },
+        {
+          from: 'step_visual',
+          to: null,
+          because:
+            'dropped, not renamed. `step_visual` named no lane here, so ' +
+            '21000122000000 has no update for it — what it has is the closed ' +
+            'set, which sends any role outside the eight to null. The concept ' +
+            'is folded into `storyboard`; the value went nowhere.',
+        },
+      ],
       migrations: ['21000122000000'],
       retired: ['visual', 'step_visual'],
       copy: ['visual', 'step visual'],
@@ -537,6 +672,15 @@ export const RENAME_MAP = Object.freeze(
       A **tag** is one value out of a set, selectable or removable. "Chip" and
       "pill" were a third and fourth name for those same two ideas and are not
       names any more.
+
+      FOUR PAIRS, NOT TWO (#279). Neither retired word maps onto one surviving
+      word: a pill could be either idea and so could a chip, and which one a
+      given site takes is decided by the definition above rather than by where
+      the word sat in a list. Written as two pairs this row would claim `pill`
+      became `badge` and `chip` became `tag`, and the deployment's own renames
+      refute it — `coverContent.chip` became `commandCopy`, which is neither.
+      This row has no migration, so the pairs carry no `because`: there is no
+      SQL for them to be an excuse about.
 
       `retired` is empty and that IS the entry: no database object was ever
       called either word, so the identifier sweep has nothing to forbid, and a
@@ -561,20 +705,35 @@ export const RENAME_MAP = Object.freeze(
       `FilterTag` selects.
     */
     {
-      was: ['pill', 'chip'],
-      is: ['badge', 'tag'],
+      renames: [
+        { from: 'pill', to: 'badge' },
+        { from: 'pill', to: 'tag' },
+        { from: 'chip', to: 'badge' },
+        { from: 'chip', to: 'tag' },
+      ],
       migrations: [],
       retired: [],
       copy: ['pill', 'pills', 'chip', 'chips'],
     },
-  ].map((row) =>
-    Object.freeze({
+  ].map((row) => {
+    const renames = Object.freeze(row.renames.map((pair) => Object.freeze({ ...pair })))
+    return Object.freeze({
       ...row,
+      renames,
+      kept: Object.freeze(row.kept ?? []),
+      // DERIVED, and derived rather than written. `was` is every name this row
+      // retired and `is` every name one of them landed on, deduplicated: a fold
+      // states its destination once, so `is` cannot say `stacked` twice or
+      // `exception` at all, and neither list can drift from the pairs.
+      was: Object.freeze([...new Set(renames.map((pair) => pair.from))]),
+      is: Object.freeze([
+        ...new Set(renames.map((pair) => pair.to).filter((to) => to !== null && to !== undefined)),
+      ]),
       ...Object.fromEntries(
-        ['was', 'is', 'migrations', 'retired', 'copy'].map((k) => [k, Object.freeze(row[k])]),
+        ['migrations', 'retired', 'copy'].map((k) => [k, Object.freeze(row[k])]),
       ),
-    }),
-  ),
+    })
+  }),
 )
 
 /** Every retired identifier fragment, deduplicated, longest first. */
