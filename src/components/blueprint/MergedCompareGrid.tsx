@@ -345,7 +345,7 @@ export function MergedCompareGrid({
           {arrowDataByPath.map((data) => (
             <IntegratedDependencyArrows
               key={`forward-${data.path.id}`}
-              lane="forward"
+              layer="forward"
               dependencies={data.dependencies}
               cells={data.cells}
               steps={data.steps}
@@ -378,7 +378,7 @@ export function MergedCompareGrid({
           {arrowDataByPath.map((data) => (
             <IntegratedDependencyArrows
               key={`wrap-${data.path.id}`}
-              lane="wrap"
+              layer="wrap"
               dependencies={data.dependencies}
               cells={data.cells}
               steps={data.steps}

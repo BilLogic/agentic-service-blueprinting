@@ -23,11 +23,11 @@ import {
 } from '@/lib/annotationCapture'
 
 /**
- * The way marks get out of the scratch lane.
+ * The way marks get out of the scratch layer.
  *
  * Annotations are not saved, on purpose: persisting every stroke turns markup
  * into a record, and people stop scribbling freely once a scribble is
- * permanent. Costing nothing is the point of the lane. So instead of quiet
+ * permanent. Costing nothing is the point of the layer. So instead of quiet
  * persistence there is one explicit action, and it appears only once there is
  * something to capture — the affordance is also the notice that reloading will
  * lose them.
@@ -47,18 +47,18 @@ export function AnnotationCaptureMenu() {
    * several times since the marks were drawn.
    */
   // Marks live in the annotation layer's local space; cell rects come from
-  // the DOM in screen space. Undo the camera by measuring the lane itself:
+  // the DOM in screen space. Undo the camera by measuring the layer itself:
   // its on-screen rect vs its layout size gives the zoom, its origin the pan.
-  const laneElement = document.querySelector<HTMLElement>(
+  const layerElement = document.querySelector<HTMLElement>(
     '[data-canvas-annotation-layer]',
   )
-  const laneRect = laneElement?.getBoundingClientRect()
+  const layerRect = layerElement?.getBoundingClientRect()
   const scale =
-    laneElement && laneRect && laneElement.offsetWidth > 0
-      ? laneRect.width / laneElement.offsetWidth
+    layerElement && layerRect && layerElement.offsetWidth > 0
+      ? layerRect.width / layerElement.offsetWidth
       : 1
-  const originLeft = laneRect?.left ?? 0
-  const originTop = laneRect?.top ?? 0
+  const originLeft = layerRect?.left ?? 0
+  const originTop = layerRect?.top ?? 0
 
   const cellRects = Array.from(
     document.querySelectorAll('[data-blueprint-cell]'),

@@ -205,7 +205,7 @@ export function BlueprintPathBand({
         </>
       ) : null}
       <IntegratedDependencyArrows
-        lane="forward"
+        layer="forward"
         dependencies={arrowData.dependencies}
         cells={arrowData.cells}
         steps={arrowData.steps}
@@ -231,7 +231,7 @@ export function BlueprintPathBand({
         />
       ))}
       <IntegratedDependencyArrows
-        lane="wrap"
+        layer="wrap"
         dependencies={arrowData.dependencies}
         cells={arrowData.cells}
         steps={arrowData.steps}
