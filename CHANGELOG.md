@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.12.3
+
+### Patch Changes
+
+- 5ae8d0f: The cancellation block that never reached our cancellation is removed.
+
+  `readLifetime.test.ts` had a `query cancellation` block, and it tested nothing
+  of ours. It built a raw `QueryObserver` with a `queryFn` of its own, so what it
+  asserted was that TanStack aborts the signals it hands out — a library
+  guarantee, held whether or not `useSupabaseQuery` passes one on. Reverting the
+  read-lifetime port leaves all eleven cases in that file green while the two in
+  `useSupabaseQuery.test.tsx` fail on `seen?.aborted`, which is the difference
+  between a test that reads as covered and one that is.
+
+  Two cases are deleted and nothing replaces them here: both properties — the
+  consumer that leaves, and the read superseded by a key change — are already
+  asserted through the hook in `useSupabaseQuery.test.tsx`, where taking the
+  signal away makes them fail. Rewriting them against the hook would have been a
+  second copy of that file, which is its own defect.
+
+  The rest of `readLifetime.test.ts` is untouched and still bites: the deadline
+  that aborts the request it bounded, the timer that does not outlive the answer,
+  the caller's own cancellation, the one retry a timeout is worth, and the cache
+  retention. Both file headers now say which file owns cancellation, so neither
+  claims TanStack's guarantee as ours.
+
+- 430f60c: A shared file names the catalog decision instead of numbering it, so
+  `useStakeholders.ts` can be byte-identical in a deployment that numbers the
+  same ADR differently.
+- 3ce29fb: The lane roster gets its reader, and the jargon lint stops naming a retired
+  role.
+
+  `BLUEPRINT_LANE_ROLES` was exported and read by nothing, beside a palette test
+  that retyped the role-to-family pairs by hand. The pairs are now read off the
+  `[data-blueprint-lane]` rules, so what is measured is what is drawn, and the
+  completeness check in `palette.test.ts` compares the selectors it parsed
+  against the exported roster rather than counting them — for touchpoint tones as
+  well as lanes. A count of nine cannot tell nine roles apart from nine typos; a
+  selector renamed out of the vocabulary now fails instead of quietly rendering
+  an unstyled row.
+
+  `skills/audit/references/check-jargon-lint.md` told a model auditing someone's
+  blueprint that `journey_stage` labels render as headers. `journey_stage` is not
+  one of the eight roles `lanes_lane_role_check` admits, and the thing that
+  renders as a header is a phase. The note now says so, and adds what the file
+  left out: a phase is not a lane, so the lane-role test in the next sentence
+  does not reach one.
+
+  The bump is a patch. Nothing here renames a skill, a reference filename, a
+  schema filename, an agent, a hook event or an agent tool — the identifier lane
+  semver is scoped to. `check-jargon-lint.md` keeps its name and its place; only
+  what it says has changed, and a reference document's content is not part of
+  that contract.
+
 ## 1.12.2
 
 ### Patch Changes
@@ -399,8 +453,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                ERROR: new row for relation "lanes" violates check constraint
-                "lanes_lane_role_check" … compliance_review
+                  ERROR: new row for relation "lanes" violates check constraint
+                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
