@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.4
+
+### Patch Changes
+
+- 8ef645f: Shared files cite no repo-local identity: 116 issue, ADR, migration, docs-path
+  and plan citations across 62 files are replaced by what they were standing in
+  for. `erdValueSets` no longer defaults its `source` to one repository's ERD path.
+
 ## 1.12.3
 
 ### Patch Changes
@@ -453,8 +461,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                  ERROR: new row for relation "lanes" violates check constraint
-                  "lanes_lane_role_check" … compliance_review
+                    ERROR: new row for relation "lanes" violates check constraint
+                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
