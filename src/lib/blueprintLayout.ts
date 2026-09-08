@@ -390,9 +390,9 @@ const TOUCHPOINT_CELL_PADDING = BLUEPRINT_CELL_GUTTER * 2
 
 /** Compare / service grid cell inner width — the box TEXT actually wraps
  * in: column minus the shell's padding AND the cell button's own chrome
- * (its `px-4` + borders). Counting only the shell (todo 026) overstated
- * the text box by ~34px, so the line-count estimate undershot and tall
- * cells overflowed their fixed row tracks. */
+ * (its `px-4` + borders). Counting only the shell overstated the text box
+ * by ~34px, so the line-count estimate undershot and tall cells overflowed
+ * their fixed row tracks. */
 export function getBlueprintCellInnerWidth(compact = false): number {
   const shellPadX = compact ? 24 : 28
   const buttonChromeX = compact ? 26 : 34
@@ -432,8 +432,8 @@ function lineDisplayWidth(line: string): number {
 /** Greedy word-wrap simulation: words move to the next line whole, so a
  * paragraph costs 15-20% more lines than `chars ÷ chars-per-line` claims —
  * the naive division was one of the three undershoots that let tall cells
- * cross their lane band (todo 026). Words longer than a line fill whole
- * lines, matching the browser's overflow-wrap behaviour. */
+ * cross their lane band. Words longer than a line fill whole lines,
+ * matching the browser's overflow-wrap behaviour. */
 function countWrappedLines(line: string, charsPerLine: number): number {
   const words = line.split(/\s+/).filter(Boolean)
   if (words.length === 0) return 1
@@ -462,7 +462,7 @@ export function getEffectiveLineCount(content: string, compact = false): number 
   // 8px average glyph (space included) for text-sm — deliberately a shade
   // conservative: the estimate is a FLOOR under overflow-visible rows, and
   // an undershoot bleeds into the lane below while an overshoot just airs
-  // the row out (todo 026, measured against the real 257-char worst case).
+  // the row out. Measured against the real 257-char worst case.
   const charWidth = compact ? 6.5 : 8
   const charsPerLine = Math.max(6, Math.floor(innerWidth / charWidth))
 
@@ -482,8 +482,8 @@ export function getMaxTouchpointCountInLane(
   //
   // Placements where the cell has them, the text where it does not — the same
   // reading `getTouchpointNames` does, because this count has to agree with
-  // the list that gets drawn. A name-only placement (#112) is a face the text
-  // never names, and a stack sized from the text alone would clip it.
+  // the list that gets drawn. A name-only placement is a face the text never
+  // names, and a stack sized from the text alone would clip it.
   const perStep = new Map<string, number>()
   for (const cell of data.cells) {
     if (cell.lane_id !== laneId) continue

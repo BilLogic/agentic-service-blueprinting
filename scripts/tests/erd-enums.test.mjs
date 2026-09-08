@@ -32,7 +32,7 @@ test('the parser reads both places the ERD states a value set', () => {
     '    text name "the CONDITION that routes you here"',
     '  }',
   ].join('\n')
-  assert.deepEqual(erdValueSets(mmd), [
+  assert.deepEqual(erdValueSets(mmd, 'docs/erd.mmd'), [
     { site: 'docs/erd.mmd:1', column: 'scenarios.layout', values: ['single', 'stacked'] },
     { site: 'docs/erd.mmd:2', column: 'origin', values: ['import', 'app'] },
     { site: 'docs/erd.mmd:2', column: 'severity', values: ['info', 'warn', 'critical'] },
@@ -43,6 +43,6 @@ test('the parser reads both places the ERD states a value set', () => {
 
 test('the ERD agrees with the schema dump, set for set', () => {
   const catalog = catalogFromSchema(readFileSync(SCHEMA, 'utf8'))
-  const findings = erdFindings(erdValueSets(readFileSync(`${ROOT}/docs/erd.mmd`, 'utf8')), catalog)
+  const findings = erdFindings(erdValueSets(readFileSync(`${ROOT}/docs/erd.mmd`, 'utf8'), 'docs/erd.mmd'), catalog)
   assert.deepEqual(findings, [], `docs/erd.mmd states a value set the schema refutes:\n${findings.join('\n')}`)
 })

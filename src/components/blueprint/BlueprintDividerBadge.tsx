@@ -37,7 +37,7 @@ export function BlueprintDividerRailLabel({
 }) {
   const meaning = DIVIDER_MEANINGS[label.trim().toLowerCase()]
   /*
-    An OUTLINED BLOCK, not a bare caption (#244).
+    An OUTLINED BLOCK, not a bare caption.
 
     These three lines are the whole grammar of a service blueprint, and the
     rail stated them as unexplained words in the same register as every other
@@ -54,8 +54,8 @@ export function BlueprintDividerRailLabel({
     <Badge
       data-blueprint-row-header=""
       variant="outline"
-      // Since #243 nothing announces that a word is defined. What this keeps
-      // is REACH — keyboard focus, so the definition is gettable without a
+      // Nothing announces that a word is defined any more. What this keeps is
+      // REACH — keyboard focus, so the definition is gettable without a
       // pointer: hover is never the only way in. No hover colour, which would
       // read as clickable and it is not.
       {...(meaning ? { tabIndex: 0 } : {})}
@@ -68,7 +68,7 @@ export function BlueprintDividerRailLabel({
     </Badge>
   )
   if (!meaning) return caption
-  /* A definition card, not the tooltip this shipped with (#243). A Base UI
+  /* A definition card, not the tooltip this shipped with. A Base UI
      tooltip is `mouseOnly` — so on the phone posture this app has, the reader
      least likely to know the convention was the one who could not read it. */
   return (

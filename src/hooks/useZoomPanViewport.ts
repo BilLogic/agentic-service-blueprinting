@@ -930,10 +930,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     let debounceTimer = 0
 
     const onResize = () => {
-      // A rotation is not a window drag (todo 027 §4): flipping the aspect
-      // ratio invalidates whatever framing the user had built, and on a
-      // phone there is no Reset control to recover with — so an
-      // orientation flip refits even when the user has adjusted the view.
+      // A rotation is not a window drag: flipping the aspect ratio
+      // invalidates whatever framing the user had built, and on a phone
+      // there is no Reset control to recover with — so an orientation flip
+      // refits even when the user has adjusted the view.
       const box = container?.getBoundingClientRect()
       if (box && box.width > 0 && box.height > 0) {
         const landscape = box.width > box.height

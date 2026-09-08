@@ -147,8 +147,8 @@ function DesktopEditorShell() {
   /*
     Collapse, and only ever because the reader asked.
 
-    The sidebar is in flow at every width now (#305): collapse and expand push
-    the canvas the same way whether the window is wide or narrow, and there is
+    The sidebar is in flow at every width: collapse and expand push the
+    canvas the same way whether the window is wide or narrow, and there is
     no viewport gate that shuts the aside on the reader's behalf. So this is a
     plain boolean — no `auto`/`narrow` bookkeeping to tell a gate's collapse
     from a reader's, because the gate is gone.
@@ -376,7 +376,7 @@ function DesktopEditorShell() {
     describeSidebar({
       panel,
       collapsed: collapsedByReader,
-      // No overlay posture any more: the sidebar is always in flow (#305).
+      // No overlay posture any more: the sidebar is always in flow.
       overlay: false,
       presenting,
     }),
@@ -531,7 +531,7 @@ function DesktopEditorShell() {
     chrome, so canvas navbars can answer it themselves — see
     sidebarCollapsedContext for why the navbar is now the fallback rather than
     the default. One fact now: collapsed, host the expand control. The overlay
-    inset that used to ride along is gone with the overlay posture (#305) — the
+    inset that used to ride along is gone with the overlay posture — the
     aside is in flow at every width, so no bar surrenders a margin to it.
   */
   useEffect(() => {
@@ -540,9 +540,9 @@ function DesktopEditorShell() {
 
   /*
     The identity bars above the canvas hold their own skeletons while this
-    lane is up, so the bar, the sidebar and the board arrive on one beat
-    (#253). Published rather than passed: the bars sit deep inside canvas
-    content, the same distance away as the collapsed state above.
+    lane is up, so the bar, the sidebar and the board arrive on one beat.
+    Published rather than passed: the bars sit deep inside canvas content,
+    the same distance away as the collapsed state above.
 
     Cleared on unmount. A latch left `true` by a shell that has gone would
     hold every bar that mounts afterwards, and nothing would ever set it
@@ -714,7 +714,7 @@ function DesktopEditorShell() {
         <div className="relative flex min-h-0 min-w-0 flex-1">
           <aside
             className={cn(
-              // In flow at every width (#305): collapse and expand push the
+              // In flow at every width: collapse and expand push the
               // canvas the same way whether the window is wide or narrow.
               // There is no overlay posture, no gate, and no floating column —
               // the aside is a plain relative shell column.
@@ -855,9 +855,10 @@ function DesktopEditorShell() {
                   `resetKey` is the content key, so navigating is enough to
                   recover — the boundary's own documented contract, and the
                   reason a single throw does not read as "the app crashes
-                  constantly". This does not soften ADR 0004: the board is
-                  still always fully mounted, and this unmounts it only for a
-                  throw the alternative would have unmounted anyway.
+                  constantly". This does not soften the decision that the
+                  board is always fully mounted: it still is, and this
+                  unmounts it only for a throw the alternative would have
+                  unmounted anyway.
                 */}
                 <EditorErrorBoundary resetKey={contentKey}>
                   <ActiveTabContent

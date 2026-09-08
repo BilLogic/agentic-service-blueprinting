@@ -25,13 +25,13 @@ type PathLabelBadgeProps = {
  *
  * One per path, drawn from no set the reader picks from, and not clickable —
  * so it takes the badge's geometry, the path-type colour, and what a path IS
- * on hover, on focus and on tap. It carried a dismiss control until #182;
- * nothing ever passed one, and a removable value is a TAG rather than a badge,
- * which is a different component with a different promise (see
- * `OwnerTagSelect`, the only one in the app).
+ * on hover, on focus and on tap. It carried a dismiss control once; nothing
+ * ever passed one, and a removable value is a TAG rather than a badge, which
+ * is a different component with a different promise (see `OwnerTagSelect`, the
+ * only one in the app).
  *
- * The explanation is a POPOVER rather than a tooltip since #140: a tooltip
- * never opens on touch, so on a phone this badge explained nothing at all.
+ * The explanation is a POPOVER rather than a tooltip: a tooltip never opens on
+ * touch, so on a phone this badge explained nothing at all.
  */
 export function PathLabelBadge({
   name,
@@ -48,9 +48,9 @@ export function PathLabelBadge({
       // Fill AND its derived ink come from this one attribute (blueprint.css).
       data-blueprint-fill
       // The two shapes are `ui/badge.tsx`'s to name; this badge only says
-      // which one it is wearing (#149). Compact IS the badge's own size.
+      // which one it is wearing. Compact IS the badge's own size.
       size={compact ? 'default' : 'comfortable'}
-      // One cursor whether or not there is an explanation behind it (#243).
+      // One cursor whether or not there is an explanation behind it.
       // The help cursor used to be drawn only where the popover was shown,
       // which was the right rule for a mark that promised something; with the
       // mark gone there is nothing to withhold. The popover trigger still

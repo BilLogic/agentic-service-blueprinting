@@ -15,9 +15,9 @@ import { cn } from '@/lib/utils'
  * The overview's title bar — the service, and the way into its properties.
  *
  * The overview deliberately had no bar: "a bar holding only a repeated title
- * read as a broken fragment", and plan 003 declined the sidebar's Service row
- * for the same reason — it "has no second job waiting on it". Opening the
- * service panel is that second job.
+ * read as a broken fragment", and the sidebar's Service row was declined for
+ * the same reason — it "has no second job waiting on it". Opening the service
+ * panel is that second job.
  *
  * The structure is `SlideStickyHeader` + `PhaseMenubarHeader` exactly, one
  * level up, because that IS the template:
@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils'
  * The bar is now always here. `EntityHeader` holds the height and picks the
  * picture; this component's whole job is to hand it the four-state query as a
  * resolved identity — and, while the sidebar is collapsed, to hand its name
- * to the floating navbar and draw nothing itself (#239).
+ * to the floating navbar and draw nothing itself.
  */
 export function ServiceOverviewHeader() {
   const result = useServiceSpec()
@@ -61,8 +61,8 @@ export function ServiceOverviewHeader() {
     Above the early return, and so is `useServiceSpec` — the query stays
     subscribed for the whole collapse. Expanding therefore restores a bar
     whose content is already in the cache, with no second skeleton (the
-    read policy behind that is `QUERY_DEFAULTS`, pinned by #237's remount
-    test).
+    read policy behind that is `QUERY_DEFAULTS`, pinned by the remount
+    test in `serviceBarSidebarResponse.test.tsx`).
   */
   useCollapsedNavSummary(collapsed && service ? { title: service.name } : null)
   if (collapsed) return null
@@ -71,7 +71,7 @@ export function ServiceOverviewHeader() {
     <div
       data-editor-navbar
       // Flush left at every width: the sidebar is in flow now and never draws
-      // over this column, so there is no overlay to surrender a margin to (#305).
+      // over this column, so there is no overlay to surrender a margin to.
       className={cn('flex items-center gap-3', BLUEPRINT_NAVBAR_BAR_CLASS)}
       onPointerDown={(event) => event.stopPropagation()}
     >

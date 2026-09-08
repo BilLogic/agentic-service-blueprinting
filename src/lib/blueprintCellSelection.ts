@@ -88,12 +88,12 @@ export function buildTouchpointSelection(
  * mean. Where placements exist they win, because they are what the board is
  * drawn from and what an author's edit writes.
  *
- * A name-only placement (#112) is what makes that preference load-bearing
- * rather than tidy: its name is in no text, so a reader that split the text
- * would drop it silently. Whether a name IS one is not answered here — that
- * is `isNameOnlyPlacement` in `cellTouchpoints.ts`, which reads the row as
- * well as the registry link, and so does not mistake a fallback placement,
- * which has neither, for one.
+ * A name-only placement is what makes that preference load-bearing rather
+ * than tidy: its name is in no text, so a reader that split the text would
+ * drop it silently. Whether a name IS one is not answered here — that is
+ * `isNameOnlyPlacement` in `cellTouchpoints.ts`, which reads the row as well
+ * as the registry link, and so does not mistake a fallback placement, which
+ * has neither, for one.
  */
 export function getTouchpointNames(cell: {
   content?: string | null

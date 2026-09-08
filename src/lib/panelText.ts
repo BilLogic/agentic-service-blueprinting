@@ -36,7 +36,7 @@ export const PANEL_TEXT = {
 } as const
 
 /*
-  `DEFINED_LABEL_CUE` was here, and it is deleted (#243).
+  `DEFINED_LABEL_CUE` was here, and it is deleted.
 
   It was a dotted underline in the label's own ink — the `<abbr>` idiom, worn
   at thirteen sites — and beside it a `cursor-help`. Both announced that a word

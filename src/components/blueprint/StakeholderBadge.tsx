@@ -14,7 +14,7 @@ import {
  * not knowing that "Staff" means somebody inside the organisation who can own
  * one at all — a distinction the schema turns on, because a `team` reaches a
  * lane through `owner_team` and is never its stakeholder. Category above
- * instance, hairline between, both headed the same way (#243).
+ * instance, hairline between, both headed the same way.
  *
  * The instance definition is read from `stakeholders.summary` and is never
  * copied onto the thing that displays it. That is the whole reason the badge

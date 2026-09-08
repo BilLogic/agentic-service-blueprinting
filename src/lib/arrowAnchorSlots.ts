@@ -21,8 +21,6 @@ import type { Point } from '@/lib/blueprintArrowGeometry'
  * caller's `sortKey`, never from Map iteration or DOM query order, so the
  * same blueprint always draws the same picture — otherwise a screenshot
  * regression suite is worthless and two viewers of the same board disagree.
- *
- * See docs/plans/2026-08-17-003-feat-trigger-line-anatomy-plan.md §1–§2.
  */
 
 export type Side = 'left' | 'right' | 'top' | 'bottom'
@@ -239,7 +237,7 @@ export function planConfluences(
   return out.sort((a, b) => (a.id < b.id ? -1 : 1))
 }
 
-/* ------------------------------------------------ corridor scoring (#349)
+/* ------------------------------------------------------- corridor scoring
 
   When an arrow's straight route is blocked, it detours through a corridor.
   Which corridor was, until now, hand-pinned per builder (the horizontal-skip
@@ -247,7 +245,7 @@ export function planConfluences(
   replacement: enumerate the candidate corridors a blocked run could take —
   the overhead lane, the underneath lane, the column gutter — and pick the one
   with the most room, so a run rides the widest gap instead of squeezing into
-  whichever lane the code was pinned to. Plan §3's priority order (gap first,
+  whichever lane the code was pinned to. The priority order (gap first,
   behind-cell tuck last) falls out of scoring each candidate by its clear gap.
 
   Pure — corridors in, one choice out — so the router's DOM half measures the
@@ -297,7 +295,7 @@ export function chooseCorridor(
   return ranked[0] ?? null
 }
 
-/* ------------------------------------------------ co-traveller offset (#349)
+/* ------------------------------------------------------- co-traveller offset
 
   Two arrows can pick the SAME corridor and, riding the same line over an
   overlapping stretch, draw as one doubled line the reader cannot resolve into

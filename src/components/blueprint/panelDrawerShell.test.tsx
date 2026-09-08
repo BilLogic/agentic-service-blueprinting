@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * A panel does not open into a shell that is still booting (#265).
+ * A panel does not open into a shell that is still booting.
  *
  * The bug: a deep link to a cell opened the cell detail panel before the
  * sidebar, the identity bar and the canvas had painted — sometimes the first

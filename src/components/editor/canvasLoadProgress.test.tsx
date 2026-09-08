@@ -7,9 +7,8 @@ import {
   loadProgressPercent,
 } from '@/lib/canvasLoadProgress'
 
-// Pins the honest-ticks rule (plan 2026-08-17-001): the fraction comes from
-// completed stages only — no timer fill — with a small floor so the bar
-// never reads as parked at zero.
+// Pins the honest-ticks rule: the fraction comes from completed stages only —
+// no timer fill — with a small floor so the bar never reads as parked at zero.
 
 afterEach(cleanup)
 

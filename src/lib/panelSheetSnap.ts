@@ -4,7 +4,7 @@
  * NOT "the cell sheet". `PanelDrawerShell` is also `EntityDetailPanel`'s shell,
  * so lane, phase, scenario and step wear these stops too. Naming it for the
  * cell panel — its biggest consumer, not its owner — is how the lane panel ends
- * up with different physics from the cell panel by accident (#133).
+ * up with different physics from the cell panel by accident.
  *
  * TWO STOPS, AND NO FULL ONE. Three was the shape the issue asked for and the
  * wrong one:

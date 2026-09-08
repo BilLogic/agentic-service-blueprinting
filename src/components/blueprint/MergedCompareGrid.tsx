@@ -243,10 +243,10 @@ export function MergedCompareGrid({
     const drawnEdges = new Set<string>()
     return blueprints.map((blueprint, index) => {
       const data = getComparePathArrowData(blueprint)
-      // Kind + label ride the dedupe key (todo 031): only dependencies that
-      // draw the SAME edge with the same meaning collapse — two distinct
-      // semantics between one remapped pair both survive. They live on
-      // the RAW blueprint dependencies, so look them up by id.
+      // Kind + label ride the dedupe key: only dependencies that draw the SAME
+      // edge with the same meaning collapse — two distinct semantics between
+      // one remapped pair both survive. They live on the RAW blueprint
+      // dependencies, so look them up by id.
       const rawById = new Map(blueprint.dependencies.map((raw) => [raw.id, raw]))
       const remapped = remapMergedPathDependencies(
         data.dependencies,

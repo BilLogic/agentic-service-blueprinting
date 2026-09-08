@@ -148,7 +148,7 @@ function StepPanelBody({
 
       {step.frames.length > 0 ? (
         // A LABELLED field: "Storyboard" reads as plain text beside Summary,
-        // not an outline badge (#307). Its definition rides the label's hint
+        // not an outline badge. Its definition rides the label's hint
         // popover, the touch/press affordance every other field label uses.
         <Field label="Storyboard" hint={PANEL_TERMS.storyboard}>
           {/*

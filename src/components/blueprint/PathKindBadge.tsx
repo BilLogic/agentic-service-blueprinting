@@ -36,7 +36,7 @@ export function PathKindBadge({
         data-blueprint-fill
         // Both shapes take the roomier padding — a type archetype is read at
         // canvas zoom — so `compact` moves only the type scale. Which is why
-        // this badge's compact is NOT `PathLabelBadge`'s (#149).
+        // this badge's compact is NOT `PathLabelBadge`'s.
         size={compact ? 'roomy' : 'comfortable'}
         className={cn(
           'max-w-full cursor-default border-transparent font-semibold',

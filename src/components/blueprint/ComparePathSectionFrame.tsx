@@ -32,10 +32,9 @@ type ComparePathSectionFrameProps = {
   blueprint: BlueprintData
   compact?: boolean
   /**
-   * Extends the frame upward (px) so it also wraps the step-header row —
-   * step names are facts about the path's columns and belong INSIDE the
-   * path frame (plan 2026-08-17-002 U1). The header row itself stays bare
-   * labels: no container of its own.
+   * Extends the frame upward (px) so it also wraps the step-header row — step
+   * names are facts about the path's columns and belong INSIDE the path frame.
+   * The header row itself stays bare labels: no container of its own.
    */
   extraTopInset?: number
   /** When false, only the colored path outline is rendered (service blueprint). */

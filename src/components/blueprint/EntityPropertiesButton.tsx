@@ -28,10 +28,10 @@ const KIND_LABELS: Record<EntityDetailKind, string> = {
  * row actions (24px target, 14px glyph, no fill of its own, because the row it
  * sits in already has one).
  *
- * ALWAYS VISIBLE, and that is #140 Q11 rather than a style choice. It carried
- * a `revealOnHover` mode — transparent at rest, drawn on hover — which no
- * caller ever used and which no touch reader could ever have seen. ⓘ means
- * "opens the panel" everywhere in this app now, and a signifier a reader
+ * ALWAYS VISIBLE, and that is a settled decision rather than a style choice.
+ * It carried a `revealOnHover` mode — transparent at rest, drawn on hover —
+ * which no caller ever used and which no touch reader could ever have seen. ⓘ
+ * means "opens the panel" everywhere in this app now, and a signifier a reader
  * cannot see is not a signifier.
  */
 export function EntityPropertiesButton({

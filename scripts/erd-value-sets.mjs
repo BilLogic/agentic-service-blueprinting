@@ -17,8 +17,18 @@ const TOKEN = /^[a-z][a-z0-9_-]*$/
 /**
  * Every value-set claim in an ERD: `{ site, column, values }` where `column`
  * is `table.column` when the ERD qualifies it and a bare name otherwise.
+ *
+ * `source` is the caller's label for the file the text came from, and it has
+ * no default on purpose. It used to default to one repository's path, which
+ * put that repository's docs layout inside a module shared byte-for-byte with
+ * another that files its ERD somewhere else — so half the callers got a `site`
+ * naming a file that does not exist on their side. Where the ERD lives is the
+ * caller's fact, so the caller says it.
  */
-export function erdValueSets(mmd, source = 'docs/erd.mmd') {
+export function erdValueSets(mmd, source) {
+  if (!source) {
+    throw new Error('erdValueSets needs a source label — the path this ERD came from')
+  }
   const claims = []
   const lines = mmd.split('\n')
   // The `%% Enums:` block: from the line that says Enums to the first `%%`

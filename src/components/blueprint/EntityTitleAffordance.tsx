@@ -9,22 +9,21 @@ import { cn } from '@/lib/utils'
 /**
  * The canvas title, and the way into what is behind it.
  *
- * The title and an ⓘ were ONE control until #140, with "View details" in
- * their shared hover slot, spending it on a sentence the glyph already said.
- * The block became two targets: the name, and an invisible opener filling
- * everything around it. Since #240 the name is only a name — what a service,
- * a phase or a scenario IS hangs off the kind badge beside it, which is where
- * #235 puts a definition — so the block is back to one job, opening the
- * panel.
+ * The title and an ⓘ were ONE control once, with "View details" in their
+ * shared hover slot, spending it on a sentence the glyph already said. The
+ * block became two targets: the name, and an invisible opener filling
+ * everything around it. The name is now only a name — what a service, a phase
+ * or a scenario IS hangs off the kind badge beside it, which is where this app
+ * puts a definition — so the block is back to one job, opening the panel.
  *
- * The opener IS the title text (#305). An invisible full-block button painted
- * BEHIND the name captured nothing: the name's own layer sat above it, so a
- * click on the word — the natural target — was swallowed and never reached the
- * button, and all three title levels (service, phase, scenario) were dead at
- * once because they are this one component. Making the text itself the button
- * puts the click where the reader already aims it, and a native `<button>`
- * carries Enter/Space and focus for free. "View details" is the hover slot,
- * spent on what the plain word does not say — that it opens something.
+ * The opener IS the title text. An invisible full-block button painted BEHIND
+ * the name captured nothing: the name's own layer sat above it, so a click on
+ * the word — the natural target — was swallowed and never reached the button,
+ * and all three title levels (service, phase, scenario) were dead at once
+ * because they are this one component. Making the text itself the button puts
+ * the click where the reader already aims it, and a native `<button>` carries
+ * Enter/Space and focus for free. "View details" is the hover slot, spent on
+ * what the plain word does not say — that it opens something.
  *
  * A TITLE, not a badge. The filled badge made the name of the thing you are
  * looking at read as a tag on something else, and the slice header band —
@@ -58,11 +57,10 @@ export function EntityTitleAffordance({
       )}
     >
       {/* The NAME, and it is the opener. Nothing hangs off it: what a service,
-          a phase or a scenario IS belongs to the kind badge beside it (#240),
-          because a definition hangs off a badge and never off a label (#235).
-          A `<button>` rather than an `<h2>`, because this word is the control
-          — the block behind it that used to be the button caught no clicks at
-          all (#305). */}
+          a phase or a scenario IS belongs to the kind badge beside it, because
+          a definition hangs off a badge and never off a label. A `<button>`
+          rather than an `<h2>`, because this word is the control — the block
+          behind it that used to be the button caught no clicks at all. */}
       <IconTooltip label="View details" side="bottom">
         <button
           type="button"

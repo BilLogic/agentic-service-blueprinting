@@ -27,9 +27,10 @@ export type LaneSpecUpdate = {
  * looking at, which is not a state a reader could make sense of. The panel
  * says the count before saving; this is where the count comes true.
  *
- * `owner_team`, `kpis` and `tools` carry a column-level grant for exactly this
- * (`20260729120000_derived_layer.sql`); `name` and `lane_role` do not go
- * through here — renaming a lane is a structural edit with its own RPC.
+ * `owner_team`, `kpis` and `tools` carry a column-level grant for exactly
+ * this: UPDATE on `lanes` is revoked wholesale and handed back one column at a
+ * time. `name` and `lane_role` do not go through here — renaming a lane is a
+ * structural edit with its own RPC.
  *
  * Empty is stored as `null` (text) or `[]` (jsonb) to match what the import
  * writes, so "not specified" has one representation per column type.

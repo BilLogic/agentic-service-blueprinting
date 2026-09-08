@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The collapsed floating navbar switches paths on a scenario (#305).
+ * The collapsed floating navbar switches paths on a scenario.
  *
  * Expanded, the path selector lives on the docked phase/scenario bar. Collapse
  * the sidebar and that bar is gone — its identity moves to the floating navbar,

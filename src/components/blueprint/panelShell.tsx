@@ -160,7 +160,7 @@ export function PanelDrawerShell({
   // the AgentDock docked/floating precedent; the reconciliation guarantee
   // above (same tree position) holds in both postures.
   const mobile = useMobileShell()
-  // The shell's boot lane (#265). A panel opened by a deep link otherwise
+  // The shell's boot lane. A panel opened by a deep link otherwise
   // lands before the sidebar, the bar and the canvas it sits over. This is a
   // hold on WHEN, never a second opinion on WHETHER: `open` keeps its single
   // owner upstream, and a drawer that has not opened yet has nothing to
@@ -281,9 +281,9 @@ export function Field({
       className={cn(
         'w-fit',
         PANEL_TEXT.sectionLabel,
-        // Only where there is something behind it — and, since #243, the
-        // focus ring alone. The help cursor and the dotted rule went with
-        // every other announcement that a word is defined.
+        // Only where there is something behind it — and now the focus ring
+        // alone. The help cursor and the dotted rule went with every other
+        // announcement that a word is defined.
         hint &&
           'rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}
@@ -299,7 +299,7 @@ export function Field({
            tooltip never opens on touch, and this hint carries `PANEL_TERMS`
            entries — definitions — on a shell that has a phone posture. The
            field's own label is the section's eyebrow, which is why the hint
-           itself no longer has to open by naming the field (#243). */
+           itself no longer has to open by naming the field. */
         <DefinitionPopover
           sections={[{ eyebrow: label, body: hint }]}
           side="left"
@@ -466,7 +466,7 @@ export function PanelKindBadge({
    * Only the stakeholder badge passes one: its label is a party's name, and
    * the kind that party belongs to ("Staff") is a fact the reader has to learn
    * separately. A lane-role badge already IS its category, so it passes none
-   * and the card is one section (#243).
+   * and the card is one section.
    */
   category?: DefinitionSection | null
   /**
@@ -491,18 +491,19 @@ export function PanelKindBadge({
 
     The focus ring comes from `badgeVariants` and the popover trigger supplies
     `tabIndex`, so the definition is reachable without a pointer — hover is
-    never the only way in. #243 took away the `cursor-help` and the dotted
-    rule that used to sit beside them — nothing on the resting page announces a definition now. What
-    is deliberately absent, and always was, is a hover colour: this badge is
-    not clickable, and a surface that repaints under the pointer says it is.
+    never the only way in. The `cursor-help` and the dotted rule that used to
+    sit beside them are gone — nothing on the resting page announces a
+    definition now. What is deliberately absent, and always was, is a hover
+    colour: this badge is not clickable, and a surface that repaints under
+    the pointer says it is.
   */
   const explain = (badge: ReactNode) =>
     sections.length > 0 ? (
-      /* A POPOVER since #140, and the change is a bug fix rather than a
+      /* A POPOVER, not a tooltip, and the change is a bug fix rather than a
          preference: Base UI's tooltip never opens on touch, so every
          description this badge has ever carried — a lane's role, a
          stakeholder's one-liner — was invisible on a phone. The card shape
-         itself is #243. */
+         itself is a separate change. */
       <DefinitionPopover sections={sections} side="bottom">
         {badge as never}
       </DefinitionPopover>

@@ -62,7 +62,7 @@ type BlueprintCellButtonProps = {
   'aria-label'?: string
   'aria-describedby'?: string
   'data-blueprint-touchpoint'?: string
-  /** A name-only placement (#112): the registry lacks this touchpoint. */
+  /** A name-only placement: the registry lacks this touchpoint. */
   nameOnly?: boolean
 }
 

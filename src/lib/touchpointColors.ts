@@ -10,19 +10,18 @@ import {
  * — "our scheduling tool is blue" — and not a palette one. It is stored where a
  * product fact belongs: `touchpoints.tone` carries the family and
  * `touchpoints.aliases` carries the other spellings that mean the same row.
- * This module is the machinery that reads them, and #396 Q48 is the decision
- * that split the two: the resolution — aliases, case folding, the
- * deterministic fallback for a name nobody has chosen for — is generic and
- * belongs to every deployment; the tool names any one service happens to use
- * do not (#326).
+ * This module is the machinery that reads them, and the split between them
+ * is deliberate: the resolution — aliases, case folding, the deterministic
+ * fallback for a name nobody has chosen for — is generic and belongs to
+ * every deployment; the tool names any one service happens to use do not.
  *
  * Three answers, in order, and each one is narrower than the one under it:
  *
  * 1. THE REGISTRY — what this deployment's own rows say. Loaded once by
  *    `TouchpointRegistryProvider` and held here rather than in context,
  *    because the one component that must read it is `TouchpointCellFace`,
- *    which takes a label and nothing else (ADR 0005: state non-React code has
- *    to read lives in a module store).
+ *    which takes a label and nothing else (the decision that cross-surface
+ *    state is a module store: state non-React code has to read lives there).
  * 2. THE SEED — `TOUCHPOINT_COLORS`, below. Generic tools any service might
  *    use, so that a deployment with an empty registry still opens with a board
  *    that reads deliberately rather than randomly.
@@ -161,11 +160,12 @@ function sameMap<T>(a: ReadonlyMap<string, T>, b: ReadonlyMap<string, T>) {
  * remembers, and among aliases the first row in the order the query returned
  * wins.
  *
- * The snapshot is replaced only on a REAL change, which is the
- * reference-stability contract ADR 0005 puts on every store here: a
- * `useSyncExternalStore` reader handed a fresh snapshot per call renders in a
- * loop. Publishing the same rows twice — which the provider does whenever a
- * query settles on what the fixture already said — is a no-op.
+ * The snapshot is replaced only on a REAL change. That is the
+ * reference-stability contract every store here carries under the decision
+ * that cross-surface state is a module store: a `useSyncExternalStore` reader
+ * handed a fresh snapshot per call renders in a loop. Publishing the same
+ * rows twice — which the provider does whenever a query settles on what the
+ * fixture already said — is a no-op.
  */
 export function setTouchpointRegistry(
   entries: readonly TouchpointRegistryEntry[],
