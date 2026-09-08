@@ -1,5 +1,5 @@
 ---
-summary: The shell's entrance stagger and the canvas's reveal ladder are two clocks on purpose, joined by reads that run one way only — so a surface owning its own query takes its own hold session and reads the shell's boot lane for nothing but when that session may end, and arriving together becomes a decision somebody makes rather than something the machinery guarantees.
+summary: The shell's entrance stagger and the canvas's reveal ladder are two clocks on purpose, joined by reads that run one way only — so a surface owning its own query takes its own hold session and reads the shell's boot layer for nothing but when that session may end, and arriving together becomes a decision somebody makes rather than something the machinery guarantees.
 ---
 
 # 7. The canvas and the shell run on separate clocks
@@ -79,7 +79,7 @@ watching.
 **Owning a session is not the same as choosing a beat.** A surface decides for
 itself what to draw while it waits; when it may stop waiting is a question about
 the screen it is part of. An identity bar answers the first with its own hold
-session and the second by reading the shell's boot lane, and it needs both — a
+session and the second by reading the shell's boot layer, and it needs both — a
 bar released by the lane alone would show a name it does not have yet.
 
 **Arriving together stops being automatic, and that is the price.** Two clocks
