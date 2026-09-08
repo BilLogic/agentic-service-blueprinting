@@ -514,21 +514,6 @@
       calc(c * 0.08) h
   );
 
-  /*
-   * Status border tokens for subtle / tinted surfaces.
-   *
-   * These are for a status role that has no numeric ramp. `destructive` and
-   * `warning` do have one — `alert.tsx` borders those variants with
-   * `-400`, a step tuned against its own `-200` fill — so their two tokens here
-   * are superseded in practice and kept because Supabase declares the same
-   * four. `info` and `success` have no ramp, so these are the only way to draw
-   * a tinted edge that tracks the role.
-   *
-   * `--border-success` is the one Supabase does not have, because they have no
-   * success role at all. It exists so every status role that can tint a surface
-   * borders it the same way, rather than success alone reaching for an inline
-   * alpha at the call site.
-   */
   /* --- The seven jobs, for every role ----------------------------------
    * A role offers exactly seven names, and an author picks one by answering
    * what this colour is sitting on rather than by reading a number off a ramp:
@@ -716,11 +701,67 @@
     from var(--text-secondary) l c h / var(--role-wash-alpha)
   );
 
-  --border-destructive: oklch(from var(--destructive) l c h / 30%);
-  --border-warning: oklch(from var(--warning) l c h / 30%);
-  --border-info: oklch(from var(--info) l c h / 30%);
-  --border-success: oklch(from var(--success) l c h / 30%);
-  --border-brand: oklch(from var(--primary) l c h / 30%);
+  /*
+   * The edge, for every role, and solid.
+   *
+   * These existed for four of the seven and were uniform — the fill at thirty
+   * percent alpha — and that alpha is why components reached past them for a
+   * ramp step instead. An alpha composites against whatever happens to be
+   * behind it, so the token has no value until it is painted, and what it was
+   * painted on made it too faint to be an edge: measured against the page,
+   * against the role's own tint, and against the ground `alert.tsx` actually
+   * draws it on, the four ran from 1.29:1 to 2.41:1. SC 1.4.11 asks 3:1 of a
+   * non-text affordance, and a border is one.
+   *
+   * Solid, on the same signed span as the rest of the vocabulary, clears that
+   * against both grounds at once — the page and the tint — which is the pair
+   * the name has to hold, because a role border is drawn on both.
+   *
+   * `--border-brand` derived from `--primary` while brand had no fill of its
+   * own. It reads `--brand` now, which is the colour its name always claimed.
+   *
+   * Two border jobs survive on purpose and neither is this one.
+   * `--primary-border` is the hairline that edges the filled control, measured
+   * against the FILL rather than against the page. And the vendored form
+   * controls draw an invalid outline with the fill itself at full strength,
+   * which is a different decision from an edge that has to stay quiet.
+   */
+  /* Far enough from the canvas to clear 3:1 against the role's own tint, which
+     is the harder of the two grounds — the tint is already a step off the page
+     in the same direction, so it eats part of the distance. Swept rather than
+     picked: 0.45 clears the page in both modes and misses the dark tint at
+     2.98:1, and 0.55 buys another point of contrast the edge does not need at
+     the cost of reading as a rule. 0.5 is the first value that holds both
+     grounds in both modes, worst case 3.5:1. */
+  --role-edge-mix: 0.5;
+  --border-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
+  --border-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
+  --border-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
+  --border-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
+  --border-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
+  --border-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
+  --border-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+  );
 
   /*
    * Selection chrome for canvas annotations (outline, resize handles).

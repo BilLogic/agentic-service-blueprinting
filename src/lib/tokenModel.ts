@@ -1134,3 +1134,69 @@ function readFactor(reader: Reader, scope: ColorValue): number {
   }
   throw new Error(`cannot evaluate: ${head.text}`)
 }
+
+// ---------------------------------------------------------------------------
+// The role vocabulary
+// ---------------------------------------------------------------------------
+
+/**
+ * The coloured roles. A role is a meaning, never a position on a ramp.
+ *
+ * Adding one here is the whole edit a new role costs on this side: every rule
+ * that reads this list covers it from that moment, and fails until all seven
+ * of its names are declared.
+ */
+export const ROLES = [
+  'primary',
+  'brand',
+  'warning',
+  'destructive',
+  'info',
+  'success',
+  'secondary',
+] as const
+
+export type Role = (typeof ROLES)[number]
+
+/**
+ * The seven jobs, as the templates that build a role's names.
+ *
+ * An author picks one by answering what the colour is sitting on — the solid,
+ * the tint, or the page — rather than by reading a number. That is the whole
+ * difference between this list and a ramp.
+ */
+export const ROLE_JOBS = [
+  (role: string) => `--${role}`,
+  (role: string) => `--${role}-foreground`,
+  (role: string) => `--surface-${role}`,
+  (role: string) => `--text-on-surface-${role}`,
+  (role: string) => `--text-${role}`,
+  (role: string) => `--border-${role}`,
+  (role: string) => `--wash-${role}`,
+] as const
+
+/** The seven names one role must declare. */
+export function roleTokens(role: string): string[] {
+  return ROLE_JOBS.map((job) => job(role))
+}
+
+/**
+ * The role names that are not declared anywhere in the stylesheets.
+ *
+ * An invariant rather than a census, which is the difference between a rule
+ * that survives the next unrelated edit and one that breaks on it. "Every role
+ * declares all seven" holds when an eighth role arrives and starts failing the
+ * moment that role is short a name; "there are forty-nine role tokens" is true
+ * once and wrong forever after.
+ *
+ * `declared` is a parameter so the rule itself can be tested against a set it
+ * did not read off disk — a rule nothing can make fail is not a rule.
+ */
+export function missingRoleTokens(
+  roles: readonly string[] = ROLES,
+  declared: ReadonlySet<string> = declaredNames(),
+): string[] {
+  return roles.flatMap((role) =>
+    roleTokens(role).filter((name) => !declared.has(name)),
+  )
+}

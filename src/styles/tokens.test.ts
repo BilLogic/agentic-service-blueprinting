@@ -4,8 +4,11 @@ import {
   declarationsIn,
   declaredNames,
   dial,
+  missingRoleTokens,
   namesIn,
   resolveValue,
+  ROLES,
+  roleTokens,
   rulesDeclaring,
   stylesheet,
   winningDeclaration,
@@ -556,5 +559,68 @@ describe('motion tokens', () => {
     expect(stylesheet('animations.css').text).toContain(
       motion.MOTION_STRUCTURAL_EASE,
     )
+  })
+})
+
+/**
+ * The role vocabulary: seven roles, seven names each, one shape.
+ *
+ * Asserted as an INVARIANT of the vocabulary and never as a census of it.
+ * "Every role declares all seven" survives an eighth role being added and
+ * starts failing the moment that role is short a name; "there are forty-nine
+ * role tokens" is true once and wrong for every edit afterwards. That is the
+ * distinction this codebase learned the expensive way in its migration ledger,
+ * and it is the reason the rule is driven off `ROLES` rather than off a list
+ * of names written out here.
+ */
+describe('the role vocabulary', () => {
+  it('declares all seven names for every role', () => {
+    expect(missingRoleTokens()).toEqual([])
+  })
+
+  it('fails when a role arrives with fewer than seven', () => {
+    // The rule held to its own job. A completeness check that cannot be made
+    // to fail is not a completeness check, and the failure mode it has to
+    // catch is the realistic one: not a role with nothing declared, but a role
+    // with six of the seven, which is what a hand-written role looks like.
+    const short = new Set([...declaredNames(), ...roleTokens('ghost')])
+    short.delete('--wash-ghost')
+    expect(missingRoleTokens([...ROLES, 'ghost'], short)).toEqual(['--wash-ghost'])
+  })
+
+  it.each(['light', 'dark'] as const)(
+    'resolves every role name to a colour under %s',
+    (theme) => {
+      // Declared is not the same fact as resolves. A name whose derivation
+      // reaches a `var()` that only one theme declares is declared in the file
+      // and resolves to nothing in the other, which is the failure the dial
+      // rules above exist for and which reaches these names too.
+      const unresolved = ROLES.flatMap((role) =>
+        roleTokens(role).filter((name) => resolveValue(name, theme) === undefined),
+      )
+      expect(unresolved).toEqual([])
+    },
+  )
+
+  it('derives every role name in semantic.css, inside the re-scoped block', () => {
+    // Custom properties resolve their `var()`s at computed-value time, before
+    // inheritance, so a subtree that re-declares a dial needs the derivations
+    // re-declared at that scope. A role name outside that block inherits the
+    // ancestor's already-computed colour and quietly ignores the theme it is
+    // sitting in.
+    const scoped = new Map(
+      declarationsIn('semantic.css').map((entry) => [entry.name, entry.selector]),
+    )
+    const misplaced = ROLES.flatMap((role) =>
+      roleTokens(role).filter((name) => {
+        const selector = scoped.get(name) ?? ''
+        return !(
+          selector.includes(':root') &&
+          selector.includes('.dark') &&
+          selector.includes('.light')
+        )
+      }),
+    )
+    expect(misplaced).toEqual([])
   })
 })

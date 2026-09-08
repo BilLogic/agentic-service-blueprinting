@@ -688,3 +688,43 @@ describe.each(['light', 'dark'] as const)('role ink: %s', (theme) => {
     expect(contrast(wash, page)).toBeLessThan(1.5)
   })
 })
+
+/**
+ * The role edge, on both grounds it is drawn on.
+ *
+ * SC 1.4.11 asks 3:1 of a non-text affordance, and a border is one. The pair
+ * matters as much as the number: a role border appears on the page and on the
+ * role's own tint, and the tint is the harder ground because it has already
+ * moved off the page in the same direction. A rule measuring one of them would
+ * pass on a value that disappears against the other.
+ *
+ * These were the fill at thirty percent alpha until this vocabulary landed,
+ * and an alpha has no value until it is painted. Measured on the grounds they
+ * were actually painted on, the four that existed ran 1.29:1 to 2.41:1.
+ */
+describe.each(['light', 'dark'] as const)('role edge: %s', (theme) => {
+  const page = resolveColor('--background', theme)
+
+  it.each(ROLE_NAMES)('%s reads against the page', (role) => {
+    expect(
+      contrast(resolveColor(`--border-${role}`, theme), page),
+    ).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(ROLE_NAMES)('%s reads against its own tint', (role) => {
+    expect(
+      contrast(
+        resolveColor(`--border-${role}`, theme),
+        resolveColor(`--surface-${role}`, theme),
+      ),
+    ).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(ROLE_NAMES)('%s is solid, so its value does not depend on what is behind it', (role) => {
+    // The whole reason the alpha form failed. A translucent border is a
+    // different colour on every surface it crosses, and `resolveColor` refuses
+    // to measure one without a ground — so this is the assertion, not a
+    // separate check of the declaration text.
+    expect(() => resolveColor(`--border-${role}`, theme)).not.toThrow()
+  })
+})
