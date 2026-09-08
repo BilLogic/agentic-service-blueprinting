@@ -1127,6 +1127,41 @@ function getSameColumnSideStubX(
 }
 
 /**
+ * The vertical extent of the merged slot a cell belongs to: the cell itself,
+ * plus every sub-cell stacked with it in the same lane row and step column.
+ *
+ * A divergent slot on the merged canvas stacks one sub-cell per path, and a
+ * sub-cell sits hard against its neighbour's edge — far too close for an
+ * arriving head to turn in between them. The stack as a whole still has a free
+ * top and a free bottom, and it is one slot: a head landing on its outer edge
+ * names the same lane and the same step column the target itself does. So an
+ * ARRIVING end measures its horizontal edges from the stack rather than from
+ * the card. A departure keeps the card's own edge — it carries no head, and a
+ * line that appeared to start at a neighbour's edge would misname its source.
+ *
+ * A cell with no stacked neighbours reports its own box, which is every cell
+ * outside the merged view.
+ */
+function getMergedStackBox(cellEl: HTMLElement, root: HTMLElement): LayoutBox {
+  const box = getCellContentBox(cellEl, root)
+  const row = getLayerRow(cellEl)
+  const stepIndex = parseStepIndex(cellEl)
+  if (!row || stepIndex === null) return box
+
+  let top = box.top
+  let bottom = box.top + box.height
+  for (const el of queryBlueprintCells(row, root)) {
+    if (el === cellEl) continue
+    if (parseStepIndex(el) !== stepIndex) continue
+    const sibling = getCellContentBox(el, root)
+    top = Math.min(top, sibling.top)
+    bottom = Math.max(bottom, sibling.top + sibling.height)
+  }
+
+  return { ...box, top, height: bottom - top }
+}
+
+/**
  * How far off a card's top or bottom edge a vertical arrival's approach leg
  * runs: the chevron, plus a full bend radius of straight line above it, plus
  * the radius the bend itself eats. Any less and the head reads as the tail of
@@ -1148,6 +1183,10 @@ type SameColumnEndLeg = {
  * descends (or climbs) on, the y its approach leg runs along, and the point the
  * chevron's base sits on — or null when both horizontal edges are walled in.
  *
+ * The edges are the merged slot's, not the card's: on the merged canvas a
+ * slot's sub-cells wall each other, and the stack they form still has a free
+ * top and bottom that name the same lane and step column (`getMergedStackBox`).
+ *
  * The edge facing the other cell is tried first, so the head reads exactly as
  * the undetoured connector's does. The far edge is the second chance: a head
  * pointing the other way up still says nothing false about a grid whose one
@@ -1160,18 +1199,20 @@ type SameColumnEndLeg = {
  */
 function getSameColumnVerticalArrival(
   root: HTMLElement,
-  box: LayoutBox,
+  cellEl: HTMLElement,
   otherBox: LayoutBox,
   gutterX: number,
   exclude: readonly HTMLElement[],
 ): { x: number; approachY: number; entryY: number } | null {
+  const box = getCellContentBox(cellEl, root)
+  const stack = getMergedStackBox(cellEl, root)
   const x = (box.left + box.right) / 2
   const midY = box.top + box.height / 2
   const otherMidY = otherBox.top + otherBox.height / 2
   const outwards = otherMidY < midY ? [-1, 1] : [1, -1]
 
   for (const outward of outwards) {
-    const edgeY = outward < 0 ? box.top : box.top + box.height
+    const edgeY = outward < 0 ? stack.top : stack.top + stack.height
     const approachY = edgeY + outward * SAME_COLUMN_VERTICAL_ARRIVAL_OFFSET
     const entryY = edgeY + outward * ARROW_CHEVRON_SIZE
 
@@ -1253,11 +1294,11 @@ function buildSameColumnBracketPath(
   })
 
   const fromArrival = fromIsArrival
-    ? getSameColumnVerticalArrival(root, fromBox, toBox, route.gutterX, exclude)
+    ? getSameColumnVerticalArrival(root, fromEl, toBox, route.gutterX, exclude)
     : null
   const toArrival = getSameColumnVerticalArrival(
     root,
-    toBox,
+    toEl,
     fromBox,
     route.gutterX,
     exclude,
@@ -2293,7 +2334,10 @@ export function buildWrapColumnLeg(
 ): Point[] | null {
   const box = getCellContentBox(cellEl, root)
   const centerX = slot.centerX ?? (box.left + box.right) / 2
-  const edgeY = side === 'below' ? box.top + box.height : box.top
+  // An arrival may meet the outer edge of the merged stack this cell sits in;
+  // a departure leaves its own card. See `getMergedStackBox`.
+  const edgeBox = end === 'enter' ? getMergedStackBox(cellEl, root) : box
+  const edgeY = side === 'below' ? edgeBox.top + edgeBox.height : edgeBox.top
 
   // A contested out yielded the bottom to an in and slid to the fallback
   // side: leave through the card's right face and down the right gutter,

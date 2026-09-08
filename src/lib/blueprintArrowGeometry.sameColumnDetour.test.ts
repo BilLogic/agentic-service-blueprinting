@@ -19,6 +19,9 @@
 
 import { describe, expect, test } from 'vitest'
 import {
+  ARROW_SITUATIONS,
+  ARROW_VIEW_MODES,
+  boardForMode,
   computeSituationSegments,
   type BoardSpec,
 } from '@/dev/arrowSituationCatalog'
@@ -75,7 +78,14 @@ const CARD_W = 160
 const COL0_LEFT = 40
 const COL1_LEFT = 248
 
-type CellSpec = { id: string; left: number; top: number; height: number }
+type CellSpec = {
+  id: string
+  left: number
+  top: number
+  height: number
+  /** Cells sharing a lane, same step: the merged canvas's stacked sub-cells. */
+  lane?: string
+}
 
 function board(
   step: number,
@@ -83,12 +93,18 @@ function board(
   gaps: { gapIndex: number; left: number; width: number }[],
   dependency: { from: string; to: string },
 ): BoardSpec {
+  const lanes: string[] = []
+  for (const cell of cells) {
+    const lane = cell.lane ?? cell.id
+    if (!lanes.includes(lane)) lanes.push(lane)
+  }
   return {
     rootBox: { left: 0, top: 0, width: 700, height: 620 },
-    rows: cells.map((cell) => ({
-      key: `lane-${cell.id}`,
-      cells: [
-        {
+    rows: lanes.map((lane) => ({
+      key: `lane-${lane}`,
+      cells: cells
+        .filter((cell) => (cell.lane ?? cell.id) === lane)
+        .map((cell) => ({
           id: cell.id,
           stepIndex: step,
           box: {
@@ -97,8 +113,7 @@ function board(
             width: CARD_W,
             height: cell.height,
           },
-        },
-      ],
+        })),
     })),
     gaps: gaps.map((gap) => ({
       gapIndex: gap.gapIndex,
@@ -181,6 +196,34 @@ function walledTargetBoard(): BoardSpec {
   )
 }
 
+/**
+ * The target walled above by the lane before it and below by its OWN stacked
+ * sub-cell — the shape the merged canvas makes, where a slot holds one
+ * sub-cell per path. The stack's outer bottom edge (y 432) is clear.
+ */
+function stackedTargetBoard(): BoardSpec {
+  return board(
+    1,
+    [
+      { id: 'source', left: COL1_LEFT, top: 40, height: 100 },
+      { id: 'between', left: COL1_LEFT, top: 180, height: 60 },
+      { id: 'target', left: COL1_LEFT, top: 262, height: 100, lane: 'slot' },
+      {
+        id: 'target-stacked',
+        left: COL1_LEFT,
+        top: 372,
+        height: 60,
+        lane: 'slot',
+      },
+    ],
+    [
+      { gapIndex: 0, left: 160, width: 88 },
+      { gapIndex: 1, left: 408, width: 48 },
+    ],
+    { from: 'source', to: 'target' },
+  )
+}
+
 describe('a detoured same-column connector', () => {
   test('arrives on the target’s top edge when only the right gutter has room', () => {
     // The route must bracket through the right gutter — there is no gap
@@ -229,6 +272,18 @@ describe('a detoured same-column connector', () => {
     expect(headDirection(d).dx).toBeGreaterThan(0)
   })
 
+  test('lands on the outer edge of the merged stack the target sits in', () => {
+    // Both of the target card's own edges are walled — the lane above leans
+    // on its top, its stacked sub-cell on its bottom. The sub-cell is the
+    // same slot, though: the same lane and the same step column. So the head
+    // lands a chevron clear of the STACK's bottom edge, pointing up at it,
+    // rather than turning side-on and reading backward. The stack ends at
+    // y 432, so the chevron's base sits a chevron below it at y 448.
+    const { d } = onlySegment(stackedTargetBoard())
+    expect(d.endsWith('L 328 448')).toBe(true)
+    expect(headDirection(d)).toEqual({ dx: 0, dy: -6 })
+  })
+
   test('draws nothing at all when no gutter is clear', () => {
     // A one-column board with no gap element either side: the left gutter
     // falls inside the chevron and there is no gap to the right. A missing
@@ -244,6 +299,53 @@ describe('a detoured same-column connector', () => {
       { from: 'source', to: 'target' },
     )
     expect(computeSituationSegments(noGutters)).toEqual([])
+  })
+})
+
+describe('every arrow the situation catalog draws', () => {
+  /* The six connectors this invariant was written for all sat in the merged
+     view of the catalog, and each was found by reading the golden snapshot
+     rather than by a test. Asserting the catalog itself — every situation,
+     every view mode it supports — is what keeps a seventh from arriving
+     unremarked. */
+
+  const supportedModes = (situation: (typeof ARROW_SITUATIONS)[number]) =>
+    ARROW_VIEW_MODES.filter((mode) => !situation.unsupported?.[mode])
+
+  test('points its head forward along the time axis, or squarely at a card', () => {
+    const backward: string[] = []
+    for (const situation of ARROW_SITUATIONS) {
+      for (const mode of supportedModes(situation)) {
+        const segments = computeSituationSegments(
+          boardForMode(situation.base(), mode),
+        )
+        for (const segment of segments) {
+          const { dx } = headDirection(segment.d)
+          if (dx < 0) backward.push(`${situation.id}/${mode} ${segment.id} (dx ${dx})`)
+        }
+      }
+    }
+    expect(backward, 'these runs end by travelling backward').toEqual([])
+  })
+
+  test('draws the same number of runs in every view mode', () => {
+    // A head can always be straightened by declining to draw the arrow at
+    // all. Pinning the count is what forbids that trade.
+    for (const situation of ARROW_SITUATIONS) {
+      const counts = supportedModes(situation).map((mode) => ({
+        mode,
+        count: computeSituationSegments(boardForMode(situation.base(), mode))
+          .length,
+      }))
+      const [first] = counts
+      if (!first) continue
+      for (const entry of counts) {
+        expect(
+          entry.count,
+          `${situation.id}/${entry.mode} drew ${entry.count} runs where ${first.mode} drew ${first.count}`,
+        ).toBe(first.count)
+      }
+    }
   })
 })
 
