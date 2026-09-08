@@ -69,20 +69,4 @@
      starts from `--contrast: 0.5` rather than 0.53. It lands the smaller
      lightness step of the two — 0.070 against light's 0.076. */
   --role-edge-step: 0.092;
-
-  /* Stepped numeric scales — inverted relative to light (200 darkest,
-     600 lightest), same construction as themes/light.css. The brand ramp that
-     opened this block is gone: a stepped family is named for a hue, and the
-     identity fill is derived from the two dials above. */
-  --warning-600: 38.9deg 100% 42.9%;
-  --warning-500: 34.8deg 90.9% 21.6%;
-  --warning-400: 33.2deg 100% 14.5%;
-  --warning-300: 32.3deg 100% 10.2%;
-  --warning-200: 36.6deg 100% 8%;
-  --destructive-default: 10.2deg 77.9% 53.9%;
-  --destructive-600: 9.7deg 85.2% 62.9%;
-  --destructive-500: 7.9deg 71.6% 29%;
-  --destructive-400: 6.7deg 60% 20.6%;
-  --destructive-300: 7.5deg 51.3% 15.3%;
-  --destructive-200: 10.9deg 23.4% 9.2%;
 }
