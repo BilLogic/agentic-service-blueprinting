@@ -45,7 +45,7 @@ import {
 } from '@/lib/cellContentMutations'
 import { DEFAULT_ENTITY_STATUS, asEntityStatus } from '@/lib/entityStatus'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
-import { checkCellContentLength } from '@/lib/cellContentLimits'
+import { getCellContentLengthGuidance } from '@/lib/cellContentLimits'
 import { findingFingerprint } from '@/lib/findingFingerprint'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import {
@@ -380,15 +380,18 @@ export async function dispatchTool(
             `A cell already exists at that slot (${occupied[0].id}) — upsert_cell only creates. Use update_cell to edit the existing cell.`,
           )
         const newContent = need(args, 'content')
-        const lengthProblem = checkCellContentLength(newContent)
-        if (lengthProblem) throw new Error(lengthProblem)
+        // Advice, not a gate. The budget is a judgement about how much copy
+        // looks right in a card, and the canvas clamps its preview to a fixed
+        // face either way, so long text is written and reported rather than
+        // thrown away — see `cellContentLimits`.
+        const lengthGuidance = getCellContentLengthGuidance(newContent)
         const id = await upsertCell(client, {
           pathId: need(args, 'path_id'),
           laneId,
           stepId,
           content: newContent,
         })
-        return `Created cell (${id}).`
+        return `Created cell (${id}).${lengthGuidance.message ? ` ${lengthGuidance.message}` : ''}`
       }
       case 'update_cell': {
         // ONE tool over two wrappers, because a cell is one thing to the
@@ -425,13 +428,14 @@ export async function dispatchTool(
         }
 
         const done: string[] = []
+        const notes: string[] = []
 
         if (touchesText) {
           const nextContent = s(args, 'content')
-          if (nextContent !== undefined) {
-            const lengthProblem = checkCellContentLength(nextContent)
-            if (lengthProblem) throw new Error(lengthProblem)
-          }
+          const lengthGuidance =
+            nextContent === undefined
+              ? null
+              : getCellContentLengthGuidance(nextContent)
           const previous: CellContentUpdate = {
             content: data.content ?? '',
             summary: data.summary ?? '',
@@ -457,6 +461,7 @@ export async function dispatchTool(
             previous,
           )
           done.push('text')
+          if (lengthGuidance?.message) notes.push(lengthGuidance.message)
         }
 
         if (touchesSpec) {
@@ -491,9 +496,11 @@ export async function dispatchTool(
         // Two ledger entries when both halves moved, and the reply says so —
         // the change sheet will show two rows, and a reply claiming one write
         // would leave the reader counting.
-        return done.length === 2
-          ? 'Cell updated (text and spec — two entries in the change list).'
-          : `Cell ${done[0]} updated.`
+        const reply =
+          done.length === 2
+            ? 'Cell updated (text and spec — two entries in the change list).'
+            : `Cell ${done[0]} updated.`
+        return notes.length ? `${reply} ${notes.join(' ')}` : reply
       }
       case 'create_cell_dependency': {
         const kind = args.kind === 'enables' ? 'enables' : 'leads_to'

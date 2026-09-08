@@ -537,10 +537,12 @@ function CellPanelEditorForm({
         <Input
           value={form.content}
           autoFocus={cellId === null}
-          // The cell-content budget: a cell is read at a glance,
-          // and the lane grid's row rhythm assumes ~5-6 wrapped lines.
-          // Detail belongs in Summary. Same cap the agent write path
-          // enforces (cellContentLimits.ts).
+          // The cell-content budget: a cell is read at a glance, and the
+          // lane grid's row rhythm assumes ~5-6 wrapped lines. Detail
+          // belongs in Summary. Stopping the field at the budget PREVENTS,
+          // which is what a box someone is typing into should do; the
+          // agent's write path advises instead, because text already
+          // composed is worth more kept than discarded (cellContentLimits).
           maxLength={CELL_CONTENT_MAX}
           onChange={(event) => set('content', event.target.value)}
         />
