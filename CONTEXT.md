@@ -243,6 +243,43 @@ that cell came from, and when it was observed. A cell with no evidence is an
 assumption; that state is derived from the absence of evidence rows and is
 never stored as a flag.
 
+## Five words for arrival
+
+Five words for *not there yet*, naming five different things. Two belong to the
+shell, one to the canvas, one is a duration, and one is about the data rather
+than the screen. They are set out together because apart they read as spellings
+of one idea, and they are spelled here in lower case as the code spells them:
+each is a value or a constant, not a thing on the board. Where the halves they
+belong to meet is `docs/adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md`.
+
+**entrance** — the shell's from-state as it arrives: `idle`, `pending`, `shown`.
+`pending` lasts a single frame, and exists so that the fade which follows has
+somewhere to start. Nothing is waiting on data while it runs, which is what
+separates it from every other word here.
+
+**boot** — the sidebar's once-per-entry latch: `off`, `armed`, `skeletoning`. It
+answers whether this is the reader arriving or a surface they have already
+loaded coming back — a question no rung of the canvas's ladder can answer,
+because the canvas starts that ladder again every time it is uncovered.
+`skeletoning` was called *staging* until the collision with the rung below was
+named.
+
+**revealStage** — the canvas's ladder, six rungs from `CANVAS_REVEAL_STAGING` to
+`CANVAS_REVEAL_DONE`. It says how much of the board is painted and nothing about
+the shell around it. The canvas is the only thing that sets it; everything else
+reads it.
+
+**hold** — `SKELETON_HOLD_MS`, 250 ms: how long a surface may load before its
+skeleton is allowed to paint. **A duration, not a state** — the one word here
+measured in milliseconds rather than spelled as values, and the reason a fast
+load shows no placeholder at all instead of one that flashes.
+
+**status** — what a query returned: `loading`, `ready` or `error`. It is a fact
+about the data and not about the screen, so a bar can be `ready` while the
+sidebar is still `skeletoning` without the two contradicting each other. **Not
+the board's *Status*** above, the six-value word for how far along a cell or a
+path is: that one is stored in a column, this one only ever describes a read.
+
 ## The writing vocabulary
 
 Five words for how a document is written and reached, shared with the
@@ -259,7 +296,9 @@ decides whether a session gets there. What a pointer points at is a
 **Ladder** — where a piece of writing sits by how immediately a session needs
 it: an in-file step, then an in-file reference, then a **disclosed** reference
 behind a pointer. A skill's `SKILL.md` is the top rung of its own ladder, and
-the reference files it names are the rungs below.
+the reference files it names are the rungs below. **Not the canvas's reveal
+ladder** in § Five words for arrival, which is about how much of a board is
+painted.
 
 **Disclosed** — a reference pushed out of the always-loaded tier and behind a
 pointer, loaded only when that pointer fires. Everything under `docs/`,
