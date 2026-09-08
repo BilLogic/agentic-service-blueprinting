@@ -519,7 +519,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'create_path',
     description:
-      'Add a path to a scenario — alternative/unhappy/exception. lane_source_path_id copies the sibling\'s lane stack (preferred).',
+      'Add a path to a scenario — a variant or an exception. lane_source_path_id copies the sibling\'s lane stack (preferred).',
     parameters: {
       type: 'object',
       properties: {
@@ -527,8 +527,8 @@ export const TOOL_SPECS: ToolSpec[] = [
         name: str('Path name'),
         kind: {
           type: 'string',
-          enum: ['happy', 'variant', 'exception', 'variant', 'named'],
-          description: 'Default alternative',
+          enum: ['happy', 'variant', 'exception'],
+          description: 'Default variant',
         },
         lane_source_path_id: str('Sibling path id whose lanes to copy; omit for none'),
       },
@@ -544,7 +544,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         source_path_id: str('Path to copy'),
         name: str('New path name'),
-        kind: { type: 'string', enum: ['happy', 'variant', 'exception', 'variant', 'named'], description: 'Default alternative' },
+        kind: { type: 'string', enum: ['happy', 'variant', 'exception'], description: 'Default variant' },
         copy_cells: { type: 'boolean', description: 'Default true' },
       },
       required: ['source_path_id', 'name'],
