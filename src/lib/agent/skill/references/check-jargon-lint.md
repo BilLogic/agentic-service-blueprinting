@@ -25,6 +25,9 @@ if present); product names the service deliberately teaches; backstage
 shorthand. Crew-behavior narration in `frontstage_actions` cells that the
 customer experiences but never READS (the cell describes what staff do,
 not copy shown to the customer) — the lint applies to customer-read text.
-`journey_stage` labels ARE customer-facing (they render as headers).
+Phase names ARE customer-facing (they render as headers), and a phase
+is not a lane, so the role test below does not reach one.
+`journey_stage` is not a role either — the vocabulary is closed and
+refuses it, as it refuses `physical_evidence`.
 When unsure whether the customer sees the cell, check the lane's role —
 do not guess from wording.
