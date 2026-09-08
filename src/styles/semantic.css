@@ -529,6 +529,193 @@
    * borders it the same way, rather than success alone reaching for an inline
    * alpha at the call site.
    */
+  /* --- The seven jobs, for every role ----------------------------------
+   * A role offers exactly seven names, and an author picks one by answering
+   * what this colour is sitting on rather than by reading a number off a ramp:
+   *
+   *   --{role}                  the solid fill, where the colour is the message
+   *   --{role}-foreground       ink on that solid
+   *   --surface-{role}          the resting tint
+   *   --text-on-surface-{role}  ink on that tint
+   *   --text-{role}             role ink on a NEUTRAL ground
+   *   --border-{role}           an edge, against neutral or tint
+   *   --wash-{role}             a transient state over an existing surface
+   *
+   * Two of them are inks because they are two problems. Ink on a badge sits on
+   * a wash of its own colour; ink in a sentence sits on the page. The gap is
+   * measurable — a status word on a ten-percent wash of itself reads about
+   * 2.3:1, where a value tuned for that ground reads about 3.4 — and the
+   * neutral-ground one is the name that has never existed, which is why
+   * `text-destructive` resolves today to a fill that was tuned for ink to sit
+   * ON it rather than to BE it.
+   *
+   * Every one is derived from the role's own fill, and none aliases a hue
+   * primitive. That is load-bearing rather than tidy: the status hues above
+   * are pulled a fraction toward the brand and then clamped to their category,
+   * so a re-branded deployment's warning still reads as a warning. A fixed
+   * ramp cannot follow an accent, so aliasing one would delete that mechanism.
+   * The ramps in colors.css stay for CATEGORICAL colour — lane identity, path
+   * variants, annotation swatches — which carries no meaning and correctly
+   * reaches the primitive layer.
+   *
+   * The lightnesses are mixes along the same signed surface → foreground span
+   * every neutral in this file runs on, so each job lands the same distance
+   * from the canvas in both modes without a per-theme literal.
+   */
+  /* A tint has to be a surface a component can put ink on, so it is opaque
+     rather than the fill at an alpha: an alpha composites against whatever
+     happens to be behind it, and then the ink measurement has no ground. */
+  --role-tint-mix: 0.06;
+  /* Role ink on the page. Far enough along the span to clear AA on the canvas
+     in both modes, and short of the fill's own lightness — which is what makes
+     it ink rather than a smaller fill. */
+  --role-ink-mix: 0.76;
+  /* Role ink on the role's tint. Further along than the ink above, because the
+     tint is already a step off the canvas and eats the difference. */
+  --role-ink-on-tint-mix: 0.82;
+  /* The transient state: hover, pressed, selected. Translucent on purpose — it
+     is painted OVER a surface that already exists rather than replacing one,
+     which is the whole difference between it and the tint. Four times the
+     neutral elevation lift, because a hue at the neutral alpha is invisible,
+     and derived from that lift so a theme with a heavier step gets a heavier
+     wash.
+
+     Derived from the role's INK rather than its fill, which is the move the
+     neutral state surfaces already make: `--muted` is translucent
+     `--foreground`, not a lightened surface, because an overlay composites
+     against whatever is beneath it and therefore darkens in light and lightens
+     in dark. A wash of the FILL cannot do that for a role whose fill is
+     already a surface — `--secondary` rounds up against L=1 in light, so a
+     wash of it over the page measures 1.00:1 and is a token that does
+     nothing. */
+  --role-wash-alpha: calc(var(--muted-alpha) * 4);
+
+  --surface-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+  --surface-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(c * 0.14) h
+  );
+
+  --text-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+  --text-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-mix))
+      calc(c * 0.9) h
+  );
+
+  --text-on-surface-primary: oklch(
+    from var(--primary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-brand: oklch(
+    from var(--brand)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-warning: oklch(
+    from var(--warning)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-destructive: oklch(
+    from var(--destructive)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-info: oklch(
+    from var(--info)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-success: oklch(
+    from var(--success)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+  --text-on-surface-secondary: oklch(
+    from var(--secondary)
+      calc(var(--surface) + var(--tone-span) * var(--role-ink-on-tint-mix))
+      calc(c * 0.9) h
+  );
+
+  --wash-primary: oklch(
+    from var(--text-primary) l c h / var(--role-wash-alpha)
+  );
+  --wash-brand: oklch(from var(--text-brand) l c h / var(--role-wash-alpha));
+  --wash-warning: oklch(
+    from var(--text-warning) l c h / var(--role-wash-alpha)
+  );
+  --wash-destructive: oklch(
+    from var(--text-destructive) l c h / var(--role-wash-alpha)
+  );
+  --wash-info: oklch(from var(--text-info) l c h / var(--role-wash-alpha));
+  --wash-success: oklch(
+    from var(--text-success) l c h / var(--role-wash-alpha)
+  );
+  --wash-secondary: oklch(
+    from var(--text-secondary) l c h / var(--role-wash-alpha)
+  );
+
   --border-destructive: oklch(from var(--destructive) l c h / 30%);
   --border-warning: oklch(from var(--warning) l c h / 30%);
   --border-info: oklch(from var(--info) l c h / 30%);

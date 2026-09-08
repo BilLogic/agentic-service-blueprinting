@@ -624,3 +624,67 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
     ).toBeGreaterThanOrEqual(3)
   })
 })
+
+/**
+ * The role vocabulary, measured on the grounds each name claims.
+ *
+ * Every one of these is a contrast claim the name itself makes:
+ * `--text-{role}` says it is ink on the page, `--text-on-surface-{role}` says
+ * it is ink on the role's own tint. A name that says where it sits can be
+ * held to it, which is the point of naming the job rather than the position —
+ * `--destructive-600` claimed nothing, so nothing could be checked.
+ *
+ * Both grounds are resolved from the cascade rather than assumed, so a retune
+ * of the tint moves the measurement of the ink that sits on it.
+ */
+const ROLE_NAMES = [
+  'primary',
+  'brand',
+  'warning',
+  'destructive',
+  'info',
+  'success',
+  'secondary',
+] as const
+
+describe.each(['light', 'dark'] as const)('role ink: %s', (theme) => {
+  const page = resolveColor('--background', theme)
+
+  it.each(ROLE_NAMES)('%s reads as ink on the page', (role) => {
+    // 4.5:1 — body text, because that is what these are for. The name this
+    // replaces at the call site is `text-destructive`, which resolves to the
+    // solid fill: a colour tuned for ink to sit ON it, never measured as ink.
+    expect(
+      contrast(resolveColor(`--text-${role}`, theme), page),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(ROLE_NAMES)('%s reads as ink on its own tint', (role) => {
+    // The ground here is the role's tint, not the page. A status word on a
+    // ten-percent wash of itself measures about 2.3:1, which is the defect
+    // that made two ink names necessary rather than one.
+    const tint = resolveColor(`--surface-${role}`, theme)
+    expect(
+      contrast(resolveColor(`--text-on-surface-${role}`, theme), tint),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(ROLE_NAMES)('%s tints without becoming a fill', (role) => {
+    // A resting tint has to be visible and has to stay a surface. The band is
+    // where the hand-composed `bg-{role}/10` and `/15` call sites this name
+    // replaces already sat, measured: 1.10 to 1.33 against the page.
+    const tint = resolveColor(`--surface-${role}`, theme)
+    expect(contrast(tint, page)).toBeGreaterThan(1.05)
+    expect(contrast(tint, page)).toBeLessThan(1.5)
+  })
+
+  it.each(ROLE_NAMES)('%s washes over a surface rather than replacing it', (role) => {
+    // The wash is translucent by construction, which is the whole difference
+    // between it and the tint — it is painted over a surface that already
+    // exists. Measured as a composite on the page, because that is the only
+    // way a translucent colour has a value at all.
+    const wash = resolveColor(`--wash-${role}`, theme, { over: page })
+    expect(contrast(wash, page)).toBeGreaterThan(1)
+    expect(contrast(wash, page)).toBeLessThan(1.5)
+  })
+})
