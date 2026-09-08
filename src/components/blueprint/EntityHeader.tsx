@@ -37,7 +37,7 @@ export type EntityHeaderProps = {
 /**
  * The identity block's own skeleton session.
  *
- * Deliberately NOT `EDITOR_BOOT_HOLD_KEY`. That key is the shell's boot lane,
+ * Deliberately NOT `EDITOR_BOOT_HOLD_KEY`. That key is the shell's boot layer,
  * and a shared hold key is ONE session with one fade — the right tool for
  * stages of a waterfall that hand off to each other, which this bar is not a
  * stage of. It draws its own skeleton in its own session — the hold-key rule
@@ -45,7 +45,7 @@ export type EntityHeaderProps = {
  *
  * That is a different question from WHEN the session may end, and the two were
  * once answered as one. This bar waits on its query AND on the shell's boot
- * lane, so the bar, the sidebar and the board arrive on one beat instead of the
+ * layer, so the bar, the sidebar and the board arrive on one beat instead of the
  * bar finishing first over a screen that is still loading.
  */
 /**
@@ -187,8 +187,8 @@ export function EntityHeader({
   const caption = status === 'error' ? (message ?? null) : (summary ?? null)
   /*
     Two waits, one skeleton. The bar cannot resolve before its own query
-    answers, and it does not resolve before the shell lifts its lane either —
-    whichever is later is when the reader sees a name. The lane fires once per
+    answers, and it does not resolve before the shell lifts its layer either —
+    whichever is later is when the reader sees a name. The layer fires once per
     entry, so a return from a slice tab is held by neither: the latch is off
     and the query is warm (`staleTime: Infinity`).
   */

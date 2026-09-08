@@ -452,7 +452,7 @@ function AgentSessionsView({
           changed is the packaging: this was a bare ternary, so it painted
           its rows the instant the merge landed rather than holding and
           fading like every other surface. The BOOT case is not handled
-          here — the sidebar's boot lane in EditorShell covers this panel
+          here — the sidebar's boot layer in EditorShell covers this panel
           whole and lifts with the canvas, so nothing in the sidebar can
           resolve ahead of the board.
         */}

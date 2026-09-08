@@ -23,7 +23,7 @@ export const CANVAS_REVEAL_LANES = 1
 export const CANVAS_REVEAL_PANELS = 2
 /** Cells fade in. */
 export const CANVAS_REVEAL_CELLS = 3
-/** Dependency arrows fade in — the last lane. */
+/** Dependency arrows fade in — the last layer. */
 export const CANVAS_REVEAL_ARROWS = 4
 /** The reveal has finished (or was never running); the attribute is dropped. */
 export const CANVAS_REVEAL_DONE = 5

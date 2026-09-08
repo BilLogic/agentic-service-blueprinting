@@ -90,7 +90,7 @@ import type { PathListItem } from '@/lib/pathSelection'
  * The chain is event-driven and `transitionend` bubbles, so without this the
  * handler on the board root treats any opacity transition in the subtree as
  * its cue — including every hover the board carries. Keyed by the stage
- * being waited out, so stage N only listens to the lane stage N opened.
+ * being waited out, so stage N only listens to the layer stage N opened.
  */
 const REVEAL_ROOT_SOURCE = ':scope'
 const REVEAL_STAGE_SOURCE: Record<number, string | undefined> = {
@@ -251,7 +251,7 @@ type ServiceOverviewViewProps = {
   renderHeader?: () => ReactNode
   /**
    * Placeholder for `renderHeader`, held until the board opens its first
-   * lane. An embedding band is canvas furniture like the annotation
+   * layer. An embedding band is canvas furniture like the annotation
    * toolbar: it must not paint finished over a canvas that is still behind
    * a loading bar, which is what a slice tab's band used to do.
    */
@@ -267,7 +267,7 @@ type ServiceOverviewViewProps = {
   floatingChrome?: ReactNode
   /**
    * Report this canvas's reveal stage to whatever must arrive with it —
-   * today the shell's sidebar boot lane.
+   * today the shell's sidebar boot layer.
    *
    * Only the shell's BASE canvas passes one: it is the only mount that
    * shares a boot with the sidebar. A slice tab or the phone shell mounting
@@ -561,7 +561,7 @@ function ServiceOverviewViewImpl({
   const [revealStage, setRevealStage] = useState(0)
   /**
    * The bar's own dissolve, which STARTS the chain. Everything after it is
-   * driven by the previous lane finishing, not by a clock.
+   * driven by the previous layer finishing, not by a clock.
    */
   const [barDissolving, setBarDissolving] = useState(false)
   const revealStartedRef = useRef(false)
@@ -573,7 +573,7 @@ function ServiceOverviewViewImpl({
    * the same frame and each bubbles a `transitionend`, but every handler in
    * that burst closes over the same `revealStage` and so calls `setState`
    * with an identical value, which React bails out of on its own. What this
-   * saves is ~600 no-op state calls per lane on a full board; what it does
+   * saves is ~600 no-op state calls per layer on a full board; what it does
    * not do is make a late event from an earlier stage harmless, because
    * such an event carries the stage it was captured at and is refused by
    * the same comparison.
@@ -581,7 +581,7 @@ function ServiceOverviewViewImpl({
   const advancedRef = useRef(-1)
   /*
    * Publish the stage for the surfaces outside this canvas that have to
-   * arrive with it — today the sidebar's boot lane.
+   * arrive with it — today the sidebar's boot layer.
    *
    * OPT-IN, and only the shell's base canvas opts in. Every mount used to
    * publish, and this component also backs slice tabs and the phone shell:
@@ -623,11 +623,11 @@ function ServiceOverviewViewImpl({
   }, [])
 
   /*
-   * EVENT-CHAINED, not timed. Each lane opens because the previous one
+   * EVENT-CHAINED, not timed. Each layer opens because the previous one
    * finished — `transitionend` bubbling from the board root — so the
    * sequence cannot drift when a frame is slow or a stage is heavier than
-   * its budget, and no two lanes can ever animate at once. Timers survive
-   * only as a watchdog: if a lane has nothing to animate (a board with no
+   * its budget, and no two layers can ever animate at once. Timers survive
+   * only as a watchdog: if a layer has nothing to animate (a board with no
    * arrows, a cancelled transition) its event never arrives, and the chain
    * must not stall there.
    */
@@ -644,7 +644,7 @@ function ServiceOverviewViewImpl({
       unmounts the board and nulls `overviewEl`), the re-run hit the latch,
       returned early, and rescheduled nothing. `barDissolving` was already
       true, so no property changed and no `transitionend` ever came. The
-      board stayed `visibility: hidden` forever, and the shell's boot lane —
+      board stayed `visibility: hidden` forever, and the shell's boot layer —
       keyed on `revealStage < 1` — stayed opaque over the sidebar with
       `role="status"` announcing "Loading the workspace". A dead app, one
       stray refetch away, recoverable only by reload.
@@ -713,7 +713,7 @@ function ServiceOverviewViewImpl({
       observer.disconnect()
       // Only the bar dissolves here. Stage 1 waits for it to finish (the
       // bar's own `onTransitionEnd`), and every stage after that waits for
-      // the lane before it.
+      // the layer before it.
       setBarDissolving(true)
       // Watchdog for the handoff itself: if the bar never transitions (it
       // was never shown on a warm load, so there is nothing to fade), the
@@ -891,7 +891,7 @@ function ServiceOverviewViewImpl({
               same beat the chain advances on, so it lands exactly on the
               handover. It waited until stage 4 in the first cut, which read
               as the toolbar being an afterthought bolted on at the end;
-              starting it with the first lane makes the canvas and its
+              starting it with the first layer makes the canvas and its
               controls one arriving surface. What it must never do is float
               over the loading bar, which stage 0 still prevents.
             */
@@ -1004,11 +1004,11 @@ function ServiceOverviewViewImpl({
                     data-canvas-reveal={
                       revealStage < CANVAS_REVEAL_DONE ? revealStage : undefined
                     }
-                    // Each lane's fade completing is what opens the next.
+                    // Each layer's fade completing is what opens the next.
                     // `transitionend` bubbles, so one handler on the root
                     // hears the board, the panels, the cells and the arrows.
                     /*
-                      The sender must be the lane we are waiting on.
+                      The sender must be the layer we are waiting on.
 
                       `transitionend` bubbles — that is what makes one
                       handler enough — but it also means this hears EVERY
@@ -1026,7 +1026,7 @@ function ServiceOverviewViewImpl({
                       over the sidebar I had just clicked.
 
                       One `matches()` per event closes it. Anything hovering
-                      is on a party line; only the lane this stage opened
+                      is on a party line; only the layer this stage opened
                       may advance it.
                     */
                     onTransitionEnd={(event) => {

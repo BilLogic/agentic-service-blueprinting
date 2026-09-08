@@ -223,6 +223,19 @@ export const RENAME_MAP = Object.freeze(
       // `scripts/tests/retired-copy.test.mjs` holds both halves, and a third
       // guard beside them fails on the shape a mechanical rename leaves behind
       // so this class cannot recur on the next one.
+      //
+      // THAT WAS HALF OF IT, AND #267 IS THE OTHER HALF. The residue sweep
+      // decides by the DICTIONARY: a replacement landing INSIDE a word leaves
+      // a non-word, and no sentence can want one. A rename over prose also
+      // produces valid English standing for the wrong idea, which no
+      // dictionary separates — and ninety of those
+      // survived the restoration above, in comments, in test names, in a prop
+      // typed `ArrowLayer` and called `lane`, and in one paragraph a reader
+      // meets. `scripts/tests/a-lane-is-not-a-layer.test.mjs` is the guard for
+      // that half, and it decides by the COMPANY the word keeps: a lane is a
+      // row of the board, so it is not composited, does not stack, is not a
+      // rung of an animation and is not a tier of software. Its header carries
+      // what it cannot see and the four cheaper shapes that were tried first.
       copy: ['layer', 'layers'],
     },
     {

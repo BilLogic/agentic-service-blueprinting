@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils'
  *
  * A TITLE, not a badge. The filled badge made the name of the thing you are
  * looking at read as a tag on something else, and the slice header band —
- * which is the same job on the same chrome lane — sets its title as plain
+ * which is the same job on the same chrome layer — sets its title as plain
  * semibold text with the summary beneath it. One shape for one job.
  */
 export function EntityTitleAffordance({

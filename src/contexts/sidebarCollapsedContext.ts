@@ -5,7 +5,7 @@ import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 /**
  * What the collapsed sidebar's floating navbar says, and who told it.
  *
- * Collapsing used to leave TWO chrome lanes stacked: the navbar floated
+ * Collapsing used to leave TWO chrome layers stacked: the navbar floated
  * over the canvas's own navbar (the phase menubar, the slice header
  * band). The fix is not to dock the navbar — it is to let it BE the
  * navbar while collapsed. The navbars hand it their identity (and their

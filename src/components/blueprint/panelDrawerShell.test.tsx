@@ -39,7 +39,7 @@ function mount() {
   )
 }
 
-describe('a panel drawer, against the shell boot lane', () => {
+describe('a panel drawer, against the shell boot layer', () => {
   it('stays shut while the shell boots, and opens when it lifts', async () => {
     setShellBooting(true)
     mount()

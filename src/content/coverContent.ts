@@ -96,11 +96,11 @@ export const coverContent: CoverContent = {
           heading: 'Where you reach it from',
           paragraphs: [
             'Four ways to work the same blueprint. The app is where people read, compare, and present. The in-app agent drafts changes in place, using the same write path the interface uses. Agentic tools reach the same rows from an IDE or a terminal — that is where the four skills run. The Slack bot on top answers questions and links back to the exact cell.',
-            'All four sit on one shared context lane, so what any surface reads is what the others wrote. Who may do what follows from the account a surface signs in with, not from which surface it is.',
+            'All four sit on one shared context layer, so what any surface reads is what the others wrote. Who may do what follows from the account a surface signs in with, not from which surface it is.',
           ],
           figure: {
             src: '/cover/four-ways-in.svg',
-            alt: 'Four ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot — over one shared context lane',
+            alt: 'Four ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot — over one shared context layer',
             width: 880,
             height: 334,
           },

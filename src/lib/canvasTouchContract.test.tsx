@@ -232,7 +232,7 @@ describe('a container that mounts late', () => {
  *
  * `touch-action` is NOT inherited, and the board hangs inside
  * `[data-zoom-pan-content]`, which carries a transform and is therefore a
- * composited lane. WebKit does not reliably resolve an ancestor's `none`
+ * composited layer. WebKit does not reliably resolve an ancestor's `none`
  * across that boundary, so with the rule set on the viewport alone a finger
  * on a cell was taken as a native pan/zoom, which cancels the pointer stream
  * everything above depends on. Chromium walks the chain correctly, so no

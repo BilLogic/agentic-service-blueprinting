@@ -55,7 +55,7 @@ type IntegratedDependencyArrowsProps = {
   paths?: IntegratedPathRef[]
   contentRef: RefObject<HTMLElement | null>
   scrollContainerRef: RefObject<HTMLElement | null>
-  lane: ArrowLayer
+  layer: ArrowLayer
   /**
    * Per-scenario off-switch for the confluence/fan-out merge. On by default
    * (auto-detected); a scenario that wants every arrival to keep its own head
@@ -133,7 +133,7 @@ function resolveSegmentStyle(
 }
 
 /**
- * Arrow overlay for a path band: forward and wrap lanes, plus the hand-tuned
+ * Arrow overlay for a path band: forward and wrap layers, plus the hand-tuned
  * rail routes for the scenarios whose geometry the generic router cannot
  * express. (The integrated grid's fork trunks retired with that grid.)
  */
@@ -142,7 +142,7 @@ export function IntegratedDependencyArrows({
   paths = [],
   contentRef,
   scrollContainerRef,
-  lane,
+  layer,
   mergeConfluences = true,
 }: IntegratedDependencyArrowsProps) {
   const [simpleSegments, setSimpleSegments] = useState<SimpleSegment[]>([])
@@ -203,7 +203,7 @@ export function IntegratedDependencyArrows({
         disabled: !mergeConfluences,
       })
 
-      // Co-traveller offsets over the runs this lane routes (a merged trunk is
+      // Co-traveller offsets over the runs this layer routes (a merged trunk is
       // not a corridor run): two arrows sharing one detour corridor fan onto
       // adjacent lanes instead of overdrawing one line.
       planArrowCorridors(
@@ -240,10 +240,10 @@ export function IntegratedDependencyArrows({
       }
 
       // Confluence/fan-out members are forward arrows (left/right sides), so
-      // the trunk rides the z-0 forward layer; drawing it in the wrap lane too
+      // the trunk rides the z-0 forward layer; drawing it in the wrap layer too
       // would double it. The consumed forward deps are dropped from the wrap
-      // lane by its own wrap filter below.
-      if (lane === 'forward') {
+      // layer by its own wrap filter below.
+      if (layer === 'forward') {
         for (const segment of merge.segments) {
           const style = styleForMembers(segment.memberDependencyIds)
           segments.push({
@@ -263,8 +263,8 @@ export function IntegratedDependencyArrows({
         if (!cellAEl || !cellBEl) continue
 
         const wrap = isWrapDependency(cellAEl, cellBEl)
-        if (lane === 'forward' && wrap) continue
-        if (lane === 'wrap' && !wrap) continue
+        if (layer === 'forward' && wrap) continue
+        if (layer === 'wrap' && !wrap) continue
 
         const d = buildBidirectionalArrowPath(cellAEl, cellBEl, content)
         if (!d) continue
@@ -289,8 +289,8 @@ export function IntegratedDependencyArrows({
         if (!sourceEl || !targetEl) continue
 
         const wrap = isWrapDependency(sourceEl, targetEl)
-        if (lane === 'forward' && wrap) continue
-        if (lane === 'wrap' && !wrap) continue
+        if (layer === 'forward' && wrap) continue
+        if (layer === 'wrap' && !wrap) continue
 
         const d = buildArrowPath(
           sourceEl,
@@ -322,7 +322,7 @@ export function IntegratedDependencyArrows({
       serializeSegments(prev) === nextKey ? prev : nextSimple,
     )
     measureSize()
-  }, [contentRef, lane, measureSize, mergeConfluences, pathById, dependencies])
+  }, [contentRef, layer, measureSize, mergeConfluences, pathById, dependencies])
 
   useEffect(() => {
     updateArrows()
@@ -406,9 +406,9 @@ export function IntegratedDependencyArrows({
         'pointer-events-none absolute overflow-visible',
         // z-0, UNDER the z-1 cells: a run that crosses a cell tucks
         // behind it instead of striking through its face — lines are
-        // always behind the blocks. The wrap lane stays above: it rides
+        // always behind the blocks. The wrap layer stays above: it rides
         // the empty corridors outside the rows by construction.
-        lane === 'forward' ? 'z-0' : 'z-30',
+        layer === 'forward' ? 'z-0' : 'z-30',
       )}
       style={svgStyle}
       overflow="visible"

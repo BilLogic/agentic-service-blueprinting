@@ -251,11 +251,11 @@ function DesktopEditorShell() {
     isLanding ? 'idle' : 'pending',
   )
   /*
-    The sidebar's boot lane fires ONCE per entry, tracked as a small state
+    The sidebar's boot layer fires ONCE per entry, tracked as a small state
     machine rather than a boolean.
 
     The base canvas remounts whenever a tab stops covering it, and a remount
-    restarts its reveal at stage 0 — so keying the lane on the stage alone
+    restarts its reveal at stage 0 — so keying the layer on the stage alone
     dropped the full boot skeleton over an already populated sidebar every
     time the reader came back from a slice tab. The stage says "this canvas
     is at rung zero"; this says "and the sidebar is skeletoning with it",
@@ -299,11 +299,11 @@ function DesktopEditorShell() {
     the sidebar resolved on separate clocks — a top-to-bottom cascade that
     says nothing, since neither list is waiting on the other.
 
-    One lane fixes both. Everything behind it is covered, and it lifts in a
+    One layer fixes both. Everything behind it is covered, and it lifts in a
     single fade at stage 1 — the beat the canvas opens its phase lanes — so
     the sidebar and the board resolve together, all at once.
 
-    Mounted one stage past the fade so the lane cannot be pulled while it
+    Mounted one stage past the fade so the layer cannot be pulled while it
     is still fading (the same tie the loading bar hit).
   */
   /*
@@ -317,12 +317,12 @@ function DesktopEditorShell() {
     setBoot('off')
   }
   /*
-    Opaque until the canvas opens its first lane, then fades with it.
+    Opaque until the canvas opens its first layer, then fades with it.
 
-    The fade begins at stage 1 and the lane is not unmounted until stage 3 —
+    The fade begins at stage 1 and the layer is not unmounted until stage 3 —
     two stages, not one. The beats are 200/160/128 ms and the fade is one
     `--motion-fade`, so unmounting at stage 2 would be a near-exact tie: a
-    frame of scheduling jitter either way and the lane vanishes mid-fade
+    frame of scheduling jitter either way and the layer vanishes mid-fade
     instead of completing it. That is the same tie the loading bar hit, and
     the cost of the extra stage is an invisible element at opacity 0.
   */
@@ -751,7 +751,7 @@ function DesktopEditorShell() {
               {sidebarBody}
             </div>
             {/*
-              The boot lane. `bg-sidebar` over the aside's own background,
+              The boot layer. `bg-sidebar` over the aside's own background,
               at the aside's full width so the rail is covered too.
             */}
             {sidebarBootMounted && !asideHidden ? (
@@ -905,7 +905,7 @@ function ActiveTabContent({
           data-editor-view
         >
           {/* The one canvas that boots WITH the sidebar, so the one that
-              drives its boot lane — see `onRevealStage`. */}
+              drives its boot layer — see `onRevealStage`. */}
           <ServiceOverviewView onRevealStage={onRevealStage} />
         </div>
       </StoryboardWalkthroughShell>
