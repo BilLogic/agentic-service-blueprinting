@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  type Consumer,
   consumers,
   consumersOf,
+  declarations,
   declarationsIn,
   declaredNames,
   dial,
@@ -11,6 +13,7 @@ import {
   ROLES,
   roleTokens,
   rulesDeclaring,
+  sourceDeclarations,
   stylesheet,
   winningDeclaration,
 } from '@/lib/tokenModel'
@@ -91,12 +94,93 @@ const RUNTIME_NAMES = [
  */
 const COMPOSED_TOKEN_PREFIXES = ['--color-']
 
-const declared = declaredNames()
+/**
+ * Which side declares a name, or `null` if nothing does.
+ *
+ * `stylesheet` is a declaration under `src/styles`. `component` is one this app
+ * writes from TypeScript — an inline style key, Tailwind's arbitrary-property
+ * syntax, a `setProperty` call, or the named constant such a call goes through.
+ * `runtime` is a library writing onto an element it owns, which nothing in this
+ * tree declares and nothing should.
+ *
+ * The `component` arm is a real declaration and not a concession. A consumer
+ * can tell the two apart by nothing at all: what it needs is for the property
+ * to have a value at the point it is read, and a component that sets the token
+ * on the element the rule matches has given it one. The model already folds
+ * both sides together in `declaredNames`; this splits them again so the rule
+ * below can say which arm it leaned on, and so a test can hold each arm to its
+ * own promise.
+ */
+const stylesheetNames = new Set(declarations().map((entry) => entry.name))
+const componentNames = new Set(sourceDeclarations().map((entry) => entry.name))
 
-const resolves = (name: string): boolean =>
-  declared.has(name) ||
-  RUNTIME_NAMES.includes(name) ||
-  RUNTIME_PREFIXES.some((prefix) => name.startsWith(prefix))
+export type Declarer = 'stylesheet' | 'component' | 'runtime' | null
+
+export function declarerOf(name: string): Declarer {
+  if (stylesheetNames.has(name)) return 'stylesheet'
+  if (componentNames.has(name)) return 'component'
+  if (RUNTIME_NAMES.includes(name)) return 'runtime'
+  if (RUNTIME_PREFIXES.some((prefix) => name.startsWith(prefix))) {
+    return 'runtime'
+  }
+  return null
+}
+
+/** A read, as the two rules below need to see it. */
+export type Reference = Pick<Consumer, 'name' | 'kind' | 'hasFallback'>
+
+/**
+ * Why this reference resolves to nothing, or `null` if it resolves.
+ *
+ * The rule is that a name read without a fallback has to have been declared
+ * somewhere, because a browser given neither simply drops the declaration: the
+ * property does not apply, the element keeps whatever it inherited, and nothing
+ * anywhere reports it. That is the failure this file exists to convert into a
+ * red build, and it is the one failure mode in the stylesheets that leaves no
+ * trace at all.
+ *
+ * TWO EXEMPTIONS, and both are the design working rather than a hole conceded.
+ *
+ * A FALLBACK ARM IS THE VALUE. `var(--x, 12px)` renders 12px when nothing
+ * declares `--x`, so the reference is not dangling — it is an override seam,
+ * and that is how the font seam is spelled: `theme.css` writes
+ * `var(--app-font-sans, 'Ubuntu Sans Variable')` and nothing in this tree
+ * declares `--app-font-sans`, on purpose, so an embedder can point it at its
+ * own face. A rule that failed on it would be asking the seam to be closed.
+ * The model records the comma, so this asks which of the two a reference is
+ * rather than guessing from the shape of the closing parenthesis.
+ *
+ * A COMPONENT MAY DECLARE ON ITS OWN ELEMENT. `blueprint.css` reads
+ * `--background-blueprint-fill` and `--background-compare-membership-outline`
+ * bare, and no stylesheet declares either: the fill comes from data, so the
+ * cell writes it inline on the element the rule matches, through
+ * `BLUEPRINT_FILL_PROPERTY` in `lib/pathColorTheme.ts` and through an inline
+ * style key in `CompareCellBlock.tsx`. That is the component tier doing the one
+ * thing a stylesheet cannot, and the rule below has to see it as a declaration
+ * or it condemns the mechanism.
+ *
+ * The exemption is not free, and the test below spends what it costs: each arm
+ * is asserted to still be carrying something, so an arm that stops being needed
+ * is noticed rather than left behind as a carve-out for the next dangling
+ * reference to slip through.
+ *
+ * `declarer` is a parameter rather than a closure over the model so the rule
+ * can be exercised on references it did not read off disk. A guard whose
+ * extraction is wrong reports clean forever and looks exactly like a tree that
+ * is clean.
+ */
+export function resolutionFault(
+  reference: Reference,
+  declarer: (name: string) => Declarer,
+): string | null {
+  const { name, kind, hasFallback } = reference
+  // A name assembled by interpolation arrives truncated — `--color-` and
+  // nothing after it. `palette.test.ts` resolves what it composes to.
+  if (kind === 'source' && COMPOSED_TOKEN_PREFIXES.includes(name)) return null
+  if (kind === 'stylesheet' && hasFallback) return null
+  if (declarer(name) !== null) return null
+  return `nothing declares ${name}`
+}
 
 const report = (entries: ReturnType<typeof consumers>) => [
   ...new Set(
@@ -104,19 +188,17 @@ const report = (entries: ReturnType<typeof consumers>) => [
   ),
 ]
 
+const unresolved = (kind: Consumer['kind']) =>
+  report(
+    consumers().filter(
+      (entry) =>
+        entry.kind === kind && resolutionFault(entry, declarerOf) !== null,
+    ),
+  )
+
 describe('token resolution', () => {
   it('resolves every bare var(--x) reference in the stylesheets', () => {
-    // Bare, because `var(--x, 12px)` still renders when nothing declares
-    // `--x` — the fallback arm is the value. The model records the comma, so
-    // this rule can say which of the two it means instead of matching on the
-    // shape of the closing parenthesis.
-    const unresolved = consumers().filter(
-      (entry) =>
-        entry.kind === 'stylesheet' &&
-        !entry.hasFallback &&
-        !resolves(entry.name),
-    )
-    expect(report(unresolved)).toEqual([])
+    expect(unresolved('stylesheet')).toEqual([])
   })
 
   it('resolves every custom-property reference in source', () => {
@@ -126,13 +208,67 @@ describe('token resolution', () => {
     // naming a token this app owns should name one that exists, and the
     // blueprint cell tokens, whose fallback arm is deliberately the default
     // state, are declared per role in `blueprint.css` either way.
-    const unresolved = consumers().filter(
-      (entry) =>
-        entry.kind === 'source' &&
-        !COMPOSED_TOKEN_PREFIXES.includes(entry.name) &&
-        !resolves(entry.name),
+    expect(unresolved('source')).toEqual([])
+  })
+
+  it('fails on a dangling reference, in either kind', () => {
+    // The rule above passes on a clean tree and would pass just as quietly on
+    // a tree it could not read. This is the half that says it can still fail.
+    const nothing = () => null
+    for (const kind of ['stylesheet', 'source'] as const) {
+      expect(
+        resolutionFault(
+          { name: '--nobody-declares-this', kind, hasFallback: false },
+          nothing,
+        ),
+      ).toMatch(/nothing declares --nobody-declares-this/)
+    }
+  })
+
+  it('leaves the override seam alone, and only in a stylesheet', () => {
+    const nothing = () => null
+    const seam = { name: '--app-font-sans', hasFallback: true } as const
+    expect(resolutionFault({ ...seam, kind: 'stylesheet' }, nothing)).toBeNull()
+    // A component writing `var(--typo, 4px)` gets no such excuse: a fallback
+    // there hides a misspelling behind a value that happens to look fine.
+    expect(resolutionFault({ ...seam, kind: 'source' }, nothing)).not.toBeNull()
+  })
+
+  it('takes a component declaring on its own element as declared', () => {
+    const asComponent = () => 'component' as const
+    expect(
+      resolutionFault(
+        {
+          name: '--background-blueprint-fill',
+          kind: 'stylesheet',
+          hasFallback: false,
+        },
+        asComponent,
+      ),
+    ).toBeNull()
+  })
+
+  it('still needs both arms, so neither becomes a dead carve-out', () => {
+    const bare = consumers().filter(
+      (entry) => entry.kind === 'stylesheet' && !entry.hasFallback,
     )
-    expect(report(unresolved)).toEqual([])
+    const viaComponent = bare.filter(
+      (entry) => declarerOf(entry.name) === 'component',
+    )
+    expect(
+      report(viaComponent).length,
+      'No stylesheet reads a token only a component declares any more — the ' +
+        'component arm of this rule is carrying nothing, and should go with ' +
+        'whatever removed the last one.',
+    ).toBeGreaterThan(0)
+    const seams = consumers().filter(
+      (entry) => entry.kind === 'stylesheet' && entry.hasFallback,
+    )
+    expect(
+      seams.filter((entry) => declarerOf(entry.name) === null).length,
+      'Every stylesheet fallback now names something declared, so the ' +
+        'fallback arm of this rule is excusing nothing.',
+    ).toBeGreaterThan(0)
   })
 })
 

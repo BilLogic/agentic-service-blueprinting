@@ -35,11 +35,19 @@
  * exactly that, and a comment in `themes/dark.css` asserting the same untrue
  * fallback is what hid the defect for months.
  *
- * The stepped numeric scales (brand / warning / destructive) are NOT derived
- * here. They are per-theme HSL literals in the theme files, mapped to utilities
- * in theme.css — same split Supabase uses.
+ * The stepped numeric scales that used to stand outside this file are gone.
+ * `warning`, `destructive` and `brand` each carried a five-step ramp of raw
+ * per-theme HSL triples, registered into Tailwind's colour namespace so that
+ * `bg-warning-200` was a legal class, and every component that reached for a
+ * step asks for a job now. Upstream keeps its equivalents, and keeps them
+ * literal, because a build step writes them; ours had nothing behind them but
+ * the shape of a file we do not generate. That is the decision that a
+ * primitive is named for its hue and a semantic token for its job, with the
+ * value between them derived from dials — where every place this vocabulary
+ * knowingly parts from upstream is recorded together.
  *
- * SELECTOR LIST — the one place we diverge from Supabase, deliberately.
+ * SELECTOR LIST — a deliberate divergence, and the structural one: it changes
+ * where a declaration has to live rather than what it resolves to.
  *
  * Supabase declares this block once at `:root`, because their `[data-theme]`
  * always sits on the root element. Ours does not: the presentation stage puts

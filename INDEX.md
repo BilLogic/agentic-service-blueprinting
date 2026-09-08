@@ -36,6 +36,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | May I move a file under references/ or skills/? | docs/adr/0004-reference-paths-are-a-published-interface.md |
 | Where does state shared across surfaces live? | docs/adr/0005-cross-surface-state-is-a-module-store.md |
 | When may a surface I am adding stop showing its skeleton? | docs/adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md |
+| Why is this colour token derived, and where does it part from upstream? | docs/adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md |
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
 | See what is already being worked on | GitHub issues — the queue is not in this repo |
@@ -63,4 +64,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-21 protocol documents and 0 plans are indexed in [docs/index.md](./docs/index.md).
+22 protocol documents and 0 plans are indexed in [docs/index.md](./docs/index.md).
