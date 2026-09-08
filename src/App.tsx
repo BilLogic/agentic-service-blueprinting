@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
+import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
@@ -54,6 +55,13 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
                   <EditorProvider>
                     <ViewStateProvider>
                       <PathSelectionProvider>
+                        {/*
+                         * A comparison is a statement about the scenario it
+                         * was built in, so moving to another one collapses it.
+                         * Inside the provider it drives, under the editor
+                         * whose navigation it watches.
+                         */}
+                        <ScenarioPathSelectionReset />
                         <TooltipProvider delay={200}>
                           <EditorErrorBoundary>
                             <EditorShell />

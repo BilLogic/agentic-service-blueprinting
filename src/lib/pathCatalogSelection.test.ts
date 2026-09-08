@@ -3,6 +3,7 @@ import {
   defaultPathKeyForScenario,
   defaultPathKeysFromCatalog,
   deriveSelections,
+  isScenarioSwitch,
   type PathCatalog,
 } from '@/lib/pathCatalogSelection'
 import type { PathListItem } from '@/lib/pathSelection'
@@ -159,5 +160,26 @@ describe('deriveSelections', () => {
     )
 
     expect(selections.island).toEqual(['i1'])
+  })
+})
+
+/**
+ * Which navigations collapse the selection, and which leave it alone.
+ *
+ * Three of the four cases are the ones that must NOT reset: a filter set on
+ * the overview has to survive focusing a scenario, a deep link arrives as a
+ * first entry rather than as a move, and recentring on the scenario already
+ * open is not a move at all.
+ */
+describe('scenario-switch collapse decision', () => {
+  it('collapses only on a scenario-to-scenario move', () => {
+    // First entry — from the overview, or a deep link. The filter survives.
+    expect(isScenarioSwitch(null, 's1')).toBe(false)
+    // Leaving to the overview is not a switch either.
+    expect(isScenarioSwitch('s1', null)).toBe(false)
+    // Re-selecting the same scenario recentres the camera, nothing more.
+    expect(isScenarioSwitch('s1', 's1')).toBe(false)
+    // The one move that resets.
+    expect(isScenarioSwitch('s1', 's2')).toBe(true)
   })
 })
