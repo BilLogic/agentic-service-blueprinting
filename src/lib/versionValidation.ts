@@ -21,12 +21,7 @@ export type VersionMode = 'blank' | 'duplicate'
  * Keep this in step with the constraint. If a new type is wanted, the
  * constraint changes first.
  */
-export const PATH_KINDS = [
-  'happy',
-  'variant',
-  'variant',
-  'exception',
-] as const
+export const PATH_KINDS = ['happy', 'variant', 'exception'] as const
 export type PathKind = (typeof PATH_KINDS)[number]
 
 export const PATH_TYPE_LABELS: Record<PathKind, string> = {

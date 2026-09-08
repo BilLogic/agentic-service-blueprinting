@@ -9,12 +9,7 @@ import {
 import { getPathKindArrowColor } from '@/lib/pathTypeTheme'
 import type { PathKind } from '@/types/database'
 
-const PATH_KINDS: PathKind[] = [
-  'happy',
-  'variant',
-  'exception',
-  'variant',
-]
+const PATH_KINDS: PathKind[] = ['happy', 'variant', 'exception']
 
 type BlueprintArrowMarkerDefsProps = {
   markerIds: Record<string, string>
