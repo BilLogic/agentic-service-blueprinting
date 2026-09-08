@@ -107,6 +107,13 @@ jobs:
       # as a request for a table that is not there.
       - run: npm run check:database-names
 
+      # The same class one directory over. `agents/auditor.md` pins a findings
+      # row shape a model is told to produce, and it said `check_name` and
+      # `note` for two renames after the columns became `check_key` and
+      # `summary` — a document no compiler reads and, until now, no check did
+      # either (#290).
+      - run: npm run check:pinned-shapes
+
       # The router's three checks (#139). `AGENTS.md` is the whole always-loaded
       # tier — the one file every session is handed before it decides anything,
       # here and in a workspace scaffolded from here — so the properties that
