@@ -630,7 +630,7 @@ SLICE_FILE="$TMP/slices.json"
 
 # select -> validate -> sql -> doc round trip.
 python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
-  --type journey --lane citizen --key citizen-repair --actor "Citizen" > "$SLICE_FILE" \
+  --kind journey --lane citizen --key citizen-repair --actor "Citizen" > "$SLICE_FILE" \
   || fail "slice-select: journey selection failed"
 python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$SLICE_FILE" > /dev/null \
   || fail "slice-validate: generated skeleton did not validate"
@@ -681,10 +681,10 @@ python3 - "$SLICE_FILE" "$TMP/slice-bad.json" <<'PY'
 import json, sys
 doc = json.load(open(sys.argv[1], encoding="utf-8"))
 entry = doc["slices"][0]
-entry["frames"][0]["cells"].append(
+entry["slides"][0]["cells"].append(
     "streetlight-service/operate/asset-repair/as-designed/citizen/does-not-exist"
 )
-entry["frames"][-1]["cells"].append(entry["frames"][0]["cells"][0])
+entry["slides"][-1]["cells"].append(entry["slides"][0]["cells"][0])
 json.dump(doc, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
 PY
 if python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$TMP/slice-bad.json" > /dev/null 2>&1; then
@@ -708,8 +708,8 @@ fi
 pass "slice-sql-guard (invalid slice file produces no SQL)"
 
 # Journey selection is arrow-derived: a lane with no dependency edge to the
-# actor must not appear in any frame.
-python3 - "$SAMPLE" "$SLICE_FILE" <<'PY' || fail "slice-journey-arrows: uncited companion cell in a frame"
+# actor must not appear in any slide.
+python3 - "$SAMPLE" "$SLICE_FILE" <<'PY' || fail "slice-journey-arrows: uncited companion cell in a slide"
 import json, sys
 ir = json.load(open(sys.argv[1], encoding="utf-8"))
 doc = json.load(open(sys.argv[2], encoding="utf-8"))
@@ -720,8 +720,8 @@ linked = set()
 for edge in path.get("dependencies", []):
     for end in ("source", "target"):
         linked.add((edge[end]["lane"], edge[end]["step"]))
-for frame in entry["frames"]:
-    for key in frame["cells"][1:]:
+for slide in entry["slides"]:
+    for key in slide["cells"][1:]:
         lane, step = key.split("/")[4:6]
         if (lane, step) not in linked:
             print(f"uncited companion: {key}", file=sys.stderr)
@@ -731,39 +731,64 @@ pass "slice-journey-arrows (companions come from recorded dependencies only)"
 
 # Step and lane selections stay inside their column / row.
 python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
-  --type step --step dispatch --key dispatch-moment > "$TMP/slice-step.json"
+  --kind step --step dispatch --key dispatch-moment > "$TMP/slice-step.json"
 python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$TMP/slice-step.json" > /dev/null \
   || fail "slice-step: step selection did not validate"
-python3 - "$TMP/slice-step.json" <<'PY' || fail "slice-step: frame contains a foreign step"
+python3 - "$TMP/slice-step.json" <<'PY' || fail "slice-step: slide contains a foreign step"
 import json, sys
 doc = json.load(open(sys.argv[1], encoding="utf-8"))
-for frame in doc["slices"][0]["frames"]:
-    for key in frame["cells"]:
+for slide in doc["slices"][0]["slides"]:
+    for key in slide["cells"]:
         if key.split("/")[5] != "dispatch":
             sys.exit(1)
 PY
 python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
-  --type lane --lane field-tech --key field-tech-lane > "$TMP/slice-lane.json"
-python3 - "$TMP/slice-lane.json" <<'PY' || fail "slice-lane: frame contains a foreign lane"
+  --kind lane --lane field-tech --key field-tech-lane > "$TMP/slice-lane.json"
+python3 - "$TMP/slice-lane.json" <<'PY' || fail "slice-lane: slide contains a foreign lane"
 import json, sys
 doc = json.load(open(sys.argv[1], encoding="utf-8"))
-for frame in doc["slices"][0]["frames"]:
-    for key in frame["cells"]:
+for slide in doc["slices"][0]["slides"]:
+    for key in slide["cells"]:
         if key.split("/")[4] != "field-tech":
             sys.exit(1)
 PY
 pass "slice-step/lane (selections stay inside their column and row)"
 
 # Unknown scenario / missing required flag are errors, not empty output.
-if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario nope/nope --type lane \
+if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario nope/nope --kind lane \
   --lane citizen --key x > /dev/null 2>&1; then
   fail "slice-select-guard: expected non-zero exit for an unknown scenario"
 fi
 if python3 "$SLICE_TOOLS" select --ir "$SAMPLE" --scenario operate/asset-repair \
-  --type lane --key x > /dev/null 2>&1; then
+  --kind lane --key x > /dev/null 2>&1; then
   fail "slice-select-guard: expected non-zero exit for a missing --lane"
 fi
 pass "slice-select-guard (unknown scenario and missing flag both error)"
+
+# A file written against the retired document keys fails on the NAMES. There
+# is no alias — nothing reads `type` or `frames` any more — so the only thing
+# standing between an author and a bewildering "missing 'kind'" is the error
+# saying which word replaced which.
+python3 - "$SLICE_FILE" "$TMP/slice-retired.json" <<'RETIRED' || fail "slice-retired-keys: could not build the fixture"
+import json, sys
+doc = json.load(open(sys.argv[1]))
+entry = doc["slices"][0]
+entry["type"] = entry.pop("kind")
+entry["frames"] = entry.pop("slides")
+entry["origin"] = entry.pop("authorship", "generated")
+json.dump(doc, open(sys.argv[2], "w"))
+RETIRED
+if python3 "$SLICE_TOOLS" validate --ir "$SAMPLE" --slices "$TMP/slice-retired.json" \
+  > "$TMP/slice-retired.out" 2>&1; then
+  fail "slice-retired-keys: expected non-zero exit for a file using the old keys"
+fi
+grep -q "'type' is now 'kind'" "$TMP/slice-retired.out" \
+  || fail "slice-retired-keys: the error does not name what 'type' became"
+grep -q "'frames' is now 'slides'" "$TMP/slice-retired.out" \
+  || fail "slice-retired-keys: the error does not name what 'frames' became"
+grep -q "'origin' is now 'authorship'" "$TMP/slice-retired.out" \
+  || fail "slice-retired-keys: the error does not name what 'origin' became"
+pass "slice-retired-keys (an old file fails on the names, and the names say the fix)"
 
 # ---------------------------------------------------------------------------
 # 7. Audit tools: fingerprint reason slug, intra-batch collision, ledger

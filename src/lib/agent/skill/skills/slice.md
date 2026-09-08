@@ -36,7 +36,7 @@ selecting anything:
 | Signed off, not imported | Import the scenario, then slice |
 | Imported, no slices yet | Read `skills/slice/references/slice-playbook.md`, then select |
 | Slices exist, user wants another | Select; reuse the existing slice keys' naming conventions |
-| Slices exist, user wants this one changed | Check `origin` before touching it (playbook §6) |
+| Slices exist, user wants this one changed | Check `authorship` before touching it (playbook §6) |
 | Slice cites keys that no longer resolve | Stale after a key rename — re-select, re-apply prose. Never substitute a lookalike key |
 | Text slices exist, user wants pictures | Storyboard sub-flow — `skills/slice/references/storyboard-prompts.md` |
 
@@ -66,7 +66,7 @@ actually breaks:
   must exit 0. It catches unresolvable cell keys, duplicate cells, and
   multi-scenario slices — each of which renders as silently wrong rather
   than as an error.
-- ⚠ **REQUIRED — respect `origin`.** `generated` regenerates freely;
+- ⚠ **REQUIRED — respect `authorship`.** `generated` regenerates freely;
   `customized` needs explicit confirmation; `human` is never overwritten by
   an agent.
 - ⚠ **REQUIRED — confirm the import target** (project ref / service id)
@@ -125,7 +125,7 @@ Never "looks done":
 - `blueprint-reviewer` (slice mode) — fresh-context adversarial read before
   import: does every claim trace to a cited cell, is any interaction
   asserted that the blueprint does not record, is any excerpt quoted, is the
-  persona consistent across frames.
+  persona consistent across slides.
 - `render-checker` — walks `?slice=<id>` after import; screenshots plus
   console-error report.
 - `document-reader` — only if the slice's prose needs source material the

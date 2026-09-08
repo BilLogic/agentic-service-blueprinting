@@ -33,7 +33,7 @@ not a separate kind of slice.
   slice of unsigned IR cites cells that may not survive review.
 - You know the locale. Slices are per-locale artifacts, like every other
   import — the same slice key in two locales is two rows.
-- For `regenerate`, you know the existing slice's `origin` (below).
+- For `regenerate`, you know the existing slice's `authorship` (below).
 
 ## 1. Choose the type
 
@@ -52,10 +52,10 @@ slice that asserts it.
 ```bash
 python3 skills/slice/scripts/slice_tools.py select \
   --ir blueprint/<file>.json --scenario <phase>/<scenario> \
-  --path <path> --type journey --lane <lane> --key <slice-key> --actor "<label>"
+  --path <path> --kind journey --lane <lane> --key <slice-key> --actor "<label>"
 ```
 
-Emits a slice-file skeleton on stdout: frames already grouped, captions
+Emits a slice-file skeleton on stdout: slides already grouped, captions
 seeded from step names, narrative blank. Redirect it into `slices/<key>.json`
 and edit from there. Never hand-assemble cell keys — a typo becomes a UUID
 that resolves to nothing, and the app renders it as a missing cell.
@@ -67,7 +67,7 @@ framed blank.
 ## 3. Write the prose
 
 Per frame: a title (the moment) and a narrative (what happens, and what it
-costs the actor). Per slice: a title and a description that says who it is
+costs the actor). Per slice: a title and a summary that says who it is
 for and what question it answers.
 
 Rules that are not style preferences:
@@ -80,7 +80,7 @@ Rules that are not style preferences:
 - **No claim without a cell.** If a sentence cannot point at a cell in its own
   frame, delete the sentence or add the cell.
 
-Merge frames when two steps are one moment for the actor; split when one step
+Merge slides when two steps are one moment for the actor; split when one step
 hides two. Frame count is an editorial choice — cell membership is not.
 
 ## 4. Validate
@@ -91,7 +91,7 @@ python3 skills/slice/scripts/slice_tools.py validate --ir blueprint/<file>.json 
 
 Exit 0 is required before any import. It enforces: every cell key resolves in
 the IR; no cell appears twice in one slice; every slice is single-scenario;
-type and origin are in range; every frame has at least one cell.
+kind and authorship are in range; every slide has at least one cell.
 
 An unresolvable key means one of two things, and they are handled
 differently:
@@ -110,7 +110,7 @@ python3 skills/slice/scripts/slice_tools.py sql --ir blueprint/<file>.json --sli
 ```
 
 One transaction, delete-then-insert per slice, so a regenerated slice never
-leaves stale frames behind. The adapter rules in
+leaves stale slides behind. The adapter rules in
 `references/adapter-contract.md` apply unchanged: confirm the target before
 writing, verify by read-back after.
 
@@ -119,13 +119,13 @@ Read-back check: `slices` row count matches the file, and each slice's
 
 ## 6. Regenerate, edit, delete
 
-| `origin` | Regeneration |
+| `authorship` | Regeneration |
 | --- | --- |
-| `generated` | Regenerate freely — this is the point of the origin field |
+| `generated` | Regenerate freely — this is the point of the authorship field |
 | `customized` | **Ask first.** Hand edits are in the row; regeneration discards them |
 | `human` | **Never.** Authored in the app; agents do not overwrite it |
 
-Set `origin: customized` yourself the moment you hand-edit a generated
+Set `authorship: customized` yourself the moment you hand-edit a generated
 slice's prose in the file. The field is a promise to the next run.
 
 Deleting: remove the slice from the file *and* delete the row

@@ -83,7 +83,7 @@ what the cited cells actually contain.
 - **Untraceable claims.** For each title and narrative sentence: which cell
   in *that frame* supports it? A sentence whose support lives in another
   frame, another slice, or nowhere is a finding. This is the main event —
-  work through frames one at a time rather than forming a general impression.
+  work through slides one at a time rather than forming a general impression.
 - **Invented interaction.** A journey frame may only pair the actor's cell
   with cells the blueprint records a `leads_to` edge between. A companion cell
   present because it "seems related" is an invention wearing a citation.
@@ -93,7 +93,7 @@ what the cited cells actually contain.
   public-read; excerpts must not appear at all. Also flag participant names,
   employers, emails, or any string that identifies a person.
 - **Persona drift.** The actor should be one consistent archetype across
-  frames — not a named individual, and not silently swapped for a different
+  slides — not a named individual, and not silently swapped for a different
   role halfway through.
 - **Selective omission.** A slice that skips the frame where the journey
   breaks reads as a complete picture. Compare the selection against the

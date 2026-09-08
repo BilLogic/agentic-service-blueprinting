@@ -241,6 +241,13 @@ defect the `slides` rename fixed, which
 [`scripts/retired-vocabulary.mjs`](scripts/retired-vocabulary.mjs) records;
 calling one a screen is that defect wearing a third word.
 
+The slice AUTHORING FORMAT says the same words as the columns it writes:
+`kind`, `summary`, `authorship`, `position`, `slides`. It used to say `type`,
+`description`, `origin`, `order` and `frames`, so an author had to hold two
+vocabularies to write one file, and the tooling carried a comment explaining
+the split. There is no alias for the old keys — a file that uses one is
+refused by name, told which word replaced which.
+
 **Finding** — one triageable observation about a blueprint, raised by a
 consistency check or a change trace. A finding carries a severity, the cells
 it concerns, and a triage state: open, resolved, or dismissed. It is a claim
