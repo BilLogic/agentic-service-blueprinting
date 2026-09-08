@@ -9,7 +9,7 @@ A blueprint that is merely *valid* can still be *wrong*: a lane nobody
 staffs, a step customers experience but no cell records, a fee the journey
 never shows. The audit runs a fixed roster of **checks** — each a written
 interrogation, each executed by a fresh-context auditor — and lands the
-results as `findings` rows a human can triage. The audit never fixes
+results as `audit_findings` rows a human can triage. The audit never fixes
 anything: it points, with severities, at cells by key.
 
 All paths are relative to the plugin root (`${CLAUDE_PLUGIN_ROOT}`): this
@@ -42,9 +42,9 @@ triage rules, and the check-authoring template.
 
 ## Hard rules
 
-- ⚠ **REQUIRED — the audit writes `findings` rows and nothing else.** Never
+- ⚠ **REQUIRED — the audit writes `audit_findings` rows and nothing else.** Never
   cells, never structure, never a "quick fix while I'm here". Humans may
-  change only `findings.status`; the audit may supersede only its own
+  change only `audit_findings.status`; the audit may supersede only its own
   check's open findings.
 - ⚠ **REQUIRED — one fresh-context auditor per check, blind.** Each
   `agents/auditor.md` dispatch gets ONE check doc and the blueprint export,

@@ -40,7 +40,7 @@ the change-request handoff.
 
 - ⚠ **REQUIRED — whatif never writes cells or DB variants.** The variant
   is an IR file in the workspace (`whatif/<key>/`), full stop. The only DB
-  rows whatif may write are `findings` (source=whatif). The blueprint the
+  rows whatif may write are `audit_findings` (source=whatif). The blueprint the
   team shares always describes reality.
 - ⚠ **REQUIRED — analysis is not promotion.** Changing the actual
   blueprint happens ONLY via the change-request → map-promote handoff
