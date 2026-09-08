@@ -124,10 +124,11 @@ async function selectIds(
 
 /**
  * The stakeholder ids a service's journey references — the catalog's IMPLICIT
- * membership (ADR 0003), derived by JOIN because the shared catalog carries no
- * `service_id`. A stakeholder belongs to a service exactly when one of that
- * service's lanes picks it, so this walks the journey the hard boundary defines:
- * phases → scenarios → paths → `lanes.stakeholder_id`. There is deliberately no
+ * membership under the decision that a service owns its journey and shares the
+ * catalog, derived by JOIN because the shared catalog carries no `service_id`.
+ * A stakeholder belongs to a service exactly when one of that service's lanes
+ * picks it, so this walks the journey the hard boundary defines: phases →
+ * scenarios → paths → `lanes.stakeholder_id`. There is deliberately no
  * `stakeholders.service_id` to filter on — the catalog is the deployment's.
  */
 export async function serviceStakeholderIds(

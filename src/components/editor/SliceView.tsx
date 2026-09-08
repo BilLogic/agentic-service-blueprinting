@@ -167,10 +167,10 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
         holdKey={skeletonHoldKey}
         skeleton={
           <div className="h-full" role="status" aria-label="Loading slice">
-            {/* Plan 2026-08-17-001 U3: the slice waterfall's stages, over
-                the same skeleton session the whole chain shares — and
-                inside the CANVAS rectangle, which is where it stays for
-                every phase below and for the embedded canvas after them. */}
+            {/* The slice waterfall's stages, over the same skeleton session
+                the whole chain shares — and inside the CANVAS rectangle,
+                which is where it stays for every phase below and for the
+                embedded canvas after them. */}
             <SliceTabLoadingSkeleton>
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <CanvasLoadProgress

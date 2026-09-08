@@ -4,14 +4,14 @@ import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 export type RegistryTouchpoint = { id: string; name: string; kind: string }
 
 /**
- * The registry a placement can link to: every touchpoint in the deployment
- * (#112).
+ * The registry a placement can link to: every touchpoint in the deployment.
  *
- * The registry is the deployment's, not the service's (ADR 0003, landed by
- * `21000131000000`), so the read is unscoped — a touchpoint minted for one
- * service is reachable from any of them, which is the whole point of a shared
- * pool. It resolved a cell's owning service through its path, scenario and
- * phase before that; the join went with the column.
+ * The registry is the deployment's, not the service's, and under the decision
+ * that a service owns its journey and shares the catalog the unscoped read is
+ * CORRECT rather than a latent bug — a touchpoint minted for one service is
+ * reachable from any of them, which is the whole point of a shared pool. It
+ * resolved a cell's owning service through its path, scenario and phase while
+ * a touchpoint still carried a `service_id`; the join went with the column.
  *
  * Still keyed by the cell, because that is what the panel has and the key
  * keeps each panel's query cached separately.

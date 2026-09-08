@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /**
- * The phone's top chrome (plan 2026-08-16-002 Phase 3): menu · title ·
- * contextual right slot. The agent is NOT here — it enters through the
- * floating action button (MobileAgentFab), so the bar stays navigation-only.
+ * The phone's top chrome: menu · title · contextual right slot. The agent is
+ * NOT here — it enters through the floating action button (MobileAgentFab), so
+ * the bar stays navigation-only.
  *
  * The menu button is stateful — ☰ while the drawer is closed, ✕ while it is
  * open — and tapping it toggles, so the same control opens and closes the

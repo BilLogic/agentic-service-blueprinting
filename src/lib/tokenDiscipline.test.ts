@@ -165,11 +165,11 @@ test('source takes colour from the semantic layer, not the primitive ramps', () 
 /**
  * Files allowed to carry something the hex pattern matches, and why.
  *
- * Both entries are `src/dev/`, and they are here for two different reasons —
- * which is the point of naming files rather than narrowing the pattern. A
- * pattern bent to step over these would read, to the next person, as a rule
- * that never covered them; the same argument the vendored font-size list makes
- * below, and the reason neither exemption is a regex.
+ * The one entry is `src/dev/`, and naming the file is the point of the list
+ * rather than narrowing the pattern. A pattern bent to step over it would
+ * read, to the next person, as a rule that never covered it; the same argument
+ * the vendored font-size list makes below, and the reason the exemption is not
+ * a regex.
  *
  * `ArrowSituationCatalogPage.tsx` is a measuring instrument, not a surface.
  * It is reached only at `/proto/arrows` behind `import.meta.env.DEV`, which
@@ -183,13 +183,8 @@ test('source takes colour from the semantic layer, not the primitive ramps', () 
  * which is the liveness problem ADR 6 already flags; and taking the semantic
  * tokens instead would make a fixed visual reference invert with the theme,
  * which is the one thing a reference held against a golden snapshot must not
- * do.
- *
- * `arrowSituationCatalog.ts` carries no colour at all. Its four matches are
- * `(#348)` and `(#349)` — issue references inside the `note:` prose of the
- * fixtures, in a string rather than a comment, so comment-stripping cannot
- * reach them and a three-digit hex pattern cannot tell them from `#fff`. The
- * page has two of the same, in JSX text.
+ * do. The page also carries two `(#NNN)` references in JSX text, which a
+ * three-digit hex pattern cannot tell from `#fff`.
  *
  * Every entry is asserted below to still match something, so a file that stops
  * needing its exemption loses it instead of leaving a dead carve-out behind
@@ -200,11 +195,6 @@ const HEX_EXEMPT_FILES: ReadonlyArray<{ file: string; because: string }> = [
     file: 'dev/ArrowSituationCatalogPage.tsx',
     because:
       'dev-only /proto/arrows instrument, dropped from production builds; its colours are calibration, not vocabulary — plus two (#NNN) issue references in prose',
-  },
-  {
-    file: 'dev/arrowSituationCatalog.ts',
-    because:
-      'no colours at all — four (#NNN) issue references inside fixture note: strings, which the hex pattern cannot distinguish from #fff',
   },
 ]
 

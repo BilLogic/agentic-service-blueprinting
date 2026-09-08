@@ -1,12 +1,11 @@
 /**
- * The arrow-routing situation catalog — the parity net's spine (#346).
+ * The arrow-routing situation catalog — the parity net's spine.
  *
- * The trigger-line plan (`docs/plans/2026-08-17-003-feat-trigger-line-anatomy-plan.md`)
- * enumerates an S1–S10 catalog of every routing case the arrow engine must
- * handle. This module turns that table into runnable fixtures: for each
- * situation, a synthetic blueprint board (pure data, no DB, no React) whose
- * geometry drives the CURRENT engine (`buildArrowPath` and its siblings in
- * `blueprintArrowGeometry.ts`).
+ * The trigger-line plan enumerates an S1–S10 catalog of every routing case the
+ * arrow engine must handle. This module turns that table into runnable
+ * fixtures: for each situation, a synthetic blueprint board (pure data, no DB,
+ * no React) whose geometry drives the CURRENT engine (`buildArrowPath` and its
+ * siblings in `blueprintArrowGeometry.ts`).
  *
  * ONE source of truth, two consumers:
  *   - the dev-only catalog page (`ArrowSituationCatalogPage`) renders each
@@ -556,7 +555,7 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     title: 'Forward, skip ≥1 column',
     today: 'strikes through cells',
     contract: 'route via column gaps',
-    note: 'Same lane, source → two columns on, with an occupied middle column. The obstruction forces the horizontal gutter detour (buildHorizontalGutterDetourPath); the gap-first scorer (#349) sends it through the roomier underneath lane rather than the cramped strip overhead.',
+    note: 'Same lane, source → two columns on, with an occupied middle column. The obstruction forces the horizontal gutter detour (buildHorizontalGutterDetourPath); the gap-first scorer sends it through the roomier underneath lane rather than the cramped strip overhead.',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 900, height: 260 },
       rows: [
@@ -573,7 +572,7 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     id: 'S3',
     title: 'Backward (loop) within a lane',
     today: 'in-lane corridor',
-    contract: 'unchanged, but OUT/IN separated per §1',
+    contract: 'unchanged, but OUT/IN separated by anchor slots',
     note: 'Same lane, later column → earlier column. Drops into the wrap corridor under the lane and loops back (buildWrapArrowPath).',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 900, height: 300 },
@@ -628,7 +627,7 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     id: 'S6',
     title: 'In + out on ONE cell, same side',
     today: 'overlapping at one point',
-    contract: 'slot separation (§1)',
+    contract: 'slot separation (anchor slots)',
     note: 'Cell B is a wrap target of one edge and a wrap source of another; both anchor B’s bottom-centre, so the inbound head and outbound tail land on one point today.',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 900, height: 300 },
@@ -650,8 +649,8 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     id: 'S7',
     title: 'N sources → one target, same side',
     today: 'N stacked heads',
-    contract: 'confluence (§2)',
-    note: 'Two sources arrive on the target’s left edge (one same-lane forward, one cross-lane forward). Auto-detected confluence (#348): they merge into one path-coloured trunk with a single head, each source tapping in.',
+    contract: 'confluence (one merged trunk)',
+    note: 'Two sources arrive on the target’s left edge (one same-lane forward, one cross-lane forward). Auto-detected confluence: they merge into one path-coloured trunk with a single head, each source tapping in.',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 700, height: 420 },
       rows: [
@@ -672,8 +671,8 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     id: 'S8',
     title: 'One source → N targets',
     today: 'N separate lines',
-    contract: 'shared trunk that fans (§2 mirrored)',
-    note: 'One source fans out to two targets (one same-lane forward, one cross-lane forward). Auto-detected fan-out (#348): a single headless trunk leaves the source and fans into a headed drop per target.',
+    contract: 'shared trunk that fans (confluence mirrored)',
+    note: 'One source fans out to two targets (one same-lane forward, one cross-lane forward). Auto-detected fan-out: a single headless trunk leaves the source and fans into a headed drop per target.',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 700, height: 420 },
       rows: [
@@ -692,7 +691,7 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     title: 'Merged view: aliased endpoints',
     today: 'dedupe of identical edges',
     contract: 'unchanged + confluence for non-identical',
-    note: 'Aliasing only exists once paths share a slot, so this is fixtured in the merged geometry only: two distinct sources reach one shared target sub-cell. Non-identical edges, so the confluence merge (#348) applies — one trunk, one head.',
+    note: 'Aliasing only exists once paths share a slot, so this is fixtured in the merged geometry only: two distinct sources reach one shared target sub-cell. Non-identical edges, so the confluence merge applies — one trunk, one head.',
     unsupported: {
       single:
         'aliased endpoints exist only in the merged view — a single band has one cell per slot, so there is nothing to alias.',
@@ -719,7 +718,7 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     id: 'S10',
     title: 'Chain A→B→C where B is both target and source',
     today: 'B’s in/out can collide',
-    contract: '§1 slots on B',
+    contract: 'anchor slots on B',
     note: 'A vertical chain in one column: A → B → C. B carries an inbound anchor (its top) and an outbound anchor (its bottom); the merged stack forces both onto gutter detours.',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 520, height: 620 },
@@ -741,7 +740,7 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
     id: 'S11',
     title: 'Co-travellers share one detour corridor',
     today: 'two runs draw as one doubled line',
-    contract: 'offset onto adjacent lanes (§3, gap-first)',
+    contract: 'offset onto adjacent lanes (gap-first corridors)',
     note: 'Two forward skips in one lane detour through the same gap-first corridor over an overlapping stretch. The scorer routes both through the roomier (underneath) lane, and the offset pass nudges the second onto an adjacent lane so neither is a doubled line. In the merged view the stacked sub-cells crowd the underneath lane, so the scorer sends both overhead instead — the same offset, one gap up.',
     base: () => ({
       rootBox: { left: 0, top: 0, width: 1120, height: 320 },
