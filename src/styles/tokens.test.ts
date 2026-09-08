@@ -486,11 +486,9 @@ describe('the print override', () => {
 
 const CELL_TOKENS = [
   '--background-blueprint-cell',
-  '--background-blueprint-cell-origin',
   '--background-blueprint-cell-hover',
   '--background-blueprint-cell-pressed',
   '--ring-blueprint-cell',
-  '--ring-blueprint-cell-soft',
   '--foreground-blueprint-cell',
 ]
 
@@ -504,7 +502,7 @@ describe('blueprint component tokens', () => {
     //
     // Every role block, lanes and touchpoint tones alike. The old reading
     // matched `[data-blueprint-lane]` only, so the seven tone blocks — which
-    // set the same seven properties from the same ramps — were outside it.
+    // set the same five properties from the same ramps — were outside it.
     const literals = declarationsIn('blueprint.css')
       .filter((entry) => ROLE_SELECTOR.test(entry.selector))
       .filter((entry) => !/^(?:var\(|color-mix\()/.test(entry.value))

@@ -25,7 +25,6 @@
  *   --background-blueprint-cell-hover        hover surface     "
  *   --background-blueprint-cell-pressed      pressed surface   "
  *   --ring-blueprint-cell                    outline + focus   "
- *   --ring-blueprint-cell-soft               "                 "
  *   --background-blueprint-cell-panel        opt-in override   set by BlueprintStepStoryboard
  *   --background-blueprint-panel-label-rail  panel hover       set by the hover rule below
  *   --background-blueprint-panel-canvas      "                 "
@@ -184,10 +183,7 @@
   [data-blueprint-cell-anchor][data-blueprint-cell-preview-hover] {
     background-color: var(
       --background-blueprint-cell-hover,
-      var(
-        --background-blueprint-cell-panel,
-        var(--background-blueprint-cell-origin, var(--background-blueprint-cell))
-      )
+      var(--background-blueprint-cell-panel, var(--background-blueprint-cell))
     );
   }
 
@@ -202,7 +198,7 @@
     @apply inset-ring shadow-sm;
     --tw-inset-ring-color: color-mix(
       in srgb,
-      var(--ring-blueprint-cell-soft, var(--ring)) 42%,
+      var(--ring-blueprint-cell, var(--ring)) 42%,
       transparent
     );
   }
@@ -255,24 +251,31 @@
    * CELL SEMANTIC TOKENS — the full state set, per lane role.
    *
    * A cell is the app's most-used control, so it needs every state a control
-   * needs, not just a fill. Each role below defines the same ten properties;
+   * needs, not just a fill. Each role below defines the same five properties;
    * only the family changes. Nothing outside this file picks a colour.
    *
    *   --background-blueprint-cell           resting surface
-   *   --background-blueprint-cell-origin    resting surface, kept for the panel chain
    *   --background-blueprint-cell-hover     pointer over
    *   --background-blueprint-cell-pressed   aria-pressed / active
-   *   --ring-blueprint-cell                 2px slice-member outline
-   *   --ring-blueprint-cell-soft            focus-visible ring
+   *   --ring-blueprint-cell                 2px outline, and the focus ring
    *   --foreground-blueprint-cell           primary label
    *
-   * Seven, not ten. `-bg-selected`, `-text-muted` and `-border` were also
-   * defined here and nothing read any of them: selection is the ring, cells
-   * have no secondary label, and every cell draws the flat
-   * `BLUEPRINT_CELL_BORDER_COLOR` (gray-1200) regardless of family. Giving each
-   * family its own step-8 edge instead is a real improvement and a visible
-   * change to the board — so it is a decision to take, not a token to leave
-   * lying here unconsumed.
+   * Five, not ten, and the five missing went for two different reasons.
+   *
+   * `-bg-selected`, `-text-muted` and `-border` were defined here and nothing
+   * read any of them: selection is the ring, cells have no secondary label,
+   * and every cell draws the flat `BLUEPRINT_CELL_BORDER_COLOR` (gray-1200)
+   * regardless of family. Giving each family its own step-8 edge instead is a
+   * real improvement and a visible change to the board — so it is a decision
+   * to take, not a token to leave lying here unconsumed.
+   *
+   * `-origin` and `-soft` were the harder pair, because both HAD readers. But
+   * every role gave `-origin` the same value as `--background-blueprint-cell`
+   * and `-soft` the same as `--ring-blueprint-cell` — all sixteen blocks, both
+   * themes — and every consumer read them as `var(name, fallback)` with the
+   * twin as the fallback. So the chain resolved to the same colour with the
+   * names absent: two names for one value, and one authored accent per role is
+   * the rule that leaves no room for a second name that means the first.
    *
    * WHY TOKENS HERE AND NOWHERE ELSE. Supabase expresses state at the call
    * site — `hover:bg-primary/90`, or a step of a numeric scale. Both need the
@@ -298,89 +301,73 @@
    */
   /* storyboard */
 [data-blueprint-lane='storyboard'] {
-    --background-blueprint-cell-origin: var(--color-slate-500);
     --background-blueprint-cell: var(--color-slate-500);
     --background-blueprint-cell-hover: var(--color-slate-600);
     --background-blueprint-cell-pressed: var(--color-slate-700);
     --ring-blueprint-cell: var(--color-slate-1100);
-    --ring-blueprint-cell-soft: var(--color-slate-1100);
     --foreground-blueprint-cell: var(--color-slate-1200);
   }
 
   /* evidence */
 [data-blueprint-lane='evidence'] {
-    --background-blueprint-cell-origin: var(--color-blue-500);
     --background-blueprint-cell: var(--color-blue-500);
     --background-blueprint-cell-hover: var(--color-blue-600);
     --background-blueprint-cell-pressed: var(--color-blue-700);
     --ring-blueprint-cell: var(--color-blue-1100);
-    --ring-blueprint-cell-soft: var(--color-blue-1100);
     --foreground-blueprint-cell: var(--color-blue-1200);
   }
 
   /* actor */
 [data-blueprint-lane='actor'] {
-    --background-blueprint-cell-origin: var(--color-green-500);
     --background-blueprint-cell: var(--color-green-500);
     --background-blueprint-cell-hover: var(--color-green-600);
     --background-blueprint-cell-pressed: var(--color-green-700);
     --ring-blueprint-cell: var(--color-green-1100);
-    --ring-blueprint-cell-soft: var(--color-green-1100);
     --foreground-blueprint-cell: var(--color-green-1200);
   }
 
   /* frontstage-touchpoint */
 [data-blueprint-lane='frontstage-touchpoint'] {
-    --background-blueprint-cell-origin: var(--color-violet-500);
     --background-blueprint-cell: var(--color-violet-500);
     --background-blueprint-cell-hover: var(--color-violet-600);
     --background-blueprint-cell-pressed: var(--color-violet-700);
     --ring-blueprint-cell: var(--color-violet-1100);
-    --ring-blueprint-cell-soft: var(--color-violet-1100);
     --foreground-blueprint-cell: var(--color-violet-1200);
   }
 
   /* frontstage-action */
 [data-blueprint-lane='frontstage-action'] {
-    --background-blueprint-cell-origin: var(--color-pink-500);
     --background-blueprint-cell: var(--color-pink-500);
     --background-blueprint-cell-hover: var(--color-pink-600);
     --background-blueprint-cell-pressed: var(--color-pink-700);
     --ring-blueprint-cell: var(--color-pink-1100);
-    --ring-blueprint-cell-soft: var(--color-pink-1100);
     --foreground-blueprint-cell: var(--color-pink-1200);
   }
 
   /* backstage-touchpoint */
 [data-blueprint-lane='backstage-touchpoint'] {
-    --background-blueprint-cell-origin: var(--color-lime-500);
     --background-blueprint-cell: var(--color-lime-500);
     --background-blueprint-cell-hover: var(--color-lime-600);
     --background-blueprint-cell-pressed: var(--color-lime-700);
     --ring-blueprint-cell: var(--color-lime-1100);
-    --ring-blueprint-cell-soft: var(--color-lime-1100);
     --foreground-blueprint-cell: var(--color-lime-1200);
   }
 
   /* backstage-action */
 [data-blueprint-lane='backstage-action'] {
-    --background-blueprint-cell-origin: var(--color-orange-500);
     --background-blueprint-cell: var(--color-orange-500);
     --background-blueprint-cell-hover: var(--color-orange-600);
     --background-blueprint-cell-pressed: var(--color-orange-700);
     --ring-blueprint-cell: var(--color-orange-1100);
-    --ring-blueprint-cell-soft: var(--color-orange-1100);
     --foreground-blueprint-cell: var(--color-orange-1200);
   }
 
   /* support */
 [data-blueprint-lane='support'] {
-    --background-blueprint-cell-origin: var(--color-amber-500);
     --background-blueprint-cell: var(--color-amber-500);
     --background-blueprint-cell-hover: var(--color-amber-600);
     --background-blueprint-cell-pressed: var(--color-amber-700);
     --ring-blueprint-cell: var(--color-amber-1100);
-    --ring-blueprint-cell-soft: var(--color-amber-1100);
     --foreground-blueprint-cell: var(--color-amber-1200);
   }
 
@@ -395,89 +382,73 @@
    * family — see the allocation the same test states.
    */
 [data-blueprint-lane='partner-action'] {
-    --background-blueprint-cell-origin: var(--color-gray-500);
     --background-blueprint-cell: var(--color-gray-500);
     --background-blueprint-cell-hover: var(--color-gray-600);
     --background-blueprint-cell-pressed: var(--color-gray-700);
     --ring-blueprint-cell: var(--color-gray-1100);
-    --ring-blueprint-cell-soft: var(--color-gray-1100);
     --foreground-blueprint-cell: var(--color-gray-1200);
   }
 
   /*
-   * TOUCHPOINT TONES — the same ten properties, a step paler, and sharing no
+   * TOUCHPOINT TONES — the same five properties, a step paler, and sharing no
    * family with the roles above so a touchpoint never reads as its lane.
    *
    * Named after the hue on purpose: a touchpoint's colour is chosen by whoever
    * owns the blueprint, so the hue is the meaning here.
    */
   [data-blueprint-tone='crimson'] {
-    --background-blueprint-cell-origin: var(--color-crimson-400);
     --background-blueprint-cell: var(--color-crimson-400);
     --background-blueprint-cell-hover: var(--color-crimson-500);
     --background-blueprint-cell-pressed: var(--color-crimson-600);
     --ring-blueprint-cell: var(--color-crimson-1100);
-    --ring-blueprint-cell-soft: var(--color-crimson-1100);
     --foreground-blueprint-cell: var(--color-crimson-1200);
   }
 
   [data-blueprint-tone='gold'] {
-    --background-blueprint-cell-origin: var(--color-gold-400);
     --background-blueprint-cell: var(--color-gold-400);
     --background-blueprint-cell-hover: var(--color-gold-500);
     --background-blueprint-cell-pressed: var(--color-gold-600);
     --ring-blueprint-cell: var(--color-gold-1100);
-    --ring-blueprint-cell-soft: var(--color-gold-1100);
     --foreground-blueprint-cell: var(--color-gold-1200);
   }
 
   [data-blueprint-tone='indigo'] {
-    --background-blueprint-cell-origin: var(--color-indigo-400);
     --background-blueprint-cell: var(--color-indigo-400);
     --background-blueprint-cell-hover: var(--color-indigo-500);
     --background-blueprint-cell-pressed: var(--color-indigo-600);
     --ring-blueprint-cell: var(--color-indigo-1100);
-    --ring-blueprint-cell-soft: var(--color-indigo-1100);
     --foreground-blueprint-cell: var(--color-indigo-1200);
   }
 
   [data-blueprint-tone='purple'] {
-    --background-blueprint-cell-origin: var(--color-purple-400);
     --background-blueprint-cell: var(--color-purple-400);
     --background-blueprint-cell-hover: var(--color-purple-500);
     --background-blueprint-cell-pressed: var(--color-purple-600);
     --ring-blueprint-cell: var(--color-purple-1100);
-    --ring-blueprint-cell-soft: var(--color-purple-1100);
     --foreground-blueprint-cell: var(--color-purple-1200);
   }
 
   [data-blueprint-tone='red'] {
-    --background-blueprint-cell-origin: var(--color-red-400);
     --background-blueprint-cell: var(--color-red-400);
     --background-blueprint-cell-hover: var(--color-red-500);
     --background-blueprint-cell-pressed: var(--color-red-600);
     --ring-blueprint-cell: var(--color-red-1100);
-    --ring-blueprint-cell-soft: var(--color-red-1100);
     --foreground-blueprint-cell: var(--color-red-1200);
   }
 
   [data-blueprint-tone='tomato'] {
-    --background-blueprint-cell-origin: var(--color-tomato-400);
     --background-blueprint-cell: var(--color-tomato-400);
     --background-blueprint-cell-hover: var(--color-tomato-500);
     --background-blueprint-cell-pressed: var(--color-tomato-600);
     --ring-blueprint-cell: var(--color-tomato-1100);
-    --ring-blueprint-cell-soft: var(--color-tomato-1100);
     --foreground-blueprint-cell: var(--color-tomato-1200);
   }
 
   [data-blueprint-tone='yellow'] {
-    --background-blueprint-cell-origin: var(--color-yellow-400);
     --background-blueprint-cell: var(--color-yellow-400);
     --background-blueprint-cell-hover: var(--color-yellow-500);
     --background-blueprint-cell-pressed: var(--color-yellow-600);
     --ring-blueprint-cell: var(--color-yellow-1100);
-    --ring-blueprint-cell-soft: var(--color-yellow-1100);
     --foreground-blueprint-cell: var(--color-yellow-1200);
   }
 }

@@ -516,11 +516,9 @@ describe.each([
   // asserting the stylesheet against itself rather than against the app.
   const REQUIRED = [
     '--background-blueprint-cell',
-    '--background-blueprint-cell-origin',
     '--background-blueprint-cell-hover',
     '--background-blueprint-cell-pressed',
     '--ring-blueprint-cell',
-    '--ring-blueprint-cell-soft',
     '--foreground-blueprint-cell',
   ]
 
