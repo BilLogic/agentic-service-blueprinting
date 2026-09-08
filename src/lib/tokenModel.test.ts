@@ -113,16 +113,16 @@ describe('the cascade', () => {
     // The mirror image, and the reason the medium had to cut both ways:
     // `colors.css` wraps its ENTIRE dark palette in `@media screen`, so the
     // `:root` light ramp above it is what a printed page reads even from a
-    // dark one. 216 values that print.css never has to copy.
-    const screenOnly = rulesDeclaring('--color-brand-600').find((entry) =>
+    // dark one. 204 values that print.css never has to copy.
+    const screenOnly = rulesDeclaring('--color-blue-900').find((entry) =>
       entry.context.includes('@media screen'),
     )
     expect(screenOnly?.selector).toBe('.dark')
-    expect(winningDeclaration('--color-brand-600', 'dark')?.line).toBe(
+    expect(winningDeclaration('--color-blue-900', 'dark')?.line).toBe(
       screenOnly?.line,
     )
     expect(
-      winningDeclaration('--color-brand-600', 'dark', 'print')?.selector,
+      winningDeclaration('--color-blue-900', 'dark', 'print')?.selector,
     ).toBe(':root')
   })
 

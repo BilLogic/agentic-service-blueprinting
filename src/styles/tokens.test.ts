@@ -453,14 +453,15 @@ describe('the print override', () => {
   it.each([
     ['--primary', 'the filled control'],
     ['--ring', 'the focus ring'],
-    ['--brand-link', 'a link'],
+    ['--brand', 'the identity fill'],
   ])('prints %s — %s — from dark exactly as light mode renders it', (token) => {
     // The three the bug was reported through, asserted where a reader sees
-    // them: on the derived colour, not on the dial underneath it. (`--ring`
-    // and `--primary` are `semantic.css` derivations; `theme.css` registers
-    // the link as `--color-brand-link: hsl(var(--brand-link))`, inside an
-    // `@theme inline` block that is not part of the root cascade — which is
-    // why the dial, not the registration, is what can be measured here.)
+    // them: on the derived colour, not on the dial underneath it. All three
+    // are `semantic.css` derivations now — the link that used to stand here
+    // was a ramp step registered as `--color-brand-link`, inside an `@theme
+    // inline` block that is not part of the root cascade, so only its dial
+    // could be measured from here. The ramp is gone and `--brand` is a
+    // derivation, so this rule reads the colour for all three.
     const light = resolveValue(token, 'light')
     // A token neither side can resolve would pass this by agreeing on
     // `undefined`, which is how the registered `--color-*` name slipped

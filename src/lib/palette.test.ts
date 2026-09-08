@@ -15,13 +15,12 @@ import {
   contrast,
   derivedFillInk,
   dial,
-  hslToRgb,
   inSrgbGamut,
   oklch,
-  oklchHue,
   oklchToLinearSrgb,
   palette,
   resolveColor,
+  resolveColorValue,
   resolvePaletteToken,
   resolveValue,
   stylesheet,
@@ -69,12 +68,11 @@ describe('brand fill', () => {
    * The template ships the seam neutral (`--primary-chroma: 0`), so most of
    * what is asserted here is the DERIVATION rather than a particular colour:
    * a fork raises the chroma dial and these same assertions become the guard
-   * that its brand fill is still legible. Two of them (the gamut headroom and
-   * the ramp-hue agreement) are written to hold at chroma 0 and to bite the
-   * moment a fork turns the dials up, which is exactly when they matter.
+   * that its brand fill is still legible. The gamut-headroom one is written to
+   * hold at chroma 0 and to bite the moment a fork turns the dials up, which
+   * is exactly when it matters.
    */
   const semantic = stylesheet('semantic.css').text
-  const light = stylesheet('themes/light.css').text
 
   /*
    * The seam itself: `--primary` is still the three dials and nothing else.
@@ -144,24 +142,21 @@ describe('brand fill', () => {
     expect(THEME_DIALS.dark.L).toBeGreaterThan(THEME_DIALS.dark.surface)
   })
 
-  it('sits on the brand ramp rather than beside it', () => {
-    // A hue dial that drifts off the `--brand-*` ramp puts the filled control
-    // on a different brand from every other surface in the app — the failure
-    // this guard exists for. The ramp is authored as HSL literals, so it is
-    // compared as CONVERTED. Greyscale steps carry no hue to compare, so the
-    // check applies to whatever steps a fork has actually tinted.
-    const steps = [
-      ...light.matchAll(
-        /--brand-(\d00):\s*([\d.]+)deg\s+([\d.]+)%\s+([\d.]+)%/g,
-      ),
-    ]
-    expect(steps.length).toBeGreaterThanOrEqual(5)
-    const tinted = steps.filter(([, , , s]) => Number(s) > 0)
-    for (const [, , h, s, l] of tinted) {
-      const hue = oklchHue(hslToRgb(Number(h), Number(s), Number(l)))
-      expect(Math.abs(hue - HUE)).toBeLessThan(0.5)
-    }
-  })
+  it.each(['light', 'dark'] as const)(
+    'puts the filled control and the identity on one hue: %s',
+    (theme) => {
+      // A filled control on a different brand from every other surface in the
+      // app is the failure this guards. It used to be asked of a `--brand-*`
+      // ramp of HSL literals sitting beside the dial, converted and compared;
+      // the ramp is gone, because a stepped family is named for a hue and
+      // never for a role, so the question is now asked of the two fills
+      // themselves. They agree by construction — both read `--hue` — and this
+      // is what holds them to it if one of them is ever given a hue of its
+      // own.
+      expect(resolveColorValue('--primary', theme).h).toBe(HUE)
+      expect(resolveColorValue('--brand', theme).h).toBe(HUE)
+    },
+  )
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
     const { L, C, ringL, surface, surfaceHue } = THEME_DIALS[theme]
@@ -601,16 +596,18 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
     expect(contrast(brand, primary)).toBeGreaterThan(1.5)
   })
 
-  it('keeps the colour the ramp anchor carried, so bg-brand renders unchanged', () => {
-    // The utility repointed from `hsl(var(--brand-default))` to the derived
-    // fill. Same colour or the repoint moved something on screen, which is the
-    // one thing this whole migration promised not to do.
-    const anchor = /^([\d.]+)deg ([\d.]+)% ([\d.]+)%$/.exec(
-      (resolveValue('--brand-default', theme) ?? '').trim(),
-    )
-    expect(anchor).not.toBeNull()
-    const [h, s, l] = anchor!.slice(1).map(Number)
-    expect(contrast(brand, hslToRgb(h, s, l))).toBe(1)
+  it('is the accent at the lightness the dials authorise, and nothing else', () => {
+    // `bg-brand` repointed from a ramp step, `hsl(var(--brand-default))`, to
+    // this derivation, and then the ramp was deleted — so the step it used to
+    // read is no longer there to compare against. What replaces that
+    // comparison is the derivation itself: the fill is the accent at the two
+    // brand dials, and a theme that wants a different identity turns those
+    // two numbers rather than re-typing seven.
+    const value = resolveColorValue('--brand', theme)
+    expect(value.l).toBeCloseTo(dial('--brand-lightness', theme), 6)
+    expect(value.c).toBeCloseTo(dial('--brand-chroma', theme), 6)
+    expect(value.h).toBeCloseTo(dial('--hue', theme), 6)
+    expect(value.alpha).toBe(1)
   })
 
   it('carries ink at the floor a mid-lightness fill can hold', () => {

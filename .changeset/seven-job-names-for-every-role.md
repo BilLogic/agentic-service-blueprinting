@@ -38,8 +38,9 @@ of its own; it is derived from `--brand` now, which is the colour its name
 always claimed. Nothing consumes that one yet.
 
 Everything else holds exactly: every custom property under `src/styles`,
-resolved in both themes, 639 names before and 679 after, with no value moved
-except those five borders.
+resolved in both themes, with no value moved except those five borders.
+Seventy-two names arrive and twenty leave, and the twenty are the brand ramp
+and nothing else.
 
 **What an author gets that did not exist.** A name for role ink on a neutral
 ground. `text-destructive` is written at about twenty call sites, all of them
@@ -50,12 +51,30 @@ resting tint for every role, so nobody hand-composes `bg-success/10` at the
 call site again. And a transient wash distinct from the tint, so hover does
 not reuse the surface it sits on.
 
-**Brand becomes two dials.** `--brand-lightness` and `--brand-chroma` sit in
-both theme files beside the primary pair, and `--brand` derives from them.
-Rebranding used to mean re-typing a seven-step lightness curve per theme; it is
-two numbers now. `bg-brand` renders the same colour it always has — the dial is
-the lightness the old ramp anchor already carried — and a test measures that
-rather than claiming it.
+**Brand becomes two dials, and the ramp goes.** `--brand-lightness` and
+`--brand-chroma` sit in both theme files beside the primary pair, and `--brand`
+derives from them. Rebranding used to mean re-typing a seven-step lightness
+curve per theme; it is two numbers now.
+
+So the ramp goes with it — `--color-brand-100` through `-1200`, the
+`--brand-200..600` literals in both theme files and in the print block that
+restated them, `--brand-default`, and `--color-brand-link`. Nothing outside
+those declarations read any of them, here or in the deployment that pins this
+package, so nothing on screen moves. It is a rule and not a tidy-up: a
+primitive family is named for its hue — amber, violet, teal — because the hue
+is all it knows about itself, and a family named for a ROLE cannot follow an
+accent, which is exactly what a rebrand asks of it. The role keeps its name in
+the semantic layer, where the value is derived.
+
+`brand-link` had no consumer either, and the job it named already has a derived
+name: role ink on a neutral ground is `--text-brand`. Deleting it is cheaper
+than deriving a colour nobody has asked for and nobody would measure.
+
+`bg-brand` renders the colour it always has — #7e7e7e in both themes here,
+since the lightness dial is the OKLCH lightness the anchor step carried. With
+the ramp gone there is no step left to compare it against, so the rule that
+claimed it becomes the derivation instead: the fill is the accent at the two
+brand dials, on the one hue the filled control also runs on.
 
 Every one of the new names is derived from the role's own accent, and none
 aliases a hue primitive. Status hues are pulled a fraction toward the brand and

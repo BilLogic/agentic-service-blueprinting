@@ -152,13 +152,13 @@
 
   /* Stepped semantic ramps — per-theme HSL literals from themes/{light,dark}.css.
      200 = subtle surface, 500 = border, 600 = text. */
-  /* `bg-brand` now reads the derived identity fill rather than the ramp's
-     anchor step. Same colour: the brand lightness dial is the OKLCH lightness
-     that step already carried. `--brand-link` stays on the ramp until the
-     role ink it becomes has taken its call sites. */
+  /* `bg-brand` reads the derived identity fill. Same colour the ramp's anchor
+     step carried — the brand lightness dial is that step's OKLCH lightness —
+     and the ramp itself is gone, because a primitive family is named for a
+     hue and never for a role. `brand-link` went with it: role ink on a
+     neutral ground is `--text-brand` now, which is what a link wanted. */
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
-  --color-brand-link: hsl(var(--brand-link));
   --color-warning-200: hsl(var(--warning-200));
   --color-warning-300: hsl(var(--warning-300));
   --color-warning-400: hsl(var(--warning-400));
@@ -171,7 +171,7 @@
   --color-destructive-600: hsl(var(--destructive-600));
 
   /*
-   * Radix / scale / brand step registration.
+   * Radix / scale step registration.
    *
    * Self-referential on purpose, and copied from Supabase's own theme.css:
    * `@theme inline` never emits a custom property, it only tells Tailwind the
@@ -387,18 +387,6 @@
   --color-scale-1000: var(--color-scale-1000);
   --color-scale-1100: var(--color-scale-1100);
   --color-scale-1200: var(--color-scale-1200);
-  --color-brand-100: var(--color-brand-100);
-  --color-brand-200: var(--color-brand-200);
-  --color-brand-300: var(--color-brand-300);
-  --color-brand-400: var(--color-brand-400);
-  --color-brand-500: var(--color-brand-500);
-  --color-brand-600: var(--color-brand-600);
-  --color-brand-700: var(--color-brand-700);
-  --color-brand-800: var(--color-brand-800);
-  --color-brand-900: var(--color-brand-900);
-  --color-brand-1000: var(--color-brand-1000);
-  --color-brand-1100: var(--color-brand-1100);
-  --color-brand-1200: var(--color-brand-1200);
   --color-tertiary-foreground: var(--tertiary-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
