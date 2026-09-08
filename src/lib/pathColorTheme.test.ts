@@ -14,7 +14,7 @@ import {
  */
 describe('path identity', () => {
   it('gives every non-happy kind a distinct dash pattern', () => {
-    // Only the closed kinds resolve to their own `PATH_TYPE_DASH` entry. A
+    // Only the closed kinds resolve to their own `PATH_KIND_DASH` entry. A
     // path with no registry entry hashes into the open set instead, so asking
     // for its "kind dash" measures the hash rather than the kind. Those are
     // covered by the colour+dash pairing assertion in palette.test.ts.

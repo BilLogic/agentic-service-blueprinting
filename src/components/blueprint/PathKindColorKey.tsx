@@ -1,9 +1,9 @@
-import { PATH_TYPE_COLORS, PATH_TYPE_LABELS } from '@/lib/pathTypeTheme'
+import { PATH_KIND_COLORS, PATH_KIND_LABELS } from '@/lib/pathKindTheme'
 import { getPathColor } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { PathKind } from '@/types/database'
 
-type PathTypeColorKeyProps = {
+type PathKindColorKeyProps = {
   type: PathKind
   /** When set, uses the stable path identity color (type + name). */
   name?: string
@@ -20,10 +20,10 @@ export function PathKindColorKey({
   name,
   className,
   size = 'sm',
-}: PathTypeColorKeyProps) {
+}: PathKindColorKeyProps) {
   const backgroundColor = name
     ? getPathColor({ kind: type, name })
-    : PATH_TYPE_COLORS[type]
+    : PATH_KIND_COLORS[type]
 
   return (
     <span
@@ -33,7 +33,7 @@ export function PathKindColorKey({
         className,
       )}
       style={{ backgroundColor }}
-      title={name ?? PATH_TYPE_LABELS[type]}
+      title={name ?? PATH_KIND_LABELS[type]}
       aria-hidden
     />
   )

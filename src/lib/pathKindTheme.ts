@@ -1,28 +1,28 @@
 import {
   getPathArrowColor as getPathIdentityArrowColor,
   getPathSectionBorderStyle as getPathIdentitySectionBorderStyle,
-  PATH_TYPE_ARROW_COLORS,
-  PATH_TYPE_COLORS,
+  PATH_KIND_ARROW_COLORS,
+  PATH_KIND_COLORS,
   type PathColorInput,
 } from '@/lib/pathColorTheme'
 import type { PathKind } from '@/types/database'
 
-export { PATH_TYPE_ARROW_COLORS, PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
+export { PATH_KIND_ARROW_COLORS, PATH_KIND_COLORS } from '@/lib/pathColorTheme'
 
-export const PATH_TYPE_SHORT_LABELS: Record<PathKind, string> = {
+export const PATH_KIND_SHORT_LABELS: Record<PathKind, string> = {
   happy: 'Happy',
   variant: 'Variant',
   exception: 'Exception',
 }
 
-export const PATH_TYPE_LABELS: Record<PathKind, string> = {
+export const PATH_KIND_LABELS: Record<PathKind, string> = {
   happy: 'Happy path',
   variant: 'Variant',
   exception: 'Exception',
 }
-export const PATH_TYPE_SECTION_BORDER_WIDTH = 3
+export const PATH_KIND_SECTION_BORDER_WIDTH = 3
 
-export function getPathTypeSectionBorderStyle(
+export function getPathKindSectionBorderStyle(
   pathKind: PathKind,
   path?: Pick<PathColorInput, 'name'>,
 ): {
@@ -38,10 +38,10 @@ export function getPathTypeSectionBorderStyle(
   }
 
   return {
-    borderColor: PATH_TYPE_COLORS[pathKind],
+    borderColor: PATH_KIND_COLORS[pathKind],
     // Solid only for the happy path — matches the arrow dash vocabulary.
     borderStyle: pathKind === 'happy' ? 'solid' : 'dashed',
-    borderWidth: PATH_TYPE_SECTION_BORDER_WIDTH,
+    borderWidth: PATH_KIND_SECTION_BORDER_WIDTH,
   }
 }
 
@@ -53,16 +53,16 @@ export function getPathKindArrowColor(
     return getPathIdentityArrowColor({ kind: pathKind, name: path.name })
   }
 
-  return PATH_TYPE_ARROW_COLORS[pathKind]
+  return PATH_KIND_ARROW_COLORS[pathKind]
 }
 
 /** Path-type suffix for compare labels — omitted when the name already implies the type. */
-export function getPathTypeSuffixIfNeeded(path: {
+export function getPathKindSuffixIfNeeded(path: {
   name: string
   kind: PathKind
 }): string | null {
-  const short = PATH_TYPE_SHORT_LABELS[path.kind]
-  const full = PATH_TYPE_LABELS[path.kind]
+  const short = PATH_KIND_SHORT_LABELS[path.kind]
+  const full = PATH_KIND_LABELS[path.kind]
   const normalized = path.name.toLowerCase()
 
   if (
@@ -81,7 +81,7 @@ export function getPathTypeSuffixIfNeeded(path: {
  * A path with its own title (an `alternative` named for the activity it
  * covers) shows that title instead — the badge would say less than the name.
  */
-const GENERIC_PATH_TYPE_NAMES = new Set([
+const GENERIC_PATH_KIND_NAMES = new Set([
   'happy path',
   'sad path',
   'unhappy path',
@@ -91,14 +91,14 @@ const GENERIC_PATH_TYPE_NAMES = new Set([
   'exception path',
 ])
 
-export function isGenericPathTypeName(name: string): boolean {
-  return GENERIC_PATH_TYPE_NAMES.has(name.trim().toLowerCase())
+export function isGenericPathKindName(name: string): boolean {
+  return GENERIC_PATH_KIND_NAMES.has(name.trim().toLowerCase())
 }
 
 /** Overview frames: type badge only for generic archetype names. */
-export function shouldShowPathTypeBadge(path: {
+export function shouldShowPathKindBadge(path: {
   name: string
   kind?: PathKind
 }): boolean {
-  return isGenericPathTypeName(path.name)
+  return isGenericPathKindName(path.name)
 }

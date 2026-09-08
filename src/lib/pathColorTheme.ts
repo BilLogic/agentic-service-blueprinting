@@ -27,7 +27,7 @@ export type PathColorInput = {
  * family would have had to be read at a different step from every other path
  * type.
  */
-export const PATH_TYPE_COLORS: Record<PathKind, string> = {
+export const PATH_KIND_COLORS: Record<PathKind, string> = {
   happy: 'var(--color-green-1100)',
   variant: 'var(--color-blue-1100)',
   exception: 'var(--color-red-1100)',
@@ -36,9 +36,9 @@ export const PATH_TYPE_COLORS: Record<PathKind, string> = {
 /**
  * Stroke color for blueprint dependency arrows — step 1000, one notch lighter than
  * the badge, so a stroke reads as related to the label it belongs to without
- * being the same value. Same family per path type as `PATH_TYPE_COLORS`.
+ * being the same value. Same family per path type as `PATH_KIND_COLORS`.
  */
-export const PATH_TYPE_ARROW_COLORS: Record<PathKind, string> = {
+export const PATH_KIND_ARROW_COLORS: Record<PathKind, string> = {
   happy: 'var(--color-green-1000)',
   variant: 'var(--color-blue-1000)',
   exception: 'var(--color-red-1000)',
@@ -86,20 +86,20 @@ const step = (family: string, weight: 1000 | 1100) =>
  * distinct colour + dash pair.
  */
 export const PATH_COLOR_REGISTRY: Record<string, string> = {
-  'happy:Happy Path': PATH_TYPE_COLORS.happy,
+  'happy:Happy Path': PATH_KIND_COLORS.happy,
   // Two registry entries, one kind: `unhappy` and `alternative` collapsed
   // into `variant` when each thing was given one spelling, and the NAME is
   // what still separates a sad path from an alternate one. That was always the
   // design — the registry keys on kind AND name, and everything unregistered
   // hashes into the open set below.
-  'variant:Sad Path': PATH_TYPE_COLORS.variant,
-  'variant:Alternate Path': PATH_TYPE_COLORS.variant,
+  'variant:Sad Path': PATH_KIND_COLORS.variant,
+  'variant:Alternate Path': PATH_KIND_COLORS.variant,
 }
 
 export const PATH_ARROW_COLOR_REGISTRY: Record<string, string> = {
-  'happy:Happy Path': PATH_TYPE_ARROW_COLORS.happy,
-  'variant:Sad Path': PATH_TYPE_ARROW_COLORS.variant,
-  'variant:Alternate Path': PATH_TYPE_ARROW_COLORS.variant,
+  'happy:Happy Path': PATH_KIND_ARROW_COLORS.happy,
+  'variant:Sad Path': PATH_KIND_ARROW_COLORS.variant,
+  'variant:Alternate Path': PATH_KIND_ARROW_COLORS.variant,
 }
 
 /** Hash fallback for a path with no registry entry. Step 1100, the badge weight. */
@@ -118,7 +118,7 @@ const EXTENDED_PATH_COLORS = PATH_NAMED_FAMILIES.map((f) =>
  * dotted blur at overview zoom, longer than ~12px stops repeating within a
  * short segment.
  */
-const PATH_TYPE_DASH: Record<PathKind, string | undefined> = {
+const PATH_KIND_DASH: Record<PathKind, string | undefined> = {
   happy: undefined,
   variant: '12 5',
   exception: '2 4',
@@ -160,7 +160,7 @@ export function getPathDashArray(path: PathColorInput): string | undefined {
       return EXTENDED_PATH_DASHES[hashKey(key) % EXTENDED_PATH_DASHES.length]
     }
   }
-  return PATH_TYPE_DASH[path.kind]
+  return PATH_KIND_DASH[path.kind]
 }
 
 /**
@@ -170,7 +170,7 @@ export function getPathDashArray(path: PathColorInput): string | undefined {
 export function getPathDashArrayFromKey(colorKey: string): string | undefined {
   const separator = colorKey.indexOf(':')
   if (separator === -1) {
-    return PATH_TYPE_DASH[colorKey as PathKind] ?? undefined
+    return PATH_KIND_DASH[colorKey as PathKind] ?? undefined
   }
   return getPathDashArray({
     kind: colorKey.slice(0, separator) as PathKind,
@@ -196,7 +196,7 @@ export function getPathColor(path: PathColorInput): string {
     return EXTENDED_PATH_COLORS[hashKey(key) % EXTENDED_PATH_COLORS.length]
   }
 
-  return PATH_TYPE_COLORS[path.kind]
+  return PATH_KIND_COLORS[path.kind]
 }
 
 export function getPathArrowColor(path: PathColorInput): string {
@@ -208,7 +208,7 @@ export function getPathArrowColor(path: PathColorInput): string {
     return getPathColor(path)
   }
 
-  return PATH_TYPE_ARROW_COLORS[path.kind]
+  return PATH_KIND_ARROW_COLORS[path.kind]
 }
 
 /**

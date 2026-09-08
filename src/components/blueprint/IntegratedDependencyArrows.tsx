@@ -26,7 +26,7 @@ import {
   pathColorKeyToMarkerSuffix,
   type PathColorInput,
 } from '@/lib/pathColorTheme'
-import { getPathKindArrowColor } from '@/lib/pathTypeTheme'
+import { getPathKindArrowColor } from '@/lib/pathKindTheme'
 import { cn } from '@/lib/utils'
 import {
   BlueprintArrowMarkerDefs,

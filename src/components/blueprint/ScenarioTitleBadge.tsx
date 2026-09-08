@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
 import { Badge } from '@/components/ui/badge'
-import { PATH_TYPE_COLORS } from '@/lib/pathTypeTheme'
+import { PATH_KIND_COLORS } from '@/lib/pathKindTheme'
 import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { PathKind } from '@/types/database'
@@ -50,7 +50,7 @@ export function ScenarioTitleBadge({
   tone = 'default',
   note,
 }: ScenarioTitleBadgeProps) {
-  const pathAccent = pathKind ? PATH_TYPE_COLORS[pathKind] : undefined
+  const pathAccent = pathKind ? PATH_KIND_COLORS[pathKind] : undefined
   const panelTone = tone === 'panel' && !pathKind
   const phaseTone = tone === 'phase' && !pathKind
 

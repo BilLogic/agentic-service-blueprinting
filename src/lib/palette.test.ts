@@ -6,7 +6,7 @@ import {
   TOUCHPOINT_TONES,
 } from '@/lib/blueprintCellStyle'
 import {
-  PATH_TYPE_COLORS,
+  PATH_KIND_COLORS,
   getPathColor,
   getPathDashArray,
 } from '@/lib/pathColorTheme'
@@ -272,7 +272,7 @@ describe('blueprint cells', () => {
  * about one value could not have caught it.
  */
 describe('path badges', () => {
-  const paths = Object.entries(PATH_TYPE_COLORS)
+  const paths = Object.entries(PATH_KIND_COLORS)
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
     it.each(paths)('%s pairs with legible derived ink', (_type, token) => {
@@ -424,7 +424,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
    * The test above was titled "keeps NAMED paths off the lane families" and
    * sampled forty synthetic names all hard-coded to `kind: 'variant'`.
    * `getPathColor` short-circuits every other kind straight to
-   * `PATH_TYPE_COLORS`, so the sample could only ever produce the seven open
+   * `PATH_KIND_COLORS`, so the sample could only ever produce the seven open
    * families — the one set that is disjoint from the lanes by construction.
    * `happy` and `exception` were structurally unreachable through it, and
    * `happy` is green against the green `actor` lane.
@@ -440,7 +440,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
 
   it('names every path type that shares a lane family', () => {
     const lanes = familiesIn('lane')
-    const overlapping = Object.entries(PATH_TYPE_COLORS)
+    const overlapping = Object.entries(PATH_KIND_COLORS)
       .filter(([, token]) => lanes.has(/--color-([a-z]+)-/.exec(token)![1]))
       .map(([type]) => type)
     expect(overlapping).toEqual(KNOWN_LANE_OVERLAP)
@@ -454,7 +454,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
     for (const type of KNOWN_LANE_OVERLAP) {
       const step = Number(
         /--color-[a-z]+-(\d+)/.exec(
-          PATH_TYPE_COLORS[type as keyof typeof PATH_TYPE_COLORS],
+          PATH_KIND_COLORS[type as keyof typeof PATH_KIND_COLORS],
         )![1],
       )
       expect(step).toBeGreaterThan(laneFill)
