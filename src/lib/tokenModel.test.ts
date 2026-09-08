@@ -4,8 +4,14 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   consumersOf,
+  contrast,
   declarationsIn,
   declaredNames,
+  declarations,
+  hslToRgb,
+  parseColor,
+  resolveColor,
+  resolveColorValue,
   resolveValue,
   rulesDeclaring,
   sourceFiles,
@@ -236,5 +242,83 @@ describe('the source reader', () => {
     // would have to either exempt them by name or fail on every one.
     const cell = consumersOf('--background-blueprint-cell')
     expect(cell.some((entry) => entry.hasFallback)).toBe(true)
+  })
+})
+
+/**
+ * The colour reader.
+ *
+ * Every contrast rule in this suite used to restate the arithmetic of the
+ * declaration it measured — a `clamp()` in CSS and a `Math.min(Math.max(…))`
+ * beside it in TypeScript. Two copies of one derivation is the arrangement
+ * where a rule keeps passing after the thing it claims to measure has moved,
+ * so the model reads the declaration instead. These cases are the ones that
+ * would let it read a declaration wrongly and say nothing.
+ */
+describe('the colour reader', () => {
+  it('reads a slash as alpha in a component slot and as division inside calc', () => {
+    // `oklch(from x l calc(c / 2) h / 30%)` divides once and separates once.
+    // A parser with one rule for `/` either loses the alpha or multiplies the
+    // chroma by the alpha, and both answers look like a colour.
+    const colour = parseColor('oklch(from oklch(0.5 0.2 100) l calc(c / 2) h / 30%)')
+    expect(colour.c).toBeCloseTo(0.1, 10)
+    expect(colour.alpha).toBeCloseTo(0.3, 10)
+  })
+
+  it('gives a relative colour the origin alpha when the slot is omitted', () => {
+    // Otherwise `oklch(from <translucent> l c h)` silently becomes opaque, and
+    // a measurement against it reports a ground that never renders.
+    expect(parseColor('oklch(from oklch(0.5 0 0 / 40%) l c h)').alpha).toBeCloseTo(
+      0.4,
+      10,
+    )
+  })
+
+  it('refuses a relative keyword used outside a relative colour', () => {
+    expect(() => parseColor('oklch(l 0 0)')).toThrow(/relative colour/)
+  })
+
+  it('reads both alpha spellings of hsl', () => {
+    // The legacy palette export writes `hsla(0, 0%, 0%, 0.05)`; the derivation
+    // layer writes `hsl(0deg 0% 0% / 5%)`. Both are in this tree.
+    expect(parseColor('hsla(0, 0%, 0%, 0.05)').alpha).toBeCloseTo(0.05, 10)
+    expect(parseColor('hsl(0deg 0% 0% / 5%)').alpha).toBeCloseTo(0.05, 10)
+  })
+
+  it('agrees with the ramp reader on a colour both can read', () => {
+    // `palette()` parses `colors.css` with a regex and this parses the same
+    // declaration as CSS. Two readers of one file that disagree is the defect
+    // the single seam exists to prevent, so they are held to each other.
+    const viaParser = resolveColor('--color-blue-900', 'light')
+    const [h, s, l] = /hsl\(\s*([\d.]+)[^\d]*([\d.]+)%\s*,?\s*([\d.]+)%/.exec(
+      resolveValue('--color-blue-900', 'light') ?? '',
+    )!.slice(1)
+    expect(contrast(viaParser, hslToRgb(Number(h), Number(s), Number(l)))).toBe(1)
+  })
+
+  it('refuses to measure a translucent token against no ground', () => {
+    // `--muted` is `--foreground` at a few percent. Measured as though it were
+    // opaque it reads as near-black ink; painted on the page it is a hairline
+    // lift. The first number is not a worse answer, it is a different token.
+    expect(() => resolveColor('--muted', 'light')).toThrow(/translucent/)
+  })
+
+  it('reads every colour-valued declaration in the tree', () => {
+    // The reader's sampling, held the way the declaration reader's is. A
+    // parser that quietly failed on one spelling would narrow every rule built
+    // on it, and no rule would fail to say so.
+    const unreadable: string[] = []
+    for (const name of new Set(declarations().map((entry) => entry.name))) {
+      for (const theme of ['light', 'dark'] as const) {
+        const value = resolveValue(name, theme)
+        if (!value || !/^(oklch|hsla?|#)/.test(value.trim())) continue
+        try {
+          resolveColorValue(name, theme)
+        } catch (thrown) {
+          unreadable.push(`${name} (${theme}): ${(thrown as Error).message}`)
+        }
+      }
+    }
+    expect(unreadable).toEqual([])
   })
 })

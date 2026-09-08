@@ -154,3 +154,21 @@ export function hexToRgb(hex: string): Rgb {
     parseInt(digits.slice(at, at + 2), 16) / 255,
   ) as Rgb
 }
+
+/**
+ * `over` at `alpha` painted on `under`, the way a browser paints it.
+ *
+ * Simple alpha compositing in the gamma-encoded space, which is what a
+ * translucent CSS colour does over an opaque one — not the linear-light blend
+ * a physical mix would be. The distinction matters here because several tokens
+ * in the system ARE translucent (`--muted`, `--wash-*`), and the only honest
+ * way to measure ink against one of them is to paint it first.
+ */
+export function composite(over: Rgb, alpha: number, under: Rgb): Rgb {
+  return over.map((v, at) => v * alpha + under[at] * (1 - alpha)) as Rgb
+}
+
+/** OKLCH -> gamma-encoded sRGB, chroma-reduced to the sRGB gamut first. */
+export function oklchInGamut(l: number, c: number, hDeg: number): Rgb {
+  return oklch(l, Math.min(c, chromaCeiling(l, hDeg)), hDeg)
+}
