@@ -32,7 +32,7 @@ type PhaseQueryRow = PhaseRow & { service_id?: string }
 const NO_PHASES: PhaseRow[] = []
 
 /**
- * Load the phases (and nested scenarios) of one service service.
+ * Load the phases (and nested scenarios) of one service.
  *
  * With no explicit `serviceId`, the first service by `created_at` is used
  * — the common case is a single service per database. Pass an id to pin a

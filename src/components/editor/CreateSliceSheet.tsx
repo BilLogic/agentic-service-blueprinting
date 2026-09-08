@@ -125,7 +125,7 @@ export function CreateSliceSheet({
     try {
       const serviceId = await findFirstServiceId(client)
       if (!serviceId) {
-        throw new Error('No service service found to attach this slice to.')
+        throw new Error('No service found to attach this slice to.')
       }
       const slice = await createSlice(client, {
         serviceId,

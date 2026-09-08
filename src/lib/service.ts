@@ -35,7 +35,7 @@ export function findFirstServiceId(client: Client): Promise<string | null> {
 /** First service by `created_at`; throws when the database has none. */
 export async function resolveFirstServiceId(client: Client): Promise<string> {
   const id = await findFirstServiceId(client)
-  if (!id) throw new Error('No service service exists in the database')
+  if (!id) throw new Error('No service exists in the database')
   return id
 }
 
