@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import { GROUNDS } from '@/lib/ground'
 import {
   type Consumer,
   consumers,
   consumersOf,
+  contrast,
   declarations,
   declarationsIn,
   declaredNames,
   dial,
   missingRoleTokens,
   namesIn,
+  resolveColor,
   resolveValue,
   ROLES,
   roleTokens,
@@ -840,5 +843,130 @@ describe('the role vocabulary', () => {
       }),
     )
     expect(misplaced).toEqual([])
+  })
+})
+
+
+/**
+ * A role tint stands off the surface it is drawn on, and not off the page.
+ *
+ * The tint is six percent of the signed canvas→ink span, and an elevation rung
+ * is a step of the same size, so a tint derived from the page lands on top of
+ * any surface raised off the page. Every role measured 1.02:1 against a card in
+ * dark, where the card itself sits 1.09:1 off the canvas — the tint was doing
+ * nothing and the role edge was carrying the whole shape. Light read 1.18 only
+ * because its span runs the other way and the two distances happened to add;
+ * the same arithmetic was underneath it.
+ *
+ * A stylesheet cannot see what is behind a declaration, so the ground is named
+ * on the element by the component that paints the surface, and `semantic.css`
+ * re-derives at that scope. These rules are what hold the two halves to each
+ * other, and they are written as invariants: the grounds come from the
+ * stylesheet, the roles from `ROLES`, and neither list is restated here. A
+ * fourth ground or an eighth role is inside every rule below the day it is
+ * added.
+ */
+
+/** Every ground the stylesheet offers: the page, then each named surface. */
+const grounds = () => {
+  const scopes = rulesDeclaring('--ground')
+    .map((rule) => /^\[data-ground='([a-z-]+)'\]$/.exec(rule.selector))
+    .filter((match) => match !== null)
+  return [
+    // The page is the ground the block itself declares, and `--background` is
+    // what the page is painted with.
+    { name: 'page', scope: [] as string[], surface: '--background' },
+    // A ground is NAMED for its surface — `card` is `--card` — which is what
+    // lets a component say what it is without knowing which rung that is.
+    ...scopes.map((match) => ({
+      name: match[1],
+      scope: [match[0]],
+      surface: `--${match[1]}`,
+    })),
+  ]
+}
+
+/**
+ * How far a tint has to stand off its ground. Under this it is not a surface,
+ * it is the ground with a rumour of colour on it — which is what 1.02:1 was.
+ */
+const TINT_FLOOR = 1.08
+
+/**
+ * How much the choice of ground may change that distance.
+ *
+ * This is the rule that says the fix worked rather than merely that the number
+ * is large: a tint is supposed to be the same step off whatever it is drawn on,
+ * so the ground may move the measurement a little — contrast ratio is not
+ * linear in lightness — and may not decide it.
+ */
+const GROUND_DRIFT = 0.06
+
+describe('a role tint stands off its ground', () => {
+  it('names a surface this vocabulary declares, for every ground', () => {
+    // The naming is the whole seam. If `[data-ground='card']` did not answer
+    // to `--card`, a component saying `card` would be choosing a lightness
+    // nothing paints, and every measurement below would be of a surface that
+    // is not on the screen.
+    const unnamed = grounds().filter(
+      (entry) => resolveValue(entry.surface, 'dark') === undefined,
+    )
+    expect(unnamed.map((entry) => entry.name)).toEqual([])
+  })
+
+  it('offers the component tier exactly the grounds the stylesheet has', () => {
+    // Two tiers stating one vocabulary, the way animations.css and lib/motion.ts
+    // do below. A ground in `lib/ground.ts` that no scope re-derives at is a
+    // component politely telling the stylesheet nothing.
+    const scoped = grounds()
+      .filter((entry) => entry.name !== 'page')
+      .map((entry) => entry.name)
+    expect([...GROUNDS].sort()).toEqual([...scoped].sort())
+  })
+
+  it.each(['light', 'dark'] as const)(
+    'clears every ground, for every role, under %s',
+    (theme) => {
+      const failures = grounds().flatMap((entry) => {
+        const surface = resolveColor(entry.surface, theme)
+        return ROLES.filter(
+          (role) =>
+            contrast(
+              resolveColor(`--surface-${role}`, theme, { scope: entry.scope }),
+              surface,
+            ) < TINT_FLOOR,
+        ).map((role) => `${role} on ${entry.name}`)
+      })
+      expect(failures).toEqual([])
+    },
+  )
+
+  it.each(['light', 'dark'] as const)(
+    'lets the ground move that distance and never decide it, under %s',
+    (theme) => {
+      const drifted = ROLES.filter((role) => {
+        const measured = grounds().map((entry) =>
+          contrast(
+            resolveColor(`--surface-${role}`, theme, { scope: entry.scope }),
+            resolveColor(entry.surface, theme),
+          ),
+        )
+        return Math.max(...measured) - Math.min(...measured) > GROUND_DRIFT
+      })
+      expect(drifted).toEqual([])
+    },
+  )
+
+  it('fails on a tint that was derived from the page', () => {
+    // The defect itself, as the rule sees it. `--surface-{role}` read at the
+    // ROOT is the page-relative tint this vocabulary shipped; measured against
+    // a card it is the 1.02:1 that opened the question. A rule that could not
+    // produce this failure would pass just as quietly on a tree where nothing
+    // had been fixed.
+    const card = resolveColor('--card', 'dark')
+    const measured = ROLES.map((role) =>
+      contrast(resolveColor(`--surface-${role}`, 'dark'), card),
+    )
+    expect(Math.max(...measured)).toBeLessThan(TINT_FLOOR)
   })
 })

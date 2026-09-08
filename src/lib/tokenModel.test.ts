@@ -42,7 +42,7 @@ describe('the declaration reader', () => {
     const wrapped = rulesDeclaring('--primary')
     expect(wrapped).toHaveLength(1)
     expect(wrapped[0].file).toBe('semantic.css')
-    expect(wrapped[0].selector).toBe(':root, .dark, .light')
+    expect(wrapped[0].selector).toBe(':root, .dark, .light, [data-ground]')
     // Whitespace-collapsed, so how a value was wrapped is not part of what it is.
     expect(wrapped[0].value).toBe(
       'oklch( var(--primary-lightness) var(--primary-chroma) var(--primary-hue) )',

@@ -6,6 +6,7 @@ import {
   useCollapsedNavSummary,
   useSidebarCollapsedState,
 } from '@/contexts/sidebarCollapsedContext'
+import { ground } from '@/lib/ground'
 import { cn } from '@/lib/utils'
 
 export type SliceHeaderPrimaryAction = {
@@ -64,6 +65,7 @@ export function SliceHeaderBand({
   return (
     <div
       data-editor-navbar
+      {...ground('sidebar')}
       className={cn(
         'flex w-full shrink-0 items-center gap-3 border-b border-border bg-sidebar px-4 py-2',
         className,

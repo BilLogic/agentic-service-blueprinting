@@ -26,9 +26,9 @@ import {
  * A fourth ad-hoc guard would have made a fourth reader. So this module is the
  * single seam — the decision that one token model is the single style seam:
  * it answers what is declared, where, under which selector, at what value once
- * the cascade has run, and who consumes it — and every rule becomes an
- * assertion against those answers rather than a new file walker. Widen the
- * sampling here and every rule inherits the fix.
+ * the cascade has run in a given subtree, and who consumes it — and every rule
+ * becomes an assertion against those answers rather than a new file walker.
+ * Widen the sampling here and every rule inherits the fix.
  *
  * Three things in this tree defeat the simpler readers it replaces, and each
  * one is why a piece of the parser below looks the way it does:
@@ -375,19 +375,46 @@ export function namesIn(file: string): Set<string> {
 // ---------------------------------------------------------------------------
 
 /**
- * Does this selector list apply to the root element under `theme`?
+ * The subtree an answer is being read for, as the selectors that match it.
+ *
+ * Empty is the root element, which is what every rule asked for until a value
+ * in this system stopped being a property of the page. A role tint is measured
+ * from the surface it is drawn on, and `semantic.css` re-derives the block at
+ * `[data-ground]` for exactly that reason — so "what does this name resolve to"
+ * has a second half now, and the model answers it rather than each rule
+ * re-deriving a subtree's arithmetic in TypeScript beside the CSS.
+ *
+ * A scope is spelled the way the stylesheet spells it, so a rule can take the
+ * scopes it asks about FROM the stylesheet — `rulesDeclaring('--ground')` hands
+ * back every ground the file offers — and never carry a list of its own.
+ */
+export type Scope = readonly string[]
+
+/**
+ * Does this selector list apply to the element `scope` describes under `theme`?
  *
  * `:root`, `.light` and `.dark` all carry specificity (0,1,0), so whichever
  * rule comes last in source order wins — which is the whole mechanism behind
  * the theme flip: `themes/light.css` matches bare `:root`, `:root` matches
  * `<html class="dark">` too, and light imports before dark but after
- * `semantic.css`. Anything more specific, or scoped to a subtree, is not the
- * root cascade and is skipped.
+ * `semantic.css`. Anything more specific, or scoped to a subtree the caller did
+ * not ask about, is skipped.
+ *
+ * A root declaration still applies inside a scope, and that is not a shortcut:
+ * every custom property inherits, so a name the subtree does not re-declare
+ * reaches it with the root's answer. The one reading this cannot give is a name
+ * declared ONLY at the root whose value depends on something the subtree
+ * overrides — inheritance carries the computed value, where this would
+ * substitute afresh. `--ground` is read by the seven tints and by nothing else,
+ * and all seven are inside the block the scope re-declares, so the case does
+ * not arise here; a name added outside that block and reading `--ground` would
+ * be the thing that made it arise.
  */
-function appliesAtRoot(selector: string, theme: Theme): boolean {
+function applies(selector: string, theme: Theme, scope: Scope): boolean {
   if (!selector) return false
   return selector.split(',').some((part) => {
     const trimmed = part.trim()
+    if (scope.includes(trimmed)) return true
     if (trimmed === ':root') return true
     if (trimmed === '.light') return theme === 'light'
     if (trimmed === '.dark') return theme === 'dark'
@@ -441,6 +468,7 @@ export function winningDeclaration(
   name: string,
   theme: Theme,
   medium: Medium = 'screen',
+  scope: Scope = [],
 ): Declaration | undefined {
   const order = new Map(stylesheets().map((sheet) => [sheet.file, sheet.order]))
   let winner: Declaration | undefined
@@ -448,7 +476,7 @@ export function winningDeclaration(
     if (entry.name !== name) continue
     if (!Number.isFinite(order.get(entry.file) ?? Infinity)) continue
     if (!appliesOn(entry.context, medium)) continue
-    if (!appliesAtRoot(entry.selector, theme)) continue
+    if (!applies(entry.selector, theme, scope)) continue
     winner = entry
   }
   return winner
@@ -460,39 +488,42 @@ export function winningDeclaration(
  * Falls back to a `var()`'s own default (`var(--x, 12px)`) when the referenced
  * name resolves to nothing, which is what the browser does. `medium` selects
  * which cascade is being asked about — the screen one by default, the printed
- * one on request.
+ * one on request — and `scope` which subtree, the root by default.
  */
 export function resolveValue(
   name: string,
   theme: Theme,
   medium: Medium = 'screen',
+  scope: Scope = [],
 ): string | undefined {
-  return resolveIn(name, theme, medium, new Set())
+  return resolveIn(name, theme, medium, scope, new Set())
 }
 
 function resolveIn(
   name: string,
   theme: Theme,
   medium: Medium,
+  scope: Scope,
   seen: Set<string>,
 ): string | undefined {
   if (seen.has(name)) return undefined
   seen.add(name)
-  const declaration = winningDeclaration(name, theme, medium)
+  const declaration = winningDeclaration(name, theme, medium, scope)
   if (!declaration) return undefined
-  return substitute(declaration.value, theme, medium, seen)
+  return substitute(declaration.value, theme, medium, scope, seen)
 }
 
 function substitute(
   value: string,
   theme: Theme,
   medium: Medium,
+  scope: Scope,
   seen: Set<string>,
 ): string {
   return value.replace(
     /var\(\s*(--[a-zA-Z0-9-]+)\s*(?:,\s*([^()]*))?\)/g,
     (whole, referenced: string, fallback: string | undefined) => {
-      const resolved = resolveIn(referenced, theme, medium, new Set(seen))
+      const resolved = resolveIn(referenced, theme, medium, scope, new Set(seen))
       if (resolved !== undefined) return resolved
       if (fallback !== undefined) return fallback.trim()
       return whole
@@ -835,8 +866,9 @@ export function resolveColorValue(
   name: string,
   theme: Theme,
   medium: Medium = 'screen',
+  scope: Scope = [],
 ): ColorValue {
-  const value = resolveValue(name, theme, medium)
+  const value = resolveValue(name, theme, medium, scope)
   if (value === undefined) throw new Error(`not declared: ${name}`)
   return parseColor(value, name)
 }
@@ -849,16 +881,22 @@ export function resolveColorValue(
  * quietly measuring as though it were opaque. That silent read is the shape of
  * the defect this vocabulary exists to end — an alpha measured against nothing
  * is a number with no ground under it.
+ *
+ * An OPAQUE token can have the same defect one level up, and `scope` is what
+ * asks about it: a colour derived from the page is a different colour on a
+ * surface that re-derives it, and a rule that only ever read the root would
+ * report the page's answer for every element on the screen.
  */
 export function resolveColor(
   name: string,
   theme: Theme,
-  options: { over?: Rgb; medium?: Medium } = {},
+  options: { over?: Rgb; medium?: Medium; scope?: Scope } = {},
 ): Rgb {
   const { l, c, h, alpha } = resolveColorValue(
     name,
     theme,
     options.medium ?? 'screen',
+    options.scope ?? [],
   )
   const rgb = oklchInGamut(l, c, h)
   if (alpha >= 1) return rgb
