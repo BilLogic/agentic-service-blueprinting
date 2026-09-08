@@ -349,9 +349,14 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
         description = pick_text(entry.get("description"), locale, locales)
         lines.append(f"-- slice: {entry['key']} ({entry['type']})")
         lines.append(f"delete from public.slices where id = {sql_quote(sid)};")
+        # The COLUMN LIST speaks the schema's language, the slice file speaks
+        # its own. `21000116000000` renamed `slices.description` to `summary`
+        # and `slices.origin` to `authorship`, and the document keys did not
+        # move with them — the same split `type` → `kind` and `order` →
+        # `position` already have on the two lines below.
         lines.append(
             "insert into public.slices "
-            "(id, service_id, kind, title, description, actor, locale, origin, position) values ("
+            "(id, service_id, kind, title, summary, actor, locale, authorship, position) values ("
             f"{sql_quote(sid)}, {sql_quote(service_id)}, {sql_quote(entry['type'])}, "
             f"{sql_quote(title)}, {sql_quote(description)}, {sql_quote(entry.get('actor'))}, "
             f"{sql_quote(locale)}, {sql_quote(entry.get('origin', 'generated'))}, {int(entry.get('order', 0))});"
