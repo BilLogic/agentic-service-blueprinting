@@ -18,13 +18,13 @@ export type VersionMode = 'blank' | 'duplicate'
  * database rejected, so half the dropdown could not be submitted — the app
  * could not create the data it was already showing.
  *
- * Keep this in step with the constraint. If a new type is wanted, the
+ * Keep this in step with the constraint. If a new kind is wanted, the
  * constraint changes first.
  */
 export const PATH_KINDS = ['happy', 'variant', 'exception'] as const
 export type PathKind = (typeof PATH_KINDS)[number]
 
-export const PATH_TYPE_LABELS: Record<PathKind, string> = {
+export const PATH_KIND_LABELS: Record<PathKind, string> = {
   happy: 'Happy path',
   variant: 'Variant',
   exception: 'Exception',

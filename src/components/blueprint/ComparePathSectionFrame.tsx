@@ -1,9 +1,9 @@
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { PathKindBadge } from '@/components/blueprint/PathKindBadge'
 import {
-  getPathTypeSectionBorderStyle,
-  shouldShowPathTypeBadge,
-} from '@/lib/pathTypeTheme'
+  getPathKindSectionBorderStyle,
+  shouldShowPathKindBadge,
+} from '@/lib/pathKindTheme'
 import {
   blueprintPanelLabelRailColor,
   blueprintPanelSectionFillColor,
@@ -43,7 +43,7 @@ type ComparePathSectionFrameProps = {
    * Overview mode: prefer a path-type badge for generic names (Happy Path, etc.).
    * Named paths (Set Goals, …) always show their title.
    */
-  showPathTypeBadge?: boolean
+  showPathKindBadge?: boolean
   /** Compare uses extra top inset for the title badge; service uses uniform inset. */
   variant?: 'compare' | 'service'
   /** Row-axis labels sit outside the path boundary in every arrangement. */
@@ -55,16 +55,16 @@ export function ComparePathSectionFrame({
   blueprint,
   compact,
   showTitle = true,
-  showPathTypeBadge = false,
+  showPathKindBadge = false,
   variant = 'compare',
   extraTopInset = 0,
   excludeLabelRail = false,
 }: ComparePathSectionFrameProps) {
   const { path } = blueprint
-  const pathBorder = getPathTypeSectionBorderStyle(path.kind, path)
+  const pathBorder = getPathKindSectionBorderStyle(path.kind, path)
   const { borderColor, borderStyle, borderWidth } = pathBorder
   const sectionFill = blueprintPanelSectionFillColor()
-  const useTypeBadge = showPathTypeBadge && shouldShowPathTypeBadge(path)
+  const useTypeBadge = showPathKindBadge && shouldShowPathKindBadge(path)
   const labelAxisOffset = excludeLabelRail
     ? variant === 'service'
       ? LANE_COLUMN_WIDTH

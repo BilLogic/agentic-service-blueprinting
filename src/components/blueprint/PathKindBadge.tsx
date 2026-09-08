@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react'
 import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { Badge } from '@/components/ui/badge'
-import { getBlueprintFillStyle, PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
-import { PATH_TYPE_LABELS, PATH_TYPE_SHORT_LABELS } from '@/lib/pathTypeTheme'
+import { getBlueprintFillStyle, PATH_KIND_COLORS } from '@/lib/pathColorTheme'
+import { PATH_KIND_LABELS, PATH_KIND_SHORT_LABELS } from '@/lib/pathKindTheme'
 import { cn } from '@/lib/utils'
 import type { PathKind } from '@/types/database'
 
-type PathTypeBadgeProps = {
+type PathKindBadgeProps = {
   pathKind: PathKind
   summary?: string | null
   compact?: boolean
@@ -23,13 +23,13 @@ export function PathKindBadge({
   className,
   style,
   side = 'top',
-}: PathTypeBadgeProps) {
-  const label = PATH_TYPE_SHORT_LABELS[pathKind]
+}: PathKindBadgeProps) {
+  const label = PATH_KIND_SHORT_LABELS[pathKind]
 
   return (
     <PathSummaryTooltip
       summary={summary}
-      pathName={PATH_TYPE_LABELS[pathKind]}
+      pathName={PATH_KIND_LABELS[pathKind]}
       side={side}
     >
       <Badge
@@ -49,7 +49,7 @@ export function PathKindBadge({
         // misses PATH_COLOR_REGISTRY and falls into the hash branch for
         // `alternative` and `named`.
         style={{
-          ...getBlueprintFillStyle(PATH_TYPE_COLORS[pathKind]),
+          ...getBlueprintFillStyle(PATH_KIND_COLORS[pathKind]),
           ...style,
         }}
       >

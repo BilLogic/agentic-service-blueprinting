@@ -24,7 +24,7 @@ import {
   getPathDashArrayFromKey,
   pathColorKeyToMarkerSuffix,
 } from '@/lib/pathColorTheme'
-import { getPathKindArrowColor } from '@/lib/pathTypeTheme'
+import { getPathKindArrowColor } from '@/lib/pathKindTheme'
 import { cn } from '@/lib/utils'
 import type { BlueprintCellDependency } from '@/types/blueprint'
 import type { PathKind } from '@/types/database'

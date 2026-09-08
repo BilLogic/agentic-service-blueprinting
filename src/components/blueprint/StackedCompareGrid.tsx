@@ -61,7 +61,7 @@ export function StackedCompareGrid({
     [rows],
   )
 
-  const showPathTypeBadge = Boolean(sectionTitleLabel)
+  const showPathKindBadge = Boolean(sectionTitleLabel)
 
   if (blueprints.length === 0) {
     return (
@@ -106,7 +106,7 @@ export function StackedCompareGrid({
               scrollContainerRef={scrollContainerRef}
               scenarioName={scenarioName}
               phaseName={phaseName}
-              showPathTypeBadge={showPathTypeBadge}
+              showPathKindBadge={showPathKindBadge}
             />
           </Fragment>
         ))}

@@ -17,7 +17,7 @@ import { createPath, duplicatePath } from '@/lib/authoringRpc'
 import { errorMessage } from '@/lib/utils'
 import {
   PATH_KINDS,
-  PATH_TYPE_LABELS,
+  PATH_KIND_LABELS,
   describeVersionOutcome,
   validateDraftVersion,
   type DraftVersion,
@@ -147,7 +147,7 @@ export function CreateVersionDialog({
                   className="h-7 text-xs"
                   onClick={() => set('pathKind', type as PathKind)}
                 >
-                  {PATH_TYPE_LABELS[type]}
+                  {PATH_KIND_LABELS[type]}
                 </Button>
               ))}
             </div>

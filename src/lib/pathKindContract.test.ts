@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { BLUEPRINT_ARROW_PATH_TYPES } from '@/components/blueprint/BlueprintArrowMarkerDefs'
+import { BLUEPRINT_ARROW_PATH_KINDS } from '@/components/blueprint/BlueprintArrowMarkerDefs'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'
-import { PATH_TYPE_ARROW_COLORS, PATH_TYPE_COLORS } from '@/lib/pathColorTheme'
-import { PATH_TYPE_LABELS, PATH_TYPE_SHORT_LABELS } from '@/lib/pathTypeTheme'
+import { PATH_KIND_ARROW_COLORS, PATH_KIND_COLORS } from '@/lib/pathColorTheme'
+import { PATH_KIND_LABELS, PATH_KIND_SHORT_LABELS } from '@/lib/pathKindTheme'
 import { PATH_KINDS } from '@/lib/versionValidation'
 import type { PathKind as DatabasePathKind } from '@/types/database'
 
@@ -35,18 +35,18 @@ import type { PathKind as DatabasePathKind } from '@/types/database'
 /** Every array-shaped path-kind roster the app iterates. */
 const ROSTERS: Record<string, readonly string[]> = {
   'versionValidation PATH_KINDS': PATH_KINDS,
-  BLUEPRINT_ARROW_PATH_TYPES,
+  BLUEPRINT_ARROW_PATH_KINDS,
 }
 
 /** Every compiler-guarded `Record<PathKind, …>`, keyed on the same vocabulary. */
 const KIND_KEYED_MAPS: Record<string, Record<string, unknown>> = {
-  'versionValidation PATH_TYPE_LABELS': PATH_TYPE_LABELS,
-  PATH_TYPE_SHORT_LABELS,
-  PATH_TYPE_COLORS,
-  PATH_TYPE_ARROW_COLORS,
+  'versionValidation PATH_KIND_LABELS': PATH_KIND_LABELS,
+  PATH_KIND_SHORT_LABELS,
+  PATH_KIND_COLORS,
+  PATH_KIND_ARROW_COLORS,
 }
 
-const kindVocabulary = new Set(Object.keys(PATH_TYPE_LABELS))
+const kindVocabulary = new Set(Object.keys(PATH_KIND_LABELS))
 
 describe('the path-kind rosters', () => {
   it('lists each kind once', () => {
