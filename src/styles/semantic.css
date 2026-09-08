@@ -419,13 +419,14 @@
   --sidebar-accent-foreground: var(--accent-foreground);
 
   /*
-   * Sidebar selection language (nav plan D8). Hover and selected used to be
-   * the same fill, which is why a selected row was indistinguishable from a
-   * hovered one. Now: hover keeps `--sidebar-accent`, the neutral elevation
-   * lift shadcn and Supabase both name; selected is a brand tint plus a
-   * full-chroma left rail; and a row that merely *contains* the selection
-   * gets the marker dot. There is no `--sidebar-hover` — Supabase has no such
-   * token, and ours was a verbatim alias of `--sidebar-accent`.
+   * Sidebar selection language: hover and selected are distinguished, and
+   * this is how. They used to be the same fill, which is why a selected row
+   * was indistinguishable from a hovered one. Now: hover keeps
+   * `--sidebar-accent`, the neutral elevation lift shadcn and Supabase both
+   * name; selected is a brand tint plus a full-chroma left rail; and a row
+   * that merely *contains* the selection gets the marker dot. There is no
+   * `--sidebar-hover` — Supabase has no such token, and ours was a verbatim
+   * alias of `--sidebar-accent`.
    */
   --sidebar-selected: oklch(from var(--ring) l c h / 0.16);
   --sidebar-selected-foreground: var(--foreground);
