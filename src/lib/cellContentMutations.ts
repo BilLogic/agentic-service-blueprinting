@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { EntityStatus } from '@/lib/entityStatus'
 import type { CellResource } from '@/types/blueprint'
 import type { Database, Json } from '@/types/database'
 import { recordChange } from '@/lib/authoringSession'
@@ -80,6 +81,15 @@ export type CellContentUpdate = {
   summary: string
   owner: string
   perceivedOwner: string
+  /**
+   * How far along the thing this cell describes is.
+   *
+   * Required rather than optional, and that is the point: `previous` is this
+   * same type, so a caller that captures an inverse has to capture the status
+   * with it. An optional field would have let a revert restore four fields
+   * and leave the fifth where the edit put it, and report "taken back".
+   */
+  status: EntityStatus
 }
 
 /**
@@ -89,6 +99,8 @@ export type CellContentUpdate = {
  * the same reason the spec columns do: the panel can edit what a cell *says*
  * without that opening the cell's position — path, lane, step — to the same
  * path. Where a cell sits is structure, and structure goes through the RPCs.
+ * `status` is granted the same way, by the migration that added the column
+ * against the editors that would follow — this is one of them.
  *
  * `content` is the one field that is never nulled. A cell with no text is a
  * blank box on the grid that cannot be told apart from a gap in the blueprint,
@@ -123,6 +135,9 @@ export async function updateCellContent(
       summary: update.summary.trim() || null,
       owner: update.owner.trim() || null,
       perceived_owner: update.perceivedOwner.trim() || null,
+      // Never null: the column is `not null default 'live'`, and a cell with
+      // no status would read as unassessed rather than current.
+      status: update.status,
     })
     .eq('id', cellId)
     .select('id')
