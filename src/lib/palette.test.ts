@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
-import { CELL_STEP } from '@/lib/blueprintCellStyle'
+import {
+  BLUEPRINT_LANE_ROLES,
+  CELL_STEP,
+  TOUCHPOINT_TONES,
+} from '@/lib/blueprintCellStyle'
 import {
   PATH_TYPE_COLORS,
   getPathColor,
@@ -222,18 +226,23 @@ describe('brand fill', () => {
 })
 
 describe('blueprint cells', () => {
-  // role → family, mirroring the [data-blueprint-lane] rules in blueprint.css.
+  /*
+   * role → family, read off the `[data-blueprint-lane]` rules rather than
+   * retyped beside them.
+   *
+   * The role half of a hand-typed pair was never read — every assertion below
+   * takes the family and ignores the name — so the list could only ever be
+   * measured against itself: a lane whose rule was missing from
+   * `blueprint.css` went unmeasured while nine contrast checks passed against
+   * the families the list still named. Reading the rules measures what is
+   * drawn, and `interaction states` below holds the set of them to
+   * `BLUEPRINT_LANE_ROLES`.
+   */
   const lanes: ReadonlyArray<readonly [string, string]> = [
-    ['storyboard', 'slate'],
-    ['evidence', 'blue'],
-    ['actor', 'green'],
-    ['frontstage-touchpoint', 'violet'],
-    ['frontstage-action', 'pink'],
-    ['backstage-touchpoint', 'lime'],
-    ['backstage-action', 'orange'],
-    ['support', 'amber'],
-    ['partner-action', 'gray'],
-  ]
+    ...stylesheet('blueprint.css').text.matchAll(
+      /\[data-blueprint-lane='([a-z-]+)'\] \{[^}]*--background-blueprint-cell:\s*var\(--color-([a-z]+)-\d+\)/g,
+    ),
+  ].map(([, role, family]) => [role, family] as const)
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
     it.each(lanes)('%s: ring reads against its own surface', (_lane, family) => {
@@ -485,9 +494,9 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
  * a reason beyond the shape of one regex.
  */
 describe.each([
-  ['lane', 9],
-  ['tone', 7],
-] as const)('interaction states: %s', (attr, expectedCount) => {
+  ['lane', BLUEPRINT_LANE_ROLES],
+  ['tone', TOUCHPOINT_TONES],
+] as const)('interaction states: %s', (attr, roster) => {
   const css = stylesheet('blueprint.css').text
   /** Every `[data-blueprint-*]` rule, as role → { property: family-step }. */
   const roleRules = [
@@ -519,9 +528,13 @@ describe.each([
   ]
 
   it('defines every state on every role', () => {
-    // The count is asserted so a role added to the type without a CSS block
-    // fails here rather than rendering an unstyled row.
-    expect(roleRules).toHaveLength(expectedCount)
+    // The exported roster is asserted, not merely counted. A count of nine
+    // cannot tell nine roles apart from nine typos, and the attribute these
+    // selectors match is written by `blueprintLaneAttrs` /
+    // `blueprintToneAttrs` from a member of that roster — so a role added to
+    // the type without a CSS block, and a selector renamed out of the
+    // vocabulary, both fail here rather than rendering an unstyled row.
+    expect(roleRules.map(({ role }) => role).sort()).toEqual([...roster].sort())
     for (const { role, props } of roleRules) {
       for (const key of REQUIRED) {
         expect(`${role}:${key}`).toBe(props[key] ? `${role}:${key}` : 'MISSING')

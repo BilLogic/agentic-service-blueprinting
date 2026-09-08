@@ -39,6 +39,14 @@ export type BlueprintLaneRole =
   /** A party outside the service, acting where the customer can see them. */
   | 'partner-action'
 
+/**
+ * The same roles as a list, for the one question the union cannot answer: the
+ * union constrains what `blueprintLaneAttrs` may write into the attribute, and
+ * says nothing about which `[data-blueprint-lane]` rules blueprint.css
+ * declares. `palette.test.ts` compares the two, so a rule missing from the
+ * stylesheet — or a selector renamed out of the vocabulary — fails there
+ * rather than rendering an unstyled row.
+ */
 export const BLUEPRINT_LANE_ROLES = [
   'storyboard',
   'evidence',
