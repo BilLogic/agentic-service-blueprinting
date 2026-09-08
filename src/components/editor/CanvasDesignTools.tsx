@@ -215,7 +215,7 @@ export function CanvasDesignTools() {
                 className="pointer-events-auto h-auto cursor-help gap-1 px-2 py-0.5 text-3xs"
               >
                 <span
-                  className="size-1.5 rounded-full bg-warning-600"
+                  className="size-1.5 rounded-full bg-warning"
                   aria-hidden
                 />
                 preview — nothing saves
