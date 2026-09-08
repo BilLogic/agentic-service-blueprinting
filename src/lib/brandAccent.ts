@@ -1,3 +1,4 @@
+import { BRAND, type Brand } from '@/config'
 import { hexToRgb, oklchFromSrgb } from '@/lib/oklch'
 
 /**
@@ -82,10 +83,17 @@ export function brandAccentHue(accent: string): number {
  * parameter cannot express it: passing `undefined` explicitly would fall
  * through to the default and paint the template's own dial, which is the same
  * class of silently-wrong as the unread field this replaces.
+ *
+ * The BLOCK does default, to `BRAND` — the installation's own, from
+ * `config.ts` — so a caller holding no config can ask for the accent this
+ * build is branded on: a host's bootstrap, running before React exists, is the
+ * case (#230). That default is not the trap above, because it is reached only
+ * by omitting the argument. A block that carries the field as `undefined`
+ * still means no accent, and still writes nothing.
  */
 export function applyBrandAccent(
   root: StyleTarget,
-  brand: { accent?: string },
+  brand: Brand = BRAND,
 ): number | undefined {
   if (brand.accent === undefined) return undefined
   const hue = brandAccentHue(brand.accent)
