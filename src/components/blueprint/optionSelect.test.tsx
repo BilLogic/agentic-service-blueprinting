@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Status is the same control as the selects beside it (#256).
+ * Status is the same control as the selects beside it.
  *
  * The bug: the cell panel's Status row was a native `<select>` between two
  * designed ones — the browser's own chevron and line box, `h-7` clipping

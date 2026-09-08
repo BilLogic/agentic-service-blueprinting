@@ -78,7 +78,7 @@ export function DeleteSliceDialog({
 }
 
 /**
- * Seeds the base blueprint view from a `?slice=` deep link (nav plan D5).
+ * Seeds the base blueprint view from a `?slice=` deep link.
  * The slice's scenario is only known after the slice, its cells, and their
  * owning scenario resolve, so this waits for `useSliceBlueprint` rather than
  * seeding from the URL. Nothing here touches the open tab's camera: the tab

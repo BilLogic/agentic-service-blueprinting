@@ -77,8 +77,9 @@ function useLaneSources() {
 const EMPTY_DRAFT: DraftBlueprint = {
   phaseId: null,
   name: '',
-  // One vocabulary now: 21000116000000 retired `side-by-side`/`integrated`,
-  // so the token the client says is the token the column stores.
+  // One vocabulary now: the migration that gave every layout one spelling
+  // retired `side-by-side`/`integrated`, so the token the client says is
+  // the token the column stores.
   layout: 'stacked',
   laneSourcePathId: null,
   stepCount: 5,

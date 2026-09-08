@@ -6,12 +6,12 @@ import {
 } from '@/lib/serviceSlug'
 
 /*
- * The route slug is a service's own `slug` column (21000130000000), with a
- * name-derived fallback (mirroring the database's `key_slug`) for a row whose
- * column is null. These pin that the column wins over the name — so a rename
- * does not move the URL — that the fallback still derives when the column is
- * absent, and the slug -> service resolution the router turns a `/<slug>` deep
- * link into.
+ * The route slug is a service's own `slug` column, with a name-derived
+ * fallback (mirroring the database's `key_slug`) for a row whose column is
+ * null. These pin that the column wins over the name — so a rename does not
+ * move the URL — that the fallback still derives when the column is absent,
+ * and the slug -> service resolution the router turns a `/<slug>` deep link
+ * into.
  */
 
 describe('slugifyServiceName', () => {

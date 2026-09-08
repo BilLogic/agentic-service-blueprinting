@@ -31,7 +31,7 @@ type BlueprintTouchpointCellProps = {
   /** Passed through so an unbuilt touchpoint does not read as a live one. */
   status?: EntityStatus | null
   /**
-   * A placement whose touchpoint the registry lacks (#112): the same face,
+   * A placement whose touchpoint the registry lacks: the same face,
    * dashed, so a reader sees the name is the author's and not the catalog's.
    */
   nameOnly?: boolean

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The identity bar reserves its height, and shows which of four states it is
- * in (#237).
+ * in.
  *
  * The bug this file exists against: `ServiceOverviewHeader` returned `null`
  * while `useServiceSpec` was in flight, so the bar had NO height and the
@@ -23,13 +23,13 @@
  * reporting `ready` whenever `query.data !== undefined` — so it is pinned
  * here rather than built.
  *
- * The same seam carries the KIND BADGE (#240): a reader could not tell a
+ * The same seam carries the KIND BADGE: a reader could not tell a
  * scenario bar from a phase bar, because both are a bold name over a
  * sentence. What is asserted is what a reader can observe — the word that
  * appears, where it appears relative to the name, what hovering and focusing
  * it disclose, and what clicking it does NOT do — never which component drew
  * it. The two claims meet on height: the badge shares the title's row, and
- * the box above must still measure what #237 pinned it to.
+ * the box above must still measure what the height claim pinned it to.
  *
  * What this file cannot see: jsdom performs no layout, so "a 20px badge fits
  * a 24px row" is not measurable here. The pinned box is measurable, and it is
@@ -286,7 +286,7 @@ const tooltipSaying = (text: string) =>
 
 describe('the bar arrives with the shell around it', () => {
   /*
-    The bug (#253): the service query is the fastest thing on the screen, so
+    The bug: the service query is the fastest thing on the screen, so
     the bar painted its name, its kind and its whole summary over a sidebar
     still showing boot skeletons and a canvas still saying "Loading
     blueprints…". Three surfaces, three beats, and the one that finished first
@@ -455,7 +455,7 @@ describe('the kind badge', () => {
 /* ----------------------------------------------- the title is the opener */
 
 /**
- * The z-order dead-click, from the reader's side (#301/#305).
+ * The z-order dead-click, from the reader's side.
  *
  * The name used to paint above its own invisible opener, so a click on the
  * word — the natural target — was swallowed and never reached the button.

@@ -12,7 +12,7 @@ export type EditorView = 'landing' | 'home' | 'detail'
  * How a scenario's paths are drawn — the value `scenarios.layout` holds, no
  * translation between. `stacked` is one full band per path on a shared step
  * axis; `merged` is the paths combined into ONE blueprint. The header toggle
- * writes it (21000117000000), so a scenario left merged opens merged.
+ * writes it, so a scenario left merged opens merged.
  */
 export type SlideViewType = 'stacked' | 'merged'
 
@@ -149,7 +149,8 @@ export function getBlueprintScenarioId(slide: NavItem): string | undefined {
  * outside the CHECK constraint falls back to the stacked view rather than
  * crashing a render, which is the behaviour the old vocabulary map provided and
  * the only part of it worth keeping. `single`, which the column held until
- * 21000117000000, lands here too: a one-path scenario is stacked with one band.
+ * the migration that narrowed the layout column to `stacked` and `merged`,
+ * lands here too: a one-path scenario is stacked with one band.
  */
 export function asSlideViewType(raw: string): SlideViewType {
   return raw === 'merged' ? 'merged' : 'stacked'

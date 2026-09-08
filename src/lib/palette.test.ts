@@ -39,11 +39,12 @@ import {
  * The colour maths, the ramps and the cascade all come from `tokenModel` now.
  * This file used to carry its own resolver — HSL and OKLCH conversions, a
  * `colors.css` reader, a contrast solver, and a dial reader that took the
- * first `--name:` match in one theme file. That last one is the shape ADR 6
- * retires: it could tell you what a file said and never what the cascade
- * produced, which is a different number wherever more than one rule declares a
- * name. The maths below is unchanged; the reader is shared, so widening it
- * widens every rule at once.
+ * first `--name:` match in one theme file. That last one is the shape retired
+ * by the decision that one token model is the single style seam: it could tell
+ * you what a file said and never what the cascade produced, which is a
+ * different number wherever more than one rule declares a name. The maths
+ * below is unchanged; the reader is shared, so widening it widens every rule
+ * at once.
  */
 const THEMES = { light: palette('light'), dark: palette('dark') }
 

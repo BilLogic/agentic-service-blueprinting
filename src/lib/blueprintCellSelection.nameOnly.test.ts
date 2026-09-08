@@ -1,5 +1,5 @@
 /**
- * #112 — a placement the registry lacks is still a face on the board.
+ * A placement the registry lacks is still a face on the board.
  *
  * The selection seam used to read a cell's touchpoints by splitting its
  * `content` string, and that reading cannot see a name-only placement: the

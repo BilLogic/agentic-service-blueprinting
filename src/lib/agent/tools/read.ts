@@ -147,12 +147,13 @@ export async function listLanes(client: Client): Promise<string> {
  * written as. Read it before inventing an audience: `owner` and `Blueprint
  * owner` are one person, and the aliases column is where that is recorded.
  *
- * The cast is a DEPLOYMENT-LEVEL catalog (ADR 0003) — no stakeholder carries a
- * `service_id`. Scoped to one service, membership is IMPLICIT and derived by
- * JOIN: the actors that service's lanes actually pick
- * (`serviceStakeholderIds`), not a `service_id` lookup that does not exist.
- * `all` — every single-service deployment included — returns the whole catalog,
- * which under the shared model is the correct unscoped read.
+ * The cast is a DEPLOYMENT-LEVEL catalog, because a service owns its journey
+ * and shares the catalog — no stakeholder carries a `service_id`. Scoped to
+ * one service, membership is IMPLICIT and derived by JOIN: the actors that
+ * service's lanes actually pick (`serviceStakeholderIds`), not a `service_id`
+ * lookup that does not exist. `all` — every single-service deployment
+ * included — returns the whole catalog, which under the shared model is the
+ * correct unscoped read.
  */
 export async function listStakeholders(
   client: Client,

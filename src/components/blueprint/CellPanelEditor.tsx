@@ -470,7 +470,7 @@ function CellPanelEditorForm({
       }
 
       invalidateQueries('service-phases')
-      // Content edit: only the edited path's scenario is stale (todo 029).
+      // Content edit: only the edited path's scenario is stale.
       // Existing-cell edits mount with draft undefined and don't know their
       // path, so they fall back to invalidating every scenario's blueprint.
       if (draft) {
@@ -537,7 +537,7 @@ function CellPanelEditorForm({
         <Input
           value={form.content}
           autoFocus={cellId === null}
-          // The cell-content budget (todo 026): a cell is read at a glance,
+          // The cell-content budget: a cell is read at a glance,
           // and the lane grid's row rhythm assumes ~5-6 wrapped lines.
           // Detail belongs in Summary. Same cap the agent write path
           // enforces (cellContentLimits.ts).

@@ -55,7 +55,7 @@ export type CellTouchpoint = {
   id: string | null
   /**
    * The registry entry this placement names, or null for a NAME-ONLY
-   * placement — one whose touchpoint the registry lacks (#112). Drawn
+   * placement — one whose touchpoint the registry lacks. Drawn
    * dashed on the board, offered a "Link to registry" action in the panel.
    * Also null on a hand-written fixture, which has no registry at all.
    */
@@ -66,7 +66,7 @@ export type CellTouchpoint = {
   /**
    * The registry entry's stock icon / logo URL, or absent where the registry
    * has none. A property of the touchpoint the service owns, authored once and
-   * read off the row (#326) — never a tool name matched against a table baked
+   * read off the row — never a tool name matched against a table baked
    * into the renderer. Optional so a fallback board, which has no registry,
    * simply omits it.
    */
@@ -76,7 +76,7 @@ export type CellTouchpoint = {
    * Core or peripheral AT THIS MOMENT, or null for the unmarked majority.
    * Null is a state of its own, not a quiet `peripheral` — see
    * `src/lib/touchpointRole.ts`. What the placement points at is in the
-   * cell's resources, carrying this placement's id (#111).
+   * cell's resources, carrying this placement's id.
    */
   role: TouchpointRoleValue
 }
@@ -96,7 +96,7 @@ export type ResourceKind = 'link' | 'attachment'
 
 export type CellResource = {
   /**
-   * The row's id, so a later write can name the row it means (#110). Null
+   * The row's id, so a later write can name the row it means. Null
    * on a fallback board, which has no rows to name.
    */
   id: string | null

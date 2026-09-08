@@ -70,16 +70,16 @@ const RPC_BACKED = new Set([
   'rename_path',
   'rename_phase',
   'rename_scenario',
-  // #280. The header toggle's write, self-inverse with the previous layout,
-  // so the default branch calls it back as is.
+  // The header toggle's write, self-inverse with the previous layout, so
+  // the default branch calls it back as is.
   'update_scenario_layout',
-  // #273. The inverse of featuring a resource writes the captured
-  // {id, featured} pairs back, and is a function reached through the default
-  // branch. (`set_featured_resource` itself is never a revert target — its
-  // inverse is this one — so it is not listed here.)
+  // The inverse of featuring a resource writes the captured {id, featured}
+  // pairs back, and is a function reached through the default branch.
+  // (`set_featured_resource` itself is never a revert target — its inverse
+  // is this one — so it is not listed here.)
   'restore_featured_resources',
-  // #277. A placement's identity and its removal are both one function with
-  // a returned inverse; the inverse of each is itself an RPC.
+  // A placement's identity and its removal are both one function with a
+  // returned inverse; the inverse of each is itself an RPC.
   'set_placement_touchpoint',
   'restore_placement',
 ])

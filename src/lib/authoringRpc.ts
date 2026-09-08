@@ -12,9 +12,9 @@ type Client = SupabaseClient<Database>
 /**
  * The app's entire structural write surface.
  *
- * Every function here is a `security definer` RPC from
- * `20260731001000_blueprint_authoring_operations.sql`. There is no table-level
- * INSERT or DELETE grant behind any of them — the app holds *operations*, not
+ * Every function here is a `security definer` RPC from the migration that
+ * defined the blueprint authoring operations. There is no table-level INSERT
+ * or DELETE grant behind any of them — the app holds *operations*, not
  * tables, which is what lets an anonymous reader coexist with an authoring
  * session in the same schema.
  *
@@ -75,11 +75,12 @@ export type DependencyKind = 'leads_to' | 'enables'
  * What the column accepts, which is now what the client says.
  *
  * `side-by-side` and `integrated` were the historical tokens, translated at a
- * read seam and a write seam because the rows had not moved. `21000116000000`
- * moved them, so both seams and the module holding them are gone: one
- * vocabulary, and the CHECK constraint is the thing that enforces it.
+ * read seam and a write seam because the rows had not moved. The migration
+ * that gave each thing one spelling moved them, so both seams and the module
+ * holding them are gone: one vocabulary, and the CHECK constraint is the thing
+ * that enforces it.
  *
- * `merged` joined at `21000117000000`, when `single` left: a scenario is
+ * `merged` joined in a later migration, when `single` left: a scenario is
  * stored as what it opens as, and the header toggle writes it.
  */
 export type Layout = 'stacked' | 'merged'
@@ -187,10 +188,10 @@ function deriveRevert(
       // *different* lane into that name and it deleted that one instead —
       // across every path of the scenario, cells included.
       //
-      // The fallback is the old inverse, and it is load-bearing until
-      // `20260807130000_add_lane_returns_ids.sql` is applied: before that
-      // migration `add_lane` returns void, so there are no ids to key on and
-      // a name-keyed undo is better than none.
+      // The fallback is the old inverse, and it is load-bearing until the
+      // migration that made `add_lane` return the ids it created is applied:
+      // before that migration `add_lane` returns void, so there are no ids to
+      // key on and a name-keyed undo is better than none.
       return Array.isArray(data) && data.length > 0
         ? { fn: 'remove_lanes', args: { lane_ids: data } }
         : {
@@ -289,9 +290,9 @@ export function createScenario(
  *
  * There is no client-side composition that produces this: `duplicatePath` is
  * scoped to its source's scenario and `createScenario` mints empty columns.
- * See `20260807120000_duplicate_scenario.sql` for exactly what is and is not
- * copied — notably `cell_key`, which is authored and so is left null on the
- * copies, the same as every other app-created cell.
+ * See the migration that defines `duplicate_scenario` for exactly what is and
+ * is not copied — notably `cell_key`, which is authored and so is left null on
+ * the copies, the same as every other app-created cell.
  */
 export function duplicateScenario(
   client: Client,
@@ -405,8 +406,8 @@ export function addStep(
  *
  * Returns every id it created — an array and not a scalar for that same
  * reason. The ids are what the captured inverse keys on; see `deriveRevert`.
- * Empty against a database without `20260807130000`, where this still
- * returns void.
+ * Empty against a database from before the migration that made this return
+ * its ids, where it still returns void.
  */
 export async function addLane(
   client: Client,
@@ -514,7 +515,7 @@ export function setCellDependency(
     sourceCellId: string
     targetCellId: string
     kind?: DependencyKind
-    /** The word on the arrow. `cell_dependencies.name` since `21000116000000`. */
+    /** The word on the arrow, held in `cell_dependencies.name`. */
     name?: string | null
     note?: string | null
   },

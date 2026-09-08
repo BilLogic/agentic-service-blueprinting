@@ -22,10 +22,10 @@
  * the seam has always asked for and still works.
  *
  * A deployment that MOUNTS this package cannot edit a constant inside a module
- * it imports (ADR 0013's import-not-overlay), so it calls
- * `configureStorageNamespace('acme-')` instead — and it must do so BEFORE it
- * imports the app. That ordering is not a preference. Six modules compute
- * their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
+ * it imports — by design it imports the template rather than overlaying it —
+ * so it calls `configureStorageNamespace('acme-')` instead, and it must do so
+ * BEFORE it imports the app. That ordering is not a preference. Six modules
+ * compute their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
  * `agent/placement.ts`, `devPortal.ts`, `mobilePathMemory.ts`,
  * `components/editor/EditorShell.tsx`), and two of those go further and READ
  * localStorage at module scope to seed a `useSyncExternalStore` snapshot. All

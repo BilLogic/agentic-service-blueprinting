@@ -8,7 +8,7 @@
 export const ORG_NAME = 'Agentic Service Blueprint'
 
 /**
- * The brand block a deployment writes its own values into (#230).
+ * The brand block a deployment writes its own values into.
  *
  * This module is already the file an instantiation edits — `ORG_NAME` is here
  * for exactly that reason — so it is also where the accent belongs. The

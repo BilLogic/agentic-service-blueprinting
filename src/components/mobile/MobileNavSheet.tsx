@@ -16,9 +16,9 @@ import type { NavItem } from '@/types/nav'
 import type { Slice } from '@/types/database'
 
 /**
- * The drawer IS the index (plan 2026-08-16-002 Phase 3): a rail + panel,
- * the same IA as the desktop sidebar — and the same COMPONENTS. Rows are
- * `NavRow`/`NavChildren` from SidebarNav, so the phone inherits the desktop
+ * The drawer IS the index: a rail + panel, the same IA as the desktop
+ * sidebar — and the same COMPONENTS. Rows are `NavRow`/`NavChildren` from
+ * SidebarNav, so the phone inherits the desktop
  * disclosure vocabulary wholesale: chevron in a fixed left slot (always
  * visible on coarse pointers), children indent by one chevron slot. One
  * divergence from desktop, decided 2026-08-17: a phase row is purely an

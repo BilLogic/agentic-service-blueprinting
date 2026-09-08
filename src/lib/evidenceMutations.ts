@@ -36,8 +36,8 @@ export type EvidenceDraft = {
  * Evidence writes, in the session ledger like every other write.
  *
  * Evidence was the one table edited around the funnel — an added source never
- * appeared in the session log and could not be taken back (decision
- * 2026-08-06, access-model plan F4: close the gap rather than document it).
+ * appeared in the session log and could not be taken back (the access-model
+ * decision was to close the gap rather than document it).
  * Same shape as `cellContentMutations`: direct table write under the row
  * policies, then `recordChange` with a captured inverse; `record: false` is
  * how a revert's own write stays out of the log.

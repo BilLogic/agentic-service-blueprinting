@@ -66,12 +66,12 @@ export function MobileShell() {
     setPhaseExpanded,
   } = useEditor()
   const { canAgent } = useSupabase()
-  // The SAME tab store the desktop shell uses (todo 025 solution B): slice
-  // and presentation surfaces are tabs here too, so both shells agree about
-  // what is showing, `?slice=` resolution lives in the shared reducer, a
-  // network flap cannot unmount a presentation mid-read (the tab is state,
-  // not a derived query value), and a dead link surfaces the same
-  // missing-slice notice desktop shows.
+  // The SAME tab store the desktop shell uses: slice and presentation
+  // surfaces are tabs here too, so both shells agree about what is showing,
+  // `?slice=` resolution lives in the shared reducer, a network flap cannot
+  // unmount a presentation mid-read (the tab is state, not a derived query
+  // value), and a dead link surfaces the same missing-slice notice desktop
+  // shows.
   const {
     pendingUrlState,
     resolvePending,
@@ -206,7 +206,7 @@ export function MobileShell() {
 
   // Agent-driven navigation closes the sheet first and leaves any slice tab
   // for the base canvas — a jump should be VISIBLE, not land behind an
-  // opaque surface (plan 2026-08-16-002 Phase 4).
+  // opaque surface.
   useEffect(
     () =>
       registerAgentUiBridge(
@@ -287,7 +287,7 @@ export function MobileShell() {
         />
 
         {/* A dead ?slice= link: same notice desktop shows, instead of the
-            link silently doing nothing (todo 025 acceptance). */}
+            link silently doing nothing. */}
         {missingSliceId !== null ? (
           <div className="shrink-0 border-b border-border bg-sidebar px-2 py-1.5">
             <Alert variant="info" className="items-center">
@@ -394,7 +394,7 @@ export function MobileShell() {
       {/* Presenting a slice: full-bleed over everything; Return closes the
           present tab, and the store activates the slice tab beneath it (or
           the base view for a boot ?slice=&mode=present link). The tab is
-          STATE — a network flap cannot unmount this mid-read (todo 025). */}
+          STATE — a network flap cannot unmount this mid-read. */}
       {presentingSliceId ? (
         <div className="fixed inset-0 z-40 bg-background">
           <SlicePresentation

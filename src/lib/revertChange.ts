@@ -116,7 +116,7 @@ export async function executeRevert(
       // Restoring the text brings back the names of any placements the
       // original save removed, but not what was written about them at this
       // moment. This puts it back, and has to run after the content write,
-      // which is what re-creates the rows (#112).
+      // which is what re-creates the rows.
       const removed = revert.args.removed_placements
       if (Array.isArray(removed) && removed.length > 0) {
         await restoreCellTouchpoints(client, cellId, removed as RemovedPlacement[])
@@ -227,7 +227,7 @@ export async function executeRevert(
       // same RPC the editor uses, so the revert lands in one transaction for
       // the reason the edit does. Verbatim rather than rebuilt through the
       // draft validator, which could refuse to restore a url it dislikes.
-      // By id (#110), so the rows themselves come back, not look-alikes;
+      // By id, so the rows themselves come back, not look-alikes;
       // the RPC raises when the cell is gone.
       const cellId = stringArg(revert.args, 'cell_id')
       const resources = revert.args.resources as ResourceRowInput[]

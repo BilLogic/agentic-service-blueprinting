@@ -31,10 +31,11 @@ test('an alias resolves to its row, and to that row’s tone', () => {
 })
 
 /*
-  `21000204000000` left uniqueness to the resolver rather than constraining it,
-  so this is the rule it deferred. A name is an identity and an alias is a
-  memory of one, so the identity wins — and it resolves silently, because a
-  board must draw rather than throw when two rows disagree.
+  The migration that let a touchpoint answer to more than one name left
+  uniqueness to the resolver rather than constraining it, so this is the rule
+  it deferred. A name is an identity and an alias is a memory of one, so the
+  identity wins — and it resolves silently, because a board must draw rather
+  than throw when two rows disagree.
 */
 test('a name beats another row’s alias for the same spelling', () => {
   setTouchpointRegistry([
@@ -64,8 +65,8 @@ test('a name nobody has chosen for hashes, deterministically and the same each t
 
 /*
   A null `aliases` is not the same value as an empty array, and the column is
-  nullable precisely so the two can differ (`21000204000000`). Every reader has
-  to survive the null, and this is the one that would crash on it.
+  nullable precisely so the two can differ. Every reader has to survive the
+  null, and this is the one that would crash on it.
 */
 test('a row with no aliases considered is read, not thrown on', () => {
   setTouchpointRegistry([{ name: 'Notion', tone: 'red', aliases: null }])

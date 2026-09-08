@@ -160,12 +160,13 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     hasDevAuthoringUi() && !isDevAuthoring && session === null
 
   /*
-   * Contract with supabase/migrations/20260818002000_service_account_tier —
-   * an OPTIONAL recipe. NO role claim in the JWT means the recipe was never
-   * adopted, so every signed-in session edits (the template default); an
-   * explicit role other than 'service' means the recipe IS in play and this
-   * session is a viewer. Reading a missing claim as "not a service account"
-   * would lock every adopter who skipped the recipe out of their own data.
+   * Contract with the service-account tier — an OPTIONAL recipe a deployment
+   * adopts by stamping a `role` claim on the sessions that may only read. NO
+   * role claim in the JWT means the recipe was never adopted, so every
+   * signed-in session edits (the template default); an explicit role other
+   * than 'service' means the recipe IS in play and this session is a viewer.
+   * Reading a missing claim as "not a service account" would lock every
+   * adopter who skipped the recipe out of their own data.
    *
    * UX gate only — the RESTRICTIVE policies and RPC guards are the wall.
    */

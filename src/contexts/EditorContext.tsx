@@ -56,10 +56,10 @@ type EditorContextValue = {
   selectPhase: (phaseId: string) => void
   selectScenario: (scenarioId: string) => void
   /**
-   * Seed the base view from a `?slice=` deep link (nav plan D5): select the
-   * slice's scenario and expand its phase so the sidebar behind the tab is
-   * coherent and closing the tab lands somewhere. No-op once the user has
-   * navigated, and once per boot.
+   * Seed the base view from a `?slice=` deep link: select the slice's
+   * scenario and expand its phase so the sidebar behind the tab is coherent
+   * and closing the tab lands somewhere. No-op once the user has navigated,
+   * and once per boot.
    */
   seedBaseSelection: (scenarioId: string) => void
   togglePhaseExpanded: (phaseId: string) => void
@@ -103,7 +103,7 @@ function withPhaseExpanded(
  * The explicit selection/expansion pair behind the sidebar and the camera,
  * shared by the app-level provider and the tab-local scope.
  *
- * Invariants (nav plan D3):
+ * Invariants, settled by the navigation work that made selection explicit:
  * - No selection action touches expansion, and no expansion action touches
  *   selection. Collapsing a phase therefore never moves the camera.
  * - Auto-expanding the selected scenario's phase runs once per scenario
@@ -156,8 +156,8 @@ function useNavSelectionState(slides: NavItem[]) {
     setSelectedScenarioId(null)
   }, [])
 
-  // D5: the deep-linked tab covers the base view, so seeding it moves no
-  // camera — it only decides where the user lands when the tab closes.
+  // The deep-linked tab covers the base view, so seeding it moves no camera —
+  // it only decides where the user lands when the tab closes.
   const seedBaseSelection = useCallback(
     (scenarioId: string) => {
       if (userNavigatedRef.current || baseSelectionSeededRef.current) return

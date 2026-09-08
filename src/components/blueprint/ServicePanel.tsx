@@ -292,7 +292,7 @@ function ServicePanelBody({
       ) : null}
 
       {/*
-        The six examples, authored here and nowhere else (#302). Path has no
+        The six examples, authored here and nowhere else. Path has no
         detail panel of its own, so a per-kind edit home would leave its
         example homeless; one section on the service is where all six live. The
         input labels are the KIND names — they name a kind, not a column, so

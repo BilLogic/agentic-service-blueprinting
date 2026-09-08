@@ -17,7 +17,7 @@ import { hslToRgb, type Rgb } from '@/lib/oklch'
  * rests on: what does this name resolve to, at the root, under this theme.
  *
  * A fourth ad-hoc guard would have made a fourth reader. So this module is the
- * single seam (`docs/adr/0006-one-token-model-is-the-single-style-seam.md`):
+ * single seam — the decision that one token model is the single style seam:
  * it answers what is declared, where, under which selector, at what value once
  * the cascade has run, and who consumes it — and every rule becomes an
  * assertion against those answers rather than a new file walker. Widen the

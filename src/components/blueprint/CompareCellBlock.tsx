@@ -176,9 +176,9 @@ export function CompareCellBlock({
               slotCell: undefined,
             }))
         ).map(({ item, slotCell }, index, all) => {
-          // A touchpoint whose placement the registry lacks is drawn dashed
-          // (#112). Read from the cell the touchpoint belongs to — its own slot
-          // in a merged view, the block's cell otherwise.
+          // A touchpoint whose placement the registry lacks is drawn dashed.
+          // Read from the cell the touchpoint belongs to — its own slot in a
+          // merged view, the block's cell otherwise.
           const placement = touchpointNamed(
             slotCell ? cellTouchpoints(slotCell) : selectionContext?.cellTouchpoints ?? [],
             item,

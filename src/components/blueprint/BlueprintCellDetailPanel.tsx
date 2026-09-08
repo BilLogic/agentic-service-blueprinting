@@ -662,7 +662,7 @@ function BlueprintCellDetailPanelBody() {
   )
 
   /*
-    What the cell leads with (#110): the selected placement's featured
+    What the cell leads with: the selected placement's featured
     attachment is the preview, every featured link — the placement's, then
     the cell's own — is a button named by its host.
   */
@@ -1052,10 +1052,11 @@ function BlueprintCellDetailPanelBody() {
     cellTouchpoints: cellTouchpointList,
     cellResources: cellResourceList,
   })
-  // A featured attachment is the owner's picture (#110); the frame and the
-  // placement's screenshots are the fallback until #111 moves them here.
+  // A featured attachment is the owner's picture; the frame and the
+  // placement's screenshots are the fallback until the work that moves what a
+  // placement points at into the cell's resources brings them here.
   // The stock logo for the touchpoint this panel is about — a string on the
-  // registry row now (#326), not a tool name matched against a table in code.
+  // registry row now, not a tool name matched against a table in code.
   const techLogoUrl = selectedPlacement?.iconUrl?.trim() || null
   const showImages = Boolean(
     (featured.preview || detailImages?.length) && !isStoryboardLane,
@@ -1167,7 +1168,7 @@ function BlueprintCellDetailPanelBody() {
     <div className="flex w-full flex-col items-center gap-3">
       {(() => {
         const frames = detailImages ?? []
-        // A picture is a logo when it IS the touchpoint's registry icon (#326);
+        // A picture is a logo when it IS the touchpoint's registry icon;
         // the filename convention stays a fallback for a logo carried as a
         // placement attachment.
         const isTechLogo = (src: string) =>

@@ -103,8 +103,8 @@ export function SlideStickyHeader({
   ...contentProps
 }: SlideStickyHeaderProps) {
   // Collapsed: the floating navbar carries this header's identity instead —
-  // one chrome lane at any width. The path selector rides along on a SCENARIO
-  // (#305), handed over as `paths`; a phase passes an empty list and the
+  // one chrome lane at any width. The path selector rides along on a
+  // SCENARIO, handed over as `paths`; a phase passes an empty list and the
   // selector self-hides there. The zoom readout is still not folded in.
   const { collapsed } = useSidebarCollapsedState()
   useCollapsedNavSummary(

@@ -5,7 +5,7 @@ import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpo
 
 afterEach(cleanup)
 
-/** #112 — a name-only placement is the same face, dashed. */
+/** A placement whose touchpoint the registry lacks: the same face, dashed. */
 describe('BlueprintTouchpointCell', () => {
   it('draws a name-only placement dashed and says so in the DOM', () => {
     const { container } = render(

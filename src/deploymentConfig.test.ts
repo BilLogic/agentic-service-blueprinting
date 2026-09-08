@@ -13,8 +13,8 @@ import {
 
 describe('asbDefaultConfig', () => {
   /**
-   * The default names three values through constants and inlines none of them
-   * (#230), which is what lets a deployment fork `config.ts` and its own
+   * The default names three values through constants and inlines none of
+   * them, which is what lets a deployment fork `config.ts` and its own
    * `coverContent.ts` instead of this module. Two of the three are absent
    * HERE, on purpose, and this is the assertion that they stay absent: the
    * moment either gains a value in the template, the app repaints — a cover

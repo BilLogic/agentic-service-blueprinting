@@ -5,8 +5,8 @@
  * A placement is one touchpoint used at one cell: the tool, document, channel
  * or artifact named in the cell's text, plus the summary and role that belong
  * to THIS moment rather than to the tool. What it points at — a design link,
- * screenshots — are resources carrying the placement's id (#111), read from
- * the cell's list. The database stores one `cell_touchpoints` row per
+ * screenshots — are resources carrying the placement's id, read from the
+ * cell's list. The database stores one `cell_touchpoints` row per
  * placement.
  *
  * Before that, the same prose lived in the `cells.links` array as an entry
@@ -27,7 +27,7 @@ import { normalizeRole, type TouchpointRoleValue } from '@/lib/touchpointRole'
 export type RawCellTouchpoint = {
   id?: string | null
   position: number
-  /** The registry entry, or null with `name` set — a name-only placement (#112). */
+  /** The registry entry, or null with `name` set — a name-only placement. */
   touchpoint_id?: string | null
   name?: string | null
   summary?: string | null
