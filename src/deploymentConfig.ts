@@ -27,12 +27,15 @@
  * not one, and a seam that overstates its reach is the defect it exists to
  * prevent.
  *
- * WIRED TODAY: `brand.name`, and only that — the app-chrome wordmark reads it
- * (`components/editor/TabStrip.tsx`). `brand.logo`, `brand.accent` and both
- * `content` fields are declared shape with no reader: the cover heading, the
- * workspace breadcrumb and the editor title still take `ORG_NAME` from
- * `config.ts` directly. They migrate onto this type in later slices; until
- * then setting them changes nothing.
+ * WIRED TODAY: the wordmark and the accent. `content.workspaceTitle ??
+ * brand.name ?? ORG_NAME` is what app chrome calls this installation, read
+ * through `useWorkspaceTitle` by the tab strip and the editor shell; and
+ * `brand.accent` is written onto the root's `--hue` by
+ * `DeploymentConfigProvider` before the first paint. `brand.logo`,
+ * `content.coverTitle` and the whole `agent` block are declared shape with no
+ * reader: the cover heading and the workspace breadcrumb still take
+ * `coverContent.title` and `ORG_NAME` directly. They migrate onto this type in
+ * later slices; until then setting them changes nothing.
  *
  * NOT FIELDS HERE, AND DELIBERATELY: the localStorage namespace, and the
  * agent's extra reference documents. A config is
@@ -78,7 +81,8 @@
  * the reasoning behind each position.
  *
  */
-import { ORG_NAME } from './config'
+import { BRAND, ORG_NAME } from './config'
+import { coverContent } from './content/coverContent'
 
 /**
  * The overlay an external deployment supplies. Sparse by construction: every
@@ -135,12 +139,36 @@ export type ResolvedDeploymentConfig = {
 }
 
 /**
- * The template's own config. Standalone, the app runs on exactly this: the
- * brand name IS `ORG_NAME`, so a consumer that reads `brand.name` renders the
- * same wordmark whether or not any deployment config was supplied.
+ * The template's own config, and the value every resolution starts from.
+ * Standalone the app runs on exactly this, so a consumer that reads
+ * `brand.name` renders the same wordmark whether or not a config was supplied.
+ *
+ * NONE OF THE THREE VALUES IS A LITERAL, and none may become one — that is
+ * what makes this constant the only thing a deployment built on this template
+ * has to fork, and `config.ts` the only file it has to edit (#230). The
+ * workspace title is `coverContent.title`, the one module an installation
+ * writes its own copy in, so a name typed here cannot end up on a board it
+ * does not describe. The accent is `BRAND.accent`, because `config.ts` is
+ * where a deployer writes the colour and `styles/themes/*.css` is where the
+ * ramp drawn at that hue is authored; a hex repeated here would be a third
+ * place for the three to disagree.
+ *
+ * Both of those resolve to `undefined` in this repository, and that is the
+ * template's honest state rather than an oversight: `coverContent.ts` omits
+ * `title` on purpose so the cover heading falls back to `ORG_NAME`, and
+ * `BRAND` ships no accent because this kit's `--brand-*` ramp is greyscale.
+ * `present()` drops an undefined field, so the resolved brand is unchanged and
+ * the wordmark still falls through to `ORG_NAME`; `applyBrandAccent` writes
+ * nothing for an absent accent, so the theme files' own dial stands. The one
+ * difference a reader could see is that `content` now resolves to an empty
+ * section rather than being absent — `mergeSection` returns a section whenever
+ * either side names one — and no reader distinguishes those, because every one
+ * of them reaches a field through `?.`. `deploymentConfig.test.ts` holds all
+ * of it.
  */
 export const asbDefaultConfig: DeploymentConfig = {
-  brand: { name: ORG_NAME },
+  brand: { name: ORG_NAME, accent: BRAND.accent },
+  content: { workspaceTitle: coverContent.title },
 }
 
 /**
