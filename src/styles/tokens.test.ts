@@ -156,6 +156,20 @@ const DIALS = [
   '--success-lightness',
 ]
 
+/**
+ * Dials whose value belongs to the design rather than to the mode.
+ *
+ * These are declared in BOTH theme files, at one value, the way `--hue` is.
+ * Not because the cascade needs the second declaration — `themes/light.css`
+ * opens on a bare `:root`, so everything in it reaches dark mode whether dark
+ * restates it or not — but because that reach is a leak rather than a design.
+ * It is the same mechanism that carried light's warm `--surface-hue` into dark
+ * and ran every dark surface on it, silently, until somebody looked. A dial
+ * that is mode-invariant says so in both files, and the two cannot drift
+ * apart without failing below.
+ */
+const MODE_INVARIANT_DIALS = ['--hue', '--radius']
+
 /** Semantic tokens the shadcn components consume via theme.css. */
 const SEMANTIC_TOKENS = [
   '--background',
@@ -232,10 +246,26 @@ describe('theme dials and semantic layer', () => {
     },
   )
 
-  it('declares --radius in the light theme root', () => {
-    expect(winningDeclaration('--radius', 'light')?.file).toBe(
-      'themes/light.css',
+  it.each(MODE_INVARIANT_DIALS)(
+    'declares %s in both theme files, at one value',
+    (name) => {
+      // Each theme's own file is what wins in that theme. Drop the dial from
+      // either one and the other's declaration leaks across to cover for it,
+      // which is the arrangement this rule exists to forbid.
+      expect(winningDeclaration(name, 'light')?.file).toBe('themes/light.css')
+      expect(winningDeclaration(name, 'dark')?.file).toBe('themes/dark.css')
+      expect(resolveValue(name, 'dark')).toBe(resolveValue(name, 'light'))
+    },
+  )
+
+  it('leaves --radius out of the print override, so a printed corner is the screen corner', () => {
+    // `print.css` restates the dials it needs to force the light palette, and
+    // radius is not one of them. With both themes answering the same length,
+    // print inherits that length whichever mode the page was in.
+    const overridden = rulesDeclaring('--radius').filter((rule) =>
+      rule.context.some((at) => /^@media\b/.test(at) && /\bprint\b/.test(at)),
     )
+    expect(overridden.map((rule) => `${rule.file}:${rule.line}`)).toEqual([])
     expect(resolveValue('--radius', 'light')).toMatch(/^[\d.]+rem$/)
   })
 
