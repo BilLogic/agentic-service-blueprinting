@@ -25,11 +25,39 @@ export type PathOption = {
 
 const MAX_PATHS_PER_COLUMN = 2
 
-const PRIMARY_COLUMN_PATH_TYPES = new Set<PathKind>([
-  'happy',
-  'variant',
-])
-const SECONDARY_COLUMN_PATH_TYPES = new Set<PathKind>(['variant', 'exception'])
+/**
+ * The picker's columns, left to right. `other` is not a design decision: it
+ * catches a kind this build does not know — a row written against a newer
+ * schema — so such a path is still drawn rather than quietly dropped.
+ */
+const PATH_COLUMNS = ['primary', 'secondary', 'other'] as const
+type PathColumn = (typeof PATH_COLUMNS)[number]
+/** The columns a kind can be assigned; `other` is reached only at runtime. */
+type AssignedPathColumn = Exclude<PathColumn, 'other'>
+
+/**
+ * ONE COLUMN PER KIND.
+ *
+ * This was two `Set`s of kinds that `groupPathsIntoColumns` filtered the same
+ * list against, treating the results as disjoint. They were not: `variant`
+ * was a member of both, so a variant path was drawn twice, once per column.
+ * Nothing could have caught that. A `Set` absorbs a repeated member rather
+ * than failing, and two independent membership tests have no overlap for a
+ * compiler to look at.
+ *
+ * A total map has both properties the pair of sets lacked. Every kind is
+ * assigned, because `Record<PathKind, …>` is exhaustive; and each is assigned
+ * once, because a repeated key is a syntax the type system rejects. Putting a
+ * kind in two columns is no longer wrong — it is unwriteable.
+ */
+export const PATH_COLUMN_BY_KIND: Record<PathKind, AssignedPathColumn> = {
+  happy: 'primary',
+  // The ordinary alternate route reads beside the happy path rather than among
+  // the edge cases: a variant is a customer legitimately doing something else,
+  // not the service going wrong.
+  variant: 'primary',
+  exception: 'secondary',
+}
 
 /**
  * The picker shows a path's name as authored. It used to strip a scenario-name
@@ -49,23 +77,28 @@ function chunkPaths<T>(items: T[], size: number): T[][] {
   return chunks
 }
 
-/** Happy/alternate paths stack in the left column(s); sad/exception paths go to the right. */
+/**
+ * Partitions the picker's paths into columns: happy and variant paths stack in
+ * the left column(s), exception paths in the right. Every path lands in
+ * exactly one column, because each is assigned a column once, by its kind —
+ * rather than offered to each column's membership test in turn.
+ */
 export function groupPathsIntoColumns(paths: PathOption[]): PathOption[][] {
-  const primary = paths.filter((path) => PRIMARY_COLUMN_PATH_TYPES.has(path.kind))
-  const secondary = paths.filter((path) =>
-    SECONDARY_COLUMN_PATH_TYPES.has(path.kind),
-  )
-  const other = paths.filter(
-    (path) =>
-      !PRIMARY_COLUMN_PATH_TYPES.has(path.kind) &&
-      !SECONDARY_COLUMN_PATH_TYPES.has(path.kind),
-  )
+  const byColumn: Record<PathColumn, PathOption[]> = {
+    primary: [],
+    secondary: [],
+    other: [],
+  }
 
-  return [
-    ...chunkPaths(primary, MAX_PATHS_PER_COLUMN),
-    ...chunkPaths(secondary, MAX_PATHS_PER_COLUMN),
-    ...chunkPaths(other, MAX_PATHS_PER_COLUMN),
-  ].filter((column) => column.length > 0)
+  for (const path of paths) {
+    byColumn[PATH_COLUMN_BY_KIND[path.kind] ?? 'other'].push(path)
+  }
+
+  // `chunkPaths` never yields an empty chunk, so a column no path landed in
+  // contributes nothing here and needs no filtering out.
+  return PATH_COLUMNS.flatMap((column) =>
+    chunkPaths(byColumn[column], MAX_PATHS_PER_COLUMN),
+  )
 }
 
 type PathMultiSelectProps = {
