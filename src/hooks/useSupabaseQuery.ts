@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
+import { withSupabaseTimeout } from '@/lib/supabaseFetchTimeout'
+import { errorMessage } from '@/lib/utils'
 import type { Database } from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -26,11 +27,15 @@ export { invalidateQueries, invalidateStructure } from '@/lib/queryClient'
  * stays `loading` (e.g. while a parent query resolves). `fetcher` is read
  * through a ref, so inline closures are fine — it is re-evaluated per key, not
  * per identity. `fallback` must be referentially stable (wrap it in
- * `useCallback`): the no-DB result is memoized on its identity.
+ * `useCallback`): the no-DB and error results are memoized on its identity.
  *
  * No-DB mode (client null) resolves synchronously from `fallback()`:
  * `ready`/`'fallback'` when it returns data, `error` when it returns null.
  * Database errors and timeouts surface as `error` with `fallback` populated.
+ *
+ * `fetcher` is handed the query's abort signal alongside the client and must
+ * pass it to the request (`.abortSignal(signal)`): that is what makes leaving
+ * a view, or changing its key, stop the read it started.
  *
  * The caching, dedupe and invalidation underneath are TanStack Query's; this
  * wrapper exists so callers keep a single discriminated union to switch on
@@ -40,7 +45,10 @@ export { invalidateQueries, invalidateStructure } from '@/lib/queryClient'
  */
 export function useSupabaseQuery<T>(
   key: string | null,
-  fetcher: (client: SupabaseClient<Database>) => PromiseLike<T>,
+  fetcher: (
+    client: SupabaseClient<Database>,
+    signal: AbortSignal,
+  ) => PromiseLike<T>,
   fallback: () => T | null,
 ): QueryResult<T> {
   const { client, configured } = useSupabase()
@@ -57,15 +65,13 @@ export function useSupabaseQuery<T>(
   const query = useQuery<T>({
     queryKey: [key],
     enabled: key !== null && !noDb,
-    queryFn: async () => {
-      const outcome = await raceSupabaseQuery(
+    queryFn: ({ signal }) =>
+      withSupabaseTimeout(signal, (deadline) =>
         // The async wrapper turns a synchronous fetcher throw into a rejection
         // (surfaced as the error state) instead of an unhandled exception.
-        (async () => fetcherRef.current(client as SupabaseClient<Database>))(),
-      )
-      if (outcome === 'timeout') throw new Error('The request timed out')
-      return outcome as T
-    },
+        (async () =>
+          fetcherRef.current(client as SupabaseClient<Database>, deadline))(),
+      ),
   })
 
   // No-DB mode resolves synchronously; memoized so callers get a stable
@@ -78,21 +84,28 @@ export function useSupabaseQuery<T>(
       : { status: 'error', message: NOT_CONFIGURED_MESSAGE, fallback: null }
   }, [noDb, key, fallback])
 
+  // Error wins over a stale `data` so a failed refetch surfaces rather than
+  // silently continuing to show the previous response. Memoized for the same
+  // reason the no-DB branch above is: while a query stays errored this branch
+  // runs on EVERY render of every consumer, and rebuilding the result
+  // re-invoked `fallback()` — which for most callers rebuilds a whole seed
+  // structure — and handed the consumer a fresh object to re-render on.
+  const error = query.error
+  const errorResult = useMemo<SettledQueryResult<T> | null>(
+    () =>
+      error
+        ? {
+            status: 'error',
+            message: errorMessage(error),
+            fallback: fallback(),
+          }
+        : null,
+    [error, fallback],
+  )
+
   if (key === null) return LOADING_RESULT
   if (noDbResult) return noDbResult
-
-  // Error wins over a stale `data` so a failed refetch surfaces rather than
-  // silently continuing to show the previous response.
-  if (query.error) {
-    return {
-      status: 'error',
-      message:
-        query.error instanceof Error
-          ? query.error.message
-          : String(query.error),
-      fallback: fallback(),
-    }
-  }
+  if (errorResult) return errorResult
   if (query.data !== undefined) {
     return { status: 'ready', data: query.data, source: 'database' }
   }

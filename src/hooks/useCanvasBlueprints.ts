@@ -7,7 +7,7 @@ import {
 } from '@/data/blueprintFallbacks'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { queryClient } from '@/lib/queryClient'
-import { raceSupabaseQuery } from '@/lib/supabaseFetchTimeout'
+import { withSupabaseTimeout } from '@/lib/supabaseFetchTimeout'
 import { resolveBlueprintForScenario } from '@/lib/resolveBlueprint'
 import type { RawPath } from '@/lib/normalizeBlueprint'
 import type { PathListItem } from '@/lib/pathSelection'
@@ -213,20 +213,16 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
     queries: orderedScenarioIds.map((scenarioId) => ({
       queryKey: [`${SCENARIO_KEY_PREFIX}${scenarioId}`],
       enabled: !noDb,
-      queryFn: async (): Promise<CanvasRawPath[]> => {
-        const outcome = await raceSupabaseQuery(
-          (async () => {
-            const { data, error } = await client!
-              .from('paths')
-              .select(PATH_BLUEPRINT_SELECT)
-              .eq('scenario_id', scenarioId)
-            if (error) throw new Error(error.message)
-            return (data ?? []) as CanvasRawPath[]
-          })(),
-        )
-        if (outcome === 'timeout') throw new Error('The request timed out')
-        return outcome
-      },
+      queryFn: ({ signal }): Promise<CanvasRawPath[]> =>
+        withSupabaseTimeout(signal, async (deadline) => {
+          const { data, error } = await client!
+            .from('paths')
+            .select(PATH_BLUEPRINT_SELECT)
+            .eq('scenario_id', scenarioId)
+            .abortSignal(deadline)
+          if (error) throw new Error(error.message)
+          return (data ?? []) as CanvasRawPath[]
+        }),
     })),
   })
 
