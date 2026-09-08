@@ -15,19 +15,27 @@ const badgeVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
         /*
-          Supabase's own badge formula for this role, verbatim from their
-          `shadcn/ui/badge.tsx`: `bg-warning/10 text-warning-600 border
-          border-warning-500`. Added because two call sites were hand-rolling a
-          tinted amber badge straight off the PRIMITIVE amber ramp — a tier-1
-          leak that also had to restate its own dark mode.
+          Supabase's badge formula for this role, said in the role vocabulary:
+          the resting tint, the edge that belongs to that tint, and the ink
+          tuned for it. Added because two call sites were hand-rolling a tinted
+          amber badge straight off the PRIMITIVE amber ramp — a tier-1 leak
+          that also had to restate its own dark mode.
 
-          The ink is step 600, not `text-warning`. That is the whole trick: the
-          mid role colour (oklch L 0.68) on its own 10% wash measures ~2.3:1,
-          while step 600 measures ~3.4:1 — still under AA for body copy, and
-          what Supabase ships. It replaces a badge that measured ~1.9:1.
+          The ink is `text-on-surface-warning` — ink for a colour sitting on
+          its own tint — and NOT `text-warning`, which still resolves to the
+          solid fill: the fill on this tint measures 2.5:1 in light, which is
+          why an ink had to be named at all. The formula this replaces reached
+          for a ramp step instead, and that step read 2.8:1 in light and 5.2:1
+          in dark against the wash it sat on — legible enough to ship, never
+          enough for AA. The named ink reads 13.1:1 and 9.2:1.
+
+          The tint is opaque, and that is what makes any of those numbers real.
+          The ten-percent wash this replaces composited against whatever
+          happened to be behind the badge, so the ink on it had no ground to be
+          measured against — the defect the vocabulary exists to end.
         */
         warning:
-          "border border-warning-500 bg-warning/10 text-warning-600 focus-visible:ring-warning-500/40 [a]:hover:bg-warning/20",
+          "border border-border-warning bg-surface-warning text-on-surface-warning focus-visible:ring-border-warning/40 [a]:hover:bg-warning/20",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:

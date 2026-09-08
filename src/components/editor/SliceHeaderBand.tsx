@@ -91,11 +91,14 @@ export function SliceHeaderBand({
           <p className="min-w-0 truncate text-xs text-muted-foreground">
             {description || '—'}
           </p>
-          {/* Warning reads as a tinted badge rather than amber body copy: step
-              600 is a fill weight and `--warning` is the solid-fill role —
-              neither clears 4.5:1 as text on the card. */}
+          {/* Warning reads as a tinted badge rather than amber body copy:
+              `--warning` is the solid-fill role and does not clear 4.5:1 as
+              text on the card. So the role names its tint and the edge that
+              belongs to it, and the copy stays at `--foreground` — 17:1 on
+              that tint in light and 14:1 in dark, with the edge a quiet
+              1.24–1.27:1 off it. */}
           {missingCellCount > 0 && (
-            <span className="shrink-0 rounded-sm border border-warning-400 bg-warning-200 px-1.5 py-0.5 text-xs text-foreground">
+            <span className="shrink-0 rounded-sm border border-border-warning bg-surface-warning px-1.5 py-0.5 text-xs text-foreground">
               {missingCellCount} {missingCellCount === 1 ? 'cell' : 'cells'} no
               longer in the blueprint
             </span>

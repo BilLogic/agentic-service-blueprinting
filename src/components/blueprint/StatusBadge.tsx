@@ -47,6 +47,8 @@ export function StatusBadge({
 }) {
   if (!status) return null
 
+  const needsAttention = status === 'at_risk' || status === 'deprecated'
+
   return (
     <DefinitionPopover
       sections={[
@@ -57,7 +59,18 @@ export function StatusBadge({
       ]}
     >
       <Badge
-        variant="outline"
+        // The amber treatment is the badge's OWN warning variant, asked for by
+        // name rather than re-derived here out of a tint and an edge. The
+        // badge is where the reasoning for that shape is written down and
+        // measured, and a wrapper carrying its own copy of it is a second
+        // answer to a question that already has one.
+        //
+        // What changes is the ink. This wrote `--foreground` on the tint —
+        // ordinary copy on a tinted badge, at 20:1 — where the variant writes
+        // the role's own ink for its own tint, 13:1 in light and 9:1 in dark.
+        // Still far clear of AA, and now the word carries the status itself
+        // rather than leaving the tint to carry it alone.
+        variant={needsAttention ? 'warning' : 'outline'}
         // Reachable without a pointer: the word IS the control, so the
         // definition has to be gettable by keyboard too — hover is never the
         // only way in. No help cursor and no dotted rule — both are gone
@@ -68,8 +81,6 @@ export function StatusBadge({
           'shrink-0 gap-0 font-normal',
           status === 'live' && 'text-foreground/80',
           isUnbuilt(status) && 'border-dashed text-muted-foreground',
-          (status === 'at_risk' || status === 'deprecated') &&
-            'border-warning-400 bg-warning-200 text-foreground',
           className,
         )}
       >
