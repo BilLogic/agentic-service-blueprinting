@@ -16,11 +16,11 @@
  * separate dedupe spaces.
  */
 export async function findingFingerprint(
-  checkName: string,
+  checkKey: string,
   cellIds: string[],
   scope: string | undefined,
 ): Promise<string> {
-  if (cellIds.length === 0) return `${checkName}:${scope ?? ''}`
+  if (cellIds.length === 0) return `${checkKey}:${scope ?? ''}`
   // Sorted, so the order cells happen to be cited in never changes identity.
   const sorted = [...cellIds].sort().join('\n')
   const digest = await crypto.subtle.digest(
@@ -30,5 +30,5 @@ export async function findingFingerprint(
   const hex = Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
-  return `${checkName}:${hex}`
+  return `${checkKey}:${hex}`
 }
