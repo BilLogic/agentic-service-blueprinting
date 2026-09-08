@@ -11,6 +11,7 @@ import {
 import { StepPanelLoading } from '@/components/blueprint/panelLoading'
 import { PanelTextareaField } from '@/components/blueprint/PanelTextareaField'
 import { PanelSectionLabel } from '@/components/blueprint/PanelSectionLabel'
+import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { PANEL_TERMS } from '@/lib/panelTerms'
 import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
@@ -121,6 +122,25 @@ function StepPanelBody({
           ? `${step.positions.length} paths`
           : null
 
+  /*
+    The row's frames open, and step to one another.
+
+    One group, in the order the row draws it — lane order, the same moment
+    as each actor saw it, which is the whole reason the row is worth
+    comparing. Handed to the viewer rather than discovered by scanning the
+    row: a scan would reproduce that order today and only by accident,
+    until a wrapper element or a CSS reorder quietly broke it.
+
+    Each frame's name is its lane's, the caption already printed under it.
+    A frame carries no caption anywhere in the schema and is not getting
+    one for the sake of a label — what the picture shows is this moment,
+    and the lane says whose view of it this is.
+  */
+  const frameSiblings = step.frames.map((frame) => ({
+    src: frame.src,
+    alt: frame.laneName,
+  }))
+
   return (
     <div
       className="flex flex-col gap-4"
@@ -159,19 +179,28 @@ function StepPanelBody({
             row scrolls rather than the page.
           */}
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 blueprint-scroll">
-            {step.frames.map((frame) => (
+            {step.frames.map((frame, index) => (
               <figure
                 key={frame.src}
                 className="flex w-32 shrink-0 flex-col gap-1"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-muted/20">
-                  <img
+                  <ZoomableImage
                     src={frame.src}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-contain object-center"
-                  />
+                    alt={frame.laneName}
+                    triggerLabel={`Expand: ${frame.laneName}`}
+                    siblings={frameSiblings}
+                    siblingIndex={index}
+                    triggerClassName="absolute inset-0 block cursor-pointer"
+                  >
+                    <img
+                      src={frame.src}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
+                    />
+                  </ZoomableImage>
                 </div>
                 {/* Provenance, quietly: which lane drew this frame. The
                     frame's MEANING is the summary above it. */}
