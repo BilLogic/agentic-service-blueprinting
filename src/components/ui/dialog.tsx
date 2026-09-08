@@ -6,6 +6,7 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { ground } from "@/lib/ground"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -52,6 +53,7 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
+        {...ground("card")}
         className={cn(
           // No default desktop width: an sm:max-w-4xl here silently beat
           // every caller's unprefixed max-w-* through tailwind-merge

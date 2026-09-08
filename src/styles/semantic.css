@@ -59,10 +59,18 @@
  *
  * `.light` is included for the same reason: it lets a subtree force light
  * inside a dark ancestor.
+ *
+ * `[data-ground]` is the third arm and it is here for the same mechanism, one
+ * input further down. A role tint is measured from the surface it is drawn on
+ * rather than from the page, and only the component that establishes a surface
+ * knows which one that is — so it says so on the element, and the block has to
+ * re-derive there for the same reason a re-declared dial does. The ground
+ * scopes sit under this block, at the bottom of the file.
  */
 :root,
 .dark,
-.light {
+.light,
+[data-ground] {
   /*
    * Hue inputs. `--hue` is the single knob; `--surface-hue` tints the neutral
    * ramp (backgrounds, text, borders) and `--primary-hue` drives the brand, so
@@ -153,6 +161,29 @@
     from var(--background) calc(l + var(--elevation-step) * var(--elevation-3))
       c h
   );
+
+  /*
+   * The lightness a role tint is measured FROM: what the tint is drawn on,
+   * which at the root is the page and nowhere else has to be. That is the
+   * whole of the default — the page is the ground until something says
+   * otherwise.
+   *
+   * It exists because the tint's step is the size of an elevation step. A tint
+   * is six percent of the signed canvas→ink span; a card sits one and a half
+   * elevation steps off the canvas. In dark those are 0.046 and 0.038, so the
+   * ladder eats the tint and every role measures 1.02:1 against a card where
+   * it measures 1.11:1 against the page. Light hid the same arithmetic behind
+   * a sign — its span runs the other way, so the tint steps down while the card
+   * steps up and the two distances add. The light number was never the theme
+   * being right.
+   *
+   * The tint is the only job in this file that needs it. Every other one is far
+   * enough along the span that an elevation step is a rounding error on it: a
+   * card is 0.05 of the span up, where role ink is 0.76 of it along. That is a
+   * measured line and not a taste one, and `tokens.test.ts` holds it — every
+   * role, every ground this file offers, both themes, inside one band.
+   */
+  --ground: var(--surface);
 
   /* --- Text ------------------------------------------------------------ */
   --foreground: oklch(
@@ -558,7 +589,12 @@
    */
   /* A tint has to be a surface a component can put ink on, so it is opaque
      rather than the fill at an alpha: an alpha composites against whatever
-     happens to be behind it, and then the ink measurement has no ground. */
+     happens to be behind it, and then the ink measurement has no ground.
+
+     The fraction runs from `--ground` and not from `--surface`, which is the
+     difference between a step off what the tint is drawn on and a step off the
+     page. At six percent it is the one job here small enough for the elevation
+     ladder to swallow, and on a card it was swallowed. */
   --role-tint-mix: 0.06;
   /* Role ink on the page. Far enough along the span to clear AA on the canvas
      in both modes, and short of the fill's own lightness — which is what makes
@@ -586,37 +622,37 @@
 
   --surface-primary: oklch(
     from var(--primary)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
   --surface-brand: oklch(
     from var(--brand)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
   --surface-warning: oklch(
     from var(--warning)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
   --surface-destructive: oklch(
     from var(--destructive)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
   --surface-info: oklch(
     from var(--info)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
   --surface-success: oklch(
     from var(--success)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
   --surface-secondary: oklch(
     from var(--secondary)
-      calc(var(--surface) + var(--tone-span) * var(--role-tint-mix))
+      calc(var(--ground) + var(--tone-span) * var(--role-tint-mix))
       calc(c * 0.14) h
   );
 
@@ -772,11 +808,19 @@
      one number.
 
      Swept rather than picked. At the pair the theme files carry, every role
-     in both modes lands between 1.22:1 and 1.28:1 against its own tint, with
-     room on both sides of the band; light 0.10 leaves it at the top
+     in both modes lands between 1.22:1 and 1.28:1 against its own tint on the
+     page, with room on both sides of the band; light 0.10 leaves it at the top
      (destructive 1.37) and dark 0.07 at the bottom (destructive 1.15). One
      shared fraction is not impossible — 0.092 holds both modes inside — but
      it puts light against the ceiling at 1.34 and buys nothing.
+
+     "On the page" is doing work in that sentence now that the tint follows its
+     ground. A fixed lightness travel does not buy a fixed ratio at every point
+     on the axis, so the same edge reads 1.24 on the dark canvas and 1.32 on a
+     dark popover; across every ground and both modes the whole spread is 1.22
+     to 1.32. Four hundredths wider than it was, at a distance nobody can see,
+     and still nowhere near the 3:1 a REQUIRED boundary would ask for — which
+     is the number the paragraph above is actually defending against.
 
      Chroma is three times the tint's, +0.039 on an expressive role, which
      sits inside the +0.023 to +0.079 the recipe's own four pairs span and
@@ -914,6 +958,53 @@
   );
   --chart-5: oklch(
     from var(--foreground) calc(var(--surface) + var(--tone-span) * 0.85) c h
+  );
+}
+
+/*
+ * The grounds, and what a component is choosing between when it names one.
+ *
+ * These are the surface ladder above, read as lightnesses instead of as
+ * colours — and they have to be restated rather than read off `--card`,
+ * because relative colour syntax can hand a channel to another colour and not
+ * to a number. The one place they may not simply repeat it is the clamp, and
+ * the clamp is not a safety rail: light's canvas sits at 0.995 and its step is
+ * 0.024, so every rung of the ladder runs past 1 and the browser holds all
+ * three at white. `--card` is already clamped when it is painted, and a ground
+ * that were not would measure a card that is not on the screen: the light tint
+ * lands at 1.07:1 against the card, below the floor and worse than the 1.19 the
+ * page-derived tint it replaces was already reaching. Clamped it reads 1.17.
+ * Dark is unaffected either way, which is what would have let the mistake
+ * through. Reading the same ceiling here keeps the measurement and the pixel
+ * the same thing.
+ *
+ * Naming them after the surfaces rather than after the elevation ratios is the
+ * point of the tier: a component knows it is a card. It does not know, and
+ * should not have to know, that a card is one and a half steps up.
+ *
+ * A ground is absolute, never additive — a card inside the sidebar is a card,
+ * at the rung `--card` is painted at, and it says `card` like every other one.
+ * Nesting therefore needs no arithmetic and gets none.
+ */
+[data-ground='sidebar'] {
+  --ground: clamp(
+    0,
+    calc(var(--surface) + var(--elevation-step) * var(--elevation-1)),
+    1
+  );
+}
+[data-ground='card'] {
+  --ground: clamp(
+    0,
+    calc(var(--surface) + var(--elevation-step) * var(--elevation-2)),
+    1
+  );
+}
+[data-ground='popover'] {
+  --ground: clamp(
+    0,
+    calc(var(--surface) + var(--elevation-step) * var(--elevation-3)),
+    1
   );
 }
 

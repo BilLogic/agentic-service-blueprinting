@@ -47,6 +47,14 @@ type CompareDifferencesSurfaceProps = {
   onOpenCell: (selection: BlueprintCellSelection) => void
 }
 
+/*
+ * The two verdicts wore the solid fill as ink on a ten-percent wash of itself,
+ * which is the weakest pairing this vocabulary allows: the fill is tuned for
+ * ink to sit ON it, an alpha has no ground until it is painted, and the pair
+ * measured about 2.3:1 wherever it landed. The tint and the ink cut for it are
+ * the names for exactly this, and they carry the ground the badge is drawn on —
+ * this surface lives inside a drawer, which says so.
+ */
 function VerdictBadge({ verdict }: { verdict: CompareStatus }) {
   if (verdict === 'only') {
     return (
@@ -54,7 +62,7 @@ function VerdictBadge({ verdict }: { verdict: CompareStatus }) {
         className={cn(
           'inline-flex shrink-0 items-center rounded-sm px-1 py-px text-3xs leading-none',
           MONO_NUM_CLASS,
-          'bg-info/10 text-info',
+          'bg-surface-info text-on-surface-info',
         )}
         title="Present in only one path"
       >
@@ -67,7 +75,7 @@ function VerdictBadge({ verdict }: { verdict: CompareStatus }) {
       className={cn(
         'inline-flex shrink-0 items-center rounded-sm px-1 py-px text-3xs leading-none',
         MONO_NUM_CLASS,
-        'bg-warning/10 text-warning',
+        'bg-surface-warning text-on-surface-warning',
       )}
       title="Paths diverge here"
     >

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 
 import { cn } from "@/lib/utils"
+import { ground } from "@/lib/ground"
 
 type DrawerContextProps = {
   hasSnapPoints: boolean
@@ -118,6 +119,7 @@ function DrawerContent({
       >
         <DrawerPrimitive.Popup
           data-slot="drawer-popup"
+          {...ground("popover")}
           data-swipe-axis={swipeAxis}
           data-snap-points={hasSnapPoints ? "" : undefined}
           className={cn(

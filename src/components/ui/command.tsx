@@ -14,6 +14,7 @@ import {
   InputGroupAddon,
 } from "@/components/ui/input-group"
 import { SearchIcon, CheckIcon } from "lucide-react"
+import { ground } from "@/lib/ground"
 
 function Command({
   className,
@@ -22,6 +23,7 @@ function Command({
   return (
     <CommandPrimitive
       data-slot="command"
+      {...ground("popover")}
       className={cn(
         "flex size-full flex-col overflow-hidden rounded-xl! bg-popover p-1 text-popover-foreground",
         className
