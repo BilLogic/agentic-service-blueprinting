@@ -62,12 +62,12 @@ output against it before any `report --apply`:
 
 ```json
 {
-  "check_name": "<name>",
+  "check_key": "<roster check key>",
   "severity": "info" | "warn" | "critical",
   "cell_keys": ["<qualified key>", "…"],
   "reason": "<reason slug — required when cell_keys is non-empty>",
   "scope": "<scope-key>:<reason-slug> or null — required when cell_keys is empty",
-  "note": "<text>",
+  "summary": "<text>",
   "source": "audit" | "whatif",
   "fingerprint": "<computed by audit_tools.py — never hand-written>",
   "status": "open" | "resolved" | "dismissed",
