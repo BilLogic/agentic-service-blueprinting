@@ -3,6 +3,7 @@ import { ThemeProvider } from 'next-themes'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
+import { WriteFailureNotices } from '@/components/editor/WriteFailureNotices'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
@@ -66,6 +67,13 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
                           <EditorErrorBoundary>
                             <EditorShell />
                           </EditorErrorBoundary>
+                          {/*
+                           * Outside the boundary, on purpose: a write can fail
+                           * as the shell falls over, and the notice is what
+                           * says so. Inside it, the one message explaining the
+                           * blank screen would be caught by the blank screen.
+                           */}
+                          <WriteFailureNotices />
                         </TooltipProvider>
                       </PathSelectionProvider>
                     </ViewStateProvider>

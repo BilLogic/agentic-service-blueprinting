@@ -6,6 +6,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { deleteCell } from '@/lib/authoringRpc'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
+import { reportWriteFailure } from '@/lib/writeFailures'
 import { cn } from '@/lib/utils'
 
 type Menu = { x: number; y: number; cellId: string; el: HTMLElement }
@@ -117,7 +118,10 @@ export function CanvasCellContextMenu() {
       setMenu(null)
       setConfirmingDelete(false)
     } catch (error) {
-      console.error('[authoring] delete_cell failed:', error)
+      // The menu stays open on a failure — but it closes on success, so it
+      // cannot be where this is said. Confirming a delete and being left
+      // looking at the cell with nothing said is the case this exists for.
+      reportWriteFailure('The cell was not deleted', error)
     } finally {
       setDeleting(false)
     }

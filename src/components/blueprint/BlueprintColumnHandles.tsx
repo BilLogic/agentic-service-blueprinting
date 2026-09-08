@@ -8,6 +8,7 @@ import { useCellPick } from '@/contexts/cellPickContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { addStep } from '@/lib/authoringRpc'
+import { reportWriteFailure } from '@/lib/writeFailures'
 
 type Step = { id: string; name: string }
 type Column = { left: number; width: number }
@@ -131,7 +132,7 @@ export function BlueprintColumnHandles({
       await addStep(client, { pathId, name: '', atPosition: at })
       invalidateStructure()
     } catch (error) {
-      console.error('[authoring] add_step failed:', error)
+      reportWriteFailure('The step was not added', error)
     } finally {
       setBusyAt(null)
     }
