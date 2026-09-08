@@ -8,9 +8,9 @@ import {
 import { storageKey } from '@/lib/storageNamespace'
 import type { PathKind } from '@/types/database'
 
-// Pins the Phase-3 default rule (plan 2026-08-16-002): last-viewed wins
-// when it still exists, else the happy path, and storage failures degrade
-// to defaults rather than throwing.
+// Pins the mobile shell's default-path rule: last-viewed wins when it
+// still exists, else the happy path, and storage failures degrade to
+// defaults rather than throwing.
 
 const path = (id: string, name: string, kind: PathKind = 'happy') => ({
   id,

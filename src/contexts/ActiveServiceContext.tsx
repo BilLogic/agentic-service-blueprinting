@@ -20,12 +20,13 @@ import { resolveServiceBySlug, serviceSlug } from '@/lib/serviceSlug'
  * name, threaded the way the path selection is: a provider mounted high in the
  * tree, read through a hook.
  *
- * The slug itself lives in a module store (`activeServiceStore`, ADR 0005),
- * because non-React resolvers read it; this provider is the React-side
- * resolution of slug -> service and the one place that CANONICALIZES the URL:
- * once the service is known, its own slug is written to the path, so a
- * single-service installation that booted at the bare root ends with its slug
- * in the address bar, and a reload lands on the same service.
+ * The slug itself lives in a module store (`activeServiceStore`) under the
+ * decision that cross-surface state is a module store, because non-React
+ * resolvers read it; this provider is the React-side resolution of slug ->
+ * service and the one place that CANONICALIZES the URL: once the service is
+ * known, its own slug is written to the path, so a single-service
+ * installation that booted at the bare root ends with its slug in the address
+ * bar, and a reload lands on the same service.
  *
  * Without it the routing scheme is only half wired. `lib/service.ts` and
  * `lib/agent/tools/serviceScope.ts` both READ the store, `serviceRoute.ts`
@@ -121,12 +122,13 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
   const switchService = useCallback((slug: string) => {
     setActiveServiceSlug(slug)
     /*
-      The board and the service surfaces read under constant keys (ADR 0006):
-      changing the slug alone would not refetch them, so drop the caches the
-      newly-active service must repopulate — the journey
-      (`invalidateStructure`), the service identity (`service-spec:first`) and
-      the per-kind examples, which are keyed separately here
-      (`service-entity-examples:first`) rather than riding the spec.
+      The board and the service surfaces read under constant keys, because
+      reads never refetch on their own: changing the slug alone would not
+      refetch them, so drop the caches the newly-active service must
+      repopulate — the journey (`invalidateStructure`), the service identity
+      (`service-spec:first`) and the per-kind examples, which are keyed
+      separately here (`service-entity-examples:first`) rather than riding the
+      spec.
 
       What this does NOT yet do is move the board, because the app's own
       fetchers still resolve `findFirstServiceId`; only the agent's

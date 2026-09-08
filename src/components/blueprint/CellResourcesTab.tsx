@@ -30,7 +30,7 @@ type CellResourcesTabProps = {
 
 /**
  * The rows the cell's list edits: its own, with a url. A placement's are
- * read here and edited from the touchpoint (#110). Each keeps its id so a
+ * read here and edited from the touchpoint. Each keeps its id so a
  * reorder is a reorder, not a delete and a re-insert.
  */
 function resourceDrafts(resources: CellResource[]): ResourceDraft[] {
@@ -58,9 +58,10 @@ function placementRows(resources: CellResource[]): CellResource[] {
  * resources are added right here. This is where resources live, so this is
  * where they are edited; the text editor above no longer carries them.
  *
- * A placement's rows arrive in the same list since #110 — the cell reads
- * everything it points at, through its touchpoints too — and are listed
- * here without inputs: the touchpoint's own editor is where they change.
+ * A placement's rows arrive in the same list now that every resource knows
+ * its own cell, a placement's included — the cell reads everything it points
+ * at, through its touchpoints too — and are listed here without inputs: the
+ * touchpoint's own editor is where they change.
  *
  * A row nobody linked is a row nobody linked. The tab used to grow a
  * synthetic "Figma" entry for whatever url a vendor-name regex two files
@@ -195,7 +196,7 @@ function CellResourcesEditor({
 
   /**
    * The file goes to the bucket now; the row is written when the list is
-   * saved, the same two steps as a pasted link (#113). Replacing swaps the
+   * saved, the same two steps as a pasted link. Replacing swaps the
    * url on the row the file was chosen for and keeps its name and id.
    */
   const upload = async (file: File) => {

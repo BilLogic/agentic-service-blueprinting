@@ -17,10 +17,11 @@ export const SUPPORT_ACTIONS_ROLE = 'support_actions'
 export const STORYBOARD_ROLE = 'storyboard'
 
 /**
- * The vocabulary, and the whole of it. Held identical to the `lane_role` CHECK
- * constraint added in `21000122000000`. `support_systems` and `step_visual`
- * are gone — the tech lanes were never only tech, so their systems are
- * touchpoints, and a step never carried its own storyboard variation.
+ * The vocabulary, and the whole of it. Held identical to the closed
+ * `lane_role` CHECK constraint the schema declares. `support_systems` and
+ * `step_visual` are gone — the tech lanes were never only tech, so their
+ * systems are touchpoints, and a step never carried its own storyboard
+ * variation.
  */
 export const CANONICAL_LANE_ROLES = [
   CUSTOMER_ACTIONS_ROLE,

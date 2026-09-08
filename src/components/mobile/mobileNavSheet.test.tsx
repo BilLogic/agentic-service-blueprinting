@@ -5,12 +5,12 @@ import { MobileNavSheet } from '@/components/mobile/MobileNavSheet'
 import type { NavItem } from '@/types/nav'
 import type { Slice } from '@/types/database'
 
-// Render tests for the Phase-3 drawer (plan 2026-08-16-002): rail + panel.
-// The pinned contract from Phase 2 survives — the sheet only reports what
-// was tapped (slice, phase, scenario, surface, expansion); the shell owns
-// what a tap means for the visible surface. New in Phase 3: the accordion
-// renders scenarios only for expanded phases, driven by EditorContext's
-// expandedPhaseIds rather than always-expanded.
+// Render tests for the redesigned mobile drawer: rail + panel. The pinned
+// contract from the drawer it replaced survives — the sheet only reports
+// what was tapped (slice, phase, scenario, surface, expansion); the shell
+// owns what a tap means for the visible surface. New in the redesign: the
+// accordion renders scenarios only for expanded phases, driven by
+// EditorContext's expandedPhaseIds rather than always-expanded.
 
 const nav = (over: Partial<NavItem> & { id: string; label: string }): NavItem =>
   ({

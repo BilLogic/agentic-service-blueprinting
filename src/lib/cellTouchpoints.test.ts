@@ -66,7 +66,7 @@ describe('placements from database rows', () => {
     expect(cellTouchpointsFromRows(undefined)).toEqual([])
   })
 
-  it('carries the registry icon url off the embed, null where there is none (#326)', () => {
+  it('carries the registry icon url off the embed, null where there is none', () => {
     const rows = [
       {
         id: 'a',
@@ -99,8 +99,8 @@ describe('what the panel reads off a placement', () => {
         summary: 'Where a crew picks the job up.',
       }),
     ],
-    // The placement's link is a resource carrying its id (#111); the cell's
-    // own link carries none, and a non-featured link comes after a featured.
+    // The placement's link is a resource carrying its id; the cell's own
+    // link carries none, and a non-featured link comes after a featured.
     resources: [
       {
         id: 'r-cell',

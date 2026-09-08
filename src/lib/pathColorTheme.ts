@@ -88,10 +88,10 @@ const step = (family: string, weight: 1000 | 1100) =>
 export const PATH_COLOR_REGISTRY: Record<string, string> = {
   'happy:Happy Path': PATH_TYPE_COLORS.happy,
   // Two registry entries, one kind: `unhappy` and `alternative` collapsed
-  // into `variant` at 21000116000000, and the NAME is what still separates a
-  // sad path from an alternate one. That was always the design — the registry
-  // keys on kind AND name, and everything unregistered hashes into the open
-  // set below.
+  // into `variant` when each thing was given one spelling, and the NAME is
+  // what still separates a sad path from an alternate one. That was always the
+  // design — the registry keys on kind AND name, and everything unregistered
+  // hashes into the open set below.
   'variant:Sad Path': PATH_TYPE_COLORS.variant,
   'variant:Alternate Path': PATH_TYPE_COLORS.variant,
 }

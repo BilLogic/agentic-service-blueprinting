@@ -12,13 +12,14 @@ import { classUsesMatching, sourceFiles, sourceMatching } from '@/lib/tokenModel
  * primitive ramps (`text-warning`, not `text-amber-1100`), and no raw value
  * where a token exists. This file is where it is written down — there is no
  * prose document stating it, and the citation that used to stand here pointed
- * at `docs/engineering/standards.md`, which this repository does not have.
+ * at an engineering-standards document this repository does not have.
  *
- * What changed is the SAMPLE. ADR 6 made `tokenModel` the one reader, and
- * `palette.test.ts` and `styles/tokens.test.ts` were converted onto it; this
- * file was the guard left behind, still walking `src/components/**.tsx` with a
- * reader of its own. The ADR's consequences say so in as many words, and name
- * converting it as the change that closes them. This is that change.
+ * What changed is the SAMPLE. The decision that one token model is the single
+ * style seam made `tokenModel` the one reader, and `palette.test.ts` and
+ * `styles/tokens.test.ts` were converted onto it; this file was the guard left
+ * behind, still walking `src/components/**.tsx` with a reader of its own. That
+ * decision's consequences say so in as many words, and name converting it as
+ * the change that closes them. This is that change.
  *
  * WHAT THE WIDENING FOUND, on a tree of 399 files where the old sample was 185:
  *
@@ -29,17 +30,18 @@ import { classUsesMatching, sourceFiles, sourceMatching } from '@/lib/tokenModel
  *    the rule.
  *  - Twenty-seven hex matches, every one of them in `src/dev/`, which sat
  *    outside every style rule in this repository. Twenty-one are real colours
- *    in a dev-only instrument and six are `(#NNN)` issue references in prose;
- *    both are exempted below, by file and with a reason.
+ *    in a dev-only instrument, exempted below by file and with a reason; the
+ *    other six were parenthesised issue references in prose, and have since
+ *    gone with the prose that carried them.
  *
  * Three rules are NEW here rather than widened, and they are the reason this
  * conversion is worth more than a scope change. `styles/theme.css` already
  * declares the rungs — `--text-4xs`, `--text-5xs`, `--text-5xl`, the radius
- * ladder — because that sheet converged with the deployment's ahead of this
- * (#327 S3). The vocabulary was there and nothing held the call sites to it,
- * so nine bare `rounded`, five bracketed z-indexes and four font-size literals
- * had accumulated against rungs that already existed. A token nothing enforces
- * is a token nobody finds.
+ * ladder — because that sheet converged with the deployment's ahead of this.
+ * The vocabulary was there and nothing held the call sites to it, so nine bare
+ * `rounded`, five bracketed z-indexes and four font-size literals had
+ * accumulated against rungs that already existed. A token nothing enforces is
+ * a token nobody finds.
  */
 
 /** Ramps colors.css owns. Semantic tokens derive from these; source may not. */
@@ -180,7 +182,7 @@ test('source takes colour from the semantic layer, not the primitive ramps', () 
  * role this design system has a token for. The two ways to "fix" it are both
  * worse than the exemption: minting `--arrow-catalog-*` names in `src/styles`
  * would put tokens no shipping surface consumes into the production layer,
- * which is the liveness problem ADR 6 already flags; and taking the semantic
+ * which is the liveness problem the single-style-seam decision already flags;
  * tokens instead would make a fixed visual reference invert with the theme,
  * which is the one thing a reference held against a golden snapshot must not
  * do. The page also carries two `(#NNN)` references in JSX text, which a
@@ -188,7 +190,12 @@ test('source takes colour from the semantic layer, not the primitive ramps', () 
  *
  * Every entry is asserted below to still match something, so a file that stops
  * needing its exemption loses it instead of leaving a dead carve-out behind
- * for the next hex to slip through.
+ * for the next hex to slip through. `arrowSituationCatalog.ts` was the second
+ * entry and is the rule working: it carried no colour at all, only
+ * parenthesised issue references inside the `note:` prose of its fixtures —
+ * in a string rather than a comment, so comment-stripping could not reach them
+ * and a three-digit hex pattern could not tell them from `#fff`. Those
+ * references have gone from the prose, so the carve-out goes with them.
  */
 const HEX_EXEMPT_FILES: ReadonlyArray<{ file: string; because: string }> = [
   {

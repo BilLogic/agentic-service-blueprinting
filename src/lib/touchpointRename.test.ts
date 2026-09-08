@@ -16,9 +16,9 @@
  * Both halves of the fix are SQL — `rename_touchpoint` and
  * `sync_cell_touchpoints` are functions because the work has to be one
  * transaction, and PostgREST gives every statement its own. The SQL proves
- * itself where it lives: `21000202000000` asserts the item match in a `do`
- * block that runs on every apply, including the portable core's replay onto a
- * stock Postgres.
+ * itself where it lives: the migration that carries a rename into every cell
+ * asserts the item match in a `do` block that runs on every apply, including
+ * the portable core's replay onto a stock Postgres.
  *
  * What is left for this file is the seam SQL cannot reach: that the CLIENT
  * calls the rename once and records an inverse restoring both halves, and that
@@ -122,7 +122,8 @@ function syncCellTouchpoints(db: Db, cellId: string, names: string[]) {
 
   for (const name of wanted.keys()) {
     if (!db.touchpoints.some((row) => row.name === name)) {
-      // Minted by name alone: the registry is the deployment's (ADR 0003).
+      // Minted by name alone: the registry is the deployment's, not the
+      // service's — a service owns its journey and shares the catalog.
       db.touchpoints.push({ id: id('tp'), name })
     }
   }

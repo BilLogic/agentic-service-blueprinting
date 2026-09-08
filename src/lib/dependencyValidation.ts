@@ -25,8 +25,8 @@ export const DEPENDENCY_KINDS: DependencyKind[] = ['leads_to', 'enables']
  *
  * `needs` pointed the other way — B comes first, B is required by A — so an
  * edge's direction could not be read without first checking its kind.
- * `21000114000000` turned those edges around rather than renaming them where
- * they lay.
+ * The migration that replaced `needs` with `enables` turned those edges around
+ * rather than renaming them where they lay.
  */
 export const DEPENDENCY_KIND_HINTS: Record<DependencyKind, string> = {
   leads_to: 'One step hands off to the next. Draws an arrow.',

@@ -24,7 +24,7 @@ export type RemovedResource = {
 /**
  * A placement's per-moment writing, as the sync hands it back: its summary
  * and role, and its resources in order (the revert re-creates them). The
- * row itself stays, name-only, when it carried any of these (#112).
+ * row itself stays, name-only, when it carried any of these.
  */
 export type RemovedPlacement = {
   name: string
@@ -35,7 +35,7 @@ export type RemovedPlacement = {
 }
 
 /**
- * Bring a cell's placements into line with the text just saved (#112).
+ * Bring a cell's placements into line with the text just saved.
  *
  * One RPC, because this has to be one transaction: the position constraint
  * is DEFERRABLE INITIALLY DEFERRED, and PostgREST gives every statement its
@@ -148,7 +148,7 @@ export async function updateCellContent(
   // having written nothing.
   requireRowsWritten(data, 'cell')
   // The placements follow the text: a new line is a new placement, a line
-  // that left keeps its writing as a name-only row or goes (#112). What
+  // that left keeps its writing as a name-only row or goes. What
   // the sync removed rides in the inverse so a revert can put it back.
   const removed = await syncCellTouchpoints(client, cellId, content)
   // Direct table write, so `call()` never sees it — logged here for the same
@@ -185,7 +185,7 @@ export type ResourceDraft = {
 
 /** The rows `sync_cell_resources` takes, and the shape a revert carries. */
 export type ResourceRowInput = {
-  /** Null for a row to insert; the row's own id for one to update in place (#110). */
+  /** Null for a row to insert; the row's own id for one to update in place. */
   id: string | null
   kind: string
   name: string
@@ -199,7 +199,7 @@ export type ResourceRowInput = {
  * the editor rewrites a whole list, PostgREST gives every statement its own
  * transaction, and a deferred rule only forgives a collision until COMMIT.
  * `sync_cell_resources` reconciles the list inside one — a row that arrives
- * with its id is updated in place, so a reorder keeps every id (#110).
+ * with its id is updated in place, so a reorder keeps every id.
  *
  * It writes the cell's OWN rows. A placement's resources sit in the same
  * list to be read but are the touchpoint's to write, and the sync refuses

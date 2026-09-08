@@ -25,10 +25,10 @@ export class AuthoringError extends Error {
  * by `raise exception`, which yields P0001 for all of them — the code carries
  * no information, only the text does.
  *
- * The RPCs in `20260731001000_blueprint_authoring_operations.sql` deliberately
- * raise sentences ("A blueprint needs a name"), so they are absent here and
- * pass through untouched. Only the older structural triggers, and Postgres's
- * own constraint machinery, need translating.
+ * The RPCs that hold the app's authoring operations deliberately raise
+ * sentences ("A blueprint needs a name"), so they are absent here and pass
+ * through untouched. Only the older structural triggers, and Postgres's own
+ * constraint machinery, need translating.
  */
 const TRANSLATIONS: Array<{ match: string; message: string }> = [
   {

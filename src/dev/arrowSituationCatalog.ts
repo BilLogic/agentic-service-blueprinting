@@ -22,7 +22,7 @@
  * suffixes the hand-tuned routes key on), so it exercises the GENERIC router —
  * the part every view shares and every Direction-B slice touches.
  *
- * Three view modes per the ticket:
+ * Three view modes, one per way the board is drawn:
  *   - `single`        one path, one cell per slot (`BlueprintDependencyArrows`);
  *   - `side-by-side`  the same band with a second, unrelated band present —
  *                     locks the invariant that a neighbour band never perturbs

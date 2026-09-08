@@ -41,13 +41,14 @@ export type ServiceSpec = {
  * business model has to be its OWN request rather than an embed, because it is
  * the one restricted table in the set.
  *
- * `business_models` is revoked from `anon` (20260730090000) and its select
- * policy names `authenticated`. Embedded in the `services` select, a signed-out
- * reader's request is refused WHOLE — PostgREST returns 42501 for the join, not
- * a null column — so the panel showed "permission denied for table
- * business_models" and lost the summary and the examples, which anon may read
- * perfectly well. Split out, the refusal costs exactly the thing that was
- * restricted: `businessModelVisible` goes false and the rest still renders.
+ * The migration that hardened the derived layer's grants revoked
+ * `business_models` from `anon`, and its select policy names `authenticated`.
+ * Embedded in the `services` select, a signed-out reader's request is refused
+ * WHOLE — PostgREST returns 42501 for the join, not a null column — so the
+ * panel showed "permission denied for table business_models" and lost the
+ * summary and the examples, which anon may read perfectly well. Split out,
+ * the refusal costs exactly the thing that was restricted:
+ * `businessModelVisible` goes false and the rest still renders.
  */
 export function useServiceSpec(): QueryResult<ServiceSpec | null> {
   const fallback = useCallback(() => null, [])

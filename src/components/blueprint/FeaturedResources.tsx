@@ -15,7 +15,7 @@ const GLYPH: Record<LinkGlyph, typeof ExternalLink> = {
 
 /**
  * What a placement leads with: its featured attachment as the preview, and
- * one button per featured link, named by host (#110).
+ * one button per featured link, named by host.
  *
  * Nothing here decides what is featured or what a host is called — both are
  * read off the resources in `resourcePresentation.ts`, which is the seam the

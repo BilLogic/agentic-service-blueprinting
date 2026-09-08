@@ -19,11 +19,12 @@ describe('path identity', () => {
     // for its "kind dash" measures the hash rather than the kind. Those are
     // covered by the colour+dash pairing assertion in palette.test.ts.
     //
-    // THREE kinds since 21000116000000, not four: `unhappy` and `alternative`
-    // were one kind under two names, and they are now one dash. Two paths that
-    // used to differ by kind alone still read apart, because the registry keys
-    // on kind AND name — `variant:Sad Path` and `variant:Alternate Path` are
-    // separate entries, and that separation was always doing the work.
+    // THREE kinds since each thing was given one spelling, not four:
+    // `unhappy` and `alternative` were one kind under two names, and they are
+    // now one dash. Two paths that used to differ by kind alone still read
+    // apart, because the registry keys on kind AND name — `variant:Sad Path`
+    // and `variant:Alternate Path` are separate entries, and that separation
+    // was always doing the work.
     const closed = [
       { kind: 'happy', name: 'Happy Path' },
       { kind: 'variant', name: 'Sad Path' },

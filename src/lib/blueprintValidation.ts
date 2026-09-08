@@ -20,10 +20,11 @@ export const LAYOUT_LABELS: Record<Layout, string> = {
 /**
  * What each layout is for, in the words someone choosing one would use.
  *
- * Two rather than three since `21000116000000`: `side-by-side` and
- * `integrated` were one layout the reader switches between, not two a scenario
- * is stored as. Merging every path into one grid is a display state the client
- * holds; it was never a property of the scenario.
+ * Two rather than three since the migration that gave each thing one
+ * spelling: `side-by-side` and `integrated` were one layout the reader
+ * switches between, not two a scenario is stored as. Merging every path into
+ * one grid is a display state the client holds; it was never a property of the
+ * scenario.
  */
 export const LAYOUT_HINTS: Record<Layout, string> = {
   stacked: 'One full band per path, on a shared step axis',

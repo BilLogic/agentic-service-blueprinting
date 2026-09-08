@@ -156,9 +156,10 @@ const SCENARIO_KEY_PREFIX = 'canvas-blueprints:scenario:'
 
 /**
  * Invalidate exactly the scenarios a write touched — one refetch, not a
- * board-wide storm (todo 029). Membership changes (create/delete/duplicate
- * scenario) still go through `invalidateStructure()`'s bare
- * 'canvas-blueprints' prefix, which these keys also match.
+ * board-wide storm, which is what the per-scenario keys below buy. Membership
+ * changes (create/delete/duplicate scenario) still go through
+ * `invalidateStructure()`'s bare 'canvas-blueprints' prefix, which these keys
+ * also match.
  */
 export function invalidateCanvasBlueprintsForScenario(
   scenarioId: string,
@@ -190,10 +191,10 @@ export function invalidateCanvasBlueprintsForPath(pathId: string): void {
  * Blueprints for a set of scenarios, fetched ONE QUERY PER SCENARIO so
  * loading progress is measurable (each settle is one real tick), cache
  * keys are stable under membership changes (adding a scenario adds one
- * key; the rest stay warm — todo 029), and a lost request degrades only
- * its own scenario to the static fallback instead of the whole board
- * (todo 030). Keys live under the `canvas-blueprints:` prefix the
- * mutation contract invalidates.
+ * key; the rest stay warm), and a lost request degrades only its own
+ * scenario to the static fallback instead of the whole board. Keys live
+ * under the `canvas-blueprints:` prefix the mutation contract
+ * invalidates.
  */
 export function useCanvasBlueprints(scenarioIds: string[]) {
   const idsKey = scenarioIds.slice().sort().join(',')
@@ -247,7 +248,7 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
       // all → the static local fallbacks, same as before the split.
       return noDb ? staticFallbacks : EMPTY_MAPS
     }
-    // Per-scenario degradation (todo 030): a failed scenario contributes no
+    // Per-scenario degradation: a failed scenario contributes no
     // rows, and deriveFromRows already falls back to the bundled fixture
     // for a scenario with nothing — the other scenarios keep their fetched
     // data instead of the whole board swapping to statics.

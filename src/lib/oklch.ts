@@ -10,9 +10,10 @@
  * drifting from the one every colour guard measures against.
  *
  * So the conversions live here and `tokenModel.ts` re-exports them unchanged.
- * Nothing about ADR 0006 changes: the model is still the single seam a rule
- * asks its questions of; this is the arithmetic underneath it, with no opinion
- * about stylesheets, themes or the cascade.
+ * Nothing about the decision that one token model is the single style seam
+ * changes: the model is still the single seam a rule asks its questions of;
+ * this is the arithmetic underneath it, with no opinion about stylesheets,
+ * themes or the cascade.
  */
 
 export type Rgb = [number, number, number]

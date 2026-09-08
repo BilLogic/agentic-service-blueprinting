@@ -19,8 +19,9 @@ import {
 /**
  * The seam's own guard.
  *
- * ADR 6 makes `tokenModel` the one place that answers what the token layer
- * declares, so every rule built on it inherits whatever the reader cannot see.
+ * The decision that one token model is the single style seam makes
+ * `tokenModel` the one place that answers what the token layer declares, so
+ * every rule built on it inherits whatever the reader cannot see.
  * A reader's blind spot does not announce itself: no rule fails, because a
  * rule only fails on what it can read. That is the failure mode this file
  * exists to make loud, and each case below is one the simpler readers this
@@ -159,7 +160,8 @@ describe('the source reader', () => {
   it('reads the whole of src, not a chosen list of roots', () => {
     // The rule this model absorbed already read every `.ts`/`.tsx` under
     // `src`. Sampling less while claiming to generalise would have been a
-    // silent narrowing, which is the exact defect ADR 6 is about.
+    // silent narrowing, which is the exact defect the single-style-seam
+    // decision is about.
     const files = sourceFiles()
     expect(files.length).toBeGreaterThan(300)
     for (const root of ['components/', 'contexts/', 'hooks/', 'lib/', 'data/']) {

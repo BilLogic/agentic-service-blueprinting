@@ -171,9 +171,9 @@ export function SlicePresentation({
         skeleton={
           <div className="relative h-full min-h-0">
             <SlicePresentationLoadingSkeleton />
-            {/* Same stage bar the slice tab shows (plan 2026-08-17-001):
-                every canvas-loading surface carries the one progress
-                vocabulary, presentation included. */}
+            {/* Same stage bar the slice tab shows: every canvas-loading
+                surface carries the one progress vocabulary, presentation
+                included. */}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <CanvasLoadProgress
                 stages={[
