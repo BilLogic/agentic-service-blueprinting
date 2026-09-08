@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { recordChange } from '@/lib/authoringSession'
+import { toAuthoringError } from '@/lib/authoringErrors'
 import {
   asUpdatedAtToken,
   readWriteOutcome,
@@ -45,13 +46,13 @@ export async function sliceDeletionImpact(
     .select('title')
     .eq('id', sliceId)
     .single()
-  if (sliceError) throw new Error(sliceError.message)
+  if (sliceError) throw toAuthoringError(sliceError)
 
   const { data: items, error: itemsError } = await client
     .from('slides')
     .select('cell_ids')
     .eq('slice_id', sliceId)
-  if (itemsError) throw new Error(itemsError.message)
+  if (itemsError) throw toAuthoringError(itemsError)
 
   const cells = new Set<string>()
   for (const item of items ?? []) {
@@ -83,7 +84,7 @@ export async function deleteSlice(
   title?: string,
 ): Promise<void> {
   const { error } = await client.from('slices').delete().eq('id', sliceId)
-  if (error) throw new Error(error.message)
+  if (error) throw toAuthoringError(error)
   recordChange('delete_slice', { slice_id: sliceId, title: title ?? null })
 }
 
@@ -128,7 +129,7 @@ export async function createSlice(
     })
     .select()
     .single()
-  if (error) throw new Error(error.message)
+  if (error) throw toAuthoringError(error)
 
   const slides: DraftSlide[] =
     input.slides?.map((slide) => ({ ...slide })) ??
@@ -189,7 +190,7 @@ export async function replaceSlides(
       .select()
       .eq('slice_id', sliceId)
       .order('position', { ascending: true })
-    if (error) throw new Error(error.message)
+    if (error) throw toAuthoringError(error)
     previous = data ?? []
   }
 
@@ -197,7 +198,7 @@ export async function replaceSlides(
     .from('slides')
     .delete()
     .eq('slice_id', sliceId)
-  if (deleteError) throw new Error(deleteError.message)
+  if (deleteError) throw toAuthoringError(deleteError)
 
   if (slides.length > 0) {
     const rows = slides.map((slide, position) => ({
@@ -210,7 +211,7 @@ export async function replaceSlides(
     }))
 
     const { error } = await client.from('slides').insert(rows)
-    if (error) throw new Error(error.message)
+    if (error) throw toAuthoringError(error)
   }
 
   // After the write, like every other entry: the ledger records what landed.
@@ -239,14 +240,14 @@ export async function duplicateSlice(
     .select()
     .eq('id', sliceId)
     .single()
-  if (sourceError) throw new Error(sourceError.message)
+  if (sourceError) throw toAuthoringError(sourceError)
 
   const { data: items, error: itemsError } = await client
     .from('slides')
     .select()
     .eq('slice_id', sliceId)
     .order('position', { ascending: true })
-  if (itemsError) throw new Error(itemsError.message)
+  if (itemsError) throw toAuthoringError(itemsError)
 
   const { data: copy, error: insertError } = await client
     .from('slices')
@@ -260,7 +261,7 @@ export async function duplicateSlice(
     })
     .select()
     .single()
-  if (insertError) throw new Error(insertError.message)
+  if (insertError) throw toAuthoringError(insertError)
 
   if ((items ?? []).length > 0) {
     const rows = (items ?? []).map((item) => ({
@@ -273,7 +274,7 @@ export async function duplicateSlice(
       illustration: item.illustration,
     }))
     const { error } = await client.from('slides').insert(rows)
-    if (error) throw new Error(error.message)
+    if (error) throw toAuthoringError(error)
   }
 
   // One entry for the whole copy, inverted by deleting the copy — the slides
@@ -323,7 +324,7 @@ export async function updateSliceMeta(
     .select('title, summary, kind, actor, authorship')
     .eq('id', sliceId)
     .maybeSingle()
-  if (beforeError) throw new Error(beforeError.message)
+  if (beforeError) throw toAuthoringError(beforeError)
 
   const { data, error } = await client
     .from('slices')
