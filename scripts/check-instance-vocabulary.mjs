@@ -99,7 +99,12 @@ export function trailingNames(map, inventory, accepted = ACCEPTED_DIVERGENCES) {
   for (const row of map) {
     if (row.migrations.length === 0) continue // a label rename is copy, not schema
     row.was.forEach((was, index) => {
-      const is = row.is[index] ?? row.is[0]
+      // The instance's map is whatever shape the instance ships. Since #279
+      // this template's carries `renames` — a pair per retired name, so a fold
+      // says its destination rather than implying it — and the instance's does
+      // not; the fallback is the old positional read, which is all a map
+      // without pairs can offer and which is only ever a message here.
+      const is = row.renames?.find((pair) => pair.from === was)?.to ?? row.is[index] ?? row.is[0]
       const hit = liveAs(was, inventory)
       if (!hit) return
       const exemption = accepted.find((entry) => entry.was === was)

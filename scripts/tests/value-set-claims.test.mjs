@@ -37,7 +37,7 @@ const catalog = catalogFromSchema(dump)
 const retired = new Map([
   ['side-by-side', { column: 'scenarios.layout', is: 'stacked', migration: '21000116000000' }],
   ['integrated', { column: 'scenarios.layout', is: 'stacked', migration: '21000116000000' }],
-  ['unhappy', { column: 'paths.kind', is: 'exception', migration: '21000116000000' }],
+  ['unhappy', { column: 'paths.kind', is: 'variant', migration: '21000116000000' }],
   ['trigger', { column: 'cell_dependencies.kind', is: 'leads_to', migration: '21000114000000' }],
 ])
 const markdown = (text) => valueSetFindings({ text, source: 'doc.md', medium: 'markdown' }, catalog, retired)
@@ -49,10 +49,16 @@ test('the dump is read as the catalog, by column and by bare name', () => {
   assert.ok(live.columns.has('scenarios.layout'), 'the committed dump carries the layout CHECK')
 })
 
-test('the rename map records retired VALUES', () => {
+test('the rename map records retired VALUES, and a fold says one destination twice', () => {
   const live = retiredValues()
   assert.equal(live.get('side-by-side')?.is, 'stacked')
-  assert.equal(live.get('unhappy')?.is, 'exception')
+  assert.equal(live.get('integrated')?.is, 'stacked')
+  // Both, and both `variant`. This read `exception` until #279, because the
+  // map was two parallel arrays and the sweep took the entry at the matching
+  // index — so the one place that tells an author what a retired value became
+  // told them a word `21000116000000` never moved a row to.
+  assert.equal(live.get('unhappy')?.is, 'variant')
+  assert.equal(live.get('alternative')?.is, 'variant')
   assert.equal(live.get('trigger')?.is, 'leads_to')
 })
 

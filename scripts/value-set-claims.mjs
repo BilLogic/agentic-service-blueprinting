@@ -136,12 +136,20 @@ export function retiredValues(map = RENAME_MAP) {
   const VALUE_RENAME = /^([a-z][a-z0-9_]*\.[a-z][a-z0-9_]*) = '([^']+)'$/
   const retired = new Map()
   for (const row of map) {
-    row.was.forEach((was, index) => {
-      const from = VALUE_RENAME.exec(was)
-      const to = VALUE_RENAME.exec(row.is[index] ?? row.is[0] ?? '')
-      if (!from || !to) return
+    // The PAIRS, not the two lists side by side. `row.is[index]` was the
+    // reading #279 removed: it made `unhappy` retire for `exception` here, a
+    // value the migration never moved a row to, and this map is what the
+    // markdown sweep quotes back at an author. A map without `renames` — the
+    // instance's, read over the wire by `check-instance-vocabulary` — still
+    // falls back to position, which is all its shape can offer.
+    const pairs =
+      row.renames ?? row.was.map((from, index) => ({ from, to: row.is[index] ?? row.is[0] ?? null }))
+    for (const pair of pairs) {
+      const from = VALUE_RENAME.exec(pair.from)
+      const to = VALUE_RENAME.exec(pair.to ?? '')
+      if (!from || !to) continue
       retired.set(from[2], { column: from[1], is: to[2], migration: row.migrations[0] ?? null })
-    })
+    }
   }
   return retired
 }

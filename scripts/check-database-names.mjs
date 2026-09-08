@@ -396,12 +396,19 @@ export function schemaRelations(sql) {
   return relations
 }
 
-/** The name the rename map pairs with a retired one, or null. */
+/**
+ * The name the rename map pairs with a retired one, or null.
+ *
+ * Read off the row's PAIRS. Until #279 this took `row.is[at]`, the entry at the
+ * same index in a parallel array, which is a guess wherever two names folded
+ * onto one: it named `resources.kind` as what `cell_touchpoints.screenshots`
+ * became, and no screenshot ever became a kind.
+ */
 export function renamedTo(...spellings) {
   for (const spelling of spellings) {
     for (const row of RENAME_MAP) {
-      const at = row.was.indexOf(spelling)
-      if (at !== -1 && row.is[at]) return row.is[at]
+      const pair = row.renames.find((entry) => entry.from === spelling)
+      if (pair && pair.to) return pair.to
     }
   }
   return null
