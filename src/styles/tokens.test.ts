@@ -14,7 +14,9 @@ import {
   roleTokens,
   rulesDeclaring,
   sourceDeclarations,
+  sourceFiles,
   stylesheet,
+  stylesheets,
   winningDeclaration,
 } from '@/lib/tokenModel'
 
@@ -110,6 +112,37 @@ const COMPOSED_TOKEN_PREFIXES = ['--color-']
  * both sides together in `declaredNames`; this splits them again so the rule
  * below can say which arm it leaned on, and so a test can hold each arm to its
  * own promise.
+ *
+ * A `@theme` REGISTRATION counts as a stylesheet declaration, and `inline`
+ * does not change that. It is a fair question whether it should. `inline`
+ * decides what a utility compiles to — the value, never the registered name —
+ * so a registration is not automatically a custom property in the built CSS.
+ * What decides that is Tailwind's content scan: a `@theme` key whose name the
+ * scan finds is emitted at `:root, :host`, and one it never finds is dropped.
+ * Some of `theme.css` is emitted and some of it is not, and this function
+ * cannot tell which from the declaration alone. On the face of it that is a
+ * hole: a name registered but not emitted would be read as declared here and
+ * resolve to nothing in a browser.
+ *
+ * It is not a hole, and the reason is the scan itself. Reading a name is one
+ * of the things that emits it. A `var(--color-X)` in a stylesheet and an
+ * arbitrary-value utility in a component are both found by the scan, so both
+ * put the key they name into the artifact. The files this model samples —
+ * every stylesheet under `src/styles`, every non-test `.ts` and `.tsx` under
+ * `src` — are a subset of the files Tailwind scans, so every read a rule here
+ * can see is a read that emits what it reads. The dangling case cannot be constructed from
+ * inside the sample, and a branch for it would be asserting a failure mode
+ * this build has no way to reach.
+ *
+ * That subset relation is the whole of the argument, so it is held below
+ * rather than left as a claim. What would break it is the sample widening past
+ * what Tailwind scans — the direction `tokenModel`'s header calls the safe one
+ * — or a new `@source not` line covering a file the sample reads.
+ *
+ * Ten references live on this today, all of them components reading a name
+ * only `theme.css` registers: `--radius-md`, `--color-popover`,
+ * `--width-cell-panel` and `--width-cell-panel-expanded`. All four are in the
+ * built artifact. No stylesheet reads such a name at all.
  */
 const stylesheetNames = new Set(declarations().map((entry) => entry.name))
 const componentNames = new Set(sourceDeclarations().map((entry) => entry.name))
@@ -269,6 +302,35 @@ describe('token resolution', () => {
       'Every stylesheet fallback now names something declared, so the ' +
         'fallback arm of this rule is excusing nothing.',
     ).toBeGreaterThan(0)
+  })
+
+  it('samples nothing Tailwind is told not to scan', () => {
+    // The premise `declarerOf` rests on for `@theme` registrations: reading a
+    // name is one of the things that emits it, so a read this file can see is
+    // a read the build resolves. That holds only while everything this file
+    // reads is also something Tailwind reads.
+    //
+    // Two ways to break it, one from each side. The exclusions are read off
+    // the entry sheet rather than restated, so a FOURTH one fails here and
+    // gets looked at: the three below name `docs/` and `scripts/`, which sit
+    // outside the `src/styles/**.css` and `src/**.ts(x)` this model samples,
+    // and the test files, which it already skips. A fourth could name
+    // anything.
+    const excluded = [
+      ...stylesheet('tailwind.config.css').text.matchAll(
+        /@source\s+not\s+'([^']+)'/g,
+      ),
+    ].map(([, pattern]) => pattern)
+    expect(excluded.sort()).toEqual(
+      ['../**/*.test.{ts,tsx}', '../../docs', '../../scripts'].sort(),
+    )
+    // And from the other side: the sample widening to take in a test file,
+    // which is the one exclusion that overlaps where this model already looks.
+    const sampled = [
+      ...stylesheets().map((sheet) => sheet.file),
+      ...sourceFiles().map((source) => source.file),
+    ]
+    expect(sampled.filter((file) => /\.test\.[jt]sx?$/.test(file))).toEqual([])
   })
 })
 

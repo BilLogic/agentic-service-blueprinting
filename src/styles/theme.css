@@ -10,9 +10,25 @@
  * reads a per-theme dial, is the semantic layer's job arriving one tier too
  * low.
  *
- * NOTE: `@theme inline` keys are NOT emitted as custom properties. Never write
- * `var(--color-canvas)` in hand-authored CSS — reference the underlying dial or
- * semantic token instead.
+ * NOTE: `inline` does not decide whether these keys reach the artifact. What
+ * it decides is what a UTILITY compiles to — the value rather than the
+ * registered name — so `text-muted-foreground` compiles to
+ * `color: var(--muted-foreground)` and never mentions `--color-X` at all.
+ * Emission is a separate question, answered by Tailwind's content scan: a key
+ * whose name the scan finds anywhere is emitted at `:root, :host` under
+ * `@layer theme`, and a key it never finds is dropped. What counts as finding
+ * it depends on the file — a stylesheet offers a name only inside a `var()`,
+ * while a `.tsx` or a `.md` offers it however it is written, comments and
+ * prose included. So the hue families below are always emitted, because their
+ * own value spells their own name; the rest are emitted only where something
+ * in the tree spells them, and most are registration and nothing else.
+ *
+ * Hand-authored CSS should still reference the dial or the semantic token
+ * rather than the registered name. Not because the read would fail — writing
+ * the name is itself one of the things that emits it, so it resolves — but
+ * because it puts a second indirection in front of a value the semantic layer
+ * already names, and makes an entry in the compiled artifact depend on a
+ * sentence rather than on a decision.
  */
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -171,12 +187,20 @@
   /*
    * Radix / scale step registration.
    *
-   * Self-referential on purpose, and copied from Supabase's own theme.css:
-   * `@theme inline` never emits a custom property, it only tells Tailwind the
-   * name exists and what a utility should compile to. So `bg-amber-100` becomes
-   * `background-color: var(--color-amber-100)` and resolves against the single
-   * declaration in colors.css — which is also what lets the plain `.dark` rule
-   * there re-point every step without a second `@theme` block.
+   * Self-referential on purpose, and copied from Supabase's own theme.css.
+   * `inline` makes a utility compile to the VALUE rather than to the
+   * registered name, and here the value IS the registered name, so
+   * `bg-amber-100` becomes `background-color: var(--color-amber-100)` and
+   * resolves against the single declaration in colors.css — which is also what
+   * lets the plain `.dark` rule there re-point every step without a second
+   * `@theme` block.
+   *
+   * That self-reference is also why every one of these steps IS in the built
+   * artifact, where most of the entries above are not: the value spells the
+   * name, so the content scan always finds it. Nothing rests on that. The
+   * emitted copy sits in `@layer theme` and the declaration in colors.css does
+   * not, so the unlayered one wins and the step resolves to its hue either
+   * way.
    *
    * Components must not use these. They exist so the semantic layer above has
    * primitives to derive from.
@@ -428,13 +452,14 @@
    * failure.)
    */
   /*
-   * The seam is `--app-font-sans`, NOT `--font-sans` itself: this file's
-   * `@theme inline` block DOES emit these as custom properties on :root, so
-   * a self-referential `--font-sans: var(--font-sans, …)` is a custom-property
-   * cycle — invalid at computed-value time, and it silently discards an
-   * embedder's own `--font-sans` whenever this sheet sorts later in the
-   * cascade. A distinctly named seam (mirroring `--font-source-code-pro` on
-   * the mono side) cannot cycle.
+   * The seam is `--app-font-sans`, NOT `--font-sans` itself. A self-referential
+   * `--font-sans: var(--font-sans, …)` would emit ITSELF — a key whose value
+   * spells its own name is one the content scan always finds, which is exactly
+   * what puts every hue step above into the artifact — so it would land at
+   * `:root, :host` as a custom-property cycle, invalid at computed-value time,
+   * and it would silently discard an embedder's own `--font-sans` whenever
+   * this sheet sorts later in the cascade. A distinctly named seam (mirroring
+   * `--font-source-code-pro` on the mono side) cannot cycle.
    */
   --font-sans:
     var(--app-font-sans, 'Ubuntu Sans Variable'), 'Ubuntu Sans', Ubuntu,
