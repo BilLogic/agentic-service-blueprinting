@@ -150,25 +150,18 @@
   --text-color-on-surface-success: var(--text-on-surface-success);
   --text-color-on-surface-secondary: var(--text-on-surface-secondary);
 
-  /* Stepped semantic ramps — per-theme HSL literals from themes/{light,dark}.css.
-     200 = subtle surface, 500 = border, 600 = text. */
   /* `bg-brand` reads the derived identity fill. Same colour the ramp's anchor
      step carried — the brand lightness dial is that step's OKLCH lightness —
      and the ramp itself is gone, because a primitive family is named for a
      hue and never for a role. `brand-link` went with it: role ink on a
-     neutral ground is `--text-brand` now, which is what a link wanted. */
+     neutral ground is `--text-brand` now, which is what a link wanted. The
+     warning and destructive ramps followed for the same reason, and their
+     registrations went with them: this file maps a semantic name onto
+     Tailwind's namespace and does no colour arithmetic, so an entry that
+     wrapped a raw HSL triple was doing the semantic layer's job one tier too
+     low. Every entry here is `--color-X: var(--X)`, and a check holds it. */
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
-  --color-warning-200: hsl(var(--warning-200));
-  --color-warning-300: hsl(var(--warning-300));
-  --color-warning-400: hsl(var(--warning-400));
-  --color-warning-500: hsl(var(--warning-500));
-  --color-warning-600: hsl(var(--warning-600));
-  --color-destructive-200: hsl(var(--destructive-200));
-  --color-destructive-300: hsl(var(--destructive-300));
-  --color-destructive-400: hsl(var(--destructive-400));
-  --color-destructive-500: hsl(var(--destructive-500));
-  --color-destructive-600: hsl(var(--destructive-600));
 
   /*
    * Radix / scale step registration.

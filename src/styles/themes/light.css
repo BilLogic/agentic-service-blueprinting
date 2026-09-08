@@ -105,23 +105,4 @@
    * a fraction of is.
    */
   --role-edge-step: 0.08;
-
-  /* Stepped numeric scales — per-theme HSL literals, mapped to utilities in
-     theme.css and consumed by colors.css via `hsl(var(--{role}-N))`.
-
-     Warning / destructive tint ramps, taken from Supabase's light theme:
-     200 = subtle surface, 500 = border, 600 = text. Both stay for as long as
-     the components reading them do; the brand ramp that stood above them had
-     no reader left. */
-  --warning-600: 30.3deg 80.3% 47.8%;
-  --warning-500: 36.3deg 85.7% 67.1%;
-  --warning-400: 41.9deg 100% 81.8%;
-  --warning-300: 44.3deg 100% 91.8%;
-  --warning-200: 40deg 81.8% 97.8%;
-  --destructive-default: 10.2deg 77.9% 53.9%;
-  --destructive-600: 9.9deg 82% 43.5%;
-  --destructive-500: 10.4deg 77.1% 79.4%;
-  --destructive-400: 7.1deg 91.3% 91%;
-  --destructive-300: 7.1deg 100% 96.7%;
-  --destructive-200: 0deg 100% 99.4%;
 }
