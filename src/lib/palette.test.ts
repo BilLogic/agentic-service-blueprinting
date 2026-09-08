@@ -232,6 +232,7 @@ describe('blueprint cells', () => {
     ['backstage-touchpoint', 'lime'],
     ['backstage-action', 'orange'],
     ['support', 'amber'],
+    ['partner-action', 'gray'],
   ]
 
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
@@ -423,8 +424,8 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
    * `happy` is green against the green `actor` lane.
    *
    * Widening the sample fails, and that failure is the finding. The honest fix
-   * is to narrow the claim rather than reshuffle the palette: eight lane
-   * families plus seven touchpoint tones is fifteen, and there is no spare
+   * is to narrow the claim rather than reshuffle the palette: nine lane
+   * families plus seven touchpoint tones is sixteen, and there is no spare
    * hue for green or blue to move to. What CAN be held is that the overlap is
    * exactly this list, known, and drawn at a weight nothing can confuse with a
    * lane fill.
@@ -457,17 +458,18 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
   /*
    * The constraint nobody had written down: the palette is FULL.
    *
-   * Eight families to lanes, seven to touchpoint tones, fifteen in all and one
-   * spare. It is invisible until someone tries to add a tenth lane and finds
-   * there is nowhere for it to go — and it is the reason the fix above is a
-   * narrowed claim rather than a reallocation.
+   * Nine families to lanes, seven to touchpoint tones, sixteen in all and
+   * nothing spare — `partner-action` took the one spare family the count used
+   * to hold in reserve. It is invisible until someone tries to add a tenth
+   * lane and finds there is nowhere for it to go — and it is the reason the
+   * fix above is a narrowed claim rather than a reallocation.
    */
-  it('states its own allocation, so a lane with no hue fails before it is drawn', () => {
+  it('states its own allocation, so a tenth lane fails before it is drawn', () => {
     const lanes = familiesIn('lane')
     const tones = familiesIn('tone')
-    expect(lanes.size).toBe(8)
+    expect(lanes.size).toBe(9)
     expect(tones.size).toBe(7)
-    expect(new Set([...lanes, ...tones]).size).toBe(15)
+    expect(new Set([...lanes, ...tones]).size).toBe(16)
   })
 })
 
@@ -477,13 +479,13 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
  * pressed, ring and text contrast in both themes — and the gap was
  * structural, not incidental: the regex below matched
  * `[data-blueprint-lane=…]` only, so all seven tones were excluded from every
- * contrast assertion in the file. Seven of our fifteen allocated families were
+ * contrast assertion in the file. Seven of our sixteen allocated families were
  * exempt from every check. They set the same seven properties from the same
  * ramps and render as cell surfaces exactly the way lanes do; there was never
  * a reason beyond the shape of one regex.
  */
 describe.each([
-  ['lane', 8],
+  ['lane', 9],
   ['tone', 7],
 ] as const)('interaction states: %s', (attr, expectedCount) => {
   const css = stylesheet('blueprint.css').text

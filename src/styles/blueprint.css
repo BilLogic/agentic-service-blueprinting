@@ -385,6 +385,26 @@
   }
 
   /*
+   * partner-action — a party outside the service, acting where the customer
+   * can see them.
+   *
+   * Gray is the family neither a lane, a touchpoint tone nor a path draws
+   * from, and `palette.test.ts` holds all three sets disjoint. It is the apt
+   * one anyway: a lane that belongs to somebody else should not wear a hue
+   * that says it is one of the service's own rows. It is also the last free
+   * family — see the allocation the same test states.
+   */
+[data-blueprint-lane='partner-action'] {
+    --background-blueprint-cell-origin: var(--color-gray-500);
+    --background-blueprint-cell: var(--color-gray-500);
+    --background-blueprint-cell-hover: var(--color-gray-600);
+    --background-blueprint-cell-pressed: var(--color-gray-700);
+    --ring-blueprint-cell: var(--color-gray-1100);
+    --ring-blueprint-cell-soft: var(--color-gray-1100);
+    --foreground-blueprint-cell: var(--color-gray-1200);
+  }
+
+  /*
    * TOUCHPOINT TONES — the same ten properties, a step paler, and sharing no
    * family with the roles above so a touchpoint never reads as its lane.
    *

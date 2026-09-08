@@ -276,11 +276,18 @@ const BACKSTAGE_FALLBACK: BlueprintLaneStyle = cellStyleFromFill('support',
  * Canonical cell fills keyed by `lane_role` — the intentional coloring system.
  * Roles are locale-independent, so non-English lane labels still color correctly
  * (name-keyed `LANE_STYLES` above is the legacy fallback for pre-role content).
+ *
+ * The keys are the closed eight and nothing else. This map used to disagree
+ * with `lanes_lane_role_check` in both directions at once: it carried
+ * `journey_stage` and `physical_evidence`, two roles no row can hold, and it
+ * had no entry for `partner_actions`, one that rows do hold — so a partner
+ * lane fell through to the zone fallback and was drawn in the support fill,
+ * which is a lane it is not. Both halves are the same defect: a fourth copy
+ * of the roster with nothing holding it. `scripts/tests/lane-role-roster.test.mjs`
+ * holds it now.
  */
 const ROLE_STYLES: Record<string, BlueprintLaneStyle> = {
   storyboard: cellStyleFromFill('storyboard'),
-  journey_stage: cellStyleFromFill('storyboard'),
-  physical_evidence: cellStyleFromFill('evidence'),
   customer_actions: cellStyleFromFill('actor',
     BLUEPRINT_LABEL_TEXT.frontstage,
   ),
@@ -298,6 +305,15 @@ const ROLE_STYLES: Record<string, BlueprintLaneStyle> = {
   ),
   support_actions: cellStyleFromFill('support',
     BLUEPRINT_LABEL_TEXT.backstage,
+  ),
+  /*
+   * A partner acts where the customer can see them, so the label reads as
+   * customer-facing rather than backstage — and the fill is the one family
+   * nothing else on the board uses, because the lane is not the service's own
+   * work.
+   */
+  partner_actions: cellStyleFromFill('partner-action',
+    BLUEPRINT_LABEL_TEXT.customerFacing,
   ),
 }
 

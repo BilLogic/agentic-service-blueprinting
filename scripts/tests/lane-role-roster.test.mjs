@@ -1,5 +1,5 @@
 /**
- * One roster of lane roles, in the four places that have to state it.
+ * One roster of lane roles, in the five places that have to state it.
  *
  * `lanes_lane_role_check` has closed `lanes.lane_role` to eight values since
  * `21000122000000`. The wire format did not follow: `references/ir-schema.json`
@@ -12,8 +12,16 @@
  *
  * A duplicated list with nothing holding it is how the first drift started, so
  * this is what holds them: the constraint in the generated portable core is the
- * authority, and the three copies are compared to it set for set. The dump is
+ * authority, and the four copies are compared to it set for set. The dump is
  * a committed file, so this runs on every pull request with no database.
+ *
+ * The fourth copy was added after the fact, and it is the one that proves the
+ * point. `ROLE_STYLES` in `src/lib/blueprintTheme.ts` decides which fill a
+ * lane is drawn in, keyed by role, and it is a `Record<string, …>` — so a key
+ * outside the vocabulary is not a type error and a missing key is not either.
+ * It drifted in both directions at once and stayed that way (#212): two keys
+ * no row could ever hold, and no key for `partner_actions`, which rows do
+ * hold. Nothing in the app can notice a colour that is never asked for.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
@@ -69,6 +77,28 @@ function appRoles() {
   })
 }
 
+/**
+ * The keys of `ROLE_STYLES` in the board's theme, read as text.
+ *
+ * Read as text for the same reason the validator is: importing the module
+ * pulls in the whole style layer, and a roster check should not depend on the
+ * app building. The entries are read by their `key: cellStyleFromFill(` shape,
+ * so a rewrite into some other form is a failure of the reader rather than a
+ * silently empty list.
+ */
+function roleStyleRoles() {
+  const block = /const ROLE_STYLES: Record<string, BlueprintLaneStyle> = \{([\s\S]*?)\n\}/.exec(
+    read('src/lib/blueprintTheme.ts'),
+  )
+  assert.ok(block, 'src/lib/blueprintTheme.ts no longer declares ROLE_STYLES as an object literal')
+  const keys = [...block[1].matchAll(/^ {2}([a-z_]+): cellStyleFromFill\(/gm)].map((m) => m[1])
+  assert.ok(
+    keys.length,
+    'ROLE_STYLES no longer states its fills as `role: cellStyleFromFill(...)` entries',
+  )
+  return keys
+}
+
 const sorted = (roles) => [...roles].sort()
 
 test('the constraint states eight roles, and null besides', () => {
@@ -98,4 +128,15 @@ test('scripts/validate_ir.py refuses by the same list', () => {
 
 test('src/lib/laneRoles.ts renders by the same list', () => {
   assert.deepEqual(sorted(appRoles()), sorted(constraintRoles()))
+})
+
+test('src/lib/blueprintTheme.ts fills by the same list', () => {
+  assert.deepEqual(
+    sorted(roleStyleRoles()),
+    sorted(constraintRoles()),
+    'ROLE_STYLES and lanes_lane_role_check disagree about the lane vocabulary. A key the ' +
+      'constraint does not admit is a fill no stored role can reach; a role the map omits ' +
+      'falls through to the zone fallback and is drawn as a lane it is not. Adding a role is ' +
+      'a multi-file act — see references/lane-roles.md.',
+  )
 })

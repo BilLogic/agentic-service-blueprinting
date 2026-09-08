@@ -53,7 +53,7 @@ export function getPathColorKey(path: PathColorInput): string {
  * The families a path may be drawn from once its identity is a *name* rather
  * than a type — the same seven the touchpoint tones use.
  *
- * Deliberately disjoint from the eight lane families, and `palette.test.ts`
+ * Deliberately disjoint from the nine lane families, and `palette.test.ts`
  * holds that. An earlier open set drew on ten families including green, blue,
  * violet and pink, so a differently-named path could render as a 2px line in
  * exactly the hue of the lane it crossed.
