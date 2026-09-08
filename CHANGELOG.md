@@ -1,5 +1,141 @@
 # Changelog
 
+## 1.12.1
+
+### Patch Changes
+
+- 79d8cf7: A cell's status is editable from the panel, and its revert restores it.
+
+  `StatusSelect` has been in this tree for a while with nothing wired to it. The
+  control existed, `entityStatus.ts` held the six-rung ladder, `cells.status`
+  carried the value, the board drew the dashed edge for an unbuilt cell — and the
+  one governed vocabulary on the board was still the one thing an author could
+  not set. The panel's cell form now carries a Status field between Summary and
+  the owner pair, which is where the reference table already said it belonged.
+
+  `CellContentUpdate` gains `status`, and it is required rather than optional
+  because `previous` is that same type: `updateCellContent` records `previous` as
+  the change's inverse, `executeRevert` replays it as an ordinary update, and a
+  `previous` missing one field is a revert that restores four and reports "taken
+  back" — a write that succeeded and did less than it claimed, which is the one
+  failure the ledger's row-count guard cannot see. Required makes omitting it a
+  compile error. `cellPanelEditorStatus.test.tsx` asserts the whole inverse, not
+  just its new key: the status in it has to be the one the cell held when the
+  form opened.
+
+  No migration. `cells.status` and its `grant update (status) ... to
+authenticated` both landed with `21000125000000`, whose comment names "the
+  three columns the editors that follow will write" — this is one of those
+  editors arriving.
+
+  The editor reads the status off the board rather than off `useCellContent`. The
+  board query already selects the column, the normalizer already maps it and
+  `entityStatusContract.test.ts` already holds both of those true, so the value is
+  in memory before the panel opens and a second per-cell read would pay a
+  round-trip for it. Where the board does not hold the cell there is no row to
+  read anywhere — the sample-content board, where the editor renders nothing for
+  an existing cell — and the fallback is the column's own default rather than a
+  guess.
+
+  The agent's `update_cell` reads `status` and hands it straight back. The tool
+  takes no status argument and this does not give it one: an edit to a cell's
+  wording that quietly marked a proposed surface live would be the sentence the
+  agent never said out loud. Widening the tool is a separate decision about the
+  agent's surface, and would be the change that moves the version — this one
+  touches no skill name, reference filename, schema filename, agent name, hook
+  event or tool name, so it is a patch.
+
+- 3fb7818: The default deployment config inlines nothing, so a deployment forks one small
+  file instead of a large one.
+
+  `asbDefaultConfig` read its wordmark from a constant and omitted the accent
+  entirely, which meant an installation wanting either had to fork
+  `src/deploymentConfig.ts` — a module whose resolver, merge rules and reasoning
+  it has no quarrel with. `src/config.ts` now carries a `Brand` type and a `BRAND`
+  constant beside `ORG_NAME`, and the default reads `{ brand: { name: ORG_NAME,
+accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
+  file to fork is the small one that already exists to be forked.
+
+  Nothing repaints. `coverContent.ts` omits `title` on purpose and `BRAND` ships
+  no accent — this kit's `--brand-*` ramp is greyscale, so there is no hue for one
+  to be — and both `present()` and `applyBrandAccent` treat an absent value as
+  nothing to say. The wordmark still resolves to `ORG_NAME`, which the rendered
+  navbar and the whole-app render both assert.
+
+  `applyBrandAccent` takes the shared `Brand` and defaults the block to `BRAND`,
+  so a host's bootstrap can set the dial before React exists. The module had no
+  test; it has one, and the first assertion is that this template writes no dial
+  at all.
+
+- d017da6: Three of the twelve differing hooks converge, and the other nine are held by
+  three named things rather than by drift.
+
+  Twelve files under `src/hooks/` differ from their copies in the deployment this
+  kit was generalised from by fewer than twenty lines each, which reads like
+  drift. It is not. Roughly eighty of those hundred-odd lines are a single
+  unported feature appearing once per file, and most of the rest are differences
+  that cannot converge at all while they stay where they are.
+
+  **What converged.**
+
+  `useScenarioPaths.ts` the embedded-resource alias goes.
+  `scenario:scenarios(name)` and `scenarios(name)`
+  fetch the same row through the same embed, and the
+  alias only renamed a key this file casts anyway.
+  Every other hook that embeds a parent names the
+  relation plainly.
+  `useSliceScenarioId.ts` the cache key is sorted before it is joined. The
+  lookup is `.in('id', …)`, which answers the same
+  scenario for any permutation of the same ids, so
+  reordering a slice's frames used to mint a fresh
+  key for an answer already held — a round trip, and
+  a second entry kept beside the first. `sliceScenarioKey`
+  is exported, as it is there.
+  `useServicePhases.ts` a doubled word, with three more of the same
+  artefact fixed alongside it in `useSlices.ts`,
+  `lib/service.ts` and `CreateSliceSheet.tsx`. The
+  journey-to-service rename replaced the word in a
+  phrase that already carried it, and one of the four
+  is an error message a slice author can hit.
+
+  **What holds the other nine, in three groups.**
+
+  _The read lifetime._ Every one of the twelve passes an abort signal into its
+  request — `async (client, signal)` and `.abortSignal(signal)` — because there
+  the query wrapper hands the fetcher one. Here it does not. That contract is
+  `useSupabaseQuery.ts` plus `lib/supabaseFetchTimeout.ts` (a `Promise.race`
+  becomes a real deadline that aborts the request it bounds, and a named timeout
+  error), `lib/queryClient.ts` (which retries that error and not the others),
+  `lib/service.ts` (`awaitOrAbort`, so a caller can stop waiting on a shared
+  lookup without cancelling it for everyone else) and `useCanvasBlueprints.ts` —
+  six files, none of them in this cluster, two of them fifty lines apart on their
+  own account. It is its own piece of work and wants its own ticket; until it
+  lands, no hook in this cluster can be byte-identical, which is why three of the
+  twelve converged and not twelve.
+
+  _Prose written in a deployment's vocabulary._ `useOwnerTags.ts`,
+  `useLaneSpec.ts` and `useStakeholders.ts` illustrate their arguments with that
+  deployment's own party names, and `useCellDeepLink.ts` describes its share link
+  in terms of that deployment's bot, channel and documentation path. This side is
+  the general one and should stay so — the fix is on the other side, and it is
+  the only class of difference here where the template is ahead. `useStakeholders.ts`
+  also cites the catalog decision by number, which is ADR 3 here and a different
+  number there; a citation that cannot mean the same thing in both copies has to
+  be the template's number in both, or not a number at all.
+
+  _A schema this template does not have._ `useArchiveAvailable.ts` probes for the
+  recovery archive before any delete affordance ships. The probe names
+  `deleted_structure` here because that is the table `portable-core.schema.sql`
+  carries and the one the delete functions write to; there it names a `trash`
+  view over an authoring-change log that replaced it. Taking the newer name would
+  make the probe answer no on every database this template can build, which is
+  the exact failure the hook exists to prevent. It converges when the migration
+  does, and not before.
+
+  `useEvidence.ts`, `useScenarioSpec.ts`, `usePhaseSpec.ts` and `useStepSpec.ts`
+  differ in nothing except the abort signal, so they converge in full the day the
+  read lifetime does.
+
 ## 1.12.0
 
 ### Minor Changes
@@ -207,8 +343,8 @@
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-            ERROR: new row for relation "lanes" violates check constraint
-            "lanes_lane_role_check" … compliance_review
+              ERROR: new row for relation "lanes" violates check constraint
+              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
