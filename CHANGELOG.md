@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.7
+
+### Patch Changes
+
+- 6923d4b: Sixteen shared files that differ from the deployment's copies by prose alone
+  lose their repo-local citations, so the drift gate can hold them. The raw-hex
+  exemption for `arrowSituationCatalog.ts` goes with them — its only matches were
+  the issue references now gone.
+
 ## 1.12.6
 
 ### Patch Changes
@@ -706,8 +715,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                        ERROR: new row for relation "lanes" violates check constraint
-                        "lanes_lane_role_check" … compliance_review
+                          ERROR: new row for relation "lanes" violates check constraint
+                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
