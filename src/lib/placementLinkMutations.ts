@@ -6,7 +6,7 @@ import type { Database, Json } from '@/types/database'
 type Client = SupabaseClient<Database>
 
 /**
- * A placement's identity, and its removal (#112).
+ * A placement's identity, and its removal.
  *
  * A placement names its touchpoint one of two ways: a registry id, or a
  * name the registry lacks. "Link to registry" is the first replacing the

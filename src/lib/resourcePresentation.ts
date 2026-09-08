@@ -7,7 +7,7 @@
  * document card. Both have a default, because a map that refuses an unknown
  * host is a button that goes missing the day someone links a new tool.
  *
- * Stored nowhere on purpose (#110). A `host` column would be a second copy
+ * Stored nowhere on purpose. A `host` column would be a second copy
  * of the url's own host, wrong the moment the url is edited; and "what kind
  * of file is this" is a property of the bytes at the other end, which the
  * url already names. Every featured link gets a button, whatever it points
@@ -101,9 +101,9 @@ export type FeaturedPresentation = {
  *
  * The placement's featured attachment is the preview; every featured link,
  * the placement's and then the cell's own, is a button. A placement's own
- * `url` column still exists until #111 copies it onto the placement as a
- * featured link and drops it; the panel reads that column separately for
- * now, and this reads only rows.
+ * `url` column still exists and has not yet been folded into these rows as
+ * a featured link; the panel reads that column separately for now, and this
+ * reads only rows.
  */
 export function featuredPresentation(input: {
   placementId: string | null

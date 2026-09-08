@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The Service panel is the one home the six examples are authored in (#302).
+ * The Service panel is the one home the six examples are authored in.
  *
  * Path has no detail panel of its own, so all six live here — one labelled
  * input per kind under an "Examples" section. What is asserted is what an

@@ -32,7 +32,7 @@ export type PlacementResourceRowInput = {
 }
 
 /**
- * Replace a placement's resources (#110).
+ * Replace a placement's resources.
  *
  * One RPC, one transaction: the position rule is deferrable, so a reorder
  * lands as one statement, and reordering changes no `featured` value — the
@@ -102,7 +102,7 @@ export async function writePlacementResources(
 export type FeaturedBefore = { id: string; featured: boolean }
 
 /**
- * Feature or unfeature one resource (#110).
+ * Feature or unfeature one resource.
  *
  * "Set as preview" on an attachment, "Set as button" on a link, "Unset" on
  * either. The function clears the owner's previous preview in the same

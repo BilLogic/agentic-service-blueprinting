@@ -2,9 +2,9 @@
  * A service's route slug — its own `slug` column, with a name-derived fallback.
  *
  * A deployment routes by service slug: `/<slug>` opens that service, and a
- * scoped agent read names it. `21000130000000_a_service_has_a_slug` added the
- * column, so the slug is the service's OWN identity: stable across renames,
- * unique by constraint. This module reads that column.
+ * scoped agent read names it. The slug lives in a column of its own, so it is
+ * the service's OWN identity: stable across renames, unique by constraint.
+ * This module reads that column.
  *
  * The name-derivation stays as a DEFENSIVE fallback, for a row whose slug is
  * somehow null — the column is nullable, so a deployer who clears the slug gets

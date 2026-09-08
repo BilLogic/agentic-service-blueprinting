@@ -14,8 +14,9 @@ import { __resetActiveServiceIdCache } from '@/lib/service'
  * single-service cache: a read scopes to the active service by default, a
  * filter narrows to one or widens to all, and a single-service deployment
  * collapses every scope to the same set so it behaves exactly as before. The
- * catalog helpers assert the OTHER half of ADR 0003 — that a service's cast is
- * derived by JOIN through its journey, never a `service_id` on the catalog.
+ * catalog helpers assert the OTHER half of the decision that a service owns
+ * its journey and shares the catalog — that a service's cast is derived by
+ * JOIN through its journey, never a `service_id` on the catalog.
  */
 
 type Rec = { table: string; filters: Array<[string, ...unknown[]]>; select?: string }
