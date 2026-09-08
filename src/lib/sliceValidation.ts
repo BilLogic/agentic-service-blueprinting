@@ -13,6 +13,11 @@
 export const SLICE_KINDS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
 export type SliceKind = (typeof SLICE_KINDS)[number]
 
+/** `slices.authorship` — who wrote it, and whether a regeneration may
+ *  overwrite it. It was `origin`, and the rename is why the validator reads
+ *  what it reads: every other `origin` column in this schema takes `import`
+ *  or `app`, which answers where a row came from rather than who wrote it.
+ *  `scripts/retired-vocabulary.mjs` holds the rename and the reasoning. */
 export const SLICE_AUTHORSHIPS = ['generated', 'customized', 'human'] as const
 export type SliceAuthorship = (typeof SLICE_AUTHORSHIPS)[number]
 
