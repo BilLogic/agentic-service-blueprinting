@@ -968,11 +968,6 @@ function isSameColumnSideRouteClear(
   )
 }
 
-const SAME_COLUMN_SIDE_TIE_BREAK: Record<SameColumnSide, number> = {
-  left: 0,
-  right: 1,
-}
-
 type RememberedSideRoute = {
   side: SameColumnSide
   cellAEl: HTMLElement
@@ -1017,8 +1012,17 @@ export function clearRememberedSameColumnSideRoutes(): void {
 
 /**
  * The gutter a pair of same-column cells can be bracketed through, or null when
- * neither side is usable. Both gutters are considered; the nearer one wins so
- * the detour stays short, and left breaks a tie.
+ * neither side is usable. Both gutters are considered and the LEFT one is
+ * preferred outright.
+ *
+ * The nearer of the two used to win, which kept the detour short. It cost more
+ * than it saved. An end that cannot turn back into its card vertically arrives
+ * side-on, and a side-on arrival out of the right gutter draws its last stub
+ * leftward; the markers are `orient="auto"`, so the head follows that stub and
+ * points backward along a grid whose whole convention is that time runs left to
+ * right. A same-step connector never moves in time at all, so that head is a
+ * plain lie about the dependency. The left gutter's stub always travels
+ * forward, and the nearer gutter is at most a fraction of a column gap closer.
  *
  * Deliberately symmetric in its two cells — every input is a min/max over the
  * pair, never "the source's" anything — so a pair resolves to the same side
@@ -1057,15 +1061,13 @@ export function resolveSameColumnSideRoute(
   const leftmostEl = boxA.left <= boxB.left ? cellAEl : cellBEl
   const rightmostEl = boxA.right >= boxB.right ? cellAEl : cellBEl
 
-  const candidates: (SameColumnSideRoute & { reach: number })[] = []
+  // Left first, right second — the order is the preference, and nothing about
+  // the boxes reorders it.
+  const candidates: SameColumnSideRoute[] = []
 
   const leftGutterX = getVerticalRouteGutterX(root, stepIndex, leftmostEl)
   if (leftGutterX < cardLeft - ARROW_CHEVRON_SIZE) {
-    candidates.push({
-      side: 'left',
-      gutterX: leftGutterX,
-      reach: cardLeft - leftGutterX,
-    })
+    candidates.push({ side: 'left', gutterX: leftGutterX })
   }
 
   const rightGutterX = getVerticalRouteRightGutterX(
@@ -1074,18 +1076,8 @@ export function resolveSameColumnSideRoute(
     rightmostEl,
   )
   if (rightGutterX > cardRight + ARROW_CHEVRON_SIZE) {
-    candidates.push({
-      side: 'right',
-      gutterX: rightGutterX,
-      reach: rightGutterX - cardRight,
-    })
+    candidates.push({ side: 'right', gutterX: rightGutterX })
   }
-
-  candidates.sort(
-    (a, b) =>
-      a.reach - b.reach ||
-      SAME_COLUMN_SIDE_TIE_BREAK[a.side] - SAME_COLUMN_SIDE_TIE_BREAK[b.side],
-  )
 
   const isClear = (candidate: SameColumnSideRoute) =>
     isSameColumnSideRouteClear(
@@ -1105,9 +1097,7 @@ export function resolveSameColumnSideRoute(
     const held = candidates.find(
       (candidate) => candidate.side === remembered,
     )
-    if (held && isClear(held)) {
-      return { side: held.side, gutterX: held.gutterX }
-    }
+    if (held && isClear(held)) return held
   }
 
   for (const candidate of candidates) {
@@ -1119,7 +1109,7 @@ export function resolveSameColumnSideRoute(
           cellBEl,
         })
       }
-      return { side: candidate.side, gutterX: candidate.gutterX }
+      return candidate
     }
   }
 
@@ -1137,10 +1127,94 @@ function getSameColumnSideStubX(
 }
 
 /**
+ * How far off a card's top or bottom edge a vertical arrival's approach leg
+ * runs: the chevron, plus a full bend radius of straight line above it, plus
+ * the radius the bend itself eats. Any less and the head reads as the tail of
+ * a curve rather than as a head.
+ */
+const SAME_COLUMN_VERTICAL_ARRIVAL_OFFSET =
+  ARROW_CHEVRON_SIZE + ARROW_CORNER_RADIUS * 2
+
+/** Where a bracket turns off the gutter and back into a card. */
+type SameColumnEndLeg = {
+  /** The y the run leaves (or meets) the gutter at. */
+  gutterY: number
+  /** Card-ward from that turn: the approach, then the endpoint itself. */
+  points: Point[]
+}
+
+/**
+ * Where an arriving end can turn back into its card VERTICALLY — the x it
+ * descends (or climbs) on, the y its approach leg runs along, and the point the
+ * chevron's base sits on — or null when both horizontal edges are walled in.
+ *
+ * The edge facing the other cell is tried first, so the head reads exactly as
+ * the undetoured connector's does. The far edge is the second chance: a head
+ * pointing the other way up still says nothing false about a grid whose one
+ * ordering claim is horizontal, where a side entry out of the right gutter
+ * points backward along it.
+ *
+ * Every leg the choice adds is swept for clearance here, because the route's
+ * own test (`isSameColumnSideRouteClear`) only ever covered the mid-height
+ * stubs and the stretch of gutter between them.
+ */
+function getSameColumnVerticalArrival(
+  root: HTMLElement,
+  box: LayoutBox,
+  otherBox: LayoutBox,
+  gutterX: number,
+  exclude: readonly HTMLElement[],
+): { x: number; approachY: number; entryY: number } | null {
+  const x = (box.left + box.right) / 2
+  const midY = box.top + box.height / 2
+  const otherMidY = otherBox.top + otherBox.height / 2
+  const outwards = otherMidY < midY ? [-1, 1] : [1, -1]
+
+  for (const outward of outwards) {
+    const edgeY = outward < 0 ? box.top : box.top + box.height
+    const approachY = edgeY + outward * SAME_COLUMN_VERTICAL_ARRIVAL_OFFSET
+    const entryY = edgeY + outward * ARROW_CHEVRON_SIZE
+
+    const legs = [
+      // The approach, from the gutter back over the card's centre line.
+      {
+        left: Math.min(gutterX, x) - ARROW_DETOUR_CLEARANCE,
+        right: Math.max(gutterX, x) + ARROW_DETOUR_CLEARANCE,
+        top: approachY - ARROW_DETOUR_CLEARANCE,
+        bottom: approachY + ARROW_DETOUR_CLEARANCE,
+      },
+      // The drop (or rise) onto the edge, chevron included.
+      {
+        left: x - ARROW_DETOUR_CLEARANCE,
+        right: x + ARROW_DETOUR_CLEARANCE,
+        top: Math.min(approachY, edgeY),
+        bottom: Math.max(approachY, edgeY),
+      },
+    ]
+
+    if (
+      legs.every(
+        (leg) => getCellsOverlappingRect(root, leg, exclude).length === 0,
+      )
+    ) {
+      return { x, approachY, entryY }
+    }
+  }
+
+  return null
+}
+
+/**
  * The bracket itself: out of one card's left (or right) edge, along the column
- * gutter, into the other card's matching edge. `fromIsArrival` is the only
- * difference between the one-way and double-headed forms — an arriving end is
- * chevron-inset off the card, a departing end sits on it.
+ * gutter, and back into the other card — onto its top or bottom edge where
+ * there is room for the head, and side-on into its matching edge where there is
+ * not. `fromIsArrival` is what separates the one-way form from the
+ * double-headed one: a departing end carries no head, so it always leaves
+ * side-on, which is the whole reason this route was preferred over leaving
+ * through an edge another card is leaning against.
+ *
+ * With both ends side-on the path is the one this function has always drawn,
+ * point for point.
  */
 function buildSameColumnBracketPath(
   fromEl: HTMLElement,
@@ -1155,25 +1229,82 @@ function buildSameColumnBracketPath(
   const toBox = getCellContentBox(toEl, root)
   const fromY = fromBox.top + fromBox.height / 2
   const toY = toBox.top + toBox.height / 2
+  const exclude = [fromEl, toEl]
+
+  const sideLeg = (
+    box: LayoutBox,
+    y: number,
+    arrival: boolean,
+  ): SameColumnEndLeg => ({
+    gutterY: y,
+    points: [{ x: getSameColumnSideStubX(box, route.side, arrival), y }],
+  })
+
+  const verticalLeg = (arrival: {
+    x: number
+    approachY: number
+    entryY: number
+  }): SameColumnEndLeg => ({
+    gutterY: arrival.approachY,
+    points: [
+      { x: arrival.x, y: arrival.approachY },
+      { x: arrival.x, y: arrival.entryY },
+    ],
+  })
+
+  const fromArrival = fromIsArrival
+    ? getSameColumnVerticalArrival(root, fromBox, toBox, route.gutterX, exclude)
+    : null
+  const toArrival = getSameColumnVerticalArrival(
+    root,
+    toBox,
+    fromBox,
+    route.gutterX,
+    exclude,
+  )
+
+  let fromLeg = fromArrival
+    ? verticalLeg(fromArrival)
+    : sideLeg(fromBox, fromY, fromIsArrival)
+  let toLeg = toArrival ? verticalLeg(toArrival) : sideLeg(toBox, toY, true)
+
+  // A vertical arrival leaves the gutter somewhere other than a card's mid
+  // height, and an arrival on the FAR edge leaves it beyond the pair
+  // altogether — neither stretch is one the route's own clearance test looked
+  // at. Sweep the run as it will actually be drawn, and fall back to the two
+  // side stubs, which that test did cover, when it is not clear.
+  if (
+    (fromArrival || toArrival) &&
+    getCellsOverlappingRect(
+      root,
+      {
+        left: route.gutterX - ARROW_DETOUR_CLEARANCE,
+        right: route.gutterX + ARROW_DETOUR_CLEARANCE,
+        top: Math.min(fromLeg.gutterY, toLeg.gutterY),
+        bottom: Math.max(fromLeg.gutterY, toLeg.gutterY),
+      },
+      exclude,
+    ).length > 0
+  ) {
+    fromLeg = sideLeg(fromBox, fromY, fromIsArrival)
+    toLeg = sideLeg(toBox, toY, true)
+  }
 
   return buildRoundedPolylinePath(
     [
-      {
-        x: getSameColumnSideStubX(fromBox, route.side, fromIsArrival),
-        y: fromY,
-      },
-      { x: route.gutterX, y: fromY },
-      { x: route.gutterX, y: toY },
-      { x: getSameColumnSideStubX(toBox, route.side, true), y: toY },
+      ...[...fromLeg.points].reverse(),
+      { x: route.gutterX, y: fromLeg.gutterY },
+      { x: route.gutterX, y: toLeg.gutterY },
+      ...toLeg.points,
     ],
     ARROW_CORNER_RADIUS,
   )
 }
 
 /**
- * Two cells in one column, connected side-on through whichever column gutter
- * has room. Nothing between the two cards is crossed, and both ends read as
- * arrivals because each head sits on a card edge.
+ * Two cells in one column, connected through whichever column gutter has room.
+ * Nothing between the two cards is crossed, and both ends read as arrivals
+ * because each head sits on a card edge.
  *
  * Returns '' when neither gutter is clear (an edge column of a one-column
  * board, or a gutter another card leans into): no arrow at all beats one
@@ -1197,10 +1328,12 @@ export function buildSameColumnGutterDetourPath(
 
 /**
  * One-way version of the same bracket: a short stub out of the *side* of the
- * source card, down (or up) the adjacent gutter, and into the matching side of
- * the target. Preferred over the top/bottom gutter detour for same-column
- * connectors, which had to leave through a cell edge that another card was
- * often sitting against and so swung far out into the gutter to get around it.
+ * source card, down (or up) the adjacent gutter, and into the target — onto the
+ * edge its head can point at. Preferred over the top/bottom gutter detour for
+ * same-column connectors, which had to LEAVE through a cell edge that another
+ * card was often sitting against and so swung far out into the gutter to get
+ * around it; only the arriving end is free to choose an edge, because only it
+ * has to satisfy a head.
  *
  * Returns '' when no side is clear, so callers can fall back.
  */
