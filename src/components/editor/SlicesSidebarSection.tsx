@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { duplicateSlice, sliceToken, updateSliceMeta } from '@/lib/sliceMutations'
 import { isSliceKind } from '@/lib/sliceValidation'
+import { errorMessage } from '@/lib/utils'
 import { reportWriteFailure } from '@/lib/writeFailures'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
@@ -294,9 +295,7 @@ function RenameSliceDialog({
       })
     } catch (renameError) {
       setBusy(false)
-      setError(
-        renameError instanceof Error ? renameError.message : String(renameError),
-      )
+      setError(errorMessage(renameError))
       return
     }
     setBusy(false)

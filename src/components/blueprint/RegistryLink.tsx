@@ -6,6 +6,7 @@ import { OptionSelect } from '@/components/blueprint/OptionSelect'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useRegistryTouchpoints } from '@/hooks/useRegistryTouchpoints'
 import { removePlacement, setPlacementTouchpoint } from '@/lib/placementLinkMutations'
+import { errorMessage } from '@/lib/utils'
 
 /**
  * A placement whose touchpoint the registry lacks (#112): the author's name,
@@ -55,7 +56,7 @@ export function RegistryLink({
       await action()
       onWritten(gone)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(errorMessage(cause))
     } finally {
       setBusy(false)
     }

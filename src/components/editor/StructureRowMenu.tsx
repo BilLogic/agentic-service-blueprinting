@@ -39,6 +39,7 @@ import {
 } from '@/lib/authoringRpc'
 import { deletionReadiness } from '@/lib/deletionSafety'
 import { findFirstServiceId } from '@/lib/service'
+import { errorMessage } from '@/lib/utils'
 
 export type StructureKind = 'phase' | 'scenario' | 'path'
 
@@ -433,9 +434,7 @@ function RenameDialog({
       invalidateStructure()
       onOpenChange(false)
     } catch (renameError) {
-      onError(
-        renameError instanceof Error ? renameError.message : String(renameError),
-      )
+      onError(errorMessage(renameError))
     } finally {
       setBusy(false)
     }

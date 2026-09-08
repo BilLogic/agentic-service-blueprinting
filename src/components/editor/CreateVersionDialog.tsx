@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPath, duplicatePath } from '@/lib/authoringRpc'
+import { errorMessage } from '@/lib/utils'
 import {
   PATH_KINDS,
   PATH_TYPE_LABELS,
@@ -98,9 +99,7 @@ export function CreateVersionDialog({
       onOpenChange(false)
       onCreated?.(pathId)
     } catch (createError) {
-      setError(
-        createError instanceof Error ? createError.message : String(createError),
-      )
+      setError(errorMessage(createError))
     } finally {
       setBusy(false)
     }
