@@ -93,3 +93,21 @@ export function deriveSelections(
   }
   return next
 }
+
+/**
+ * Does this navigation collapse the path selection?
+ *
+ * Exactly the scenario-to-scenario move — never a first entry (from the
+ * overview, or a deep link: `null` -> id), never leaving to the overview
+ * (id -> `null`), never a re-selection of the same scenario. Consumed by
+ * `ScenarioPathSelectionReset`; it lives in this module, with the rest of the
+ * pure selection helpers, so the decision is importable without dragging in
+ * the editor context's module graph — which reaches the Supabase client and
+ * would not load in a node-environment test.
+ */
+export function isScenarioSwitch(
+  previous: string | null,
+  next: string | null,
+): boolean {
+  return previous !== null && next !== null && previous !== next
+}

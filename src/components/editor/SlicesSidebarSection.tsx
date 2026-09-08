@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { duplicateSlice, sliceToken, updateSliceMeta } from '@/lib/sliceMutations'
 import { isSliceKind } from '@/lib/sliceValidation'
+import { reportWriteFailure } from '@/lib/writeFailures'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
@@ -213,8 +214,8 @@ export function SlicesSidebarSection() {
                         openTab({ kind: 'slice', sliceId: copy.id })
                       })
                       .catch((duplicateError) => {
-                        console.error(
-                          '[slices] duplicate failed:',
+                        reportWriteFailure(
+                          `“${slice.title}” was not duplicated`,
                           duplicateError,
                         )
                       })

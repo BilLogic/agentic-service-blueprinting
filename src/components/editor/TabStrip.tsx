@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { Info, Trash2, X } from 'lucide-react'
-import { ORG_NAME } from '@/config'
+import { useWorkspaceTitle } from '@/contexts/DeploymentConfigContext'
 import { Button } from '@/components/ui/button'
 import { HomeNavButton, WorkspaceBadges } from '@/components/editor/EditorChrome'
 import { IconTooltip } from '@/components/editor/IconTooltip'
@@ -187,6 +187,10 @@ export function TabStrip({
   } = useViewState()
   const { canWrite } = useSupabase()
   const slices = useSlices()
+  // The wordmark comes from the resolved deployment config, which standalone
+  // resolves to ORG_NAME — so this renders identically here and is overridable
+  // by a host. See `useWorkspaceTitle` for the order the two fields resolve in.
+  const brandName = useWorkspaceTitle()
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string
     title: string
@@ -363,7 +367,7 @@ export function TabStrip({
                 workspaceActive ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
-              {ORG_NAME}
+              {brandName}
             </button>
           </div>
       {tabs.map((tab) => {

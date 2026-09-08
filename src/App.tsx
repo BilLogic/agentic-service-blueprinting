@@ -2,55 +2,132 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
+import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
+import { WriteFailureNotices } from '@/components/editor/WriteFailureNotices'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
+import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider } from '@/contexts/EditorContext'
 import { EntityExamplesProvider } from '@/contexts/EntityExamplesContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
 import { TouchpointRegistryProvider } from '@/contexts/TouchpointRegistryProvider'
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
+import type { DeploymentConfig } from '@/deploymentConfig'
 import { queryClient } from '@/lib/queryClient'
 
-function App() {
+/**
+ * The app root. Standalone it takes no props and runs on the template
+ * defaults; mounted by an external deployment it takes a `DeploymentConfig`
+ * that skins the tree from the outermost level down. Both the named export
+ * (for a host) and the default export (for `main.tsx`) resolve to this.
+ *
+ * ── THE ORDER OF THE TREE, AND WHY IT IS THIS ONE ─────────────────────────
+ *
+ * Written down because it was not obvious, and because two installations had
+ * quietly settled on two different orders. Almost none of these providers
+ * consume one another — every one of them reads React context from outside
+ * this file or from nothing at all — so the tree has very few FORCED edges
+ * and a great many arbitrary ones, which is exactly the condition under which
+ * an order drifts and nobody notices.
+ *
+ * The forced edges, all of them:
+ *
+ *   - `QueryClientProvider` and `SupabaseProvider` above the three reading
+ *     providers (active service, entity examples, touchpoint registry).
+ *     `useSupabaseQuery` reads both; without either it has no client and no
+ *     cache.
+ *   - `PathSelectionProvider` above `ScenarioPathSelectionReset`, which throws
+ *     outside it, and `EditorProvider` above it too — that read is null-safe,
+ *     so out of place it would not throw, it would simply never fire.
+ *   - `EditorErrorBoundary` NOT above `WriteFailureNotices`. See its comment
+ *     below; this is the one edge in the tree that is a behaviour rather than
+ *     a wiring requirement.
+ *
+ * Everything else is settled by band, outermost to innermost:
+ *
+ *   1. The DEPLOYMENT SEAM. `DeploymentConfigProvider` is outermost because
+ *      every band below may be skinned by it and none of it may be skinned
+ *      half way down.
+ *   2. INFRASTRUCTURE — the query cache, the theme, the database client.
+ *      Nothing here renders anything the reader sees.
+ *   3. SHARED READS — the active service, then the two session-wide reads
+ *      that hang off it. One query each, cached and shared by everything
+ *      below, which is the whole reason they are providers rather than hooks
+ *      at the call sites.
+ *   4. INTERACTION STATE — the editor, the view state, the path selection.
+ *      What the reader is looking at and what they have chosen.
+ *   5. PRESENTATION — the tooltip delay, then the boundary and the shell.
+ *
+ * The rule that decides the arbitrary edges is that a band may read the bands
+ * outside it and never the ones inside. Read top to bottom, the tree goes from
+ * what is true of the whole installation to what is true of this moment on
+ * this screen. When something new needs a home, place it in its band; if it
+ * belongs to two, it is doing two things.
+ */
+export function App({ config }: { config?: DeploymentConfig | null }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      {/*
-       * `attribute="class"` matches the token setup: themes/light.css targets
-       * `:root, .light`, themes/dark.css targets `.dark`, and the `dark:`
-       * variant is `&:where(.dark, .dark *)`. `enableColorScheme` (on by
-       * default) also sets `color-scheme` on the root, which is what makes
-       * scrollbars and native form controls follow the theme.
-       */}
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <SupabaseProvider>
-          {/*
-           * Above the editor so both the menubar identity headers and the
-           * canvas read one cached service query; the definition popovers on
-           * the board pick their per-kind example out of it by kind.
-           */}
-          <EntityExamplesProvider>
+    <DeploymentConfigProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        {/*
+         * `attribute="class"` matches the token setup: themes/light.css targets
+         * `:root, .light`, themes/dark.css targets `.dark`, and the `dark:`
+         * variant is `&:where(.dark, .dark *)`. `enableColorScheme` (on by
+         * default) also sets `color-scheme` on the root, which is what makes
+         * scrollbars and native form controls follow the theme.
+         */}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <SupabaseProvider>
             {/*
-             * One unscoped read of `touchpoints.tone` and `.aliases` for the
-             * whole session, published to the module store every touchpoint
-             * face resolves its colour through (#326 S6).
+             * Resolves the URL slug to the active service and canonicalises
+             * the slug into the address bar. Above everything that reads a
+             * service, so no reader below it can see a stale one.
              */}
-            <TouchpointRegistryProvider>
-              <EditorProvider>
-                <ViewStateProvider>
-                  <PathSelectionProvider>
-                    <TooltipProvider delay={200}>
-                      <EditorErrorBoundary>
-                        <EditorShell />
-                      </EditorErrorBoundary>
-                    </TooltipProvider>
-                  </PathSelectionProvider>
-                </ViewStateProvider>
-              </EditorProvider>
-            </TouchpointRegistryProvider>
-          </EntityExamplesProvider>
-        </SupabaseProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+            <ActiveServiceProvider>
+              {/*
+               * Above the editor so both the menubar identity headers and the
+               * canvas read one cached service query; the definition popovers
+               * on the board pick their per-kind example out of it by kind.
+               */}
+              <EntityExamplesProvider>
+                {/*
+                 * One unscoped read of `touchpoints.tone` and `.aliases` for
+                 * the whole session, published to the module store every
+                 * touchpoint face resolves its colour through (#326 S6).
+                 */}
+                <TouchpointRegistryProvider>
+                  <EditorProvider>
+                    <ViewStateProvider>
+                      <PathSelectionProvider>
+                        {/*
+                         * A comparison is a statement about the scenario it
+                         * was built in, so moving to another one collapses it.
+                         * Inside the provider it drives, under the editor
+                         * whose navigation it watches.
+                         */}
+                        <ScenarioPathSelectionReset />
+                        <TooltipProvider delay={200}>
+                          <EditorErrorBoundary>
+                            <EditorShell />
+                          </EditorErrorBoundary>
+                          {/*
+                           * Outside the boundary, on purpose: a write can fail
+                           * as the shell falls over, and the notice is what
+                           * says so. Inside it, the one message explaining the
+                           * blank screen would be caught by the blank screen.
+                           */}
+                          <WriteFailureNotices />
+                        </TooltipProvider>
+                      </PathSelectionProvider>
+                    </ViewStateProvider>
+                  </EditorProvider>
+                </TouchpointRegistryProvider>
+              </EntityExamplesProvider>
+            </ActiveServiceProvider>
+          </SupabaseProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </DeploymentConfigProvider>
   )
 }
 

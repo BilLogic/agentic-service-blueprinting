@@ -23,6 +23,7 @@ import {
 } from '@/lib/authoringSession'
 import { scrollBlueprintCellIntoView } from '@/lib/blueprintCellConnections'
 import { executeRevert } from '@/lib/revertChange'
+import { reportWriteFailure } from '@/lib/writeFailures'
 import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { cn } from '@/lib/utils'
@@ -164,8 +165,16 @@ function useUndoHotkey(changes: ChangeEntry[]) {
       const last = changes.findLast((entry) => entry.revert)
       if (!last) return
       event.preventDefault()
+      // Reported, not swallowed. This used to reach the console alone: the
+      // user pressed undo, saw nothing move, and reasonably concluded it had
+      // worked. The agent's own undo was hardened to rethrow for exactly that
+      // reason; the keyboard path is the same operation and needs the same
+      // honesty, and it has no control of its own to say it in.
       void revertEntry(client, last).catch((error) => {
-        console.error('[authoring] ⌘Z revert failed:', error)
+        reportWriteFailure(
+          `“${describeChange(last)}” was not taken back`,
+          error,
+        )
       })
     }
 
