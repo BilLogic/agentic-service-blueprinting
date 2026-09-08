@@ -2,12 +2,12 @@
 /**
  * The read lifetime, asserted through the hook that owns it.
  *
- * `readLifetime.test.ts` covers the pieces — the deadline, the retry policy,
- * the query layer's own cancellation. This file covers the thing those pieces
- * were assembled for: a read whose consumer has gone away is CANCELLED, not
- * merely ignored. That the fetcher is handed an `AbortSignal` is a fact the
- * type already states and no test needs to repeat; that abandoning the read
- * ENDS it is behaviour, and it is what these cases fail on.
+ * `readLifetime.test.ts` covers the pieces — the deadline and the retry
+ * policy. This file covers the thing those pieces were assembled for: a read
+ * whose consumer has gone away is CANCELLED, not merely ignored. That the
+ * fetcher is handed an `AbortSignal` is a fact the type already states and no
+ * test needs to repeat; that abandoning the read ENDS it is behaviour, and it
+ * is what these cases fail on.
  *
  * Every fetcher here answers only when it is cancelled, which is the shape of
  * the slow request the feature exists for. Against a wrapper that hands the
