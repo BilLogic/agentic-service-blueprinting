@@ -68,6 +68,26 @@ function DirectionIcon({ direction }: { direction: RowDirection }) {
   }
 }
 
+/**
+ * The why-line waits for a reader.
+ *
+ * A dependency row already says WHAT it points at — the lane, the step, the
+ * edge's own name. The note says WHY the edge exists, which is worth reading
+ * on one row at a time and not worth reading down a list of eight. Static, it
+ * doubled the height of every row that had one and made the list's shape
+ * depend on how talkative its author had been.
+ *
+ * Revealed rather than removed, and by the rule `NavRowAction` already
+ * states: hover OR focus anywhere in the row, and always visible where the
+ * pointer is coarse, because an affordance that only exists under a mouse is
+ * not an affordance for everyone. Opacity alone, so the row keeps its height
+ * — a list whose rows grow under the pointer moves the row being pointed at.
+ * The text stays in the DOM at all times, so a screen reader reads it whether
+ * or not anything is hovering.
+ */
+const WHY_LINE_REVEAL_CLASS =
+  'opacity-0 transition-opacity duration-(--motion-micro) group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none [@media(pointer:coarse)]:opacity-100'
+
 function DependencyRow({
   connection,
   direction,
@@ -120,7 +140,7 @@ function DependencyRow({
             </span>
           ) : null}
           {connection.linkNote ? (
-            <span className={cn('text-2xs leading-snug text-muted-foreground italic', detailIndentClass)}>
+            <span className={cn(WHY_LINE_REVEAL_CLASS, 'text-2xs leading-snug text-muted-foreground italic', detailIndentClass)}>
               {connection.linkNote}
             </span>
           ) : null}
