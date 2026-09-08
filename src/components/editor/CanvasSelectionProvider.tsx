@@ -64,7 +64,7 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
   const mode = useCanvasModeValue()
   /*
     A picker may already own this surface. The slice edit session provides
-    its own — clicks mean "put this cell in the highlighted screen", not
+    its own — clicks mean "put this cell in the highlighted slide", not
     "gather toward a new slice" — and this provider mounts *inside* it, on
     the viewport. Providing unconditionally shadowed the session: canvas
     clicks fed a phantom gathering selection, and the bar offered to make a

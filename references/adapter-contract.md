@@ -234,7 +234,7 @@ Firestore can, within its transaction limits.
 re-running a request converges, and `repairSlices()` resolves every torn state
 a write can leave. Notion has no transactions at all and conforms here. The
 cost is real and stated rather than hidden: an interrupted write can leave a
-slice with no frames until a repair pass runs.
+slice with no slides until a repair pass runs.
 
 This is the decision that makes "any backend" true rather than a marketing
 line. A contract that demanded transactions would be the Supabase requirement
@@ -329,11 +329,11 @@ count is not.
 PostgREST offers no multi-statement transaction, and two client writes
 lean on that being survivable (`src/lib/sliceMutations.ts`):
 
-- `createSlice` inserts the `slices` row **first**, then its frames — a
+- `createSlice` inserts the `slices` row **first**, then its slides — a
   failure between the two leaves an empty slice, which is visible and
-  deletable; the reverse order would strand orphan frames.
+  deletable; the reverse order would strand orphan slides.
 - `replaceSlides` is delete-then-insert on `slides` — a failure
-  after the delete leaves a frameless slice.
+  after the delete leaves a slice with no slides.
 
 A replacement backend must preserve this ordering tolerance: partial
 states above are recoverable by design and must not be rejected,

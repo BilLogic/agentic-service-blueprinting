@@ -60,7 +60,7 @@ export function SliceSlideEditor({
     slide: number
     index: number
   } | null>(null)
-  // The strip folds like an accordion: the screens are working material,
+  // The strip folds like an accordion: the slides are working material,
   // and while the canvas is the subject the strip collapses to one bar.
   const [collapsed, setCollapsed] = useState(false)
 
@@ -129,7 +129,7 @@ export function SliceSlideEditor({
   // shows on the canvas, so the editor and the artboard agree. Derived from
   // the slides above it rather than a running counter, which keeps it a pure
   // function of the render's input.
-  const sequenceByFrame = slides.map((slide, slideIndex) => {
+  const sequenceBySlide = slides.map((slide, slideIndex) => {
     const before = slides
       .slice(0, slideIndex)
       .reduce((total, earlier) => total + earlier.cells.length, 0)
@@ -156,7 +156,7 @@ export function SliceSlideEditor({
       {collapsed ? null : (
     <div className="flex max-h-56 shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2">
       {slides.map((slide, index) => {
-        const frameProblems = problems.filter(
+        const slideProblems = problems.filter(
           (problem) => problem.slide === index,
         )
         const isActive = index === activeSlide
@@ -209,7 +209,7 @@ export function SliceSlideEditor({
               </span>
               <Input
                 value={slide.title}
-                placeholder="Screen title"
+                placeholder="Slide title"
                 className="h-6 min-w-0 flex-1 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) =>
@@ -263,14 +263,14 @@ export function SliceSlideEditor({
                     aria-hidden
                   />
                   <span className="shrink-0 text-muted-foreground">
-                    {sequenceByFrame[index][cellIndex]}
+                    {sequenceBySlide[index][cellIndex]}
                   </span>
                   {/* The cell's words, not the tail of its key. `070110` is
                       an address; nobody recognises their content by address. */}
                   <span className="min-w-0 flex-1 truncate text-2xs text-foreground/80">
                     {describeCell(cell).label}
                   </span>
-                  <IconTooltip label="Take this cell out of the screen">
+                  <IconTooltip label="Take this cell out of the slide">
                     <Button
                       type="button"
                       variant="ghost"
@@ -316,22 +316,22 @@ export function SliceSlideEditor({
               illustration={slide.id ? illustrationFor(slide.id) : null}
             />
 
-            {frameProblems.length > 0 ? (
+            {slideProblems.length > 0 ? (
               <p className="text-3xs text-destructive">
-                {frameProblems[0].message}
+                {slideProblems[0].message}
               </p>
             ) : null}
 
             {/* Split and Merge are gone everywhere in slices — dragging a
-                cell between screens IS both. Delete is the only action a
+                cell between slides IS both. Delete is the only action a
                 drag cannot express, revealed on hover. */}
             <div className="flex items-center opacity-0 transition-opacity group-hover/slide:opacity-100 focus-within:opacity-100">
-              <IconTooltip label={`Delete screen ${index + 1}`}>
+              <IconTooltip label={`Delete slide ${index + 1}`}>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  aria-label={`Delete screen ${index + 1}`}
+                  aria-label={`Delete slide ${index + 1}`}
                   className="ml-auto text-muted-foreground hover:text-destructive"
                   onClick={(event) => {
                     event.stopPropagation()
@@ -356,7 +356,7 @@ export function SliceSlideEditor({
         }}
       >
         <Plus className="size-4" />
-        Add screen
+        Add slide
       </button>
     </div>
       )}

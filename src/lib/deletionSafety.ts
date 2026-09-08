@@ -79,7 +79,7 @@ export function deletionReadiness(archiveAvailable: boolean): DeletionReadiness 
   return { canDelete: true }
 }
 
-export type FrameLoss = {
+export type SlideLoss = {
   /** Slices that would lose slides and can be restored by undo. */
   recoverable: AffectedSlice[]
   /**
@@ -103,7 +103,7 @@ export type FrameLoss = {
  * inverts the answer — and that is exactly what a plain `.some()` does on an
  * empty array.
  */
-export function splitByRecoverability(slices: AffectedSlice[]): FrameLoss {
+export function splitByRecoverability(slices: AffectedSlice[]): SlideLoss {
   const recoverable: AffectedSlice[] = []
   const unrecoverable: AffectedSlice[] = []
   for (const slice of slices) {
