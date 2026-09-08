@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ORG_NAME } from './config'
+import { BRAND, ORG_NAME } from './config'
+import { coverContent } from './content/coverContent'
 import {
   asbDefaultConfig,
   resolveDeploymentConfig,
@@ -10,12 +11,42 @@ import {
 // template defaults, and the standalone app — no config at all — reads exactly
 // as the defaults. Everything below is that contract's edges.
 
+describe('asbDefaultConfig', () => {
+  /**
+   * The default names three values through constants and inlines none of them
+   * (#230), which is what lets a deployment fork `config.ts` and its own
+   * `coverContent.ts` instead of this module. Two of the three are absent
+   * HERE, on purpose, and this is the assertion that they stay absent: the
+   * moment either gains a value in the template, the app repaints — a cover
+   * heading and a wordmark that are no longer `ORG_NAME`, and a `--hue` the
+   * theme files did not declare.
+   */
+  it('names the wordmark and the accent, and this template supplies neither', () => {
+    expect(asbDefaultConfig.brand?.name).toBe(ORG_NAME)
+
+    expect(coverContent.title).toBeUndefined()
+    expect(asbDefaultConfig.content?.workspaceTitle).toBeUndefined()
+
+    expect(BRAND.accent).toBeUndefined()
+    expect(asbDefaultConfig.brand?.accent).toBeUndefined()
+  })
+})
+
 describe('resolveDeploymentConfig', () => {
   it('no config, undefined and null all resolve to the template defaults', () => {
     for (const config of [undefined, null, {}]) {
       const resolved = resolveDeploymentConfig(config)
       expect(resolved.brand.name).toBe(ORG_NAME)
-      expect(resolved.content).toBeUndefined()
+      // The resolved brand is the name alone: an accent the default does not
+      // supply is dropped by `present()` rather than carried as `undefined`,
+      // so `applyBrandAccent` sees a block with no field and leaves the theme
+      // files' dial standing.
+      expect(resolved.brand).toEqual({ name: ORG_NAME })
+      // A section is present because the default NAMES `content`, and empty
+      // because the field it names is undefined here. Nothing reads the
+      // difference — every reader reaches a field through `?.`, and
+      // `useWorkspaceTitle` falls through an empty section to `brand.name`.
+      expect(resolved.content).toEqual({})
       expect(resolved.agent).toBeUndefined()
     }
   })
@@ -39,7 +70,7 @@ describe('resolveDeploymentConfig', () => {
     expect(resolved.brand.logo).toBe('/mark.svg')
   })
 
-  it('a section the defaults lack is carried through, and only when given', () => {
+  it('an overlay section is carried through, over an empty default or none', () => {
     const resolved = resolveDeploymentConfig({
       content: { workspaceTitle: 'Board' },
       agent: { enabledTools: ['get_cell'] },
