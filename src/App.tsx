@@ -3,6 +3,7 @@ import { ThemeProvider } from 'next-themes'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider } from '@/contexts/EditorContext'
 import { EntityExamplesProvider } from '@/contexts/EntityExamplesContext'
@@ -33,30 +34,37 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <SupabaseProvider>
             {/*
-             * Above the editor so both the menubar identity headers and the
-             * canvas read one cached service query; the definition popovers on
-             * the board pick their per-kind example out of it by kind.
+             * Resolves the URL slug to the active service and canonicalises
+             * the slug into the address bar. Above everything that reads a
+             * service, so no reader below it can see a stale one.
              */}
-            <EntityExamplesProvider>
+            <ActiveServiceProvider>
               {/*
-               * One unscoped read of `touchpoints.tone` and `.aliases` for the
-               * whole session, published to the module store every touchpoint
-               * face resolves its colour through (#326 S6).
+               * Above the editor so both the menubar identity headers and the
+               * canvas read one cached service query; the definition popovers
+               * on the board pick their per-kind example out of it by kind.
                */}
-              <TouchpointRegistryProvider>
-                <EditorProvider>
-                  <ViewStateProvider>
-                    <PathSelectionProvider>
-                      <TooltipProvider delay={200}>
-                        <EditorErrorBoundary>
-                          <EditorShell />
-                        </EditorErrorBoundary>
-                      </TooltipProvider>
-                    </PathSelectionProvider>
-                  </ViewStateProvider>
-                </EditorProvider>
-              </TouchpointRegistryProvider>
-            </EntityExamplesProvider>
+              <EntityExamplesProvider>
+                {/*
+                 * One unscoped read of `touchpoints.tone` and `.aliases` for
+                 * the whole session, published to the module store every
+                 * touchpoint face resolves its colour through (#326 S6).
+                 */}
+                <TouchpointRegistryProvider>
+                  <EditorProvider>
+                    <ViewStateProvider>
+                      <PathSelectionProvider>
+                        <TooltipProvider delay={200}>
+                          <EditorErrorBoundary>
+                            <EditorShell />
+                          </EditorErrorBoundary>
+                        </TooltipProvider>
+                      </PathSelectionProvider>
+                    </ViewStateProvider>
+                  </EditorProvider>
+                </TouchpointRegistryProvider>
+              </EntityExamplesProvider>
+            </ActiveServiceProvider>
           </SupabaseProvider>
         </ThemeProvider>
       </QueryClientProvider>
