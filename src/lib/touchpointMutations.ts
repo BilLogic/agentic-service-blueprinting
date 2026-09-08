@@ -23,11 +23,11 @@
  * So the placement write goes by placement id and touches only the two detail
  * columns. It cannot insert, so it cannot place a touchpoint on a cell that is
  * not touchpoint-bearing; and `cell_id` and `touchpoint_id` are outside the
- * `authenticated` column grant (`21000113000000`, `21000119000000` and
- * `21000202000000` are the whole of that surface), so it cannot move an
- * existing placement onto one either. The gate is not re-implemented here — it
- * is routed around by nothing, which is a stronger property than a second copy
- * of the check.
+ * `authenticated` column grant — three migrations make that grant and they are
+ * the whole of it, so the absence is complete rather than a gap some other
+ * grant could widen — so it cannot move an existing placement onto one either.
+ * The gate is not re-implemented here — it is routed around by nothing, which
+ * is a stronger property than a second copy of the check.
  *
  * ── The placement inverse is identity-keyed and writes columns, not a form ─
  *

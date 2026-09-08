@@ -25,8 +25,9 @@ export type StakeholderInput = {
  * Deliberately rare: the registry is reference data, and the seed already
  * holds everyone this blueprint names. A new row means a new actor, not a new
  * spelling of an existing one — those go in `aliases`. The cast is the
- * deployment's, not a service's (ADR 0003), so no service is named on insert;
- * `name` is unique across the whole deployment.
+ * deployment's, not a service's — the registry is scoped to the deployment by
+ * decision, so no service is named on insert; `name` is unique across the
+ * whole deployment.
  */
 export async function createStakeholder(
   client: Client,

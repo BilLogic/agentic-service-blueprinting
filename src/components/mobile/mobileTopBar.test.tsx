@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MobileTopBar } from '@/components/mobile/MobileTopBar'
 
-// Pins the Phase-3 top bar (plan 2026-08-16-002): the stateful menu toggle
+// Pins the mobile top bar: the stateful menu toggle
 // (☰ ⇄ ✕, aria-expanded, one control opens AND closes) and the bar being
 // navigation-only — the agent enters through the FAB, never this bar.
 
