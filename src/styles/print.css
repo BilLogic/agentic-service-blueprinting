@@ -5,28 +5,96 @@
 
 @media print {
   /*
-   * Force light theme so dark mode still prints dark-on-white.
+   * Force the light palette so a page printed from dark mode still comes out
+   * dark-on-white.
    *
    * Dials only — every semantic colour re-derives from these, including the
    * status roles (`--warning` and friends read `--*-lightness`), so this block
-   * does not need to restate them. It must restate the full dial set the light
-   * theme declares, because `.dark` here overrides at the same scope.
+   * does not restate them. `colors.css` needs nothing here either: its dark
+   * half sits inside `@media screen`, so the light ramps above it are already
+   * what reaches paper.
+   *
+   * What this block owes is exactly the dials the two themes DISAGREE about.
+   * `.dark` overrides at the same specificity, and it can only be taken back
+   * by name, so a dial dark declares differently and this block omits keeps
+   * dark's value on a light ground. That sentence used to live here as prose,
+   * and prose does not run: the block was written correct and fell nineteen
+   * dials behind as the theme files grew, printing the filled control at
+   * L=0.922 on an L=0.968 page.
+   *
+   * It is an assertion now. `styles/tokens.test.ts`, "the print override",
+   * reads this block through the token model and holds four things: every dial
+   * resolves the same whichever mode the page was in; that value is the light
+   * theme's, bar the two paper tunings marked below; the tunings are exactly
+   * those two; and nothing is restated that the dark theme does not take over.
+   * The last of those is why dials both themes already agree on — `--hue`,
+   * `--chroma`, `--radius`, `--primary-chroma` — are absent rather than
+   * restated defensively: the first rule is what now guarantees they agree,
+   * and a defensive copy here would be a second unheld source of truth of
+   * precisely the kind that caused this.
+   *
+   * Order below mirrors themes/light.css, so the two read side by side.
    */
   :root,
   .dark {
-    --hue: 177.6;
-    --surface-hue: 34;
-    --chroma: 0;
+    --helpers-os-appearance: Light;
+
+    /*
+     * PAPER TUNING — the only two values here that are not the light theme's,
+     * and `PAPER_TUNED` in the test names both. Light's 0.995 ground leaves no
+     * room above it: a raised surface rounds up against L=1 and the elevation
+     * ladder flattens, which on screen is covered by the translucent overlays.
+     * On paper the plates have to be visible as plates, so the ground drops
+     * and the step shrinks to match it.
+     */
     --surface: 0.968;
-    --foreground-lightness: 0.1;
     --elevation-step: 0.009;
+
     --contrast: 0.53;
+    --foreground-lightness: 0.1;
     --muted-foreground-level: 0.65;
     --tertiary-foreground-level: 0.5;
+
+    /* Dark digs the field overlay eight times harder (0.12) to stay visible on
+       a dark plate; on paper that reads as a grey box round every control. The
+       light value is semantic.css's own default — dark.css is the only theme
+       file that declares this dial at all. */
+    --field-alpha: 0.015;
+
+    /* The filled control and the focus ring. Dark inverts the control to a
+       near-white fill (0.922), which on the 0.968 print ground is very nearly
+       invisible — the failure that opened this. */
+    --primary-lightness: 0.205;
+    --ring-lightness: 0.58;
+
     --warning-lightness: 0.68;
     --destructive-lightness: 0.52;
     --info-lightness: 0.54;
     --success-lightness: 0.55;
+
+    /* Stepped ramps. These are per-theme HSL literals rather than derivations,
+       so nothing downstream re-derives them into the light — theme.css and
+       colors.css register them as `hsl(var(--brand-600))` and friends at
+       `:root`, and the dark literal is what those read on paper. Dark inverts
+       the ordering (200 darkest), so a printed badge came out near-black. */
+    --brand-link: 0deg 0% 26%;
+    --brand-600: 0deg 0% 24%;
+    --brand-500: 0deg 0% 41.1%;
+    --brand-400: 0deg 0% 72.4%;
+    --brand-300: 0deg 0% 86.5%;
+    --brand-200: 0deg 0% 93.1%;
+
+    --warning-600: 30.3deg 80.3% 47.8%;
+    --warning-500: 36.3deg 85.7% 67.1%;
+    --warning-400: 41.9deg 100% 81.8%;
+    --warning-300: 44.3deg 100% 91.8%;
+    --warning-200: 40deg 81.8% 97.8%;
+
+    --destructive-600: 9.9deg 82% 43.5%;
+    --destructive-500: 10.4deg 77.1% 79.4%;
+    --destructive-400: 7.1deg 91.3% 91%;
+    --destructive-300: 7.1deg 100% 96.7%;
+    --destructive-200: 0deg 100% 99.4%;
   }
 
   /* Preserve lane fills, badges, and divider colors in the PDF. */

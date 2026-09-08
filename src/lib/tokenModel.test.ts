@@ -83,17 +83,40 @@ describe('the declaration reader', () => {
 })
 
 describe('the cascade', () => {
-  it('sets aside a print-only override', () => {
-    // `print.css` restates thirteen dials inside `@media print`, under
-    // `:root, .dark`. A resolver without at-rule context reports print.css as
-    // the winner for every one of them, in both themes — which would make the
-    // screen palette unmeasurable from here.
-    const inPrint = rulesDeclaring('--hue').find(
+  it('sets aside whichever at-rules the medium does not reach', () => {
+    // `print.css` restates dials inside `@media print`, under `:root, .dark`.
+    // A resolver without at-rule context reports print.css as the winner for
+    // every one of them, in both themes — which would make the screen palette
+    // unmeasurable from here.
+    const inPrint = rulesDeclaring('--surface').find(
       (entry) => entry.file === 'print.css',
     )
     expect(inPrint?.context).toEqual(['@media print'])
-    expect(winningDeclaration('--hue', 'light')?.file).toBe('themes/light.css')
-    expect(winningDeclaration('--hue', 'dark')?.file).toBe('themes/dark.css')
+    expect(winningDeclaration('--surface', 'light')?.file).toBe(
+      'themes/light.css',
+    )
+    expect(winningDeclaration('--surface', 'dark')?.file).toBe('themes/dark.css')
+
+    // And on `print` the same block is the winner instead — the question the
+    // print rules in `styles/tokens.test.ts` are asked against.
+    expect(winningDeclaration('--surface', 'dark', 'print')?.file).toBe(
+      'print.css',
+    )
+
+    // The mirror image, and the reason the medium had to cut both ways:
+    // `colors.css` wraps its ENTIRE dark palette in `@media screen`, so the
+    // `:root` light ramp above it is what a printed page reads even from a
+    // dark one. 216 values that print.css never has to copy.
+    const screenOnly = rulesDeclaring('--color-brand-600').find((entry) =>
+      entry.context.includes('@media screen'),
+    )
+    expect(screenOnly?.selector).toBe('.dark')
+    expect(winningDeclaration('--color-brand-600', 'dark')?.line).toBe(
+      screenOnly?.line,
+    )
+    expect(
+      winningDeclaration('--color-brand-600', 'dark', 'print')?.selector,
+    ).toBe(':root')
   })
 
   it('breaks the :root / .dark tie on source order, the way the browser does', () => {
