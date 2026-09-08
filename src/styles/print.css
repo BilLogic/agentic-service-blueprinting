@@ -72,6 +72,11 @@
     --info-lightness: 0.54;
     --success-lightness: 0.55;
 
+    /* The role edge, at light's fraction. The two themes disagree here, so the
+       `.dark` arm has to take this one back or a printed alert keeps dark's
+       step on a light ground. */
+    --role-edge-step: 0.08;
+
     /* Stepped ramps. These are per-theme HSL literals rather than derivations,
        so nothing downstream re-derives them into the light — theme.css and
        colors.css register them as `hsl(var(--brand-600))` and friends at

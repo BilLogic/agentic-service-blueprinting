@@ -15,14 +15,27 @@ rest and publishes a Tailwind utility for each.
 
 **What a reader sees change.** Almost nothing, and that is deliberate: this is
 the expand half of a migration, so the new names land beside the old ones and
-the call sites move separately. Two things do move on screen. The info and
-success alert variants get a firmer edge — those two borders were the fill at
-thirty percent alpha, which measured between 1.29:1 and 2.41:1 against the
-grounds they were actually drawn on, short of the 3:1 that WCAG asks of a
-non-text affordance. They are solid now and clear it in both themes. And
-`--border-brand` was derived from the primary fill while brand had no fill of
-its own; it is derived from `--brand` now, which is the colour its name always
-claimed. Nothing consumes that one yet.
+the call sites move separately. Two things do move on screen.
+
+The info and success alerts are the only live consumers of a role border, and
+theirs becomes solid: the fill at thirty percent alpha drew a different colour
+on every ground it crossed, which is why components reached past it for a ramp
+step. It is also quieter. A role border is not what identifies a control or its
+state — the tinted surface and the filled icon square carry the variant, and
+the edge can go without the alert becoming unreadable — so the target is the
+interval this system's recipe uses rather than the 3:1 a required boundary has
+to clear. That recipe puts a role border one step off the surface it edges,
+which across its own four alert variants measures 1.21:1 to 1.34:1. Every role
+here lands between 1.22:1 and 1.28:1 against its own tint, in both themes. On
+the ground those two alerts draw on today the edge measures 1.23:1 and 1.19:1
+in light, against 1.45 and 1.43 for the alpha it replaces; in dark it measures
+1.09 and 1.08 against 1.67 and 1.88, because those two still tint with
+`bg-{role}/15`, which sits lighter than `--surface-{role}`. That gap closes
+when the call sites move onto the tint.
+
+And `--border-brand` was derived from the primary fill while brand had no fill
+of its own; it is derived from `--brand` now, which is the colour its name
+always claimed. Nothing consumes that one yet.
 
 Everything else holds exactly: every custom property under `src/styles`,
 resolved in both themes, 639 names before and 679 after, with no value moved

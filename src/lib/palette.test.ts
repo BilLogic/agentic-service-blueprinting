@@ -690,34 +690,47 @@ describe.each(['light', 'dark'] as const)('role ink: %s', (theme) => {
 })
 
 /**
- * The role edge, on both grounds it is drawn on.
+ * The role edge, and how quiet it stays.
  *
- * SC 1.4.11 asks 3:1 of a non-text affordance, and a border is one. The pair
- * matters as much as the number: a role border appears on the page and on the
- * role's own tint, and the tint is the harder ground because it has already
- * moved off the page in the same direction. A rule measuring one of them would
- * pass on a value that disappears against the other.
+ * Not a 3:1 rule. SC 1.4.11 asks that of a boundary REQUIRED to identify a
+ * control or its state, and this is not one — an alert carries its variant in
+ * a tinted surface and a filled icon square, and the border can go without the
+ * variant becoming unreadable. Held to that floor the edge would read as a
+ * rule around the box, several times louder than the neutral hairline drawn
+ * beside it.
  *
- * These were the fill at thirty percent alpha until this vocabulary landed,
- * and an alpha has no value until it is painted. Measured on the grounds they
- * were actually painted on, the four that existed ran 1.29:1 to 2.41:1.
+ * What it is held to instead is the interval the recipe this system follows
+ * uses: a role border one step off the surface it edges, which measured across
+ * that theme's own four alert variants spans 1.21:1 to 1.34:1 against the
+ * surface underneath. Both ends matter. Too little and there is no edge; too
+ * much and it stops being one.
+ *
+ * The ground is the role's own tint, because that is what the edge is a step
+ * off. Its distance from the page follows from that and is asserted as a
+ * direction rather than a number.
  */
 describe.each(['light', 'dark'] as const)('role edge: %s', (theme) => {
   const page = resolveColor('--background', theme)
 
-  it.each(ROLE_NAMES)('%s reads against the page', (role) => {
-    expect(
-      contrast(resolveColor(`--border-${role}`, theme), page),
-    ).toBeGreaterThanOrEqual(3)
+  it.each(ROLE_NAMES)('%s sits one quiet step off its own tint', (role) => {
+    // 1.22 to 1.28 across all fourteen today, inside the band at both ends.
+    const ratio = contrast(
+      resolveColor(`--border-${role}`, theme),
+      resolveColor(`--surface-${role}`, theme),
+    )
+    expect(ratio).toBeGreaterThanOrEqual(1.2)
+    expect(ratio).toBeLessThanOrEqual(1.35)
   })
 
-  it.each(ROLE_NAMES)('%s reads against its own tint', (role) => {
+  it.each(ROLE_NAMES)('%s steps away from the page, not back toward it', (role) => {
+    // The direction, which no ratio can carry on its own: contrast is
+    // unsigned, so an edge that stepped the wrong way would satisfy the band
+    // above while landing between the tint and the canvas. The tint is already
+    // a step off the page and the edge is a step further along the same span.
+    const tint = resolveColor(`--surface-${role}`, theme)
     expect(
-      contrast(
-        resolveColor(`--border-${role}`, theme),
-        resolveColor(`--surface-${role}`, theme),
-      ),
-    ).toBeGreaterThanOrEqual(3)
+      contrast(resolveColor(`--border-${role}`, theme), page),
+    ).toBeGreaterThan(contrast(tint, page))
   })
 
   it.each(ROLE_NAMES)('%s is solid, so its value does not depend on what is behind it', (role) => {

@@ -64,6 +64,12 @@
   --info-lightness: 0.7;
   --success-lightness: 0.76;
 
+  /* The same job as light's 0.08, at a larger fraction of a shorter span: this
+     one runs 0.76 from canvas to ink where light's runs 0.895, and this mode
+     starts from `--contrast: 0.5` rather than 0.53. It lands the smaller
+     lightness step of the two — 0.070 against light's 0.076. */
+  --role-edge-step: 0.092;
+
   /* Stepped numeric scales — inverted relative to light (200 darkest,
      600 lightest), same construction as themes/light.css. */
   --brand-link: 0deg 0% 58.3%;

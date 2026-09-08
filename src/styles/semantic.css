@@ -705,20 +705,36 @@
    * The edge, for every role, and solid.
    *
    * These existed for four of the seven and were uniform — the fill at thirty
-   * percent alpha — and that alpha is why components reached past them for a
-   * ramp step instead. An alpha composites against whatever happens to be
-   * behind it, so the token has no value until it is painted, and what it was
-   * painted on made it too faint to be an edge: measured against the page,
-   * against the role's own tint, and against the ground `alert.tsx` actually
-   * draws it on, the four ran from 1.29:1 to 2.41:1. SC 1.4.11 asks 3:1 of a
-   * non-text affordance, and a border is one.
+   * percent alpha — and an alpha composites against whatever happens to be
+   * behind it, so the token had no value until it was painted and the same
+   * declaration drew a different colour on every ground it crossed. That is
+   * why components reached past it for a ramp step. Solid is the fix, and the
+   * step below is what makes the colour a decision rather than an accident.
    *
-   * Solid, on the same signed span as the rest of the vocabulary, clears that
-   * against both grounds at once — the page and the tint — which is the pair
-   * the name has to hold, because a role border is drawn on both.
+   * Quiet on purpose, and not to a non-text floor. SC 1.4.11 asks 3:1 of a
+   * boundary REQUIRED to identify a control or its state, and this is not one:
+   * an alert says what it is with a tinted surface and a filled icon square,
+   * and take the border away and the variant still reads. Aim the floor here
+   * and the edge stops being an edge — it becomes a rule around the box,
+   * several times louder than the neutral hairline the same page draws beside
+   * it at about 1.2:1.
+   *
+   * The recipe this file follows puts a role border ONE STEP off the surface
+   * it edges — a 400 weight on a 200 surface — and measured off that theme's
+   * own files its four alert variants land at 1.21, 1.29, 1.30 and 1.34 to
+   * one. That is the interval copied here: the role's own tint, stepped
+   * toward the ink, carrying a little more of the role's colour.
+   *
+   * The interval and not the literals, because a fixed ramp cannot follow an
+   * accent — which is the whole reason these are named jobs rather than
+   * numbered steps. And the step rides `--contrast-border` on the way, which
+   * that recipe has no equivalent of: a reader who has turned the contrast
+   * preference up gets a firmer edge here for the same reason every neutral
+   * border above gets one.
    *
    * `--border-brand` derived from `--primary` while brand had no fill of its
-   * own. It reads `--brand` now, which is the colour its name always claimed.
+   * own. It reads `--brand` now — through its tint, like the rest — which is
+   * the colour its name always claimed.
    *
    * Two border jobs survive on purpose and neither is this one.
    * `--primary-border` is the hairline that edges the filled control, measured
@@ -726,41 +742,64 @@
    * controls draw an invalid outline with the fill itself at full strength,
    * which is a different decision from an edge that has to stay quiet.
    */
-  /* Far enough from the canvas to clear 3:1 against the role's own tint, which
-     is the harder of the two grounds — the tint is already a step off the page
-     in the same direction, so it eats part of the distance. Swept rather than
-     picked: 0.45 clears the page in both modes and misses the dark tint at
-     2.98:1, and 0.55 buys another point of contrast the edge does not need at
-     the cost of reading as a rule. 0.5 is the first value that holds both
-     grounds in both modes, worst case 3.5:1. */
-  --role-edge-mix: 0.5;
+  /* The contrast preference, as a multiplier on a distance rather than as an
+     alpha. It reads the LINEAR rung: the square above exists to push an
+     alpha's travel to the top of the range, and this is a lightness step.
+     Normalised at `--contrast: 0.5` — the baseline this file documents — so
+     the per-theme step below is the step a reader sees at baseline and the
+     preference scales it from there. */
+  --role-edge-contrast: calc(
+    var(--contrast-border-linear) /
+      (var(--contrast-border-floor) + (1 - var(--contrast-border-floor)) * 0.5)
+  );
+  --role-edge-travel: calc(
+    var(--tone-span) * var(--role-edge-step) * var(--role-edge-contrast)
+  );
+  /* How far off its own tint the edge sits, as a fraction of the same signed
+     surface → foreground span the rest of the vocabulary runs on. Per theme,
+     because the span it is a fraction of is per theme — 0.895 from canvas to
+     ink in light, 0.76 in dark — and because the two modes start from
+     different `--contrast`, so the fraction that produces one interval is not
+     one number.
+
+     Swept rather than picked. At the pair the theme files carry, every role
+     in both modes lands between 1.22:1 and 1.28:1 against its own tint, with
+     room on both sides of the band; light 0.10 leaves it at the top
+     (destructive 1.37) and dark 0.07 at the bottom (destructive 1.15). One
+     shared fraction is not impossible — 0.092 holds both modes inside — but
+     it puts light against the ceiling at 1.34 and buys nothing.
+
+     Chroma is three times the tint's, +0.039 on an expressive role, which
+     sits inside the +0.023 to +0.079 the recipe's own four pairs span and
+     stops short of the ceiling the dark amber edge hits at +0.045 — past
+     which the number in the file and the colour on the screen part company. */
   --border-primary: oklch(
-    from var(--primary)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-primary) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
   --border-brand: oklch(
-    from var(--brand)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-brand) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
   --border-warning: oklch(
-    from var(--warning)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-warning) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
   --border-destructive: oklch(
-    from var(--destructive)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-destructive) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
   --border-info: oklch(
-    from var(--info)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-info) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
   --border-success: oklch(
-    from var(--success)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-success) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
   --border-secondary: oklch(
-    from var(--secondary)
-      calc(var(--surface) + var(--tone-span) * var(--role-edge-mix)) c h
+    from var(--surface-secondary) calc(l + var(--role-edge-travel))
+      calc(c * 3) h
   );
 
   /*

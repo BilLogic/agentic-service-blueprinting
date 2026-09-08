@@ -94,6 +94,16 @@
   --success-lightness: 0.55;
 
   /*
+   * How far a role's edge sits off that role's own tint, as a fraction of the
+   * canvas → ink span. Deliberately small: the edge is not what identifies an
+   * alert, so it stays a short step toward the role's ink rather than reading
+   * as a rule around the box. semantic.css carries the reasoning, the band and
+   * the sweep; this is the number, and it is per theme because the span it is
+   * a fraction of is.
+   */
+  --role-edge-step: 0.08;
+
+  /*
    * Stepped numeric scales — per-theme HSL literals, mapped to utilities in
    * theme.css and consumed by colors.css via `hsl(var(--brand-N))`.
    *

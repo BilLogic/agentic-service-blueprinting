@@ -165,6 +165,11 @@ const DIALS = [
   '--brand-lightness',
   '--brand-chroma',
   '--ring-lightness',
+  // How far a role's edge sits off that role's own tint. A dial and not a
+  // derivation — the two modes carry different fractions, for the reasons
+  // semantic.css states beside the sweep — so print.css has to take it back
+  // the way it takes back every other dial the themes disagree about.
+  '--role-edge-step',
   '--warning-lightness',
   '--destructive-lightness',
   '--info-lightness',
