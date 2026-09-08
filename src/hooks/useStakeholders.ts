@@ -59,9 +59,12 @@ export const STAKEHOLDER_KIND_MEANING: Record<StakeholderKind, string> = {
  * suggest from whatever strings happened to be in the data reads this instead,
  * so "owner" and "Blueprint owner" stop being two people.
  *
- * The read is deliberately unscoped, and under the shared catalog (ADR 0003)
- * that is now CORRECT rather than a latent bug: the stakeholder pool is the
- * deployment's, so a lane in any service picks from one cast.
+ * The read is deliberately unscoped, and under the decision that a service
+ * owns its journey and shares the catalog that is now CORRECT rather than a
+ * latent bug: the stakeholder pool is the deployment's, so a lane in any
+ * service picks from one cast. The decision is named rather than numbered
+ * because this file is shared and each repository numbers its own ADRs, so a
+ * number is right in at most one of the two copies.
  */
 export function useStakeholders(): QueryResult<Stakeholder[]> {
   const fallback = useCallback(() => [], [])
