@@ -176,7 +176,7 @@ that defines it, read off the schema dump.
 
 ## What the skills produce
 
-**Records about the board** — `evidence`, `findings`, `slices`, `slides` hold
+**Records about the board** — `evidence`, `audit_findings`, `slices`, `slides` hold
 what is said *concerning* the board rather than squares of it. Evidence and
 findings concern cells directly; a slice reaches cells through the slides it
 presents. Evidence, findings and slices are hard-bound to the service; a slide

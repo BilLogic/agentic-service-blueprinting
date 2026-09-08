@@ -63,7 +63,7 @@ API "cannot serve the app". That was our coupling written down as physics.
 findings/slices store IS the ledger files that
 `skills/audit/scripts/audit_tools.py` `export` / `report --apply` read and
 write (`{"rows": [...]}` JSON carrying the same fingerprint/dedupe
-semantics as the `findings` table). This is the substrate, not a degraded
+semantics as the `audit_findings` table). This is the substrate, not a degraded
 mode — skills persist derived output there, and no separate store exists
 to provision. The four tables are the Supabase adapter's rendering of the
 same contract.
@@ -308,8 +308,8 @@ same scoping the Supabase grants encode (see
   forgives a collision until COMMIT — so a delete followed by an insert
   leaves a window where the cell has no resources at all. No-DB equivalent:
   the generated module is replaced wholesale.
-- **INSERT + column-scoped UPDATE** on `findings` (inserts arrive with
-  `status = 'open'`; updates touch `status, note, severity, run_id,
+- **INSERT + column-scoped UPDATE** on `audit_findings` (inserts arrive with
+  `status = 'open'`; updates touch `status, summary, severity, run_id,
   cell_ids, cell_keys, source`).
 - **INSERT / DELETE** on `slices` and `slides`.
 - **Full CRUD for the owner** on `agent_sessions` / `agent_messages`
@@ -364,7 +364,7 @@ fingerprint. A backend must enforce exactly that partial uniqueness:
 uniqueness over *all* statuses would break the resolved-then-reopen path.
 
 Reads additionally require the **array-containment operator** (`cs`) on
-`findings.cell_ids` — `useCellFindings` filters with
+`audit_findings.cell_ids` — `useCellFindings` filters with
 `.contains('cell_ids', [cellId])` — so `uuid[]` columns must be
 queryable by containment, not just equality.
 

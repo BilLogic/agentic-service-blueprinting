@@ -38,7 +38,7 @@
     "finding_fingerprints": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "The whatif findings this request supersedes; map-promote auto-resolves them after import (its one sanctioned findings.status write)."
+      "description": "The whatif findings this request supersedes; map-promote auto-resolves them after import (its one sanctioned audit_findings.status write)."
     },
     "diff": {
       "type": "array",
