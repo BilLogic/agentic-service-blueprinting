@@ -40,6 +40,7 @@ import {
 } from '@/lib/touchpointRole'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
+import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import {
   SegmentedControl,
   SegmentedControlItem,
@@ -1177,9 +1178,38 @@ function BlueprintCellDetailPanelBody() {
           src.includes('/logo/')
         const logos = frames.filter(isTechLogo)
         const screenshots = frames.filter((src) => !isTechLogo(src))
+        /*
+          The screenshots that actually get drawn, hoisted so that the group
+          handed to the viewer IS the row on the page.
+
+          A featured attachment renders in its own frame above and is dropped
+          from this list, so building the group from `screenshots` would hand
+          every trigger a group one longer than the row it belongs to, and
+          `siblingIndex` would then point at the wrong picture from the first
+          cell that features one of its own screenshots.
+
+          The name is the cell's own content sentence. A frame has no caption
+          anywhere in the schema and is not getting one for the sake of a
+          label — what the picture shows is the moment the cell describes,
+          and that sentence is already right here.
+        */
+        const openableScreenshots = screenshots.filter(
+          (src) => src !== featured.preview?.url,
+        )
+        const screenshotSiblings = openableScreenshots.map((src) => ({
+          src,
+          alt: cellTitleText,
+        }))
 
         return (
           <>
+            {/*
+              Logos stay inert, at every size. They are iconography, not
+              content: there is nothing inside a brand mark to read closer,
+              and making one open a fullscreen viewer teaches the reader that
+              the openable affordance is decorative — which spends the signal
+              the screenshots below it depend on.
+            */}
             {logos.length > 0 ? (
               <div className="flex w-full flex-wrap items-center justify-center gap-3">
                 {logos.map((src) => (
@@ -1203,17 +1233,20 @@ function BlueprintCellDetailPanelBody() {
                 url as "the design" — a featured attachment is what a cell
                 leads with, and `featuredPresentation` decides that without
                 naming a vendor. */}
-            {screenshots
-              .filter((src) => src !== featured.preview?.url)
-              .map((src) => (
-                <div key={src} className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
-                  <img
-                    src={src}
-                    alt=""
-                    className={CELL_DETAIL_PICTURE_CLASS}
-                  />
-                </div>
-              ))}
+            {openableScreenshots.map((src, index) => (
+              <div key={src} className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
+                <ZoomableImage
+                  src={src}
+                  alt={cellTitleText}
+                  triggerLabel={`Expand: ${cellTitleText}`}
+                  siblings={screenshotSiblings}
+                  siblingIndex={index}
+                  triggerClassName="absolute inset-0 block cursor-pointer"
+                >
+                  <img src={src} alt="" className={CELL_DETAIL_PICTURE_CLASS} />
+                </ZoomableImage>
+              </div>
+            ))}
           </>
         )
       })()}

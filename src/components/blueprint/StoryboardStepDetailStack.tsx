@@ -1,3 +1,4 @@
+import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import {
   hasEmbeddedStoryboardFrame,
   type StoryboardFrameEntry,
@@ -28,6 +29,21 @@ export function StoryboardStepDetailStack({
   }
 
   if (orientation === 'horizontal') {
+    /*
+      The horizontal layout's frames deliberately do NOT open.
+
+      This orientation is only ever drawn inside `StoryboardWalkthroughModal`,
+      which is a deck: it binds ArrowLeft, ArrowRight and Escape on the WINDOW
+      to move between steps and to close itself. An image viewer opened inside
+      it would want all three keys for stepping siblings and closing, and the
+      window listener would answer first — so one press would step the deck
+      and the picture at once, and Escape would close both.
+
+      That is the same reason the slice presentation's stage media is left
+      alone, and it applies here for the same mechanical cause rather than by
+      analogy. The vertical stack below carries no deck around it and does
+      open; these frames are reachable there, so nothing becomes unviewable.
+    */
     // Shared rows keep image tops, titles, and summaries aligned across users.
     const gridStyle = {
       gridTemplateColumns: `repeat(${entries.length}, minmax(0, 1fr))`,
@@ -83,21 +99,45 @@ export function StoryboardStepDetailStack({
     )
   }
 
+  /*
+    The stack's frames open, and step to one another.
+
+    One group, in the order the entries arrive in — which is lane order, the
+    same moment as each actor saw it, and the whole reason the row is worth
+    comparing. Passed in rather than discovered: a scan of the container
+    would reproduce that order today and only by accident.
+
+    Each frame's name is its lane's label, which is already printed under it.
+  */
+  const siblings = entries.map((entry) => ({
+    src: entry.frame,
+    alt: entry.label,
+  }))
+
   return (
     <div className={cn('flex flex-col gap-5', className)}>
-      {entries.map((entry) => (
+      {entries.map((entry, index) => (
         <div key={entry.laneName} className="flex flex-col gap-2.5">
           <div className={PICTURE_FRAME_CLASS}>
-            <img
+            <ZoomableImage
               src={entry.frame}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className={cn(
-                PICTURE_CLASS,
-                hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
-              )}
-            />
+              alt={entry.label}
+              triggerLabel={`Expand: ${entry.label}`}
+              siblings={siblings}
+              siblingIndex={index}
+              triggerClassName="absolute inset-0 block cursor-pointer"
+            >
+              <img
+                src={entry.frame}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className={cn(
+                  PICTURE_CLASS,
+                  hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
+                )}
+              />
+            </ZoomableImage>
           </div>
           <p className="text-xs font-semibold leading-snug text-foreground/90">
             {entry.label}

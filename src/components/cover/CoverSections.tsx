@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { CoverCommandCopy } from '@/components/cover/CoverCommandCopy'
 import { CoverFigure } from '@/components/cover/CoverFigure'
 import { renderInline } from '@/components/cover/coverInline'
@@ -62,32 +63,63 @@ function Portrait({
     paragraphs that follow it — a portrait names what it is before it shows
     it, the same order a labeled photo reads in print.
   */
+  const picture = (
+    <img
+      src={image.src}
+      alt={image.alt}
+      loading="lazy"
+      decoding="async"
+      /*
+        One size for both variants — this used to be size-16/20 for
+        `badge` against size-32/40 for `framed`, so a logomark and an
+        illustration sat on the same tab at twice the scale of each other
+        with no reason a reader could see for the difference. `badge` and
+        `framed` still mean different TREATMENTS (no border vs bordered
+        white card, cover vs contain) — that distinction is real, since one
+        asset reads on any ground and the other was authored for its own
+        light one. Size was never part of what the two names meant; it was
+        just left unset per variant and drifted.
+      */
+      className={cn(
+        'size-20 shrink-0 object-cover sm:size-24',
+        image.size === 'badge'
+          ? 'rounded-2xl'
+          : 'rounded-xl border border-border bg-white object-contain p-1',
+      )}
+    />
+  )
+
   return (
     <div className={cn('flex flex-col gap-4', COVER_MEASURE)}>
       {heading ? <SectionHeading>{heading}</SectionHeading> : null}
-      <img
-        src={image.src}
-        alt={image.alt}
-        loading="lazy"
-        decoding="async"
-        /*
-          One size for both variants — this used to be size-16/20 for
-          `badge` against size-32/40 for `framed`, so a logomark and an
-          illustration sat on the same tab at twice the scale of each other
-          with no reason a reader could see for the difference. `badge` and
-          `framed` still mean different TREATMENTS (no border vs bordered
-          white card, cover vs contain) — that distinction is real, since one
-          asset reads on any ground and the other was authored for its own
-          light one. Size was never part of what the two names meant; it was
-          just left unset per variant and drifted.
-        */
-        className={cn(
-          'size-20 shrink-0 object-cover sm:size-24',
-          image.size === 'badge'
-            ? 'rounded-2xl'
-            : 'rounded-xl border border-border bg-white object-contain p-1',
-        )}
-      />
+      {/*
+        The `framed` illustration opens; the `badge` logomark does not.
+
+        The variants are not two looks for one kind of picture — see
+        `CoverPortraitImage`, where `framed` is "an illustration authored for
+        its own light ground" and `badge` is "a logomark or icon". An
+        illustration is content, and at 80px on the page it is exactly the
+        kind of picture this viewer exists for. A logomark is iconography,
+        and opening a brand mark fullscreen is the same mistake the
+        touchpoint logos are deliberately spared: it teaches the reader that
+        the openable affordance is decoration rather than a promise there is
+        more to see.
+      */}
+      {image.size === 'framed' ? (
+        <ZoomableImage
+          src={image.src}
+          alt={image.alt}
+          triggerLabel={`Expand: ${image.alt}`}
+          // `w-fit`, because a button in a flex column stretches and the
+          // image it wraps does not — without it the hit target runs the
+          // width of the measure with 80px of picture at one end of it.
+          triggerClassName="w-fit cursor-pointer"
+        >
+          {picture}
+        </ZoomableImage>
+      ) : (
+        picture
+      )}
       <div className="flex min-w-0 flex-col gap-2">{children}</div>
     </div>
   )
