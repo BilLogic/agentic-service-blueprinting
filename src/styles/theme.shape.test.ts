@@ -40,9 +40,12 @@ import {
  * A colour registration is one of exactly two things.
  *
  *  1. A NAMESPACE DECLARATION, `--color-X: var(--color-X)`. Self-referential
- *     on purpose and copied from upstream: `@theme inline` emits no custom
- *     property, so this only tells Tailwind the name exists, and the value
- *     resolves against the single declaration in `colors.css`. The hue
+ *     on purpose and copied from upstream: `inline` makes the utility compile
+ *     to the registration's value, which here is the name itself, so the value
+ *     resolves against the single declaration in `colors.css`. (Tailwind emits
+ *     the registration too — it keeps a `@theme` key whose name the content
+ *     scan finds, and a self-referential value spells its own name — but that
+ *     copy is layered and `colors.css` is not, so `colors.css` wins.) The hue
  *     families are 204 of these. Nothing is being re-pointed and no value is
  *     being computed — the name names itself.
  *

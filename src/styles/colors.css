@@ -18,15 +18,20 @@
  * file declares VALUES only. Tailwind registration happens in theme.css, which
  * re-declares each step self-referentially inside `@theme inline`
  * (`--color-amber-100: var(--color-amber-100)`). That is Supabase's own split:
- * `@theme inline` does not emit properties, it only teaches Tailwind the name,
- * so the utility compiles to `var(--color-amber-100)` and resolves against the
- * declaration here. One copy of every value, and the dark override is a normal
- * cascade rule instead of a second `@theme` block (`@theme` always emits at
- * `:root`, so it cannot be scoped).
+ * `inline` makes a utility compile to the registration's VALUE, which here is
+ * the name itself, so `bg-amber-100` compiles to `var(--color-amber-100)` and
+ * resolves against the declaration in this file. One copy of every value, and
+ * the dark override is a normal cascade rule instead of a second `@theme`
+ * block (`@theme` always emits at `:root`, so it cannot be scoped). The
+ * generated utilities reference `var(--color-*)`, so overriding the property
+ * is enough.
  *
- * The dark half is a plain `.dark` rule rather than a second `@theme` block:
- * `@theme` always emits at `:root`, so it cannot be scoped. The generated
- * utilities reference `var(--color-*)`, so overriding the property is enough.
+ * Tailwind does also emit each of those registrations — a `@theme` key is kept
+ * whenever the content scan finds its name, and a self-referential value
+ * spells its own name, so all of them are found. That copy is inert: it lands
+ * inside `@layer theme` and the declarations here are unlayered, so these win
+ * and the step resolves to its hue. The registration is not the thing holding
+ * the value, and this file still is.
  *
  * COMPONENTS MUST NOT USE THESE DIRECTLY. Per Supabase's design-system rule,
  * `.tsx` consumes semantic tokens only (`text-warning`, not `text-amber-1100`).

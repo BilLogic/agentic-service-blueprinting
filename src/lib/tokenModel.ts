@@ -52,12 +52,17 @@ import {
  * has its own proof: `--colors-white` is declared in `global.css` and read
  * exactly once, from a JSX attribute in `components/editor/CanvasPenCursor.tsx`.
  * Nothing asserted today needs the compiled output; a deletion pass would, and
- * that pass has a prerequisite to land first. Tailwind v4 scans non-gitignored
+ * that pass had a prerequisite to land first. Tailwind v4 scans non-gitignored
  * markdown, so a class name written in a document under `docs/` generates that
  * class in the compiled CSS and would stand as the evidence that the token it
- * names is live. `styles/tailwind.config.css` carries no `@source` exclusion
- * for `docs/` today, so that exclusion is step one of the phase that needs the
- * artifact, not something to bolt on afterwards.
+ * names is live. `styles/tailwind.config.css` now holds `docs/`, `scripts/`
+ * and the tests out of the scan, so that step is behind us and what the phase
+ * still owes is the rule over the artifact itself.
+ *
+ * The scan is also what decides which `@theme` keys become custom properties
+ * at all, which is a fact about the artifact and so likewise outside this
+ * model. `styles/tokens.test.ts` records why the rules here can be right about
+ * a registration without knowing it.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url))
