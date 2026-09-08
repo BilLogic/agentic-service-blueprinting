@@ -16,6 +16,10 @@
  *    that writes its own value defeats the whole mechanism.
  */
 
+import type { PostgrestError } from '@supabase/supabase-js'
+
+import { toAuthoringError } from '@/lib/authoringErrors'
+
 /**
  * A row's `updated_at` exactly as the server sent it. Opaque on purpose:
  * parse it and the guard stops working.
@@ -51,9 +55,9 @@ export class ConflictError extends Error {
  */
 export function readWriteOutcome<T>(
   data: T[] | null,
-  error: { message: string } | null,
+  error: PostgrestError | Error | null,
 ): WriteOutcome<T> {
-  if (error) throw new Error(error.message)
+  if (error) throw toAuthoringError(error)
   const rows = data ?? []
   if (rows.length === 0) return { status: 'conflict' }
   return { status: 'ok', row: rows[0] }
@@ -71,8 +75,8 @@ export function readWriteOutcome<T>(
  * should carry on as if the write landed.
  *
  * Requires `.select(...)` on the query — without it there are no rows to
- * count and this check is a no-op that reads like a guarantee. The PostgREST
- * error is left to the caller, which knows whether it wants `toAuthoringError`.
+ * count and this check is a no-op that reads like a guarantee. A PostgREST
+ * error never reaches here — `readWriteOutcome` has already translated it.
  */
 export function requireRowsWritten(
   data: unknown[] | null,
