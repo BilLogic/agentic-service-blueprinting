@@ -1,11 +1,17 @@
 /**
- * The read path's three promises: a deadline that actually cancels, a view
- * that stops paying for the reads it walked away from, and a timed-out query
- * that can come back without a reload.
+ * The read path's two promises: a deadline that actually cancels the request
+ * it bounded, and a timed-out query that can come back without a reload.
  *
- * Driven through `QueryObserver` rather than a rendered hook — subscribing and
- * unsubscribing IS mounting and unmounting as far as the query layer is
- * concerned, and it needs no DOM.
+ * What becomes of a read whose consumer walked away is deliberately NOT here.
+ * That is `useSupabaseQuery`'s behaviour, and a `QueryObserver` driven with a
+ * `queryFn` of the test's own asserts only that TanStack aborts the signals it
+ * hands out — which it does whether or not the wrapper passes one on. It lives
+ * in `src/hooks/useSupabaseQuery.test.tsx`, driven through the hook, where
+ * taking the signal away makes it fail.
+ *
+ * The query cases below are driven through `QueryObserver` rather than a
+ * rendered hook: the retry policy is a property of the client's defaults, and
+ * observing it needs no DOM.
  */
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -71,54 +77,6 @@ describe('withSupabaseTimeout', () => {
     await settled
     expect(seen?.aborted).toBe(true)
     expect(vi.getTimerCount()).toBe(0)
-  })
-})
-
-describe('query cancellation', () => {
-  it('unmounting the last observer aborts the read it started', async () => {
-    const client = newClient()
-    let seen: AbortSignal | undefined
-    const observer = new QueryObserver(client, {
-      queryKey: ['leaving-view'],
-      queryFn: ({ signal }) => {
-        seen = signal
-        return pending(signal)
-      },
-    })
-    const unsubscribe = observer.subscribe(() => {})
-    await vi.waitFor(() => expect(seen).toBeDefined())
-
-    unsubscribe()
-
-    await vi.waitFor(() => expect(seen?.aborted).toBe(true))
-    client.clear()
-  })
-
-  it('changing the key aborts the superseded request', async () => {
-    const client = newClient()
-    const signals: AbortSignal[] = []
-    const observer = new QueryObserver(client, {
-      queryKey: ['scenario:first'],
-      queryFn: ({ signal }) => {
-        signals.push(signal)
-        return pending(signal)
-      },
-    })
-    const unsubscribe = observer.subscribe(() => {})
-    await vi.waitFor(() => expect(signals).toHaveLength(1))
-
-    observer.setOptions({
-      queryKey: ['scenario:second'],
-      queryFn: ({ signal }) => {
-        signals.push(signal)
-        return pending(signal)
-      },
-    })
-
-    await vi.waitFor(() => expect(signals[0].aborted).toBe(true))
-    expect(signals[1].aborted).toBe(false)
-    unsubscribe()
-    client.clear()
   })
 })
 
