@@ -1,6 +1,6 @@
 # Storyboard Prompts
 
-Illustrations for a journey slice's frames. **Optional and last**: frames are
+Illustrations for a journey slice's slides. **Optional and last**: slides are
 complete without images, and a slice ships text-first. Read this before
 generating anything.
 

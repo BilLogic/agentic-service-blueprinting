@@ -19,7 +19,7 @@ renamed key must be *reported*, not silently repaired).
 
 Commands:
 
-    slice_tools.py select   --ir IR --scenario K --type T ...   # propose cells
+    slice_tools.py select   --ir IR --scenario K --kind K2 ...  # propose cells
     slice_tools.py validate --ir IR --slices FILE               # gate
     slice_tools.py sql      --ir IR --slices FILE --locale en   # adapter input
     slice_tools.py doc      --ir IR --slices FILE --locale en   # markdown
@@ -50,6 +50,19 @@ from generate_seed_sql import entity_uuid, pick_text  # noqa: E402
 
 SLICE_KINDS = ("journey", "step", "lane", "cell", "custom")
 ORIGINS = ("generated", "customized", "human")
+
+# What each retired document key became. The slice file used to speak its own
+# vocabulary — `type`, `description`, `origin`, `order`, `frames` — while the
+# columns it writes said `kind`, `summary`, `authorship`, `position` and
+# `slides`. An author had to learn both. These are not aliases: nothing reads
+# them, and they exist only so the error names the fix.
+RETIRED_SLICE_KEYS = {
+    "type": "kind",
+    "description": "summary",
+    "origin": "authorship",
+    "order": "position",
+    "frames": "slides",
+}
 
 
 class SliceError(Exception):
@@ -136,27 +149,27 @@ def _ordered_steps(path: dict) -> list[str]:
 
 
 def select_lane(index: dict, scenario_key: str, path_key: str, lane_key: str) -> list[list[str]]:
-    """A lane read left to right: one frame per step the lane actually fills.
+    """A lane read left to right: one slide per step the lane actually fills.
 
-    Empty (lane, step) intersections are skipped rather than framed blank —
-    a lane is usually sparse, and blank frames read as missing content.
+    Empty (lane, step) intersections are skipped rather than kept blank —
+    a lane is usually sparse, and blank slides read as missing content.
     """
     scenario = index["scenarios"][scenario_key]
     path = scenario["paths"][path_key]
     if lane_key not in path["lanes"]:
         raise SliceError(f"lane '{lane_key}' is not on path '{path_key}'")
 
-    frames = []
+    slides = []
     for step_key in _ordered_steps(path):
         if (lane_key, step_key) in path["cells"]:
-            frames.append([cell_key(index, scenario_key, path_key, lane_key, step_key)])
-    return frames
+            slides.append([cell_key(index, scenario_key, path_key, lane_key, step_key)])
+    return slides
 
 
 def select_step(index: dict, scenario_key: str, path_key: str, step_key: str) -> list[list[str]]:
     """One column, top to bottom — every lane's cell at that moment.
 
-    Ordered by `row`, so the frame reads down the blueprint the way the grid
+    Ordered by `row`, so the slide reads down the blueprint the way the grid
     does (customer at the top, support at the bottom).
     """
     scenario = index["scenarios"][scenario_key]
@@ -190,7 +203,7 @@ def select_journey(index: dict, scenario_key: str, path_key: str, lane_key: str)
     be an invention, and inventions are the failure mode this whole system is
     built to avoid.
 
-    One frame per step: the actor's cell first (it is the spine), then the
+    One slide per step: the actor's cell first (it is the spine), then the
     cells it exchanges with, ordered by lane row.
     """
     scenario = index["scenarios"][scenario_key]
@@ -210,7 +223,7 @@ def select_journey(index: dict, scenario_key: str, path_key: str, lane_key: str)
         touching.setdefault(target, set()).add(source)
 
     rows = {lane["key"]: lane["row"] for lane in path["lanes"].values()}
-    frames = []
+    slides = []
     for step_key in _ordered_steps(path):
         anchor = (lane_key, step_key)
         if anchor not in path["cells"]:
@@ -221,23 +234,23 @@ def select_journey(index: dict, scenario_key: str, path_key: str, lane_key: str)
         )
         keys = [cell_key(index, scenario_key, path_key, *anchor)]
         keys += [cell_key(index, scenario_key, path_key, *cell) for cell in companions]
-        frames.append(keys)
-    return frames
+        slides.append(keys)
+    return slides
 
 
 def select_custom(index: dict, scenario_key: str, path_key: str, cells: list[str]) -> list[list[str]]:
-    """User-listed `lane:step` pairs, in the order given — one frame each."""
+    """User-listed `lane:step` pairs, in the order given — one slide each."""
     scenario = index["scenarios"][scenario_key]
     path = scenario["paths"][path_key]
-    frames = []
+    slides = []
     for entry in cells:
         if ":" not in entry:
             raise SliceError(f"custom cell '{entry}' must be written 'lane:step'")
         lane_key, step_key = entry.split(":", 1)
         if (lane_key, step_key) not in path["cells"]:
             raise SliceError(f"no cell at ({lane_key}, {step_key}) on path '{path_key}'")
-        frames.append([cell_key(index, scenario_key, path_key, lane_key, step_key)])
-    return frames
+        slides.append([cell_key(index, scenario_key, path_key, lane_key, step_key)])
+    return slides
 
 
 # ---------------------------------------------------------------------------
@@ -268,34 +281,45 @@ def validate_slices(index: dict, doc: dict) -> list[str]:
         else:
             seen_slice_keys.add(entry["key"])
 
-        if entry.get("type") not in SLICE_KINDS:
-            problems.append(f"slice {label}: type must be one of {', '.join(SLICE_KINDS)}")
-        if entry.get("origin", "generated") not in ORIGINS:
-            problems.append(f"slice {label}: origin must be one of {', '.join(ORIGINS)}")
+        # A file written against the old key names fails on the NAMES, not on
+        # a missing required property. There is no alias — the keys moved —
+        # but "kind is missing" is the wrong sentence for a file that says
+        # `type`, and the right one costs four lines.
+        for retired, now in RETIRED_SLICE_KEYS.items():
+            if retired in entry:
+                problems.append(
+                    f"slice {label}: '{retired}' is now '{now}' — the file's keys "
+                    f"say what the columns say"
+                )
+
+        if entry.get("kind") not in SLICE_KINDS:
+            problems.append(f"slice {label}: kind must be one of {', '.join(SLICE_KINDS)}")
+        if entry.get("authorship", "generated") not in ORIGINS:
+            problems.append(f"slice {label}: authorship must be one of {', '.join(ORIGINS)}")
         if not entry.get("title"):
             problems.append(f"slice {label}: missing 'title'")
 
-        frames = entry.get("frames", [])
-        if not frames:
-            problems.append(f"slice {label}: needs at least one frame")
+        slides = entry.get("slides", [])
+        if not slides:
+            problems.append(f"slice {label}: needs at least one slide")
 
         # v1 is single-scenario: the frontend resolves a slice's canvas from
         # its cells, and cells from two scenarios have no shared canvas.
         scenarios_touched = set()
         seen_cells = set()
-        for frame_index, frame in enumerate(frames):
-            keys = frame.get("cells", [])
+        for slide_index, slide in enumerate(slides):
+            keys = slide.get("cells", [])
             if not keys:
-                problems.append(f"slice {label} frame {frame_index}: no cells")
+                problems.append(f"slice {label} slide {slide_index}: no cells")
             for key in keys:
                 if key not in known_keys:
                     problems.append(
-                        f"slice {label} frame {frame_index}: cell key not in IR — {key}"
+                        f"slice {label} slide {slide_index}: cell key not in IR — {key}"
                     )
                     continue
                 if key in seen_cells:
                     problems.append(
-                        f"slice {label} frame {frame_index}: cell appears twice — {key}"
+                        f"slice {label} slide {slide_index}: cell appears twice — {key}"
                     )
                 seen_cells.add(key)
                 # <service>/<phase>/<scenario>/<path>/<lane>/<step>
@@ -332,7 +356,7 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
     """Transactional replace, per slice — same semantics as scenario import.
 
     Deleting the slice row cascades its items, so a regenerated slice never
-    leaves stale frames behind.
+    leaves stale slides behind.
     """
     service_key = index["service_key"]
     locales = index["locales"]
@@ -346,28 +370,27 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
     for entry in doc["slices"]:
         sid = slice_id(locale, service_key, entry["key"])
         title = pick_text(entry["title"], locale, locales)
-        description = pick_text(entry.get("description"), locale, locales)
-        lines.append(f"-- slice: {entry['key']} ({entry['type']})")
+        summary = pick_text(entry.get("summary"), locale, locales)
+        lines.append(f"-- slice: {entry['key']} ({entry['kind']})")
         lines.append(f"delete from public.slices where id = {sql_quote(sid)};")
-        # The COLUMN LIST speaks the schema's language, the slice file speaks
-        # its own. `21000116000000` renamed `slices.description` to `summary`
-        # and `slices.origin` to `authorship`, and the document keys did not
-        # move with them — the same split `type` → `kind` and `order` →
-        # `position` already have on the two lines below.
+        # The document keys and the column list say the same words. They did
+        # not always: the file used to say `type`, `description`, `origin` and
+        # `order` for `kind`, `summary`, `authorship` and `position`, and an
+        # author had to learn a second vocabulary to write one file.
         lines.append(
             "insert into public.slices "
             "(id, service_id, kind, title, summary, actor, locale, authorship, position) values ("
-            f"{sql_quote(sid)}, {sql_quote(service_id)}, {sql_quote(entry['type'])}, "
-            f"{sql_quote(title)}, {sql_quote(description)}, {sql_quote(entry.get('actor'))}, "
-            f"{sql_quote(locale)}, {sql_quote(entry.get('origin', 'generated'))}, {int(entry.get('order', 0))});"
+            f"{sql_quote(sid)}, {sql_quote(service_id)}, {sql_quote(entry['kind'])}, "
+            f"{sql_quote(title)}, {sql_quote(summary)}, {sql_quote(entry.get('actor'))}, "
+            f"{sql_quote(locale)}, {sql_quote(entry.get('authorship', 'generated'))}, {int(entry.get('position', 0))});"
         )
 
-        for position, frame in enumerate(entry["frames"]):
-            keys = frame["cells"]
+        for position, slide in enumerate(entry["slides"]):
+            keys = slide["cells"]
             ids = [cell_id(locale, key) for key in keys]
-            title = pick_text(frame.get("title"), locale, locales)
-            narrative = pick_text(frame.get("narrative"), locale, locales)
-            illustration = frame.get("illustration")
+            title = pick_text(slide.get("title"), locale, locales)
+            narrative = pick_text(slide.get("narrative"), locale, locales)
+            illustration = slide.get("illustration")
             lines.append(
                 "insert into public.slides "
                 "(id, slice_id, position, cell_ids, cell_keys, title, narrative, illustration) values ("
@@ -394,24 +417,24 @@ def emit_doc(index: dict, doc: dict, locale: str) -> str:
 
     for entry in doc["slices"]:
         title = pick_text(entry["title"], locale, locales)
-        description = pick_text(entry.get("description"), locale, locales)
+        summary = pick_text(entry.get("summary"), locale, locales)
         out.append(f"# {title}")
         out.append("")
-        out.append(f"`{entry['key']}` · **{entry['type']}**" + (f" · {entry['actor']}" if entry.get("actor") else ""))
+        out.append(f"`{entry['key']}` · **{entry['kind']}**" + (f" · {entry['actor']}" if entry.get("actor") else ""))
         out.append("")
         if description:
             out.append(description)
             out.append("")
 
-        for position, frame in enumerate(entry["frames"], start=1):
-            title = pick_text(frame.get("title"), locale, locales) or f"Frame {position}"
+        for position, slide in enumerate(entry["slides"], start=1):
+            title = pick_text(slide.get("title"), locale, locales) or f"Slide {position}"
             out.append(f"## {position}. {title}")
             out.append("")
-            narrative = pick_text(frame.get("narrative"), locale, locales)
+            narrative = pick_text(slide.get("narrative"), locale, locales)
             if narrative:
                 out.append(narrative)
                 out.append("")
-            for key in frame["cells"]:
+            for key in slide["cells"]:
                 path_key, lane_key, step_key = key.split("/")[3:6]
                 out.append(f"- `{lane_key}` @ `{step_key}` — `{key}`")
             out.append("")
@@ -435,43 +458,43 @@ def build_skeleton(args, index: dict) -> dict:
     if path_key not in scenario["paths"]:
         raise SliceError(f"unknown path '{path_key}' in scenario '{scenario_key}'")
 
-    if args.type == "lane":
-        frames = select_lane(index, scenario_key, path_key, _require(args.lane, "--lane"))
-    elif args.type == "step":
-        frames = select_step(index, scenario_key, path_key, _require(args.step, "--step"))
-    elif args.type == "cell":
-        frames = select_cell(
+    if args.kind == "lane":
+        slides = select_lane(index, scenario_key, path_key, _require(args.lane, "--lane"))
+    elif args.kind == "step":
+        slides = select_step(index, scenario_key, path_key, _require(args.step, "--step"))
+    elif args.kind == "cell":
+        slides = select_cell(
             index, scenario_key, path_key, _require(args.lane, "--lane"), _require(args.step, "--step")
         )
-    elif args.type == "journey":
-        frames = select_journey(index, scenario_key, path_key, _require(args.lane, "--lane"))
+    elif args.kind == "journey":
+        slides = select_journey(index, scenario_key, path_key, _require(args.lane, "--lane"))
     else:
-        frames = select_custom(index, scenario_key, path_key, args.cell or [])
+        slides = select_custom(index, scenario_key, path_key, args.cell or [])
 
-    if not frames:
+    if not slides:
         raise SliceError("selection matched no cells — check the lane/step keys")
 
     steps = index["scenarios"][scenario_key]["steps"]
-    skeleton_frames = []
-    for frame in frames:
-        step_key = frame[0].split("/")[5]
+    skeleton_slides = []
+    for slide in slides:
+        step_key = slide[0].split("/")[5]
         title = steps[step_key]["name"] if step_key in steps else {"en": ""}
-        skeleton_frames.append({"title": title, "narrative": {"en": ""}, "cells": frame})
+        skeleton_slides.append({"title": title, "narrative": {"en": ""}, "cells": slide})
 
     return {
         "schema_version": "1.0.0",
         "slices": [
             {
                 "key": args.key,
-                "type": args.type,
+                "kind": args.kind,
                 "scenario": scenario_key,
                 "path": path_key,
                 "title": {"en": args.key.replace("-", " ").capitalize()},
-                "description": {"en": ""},
+                "summary": {"en": ""},
                 "actor": args.actor,
-                "origin": "generated",
-                "order": 0,
-                "frames": skeleton_frames,
+                "authorship": "generated",
+                "position": 0,
+                "slides": skeleton_slides,
             }
         ],
     }
@@ -491,7 +514,7 @@ def main() -> int:
     select.add_argument("--ir", required=True, type=Path)
     select.add_argument("--scenario", required=True, help="<phase>/<scenario> key")
     select.add_argument("--path", help="defaults to the scenario's first path")
-    select.add_argument("--type", required=True, choices=SLICE_KINDS)
+    select.add_argument("--kind", required=True, choices=SLICE_KINDS)
     select.add_argument("--key", required=True, help="stable slice key")
     select.add_argument("--lane", help="lane key (journey, lane, cell)")
     select.add_argument("--step", help="step key (step, cell)")
@@ -528,8 +551,8 @@ def main() -> int:
             return 1
 
         if args.command == "validate":
-            count = sum(len(entry["frames"]) for entry in doc["slices"])
-            print(f"ok: {len(doc['slices'])} slice(s), {count} frame(s)")
+            count = sum(len(entry["slides"]) for entry in doc["slices"])
+            print(f"ok: {len(doc['slices'])} slice(s), {count} slide(s)")
         elif args.command == "sql":
             print(emit_sql(index, doc, args.locale, args.service_id))
         else:

@@ -1,7 +1,7 @@
 # Slice Document Templates
 
 The markdown companion `slice_tools.py doc` emits is a skeleton: title,
-frames, cited cells. These templates say what the prose around it should
+slides, cited cells. These templates say what the prose around it should
 cover, per slice type. They are editorial guidance — adapt them to the
 audience. The citation and no-excerpt rules from the playbook are not
 adaptable.
