@@ -1,5 +1,159 @@
 # Changelog
 
+## 1.12.6
+
+### Patch Changes
+
+- bd8617d: A connector arriving at a walled cell on the merged canvas lands on its slot's
+  outer edge, so no arrow in the catalog ends by travelling backward.
+
+  An arriving end turns back into its card vertically where there is room, and
+  falls back to a side entry where there is not — and a side entry out of the
+  right gutter draws its last stub leftward. The markers are `orient="auto"`, so
+  the head follows that stub and points backward along a grid whose one ordering
+  claim is that time runs left to right.
+
+  Six connectors in the golden geometry catalog still ended that way, all of them
+  in the merged view: a backward loop within a lane, an upward cross-lane run,
+  both runs of a cell that is a target and a source at once, and both links of an
+  A→B→C chain. What walled them was the merged canvas's own shape — a slot there
+  stacks one sub-cell per path, and a sub-cell sits hard against its neighbour's
+  edge, far too close for a head to turn in between them.
+
+  The stack is one slot, though: every sub-cell in it shares a lane and a step
+  column, and the stack as a whole still has a free top and a free bottom. So an
+  arriving end now measures its horizontal edges from the stack rather than from
+  the card, and a head landing on the stack's outer edge names the lane and the
+  column its target does. A departing end still leaves its own card's edge — it
+  carries no head, and a line that appeared to start at a neighbour's edge would
+  misname its source. A cell with no stacked neighbours reports its own box, so
+  every route outside the merged view is untouched, point for point.
+
+  The catalog now asserts this as an invariant over every situation and every
+  view mode rather than over the six that were known, and pins the number of runs
+  each mode draws, so a head cannot be straightened by dropping the arrow.
+
+  The merged fixture was also wrong about the canvas it models. It stacked
+  sub-cells without re-spacing the lanes, which overlapped one lane's sub-cell
+  with the next lane's card — two cards sharing the same pixels, which the merged
+  grid's `minmax(_, auto)` row tracks cannot produce. The packed column that came
+  out of that left an arriving head nowhere at all to land. Lanes are re-spaced
+  now, each keeping the gap it had. The single and side-by-side renderings are
+  byte-identical.
+
+- 4c32a69: Printing from dark mode prints the light palette, all of it.
+
+  `styles/print.css` forces the light palette onto paper by restating dials
+  inside `@media print`, under `:root, .dark`. The `.dark` arm is what takes the
+  dark theme's declarations back, and it can only take back a name it mentions.
+  The block's header comment said exactly that, in prose, and prose does not run:
+  the block was written correct and fell **nineteen dials behind** as the theme
+  files grew.
+
+  The reported symptom was the filled control. Dark inverts it to a near-white
+  fill, `--primary-lightness: 0.922`, and the print ground is `0.968` — so a
+  primary button printed from a dark page came out as an L=0.922 fill on an
+  L=0.968 sheet, very nearly invisible. The focus ring (`0.62` instead of `0.58`)
+  and links (`--brand-link`, 58.3% instead of 26% lightness) went with it.
+
+  Measuring it through the token model found seventeen more. The stepped ramps —
+  `--brand-200`…`--brand-600`, and the five-step warning and destructive ramps —
+  are per-theme HSL literals rather than derivations, so nothing downstream
+  re-derives them into the light; `theme.css` and `colors.css` register them as
+  `hsl(var(--brand-600))` and friends at `:root`, and the dark literal is what
+  those read on paper. Dark inverts the ordering, 200 darkest, so a printed
+  badge or subtle plate came out near-black on white. `--field-alpha` printed at
+  dark's `0.12` rather than `0.015`, putting a grey box round every control. And
+  `--hue` was pinned in the print block at `177.6`, the upstream brand hue, where
+  the light theme has said `159` since this repository's theme files were
+  written — moot while `--chroma` is `0`, and a rebrand away from being the
+  filled control printing in the wrong hue.
+
+  The print block now restates every dial the two themes disagree about, at the
+  light theme's value. It restates nothing else: dials both themes already agree
+  on — `--hue`, `--chroma`, `--radius`, `--primary-chroma` — are absent rather
+  than copied defensively, because a second unheld copy is what caused this.
+
+  The rule is an assertion now, not a comment. `lib/tokenModel` gained a `medium`
+  argument, so the printed cascade can be resolved the way the screen one already
+  could: on `print` the `@media print` block wins, and `colors.css`'s
+  `@media screen` dark palette — 216 values print.css therefore never has to
+  copy — is what gets set aside instead. `styles/tokens.test.ts` holds four
+  things against it. Every dial resolves to one value whichever mode the page was
+  in; that value is the light theme's, bar two paper tunings named in the test
+  with their reason (`--surface` and `--elevation-step`, because light's `0.995`
+  ground leaves the elevation ladder no room above it and on paper the plates
+  have to read as plates); the tunings are exactly those two; and nothing is
+  restated that the dark theme does not take over.
+
+  None of it counts entries or names the dials the block should hold. A dial
+  added to the theme files at differing per-theme values is inside the first rule
+  the day it is added, which is the one thing a count of thirteen could never do.
+
+- 92b7f97: The derivation layer converges on the copy the deployment runs, and the surface
+  hue is a dial rather than a leak.
+
+  `styles/semantic.css` exists twice — once here and once in the deployment
+  imported from this package — and the two copies had drifted 161 lines apart
+  after the four authored knobs moved into the theme files. Most of that was
+  prose, and prose is a real difference to a byte-for-byte drift gate. Two of the
+  differences were not prose, and both are settled here.
+
+  **The ink on the filled control flips on the fill's own lightness.** The
+  deployment derived `--primary-foreground` from a per-theme constant, which
+  produces near-black ink in both modes and is correct only for an accent that
+  happens to be light in both. Measured across the accent range at that
+  deployment's hue and chroma, the fixed ink falls to 3.19:1 at L 0.45 and 1.11:1
+  at L 0.15 — black text on a black button, failing silently, the same shape as
+  the warm-grey surface defect. The flip this file already used holds above
+  3.43:1 everywhere and is now the mechanism on both sides. Its own weak point,
+  accepted rather than hidden, is that 3.43:1 at L 0.60, just under the
+  threshold: clear of the 3:1 floor for UI and large text, short of 4.5:1 for
+  body. The comment beside the derivation says so.
+
+  **`--surface-hue` is declared in `styles/themes/dark.css`, and the default in
+  `styles/semantic.css` is gone.** The dark theme did not restate the dial, and
+  what that MEANT was already the warm `34` from the light file — its selector
+  list opens on a bare `:root`, so with nothing later to take it back the dark
+  surfaces ran on light's hue, and semantic.css's `var(--hue)` default could
+  never win under either theme. Writing `34` down in the dark file changes
+  nothing about what renders and turns that leak into a decision; the unreachable
+  default then has nothing to defend and goes. Every custom property declared
+  under `styles/` was resolved in both themes before and after through
+  `tokenModel.resolveValue`: 628 names, zero moved.
+
+  The file also gains the annotation chrome's ink ladder — ten rungs of the same
+  absolute white the canvas annotation layer already spells at nine alphas, plus
+  the plate's own backing — so that a strength on that bar has a name to be
+  reached by. Nothing consumes them here yet; moving the call sites onto them is
+  its own change.
+
+  `styles/tokens.test.ts` counts `--surface-hue` among the dials that must be
+  declared in both theme files and resolve to a number in each. It is not among
+  the mode-invariant ones: a theme picks the neutral ramp's hue, and two themes
+  may pick differently.
+
+  `lib/tokenModel.test.ts` restates its liveness example as a property.
+  `--colors-white` was the whole example of a name a stylesheet-only scan would
+  call dead, and the ink ladder now reads it from a stylesheet; the rule now
+  asserts that some declared name is read from source and from no stylesheet,
+  which is the fact that was ever load-bearing and survives the next ladder.
+
+- bd8617d: The same-column detour test cites no issue number, so it can be held identical
+  across both repositories that read it.
+
+  Its header opened by citing a bare number for the arrowhead bug it was written
+  for. That number addresses a different ticket in each repository — here it
+  belongs to the release tooling — and the deployment's drift gate refused to
+  enrol the file for exactly that reason. The engine the file tests is enrolled,
+  so the implementation was held to one copy while the test pinning its head
+  direction was not, and could drift.
+
+  The citation is replaced by what it stood for, named in prose: the bug where a
+  detoured connector's head pointed the wrong way, measured at eleven arrows on
+  one board of a deployment built on this template. Comment-only; the test's
+  behaviour is unchanged.
+
 ## 1.12.5
 
 ### Patch Changes
@@ -552,8 +706,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                      ERROR: new row for relation "lanes" violates check constraint
-                      "lanes_lane_role_check" … compliance_review
+                        ERROR: new row for relation "lanes" violates check constraint
+                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
