@@ -636,7 +636,10 @@ export async function dispatchTool(
         const slice = await createSlice(client, {
           serviceId: await resolveActiveServiceId(client),
           title: need(args, 'title'),
-          summary: s(args, 'summary') ?? '',
+          // `description` is what the schema advertised while the handler
+          // read `summary` (#272), so a model taught the old wire is still
+          // holding the word that used to be dropped.
+          summary: s(args, 'summary') ?? s(args, 'description') ?? '',
           sliceKind: need(args, 'kind') as SliceKind,
           actor: s(args, 'actor') ?? '',
           cellIds,
@@ -654,7 +657,7 @@ export async function dispatchTool(
         if (!data) throw new Error(`No slice with id ${sliceId}.`)
         const outcome = await updateSliceMeta(client, sliceId, asUpdatedAtToken(data.updated_at), {
           title: s(args, 'title') ?? data.title,
-          summary: s(args, 'summary') ?? data.summary ?? '',
+          summary: s(args, 'summary') ?? s(args, 'description') ?? data.summary ?? '',
           sliceKind: (s(args, 'kind') ?? data.kind) as SliceKind,
           actor: s(args, 'actor') ?? data.actor ?? '',
           authorship: data.authorship,
