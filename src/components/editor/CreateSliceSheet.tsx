@@ -29,7 +29,7 @@ function seedSlides(cellIds: readonly string[]): DraftSlide[] {
  * else); additions arrive as new one-cell slides at the end, which is the
  * same shape seeding would have given them.
  */
-function mergeSelectionIntoScreens(
+function mergeSelectionIntoSlides(
   current: DraftSlide[],
   cellIds: readonly string[],
 ): DraftSlide[] {
@@ -84,7 +84,7 @@ export function CreateSliceSheet({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Screens are seeded one-per-cell and then shaped by hand. When the
+  // Slides are seeded one-per-cell and then shaped by hand. When the
   // selection changes under an open sheet — the canvas stays live — the
   // composition is *merged*, never rebuilt: cells that left the selection
   // drop out of their slides, cells that joined append as new slides, and
@@ -94,7 +94,7 @@ export function CreateSliceSheet({
   const [seededFrom, setSeededFrom] = useState(cellIds)
   if (seededFrom !== cellIds) {
     setSeededFrom(cellIds)
-    setSlides((current) => mergeSelectionIntoScreens(current, cellIds))
+    setSlides((current) => mergeSelectionIntoSlides(current, cellIds))
   }
 
   // Read once per selection rather than per render: it walks the DOM, and the

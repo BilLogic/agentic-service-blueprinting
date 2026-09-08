@@ -78,7 +78,7 @@ A cell is what one actor does at one step. Beyond its content it carries:
 
 ![Types of slices](../assets/slicing-model.svg)
 
-A slice is a lens on the blueprint, not a copy of it. Its frames point at
+A slice is a lens on the blueprint, not a copy of it. Its slides point at
 live cells, so updating a cell updates every slice that quotes it, and a
 re-import leaves slices intact because they refer to cells by key rather
 than by position.

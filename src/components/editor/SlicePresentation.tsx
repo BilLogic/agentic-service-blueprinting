@@ -228,7 +228,7 @@ export function SlicePresentation({
   }
 
   // Stage media resolution: an authored illustration wins; otherwise fall
-  // back to the slide's own cell slides (member cells first, then the
+  // back to the slide's own cell frames (member cells first, then the
   // storyboard-lane cell of the same step); no media → title-slide layout.
   const illustration = parseSliceIllustration(item.illustration)
   const framePictures = illustration
@@ -237,7 +237,7 @@ export function SlicePresentation({
   const stageMedia: string[] = illustration
     ? [sliceIllustrationUrl(illustration)]
     : framePictures
-  const frameCellIds = new Set(item.cell_ids.map(resolveBlueprintCellId))
+  const slideCellIds = new Set(item.cell_ids.map(resolveBlueprintCellId))
   const title = item.title ?? detail.slice.title
 
   return (
@@ -260,7 +260,7 @@ export function SlicePresentation({
         data-presentation-stage=""
       >
         <div className="flex min-h-0 flex-1 items-stretch gap-2 px-4 pt-5">
-          <FrameNavButton
+          <SlideNavButton
             direction="prev"
             disabled={clampedSlide === 0}
             onClick={() => goToSlide(clampedSlide - 1)}
@@ -274,7 +274,7 @@ export function SlicePresentation({
               {stageMedia.length > 0 ? (
                 <>
                   {/* Media is the star — large centered area; multiple cell
-                      slides in one slide sit side by side. */}
+                      frames on one slide sit side by side. */}
                   <div className="flex max-w-full items-center justify-center gap-4">
                     {stageMedia.map((src) => (
                       <img
@@ -308,7 +308,7 @@ export function SlicePresentation({
                 </>
               ) : (
                 <>
-                  {/* No illustration: title-slide layout, no card slide. */}
+                  {/* No illustration: title-slide layout, no card frame. */}
                   <h2 className="mt-6 max-w-3xl text-3xl font-semibold text-balance">
                     {title}
                   </h2>
@@ -322,7 +322,7 @@ export function SlicePresentation({
             </div>
           </div>
 
-          <FrameNavButton
+          <SlideNavButton
             direction="next"
             disabled={clampedSlide === slideCount - 1}
             onClick={() => goToSlide(clampedSlide + 1)}
@@ -348,7 +348,7 @@ export function SlicePresentation({
           <PresentationMiniMap
             blueprint={blueprint}
             memberCellIds={memberCellIds}
-            frameCellIds={frameCellIds}
+            slideCellIds={slideCellIds}
           />
         )}
       </div>
@@ -365,7 +365,7 @@ export function SlicePresentation({
   )
 }
 
-function FrameNavButton({
+function SlideNavButton({
   direction,
   disabled,
   onClick,
@@ -488,11 +488,11 @@ function PresentationFilmstrip({
 function PresentationMiniMap({
   blueprint,
   memberCellIds,
-  frameCellIds,
+  slideCellIds,
 }: {
   blueprint: BlueprintData
   memberCellIds: ReadonlySet<string>
-  frameCellIds: ReadonlySet<string>
+  slideCellIds: ReadonlySet<string>
 }) {
   const lanes = useMemo(
     () => [...blueprint.lanes].sort((a, b) => a.position - b.position),
@@ -514,7 +514,7 @@ function PresentationMiniMap({
             {blueprint.steps.map((step) => {
               const cell = getCellAt(cellLookup, lane.id, step.id)
               const isMember = cell !== undefined && memberCellIds.has(cell.id)
-              const isCurrent = cell !== undefined && frameCellIds.has(cell.id)
+              const isCurrent = cell !== undefined && slideCellIds.has(cell.id)
               return (
                 <div
                   key={step.id}

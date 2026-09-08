@@ -179,11 +179,11 @@ export function SliceSlideComposer({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- moveTo reads refs
   }, [dragging])
 
-  const removeCell = (screenIndex: number, cell: string) => {
+  const removeCell = (slideIndex: number, cell: string) => {
     onChange(
       slides
         .map((slide, index) =>
-          index === screenIndex
+          index === slideIndex
             ? { ...slide, cells: slide.cells.filter((id) => id !== cell) }
             : slide,
         )
@@ -235,11 +235,11 @@ export function SliceSlideComposer({
       // The sheet owns the one scroll surface; this just grows.
       className={cn('flex flex-col gap-2', dragging !== null && 'select-none')}
     >
-      {slides.map((slide, screenIndex) => {
-        const holdsDrag = dragging !== null && slot?.slide === screenIndex
+      {slides.map((slide, slideIndex) => {
+        const holdsDrag = dragging !== null && slot?.slide === slideIndex
         return (
           <div
-            key={screenIndex}
+            key={slideIndex}
             className={cn(
               'rounded-lg border bg-card p-2 transition-colors',
               holdsDrag ? 'border-primary bg-primary/[0.03]' : 'border-border',
@@ -247,7 +247,7 @@ export function SliceSlideComposer({
           >
             <div className="mb-1.5 flex items-center gap-1.5">
               <span className="shrink-0 text-3xs font-semibold tracking-wide text-muted-foreground uppercase">
-                Slide {screenIndex + 1}
+                Slide {slideIndex + 1}
               </span>
               {/*
                 No title field here any more, and the space it took is now
@@ -269,11 +269,11 @@ export function SliceSlideComposer({
             <ul className="flex flex-col">
               {slide.cells.map((cell, cellIndex) => {
                 const described = describeCell(cell)
-                const running = offsets[screenIndex] + cellIndex + 1
+                const running = offsets[slideIndex] + cellIndex + 1
                 const isDragging = dragging === cell
                 return (
                   <li key={cell}>
-                    <DropLine target={{ slide: screenIndex, index: cellIndex }} />
+                    <DropLine target={{ slide: slideIndex, index: cellIndex }} />
 
                     <div
                       className={cn(
@@ -323,7 +323,7 @@ export function SliceSlideComposer({
                           size="icon-xs"
                           aria-label={`Remove ${described.label}`}
                           className="shrink-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => removeCell(screenIndex, cell)}
+                          onClick={() => removeCell(slideIndex, cell)}
                         >
                           <X className="size-3" />
                         </Button>
@@ -334,7 +334,7 @@ export function SliceSlideComposer({
                         position in every slide is unreachable. */}
                     {cellIndex === slide.cells.length - 1 ? (
                       <DropLine
-                        target={{ slide: screenIndex, index: slide.cells.length }}
+                        target={{ slide: slideIndex, index: slide.cells.length }}
                       />
                     ) : null}
                   </li>

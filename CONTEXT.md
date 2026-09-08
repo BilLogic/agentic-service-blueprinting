@@ -58,6 +58,20 @@ whether cells render as pills, and where the dividing lines fall.
 of a lane and a step on a path. A cell is the unit everything else points at
 — a slice quotes cells, a finding names cells, evidence attaches to a cell.
 
+**Storyboard** — the lane that draws the service rather than describing it.
+`lane_role = 'storyboard'`, one of the roles the lane-role constraint admits.
+Its own cells are empty: a storyboard cell's face is the *strip* below it,
+drawn from the cells beside it.
+
+**Frame** — one image on one cell. Column `cells.frame`. A cell outside the
+storyboard holds at most one. A frame is never a row of a slice; that is a
+*slide*.
+
+**Strip** — a step's frames, read across the lanes: the script for that moment.
+**Not a column.** It is derived at render time from the frames of the step's
+cells, which is why a strip and the frames it is made of cannot disagree. A
+*slide* shows one too, and it is the same word for the same thing.
+
 **Touchpoint** — a thing a moment happens through: an app, a document, a
 physical object, a channel. One `touchpoints` row per name across the whole
 deployment — the registry — carrying the touchpoint's kind, summary and home
@@ -202,6 +216,21 @@ which is why it belongs under **Spec** above. Its fields live in
 audience: an actor's journey, a single moment, one lane, one cell, or a custom
 selection. A slice *references* the cells it presents and never copies them,
 so the blueprint stays the single source of the text.
+
+**Slide** — one row of a slice: one moment of it, as a reader meets it. Table
+`slides`, carrying `position`, the cited `cell_ids`/`cell_keys`, a `title` and
+a `narrative`. What a slide shows is the *strip* of the cells it cites, so a
+slide and the board cannot disagree. Its title is a `title` and not a `name`
+under the rule the board keeps throughout: `name` is for structure a reader
+navigates, `title` for authored content a reader reads.
+
+**A slide is not a frame, and a screen is neither.** A frame is one image on
+one cell; a slide is a row of `slides`. `screen` is ordinary English — a
+display, a viewport, the surface a reader happens to be looking at — and never
+a name for either. Letting the schema's own prose call a slide a frame is the
+defect the `slides` rename fixed, which
+[`scripts/retired-vocabulary.mjs`](scripts/retired-vocabulary.mjs) records;
+calling one a screen is that defect wearing a third word.
 
 **Finding** — one triageable observation about a blueprint, raised by a
 consistency check or a change trace. A finding carries a severity, the cells
