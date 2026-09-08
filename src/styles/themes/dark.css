@@ -12,6 +12,13 @@
 .dark {
   --helpers-os-appearance: Dark;
 
+  /* Same dial, same value as light — the corner radius does not change when
+     the lights go out. Restated here rather than left to the bare `:root` in
+     themes/light.css, which would carry it across on its own: that is the
+     mechanism the `--surface-hue` note below describes, and a mode-invariant
+     value is the kind that hides in it. */
+  --radius: 0.625rem;
+
   /* Same dial, same value as light — see the BRAND SEAM note in
      themes/light.css. The brand hue is mode-invariant, so these two must
      move together. */

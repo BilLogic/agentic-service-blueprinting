@@ -8,6 +8,12 @@
 .light {
   --helpers-os-appearance: Light;
 
+  /* Corner radius: the base every `--radius-*` rung in theme.css derives from.
+     Mode-invariant, and declared in themes/dark.css at the same value. The
+     second declaration is not what carries it into dark — this file's selector
+     list opens on a bare `:root`, so everything in it reaches there anyway —
+     which is exactly why it is written twice. A value that arrives in the
+     other mode by leak reads the same as one that arrived by mistake. */
   --radius: 0.625rem;
 
   /* -------------------------------------------------------------------------
