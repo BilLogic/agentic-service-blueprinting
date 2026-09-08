@@ -1,5 +1,141 @@
 # Changelog
 
+## 1.12.9
+
+### Patch Changes
+
+- 5661884: The agent's cell-content budget advises instead of refusing: a cell longer
+  than the budget is written in full, and the reply says so.
+
+  An agent that composed 130 characters of cell text used to lose all of them.
+  The write path measured the content against a 120-character cap and threw, so
+  the sentence the model had already worked out never reached the database and
+  the model was left to guess a shorter one. Nothing in the schema asks for 120.
+  It is a judgement about how much copy looks right in a card, backed out of the
+  canvas geometry — and a judgement should advise rather than discard work
+  already done. `upsert_cell` and `update_cell` now write whatever they are
+  given and append a note naming the budget, the length they read, and where
+  supporting detail belongs. The two tool descriptions say the same thing, so a
+  model reads the budget as an aim rather than a wall.
+
+  The `maxLength` on the Content field in the cell editor stays. A box someone
+  is typing into can stop them at the budget before anything is lost, which
+  prevents; discarding a finished paragraph after the fact does not.
+
+  Nothing about the board moves, because the render never depended on the
+  refusal: a narrative cell already draws at a fixed height and clamps its
+  preview to the lines that fit, with an ellipsis, while the whole string stays
+  in the cell's own text node for the detail panel and for a screen reader. That
+  the height is fixed is an existing assertion about the layout estimate — a
+  long cell and a short one size their lane identically — rather than a claim
+  about any number of characters, and it is what makes the softer write path
+  safe to ship.
+
+- 00c0992: The slice editor calls a slide a slide. The title box asks for a Slide title,
+  the button at the end of the strip adds a slide, the tooltip on a card deletes
+  one, and the ✕ on a cell badge takes that cell out of the slide. All four said
+  "screen" before, which is a word this vocabulary does not use for anything.
+
+  Three words are settled and distinct. A **frame** is one image on one cell —
+  column `cells.frame`. A **slide** is one row of a slice — table `slides`.
+  **screen** is ordinary English: a display, a viewport, the surface a reader
+  happens to be looking at. Letting the schema's own prose call a slide a frame
+  is the exact defect the `slides` rename fixed, and
+  `scripts/retired-vocabulary.mjs` has recorded it ever since; calling a slide a
+  screen is that defect wearing a third word.
+
+  `CONTEXT.md` now defines all four of `frame`, `slide`, `strip` and
+  `storyboard`, which it did not before. That is the half of this change that
+  matters longest: the glossary is what the next sweep checks itself against, and
+  none of the four had an entry to check.
+
+  Behind the strings, the bindings that named a slide are renamed to say so.
+  `screenIndex` becomes `slideIndex` in the composer, which had been rendering
+  the label `Slide {screenIndex + 1}` — the right word printed from a variable
+  named for the wrong one. `mergeSelectionIntoScreens` becomes
+  `mergeSelectionIntoSlides`. `sequenceByFrame` and `frameProblems` become
+  `sequenceBySlide` and `slideProblems`; `FrameNavButton` and `frameCellIds`
+  become `SlideNavButton` and `slideCellIds`; the type `FrameLoss` becomes
+  `SlideLoss`, and its own doc comment already said it holds slices that lose
+  slides.
+
+  The correction runs in both directions, which is the part worth reading twice.
+  Three comments in the presentation view had a _frame_ called a _slide_ — the
+  strip described as "the slide's own cell slides", several frames on one slide
+  as "cell slides in one slide", the empty state as "no card slide". Those are
+  the same defect mirrored, and a sweep that only pushed one word toward the
+  other would have deepened them.
+
+  Nothing was pushed further than that. `screen` keeps every legitimate sense it
+  has: the Testing Library binding, `screenshot`, and prose about viewports and
+  surfaces — including the two comments that say a slice and its presentation are
+  one object rather than "two unrelated screens", and that presenting is a mode
+  of the slice and "not a separate screen". Both are the ordinary word used
+  correctly, and rewriting true sentences to satisfy a vocabulary rule is how the
+  sibling `layer`/`lane` sweep mangled forty of them. The layout contracts the
+  two spellings already agree on — `slideLayout.ts`, and the `data-slide-canvas`,
+  `data-slide-id` and `data-slide-sticky-header` attributes — are untouched.
+
+  The reference documents that describe the `slides` **table** stop calling its
+  rows frames: the data model listed the table as "One frame of a slice", the
+  adapter contract warned about a "frameless slice" and stranded "orphan frames",
+  and the guide said a slice's frames point at live cells. The slice authoring
+  **file format** is a separate question and is deliberately left alone — its
+  `frames` array is a schema key that existing slice files and the skill's own
+  tooling read, so it is a compatibility decision rather than a spelling one.
+
+  The assertion that holds this is an invariant, not a census of today's four
+  strings: nothing on the slice surface — no identifier, no string a reader
+  sees — is named a screen. It says nothing about how many strings there are, and
+  it deliberately makes no claim about `frame`, because a frame is a real thing
+  on that surface and any rule about the word would be a list of today's
+  identifiers. Comments are outside its subject for the same reason the
+  sentences above survive: prose may use an English word, a name may not misuse
+  one.
+
+- 3d6ff76: A variant path appears once in the path picker, in the column beside the happy
+  path, instead of twice — once on each side.
+
+  The picker lays its paths out in columns, and it decided which column a path
+  belonged to by filtering the same list against two sets of kinds, `happy` and
+  `variant` on the left, `variant` and `exception` on the right, and treating the
+  two results as disjoint. They were not. `variant` was in both, so every variant
+  path was drawn in both columns: two checkboxes, the same label and the same
+  swatch on each, toggling the same filter, with no way for a reader to tell that
+  they were one path.
+
+  The overlap is residue from the migration that took path kinds from four to
+  three. `unhappy` and `alternative` were two spellings of one idea and both
+  became `variant`, on the reasoning the migration states itself: `exception`
+  already carries "this went wrong", so `unhappy` was only ever `variant` with a
+  mood attached. Before that fold the two sets were disjoint and the split meant
+  something — `alternative` on the left, `unhappy` on the right. Putting the new
+  spelling in place of both old ones put one value in both sets, and a `Set`
+  takes a repeated member without complaint, so the day the split stopped being
+  a split, nothing said so.
+
+  Which column a path belongs in is now answered by a single total map from kind
+  to column, consulted once per path — not by asking each column in turn whether
+  it wants the path. That is what the two sets could not be: every kind is
+  assigned, because the map is a `Record` over the kinds and the compiler will
+  not accept a gap, and each is assigned exactly once, because a repeated key is
+  a syntax error rather than a silently absorbed duplicate. Assigning a kind to
+  two columns is no longer a mistake that renders; it is a thing that cannot be
+  written down. `variant` is assigned the primary column, beside the happy path,
+  which is where the fold leaves it: after the fold a variant is the alternate
+  route and `exception` is the whole of what goes wrong, so the secondary column
+  holds exceptions alone. A path whose kind this build does not recognise still
+  gets a column, so that a newer schema's row is drawn rather than dropped.
+
+  The test is the invariant the defect broke, and it is not a census: for every
+  short arrangement of the kinds the app declares, everything handed to the
+  grouping comes back out of it exactly once, with nothing dropped and nothing
+  invented. It names no kind and no column, and it does not say how many kinds
+  there are — a fourth would be a migration, and it should not also be an edit
+  to this test.
+
+- c32ce65: Seventeen files call the `errorMessage` helper they already export instead of inlining it.
+
 ## 1.12.8
 
 ### Patch Changes
@@ -755,8 +891,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                            ERROR: new row for relation "lanes" violates check constraint
-                            "lanes_lane_role_check" … compliance_review
+                              ERROR: new row for relation "lanes" violates check constraint
+                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
