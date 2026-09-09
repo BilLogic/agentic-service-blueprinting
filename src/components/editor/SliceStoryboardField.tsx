@@ -14,6 +14,7 @@ import {
   parseSliceIllustration,
   sliceIllustrationUrl,
 } from '@/lib/sliceCells'
+import { setSlideIllustration } from '@/lib/sliceMutations'
 import { errorMessage } from '@/lib/utils'
 import type { Json } from '@/types/database'
 
@@ -70,6 +71,14 @@ export function SliceStoryboardField({
 
     setBusy(true)
     setProblem(null)
+    // Which half failed. Two failures reach the same catch and they need
+    // different words: storage answers with its own raw text, which a person
+    // cannot act on, while the row write answers with a sentence that has
+    // already been phrased for one — including "that slide no longer exists",
+    // which is the whole point of routing the write through the mutation.
+    // Replacing that with the generic apology would throw away the only
+    // message here that says what to do next.
+    let stage: 'upload' | 'row' = 'upload'
     try {
       const path = storyboardPath(sliceId, itemId, file.type)
       const upload = await client.storage
@@ -81,30 +90,28 @@ export function SliceStoryboardField({
         data: { publicUrl },
       } = client.storage.from(STORYBOARD_BUCKET).getPublicUrl(path)
 
-      const { error } = await client
-        .from('slides')
-        .update({
-          illustration: {
-            src: publicUrl,
-            updated_at: new Date().toISOString(),
-          } as unknown as Json,
-        })
-        .eq('id', itemId)
-      if (error) throw new Error(error.message)
+      stage = 'row'
+      await setSlideIllustration(client, itemId, {
+        src: publicUrl,
+        updated_at: new Date().toISOString(),
+      } as unknown as Json)
 
       refresh()
     } catch (uploadError) {
-      // The bucket still allows PNG only until the authoring migration widens
-      // it, so a JPEG that passes the local check can still be refused here.
-      // Saying so is more use than the storage error text.
-      const message =
-        errorMessage(uploadError)
-      console.error('[storyboard] upload failed:', message)
-      setProblem(
-        /mime|content type/i.test(message)
-          ? 'Storage refused that format. Until the authoring migration runs, only PNG is accepted.'
-          : 'That image could not be saved. The details are in the console.',
-      )
+      const message = errorMessage(uploadError)
+      console.error(`[storyboard] ${stage} failed:`, message)
+      if (stage === 'row') {
+        setProblem(message)
+      } else {
+        // The bucket still allows PNG only until the authoring migration
+        // widens it, so a JPEG that passes the local check can still be
+        // refused here. Saying so is more use than the storage error text.
+        setProblem(
+          /mime|content type/i.test(message)
+            ? 'Storage refused that format. Until the authoring migration runs, only PNG is accepted.'
+            : 'That image could not be saved. The details are in the console.',
+        )
+      }
     } finally {
       setBusy(false)
     }
@@ -118,18 +125,16 @@ export function SliceStoryboardField({
       // The row is cleared but the file is left in place: another slide may
       // point at the same path after a merge, and a delete here would break a
       // slide nobody asked to remove. Storage is cheap; a blank slide is not.
-      const { error } = await client
-        .from('slides')
-        .update({ illustration: null })
-        .eq('id', itemId)
-      if (error) throw new Error(error.message)
+      await setSlideIllustration(client, itemId, null)
       refresh()
     } catch (removeError) {
-      console.error(
-        '[storyboard] remove failed:',
-        removeError instanceof Error ? removeError.message : removeError,
-      )
-      setProblem('That image could not be removed. The details are in the console.')
+      // The mutation has already phrased this for a person — a slide that was
+      // merged away says so by name, and anything from the database has been
+      // through `toAuthoringError`. Showing that sentence beats replacing it
+      // with a generic one that sends the reader to the console for the only
+      // part that would have told them what to do.
+      console.error('[storyboard] remove failed:', errorMessage(removeError))
+      setProblem(errorMessage(removeError))
     } finally {
       setBusy(false)
     }

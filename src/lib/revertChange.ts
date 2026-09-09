@@ -45,7 +45,8 @@ import {
   type EvidenceUpdate,
 } from '@/lib/evidenceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
-import type { Database } from '@/types/database'
+import { updateFinding, type FindingUpdate } from '@/lib/findingMutations'
+import type { Database, Json } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 type EvidenceRowType = Database['public']['Tables']['evidence']['Row']
@@ -338,6 +339,26 @@ export async function executeRevert(
       requireRowsWritten(data, 'slice')
       return
     }
+    case 'restore_slide_illustration': {
+      // Undo of setting or clearing a slide image: put the captured pointer
+      // back, `null` included — clearing an image is as much a change as
+      // setting one, and its inverse is the previous pointer whatever it was.
+      //
+      // The file itself is never touched here, in either direction. The
+      // forward write leaves the object in the bucket precisely so this can
+      // point at it again; a revert that re-uploaded, or that deleted on the
+      // way back, would be reaching past what the change actually did.
+      const slideId = stringArg(revert.args, 'slide_id')
+      const illustration = (revert.args.illustration ?? null) as Json | null
+      const { data, error } = await client
+        .from('slides')
+        .update({ illustration })
+        .eq('id', slideId)
+        .select('id')
+      if (error) throw toAuthoringError(error)
+      requireRowsWritten(data, 'slide')
+      return
+    }
     case 'restore_slice_meta': {
       // Undo of a slice field edit. Writes `origin` back too: the forward
       // write promotes `generated` to `customized` as a side effect, and an
@@ -361,6 +382,23 @@ export async function executeRevert(
         .select('id')
       if (error) throw toAuthoringError(error)
       requireRowsWritten(data, 'slice')
+      return
+    }
+    case 'update_finding': {
+      // Undo of an edit to a finding — self-inverse, so the captured payload
+      // goes straight back to the function that wrote it. Only the fields the
+      // forward write touched were captured, so a status flip made by a person
+      // between the edit and the undo survives this rather than being quietly
+      // rolled back with it.
+      //
+      // `record: false`: undoing an edit must not append a second edit to the
+      // list the entry was just taken out of.
+      const findingId = stringArg(revert.args, 'finding_id')
+      const update = revert.args.update as FindingUpdate | undefined
+      if (!update || typeof update !== 'object') {
+        throw new Error('This change’s captured finding fields are malformed.')
+      }
+      await updateFinding(client, findingId, update, { record: false })
       return
     }
     case 'rename_owner_tag_scoped': {

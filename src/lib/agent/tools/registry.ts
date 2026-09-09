@@ -47,6 +47,12 @@ import { DEFAULT_ENTITY_STATUS, asEntityStatus } from '@/lib/entityStatus'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { getCellContentLengthGuidance } from '@/lib/cellContentLimits'
 import { findingFingerprint } from '@/lib/findingFingerprint'
+import {
+  recordFinding,
+  updateFinding,
+  type FindingSeverity,
+  type FindingStatus,
+} from '@/lib/findingMutations'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import {
   agentAnnotateCells,
@@ -740,6 +746,7 @@ export async function dispatchTool(
         const severityArg = s(args, 'severity')
         if (severityArg !== 'info' && severityArg !== 'warn' && severityArg !== 'critical')
           throw new Error('severity must be info, warn, or critical.')
+        const severity: FindingSeverity = severityArg
         const summary = need(args, 'summary')
         const cellIds = Array.isArray(args.cell_ids)
           ? args.cell_ids.filter(
@@ -751,54 +758,33 @@ export async function dispatchTool(
           throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
         const runId = s(args, 'run_id') ?? crypto.randomUUID()
         const fingerprint = await findingFingerprint(checkKey, cellIds, scope)
-        const service = await resolveActiveServiceId(client)
-        const { data: existing, error: readError } = await client
-          .from('audit_findings')
-          .select('id, status')
-          .eq('service_id', service)
-          .eq('fingerprint', fingerprint)
-          .order('updated_at', { ascending: false })
-        if (readError) throw new Error(readError.message)
-        const open = existing?.find((row) => row.status === 'open')
-        const dismissed = existing?.find((row) => row.status === 'dismissed')
-        if (open) {
-          const { error } = await client
-            .from('audit_findings')
-            .update({ severity: severityArg, summary, run_id: runId, cell_ids: cellIds, cell_keys: cellIds, source })
-            .eq('id', open.id)
-          if (error) throw new Error(error.message)
-          return `An open finding already had this fingerprint — updated it in place (dedupe). run_id ${runId}; reuse it for the rest of this run.`
-        }
-        if (dismissed)
-          return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. run_id ${runId}; reuse it for the rest of this run.`
-        const { error: insertError } = await client.from('audit_findings').insert({
-          service_id: service,
-          run_id: runId,
+        // The dedupe branch and both its writes live in findingMutations, so
+        // every one of them reaches the session ledger. The tool's job here is
+        // the sentence the model reads back, which differs per outcome.
+        const outcome = await recordFinding(client, {
+          serviceId: await resolveActiveServiceId(client),
+          runId,
           source,
-          check_key: checkKey,
-          severity: severityArg,
+          checkKey,
+          severity,
+          cellIds,
           summary,
-          cell_ids: cellIds,
-          cell_keys: cellIds,
           fingerprint,
         })
-        if (insertError) throw new Error(insertError.message)
-        const reopened = existing && existing.length > 0
-        return `Recorded ${severityArg} finding for ${checkKey}${reopened ? ' (a resolved twin existed — this reopens the issue)' : ''}. run_id ${runId}; reuse it for the rest of this run.`
+        const reuse = `run_id ${runId}; reuse it for the rest of this run.`
+        if (outcome.kind === 'deduped')
+          return `An open finding already had this fingerprint — updated it in place (dedupe). ${reuse}`
+        if (outcome.kind === 'suppressed')
+          return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. ${reuse}`
+        return `Recorded ${severity} finding for ${checkKey}${outcome.reopened ? ' (a resolved twin existed — this reopens the issue)' : ''}. ${reuse}`
       }
       case 'update_finding': {
-        const status = s(args, 'status')
-        if (status !== 'open' && status !== 'resolved' && status !== 'dismissed')
+        const statusArg = s(args, 'status')
+        if (statusArg !== 'open' && statusArg !== 'resolved' && statusArg !== 'dismissed')
           throw new Error('status must be open, resolved, or dismissed.')
+        const status: FindingStatus = statusArg
         const findingId = need(args, 'finding_id')
-        const { data, error } = await client
-          .from('audit_findings')
-          .update({ status })
-          .eq('id', findingId)
-          .select('id')
-        if (error) throw new Error(error.message)
-        if (!data || data.length === 0)
-          throw new Error(`No finding with id ${findingId}.`)
+        await updateFinding(client, findingId, { status })
         return `Finding is now ${status}.`
       }
       default:
