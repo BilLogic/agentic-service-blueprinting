@@ -1,5 +1,449 @@
 # Changelog
 
+## 1.13.3
+
+### Patch Changes
+
+- 5733425: Four defects the deployment already fixed
+
+  - `normalizeBlueprint` collapsed cells on `(lane, step)`. Since the tech-cell
+    split gives every touchpoint its own row at position 0..n, that kept one
+    cell per slot and dropped every sibling — board-wide, over `data.cells`
+    entire, whenever any two lane names merged. The key is now the slot.
+  - `setSharedCanvasMode` took `'design'` from anyone. The provider guarded it,
+    but the agent tool `set_canvas_mode` reaches the store setter directly and
+    is not a write tool, so a view-only session could park `'design'` and every
+    surface snapped into Edit when write access returned. The permission now
+    lives with the state.
+  - `AgentDock` registered its window-global listeners on both mount points.
+    The gate is now hook-free and only the visible instance mounts the window.
+  - `Skeleton` carried `animate-pulse` on top of the `skeleton-breath` rule in
+    `animations.css` — two animations on one bar, with the winner decided by
+    cascade layer order. It also cost reduced-motion readers the still bar the
+    stylesheet gives them.
+
+  `badge` also loses its two dead variants (`ghost`, `link`) and every
+  `[a]:hover:` rule: nothing rendered a badge as a link, and a surface that
+  repaints under the pointer promises a click that never comes.
+
+- dc0c0cf: The journey reads resolve the active service, not the first one
+
+  `ActiveServiceContext` writes the URL slug into the module store and
+  `serviceScope` already honours it, but `useServicePhases` and `useSlices`
+  still resolved `findFirstServiceId` — so switching service moved the URL, the
+  agent's scope and the caches, and left the board on whichever service is
+  first by `created_at`. Both fetchers now resolve `findActiveServiceId`, which
+  falls back to exactly that first-by-`created_at` row when no slug is set, so
+  a single-service installation resolves byte-for-byte as before.
+
+- 73e0029: Arrivals that converge on one cell draw one trunk and one head whatever column
+  each of them left from.
+
+  When several dependencies land on the same edge of the same cell, their last
+  segments merge into a single path-coloured trunk carrying one arrowhead: the
+  reader is told "these all cause that", which is one fact rather than N. The
+  merge chose where to gather by asking one of its members — whichever one the
+  group happened to list first — where the column gap before the shared target
+  was. That question only has an answer inside that member's own lane, and when
+  the lane holds no card in the column before the target the answer fell back to
+  a fixed inset from the target's edge that lands inside the arrowhead. The
+  clearance test then declined the merge for the whole group, so every member
+  kept its own head: three arrowheads stacked on one edge where the promise was
+  one trunk and one head.
+
+  Measured on a board that showed it. The target's left edge sits at 992 and the
+  head's base at 976, the lane of the first-listed member holds no card in the
+  column before the target, so the gather was placed at 980 — four pixels past
+  the point the head has to start at — and the merge was declined before the
+  per-member test ever ran. The two members whose lane does hold a card there
+  would each have answered 966, which merges.
+
+  Two faults on one line. The gather is a property of the shared target's column
+  and not of any one member's, so asking a member at all makes the picture depend
+  on which member the group happens to list first. And the per-lane fallback is
+  not a gap at all; it cannot produce a junction the clearance test will accept.
+
+  So the gather is read off the target column instead: the middle of the clear
+  strip between the widest card edge in the column before the target — over every
+  lane, because a vertical that crosses lanes needs a strip no card occupies —
+  and the target's own edge. Where that column holds no cards the board's own
+  column-gap element bounds it, and where neither is measurable the fixed offset
+  in front of the entry point remains. That is one answer for the whole group,
+  and it is the same answer in either listing order.
+
+  The two clearance guards are untouched, and so are the cases deliberately left
+  out: merging still applies only where it reduces overlap, a trunk drawn through
+  a card is still worse than N heads, and backward loops and same-column
+  connectors still keep their own heads.
+
+  The situation catalog gains the case this was — two arrivals at one cell from
+  different step columns, with the far one's lane empty in the column before the
+  target. It fails on the previous geometry, two heads and no trunk, and the test
+  beside it asserts the trunk is identical when the pair is listed the other way
+  round. Every existing catalog frame is unchanged; the three added frames are
+  the new case's.
+
+  The four files this touches are enrolled in the deployment's reconciled-files
+  list, so that gate stays red there until the next pin bump.
+
+- 6c5304e: The changelog and the changesets leave the content scan, and prose that spells
+  a theme key now fails a rule instead of quietly shipping one.
+
+  Tailwind v4 settles which theme keys reach the built stylesheet by scanning the
+  repository: a key whose name the scan finds anywhere is emitted at the root,
+  and a key it never finds is dropped. In markdown, any name of that shape is
+  found — bare or backticked, prose and asides alike. The entry sheet already
+  spends three exclusions on that hazard, for the documentation tree, the scripts
+  and the test files. The changelog was not among them and neither were the
+  changesets waiting to be folded into it, both sitting at the repository root
+  squarely inside the scan.
+
+  Measured, not argued. A probe changeset naming a registered-but-unemitted
+  radius key, and a probe line in the changelog naming another, each put exactly
+  its own key into the built stylesheet and moved nothing else. Removing them
+  again is what the two new exclusions do.
+
+  WHAT LEAVES THE ARTIFACT is one theme key and eight utility classes, 0.51 kB
+  of 294.73 kB, and nothing renders any of them. The key is the Tailwind-
+  namespaced alias for the inverted-ink colour, and it stood in the shipped
+  stylesheet for one reason: a release note describing its removal from the
+  compatibility layer spelled it in backticks. Its three other occurrences are
+  its own registration, a paragraph of stylesheet prose, and a test — none of
+  them a read, because a stylesheet offers a name only inside a `var()` and the
+  test files are already outside the scan. The semantic token underneath it is
+  untouched and still emitted, and the registration is an inline one, so a
+  utility written against that name tomorrow compiles to the value and never
+  wanted the custom property. The eight classes are each named in exactly one
+  release note and in no file a browser reaches; every occurrence of all nine was
+  enumerated before the departure was called correct, rather than inferred from
+  the size drop.
+
+  WHY IT COMPOUNDS, and the half worth fixing more than the exclusion. Cutting a
+  release folds each changeset into the changelog permanently, so a sentence
+  written today holds a key in the build for the life of the repository, long
+  after whatever it was written about is gone — and nothing fails, which is why
+  this stood for two releases. It reached back into the release process, too: a
+  note explaining why a token arrived or left had to avoid spelling the token,
+  which is not something anyone should have to remember at the moment they are
+  writing down what they changed.
+
+  A RULE, NOT A LONGER LIST. The exclusions say which files are prose; nothing
+  said the set was complete, and the kind of prose nobody thought of failed
+  nothing at all. The new rule states the property instead: no theme key may be
+  spelled in any markdown the scan still reaches. It takes the key names and the
+  exclusion patterns from the token model and the entry sheet rather than
+  restating either, asks git for the file list so the answer moves with
+  `.gitignore` instead of with a skip list, and needs no exemptions — the subject
+  is a kind of file, several dozen of them today, not an enumeration. It fails on
+  the sentence and names its author, so it survives a document being moved or
+  renamed, and it went red on all three of the changelog's spellings when the
+  exclusions were taken back out.
+
+  Its limit is stated where it lives: class names get no equivalent and cannot
+  have one, because any English word can be a utility and there is no finite set
+  to intersect against. For those the exclusions remain the whole of the defence.
+  The companion rule guarding the other direction — that the token model samples
+  nothing the scan is told to skip — pins the exclusion patterns, so it went red
+  on the two additions and was updated with them, which is the review it was
+  built to force.
+
+  `src/styles/tailwind.config.css` is enrolled in the deployment's
+  reconciled-files list, so that gate stays red there until the next pin bump.
+
+- 4eca929: A role's pale tint is measured from the surface it is drawn on instead of from
+  the page, and the component that paints a surface is what says which one it is.
+
+  The tint is six percent of the signed canvas-to-ink span, and an elevation rung
+  is a step of the same size. Derived from the page it therefore landed on top of
+  anything raised off the page: all seven roles measured 1.02:1 against a card in
+  dark, where the card itself sits 1.09:1 off the canvas. The role edge was
+  carrying the entire shape and the tint was contributing nothing. Light read 1.18
+  only because its span runs the other way and the two distances happened to add —
+  the same arithmetic, hidden behind a sign.
+
+  `--ground` is the lightness a tint is measured from. At the root it is the page
+  and that is the whole of the default. A component that establishes a surface
+  carries `data-ground`, `semantic.css` re-derives at that scope for the same
+  reason it already re-derives under a themed subtree — custom properties
+  substitute before they inherit — and the seven tints and the seven edges that
+  step off them follow. One new name, one selector, three ground rules, and no
+  second name for any job.
+
+  The grounds are named for their surfaces rather than for their elevation
+  ratios, because that is what a component knows about itself: a card knows it is
+  a card and does not know it is one and a half steps up. `src/lib/ground.ts`
+  holds the vocabulary the components spread, and the rule holds it against the
+  scopes the stylesheet declares, so neither tier can drift from the other.
+
+  THE CLAMP IS NOT A SAFETY RAIL, and it was the thing that would have made light
+  worse. Light's canvas sits at 0.995 with a step of 0.024, so every rung of its
+  ladder runs past 1 and the browser holds all three at white. A ground computed
+  without that ceiling measures a card that is not on the screen: the light tint
+  lands at 1.07:1 against the card it is drawn on, below the floor and worse than
+  the 1.19 the defect it replaces was already reaching. Clamped, it reads 1.17.
+  Dark is unaffected either way, which is exactly why this could have shipped
+  unnoticed. Reading the same ceiling the browser reads is what keeps the
+  measurement and the pixel the same thing.
+
+  WHAT MOVES IN THE COMPILED CSS, built before and after rather than reasoned
+  about. The semantic block gains the ground scope in its selector list and one
+  declaration; the seven tints swap which name they read; three ground rules
+  arrive. On the page the ground resolves to the page, so every value the app
+  draws outside a declared surface is unchanged. Inside one, the tint moves and
+  its edge moves with it. The two washes of a solid fill leave the artifact along
+  with their `@supports` fallbacks, the ink that sat on one of them goes with
+  them, and one ink utility arrives. Sixty-seven bytes.
+
+  MEASURED THROUGH THE TOKEN MODEL, on every ground the stylesheet offers, for
+  all seven roles, in both themes. A tint now clears its ground at 1.10 to 1.18
+  everywhere, against 1.02 on a dark card before. The rule is two invariants
+  rather than a table: a tint clears its ground, and the choice of ground may move
+  that distance a little and may not decide it. Both go red on a single role
+  regressed to the page, and a third rule reproduces the original defect so a
+  guard that could never fail is not mistaken for a clean tree.
+
+  The model gained the scope to ask. It answered at the root and nowhere else,
+  which was the right shape while every colour here was a property of the page;
+  `resolveValue`, `resolveColorValue`, `resolveColor` and `winningDeclaration`
+  now take the subtree, spelled as the selectors that match it, so a rule reads
+  the cascade's own answer for an element instead of re-deriving a subtree's
+  arithmetic in TypeScript beside the CSS.
+
+  THE EDGE BAND WIDENS, and the file's own claim about it was corrected rather
+  than left standing. A fixed lightness travel does not buy a fixed ratio at every
+  point on the axis, so the same role edge reads 1.24 on the dark canvas and 1.32
+  on a dark popover. The prose promised 1.22 to 1.28; across every ground and both
+  modes the spread is 1.22 to 1.32. Four hundredths, at a distance nobody can see,
+  and still far below the 3:1 that paragraph is defending against.
+
+  The comparison surface's two verdict markers move onto the tint and the ink cut
+  for it. They wore the solid fill as ink on a ten-percent wash of itself, which
+  is the weakest pairing this vocabulary allows — the fill is tuned for ink to sit
+  on it, and an alpha has no ground until it is painted.
+
+  WHAT THIS DOES NOT DO. A surface that never says what it is still hands its
+  children the page, silently, which is the failure mode the defect had. That is
+  inherent to a value only the component can know, and it is why the ground is
+  declared once by each surface primitive rather than at each tinted element: an
+  alert does not know what it was dropped into, and now it does not have to.
+
+  `src/styles/semantic.css` is enrolled in the deployment's reconciled-files list
+  and was byte-identical to its copy, so that gate stays red until the next pin
+  bump.
+
+- 4c9f5d3: The line of interaction is drawn once per board rather than once per
+  customer-side lane, and the three readers that decide height and tone from it
+  are handed the board so they answer the question the renderer answers.
+
+  The rule was `getLaneRole(lane) === CUSTOMER_ACTIONS_ROLE` and nothing else,
+  which is right for exactly as long as every board has one customer-side lane.
+  Give a board a second actor row on the customer's own side and it draws a line
+  of interaction after each of them. No service blueprint means two: the line is
+  the boundary between the people the service is for and the machinery that
+  serves them, and a boundary drawn twice is not a boundary. So the line follows
+  the LAST customer-side lane. Adding a customer-side lane extends the band; it
+  does not divide the board again, and no row has to move to make that true.
+
+  WITHOUT THE BOARD, THE OLD ANSWER. `lanes` is optional, and a lane asked alone
+  has no band to be last in, so it is its own band and answers as it always did.
+  That is the same shape `shouldShowVisibilityLineAfter` already has, for the
+  same reason, and it is what keeps a caller that genuinely has only a lane
+  correct. It is also what made the three call sites below silent: each kept the
+  old rule while the renderer had already moved to the new one, and nothing
+  failed, because nothing disagreed until a second customer-side lane existed.
+
+  TWO OF THE THREE ARE READ AS HEIGHT. `countBlueprintDividerRows` is multiplied
+  by the divider row constant and `countBlueprintWrapCorridorMargins` by the
+  corridor margin, and both are added to the artboard, so a count that disagrees
+  with what the renderer draws is a grid taller than its own contents by exactly
+  the rows it over-counted — a divider row and a corridor of space reserved for a
+  line and a gap nobody paints. The corridor counter was point-free —
+  `lanes.filter(laneHasWrapCorridorBelow)` — so adding a parameter would have
+  passed the array index as the board, silently, which is why it is spelled out
+  now rather than left to read tidily.
+
+  THE THIRD IS RENDERED, NOT COUNTED. `laneHasWrapCorridorBelow` reaches a lane
+  row's real bottom margin through the compare row spec, so a lane in the middle
+  of the band opened a routing corridor beneath a row with no line beneath it to
+  route to. Its own doc said why the corridor exists — the standard blueprint
+  already leaves a band between the row and the line of interaction — which under
+  the band rule is true of the last customer-side lane and no other.
+
+  AND A LANE IN THE BAND WAS LETTERED AS IF BELOW THE LINE.
+  `getBlueprintLabelSection` searched for the FIRST lane the line follows, so a
+  row still inside the band got the tone of the zone under the line while being
+  drawn above it — painted, to a reader, on the far side of a boundary they can
+  plainly see it is above. A section is a position relative to the lines, so it
+  has to find the lines where they are actually drawn.
+
+  WHAT A BOARD DRAWS. With one customer-side lane, nothing moves: same line in
+  the same place, same corridor under the same row, same tone on every row, same
+  artboard height. With two, one line after the second of them, one corridor
+  under that same row, both customer-side rows lettered as sitting above the
+  line, and the artboard exactly one lane row taller — not a lane row plus a
+  divider row plus a corridor.
+
+  TEN CASES ARRIVE, and this repository had none on any of these rules. They
+  state a position relative to the line, or an equality between what is counted
+  and what the board draws — never a count of the boards whose customer side is
+  deep, which would pass on the day it was written and say nothing about the
+  rule. The corridor assertion is made against the rail's own interaction row
+  rather than a lane index, because those two are the same fact and the defect
+  was that they could disagree. Each of the six hunks was reverted in turn and at
+  least one case failed for each.
+
+  `src/lib/blueprintLayout.ts` and `src/lib/sideBySideCompareLayout.ts` are
+  enrolled in the deployment's reconciled-files list and were byte-identical to
+  its copies; they are byte-identical again, so that gate can go green on the
+  next pin bump. `src/lib/blueprintTheme.ts` is not enrolled and has drifted on
+  its content-shaped tables, so the one call it makes was ported by hand.
+
+- 5757b3d: The developer portal is a development tool in the build as well as in the
+  description: outside a dev build the tier simulation resolves to the real
+  session, whatever the browser has in storage.
+
+  It was live everywhere. The provider called `applyDevSimulation` on every
+  render in every build, so the two flags the whole editing surface gates on —
+  `canWrite`, and the `canAgentWrite` derived from it — were moved by a value
+  read out of `localStorage`. A deployed site therefore offered any visitor the
+  entire authoring UI, and every control in it then failed against Postgres.
+
+  The server was never fooled and is not what changed. Row-level security and the
+  RPC grants never saw the simulated tier, which is why the consequence stayed
+  survivable; but a stranger being shown handles, design mode, panel editors and
+  the agent's write tools before the database refuses each one is not a UI a
+  template should ship, and "the writes fail anyway" is an argument about the
+  blast radius rather than about the door being open.
+
+  HIDING THE TWO CONTROLS WOULD HAVE BEEN WORSE THAN LEAVING THEM. The obvious
+  fix is a build check in front of the badge and the settings section. That hides
+  the door and leaves the lock: a browser that carries the storage key from a dev
+  session, or one whose devtools write it, still gets the lifted flags — now with
+  the badge that says so gone too. The tell is the part the render gates were
+  holding up.
+
+  So the gate is at the seam instead. Every consumer reads the simulation through
+  one hook, and that hook is where the build answer is applied; the provider is
+  untouched, and the badge needs nothing of its own because a simulation that is
+  off renders nothing already. The settings section, which is the controls rather
+  than a report on them, is the one place that also returns null — it has no off
+  state to collapse to. `applyDevSimulation` stays a pure function of its two
+  arguments, which is what keeps it testable in both directions in a build that
+  will never call it with a live simulation.
+
+  The flag is read at call time rather than folded into a module constant. A
+  build replaces the expression with its literal either way, and reading it when
+  it is asked for is what lets a test state the shipped answer to a module that
+  has already been imported.
+
+  MEASURED WITH THE KEY PRESENT, because with it absent the assertion is empty.
+  Three cases now pin the production behaviour against a stored simulation of
+  admin: the flags come back at the real session's values, neither the section
+  nor the badge renders, and the stored value is left where it was and honoured
+  again the moment the build answer is development. The suite runs with the
+  development answer by default, so this block is the only place the other one is
+  observable — the file says that where a reader meets it.
+
+  WHAT THIS DOES NOT DO, measured rather than hoped for. The portal's code is
+  still in the production bundle — its copy, its storage key, the badge's word
+  for itself — because the build answer is read through a call the minifier
+  cannot fold, which is the same property the test depends on. Nothing renders it
+  and nothing consults it; what changed is the reach, not the byte count. Trading
+  that for a constant the minifier could fold would buy a few hundred bytes and
+  give up the only assertion that can observe the shipped behaviour, which is the
+  wrong side of that trade for a defect that was found by nobody running it.
+
+- 0a871ec: The client asks the database what tier a session is in, instead of inferring
+  it from a claim the session does not carry.
+
+  The tier seam is a database function every write RPC asserts in its own body
+  and every restrictive write policy ANDs with. It ships permissive — a
+  single-tier deployment where every signed-in session edits — and an optional
+  recipe replaces it with a read of the session's role claim, splitting
+  `authenticated` into editors and viewers. The client used to decide which of
+  those two databases it was talking to by looking at the claim: absent meant
+  the recipe was never adopted, so every signed-in session edited. A deployment
+  built on this template made the opposite call from the same file, granting the
+  tier only on an explicit `role === 'service'`. Both readings are defensible
+  where they sit and neither survives being the same line of code.
+
+  The function is granted EXECUTE to `anon` and `authenticated`, so it is
+  callable over the Data API. Calling it is one round trip on sign-in and is
+  right in both postures, including the one where an adopter deletes the recipe
+  outright. `IdentityPort.currentTier()` already declared the home for it and
+  was implemented only by the two adapters nothing calls; it now has its
+  Supabase implementation and its first real caller.
+
+  THE DEFECT THIS FIXES, not merely tidies. `supabase db reset` applies every
+  file in the migrations directory, the optional recipe included, so the setup
+  as written produces the STRICT database — an adopter has to delete a file to
+  get the permissive one the client assumed. The combination that produced was
+  the strict database under the permissive client: a signed-in account with no
+  role claim was offered the entire editing UI and refused by Postgres on every
+  save, from 23 in-body RPC guards and 39 restrictive policies. That combination
+  is now unreachable, because there is only one rule and the database states it.
+
+  Before and after, for each session, on both postures. An anonymous visitor is
+  unchanged in every case: no session, no write gate, and the tier is settled
+  without a round trip — which matters, because the permissive default answers
+  `true` to anyone who calls it, `anon` included. A session holding the
+  service-role key is unchanged: its JWT carries no role of the kind the seam
+  reads, so the key's own arm stays and stays load-bearing. On the permissive
+  database a role-less signed-in session still edits, as before. On the strict
+  database a role-less signed-in session was an editor in the UI and a viewer in
+  the data, and is now a viewer in both. And a session carrying the claim while
+  the database says no — a token minted before a revocation, or a claim set by
+  hand on a deployment whose seam reads something else — used to write buttons
+  it could not use, and now does not, because the claim is no longer consulted
+  in either direction.
+
+  THE FIRST ACCOUNT A PROJECT EVER HAS IS A SERVICE ACCOUNT. The recipe's
+  allowlist ships empty and nothing in the package inserts a row — no seed, no
+  script, no documented step — so a fresh deployment of the tier had no editor
+  at all, and the way in was a hand-written update whose text lives in a
+  migration header. The trigger that stamps allowlisted sign-ups gains a second
+  predicate for it.
+
+  The other predicate that closes the same gap is "the allowlist is empty", and
+  it is the dangerous one: an adopter who enables sign-ups and never fills the
+  allowlist — the exact adopter being fixed — would stamp every account created
+  in that window, unbounded and growing with the deployment. "There are no
+  accounts yet" stamps exactly one, ever, and it is the one belonging to whoever
+  stood the project up. Rehearsed on a throwaway database: the founding account
+  is stamped, the second account created while the allowlist is still empty is
+  not, an allowlisted account is stamped case-insensitively, and metadata a
+  provider already wrote survives.
+
+  IT STAYS IN THE RECIPE, which is the opposite of where the argument pointed
+  before. The stamp is read by exactly one thing — the recipe's own tier
+  function — so deleting the recipe leaves a claim nothing consults, and moving
+  the trigger to the core would hang auth machinery on adopters who chose the
+  single-tier posture, for no effect. What made the argument look the other way
+  was a client that decided the tier from the claim: that client goes silently
+  read-only against a permissive database, so the stamp had to exist everywhere
+  to keep it honest. Asking removes the need, so the trigger goes where its only
+  reader is.
+
+  TWO STALE SENTENCES, in the environment sample and in the client module, both
+  saying the deployed app is read-only because "there is no sign-in". There is:
+  a password form and a magic-link button, mounted whenever a database is
+  configured, on the front of every deployed site. What is true is narrower —
+  a browser visitor is `anon`, and the magic link is sent with account creation
+  off, so it cannot mint the account it would need.
+
+  COVERAGE, which was the acceptance criterion and had none. The permissive arm
+  was rewritten to the strict rule and the suite re-run before any of this: 158
+  files and 1603 tests before, 158 and 1603 after, zero movement — the rule this
+  issue is about was asserted in neither direction. Eleven cases arrive: five
+  pinning the resolution itself, six pinning that the provider is wired to it,
+  across an anonymous visitor, a stamped account, a role-less account on each
+  posture, a claim the database contradicts, a failed ask, and the service-role
+  key. Both prior rules were re-applied under them: this repository's fails two,
+  the deployment's fails two others.
+
+  `src/lib/supabase.ts` is enrolled in the deployment's reconciled-files list and
+  was byte-identical to its copy, so that gate stays red until the next pin bump.
+
 ## 1.13.2
 
 ### Patch Changes
@@ -1844,8 +2288,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                      ERROR: new row for relation "lanes" violates check constraint
-                                      "lanes_lane_role_check" … compliance_review
+                                        ERROR: new row for relation "lanes" violates check constraint
+                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
