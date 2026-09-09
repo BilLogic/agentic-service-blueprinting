@@ -59,7 +59,7 @@ vi.mock('@/lib/touchpointMutations', async (importOriginal) => ({
   updateTouchpointPlacement,
 }))
 vi.mock('@/lib/authoringRpc', () => ({
-  upsertCell: vi.fn(async () => 'cell-1'),
+  upsertCell: vi.fn(async () => ({ id: 'cell-1', inserted: true, previous: null })),
 }))
 
 vi.mock('@/contexts/SupabaseProvider', () => ({

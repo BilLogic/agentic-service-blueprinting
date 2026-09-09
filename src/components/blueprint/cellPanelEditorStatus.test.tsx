@@ -30,7 +30,9 @@ const { updateCellContent, updateCellSpec } = vi.hoisted(() => ({
 
 vi.mock('@/lib/cellContentMutations', () => ({ updateCellContent }))
 vi.mock('@/lib/cellSpecMutations', () => ({ updateCellSpec }))
-vi.mock('@/lib/authoringRpc', () => ({ upsertCell: vi.fn(async () => 'cell-1') }))
+vi.mock('@/lib/authoringRpc', () => ({
+  upsertCell: vi.fn(async () => ({ id: 'cell-1', inserted: true, previous: null })),
+}))
 
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: {}, configured: true, canWrite: true }),

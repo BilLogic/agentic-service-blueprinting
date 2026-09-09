@@ -378,10 +378,16 @@ export async function dispatchTool(
         const laneId = need(args, 'lane_id')
         const stepId = need(args, 'step_id')
         // Occupancy guard: the RPC upserts, so a second call on the same
-        // slot would silently OVERWRITE the cell — and the recorded revert
-        // for a "create" is a delete, so a human undoing the agent's edit
-        // would destroy a pre-existing cell. Creation tool means creation
-        // only; edits go through update_cell.
+        // slot would silently OVERWRITE the cell. Creation tool means creation
+        // only; edits go through update_cell, and being told so is a better
+        // answer than a quiet update.
+        //
+        // It is no longer the safety. This used to be the only thing standing
+        // between the agent and a recorded revert that deleted a cell the
+        // author already had — a read followed by a write, holding nothing,
+        // and remembered per caller. `upsert_cell` now reports which half it
+        // took and the ledger branches on that, so this guard is the error
+        // message and not the guarantee.
         const { data: occupied, error: occupiedError } = await client
           .from('cells')
           .select('id')
@@ -400,13 +406,20 @@ export async function dispatchTool(
         // face either way, so long text is written and reported rather than
         // thrown away — see `cellContentLimits`.
         const lengthGuidance = getCellContentLengthGuidance(newContent)
-        const id = await upsertCell(client, {
+        const written = await upsertCell(client, {
           pathId: need(args, 'path_id'),
           laneId,
           stepId,
           content: newContent,
         })
-        return `Created cell (${id}).${lengthGuidance.message ? ` ${lengthGuidance.message}` : ''}`
+        // Which half the upsert took is said out loud. The guard above means
+        // an update should be unreachable; if the race that guard cannot close
+        // happens anyway, a model told "created" goes on believing it made a
+        // cell it in fact wrote over.
+        const outcome = written.inserted
+          ? `Created cell (${written.id}).`
+          : `That slot was already filled; the existing cell (${written.id}) was updated in place.`
+        return `${outcome}${lengthGuidance.message ? ` ${lengthGuidance.message}` : ''}`
       }
       case 'update_cell': {
         // ONE tool over two wrappers, because a cell is one thing to the
