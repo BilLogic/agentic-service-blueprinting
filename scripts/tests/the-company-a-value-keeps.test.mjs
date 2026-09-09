@@ -58,12 +58,11 @@
  *
  * The rule's own header states its blind spots — anaphora across a sentence
  * boundary, and a sentence using a retired value as English beside its own
- * table. Two more belong to this file's subjects. The decision records and the
- * pre-ticket plans are outside `sweptDocs` and stay outside, on the reason
- * that module gives: rewriting a decision record falsifies it. And a figure
- * that says nothing but the value — a box labelled `unhappy` with no `Path`
- * beside it and no live kind anywhere in the drawing — has no company to keep,
- * so this passes it. Such a figure would be unreadable for other reasons,
+ * table. Two more belong to this file's subjects. The decision records are
+ * outside `sweptDocs` and stay outside, on the reason that module gives:
+ * rewriting a decision record falsifies it. And a figure that says nothing but
+ * the value — a box labelled `unhappy` with no `Path` beside it and no live
+ * kind anywhere in the drawing — has no company to keep, so this passes it. Such a figure would be unreadable for other reasons,
  * which is the whole of why the risk is taken.
  */
 import { test } from 'vitest'

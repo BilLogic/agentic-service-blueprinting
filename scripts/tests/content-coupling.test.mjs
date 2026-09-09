@@ -136,7 +136,6 @@ test('a fixture is out of subject, and the vendored mirror with it', () => {
   assert.equal(isScanned('src/lib/cellTouchpoints.test.ts'), false)
   assert.equal(isScanned('scripts/tests/run_tests.sh'), false)
   assert.equal(isScanned('supabase/seed.sql'), false)
-  assert.equal(isScanned('docs/plans/some-plan.md'), false)
   // The generator IS in subject: it is where a planted id gets written by hand.
   assert.equal(isScanned('scripts/generate_sample_blueprint.mjs'), true)
 })

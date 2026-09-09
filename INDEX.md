@@ -40,7 +40,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
 | See what is already being worked on | GitHub issues — the queue is not in this repo |
-| Is this plan still true? | its frontmatter `status` — and docs/plans/overview.md |
+| Where does a decision get written down, and where does work in flight live? | docs/adr/0009-the-queue-is-issues-and-a-durable-decision-is-an-adr.md |
 
 ## The five root files
 
@@ -64,4 +64,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-22 protocol documents and 0 plans are indexed in [docs/index.md](./docs/index.md).
+22 protocol documents are indexed in [docs/index.md](./docs/index.md).

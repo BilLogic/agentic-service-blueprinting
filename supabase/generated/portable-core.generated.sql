@@ -314,7 +314,6 @@ create trigger set_cell_triggers_updated_at
 -- ─────────────────────────────────────────────────────────────────────────
 
 -- Derived layer: slices, findings, evidence, propositions + cell/lane/phase spec fields.
--- Plan: docs/plans/2026-07-29-002 (stage 1).
 --
 -- Design invariants encoded here:
 --   * Derived tables reference cells SOFTLY (uuid / uuid[], no FK) — the importer's

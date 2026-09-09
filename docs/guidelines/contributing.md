@@ -1,5 +1,5 @@
 ---
-summary: How work gets proposed and landed here — the queue is GitHub issues rather than a folder, plans are dated history, branches are named for what they do, and a commit says what changed and why in the imperative.
+summary: How work gets proposed and landed here — the queue is GitHub issues rather than a folder, a durable decision is an ADR, branches are named for what they do, and a commit says what changed and why in the imperative.
 ---
 
 # Contributing
@@ -18,9 +18,10 @@ A larger piece of work gets a parent issue holding the problem statement and
 the decisions, and child issues holding the shippable pieces. The parent is
 where the argument lives; the child is what a pull request closes.
 
-Plans stay in the repository, but only as history —
-[docs/plans/overview.md](../plans/overview.md) says what that means and how to
-tell a live document from a finished one.
+Nothing about work in flight is written down in the tree. What survives the
+work is either protocol — a document under `docs/` stating how the package
+behaves now — or a decision record under [`adr/`](../adr/). The argument that
+got there is the issue, and the diff is the git history.
 
 ## 2. Before you push
 
