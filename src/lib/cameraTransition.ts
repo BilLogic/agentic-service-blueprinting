@@ -8,6 +8,26 @@ export type CameraTransitionResult =
   | { kind: 'cancelled'; transform: CameraTransform }
   | { kind: 'superseded'; transform: CameraTransform }
 
+export type CameraVelocity = {
+  pan: { x: number; y: number }
+  zoomPerMs: number
+}
+
+export type CameraFlightSample = {
+  transform: CameraTransform
+  velocity: CameraVelocity
+  progress: number
+  done: boolean
+}
+
+export type CameraFlightPlan = {
+  durationMs: number
+  sample: (elapsedMs: number) => CameraFlightSample
+}
+
+export const CAMERA_FLIGHT_MIN_MS = 240
+export const CAMERA_FLIGHT_MAX_MS = 650
+
 /**
  * Changes camera scale while mapping one viewport point to another.
  *
@@ -39,14 +59,29 @@ export function transformCameraAroundPoint(
 }
 
 /**
- * Sine ease-in-out: a calm departure and landing without smootherstep's
- * long near-still endpoints and steep middle acceleration.
+ * Smoothstep ease-in-out: a calm departure and landing without the longer
+ * near-still endpoints of smootherstep.
  */
 export function easeCameraTransition(value: number): number {
   const t = Math.min(1, Math.max(0, value))
   if (t === 0 || t === 1) return t
-  return -(Math.cos(Math.PI * t) - 1) / 2
+  return t * t * (3 - 2 * t)
 }
+
+const hermiteProgress = (t: number, initialSlope: number) =>
+  t * t * (3 - 2 * t) + initialSlope * t * (1 - t) * (1 - t)
+
+const hermiteDerivative = (t: number, initialSlope: number) =>
+  6 * t * (1 - t) + initialSlope * (1 - 4 * t + 3 * t * t)
+
+/**
+ * Resting flights still leave with a little speed. Smoothstep from a dead
+ * stop spends the first beat of a large zoom-in almost still — overview to
+ * a scenario reads as lag, even though the duration itself is fine. The
+ * hermite's end slope stays zero for any start slope, so arrivals still
+ * settle rather than hitting the destination at speed.
+ */
+const RESTING_FLIGHT_SLOPE = 0.55
 
 /**
  * Returns transition progress measured from the first frame the browser can
@@ -71,9 +106,10 @@ export function createCameraTransitionClock(durationMs: number) {
 }
 
 /**
- * Interpolate the visible world CENTRE linearly and the scale GEOMETRICALLY,
- * then derive the transform. Pan and zoom stay coupled — a destination never
- * moves away before arriving — and the perceived rate of zoom is constant.
+ * Move the FINAL viewport centre along a straight SCREEN path while changing
+ * scale geometrically, then derive the transform. The final centre is the
+ * point the reader is navigating toward; keeping its screen-space approach
+ * monotonic prevents a large zoom-in from sending it farther away first.
  *
  * The geometric half is the part that matters, and it is not a refinement.
  * This used to interpolate the visible rectangle's WIDTH linearly and derive
@@ -92,9 +128,10 @@ export function createCameraTransitionClock(durationMs: number) {
  * says — the eased progress IS the perceived progress — and it makes the
  * two directions symmetric, which linear width can never be.
  *
- * The centre (not the top-left corner) is the anchor: with the scale moving
- * geometrically, interpolating an edge would let the frame drift sideways
- * on its way, because the distance from edge to centre is itself scaling.
+ * This intentionally gives up a straight WORLD-space path for the current
+ * viewport centre. A world-straight centre multiplied by a rapidly growing
+ * zoom can reverse the destination's visible travel even though the world
+ * coordinates themselves are perfectly linear.
  */
 export function interpolateCameraTransform(
   from: CameraTransform,
@@ -112,25 +149,213 @@ export function interpolateCameraTransform(
 
   const zoom = fromZoom * Math.pow(toZoom / fromZoom, progress)
 
-  // The world point currently under the middle of the viewport, at each end.
-  const fromCenter = {
-    x: (width / 2 - from.pan.x) / fromZoom,
-    y: (height / 2 - from.pan.y) / fromZoom,
-  }
-  const toCenter = {
+  // The world point that will sit under the viewport centre on arrival.
+  const destinationWorldCenter = {
     x: (width / 2 - to.pan.x) / toZoom,
     y: (height / 2 - to.pan.y) / toZoom,
   }
-  const center = {
-    x: fromCenter.x + (toCenter.x - fromCenter.x) * progress,
-    y: fromCenter.y + (toCenter.y - fromCenter.y) * progress,
+  const destinationStartScreen = {
+    x: from.pan.x + destinationWorldCenter.x * fromZoom,
+    y: from.pan.y + destinationWorldCenter.y * fromZoom,
+  }
+  const destinationScreen = {
+    x:
+      destinationStartScreen.x +
+      (width / 2 - destinationStartScreen.x) * progress,
+    y:
+      destinationStartScreen.y +
+      (height / 2 - destinationStartScreen.y) * progress,
   }
 
   return {
     pan: {
-      x: width / 2 - center.x * zoom,
-      y: height / 2 - center.y * zoom,
+      x: destinationScreen.x - destinationWorldCenter.x * zoom,
+      y: destinationScreen.y - destinationWorldCenter.y * zoom,
     },
     zoom,
+  }
+}
+
+/**
+ * One timing family whose duration reflects what the reader can see moving.
+ * Pan is measured as the arrival centre's initial screen distance; zoom is
+ * measured logarithmically because scale is perceived as a ratio.
+ */
+export function resolveCameraFlightDuration(
+  from: CameraTransform,
+  to: CameraTransform,
+  viewport: { width: number; height: number },
+): number {
+  const width = Math.max(1, viewport.width)
+  const height = Math.max(1, viewport.height)
+  const fromZoom = Math.max(0.0001, from.zoom)
+  const toZoom = Math.max(0.0001, to.zoom)
+  const destinationWorldCenter = {
+    x: (width / 2 - to.pan.x) / toZoom,
+    y: (height / 2 - to.pan.y) / toZoom,
+  }
+  const destinationStartScreen = {
+    x: from.pan.x + destinationWorldCenter.x * fromZoom,
+    y: from.pan.y + destinationWorldCenter.y * fromZoom,
+  }
+  const panDistance = Math.hypot(
+    destinationStartScreen.x - width / 2,
+    destinationStartScreen.y - height / 2,
+  )
+  const zoomDistance = Math.abs(Math.log(toZoom / fromZoom))
+  const duration = CAMERA_FLIGHT_MIN_MS + panDistance * 0.08 + zoomDistance * 70
+  return Math.round(
+    Math.min(CAMERA_FLIGHT_MAX_MS, Math.max(CAMERA_FLIGHT_MIN_MS, duration)),
+  )
+}
+
+/**
+ * Plans one automatic camera flight. Compatible incoming momentum is
+ * projected onto the new journey; sideways or opposing momentum is dropped
+ * so preserving an obsolete vector can never make the new destination recede.
+ */
+export function createCameraFlightPlan({
+  from,
+  to,
+  viewport,
+  durationMs = resolveCameraFlightDuration(from, to, viewport),
+  initialVelocity,
+}: {
+  from: CameraTransform
+  to: CameraTransform
+  viewport: { width: number; height: number }
+  durationMs?: number
+  initialVelocity?: CameraVelocity
+}): CameraFlightPlan {
+  const width = Math.max(1, viewport.width)
+  const height = Math.max(1, viewport.height)
+  const fromZoom = Math.max(0.0001, from.zoom)
+  const toZoom = Math.max(0.0001, to.zoom)
+  const safeDuration = Number.isFinite(durationMs)
+    ? Math.max(1, durationMs)
+    : 420
+  const destinationWorldCenter = {
+    x: (width / 2 - to.pan.x) / toZoom,
+    y: (height / 2 - to.pan.y) / toZoom,
+  }
+  const startScreen = {
+    x: from.pan.x + destinationWorldCenter.x * fromZoom,
+    y: from.pan.y + destinationWorldCenter.y * fromZoom,
+  }
+  const screenDelta = {
+    x: width / 2 - startScreen.x,
+    y: height / 2 - startScreen.y,
+  }
+  const screenDistance = Math.hypot(screenDelta.x, screenDelta.y)
+  const screenDirection =
+    screenDistance > 0
+      ? { x: screenDelta.x / screenDistance, y: screenDelta.y / screenDistance }
+      : { x: 0, y: 0 }
+  const incomingScreenVelocity = initialVelocity
+    ? {
+        x:
+          initialVelocity.pan.x +
+          destinationWorldCenter.x * initialVelocity.zoomPerMs,
+        y:
+          initialVelocity.pan.y +
+          destinationWorldCenter.y * initialVelocity.zoomPerMs,
+      }
+    : { x: 0, y: 0 }
+  const screenSpeedToward = Math.max(
+    0,
+    incomingScreenVelocity.x * screenDirection.x +
+      incomingScreenVelocity.y * screenDirection.y,
+  )
+  const screenInitialSlope =
+    screenDistance > 0
+      ? Math.min(
+          3,
+          Math.max(
+            RESTING_FLIGHT_SLOPE,
+            (screenSpeedToward * safeDuration) / screenDistance,
+          ),
+        )
+      : 0
+
+  const logZoomDelta = Math.log(toZoom / fromZoom)
+  const incomingLogZoomVelocity = initialVelocity
+    ? initialVelocity.zoomPerMs / fromZoom
+    : 0
+  const logSpeedToward =
+    logZoomDelta === 0
+      ? 0
+      : Math.max(0, incomingLogZoomVelocity * Math.sign(logZoomDelta))
+  const zoomInitialSlope =
+    logZoomDelta === 0
+      ? 0
+      : Math.min(
+          3,
+          Math.max(
+            RESTING_FLIGHT_SLOPE,
+            (logSpeedToward * safeDuration) / Math.abs(logZoomDelta),
+          ),
+        )
+
+  return {
+    durationMs: safeDuration,
+    sample(elapsedMs) {
+      const time = Math.min(1, Math.max(0, elapsedMs / safeDuration))
+      if (time === 0) {
+        return {
+          transform: from,
+          velocity: initialVelocity ?? {
+            pan: { x: 0, y: 0 },
+            zoomPerMs: 0,
+          },
+          progress: 0,
+          done: false,
+        }
+      }
+      if (time === 1) {
+        return {
+          transform: to,
+          velocity: { pan: { x: 0, y: 0 }, zoomPerMs: 0 },
+          progress: 1,
+          done: true,
+        }
+      }
+
+      const screenProgress = hermiteProgress(time, screenInitialSlope)
+      const zoomProgress = hermiteProgress(time, zoomInitialSlope)
+      const screenDerivative =
+        hermiteDerivative(time, screenInitialSlope) / safeDuration
+      const zoomDerivative =
+        hermiteDerivative(time, zoomInitialSlope) / safeDuration
+      const zoom = fromZoom * Math.exp(logZoomDelta * zoomProgress)
+      const destinationScreen = {
+        x: startScreen.x + screenDelta.x * screenProgress,
+        y: startScreen.y + screenDelta.y * screenProgress,
+      }
+      const screenVelocity = {
+        x: screenDelta.x * screenDerivative,
+        y: screenDelta.y * screenDerivative,
+      }
+      const zoomPerMs = zoom * logZoomDelta * zoomDerivative
+      const transform = {
+        pan: {
+          x: destinationScreen.x - destinationWorldCenter.x * zoom,
+          y: destinationScreen.y - destinationWorldCenter.y * zoom,
+        },
+        zoom,
+      }
+
+      return {
+        transform,
+        velocity: {
+          pan: {
+            x: screenVelocity.x - destinationWorldCenter.x * zoomPerMs,
+            y: screenVelocity.y - destinationWorldCenter.y * zoomPerMs,
+          },
+          zoomPerMs,
+        },
+        progress: screenProgress,
+        done: false,
+      }
+    },
   }
 }

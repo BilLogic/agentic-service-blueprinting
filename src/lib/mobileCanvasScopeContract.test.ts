@@ -34,8 +34,14 @@ const PHASE_OVERVIEW = read(
 
 describe('mobile canvas scope', () => {
   it('draws one scenario, not one phase row', () => {
+    // The id reaches the canvas through the scenario transition, which holds
+    // the outgoing scenario for the length of a fade. Still exactly one
+    // scenario id — what this pins is the singular, not the variable's name.
     expect(MOBILE_SHELL).toContain(
-      'soloScenarioId={soloScenarioId ?? undefined}',
+      'soloScenarioId={displayedScenarioId ?? undefined}',
+    )
+    expect(MOBILE_SHELL).toContain(
+      '<MobileScenarioTransition scenarioId={soloScenarioId}>',
     )
   })
 

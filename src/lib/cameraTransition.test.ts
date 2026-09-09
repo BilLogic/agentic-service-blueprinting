@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createCameraFlightPlan,
   createCameraTransitionClock,
   easeCameraTransition,
   interpolateCameraTransform,
+  resolveCameraFlightDuration,
   transformCameraAroundPoint,
 } from '@/lib/cameraTransition'
 
@@ -53,17 +55,128 @@ describe('camera transition', () => {
     expect(outward).toBeCloseTo(inward, 6)
   })
 
-  it('holds the viewport centre on a straight world path', () => {
-    const centerOf = (transform: typeof from) => ({
-      x: (viewport.width / 2 - transform.pan.x) / transform.zoom,
-      y: (viewport.height / 2 - transform.pan.y) / transform.zoom,
-    })
-    const start = centerOf(from)
-    const end = centerOf(to)
-    const mid = centerOf(interpolateCameraTransform(from, to, viewport, 0.5))
+  it('moves the destination monotonically toward its final screen position', () => {
+    const origin = { pan: { x: 105, y: 48 }, zoom: 0.05 }
+    const destination = { pan: { x: -1560, y: -920 }, zoom: 0.7 }
+    const finalWorldCenter = {
+      x: (viewport.width / 2 - destination.pan.x) / destination.zoom,
+      y: (viewport.height / 2 - destination.pan.y) / destination.zoom,
+    }
+    const distanceAt = (progress: number) => {
+      const transform = interpolateCameraTransform(
+        origin,
+        destination,
+        viewport,
+        progress,
+      )
+      const screen = {
+        x: transform.pan.x + finalWorldCenter.x * transform.zoom,
+        y: transform.pan.y + finalWorldCenter.y * transform.zoom,
+      }
+      return Math.hypot(
+        screen.x - viewport.width / 2,
+        screen.y - viewport.height / 2,
+      )
+    }
 
-    expect(mid.x).toBeCloseTo((start.x + end.x) / 2, 6)
-    expect(mid.y).toBeCloseTo((start.y + end.y) / 2, 6)
+    const distances = Array.from({ length: 41 }, (_, index) =>
+      distanceAt(index / 40),
+    )
+    for (let index = 1; index < distances.length; index += 1) {
+      expect(distances[index]).toBeLessThanOrEqual(distances[index - 1] + 1e-6)
+    }
+    expect(distances.at(-1)).toBeCloseTo(0, 6)
+  })
+
+  it('paces flights by visible travel inside one bounded timing family', () => {
+    const near = resolveCameraFlightDuration(
+      from,
+      { pan: { x: -120, y: -55 }, zoom: 0.52 },
+      viewport,
+    )
+    const far = resolveCameraFlightDuration(
+      from,
+      { pan: { x: -2400, y: 1700 }, zoom: 3.5 },
+      viewport,
+    )
+
+    expect(near).toBeGreaterThanOrEqual(240)
+    expect(far).toBeLessThanOrEqual(650)
+    expect(far).toBeGreaterThan(near)
+  })
+
+  it('keeps monotonic screen-space approach across direction and scale', () => {
+    const journeys = [
+      { pan: { x: -1800, y: -900 }, zoom: 2.8 },
+      { pan: { x: 1400, y: -700 }, zoom: 0.12 },
+      { pan: { x: -900, y: 1300 }, zoom: 1 },
+      { pan: { x: 1200, y: 900 }, zoom: 0.35 },
+    ]
+
+    for (const destination of journeys) {
+      const finalWorldCenter = {
+        x: (viewport.width / 2 - destination.pan.x) / destination.zoom,
+        y: (viewport.height / 2 - destination.pan.y) / destination.zoom,
+      }
+      const distances = Array.from({ length: 81 }, (_, index) => {
+        const transform = interpolateCameraTransform(
+          from,
+          destination,
+          viewport,
+          index / 80,
+        )
+        return Math.hypot(
+          transform.pan.x +
+            finalWorldCenter.x * transform.zoom -
+            viewport.width / 2,
+          transform.pan.y +
+            finalWorldCenter.y * transform.zoom -
+            viewport.height / 2,
+        )
+      })
+      for (let index = 1; index < distances.length; index += 1) {
+        expect(distances[index]).toBeLessThanOrEqual(
+          distances[index - 1] + 1e-6,
+        )
+      }
+    }
+  })
+
+  it('preserves compatible momentum but drops motion away from the new intent', () => {
+    const origin = { pan: { x: 0, y: 0 }, zoom: 1 }
+    const destination = { pan: { x: -500, y: 0 }, zoom: 1 }
+    const resting = createCameraFlightPlan({
+      from: origin,
+      to: destination,
+      viewport,
+      durationMs: 400,
+    })
+    const compatible = createCameraFlightPlan({
+      from: origin,
+      to: destination,
+      viewport,
+      durationMs: 400,
+      initialVelocity: { pan: { x: -1, y: 0 }, zoomPerMs: 0 },
+    })
+    const opposing = createCameraFlightPlan({
+      from: origin,
+      to: destination,
+      viewport,
+      durationMs: 400,
+      initialVelocity: { pan: { x: 1, y: 0 }, zoomPerMs: 0 },
+    })
+
+    expect(compatible.sample(16).progress).toBeGreaterThan(
+      resting.sample(16).progress,
+    )
+    expect(opposing.sample(16).progress).toBeCloseTo(
+      resting.sample(16).progress,
+    )
+    expect(opposing.sample(16).progress).toBeGreaterThan(0)
+    expect(compatible.sample(400).transform).toEqual(destination)
+    // A rest takeoff still moves in the first beat — smoothstep-from-zero
+    // spent that beat almost still, which a large zoom-in reads as lag.
+    expect(resting.sample(40).progress).toBeGreaterThan(0.05)
   })
 
   it('stays finite for pure pan and nearly equal zoom', () => {

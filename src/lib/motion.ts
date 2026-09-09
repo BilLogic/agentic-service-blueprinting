@@ -19,7 +19,7 @@ export const MOTION_STRUCTURAL_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const MOTION_FADE_MS = 200
 export const MOTION_FADE_STAGGER_MS = 75
 
-/** Programmatic camera travel and the fades that visually accompany it. */
+/** Nominal camera reference; actual flights use bounded distance-aware time. */
 export const MOTION_CAMERA_MS = 420
 export const MOTION_CAMERA_EASE = 'cubic-bezier(0.37, 0, 0.63, 1)'
 

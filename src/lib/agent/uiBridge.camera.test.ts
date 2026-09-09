@@ -8,6 +8,7 @@ import {
   registerAgentUiContext,
 } from '@/lib/agent/uiBridge'
 import { registerActiveFocusCells } from '@/lib/canvasFocusCells'
+import { publishCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 
 const cleanups: Array<() => void> = []
 
@@ -126,11 +127,22 @@ describe('agent cell panel bridge', () => {
 })
 
 describe('agent navigation bridge', () => {
-  function installShell(lines: () => string) {
+  const transform = { pan: { x: 0, y: 0 }, zoom: 1 }
+
+  function installShell(
+    lines: () => string,
+    completion: 'completed' | 'cancelled' | 'superseded' | null = null,
+  ) {
     cleanups.push(
       registerAgentUiBridge({
         selectPhase: () => {},
-        selectScenario: () => {},
+        selectScenario: (id) => {
+          if (completion)
+            publishCanvasNavigationOutcome(id, {
+              kind: completion,
+              transform,
+            })
+        },
         openAgentSurface: () => {},
         setSidebarCollapsed: () => {},
       }),
@@ -138,7 +150,7 @@ describe('agent navigation bridge', () => {
     cleanups.push(registerAgentUiContext('shell', lines))
   }
 
-  it('waits out the fit backstop before trusting an idle camera', async () => {
+  it('waits for the viewport completion outcome instead of trusting idle', async () => {
     vi.useFakeTimers()
     installShell(
       () => 'Selected phase: "P" (p1)\nSelected scenario: "S" (s1)\nCanvas camera: 100%, idle.',
@@ -149,27 +161,28 @@ describe('agent navigation bridge', () => {
     })
     await vi.advanceTimersByTimeAsync(200)
     expect(settled).toBeNull()
-    await vi.advanceTimersByTimeAsync(200)
+    publishCanvasNavigationOutcome('s1', { kind: 'completed', transform })
+    await vi.advanceTimersByTimeAsync(0)
     expect(settled).toContain('settled its canvas camera')
   })
 
-  it('accepts idle right after the camera was seen moving', async () => {
+  it.each(['cancelled', 'superseded'] as const)(
+    'does not claim a %s semantic flight landed',
+    async (completion) => {
     vi.useFakeTimers()
-    let camera = 'moving'
-    installShell(() => `Selected scenario: "S" (s1)\nCanvas camera: 100%, ${camera}.`)
-    let settled: string | null = null
-    void agentOpenScenario('s1').then((message) => {
-      settled = message
-    })
-    await vi.advanceTimersByTimeAsync(50)
-    camera = 'idle'
-    await vi.advanceTimersByTimeAsync(50)
-    expect(settled).toContain('settled its canvas camera')
-  })
+      installShell(() => 'Selected scenario: "S" (s1)\nCanvas camera: 100%, idle.', completion)
+      const settled = agentOpenScenario('s1')
+      await vi.advanceTimersByTimeAsync(0)
+      await expect(settled).resolves.toContain(completion)
+    },
+  )
 
   it('does not read the phase line as the scenario selection', async () => {
     vi.useFakeTimers()
-    installShell(() => 'Selected phase: "P" (s1)\nSelected scenario: none\nCanvas camera: 100%, idle.')
+    installShell(
+      () => 'Selected phase: "P" (s1)\nSelected scenario: none\nCanvas camera: 100%, idle.',
+      'completed',
+    )
     const pending = agentOpenScenario('s1')
     await vi.advanceTimersByTimeAsync(1900)
     await expect(pending).resolves.toContain('not verified before timeout')

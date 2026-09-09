@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { serializeUrlViewState, type UrlViewState } from '@/lib/urlViewState'
 import { useOpenCellId } from '@/lib/openCellStore'
+import { deleteCanvasViewStatesForTab } from '@/lib/canvasViewState'
 import {
   createInitialViewState,
   tabKey,
@@ -153,7 +154,10 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
     [],
   )
   const closeTab = useCallback(
-    (key: TabKey) => dispatch({ type: 'close', key }),
+    (key: TabKey) => {
+      deleteCanvasViewStatesForTab(key)
+      dispatch({ type: 'close', key })
+    },
     [],
   )
   const activateTab = useCallback(
@@ -161,7 +165,11 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
     [],
   )
   const closeTabsForSlice = useCallback(
-    (sliceId: string) => dispatch({ type: 'closeForSlice', sliceId }),
+    (sliceId: string) => {
+      deleteCanvasViewStatesForTab(`slice:${sliceId}`)
+      deleteCanvasViewStatesForTab(`present:${sliceId}`)
+      dispatch({ type: 'closeForSlice', sliceId })
+    },
     [],
   )
   const resolvePending = useCallback(

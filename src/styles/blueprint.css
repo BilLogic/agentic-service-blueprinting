@@ -543,16 +543,25 @@
    * The tier flip is INSTANT — deliberately. A fade was tried and reverted:
    * transitioning opacity on every cell's content meant ~700 simultaneous
    * per-element animations launching inside a camera ease, and that style
-   * burst WAS a visible stutter. What actually removed the mid-zoom pop is
-   * the destination-tier stamping in `useZoomPanViewport`: an animated fit
-   * decides the tier from its TARGET zoom on frame one, so the flip lands
-   * with the click, in the ease's slowest frame — a response, not a glitch.
+   * burst WAS a visible stutter. A zoom-in that crosses the threshold used
+   * to stamp destination on the whole board on frame one, which moved the
+   * burst to takeoff: overview → scenario waited hundreds of ms before the
+   * camera moved (overview → phase stays in blocks and did not). The camera
+   * now keeps this tier for that zoom-in and marks the named destination
+   * with `data-camera-flight-reveal` so only that subtree shows text.
    */
-  [data-semantic-tier='blocks'] [data-blueprint-cell] > * {
+  [data-semantic-tier='blocks']
+    [data-blueprint-cell]:not(
+      :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+    )
+    > * {
     visibility: hidden;
   }
 
-  [data-semantic-tier='blocks'] [data-blueprint-cell] {
+  [data-semantic-tier='blocks']
+    [data-blueprint-cell]:not(
+      :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+    ) {
     background-color: var(--border);
     border-color: transparent;
   }
@@ -595,7 +604,10 @@
       background: CanvasText !important;
     }
 
-    [data-semantic-tier='blocks'] [data-blueprint-cell] {
+    [data-semantic-tier='blocks']
+      [data-blueprint-cell]:not(
+        :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+      ) {
       background-color: CanvasText;
       border-color: CanvasText;
     }

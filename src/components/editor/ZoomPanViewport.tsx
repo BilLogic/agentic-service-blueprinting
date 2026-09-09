@@ -43,6 +43,10 @@ type ZoomPanViewportProps = {
    * for the difference ledger, the divergence strip and agent commands.
    */
   focusCellsKey?: string
+  cameraStateKey?: string
+  cameraDestinationKey?: string
+  cameraOutcomeKey?: string
+  onFitReady?: () => void
 }
 
 /** Zoom/pan canvas wrapper. Provides the annotation context its layer and toolbar both read. */
@@ -71,6 +75,10 @@ function ZoomPanViewportInner({
   refitOnResize = true,
   onResetView,
   focusCellsKey,
+  cameraStateKey,
+  cameraDestinationKey,
+  cameraOutcomeKey,
+  onFitReady,
 }: ZoomPanViewportProps) {
   const { isAnnotating } = useCanvasAnnotationTool()
   const {
@@ -101,6 +109,10 @@ function ZoomPanViewportInner({
     fitBottomInset,
     animateFit,
     refitOnResize,
+    cameraStateKey,
+    cameraDestinationKey,
+    cameraOutcomeKey,
+    onFitReady,
   })
 
   usePublishCanvasZoomChrome(onResetView)
@@ -124,12 +136,10 @@ function ZoomPanViewportInner({
     // completed fit.
     const FIT_UNMEASURABLE =
       'Camera unchanged: the canvas geometry could not be measured, so no fit was started. Retry once the canvas is visible.'
-    const waitForCamera = async () => {
-      const deadline = performance.now() + 1000
-      while (getCameraState().moving && performance.now() < deadline) {
-        await new Promise((done) => setTimeout(done, 16))
-      }
-      return getCameraState().moving ? 'timed out while moving' : 'completed'
+    const fitCamera = async () => {
+      const outcome = fitToView({ animate: true })
+      if (!outcome) return FIT_UNMEASURABLE
+      return `Camera fit ${(await outcome).kind}.`
     }
     const unregister = [
       registerAgentUiCommand({
@@ -139,10 +149,7 @@ function ZoomPanViewportInner({
         run: async (arg) => {
           if (arg === 'in') zoomIn()
           else if (arg === 'out') zoomOut()
-          else {
-            if (!fitToView({ animate: true })) return FIT_UNMEASURABLE
-            return `Camera fit ${await waitForCamera()}.`
-          }
+          else return fitCamera()
           return `Camera: zoomed ${arg}.`
         },
       }),
@@ -154,10 +161,7 @@ function ZoomPanViewportInner({
           const input = arg?.trim() ?? ''
           if (input === 'zoom_in') zoomIn()
           else if (input === 'zoom_out') zoomOut()
-          else if (input === 'fit') {
-            if (!fitToView({ animate: true })) return FIT_UNMEASURABLE
-            return `Camera fit ${await waitForCamera()}.`
-          }
+          else if (input === 'fit') return fitCamera()
           else if (input === 'cancel') cancelCamera()
           else if (input.startsWith('pan ')) {
             const [, rawX, rawY] = input.split(/\s+/)
