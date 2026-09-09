@@ -68,21 +68,30 @@ import {
   writtenVerbsByTable,
 } from '../direct-table-writes.mjs'
 import {
+  ANY_SIGNED_IN_USER_MAY_WRITE,
   OUTSIDE_THE_SURFACE,
   PANEL_WRITE_SURFACE,
+  PROBE_FIXTURES,
+  buildWriteSurfaceSql,
   evaluateWriteSurface,
   writeSurfaceAssertions,
   writeSurfaceEntries,
 } from '../panel-write-surface.mjs'
+import { POPULATED } from '../check-seed-loads.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 
-/** psql's `-At -F '|'` output for the real assertion set, with named failures. */
-const lines = (failures) =>
+/**
+ * psql's `-At -F '|'` output for the real probe set, with named outcomes.
+ *
+ * A healthy run is every author write landing and every viewer write matching
+ * nothing, so those are the defaults and a test names only the one it is about.
+ */
+const lines = (outcomes) =>
   writeSurfaceAssertions()
-    .map(({ label }) => `${label}|${failures[label] ?? 't'}`)
+    .map(({ label, who }) => `${label}|${outcomes[label] ?? (who === 'author' ? 'wrote' : 'zero')}|`)
     .join('\n')
 
 // ---------------------------------------------------------------------------
@@ -212,37 +221,77 @@ test('the verbs come off the writers, and upsert counts as both', () => {
   assert.deepEqual(verbs.get('agent_sessions'), ['INSERT', 'UPDATE'])
 })
 
-test('a missing insert or delete grant is a failure, in the words it costs', () => {
-  // The defect this rule was widened to catch: the grant is revoked, the gate is
-  // green, and the first thing that notices is an author pressing a button.
+test('a refused write is a failure, in the words it costs', () => {
+  // The grant half, now answered by the write itself: revoke it and the author
+  // meets a 42501 that the panel shows as "permission denied".
   const [insertProblem] = evaluateWriteSurface(
-    lines({ 'grant insert evidence': 'f' }),
-  ).filter((problem) => problem.includes('INSERT public.evidence'))
+    lines({ 'author insert evidence': 'refused' }),
+  ).filter((problem) => problem.includes('INSERT on public.evidence'))
   assert.match(insertProblem, /permission denied/)
   const [deleteProblem] = evaluateWriteSurface(
-    lines({ 'grant delete slices': 'f' }),
-  ).filter((problem) => problem.includes('DELETE public.slices'))
+    lines({ 'author delete slices': 'refused' }),
+  ).filter((problem) => problem.includes('DELETE on public.slices'))
   assert.match(deleteProblem, /permission denied/)
 })
 
-test('a missing insert or delete policy says what silence looks like', () => {
-  const insert = evaluateWriteSurface(lines({ 'policy insert evidence': 'f' })).filter((one) =>
-    one.startsWith('public.evidence has no INSERT policy'),
+test('a write that matched nothing says what silence looks like', () => {
+  // The failure mode the whole file is for, and the one the old existence test
+  // could not see: the statement runs, changes nothing, and returns 200.
+  const save = evaluateWriteSurface(lines({ 'author update cells.summary': 'zero' })).filter(
+    (one) => one.startsWith('no policy lets an author UPDATE public.cells.summary'),
   )
-  assert.equal(insert.length, 1)
-  const remove = evaluateWriteSurface(lines({ 'policy delete slices': 'f' })).filter((one) =>
-    one.startsWith('public.slices has no DELETE policy'),
+  assert.equal(save.length, 1)
+  assert.match(save[0], /that row no longer exists/)
+  const remove = evaluateWriteSurface(lines({ 'author delete slices': 'zero' })).filter((one) =>
+    one.startsWith('no policy lets an author DELETE public.slices'),
   )
   assert.equal(remove.length, 1)
   assert.match(remove[0], /returns 200/)
 })
 
-test('an assertion the read never reached is a failure, not a pass', () => {
+test('a signed-in reader who CAN write is a failure too', () => {
+  // The other direction, and the one that keeps the first from being vacuous.
+  // A database that let everybody write would pass every author probe.
+  const problems = evaluateWriteSurface(lines({ 'viewer update cells': 'wrote' })).filter((one) =>
+    one.startsWith('a signed-in reader can UPDATE public.cells'),
+  )
+  assert.equal(problems.length, 1)
+  assert.match(problems[0], /ANY_SIGNED_IN_USER_MAY_WRITE/)
+  // And a viewer who is turned away is not a problem at all, by either route.
+  assert.deepEqual(evaluateWriteSurface(lines({ 'viewer update cells': 'refused' })), [])
+  assert.deepEqual(evaluateWriteSurface(lines({})), [])
+})
+
+test('a table with no row to write is a failure, not a pass', () => {
+  // An empty table answers zero rows for a reason that has nothing to do with
+  // permission, so it must not be read as one.
+  const problems = evaluateWriteSurface(lines({ 'author update evidence.title': 'norow' })).filter(
+    (one) => one.startsWith('public.evidence is empty'),
+  )
+  assert.equal(problems.length, 1)
+  assert.match(problems[0], /PROBE_FIXTURES/)
+})
+
+test('a probe that did not run is a failure, not a write that happened', () => {
+  // The typo case. `has_column_privilege` used to RAISE on a column that does
+  // not exist; the probe raises 42703 instead, and the one thing it must not do
+  // is let that read as a successful write.
+  const problems = evaluateWriteSurface(
+    lines({ 'author update cells.summary': 'error' }).replace(
+      'author update cells.summary|error|',
+      'author update cells.summary|error|42703 column "summary" does not exist',
+    ),
+  ).filter((one) => one.startsWith('the update probe on public.cells.summary did not run'))
+  assert.equal(problems.length, 1)
+  assert.match(problems[0], /42703/)
+})
+
+test('a probe the read never reached is a failure, not a pass', () => {
   // The whole-file failure mode: a truncated read answers nothing, and every
   // question it skipped would otherwise be counted as satisfied.
   const problems = evaluateWriteSurface('')
   assert.equal(problems.length, writeSurfaceAssertions().length)
-  assert.ok(problems.every((one) => one.endsWith('the write-surface read never reached it')))
+  assert.ok(problems.every((one) => one.endsWith('the write-surface probe never reached it')))
 })
 
 test('the scan reads writes, and not reads or uploads', () => {
@@ -354,16 +403,17 @@ test('the surface asks about every verb the app uses, on every table it uses it'
   // asked of, and the column is which update.
   const asked = new Set(
     writeSurfaceAssertions().map(({ label }) => {
-      const [kind, verb, what] = label.split(' ')
-      return `${kind} ${verb} ${what.split('.')[0]}`
+      const [who, verb, what] = label.split(' ')
+      return `${who} ${verb} ${what.split('.')[0]}`
     }),
   )
   const missing = []
   for (const table of Object.keys(PANEL_WRITE_SURFACE)) {
     for (const verb of verbs.get(table) ?? []) {
       const lower = verb.toLowerCase()
-      if (!asked.has(`grant ${lower} ${table}`)) missing.push(`grant ${lower} ${table}`)
-      if (!asked.has(`policy ${lower} ${table}`)) missing.push(`policy ${lower} ${table}`)
+      if (!asked.has(`author ${lower} ${table}`)) missing.push(`author ${lower} ${table}`)
+      if (ANY_SIGNED_IN_USER_MAY_WRITE[table] !== undefined) continue
+      if (!asked.has(`viewer ${lower} ${table}`)) missing.push(`viewer ${lower} ${table}`)
     }
   }
   assert.deepEqual(missing, [], `The database is never asked about: ${missing.join(', ')}.`)
@@ -385,4 +435,67 @@ test('every name on the write surface is a name the schema has', () => {
       'reports it as "the fresh-database seed load failed" and never names the column. ' +
       'Rename it here too, or regenerate src/types/database.ts if the schema moved.',
   )
+})
+
+test('every surface table has a row for the probe to write', () => {
+  // The probe attempts a real UPDATE and DELETE, and both match zero rows on an
+  // empty table for a reason that is not permission. Either the seed fills the
+  // table or PROBE_FIXTURES stands one row up in it — not neither.
+  const seeded = new Set(POPULATED)
+  const empty = Object.keys(PANEL_WRITE_SURFACE).filter(
+    (table) => !seeded.has(table) && PROBE_FIXTURES[table] === undefined,
+  )
+  assert.deepEqual(
+    empty,
+    [],
+    'These surface tables are neither populated by the seed nor given a row by ' +
+      `PROBE_FIXTURES: ${empty.join(', ')}. The probe would attempt its write against ` +
+      'an empty table and read the zero rows as a policy that refuses.',
+  )
+  // And the other direction: a fixture for a table the seed now fills is dead
+  // weight, and one for a table that is not on the surface asks nothing.
+  const pointless = Object.keys(PROBE_FIXTURES).filter(
+    (table) => PANEL_WRITE_SURFACE[table] === undefined,
+  )
+  assert.deepEqual(pointless, [], `PROBE_FIXTURES names tables off the surface: ${pointless.join(', ')}.`)
+})
+
+test('an ungated table is named, reasoned, and still asked about as an author', () => {
+  // The exception is a smaller claim, not an exemption: the author probe still
+  // runs, and only the viewer half is skipped. Silence about it would be the
+  // same hole in a different place, so the reason is required and printed on
+  // every green run.
+  for (const [table, because] of Object.entries(ANY_SIGNED_IN_USER_MAY_WRITE)) {
+    assert.ok(
+      PANEL_WRITE_SURFACE[table] !== undefined,
+      `ANY_SIGNED_IN_USER_MAY_WRITE names ${table}, which is not on the write surface.`,
+    )
+    assert.ok(
+      because.trim().length > 0,
+      `ANY_SIGNED_IN_USER_MAY_WRITE gives no reason for ${table}; an entry without one ` +
+        'is indistinguishable from an oversight.',
+    )
+  }
+  const labels = writeSurfaceAssertions().map(({ label }) => label)
+  for (const table of Object.keys(ANY_SIGNED_IN_USER_MAY_WRITE)) {
+    assert.ok(labels.some((label) => label.startsWith(`author update ${table}.`)))
+    assert.ok(!labels.some((label) => label === `viewer update ${table}`))
+  }
+})
+
+test('the probe becomes the role, and undoes everything it did', () => {
+  // Three properties the SQL cannot be allowed to lose quietly. Run as the
+  // owner it would prove nothing — `service_role` and a superuser both bypass
+  // RLS, which is the exact failure this check exists to catch — and a probe
+  // that committed would leave its writes for the anon inventory read that
+  // follows it.
+  const sql = buildWriteSurfaceSql()
+  assert.match(sql, /set local role authenticated/)
+  assert.match(sql, /request\.jwt\.claims/)
+  assert.match(sql, /^begin;/)
+  assert.match(sql, /rollback;\s*$/)
+  assert.equal(/\bcommit;/.test(sql), false)
+  // Both people, spelled by their claims and not by their names.
+  assert.match(sql, /"app_metadata":\{"role":"service"\}/)
+  assert.match(sql, /"app_metadata":\{\}/)
 })

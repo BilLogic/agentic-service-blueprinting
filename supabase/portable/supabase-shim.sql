@@ -38,6 +38,16 @@ $$;
 
 create schema if not exists auth;
 
+-- USAGE on the schema, because Supabase grants it. `is_service_account()` is
+-- not SECURITY DEFINER, so every RESTRICTIVE write policy that ANDs with it
+-- calls `auth.jwt()` AS THE CALLER — and without this line a signed-in author
+-- meets `permission denied for schema auth` instead of the policy's answer.
+-- Nothing noticed while the checks read `pg_policies`; the first thing to ask
+-- the question as the role found it immediately (#369). Verified against a
+-- deployed project: `nspacl` on `auth` there carries `anon=U` and
+-- `authenticated=U`.
+grant usage on schema auth to anon, authenticated;
+
 -- GoTrue's request-scoped helpers. Supabase resolves the request's JWT into
 -- the `request.jwt.claims` GUC and reads all three of these out of it, so
 -- that is what these read too: an unset GUC answers "nobody", and a
