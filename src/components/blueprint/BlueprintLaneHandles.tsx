@@ -118,7 +118,7 @@ export function BlueprintLaneHandles({
       await addLane(client, {
         scenarioId: selectedScenarioId,
         name: trimmed,
-        atRow: naming.at,
+        atPosition: naming.at,
       })
       invalidateStructure()
       setNaming(null)
