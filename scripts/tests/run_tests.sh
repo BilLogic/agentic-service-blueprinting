@@ -19,7 +19,9 @@
 # being nulled by the 2026.09.10 step that closed the wire format; a
 # dependency edge's
 # `kind` round-tripping through both adapters, including an `enables` edge and
-# the identity that keeps both kinds of one pair apart; schema-version
+# the identity that keeps both kinds of one pair apart; the service's per-kind
+# examples reaching the seed in the seed's own locale, and the conflict clause
+# still reading an empty map as silence; schema-version
 # migration (a superseded IR is refused by name, migrate_ir.py carries it
 # forward through every step, a signed scenario's sign-off hash is re-anchored
 # rather than dropped when a step moves the subtree, and left exactly alone
@@ -475,6 +477,85 @@ assert "raise notice" in derived, "derived section must report via notice"
 assert "raise exception" not in derived, "derived rows must never fail verification"
 PY
 pass "verify-derived-report (cell_key verified; derived rows reported, not failed)"
+
+# ---------------------------------------------------------------------------
+# 4c. The service's per-kind examples reach the seed, per locale
+# ---------------------------------------------------------------------------
+#
+# `services.entity_examples` was writable from the editor and invisible to this
+# pipeline: the IR did not model it and the generator did not emit it. These
+# are the claims a file can make without a database — that the column is in the
+# insert, that the authored text is the LOCALE's, and that the conflict clause
+# still guards the empty map. What that guard is FOR is a database question,
+# and scripts/tests/entity-examples-round-trip.test.sh answers it by loading a
+# seed and reading the row back.
+
+python3 - "$SAMPLE" "$TMP/seed.en.sql" "$TMP/seed.zh.sql" <<'PY' \
+  || fail "seed-entity-examples: an authored example did not reach the seed"
+import json, re, sys
+
+sample, en_path, zh_path = sys.argv[1:4]
+authored = json.load(open(sample, encoding="utf-8"))["service"]["entity_examples"]
+assert authored, "the fixture authors no examples; this test would prove nothing"
+
+for locale, path in (("en", en_path), ("zh", zh_path)):
+    sql = open(path, encoding="utf-8").read()
+    insert = re.search(
+        r"insert into public\.services \((?P<columns>[^)]*)\) values\n(?P<row>.*?)\non conflict",
+        sql,
+        re.S,
+    )
+    assert insert, f"{path}: the service insert is not where this test looks"
+    columns = [c.strip() for c in insert.group("columns").split(",")]
+    assert "entity_examples" in columns, f"{path}: the service insert drops entity_examples"
+
+    row = insert.group("row")
+    for kind, locale_map in authored.items():
+        text = locale_map[locale]
+        assert text in row, f"{path}: the {locale} example for {kind!r} is not in the service row"
+        # The seed is per-locale, so the OTHER locale's wording must not ride
+        # along — a jsonb literal carrying the whole map would pass a bare
+        # substring check and put Chinese in an English target.
+        other = locale_map["zh" if locale == "en" else "en"]
+        assert other not in row, f"{path}: the service row carries the other locale's {kind!r} example"
+
+# The clause the round-trip test proves the behaviour of. Asserted here as TEXT
+# so a rewrite that quietly drops the guard is caught on a machine with no
+# database — which is the mode its absence is invisible in.
+body = "\n".join(
+    line for line in open(en_path, encoding="utf-8").read().splitlines()
+    if not line.lstrip().startswith("--")
+)
+clause = body[body.index("insert into public.services"):body.index("insert into public.phases")]
+assert "entity_examples = case" in clause, "the conflict clause overwrites examples unconditionally"
+assert "'{}'::jsonb then services.entity_examples" in clause, (
+    "the conflict clause no longer reads an empty map as silence"
+)
+PY
+pass "seed-entity-examples (the authored example is in the row, in the seed's own locale)"
+
+# A service block that says nothing about examples generates the empty map the
+# clause above reads as silence. That input is the one the guard exists for, so
+# it has to be generable.
+python3 - "$REPO_ROOT" "$SAMPLE" <<'PY' || fail "seed-entity-examples-absent: an absent map did not generate {}"
+import copy, json, sys
+
+repo, sample = sys.argv[1:3]
+sys.path.insert(0, f"{repo}/scripts")
+from generate_seed_sql import build_model, emit_seed_sql
+
+doc = json.load(open(sample, encoding="utf-8"))
+silent = copy.deepcopy(doc)
+silent["service"].pop("entity_examples")
+
+assert build_model(silent, "en")["service"]["entity_examples"] == {}, (
+    "a service block with no examples did not model an empty map"
+)
+sql = emit_seed_sql(build_model(silent, "en"), "silent.json")
+row = sql.split("insert into public.services", 1)[1].split("on conflict", 1)[0]
+assert "'{}'::jsonb" in row, f"an absent map emitted something other than an empty one: {row!r}"
+PY
+pass "seed-entity-examples-absent (a service block with no examples emits the empty map — silence, not a clear)"
 
 # ---------------------------------------------------------------------------
 # 5. Fallback TS module: generate, type-check, determinism, --register
@@ -1040,6 +1121,8 @@ grep -q "2026.09.07 -> 2026.09.08" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the lane-role step — $(cat "$TMP/migrate.out")"
 grep -q "2026.09.08 -> 2026.09.09" "$TMP/migrate.out" \
   || fail "migrate-forward: the chain skipped the dependency rename — $(cat "$TMP/migrate.out")"
+grep -q "2026.09.10 -> 2026.09.11" "$TMP/migrate.out" \
+  || fail "migrate-forward: the chain skipped the entity-examples stamp — $(cat "$TMP/migrate.out")"
 python3 - "$TMP/migrate-me.json" "$SAMPLE" <<'PYMIG'
 import json, sys
 migrated = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -1054,6 +1137,13 @@ path = expected["service"]["phases"][0]["scenarios"][0]["paths"][0]
 path["dependencies"] = [
     e for e in path["dependencies"] if e.get("kind", "leads_to") != "enables"
 ]
+# Same reason, second shape: the current fixture authors `entity_examples`,
+# which no version before 2026.09.11 could carry. to_2026_09_11 is a stamp, so
+# what comes out of the chain is a service block that never had any — and
+# writing an empty map would be inventing the "nobody authored these" the
+# absent key already says, and would be the input the seed generator reads as
+# silence.
+del expected["service"]["entity_examples"]
 assert migrated == expected, "migrated IR differs from the current fixture"
 assert not [
     t

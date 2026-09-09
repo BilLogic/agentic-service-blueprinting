@@ -293,6 +293,13 @@ jobs:
       - name: A populated resource split preserves citation targets
         run: bash scripts/tests/resource-split-migration.test.sh
 
+      # `services.entity_examples` is written from the editor as well as by the
+      # seed, so the emitter alone cannot say whether an authored example
+      # arrives and whether the next re-map takes it away again. This loads a
+      # generated seed and reads the row back.
+      - name: An authored example survives a re-map
+        run: bash scripts/tests/entity-examples-round-trip.test.sh
+
       # The vocabulary sweep, against the catalogue rather than the files.
       # `alter table … rename` moves the table and the column; the index, the
       # constraint, the policy, the trigger, the comment and every plpgsql body

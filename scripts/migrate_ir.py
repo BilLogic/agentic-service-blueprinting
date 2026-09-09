@@ -745,6 +745,30 @@ def to_2026_09_10(doc: dict) -> None:
                         lane["role"] = None
 
 
+def to_2026_09_11(doc: dict) -> None:
+    """2026.09.10 → 2026.09.11 — a service carries its own examples.
+
+    The service block gains an optional `entity_examples` map: one free-text
+    example per core kind, in this deployment's own words, shown under that
+    kind's generic definition. `21000123000000` added the column and granted it
+    to a signed-in author, and the wire format never learned it — so the value
+    was writable from the editor and invisible to the pipeline, and a re-map
+    wrote nothing where a deployment had something.
+
+    Nothing in an existing file moves. The map is optional, absent means the
+    deployment has authored none, and the seed generator reads an absent map as
+    silence rather than as an instruction to clear — so only the stamp changes.
+
+    The stamp changes at all because a version names a SHAPE. `2026.09.10`
+    refuses `entity_examples` and this one accepts it; leaving both under one
+    value would make the stamp mean two shapes, which is the confusion
+    `references/customization.md` records as worse than a gap. No migration
+    stamps this version — the database has had the column since
+    `21000123000000` — so a target at an earlier version stays compatible.
+    """
+    return
+
+
 STEPS = (
     Step(
         "2026.07.16",
@@ -863,6 +887,14 @@ STEPS = (
         # carrying a role outside the eight re-signs; a file carrying none —
         # which is every file a target ever accepted — hashes identically.
         content_preserving=False,
+    ),
+    Step(
+        "2026.09.10",
+        "2026.09.11",
+        "the service block gains an optional `entity_examples` map — the "
+        "per-kind examples 21000123000000 gave the database and the wire "
+        "format never learned; nothing authored moves",
+        to_2026_09_11,
     ),
 )
 

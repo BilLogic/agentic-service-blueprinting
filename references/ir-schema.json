@@ -14,6 +14,7 @@
     "schema_version": {
       "type": "string",
       "enum": [
+        "2026.09.11",
         "2026.09.10",
         "2026.09.09",
         "2026.09.08",
@@ -30,7 +31,7 @@
         "2026.08.25",
         "2026.07.16"
       ],
-      "description": "Template schema version this IR was authored against, newest first — the FIRST entry is the version this template speaks, and validate_ir.py refuses any IR not at it, naming the migration. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). ⚠ Every value added here ships its migration step in scripts/migrate_ir.py in the SAME change — consumers hold signed-off data that cannot be re-derived, so a bump with no step is a bump with no answer (references/customization.md § The versioning rule). A version leaves this list when the migration that carries it forward stops existing. 2026.09.08 was absent for two releases and is the one entry added after the fact: 21000122000000 stamped a database with it for the lane-role vocabulary and taught neither this list nor scripts/migrate_ir.py the value, so a correctly migrated target read as incompatible to scripts/check-target-schema.mjs. #197 added the value and wrote the step that migration never shipped (to_2026_09_08, which renames a lane role carried by its retired spelling). Added, never moved: the stamp sits inside an applied migration and inside the generated portable core, and an applied record keeps the spelling it was written with. 2026.09.10 closes lanes[].role to the eight lanes_lane_role_check has admitted since 21000122000000 — the authoring half of a set that was already closed at import, and the question to_2026_09_08 declined to settle (#204). Its step nulls a role outside the eight, which is what that migration did to every row it found; the database is untouched, so this version stamps no migration and a target at 2026.09.08 stays compatible."
+      "description": "Template schema version this IR was authored against, newest first — the FIRST entry is the version this template speaks, and validate_ir.py refuses any IR not at it, naming the migration. This enum is the ONE list: scripts/validate_ir.py reads it, and src/lib/backend/schemaVersion.ts is asserted against it. Import performs a compatibility check against the workspace clone's schema_version (see skills/map/references/workspace-state.md) and against a live target's public.schema_version (references/adapter-contract.md § 2). ⚠ Every value added here ships its migration step in scripts/migrate_ir.py in the SAME change — consumers hold signed-off data that cannot be re-derived, so a bump with no step is a bump with no answer (references/customization.md § The versioning rule). A version leaves this list when the migration that carries it forward stops existing. 2026.09.08 was absent for two releases and is the one entry added after the fact: 21000122000000 stamped a database with it for the lane-role vocabulary and taught neither this list nor scripts/migrate_ir.py the value, so a correctly migrated target read as incompatible to scripts/check-target-schema.mjs. #197 added the value and wrote the step that migration never shipped (to_2026_09_08, which renames a lane role carried by its retired spelling). Added, never moved: the stamp sits inside an applied migration and inside the generated portable core, and an applied record keeps the spelling it was written with. 2026.09.10 closes lanes[].role to the eight lanes_lane_role_check has admitted since 21000122000000 — the authoring half of a set that was already closed at import, and the question to_2026_09_08 declined to settle (#204). Its step nulls a role outside the eight, which is what that migration did to every row it found; the database is untouched, so this version stamps no migration and a target at 2026.09.08 stays compatible. 2026.09.11 adds the service's optional `entity_examples` map — the per-kind examples 21000123000000 gave `public.services` and the wire format never learned, so an authored one was dropped on the way to the seed. Nothing authored moves and the database is untouched, so the step is a stamp (to_2026_09_11) and a target at an earlier version stays compatible; the stamp moves at all because a version names a SHAPE, and 2026.09.10 refuses a key this one accepts."
     },
     "locales": {
       "type": "array",
@@ -180,6 +181,16 @@
         },
         "summary": {
           "$ref": "#/$defs/localeText"
+        },
+        "entity_examples": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/key"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/localeText"
+          },
+          "description": "What each core kind MEANS in this service's own words — one free-text example per kind, keyed by the kind (`service`, `phase`, `scenario`, `path`, `step`, `lane`), shown under that kind's generic definition so a reader is grounded in this deployment rather than the textbook. Lands in `services.entity_examples`. The key set is deliberately NOT an enum here: the kinds are the app's, stated once where the definitions live, and a key the app does not render simply does not render — the same stance the column takes by carrying no CHECK. Optional, and an ABSENT map is not an empty one: a service block that says nothing about examples leaves whatever the deployment has authored in place, because the generated seed cannot tell \"nobody wrote any\" from \"someone deleted them all\" and the safe reading of silence is silence. A map that IS present is the whole truth for the service — a kind it omits is cleared on import."
         },
         "touchpoints": {
           "type": "array",

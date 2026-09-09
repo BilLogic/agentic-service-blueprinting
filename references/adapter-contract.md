@@ -36,6 +36,16 @@ One thing is outside the projection on **both** adapters, which is parity by
 absence rather than by accident: `cell_dependencies` `label`/`note`, which the IR
 has no shape to author.
 
+One thing is outside it on the no-DB adapter ALONE, and is named here rather
+than left to be discovered: `services.entity_examples`, the per-kind examples a
+service authors in its own words. The seed generator carries them; the fallback
+generator has nowhere to put them, because the no-DB shapes are a path, its
+lanes, steps, cells and edges — there is no service-level slot in
+`BlueprintData` or `FALLBACK_NAV` at all. So a keyless clone shows the bundled
+sample service's examples and never an adopter's own. The parity check is silent
+on this because it compares the aggregates the two adapters share, and this is
+not one of them.
+
 Lane `kpis`/`tools` were listed here too, and were not: the SQL adapter
 carried both and the no-DB one carried neither. The check had the same hole —
 it compared cells and edges and not lanes — so a claim about parity was itself
