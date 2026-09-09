@@ -10,6 +10,13 @@
  * sentence an adopter cannot decode. Prose rots back. So the claim gets a
  * check, and the check runs in CI.
  *
+ * The motive, because the mechanism below does not carry it: standing alone is
+ * an ASSERTION this package makes about itself, and for as long as nothing
+ * measured it, it was a wish. The reader it is made to is a contributor who
+ * arrives with none of the context the package grew up in and wants to adopt
+ * it without first decoding another company's vocabulary. A check is what
+ * makes that boundary verified rather than assumed.
+ *
  *   node scripts/check-standalone.mjs
  *
  * Scans every tracked text file. Exits 1 naming each file and line, so a
@@ -76,16 +83,14 @@ export const PATTERNS = [
  * gitignored and never reaches this scan at all.)
  *
  * The second is FILES THAT MUST NAME THE FORBIDDEN WORDS to do their job —
- * this script, the narrower guard it generalises, and the plans that ordered
- * the decoupling. Stripping the plans would destroy the record of why the
- * boundary exists.
+ * this script, the narrower guard it generalises, and this check's own
+ * fixtures.
  */
 export const EXCLUDED = [
   'src/lib/agent/skill/', // mirror of skills/ + references/
   'scripts/check-standalone.mjs', // this file
   'src/content/coverContent.test.ts', // the narrower guard, same words
   'scripts/tests/standalone.test.mjs', // this check's own fixtures
-  'docs/plans/', // the specs that ordered the boundary
   // Names the instance BY DESIGN: it reads that repository's rename map and
   // holds this template's schema to it (#101). The coupling it carries is the
   // one it exists to measure.

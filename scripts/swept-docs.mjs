@@ -14,17 +14,16 @@
  *
  * WHAT IS NOT, and why: `docs/adr/` records the decisions of its day in the
  * words of its day, and rewriting a decision record is falsifying it;
- * `docs/plans/` is pre-ticket thinking on the way to a spec; CHANGELOG.md is
- * history by definition; `src/lib/agent/skill/` is a byte-for-byte mirror of
- * `skills/` + `references/`, held identical by `sync-canvas-skills.mjs`, so
- * sweeping it reports every sentence twice.
+ * CHANGELOG.md is history by definition; `src/lib/agent/skill/` is a
+ * byte-for-byte mirror of `skills/` + `references/`, held identical by
+ * `sync-canvas-skills.mjs`, so sweeping it reports every sentence twice.
  */
 import { readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 export const ROOT_DOCS = ['README.md', 'CONTEXT.md', 'AGENTS.md']
 export const SWEPT_DIRS = ['docs', 'references', 'skills', 'agents']
-export const HISTORY = ['docs/adr', 'docs/plans']
+export const HISTORY = ['docs/adr']
 
 function markdownUnder(dir) {
   const found = []

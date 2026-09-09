@@ -32,7 +32,6 @@ Folders are named for the class of thing inside them.
 | `guidelines/` | How we work: this file, and how to propose a change. |
 | `engineering/` | Procedure for whoever runs the repository. |
 | `connectors/<name>/` | Everything about one external system this package talks to. |
-| `plans/` | History. See [the plans overview](../plans/overview.md). |
 | `assets/` | Every figure the README and the guides use. |
 
 `overview.md` is authored and says what a tree holds. `index.md` is generated
@@ -61,9 +60,6 @@ deciding whether to open the file. A document without one **fails
 `npm run check:docs-index`**, which names the file. Write the summary for
 someone deciding whether this is the document they want, not as a title
 restated.
-
-Documents under `docs/plans/` carry a `status:` as well; they are history, and
-the index says so.
 
 ## 4. The exception
 

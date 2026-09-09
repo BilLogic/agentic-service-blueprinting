@@ -6,7 +6,8 @@ Summaries come from each document's own frontmatter. What the folders mean is
 in [overview.md](./overview.md); routing by task is in
 [INDEX.md](../INDEX.md).
 
-## Protocol — living, always true
+Everything listed here is protocol: it states how the package behaves today,
+and a statement in it that is wrong is a bug rather than an old position.
 
 | Doc | What it answers |
 | --- | --- |
@@ -18,6 +19,7 @@ in [overview.md](./overview.md); routing by task is in
 | [adr/0006-one-token-model-is-the-single-style-seam.md](./adr/0006-one-token-model-is-the-single-style-seam.md) | Style enforcement rides one queryable token model instead of a reader per test file, because a guard that chooses its own sample chooses the region where its property already holds — so a new style rule is an assertion against declarations, the cascade and consumers, never a fourth file walker. |
 | [adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md](./adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md) | The shell's entrance stagger and the canvas's reveal ladder are two clocks on purpose, joined by reads that run one way only — so a surface owning its own query takes its own hold session and reads the shell's boot layer for nothing but when that session may end, and arriving together becomes a decision somebody makes rather than something the machinery guarantees. |
 | [adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md](./adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md) | A primitive is named for its hue and a semantic token for its job, with the value between them derived from dials rather than typed out — so the vocabulary keeps upstream's judgements while dropping the literals a generator we do not run happens to produce, and the five places this system knowingly parts from its upstream are recorded with the measurement behind each. |
+| [adr/0009-the-queue-is-issues-and-a-durable-decision-is-an-adr.md](./adr/0009-the-queue-is-issues-and-a-durable-decision-is-an-adr.md) | The plans concept is retired rather than kept for the plans that might land next — work in flight is GitHub issues, a durable decision is an ADR, current behaviour is protocol, and the record of what was retired is the git history, so docs/ no longer carries a history lane, a status rule, or an index table for either. |
 | [agents/domain.md](./agents/domain.md) | Where the engineering skills look for this repo's domain vocabulary and decisions — one root CONTEXT.md plus docs/adr/, both created lazily rather than scaffolded. |
 | [agents/issue-tracker.md](./agents/issue-tracker.md) | How the engineering skills read and write this repo's issue queue — GitHub Issues on BilLogic/agentic-service-blueprinting, through the gh CLI. |
 | [agents/triage-labels.md](./agents/triage-labels.md) | The five canonical triage roles and the exact label strings this repo uses for them. |
@@ -28,11 +30,6 @@ in [overview.md](./overview.md); routing by task is in
 | [guide/02-using-it-in-practice.md](./guide/02-using-it-in-practice.md) | What a designer or PM actually does with a mapped service — checking it still describes reality, tracing a change through it, cutting the view one audience needs, and comparing two versions of a journey. |
 | [guide/03-the-plugin.md](./guide/03-the-plugin.md) | How the machinery works and what lands on your disk — the four skills in the order a team meets them, the fresh-context agents they dispatch, the shared references, and the gates each phase ends at. |
 | [guide/04-operations.md](./guide/04-operations.md) | Running a deployed blueprint — which account may do what, how a change reaches the board, what is published to anonymous readers, and what to check after a deploy. |
-| [guidelines/contributing.md](./guidelines/contributing.md) | How work gets proposed and landed here — the queue is GitHub issues rather than a folder, plans are dated history, branches are named for what they do, and a commit says what changed and why in the imperative. |
+| [guidelines/contributing.md](./guidelines/contributing.md) | How work gets proposed and landed here — the queue is GitHub issues rather than a folder, a durable decision is an ADR, branches are named for what they do, and a commit says what changed and why in the imperative. |
 | [guidelines/documentation.md](./guidelines/documentation.md) | The documentation grammar this repo follows — five root files each answering one question, docs/ for authored protocol, class-named folders, overview.md authored and index.md generated, a summary in every doc's frontmatter, and the one exception the plugin contract holds. |
-| [overview.md](./overview.md) | What lives under docs/ and what each folder is for — the three lanes (protocol, history, and a queue that is deliberately not here), and where the normative rulebook sits instead. |
-| [plans/overview.md](./plans/overview.md) | What a plan is and how to tell whether it is still true — plans are dated, immutable, decision-era snapshots that carry a status in frontmatter, and are never the answer to "what should I do now". |
-
-## History — a snapshot of one moment, never current guidance
-
-No plans are in the tree today — see [plans/overview.md](./plans/overview.md) for what lands here and how it is marked.
+| [overview.md](./overview.md) | What lives under docs/ and what each folder is for — protocol that is always true, a queue that is deliberately not here, and where the normative rulebook sits instead. |

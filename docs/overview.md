@@ -1,5 +1,5 @@
 ---
-summary: What lives under docs/ and what each folder is for — the three lanes (protocol, history, and a queue that is deliberately not here), and where the normative rulebook sits instead.
+summary: What lives under docs/ and what each folder is for — protocol that is always true, a queue that is deliberately not here, and where the normative rulebook sits instead.
 ---
 
 # What is in `docs/`
@@ -10,15 +10,13 @@ summary: What lives under docs/ and what each folder is for — the three lanes 
 [`index.md`](./index.md) lists every document with its summary, and is
 generated. This file says what the folders mean, and is authored.
 
-## Three lanes, never mixed
+## Protocol here, queue elsewhere
 
-**Protocol — living, always true.** Everything below except `plans/`. If it
-is here and it is not in `plans/`, it describes how the package behaves today,
-and a statement in it that is wrong is a bug.
-
-**History — a snapshot of one moment, never edited.** `plans/`. Read
-[plans/overview.md](./plans/overview.md) before treating any of it as
-guidance; the short version is that you should not.
+**Protocol — living, always true.** Everything below. If it is here, it
+describes how the package behaves today, and a statement in it that is wrong
+is a bug. There is no folder of superseded thinking to check a document
+against: what a decision was and why is [`adr/`](./adr/), and what shipped is
+the git history.
 
 **The queue — not in this repository.** Work in flight is
 [GitHub issues](https://github.com/BilLogic/agentic-service-blueprinting/issues),
@@ -35,7 +33,6 @@ anything.
 | [`guidelines/`](./guidelines/) | How we work — writing documentation, and proposing a change. |
 | [`engineering/`](./engineering/) | Procedure for whoever runs the repository: cutting a release, and the guard set behind every red build. |
 | [`connectors/`](./connectors/) | One folder per external system this package talks to. Today that is `supabase/`, the reference recipe: the operated database, its row-level security, and the migration desync runbook. |
-| [`plans/`](./plans/) | History. |
 | [`assets/`](./assets/) | Every figure the README and the guides use. Authored here; the cover build copies what it needs. |
 | [`erd.mmd`](./erd.mmd) | The attribute-level entity relationship diagram. |
 

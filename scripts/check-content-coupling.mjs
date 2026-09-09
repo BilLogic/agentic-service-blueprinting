@@ -210,7 +210,6 @@ export const PATTERNS = [
 export const EXCLUDED = [
   'src/lib/agent/skill/', // mirror of skills/ + references/
   'scripts/check-content-coupling.mjs', // this file
-  'docs/plans/', // the specs that ordered the boundary
 ]
 
 /** A fixture is out of subject — see the header. */
