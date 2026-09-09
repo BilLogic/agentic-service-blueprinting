@@ -3,7 +3,7 @@ import { asSlideViewType, type NavItem } from '@/types/nav'
 
 export type ScenarioRow = Pick<
   Scenario,
-  'id' | 'name' | 'summary' | 'position' | 'phase_id' | 'layout'
+  'id' | 'name' | 'summary' | 'note' | 'position' | 'phase_id' | 'layout'
 >
 
 export type PhaseRow = Pick<
@@ -39,6 +39,10 @@ export function phasesToSlides(phases: PhaseRow[]): NavItem[] {
         index: scenarioIndex + 1,
         label: scenario.name,
         summary: scenario.summary,
+        // The scenario's aside, straight off the row. A phase has no
+        // equivalent: the note answers "what else is happening while this
+        // runs", and a phase is the thing the others run inside.
+        note: scenario.note,
         parentId: phase.id,
         // One vocabulary: the column holds the client's own tokens, so there
         // is no seam to cross — but a row outside the CHECK still falls back

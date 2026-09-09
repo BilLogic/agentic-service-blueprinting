@@ -15,6 +15,7 @@ const SERVICE_PHASES_SELECT = `
     id,
     name,
     summary,
+    note,
     position,
     phase_id,
     layout
