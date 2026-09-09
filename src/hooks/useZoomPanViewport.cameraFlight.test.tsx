@@ -57,6 +57,7 @@ function Harness({
   target,
   cameraStateKey,
   cameraDestinationKey,
+  cameraDestinationResolved,
   cameraOutcomeKey,
   onFitReady,
 }: {
@@ -64,6 +65,7 @@ function Harness({
   target: Rect
   cameraStateKey?: string
   cameraDestinationKey?: string
+  cameraDestinationResolved?: boolean
   cameraOutcomeKey?: string
   onFitReady?: () => void
 }) {
@@ -77,6 +79,7 @@ function Harness({
     refitOnResize: false,
     cameraStateKey,
     cameraDestinationKey,
+    cameraDestinationResolved,
     cameraOutcomeKey,
     onFitReady,
   })
@@ -495,6 +498,222 @@ describe('viewport camera flights', () => {
       pan: { x: 125, y: -40 },
       zoom: 1,
     })
+  })
+
+  /*
+    The return that actually happens.
+
+    A canvas coming back to a still-open tab does not remount straight onto
+    its board: it boots on a skeleton, under a destination that names the
+    wait, and the real board only replaces it a beat after readiness renames
+    the destination. Each of those three commits is exercised here, with a
+    placeholder whose box is deliberately NOT the board's — so the framing
+    can only survive by having been held rather than compared against a
+    stand-in.
+  */
+  it('keeps the framing when the return boots through a loading destination', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:loading-remount-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    expect(cameraState().pan).toEqual({ x: 125, y: -40 })
+    first.unmount()
+
+    // A: the skeleton stands in, under a destination that means "not ready".
+    target.width = 400
+    target.height = 300
+    const second = render(
+      <Harness
+        resetKey="loading"
+        target={target}
+        cameraStateKey="desktop:slice:loading-remount-test"
+        cameraDestinationKey="loading"
+        cameraDestinationResolved={false}
+      />,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+      flushFrame(64)
+    })
+    // The placeholder was framed, as it always is — that is not the question.
+    expect(cameraState().zoom).toBeGreaterThan(1)
+
+    // B: readiness names the real destination, the skeleton is still on
+    // screen. Nothing about the board can be measured yet.
+    second.rerender(
+      <Harness
+        resetKey="ready"
+        target={target}
+        cameraStateKey="desktop:slice:loading-remount-test"
+        cameraDestinationKey="scenario-a"
+        cameraDestinationResolved={false}
+      />,
+    )
+    act(() => {
+      flushFrame(80)
+      flushFrame(96)
+      flushFrame(400)
+    })
+
+    // C: the board arrives.
+    target.width = 1000
+    target.height = 600
+    second.rerender(
+      <Harness
+        resetKey="ready"
+        target={target}
+        cameraStateKey="desktop:slice:loading-remount-test"
+        cameraDestinationKey="scenario-a"
+        cameraDestinationResolved
+      />,
+    )
+
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+    act(() => {
+      flushFrame(432)
+      flushFrame(448)
+    })
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+  })
+
+  // Holding the framing across the wait must not become a way of keeping a
+  // framing that names another board. The two rejections below are the same
+  // two the immediate return already refuses, put through the loading hop.
+  it('still rejects a different destination reached through a loading hop', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:loading-destination-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    first.unmount()
+
+    target.width = 400
+    target.height = 300
+    const second = render(
+      <Harness
+        resetKey="loading"
+        target={target}
+        cameraStateKey="desktop:slice:loading-destination-test"
+        cameraDestinationKey="loading"
+        cameraDestinationResolved={false}
+      />,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+      flushFrame(64)
+    })
+
+    target.width = 1000
+    target.height = 600
+    second.rerender(
+      <Harness
+        resetKey="ready"
+        target={target}
+        cameraStateKey="desktop:slice:loading-destination-test"
+        cameraDestinationKey="scenario-b"
+        cameraDestinationResolved
+      />,
+    )
+    act(() => {
+      flushFrame(80)
+      flushFrame(96)
+      flushFrame(500)
+    })
+
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 0, y: 0 },
+      zoom: 1,
+    })
+  })
+
+  it('still rejects a moved fit target reached through a loading hop', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:loading-geometry-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    first.unmount()
+
+    target.width = 400
+    target.height = 300
+    const second = render(
+      <Harness
+        resetKey="loading"
+        target={target}
+        cameraStateKey="desktop:slice:loading-geometry-test"
+        cameraDestinationKey="loading"
+        cameraDestinationResolved={false}
+      />,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+      flushFrame(64)
+    })
+
+    // Same destination, board genuinely somewhere else.
+    target.width = 1000
+    target.height = 600
+    target.left = 250
+    second.rerender(
+      <Harness
+        resetKey="ready"
+        target={target}
+        cameraStateKey="desktop:slice:loading-geometry-test"
+        cameraDestinationKey="scenario-a"
+        cameraDestinationResolved
+      />,
+    )
+    act(() => {
+      flushFrame(80)
+      flushFrame(96)
+      flushFrame(112)
+      flushFrame(600)
+      flushFrame(1200)
+    })
+
+    expect(cameraState().moving).toBe(false)
+    expect(cameraState().pan).not.toEqual({ x: 125, y: -40 })
+    expect(cameraState().pan.x).toBeCloseTo(-250)
   })
 
   it('rejects a stored transform for a different semantic destination', () => {
