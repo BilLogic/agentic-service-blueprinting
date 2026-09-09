@@ -1,5 +1,158 @@
 # Changelog
 
+## 1.18.2
+
+### Patch Changes
+
+- 114b9f9: The glossary says the interaction line is a band, and gains four sentences the deployment had been keeping instead
+
+  A deployment is stopping its own `CONTEXT.md` restating this model and
+  pointing here instead. Reading the two files side by side to decide which copy
+  was better found five places where the deployment's was, and one of them was not
+  a matter of taste: this glossary said the line of interaction "draws below the
+  lane holding the recipient's own actions", singular, while
+  `shouldShowInteractionLineAfter` in this repository has drawn it below the LAST
+  such lane since 4c9f5d3. The recipient's side is a band and can be several rows
+  deep. A reader of the glossary was told a rule the code had already stopped
+  following, and a boundary drawn once per row is not a boundary.
+
+  Four more sentences arrive because nothing here said them and the copy that did
+  is being deleted. A path is an **alternative, not a stage** — its paths are read
+  beside one another, and nothing connects across them, which the dependency entry
+  implied from the edge's end and no entry said from the path's. **Scenario, step
+  and path own no spec**, a negative the Spec entry needs, because "four levels,
+  one word" does not tell a reader that the other three levels have none. The test
+  that separates the two dependency kinds — remove the other cell, and ask whether
+  this one never starts or starts and goes wrong — is the operational form of a
+  distinction this file otherwise argues only by definition. And **no record at
+  all belongs to what-if**: it returns a trace on a copy, and where it records
+  anything it records a finding, which is the audit's.
+
+  That last one is why the ownership table can keep its shape. `evidence` reads
+  **the cell** here and has since the agent gained `create_evidence`, so "nobody"
+  lost its example — but it must stay a sayable answer, or the owner column
+  becomes a name drawn from a list of readers and the next table with no owner
+  gets assigned to whichever one is loudest. What-if is what "nobody" is said
+  about now.
+
+  Nothing else moves. The soft cell references, the `resources` naming rationale
+  and the `stacked`/`merged` layout values all read better in the deployment's
+  glossary than in this one, and all three are already stated in
+  `references/data-model.md` and `references/ir-schema.json`, where they are
+  enforced — restating them here would reproduce one level up the duplication the
+  deployment is removing.
+
+- 3707e0d: The change list says which half an upsert took
+
+  `upsert_cell` and `set_cell_dependency` both upsert, and both were taught to
+  report which half they took so the ledger could stop deriving an inverse from
+  the operation's NAME. The sentence a person reads was left behind: the change
+  list still said "Added a cell" and "Connected two cells" over writes that had
+  edited an existing cell and an existing edge. It is the same mistake, in the
+  one place it is visible.
+
+  The entry carries no report of its own, so the describers read the derived
+  inverse, which is where the report survives — `delete_cell` and
+  `clear_cell_dependency` mean the insert half, `restore_cell_content` and
+  `restore_cell_dependency` mean the update half. An entry with no inverse is the
+  update half whose before-state did not come back, since an insert always
+  derives one, so the absence reads as an edit rather than falling back to the
+  create. Rows written before those two fixes all carry the old name-derived
+  `delete_cell`, so they still read as creates — that is what they recorded.
+
+  The update half's sentence is "Edited a connection" rather than a new synonym,
+  because that is what a deployment carrying `update_cell_dependency` already
+  calls the same event.
+
+- c626120: The write surface proves the write, instead of reading the catalogue
+
+  The policy half of the surface asked `pg_policies` whether a policy existed on
+  the table, for that command, naming `authenticated` — and a policy that exists
+  and admits nobody satisfies an existence test. Every one of these fourteen
+  tables carries one. The service-account tier hangs a RESTRICTIVE
+  `<table>_update_service_only` on thirteen of them and the rest carry a permissive
+  policy whose whole predicate is `is_service_account()`, so the question the
+  surface asked could not tell "an author may write this" from "only a service
+  account may". That is the one pair whose difference is silent: a session outside
+  the editing tier meeting a service-only policy matches zero rows and gets a 200
+  back, and `requireRowsWritten` reports the save as a row somebody else deleted.
+
+  So the question is asked as the role. `set local role authenticated`, a
+  representative claim, attempt the write, roll it back. A policy that refuses
+  cannot satisfy that, and it subsumes the grant half the issue asked about —
+  `update t set c = c` is refused on a column the author does not hold, so
+  `has_column_privilege` and `exists(select 1 from pg_policies …)` collapse into
+  one question per column and verb, answered by the write itself. 58 grants and 23
+  policy existence tests become 58 writes an author makes and 22 the same
+  statement, run as a signed-in reader, must not.
+
+  **The second half is what makes the first mean anything.** `authenticated` is one
+  Postgres role and two audiences — the app says so itself, gating its editors on
+  `isServiceAccount` and calling the restrictive policies "the wall" — so the probe
+  runs as both. A check that only ever proved a write succeeded would pass just as
+  well on a database that let every reader write, which is not a hypothetical: it
+  found one. `services` is the single surface table the tier never reached. It had
+  no write policy at all when 20260818002000 swept the others, and when
+  21000128000000 gave it one it gave it `using (true)`. Any signed-in member can
+  rewrite a service summary today, which is precisely what the operations guide
+  says a member outside the editing tier may not do. It is named in
+  `ANY_SIGNED_IN_USER_MAY_WRITE` with that reason, printed on every green run, and
+  its author probe still runs — the exception is a smaller claim, not an exemption.
+  The migration that closes it is owed and is not in this change.
+
+  Attempting a write needs a row to write and a role that can evaluate a policy,
+  and neither was true before. `PROBE_FIXTURES` stands one row up in the four
+  surface tables the sample seed leaves empty, guarded by `where not exists` so a
+  seed that starts filling one retires its fixture; a surface table with neither is
+  a failing test rather than a probe that reads an empty table's zero rows as a
+  refusal. And the shim was lying by omission: Supabase grants `usage on schema
+auth` to `anon` and `authenticated`, and without it every policy predicate
+  calling `is_service_account()` — which is not `security definer` — answers
+  `permission denied for schema auth` to the very role it is written about. Nothing
+  noticed while the checks read the catalogue. The first question asked as the role
+  found it in one run.
+
+  The `cmd = 'ALL'` gap #368 left behind — `pg_policies.cmd` reads `ALL` for a
+  `for all` policy, so an exact-match existence test reports one as missing — is
+  gone rather than fixed. Nothing reads `cmd` any more, and a `for all` policy
+  either admits the write or does not.
+
+- 43799f4: The write surface asks about every verb the app uses, not only UPDATE
+
+  `PANEL_WRITE_SURFACE` was widened last release from eight tables to fourteen, and
+  the widening exposed the same hole in the other axis. The surface asserted the
+  UPDATE path and only that: `check:seed-load` asked a real database for an UPDATE
+  grant and an UPDATE policy per entry, while the app also inserted into and
+  deleted from `evidence`, `slices`, `slides`, `stakeholders` and `audit_findings`.
+  So `evidence` was "on the surface" with two of its three write verbs unchecked —
+  one verb wide instead of one table wide. The file stated the limit rather than
+  implying coverage it did not have, which is how it was found, but a stated limit
+  is still a deployment that can revoke INSERT and keep every gate green until an
+  author presses a button and gets a refusal the interface cannot explain.
+
+  Each entry now carries the verbs its writers actually use, and each verb is asked
+  for twice: the grant, and an RLS policy for that command admitting
+  `authenticated`. UPDATE keeps its column list, because the deployment really does
+  grant it column by column and `has_column_privilege` is what checks that
+  granularity. INSERT and DELETE are asked table-wide, because that is how the
+  recipe grants them and a column list for them would be precision the grants do
+  not have. The check went from 47 grants and 14 policies to 58 and 23; the failure
+  messages say what each one costs an author, which for a missing DELETE policy is
+  a row that reappears on the next read rather than an error anyone sees.
+
+  The verbs are derived, not declared. The scan that finds the tables had to read
+  the verb to find them at all — `.from('evidence')` is not a write until something
+  downstream says `.delete(` — so `writtenVerbsByTable` hands them back from the
+  same walk of `src/`, and an insert added to a module that already updates is
+  covered the moment it is written. A hand-kept list is what produced the original
+  defect, and adding a second one for verbs would have reproduced it. That leaves
+  exactly one verb claim still made by hand: the column list is an UPDATE claim, so
+  the surface test now fails an entry that lists columns for a table nothing
+  updates, and one the app updates that names no columns at all.
+
+  The verbs come off the scan already shared with the write-boundary contract, so
+  there is still one parser of the subject and not two.
+
 ## 1.18.1
 
 ### Patch Changes
@@ -2997,8 +3150,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                      "lanes_lane_role_check" … compliance_review
+                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
