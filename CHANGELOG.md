@@ -1,5 +1,89 @@
 # Changelog
 
+## 1.17.1
+
+### Patch Changes
+
+- 5fbafe8: An upsert says which half it took, and its undo stops guessing
+
+  Undoing an agent's dependency write could delete an edge the author already
+  had. `set_cell_dependency` upserts: landing on a pair that is already connected
+  it updates that row and hands back its id — indistinguishable from the id it
+  returns when it inserts. The ledger derived this write's inverse from the
+  operation's NAME, and the name says "connected two cells", so the inverse it
+  recorded was a delete. On the insert half that is exact; on the update half the
+  undo destroyed an edge the write had only edited.
+
+  Only the agent tool reaches it. `create_cell_dependency` on a pair the
+  blueprint already connects is a bare upsert onto an existing row — a retry, a
+  re-run of a plan, a model connecting two cells it has connected already. The
+  panel's add form cannot: its validation refuses a duplicate before any call is
+  made. That makes it the worst shape of defect — a write made by a machine, in
+  a batch, on rows a person has often already read — and it compounds with how
+  the session sheet picks an undo's target, which is the newest entry carrying an
+  inverse, not the newest thing the person did.
+
+  `21000210000000` makes the write report what it did. `set_cell_dependency`
+  returns `{ id, inserted, previous }` instead of a bare id: `inserted` is read
+  from the written row's `xmax` inside the same statement, and `previous` is the
+  row as it stood, captured before the write and locked. The revert derivation
+  branches on it — a delete for an insert, and for an update
+  `restore_cell_dependency`, a new operation that puts the two prose columns back
+  on one row by id. It assigns rather than coalescing, which is the point: the
+  case the agent causes is an edge that had no note being given one, and an
+  inverse that cannot write a null cannot undo that.
+
+  The return type moves, so the function is dropped and recreated and its ACL is
+  restated — the core revokes the PUBLIC execute the recreate lands on, the
+  recipe half restores the anon revoke and the authenticated grant. An update
+  whose before-state did not come back (a concurrent insert between the capture
+  and the upsert) records no inverse at all, which is the ledger's existing way
+  of saying an undo cannot restore the prior state.
+
+  The other upsert in the derivation table, `upsert_cell`, is not affected: its
+  tool refuses an occupied slot, so the delete it derives is a true inverse. The
+  agent's reply now also says which half the dependency write took, so a model
+  told "set" after landing on an existing edge stops believing it made one.
+
+- 64e1fd4: The portable shim can hold a claim, so a guarded write can be rehearsed
+
+  `supabase/portable/supabase-shim.sql` stood `auth.jwt()` in as `select
+'{}'::jsonb` — an empty object, unconditionally, whatever the session had set.
+  `public.is_service_account()` reads that object, so behind the shim no session
+  could be a service account, and every write RPC that asserts the guard in its
+  own body refused. Not a simplification: a different behaviour, in the one file
+  whose whole job is to answer the way the thing it stands in for answers.
+
+  What it cost is measurable rather than theoretical. Two rehearsals of guarded
+  writes had to redefine `auth.jwt()` inside their own rolled-back transactions
+  to get any write to run at all, which proves a copy of the function rather than
+  the function. And `21000209000000`'s embedded proof — a fixture that authors an
+  edge and re-runs the call the agent tool sends — asked whether the environment
+  could hold a service claim, found it could not, and skipped with a notice.
+  That is the right thing for a proof to do when it cannot run, and it meant the
+  portable replay had been proving less than it looked like it proved.
+
+  All three of GoTrue's request-scoped helpers now read `request.jwt.claims`, the
+  GUC Supabase resolves a request's JWT into: `auth.jwt()` returns the claims or
+  an empty object, and `auth.uid()` and `auth.role()` read `sub` and `role` out
+  of it rather than answering null by construction. An unset GUC still answers
+  "nobody", so a replay that sets nothing is unchanged; a
+  `set_config('request.jwt.claims', …, true)` inside a rehearsal or a proof block
+  now does what its author expects. `nullif` before the cast because a GUC that
+  was set and then cleared reads back as the empty string, and `''::jsonb` is a
+  syntax error rather than an absent claim — which is exactly the shape the proof
+  block's own cleanup leaves behind.
+
+  `is_service_account()` is untouched. The guard was never the defect; the stub
+  under it was. The shim is still not a security boundary — a caller who can
+  `set_config` can claim anything — and it is still not something an adopter
+  installs. It is a CI harness that now answers the question Supabase answers.
+
+  The replay says what changed. Before and after, all 48 migrations apply and
+  none fails; the two halves and the replay agree on the same inventory. The only
+  difference in the whole log is one line that is no longer printed: the
+  omitted-argument proof no longer skips. It runs, behind the shim, and passes.
+
 ## 1.17.0
 
 ### Minor Changes
@@ -2808,8 +2892,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                ERROR: new row for relation "lanes" violates check constraint
-                                                "lanes_lane_role_check" … compliance_review
+                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
