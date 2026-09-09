@@ -20,14 +20,16 @@ export type BlueprintCellConnection = {
    *  `enables` (must already be true, causes nothing). */
   linkKind: 'leads_to' | 'enables'
   /**
-   * `cell_dependencies.name`. Specified as the word on the arrow — a badge
-   * carrying a channel name like "Email" — and never used that way: what
-   * authors put in it were sentences saying why the edge exists, which is
-   * what `linkNote` is for. The dependency list no longer draws it; it is
-   * still carried here because the panel's connection editor takes it.
+   * Why the edge exists — `cell_dependencies.note`. Shown on the dependency
+   * row's tooltip, and the only prose this mapping carries.
+   *
+   * `cell_dependencies.name` is deliberately absent. It was specified as the
+   * word on the arrow — a badge carrying a channel name like "Email" — and
+   * was never used that way: what authors put in it were sentences saying why
+   * the edge exists, which is what this is. Nothing draws it and the panel's
+   * connection editor no longer writes it, so carrying it here would only
+   * offer the next reader a second field saying the same thing.
    */
-  linkName: string | null
-  /** Why the edge exists. Shown on the dependency row's tooltip. */
   linkNote: string | null
   isTech: boolean
   techItems: string[]
@@ -89,7 +91,6 @@ function toConnection(
     stepIndex,
     kind: stepIndex === selectedStepIndex ? 'interaction' : 'connection',
     linkKind: dependency.kind === 'enables' ? 'enables' : 'leads_to',
-    linkName: dependency.name ?? null,
     linkNote: dependency.note ?? null,
     isTech,
     techItems,

@@ -26,7 +26,6 @@ export type ExistingDependency = {
   targetCellId: string
   targetLabel: string
   kind: string
-  name: string | null
 }
 
 /**
@@ -57,7 +56,6 @@ export function CellDependencyEditor({
     sourceCellId: source.cellId,
     targetCellId: null,
     kind: 'leads_to',
-    name: '',
     note: '',
   })
   const [busy, setBusy] = useState(false)
@@ -82,11 +80,10 @@ export function CellDependencyEditor({
         sourceCellId: draft.sourceCellId,
         targetCellId: draft.targetCellId,
         kind: draft.kind,
-        name: draft.name,
         note: draft.note,
       })
       refresh()
-      setDraft((current) => ({ ...current, targetCellId: null, name: '' }))
+      setDraft((current) => ({ ...current, targetCellId: null, note: '' }))
     } catch (addError) {
       setError(errorMessage(addError))
     } finally {
@@ -180,12 +177,19 @@ export function CellDependencyEditor({
           ))}
       </select>
 
+      {/* The one prose field, and it writes the column the row reads back.
+          It used to write `name` — specified as a badge, the word on the
+          arrow — while the row drew `note`, so a sentence typed here landed
+          somewhere nothing renders. The placeholder is deliberately general:
+          "why this edge exists" is narrower than what authors actually write,
+          and a narrow frame is what sent them to the wrong field. */}
       <Input
-        value={draft.name}
-        placeholder="Name (optional)"
+        value={draft.note}
+        aria-label="Note (optional)"
+        placeholder="Anything worth knowing about this dependency"
         className="h-7 text-xs"
         onChange={(event) =>
-          setDraft((current) => ({ ...current, name: event.target.value }))
+          setDraft((current) => ({ ...current, note: event.target.value }))
         }
       />
 

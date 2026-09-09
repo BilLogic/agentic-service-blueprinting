@@ -43,8 +43,12 @@ export type DraftDependency = {
   sourceCellId: string
   targetCellId: string | null
   kind: DependencyKind
-  /** The word on the arrow — `cell_dependencies.name`. */
-  name: string
+  /**
+   * `cell_dependencies.note` — the editor's one prose field, and the one the
+   * dependency row reads back. `name` is not drafted here: it is the badge
+   * spelling, the column nothing renders, and offering it beside the note
+   * would put the same sentence in front of two fields again.
+   */
   note: string
 }
 

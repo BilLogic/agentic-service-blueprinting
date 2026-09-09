@@ -733,7 +733,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         source_cell_id: str('Source cell id'),
         target_cell_id: str('Target cell id'),
         kind: { type: 'string', enum: ['leads_to', 'enables'], description: 'Default leads_to' },
-        label: str('Short arrow label; omit for none'),
+        label: str('Anything worth knowing about this dependency, in a sentence. Saved as the edge NOTE and shown on its row in the cell panel — it is not a badge on the arrow. The argument keeps its published spelling; what it writes is the note. Omit for none'),
       },
       required: ['source_cell_id', 'target_cell_id'],
     },

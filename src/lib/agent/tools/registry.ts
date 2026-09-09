@@ -523,11 +523,16 @@ export async function dispatchTool(
           sourceCellId: need(args, 'source_cell_id'),
           targetCellId: need(args, 'target_cell_id'),
           kind,
-          // The tool says `label` and the column says `name`. The word a model
+          // The tool says `label` and the column says `note`. The word a model
           // is asked for is not the schema's — renaming it would move a
           // published surface for a spelling — so the mapping happens here,
           // which is where every other tool-to-column difference does.
-          name: s(args, 'label') ?? null,
+          //
+          // It used to land in `name`, the badge column, which nothing draws
+          // and no reader sees. The spelling stays put and the destination
+          // moves: a downstream skill pinned to an older release goes on
+          // sending `label` and its sentence now arrives somewhere it is read.
+          note: s(args, 'label') ?? null,
         })
         return `Dependency set (${id}).`
       }
