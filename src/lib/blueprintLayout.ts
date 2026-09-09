@@ -71,9 +71,38 @@ export function shouldUseStoryboardContent(lane: LaneRoleSource): boolean {
   )
 }
 
-/** The standard service-blueprint interaction line follows the spine actor. */
-export function shouldShowInteractionLineAfter(lane: BlueprintLane): boolean {
-  return getLaneRole(lane) === CUSTOMER_ACTIONS_ROLE
+/**
+ * The interaction line closes the customer side, and the customer side is a
+ * BAND rather than a single row.
+ *
+ * The rule used to be `getLaneRole(lane) === CUSTOMER_ACTIONS_ROLE` and
+ * nothing else, which was right for exactly as long as every board had one
+ * customer-side lane. Give a board a second one — a second actor row on the
+ * customer's own side of the service — and that rule draws a line of
+ * interaction after each of them. No service blueprint means two: the line is
+ * the boundary between the people the service is for and the machinery that
+ * serves them, and a boundary drawn twice is not a boundary.
+ *
+ * So the line follows the LAST customer-side lane. Adding a customer-side
+ * lane extends the band; it does not divide the board again, and no row has
+ * to move to make that true.
+ *
+ * Without `lanes` there is no band for a lane to be last in, so a
+ * customer-side lane is its own band and answers as it always did. That is
+ * the same shape `shouldShowVisibilityLineAfter` has, for the same reason.
+ */
+export function shouldShowInteractionLineAfter(
+  lane: BlueprintLane,
+  lanes?: BlueprintLane[],
+): boolean {
+  if (getLaneRole(lane) !== CUSTOMER_ACTIONS_ROLE) return false
+  if (!lanes) return true
+
+  let last: BlueprintLane | undefined
+  for (const entry of lanes) {
+    if (getLaneRole(entry) === CUSTOMER_ACTIONS_ROLE) last = entry
+  }
+  return last === undefined || last.id === lane.id
 }
 
 /** The visibility line is drawn after frontstage lanes (above backstage lanes). */
@@ -141,7 +170,7 @@ export function shouldShowLaneDividerAfter(
   lanes: BlueprintLane[],
 ): boolean {
   if (laneIndex >= lanes.length - 1) return false
-  if (shouldShowInteractionLineAfter(lane)) return false
+  if (shouldShowInteractionLineAfter(lane, lanes)) return false
   if (shouldShowVisibilityLineAfter(lane, lanes)) return false
   if (shouldShowInternalInteractionLineAfter(lane, lanes)) return false
   return true
@@ -153,7 +182,7 @@ export function lanePrecedesBlueprintDivider(
   lanes?: BlueprintLane[],
 ): boolean {
   return (
-    shouldShowInteractionLineAfter(lane) ||
+    shouldShowInteractionLineAfter(lane, lanes) ||
     shouldShowVisibilityLineAfter(lane, lanes) ||
     shouldShowInternalInteractionLineAfter(lane, lanes)
   )
@@ -292,28 +321,47 @@ export function countOverheadRailCorridorMargins(
 }
 
 /**
- * Does a corridor open UNDER this lane row? Only the spine actor's row has
- * one: the standard blueprint already leaves a band between it and the line of
- * interaction, and backward loops on that row are routed through it rather
- * than over the cells.
+ * Does a corridor open UNDER this lane row? Only the row the line of
+ * interaction is drawn after has one: the standard blueprint already leaves a
+ * band between that row and the line, and backward loops on it are routed
+ * through the band rather than over the cells.
+ *
+ * That is why `lanes` matters here rather than being a convenience. The
+ * corridor's reason for existing is the gap under the line, so it belongs to
+ * the lane the line follows — the LAST customer-side lane — and not to every
+ * lane on the customer side. Ask without the board and a customer-side lane
+ * in the middle of the band is told it has a corridor under it, which opens
+ * BLUEPRINT_WRAP_CORRIDOR_MARGIN of space beneath a row that has no line
+ * beneath it.
  */
-export function laneHasWrapCorridorBelow(lane: BlueprintLane): boolean {
-  return shouldShowInteractionLineAfter(lane)
+export function laneHasWrapCorridorBelow(
+  lane: BlueprintLane,
+  lanes?: BlueprintLane[],
+): boolean {
+  return shouldShowInteractionLineAfter(lane, lanes)
 }
 
 export function countBlueprintDividerRows(lanes: BlueprintLane[]): number {
   return lanes.filter(
     (lane) =>
-      shouldShowInteractionLineAfter(lane) ||
+      shouldShowInteractionLineAfter(lane, lanes) ||
       shouldShowVisibilityLineAfter(lane, lanes) ||
       shouldShowInternalInteractionLineAfter(lane, lanes),
   ).length
 }
 
+/**
+ * Both counts above are read as HEIGHT — one is multiplied by
+ * BLUEPRINT_DIVIDER_ROW_HEIGHT and the other by
+ * BLUEPRINT_WRAP_CORRIDOR_MARGIN — so a count that disagrees with what the
+ * renderer draws is a grid taller than its own contents by exactly the rows
+ * it over-counted. Each therefore has to ask the question the renderer asks,
+ * board and all.
+ */
 export function countBlueprintWrapCorridorMargins(
   lanes: BlueprintLane[],
 ): number {
-  return lanes.filter(laneHasWrapCorridorBelow).length
+  return lanes.filter((lane) => laneHasWrapCorridorBelow(lane, lanes)).length
 }
 
 export const LANE_COLUMN_WIDTH = 220

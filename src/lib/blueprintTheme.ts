@@ -170,6 +170,22 @@ export type BlueprintLabelSection =
   | 'customerFacing'
   | 'backstage'
 
+/**
+ * Which of the three label tones a lane's name is written in.
+ *
+ * A section is a position RELATIVE TO THE LINES, so this has to find the
+ * lines where they are actually drawn. Asked without the board,
+ * `shouldShowInteractionLineAfter` answers for a lane alone and says yes to
+ * every customer-side lane, so the search below would stop at the FIRST of
+ * them. On a board whose customer side is more than one row deep, that puts
+ * the line above rows it is drawn below, and every lane inside the band gets
+ * the tone of the zone under the line — painted as though it were on the far
+ * side of a boundary the reader can see it is above.
+ *
+ * Passing `lanes` is the whole fix: exactly one lane then answers yes, the
+ * lane the line really follows, and a board with a single customer-side lane
+ * gets the answer it always got.
+ */
 export function getBlueprintLabelSection(
   lane: BlueprintLane,
   lanes: BlueprintLane[],
@@ -180,7 +196,7 @@ export function getBlueprintLabelSection(
 
   const laneIndex = lanes.findIndex((entry) => entry.id === lane.id)
   const interactionAfterIndex = lanes.findIndex((entry) =>
-    shouldShowInteractionLineAfter(entry),
+    shouldShowInteractionLineAfter(entry, lanes),
   )
   const visibilityAfterIndex = lanes.findIndex((entry) =>
     shouldShowVisibilityLineAfter(entry, lanes),
