@@ -14,6 +14,8 @@ import {
   hasDevAuthoringUi,
   isSupabaseConfigured,
 } from '../lib/supabase'
+import { createSupabaseIdentity } from '../lib/backend/adapters/supabaseIdentity'
+import type { Tier } from '../lib/backend/ports'
 import type { Database } from '../types/database'
 import { hasKey, useAgentSettings } from '../lib/agent/settings'
 import {
@@ -44,10 +46,12 @@ type SupabaseContextValue = {
    */
   isEditPreview: boolean
   /**
-   * This session holds the editing tier: either the optional service-account
-   * recipe is not applied (no role claim) or it is and this account carries
-   * app_metadata.role === 'service' (set server-side; RLS's restrictive
-   * policies are the authority — this mirrors them for the UI).
+   * This session holds the editing tier, as the DATABASE answers it — the
+   * same `is_service_account()` seam the write RPCs assert and the
+   * restrictive write policies AND with, called over the Data API rather
+   * than re-derived from a claim. It is right whether or not the optional
+   * service-account recipe is applied, because the function it calls is the
+   * thing the recipe replaces.
    * Sessions outside the tier view and use the agent read-only.
    */
   isServiceAccount: boolean
@@ -88,12 +92,12 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   const configured = isSupabaseConfigured()
   const client = sharedClient
   const [session, setSession] = useState<Session | null>(null)
-  const [isLoading, setIsLoading] = useState(configured)
+  const [isSessionLoading, setIsSessionLoading] = useState(configured)
 
   useEffect(() => {
     if (!client) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot resolution of the initial loading gate when Supabase is unconfigured; the async auth sync below is the real work
-      setIsLoading(false)
+      setIsSessionLoading(false)
       return
     }
 
@@ -102,11 +106,12 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     client.auth.getSession().then(({ data }) => {
       if (!mounted) return
       setSession(data.session)
-      setIsLoading(false)
-      // Roles live in the JWT, which is minted at sign-in — a session that
-      // predates a role change carries stale claims until refresh. One
-      // refresh per boot keeps app_metadata.role current for long-lived
-      // sessions (onAuthStateChange delivers the updated session).
+      setIsSessionLoading(false)
+      // The tier is read server-side out of the access token this client
+      // presents, so a token minted before a role change carries the old
+      // answer until it is refreshed. One refresh per boot keeps long-lived
+      // sessions current (onAuthStateChange delivers the new session, and
+      // the tier is asked again for it).
       if (data.session) void client.auth.refreshSession()
     })
 
@@ -114,7 +119,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       data: { subscription },
     } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
-      setIsLoading(false)
+      setIsSessionLoading(false)
     })
 
     return () => {
@@ -135,7 +140,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     having no credentials at all.
   */
   useEffect(() => {
-    if (!client || isLoading || session) return
+    if (!client || isSessionLoading || session) return
     const credentials = devLoginCredentials()
     if (!credentials) return
     let cancelled = false
@@ -149,7 +154,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     return () => {
       cancelled = true
     }
-  }, [client, isLoading, session])
+  }, [client, isSessionLoading, session])
 
   const isDevAuthoring = hasDevAuthoringKey()
   // Only ever true on a dev server, and never while anything can actually
@@ -160,26 +165,61 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
     hasDevAuthoringUi() && !isDevAuthoring && session === null
 
   /*
-   * Contract with the service-account tier — an OPTIONAL recipe a deployment
-   * adopts by stamping a `role` claim on the sessions that may only read. NO
-   * role claim in the JWT means the recipe was never adopted, so every
-   * signed-in session edits (the template default); an explicit role other
-   * than 'service' means the recipe IS in play and this session is a viewer.
-   * Reading a missing claim as "not a service account" would lock every
-   * adopter who skipped the recipe out of their own data.
+   * The service-account tier, asked rather than inferred.
+   *
+   * The seam is a database function — `is_service_account()` — that every
+   * write RPC asserts in its own body and every restrictive write policy
+   * ANDs with. An OPTIONAL recipe replaces the permissive default with a
+   * read of the session's role claim, and a client that inferred the tier
+   * from that claim's presence would be guessing which of the two databases
+   * it is talking to. So it calls the function instead; see the identity
+   * adapter for what each answer means.
+   *
+   * The ask is keyed on the ACCESS TOKEN, because the answer is computed
+   * server-side from the token this client presents: the same account on a
+   * token minted before an admin stamped it gets the old answer. It is HELD
+   * against the user id, so the boot refresh (a new token for the same
+   * account, seconds in) updates the answer without blanking it — a refresh
+   * is not a tier change, and flickering the editing UI for one would be a
+   * lie told twice.
    *
    * UX gate only — the RESTRICTIVE policies and RPC guards are the wall.
    */
-  const sessionRole = (
-    session?.user.app_metadata as { role?: string } | undefined
-  )?.role
-  const isServiceAccount =
-    (session !== null && (sessionRole == null || sessionRole === 'service')) ||
-    isDevAuthoring
+  const userId = session?.user.id ?? null
+  const accessToken = session?.access_token ?? null
+  const [tierAnswer, setTierAnswer] = useState<{
+    userId: string
+    tier: Tier
+  } | null>(null)
 
-  const realCanWrite =
-    configured &&
-    ((session !== null && isServiceAccount) || isDevAuthoring || isEditPreview)
+  useEffect(() => {
+    if (!client || userId === null || accessToken === null) return
+    let cancelled = false
+    void createSupabaseIdentity(client)
+      .currentTier()
+      .then((tier) => {
+        if (!cancelled) setTierAnswer({ userId, tier })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, userId, accessToken])
+
+  // An answer belongs to the account it was asked about, so signing out — or
+  // signing in as somebody else — retires it without waiting for a round trip.
+  const answeredTier = tierAnswer?.userId === userId ? tierAnswer.tier : null
+  const isServiceAccount = answeredTier === 'service' || isDevAuthoring
+
+  /*
+   * Boot is not over until the tier is known. A signed-in session pays one
+   * round trip for it; a deployed visitor pays none, having no session to
+   * ask about. The alternative is to render an answer and then correct it,
+   * which shows an editor a read-only board or a viewer a save button.
+   */
+  const isLoading =
+    isSessionLoading || (userId !== null && answeredTier === null)
+
+  const realCanWrite = configured && (isServiceAccount || isEditPreview)
 
   /*
    * No-database trial. With nothing configured, the canvas already renders

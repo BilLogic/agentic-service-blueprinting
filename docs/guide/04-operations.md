@@ -14,8 +14,15 @@ Capability follows the account a surface uses, not the surface itself.
 | Account | Can |
 | --- | --- |
 | no account, published blueprint | read what is published |
-| a signed-in member | read, and author through the app or its agent |
+| a signed-in member outside the editing tier | read, and chat to the agent read-only |
+| a signed-in member in the editing tier | read, and author through the app or its agent |
 | the service account used by an import | write a whole blueprint transactionally |
+
+Whether those middle two rows are one row or two is the deployment's choice.
+The optional service-account tier is what splits them, and applying every
+shipped migration applies it; a deployment that deletes that migration gives
+every signed-in member the editing tier. The app asks the database which of
+those it is talking to, so neither posture needs a build of its own.
 
 The keys behind those rows are handled by rule, not convention: the
 publishable key may be written to `.env` only after the skill verifies the

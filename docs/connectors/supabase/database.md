@@ -301,7 +301,17 @@ Writes are layered on top for signed-in sessions (`authenticated`):
   skip or delete): RESTRICTIVE policies AND an in-function
   `is_service_account()` guard split `authenticated` into service accounts
   (edit everything) and regular accounts (view + agent surfaces, no
-  blueprint writes). `anon` is untouched either way.
+  blueprint writes). `anon` is untouched either way. Note that
+  `supabase db reset` applies every file in `supabase/migrations/`, this one
+  included: the split is what you get unless you delete the file.
+- **The first account a project ever has is a service account**
+  (`21000206000000`, part of the same recipe). `service_account_emails`
+  ships empty, so without this a fresh deployment of the tier would have no
+  editor at all and would need a hand-written `update auth.users` to gain
+  one. Every account after the first is governed by the allowlist as
+  before. The client reads the tier by CALLING `is_service_account()`, so
+  deleting the recipe needs no matching client change — see the auth
+  contract in `references/adapter-contract.md`.
 - **Agent-surface tables** (`agent_sessions`, `agent_messages`) are
   reachable only by `authenticated`; the same migration restores the
   findings insert/update grants for in-app agent runs (still ANDed with
