@@ -4,7 +4,7 @@
 
 The glossary says the interaction line is a band, and gains four sentences the deployment had been keeping instead
 
-`plus-uno-blueprint` is stopping its own `CONTEXT.md` restating this model and
+A deployment is stopping its own `CONTEXT.md` restating this model and
 pointing here instead. Reading the two files side by side to decide which copy
 was better found five places where the deployment's was, and one of them was not
 a matter of taste: this glossary said the line of interaction "draws below the
