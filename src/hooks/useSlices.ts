@@ -3,7 +3,7 @@ import {
   FALLBACK_SLICE_ITEMS,
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import { awaitOrAbort, findFirstServiceId } from '@/lib/service'
+import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import type { Slice, Slide } from '@/types/database'
 
 /** Slim frame projection carried on the list — powers client-side
@@ -25,8 +25,8 @@ const slicesFallback = (): SliceListEntry[] =>
 
 /**
  * All slices for one service, ordered by position, each carrying
- * its frames' cell ids. With no explicit `serviceId`, the first service
- * by `created_at` is used — the same resolution as `useServicePhases`.
+ * its frames' cell ids. With no explicit `serviceId`, the ACTIVE service is
+ * used — the same resolution as `useServicePhases`.
  */
 export function useSlices(serviceId?: string): QueryResult<SliceListEntry[]> {
   return useSupabaseQuery<SliceListEntry[]>(
@@ -35,7 +35,7 @@ export function useSlices(serviceId?: string): QueryResult<SliceListEntry[]> {
       let resolvedServiceId = serviceId
       if (!resolvedServiceId) {
         resolvedServiceId =
-          (await awaitOrAbort(findFirstServiceId(client), signal)) ?? undefined
+          (await awaitOrAbort(findActiveServiceId(client), signal)) ?? undefined
         if (!resolvedServiceId) return []
       }
 

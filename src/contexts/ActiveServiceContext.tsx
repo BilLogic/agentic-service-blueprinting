@@ -130,12 +130,10 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
       separately here (`service-entity-examples:first`) rather than riding the
       spec.
 
-      What this does NOT yet do is move the board, because the app's own
-      fetchers still resolve `findFirstServiceId`; only the agent's
-      `serviceScope` honours the slug today. So a switch moves the URL, the
-      agent's scope and the caches now, and moves the board the moment those
-      fetchers adopt `findActiveServiceId` — which is why the invalidation is
-      written for the destination rather than for what reads it today.
+      This moves the board too: `useServicePhases` and `useSlices` resolve
+      `findActiveServiceId`, so the dropped caches come back scoped to the
+      newly-active service rather than to whichever one is first by
+      `created_at`.
     */
     invalidateStructure()
     invalidateQueries('service-spec')

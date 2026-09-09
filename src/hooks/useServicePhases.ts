@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
-import { awaitOrAbort, findFirstServiceId } from '@/lib/service'
+import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import { phasesToSlides, type PhaseRow } from '@/lib/phasesToSlides'
 import type { NavItem } from '@/types/nav'
 
@@ -34,9 +34,9 @@ const NO_PHASES: PhaseRow[] = []
 /**
  * Load the phases (and nested scenarios) of one service.
  *
- * With no explicit `serviceId`, the first service by `created_at` is used
- * — the common case is a single service per database. Pass an id to pin a
- * specific service in multi-service databases.
+ * With no explicit `serviceId`, the ACTIVE service is used — the one the URL
+ * slug names, falling back to the first service by `created_at` at the bare
+ * root (the common single-service case). Pass an id to pin a specific service.
  *
  * Both reads go out in the same tick. Resolving the service *then*
  * querying its phases put a full serial round trip in front of the canvas
@@ -45,7 +45,7 @@ const NO_PHASES: PhaseRow[] = []
  * the resolved service client-side — no extra rows in the single-service
  * databases this targets. The result goes through the shared query cache, so
  * the lookup survives remounts and is shared with every other consumer of
- * `findFirstServiceId`.
+ * `findActiveServiceId`.
  */
 export function useServicePhases(serviceId?: string) {
   const { configured } = useSupabase()
@@ -56,7 +56,7 @@ export function useServicePhases(serviceId?: string) {
     async (client, signal) => {
       const serviceIdPromise = serviceId
         ? Promise.resolve<string | null>(serviceId)
-        : awaitOrAbort(findFirstServiceId(client), signal)
+        : awaitOrAbort(findActiveServiceId(client), signal)
 
       const rowsPromise = (
         serviceId
