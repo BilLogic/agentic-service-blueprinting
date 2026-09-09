@@ -1,5 +1,162 @@
 # Changelog
 
+## 1.14.0
+
+### Minor Changes
+
+- 89089f8: A service carries its own examples through the authoring pipeline
+
+  `public.services.entity_examples` — one free-text example per core kind, shown
+  under that kind's generic definition so a reader is grounded in this deployment
+  rather than the textbook — has existed since `21000123000000`, which also
+  granted it to a signed-in author. The wire format never learned it. So the
+  column was writable from the editor and invisible to the pipeline that writes
+  the same rows: `references/ir-schema.json` did not model it, and
+  `scripts/generate_seed_sql.py` emitted `insert into public.services (id, name,
+summary)`. An example authored in a blueprint source was dropped on the way to
+  the seed, and a re-map wrote nothing where a deployment had something.
+
+  The IR now models an optional `entity_examples` map on the service — a kind key
+  to a locale map, absent is legal — and the generator carries it into the service
+  insert and the conflict clause. The key set is deliberately not an enum: the
+  kinds belong to the app, which states them once where the definitions live, and
+  the column carries no CHECK for the same reason.
+
+  **What the conflict clause does with silence, and why.** A service block with no
+  examples generates `'{}'`, and so does one that authored none — by the time the
+  seed exists the two are indistinguishable. Overwriting on `'{}'` would erase
+  what a deployment authored from the editor, which is the same silent loss as
+  never emitting the column at all. So an empty map reads as _the source said
+  nothing_ and leaves the target alone. A map that IS present is the whole truth
+  for the service: a kind it omits is cleared, so the generator can still remove
+  an example — by authoring the map without that kind, never by emptying the map.
+  The reason sits beside the clause, where a reader wondering about it will be.
+
+  Proven by a round trip rather than by reading the generated SQL, because the
+  column is written from two places: `scripts/tests/entity-examples-round-trip.test.sh`
+  replays the schema, loads a generated seed and reads the row back — an authored
+  example arrives, a re-map leaves it alone, a source that says nothing keeps what
+  the deployment has, and a source that speaks clears the kind it omits. It fails
+  on the previous generator, naming the example that never arrived, and fails
+  again if the guard is replaced by a plain overwrite. `scripts/tests/run_tests.sh`
+  holds the half a machine with no database can hold: the column is in the insert,
+  the text is the seed's own locale's, and the guard is still spelled.
+
+  IR schema version `2026.09.11`. The step is a stamp — the map is optional and
+  nothing authored moves — and no migration stamps the version, because the
+  database has had the column all along, so a target at an earlier version stays
+  compatible. The stamp moves at all because a version names a shape, and
+  `2026.09.10` refuses a key this one accepts.
+
+  This is the upstream half. A deployment built on this template regenerates its
+  committed seed only after bumping its pin to a release carrying this change;
+  changing either side alone reddens the drift gate — immediately in one
+  direction, and at the next pin bump in the other.
+
+- ad2629f: The cover's services tab holds one page per service, and the active service
+  picks which one renders.
+
+  A tab used to be one thing: a `value`, a `label`, and a fixed `sections` list
+  shown to everyone. That is right for the tabs that describe the method — the
+  blueprint model, slices, the plugin — and wrong for the one tab that describes
+  the service itself, because a deployment can hold more than one service and
+  each of them has its own story to tell on the way in. Pointing every service at
+  one page makes the cover say something untrue about all but the first of them.
+
+  So `CoverTab` splits. `CoverContentTab` is the old shape, unchanged, and it is
+  what every tab in this repository's own content module still is.
+  `CoverServicesTab` carries a `CoverServicesIndex` instead of `sections`: a
+  `pluralLabel` and one `CoverServicePage` per service, each keyed by the route
+  slug `lib/serviceSlug` derives. `coverTabSections` flattens either kind, so the
+  walks that want every section a tab can ever render — the figure inventory, the
+  content contract's own assertions — ask one function and stop caring which kind
+  they were handed.
+
+  The page follows the active service rather than a second piece of tab state.
+  `CoverPageView` takes the roster and the active slug as props and matches the
+  page case-insensitively, the way routing resolves a slug, falling back to the
+  first page. `CoverPage` reads both from `ActiveServiceContext`, so picking a
+  service on the cover is the same act as picking one anywhere else: it writes
+  the URL slug, re-scopes the board, and the cover page under the selector
+  changes with it. There is no cover-local notion of "which service am I
+  reading about".
+
+  WITH ONE SERVICE, NOTHING MOVES. The selector row is rendered only when a
+  second service exists, the strip label stays the tab's singular `label` rather
+  than the plural, and the sole page renders below — including when no roster is
+  handed in at all, which is the shape every existing test and the provider-free
+  surface already use. A single-service deployment's cover is byte-for-byte what
+  it was.
+
+  The selector is the Skills tab's segmented control: a tab per service on a
+  recessed track, the active one lifted onto the background, the row labelled
+  "Services" so a test can tell it apart from the cover's own strip. It never
+  mounts on the single-service page.
+
+  Twelve cases arrive, driven through `CoverPageView` with the roster as props.
+  They assert the singular tab is untouched, that a second service pluralizes the
+  label and heads the panel with the selector, that clicking a service reports
+  its slug, and that the page swaps when the active service does — which is the
+  one thing a fixed `sections` list could never be asked.
+
+  `src/components/cover/CoverPage.tsx` and `coverModel.ts` are not enrolled in
+  the deployment's reconciled-files list; with this change they and the two new
+  files match the deployment's copies except where the deployment's prose cited
+  its own issue numbers and named its own service in a fixture, which is written
+  neutrally here and has to be rewritten there before any of the four can enrol.
+
+### Patch Changes
+
+- 3eb97d1: `deletion_impact` counts the delete that follows, for all four kinds
+
+  The confirm dialog's whole job is the number, and two of the four kinds
+  answered with a number that was not true of the delete they preceded — in
+  opposite directions. `deletion_impact('lane', id)` counted the cells of ONE
+  `lanes` row, while `remove_lane(scenario_id, lane_name)` deletes every
+  same-named lane across every path of the scenario; measured against a live
+  blueprint, 11 reported against 93 deleted. `deletion_impact('step', id)`
+  counted that step across every path, while `remove_step(path_id, step_id)`
+  deletes only the cells on the path it is given; 12 reported against 5 deleted.
+
+  The cause is identity, not arithmetic. A lane delete is addressed by
+  (scenario, name) and a step delete by (path, step); the function took a single
+  uuid and so could not name either delete. No sum over the wrong row set gives
+  the right answer.
+
+  `scope_id` supplies the missing half. `scenario` and `path` are addressed by
+  one id, ignore it, and keep the predicates they had, so nothing that calls
+  them today changes — the new argument has a default and the two working kinds
+  never read it. `lane` needs nothing from the caller: it derives the
+  (scenario, name) pair from the lane it is handed. `step` REFUSES without a
+  scope rather than guess a path, because an overcount in a delete dialog reads
+  as "this is bigger than it is" and an error that says why is better than a
+  number nobody can justify.
+
+  `remove_step` is rewritten alongside, because it reads `deletion_impact`
+  itself: left calling the two-argument form it would hit the refusal and stop
+  deleting steps. Passing the path it was already given also narrows the
+  `affected_slices` it archives from "slices touched on any path" to the ones
+  this delete actually costs.
+
+  `DeletableKind` was narrowed to `scenario | path | slice` to make the wrong
+  numbers unrepresentable, with a note saying the SQL fix could not be verified
+  without a migration apply. It is the full set again, the agent's
+  `measure_deletion_impact` offers all five kinds with a `scope_id` argument,
+  and `DeleteStructureDialog`'s switch grows a `default` arm — it performs three
+  of the kinds it can now be handed, and a fall-through there would have closed
+  the dialog on a delete that never happened.
+
+- 4b268bc: `addLane` takes `atPosition`, and the cover drops one docs address
+
+  The lane insert's TypeScript argument was `atRow` while the SQL parameter it
+  maps to is `at_position`, and rows are not what it positions — a lane is one
+  row per version, and the number is its place in the lane order. Three call
+  sites, no behaviour.
+
+  `CoverPage`'s docblock also cited a plan section for a decision the same
+  sentence already explains, which is an address in one repository's docs tree
+  and resolves to nothing in another's.
+
 ## 1.13.3
 
 ### Patch Changes
@@ -2288,8 +2445,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                        ERROR: new row for relation "lanes" violates check constraint
-                                        "lanes_lane_role_check" … compliance_review
+                                          ERROR: new row for relation "lanes" violates check constraint
+                                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
