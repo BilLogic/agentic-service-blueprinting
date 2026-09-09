@@ -49,6 +49,7 @@ import {
   getCanvasFocusMaxZoom,
   getCanvasFocusSelector,
 } from '@/lib/canvasFocus'
+import { UNRESOLVED_CAMERA_DESTINATION_PREFIX } from '@/lib/canvasViewState'
 import {
   OVERVIEW_CANVAS_PADDING_X,
   OVERVIEW_CANVAS_PADDING_Y,
@@ -488,7 +489,7 @@ function ServiceOverviewViewImpl({
   })
   const fitKey = overviewReady
     ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}:${focusedComparisonCameraKey}`
-    : `service-canvas:loading:${skeletonPhases.map((phase) => phase.scenarioCount).join('-') || 'unknown'}`
+    : `${UNRESOLVED_CAMERA_DESTINATION_PREFIX}${skeletonPhases.map((phase) => phase.scenarioCount).join('-') || 'unknown'}`
   const cameraDestinationKey = overviewReady
     ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusedComparisonCameraKey}`
     : fitKey

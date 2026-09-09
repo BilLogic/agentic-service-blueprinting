@@ -1363,6 +1363,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         }
         if (adoption === 'waiting-dest' || adoption === 'waiting-layout') {
           if (++polls > MAX_SETTLE_POLLS) {
+            // Bound the per-frame layout reads. Restore stays pending so a
+            // later resize can still keep the saved camera; do not zero.
             stop()
             return
           }
@@ -1444,6 +1446,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     cancelFitAnimation,
     commitTransform,
     cameraOutcomeKey,
+    cameraDestinationKey,
     resolveSemanticOutcome,
     adoptRestoredCamera,
   ])

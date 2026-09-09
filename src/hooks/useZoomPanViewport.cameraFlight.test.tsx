@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import type { CameraTransitionResult } from '@/lib/cameraTransition'
 import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import { UNRESOLVED_CAMERA_DESTINATION_PREFIX } from '@/lib/canvasViewState'
 import type { FocusCellsResult } from '@/lib/canvasFocusCells'
 
 type Rect = { left: number; top: number; width: number; height: number }
@@ -499,6 +500,7 @@ describe('viewport camera flights', () => {
 
   it('keeps a stored transform across a loading destination then the original one', () => {
     const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const loadingDestination = `${UNRESOLVED_CAMERA_DESTINATION_PREFIX}unknown`
     const first = render(
       <Harness
         resetKey="initial"
@@ -517,10 +519,10 @@ describe('viewport camera flights', () => {
 
     const returning = render(
       <Harness
-        resetKey="service-canvas:loading:unknown"
+        resetKey={loadingDestination}
         target={target}
         cameraStateKey="desktop:slice:loading-hop-test"
-        cameraDestinationKey="service-canvas:loading:unknown"
+        cameraDestinationKey={loadingDestination}
       />,
     )
 
