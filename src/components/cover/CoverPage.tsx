@@ -22,8 +22,8 @@ import { useEditor } from '@/contexts/EditorContext'
  * Everything visible is data from a `CoverContent` module; the components
  * here own only layout and theme treatment. Tab state is local and
  * unserialized: `?slice=` deep links resolve one way, out of this page into
- * app surfaces, never into a cover tab (plan §4.4 — a second writer on the
- * query string would race the slice resolution).
+ * app surfaces, never into a cover tab (a second writer on the query string
+ * would race the slice resolution).
  *
  * The header's button is the page's only NAVIGATING action — the one way
  * to leave the cover. Figures are click-to-expand, which is a second class

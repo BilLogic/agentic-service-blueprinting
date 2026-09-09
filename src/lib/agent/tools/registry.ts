@@ -364,7 +364,7 @@ export async function dispatchTool(
           scenarioId: need(args, 'scenario_id'),
           name: need(args, 'name'),
           laneRole: s(args, 'lane_role') ?? null,
-          atRow: typeof args.at_position === 'number' ? args.at_position : undefined,
+          atPosition: typeof args.at_position === 'number' ? args.at_position : undefined,
         })
         return 'Added lane to every path of the scenario. Re-read the blueprint for the new lane ids.'
       }
