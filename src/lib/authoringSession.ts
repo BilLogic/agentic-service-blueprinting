@@ -277,7 +277,16 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
   },
   add_step: (entry) => (named(entry) ? `Added step${named(entry)}` : 'Added a step'),
   add_lane: (entry) => `Added lane${named(entry)}`,
-  upsert_cell: () => 'Added a cell',
+  // Reads the derived inverse, because that is where the write's own account
+  // of which half it took survives into the entry. `deriveRevert` branches on
+  // the report — `delete_cell` for the insert, `restore_cell_content` for the
+  // update — so the sentence can branch on the same fact instead of on the
+  // operation's name, which is what said "Added a cell" over an edit.
+  //
+  // No inverse means the update half whose before-state did not come back;
+  // an insert always has one. So the absence reads as an edit, not a create.
+  upsert_cell: (entry) =>
+    entry.revert?.fn === 'delete_cell' ? 'Added a cell' : 'Edited a cell’s text',
   update_cell_content: () => 'Edited a cell’s text',
   update_cell_resources: () => 'Edited a cell’s resources',
   update_placement_resources: () => 'Edited a touchpoint’s resources at this cell',
@@ -330,7 +339,15 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
     titled(entry)
       ? `Removed evidence “${titled(entry)}”`
       : 'Removed an evidence source',
-  set_cell_dependency: () => 'Connected two cells',
+  // Upserts, so it lands on either side of the line the next one describes,
+  // and it says which through its inverse: `clear_cell_dependency` undoes an
+  // insert, `restore_cell_dependency` puts a row's words back. An update whose
+  // before-state did not come back records no inverse, and that is still an
+  // edit rather than a connection.
+  set_cell_dependency: (entry) =>
+    entry.revert?.fn === 'clear_cell_dependency'
+      ? 'Connected two cells'
+      : 'Edited a connection',
   clear_cell_dependency: () => 'Removed a connection',
   reorder_steps: () => 'Reordered the steps',
   set_path_steps: () => 'Reordered the steps',
