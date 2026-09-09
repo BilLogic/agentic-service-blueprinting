@@ -377,18 +377,34 @@ The client consumes a **GoTrue-compatible session API** via
 replacement backend must issue JWTs the data API accepts and keep those
 four behaviors intact.
 
-Tier semantics ride the JWT's `app_metadata.role` claim
-(consuming code: `src/contexts/SupabaseProvider.tsx`):
+**The tier is asked, not read off the token.** The client calls
+`is_service_account()` — the same seam every write RPC asserts in its own
+body and every restrictive write policy ANDs with — and takes its answer
+(`src/lib/backend/adapters/supabaseIdentity.ts`, consumed by
+`src/contexts/SupabaseProvider.tsx`):
 
-- `role === 'service'` → full write (service account).
-- any **other explicit role** → the tier recipe is in play and this
-  session is a **view-only agent** (scripted refusals instead of raw
-  policy errors).
-- **no role claim** → the tier recipe was never adopted, so **every
-  signed-in session writes** — the template default.
+- no session → `anon`, settled without asking. The seam's permissive
+  default answers `true` to anyone who calls it, anon included, so a
+  deployed visitor is decided before the database is involved.
+- signed in, the seam answers `true` → `service`: the full write gate.
+- signed in, the seam answers `false` → `anon`: the board and any chat
+  surfaces, and no write affordances.
+- the ask fails → `anon`. The database refuses the write either way, and
+  offering a save that cannot succeed is the worse of the two mistakes.
 
-These client checks are UX gates only; the backend must enforce the same
-tiers server-side (the RPC in-body guard plus table policies), because a
+The `role` claim is **not** consulted, in either direction. It is how the
+Supabase recipe happens to carry the tier, and a client that read it would
+be re-deriving a rule the database owns, in a second place, where the two
+can disagree — which is what handed a role-less account the whole editing
+UI over a database that refused every save. A replacement backend answers
+the same question however it likes and need not have a claim at all.
+
+The answer is asked again whenever the access token changes, because it is
+computed server-side from the token presented; it is held against the
+account, so a token refresh updates it without blanking it.
+
+This is still a UX gate; the backend must enforce the same tiers
+server-side (the RPC in-body guard plus table policies), because a
 definer-style RPC bypasses row policies entirely.
 
 ## Per-locale artifacts

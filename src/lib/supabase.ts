@@ -17,10 +17,15 @@ export function isSupabaseConfigured(): boolean {
 /**
  * Local authoring key, dev server only.
  *
- * The deployed app is read-only by design: every write policy is `to
- * authenticated`, there is no sign-in, so a browser visitor cannot write.
- * Authoring is for people who already hold this project's database
- * credentials — us — working against `npm run dev`.
+ * The deployed app is read-only to the PUBLIC by design: every write policy
+ * is `to authenticated`, and a browser visitor is anon. It does carry a
+ * sign-in — a password form and a magic link, in its settings — so an
+ * account somebody has already made, and given the editing tier, writes from
+ * the deployed site. The magic link is sent with account creation off, so it
+ * cannot mint one.
+ *
+ * This key is the other way in, for people who already hold this project's
+ * database credentials — us — working against `npm run dev`.
  *
  * Three guards, because a service key in a browser bundle is full database
  * access to anyone who loads the page:

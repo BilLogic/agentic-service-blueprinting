@@ -199,7 +199,13 @@ export interface IdentityPort {
 }
 
 export type Tier =
-  /** Not signed in. Reads what is public; writes nothing. */
+  /**
+   * Writes nothing. Not signed in — or signed in and outside every writing
+   * tier, which a backend that splits `authenticated` in two answers for
+   * about half its accounts. The defining property is the write, not the
+   * sign-in: what a session may READ is a separate question, and so is
+   * whether it may open the agent.
+   */
   | 'anon'
   /** Signed in. Writes the records about the board: slices, slides, findings, evidence. */
   | 'authoring'
