@@ -572,10 +572,13 @@ export const TOOL_SPECS: ToolSpec[] = [
       properties: {
         kind: {
           type: 'string',
-          enum: ['scenario', 'path', 'slice'],
-          description: 'What is being deleted. Only these three kinds are supported.',
+          enum: ['scenario', 'path', 'step', 'lane', 'slice'],
+          description: 'What is being deleted.',
         },
-        target_id: str('Id of the scenario, path, or slice'),
+        target_id: str('Id of the scenario, path, step, lane or slice'),
+        scope_id: str(
+          'REQUIRED when kind is "step": the path id. Deleting a step removes only the cells on ONE path, so without the path there is no true number to quote. Ignored for other kinds.',
+        ),
       },
       required: ['kind', 'target_id'],
     },

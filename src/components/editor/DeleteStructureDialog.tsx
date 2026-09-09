@@ -26,9 +26,9 @@ import { errorMessage } from '@/lib/utils'
 
 export type DeletionTarget = {
   /**
-   * `DeletableKind` is narrower than the set `deletion_impact` answers for, on
-   * purpose — `lane` and `step` count something other than what their delete
-   * removes. See `deletionSafety.ts`.
+   * Every kind `deletion_impact` answers for, plus `slice`. The switch below
+   * performs only three of them — a lane or a step is deleted from its own
+   * affordance — but the impact read is the same one for all of them.
    */
   kind: DeletableKind
   /** The row to delete. */
@@ -139,6 +139,15 @@ export function DeleteStructureDialog({
           // Frames cascade in the database; there is no archive row to return.
           await deleteSlice(client, target.id, target.label)
           break
+        // `DeletableKind` covers every kind the impact read answers for, which
+        // is wider than what this dialog performs. Without this arm a `step`
+        // or `lane` target would fall through the switch, delete nothing, and
+        // still close and fire `onDeleted` — a delete that reports success and
+        // did not happen.
+        default:
+          throw new Error(
+            `This dialog does not delete a ${target.kind} — that is done from its own affordance.`,
+          )
       }
       invalidateStructure()
       onOpenChange(false)

@@ -412,8 +412,9 @@ export async function getDeletionImpact(
   client: Client,
   kind: DeletableKind,
   targetId: string,
+  scopeId?: string,
 ): Promise<string> {
-  const summary = await readDeletionImpact(client, kind, targetId)
+  const summary = await readDeletionImpact(client, kind, targetId, scopeId)
   const lines = [
     `Deleting this ${DELETION_NOUNS[kind]} would destroy:`,
     ...summary.facts.map(

@@ -20,39 +20,40 @@ import type { Database } from '@/types/database'
 /**
  * Everything the confirm dialog can delete.
  *
- * **Deliberately narrower than `DeletionKind`.** That type is the set of kinds
- * `deletion_impact` will answer for; this one is the set whose counts are
- * actually TRUE of the delete that follows, and `lane` and `step` are not in
- * it:
+ * `lane` and `step` used to be excluded here, because `deletion_impact`
+ * answered for them with numbers that were not true of the delete that
+ * followed — and the note said the SQL fix "cannot be verified without a
+ * migration apply", so the type was narrowed instead of the predicates
+ * corrected.
  *
- *   * `deletion_impact('lane', id)` counts the cells of ONE `lanes` row, but
+ * The predicates are corrected now. What was measured against a live
+ * blueprint, before and after:
+ *
+ *   * lane — `deletion_impact('lane', <one lane row>)` reported **11**;
  *     `remove_lane(scenario_id, lane_name)` deletes every same-named lane
- *     across every path of the scenario. A 12-cell dialog would precede a
- *     36-cell delete — it undercounts.
- *   * `deletion_impact('step', id)` counts the cells of that step across every
- *     path, but `remove_step(path_id, step_id)` deletes only the ones on the
- *     path it is given. It overcounts.
+ *     across every path of the scenario, which is **93**. An 8.5x undercount.
+ *     Now 93.
+ *   * step — counted the step across EVERY path (**12**); `remove_step(
+ *     path_id, step_id)` deletes only the cells on the path it is given
+ *     (**5**). Now 5, and the function REFUSES without a `scopeId` rather
+ *     than guess a path.
  *
- * Two mismatches in opposite directions, neither of which any caller has ever
- * exercised — nothing passes `lane` or `step`. The type advertised them
- * anyway, which is all a future caller needs to ship a confirm dialog whose
- * numbers are wrong in the one place numbers are the entire point. Making them
- * unrepresentable is chosen over correcting the two SQL predicates because the
- * correction cannot be verified without a migration apply, while this ships
- * with the branch — and because when someone does want a lane delete, the
- * compile error lands exactly on the pair of functions that has to be made to
- * agree first.
+ * Both were identity bugs, not arithmetic: a lane delete is addressed by
+ * (scenario, name) and a step delete by (path, step), but the function took
+ * a single uuid.
  *
- * A slice, conversely, is NOT a `DeletionKind` and must never be added there:
+ * A slice is still NOT a `DeletionKind` and must never be added there:
  * `deletion_impact` answers "how much of the BLUEPRINT dies", and a slice
  * delete destroys none of it (see `sliceDeletionImpact`).
  */
-export type DeletableKind = Extract<DeletionKind, 'scenario' | 'path'> | 'slice'
+export type DeletableKind = DeletionKind | 'slice'
 
 /** Nouns for the confirm sentence. */
 export const DELETION_NOUNS: Record<DeletableKind, string> = {
   scenario: 'scenario',
   path: 'path',
+  step: 'step',
+  lane: 'lane',
   slice: 'slice',
 }
 
@@ -228,11 +229,18 @@ export function readDeletionImpact(
   client: SupabaseClient<Database>,
   kind: DeletableKind,
   targetId: string,
+  /** Required for `step` — the path the delete is scoped to. */
+  scopeId?: string,
 ): Promise<ImpactSummary> {
   if (kind === 'slice') {
     return sliceDeletionImpact(client, targetId).then(summarizeSliceImpact)
   }
-  return deletionImpact(client, kind, targetId).then(summarizeImpact)
+  if (kind === 'step' && !scopeId) {
+    throw new Error(
+      'A step impact needs the path it is scoped to — remove_step deletes only the cells on one path.',
+    )
+  }
+  return deletionImpact(client, kind, targetId, scopeId).then(summarizeImpact)
 }
 
 /**

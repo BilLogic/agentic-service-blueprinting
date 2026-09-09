@@ -601,10 +601,18 @@ export function deletionImpact(
   client: Client,
   kind: DeletionKind,
   targetId: string,
+  /**
+   * The other half of the delete's identity, for the kind whose delete is not
+   * addressed by a single id: `step` needs the path_id, because `remove_step`
+   * is path-scoped. `lane` derives its scenario from the lane itself, so it
+   * takes none. Passing it for scenario/path is harmless and ignored.
+   */
+  scopeId?: string,
 ): Promise<DeletionImpact> {
   return read<DeletionImpact>(client, 'deletion_impact', {
     kind,
     target_id: targetId,
+    scope_id: scopeId ?? null,
   })
 }
 

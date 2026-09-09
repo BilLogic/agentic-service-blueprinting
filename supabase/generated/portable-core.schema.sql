@@ -501,16 +501,16 @@ end;
 $$;
 
 --
--- Name: deletion_impact(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: deletion_impact(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.deletion_impact(kind text, target_id uuid) RETURNS jsonb
+CREATE FUNCTION public.deletion_impact(kind text, target_id uuid, scope_id uuid DEFAULT NULL::uuid) RETURNS jsonb
     LANGUAGE plpgsql STABLE
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
 declare
   affected uuid[];
-  label text;
+  label    text;
 begin
   if kind = 'scenario' then
     select array_agg(c.id), max(sc.name) into affected, label
@@ -518,18 +518,38 @@ begin
     join public.paths p on p.id = c.path_id
     join public.scenarios sc on sc.id = p.scenario_id
     where sc.id = target_id;
+
   elsif kind = 'path' then
     select array_agg(c.id), max(p.name) into affected, label
     from public.cells c join public.paths p on p.id = c.path_id
     where p.id = target_id;
+
   elsif kind = 'step' then
+    -- remove_step(path_id, step_id) is path-scoped, so this must be too.
+    if scope_id is null then
+      raise exception 'deletion_impact(''step'', ...) needs scope_id = the path_id'
+        using hint = 'remove_step deletes only the cells on one path; without the path there is no true count.';
+    end if;
     select array_agg(c.id), max(s.name) into affected, label
     from public.cells c join public.steps s on s.id = c.step_id
-    where s.id = target_id;
+    where c.step_id = target_id and c.path_id = scope_id;
+
   elsif kind = 'lane' then
+    -- remove_lane(scenario_id, lane_name) deletes by NAME across the whole
+    -- scenario. Resolve the given lane to its (scenario, name) and count
+    -- every lane the delete would actually take.
     select array_agg(c.id), max(l.name) into affected, label
-    from public.cells c join public.lanes l on l.id = c.lane_id
-    where l.id = target_id;
+    from public.cells c
+    join public.lanes l on l.id = c.lane_id
+    join public.paths p on p.id = l.path_id
+    where p.scenario_id = (
+            select p2.scenario_id
+            from public.lanes l2
+            join public.paths p2 on p2.id = l2.path_id
+            where l2.id = target_id
+          )
+      and l.name = (select l3.name from public.lanes l3 where l3.id = target_id);
+
   else
     raise exception 'Unknown kind %', kind;
   end if;
@@ -1114,7 +1134,7 @@ begin
       using errcode = '42501';
   end if;
 
-  impact := public.deletion_impact('step', step_id);
+  impact := public.deletion_impact('step', step_id, remove_step.path_id);
 
   select jsonb_build_object(
     'step', to_jsonb(s),
