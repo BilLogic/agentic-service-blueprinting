@@ -293,6 +293,12 @@ jobs:
       - name: A populated resource split preserves citation targets
         run: bash scripts/tests/resource-split-migration.test.sh
 
+      # An empty replay cannot tell a guard that refuses from a migration that
+      # did nothing. This one populates `evidence` with the three shapes the
+      # deployment holds and asserts which of them stop the file.
+      - name: A populated evidence fold keeps its prose and refuses a reference
+        run: bash scripts/tests/evidence-note-migration.test.sh
+
       # `services.entity_examples` is written from the editor as well as by the
       # seed, so the emitter alone cannot say whether an authored example
       # arrives and whether the next re-map takes it away again. This loads a

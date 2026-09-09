@@ -328,10 +328,10 @@ async function realListStakeholders() {
     .join('\n')
 }
 
-const EVIDENCE_COLUMNS = 'id,cell_id,kind,title,ref,excerpt,observed_at'
+const EVIDENCE_COLUMNS = 'id,cell_id,kind,title,note,observed_at'
 
 const evidenceLine = (r) =>
-  `[${r.kind}] "${r.title}"${r.ref ? ` ref=${r.ref}` : ''}${r.observed_at ? ` observed=${String(r.observed_at).slice(0, 10)}` : ''}${r.cell_id ? ` cell=${r.cell_id}` : ''} (${r.id})`
+  `[${r.kind}] "${r.title}"${r.observed_at ? ` observed=${String(r.observed_at).slice(0, 10)}` : ''}${r.cell_id ? ` cell=${r.cell_id}` : ''} (${r.id})`
 
 async function realListEvidence(cellId) {
   const scope = cellId ? `&cell_id=eq.${encodeURIComponent(String(cellId))}` : ''
@@ -355,7 +355,7 @@ async function realGetEvidence(ids) {
   if (!rows?.length) return 'No evidence with those ids.'
   return rows
     .map((r) =>
-      [evidenceLine(r), r.excerpt ? `  excerpt: ${r.excerpt}` : '']
+      [evidenceLine(r), r.note ? `  note: ${r.note}` : '']
         .filter(Boolean)
         .join('\n'),
     )

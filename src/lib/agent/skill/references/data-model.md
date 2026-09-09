@@ -241,8 +241,8 @@ uuid[]` paired 1:1 with `cell_keys text[]`; `slices` reaches those references
 through its `slides`. None has a cell FK. `evidence`, `audit_findings`, and
 `slices` carry a hard `service_id` FK (cascade), while `slides` carries a
 hard `slice_id` FK. Services are upserted, never deleted, by the importer, and
-for `evidence` the service FK is the retention/deletion story for interview
-excerpts.
+for `evidence` the service FK is the retention/deletion story for whatever
+interview content its notes hold.
 "Assumption" is a derived state — a cell with zero evidence rows —
 deliberately never stored.
 
@@ -251,7 +251,7 @@ deliberately never stored.
 | `slices` | A saved 1D cut through the grid that REFERENCES cells (never copies them) | `title`, `summary`, `kind` (`journey`\|`step`\|`lane`\|`cell`\|`custom`), `actor`, `locale`, `position`, `authorship` (`generated` = safe to regenerate \| `customized` = skill output human-edited, regeneration must confirm \| `human` = authored in the app, never the skill's to regenerate) |
 | `slides` | One slide of a slice | `position` (unique per slice, deferrable), `cell_ids`/`cell_keys` (equal cardinality enforced; empty = title-only divider slide), `title`, `narrative`, `illustration` JSONB — full-replacement semantics on rework |
 | `audit_findings` | One triageable audit/whatif finding | `source` (`audit`\|`whatif`\|`import-sweep`), `check_key`, `severity` (`info`\|`warn`\|`critical`), `summary`, `cell_ids`/`cell_keys`, `status` (`open`\|`resolved`\|`dismissed`), `run_id` (FK-less by design — no runs table), `fingerprint` (check_key + sorted-cell_keys hash + reason slug — audit-playbook §2) |
-| `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); restricted SELECT — excerpts may hold interview content |
+| `evidence` | One provenance row for a cell OR a proposition question | Exactly one of `cell_id` / `proposition_question_key` (`understand`\|`value`\|`usability`); `cell_id` ⇄ `cell_key` always paired; `kind` (`interview`\|`survey`\|`analytics`\|`doc`\|`meeting`\|`decision`\|`observation`\|`other`); `observed_at` is date-only by design (timestamps could re-identify participants); one general-purpose `note` — a quotation, an observation, or a URL, which renders as a link; restricted SELECT — a note may hold interview content |
 
 **Findings dedupe is DB-backed**: the partial unique index
 `findings_open_fingerprint_idx` on `(service_id, fingerprint)

@@ -45,7 +45,8 @@ describe('the auditor findings-row shape', () => {
       (entry) => entry.problem,
     )
     expect(problems).toContain('"check_name" is not a column of audit_findings')
-    // `note` IS a column — of `paths`, `scenarios` and `cell_dependencies`.
+    // `note` IS a column — of `paths`, `scenarios`, `cell_dependencies`,
+    // `evidence` and `service_account_emails`.
     // Only the binding to a relation makes it wrong here, which is the whole
     // argument for binding rather than pattern-matching.
     expect(problems).toContain('"note" is not a column of audit_findings')

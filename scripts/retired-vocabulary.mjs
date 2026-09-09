@@ -77,6 +77,27 @@
  * sentence that describes the thing, and a `note` is an aside beside it.
  * `findings.note` was never an aside; it is the finding's own sentence.
  *
+ * **`21000208000000` is the one place a `note` stopped being an aside and kept
+ * the word anyway**, and it is worth saying why rather than leaving the reader
+ * to notice. `21000116000000` deliberately spared `evidence.note` on the
+ * argument that a source's note is an aside beside the source; measured on the
+ * deployment three months later, the field beside it that was meant to carry
+ * the source's own content — `evidence.excerpt`, "the quoted passage" — held
+ * two values in 66 rows, one of them a summary. The aside was doing the work.
+ * So `excerpt` folds into `note` and `evidence.ref` goes with it, and the
+ * doctrine survives with one honest exception: on `evidence` the note IS the
+ * prose, because the column that claimed to be turned out never to be. That is
+ * a fold, not a licence — `findings.summary` is still a summary, and a new
+ * column whose job is the thing's own sentence still gets `summary`.
+ *
+ * Neither pair carries a `rename column`: `excerpt` cannot be renamed onto a
+ * `note` that already exists, so an `update` moves the prose and the column is
+ * dropped; `ref` goes nowhere at all and the migration refuses rather than
+ * destroy a locator it cannot turn into a sentence. Both words stay live
+ * English — a JSON Schema `$ref`, a Supabase project ref, a React ref, and the
+ * standing "no verbatim excerpts" rule the skills state — so the row enforces
+ * nothing.
+ *
  * **Four of those words are retired as identifiers and NOT as words**, which is
  * why their rows enforce nothing and this paragraph exists — a check that
  * deliberately ignores a word has to say so, or the next person reads the silence
@@ -714,6 +735,39 @@ export const RENAME_MAP = Object.freeze(
       migrations: [],
       retired: [],
       copy: ['pill', 'pills', 'chip', 'chips'],
+    },
+    // A source carries one note (`21000208000000`). See the header for why the
+    // one column `21000116000000` spared is the one that stopped being an
+    // aside. `retired` and `copy` are empty on purpose: both words are live
+    // English across `references/`, `agents/` and `skills/` — a JSON Schema
+    // `$ref`, a Supabase project ref, and the standing "no verbatim excerpts"
+    // privacy rule, which is about not pasting interview content into a public
+    // artifact and stays true with no column behind it.
+    {
+      renames: [
+        {
+          from: 'evidence.excerpt',
+          to: 'evidence.note',
+          because:
+            '21000208000000 does not rename this column, it EMPTIES it: a ' +
+            'column cannot be renamed onto a `note` that already exists, so an ' +
+            'update moves every excerpt into the note it was an aside beside, ' +
+            'and the column is then dropped.',
+        },
+        {
+          from: 'evidence.ref',
+          to: null,
+          because:
+            'dropped, not renamed. A locator is not prose and 21000208000000 ' +
+            'will not invent a sentence around one, so it has no update for ' +
+            'this column — it refuses instead, and a row still carrying a ' +
+            'reference stops the migration. The job the column did is done by ' +
+            'a URL written inside the note, which renders as a link.',
+        },
+      ],
+      migrations: ['21000208000000'],
+      retired: [],
+      copy: [],
     },
   ].map((row) => {
     const renames = Object.freeze(row.renames.map((pair) => Object.freeze({ ...pair })))

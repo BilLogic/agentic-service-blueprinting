@@ -724,9 +724,7 @@ export async function dispatchTool(
           cellKey: cellId,
           kind: kind as EvidenceKind,
           title: need(args, 'title'),
-          ref: s(args, 'ref') ?? null,
-          excerpt: s(args, 'excerpt') ?? null,
-          note: null,
+          note: s(args, 'note') ?? null,
         })
         return `Evidence added (${id}).`
       }
@@ -740,8 +738,7 @@ export async function dispatchTool(
         await updateEvidence(client, need(args, 'evidence_id'), {
           kind: kind as EvidenceKind | undefined,
           title: s(args, 'title'),
-          ref: s(args, 'ref'),
-          excerpt: s(args, 'excerpt'),
+          note: s(args, 'note'),
         })
         return 'Evidence updated.'
       }

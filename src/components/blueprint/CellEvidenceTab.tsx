@@ -6,7 +6,6 @@ import {
   CircleDashed,
   ClipboardList,
   Eye,
-  ExternalLink,
   FileText,
   Lightbulb,
   MessageSquare,
@@ -18,11 +17,12 @@ import { Button } from '@/components/ui/button'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Field } from '@/components/blueprint/panelShell'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateEvidence, useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
+import { linkedTextSegments } from '@/lib/linkedText'
 import { resolveFirstServiceId } from '@/lib/service'
-import { safeExternalHref } from '@/lib/sliceCells'
 import type { Database, Evidence } from '@/types/database'
 
 const EVIDENCE_KINDS = [
@@ -54,34 +54,41 @@ function kindIcon(kind: string) {
   return <Icon className="mt-px size-3.5 shrink-0 text-muted-foreground" aria-hidden />
 }
 
+/**
+ * A saved source: one title, one kind, one note, one text treatment.
+ *
+ * It wore three at once — a monospaced link, an italic passage behind a left
+ * rule, and the note — which is three ways of saying "this text is different"
+ * stacked in a panel 264 pixels wide. The kind is a quiet suffix after the
+ * title now, so the icon reinforces it rather than carrying it alone, and a
+ * URL written inside the note is the link.
+ */
 function EvidenceRow({ row }: { row: Evidence }) {
-  const refHref = safeExternalHref(row.ref)
   return (
     <li className="flex items-start gap-2 border-b border-muted py-2 last:border-0">
       {kindIcon(row.kind)}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="text-xs font-medium text-foreground">{row.title}</p>
-        {refHref ? (
-          <a
-            href={refHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-fit min-w-0 items-center gap-1 text-2xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ExternalLink className="size-3 shrink-0" aria-hidden />
-            {/* A citation ref or URL — machine data, and mono keeps a truncated
-                one scannable character by character. */}
-            <span className="truncate font-mono">{row.ref}</span>
-          </a>
-        ) : null}
-        {row.excerpt ? (
-          <p className="border-l-2 border-border pl-2 text-2xs leading-snug text-muted-foreground italic">
-            {row.excerpt}
-          </p>
-        ) : null}
+        <p className="text-xs font-medium break-words text-foreground">
+          {row.title}{' '}
+          <span className="font-normal text-muted-foreground">{row.kind}</span>
+        </p>
         {row.note ? (
-          <p className="text-2xs leading-snug text-muted-foreground">
-            {row.note}
+          <p className="text-2xs leading-snug break-words text-muted-foreground">
+            {linkedTextSegments(row.note).map((segment, index) =>
+              segment.kind === 'link' ? (
+                <a
+                  key={index}
+                  href={segment.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 transition-colors hover:text-foreground"
+                >
+                  {segment.text}
+                </a>
+              ) : (
+                <span key={index}>{segment.text}</span>
+              ),
+            )}
           </p>
         ) : null}
       </div>
@@ -101,8 +108,6 @@ function AddSourceForm({
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<EvidenceKind>('interview')
   const [title, setTitle] = useState('')
-  const [ref, setRef] = useState('')
-  const [excerpt, setExcerpt] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -139,14 +144,10 @@ function AddSourceForm({
         cellKey: cellId,
         kind,
         title: title.trim(),
-        ref: ref.trim() || null,
-        excerpt: excerpt.trim() || null,
         note: note.trim() || null,
       })
       setOpen(false)
       setTitle('')
-      setRef('')
-      setExcerpt('')
       setNote('')
       onAdded()
     } catch (submitError) {
@@ -167,49 +168,47 @@ function AddSourceForm({
         void handleSubmit(event)
       }}
     >
-      <select
-        value={kind}
-        aria-label="Source kind"
-        className="h-7 w-full rounded-md border border-border bg-background px-2 font-mono text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
-        onChange={(event) => setKind(event.target.value as EvidenceKind)}
-      >
-        {EVIDENCE_KINDS.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <Input
-        required
-        placeholder="Title"
-        aria-label="Source title"
-        className="h-7 text-xs"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-      />
-      <Input
-        placeholder="Link or reference"
-        aria-label="Source reference"
-        className="h-7 text-xs"
-        value={ref}
-        onChange={(event) => setRef(event.target.value)}
-      />
-      <textarea
-        rows={2}
-        placeholder="Excerpt"
-        aria-label="Source excerpt"
-        className="w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
-        value={excerpt}
-        onChange={(event) => setExcerpt(event.target.value)}
-      />
-      <textarea
-        rows={2}
-        placeholder="Note"
-        aria-label="Source note"
-        className="w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
-        value={note}
-        onChange={(event) => setNote(event.target.value)}
-      />
+      {/* Three fields, one group, no rule between them. The form used to draw
+          a locator and a quotation as separate questions from the title; of 66
+          rows in production the locator was filled zero times and the
+          quotation twice, once with a summary. `Field` supplies the label —
+          a placeholder disappears the moment an author starts typing, and the
+          asterisk is this panel's only signal that a field cannot be left
+          empty, so its absence on Note is what says Note is optional. */}
+      <Field label="Kind">
+        <select
+          value={kind}
+          aria-label="Kind"
+          className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          onChange={(event) => setKind(event.target.value as EvidenceKind)}
+        >
+          {EVIDENCE_KINDS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Title" required>
+        <Input
+          required
+          placeholder="What the source is"
+          aria-label="Title"
+          className="h-7 text-xs"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </Field>
+      <Field label="Note">
+        <textarea
+          rows={3}
+          placeholder="Anything worth keeping — a quotation, an observation, a link"
+          aria-label="Note"
+          className="w-full resize-none rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </Field>
       {error ? (
         /* The source was not saved — an error, not a caution. */
         <Alert variant="destructive">

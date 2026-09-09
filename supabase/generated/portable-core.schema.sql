@@ -2668,8 +2668,6 @@ CREATE TABLE public.evidence (
     proposition_question_key text,
     kind text NOT NULL,
     title text NOT NULL,
-    ref text,
-    excerpt text,
     note text,
     observed_at date,
     added_by text,
@@ -2686,7 +2684,13 @@ CREATE TABLE public.evidence (
 -- Name: TABLE evidence; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.evidence IS 'Provenance rows for cells and proposition questions. A cell with zero rows is an ASSUMPTION (derived, never stored). Restricted SELECT: excerpts may hold interview content.';
+COMMENT ON TABLE public.evidence IS 'Provenance rows for cells and proposition questions. A cell with zero rows is an ASSUMPTION (derived, never stored). Restricted SELECT: a note may hold interview content.';
+
+--
+-- Name: COLUMN evidence.note; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.evidence.note IS 'The one thing worth keeping about this source, in the author''s own words: a quotation, an observation, or a link. A URL written here renders as a link wherever the source is displayed.';
 
 --
 -- Name: COLUMN evidence.observed_at; Type: COMMENT; Schema: public; Owner: -
