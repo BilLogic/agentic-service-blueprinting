@@ -23,6 +23,7 @@ import { isCanvasResizeRefitSuppressed } from '@/lib/canvasChromeResize'
 import { publishCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 import {
   beginCanvasViewState,
+  isUnresolvedCameraDestination,
   writeCanvasViewState,
   type CanvasViewGeometry,
 } from '@/lib/canvasViewState'
@@ -399,7 +400,9 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       ? beginCanvasViewState(cameraStateKey)
       : undefined
     const restored =
-      stored?.snapshot?.destinationKey === cameraDestinationKey
+      stored?.snapshot &&
+      (isUnresolvedCameraDestination(cameraDestinationKey) ||
+        stored.snapshot.destinationKey === cameraDestinationKey)
         ? stored.snapshot
         : undefined
     return {
@@ -1133,6 +1136,77 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     commitTransform({ x: 0, y: 0 }, 1, true)
   }, [cancelCameraNavigation, commitTransform])
 
+  /**
+   * Drop a stored camera that no longer names this board, then land at identity
+   * so the pending fit can take over.
+   */
+  const rejectRestoredCamera = useCallback(() => {
+    restoredCameraPendingRef.current = false
+    restoredSnapshotRef.current = undefined
+    commitTransform({ x: 0, y: 0 }, 1, true)
+  }, [commitTransform])
+
+  /**
+   * Keep, wait on, or reject a remounted tab's stored camera.
+   * A loading destination and a zero-size viewport are not misses.
+   */
+  const adoptRestoredCamera = useCallback(():
+    | 'kept'
+    | 'waiting-dest'
+    | 'waiting-layout'
+    | 'rejected'
+    | 'idle' => {
+    if (!restoredCameraPendingRef.current) return 'idle'
+    const destinationKey = cameraDestinationKeyRef.current
+    if (isUnresolvedCameraDestination(destinationKey)) return 'waiting-dest'
+
+    const container = containerRef.current
+    const content = contentRef.current
+    const restored = transformRef.current
+    const snapshot = restoredSnapshotRef.current
+    const fitTarget =
+      content?.querySelector<HTMLElement>(fitSelectorRef.current) ?? content
+    if (
+      !container ||
+      !content ||
+      !fitTarget ||
+      container.clientWidth <= 0 ||
+      container.clientHeight <= 0
+    ) {
+      return 'waiting-layout'
+    }
+
+    const geometry = measureFitBounds(content, fitTarget, restored.zoom)
+    if (geometry.width <= 0 || geometry.height <= 0) return 'waiting-layout'
+
+    const destMatches = snapshot?.destinationKey === destinationKey
+    const geometryMatches =
+      snapshot !== undefined &&
+      isSameFitGeometry(snapshot.geometry, geometry)
+    const onCanvas =
+      restored.zoom >= MIN_ZOOM &&
+      restored.zoom <= MAX_ZOOM &&
+      restored.pan.x + content.scrollWidth * restored.zoom > 0 &&
+      restored.pan.y + content.scrollHeight * restored.zoom > 0 &&
+      restored.pan.x < container.clientWidth &&
+      restored.pan.y < container.clientHeight
+
+    if (destMatches && geometryMatches && onCanvas) {
+      restoredCameraPendingRef.current = false
+      lastFitGeometryRef.current = geometry
+      hasFittedRef.current = true
+      userAdjustedViewRef.current = true
+      pendingFitRef.current = false
+      commitTransform(restored.pan, restored.zoom, true)
+      resolveSemanticOutcome({ kind: 'completed', transform: restored })
+      onFitReadyRef.current?.()
+      return 'kept'
+    }
+
+    rejectRestoredCamera()
+    return 'rejected'
+  }, [commitTransform, rejectRestoredCamera, resolveSemanticOutcome])
+
   useLayoutEffect(() => {
     const { pan: p, zoom: z } = transformRef.current
     commitTransform(p, z, false)
@@ -1182,46 +1256,21 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     focusTargetRef.current = nextFocusTarget
     if (restoredCameraPendingRef.current) {
       pendingFocusTransferRef.current = null
-      restoredCameraPendingRef.current = false
-      const container = containerRef.current
-      const restoredContent = contentRef.current
-      const restored = transformRef.current
-      const restoredSnapshot = restoredSnapshotRef.current
-      const restoredTarget = nextFocusTarget ?? restoredContent
-      const restoredGeometry =
-        restoredContent && restoredTarget
-          ? measureFitBounds(restoredContent, restoredTarget, restored.zoom)
-          : null
-      const restoredGeometryMatches =
-        restoredSnapshot !== undefined &&
-        restoredGeometry !== null &&
-        restoredSnapshot.destinationKey === cameraDestinationKeyRef.current &&
-        isSameFitGeometry(restoredSnapshot.geometry, restoredGeometry)
-      const restoredIntersectsCanvas =
-        container !== null &&
-        restoredContent !== null &&
-        restored.zoom >= MIN_ZOOM &&
-        restored.zoom <= MAX_ZOOM &&
-        restored.pan.x + restoredContent.scrollWidth * restored.zoom > 0 &&
-        restored.pan.y + restoredContent.scrollHeight * restored.zoom > 0 &&
-        restored.pan.x < container.clientWidth &&
-        restored.pan.y < container.clientHeight &&
-        restoredGeometryMatches
-      if (restoredIntersectsCanvas) {
-        lastFitGeometryRef.current = restoredGeometry
-        hasFittedRef.current = true
-        userAdjustedViewRef.current = true
-        pendingFitRef.current = false
-        commitTransform(restored.pan, restored.zoom, true)
-        resolveSemanticOutcome({ kind: 'completed', transform: restored })
-        onFitReadyRef.current?.()
-        return
+      const adoption = adoptRestoredCamera()
+      if (adoption === 'kept') return
+      if (adoption === 'waiting-dest' || adoption === 'waiting-layout') {
+        commitTransform(
+          transformRef.current.pan,
+          transformRef.current.zoom,
+          true,
+        )
+        if (adoption === 'waiting-dest') return
       }
-      restoredSnapshotRef.current = undefined
-      commitTransform({ x: 0, y: 0 }, 1, true)
     }
-    pendingFitRef.current = true
-    userAdjustedViewRef.current = false
+    if (!restoredCameraPendingRef.current) {
+      pendingFitRef.current = true
+      userAdjustedViewRef.current = false
+    }
 
     // Captured now, not read at fit time: a one-shot skip flag may be
     // cleared between scheduling this fit and the frame it runs on.
@@ -1306,6 +1355,23 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         stop()
         return
       }
+      if (restoredCameraPendingRef.current) {
+        const adoption = adoptRestoredCamera()
+        if (adoption === 'kept') {
+          stop()
+          return
+        }
+        if (adoption === 'waiting-dest' || adoption === 'waiting-layout') {
+          if (++polls > MAX_SETTLE_POLLS) {
+            stop()
+            return
+          }
+          frame = requestAnimationFrame(step)
+          return
+        }
+        pendingFitRef.current = true
+        userAdjustedViewRef.current = false
+      }
       const content = contentRef.current
       const matchedTarget =
         content?.querySelector<HTMLElement>(fitSelector) ?? null
@@ -1379,15 +1445,23 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     commitTransform,
     cameraOutcomeKey,
     resolveSemanticOutcome,
+    adoptRestoredCamera,
   ])
 
   useEffect(
     () => () => {
-      if (initialCamera.lease && lastFitGeometryRef.current) {
+      const destinationKey = isUnresolvedCameraDestination(
+        cameraDestinationKeyRef.current,
+      )
+        ? restoredSnapshotRef.current?.destinationKey
+        : cameraDestinationKeyRef.current
+      const geometry =
+        lastFitGeometryRef.current ?? restoredSnapshotRef.current?.geometry
+      if (initialCamera.lease && geometry && destinationKey) {
         writeCanvasViewState(initialCamera.lease, {
           transform: transformRef.current,
-          destinationKey: cameraDestinationKeyRef.current,
-          geometry: lastFitGeometryRef.current,
+          destinationKey,
+          geometry,
         })
       }
     },
@@ -1406,6 +1480,16 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     let debounceTimer = 0
 
     const onResize = () => {
+      if (restoredCameraPendingRef.current) {
+        const adoption = adoptRestoredCamera()
+        if (
+          adoption === 'kept' ||
+          adoption === 'waiting-dest' ||
+          adoption === 'waiting-layout'
+        ) {
+          return
+        }
+      }
       // A rotation is not a window drag: flipping the aspect ratio
       // invalidates whatever framing the user had built, and on a phone
       // there is no Reset control to recover with — so an orientation flip
@@ -1542,6 +1626,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     refitDebounceMs,
     runPendingFit,
     suppressResizeRefit,
+    adoptRestoredCamera,
   ])
 
   /**

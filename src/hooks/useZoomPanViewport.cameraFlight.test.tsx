@@ -497,6 +497,58 @@ describe('viewport camera flights', () => {
     })
   })
 
+  it('keeps a stored transform across a loading destination then the original one', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:loading-hop-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    expect(cameraState().pan).toEqual({ x: 125, y: -40 })
+    first.unmount()
+
+    const returning = render(
+      <Harness
+        resetKey="service-canvas:loading:unknown"
+        target={target}
+        cameraStateKey="desktop:slice:loading-hop-test"
+        cameraDestinationKey="service-canvas:loading:unknown"
+      />,
+    )
+
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+
+    returning.rerender(
+      <Harness
+        resetKey="return"
+        target={target}
+        cameraStateKey="desktop:slice:loading-hop-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+    })
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+  })
+
   it('rejects a stored transform for a different semantic destination', () => {
     const target = { left: 0, top: 0, width: 1000, height: 600 }
     const first = render(

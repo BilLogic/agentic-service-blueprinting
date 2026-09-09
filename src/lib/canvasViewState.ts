@@ -27,6 +27,20 @@ const validTransform = (value: CameraTransform) =>
   Number.isFinite(value.zoom) &&
   value.zoom > 0
 
+/**
+ * Prefix the overview uses while the board is still a skeleton.
+ * That string is not a semantic target: treating it as a navigation
+ * would discard a tab's saved pan and zoom on remount.
+ */
+export const UNRESOLVED_CAMERA_DESTINATION_PREFIX = 'service-canvas:loading:'
+
+/**
+ * True while the overview still names a skeleton destination.
+ */
+export function isUnresolvedCameraDestination(destinationKey: string): boolean {
+  return destinationKey.startsWith(UNRESOLVED_CAMERA_DESTINATION_PREFIX)
+}
+
 const cloneSnapshot = (snapshot: CanvasViewSnapshot): CanvasViewSnapshot => ({
   transform: {
     pan: { ...snapshot.transform.pan },
