@@ -1,5 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 
+import { reconcileSessionAfterDenial } from '@/lib/sessionReconcile'
+
 /**
  * An authoring failure, already phrased for a person.
  *
@@ -30,6 +32,9 @@ export class AuthoringError extends Error {
  * through untouched. Only the older structural triggers, and Postgres's own
  * constraint machinery, need translating.
  */
+const DENIAL_PERMISSION = 'permission denied'
+const DENIAL_RLS = 'violates row-level security'
+
 const TRANSLATIONS: Array<{ match: string; message: string }> = [
   {
     match: 'cells.step_id must be linked',
@@ -61,16 +66,31 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
     message: 'Something this refers to no longer exists — reload and try again.',
   },
   {
-    match: 'permission denied',
+    match: DENIAL_PERMISSION,
     message:
       'This session cannot write. Authoring needs the dev server with a local authoring key.',
   },
   {
-    match: 'violates row-level security',
+    match: DENIAL_RLS,
     message:
       'This session cannot write. Authoring needs the dev server with a local authoring key.',
   },
 ]
+
+/**
+ * Does this failure mean the database refused on AUTHORIZATION grounds, as
+ * opposed to refusing the data?
+ *
+ * The two strings live in constants so this predicate and the translation
+ * table above cannot drift apart. They already had to agree; nothing enforced
+ * it.
+ */
+export function isAuthorizationDenial(error: PostgrestError | Error): boolean {
+  const haystack = rawTextOf(error).toLowerCase()
+  return (
+    haystack.includes(DENIAL_PERMISSION) || haystack.includes(DENIAL_RLS)
+  )
+}
 
 /** Last resort. Never shows database text. */
 const FALLBACK = 'That change could not be saved. The details are in the console.'
@@ -83,13 +103,29 @@ const FALLBACK = 'That change could not be saved. The details are in the console
  * the console keeps the diagnosable version.
  */
 export function toAuthoringError(error: PostgrestError | Error): AuthoringError {
-  const raw = [
-    error.message,
-    'details' in error ? error.details : null,
-    'hint' in error ? error.hint : null,
-  ]
-    .filter((part): part is string => Boolean(part))
-    .join(' — ')
+  const raw = rawTextOf(error)
+
+  /*
+    THE ONE SIDE EFFECT IN THIS FILE, and it is here because this is the only
+    funnel every failed write passes through. There is no single place those
+    failures are CAUGHT — each call site raises and the surface above it
+    renders — so a translation function is the one seam they share. Putting
+    the reconcile at each call site would be dozens of edits that drift, and
+    putting it behind a react-query `MutationCache` would cover nothing,
+    because the app has no `useMutation` anywhere.
+
+    "Every failed write" is a claim, so it is checked rather than asserted:
+    `writeTranslationContract.test.ts` walks the write-owning modules and fails
+    on any `throw new Error(error.message)`. A module that forwards the
+    database's own text is two failures at once — the thing `AuthoringError.raw`
+    exists to prevent, and a refused write for which no reconcile can ever
+    fire.
+
+    It is safe to sit on a translation path: fire-and-forget, guarded against
+    bursts, and a no-op until `SupabaseProvider` registers a reconciler. See
+    `sessionReconcile.ts` for why a denial is the right trigger.
+  */
+  if (isAuthorizationDenial(error)) reconcileSessionAfterDenial()
 
   const haystack = raw.toLowerCase()
   for (const { match, message } of TRANSLATIONS) {
@@ -111,4 +147,15 @@ function isHumanSentence(message: string): boolean {
   if (message.length > 160) return false
   if (/[_"]|\b[a-z]+\.[a-z_]+\b/.test(message)) return false
   return /^[A-Z]/.test(message) && message.includes(' ')
+}
+
+/** The database's own text, joined: message, details, hint. */
+function rawTextOf(error: PostgrestError | Error): string {
+  return [
+    error.message,
+    'details' in error ? error.details : null,
+    'hint' in error ? error.hint : null,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(' — ')
 }

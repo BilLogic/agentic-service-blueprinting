@@ -16,6 +16,7 @@ import {
 } from '../lib/supabase'
 import { createSupabaseIdentity } from '../lib/backend/adapters/supabaseIdentity'
 import type { Tier } from '../lib/backend/ports'
+import { sessionRefresher, setSessionReconciler } from '../lib/sessionReconcile'
 import type { Database } from '../types/database'
 import { hasKey, useAgentSettings } from '../lib/agent/settings'
 import {
@@ -155,6 +156,26 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       cancelled = true
     }
   }, [client, isSessionLoading, session])
+
+  /*
+    Reconcile the tier when the database says the tier is wrong.
+
+    The tier below is asked of the database and HELD, keyed on the access token
+    this client presents. That makes it right for as long as the token is, and
+    stale for the window between a server-side demotion and the next refresh —
+    during which the reader is offered editing affordances the database will
+    refuse. A refused write is the one reliable signal that the held answer is
+    out of date, so `toAuthoringError` reports it here and this refreshes,
+    which mints a new token, lands it through `onAuthStateChange` above, and
+    re-asks the tier for it.
+  */
+  useEffect(() => {
+    if (!client) return
+    // `sessionRefresher`, not an inline `await refreshSession()`: that call
+    // resolves on failure, and the reason is written where the function is.
+    setSessionReconciler(sessionRefresher(client))
+    return () => setSessionReconciler(null)
+  }, [client])
 
   const isDevAuthoring = hasDevAuthoringKey()
   // Only ever true on a dev server, and never while anything can actually

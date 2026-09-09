@@ -11,6 +11,11 @@ import { expect, test } from 'vitest'
  * security policy for table "phases"` is not something to show a reader — and
  * discards `.raw`, which is the only place the original survives.
  *
+ * Since the funnel gained a side effect, a module that routes around it loses
+ * more than the phrasing: `toAuthoringError` is where an authorization denial
+ * re-derives the session tier, so a raw raise is also a refused write that
+ * leaves the UI still offering the button the database just refused.
+ *
  * The rule is scoped to the modules that WRITE, and deliberately not wider. A
  * hook raising `error.message` from a `.select()` is a different problem with
  * a different answer: a failed read has no authoring failure to phrase, and
@@ -67,7 +72,8 @@ test('a write that is refused is translated, never forwarded raw', () => {
       ? ''
       : `Raw database text raised at the reader:\n  ${offenders.join('\n  ')}\n\n` +
         'Use `throw toAuthoringError(error)`. It phrases the failure for a ' +
-        "person and keeps the database's own text on `.raw` for the console.",
+        "person, keeps the database's own text on `.raw` for the console, " +
+        'and is where an authorization denial re-derives the session tier.',
   ).toEqual([])
 })
 
