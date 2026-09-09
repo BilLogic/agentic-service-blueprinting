@@ -1,6 +1,11 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
+import {
+  TABLE_WRITE,
+  directTableWrites,
+  walkSources,
+} from '../../scripts/direct-table-writes.mjs'
 
 /**
  * Nothing writes to a table except the modules that own the write path.
@@ -26,6 +31,14 @@ import { expect, test } from 'vitest'
  * of them under a subtree three levels deep. Starting at the root and naming
  * the exceptions inverts that: a new directory is covered the moment it
  * appears, and a new writer has to argue for itself here.
+ *
+ * The walk itself lives in `scripts/direct-table-writes.mjs`, because a second
+ * rule now asks a question of the same set: `scripts/tests/the-surface-is-the-writers.test.mjs`
+ * holds `PANEL_WRITE_SURFACE` — the declaration of what a signed-in author may
+ * write, which `check:seed-load` asks a real database about — to the tables
+ * this scan finds. This rule asks WHO writes and that one asks WHAT they write,
+ * and two parsers of the same subject would be two readers to drift from each
+ * other, which is the failure both rules exist to catch.
  *
  * Two shapes look like violations and are not, so both are asserted below
  * rather than left to the regex's good behaviour:
@@ -79,28 +92,7 @@ function isExempt(relative: string): boolean {
   )
 }
 
-/**
- * `.from('table')` followed by a write verb.
- *
- * The window is generous because the verb is rarely adjacent — a formatted
- * chain puts `.update({…})` several lines and a whole payload after the
- * `.from`. The quoted table name is what keeps this off storage.
- */
-const TABLE_WRITE =
-  /\.from\(\s*'[a-z_]+'\s*\)[\s\S]{0,200}?\.(update|insert|upsert|delete)\s*\(/g
-
-function walk(directory: string, prefix = ''): string[] {
-  const out: string[] = []
-  for (const entry of readdirSync(directory).sort()) {
-    const full = resolve(directory, entry)
-    const relative = prefix ? `${prefix}/${entry}` : entry
-    if (statSync(full).isDirectory()) out.push(...walk(full, relative))
-    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(relative)
-  }
-  return out
-}
-
-const sources = walk(SRC)
+const sources: string[] = walkSources(SRC)
 
 test('the walk sees the whole of src, not a list of roots', () => {
   // A walk that silently found nothing would pass every assertion below. Hold
@@ -127,14 +119,9 @@ test('every exempted writer still exists', () => {
 test('nothing outside the mutation layer writes to a table directly', () => {
   const offenders: string[] = []
 
-  for (const relative of sources) {
-    if (isExempt(relative)) continue
-    const source = readFileSync(resolve(SRC, relative), 'utf8')
-    for (const match of source.matchAll(TABLE_WRITE)) {
-      const line = source.slice(0, match.index).split('\n').length
-      const table = match[0].match(/'([a-z_]+)'/)?.[1] ?? '?'
-      offenders.push(`src/${relative}:${line} — ${match[1]} on '${table}'`)
-    }
+  for (const write of directTableWrites(SRC)) {
+    if (isExempt(write.path)) continue
+    offenders.push(`src/${write.path}:${write.line} — ${write.verb} on '${write.table}'`)
   }
 
   expect(
