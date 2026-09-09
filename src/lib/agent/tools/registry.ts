@@ -519,7 +519,7 @@ export async function dispatchTool(
       }
       case 'create_cell_dependency': {
         const kind = args.kind === 'enables' ? 'enables' : 'leads_to'
-        const id = await setCellDependency(client, {
+        const written = await setCellDependency(client, {
           sourceCellId: need(args, 'source_cell_id'),
           targetCellId: need(args, 'target_cell_id'),
           kind,
@@ -534,7 +534,13 @@ export async function dispatchTool(
           // sending `label` and its sentence now arrives somewhere it is read.
           note: s(args, 'label') ?? null,
         })
-        return `Dependency set (${id}).`
+        // Which half the upsert took is said out loud. The tool is named for
+        // creating, and a model told "set" after landing on an edge that
+        // already existed goes on believing it made one — which is how the
+        // same pair gets connected again on the next pass.
+        return written.inserted
+          ? `Dependency created (${written.id}).`
+          : `That pair was already connected; the existing dependency (${written.id}) was updated in place.`
       }
       case 'update_path': {
         await renamePath(client, {

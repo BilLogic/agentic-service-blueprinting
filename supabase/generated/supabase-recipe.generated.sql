@@ -1349,3 +1349,18 @@ grant execute on function public.flag_service_accounts() to service_role;
 -- signature that exists now.
 
 grant execute on function public.deletion_impact(text, uuid, uuid) to anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000210000000_an_upsert_says_which_half_it_took.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the grants name the Supabase roles. The functions themselves are
+-- core; who may call them is this deployment's enforcement of the contract.
+-- `set_cell_dependency` was dropped above and took its grants with it, so this
+-- restores them on the recreated signature; `restore_cell_dependency` is new
+-- and gets the same terms as every other authoring write.
+
+revoke execute on function public.set_cell_dependency(uuid, uuid, text, text, text) from anon;
+grant execute on function public.set_cell_dependency(uuid, uuid, text, text, text) to authenticated;
+revoke execute on function public.restore_cell_dependency(uuid, text, text) from anon;
+grant execute on function public.restore_cell_dependency(uuid, text, text) to authenticated;

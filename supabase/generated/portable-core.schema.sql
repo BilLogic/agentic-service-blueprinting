@@ -1508,6 +1508,31 @@ end;
 $$;
 
 --
+-- Name: restore_cell_dependency(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.restore_cell_dependency(dependency_id uuid, name text, note text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint'
+      using errcode = '42501';
+  end if;
+
+  update public.cell_dependencies d
+     set name = restore_cell_dependency.name,
+         note = restore_cell_dependency.note
+   where d.id = restore_cell_dependency.dependency_id;
+
+  if not found then
+    raise exception 'That connection no longer exists';
+  end if;
+end;
+$$;
+
+--
 -- Name: restore_cell_touchpoints(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1675,12 +1700,14 @@ COMMENT ON FUNCTION public.restore_placement(p_row jsonb, p_resources jsonb) IS 
 -- Name: set_cell_dependency(uuid, uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.set_cell_dependency(source_cell_id uuid, target_cell_id uuid, kind text DEFAULT 'leads_to'::text, name text DEFAULT NULL::text, note text DEFAULT NULL::text) RETURNS uuid
+CREATE FUNCTION public.set_cell_dependency(source_cell_id uuid, target_cell_id uuid, kind text DEFAULT 'leads_to'::text, name text DEFAULT NULL::text, note text DEFAULT NULL::text) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
 declare
+  previous public.cell_dependencies;
   dependency_id uuid;
+  was_inserted boolean;
   source_path uuid;
   target_path uuid;
 begin
@@ -1709,6 +1736,16 @@ begin
     raise exception 'Both cells must be in the same path of the journey';
   end if;
 
+  -- BEFORE the write, and locked. The lock is what stops a concurrent edit of
+  -- the same edge from landing between this read and the upsert and leaving
+  -- the caller holding a `previous` that was never true.
+  select d.* into previous
+    from public.cell_dependencies d
+   where d.source_cell_id = set_cell_dependency.source_cell_id
+     and d.target_cell_id = set_cell_dependency.target_cell_id
+     and d.kind = set_cell_dependency.kind
+   for update;
+
   insert into public.cell_dependencies (source_cell_id, target_cell_id, kind, name, note)
   values (set_cell_dependency.source_cell_id, set_cell_dependency.target_cell_id,
           set_cell_dependency.kind,
@@ -1721,9 +1758,26 @@ begin
     -- the first is what every caller means.
     do update set name = coalesce(excluded.name, public.cell_dependencies.name),
                   note = coalesce(excluded.note, public.cell_dependencies.note)
-  returning id into dependency_id;
+  -- `xmax` is zero on a row this statement inserted and the updating
+  -- transaction's id on a row it updated. It is the write's own account of
+  -- which half it took, which is the one account nothing else can second-guess
+  -- after the fact.
+  returning id, (xmax = 0) into dependency_id, was_inserted;
 
-  return dependency_id;
+  return jsonb_build_object(
+    'id', dependency_id,
+    'inserted', was_inserted,
+    'previous',
+    case
+      when was_inserted or previous.id is null then null
+      else jsonb_build_object(
+        'id', previous.id,
+        'source_cell_id', previous.source_cell_id,
+        'target_cell_id', previous.target_cell_id,
+        'kind', previous.kind,
+        'name', previous.name,
+        'note', previous.note)
+    end);
 end;
 $$;
 

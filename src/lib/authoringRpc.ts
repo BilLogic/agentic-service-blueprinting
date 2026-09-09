@@ -71,6 +71,38 @@ export type LaneSetEntry = {
 
 export type DependencyKind = 'leads_to' | 'enables'
 
+/** One dependency row as it stood before a write. */
+export type CellDependencyRow = {
+  id: string
+  source_cell_id: string
+  target_cell_id: string
+  kind: DependencyKind
+  name: string | null
+  note: string | null
+}
+
+/**
+ * What `set_cell_dependency` hands back — an upsert saying which half it took.
+ *
+ * `id` is the row it wrote, either half. `inserted` is the write's own account
+ * of whether that row is new, read from its `xmax` inside the same statement;
+ * nothing outside the function can establish it after the fact, which is the
+ * whole reason it travels. `previous` is the row AS IT STOOD, captured before
+ * the write and keyed on its own id, so the undo restores THIS row rather than
+ * whatever joins the same two cells by the time it runs.
+ *
+ * `previous` is null on an insert, and it can be null on an update too — a
+ * concurrent insert between the capture and the upsert leaves the call
+ * updating a row it never saw. `deriveRevert` treats that as "no inverse",
+ * which is the honest answer and the one the ledger already gives for a
+ * delete.
+ */
+export type CellDependencyWrite = {
+  id: string
+  inserted: boolean
+  previous: CellDependencyRow | null
+}
+
 /**
  * What the column accepts, which is now what the client says.
  *
@@ -223,10 +255,33 @@ function deriveRevert(
       return typeof data === 'string'
         ? { fn: 'delete_path', args: { path_id: data } }
         : undefined
-    case 'set_cell_dependency':
-      return typeof data === 'string'
-        ? { fn: 'clear_cell_dependency', args: { dependency_id: data } }
-        : undefined
+    case 'set_cell_dependency': {
+      // The one case here that reads the write's REPORT rather than its name.
+      // `set_cell_dependency` upserts, and the two halves have opposite
+      // inverses: an insert is undone by deleting the row, an update by
+      // putting the row's words back. Deriving a delete from the name got the
+      // update half exactly backwards — the edge existed before the write, and
+      // the undo destroyed it. Reachable only from the agent tool, which is
+      // the caller that upserts onto edges a person has already read.
+      const outcome = data as CellDependencyWrite | null
+      if (!outcome?.id) return undefined
+      if (outcome.inserted)
+        return { fn: 'clear_cell_dependency', args: { dependency_id: outcome.id } }
+      // An update whose before-state did not come back cannot be restored, and
+      // a row with no `revert` is how the ledger says so — the same silence it
+      // shows on a delete, rather than an approximation that reads like an
+      // undo and is not one.
+      const previous = outcome.previous
+      if (!previous) return undefined
+      return {
+        fn: 'restore_cell_dependency',
+        args: {
+          dependency_id: previous.id,
+          name: previous.name,
+          note: previous.note,
+        },
+      }
+    }
     default:
       return undefined
   }
@@ -508,6 +563,11 @@ export function reorderLanes(
  * `leads_to` draws an arrow; `enables` records a dependency that deliberately
  * does not — a blueprint where every relationship is an arrow is unreadable,
  * and most "this depends on that" facts are not handoffs.
+ *
+ * Returns what the write DID, not just where it landed: which half of the
+ * upsert it took and the row as it stood. That is what lets the ledger record
+ * an inverse this operation's name cannot supply — see `CellDependencyWrite`
+ * and the `set_cell_dependency` case in `deriveRevert`.
  */
 export function setCellDependency(
   client: Client,
@@ -524,8 +584,8 @@ export function setCellDependency(
     /** Why the edge exists, held in `cell_dependencies.note`. */
     note?: string | null
   },
-): Promise<string> {
-  return call<string>(client, 'set_cell_dependency', {
+): Promise<CellDependencyWrite> {
+  return call<CellDependencyWrite>(client, 'set_cell_dependency', {
     source_cell_id: input.sourceCellId,
     target_cell_id: input.targetCellId,
     kind: input.kind ?? 'leads_to',

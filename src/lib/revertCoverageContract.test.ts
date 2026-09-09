@@ -18,7 +18,16 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  setCellDependency,
+  type CellDependencyRow,
+  type CellDependencyWrite,
+} from '@/lib/authoringRpc'
+import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
+import { executeRevert } from '@/lib/revertChange'
+import type { Database } from '@/types/database'
 
 const LIB = join(process.cwd(), 'src', 'lib')
 
@@ -83,6 +92,10 @@ const RPC_BACKED = new Set([
   // returned inverse; the inverse of each is itself an RPC.
   'set_placement_touchpoint',
   'restore_placement',
+  // The inverse of the half of `set_cell_dependency` that UPDATED: the two
+  // prose columns, on one row, by id. It exists only to be an undo, like the
+  // two names above it, and is reached through the default branch.
+  'restore_cell_dependency',
 ])
 
 /** `fn: 'name'` inside a recorded RevertSpec. */
@@ -161,5 +174,127 @@ describe('revert coverage', () => {
     const source = readLib('serviceSpecMutations.ts')
     expect(source).toContain("args: { service_id: serviceId, update: previous }")
     expect(source).toContain("args: { service_id: serviceId, summary: previous }")
+  })
+})
+
+/**
+ * The one operation whose inverse cannot be derived from its name.
+ *
+ * Everything above is a fact about the SOURCE — which names are recorded and
+ * which are handled. These are facts about a RUN, and they belong here rather
+ * than in a file of their own for the reason this file exists at all: the
+ * question "does this write carry an inverse that works" already has a seam,
+ * and a second one beside it can only ever disagree with it.
+ *
+ * `set_cell_dependency` upserts. The insert half's inverse is a delete and the
+ * update half's is a restore, and the two are indistinguishable from the
+ * operation's name — which is what the ledger derived from until the write
+ * started reporting which half it took.
+ */
+describe('an upsert’s inverse follows what it did, not what it is called', () => {
+  const written = (outcome: CellDependencyWrite) => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
+    const client = {
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        calls.push({ fn, args })
+        return { data: fn === 'set_cell_dependency' ? outcome : null, error: null }
+      },
+    } as unknown as SupabaseClient<Database>
+    return { client, calls }
+  }
+
+  /** The row the author already had, as `set_cell_dependency` hands it back. */
+  const AN_EDGE: CellDependencyRow = {
+    id: 'dep-1',
+    source_cell_id: 'cell-a',
+    target_cell_id: 'cell-b',
+    kind: 'leads_to',
+    name: null,
+    note: null,
+  }
+
+  beforeEach(() => {
+    clearSession()
+  })
+
+  it('reverts an upsert that INSERTED by deleting the row it created', async () => {
+    const { client } = written({ id: AN_EDGE.id, inserted: true, previous: null })
+    await setCellDependency(client, {
+      sourceCellId: 'cell-a',
+      targetCellId: 'cell-b',
+      note: 'the sentence the agent wrote',
+    })
+
+    const [entry] = sessionSnapshot()
+    expect(entry.fn).toBe('set_cell_dependency')
+    expect(entry.revert).toEqual({
+      fn: 'clear_cell_dependency',
+      args: { dependency_id: 'dep-1' },
+    })
+  })
+
+  it('reverts an upsert that UPDATED to the previous values, not by deleting', async () => {
+    const { client } = written({
+      id: AN_EDGE.id,
+      inserted: false,
+      previous: AN_EDGE,
+    })
+    await setCellDependency(client, {
+      sourceCellId: 'cell-a',
+      targetCellId: 'cell-b',
+      note: 'the sentence the agent wrote',
+    })
+
+    const [entry] = sessionSnapshot()
+    // The whole defect in one assertion: this used to be a delete.
+    expect(entry.revert?.fn).not.toBe('clear_cell_dependency')
+    expect(entry.revert).toEqual({
+      fn: 'restore_cell_dependency',
+      args: { dependency_id: 'dep-1', name: null, note: null },
+    })
+  })
+
+  it('leaves an edge that existed before an agent run standing after the undo', async () => {
+    const { client, calls } = written({
+      id: AN_EDGE.id,
+      inserted: false,
+      previous: { ...AN_EDGE, note: 'what the author wrote' },
+    })
+    await setCellDependency(client, {
+      sourceCellId: 'cell-a',
+      targetCellId: 'cell-b',
+      note: 'what the agent wrote over it',
+    })
+
+    const [entry] = sessionSnapshot()
+    await executeRevert(client, entry)
+
+    // Nothing in the undo removes the row, and what it does write is the
+    // author's sentence, addressed by the row's own id.
+    expect(calls.map((call) => call.fn)).toEqual([
+      'set_cell_dependency',
+      'restore_cell_dependency',
+    ])
+    expect(calls[1].args).toEqual({
+      dependency_id: 'dep-1',
+      name: null,
+      note: 'what the author wrote',
+    })
+  })
+
+  it('offers no undo for an update whose before-state did not come back', async () => {
+    // The narrow race the function reports honestly: another session inserted
+    // the edge between the capture and the upsert, so this call updated a row
+    // it never saw. No inverse is the right answer, and the ledger already
+    // knows how to show one — a row with no revert control, as a delete has.
+    const { client } = written({ id: AN_EDGE.id, inserted: false, previous: null })
+    await setCellDependency(client, {
+      sourceCellId: 'cell-a',
+      targetCellId: 'cell-b',
+      note: 'the sentence the agent wrote',
+    })
+
+    const [entry] = sessionSnapshot()
+    expect(entry.revert).toBeUndefined()
   })
 })
