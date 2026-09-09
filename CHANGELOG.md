@@ -1,5 +1,105 @@
 # Changelog
 
+## 1.19.1
+
+### Patch Changes
+
+- 6673939: A loading destination is not a new place to fit
+
+  A canvas already saved its pan and zoom when its tab unmounted, and already
+  restored them on the way back. Readers still lost their framing on every tab
+  switch, because a return does not remount straight onto its board: it boots on
+  a skeleton, under a destination that names the wait, and the real board only
+  replaces that a beat after readiness renames the destination. The viewport read
+  the hop as _the reader went somewhere else_, threw the saved framing away in
+  its state initialiser, and fitted.
+
+  So the destination key is now compared only when it names a board that is
+  actually on screen. `cameraDestinationResolved` is what says so — false while a
+  surface stands a skeleton in for content that has not arrived — and while it is
+  false the inherited framing is HELD rather than judged. The ordinary fit still
+  runs underneath, exactly as before, so a board that never had a framing to
+  inherit behaves identically and nothing waits on a decision that may never
+  come.
+
+  The decision itself moved into one place and grew a second seam. A mount that
+  never waited settles it where it always did, inside the fit effect, before the
+  fit is scheduled. A mount that DID wait has no `resetKey` change to settle on —
+  the destination was already named while the skeleton stood in for it — so the
+  arrival of the board is its own layout effect, declared after the fit effect so
+  the two can never both decide.
+
+  Two things fell out of separating _what is being adopted_ from _what is on
+  screen_. The framing now comes from the snapshot rather than the live
+  transform, which by then is the placeholder's fit; and the geometry it is
+  checked against is measured at the zoom the board is painted at, not the zoom
+  being adopted, because `measureFitBounds` divides client rectangles back out by
+  the live scale and mixing the two reports a box off by the ratio between them.
+
+  Both refusals are unchanged and now covered through the wait as well: a
+  different semantic destination, and a fit target whose geometry genuinely
+  moved, still fall back to the canonical immediate fit. Leaving mid-flight still
+  remembers where the camera was, never where it was going — and leaving before
+  the board arrives hands the inherited framing straight back rather than filing a
+  placeholder under a key that names the wait.
+
+- 6de9d0a: A rulebook for an empty room
+
+  `docs/plans/` held one file, and that file was the rules of the folder: what a
+  plan is, that a plan is dated and never edited, that `status:` is required in
+  its frontmatter, that a plan is never current guidance. Its own last section
+  said the folder was empty — the planning documents were retired when the
+  package was generalised out of the deployment it grew from, because they
+  described that deployment more than they described this package.
+
+  So the concept goes, not just the files. Keeping the machinery for the plans
+  that might land next is the cheap-looking option and the one this rejects: a
+  reader who takes the doctrine seriously learns a document class the repository
+  does not have, and an agent cannot tell a dormant convention from a live one.
+
+  What went with it. The index generator loses its history directory, the table
+  it built, the rule that failed the build on a plan stating no `status:`, and
+  the routing row asking whether a plan is still true — `docs/index.md` now has
+  one table, and says in a line that everything in it is protocol. `docs/`'s own
+  overview, the documentation grammar and the contributing guide stop pointing
+  readers at a folder that is not there. The vocabulary sweeps exempt `docs/adr/`
+  and nothing else.
+
+  The migration that cited a plan by address loses the line outright rather than
+  having it rewritten. The line above it already says what the migration does and
+  the block below already states the invariants, so the address was carrying
+  nothing but a pointer — and it had already stopped pointing anywhere.
+
+  One thing was rescued before its protection was deleted. The standalone check
+  excluded the folder on the argument that those documents ordered the decoupling
+  and stripping them would destroy the record of why the boundary exists. That
+  exemption is dead, but the argument is not, so it now sits in the header of the
+  check itself: standing alone is an assertion this package makes about itself,
+  the reader it is made to is a contributor with none of the context the package
+  grew up in, and a check is what makes the boundary verified rather than
+  assumed.
+
+  The decision is
+  [ADR 9](docs/adr/0009-the-queue-is-issues-and-a-durable-decision-is-an-adr.md).
+  Work in flight is GitHub issues, a durable decision is an ADR, current
+  behaviour is protocol, and the retired content is in the git history.
+
+- d197ac7: `linkedText` stops naming the migration that retired the column it replaced
+
+  The doc comment read "This is the whole job `evidence.ref` was carrying
+  (21000208000000)". The parenthetical is an address into this repository's own
+  migration series, and a deployment's copy of this file carries a different
+  number for the same change — its series is its own.
+
+  That makes the file unenrollable in the byte-identity sense a deployment
+  promises: a shared file may not cite an identity that means something else on
+  the other side, which is exactly what a migration filename is. Two copies that
+  agree on every other byte were kept apart by a number neither reader needs.
+
+  The sentence loses nothing. What `evidence.ref` was for, and why a note holding
+  a locator replaces it, is the whole point of the comment; which migration
+  performed the retirement is answered by the series itself.
+
 ## 1.19.0
 
 ### Minor Changes
@@ -3388,8 +3488,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                  "lanes_lane_role_check" … compliance_review
+                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
