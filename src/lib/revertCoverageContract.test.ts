@@ -35,6 +35,7 @@ const MUTATION_MODULES = [
   'cellContentMutations.ts',
   'cellSpecMutations.ts',
   'evidenceMutations.ts',
+  'findingMutations.ts',
   'laneSpecMutations.ts',
   'phaseSpecMutations.ts',
   'scenarioSpecMutations.ts',

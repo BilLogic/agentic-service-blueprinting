@@ -93,6 +93,9 @@ export type WriteFn =
   | 'duplicate_slice'
   | 'update_slice_meta'
   | 'replace_slides'
+  | 'update_slide_illustration'
+  | 'create_finding'
+  | 'update_finding'
 
 export type ChangeEntry = {
   id: string
@@ -356,6 +359,30 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
     return count === null
       ? 'Rebuilt a slice’s slides'
       : `Rebuilt a slice’s slides (${count} now)`
+  },
+  // Set and cleared say different things, and the difference matters: one
+  // replaced a picture, the other took one away. Both are revertible, so the
+  // sentence is the only place a reader can tell which happened.
+  update_slide_illustration: (entry) =>
+    entry.args.cleared === true ? 'Removed a slide image' : 'Set a slide image',
+  // Named by the check rather than by the finding, because that is the word
+  // the reader recognises: a finding's id says nothing, and its summary is a
+  // whole sentence of its own competing with this one.
+  create_finding: (entry) => {
+    const severity =
+      typeof entry.args.severity === 'string' ? `${entry.args.severity} ` : ''
+    const check =
+      typeof entry.args.check_key === 'string' ? ` for “${entry.args.check_key}”` : ''
+    return `Recorded a ${severity}finding${check}`
+  },
+  update_finding: (entry) => {
+    const check =
+      typeof entry.args.check_key === 'string' ? ` for “${entry.args.check_key}”` : ''
+    // A status flip is triage and reads as triage; anything else is the audit
+    // run rewriting a finding in place, which is a different act.
+    return typeof entry.args.status === 'string'
+      ? `Marked a finding${check} ${entry.args.status}`
+      : `Edited a finding${check}`
   },
 }
 

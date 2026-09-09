@@ -4,10 +4,11 @@ import { toAuthoringError } from '@/lib/authoringErrors'
 import {
   asUpdatedAtToken,
   readWriteOutcome,
+  requireRowsWritten,
   type UpdatedAtToken,
 } from '@/lib/optimisticConcurrency'
 import { authorshipAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
-import type { Database, Slice } from '@/types/database'
+import type { Database, Json, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 
@@ -384,6 +385,56 @@ function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
     before.kind !== after.kind ||
     before.actor !== after.actor ||
     before.authorship !== after.authorship
+  )
+}
+
+/**
+ * Set or clear one slide's image.
+ *
+ * The upload itself belongs to the caller — this writes the row that points at
+ * it, which is the half that has to reach the ledger. `null` clears the
+ * pointer and deliberately leaves the file in the bucket: after a merge two
+ * slides can share a derived path, and deleting the object would blank a slide
+ * nobody asked to change. Storage is cheap; an empty slide is not.
+ *
+ * The previous value is read first and carried as the inverse, so replacing an
+ * image is reversible. Without it, replacing was the one write in the editor
+ * that destroyed something outright — the old picture was gone, and the change
+ * list did not even say it had been there.
+ *
+ * `.select()` is not decoration. `.update().eq('id', …)` on a row that is gone
+ * returns `error: null` and no rows, so clearing the image on a slide that was
+ * merged away used to report success and clear nothing; `requireRowsWritten`
+ * is what turns that into the failure it always was.
+ */
+export async function setSlideIllustration(
+  client: Client,
+  slideId: string,
+  illustration: Json | null,
+): Promise<void> {
+  const { data: before, error: beforeError } = await client
+    .from('slides')
+    .select('illustration')
+    .eq('id', slideId)
+    .maybeSingle()
+  if (beforeError) throw toAuthoringError(beforeError)
+  if (!before) throw new Error('That slide no longer exists — nothing was written.')
+
+  const { data, error } = await client
+    .from('slides')
+    .update({ illustration })
+    .eq('id', slideId)
+    .select('id')
+  if (error) throw toAuthoringError(error)
+  requireRowsWritten(data, 'slide')
+
+  recordChange(
+    'update_slide_illustration',
+    { slide_id: slideId, cleared: illustration === null },
+    {
+      fn: 'restore_slide_illustration',
+      args: { slide_id: slideId, illustration: before.illustration },
+    },
   )
 }
 
