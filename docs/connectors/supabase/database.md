@@ -312,7 +312,7 @@ Writes are layered on top for signed-in sessions (`authenticated`):
   predicate is `public.is_service_account()` — *and only the editing tier
   may*. **Write both when you put a table on the write surface.** A single
   permissive policy whose whole predicate is `is_service_account()` admits
-  exactly the same people, and is deliberately not used here: it fuses the
+  exactly the same people, and is deliberately not used **on the surface**: it fuses the
   optional recipe's decision into a base-template policy — correct only
   because the core seam's default body is `select true`, which nothing at the
   call site shows — and it makes a table whose restriction is *missing*
@@ -320,6 +320,15 @@ Writes are layered on top for signed-in sessions (`authenticated`):
   second half. `21000213000000` brought the last two tables,
   `stakeholders` and `cell_touchpoints`, into the pair; the posture on both
   was already service-account-only and did not change.
+
+  Off the surface the single-permissive spelling survives, and a reader who
+  greps for `_service_only` will meet it: `touchpoints` and `resources` carry
+  six such policies. Those two are reached only through RPCs
+  (`sync_cell_resources`, `set_featured_resource`, `rename_touchpoint`), so
+  neither the argument above nor the rule beneath it has been applied to them.
+  They admit exactly a service account and are not holes. Whether the pair
+  should extend past the surface is undecided rather than answered — this
+  paragraph exists so the exception is visible instead of looking like drift.
 - **And read it the other way: a restriction with no permissive half is not a
   posture, it is a closed door.** A RESTRICTIVE policy narrows and never
   admits, so a verb carrying one and no permissive policy matches zero rows
