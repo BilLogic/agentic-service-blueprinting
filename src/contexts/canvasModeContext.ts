@@ -8,9 +8,10 @@ import { createContext, useContext } from 'react'
  * become selectable, and the toolbar swaps its annotation tools for creation
  * ones rather than growing a second row.
  *
- * Scope is **per surface**, not global: the base canvas and each slice tab
- * hold their own mode, because editing a slice while reading the base
- * blueprint is a normal thing to want.
+ * Scope is **one mode for the whole session**, held in the module store below.
+ * It was per-surface once — the base canvas and each slice tab holding their
+ * own mode — and that is what this comment used to say long after it stopped
+ * being true.
  */
 export type CanvasMode = 'view' | 'design'
 
@@ -32,9 +33,27 @@ export const CanvasModeContext = createContext<CanvasModeContextValue | null>(
 let sharedMode: CanvasMode = 'view'
 let listeners: Array<() => void> = []
 
+/**
+ * Whether this session may enter design mode at all.
+ *
+ * The provider guards its own `setMode`, but the provider is not the only
+ * caller: the agent tool `set_canvas_mode` reaches this setter directly, and
+ * it is not a write tool, so nothing else stops it. A view-only session could
+ * park `'design'` here and every surface would snap into Edit the moment
+ * write access returned — the exact bug the provider guard was added to close.
+ * The permission has to live with the state, not with one of its callers.
+ */
+let sharedModeAvailable = false
+
+export function setSharedCanvasModeAvailable(available: boolean) {
+  sharedModeAvailable = available
+  if (!available) setSharedCanvasMode('view')
+}
+
 export function setSharedCanvasMode(mode: CanvasMode) {
-  if (mode === sharedMode) return
-  sharedMode = mode
+  const next = sharedModeAvailable ? mode : 'view'
+  if (next === sharedMode) return
+  sharedMode = next
   for (const listener of listeners) listener()
 }
 

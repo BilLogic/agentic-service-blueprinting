@@ -101,10 +101,29 @@ function AgentDockChrome({
 
 /**
  * The agent, docked under the active sidebar panel or floating over the
- * canvas. Rendered once by the shell; the portal handles the floating case
- * so the window escapes the sidebar's clip and stacking context.
+ * canvas.
+ *
+ * Two mount points, and the gate is why that is not two copies. The docked
+ * posture has to sit in the sidebar column's flow — it is a percentage of
+ * that column's height with a drag divider above it — while the floating
+ * posture portals to the body to escape the sidebar's clip and stacking
+ * context. Neither can serve the other. The shell therefore renders this
+ * gate at both points with mutually exclusive `visible`, and ONLY the
+ * visible one mounts `AgentDockWindow`, which is where every hook lives.
+ *
+ * That split is the whole point: the hooks are window-global (a viewport
+ * clamp, a pointer-drag, a resize — all registered on `window`), so
+ * running them on a hidden instance registered a second clamp listener and
+ * a second drag handler for one window on screen. Keeping the gate hook-free
+ * makes "one window" and "one set of listeners" the same statement.
  */
 export function AgentDock({ visible }: { visible: boolean }) {
+  const placement = useAgentPlacement()
+  if (!visible || !placement.open) return null
+  return <AgentDockWindow />
+}
+
+function AgentDockWindow() {
   const placement = useAgentPlacement()
   // Drag state is SHARED (module store), not local: a drag-out flips which
   // mount point is visible mid-gesture, so component state would strand the
@@ -265,8 +284,6 @@ export function AgentDock({ visible }: { visible: boolean }) {
     window.addEventListener('resize', clampToViewport)
     return () => window.removeEventListener('resize', clampToViewport)
   }, [floating])
-
-  if (!visible || !placement.open) return null
 
   const body = (
     <AgentDockChrome

@@ -172,24 +172,38 @@ export function deduplicateBlueprintLanes(data: BlueprintData): BlueprintData {
     }
   }
 
-  const cellByLaneStep = new Map<string, BlueprintCell>()
+  // Keyed on the SLOT — lane, step and position — not on (lane, step).
+  //
+  // A slot holds a list, not a cell: the tech-cell split made every touchpoint
+  // in a tech lane its own row at position 0..n, and `BlueprintCell.position`
+  // says so in its own docstring. Collapsing on `${laneId}:${stepId}` kept one
+  // cell per (lane, step) and dropped every sibling — and it did that board
+  // wide, over `data.cells` entire, not only over the lanes that were actually
+  // merged. One duplicated lane name anywhere silently emptied every
+  // multi-cell slot on the board.
+  //
+  // What this loop is FOR is narrower than that: when two lanes merge into
+  // one, the same slot can arrive twice, and the copy with content wins over
+  // the empty one. That question is per-position, which is what the key now
+  // says.
+  const cellBySlot = new Map<string, BlueprintCell>()
   for (const cell of data.cells) {
     const laneId = laneIdRemap.get(cell.lane_id) ?? cell.lane_id
-    const key = `${laneId}:${cell.step_id}`
-    const existing = cellByLaneStep.get(key)
+    const key = `${laneId}:${cell.step_id}:${cell.position}`
+    const existing = cellBySlot.get(key)
     const nextCell = { ...cell, lane_id: laneId }
 
     if (!existing) {
-      cellByLaneStep.set(key, nextCell)
+      cellBySlot.set(key, nextCell)
       continue
     }
 
     if (!existing.content.trim() && nextCell.content.trim()) {
-      cellByLaneStep.set(key, nextCell)
+      cellBySlot.set(key, nextCell)
     }
   }
 
-  const cells = [...cellByLaneStep.values()]
+  const cells = [...cellBySlot.values()]
   const cellIds = new Set(cells.map((cell) => cell.id))
   const dependencies = data.dependencies.filter(
     (dependency) =>

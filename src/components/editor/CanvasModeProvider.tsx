@@ -1,8 +1,15 @@
-import { useMemo, useSyncExternalStore, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 import {
   CanvasModeContext,
   getSharedCanvasMode,
   setSharedCanvasMode,
+  setSharedCanvasModeAvailable,
   subscribeSharedCanvasMode,
   type CanvasMode,
 } from '@/contexts/canvasModeContext'
@@ -29,16 +36,39 @@ export function CanvasModeProvider({ children }: { children: ReactNode }) {
     () => 'view' as CanvasMode,
   )
 
+  /*
+    Losing write access clears the STORE, not just this read.
+
+    Masking `design` behind `canWrite` at read time left the module store
+    still holding `design` — so a session that dropped to read-only and
+    later regained access snapped every mounted surface back into Edit,
+    without anyone asking for it. The store is module-level and outlives
+    every surface; it has to be told.
+
+    Telling it the PERMISSION rather than clearing the value is what closes
+    the second half: the agent tool `set_canvas_mode` calls the store setter
+    directly, so a guard that lived only here left that path open.
+  */
+  useEffect(() => {
+    setSharedCanvasModeAvailable(canWrite)
+  }, [canWrite])
+
+  const setMode = useCallback((next: CanvasMode) => {
+    // The store refuses `design` without write access on every path now, so
+    // this no longer has to re-check what it just told the store.
+    setSharedCanvasMode(next)
+  }, [])
+
   const value = useMemo(
     () => ({
       // Without write access there is no design mode to be in — falling back
       // to `view` means a session that loses access mid-edit degrades to
       // reading rather than to a broken editor.
       mode: canWrite ? mode : ('view' as CanvasMode),
-      setMode: setSharedCanvasMode,
+      setMode,
       available: canWrite,
     }),
-    [canWrite, mode],
+    [canWrite, mode, setMode],
   )
 
   return (
