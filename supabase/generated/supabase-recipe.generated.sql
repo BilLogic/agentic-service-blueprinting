@@ -1798,3 +1798,276 @@ begin
   end loop;
 end
 $recipe_proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000214000000_a_restriction_needs_something_to_restrict.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- every policy named here names `authenticated`, a role only the
+-- recipe creates, and each was created by the optional tier recipe. Who may
+-- write a row is this deployment's enforcement of the contract, not part of
+-- the contract; another host expresses the same rule its own way.
+
+-- ---------------------------------------------------------------------------
+-- The six tables whose UPDATE is a pair and whose INSERT and DELETE are the
+-- RPCs'. Each is edited from a panel — a step's summary, a lane's owner, a
+-- cell's content — and each is created and destroyed only by a definer RPC.
+-- The permissive `<table>_update_auth` and its restrictive partner stay
+-- exactly as they are; it is the two verbs with no partner that go.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists "cells_insert_service_only" on public.cells;
+drop policy if exists "cells_delete_service_only" on public.cells;
+
+drop policy if exists "lanes_insert_service_only" on public.lanes;
+drop policy if exists "lanes_delete_service_only" on public.lanes;
+
+drop policy if exists "paths_insert_service_only" on public.paths;
+drop policy if exists "paths_delete_service_only" on public.paths;
+
+drop policy if exists "phases_insert_service_only" on public.phases;
+drop policy if exists "phases_delete_service_only" on public.phases;
+
+drop policy if exists "scenarios_insert_service_only" on public.scenarios;
+drop policy if exists "scenarios_delete_service_only" on public.scenarios;
+
+drop policy if exists "steps_insert_service_only" on public.steps;
+drop policy if exists "steps_delete_service_only" on public.steps;
+
+-- ---------------------------------------------------------------------------
+-- The two tables the app never writes directly at all. `cell_dependencies` is
+-- reached through `set_cell_dependency` / `clear_cell_dependency` and
+-- `path_steps` through `set_path_steps` / `add_step` / `remove_step` /
+-- `reorder_steps` — an edge and an ordering are shapes, and a half-written
+-- shape is the thing those RPCs exist to make impossible. All three verbs go
+-- on each: neither table has a permissive write policy of any kind, so all six
+-- restrictions stood alone.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists "cell_dependencies_insert_service_only" on public.cell_dependencies;
+drop policy if exists "cell_dependencies_update_service_only" on public.cell_dependencies;
+drop policy if exists "cell_dependencies_delete_service_only" on public.cell_dependencies;
+
+drop policy if exists "path_steps_insert_service_only" on public.path_steps;
+drop policy if exists "path_steps_update_service_only" on public.path_steps;
+drop policy if exists "path_steps_delete_service_only" on public.path_steps;
+
+-- ---------------------------------------------------------------------------
+-- The two derived-layer tables missing only their DELETE. Both are inserted
+-- and updated from the app under full pairs, which stay: a finding is raised
+-- by a run and closed by moving its `status`, and a business model is one row
+-- per service that panels rewrite. Neither is deleted by anything — not by a
+-- panel, not by an RPC — so the DELETE restriction had nothing to narrow.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists "audit_findings_delete_service_only" on public.audit_findings;
+
+drop policy if exists "business_models_delete_service_only" on public.business_models;
+
+-- ---------------------------------------------------------------------------
+-- Proof — what this file makes true, and that it took nothing away.
+--
+-- Three claims, and they are deliberately different in kind.
+--
+-- FIRST, the post-condition: no restrictive policy in `public` stands for a
+-- command with no permissive policy for that command admitting a role it
+-- names. That is an invariant over whatever the catalogue holds, not a count
+-- of what this file did — "twenty were dropped" is a census of the database
+-- it happened to meet (ADR 0009), and it is also the reading that
+-- cannot tell a closed door from a governed one, which is the confusion being
+-- removed. It is asked of the whole schema rather than of the tables named
+-- above, a fork's own included: a lone restriction is the same silent closed
+-- door wherever it stands, and a rule that exempted the reader's own tables
+-- would be the rule that let these twenty arrive.
+--
+-- SECOND, the safety claim, which is the one a reviewer will want: for each
+-- verb whose restriction is removed above, NO permissive policy stands for
+-- that verb. That is what makes the removal a no-op rather than a widening.
+-- On a deployment that has opened one of these verbs, the restriction was
+-- doing real work and this file would have taken it away — so that case
+-- raises, names the table and the verb, and points at the pair.
+--
+-- THIRD, the same question asked as the role, because a claim about a policy
+-- is not a claim about a write. The proof becomes `authenticated` holding a
+-- service claim — the most privileged session that is not the owner — and
+-- attempts each of the twenty. An INSERT settles itself: refused, whether
+-- by a missing grant or by row level security, it raises 42501, and RLS's
+-- WITH CHECK is evaluated before NOT NULL, so a `default values` insert that
+-- comes back with anything else is an insert something admitted. An UPDATE or
+-- a DELETE cannot settle itself and does not pretend to — a policy that
+-- refuses one of those matches zero rows and returns success, which is the
+-- silence this repository keeps paying for — so those attempts report the
+-- grant and leave the verdict to the second claim, out loud.
+--
+-- Every attempt is `where false` or a bare `default values`, so no row of any
+-- deployment's is read or written even where a grant exists, and each runs
+-- inside a subtransaction that ends in a sentinel exception, so the claim and
+-- the role are gone before the next one starts.
+--
+-- And it asks nothing where it cannot get an answer, saying so each time: a
+-- session that cannot become `authenticated` would turn the platform's
+-- absence into a verdict about these policies. A skipped proof is a proof
+-- that did not run, and a reader has to be able to tell that from a green one.
+-- ---------------------------------------------------------------------------
+do $recipe_proof$
+declare
+  removed record;
+  orphan record;
+  attempted integer := 0;
+  granted boolean;
+begin
+  -- FIRST — the post-condition, over the whole schema this template owns.
+  for orphan in
+    select r.tablename, r.cmd, r.policyname
+      from pg_policies r
+     where r.schemaname = 'public'
+       and r.permissive = 'RESTRICTIVE'
+       and not exists (
+             select 1
+               from pg_policies p
+              where p.schemaname = r.schemaname
+                and p.tablename = r.tablename
+                and p.permissive = 'PERMISSIVE'
+                and (p.cmd = r.cmd or p.cmd = 'ALL' or r.cmd = 'ALL')
+                and (p.roles && r.roles
+                     or 'public' = any (p.roles)
+                     or 'public' = any (r.roles)))
+     order by r.tablename, r.cmd
+  loop
+    raise exception
+      'proof: % restricts % on public.% and no permissive policy opens that '
+      'verb to anyone it names — the restriction stands over a write nobody '
+      'may make, which is the shape this file exists to remove',
+      orphan.policyname, orphan.cmd, orphan.tablename;
+  end loop;
+
+  for removed in
+    select *
+      from (values
+        ('audit_findings', 'delete'),
+        ('business_models', 'delete'),
+        ('cell_dependencies', 'insert'),
+        ('cell_dependencies', 'update'),
+        ('cell_dependencies', 'delete'),
+        ('cells', 'insert'),
+        ('cells', 'delete'),
+        ('lanes', 'insert'),
+        ('lanes', 'delete'),
+        ('path_steps', 'insert'),
+        ('path_steps', 'update'),
+        ('path_steps', 'delete'),
+        ('paths', 'insert'),
+        ('paths', 'delete'),
+        ('phases', 'insert'),
+        ('phases', 'delete'),
+        ('scenarios', 'insert'),
+        ('scenarios', 'delete'),
+        ('steps', 'insert'),
+        ('steps', 'delete')
+      ) as it(tbl, verb)
+     order by 1, 2
+  loop
+    -- The drop list above and this list have to be the same list. An entry
+    -- here whose policy is still standing means one of them was edited and
+    -- the other was not, and the half that was missed is the half nobody
+    -- would notice.
+    if exists (
+         select 1 from pg_policies
+          where schemaname = 'public'
+            and tablename = removed.tbl
+            and policyname = removed.tbl || '_' || removed.verb || '_service_only')
+    then
+      raise exception
+        'proof: %_%_service_only is still standing — the statements above and '
+        'the list here have drifted apart',
+        removed.tbl, removed.verb;
+    end if;
+
+    -- SECOND — and this is the claim that makes the removal a no-op.
+    if exists (
+         select 1 from pg_policies
+          where schemaname = 'public'
+            and tablename = removed.tbl
+            and permissive = 'PERMISSIVE'
+            and (cmd = upper(removed.verb) or cmd = 'ALL'))
+    then
+      raise exception
+        'proof: a permissive policy opens % on public.% here, so the '
+        'restrictive half removed above was narrowing a real write and this '
+        'file has just widened it — this deployment reaches that verb '
+        'directly, and it needs BOTH halves of the pair: a permissive '
+        '%_%_auth and a restrictive %_%_service_only beside it',
+        upper(removed.verb), removed.tbl,
+        removed.tbl, removed.verb, removed.tbl, removed.verb;
+    end if;
+
+    -- THIRD — the same question, asked as the role rather than of the
+    -- catalogue. Skipped as a whole, out loud, where the role cannot be
+    -- assumed at all.
+    if to_regrole('authenticated') is null
+       or not pg_has_role(current_user, 'authenticated', 'USAGE') then
+      continue;
+    end if;
+
+    granted := has_table_privilege(
+      'authenticated', 'public.' || quote_ident(removed.tbl), upper(removed.verb));
+
+    begin
+      perform set_config(
+        'request.jwt.claims',
+        '{"role":"authenticated","app_metadata":{"role":"service"}}',
+        true);
+      set local role authenticated;
+      begin
+        if removed.verb = 'insert' then
+          execute format('insert into public.%I default values', removed.tbl);
+          raise exception
+            'proof: an INSERT into public.% was ADMITTED for a signed-in '
+            'session — something opens that verb and the restriction removed '
+            'above was load-bearing', removed.tbl;
+        elsif removed.verb = 'delete' then
+          execute format('delete from public.%I where false', removed.tbl);
+        else
+          -- `updated_at` because the only two tables with an UPDATE entry
+          -- here, `cell_dependencies` and `path_steps`, both carry it, and a
+          -- column the assignment names is a column the privilege check has
+          -- to reach before `where false` empties the plan.
+          execute format(
+            'update public.%I set updated_at = updated_at where false',
+            removed.tbl);
+        end if;
+      exception
+        when insufficient_privilege then
+          -- Refused. Which of the two refused it is in the message, and both
+          -- are the answer this file needs.
+          null;
+      end;
+      attempted := attempted + 1;
+      raise exception 'restriction proof' using errcode = 'ASB01';
+    exception
+      -- Ours, and the only one caught here: it is how the claim and the role
+      -- are given back. Anything else — including the two raises above —
+      -- propagates and fails the migration.
+      when sqlstate 'ASB01' then null;
+    end;
+
+    if granted and removed.verb <> 'insert' then
+      raise notice
+        'restriction proof: authenticated holds % on public.% here, so the '
+        'attempt could not distinguish a refusal from an empty match — a '
+        'refused UPDATE or DELETE matches zero rows and returns success. '
+        'What settles it for this verb is the check above: no permissive '
+        'policy admits it',
+        upper(removed.verb), removed.tbl;
+    end if;
+  end loop;
+
+  if attempted = 0 then
+    raise notice
+      'restriction proof: this session cannot become authenticated, so no '
+      'write was attempted as the role and only the two catalogue claims '
+      'above were asked here; npm run check:seed-load asks the write surface '
+      'as both people, against a seeded database';
+  end if;
+end
+$recipe_proof$;

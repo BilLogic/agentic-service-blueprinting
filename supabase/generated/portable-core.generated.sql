@@ -10638,3 +10638,133 @@ $which_half$;
 -- populated case is covered where it belongs: `npm run check:seed-load`
 -- attempts every one of these writes as an author and again as a viewer,
 -- against a seeded database, and never reads `pg_policies`.
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000214000000_a_restriction_needs_something_to_restrict.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Twenty restrictive policies stood over verbs no permissive policy opens.
+--
+-- Under row level security a RESTRICTIVE policy narrows and never admits. A
+-- verb with a restrictive policy and no permissive policy therefore matches
+-- zero rows for everyone the restriction names — the restriction is standing
+-- over a door that was never cut into the wall. Twenty of the forty-six
+-- restrictive policies in `public` were in that position. This file removes
+-- them and lets the absence of a policy say what it already said.
+--
+-- ── This is not a security fix ───────────────────────────────────────────
+--
+-- Nothing that was refused becomes permitted here, and nothing that was
+-- permitted was ever in doubt. Read as a patch this file would say the
+-- opposite of what is true, so: the posture before it and the posture after
+-- it are the same posture, on every database it will ever be replayed
+-- against. What changes is that a reader counting policies stops being told
+-- a verb is governed when it is simply closed.
+--
+-- ── What was measured, and where the brief was short ─────────────────────
+--
+-- Read off a full local replay of the series, `pg_policies` joined to itself:
+-- every restrictive policy in `public`, and whether a permissive policy for
+-- the same command names any role in common with it.
+--
+--   audit_findings      delete
+--   business_models     delete
+--   cell_dependencies   insert · update · delete
+--   cells               insert · delete
+--   lanes               insert · delete
+--   path_steps          insert · update · delete
+--   paths               insert · delete
+--   phases              insert · delete
+--   scenarios           insert · delete
+--   steps               insert · delete
+--
+-- Eleven tables and twenty verbs, not the six tables the ticket named.
+-- The six — `cells`, `lanes`, `paths`, `phases`, `scenarios`, `steps` — are
+-- the family a reader notices, because each has a permissive UPDATE beside
+-- the missing halves and so reads as a table that is half-governed. The other
+-- five are the same defect and quieter: `cell_dependencies` and `path_steps`
+-- carry no permissive write policy at all, and `audit_findings` and
+-- `business_models` are missing only their DELETE. A count of six would have
+-- left the schema with five exceptions to the rule this file states.
+--
+-- ── One loop, and it is the whole cause ──────────────────────────────────
+--
+-- 20260818002000, the optional service-account tier, loops over thirteen
+-- tables and creates all three write policies on each, unconditionally. Its
+-- comment says it plainly — "they AND with the permissive policies" — and for
+-- nineteen of the thirty-nine there was a permissive policy to AND with. For
+-- the other twenty there was not, and there still is not. The loop was
+-- written table-wide over a surface that is verb-wide. That is the defect,
+-- and it is a defect of expression: no database was ever more open or more
+-- closed than its author intended.
+--
+-- ── Every one of the twenty is RPC-only, and checked as such ─────────────
+--
+-- The question is not whether the app COULD reach these verbs but whether it
+-- does, and the answer was taken from the writers rather than assumed.
+-- `scripts/direct-table-writes.mjs` walks `src/` for direct table writes and
+-- reports the verbs it finds: `cells`, `lanes`, `paths`, `phases`,
+-- `scenarios` and `steps` are UPDATE and nothing else; `audit_findings` is
+-- INSERT and UPDATE; `business_models` is UPDATE; `cell_dependencies` and
+-- `path_steps` are not written by the app at all. Not one of the twenty
+-- verbs above appears.
+--
+-- What builds and destroys structure instead are the authoring RPCs of
+-- 20260818001000 — `upsert_cell`, `delete_cell`, `add_lane`, `remove_lane`,
+-- `create_path`, `create_scenario`, `set_cell_dependency`, `set_path_steps`
+-- and their siblings. Every one of them is SECURITY DEFINER, and no table
+-- here sets FORCE ROW LEVEL SECURITY, so each runs as the function owner and
+-- never meets a policy at all; the tier is asserted inside those bodies. A
+-- function that were NOT definer would be governed by these policies and the
+-- answer for its table would be different — so this was read from
+-- `pg_proc.prosecdef` on the replay rather than taken on trust.
+--
+-- And the grants agree, which is the second and independent reason nothing
+-- moves here. `authenticated` holds no privilege at all for any of the
+-- twenty: no DELETE on any of the eleven tables, and INSERT only on
+-- `audit_findings` and `business_models`, whose INSERT is a full pair and is
+-- not touched. Attempted as the role, each of the twenty is refused with
+-- 42501 before row level security is consulted. The restrictive policies were
+-- inert twice over.
+--
+-- So all twenty are the ticket's first case — genuinely RPC-only, and the
+-- policy is noise. None is the second case. Giving any of them a permissive
+-- half would OPEN a direct structural write that
+-- docs/connectors/supabase/database.md § Row Level Security rules out in its
+-- first bullet: structure goes through RPCs, not tables.
+--
+-- 21000212000000 reached the same conclusion for `services` and wrote it
+-- down: a restrictive policy over a write nobody is admitted to make "would
+-- assert nothing and read as though it did", so it gave that table UPDATE
+-- only. This file is that decision applied backwards to the ones that already
+-- existed.
+--
+-- ── Which makes the pair convention readable in both directions ──────────
+--
+-- 21000213000000 settled that a write policy is a PAIR — permissive
+-- `<table>_<verb>_auth` for *the panels reach this table directly*, restrictive
+-- `<table>_<verb>_service_only` for *and only the editing tier may* — and the
+-- reading that earns it: an `_auth` policy with no `_service_only` beside it
+-- is a hole. That reading survives a lone permissive policy. It does not
+-- survive twenty lone restrictive ones, because a rule of the form "these
+-- come in pairs" is worth what its exceptions cost, and eleven tables of
+-- exceptions cost all of it. After this file the two halves appear together
+-- or not at all, and each absence means one thing: no policy for a verb is
+-- the direct write path being closed.
+--
+-- ── Order, and why there is nothing to sequence ──────────────────────────
+--
+-- 21000213000000 had to write drop-old · restrictive · permissive so a table
+-- was never briefly open. Here there is no such window: only restrictive
+-- policies are dropped, dropping a restriction that stands alone leaves the
+-- verb closed by RLS's deny-by-default, and no permissive policy is created
+-- anywhere in this file. A table is closed for these verbs before the first
+-- statement, between every pair of statements, and after the last.
+--
+-- ── Replaying against an empty database ──────────────────────────────────
+--
+-- Recipe-only and subtractive: no table, no column, no row, and the schema
+-- version does not move (the same stance as 21000212000000 and
+-- 21000213000000). `drop policy if exists` makes a partial re-run idempotent
+-- and makes the file replay onto a database where the optional tier recipe
+-- was deleted and these policies never existed.
