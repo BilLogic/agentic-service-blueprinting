@@ -1122,7 +1122,7 @@ export type Database = {
       delete_path: { Args: { path_id: string }; Returns: string }
       delete_scenario: { Args: { scenario_id: string }; Returns: string }
       deletion_impact: {
-        Args: { kind: string; target_id: string }
+        Args: { kind: string; scope_id?: string | null; target_id: string }
         Returns: Json
       }
       duplicate_path: {

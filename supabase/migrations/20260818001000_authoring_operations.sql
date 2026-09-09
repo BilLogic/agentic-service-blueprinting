@@ -1582,7 +1582,14 @@ grant execute on function public.key_slug(text) to anon, authenticated;
 grant execute on function public.cell_natural_key(uuid) to anon, authenticated;
 grant execute on function public.mint_cell_key(uuid, uuid, uuid) to anon, authenticated;
 grant execute on function public.slices_referencing(uuid[]) to anon, authenticated;
-grant execute on function public.deletion_impact(text, uuid) to anon, authenticated;
+-- Named without its argument list, because a later migration changes it. The
+-- generated recipe is applied after the WHOLE core, so this line runs against
+-- the signature the last core migration left behind, not the one that existed
+-- the day it was written — and a grant naming `(text, uuid)` would fail on
+-- `function public.deletion_impact(text, uuid) does not exist`. Postgres
+-- resolves the bare name whenever it is unique, and errors if it is not, which
+-- is the behaviour wanted either way.
+grant execute on function public.deletion_impact to anon, authenticated;
 
 -- Writes: anon loses what PUBLIC already lost …
 revoke execute on function public.create_scenario(uuid, text, text, uuid, jsonb, int, text) from anon;

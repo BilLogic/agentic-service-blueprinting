@@ -191,16 +191,25 @@ export async function dispatchTool(
       return getCell(client, need(args, 'cell_id'))
     case 'measure_deletion_impact': {
       const kind = s(args, 'kind')
-      // Validated against the UI's vocabulary, not the RPC's: `lane` and
-      // `step` are answerable server-side but their counts do not match what
-      // their delete removes, so quoting them would put a wrong number in
-      // front of a human about to delete. See `deletionSafety.ts`.
-      if (kind !== 'scenario' && kind !== 'path' && kind !== 'slice') {
+      // `lane` and `step` were withheld here because their counts did not
+      // match their deletes. The predicates now address what each delete
+      // takes, so all five are offered — `step` still needs its path, because
+      // the delete is path-scoped and there is no true count without it.
+      const kinds = ['scenario', 'path', 'step', 'lane', 'slice']
+      if (!kind || !kinds.includes(kind)) {
+        throw new Error(`kind must be one of ${kinds.join(', ')}.`)
+      }
+      if (kind === 'step' && !s(args, 'scope_id')) {
         throw new Error(
-          'kind must be scenario, path, or slice — lane and step impacts do not match their deletes and are not offered.',
+          'A step impact needs scope_id = the path id — deleting a step removes only the cells on ONE path, so without it there is no true number to quote.',
         )
       }
-      return getDeletionImpact(client, kind as DeletableKind, need(args, 'target_id'))
+      return getDeletionImpact(
+        client,
+        kind as DeletableKind,
+        need(args, 'target_id'),
+        s(args, 'scope_id'),
+      )
     }
     case 'list_slices':
       return listSlices(client)

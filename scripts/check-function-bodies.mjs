@@ -96,7 +96,12 @@ export const SEEDED_PROBES = [
   ],
   ['deletion_impact(scenario)', "select public.deletion_impact('scenario', (select id from public.scenarios limit 1))"],
   ['deletion_impact(path)', "select public.deletion_impact('path', (select id from public.paths limit 1))"],
-  ['deletion_impact(step)', "select public.deletion_impact('step', (select id from public.steps limit 1))"],
+  // `step` is path-scoped and refuses without its path, so the probe hands it
+  // one real (path, step) pair rather than two independent `limit 1` reads.
+  [
+    'deletion_impact(step)',
+    "select public.deletion_impact('step', ps.step_id, ps.path_id) from public.path_steps ps limit 1",
+  ],
   ['deletion_impact(lane)', "select public.deletion_impact('lane', (select id from public.lanes limit 1))"],
 ]
 
