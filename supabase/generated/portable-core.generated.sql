@@ -10543,3 +10543,98 @@ $which_half$;
 -- its own service row up inside a subtransaction it then aborts, so it asks
 -- the same question of an empty replay as of a loaded target and leaves
 -- nothing behind on either.
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000213000000_one_shape_for_service_accounts_only.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Two tables spell "service accounts only" the way the other twelve do.
+--
+-- Fourteen tables are on the write surface — the tables the panels reach
+-- directly, under the caller's own privileges, rather than through the
+-- definer RPCs (scripts/panel-write-surface.mjs holds the list). Twelve of
+-- them express "only the editing tier may write this" as a PAIR: a permissive
+-- `<table>_<verb>_auth` with `using (true)`, and a RESTRICTIVE
+-- `<table>_<verb>_service_only` whose predicate is `public.is_service_account()`.
+-- `stakeholders` and `cell_touchpoints`, until this file, expressed it as a
+-- SINGLE PERMISSIVE policy whose whole predicate was that same call.
+--
+-- ── This is not a security fix ────────────────────────────────────────────
+--
+-- Both shapes admit exactly a service account and refuse exactly everyone
+-- else. There is no hole here and this file closes none. Read as a patch it
+-- would say the opposite of what is true, so: the posture before this
+-- migration and the posture after it are the same posture, on every database
+-- it will ever be replayed against. What changes is that one rule stops being
+-- written two ways.
+--
+-- ── How the second shape arrived ──────────────────────────────────────────
+--
+-- 20260818002000, the optional service-account tier, hung the restrictive
+-- half on the thirteen tables that already had a permissive write policy for
+-- it to narrow. `stakeholders` (21000125000000) and `cell_touchpoints`
+-- (21000113000000) joined the surface afterwards. Each was written from
+-- scratch rather than by amending an existing permissive policy, so each
+-- reached for the shortest thing that was correct: one policy, one call. Both
+-- authors were right about the rule and neither had anywhere to read the
+-- shape, because nothing stated it. That is the defect — not the SQL, the
+-- absence of a written convention. So the other half of this change is a
+-- paragraph in docs/connectors/supabase/database.md § Row Level Security
+-- saying which shape a write policy takes, which is the half that stops the
+-- next table from arriving with a third one.
+--
+-- ── Why the pair wins ─────────────────────────────────────────────────────
+--
+-- The two shapes are equally correct, so this is a decision about which is
+-- clearer rather than which is right. Three things decide it.
+--
+-- It is the majority and the established one. A reader meets the pair twelve
+-- times before meeting the exception, 20260818002000 built it, and
+-- 21000212000000 followed it for `services`. Collapsing the other way would
+-- rewrite twelve tables to accommodate two.
+--
+-- It keeps two decisions apart that have two different owners. The permissive
+-- half is the base template's: this table is edited from the browser rather
+-- than through an RPC. The restrictive half is the OPTIONAL tier recipe's:
+-- and only by the editing tier. Under the single-policy shape a base-template
+-- migration names a function whose whole purpose belongs to a recipe the
+-- deployer is invited to delete, and is correct only because the core seam's
+-- default body happens to be `select true`. That is a coupling nothing at the
+-- call site shows.
+--
+-- And it makes the absence of a restriction legible. `services` carried a
+-- permissive `using (true)` and no restrictive partner until 21000212000000,
+-- one release ago. A surface table with an `_auth` policy and no
+-- `_service_only` beside it is a hole — but that reading is only sound once
+-- every table on the surface is expected to carry the pair, because until now
+-- a lone permissive policy might equally have been the other legitimate
+-- shape. The single-policy form is the one that most resembles the defect,
+-- which is what cost the time.
+--
+-- ── A single-tier deployment is untouched ─────────────────────────────────
+--
+-- `public.is_service_account()` is the CORE seam (20260818001000) and its
+-- default body is `select true`: every signed-in session edits, the template
+-- default. Only the optional tier recipe replaces it with a read of the JWT.
+-- So where that recipe was skipped these policies admit everyone, exactly as
+-- the single policies they replace did, and that is the posture the
+-- deployment chose. The proof below therefore asserts AGREEMENT with the seam
+-- rather than a flat refusal: after this file a write to either table is
+-- admitted exactly when `is_service_account()` says so, whichever body that
+-- function carries.
+--
+-- ── Replaying against an empty database ───────────────────────────────────
+--
+-- Recipe-only and additive: no table, no column, no row, and the schema
+-- version does not move (the same stance as 21000128000000 and
+-- 21000212000000). A policy's permissiveness cannot be altered in place, so
+-- each is dropped and recreated, and the `drop policy if exists` makes a
+-- partial re-run idempotent. The order the statements are written in is the
+-- one that never widens: see the note above each table.
+--
+-- The proof stands its own rows up inside subtransactions it then aborts. It
+-- can only do so for `cell_touchpoints` where a cell exists to hang one on,
+-- so on an empty replay that half says out loud that it was skipped. The
+-- populated case is covered where it belongs: `npm run check:seed-load`
+-- attempts every one of these writes as an author and again as a viewer,
+-- against a seeded database, and never reads `pg_policies`.
