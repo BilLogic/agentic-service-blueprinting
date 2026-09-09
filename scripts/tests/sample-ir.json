@@ -1,5 +1,5 @@
 {
-  "schema_version": "2026.09.10",
+  "schema_version": "2026.09.11",
   "locales": [
     "en",
     "zh"
@@ -13,6 +13,20 @@
     "summary": {
       "en": "Test fixture service for the Phase 1 script round-trip tests.",
       "zh": "用于第一阶段脚本往返测试的示例生命周期。"
+    },
+    "entity_examples": {
+      "service": {
+        "en": "Streetlight maintenance — the whole of what the council promises about a light that has gone out.",
+        "zh": "路灯养护——市政对一盏熄灭路灯所作承诺的全部内容。"
+      },
+      "phase": {
+        "en": "Operate — the day-2 stretch that begins once a light is live and never really ends.",
+        "zh": "运营——路灯投入使用后开始、且几乎不会结束的日常阶段。"
+      },
+      "step": {
+        "en": "Dispatch crew — the column where a logged fault becomes a van on its way.",
+        "zh": "派遣班组——已登记的故障在此转为出车任务的环节。"
+      }
     },
     "phases": [
       {

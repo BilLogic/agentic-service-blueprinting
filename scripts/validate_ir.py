@@ -322,6 +322,26 @@ def check_resource(resource, jp: str, rep: Report, locales: list) -> None:
         rep.error(f"{jp}.featured", f"featured must be a boolean, got {type_name(resource['featured'])}")
 
 
+def check_entity_examples(examples, jp: str, rep: Report, locales: list) -> None:
+    """The service's per-kind examples: a kind key -> locale map.
+
+    The key set is not enumerated here on purpose. The kinds belong to the app,
+    which states them once where the definitions live, and `entity_examples`
+    carries no CHECK for the same reason — a second copy of the list would
+    refuse a seventh kind on the day the app learned to render one. So a key is
+    held to the shape of a key and nothing more, and a kind the app does not
+    know simply does not render.
+    """
+    if not isinstance(examples, dict):
+        rep.error(jp, f"'entity_examples' must be an object, got {type_name(examples)}")
+        return
+    for kind in examples:
+        kjp = f"{jp}.{kind}"
+        if check_key(kind, kjp, rep) is None:
+            continue
+        check_locale_text(examples[kind], kjp, rep, locales, True, kind)
+
+
 def check_registry(entries, jp: str, rep: Report, locales: list) -> None:
     """The service's touchpoint registry: named entries, unique by name
     (case-insensitively, the way the database's fold matches placements)."""
@@ -820,7 +840,12 @@ def validate_document(doc, rep: Report) -> None:
     if not isinstance(service, dict):
         rep.error(jp, f"'service' must be an object, got {type_name(service)}")
         return
-    check_extra_keys(service, {"key", "name", "summary", "touchpoints", "phases"}, jp, rep)
+    check_extra_keys(
+        service,
+        {"key", "name", "summary", "entity_examples", "touchpoints", "phases"},
+        jp,
+        rep,
+    )
     if "key" not in service:
         rep.error(jp, "missing required field 'key'")
     else:
@@ -828,6 +853,8 @@ def validate_document(doc, rep: Report) -> None:
     check_locale_text(service.get("name"), f"{jp}.name", rep, locales, True, "name")
     if "summary" in service:
         check_locale_text(service["summary"], f"{jp}.summary", rep, locales, False, "summary")
+    if "entity_examples" in service:
+        check_entity_examples(service["entity_examples"], f"{jp}.entity_examples", rep, locales)
     if "touchpoints" in service:
         check_registry(service["touchpoints"], f"{jp}.touchpoints", rep, locales)
 

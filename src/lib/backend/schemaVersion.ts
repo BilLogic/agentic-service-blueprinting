@@ -15,7 +15,7 @@
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
-export const TEMPLATE_SCHEMA_VERSION = '2026.09.10'
+export const TEMPLATE_SCHEMA_VERSION = '2026.09.11'
 
 /**
  * Every version this checkout can read and write, newest first.
@@ -24,6 +24,17 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.10'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
+  // A service carries its own examples (#338). `21000123000000` gave
+  // `public.services` an `entity_examples` map — one free-text example per
+  // core kind, shown under that kind's definition — and granted it to a
+  // signed-in author. The wire format never learned it, so the value was
+  // writable from the editor and invisible to the authoring pipeline: an
+  // authored example was dropped on the way to the seed and a re-map wrote
+  // nothing where a deployment had something. The map is optional and nothing
+  // authored moves, so the step is a stamp. No migration stamps this version
+  // either — the column has been there since 21000123000000 — so a target at
+  // 2026.09.08 is still one this checkout speaks.
+  '2026.09.11',
   // `lanes[].role` closes to the eight (#204). 21000122000000 closed the
   // column at the database in 2026.09.08 and the wire format never followed,
   // so a document could validate against references/ir-schema.json and then be

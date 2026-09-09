@@ -305,6 +305,19 @@ def registry_lookup(name: str) -> "Sql":
     return Sql(f"(select id from public.touchpoints where name = {sql_quote(name)})")
 
 
+def jsonb(value) -> str:
+    """A JSON value as a `jsonb` literal. `sql_row` does this for the columns it
+    is given a mapping for; the service insert is written out by hand, so it
+    reaches for the conversion directly.
+
+    Keys are SORTED, which `sql_row` has no need to do: those columns hold
+    lists, and this one holds a map an author edits by hand. Without the sort,
+    moving two examples past each other in the IR would rewrite a committed
+    seed that says exactly what it said before.
+    """
+    return sql_quote(json.dumps(value, ensure_ascii=False, sort_keys=True)) + "::jsonb"
+
+
 def sql_row(fields: dict) -> list:
     """Column values as SQL literals, in the order the insert names them."""
     out = []
@@ -346,6 +359,16 @@ def build_model(doc: dict, locale: str) -> dict:
             "key": lc["key"],
             "name": text(lc["name"]),
             "summary": text(lc.get("summary")),
+            # The per-kind examples, resolved to THIS locale — a kind whose
+            # locale map has no text for the seed being generated is dropped
+            # rather than emitted as an empty string, because the reader's
+            # side treats an absent key as "nothing authored" and renders
+            # nothing, while a blank one renders an empty section.
+            "entity_examples": {
+                kind: picked
+                for kind, locale_map in (lc.get("entity_examples") or {}).items()
+                if (picked := text(locale_map))
+            },
         },
         "touchpoints": [],
         "phases": [],
@@ -649,10 +672,33 @@ begin;
 
 -- Service (shared, upserted) ------------------------------------------------
 
-insert into public.services (id, name, summary) values
-  ({q(lc['id'])}, {q(lc['name'])}, {q(lc['summary'])})
+insert into public.services (id, name, summary, entity_examples) values
+  ({q(lc['id'])}, {q(lc['name'])}, {q(lc['summary'])}, {jsonb(lc['entity_examples'])})
 on conflict (id) do update
-  set name = excluded.name, summary = excluded.summary;
+  set name = excluded.name,
+      summary = excluded.summary,
+      -- AN EMPTY MAP IS SILENCE, NOT AN INSTRUCTION TO CLEAR.
+      --
+      -- `entity_examples` is the one column here a deployment also writes
+      -- from the editor, so a re-map meets values this seed did not author.
+      -- Overwriting unconditionally would erase them, which is the same
+      -- silent loss as never emitting the column at all — the bug this
+      -- clause exists because of. Never writing it would leave a generator
+      -- that cannot say anything about examples.
+      --
+      -- So the source wins where it SPEAKS, the way the registry upsert
+      -- below wins only where the import says something. A service block
+      -- with no `entity_examples` generates `{{}}`, and `{{}}` is exactly
+      -- what a block that authored none generates too — the two are
+      -- indistinguishable by the time the seed exists, so the empty map has
+      -- to read as "the source said nothing" and leave the target alone.
+      -- A map that IS present is the whole truth: a kind it omits IS
+      -- cleared, so the generator can still remove an example, by authoring
+      -- the map without it rather than by emptying the map.
+      entity_examples = case
+        when excluded.entity_examples = '{{}}'::jsonb then services.entity_examples
+        else excluded.entity_examples
+      end;
 
 -- Phases (shared, upserted; loops_to applied after all phases exist) ----------
 
