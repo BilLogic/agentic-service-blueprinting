@@ -15,9 +15,11 @@ That is the whole of the defect, and the data says so from both sides. A
 deployment built on this template measured 434 dependency rows, of which 8
 carried a name and none carried a note — and every one of the 8 was a sentence
 saying why the edge exists rather than a channel tag like "Email". Authors were
-not misusing a badge field; it was the only field they were offered. Those same
-8 rows now carry the identical string in both columns, which is what working
-around a missing write surface looks like from the data side. The bundled
+not misusing a badge field; it was the only field they were offered. That
+deployment has since copied all 8 into `note` in a migration of its own, so
+both columns now hold the same sentence there — a backfill, not an author
+working around anything, and it is only possible because someone knew to write
+one. The bundled
 sample agrees from the other direction — 73 dependency rows, no names, 21
 sentence-shaped notes, because a seed can write the column the editor cannot.
 
