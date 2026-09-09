@@ -9305,6 +9305,28 @@ declare
   done boolean := false;
   msg text;
 begin
+  -- Can this environment hold a service claim at all?
+  --
+  -- Everything below goes through `set_cell_dependency`, which refuses an
+  -- account that is not the service account. On Supabase, and on a stock
+  -- replay where the core's `is_service_account()` is `select true`, the claim
+  -- set inside the fixture is enough. Behind the PORTABLE SHIM it is not:
+  -- `auth.jwt()` there returns an empty object unconditionally, so no session
+  -- can be a service account and the guarded RPC cannot be exercised.
+  --
+  -- Asked rather than assumed, and skipped rather than faked. A proof that
+  -- reached past the guard to prove the statement underneath would be proving
+  -- a copy of the function body instead of the function.
+  perform set_config(
+    'request.jwt.claims', '{"app_metadata":{"role":"service"}}', true);
+  if not public.is_service_account() then
+    perform set_config('request.jwt.claims', '', true);
+    raise notice
+      'omitted-argument proof skipped: this environment cannot hold a service claim, so the guarded write cannot run here';
+    return;
+  end if;
+  perform set_config('request.jwt.claims', '', true);
+
   begin
     -- The claim the function's first line asks for. A GUC, not a role: this
     -- has to be true on a stock Postgres replay as well as on Supabase, and
