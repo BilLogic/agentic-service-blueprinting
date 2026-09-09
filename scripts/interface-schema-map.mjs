@@ -125,6 +125,9 @@ export const LABEL_COLUMNS = Object.freeze(
         'The control names what a reader is choosing FROM — the deployment\'s touchpoint registry — and the column is the key the choice lands in. The same split `Actor` draws over `lanes.stakeholder_id`: the label is the pool, the name is the pointer.',
     },
     { label: 'Evidence', names: ['evidence'], because: '' },
+    { label: 'Kind', names: ['evidence.kind'], because: '' },
+    { label: 'Title', names: ['evidence.title'], because: '' },
+    { label: 'Note', names: ['evidence.note'], because: '' },
     { label: 'Resources', names: ['resources'], because: '' },
     {
       label: 'Actor',

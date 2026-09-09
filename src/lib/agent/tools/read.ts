@@ -206,7 +206,7 @@ export async function listCellDependencies(
 }
 
 const EVIDENCE_SELECT =
-  'id, cell_id, kind, title, ref, excerpt, observed_at, created_at'
+  'id, cell_id, kind, title, note, observed_at, created_at'
 
 /**
  * Evidence the blueprint's claims rest on. A cell with no evidence is a
@@ -228,7 +228,7 @@ export async function listEvidence(
   return formatEvidenceList(data ?? [], cellId)
 }
 
-/** Named evidence rows in full — excerpt included. */
+/** Named evidence rows in full — the note included. */
 export async function getEvidence(
   client: Client,
   ids: string[],

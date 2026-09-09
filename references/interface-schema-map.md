@@ -46,6 +46,9 @@ owes the third column a reason.
 | **Tech in this step** | `cells.content` | Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from. |
 | **Registry** | `cell_touchpoints.touchpoint_id` | The control names what a reader is choosing FROM — the deployment's touchpoint registry — and the column is the key the choice lands in. The same split `Actor` draws over `lanes.stakeholder_id`: the label is the pool, the name is the pointer. |
 | **Evidence** | `evidence` | — |
+| **Kind** | `evidence.kind` | — |
+| **Title** | `evidence.title` | — |
+| **Note** | `evidence.note` | — |
 | **Resources** | `resources` | — |
 | **Actor** | `lanes.stakeholder_id` | The registry the key points into is `stakeholders`, and the word this vocabulary uses for a party standing in the room is actor: a lane names its actor, and a `team` is a stakeholder that can never be one. The label says the narrower word, which is the only one the board is about. |
 | **Owner team** | `lanes.owner_team` | — |
@@ -126,13 +129,15 @@ document look complete.
 
 <!-- generated:coverage — npm run interface-map -->
 
-29 of 37 names carry a comment in the catalogue. Read them there — `\d+ <table>` in psql, or the `COMMENT ON` statements in the dump.
+30 of 40 names carry a comment in the catalogue. Read them there — `\d+ <table>` in psql, or the `COMMENT ON` statements in the dump.
 
-8 that carry none:
+10 that carry none:
 
 - `phases.summary`
 - `scenarios.summary`
 - `services.summary`
+- `evidence.kind`
+- `evidence.title`
 - `business_models.funding`
 - `business_models.pricing`
 - `business_models.delivery_cost`

@@ -312,13 +312,11 @@ export type Database = {
           cell_key: string | null
           created_at: string
           created_by: string | null
-          excerpt: string | null
           id: string
           kind: string
           note: string | null
           observed_at: string | null
           proposition_question_key: string | null
-          ref: string | null
           service_id: string
           title: string
           updated_at: string
@@ -329,13 +327,11 @@ export type Database = {
           cell_key?: string | null
           created_at?: string
           created_by?: string | null
-          excerpt?: string | null
           id?: string
           kind: string
           note?: string | null
           observed_at?: string | null
           proposition_question_key?: string | null
-          ref?: string | null
           service_id: string
           title: string
           updated_at?: string
@@ -346,13 +342,11 @@ export type Database = {
           cell_key?: string | null
           created_at?: string
           created_by?: string | null
-          excerpt?: string | null
           id?: string
           kind?: string
           note?: string | null
           observed_at?: string | null
           proposition_question_key?: string | null
-          ref?: string | null
           service_id?: string
           title?: string
           updated_at?: string
