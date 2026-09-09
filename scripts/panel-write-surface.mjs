@@ -73,8 +73,9 @@
  *
  * THE VERBS ARE NOT HAND-KEPT EITHER, and for the same reason the tables
  * stopped being. This map asserted the UPDATE path and only that, while the app
- * also inserted and deleted `evidence`, `slices`, `slides`, `stakeholders` and
- * `audit_findings` — one verb wide instead of one table wide, the same hole in
+ * also inserted and deleted `evidence`, `slices`, `slides` and `stakeholders`,
+ * and inserted `audit_findings` — one verb wide instead of one table wide, the
+ * same hole in
  * a different axis. `writeSurfaceEntries` now takes each entry's verbs from
  * `writtenVerbsByTable`, the same scan that finds the tables, so an insert added
  * to a module that already updates is covered the moment it is written and
