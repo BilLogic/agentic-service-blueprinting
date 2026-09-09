@@ -1192,7 +1192,11 @@ export type Database = {
           source_cell_id: string
           target_cell_id: string
         }
-        Returns: string
+        Returns: Json
+      }
+      restore_cell_dependency: {
+        Args: { dependency_id: string; name: string | null; note: string | null }
+        Returns: undefined
       }
       set_path_steps: {
         Args: { path_id: string; step_ids: string[] }
