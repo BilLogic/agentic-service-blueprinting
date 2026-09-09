@@ -246,7 +246,7 @@ export function CreateSliceSheet({
               {/* Both fields, visible at once — this step exists to name the
                   thing, so hiding half the name behind a click saved four
                   pixels and cost a discovery. Required-ness is carried by the
-                  labels, not by which field is on slide. */}
+                  labels, not by which field is on screen. */}
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
                   Subtitle{' '}
@@ -265,7 +265,7 @@ export function CreateSliceSheet({
                 No Actor field. It was asked for, stored, and read by nothing —
                 no header, no slide, no sidebar row — so it took a decision from
                 the author and gave nothing back. For a journey slice the actor
-                is already the lane its cells sit in, which is on slide.
+                is already the lane its cells sit in, which is on screen.
               */}
 
               {error ? (
