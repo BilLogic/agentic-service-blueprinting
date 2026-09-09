@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.19.0
+
+### Minor Changes
+
+- 7657564: The scenario note reaches the title that carries it
+
+  `scenarios.note` has been in the schema for a while, with a column comment
+  arguing at length for what it is: an aside about the scenario, beside the
+  summary that says what it is, held as blueprint data rather than as a `Record`
+  keyed on hardcoded scenario ids that only its author can read. The generated
+  row type carries it. `EntityDefinitionPopover` accepts a `note` and renders it
+  as a section under its own eyebrow. `ScenarioTitleBadge` passes one through.
+
+  Nothing ever read the column. The one caller that passes `note` hands it a
+  hardcoded `null`, and the select in `useServicePhases` never asked for the
+  field, so every popover in the app rendered the same three-quarters of a
+  mechanism. A deployment that wrote a note into a scenario row got a column
+  that stored it and no surface that showed it.
+
+  The read seam asks for `note` now, `NavItem` carries it, and a slide header's
+  title — an `<h1>`, so not the badge's job — hangs the definition card off the
+  word. `ScenarioTitleDefinition` is the piece that was missing: it composes no
+  sections of its own, it only decides that a heading gets the same card a badge
+  gets, and it deliberately does not pass the summary, which both headers
+  already print as prose two lines below.
+
+  The aside rides on the WORD rather than on an ⓘ beside it. Four other surfaces
+  use that glyph to mean _opens the panel_, and one glyph cannot mean both that
+  and _there is an aside here_.
+
+  Also: `runConformance` was the last place in the repository still inlining the
+  `catch` block that `errorMessage` exists to replace. Seventeen files stopped
+  writing it by hand; this one did not, because its `detail` is assembled a few
+  lines away from where the others set an error message.
+
 ## 1.18.6
 
 ### Patch Changes
@@ -3353,8 +3388,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                "lanes_lane_role_check" … compliance_review
+                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
