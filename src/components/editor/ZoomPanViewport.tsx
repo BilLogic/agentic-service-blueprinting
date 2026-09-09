@@ -45,6 +45,12 @@ type ZoomPanViewportProps = {
   focusCellsKey?: string
   cameraStateKey?: string
   cameraDestinationKey?: string
+  /**
+   * False while `cameraDestinationKey` still names a wait rather than the
+   * board on screen — a surface standing a skeleton in for content that has
+   * not arrived. See the option of the same name on the viewport hook.
+   */
+  cameraDestinationResolved?: boolean
   cameraOutcomeKey?: string
   onFitReady?: () => void
 }
@@ -77,6 +83,7 @@ function ZoomPanViewportInner({
   focusCellsKey,
   cameraStateKey,
   cameraDestinationKey,
+  cameraDestinationResolved,
   cameraOutcomeKey,
   onFitReady,
 }: ZoomPanViewportProps) {
@@ -111,6 +118,7 @@ function ZoomPanViewportInner({
     refitOnResize,
     cameraStateKey,
     cameraDestinationKey,
+    cameraDestinationResolved,
     cameraOutcomeKey,
     onFitReady,
   })

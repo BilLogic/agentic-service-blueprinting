@@ -111,6 +111,15 @@ type UseZoomPanViewportOptions = {
   cameraStateKey?: string
   /** Stable semantic destination used to reject stale restored transforms. */
   cameraDestinationKey?: string
+  /**
+   * Whether `cameraDestinationKey` names the board that is actually on
+   * screen. A surface that boots through a skeleton passes `false` until the
+   * real board has replaced it. While this is false the destination means
+   * "not ready yet", which is neither a place to fit nor a navigation away
+   * from the framing this mount inherited: the inherited framing is HELD,
+   * and the ordinary fit runs underneath it as it always has.
+   */
+  cameraDestinationResolved?: boolean
   /** Called after the current reset destination has a committed fit. */
   onFitReady?: () => void
   /** Semantic selection id used to report an exact navigation outcome. */
@@ -363,6 +372,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     semanticZoomThreshold = SEMANTIC_ZOOM_THRESHOLD,
     cameraStateKey,
     cameraDestinationKey = resetKey ?? fitSelector,
+    cameraDestinationResolved = true,
     onFitReady,
     cameraOutcomeKey,
   } = options
@@ -398,15 +408,26 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     const stored = cameraStateKey
       ? beginCanvasViewState(cameraStateKey)
       : undefined
-    const restored =
-      stored?.snapshot?.destinationKey === cameraDestinationKey
-        ? stored.snapshot
+    const snapshot = stored?.snapshot
+    /*
+      An unresolved destination is not evidence about anything. A canvas
+      returning to a still-open tab boots through a loading destination
+      before the real one, and reading that hop as "the reader went
+      somewhere else" is what threw the framing away. So the key is compared
+      only once it names a real board; until then the framing is inherited
+      unconditionally and the decision waits.
+    */
+    const inherited =
+      snapshot !== undefined &&
+      (!cameraDestinationResolved ||
+        snapshot.destinationKey === cameraDestinationKey)
+        ? snapshot
         : undefined
     return {
       lease: stored?.lease,
-      snapshot: restored,
-      transform: restored?.transform ?? { pan: { x: 0, y: 0 }, zoom: 1 },
-      restored: restored !== undefined,
+      snapshot: inherited,
+      transform: inherited?.transform ?? { pan: { x: 0, y: 0 }, zoom: 1 },
+      restored: inherited !== undefined,
     }
   })
   const [pan, setPan] = useState(initialCamera.transform.pan)
@@ -419,6 +440,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   const restoredCameraPendingRef = useRef(initialCamera.restored)
   const lastFitGeometryRef = useRef<CanvasViewGeometry | null>(null)
   const cameraDestinationKeyRef = useRef(cameraDestinationKey)
+  const cameraDestinationResolvedRef = useRef(cameraDestinationResolved)
   const onFitReadyRef = useRef(onFitReady)
   const pendingFitRef = useRef(false)
   /**
@@ -540,9 +562,16 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   useLayoutEffect(() => {
     animateFitRef.current = animateFit
     cameraDestinationKeyRef.current = cameraDestinationKey
+    cameraDestinationResolvedRef.current = cameraDestinationResolved
     onFitReadyRef.current = onFitReady
     fitSelectorRef.current = fitSelector
-  }, [animateFit, cameraDestinationKey, onFitReady, fitSelector])
+  }, [
+    animateFit,
+    cameraDestinationKey,
+    cameraDestinationResolved,
+    onFitReady,
+    fitSelector,
+  ])
 
   const cancelFitAnimation = useCallback(
     (kind: 'cancelled' | 'superseded' = 'cancelled') => {
@@ -1138,6 +1167,82 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     commitTransform(p, z, false)
   }, [commitTransform])
 
+  /**
+   * Settle the framing this mount inherited from the tab it remounted into,
+   * once and only once.
+   *
+   * Returns whether that framing was adopted. It is adopted when the
+   * destination it was filed under still names the board on screen, that
+   * board measures to the same fit box it measured then, and the camera
+   * still points somewhere inside the canvas. Anything else is a board the
+   * framing no longer describes, so the snapshot is dropped and the caller
+   * falls back to the canonical fit.
+   *
+   * Called with nothing pending, or before the destination is resolved,
+   * this decides nothing and reports `false` — the caller's ordinary fit is
+   * then the correct behaviour, and the framing stays held for the
+   * resolution still to come.
+   */
+  const adoptInheritedCamera = useCallback(
+    (focusTarget: HTMLElement | null) => {
+      if (!restoredCameraPendingRef.current) return false
+      if (!cameraDestinationResolvedRef.current) return false
+      restoredCameraPendingRef.current = false
+      const container = containerRef.current
+      const content = contentRef.current
+      const snapshot = restoredSnapshotRef.current
+      /*
+        The snapshot, NOT the live transform. A mount that waited out a
+        loading destination has already been fitted against the skeleton by
+        the ordinary machinery, so by the time this runs the live transform
+        is that placeholder fit — reading it here would restore the wait
+        instead of the framing.
+      */
+      const inherited = snapshot?.transform ?? transformRef.current
+      const target = focusTarget ?? content
+      /*
+        Measured at the zoom the board is actually PAINTED at, not the one
+        being adopted. `measureFitBounds` divides client rectangles back out
+        by the live scale to reach content coordinates, so handing it the
+        inherited zoom while the placeholder fit is still on screen reports a
+        box off by the ratio between them — and every geometry comparison
+        below would fail on a board that never moved.
+      */
+      const geometry =
+        content && target
+          ? measureFitBounds(content, target, transformRef.current.zoom)
+          : null
+      const namesThisBoard =
+        snapshot !== undefined &&
+        geometry !== null &&
+        snapshot.destinationKey === cameraDestinationKeyRef.current &&
+        isSameFitGeometry(snapshot.geometry, geometry)
+      const pointsAtTheCanvas =
+        container !== null &&
+        content !== null &&
+        inherited.zoom >= MIN_ZOOM &&
+        inherited.zoom <= MAX_ZOOM &&
+        inherited.pan.x + content.scrollWidth * inherited.zoom > 0 &&
+        inherited.pan.y + content.scrollHeight * inherited.zoom > 0 &&
+        inherited.pan.x < container.clientWidth &&
+        inherited.pan.y < container.clientHeight &&
+        namesThisBoard
+      if (pointsAtTheCanvas && geometry !== null) {
+        lastFitGeometryRef.current = geometry
+        hasFittedRef.current = true
+        userAdjustedViewRef.current = true
+        pendingFitRef.current = false
+        commitTransform(inherited.pan, inherited.zoom, true)
+        resolveSemanticOutcome({ kind: 'completed', transform: inherited })
+        onFitReadyRef.current?.()
+        return true
+      }
+      restoredSnapshotRef.current = undefined
+      return false
+    },
+    [commitTransform, resolveSemanticOutcome],
+  )
+
   useLayoutEffect(() => {
     if (resetKey === undefined) return
     // A newer semantic destination owns the camera immediately. Waiting for
@@ -1180,44 +1285,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         : null
     applyFocusPaint(pendingFocusTransferRef.current, 0)
     focusTargetRef.current = nextFocusTarget
-    if (restoredCameraPendingRef.current) {
+    if (restoredCameraPendingRef.current && cameraDestinationResolvedRef.current) {
       pendingFocusTransferRef.current = null
-      restoredCameraPendingRef.current = false
-      const container = containerRef.current
-      const restoredContent = contentRef.current
-      const restored = transformRef.current
-      const restoredSnapshot = restoredSnapshotRef.current
-      const restoredTarget = nextFocusTarget ?? restoredContent
-      const restoredGeometry =
-        restoredContent && restoredTarget
-          ? measureFitBounds(restoredContent, restoredTarget, restored.zoom)
-          : null
-      const restoredGeometryMatches =
-        restoredSnapshot !== undefined &&
-        restoredGeometry !== null &&
-        restoredSnapshot.destinationKey === cameraDestinationKeyRef.current &&
-        isSameFitGeometry(restoredSnapshot.geometry, restoredGeometry)
-      const restoredIntersectsCanvas =
-        container !== null &&
-        restoredContent !== null &&
-        restored.zoom >= MIN_ZOOM &&
-        restored.zoom <= MAX_ZOOM &&
-        restored.pan.x + restoredContent.scrollWidth * restored.zoom > 0 &&
-        restored.pan.y + restoredContent.scrollHeight * restored.zoom > 0 &&
-        restored.pan.x < container.clientWidth &&
-        restored.pan.y < container.clientHeight &&
-        restoredGeometryMatches
-      if (restoredIntersectsCanvas) {
-        lastFitGeometryRef.current = restoredGeometry
-        hasFittedRef.current = true
-        userAdjustedViewRef.current = true
-        pendingFitRef.current = false
-        commitTransform(restored.pan, restored.zoom, true)
-        resolveSemanticOutcome({ kind: 'completed', transform: restored })
-        onFitReadyRef.current?.()
-        return
-      }
-      restoredSnapshotRef.current = undefined
+      if (adoptInheritedCamera(nextFocusTarget)) return
+      // Dropped: the mount seeded the camera with a framing that turns out
+      // to describe another board, so clear it before the fit below rather
+      // than easing away from a place the reader was never taken.
       commitTransform({ x: 0, y: 0 }, 1, true)
     }
     pendingFitRef.current = true
@@ -1379,17 +1452,73 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     commitTransform,
     cameraOutcomeKey,
     resolveSemanticOutcome,
+    adoptInheritedCamera,
+  ])
+
+  /*
+    The other half of the same decision, for the mount that had to wait.
+
+    A returning canvas boots through a loading destination, so at the commit
+    that raises the fit above there is still nothing to compare a saved
+    framing against. The board arriving is not a `resetKey` change — the
+    destination was already named while the skeleton stood in for it — so
+    the framing needs a seam of its own here, on the resolution itself.
+
+    Declared AFTER the fit effect on purpose: on a mount that never waited,
+    the effect above has already decided, and this one finds nothing pending.
+  */
+  useLayoutEffect(() => {
+    if (!restoredCameraPendingRef.current) return
+    if (!cameraDestinationResolved) return
+    const focusTarget =
+      contentRef.current?.querySelector<HTMLElement>(fitSelectorRef.current) ??
+      null
+    cancelFitAnimation()
+    if (adoptInheritedCamera(focusTarget)) {
+      focusTargetRef.current = focusTarget
+      return
+    }
+    // No inherited framing survives, and the fit that would have covered
+    // this is already spent on the placeholder. Fit the real board now, as
+    // a jump: arriving content is not a navigation.
+    pendingFitRef.current = true
+    userAdjustedViewRef.current = false
+    runPendingFit(false)
+  }, [
+    cameraDestinationResolved,
+    cameraDestinationKey,
+    adoptInheritedCamera,
+    cancelFitAnimation,
+    runPendingFit,
   ])
 
   useEffect(
     () => () => {
-      if (initialCamera.lease && lastFitGeometryRef.current) {
-        writeCanvasViewState(initialCamera.lease, {
-          transform: transformRef.current,
-          destinationKey: cameraDestinationKeyRef.current,
-          geometry: lastFitGeometryRef.current,
-        })
+      const lease = initialCamera.lease
+      if (!lease) return
+      /*
+        Left before the board arrived. What this mount framed is a
+        placeholder, and the destination it would file that framing under
+        names the wait rather than a board — so it has nothing of its own to
+        save. Hand the inherited framing straight back instead: leaving
+        during a load must not cost the reader the aim they had before it.
+      */
+      if (!cameraDestinationResolvedRef.current) {
+        const held = restoredSnapshotRef.current
+        if (held && restoredCameraPendingRef.current) {
+          writeCanvasViewState(lease, held)
+        }
+        return
       }
+      // The live transform, whatever it is: a tab left mid-flight remembers
+      // where the camera actually was, never the destination it was still
+      // travelling to.
+      if (!lastFitGeometryRef.current) return
+      writeCanvasViewState(lease, {
+        transform: transformRef.current,
+        destinationKey: cameraDestinationKeyRef.current,
+        geometry: lastFitGeometryRef.current,
+      })
     },
     [initialCamera.lease],
   )

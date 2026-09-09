@@ -980,6 +980,12 @@ function ServiceOverviewViewImpl({
                   cameraStateKey ?? (mobileShell ? undefined : 'desktop:blueprint')
                 }
                 cameraDestinationKey={cameraDestinationKey}
+                // The board, not the wait. Readiness names the real
+                // destination one beat before the skeleton actually gives way
+                // to it, and a framing carried across a tab remount can only
+                // be measured against content that is on screen — so the
+                // camera is told the destination has resolved at the swap.
+                cameraDestinationResolved={overviewSettled}
                 cameraOutcomeKey={cameraTargetId ?? undefined}
                 onFitReady={handleInitialFitReady}
                 focusCellsKey={focusedScenarioId ?? soloScenarioId ?? undefined}
