@@ -27,12 +27,14 @@
  * minutes earlier and with the table named.
  *
  * That is what a READER sees. The same database is then asked what a signed-in
- * AUTHOR may write: for every verb the editors use on a table — update, and for
- * five of them insert and delete as well — `authenticated` must hold the grant
- * and the table must carry a policy for that command admitting it. Both halves
- * have been missing in the last three migrations, neither is visible on a laptop
- * holding the dev service key, and the policy half fails silently — see
- * scripts/panel-write-surface.mjs.
+ * AUTHOR may write, and asked by BECOMING that author: for every verb the
+ * editors use on a table — update, and for five of them insert and delete as
+ * well — the check sets the role, sets a service-account claim, attempts the
+ * write, and rolls it back. Then it does the same as a signed-in reader, who
+ * must change nothing. Grants and policies have both been missing in the last
+ * three migrations, neither is visible on a laptop holding the dev service key,
+ * and a policy that refuses matches zero rows and returns 200 — so the question
+ * is asked as the write, not of the catalog. See scripts/panel-write-surface.mjs.
  *
  * Ordering is the whole subtlety. The platform default (step 2) is set BEFORE
  * the core creates any table, so every table inherits the anon SELECT the way a
@@ -56,6 +58,7 @@ import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  ANY_SIGNED_IN_USER_MAY_WRITE,
   buildWriteSurfaceSql,
   evaluateWriteSurface,
   writeSurfaceAssertions,
@@ -227,23 +230,24 @@ export function evaluate(counts) {
 
 const DB = process.env.SEED_LOAD_DB ?? 'seed_load_check'
 
-function run(bin, args, extraEnv = {}) {
+function run(bin, args, extraEnv = {}, input = undefined) {
   return execFileSync(bin, args, {
     encoding: 'utf8',
     env: { ...process.env, ...extraEnv },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    input,
+    stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     maxBuffer: 64 * 1024 * 1024,
   })
 }
 
-function psql(args, extraEnv = {}) {
+function psql(args, extraEnv = {}, input = undefined) {
   // Notices are the migrations' running commentary (`renamed 11 objects …`);
   // warnings and above still come through, and ON_ERROR_STOP makes any error a
   // non-zero exit rather than a message swallowed mid-file.
   return run('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', DB, ...args], {
     PGOPTIONS: '--client-min-messages=warning',
     ...extraEnv,
-  })
+  }, input)
 }
 
 function main() {
@@ -255,12 +259,16 @@ function main() {
     // below (`@icon`) proves the value reaches the deployed key.
     psql(['-c', ICON_FIXTURE_SQL])
     // The other half of "a deployment works": the anon read above is what a
-    // reader sees, this is what a signed-in AUTHOR may write. It asks the
-    // catalog rather than becoming the role, so it costs one more query and no
-    // more setup — see scripts/panel-write-surface.mjs for why both the grant
-    // and the policy have to be asked separately, for each verb.
+    // reader sees, this is what a signed-in AUTHOR may write. It BECOMES the
+    // role and attempts each write inside a transaction it rolls back, because
+    // the catalog cannot answer the question — a policy that exists and admits
+    // nobody satisfies an existence test, and every one of these tables carries
+    // one. See scripts/panel-write-surface.mjs.
+    //
+    // Fed on stdin rather than with `-c`, because it is a script: fixtures, a
+    // temp table, a loop, and the ROLLBACK that undoes all three.
     const writeProblems = evaluateWriteSurface(
-      psql(['-At', '-F', '|', '-c', buildWriteSurfaceSql()]),
+      psql(['-At', '-F', '|', '-f', '-'], {}, buildWriteSurfaceSql()),
     )
     if (writeProblems.length > 0) {
       console.error('The recipe applied, but a signed-in author cannot write what the panels show:\n')
@@ -271,7 +279,8 @@ function main() {
           'UPDATE or DELETE policy is worse — the statement matches no row and ' +
           'returns 200, so a save is reported as a deleted row and a delete as no ' +
           'change at all. Neither is visible locally, where the dev service key ' +
-          'bypasses RLS.',
+          'bypasses RLS. Each line above is a write that was actually attempted, ' +
+          'as the role, against the database this run built.',
       )
       process.exitCode = 1
       return
@@ -295,11 +304,16 @@ function main() {
     console.log(
       `the generated seed loads on a fresh core + recipe and renders as anon ` +
         `(${POPULATED.length} tables populated, ${Object.keys(RENDER_READS).length} render reads return rows), ` +
-        `and every write the editors make is reachable by authenticated ` +
-        `(${assertions.filter((one) => one.label.startsWith('grant')).length} grants, ` +
-        `${assertions.filter((one) => one.label.startsWith('policy')).length} policies, ` +
+        `and every write the editors make was attempted as the role and rolled back ` +
+        `(${assertions.filter((one) => one.who === 'author').length} an author made, ` +
+        `${assertions.filter((one) => one.who === 'viewer').length} a signed-in reader was refused, ` +
         `over ${entries.length} tables and ${verbs.join('/').toLowerCase()})`,
     )
+    // Printed on a GREEN run, because a gap the check knows about and does not
+    // say out loud is the shape of hole this whole file exists to close.
+    for (const [table, because] of Object.entries(ANY_SIGNED_IN_USER_MAY_WRITE)) {
+      console.log(`  not yet asked of public.${table}: ${because}`)
+    }
   } catch (error) {
     // A non-zero psql exit — an apply that would not run, or a read the anon
     // role is refused. Its stderr names the file and the statement, so it is
