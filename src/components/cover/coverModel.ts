@@ -103,14 +103,71 @@ export type CoverSection =
       figure?: CoverFigure
     }
 
-export type CoverTab = {
+/**
+ * One service's cover page — the copy shown when that service is the active
+ * one. A deployment supplies one per service it holds; the active-service
+ * choice — this tab's selector, or the URL slug — picks which page renders.
+ */
+export type CoverServicePage = {
+  /**
+   * The service this page belongs to, matched to a roster row by its route
+   * slug (`lib/serviceSlug`). Case-insensitive at the join, the way routing
+   * resolves a slug.
+   */
+  slug: string
+  sections: CoverSection[]
+}
+
+/**
+ * The deployment's services index — the body of the services tab.
+ * It is one page per service rather than a single fixed set of sections: the
+ * active service picks its own page.
+ *
+ * With more than one service the tab heads its page with the selector and its
+ * strip label reads `pluralLabel` ("Services") instead of the tab's singular
+ * `label` ("The service"). With exactly one service neither the selector nor
+ * the plural appears — the tab renders that sole page as its singular self,
+ * byte-for-byte what it was before multi-service.
+ */
+export type CoverServicesIndex = {
+  pluralLabel: string
+  /** One page per service, in roster order. */
+  pages: CoverServicePage[]
+}
+
+/** One orienting sentence, a guide link, and the tab's own identity — the
+ * fields both kinds of tab share. */
+type CoverTabBase = {
   value: string
   label: string
   /** One orienting sentence above the tab's first section. */
   intro?: string
-  sections: CoverSection[]
   /** Appended after the last section, when `repoUrl` is set. */
   link?: CoverGuideLink
+}
+
+/** An ordinary content tab — a fixed set of sections, the same for everyone. */
+export type CoverContentTab = CoverTabBase & {
+  sections: CoverSection[]
+}
+
+/**
+ * The services tab — its body is a page per service (`services.pages`), not a
+ * fixed `sections` list. Exactly one tab is this kind; every other is a
+ * `CoverContentTab`.
+ */
+export type CoverServicesTab = CoverTabBase & {
+  services: CoverServicesIndex
+}
+
+export type CoverTab = CoverContentTab | CoverServicesTab
+
+/** Every section a tab renders across all its states — a content tab's own
+ * sections, or every per-service page's sections for the services tab. */
+export function coverTabSections(tab: CoverTab): CoverSection[] {
+  return 'services' in tab
+    ? tab.services.pages.flatMap((page) => page.sections)
+    : tab.sections
 }
 
 export type CoverContent = {
@@ -139,7 +196,7 @@ export function coverFigures(
 ): Array<{ src: string; alt: string }> {
   const images: Array<{ src: string; alt: string }> = []
   for (const tab of content.tabs) {
-    for (const section of tab.sections) {
+    for (const section of coverTabSections(tab)) {
       if ('figure' in section && section.figure) images.push(section.figure)
       if ('image' in section && section.image) images.push(section.image)
     }

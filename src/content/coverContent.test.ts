@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { COVER_ASSET_MANIFEST } from '../../scripts/sync-cover-assets.mjs'
-import { coverFigures } from '@/components/cover/coverModel'
+import { coverFigures, coverTabSections } from '@/components/cover/coverModel'
 import { coverContent } from '@/content/coverContent'
 
 // Pins the template skin's content contract (plan §6 U3): generalized copy
@@ -46,7 +46,7 @@ describe('coverContent', () => {
 
   it('every tab has sections, and the page offers exactly one action', () => {
     for (const tab of coverContent.tabs) {
-      expect(tab.sections.length).toBeGreaterThan(0)
+      expect(coverTabSections(tab).length).toBeGreaterThan(0)
     }
     expect(coverContent.primaryCtaLabel).toBe('Open the blueprint')
   })
@@ -71,7 +71,7 @@ describe('coverContent', () => {
     // Portrait images are fixed-size by CSS (badge/framed), not by their own
     // dimensions, so this is scoped to the `figure` slot, not every image.
     const figures = coverContent.tabs
-      .flatMap((tab) => tab.sections)
+      .flatMap((tab) => coverTabSections(tab))
       .flatMap((section) => ('figure' in section && section.figure ? [section.figure] : []))
     expect(figures.length).toBeGreaterThan(0)
     for (const figure of figures) {
@@ -96,7 +96,7 @@ describe('coverContent', () => {
   })
 
   it('places each figure on the section its drawing belongs to', () => {
-    const sections = coverContent.tabs.flatMap((tab) => tab.sections)
+    const sections = coverContent.tabs.flatMap((tab) => coverTabSections(tab))
     const figureOf = (id: string) => {
       const section = sections.find((candidate) => candidate.id === id)
       if (!section) return undefined
@@ -114,7 +114,7 @@ describe('coverContent', () => {
 
   it("the Overview defs list carries the four categories the figure shows", () => {
     const section = coverContent.tabs
-      .flatMap((tab) => tab.sections)
+      .flatMap((tab) => coverTabSections(tab))
       .find((candidate) => candidate.id === 'overview-when')
     expect(section?.kind).toBe('defs')
     if (section?.kind !== 'defs') return
@@ -132,7 +132,7 @@ describe('coverContent', () => {
 
   it('every defs list has a header row for its two columns', () => {
     for (const tab of coverContent.tabs) {
-      for (const section of tab.sections) {
+      for (const section of coverTabSections(tab)) {
         if (section.kind !== 'defs') continue
         expect(section.columns.term.length).toBeGreaterThan(0)
         expect(section.columns.definition.length).toBeGreaterThan(0)
