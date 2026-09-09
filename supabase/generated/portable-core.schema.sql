@@ -1508,6 +1508,30 @@ end;
 $$;
 
 --
+-- Name: restore_cell_content(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.restore_cell_content(cell_id uuid, content text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint'
+      using errcode = '42501';
+  end if;
+
+  update public.cells c
+     set content = restore_cell_content.content
+   where c.id = restore_cell_content.cell_id;
+
+  if not found then
+    raise exception 'That cell no longer exists';
+  end if;
+end;
+$$;
+
+--
 -- Name: restore_cell_dependency(uuid, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2347,12 +2371,14 @@ COMMENT ON FUNCTION public.update_scenario_layout(scenario_id uuid, layout text)
 -- Name: upsert_cell(uuid, uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.upsert_cell(path_id uuid, lane_id uuid, step_id uuid, content text) RETURNS uuid
+CREATE FUNCTION public.upsert_cell(path_id uuid, lane_id uuid, step_id uuid, content text) RETURNS jsonb
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public', 'pg_catalog', 'pg_temp'
     AS $$
 declare
+  previous public.cells;
   cell_id uuid;
+  was_inserted boolean;
   next_column int;
 begin
   if not public.is_service_account() then
@@ -2370,6 +2396,16 @@ begin
     values (upsert_cell.path_id, upsert_cell.step_id, next_column);
   end if;
 
+  -- BEFORE the write, and locked. The lock is what stops a concurrent edit of
+  -- the same square from landing between this read and the upsert and leaving
+  -- the caller holding a `previous` that was never true.
+  select c.* into previous
+    from public.cells c
+   where c.lane_id = upsert_cell.lane_id
+     and c.step_id = upsert_cell.step_id
+     and c.position = 0
+   for update;
+
   -- Minted on insert, never on update: a cell's key is its identity for slice
   -- recovery, so renaming a lane must not silently repoint every slice that
   -- referenced the cells in it.
@@ -2380,9 +2416,23 @@ begin
                                upsert_cell.step_id))
   on conflict on constraint cells_lane_step_slot_unique
     do update set content = excluded.content
-  returning id into cell_id;
+  -- `xmax` is zero on a row this statement inserted and the updating
+  -- transaction's id on a row it updated. It is the write's own account of
+  -- which half it took, which is the one account nothing else can second-guess
+  -- after the fact.
+  returning id, (xmax = 0) into cell_id, was_inserted;
 
-  return cell_id;
+  return jsonb_build_object(
+    'id', cell_id,
+    'inserted', was_inserted,
+    'previous',
+    case
+      when was_inserted or previous.id is null then null
+      -- One column, because one column is what the update half wrote. See the
+      -- header: an inverse that undoes more than its operation did reverts
+      -- somebody else's edit.
+      else jsonb_build_object('id', previous.id, 'content', previous.content)
+    end);
 end;
 $$;
 

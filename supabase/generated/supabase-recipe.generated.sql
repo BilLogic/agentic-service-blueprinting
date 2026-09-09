@@ -1364,3 +1364,18 @@ revoke execute on function public.set_cell_dependency(uuid, uuid, text, text, te
 grant execute on function public.set_cell_dependency(uuid, uuid, text, text, text) to authenticated;
 revoke execute on function public.restore_cell_dependency(uuid, text, text) from anon;
 grant execute on function public.restore_cell_dependency(uuid, text, text) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000211000000_the_other_upsert_says_which_half_it_took.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the grants name the Supabase roles. The functions themselves are
+-- core; who may call them is this deployment's enforcement of the contract.
+-- `upsert_cell` was dropped above and took its grants with it, so this restores
+-- them on the recreated signature; `restore_cell_content` is new and gets the
+-- same terms as every other authoring write.
+
+revoke execute on function public.upsert_cell(uuid, uuid, uuid, text) from anon;
+grant execute on function public.upsert_cell(uuid, uuid, uuid, text) to authenticated;
+revoke execute on function public.restore_cell_content(uuid, text) from anon;
+grant execute on function public.restore_cell_content(uuid, text) to authenticated;

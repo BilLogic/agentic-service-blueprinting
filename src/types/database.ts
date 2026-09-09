@@ -1246,7 +1246,11 @@ export type Database = {
           path_id: string
           step_id: string
         }
-        Returns: string
+        Returns: Json
+      }
+      restore_cell_content: {
+        Args: { cell_id: string; content: string }
+        Returns: undefined
       }
     }
     Enums: {

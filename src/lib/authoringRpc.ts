@@ -71,6 +71,49 @@ export type LaneSetEntry = {
 
 export type DependencyKind = 'leads_to' | 'enables'
 
+/**
+ * A cell as it stood before an `upsert_cell` that updated it — the one column
+ * that write can change, and its id.
+ *
+ * One column, deliberately. The upsert's `on conflict` sets `content` and
+ * nothing else; the rest of the row is either the conflict key or minted on
+ * the insert half. The seven other fields a person types into a cell —
+ * summary, status, Function, Form, Value props, and the owner pair — belong to
+ * `update_cell_content` and `update_cell_spec`, which capture their own
+ * inverses. Carrying them here would let this write's undo revert somebody
+ * else's edit, which is the same class of error as undoing too little.
+ */
+export type CellContentRow = {
+  id: string
+  content: string
+}
+
+/**
+ * What `upsert_cell` hands back — an upsert saying which half it took.
+ *
+ * The same shape, and the same reasoning, as `CellDependencyWrite`. `inserted`
+ * is the write's own account of whether the row is new, read from its `xmax`
+ * inside the same statement; no caller can establish it afterwards, which is
+ * why it travels. `previous` is the cell as it stood, captured before the
+ * write under a lock and keyed on its own id, so the undo restores THIS cell
+ * rather than whatever occupies the square by the time it runs.
+ *
+ * Both callers do check the slot is empty before calling, and the checks stay
+ * — the agent tool's refusal is a better answer than a silent update. But a
+ * read followed by a write is a race, and a rule two callers remember is a
+ * rule the third has to be told. The write reporting for itself is the part
+ * that does not have to be remembered.
+ *
+ * `previous` is null on an insert, and it can be null on an update too — a
+ * concurrent insert between the capture and the upsert leaves the call
+ * updating a row it never saw. `deriveRevert` treats that as "no inverse".
+ */
+export type CellWrite = {
+  id: string
+  inserted: boolean
+  previous: CellContentRow | null
+}
+
 /** One dependency row as it stood before a write. */
 export type CellDependencyRow = {
   id: string
@@ -230,13 +273,32 @@ function deriveRevert(
             fn: 'remove_lane',
             args: { scenario_id: args.scenario_id, lane_name: args.name },
           }
-    case 'upsert_cell':
-      // The app only calls upsert_cell on empty slots, so the upsert was a
-      // create and deleting it is a true inverse. If an update path ever
-      // appears, it must pass its own revert.
-      return typeof data === 'string'
-        ? { fn: 'delete_cell', args: { cell_id: data } }
-        : undefined
+    case 'upsert_cell': {
+      // Reads the write's REPORT rather than its name, for the reason the
+      // dependency case below does. `upsert_cell` upserts, and the two halves
+      // have opposite inverses: an insert is undone by deleting the cell, an
+      // update by putting its text back. Deriving a delete from the name got
+      // the update half exactly backwards — the cell existed before the write,
+      // and the undo destroyed it along with a summary, a Function, a Form and
+      // an owner pair the write never touched.
+      //
+      // Both callers establish the slot is empty first and both still do. But
+      // that is a read followed by a write, so it is a race, and it is carried
+      // per-caller. The write's own account is neither.
+      const outcome = data as CellWrite | null
+      if (!outcome?.id) return undefined
+      if (outcome.inserted) return { fn: 'delete_cell', args: { cell_id: outcome.id } }
+      // An update whose before-state did not come back cannot be restored, and
+      // a row with no `revert` is how the ledger says so — the same silence it
+      // shows on a delete, rather than an approximation that reads like an
+      // undo and is not one.
+      const previous = outcome.previous
+      if (!previous) return undefined
+      return {
+        fn: 'restore_cell_content',
+        args: { cell_id: previous.id, content: previous.content },
+      }
+    }
     case 'create_scenario': {
       const scenario = data as CreatedScenario | null
       return scenario?.scenario_id
@@ -488,12 +550,17 @@ export async function addLane(
  * The link between column and version is ensured inside the function, so a
  * caller may drop a cell into a column the version does not carry yet and get
  * the column linked rather than a trigger exception.
+ *
+ * Returns what the write DID, not just where it landed: which half of the
+ * upsert it took and the cell's text as it stood. That is what lets the ledger
+ * record an inverse this operation's name cannot supply — see `CellWrite` and
+ * the `upsert_cell` case in `deriveRevert`.
  */
 export function upsertCell(
   client: Client,
   input: { pathId: string; laneId: string; stepId: string; content: string },
-): Promise<string> {
-  return call<string>(client, 'upsert_cell', {
+): Promise<CellWrite> {
+  return call<CellWrite>(client, 'upsert_cell', {
     path_id: input.pathId,
     lane_id: input.laneId,
     step_id: input.stepId,

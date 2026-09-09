@@ -381,12 +381,17 @@ function CellPanelEditorForm({
       const creating = targetId === null
       if (targetId === null) {
         // The draft becomes real here and only here. Cancel never writes.
-        targetId = await upsertCell(client, {
-          pathId: draft!.pathId,
-          laneId: draft!.laneId,
-          stepId: draft!.stepId,
-          content: form.content.trim(),
-        })
+        // The draft is a slot the editor already knows is empty — there is
+        // no cell id — so this is the upsert's insert half. It says so itself
+        // now; the id is what this caller wants either way.
+        targetId = (
+          await upsertCell(client, {
+            pathId: draft!.pathId,
+            laneId: draft!.laneId,
+            stepId: draft!.stepId,
+            content: form.content.trim(),
+          })
+        ).id
         setCreatedId(targetId)
       }
 

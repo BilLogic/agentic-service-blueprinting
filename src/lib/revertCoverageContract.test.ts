@@ -22,8 +22,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   setCellDependency,
+  upsertCell,
   type CellDependencyRow,
   type CellDependencyWrite,
+  type CellWrite,
 } from '@/lib/authoringRpc'
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
 import { executeRevert } from '@/lib/revertChange'
@@ -96,6 +98,9 @@ const RPC_BACKED = new Set([
   // prose columns, on one row, by id. It exists only to be an undo, like the
   // two names above it, and is reached through the default branch.
   'restore_cell_dependency',
+  // And the same for the half of `upsert_cell` that UPDATED: the one column
+  // that half writes, on one cell, by id.
+  'restore_cell_content',
 ])
 
 /** `fn: 'name'` inside a recorded RevertSpec. */
@@ -293,6 +298,101 @@ describe('an upsert’s inverse follows what it did, not what it is called', () 
       targetCellId: 'cell-b',
       note: 'the sentence the agent wrote',
     })
+
+    const [entry] = sessionSnapshot()
+    expect(entry.revert).toBeUndefined()
+  })
+})
+
+/**
+ * The other one, and the reason it is here despite nothing reaching it.
+ *
+ * `upsert_cell` upserts onto a square of the grid. Both callers establish the
+ * square is empty first — the panel has no cell id, the agent tool reads the
+ * slot and refuses — so the update half is not reachable through the app as it
+ * stands, and these are not a regression test for a bug anybody has seen.
+ *
+ * They are a test for the reason nobody has: two callers remembering. The
+ * agent tool's read is a read followed by a write, which holds nothing between
+ * them, and the rule is carried per caller rather than by the operation. What
+ * the assertions below pin is that the LEDGER no longer depends on either —
+ * the inverse follows the write's own account of which half it took, so a
+ * third caller, or the race the guard cannot close, cannot produce an undo
+ * that deletes a cell somebody already had.
+ */
+describe('a cell upsert’s inverse follows what it did, not what it is called', () => {
+  const written = (outcome: CellWrite) => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
+    const client = {
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        calls.push({ fn, args })
+        return { data: fn === 'upsert_cell' ? outcome : null, error: null }
+      },
+    } as unknown as SupabaseClient<Database>
+    return { client, calls }
+  }
+
+  const AT = {
+    pathId: 'path-1',
+    laneId: 'lane-1',
+    stepId: 'step-1',
+    content: 'what the agent wrote',
+  }
+
+  beforeEach(() => {
+    clearSession()
+  })
+
+  it('reverts an upsert that INSERTED by deleting the cell it created', async () => {
+    const { client } = written({ id: 'cell-1', inserted: true, previous: null })
+    await upsertCell(client, AT)
+
+    const [entry] = sessionSnapshot()
+    expect(entry.fn).toBe('upsert_cell')
+    expect(entry.revert).toEqual({ fn: 'delete_cell', args: { cell_id: 'cell-1' } })
+  })
+
+  it('reverts an upsert that UPDATED to the previous text, not by deleting', async () => {
+    const { client } = written({
+      id: 'cell-1',
+      inserted: false,
+      previous: { id: 'cell-1', content: 'what the author wrote' },
+    })
+    await upsertCell(client, AT)
+
+    const [entry] = sessionSnapshot()
+    // The whole defect in one assertion: this used to be a delete, and the
+    // cell it deleted carried a summary, a Function and an owner pair this
+    // write never touched.
+    expect(entry.revert?.fn).not.toBe('delete_cell')
+    expect(entry.revert).toEqual({
+      fn: 'restore_cell_content',
+      args: { cell_id: 'cell-1', content: 'what the author wrote' },
+    })
+  })
+
+  it('puts an emptied cell back to empty rather than treating blank as silence', async () => {
+    // The state a coalescing inverse could not express. `cells.content` is
+    // `not null default ''`, and the panel creates a cell from a draft with
+    // `form.content.trim()` — so a blank square an agent writes onto is the
+    // ordinary case, not the corner.
+    const { client, calls } = written({
+      id: 'cell-1',
+      inserted: false,
+      previous: { id: 'cell-1', content: '' },
+    })
+    await upsertCell(client, AT)
+
+    const [entry] = sessionSnapshot()
+    await executeRevert(client, entry)
+
+    expect(calls.map((call) => call.fn)).toEqual(['upsert_cell', 'restore_cell_content'])
+    expect(calls[1].args).toEqual({ cell_id: 'cell-1', content: '' })
+  })
+
+  it('offers no undo for an update whose before-state did not come back', async () => {
+    const { client } = written({ id: 'cell-1', inserted: false, previous: null })
+    await upsertCell(client, AT)
 
     const [entry] = sessionSnapshot()
     expect(entry.revert).toBeUndefined()
