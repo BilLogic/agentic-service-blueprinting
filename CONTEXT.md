@@ -44,7 +44,9 @@ A scenario owns its steps and its paths.
 that routes you down it, never for the activity — the scenario already said
 that. Exactly one path per scenario is the `happy` route, the one taken when
 nothing intervenes; the others are a `variant` (a different but equally valid
-route) or an `exception` (a route taken because something went wrong).
+route) or an `exception` (a route taken because something went wrong). A path
+is an **alternative, not a stage**: the paths of a scenario are read beside one
+another rather than after one another, and nothing connects across them.
 
 **Step** — a column. Steps are scenario-scoped and shared across the paths of
 that scenario; a path selects the steps it uses and their order.
@@ -116,6 +118,12 @@ its place on the board. `cells.function` / `form` / `value_props` / `owner` /
 `lanes.kpis` / `owner_team` / `tools`; and `business_model` for the service.
 Four levels, one word.
 
+**Scenario, step and path own no spec.** Scenario and step each open a detail
+panel and fill it entirely from structure and from their cells; a path adds
+`summary`, `note`, `kind` and `status`, and nothing that describes what it is
+like. Whether that is the design or the backlog is undecided; the four levels
+above are what exists.
+
 Structure is *where a thing sits* — a cell's lane, step and path — and moves
 only through an authoring RPC. Spec is *what it is like*, and carries a
 column-scoped grant so a panel can edit it without opening the board's shape to
@@ -131,8 +139,11 @@ on both sides.
 **Line of visibility** — the divider between what the recipient of the service
 can see and what they cannot. It is derived from lane roles rather than
 stored: it draws below the last customer-facing lane. Its companion, the
-**line of interaction**, draws below the lane holding the recipient's own
-actions, and separates what the recipient does from what the service does.
+**line of interaction**, separates what the recipient does from what the
+service does, and draws below the **last** lane holding the recipient's own
+actions. The recipient's side is a band and can be several rows deep, so a line
+drawn once per such row would not be a boundary: a second actor row on the
+recipient's own side extends the band rather than dividing the board again.
 
 **Dependency** — a directed edge from one cell to another on the same path.
 Two kinds, and the difference between them is whether the edge draws.
@@ -148,6 +159,10 @@ source-first: `A enables B` puts the precondition at the source, the same end
 those edges turned around in `21000114000000`.) The panel names each end:
 **Follows** and **Leads to** for the drawn kind, **Enabled by** and
 **Enables** for the recorded one.
+
+> The test that separates the two: remove the other cell and ask what happens.
+> If this one never starts, that was a `leads_to`. If it starts but goes wrong,
+> that was an `enables`.
 
 The retired values — `cell_dependencies.kind = 'trigger'` and
 `cell_dependencies.kind = 'needs'` — are values, not identifiers, so the
@@ -207,6 +222,15 @@ That row said **nobody** until the agent gained `create_evidence` and
 position: the panel was the only writer, so no tool named the table. The
 moment one did, the honest answer had to be a real owner — which is what
 rule 2 of `who-writes-what` exists to force.
+
+**And no record at all belongs to what-if**, which is worth saying rather than
+leaving as an absence: it walks the dependency graph and returns a trace, on a
+copy. Where it does record something it records a finding, and a finding is the
+audit's — the what-if skill says so itself. So the vocabulary still has to be
+able to say **nobody**; what-if is what it says it about, which is why the owner
+column is prose rather than a name drawn from a list of readers. A category
+covering all four was always going to strain, because one of the four readers
+has nothing of its own in it.
 
 So write the owner you mean — *the slice's record*, *the audit's findings*,
 *the cell's evidence*. Where a statement genuinely covers all four — a grant, a
