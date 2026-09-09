@@ -1715,7 +1715,12 @@ begin
           nullif(trim(set_cell_dependency.name), ''),
           nullif(trim(set_cell_dependency.note), ''))
   on conflict on constraint cell_dependencies_source_target_kind_unique
-    do update set name = excluded.name, note = excluded.note
+    -- An omitted argument leaves the column as it was. Both arguments default
+    -- to null, so `excluded.<col>` cannot tell "the caller said nothing" from
+    -- "the caller said nothing is there" — and on an edge that already exists,
+    -- the first is what every caller means.
+    do update set name = coalesce(excluded.name, public.cell_dependencies.name),
+                  note = coalesce(excluded.note, public.cell_dependencies.note)
   returning id into dependency_id;
 
   return dependency_id;
