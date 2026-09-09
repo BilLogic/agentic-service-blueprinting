@@ -15,9 +15,11 @@
 -- replayed somewhere Supabase is not. An adopter on another host replaces the
 -- recipe with their own primitives instead — the point of the partition.
 --
--- Deliberately minimal: every stub returns a value that makes the migration
--- APPLY, never one that makes an RLS policy meaningful. Nothing here should
--- ever be read as a security boundary; the CI run checks shape, not access.
+-- Deliberately minimal, but faithful where fidelity is cheap: a stub that
+-- answers differently from the thing it stands in for teaches a habit rather
+-- than proving a behaviour. Nothing here should ever be read as a security
+-- boundary — a caller who reaches this file can set its inputs — and the CI
+-- run still checks shape, not access.
 
 -- The roles the grants name. NOLOGIN: nothing connects as them here.
 do $$
@@ -36,18 +38,43 @@ $$;
 
 create schema if not exists auth;
 
--- GoTrue's request-scoped helpers. Supabase reads them out of the JWT the
--- request carried; here there is no request, so they answer "nobody". Column
--- defaults that call auth.uid() therefore stamp NULL, which is why this shim
--- can only ever prove that the schema builds.
-create or replace function auth.uid() returns uuid
-language sql stable as $$ select null::uuid $$;
-
+-- GoTrue's request-scoped helpers. Supabase resolves the request's JWT into
+-- the `request.jwt.claims` GUC and reads all three of these out of it, so
+-- that is what these read too: an unset GUC answers "nobody", and a
+-- `set_config('request.jwt.claims', …, true)` inside a rehearsal or a
+-- migration's proof block answers what the author set.
+--
+-- Standing them in as constants was the older shape, and it was not a
+-- simplification but a different behaviour: `auth.jwt()` returning an empty
+-- object unconditionally meant `public.is_service_account()` could never be
+-- true here, so every write RPC guarded by it refused and no guarded write
+-- could be rehearsed behind the shim at all (#358).
+--
+-- `nullif` before the cast because a GUC that has been set and then cleared
+-- reads back as the empty string, and `''::jsonb` is a syntax error rather
+-- than an absent claim.
+--
+-- No claim reads back as NULL rather than `{}`, because that is what
+-- Supabase's own `auth.jwt()` returns. An empty object would be friendlier to
+-- a caller writing `auth.jwt() -> 'x'`, and nothing in this series can tell
+-- the two apart — but a stand-in whose whole purpose is fidelity does not get
+-- to keep a small lie because the small lie is convenient. This file has
+-- already cost three separate rehearsals a wrong answer by differing from
+-- Supabase in one place.
+--
+-- Still not a security boundary: a caller who can `set_config` can claim
+-- anything. It makes the shim answer the question Supabase answers; it does
+-- not make the answer trustworthy.
 create or replace function auth.jwt() returns jsonb
-language sql stable as $$ select '{}'::jsonb $$;
+language sql stable as $$
+  select nullif(current_setting('request.jwt.claims', true), '')::jsonb
+$$;
+
+create or replace function auth.uid() returns uuid
+language sql stable as $$ select nullif(auth.jwt() ->> 'sub', '')::uuid $$;
 
 create or replace function auth.role() returns text
-language sql stable as $$ select null::text $$;
+language sql stable as $$ select nullif(auth.jwt() ->> 'role', '') $$;
 
 -- GoTrue's account table, to the extent the migrations touch it. The tier
 -- recipe hangs a BEFORE INSERT trigger on it to stamp app_metadata for
