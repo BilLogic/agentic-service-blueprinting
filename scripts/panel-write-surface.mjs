@@ -27,12 +27,13 @@
  * THE QUESTION IS ASKED AS THE ROLE, not of the catalogue. It used to read
  * `pg_policies` for a policy on the table, for that command, naming
  * `authenticated` — and a policy that exists and admits nobody satisfies an
- * existence test. Every table here carries one: a RESTRICTIVE
- * `<table>_update_service_only` on all but two of them — most from the
- * service-account tier, `services` from 21000212000000 — and those two carry a
- * permissive policy whose whole predicate is `is_service_account()`. So the old
- * test could not tell "an author may write this" from "only a service account
- * may", which is precisely the pair whose difference is silent (#369).
+ * existence test. Every table here carries a RESTRICTIVE
+ * `<table>_update_service_only` — most from the service-account tier,
+ * `services` from 21000212000000, `stakeholders` and `cell_touchpoints` from
+ * 21000213000000, which gave those two the same pair the other twelve had
+ * always used. So the old test could not tell "an author may write this" from
+ * "only a service account may", which is precisely the pair whose difference is
+ * silent (#369).
  * `set local role authenticated`, a representative claim, attempt the write,
  * roll it back — that cannot be satisfied by a policy that refuses, and it
  * subsumes the grant half, because a write the grant forbids does not happen
@@ -342,10 +343,9 @@ export function writeSurfaceAssertions() {
  * Read as SQL rather than as a catalogue, because the catalogue cannot answer
  * the question. `exists(select 1 from pg_policies …)` is satisfied by a policy
  * that admits nobody, and every one of these tables carries one — a RESTRICTIVE
- * `<table>_update_service_only` on all but two, a permissive
- * `is_service_account()` predicate on those. A viewer meeting either matches
- * zero rows and gets a 200 back. Becoming the role cannot be satisfied that way:
- * the write either happens or it does not.
+ * `<table>_update_service_only` beside the permissive policy it narrows. A
+ * viewer meeting it matches zero rows and gets a 200 back. Becoming the role
+ * cannot be satisfied that way: the write either happens or it does not.
  *
  * Every probe is its own subtransaction, ended by a sentinel exception whether
  * it succeeded or failed, so no probe can see another's row — a DELETE that

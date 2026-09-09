@@ -305,6 +305,21 @@ Writes are layered on top for signed-in sessions (`authenticated`):
   blueprint writes). `anon` is untouched either way. Note that
   `supabase db reset` applies every file in `supabase/migrations/`, this one
   included: the split is what you get unless you delete the file.
+- **A write policy is a PAIR, and this is the one shape.** Per table and per
+  verb, a surface table carries a permissive `<table>_<verb>_auth` with
+  `using (true)` — *the panels reach this table directly rather than through
+  an RPC* — and beside it a RESTRICTIVE `<table>_<verb>_service_only` whose
+  predicate is `public.is_service_account()` — *and only the editing tier
+  may*. **Write both when you put a table on the write surface.** A single
+  permissive policy whose whole predicate is `is_service_account()` admits
+  exactly the same people, and is deliberately not used here: it fuses the
+  optional recipe's decision into a base-template policy — correct only
+  because the core seam's default body is `select true`, which nothing at the
+  call site shows — and it makes a table whose restriction is *missing*
+  (`services`, until `21000212000000`) unreadable from one that never had a
+  second half. `21000213000000` brought the last two tables,
+  `stakeholders` and `cell_touchpoints`, into the pair; the posture on both
+  was already service-account-only and did not change.
 - **The first account a project ever has is a service account**
   (`21000206000000`, part of the same recipe). `service_account_emails`
   ships empty, so without this a fresh deployment of the tier would have no
