@@ -1,5 +1,197 @@
 # Changelog
 
+## 1.17.0
+
+### Minor Changes
+
+- a214003: A source carries one note
+
+  The add-a-source form asked for five things and the saved row wore three type
+  treatments. `evidence` held `ref`, `excerpt` and `note` side by side — a
+  locator, a quotation, and an aside — and an author had to sort a sentence into
+  the right one before writing it. It becomes three fields in one group: Kind,
+  Title, Note.
+
+  The count is why. Measured on the deployment that runs this template, across 66
+  evidence rows: all 66 carry a title, two carry the quote field, and none carries
+  the reference field. The titles say where the references went instead —
+  "PR 1151", "Card 2266", "Metabase, 2026-08-08" — and one of the two quotes is a
+  note about a meeting, sitting in a field whose placeholder read "Their words,
+  not a summary of them". Zero rows means UNUSED, not unreachable: the agent's
+  `create_evidence` could write `ref` the whole time and never did, so the number
+  is a fact about the field rather than about the surface it was offered on.
+
+  `note` survives as the one general-purpose prose column, and a URL written
+  inside it renders as a link wherever a source is displayed. That is the whole
+  job the reference column was carrying, for the zero rows that used it.
+  `linkedTextSegments` is deliberately narrow about what counts: a scheme is
+  required, so `data-model.md` stays a filename and `PR 1151` stays a citation,
+  and `safeExternalHref` still has the last word on which schemes may become an
+  anchor. Trailing punctuation goes back to the sentence, except a closing
+  bracket the address itself opened.
+
+  `21000208000000` moves every excerpt into the note beside it and drops both
+  columns. It refuses rather than destroys, twice: a row carrying a reference
+  stops it, because a locator is not prose and the migration will not invent a
+  sentence around "PR 1151"; and a row carrying an excerpt beside a DIFFERENT
+  note stops it too, because it cannot choose between them and will not join two
+  sentences on their author's behalf. Both guards are invariants — "no excerpt is
+  destroyed", "no reference is destroyed" — true of every database the file will
+  ever meet, including an empty one. Neither counts rows, which is the only kind
+  of assertion that can replay. No grant moves: `evidence` is granted whole-table
+  and never column by column. `scripts/tests/evidence-note-migration.test.sh`
+  applies the file with `psql -1` against a populated replay, because a guard that
+  raises only means something when the fold rolls back with it.
+
+  The saved row wears one text treatment. The monospaced link, the italic passage
+  and the rule down its left edge all go — three ways of saying "this text is
+  different", stacked in a panel 264 pixels wide. The kind is a quiet suffix after
+  the title now, so the icon reinforces it rather than carrying it alone.
+
+  Every field keeps a label, through the panel's own `Field`, so no field's
+  purpose is carried by grey text that disappears the moment an author types. The
+  asterisk on Title is this panel's only signal that a field cannot be left empty,
+  and its absence on Note is what says Note is optional — a second signal for the
+  same thing is how a form starts arguing with itself.
+
+  The agent's evidence tools lose `ref` and carry one prose argument. Their
+  descriptions stop calling it a quoted passage: a model reads a description as
+  the field's definition, and "the quoted passage that carries the claim" is an
+  instruction not to write an observation there — which is exactly what the two
+  rows that used the field did anyway. `create_evidence` could never write `note`
+  at all before; it passed a hardcoded null.
+
+  `21000116000000` set one word per meaning and then deliberately spared
+  `evidence.note` on the argument that a source's note is an aside beside the
+  source. Three months of authoring says the aside was doing the work and the
+  field beside it was not, so the word stays rather than becoming `summary`: a
+  note about a source is still not the source. That is a fold rather than a
+  licence — `findings.summary` is still a summary, and the next column whose job
+  is a thing's own sentence still gets that word. The rename map records both
+  pairs with the reason each carries no `rename column` statement.
+
+  Evidence still does not link to resources, deliberately. A locator field was
+  available for 66 rows and filled zero times, and of the 47 cells carrying
+  evidence only 20 also carry resources, so a picker would be empty on the other 27. A join table can be added later without disturbing the note; the signal to
+  build it is notes filling up with resource names.
+
+- 4b4b962: The dependency editor writes the note, and the badge loses its last reader
+
+  The previous release moved a dependency's why-line into a tooltip on the row and
+  stopped drawing the edge's name. It also left the app rendering a column it
+  could not write: the panel's connection editor offered one prose field labelled
+  "Name (optional)" and the agent's `create_cell_dependency` offered one argument
+  called `label`, and both landed in `cell_dependencies.name` — the badge. A note
+  reached the database from a seed or an import and from nowhere else.
+
+  That is the whole of the defect, and the data says so from both sides. A
+  deployment built on this template measured 434 dependency rows, of which 8
+  carried a name and none carried a note — and every one of the 8 was a sentence
+  saying why the edge exists rather than a channel tag like "Email". Authors were
+  not misusing a badge field; it was the only field they were offered. That
+  deployment has since copied all 8 into `note` in a migration of its own, so
+  both columns now hold the same sentence there — a backfill, not an author
+  working around anything, and it is only possible because someone knew to write
+  one. The bundled
+  sample agrees from the other direction — 73 dependency rows, no names, 21
+  sentence-shaped notes, because a seed can write the column the editor cannot.
+
+  The editor's one prose field now writes `cell_dependencies.note`. It is labelled
+  Note and marked optional, and its placeholder is "Anything worth knowing about
+  this dependency" — deliberately general. "Why this edge exists" is narrower than
+  what authors actually write, and a narrow frame is what sent them to the wrong
+  field in the first place.
+
+  The agent's dependency tool lands its prose in the note too, and its argument
+  keeps the spelling it was published with. Moving where a value lands is safe for
+  a skill pinned to an older release: it goes on sending `label` and the sentence
+  now arrives somewhere a reader sees it. Renaming the argument in the same step
+  would not be — that skill would send a key the handler no longer reads and the
+  value would be dropped in silence. A rename is a separate, sequenced change with
+  a release between the two halves.
+
+  `cell_dependencies.name` is not dropped. The badge stopped rendering last
+  release and its write surface is retired here; dropping the column is a
+  different decision with a deployment's rows attached to it. What does go is
+  `linkName`, the field that carried the column into `BlueprintCellConnection`.
+  Nothing had read it since the badge stopped being drawn — the panel handed it to
+  the connection editor, which never looked at it — so it leaves with the input
+  that fed it rather than waiting for a third change to notice it.
+
+  No migration. `set_cell_dependency` has taken a note all along; only the two
+  callers were pointed at the wrong parameter.
+
+### Patch Changes
+
+- 4b4b962: An argument nobody sent no longer erases an edge's words
+
+  `set_cell_dependency` upserts, and its conflict clause assigned both prose
+  columns straight from the row it had tried to insert — `name = excluded.name,
+note = excluded.note`. Both arguments default to null, and a default is
+  indistinguishable from a null the caller sent, so a call that said nothing
+  about the words did not leave them alone: it cleared them, on an edge that
+  already existed, and returned the id as if it had succeeded.
+
+  The agent tool is what reaches it. `create_cell_dependency` needs a source, a
+  target and a kind; its prose argument is optional. Asked twice for the same
+  edge — a retry, a re-run of a plan, a model connecting two cells it has already
+  connected — the second call is a bare upsert onto the first and whatever an
+  author wrote there is gone. The panel's connection editor cannot reach it,
+  because its validation refuses a duplicate before any call is made; that is a
+  validation standing in front of the defect rather than the defect not being
+  there.
+
+  The conflict clause now coalesces: `coalesce(excluded.name,
+cell_dependencies.name)` and the same for `note`. An omitted argument means
+  "leave it as it was" and a supplied one still replaces. Both columns, because
+  neither has a caller that clears by sending null — nothing has written `name`
+  since the editor and the agent tool were pointed at `note`, and a note is
+  cleared by removing the connection and adding it again, which is a delete and a
+  fresh insert with no upsert in it.
+
+  The cost, stated rather than hidden: a null can no longer clear either column
+  through this function, and neither can an empty string — the body has always
+  turned `''` into null before the conflict clause, so those two have never been
+  distinguishable here. Emptying a field wants a function whose arguments are
+  required, where an omission is a loud "function does not exist"; this one, whose
+  job is to add an edge, is not it.
+
+  The migration proves it rather than asserting a body: it builds a fixture,
+  authors an edge carrying a name and a note, re-runs the call the agent tool
+  sends, and raises unless both columns survive — then supplies new values and
+  raises unless they replace. The fixture is given back through a sentinel
+  exception. It does not assert what the previous body did, which is a fact about
+  this package's history rather than an invariant of the statement, and would
+  refuse to apply to a database that arrived at the fix another way.
+
+- 4b4b962: The tooltip wrapper's rules say what the tooltip does
+
+  `IconTooltip`'s doc comment stated as non-optional that a tooltip "never
+  appears for a keyboard user who has not hovered". That is false for the Base UI
+  version this ships, and a passing test in the dependency why-line's suite —
+  "opens on keyboard focus, not on hover alone" — already disproved it. Two green
+  files documented opposite rules, and the false one was being quoted as the
+  reason a tooltip needs a visually hidden companion in the DOM: a right practice
+  resting on a wrong reason, which the next reader can be talked out of by
+  disproving the reason.
+
+  The real reason is stronger. Read from the installed `@base-ui/react` 1.7.0
+  rather than assumed: no part of the tooltip sets `role="tooltip"`, no part
+  wires an `aria-describedby` from the trigger back to the popup, and the only
+  props the popup contributes of its own are `tabIndex={-1}` and a data
+  attribute. The popup therefore contributes nothing at all to the accessibility
+  tree, and whatever is in the DOM is the whole of what a screen reader is
+  handed. The rule now says that, version-qualified, because it is a fact about a
+  dependency rather than about this code.
+
+  It also records what is true about the keyboard — `TooltipTrigger` wires
+  `useFocus` gated on `:focus-visible`, so tabbing to the trigger opens the popup
+  and nothing has to be built for it; what has to be checked is that the trigger
+  is the focusable element — and about touch, where the hover interaction is
+  `mouseOnly` and opens nothing.
+
+  Doc comment only. No behaviour changes and no API changes.
+
 ## 1.16.0
 
 ### Minor Changes
@@ -2616,8 +2808,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                              ERROR: new row for relation "lanes" violates check constraint
-                                              "lanes_lane_role_check" … compliance_review
+                                                ERROR: new row for relation "lanes" violates check constraint
+                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
