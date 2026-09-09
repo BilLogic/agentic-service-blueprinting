@@ -320,6 +320,21 @@ Writes are layered on top for signed-in sessions (`authenticated`):
   second half. `21000213000000` brought the last two tables,
   `stakeholders` and `cell_touchpoints`, into the pair; the posture on both
   was already service-account-only and did not change.
+- **And read it the other way: a restriction with no permissive half is not a
+  posture, it is a closed door.** A RESTRICTIVE policy narrows and never
+  admits, so a verb carrying one and no permissive policy matches zero rows
+  for everyone it names — the same answer RLS already gives a verb with no
+  policy at all, bought at the price of reading like governance. **A verb the
+  app reaches only through an RPC gets no write policy**, and the empty list
+  is the statement: absence means the direct write path is closed.
+  `20260818002000` created all three write policies on each of thirteen
+  tables whether or not there was a permissive one to narrow, and twenty of
+  them, over eleven tables, never had one. `21000214000000` removed those
+  twenty and asserts that none is left. No posture moved: `authenticated`
+  holds no grant for any of the twenty verbs, so each was refused before row
+  level security was consulted, before the change and after it. The rule has
+  two halves and both are worth saying — write BOTH policies when you put a
+  table on the write surface, and write NEITHER when you do not.
 - **The first account a project ever has is a service account**
   (`21000206000000`, part of the same recipe). `service_account_emails`
   ships empty, so without this a fresh deployment of the tier would have no
