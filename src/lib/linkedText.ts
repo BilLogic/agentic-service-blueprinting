@@ -49,7 +49,7 @@ function trimSentencePunctuation(url: string): string {
 /**
  * Authored prose, split into the runs a renderer draws.
  *
- * This is the whole job `evidence.ref` was carrying (21000208000000): a
+ * This is the whole job `evidence.ref` was carrying: a
  * locator does not need a field of its own when a note can hold one and the
  * note renders it as a link. The split happens at render rather than at write,
  * so a URL pasted into a note that already exists becomes reachable without
