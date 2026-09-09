@@ -164,13 +164,20 @@ function ResourceListRow({
       )}
       {renaming === null ? (
         // The name is text, not a second door into the rename. The menu item
-        // is the only way in, on purpose: the row is already a drag target
-        // and its title carries the URL, so a click here would be the third
-        // meaning of one gesture. It is also the door that would have to
-        // change if an "open" ever lands on this row, and a control that has
-        // to be revisited the moment the row grows is not worth its keystroke.
+        // is the only way in, on purpose: the row is already a drag target,
+        // so a click on the name would be a second meaning for one gesture,
+        // and it is the door that would have to change the moment an "open"
+        // affordance lands on this row.
+        //
+        // The URL rides along twice, because `title` alone reaches only a
+        // pointer: it is a hover tooltip for a mouse and a visually hidden
+        // suffix for a screen reader, which reads "name, then where it goes".
+        // When the name WAS a button the URL sat on something focusable; text
+        // is the right element here, so the second copy is what keeps it from
+        // becoming mouse-only.
         <span className="min-w-0 flex-1 truncate" title={row.url}>
           {row.name}
+          <span className="sr-only">{`, ${row.url}`}</span>
         </span>
       ) : (
         <Input
