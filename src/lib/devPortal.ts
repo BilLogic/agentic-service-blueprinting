@@ -18,6 +18,14 @@ import { storageKey } from '@/lib/storageNamespace'
  * What it changes: `canWrite` and `canAgentWrite` — the two flags the UI
  * gates authoring on. That is the whole reach.
  *
+ * Where it exists: development builds, and nowhere else. The reach above is
+ * the client's BELIEF about the session, and a deployed site that lets a
+ * stranger move it hands them the entire authoring surface, every control of
+ * which then fails against the database. `devPortalEnabled` is that boundary
+ * and `useDevSimulation` is where it is applied — one seam, above both the
+ * flags and the two controls, so hiding the controls is never what is
+ * standing between a stored value and a lifted flag.
+ *
  * What it CANNOT change: anything server-side. RLS's restrictive policies
  * and the RPC grants never see this value; they are not consulted by it and
  * they do not consult it. Simulating ADMIN on an account with no rights
@@ -111,8 +119,32 @@ export function setDevSimulatedTier(tier: DevSimulatedTier): void {
   setDevSimulation({ on: true, tier })
 }
 
+/**
+ * Whether this build has a developer portal at all.
+ *
+ * A function rather than a module constant so the answer is read when it is
+ * asked for. A build folds the expression to its literal either way, and the
+ * call-time read is also what lets a test put the production answer in front
+ * of a module that has already been imported — which is the only way to
+ * assert the shipped behaviour of a value storage still holds.
+ */
+export function devPortalEnabled(): boolean {
+  return import.meta.env.DEV
+}
+
+/**
+ * The seam.
+ *
+ * Every consumer reads the simulation through this hook — the provider's
+ * `canWrite`, the badge that tells on it, the section that sets it — so this
+ * is the single place that has to say no outside development, and the two
+ * render gates follow from it instead of standing in for it. A browser
+ * carrying the storage key from a dev session, or one whose devtools wrote
+ * it, gets its real session back: the value is left in storage and simply
+ * stops being consulted.
+ */
 export function useDevSimulation(): DevSimulation {
-  return useSyncExternalStore(
+  const stored = useSyncExternalStore(
     (listener) => {
       listeners.add(listener)
       return () => listeners.delete(listener)
@@ -120,9 +152,16 @@ export function useDevSimulation(): DevSimulation {
     () => snapshot,
     () => SIMULATION_OFF,
   )
+  return devPortalEnabled() ? stored : SIMULATION_OFF
 }
 
-/** Apply the simulation to a real tier flag. Off returns it untouched. */
+/**
+ * Apply the simulation to a real tier flag. Off returns it untouched.
+ *
+ * Pure, and staying pure: the build gate lives at the seam above, not here,
+ * so this function is a fact about its two arguments in every build and a
+ * caller holding a simulation can be tested in both directions.
+ */
 export function applyDevSimulation(
   simulation: DevSimulation,
   real: boolean,
