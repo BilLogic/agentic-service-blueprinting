@@ -19,9 +19,15 @@ export type BlueprintCellConnection = {
   /** From the dependency row: `leads_to` (makes the next thing happen) vs
    *  `enables` (must already be true, causes nothing). */
   linkKind: 'leads_to' | 'enables'
-  /** The word on the arrow, as a badge (e.g. a channel name like "Email"). */
+  /**
+   * `cell_dependencies.name`. Specified as the word on the arrow — a badge
+   * carrying a channel name like "Email" — and never used that way: what
+   * authors put in it were sentences saying why the edge exists, which is
+   * what `linkNote` is for. The dependency list no longer draws it; it is
+   * still carried here because the panel's connection editor takes it.
+   */
   linkName: string | null
-  /** Why-line shown under the dependency row. */
+  /** Why the edge exists. Shown on the dependency row's tooltip. */
   linkNote: string | null
   isTech: boolean
   techItems: string[]
