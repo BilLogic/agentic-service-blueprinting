@@ -27,11 +27,12 @@
  * minutes earlier and with the table named.
  *
  * That is what a READER sees. The same database is then asked what a signed-in
- * AUTHOR may write: every column the five panel editors write directly must be
- * granted to `authenticated`, and every table they write must carry an UPDATE
- * policy that admits it. Both halves have been missing in the last three
- * migrations, neither is visible on a laptop holding the dev service key, and
- * the second half fails silently — see scripts/panel-write-surface.mjs.
+ * AUTHOR may write: for every verb the editors use on a table — update, and for
+ * five of them insert and delete as well — `authenticated` must hold the grant
+ * and the table must carry a policy for that command admitting it. Both halves
+ * have been missing in the last three migrations, neither is visible on a laptop
+ * holding the dev service key, and the policy half fails silently — see
+ * scripts/panel-write-surface.mjs.
  *
  * Ordering is the whole subtlety. The platform default (step 2) is set BEFORE
  * the core creates any table, so every table inherits the anon SELECT the way a
@@ -57,8 +58,8 @@ import { fileURLToPath } from 'node:url'
 import {
   buildWriteSurfaceSql,
   evaluateWriteSurface,
-  writtenColumns,
-  writtenTables,
+  writeSurfaceAssertions,
+  writeSurfaceEntries,
 } from './panel-write-surface.mjs'
 
 const ROOT = new URL('../', import.meta.url)
@@ -257,7 +258,7 @@ function main() {
     // reader sees, this is what a signed-in AUTHOR may write. It asks the
     // catalog rather than becoming the role, so it costs one more query and no
     // more setup — see scripts/panel-write-surface.mjs for why both the grant
-    // and the policy have to be asked separately.
+    // and the policy have to be asked separately, for each verb.
     const writeProblems = evaluateWriteSurface(
       psql(['-At', '-F', '|', '-c', buildWriteSurfaceSql()]),
     )
@@ -265,10 +266,11 @@ function main() {
       console.error('The recipe applied, but a signed-in author cannot write what the panels show:\n')
       for (const problem of writeProblems) console.error(`  ${problem}`)
       console.error(
-        '\nThe panel editors write these columns directly, under the caller\'s own ' +
+        '\nThe editors make these writes directly, under the caller\'s own ' +
           'privileges. A missing grant is a refusal the author sees; a missing ' +
-          'UPDATE policy is worse — the save matches no row and is reported as a ' +
-          'deleted one. Neither is visible locally, where the dev service key ' +
+          'UPDATE or DELETE policy is worse — the statement matches no row and ' +
+          'returns 200, so a save is reported as a deleted row and a delete as no ' +
+          'change at all. Neither is visible locally, where the dev service key ' +
           'bypasses RLS.',
       )
       process.exitCode = 1
@@ -287,11 +289,16 @@ function main() {
       process.exitCode = 1
       return
     }
+    const assertions = writeSurfaceAssertions()
+    const entries = writeSurfaceEntries()
+    const verbs = [...new Set(entries.flatMap((entry) => entry.verbs))].sort()
     console.log(
       `the generated seed loads on a fresh core + recipe and renders as anon ` +
         `(${POPULATED.length} tables populated, ${Object.keys(RENDER_READS).length} render reads return rows), ` +
-        `and every column the panels write is reachable by authenticated ` +
-        `(${writtenColumns().length} grants, ${writtenTables().length} update policies)`,
+        `and every write the editors make is reachable by authenticated ` +
+        `(${assertions.filter((one) => one.label.startsWith('grant')).length} grants, ` +
+        `${assertions.filter((one) => one.label.startsWith('policy')).length} policies, ` +
+        `over ${entries.length} tables and ${verbs.join('/').toLowerCase()})`,
     )
   } catch (error) {
     // A non-zero psql exit — an apply that would not run, or a read the anon
