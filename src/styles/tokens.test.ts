@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { GROUNDS } from '@/lib/ground'
 import {
   type Consumer,
@@ -22,6 +26,9 @@ import {
   stylesheets,
   winningDeclaration,
 } from '@/lib/tokenModel'
+
+/** `src/styles/` up to the repository root, where the content scan starts. */
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 /**
  * Token drift guard for the ported design-system foundation. The app resolves
@@ -314,18 +321,24 @@ describe('token resolution', () => {
     // reads is also something Tailwind reads.
     //
     // Two ways to break it, one from each side. The exclusions are read off
-    // the entry sheet rather than restated, so a FOURTH one fails here and
-    // gets looked at: the three below name `docs/` and `scripts/`, which sit
-    // outside the `src/styles/**.css` and `src/**.ts(x)` this model samples,
-    // and the test files, which it already skips. A fourth could name
-    // anything.
+    // the entry sheet rather than restated, so a NEW one fails here and gets
+    // looked at: the five below name `docs/`, `scripts/`, the changelog and
+    // the changesets, all of which sit outside the `src/styles/**.css` and
+    // `src/**.ts(x)` this model samples, and the test files, which it already
+    // skips. A sixth could name anything.
     const excluded = [
       ...stylesheet('tailwind.config.css').text.matchAll(
         /@source\s+not\s+'([^']+)'/g,
       ),
     ].map(([, pattern]) => pattern)
     expect(excluded.sort()).toEqual(
-      ['../**/*.test.{ts,tsx}', '../../docs', '../../scripts'].sort(),
+      [
+        '../**/*.test.{ts,tsx}',
+        '../../.changeset',
+        '../../CHANGELOG.md',
+        '../../docs',
+        '../../scripts',
+      ].sort(),
     )
     // And from the other side: the sample widening to take in a test file,
     // which is the one exclusion that overlaps where this model already looks.
@@ -335,7 +348,106 @@ describe('token resolution', () => {
     ]
     expect(sampled.filter((file) => /\.test\.[jt]sx?$/.test(file))).toEqual([])
   })
+
+  it('lets no prose the scan still reaches spell a theme key', () => {
+    // The mirror image of the rule above, and the half `@source not` never
+    // closed. Those lines say which files are prose; nothing says the set is
+    // complete, and a kind of prose nobody thought of fails nothing at all.
+    // That is how a release note came to be the sole reason a `@theme` key
+    // stood in the shipped stylesheet, long after the code it was written
+    // about was deleted.
+    //
+    // Stated as the property rather than as a list of files, so it needs no
+    // upkeep and no exemptions: markdown offers a `--name` however it is
+    // written, bare or backticked, so a `@theme` key spelled in any markdown
+    // the scan still reaches is emitted for that reason alone. The subject is
+    // a KIND of file — every one of the several dozen still in the scan — and
+    // a failure names the sentence and whoever wrote it, not the glob, which
+    // is what makes it survive a document being moved or renamed.
+    //
+    // Class names get no equivalent and cannot have one: any English word can
+    // be a utility, so there is no finite set to intersect against. For those
+    // `@source not` remains the whole of the defence.
+    //
+    // What the seam supplies is every style fact here — which names are
+    // `@theme` keys, and what the entry sheet excludes. Prose is the one thing
+    // the token model deliberately does not read, which is why the file list
+    // is asked for separately.
+    const registered = new Set(
+      declarations()
+        .filter((entry) =>
+          [entry.selector, ...entry.context].some((scope) =>
+            scope.startsWith('@theme'),
+          ),
+        )
+        // A namespace reset (`--color-amber-*`) is a declaration but not a
+        // name anything can spell.
+        .filter((entry) => !entry.name.endsWith('*'))
+        .map((entry) => entry.name),
+    )
+    expect(registered.size).toBeGreaterThan(0)
+
+    const excluded = [
+      ...stylesheet('tailwind.config.css').text.matchAll(
+        /@source\s+not\s+'([^']+)'/g,
+      ),
+    ].map(([, pattern]) => scanExclusion(pattern))
+
+    // Tailwind scans what the working tree holds and `.gitignore` does not
+    // hide, tracked or not, which is exactly what this asks for. Asking git
+    // rather than walking the tree means the answer moves with `.gitignore`
+    // instead of with a skip list kept here.
+    const prose = execSync(
+      'git ls-files --cached --others --exclude-standard -- "*.md"',
+      { cwd: REPO_ROOT, encoding: 'utf8' },
+    )
+      .split('\n')
+      .filter(Boolean)
+      .filter((file) => !excluded.some((pattern) => pattern.test(file)))
+    expect(prose.length).toBeGreaterThan(0)
+
+    const spelled: string[] = []
+    for (const file of prose) {
+      readFileSync(resolve(REPO_ROOT, file), 'utf8')
+        .split('\n')
+        .forEach((text, index) => {
+          for (const [token] of text.matchAll(/--[a-zA-Z0-9_-]+/g)) {
+            if (registered.has(token)) {
+              spelled.push(`${file}:${index + 1} ${token}`)
+            }
+          }
+        })
+    }
+    expect(
+      spelled,
+      'Prose inside the content scan spells a `@theme` key, which puts that ' +
+        'key into the built stylesheet whether or not anything renders it. ' +
+        'Either say it without the name, or take the file out of the scan ' +
+        'beside the exclusions in `tailwind.config.css`.',
+    ).toEqual([])
+  })
 })
+
+/**
+ * One `@source not` pattern as a test against a repository-relative path.
+ *
+ * The patterns are written relative to `src/styles`, where the entry sheet
+ * sits, and the file list is relative to the repository root, so the leading
+ * hops are resolved rather than matched. A bare directory or file name covers
+ * itself and everything under it, which is how Tailwind reads it.
+ */
+function scanExclusion(pattern: string): RegExp {
+  const path = pattern.replace(/^\.\.\/\.\.\//, '').replace(/^\.\.\//, 'src/')
+  const body = path.replace(/\*\*\/|\*|\{[^}]*\}|[^*{]+/g, (piece) => {
+    if (piece === '**/') return '(?:.*/)?'
+    if (piece === '*') return '[^/]*'
+    if (piece.startsWith('{')) {
+      return `(${piece.slice(1, -1).split(',').join('|')})`
+    }
+    return piece.replace(/[.+^$()|[\]\\?]/g, '\\$&')
+  })
+  return new RegExp(`^${body}(?:/|$)`)
+}
 
 /* ------------------------------------------------------------------ *
  * Theme dials: the inputs semantic.css derives everything from. Each
