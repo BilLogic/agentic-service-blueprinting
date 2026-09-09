@@ -339,10 +339,7 @@ export function MobileShell() {
               <StoryboardWalkthroughShell>
                 <MobileScenarioTransition scenarioId={soloScenarioId}>
                   {(displayedScenarioId, onIncomingFitReady) => (
-                    <div
-                      className="absolute inset-0 flex min-h-0 flex-col"
-                      data-editor-view
-                    >
+                    <div className="contents">
                       {/* Scoped to ONE SCENARIO, not to a phase.
 
                           A phone has no phase lane and no canvas navigation —

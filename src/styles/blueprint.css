@@ -604,7 +604,10 @@
       background: CanvasText !important;
     }
 
-    [data-semantic-tier='blocks'] [data-blueprint-cell] {
+    [data-semantic-tier='blocks']
+      [data-blueprint-cell]:not(
+        :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+      ) {
       background-color: CanvasText;
       border-color: CanvasText;
     }
