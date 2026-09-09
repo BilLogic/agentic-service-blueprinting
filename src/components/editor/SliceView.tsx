@@ -283,6 +283,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
           >
             <ServiceOverviewView
               skeletonHoldKey={skeletonHoldKey}
+              cameraStateKey={`${mobileShell ? 'mobile' : 'desktop'}:slice:${sliceId}`}
               soloScenarioId={scenarioId}
               renderHeader={() => header}
               renderHeaderSkeleton={() => <SliceHeaderBandSkeleton />}

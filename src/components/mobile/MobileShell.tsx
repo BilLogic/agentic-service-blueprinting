@@ -9,6 +9,7 @@ import {
 import { MobileAgentSheet } from '@/components/mobile/MobileAgentSheet'
 import { MobileAgentFab } from '@/components/mobile/MobileAgentFab'
 import { MobilePathSelector } from '@/components/mobile/MobilePathSelector'
+import { MobileScenarioTransition } from '@/components/mobile/MobileScenarioTransition'
 import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWalkthroughShell'
@@ -336,33 +337,39 @@ export function MobileShell() {
               </div>
             ) : hasSelection ? (
               <StoryboardWalkthroughShell>
-                <div
-                  className="absolute inset-0 flex min-h-0 flex-col"
-                  data-editor-view
-                >
-                  {/* Scoped to ONE SCENARIO, not to a phase.
+                <MobileScenarioTransition scenarioId={soloScenarioId}>
+                  {(displayedScenarioId, onIncomingFitReady) => (
+                    <div
+                      className="absolute inset-0 flex min-h-0 flex-col"
+                      data-editor-view
+                    >
+                      {/* Scoped to ONE SCENARIO, not to a phase.
 
-                      A phone has no phase lane and no canvas navigation —
-                      the drawer is the only way to move — so a sibling
-                      scenario on the board is a destination the shell
-                      cannot take you to, drawn at a size the device pays
-                      for. A phase row is several full boards; rendering
-                      the set on a phone is what takes the renderer down.
+                          A phone has no phase lane and no canvas navigation —
+                          the drawer is the only way to move — so a sibling
+                          scenario on the board is a destination the shell
+                          cannot take you to, drawn at a size the device pays
+                          for. A phase row is several full boards; rendering
+                          the set on a phone is what takes the renderer down.
 
-                      `soloScenarioId` wins over `soloPhaseId` inside
-                      ServiceOverviewView, so a phase-only selection
-                      resolves to that phase's first scenario rather than
-                      falling back to the whole row.
+                          `soloScenarioId` wins over `soloPhaseId` inside
+                          ServiceOverviewView, so a phase-only selection
+                          resolves to that phase's first scenario rather than
+                          falling back to the whole row.
 
-                      The sticky phase header is suppressed — the shell's
-                      own top bar already names the selection, and two bars
-                      saying the same thing read as clutter. */}
-                  <ServiceOverviewView
-                    soloScenarioId={soloScenarioId ?? undefined}
-                    soloPhaseId={selectedPhaseId ?? undefined}
-                    renderHeader={() => null}
-                  />
-                </div>
+                          The sticky phase header is suppressed — the shell's
+                          own top bar already names the selection, and two bars
+                          saying the same thing read as clutter. */}
+                      <ServiceOverviewView
+                        key={displayedScenarioId ?? 'none'}
+                        soloScenarioId={displayedScenarioId ?? undefined}
+                        soloPhaseId={selectedPhaseId ?? undefined}
+                        renderHeader={() => null}
+                        onInitialFitReady={onIncomingFitReady}
+                      />
+                    </div>
+                  )}
+                </MobileScenarioTransition>
               </StoryboardWalkthroughShell>
             ) : (
               <MobileEmptyState onOpenNav={() => setNavOpen(true)} />

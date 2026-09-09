@@ -346,15 +346,21 @@ function DesktopEditorShell() {
   useEffect(
     () =>
       registerAgentUiBridge({
-        selectPhase,
-        selectScenario,
+        selectPhase: (phaseId) => {
+          activateTab(null)
+          selectPhase(phaseId)
+        },
+        selectScenario: (scenarioId) => {
+          activateTab(null)
+          selectScenario(scenarioId)
+        },
         openAgentSurface: () => {
           toggleAgentOpen(true)
           setCollapsedByUser(false)
         },
         setSidebarCollapsed: setCollapsedByUser,
       }),
-    [selectPhase, selectScenario, setCollapsedByUser],
+    [activateTab, selectPhase, selectScenario, setCollapsedByUser],
   )
 
   // The read side: what the shell itself knows about what's on screen.

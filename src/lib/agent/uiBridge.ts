@@ -1,4 +1,5 @@
 import { resolveActiveFocusCells } from '@/lib/canvasFocusCells'
+import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 
 /**
  * The agent's hands on the UI itself — camera and navigation, not data.
@@ -32,17 +33,11 @@ export function registerAgentUiBridge(next: AgentUiBridge): () => void {
 }
 
 /**
- * Wait for the shell to report the target selected AND the canvas camera
- * idle. The camera is read from its own contributor line, not the whole
- * joined blob — a stray ", idle" or "(id)" in another surface's text must
- * not pass this. The fit that follows a selection is SCHEDULED (a settle
- * loop plus a 250 ms backstop in useZoomPanViewport), so an idle camera in
- * the first poll after the selection lands is "the ease has not started",
- * not "the ease finished": accept idle only after the camera was seen
- * moving, or after the backstop window has elapsed with nothing scheduled.
+ * Selection remains independently verified from the shell context. Camera
+ * completion is not inferred from that context: idle is also what a cancelled
+ * or superseded flight looks like, so the viewport publishes its exact result.
  */
 const NAVIGATION_DEADLINE_MS = 1800
-const FIT_BACKSTOP_GRACE_MS = 300
 const SELECTED_LINE: Record<'phase' | 'scenario', string> = {
   phase: 'Selected phase',
   scenario: 'Selected scenario',
@@ -60,43 +55,51 @@ async function waitForNavigation(
     `^${SELECTED_LINE[kind]}: .*\\(${escapeRegExp(id)}\\)$`,
     'm',
   )
-  const cameraLine = /^Canvas camera: .*?, (moving|idle)\b/m
   const deadline = performance.now() + NAVIGATION_DEADLINE_MS
-  let selectedAt: number | null = null
-  let sawMoving = false
   while (performance.now() < deadline) {
-    const now = performance.now()
     const context = collectAgentUiContext()
-    const selected = selectedLine.test(context)
-    if (selected && selectedAt === null) selectedAt = now
-    const camera = cameraLine.exec(context)?.[1] ?? null
-    if (camera === 'moving') sawMoving = true
-    const settled =
-      document.hidden ||
-      camera === null ||
-      (camera === 'idle' &&
-        (sawMoving ||
-          (selectedAt !== null && now - selectedAt >= FIT_BACKSTOP_GRACE_MS)))
-    if (selected && settled) return true
+    if (selectedLine.test(context)) return true
     await new Promise((done) => setTimeout(done, 25))
   }
   return false
 }
 
+const NAVIGATION_TIMED_OUT = Symbol('navigation-timed-out')
+
+async function openAndAwaitNavigation(
+  kind: 'phase' | 'scenario',
+  id: string,
+  select: (id: string) => void,
+) {
+  const camera = waitForCanvasNavigationOutcome(id)
+  select(id)
+  const [selected, result] = await Promise.all([
+    waitForNavigation(kind, id),
+    Promise.race([
+      camera.promise,
+      new Promise<typeof NAVIGATION_TIMED_OUT>((resolve) =>
+        setTimeout(() => resolve(NAVIGATION_TIMED_OUT), NAVIGATION_DEADLINE_MS),
+      ),
+    ]),
+  ])
+  camera.cancel()
+  if (!selected)
+    return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation started, but the selected ${kind} was not verified before timeout.`
+  if (result === NAVIGATION_TIMED_OUT)
+    return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation selected the target, but its camera outcome was not verified before timeout.`
+  if (result.kind !== 'completed')
+    return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation was ${result.kind}; the camera was not claimed as landed.`
+  return `Opened the ${kind} and settled its canvas camera.`
+}
+
 export async function agentOpenPhase(phaseId: string): Promise<string> {
   if (!bridge) return 'UI navigation is not available right now.'
-  bridge.selectPhase(phaseId)
-  return (await waitForNavigation('phase', phaseId))
-    ? 'Opened the phase and settled its canvas camera.'
-    : 'Phase navigation started, but the selected phase and settled camera were not verified before timeout.'
+  return openAndAwaitNavigation('phase', phaseId, bridge.selectPhase)
 }
 
 export async function agentOpenScenario(scenarioId: string): Promise<string> {
   if (!bridge) return 'UI navigation is not available right now.'
-  bridge.selectScenario(scenarioId)
-  return (await waitForNavigation('scenario', scenarioId))
-    ? 'Opened the scenario and settled its canvas camera.'
-    : 'Scenario navigation started, but the selected scenario and settled camera were not verified before timeout.'
+  return openAndAwaitNavigation('scenario', scenarioId, bridge.selectScenario)
 }
 
 export function openAgentSurface(): boolean {
