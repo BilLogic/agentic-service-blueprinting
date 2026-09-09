@@ -106,3 +106,72 @@ test('every recordable operation reads as a sentence, not an identifier', () => 
     expect(described[0]).toBe(described[0].toUpperCase())
   }
 })
+
+/**
+ * The two upserts say which half they took, and the sentence follows.
+ *
+ * Both `upsert_cell` and `set_cell_dependency` land on either an insert or an
+ * update, and both learned to report which — that is what let `deriveRevert`
+ * stop deducing an inverse from the operation's NAME. The sentence was left
+ * behind: it still read "Added a cell" over a write that had edited one, which
+ * is the same mistake in the one place a person actually sees it.
+ *
+ * The entry carries no report of its own, so the describers read the derived
+ * inverse, which is where the report survives. That makes the absence of an
+ * inverse meaningful too: an insert always derives one, so a missing inverse
+ * is the update half whose before-state did not come back — an edit.
+ */
+const CELL_INSERT: ChangeEntry = {
+  id: 'c1',
+  fn: 'upsert_cell',
+  args: {},
+  at: 0,
+  revert: { fn: 'delete_cell', args: { cell_id: 'cell-1' } },
+}
+
+const CELL_UPDATE: ChangeEntry = {
+  id: 'c2',
+  fn: 'upsert_cell',
+  args: {},
+  at: 0,
+  revert: { fn: 'restore_cell_content', args: { cell_id: 'cell-1', content: 'was' } },
+}
+
+const EDGE_INSERT: ChangeEntry = {
+  id: 'c3',
+  fn: 'set_cell_dependency',
+  args: {},
+  at: 0,
+  revert: { fn: 'clear_cell_dependency', args: { dependency_id: 'dep-1' } },
+}
+
+const EDGE_UPDATE: ChangeEntry = {
+  id: 'c4',
+  fn: 'set_cell_dependency',
+  args: {},
+  at: 0,
+  revert: {
+    fn: 'restore_cell_dependency',
+    args: { dependency_id: 'dep-1', name: null, note: 'was' },
+  },
+}
+
+test('an upsert that inserted reads as a create', () => {
+  expect(describeChange(CELL_INSERT)).toBe('Added a cell')
+  expect(describeChange(EDGE_INSERT)).toBe('Connected two cells')
+})
+
+test('an upsert that updated does not read as a create', () => {
+  expect(describeChange(CELL_UPDATE)).toBe('Edited a cell’s text')
+  expect(describeChange(EDGE_UPDATE)).toBe('Edited a connection')
+})
+
+test('an update with no recoverable before-state still reads as an edit', () => {
+  // No inverse is how the ledger says the prior state did not come back. Only
+  // the update half can be in that state, so the sentence must not fall back
+  // to the create — the fallback is the defect, not the safe default.
+  const entry: ChangeEntry = { id: 'c5', fn: 'upsert_cell', args: {}, at: 0 }
+  expect(describeChange(entry)).toBe('Edited a cell’s text')
+  const edge: ChangeEntry = { id: 'c6', fn: 'set_cell_dependency', args: {}, at: 0 }
+  expect(describeChange(edge)).toBe('Edited a connection')
+})
