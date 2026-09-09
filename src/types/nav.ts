@@ -28,6 +28,15 @@ export type NavItem = {
   layout?: SlideViewType
   /** Short scenario summary shown under the slide title. */
   summary?: string | null
+  /**
+   * `scenarios.note` — the aside beside what the scenario IS, carried on the
+   * title's definition popover. Most often what else may be running at the
+   * same time. It is blueprint data rather than app configuration, which is
+   * the whole reason it is a column: the alternative is a `Record` keyed on
+   * hardcoded scenario ids, which only the deployment that wrote those ids
+   * can read.
+   */
+  note?: string | null
 }
 
 /**

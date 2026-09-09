@@ -14,6 +14,7 @@
  * ⚠️ It WRITES. Point it at a scratch project, never at real content: it
  * creates slices, deletes them, and records findings it then dismisses.
  */
+import { errorMessage } from '@/lib/utils'
 import type {
   Backend,
   ConformanceLevel,
@@ -405,7 +406,7 @@ export async function runConformance(
       results.push({
         ...base,
         status: 'fail',
-        detail: error instanceof Error ? error.message : String(error),
+        detail: errorMessage(error),
       })
     }
   }
