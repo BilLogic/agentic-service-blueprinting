@@ -7,12 +7,16 @@ import {
   Plus,
 } from 'lucide-react'
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import type {
   BlueprintCellConnection,
   BlueprintCellConnections,
 } from '@/lib/blueprintCellConnections'
-import { ROW_REVEAL_CLASS } from '@/lib/rowReveal'
 import { cn } from '@/lib/utils'
 
 export type CellDependencyTechEntry = {
@@ -70,19 +74,30 @@ function DirectionIcon({ direction }: { direction: RowDirection }) {
 }
 
 /**
- * The why-line waits for a reader.
+ * The why-line waits for a reader, and asks one row's space to do it in.
  *
- * A dependency row already says WHAT it points at — the lane, the step, the
- * edge's own name. The note says WHY the edge exists, which is worth reading
- * on one row at a time and not worth reading down a list of eight. Static, it
- * doubled the height of every row that had one and made the list's shape
- * depend on how talkative its author had been.
+ * A dependency row already says WHAT it points at — the lane and the step. The
+ * note says WHY the edge exists, which is worth reading one row at a time and
+ * not worth reading down a list of eight. Revealed by opacity it still held
+ * its line, so a list of eight rows drew sixteen and the list's shape depended
+ * on how talkative its author had been. Read from a tooltip, eight rows draw
+ * eight.
  *
- * Revealed rather than removed, by the one rule {@link ROW_REVEAL_CLASS}
- * states for every row control that waits for a reader — the resource list's
- * drag handle is the other.
+ * A tooltip is not an accessible name — `IconTooltip` states that rule, and
+ * this Base UI version is the proof of it: the popup carries neither
+ * `role="tooltip"` nor an `aria-describedby` back to the trigger, and the
+ * trigger's hover interaction is `mouseOnly`, so a touch never opens it at
+ * all. The sentence therefore stays in the DOM, inside the row's own button,
+ * and only a FINE pointer trades the printed line for the popup: a screen
+ * reader reads the note as part of the row's name, a touch reader sees it
+ * printed where it has always been, and a keyboard reader gets the popup
+ * because the same trigger opens on focus as well as on hover.
+ *
+ * Conditioned on the pointer being fine rather than on its not being coarse,
+ * so a device reporting no pointer at all — where nothing hovers and nothing
+ * taps — keeps the printed line rather than losing it to a rule about mice.
  */
-const WHY_LINE_REVEAL_CLASS = ROW_REVEAL_CLASS
+const WHY_LINE_QUIET_CLASS = '[@media(pointer:fine)]:sr-only'
 
 function DependencyRow({
   connection,
@@ -100,47 +115,53 @@ function DependencyRow({
   }
   const clearPreview = () => detail?.setPreviewHover(null)
 
+  const row = (
+    <button
+      type="button"
+      className="flex min-w-0 flex-col items-stretch gap-0.5 text-left text-foreground/85 transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+      onMouseEnter={() => preview(null)}
+      onMouseLeave={clearPreview}
+      onFocus={() => preview(null)}
+      onBlur={clearPreview}
+      onClick={() => {
+        clearPreview()
+        onCellSelect(connection.cellId)
+      }}
+    >
+      <span className="flex min-w-0 items-center gap-[7px]">
+        <DirectionIcon direction={direction} />
+        <span className="min-w-0 truncate font-normal text-foreground/90">
+          {connection.laneName}
+          <span className="text-muted-foreground">
+            {' '}
+            · Step {connection.stepIndex + 1}
+          </span>
+        </span>
+      </span>
+      {connection.contentPreview && !connection.isTech ? (
+        <span className={cn('truncate text-2xs text-muted-foreground', detailIndentClass)}>
+          {connection.contentPreview}
+        </span>
+      ) : null}
+      {connection.linkNote ? (
+        <span className={cn(WHY_LINE_QUIET_CLASS, 'text-2xs leading-snug text-muted-foreground italic', detailIndentClass)}>
+          {connection.linkNote}
+        </span>
+      ) : null}
+    </button>
+  )
+
   return (
     <li className="group border-b border-muted last:border-0">
       <div className="flex flex-col gap-0.5 px-2 py-1.5 text-xs leading-snug transition-colors group-hover:bg-accent group-focus-within:bg-accent">
-        <button
-          type="button"
-          className="flex min-w-0 flex-col items-stretch gap-0.5 text-left text-foreground/85 transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-          onMouseEnter={() => preview(null)}
-          onMouseLeave={clearPreview}
-          onFocus={() => preview(null)}
-          onBlur={clearPreview}
-          onClick={() => {
-            clearPreview()
-            onCellSelect(connection.cellId)
-          }}
-        >
-          <span className="flex min-w-0 items-center gap-[7px]">
-            <DirectionIcon direction={direction} />
-            <span className="min-w-0 truncate font-normal text-foreground/90">
-              {connection.laneName}
-              <span className="text-muted-foreground">
-                {' '}
-                · Step {connection.stepIndex + 1}
-              </span>
-            </span>
-            {connection.linkName ? (
-              <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-px text-3xs leading-tight text-muted-foreground">
-                {connection.linkName}
-              </span>
-            ) : null}
-          </span>
-          {connection.contentPreview && !connection.isTech ? (
-            <span className={cn('truncate text-2xs text-muted-foreground', detailIndentClass)}>
-              {connection.contentPreview}
-            </span>
-          ) : null}
-          {connection.linkNote ? (
-            <span className={cn(WHY_LINE_REVEAL_CLASS, 'text-2xs leading-snug text-muted-foreground italic', detailIndentClass)}>
-              {connection.linkNote}
-            </span>
-          ) : null}
-        </button>
+        {connection.linkNote ? (
+          <Tooltip>
+            <TooltipTrigger render={row} />
+            <TooltipContent>{connection.linkNote}</TooltipContent>
+          </Tooltip>
+        ) : (
+          row
+        )}
         {connection.isTech && connection.techItems.length > 0 ? (
           <span className={cn('flex flex-wrap gap-1 pt-0.5', detailIndentClass)}>
             {connection.techItems.map((item) => (
