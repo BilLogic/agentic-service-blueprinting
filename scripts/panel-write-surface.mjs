@@ -27,11 +27,12 @@
  * THE QUESTION IS ASKED AS THE ROLE, not of the catalogue. It used to read
  * `pg_policies` for a policy on the table, for that command, naming
  * `authenticated` — and a policy that exists and admits nobody satisfies an
- * existence test. Every table here carries one: the service-account tier hangs
- * a RESTRICTIVE `<table>_update_service_only` on thirteen of them, and the rest
- * carry a permissive policy whose predicate is `is_service_account()`. So the
- * old test could not tell "an author may write this" from "only a service
- * account may", which is precisely the pair whose difference is silent (#369).
+ * existence test. Every table here carries one: a RESTRICTIVE
+ * `<table>_update_service_only` on all but two of them — most from the
+ * service-account tier, `services` from 21000212000000 — and those two carry a
+ * permissive policy whose whole predicate is `is_service_account()`. So the old
+ * test could not tell "an author may write this" from "only a service account
+ * may", which is precisely the pair whose difference is silent (#369).
  * `set local role authenticated`, a representative claim, attempt the write,
  * roll it back — that cannot be satisfied by a policy that refuses, and it
  * subsumes the grant half, because a write the grant forbids does not happen
@@ -232,17 +233,17 @@ export const VIEWER = {
  *
  * Not a way to opt out of the check: the AUTHOR half still runs, so a table
  * listed here is still asserted to be writable by the people who edit it.
+ *
+ * EMPTY, and that is the state to keep it in. It held one entry, `services` —
+ * the single surface table the service-account tier never reached, because
+ * 20260818002000 could not restrict a write policy that did not exist yet and
+ * 21000128000000 wrote that policy afterwards as `using (true)`. The entry was
+ * the smaller claim the check could still honestly make while the migration was
+ * owed; 21000212000000 pays it, and deleting the line is what turns the viewer
+ * probe on for the table. The next entry here is a debt somebody took on
+ * deliberately, in writing, and it should read that way.
  */
-export const ANY_SIGNED_IN_USER_MAY_WRITE = {
-  services:
-    "21000128000000 gave `services` the UPDATE policy it was missing — `using (true)` " +
-    'to `authenticated` — and the service-account tier that came before it (20260818002000) ' +
-    'could not have named a table that had no write policy to restrict. So `services` is the ' +
-    'one surface table the tier never reached: any signed-in member may rewrite a service ' +
-    'summary, which docs/guide/04-operations.md says is exactly what a member outside the ' +
-    'editing tier may not do. The deployment this template was cut from carries a restrictive ' +
-    '`services_update_service_only` of its own; this recipe still owes that migration.',
-}
+export const ANY_SIGNED_IN_USER_MAY_WRITE = {}
 
 /**
  * A row to write, for the surface tables the sample seed leaves empty.
@@ -341,8 +342,8 @@ export function writeSurfaceAssertions() {
  * Read as SQL rather than as a catalogue, because the catalogue cannot answer
  * the question. `exists(select 1 from pg_policies …)` is satisfied by a policy
  * that admits nobody, and every one of these tables carries one — a RESTRICTIVE
- * `<table>_update_service_only` on thirteen of them, a permissive
- * `is_service_account()` predicate on the rest. A viewer meeting either matches
+ * `<table>_update_service_only` on all but two, a permissive
+ * `is_service_account()` predicate on those. A viewer meeting either matches
  * zero rows and gets a 200 back. Becoming the role cannot be satisfied that way:
  * the write either happens or it does not.
  *

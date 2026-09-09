@@ -10477,3 +10477,69 @@ begin
   end if;
 end
 $which_half$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000212000000_the_service_record_joins_the_tier.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- The service record joins the tier every other table already answers to.
+--
+-- `public.services` is the one table on the write surface a plain signed-in
+-- member can UPDATE. Every other table there admits only a service account.
+-- docs/guide/04-operations.md says a member outside the editing tier may read
+-- and not write; of this table that was never true.
+--
+-- ── How the gap opened ────────────────────────────────────────────────────
+--
+-- Two migrations, neither wrong on its own.
+--
+-- 20260818002000 introduced the service-account tier and hung a RESTRICTIVE
+-- `*_service_only` policy on the tables that had a write policy to restrict.
+-- `services` had none yet — the spine's root was read-only, the IR builds a
+-- service and nothing edited one — so it got none.
+--
+-- 21000128000000 then gave `services` the write policy it was missing,
+-- `services_update_auth` with `using (true)`, so the Service panel could save.
+-- It restored the half that was missing and did not add the half the earlier
+-- migration would have. Nothing anywhere argues that the service record should
+-- be the one row an ordinary member may rewrite: it is an oversight with two
+-- authors, and this file is the third.
+--
+-- ── Shape ─────────────────────────────────────────────────────────────────
+--
+-- RESTRICTIVE, which is the whole of the fix. A permissive policy naming
+-- `is_service_account()` would OR with `services_update_auth`'s `using (true)`
+-- and change nothing at all. Restrictive policies AND, so this one narrows the
+-- permissive policy it stands beside — the same shape 20260818002000 built for
+-- its thirteen tables, and the same one `stakeholders` and `cell_touchpoints`
+-- were given when they joined the surface later. Written out rather than
+-- looped, because it is one table.
+--
+-- UPDATE only, and deliberately. `services` carries no INSERT or DELETE policy
+-- for `authenticated` at all, so both verbs already match zero rows under row
+-- level security; a restrictive policy over a write nobody is admitted to make
+-- would assert nothing and read as though it did. Nothing under `src/` inserts
+-- or deletes a service either — the write surface finds one verb on this table
+-- — and the RPCs that do build one are SECURITY DEFINER, so they never meet a
+-- policy and assert the tier in their own bodies instead.
+--
+-- ── A single-tier deployment is untouched ─────────────────────────────────
+--
+-- `public.is_service_account()` is the CORE seam (20260818001000) and its
+-- default body is `select true`: every signed-in session edits, the template
+-- default. Only the OPTIONAL tier recipe replaces it with a read of the JWT.
+-- So on a deployment that skipped that recipe this policy admits everyone and
+-- changes nothing, which is the posture that deployment chose and this file
+-- must not overrule. That is also why the proof below asserts AGREEMENT with
+-- the seam rather than a flat refusal: after this migration an UPDATE of
+-- `services` is admitted exactly when `is_service_account()` says so,
+-- whichever body that function carries.
+--
+-- ── Replaying against an empty database ───────────────────────────────────
+--
+-- Recipe-only and additive: no table, no column, no row, and the schema
+-- version does not move (the same stance as 21000128000000). The
+-- `drop policy if exists` makes a partial re-run idempotent. The proof stands
+-- its own service row up inside a subtransaction it then aborts, so it asks
+-- the same question of an empty replay as of a loaded target and leaves
+-- nothing behind on either.
