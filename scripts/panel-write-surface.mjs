@@ -53,18 +53,33 @@
  * reaches CI as "the fresh-database seed load failed" with no mention of the
  * column.
  *
- * WHAT IS ASSERTED IS THE UPDATE PATH, and only that. `buildWriteSurfaceSql`
- * asks for an UPDATE grant and an UPDATE policy; the app also inserts and
- * deletes `evidence`, `slices`, `slides`, `stakeholders` and `audit_findings`,
- * and no assertion here covers those. That is a known limit of this map's
- * shape, stated so it is not mistaken for coverage.
+ * THE VERBS ARE NOT HAND-KEPT EITHER, and for the same reason the tables
+ * stopped being. This map asserted the UPDATE path and only that, while the app
+ * also inserted and deleted `evidence`, `slices`, `slides`, `stakeholders` and
+ * `audit_findings` — one verb wide instead of one table wide, the same hole in
+ * a different axis. `writeSurfaceEntries` now takes each entry's verbs from
+ * `writtenVerbsByTable`, the same scan that finds the tables, so an insert added
+ * to a module that already updates is covered the moment it is written and
+ * cannot be forgotten here.
+ *
+ * UPDATE keeps its column list, because `has_column_privilege` is what checks
+ * that granularity and the deployment really does grant it column by column.
+ * INSERT and DELETE are asked table-wide: the recipe grants them table-wide, and
+ * a column list for them would be precision the grants do not have.
  */
+
+import { SRC, directTableWrites, writtenVerbsByTable } from './direct-table-writes.mjs'
 
 /**
  * `table: [columns]`. The columns are the ones named in an `.update({…})`
- * payload in the mutation modules — the UPDATE grant is what is asserted, so an
- * insert-only column would be asking the database the wrong question. Spelled
- * as the database spells them, not as the TypeScript spells them.
+ * payload in the mutation modules — the UPDATE grant is what they are asserted
+ * against, so an insert-only column would be asking the database the wrong
+ * question. Spelled as the database spells them, not as the TypeScript spells
+ * them.
+ *
+ * The VERBS are not here: they come from the writers. An entry that lists
+ * columns and is never UPDATEd by anything fails the surface test, which is the
+ * one claim about verbs this file can still get wrong.
  */
 export const PANEL_WRITE_SURFACE = {
   // src/lib/stepSpecMutations.ts
@@ -98,13 +113,14 @@ export const PANEL_WRITE_SURFACE = {
   ],
   // src/lib/touchpointMutations.ts — the cell panel's placement rows.
   cell_touchpoints: ['summary', 'role'],
-  // src/lib/evidenceMutations.ts. The form also inserts and deletes; see the
-  // header for why only the update is asserted.
+  // src/lib/evidenceMutations.ts. The form also inserts and deletes, and those
+  // two verbs are asserted table-wide off the scan rather than named here.
   evidence: ['kind', 'title', 'note'],
   // src/lib/findingMutations.ts — exactly the columns `toPatch` builds, which
   // is exactly the column list the recipe grants. `check_key` and `service_id`
   // are written on insert only and are NOT updatable; naming either here would
-  // assert a privilege the deployment deliberately withholds.
+  // assert a privilege the deployment deliberately withholds. The insert itself
+  // is covered, table-wide, by the verb the scan reads off that same module.
   audit_findings: ['severity', 'summary', 'run_id', 'cell_ids', 'cell_keys', 'source', 'status'],
   // src/lib/sliceMutations.ts. Slides are replaced wholesale — deleted and
   // reinserted — so `illustration` is the only column the editor UPDATES.
@@ -136,41 +152,77 @@ export const OUTSIDE_THE_SURFACE = [
   },
 ]
 
-/** Flattened to `table.column` pairs, in declaration order. */
-export function writtenColumns() {
-  return Object.entries(PANEL_WRITE_SURFACE).flatMap(([table, columns]) =>
-    columns.map((column) => [table, column]),
-  )
-}
-
-/** The tables that therefore need an UPDATE policy admitting `authenticated`. */
-export function writtenTables() {
-  return Object.keys(PANEL_WRITE_SURFACE)
+/**
+ * Each surface entry with the verbs its writers actually use, in declaration
+ * order.
+ *
+ * `verbs` is derived, never declared: `writtenVerbsByTable` reads them off the
+ * same walk of `src/` that finds the tables. An entry whose table nothing
+ * writes any more comes back with no verbs and therefore asks the database
+ * nothing — `evaluateWriteSurface` reports that rather than letting the check
+ * pass on an empty question.
+ */
+export function writeSurfaceEntries() {
+  const verbs = writtenVerbsByTable(directTableWrites(SRC))
+  return Object.entries(PANEL_WRITE_SURFACE).map(([table, columns]) => ({
+    table,
+    columns,
+    verbs: verbs.get(table) ?? [],
+  }))
 }
 
 /**
- * One query returning `label|ok` per assertion, run as the OWNER.
+ * `{ label, sql }` for every question the database is asked, in one place.
  *
- * `has_column_privilege` and `pg_policies` answer for a named role without
- * becoming it, which is what lets this run in the same session as the anon
- * inventory read. The policy question is EXISTENCE, deliberately — whether a
- * given author passes the predicate is that policy's business (`stakeholders`
- * admits only service accounts, on purpose), but a table with no UPDATE policy
- * at all admits nobody and reports the failure as a deleted row.
+ * The builder and the evaluator both read this list, so the labels cannot drift
+ * apart the way two hand-written copies of them would. A label is
+ * `<kind> <verb> <what>`: `grant update evidence.title`, `grant delete evidence`,
+ * `policy insert evidence`.
+ *
+ * Per verb, two questions, because both have been missing separately:
+ *
+ *   1. the GRANT — `has_column_privilege` for UPDATE, which the deployment
+ *      really does hand out column by column; `has_table_privilege` for INSERT
+ *      and DELETE, which it hands out whole.
+ *   2. an RLS POLICY for that command admitting `authenticated`. Existence,
+ *      deliberately — whether a given author passes the predicate is that
+ *      policy's business (`stakeholders` admits only service accounts, on
+ *      purpose), but a table with no policy for the command at all admits
+ *      nobody, and an UPDATE or DELETE nobody is allowed to make matches zero
+ *      rows and returns 200.
  */
+export function writeSurfaceAssertions() {
+  const assertions = []
+  const has = (verb, table, column) =>
+    column === undefined
+      ? `has_table_privilege('authenticated', 'public.${table}', '${verb}')`
+      : `has_column_privilege('authenticated', 'public.${table}', '${column}', '${verb}')`
+  for (const { table, columns, verbs } of writeSurfaceEntries()) {
+    for (const verb of verbs) {
+      const lower = verb.toLowerCase()
+      if (verb === 'UPDATE') {
+        for (const column of columns) {
+          assertions.push({ label: `grant update ${table}.${column}`, sql: has(verb, table, column) })
+        }
+      } else {
+        assertions.push({ label: `grant ${lower} ${table}`, sql: has(verb, table) })
+      }
+      assertions.push({
+        label: `policy ${lower} ${table}`,
+        sql:
+          `exists(select 1 from pg_policies where schemaname = 'public' ` +
+          `and tablename = '${table}' and cmd = '${verb}' and 'authenticated' = any (roles))`,
+      })
+    }
+  }
+  return assertions
+}
+
+/** One query returning `label|ok` per assertion, run as the OWNER. */
 export function buildWriteSurfaceSql() {
-  const grants = writtenColumns().map(
-    ([table, column]) =>
-      `select 'grant ${table}.${column}'::text as t, ` +
-      `has_column_privilege('authenticated', 'public.${table}', '${column}', 'UPDATE') as ok`,
-  )
-  const policies = writtenTables().map(
-    (table) =>
-      `select 'policy ${table}', exists(select 1 from pg_policies ` +
-      `where schemaname = 'public' and tablename = '${table}' ` +
-      `and cmd = 'UPDATE' and 'authenticated' = any (roles))`,
-  )
-  return `${[...grants, ...policies].join('\nunion all\n')};`
+  return `${writeSurfaceAssertions()
+    .map(({ label, sql }) => `select '${label}'::text as t, ${sql} as ok`)
+    .join('\nunion all\n')};`
 }
 
 /** Parse `label|t|f` lines, and say what a false one means. */
@@ -184,26 +236,45 @@ export function evaluateWriteSurface(stdout) {
     if (label === undefined || ok === undefined) continue
     seen.add(label)
     if (ok === 't') continue
-    const [kind, what] = label.split(' ')
-    if (kind === 'grant') {
+    problems.push(explain(label))
+  }
+  for (const { label } of writeSurfaceAssertions()) {
+    if (!seen.has(label)) problems.push(`${label} returned no row — the write-surface read never reached it`)
+  }
+  for (const { table, verbs } of writeSurfaceEntries()) {
+    if (verbs.length === 0) {
       problems.push(
-        `authenticated cannot UPDATE public.${what} — the panel that writes it ` +
-          `is refused with "permission denied"; grant the column in a migration`,
-      )
-    } else {
-      problems.push(
-        `public.${what} has no UPDATE policy admitting authenticated — under RLS ` +
-          `the panel's save matches zero rows, returns 200, and is reported to ` +
-          `the author as "that row no longer exists"; add the policy in a migration`,
+        `public.${table} is on the write surface and nothing under src/ writes it, so ` +
+          `this check asked the database nothing about it — remove the entry`,
       )
     }
   }
-  const expected = [
-    ...writtenColumns().map(([table, column]) => `grant ${table}.${column}`),
-    ...writtenTables().map((table) => `policy ${table}`),
-  ]
-  for (const label of expected) {
-    if (!seen.has(label)) problems.push(`${label} returned no row — the write-surface read never reached it`)
-  }
   return problems
+}
+
+/** What a false answer costs an author, in the words they would report it in. */
+function explain(label) {
+  const [kind, verb, what] = label.split(' ')
+  if (kind === 'grant') {
+    return (
+      `authenticated cannot ${verb.toUpperCase()} public.${what} — the editor that ` +
+      `writes it is refused with "permission denied"; grant it in a migration`
+    )
+  }
+  if (verb === 'insert') {
+    return (
+      `public.${what} has no INSERT policy admitting authenticated — under RLS the ` +
+      `row the editor adds is rejected outright; add the policy in a migration`
+    )
+  }
+  const outcome =
+    verb === 'delete'
+      ? `the delete matches zero rows, returns 200, and the row the author removed ` +
+        `reappears on the next read`
+      : `the save matches zero rows, returns 200, and is reported to the author as ` +
+        `"that row no longer exists"`
+  return (
+    `public.${what} has no ${verb.toUpperCase()} policy admitting authenticated — ` +
+    `under RLS ${outcome}; add the policy in a migration`
+  )
 }

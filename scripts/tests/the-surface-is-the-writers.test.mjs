@@ -31,6 +31,12 @@
  *      place twice: `has_column_privilege` RAISES on a column that does not
  *      exist, so without it a typo reaches CI as "the fresh-database seed load
  *      failed" and never mentions the column.
+ *   5. every entry's column list matches a verb the writers actually use. The
+ *      verbs themselves are derived (`writtenVerbsByTable`), so an entry cannot
+ *      claim one nothing does; what it CAN still get wrong is the one verb it
+ *      declares by hand — columns are an UPDATE claim, and a table with columns
+ *      that nothing updates asks the database for a grant no author needs,
+ *      while a table the app updates and lists no columns for asks nothing.
  *
  * The scan is `scripts/direct-table-writes.mjs`, shared with
  * `src/lib/writeBoundaryContract.test.ts` — that rule asks WHO writes and this
@@ -38,7 +44,13 @@
  * readers to drift from each other, which is the bug both rules exist to catch.
  *
  * The columns are the half no scan can reach: a payload is as often
- * `.update(next)` or `.update(patch)` as a literal. Rule 4 is what holds them.
+ * `.update(next)` or `.update(patch)` as a literal. Rules 4 and 5 hold them.
+ *
+ * The VERBS are the half that used to be missing entirely. The surface asserted
+ * UPDATE and nothing else while the app inserted into and deleted from five of
+ * its tables (#368) — one verb wide instead of one table wide, the same defect
+ * in a different axis. They come off this same scan now, so there is no list of
+ * them to keep and none to forget.
  *
  * Run: npm test
  */
@@ -53,12 +65,25 @@ import {
   directTableWrites,
   walkSources,
   writtenTableNames,
+  writtenVerbsByTable,
 } from '../direct-table-writes.mjs'
-import { OUTSIDE_THE_SURFACE, PANEL_WRITE_SURFACE } from '../panel-write-surface.mjs'
+import {
+  OUTSIDE_THE_SURFACE,
+  PANEL_WRITE_SURFACE,
+  evaluateWriteSurface,
+  writeSurfaceAssertions,
+  writeSurfaceEntries,
+} from '../panel-write-surface.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const read = (path) => readFileSync(join(ROOT, path), 'utf8')
+
+/** psql's `-At -F '|'` output for the real assertion set, with named failures. */
+const lines = (failures) =>
+  writeSurfaceAssertions()
+    .map(({ label }) => `${label}|${failures[label] ?? 't'}`)
+    .join('\n')
 
 // ---------------------------------------------------------------------------
 // The rules, as functions over data
@@ -97,6 +122,29 @@ export function namesTheSchemaLacks(surface, schema) {
   return problems
 }
 
+/**
+ * Entries listing columns for a table the app never UPDATEs.
+ *
+ * The columns ARE the UPDATE claim — they exist so `has_column_privilege` can
+ * be asked about them. A table that is only inserted into and deleted from does
+ * not need them, and asking for a grant no author needs makes the check look
+ * broader than it is.
+ */
+export function columnsNothingUpdates(surface, verbs) {
+  return Object.entries(surface)
+    .filter(([table, columns]) => columns.length > 0 && !(verbs.get(table) ?? []).includes('UPDATE'))
+    .map(([table]) => table)
+    .sort()
+}
+
+/** Tables the app UPDATEs whose entry names no column to ask about. */
+export function updatesNoColumnDeclares(surface, verbs) {
+  return Object.entries(surface)
+    .filter(([table, columns]) => columns.length === 0 && (verbs.get(table) ?? []).includes('UPDATE'))
+    .map(([table]) => table)
+    .sort()
+}
+
 // ---------------------------------------------------------------------------
 // The matchers, exercised on fixtures — a rule that cannot fail is not a rule
 // ---------------------------------------------------------------------------
@@ -131,6 +179,70 @@ test('namesTheSchemaLacks catches the rename and the typo', () => {
   assert.deepEqual(namesTheSchemaLacks({ stps: ['summary'] }, schema), [
     'public.stps is on the write surface and not in the schema',
   ])
+})
+
+test('columnsNothingUpdates catches the entry claiming an update nothing makes', () => {
+  // The verb axis of the drift: `slides` stops being edited in place and is only
+  // replaced wholesale, and its column list goes on asking for an UPDATE grant.
+  const verbs = new Map([
+    ['steps', ['UPDATE']],
+    ['slides', ['DELETE', 'INSERT']],
+  ])
+  const surface = { steps: ['summary'], slides: ['illustration'] }
+  assert.deepEqual(columnsNothingUpdates(surface, verbs), ['slides'])
+  assert.deepEqual(columnsNothingUpdates({ steps: ['summary'] }, verbs), [])
+})
+
+test('updatesNoColumnDeclares catches the other direction', () => {
+  const verbs = new Map([['steps', ['UPDATE']]])
+  assert.deepEqual(updatesNoColumnDeclares({ steps: [] }, verbs), ['steps'])
+  assert.deepEqual(updatesNoColumnDeclares({ steps: ['summary'] }, verbs), [])
+})
+
+test('the verbs come off the writers, and upsert counts as both', () => {
+  // `upsert` is `insert … on conflict do update`. Asserting one of the two would
+  // be asking half the question, and the unasked half is the one that breaks.
+  const verbs = writtenVerbsByTable([
+    { table: 'evidence', verb: 'insert' },
+    { table: 'evidence', verb: 'delete' },
+    { table: 'evidence', verb: 'update' },
+    { table: 'agent_sessions', verb: 'upsert' },
+  ])
+  assert.deepEqual(verbs.get('evidence'), ['DELETE', 'INSERT', 'UPDATE'])
+  assert.deepEqual(verbs.get('agent_sessions'), ['INSERT', 'UPDATE'])
+})
+
+test('a missing insert or delete grant is a failure, in the words it costs', () => {
+  // The defect this rule was widened to catch: the grant is revoked, the gate is
+  // green, and the first thing that notices is an author pressing a button.
+  const [insertProblem] = evaluateWriteSurface(
+    lines({ 'grant insert evidence': 'f' }),
+  ).filter((problem) => problem.includes('INSERT public.evidence'))
+  assert.match(insertProblem, /permission denied/)
+  const [deleteProblem] = evaluateWriteSurface(
+    lines({ 'grant delete slices': 'f' }),
+  ).filter((problem) => problem.includes('DELETE public.slices'))
+  assert.match(deleteProblem, /permission denied/)
+})
+
+test('a missing insert or delete policy says what silence looks like', () => {
+  const insert = evaluateWriteSurface(lines({ 'policy insert evidence': 'f' })).filter((one) =>
+    one.startsWith('public.evidence has no INSERT policy'),
+  )
+  assert.equal(insert.length, 1)
+  const remove = evaluateWriteSurface(lines({ 'policy delete slices': 'f' })).filter((one) =>
+    one.startsWith('public.slices has no DELETE policy'),
+  )
+  assert.equal(remove.length, 1)
+  assert.match(remove[0], /returns 200/)
+})
+
+test('an assertion the read never reached is a failure, not a pass', () => {
+  // The whole-file failure mode: a truncated read answers nothing, and every
+  // question it skipped would otherwise be counted as satisfied.
+  const problems = evaluateWriteSurface('')
+  assert.equal(problems.length, writeSurfaceAssertions().length)
+  assert.ok(problems.every((one) => one.endsWith('the write-surface read never reached it')))
 })
 
 test('the scan reads writes, and not reads or uploads', () => {
@@ -211,6 +323,54 @@ test('nothing is declared, or exempted, that the app has stopped writing', () =>
       `${stale.join(', ')}. Remove them — an assertion about a table the app does not ` +
       'edit proves nothing, and it makes the list look maintained when it is not.',
   )
+})
+
+test('every entry claims exactly the update its writers make', () => {
+  const verbs = writtenVerbsByTable(WRITES)
+  const claiming = columnsNothingUpdates(PANEL_WRITE_SURFACE, verbs)
+  assert.deepEqual(
+    claiming,
+    [],
+    'These entries list columns and nothing under src/ updates the table: ' +
+      `${claiming.join(', ')}. The columns are the UPDATE claim — drop them, or ` +
+      'the check asks the database for a grant no author needs.',
+  )
+  const silent = updatesNoColumnDeclares(PANEL_WRITE_SURFACE, verbs)
+  assert.deepEqual(
+    silent,
+    [],
+    'The app updates these tables and the surface names no column for them: ' +
+      `${silent.join(', ')}. An entry with no columns asks the database nothing ` +
+      'about the update it is on the surface for.',
+  )
+})
+
+test('the surface asks about every verb the app uses, on every table it uses it', () => {
+  // The rule this file was widened for. Derived on both sides, so it cannot be
+  // satisfied by editing a list — it is satisfied by the assertions being built
+  // from the writers, and it fails if that ever stops being true.
+  const verbs = writtenVerbsByTable(WRITES)
+  // `grant update steps.summary` asks about `steps`; the table is what a verb is
+  // asked of, and the column is which update.
+  const asked = new Set(
+    writeSurfaceAssertions().map(({ label }) => {
+      const [kind, verb, what] = label.split(' ')
+      return `${kind} ${verb} ${what.split('.')[0]}`
+    }),
+  )
+  const missing = []
+  for (const table of Object.keys(PANEL_WRITE_SURFACE)) {
+    for (const verb of verbs.get(table) ?? []) {
+      const lower = verb.toLowerCase()
+      if (!asked.has(`grant ${lower} ${table}`)) missing.push(`grant ${lower} ${table}`)
+      if (!asked.has(`policy ${lower} ${table}`)) missing.push(`policy ${lower} ${table}`)
+    }
+  }
+  assert.deepEqual(missing, [], `The database is never asked about: ${missing.join(', ')}.`)
+  // And the shape the issue named: five tables the app inserts into or deletes
+  // from, none of which the surface used to ask about at all.
+  const beyondUpdate = writeSurfaceEntries().filter((entry) => entry.verbs.length > 1)
+  assert.ok(beyondUpdate.length > 0)
 })
 
 test('every name on the write surface is a name the schema has', () => {

@@ -94,3 +94,35 @@ export function directTableWrites(root = SRC) {
 export function writtenTableNames(writes) {
   return [...new Set(writes.map((write) => write.table))].sort()
 }
+
+/**
+ * The privileges each client verb actually needs from the database.
+ *
+ * `upsert` is `insert … on conflict do update`, so it needs both; asking for
+ * one of them would be asking half the question, and the half it skipped is
+ * the one that fails on a Tuesday.
+ */
+export const VERB_PRIVILEGES = {
+  update: ['UPDATE'],
+  insert: ['INSERT'],
+  upsert: ['INSERT', 'UPDATE'],
+  delete: ['DELETE'],
+}
+
+/**
+ * `table -> sorted SQL privileges`, taken from the writers themselves.
+ *
+ * This is the half of the write surface nobody has to keep by hand. The scan
+ * had to read the verb to find the table at all: `.from('evidence')` is not a
+ * write until something in the next two hundred characters says `.delete(`. So
+ * the verb is already in hand, and a list of verbs kept beside the code rather
+ * than taken from it is the shape of the defect this replaces.
+ */
+export function writtenVerbsByTable(writes) {
+  const byTable = new Map()
+  for (const write of writes) {
+    if (!byTable.has(write.table)) byTable.set(write.table, new Set())
+    for (const privilege of VERB_PRIVILEGES[write.verb]) byTable.get(write.table).add(privilege)
+  }
+  return new Map([...byTable].map(([table, verbs]) => [table, [...verbs].sort()]))
+}
