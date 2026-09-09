@@ -1,5 +1,87 @@
 # Changelog
 
+## 1.18.1
+
+### Patch Changes
+
+- 2390653: The other upsert says which half it took, and its undo stops guessing
+
+  `upsert_cell` upserts. Landing on a square of the grid that already holds a
+  cell it updates that row and hands back its id — indistinguishable from the id
+  it returns when it inserts. The ledger derived this write's inverse from the
+  operation's NAME, so the inverse it recorded was `delete_cell`. On the insert
+  half that is exact; on the update half the undo would remove a cell the write
+  had only edited, taking its summary, Function, Form, Value props, owner pair
+  and status with it — none of which that write touched.
+
+  Nothing reaches the update half today, and that is the argument rather than a
+  reason to leave it. Both callers establish the square is empty first: the panel
+  calls `upsert_cell` only on a draft, when there is no cell id, and the agent
+  tool reads the slot and refuses with "A cell already exists at that slot".
+  That check is a read followed by a write — nothing holds the square between
+  them, so two agent turns on one board, or an agent and a person, can both see
+  an empty slot — and it is carried per caller, so the rule lives in prose in two
+  files rather than in the operation. The previous release said this function was
+  unaffected _because_ of those guards; a guard standing between a caller and a
+  defect is not the same as the defect not being there.
+
+  `21000211000000` makes the write report what it did. `upsert_cell` returns
+  `{ id, inserted, previous }` instead of a bare id: `inserted` is read from the
+  written row's `xmax` inside the same statement, and `previous` is the cell as
+  it stood, captured before the write under a lock. The revert derivation
+  branches on it — a delete for an insert, and for an update
+  `restore_cell_content`, a new operation that puts one column back on one cell
+  by id.
+
+  One column, deliberately. The upsert's `on conflict` sets `content` and nothing
+  else; everything else in the row is either the conflict key or minted on the
+  insert half. The seven other fields a person types into a cell belong to
+  `update_cell_content` and `update_cell_spec`, which capture their own inverses,
+  and an undo that reached them would revert somebody else's edit. The restore
+  assigns rather than coalescing: `cells.content` is `not null default ''`, so
+  the state a coalescing inverse could not express is not null but empty — and a
+  blank draft an agent writes onto is the ordinary case here, not the corner.
+
+  The guards stay. Once the write reports for itself they are belt-and-braces
+  rather than the safety, and the agent tool's refusal is a better answer than a
+  silent update; the tool's reply now also says which half the write took. The
+  return type moves, so the function is dropped and recreated and its ACL is
+  restated — the core revokes the PUBLIC execute the recreate lands on, the
+  recipe half restores the anon revoke and the authenticated grant. An update
+  whose before-state did not come back (a concurrent insert between the capture
+  and the upsert) records no inverse at all, which is the ledger's existing way
+  of saying an undo cannot restore the prior state.
+
+- f989b56: The write surface is held to the writers, not to a list
+
+  `PANEL_WRITE_SURFACE` declares the tables and columns the authoring UI writes
+  directly, and `check:seed-load` asks a real database whether a signed-in author
+  may reach each of them. Nothing enforced the declaration, so it drifted — not
+  by one line but by six tables. `cells`, `cell_touchpoints`, `evidence`,
+  `audit_findings`, `slices` and `slides` were all written by the app and named
+  nowhere on it, which made the check's own report — "every column the panels
+  write is reachable" — true of eight tables and false of the app.
+
+  All six are now listed, with the columns their `.update({…})` names. More to
+  the point, a new test walks `src/` for direct table writes and holds the
+  surface to what it finds, in both directions: a table the app writes and the
+  surface does not name fails, and so does an entry nothing writes any more.
+  Where a table is deliberately outside the surface it says so and why —
+  `agent_sessions` and `agent_messages` are the agent transcript, best-effort by
+  design, and asserting a grant on them would assert the opposite of the intent.
+
+  The columns cannot be scanned for — a payload is as often `.update(patch)` as a
+  literal — so they are held instead to `src/types/database.ts`: every name on
+  the surface must be a name the schema has. That also removes a bad failure
+  mode, because `has_column_privilege` raises on a column that does not exist, so
+  a typo used to reach CI as "the fresh-database seed load failed" without ever
+  naming the column.
+
+  The scan is shared with the write-boundary contract rather than written twice.
+  That rule asks who may write and this one asks what they write, and two parsers
+  of one subject would be two readers to drift from each other — which is the
+  failure both rules exist to catch.
+
 ## 1.18.0
 
 ### Minor Changes
@@ -2915,8 +2997,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                    "lanes_lane_role_check" … compliance_review
+                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
