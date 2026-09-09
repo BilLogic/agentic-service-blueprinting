@@ -40,14 +40,34 @@
  * renders. Removing these fifteen costs the app nothing — verified by set-diff
  * against compiled output, not by reading the glob — and takes 1.4 kB with it.
  *
- * This is the second time the hazard has been found by hand. The durable check
- * is a rule over the compiled artifact — what the one-token-model decision
- * wants in `tokenModel`, and what the deletion phase has to build. Until it
- * exists, `@source not` is the only thing holding the line and nothing fails
- * if a glob stops matching.
+ * This is the second time the hazard has been found by hand, and a glob that
+ * stops matching announces nothing, so the token side of the line is now held
+ * from the other end too: `tokens.test.ts` refuses a `@theme` key spelled in
+ * any prose the scan still reaches. That rule fails on the sentence rather
+ * than on the glob, so it survives a document moving and it names the writer
+ * who has to fix it. Class names get no such rule — any English word can be a
+ * utility, so there is nothing to intersect against — and for those the
+ * exclusions below remain the whole of the defence.
  */
 @source not '../**/*.test.{ts,tsx}';
 @source not '../../scripts';
+/*
+ * Nor are the release notes, and they are the only prose here that
+ * accumulates. The changelog and the changesets waiting to be folded into it
+ * sit at the repository root, well inside the scan, so a note naming a token —
+ * backticked or bare, markdown offers either — puts that token into the very
+ * artifact the note describes. Cutting a release then folds each changeset
+ * into the changelog permanently, which turns one sentence written today into
+ * a key held in the build for the life of the repository, long after whatever
+ * it was written about is gone.
+ *
+ * The second half is the worse one. Without these two lines the hazard reaches
+ * back into the release process: a note explaining why a token arrived or left
+ * has to avoid spelling the token, and that is not something anyone should
+ * have to remember at the moment they are writing down what they changed.
+ */
+@source not '../../CHANGELOG.md';
+@source not '../../.changeset';
 /* JS plugins. Tailwind v4 supports `@plugin` for both v3-style JS plugins and
  * v4-native packages. */
 @plugin '@tailwindcss/typography';
