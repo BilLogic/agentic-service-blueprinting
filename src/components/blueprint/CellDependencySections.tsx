@@ -12,6 +12,7 @@ import type {
   BlueprintCellConnection,
   BlueprintCellConnections,
 } from '@/lib/blueprintCellConnections'
+import { ROW_REVEAL_CLASS } from '@/lib/rowReveal'
 import { cn } from '@/lib/utils'
 
 export type CellDependencyTechEntry = {
@@ -77,16 +78,11 @@ function DirectionIcon({ direction }: { direction: RowDirection }) {
  * doubled the height of every row that had one and made the list's shape
  * depend on how talkative its author had been.
  *
- * Revealed rather than removed, and by the rule `NavRowAction` already
- * states: hover OR focus anywhere in the row, and always visible where the
- * pointer is coarse, because an affordance that only exists under a mouse is
- * not an affordance for everyone. Opacity alone, so the row keeps its height
- * — a list whose rows grow under the pointer moves the row being pointed at.
- * The text stays in the DOM at all times, so a screen reader reads it whether
- * or not anything is hovering.
+ * Revealed rather than removed, by the one rule {@link ROW_REVEAL_CLASS}
+ * states for every row control that waits for a reader — the resource list's
+ * drag handle is the other.
  */
-const WHY_LINE_REVEAL_CLASS =
-  'opacity-0 transition-opacity duration-(--motion-micro) group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none [@media(pointer:coarse)]:opacity-100'
+const WHY_LINE_REVEAL_CLASS = ROW_REVEAL_CLASS
 
 function DependencyRow({
   connection,
