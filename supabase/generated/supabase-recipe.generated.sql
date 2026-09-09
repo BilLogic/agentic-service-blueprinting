@@ -1379,3 +1379,141 @@ revoke execute on function public.upsert_cell(uuid, uuid, uuid, text) from anon;
 grant execute on function public.upsert_cell(uuid, uuid, uuid, text) to authenticated;
 revoke execute on function public.restore_cell_content(uuid, text) from anon;
 grant execute on function public.restore_cell_content(uuid, text) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000212000000_the_service_record_joins_the_tier.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- a policy names `authenticated`, a role only the recipe creates,
+-- and the tier it enforces is the recipe's too. Who may write a row is this
+-- deployment's enforcement of the contract, not part of the contract; another
+-- host expresses the same rule its own way.
+
+drop policy if exists "services_update_service_only" on public.services;
+create policy "services_update_service_only" on public.services
+  as restrictive for update to authenticated
+  using (public.is_service_account())
+  with check (public.is_service_account());
+
+-- ---------------------------------------------------------------------------
+-- Proof — the post-condition, asked as the role.
+--
+-- An owner run cannot see this one. The migration role bypasses row level
+-- security outright, and a policy that refuses does not raise — it matches
+-- zero rows and returns success — so a proof that reads the catalogue, or one
+-- that writes as the owner, is satisfied by the database this file exists to
+-- change. So the proof BECOMES `authenticated`, holds each of the two claims
+-- in turn, and attempts the write the Service panel makes.
+--
+-- Each attempt stands up a service row of its own and ends in a sentinel
+-- exception, so the row, the claim and the role are all gone before the next
+-- attempt starts and none of them survives the migration.
+--
+-- It asks nothing where it cannot get an answer, and names what was missing:
+-- a session that cannot become `authenticated`, or an `authenticated` that
+-- cannot read `public.services`, would turn the platform's absence into a
+-- verdict about this policy. Both are notices, checked before anything is
+-- written.
+--
+-- What it asserts is only what this file makes true: the answer is
+-- `is_service_account()`'s, both ways. A service claim writes; a session
+-- without one writes only where the seam still says `select true`. It asserts
+-- nothing about how many policies exist, which would be a census of the
+-- database it happened to meet.
+-- ---------------------------------------------------------------------------
+do $recipe_proof$
+declare
+  probe record;
+  changed bigint;
+  wrote jsonb := '{}'::jsonb;
+  seam_admits_a_viewer boolean;
+begin
+  -- Two things the question needs before it can be put at all, and each says
+  -- so out loud rather than being swallowed: a skipped proof is a proof that
+  -- did not run, and a reader has to be able to tell that from a green one.
+  --
+  -- The role has to exist and be assumable.
+  if to_regrole('authenticated') is null
+     or not pg_has_role(current_user, 'authenticated', 'USAGE') then
+    raise notice
+      'services tier proof skipped: this session cannot become authenticated, '
+      'so the policy could not be asked whether it refuses a viewer';
+    return;
+  end if;
+
+  -- And `authenticated` has to be able to READ the row it is asked to write.
+  -- An UPDATE needs SELECT on every column its assignment and its WHERE clause
+  -- read, and that SELECT is the PLATFORM's, not the recipe's: Supabase grants
+  -- it at project creation on every table in `public`, and no migration here
+  -- states it (21000113000000 says so). So on a real project, and on the
+  -- deployer's replay that stands the platform default up first, the proof
+  -- runs. On a bare replay behind the shim alone there is no such grant, and a
+  -- probe that ran anyway would report the platform's absence as this policy
+  -- refusing a write.
+  if not has_column_privilege('authenticated', 'public.services', 'name', 'SELECT')
+     or not has_column_privilege('authenticated', 'public.services', 'summary', 'SELECT') then
+    raise notice
+      'services tier proof skipped: authenticated cannot read public.services '
+      'here, so an attempted UPDATE would be refused for want of the platform''s '
+      'SELECT rather than answered by the policy';
+    return;
+  end if;
+
+  for probe in
+    select *
+      from (values
+        ('viewer', '{"role":"authenticated","app_metadata":{}}'),
+        ('author', '{"role":"authenticated","app_metadata":{"role":"service"}}')
+      ) as v(who, claims)
+  loop
+    begin
+      -- A row of the proof's own. An empty `services` would match zero rows
+      -- for a reason that has nothing to do with permission, and the whole
+      -- failure being proved against is a zero that means something else.
+      insert into public.services (name) values ('services tier proof');
+      perform set_config('request.jwt.claims', probe.claims, true);
+      set local role authenticated;
+      if probe.who = 'viewer' then
+        seam_admits_a_viewer := public.is_service_account();
+      end if;
+      update public.services set summary = summary
+       where name = 'services tier proof';
+      get diagnostics changed = row_count;
+      wrote := wrote || jsonb_build_object(probe.who, changed);
+      raise exception 'services tier proof' using errcode = 'ASB01';
+    exception
+      -- Ours, and the only one caught: it is how the row, the claim and the
+      -- role are given back. Anything else — a grant this file assumed and the
+      -- database does not have — propagates and fails the migration.
+      when sqlstate 'ASB01' then null;
+    end;
+  end loop;
+
+  if (wrote ->> 'author')::bigint = 0 then
+    raise exception
+      'proof: a service account cannot UPDATE public.services; the restrictive '
+      'policy refuses the very tier it names, and the Service panel would save '
+      'nothing and report the service as deleted';
+  end if;
+
+  if seam_admits_a_viewer then
+    -- Single-tier deployment: the seam is still `select true`, so this policy
+    -- admits every signed-in session by construction. That is the template
+    -- default and not a failure — but a viewer REFUSED here would mean the
+    -- policy is denying a write the seam allows.
+    raise notice
+      'services tier proof: the optional tier recipe is not in force here, so '
+      'the new policy admits every signed-in session, as this deployment chose';
+    if (wrote ->> 'viewer')::bigint = 0 then
+      raise exception
+        'proof: a signed-in session was refused UPDATE on public.services on a '
+        'database whose tier seam admits every signed-in session';
+    end if;
+  elsif (wrote ->> 'viewer')::bigint <> 0 then
+    raise exception
+      'proof: a signed-in session holding no service claim still UPDATEd '
+      'public.services; the restrictive policy did not take, and a member '
+      'outside the editing tier can rewrite the service record';
+  end if;
+end
+$recipe_proof$;
