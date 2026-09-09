@@ -18,10 +18,11 @@
  * below, because each is a separate mechanism and any one of them can be lost
  * to a tidy-up that keeps the other two working.
  *
- * The row's own words are pinned from the other side too. `linkName` — the
- * edge's `name` column, specified as a badge and only ever written with
- * sentences — is not drawn here any more, and a row that carries one must say
- * nothing about it.
+ * The row's own words are pinned from the other side too. The edge's `name`
+ * column — specified as a badge and only ever written with sentences — is not
+ * drawn here any more. It does not reach a row at all now: the read that turns
+ * a dependency into a connection drops it, and the last block below walks a
+ * stored name the whole way to make sure of it.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import {
@@ -34,7 +35,11 @@ import {
 } from '@testing-library/react'
 import { CellDependencySections } from '@/components/blueprint/CellDependencySections'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { BlueprintCellConnection } from '@/lib/blueprintCellConnections'
+import {
+  getBlueprintCellConnections,
+  type BlueprintCellConnection,
+} from '@/lib/blueprintCellConnections'
+import type { BlueprintData } from '@/types/blueprint'
 
 const NOTE =
   'A zero-config run has content only because the sample module is generated.'
@@ -48,7 +53,6 @@ const connection = (patch: Partial<BlueprintCellConnection> = {}): BlueprintCell
   stepIndex: 3,
   kind: 'connection',
   linkKind: 'enables',
-  linkName: null,
   linkNote: NOTE,
   isTech: false,
   techItems: [],
@@ -182,18 +186,74 @@ describe('a dependency row s why-line', () => {
   })
 })
 
+/**
+ * A board carrying one edge with BOTH prose columns filled, so the name has a
+ * real value and a real row to fail to appear on. Started from the stored row
+ * rather than from a connection object, because the connection object is where
+ * the name is dropped — pinning it from the far side would pin the drop with
+ * the thing it drops.
+ */
+const board = {
+  path: { id: 'path-1', name: 'a path' },
+  lanes: [{ id: 'lane-1', name: 'Scripts', position: 2 }],
+  steps: [
+    { id: 'step-0', name: 'Run', position: 0 },
+    { id: 'step-1', name: 'Generate', position: 1 },
+  ],
+  cells: [
+    {
+      id: 'cell-0',
+      lane_id: 'lane-1',
+      step_id: 'step-0',
+      content: 'Runs with no configuration',
+      frame: null,
+      summary: null,
+    },
+    {
+      id: 'cell-1',
+      lane_id: 'lane-1',
+      step_id: 'step-1',
+      content: 'Generates the sample module into the bundle',
+      frame: null,
+      summary: null,
+    },
+  ],
+  dependencies: [
+    {
+      id: 'dep-1',
+      source_cell_id: 'cell-1',
+      target_cell_id: 'cell-0',
+      kind: 'enables',
+      name: 'Email',
+      note: NOTE,
+    },
+  ],
+} as unknown as BlueprintData
+
 describe('a dependency row s name', () => {
-  it('is not drawn', () => {
+  it('does not survive the read that turns an edge into a row', () => {
     // `cell_dependencies.name` was specified as the word on the arrow and was
     // only ever written with sentences about why the edge exists — which is
-    // what the note is for. The badge is gone rather than left to disagree
-    // with the note beside it.
-    draw({ linkName: 'Email' })
-    expect(screen.queryByText('Email')).toBeNull()
+    // what the note is for. Two fields making one claim is worse than one, so
+    // the mapping carries the note and leaves the badge in the database.
+    const { incoming } = getBlueprintCellConnections(board, 'cell-0')
+    expect(incoming).toHaveLength(1)
+    expect(incoming[0].linkNote).toBe(NOTE)
+    expect(JSON.stringify(incoming[0])).not.toContain('Email')
   })
 
-  it('does not reach the row s accessible name either', () => {
-    draw({ linkName: 'Email' })
-    expect(row().textContent).not.toContain('Email')
+  it('is nowhere on the row the edge became', () => {
+    render(
+      <TooltipProvider delay={0}>
+        <CellDependencySections
+          connections={getBlueprintCellConnections(board, 'cell-0')}
+          otherTech={[]}
+          onCellSelect={() => {}}
+          onTechSelect={() => {}}
+        />
+      </TooltipProvider>,
+    )
+    expect(screen.queryByText('Email')).toBeNull()
+    expect(document.body.textContent).not.toContain('Email')
   })
 })

@@ -515,8 +515,13 @@ export function setCellDependency(
     sourceCellId: string
     targetCellId: string
     kind?: DependencyKind
-    /** The word on the arrow, held in `cell_dependencies.name`. */
+    /**
+     * The badge on the arrow, held in `cell_dependencies.name`. The parameter
+     * exists because the function takes it; nothing in the app passes it any
+     * more — the editor and the agent tool both write the note.
+     */
     name?: string | null
+    /** Why the edge exists, held in `cell_dependencies.note`. */
     note?: string | null
   },
 ): Promise<string> {
