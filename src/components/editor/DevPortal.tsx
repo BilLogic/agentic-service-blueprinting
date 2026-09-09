@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { cn } from '@/lib/utils'
 import {
+  devPortalEnabled,
   setDevSimulatedTier,
   setDevSimulationOn,
   type DevSimulatedTier,
@@ -26,6 +27,10 @@ const SIMULATED_TIER_LABEL: Record<DevSimulatedTier, string> = {
  * Its own colour on purpose. Amber there means "this is live, be careful";
  * this one means "what you are seeing is not your account" — a different
  * kind of caution, and the two must never be mistaken for each other.
+ *
+ * No build gate of its own: outside development the simulation is off at the
+ * seam, so this is already nothing. A second copy of the rule here could only
+ * ever disagree with the first.
  */
 export function DevTierOverrideBadge() {
   const { devSimulation } = useSupabase()
@@ -77,6 +82,11 @@ const ROW_LABEL = 'w-20 shrink-0 text-2xs text-muted-foreground'
  */
 export function DevPortalSection() {
   const { devSimulation } = useSupabase()
+
+  // Unlike the badge, this section has no off state to collapse to — it is
+  // the controls themselves, and outside development there is nothing for
+  // them to control.
+  if (!devPortalEnabled()) return null
 
   return (
     <div className="flex flex-col gap-2" data-dev-portal>

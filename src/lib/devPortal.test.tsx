@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentTrialBanner } from '@/components/editor/AgentTrialBanner'
 import {
   DevPortalSection,
@@ -32,6 +32,11 @@ import { storageKey } from '@/lib/storageNamespace'
  *
  * These tests run with NO Supabase env, which is also the no-database agent
  * trial's condition — so the trial's flags are pinned in the same file.
+ *
+ * They also run with `import.meta.env.DEV` true, which is the portal's whole
+ * condition — so the shipped behaviour is the one thing this file cannot
+ * observe by default, and the block that asserts it says the other answer out
+ * loud with `vi.stubEnv`.
  */
 
 const REAL_TIER_KEYS = [
@@ -73,7 +78,10 @@ beforeEach(() => {
   })
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllEnvs()
+})
 
 describe('applyDevSimulation', () => {
   it('passes the real value through while the simulation is off', () => {
@@ -176,6 +184,56 @@ describe('the simulation moves the write flags and nothing else', () => {
     const value = readContext()
     expect(value.canWrite).toBe(false)
     expect(value.canAgentWrite).toBe(false)
+  })
+})
+
+describe('outside development there is no portal to open', () => {
+  /**
+   * The storage key is PRESENT throughout. A browser that ran a dev session
+   * keeps it, and devtools can write it into one that never did; asserting
+   * the shipped behaviour with the key absent would assert nothing about
+   * either. `setDevSimulatedTier` writes exactly what a dev session leaves behind.
+   */
+  function simulateAdminAndShip() {
+    setDevSimulatedTier('admin')
+    expect(window.localStorage.getItem(storageKey('dev-simulation'))).toBe(
+      '{"on":true,"tier":"admin"}',
+    )
+    vi.stubEnv('DEV', false)
+  }
+
+  it('hands back the real session, whatever storage says', () => {
+    simulateAdminAndShip()
+    const value = readContext()
+    expect(value.devSimulation).toEqual(SIMULATION_OFF)
+    expect(value.canWrite).toBe(value.realCanWrite)
+    expect(value.canWrite).toBe(false)
+    expect(value.canAgentWrite).toBe(false)
+  })
+
+  it('renders neither the section that sets it nor the badge that tells on it', () => {
+    simulateAdminAndShip()
+    render(
+      <SupabaseProvider>
+        <DevTierOverrideBadge />
+        <DevPortalSection />
+      </SupabaseProvider>,
+    )
+    expect(document.querySelector('[data-dev-portal]')).toBeNull()
+    expect(document.querySelector('[data-dev-tier-badge]')).toBeNull()
+    expect(screen.queryByText('simulating admin')).toBeNull()
+  })
+
+  it('leaves the stored value alone, and honours it again in development', () => {
+    simulateAdminAndShip()
+    expect(readContext().canWrite).toBe(false)
+    expect(window.localStorage.getItem(storageKey('dev-simulation'))).toBe(
+      '{"on":true,"tier":"admin"}',
+    )
+    cleanup()
+
+    vi.unstubAllEnvs()
+    expect(readContext().canWrite).toBe(true)
   })
 })
 
