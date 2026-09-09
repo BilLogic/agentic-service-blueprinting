@@ -226,7 +226,8 @@ and nothing else, so no rename moves a URL. Deleting the row leaves the
 object. `resources_url_absolute` (core) refuses a site-relative path on any
 resource; a backend without Supabase keeps files wherever it keeps files and
 writes their URLs into the row. The upload helper is `attachmentUpload.ts` in
-`src/lib`; the Resources tab's **Upload a file** and **Replace** call it.
+`src/lib`; the resource list's **Upload a file** and **Replace…** call it, in
+the Resources tab and in a touchpoint's group alike.
 
 App types: `CellResource` and `CellTouchpoint` in `src/types/blueprint.ts`.
 Reading: `cellResources.ts` and `cellTouchpoints.ts` in `src/lib`.

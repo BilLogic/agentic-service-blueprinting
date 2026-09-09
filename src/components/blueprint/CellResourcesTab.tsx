@@ -1,19 +1,16 @@
-import { useRef, useState } from 'react'
-import { ExternalLink, FileText, Plus, Upload, X } from 'lucide-react'
-import { IconTooltip } from '@/components/editor/IconTooltip'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { ExternalLink, FileText } from 'lucide-react'
+import {
+  ResourcesList,
+  type ResourceListDraft,
+} from '@/components/blueprint/ResourcesList'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { uploadAttachment } from '@/lib/attachmentUpload'
-import {
-  updateCellResources,
-  type ResourceDraft,
-} from '@/lib/cellContentMutations'
-import { validateResourceUrl } from '@/lib/resourceUrl'
+import { updateCellResources } from '@/lib/cellContentMutations'
+import { setFeaturedResource } from '@/lib/placementResourceMutations'
 import { safeExternalHref } from '@/lib/sliceCells'
-import { errorMessage } from '@/lib/utils'
+import type { Database } from '@/types/database'
 import type { CellResource } from '@/types/blueprint'
 
 type ResourceRow = {
@@ -30,22 +27,16 @@ type CellResourcesTabProps = {
 }
 
 /**
- * The rows the cell's list edits: its own, with a url. A placement's are
- * read here and edited from the touchpoint. Each keeps its id so a
- * reorder is a reorder, not a delete and a re-insert.
+ * The rows the cell's list edits: its own, with a url. A placement's are read
+ * here and edited from the touchpoint.
  */
-function resourceDrafts(resources: CellResource[]): ResourceDraft[] {
-  return resources
-    .filter((resource) => !resource.placementId && resource.url?.trim())
-    .map((resource) => ({
-      id: resource.id,
-      kind: resource.kind,
-      name: resource.name,
-      url: resource.url ?? '',
-    }))
+function ownRows(resources: CellResource[]): CellResource[] {
+  return resources.filter(
+    (resource) => !resource.placementId && resource.url?.trim(),
+  )
 }
 
-/** A placement's resources, as the editor lists them without inputs. */
+/** A placement's resources, as the editor lists them without controls. */
 function placementRows(resources: CellResource[]): CellResource[] {
   return resources.filter(
     (resource) => resource.placementId !== null && resource.url?.trim(),
@@ -55,19 +46,23 @@ function placementRows(resources: CellResource[]): CellResource[] {
 /**
  * Resources tab: the cell's `resources` rows.
  *
- * In Edit mode the tab *is* the editor — the rows render as inputs and new
- * resources are added right here. This is where resources live, so this is
- * where they are edited; the text editor above no longer carries them.
+ * In Edit mode the tab *is* the editor, and the editor is `ResourcesList` —
+ * the same list a touchpoint's resources are edited in, handed this cell's
+ * two writes instead of a placement's. A cell owns a preview and buttons the
+ * way a placement does: the partial unique index already indexes a cell-owned
+ * preview, `set_featured_resource` scopes its clear to the placement-less
+ * owner, and `sync_cell_resources` never writes `featured` — so the two-tempo
+ * write model arrives here with nothing added to the schema.
  *
- * A placement's rows arrive in the same list now that every resource knows
- * its own cell, a placement's included — the cell reads everything it points
- * at, through its touchpoints too — and are listed here without inputs: the
+ * A placement's rows arrive in the same list now that every resource knows its
+ * own cell, a placement's included — the cell reads everything it points at,
+ * through its touchpoints too — and are listed here without controls: the
  * touchpoint's own editor is where they change.
  *
- * A row nobody linked is a row nobody linked. The tab used to grow a
- * synthetic "Figma" entry for whatever url a vendor-name regex two files
- * away had elected as "the design", which put a link in this list that the
- * cell's own list did not hold and that Save could not have written.
+ * A row nobody linked is a row nobody linked. The tab used to grow a synthetic
+ * "Figma" entry for whatever url a vendor-name regex two files away had
+ * elected as "the design", which put a link in this list that the cell's own
+ * list did not hold and that Save could not have written.
  */
 export function CellResourcesTab({
   cellId,
@@ -75,13 +70,13 @@ export function CellResourcesTab({
 }: CellResourcesTabProps) {
   const { client, canWrite } = useSupabase()
   const mode = useCanvasModeValue()
-  const canEdit = mode === 'design' && canWrite && cellId !== null && client !== null
 
-  if (canEdit) {
+  if (mode === 'design' && canWrite && cellId !== null && client !== null) {
     return (
       <CellResourcesEditor
         key={cellId}
-        cellId={cellId!}
+        cellId={cellId}
+        client={client}
         resources={resources}
       />
     )
@@ -133,246 +128,75 @@ export function CellResourcesTab({
   )
 }
 
+/**
+ * The cell's own list, and the two writes that make it the cell's.
+ *
+ * `sync_cell_resources` refuses a placement's ids, so the list is handed the
+ * cell's own rows only; a placement's are listed beside them, unedited,
+ * because the touchpoint's own editor is where they change.
+ */
 function CellResourcesEditor({
   cellId,
+  client,
   resources: stored,
 }: {
   cellId: string
+  client: SupabaseClient<Database>
   resources: CellResource[]
 }) {
-  const { client } = useSupabase()
-  const [resources, setResources] = useState<ResourceDraft[]>(() =>
-    resourceDrafts(stored),
-  )
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const fileInput = useRef<HTMLInputElement>(null)
-  /** Which row the next chosen file replaces; null means it joins the list. */
-  const replacing = useRef<number | null>(null)
+  const fromPlacements = placementRows(stored)
 
-  // Checked as they type rather than on save: a bad link is worth knowing
-  // about while the cursor is still in the field that caused it.
-  const urlProblems = resources.map((resource) =>
-    resource.url.trim() ? validateResourceUrl(resource.url).ok === false : false,
-  )
-  const blocked = urlProblems.some(Boolean)
-  const dirty =
-    JSON.stringify(resources.filter((resource) => resource.url.trim())) !==
-    JSON.stringify(resourceDrafts(stored))
-
-  const setResource = (index: number, patch: Partial<ResourceDraft>) => {
-    setSaved(false)
-    setResources((current) =>
-      current.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
+  const save = async (rows: ResourceListDraft[]) => {
+    await updateCellResources(
+      client,
+      cellId,
+      stored,
+      rows.map((row) => ({
+        id: row.id ?? null,
+        kind: row.kind === 'attachment' ? 'attachment' : 'link',
+        name: row.name,
+        url: row.url,
+      })),
     )
   }
 
-  const handleSave = async () => {
-    if (!client || busy || blocked) return
-    setBusy(true)
-    setError(null)
-    try {
-      await updateCellResources(
-        client,
-        cellId,
-        stored,
-        resources.filter((resource) => resource.url.trim()),
-      )
-      invalidateQueries('service-phases')
-      invalidateQueries(`cell-content:${cellId}`)
-      setSaved(true)
-    } catch (saveError) {
-      setError(errorMessage(saveError))
-    } finally {
-      setBusy(false)
-    }
+  const feature = async (resourceId: string, featured: boolean) => {
+    await setFeaturedResource(client, { id: resourceId, placementId: null, cellId }, featured)
   }
-
-  const chooseFile = (replaceIndex: number | null) => {
-    replacing.current = replaceIndex
-    fileInput.current?.click()
-  }
-
-  /**
-   * The file goes to the bucket now; the row is written when the list is
-   * saved, the same two steps as a pasted link. Replacing swaps the
-   * url on the row the file was chosen for and keeps its name and id.
-   */
-  const upload = async (file: File) => {
-    if (!client || uploading) return
-    setUploading(true)
-    setError(null)
-    try {
-      const uploaded = await uploadAttachment(client, { cellId, file })
-      const target = replacing.current
-      replacing.current = null
-      setSaved(false)
-      setResources((current) =>
-        target !== null && target < current.length
-          ? current.map((entry, i) =>
-              i === target ? { ...entry, kind: 'attachment', url: uploaded.url } : entry,
-            )
-          : [...current, { id: null, kind: 'attachment', name: uploaded.name, url: uploaded.url }],
-      )
-    } catch (uploadError) {
-      setError(errorMessage(uploadError))
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const fromPlacements = placementRows(stored)
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {resources.length === 0 && fromPlacements.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          No resources linked to this cell yet.
-        </p>
-      ) : null}
-      {fromPlacements.length > 0 ? (
-        // Listed, not edited: these rows belong to a touchpoint placed here,
-        // and the touchpoint's own editor is where they change.
-        <ul className="flex flex-col" aria-label="From this cell's touchpoints">
-          {fromPlacements.map((resource) => (
-            <li
-              key={resource.id ?? resource.url}
-              className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
-            >
-              <ExternalLink className="size-3 shrink-0 opacity-70" aria-hidden />
-              <span className="min-w-0 truncate">{resource.name}</span>
-              <span className="shrink-0 text-2xs opacity-70">
-                from a touchpoint
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {resources.map((resource, index) => (
-        <div key={resource.id ?? `new-${index}`} className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
-            <Input
-              value={resource.name}
-              placeholder="Name"
-              className="h-7 w-28 text-xs"
-              onChange={(event) =>
-                setResource(index, { name: event.target.value })
-              }
-            />
-            {resource.kind === 'attachment' ? (
-              // A file's URL is the object's: shown, never retyped. Replace
-              // puts a new file under the same row.
-              <span
-                className="flex h-7 min-w-0 flex-1 items-center gap-1 truncate text-xs text-muted-foreground"
-                title={resource.url}
+    <ResourcesList
+      cellId={cellId}
+      resources={ownRows(stored)}
+      empty={
+        fromPlacements.length === 0 ? 'No resources linked to this cell yet.' : null
+      }
+      aside={
+        fromPlacements.length > 0 ? (
+          // Listed, not edited: these rows belong to a touchpoint placed here,
+          // and the touchpoint's own editor is where they change.
+          <ul className="flex flex-col" aria-label="From this cell's touchpoints">
+            {fromPlacements.map((resource) => (
+              <li
+                key={resource.id ?? resource.url}
+                className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
               >
-                <FileText className="size-3 shrink-0" aria-hidden />
-                <span className="min-w-0 truncate">{resource.url.split('/').pop()}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 shrink-0 px-1.5 text-2xs"
-                  disabled={uploading || !client}
-                  aria-label={`Replace the file of resource ${index + 1}`}
-                  onClick={() => chooseFile(index)}
-                >
-                  Replace
-                </Button>
-              </span>
-            ) : (
-              <Input
-                value={resource.url}
-                placeholder="https://…"
-                className="h-7 flex-1 text-xs"
-                aria-invalid={urlProblems[index] || undefined}
-                onChange={(event) =>
-                  setResource(index, { url: event.target.value })
-                }
-              />
-            )}
-            <IconTooltip label="Remove this resource">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Remove resource ${index + 1}`}
-                onClick={() => {
-                  setSaved(false)
-                  setResources((current) =>
-                    current.filter((_, i) => i !== index),
-                  )
-                }}
-              >
-                <X className="size-3" />
-              </Button>
-            </IconTooltip>
-          </div>
-          {urlProblems[index] ? (
-            <p className="pl-1 text-xs text-destructive">
-              {validateResourceUrl(resource.url).ok
-                ? null
-                : (validateResourceUrl(resource.url) as { problem: string })
-                    .problem}
-            </p>
-          ) : null}
-        </div>
-      ))}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-foreground"
-        onClick={() => {
-          setSaved(false)
-          setResources((current) => [
-            ...current,
-            { id: null, kind: 'link', name: '', url: '' },
-          ])
-        }}
-      >
-        <Plus className="size-3" />
-        Add resource
-      </Button>
-      <input
-        ref={fileInput}
-        type="file"
-        className="sr-only"
-        aria-label="Upload a file"
-        tabIndex={-1}
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          event.target.value = ''
-          if (file) void upload(file)
-        }}
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-foreground"
-        disabled={uploading || !client}
-        onClick={() => chooseFile(null)}
-      >
-        <Upload className="size-3" />
-        {uploading ? 'Uploading…' : 'Upload a file'}
-      </Button>
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
-      {dirty || busy ? (
-        <Button
-          type="button"
-          size="sm"
-          className="self-start"
-          disabled={busy || blocked}
-          onClick={handleSave}
-        >
-          {busy ? 'Saving…' : 'Save resources'}
-        </Button>
-      ) : saved ? (
-        <p className="text-xs text-muted-foreground">Saved.</p>
-      ) : null}
-    </div>
+                <ExternalLink className="size-3 shrink-0 opacity-70" aria-hidden />
+                <span className="min-w-0 truncate">{resource.name}</span>
+                <span className="shrink-0 text-2xs opacity-70">
+                  from a touchpoint
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null
+      }
+      onSave={save}
+      onFeature={feature}
+      onWritten={() => {
+        invalidateQueries('service-phases')
+        invalidateQueries(`cell-content:${cellId}`)
+      }}
+    />
   )
 }
