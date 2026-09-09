@@ -280,6 +280,9 @@ function isSameTransform(
   )
 }
 
+/**
+ * True when two fit boxes agree within `tolerance` px on every edge.
+ */
 function isSameFitGeometry(
   a: CanvasViewGeometry,
   b: CanvasViewGeometry,
@@ -290,6 +293,19 @@ function isSameFitGeometry(
     Math.abs(a.top - b.top) <= tolerance &&
     Math.abs(a.width - b.width) <= tolerance &&
     Math.abs(a.height - b.height) <= tolerance
+  )
+}
+
+/**
+ * Layout jitter a returning tab may see (images, wrapping) is not a
+ * different board. A dest whose box actually moved still exceeds this.
+ *
+ * @param geometry - Stored fit box from the previous visit.
+ */
+function restoreGeometryTolerance(geometry: CanvasViewGeometry): number {
+  return Math.max(
+    80,
+    0.05 * Math.max(geometry.width, geometry.height),
   )
 }
 
@@ -420,6 +436,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   const transformRef = useRef(initialCamera.transform)
   const restoredSnapshotRef = useRef(initialCamera.snapshot)
   const restoredCameraPendingRef = useRef(initialCamera.restored)
+  /**
+   * The `resetKey` we already restored onto. Strict Mode re-runs this
+   * layout effect after a sync keep; without this it sees pending=false
+   * and schedules a fit that throws the saved camera away.
+   */
+  const restoredKeptResetKeyRef = useRef<string | undefined>(undefined)
   const lastFitGeometryRef = useRef<CanvasViewGeometry | null>(null)
   const cameraDestinationKeyRef = useRef(cameraDestinationKey)
   const onFitReadyRef = useRef(onFitReady)
@@ -1143,6 +1165,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   const rejectRestoredCamera = useCallback(() => {
     restoredCameraPendingRef.current = false
     restoredSnapshotRef.current = undefined
+    restoredKeptResetKeyRef.current = undefined
     commitTransform({ x: 0, y: 0 }, 1, true)
   }, [commitTransform])
 
@@ -1182,7 +1205,11 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     const destMatches = snapshot?.destinationKey === destinationKey
     const geometryMatches =
       snapshot !== undefined &&
-      isSameFitGeometry(snapshot.geometry, geometry)
+      isSameFitGeometry(
+        snapshot.geometry,
+        geometry,
+        restoreGeometryTolerance(snapshot.geometry),
+      )
     const onCanvas =
       restored.zoom >= MIN_ZOOM &&
       restored.zoom <= MAX_ZOOM &&
@@ -1257,7 +1284,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     if (restoredCameraPendingRef.current) {
       pendingFocusTransferRef.current = null
       const adoption = adoptRestoredCamera()
-      if (adoption === 'kept') return
+      if (adoption === 'kept') {
+        restoredKeptResetKeyRef.current = resetKey
+        return
+      }
       if (adoption === 'waiting-dest' || adoption === 'waiting-layout') {
         commitTransform(
           transformRef.current.pan,
@@ -1268,6 +1298,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       }
     }
     if (!restoredCameraPendingRef.current) {
+      if (restoredKeptResetKeyRef.current === resetKey) return
       pendingFitRef.current = true
       userAdjustedViewRef.current = false
     }
@@ -1358,6 +1389,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       if (restoredCameraPendingRef.current) {
         const adoption = adoptRestoredCamera()
         if (adoption === 'kept') {
+          restoredKeptResetKeyRef.current = resetKey
           stop()
           return
         }

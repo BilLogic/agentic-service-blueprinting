@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /* eslint-disable react-hooks/globals, react-hooks/immutability -- the harness deliberately exposes and stamps an imperative camera surface */
 import { act, cleanup, render } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import type { CameraTransitionResult } from '@/lib/cameraTransition'
@@ -551,6 +552,53 @@ describe('viewport camera flights', () => {
     })
   })
 
+  it('keeps a stored transform when the fit key is ready before the destination settles', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const loadingDestination = `${UNRESOLVED_CAMERA_DESTINATION_PREFIX}unknown`
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:settled-hop-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    first.unmount()
+
+    const returning = render(
+      <Harness
+        resetKey="return"
+        target={target}
+        cameraStateKey="desktop:slice:settled-hop-test"
+        cameraDestinationKey={loadingDestination}
+      />,
+    )
+    expect(cameraState().pan).toEqual({ x: 125, y: -40 })
+
+    returning.rerender(
+      <Harness
+        resetKey="return"
+        target={target}
+        cameraStateKey="desktop:slice:settled-hop-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+    })
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+  })
+
   it('rejects a stored transform for a different semantic destination', () => {
     const target = { left: 0, top: 0, width: 1000, height: 600 }
     const first = render(
@@ -613,6 +661,79 @@ describe('viewport camera flights', () => {
     )
 
     expect(cameraState().pan).toEqual({ x: 0, y: 0 })
+  })
+
+  it('keeps a stored transform through small layout jitter on the same destination', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:jitter-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    first.unmount()
+    target.height = 664
+
+    render(
+      <Harness
+        resetKey="return"
+        target={target}
+        cameraStateKey="desktop:slice:jitter-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+  })
+
+  it('keeps a stored transform through Strict Mode replaying the restore effect', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:strict-restore-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    first.unmount()
+
+    render(
+      <StrictMode>
+        <Harness
+          resetKey="return"
+          target={target}
+          cameraStateKey="desktop:slice:strict-restore-test"
+          cameraDestinationKey="scenario-a"
+        />
+      </StrictMode>,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+      flushFrame(64)
+    })
+    expect(cameraState()).toMatchObject({
+      moving: false,
+      pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
   })
 
   it('keeps a manual pan made while a new destination is still settling', () => {

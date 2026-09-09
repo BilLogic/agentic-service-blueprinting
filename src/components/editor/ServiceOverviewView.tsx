@@ -490,9 +490,14 @@ function ServiceOverviewViewImpl({
   const fitKey = overviewReady
     ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}:${focusedComparisonCameraKey}`
     : `${UNRESOLVED_CAMERA_DESTINATION_PREFIX}${skeletonPhases.map((phase) => phase.scenarioCount).join('-') || 'unknown'}`
-  const cameraDestinationKey = overviewReady
+  /**
+   * Semantic dest waits on `overviewSettled`, not `overviewReady`.
+   * Ready-but-unsettled still shows the skeleton for the 450 ms dwell;
+   * measuring that box as if it were the board rejects a saved camera.
+   */
+  const cameraDestinationKey = overviewSettled
     ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusedComparisonCameraKey}`
-    : fitKey
+    : `${UNRESOLVED_CAMERA_DESTINATION_PREFIX}${skeletonPhases.map((phase) => phase.scenarioCount).join('-') || 'unknown'}`
 
   // The cell-detail panel clears its selection when this changes, so it must
   // track navigation only — never the camera's own bookkeeping. `fitKey`
