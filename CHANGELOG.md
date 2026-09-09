@@ -1,5 +1,123 @@
 # Changelog
 
+## 1.15.0
+
+### Minor Changes
+
+- c3bcf69: One list edits everything an owner points at
+
+  A cell's Resources tab and a placement's resource list wrote the same table,
+  and only one of them had been designed. The placement's list could set a
+  preview, set a button, reorder, and take a pasted link named by its host. The
+  cell's own list was a pair of raw boxes per row — a label and a URL — with no
+  featuring, no order, and a name you had to type before anything could be
+  added. An author who had learned one had not learned the other, and the cell's
+  version could not express things the database already stored.
+
+  The list is now one component, `ResourcesList`, which both owners hand rows and
+  a pair of writes. `PlacementResourcesList` is the wrapper naming its own two;
+  the cell's tab renders the same list with its own. No migration was needed:
+  the partial unique index behind "one preview per owner" already indexed a
+  cell-owned preview, the featuring function already scoped its clear to a
+  placement-less owner, and the cell's list-sync already left `featured` alone.
+
+  Two tempos are kept, and the reason belongs in the code rather than a release
+  note: the list itself — add, remove, reorder, rename — is a draft saved by one
+  button in one transaction, because a reorder is a whole-list fact, while
+  featuring lands at once, because it is one row's flag and the function clears
+  the previous preview in the same transaction. Waiting for a save would leave
+  the top of the list showing a state the database does not hold.
+
+  Reorder became a drag. The two arrow buttons went, and with them the comment
+  saying a drag needed a library — `framer-motion` was already a dependency, so
+  the comment had been justifying the arrows with a cost the project had
+  long since paid. The handle is a real button: it starts the drag on
+  pointer-down and answers Up and Down from the keyboard, because `Reorder.Item`
+  is pointer-only and an order that can only be changed with a mouse is not an
+  order everyone can change. It is revealed rather than always drawn, by the
+  rule the dependency why-line already stated — hover or focus-within, always
+  visible where the pointer is coarse, no transition under reduced motion —
+  which is now `ROW_REVEAL_CLASS` in one module both consumers import instead of
+  two copies that could disagree.
+
+  Naming happens after the fact. A pasted link is named by its host and an
+  uploaded file by its name, so nothing has to be typed to get a resource in;
+  `Rename…` in the row menu opens a field on the row itself, Enter commits and
+  Escape abandons. There is one door into it, deliberately: the row is already a
+  drag target, and a click on the name would be a second meaning for one
+  gesture. Blur is not an exit either — the menu that opens the field hands focus
+  back to its own trigger as it closes, so a rename that settled on blur would
+  settle the instant it opened.
+
+  The upload is a row the whole way: dimmed with an indeterminate bar while it is
+  in flight, then an ordinary row, and a refused one offers a retry on the row
+  rather than sending the author back to the file chooser. The bar is
+  indeterminate because the storage client reports no progress, and a filling bar
+  would be a number the upload does not have.
+
+  The featured block carries no drag handle, and says so where a reader will
+  look: there is at most one preview and the buttons follow the main list's
+  order, so the block has no ordering of its own.
+
+### Patch Changes
+
+- de1124c: The ledger sees every write, and a guard says so
+
+  The session ledger is the app's only undo, and it is only as complete as the
+  writes that reach it. Every table write is supposed to go through a
+  `src/lib/*Mutations` module, where the inverse is captured before the write and
+  the change is recorded after it. Nothing checked that, and two writers were
+  outside it.
+
+  `SliceStoryboardField` set and cleared `slides.illustration` with a bare
+  `.from('slides').update().eq('id', …)`. Replacing a slide image destroyed the
+  previous picture with no record that it had existed and no revert control; and
+  because `.update().eq()` without `.select()` returns `error: null` when zero
+  rows match, clearing the image on a slide that had been merged away reported
+  success and cleared nothing.
+
+  `agent/tools/registry.ts` wrote `audit_findings` the same way, from inside the
+  tool dispatcher, which is where the omission was hardest to see: the writes
+  were made by a machine, in a batch, on rows a person had often already read and
+  triaged. An audit run could rewrite a triaged finding's severity and summary
+  and leave nothing in the change list saying it had. Worse, undo takes the
+  newest entry that captured an inverse — so with the findings writes absent from
+  that list, a press after an audit run reached past them and took back the
+  person's own last edit instead, silently.
+
+  `src/lib/writeBoundaryContract.test.ts` is the rule as a mechanism. **It walks
+  `src/`, not a list of named roots**, because a list of roots can only ever
+  cover the directories that existed the day it was written, and one of the two
+  writers above sat three levels down inside `lib/`. Everything outside the
+  `*Mutations` family is named one by one with the reason it is outside, and each
+  name is asserted to exist, so a rename fails loudly instead of quietly widening
+  the exemption to nothing. Two exemptions: the ledger's own inverse-applier,
+  which cannot record a change because recording one is what it undoes, and the
+  agent transcript, which is not blueprint data, has no inverse to capture, and
+  is best-effort by design. Reads and storage calls are asserted not to trip it,
+  because both look like violations and are not — `client.storage.from(BUCKET)`
+  takes a bucket identifier rather than a quoted table name.
+
+  Both writers move behind the boundary. `setSlideIllustration` reads the
+  previous pointer and carries it as the inverse, so replacing an image is now
+  reversible, and writes with `.select()` so a zero-row write raises instead of
+  reporting success. Clearing still leaves the file in the bucket on purpose:
+  after a merge two slides can share a derived path, and deleting the object
+  would blank a slide nobody asked to change. `findingMutations` takes the dedupe
+  branch and both its writes together, because the branch _is_ the write path —
+  "an open twin already exists" and "a person dismissed this" are the two answers
+  that decide whether anything is written at all. Its updates capture an inverse;
+  its insert deliberately does not, and that is a fact about the grants rather
+  than an omission, since delete on that table is revoked and never granted back.
+  The only ways to quieten a finding are resolved and dismissed, and neither is
+  an inverse — an undo that wrote dismissed would suppress that check on every
+  future run, invisibly.
+
+  The storyboard field now shows the mutation's own sentence when the row write
+  fails, and keeps the storage wording for a storage failure. Two different
+  failures reached one catch, and the generic apology was throwing away the only
+  message that said what to do next.
+
 ## 1.14.0
 
 ### Minor Changes
@@ -2445,8 +2563,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                          ERROR: new row for relation "lanes" violates check constraint
-                                          "lanes_lane_role_check" … compliance_review
+                                            ERROR: new row for relation "lanes" violates check constraint
+                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
