@@ -235,6 +235,11 @@ function wrapSlotLeg(
   confluence (`planConfluences` already drops size-1 groups), and a group whose
   gather cannot sit clear between its members and the shared edge declines the
   merge and lets those members route individually.
+
+  Members need not share a step column. The gather is a property of the SHARED
+  cell's column, not of any one member's, so arrivals from anywhere to its left
+  join the same trunk and the group draws the same picture whatever order its
+  members are listed in.
 */
 
 /** One drawn piece of a merged group — a shared trunk, or a member's leg. */
@@ -319,6 +324,46 @@ type ConfluenceMember = {
 }
 
 /**
+ * The vertical a confluence gathers on: the middle of the clear strip between
+ * the column before the target and the target's own edge.
+ *
+ * It is measured off the TARGET column, never off one member. A trunk is one
+ * line for the whole group, and a group's members need not share a step column
+ * — so asking whichever member the group happens to list first where the
+ * gather belongs gives an answer that moves when the group is listed in
+ * another order. Worse, for a member whose lane holds no card in the column
+ * before the target there is no gap to read there at all, and the per-lane
+ * answer falls back to a point INSIDE the arrowhead, which declines every
+ * merge that member leads.
+ *
+ * The strip is bounded by the widest card edge in the column before the target
+ * — over every lane, because the trunk crosses lanes — and by the target's own
+ * edge. Where that column holds no cards the board's own column-gap element
+ * bounds it instead, and where neither is measurable the gather falls back to a
+ * fixed offset in front of the entry point.
+ */
+function confluenceJunctionX(
+  root: HTMLElement,
+  targetEl: HTMLElement,
+  targetBox: LayoutBox,
+): number {
+  const targetIdx = parseStepIndex(targetEl)
+  if (targetIdx !== null && targetIdx > 0) {
+    let columnRight = -Infinity
+    for (const el of root.querySelectorAll<HTMLElement>(
+      `[data-blueprint-cell][data-step-index="${targetIdx - 1}"]`,
+    )) {
+      columnRight = Math.max(columnRight, getCellContentBox(el, root).right)
+    }
+    if (columnRight > -Infinity) return (columnRight + targetBox.left) / 2
+
+    const gapCenterX = getStepGapCenterX(root, targetIdx - 1)
+    if (gapCenterX !== null) return gapCenterX
+  }
+  return targetBox.left - ARROW_CHEVRON_SIZE - mergeJunctionMinOffset()
+}
+
+/**
  * The merged trunk + per-source taps for one same-side confluence, or null when
  * the gather cannot sit clear (in which case the members route individually and
  * nothing is consumed).
@@ -336,14 +381,12 @@ function buildConfluenceSegments(
   const targetY = cellCardCenterY(targetBox)
 
   const members: ConfluenceMember[] = []
-  let firstSourceEl: HTMLElement | null = null
   for (const endpointId of group.memberIds) {
     const dependencyId = dependencyIdOfEndpoint(endpointId)
     const dependency = depById.get(dependencyId)
     if (!dependency) return null
     const sourceEl = cellById(dependency.source_cell_id)
     if (!sourceEl) return null
-    firstSourceEl ??= sourceEl
     const box = getCellContentBox(sourceEl, root)
     members.push({
       dependencyId,
@@ -351,11 +394,9 @@ function buildConfluenceSegments(
       sourceY: cellCardCenterY(box),
     })
   }
-  if (members.length < 2 || !firstSourceEl) return null
+  if (members.length < 2) return null
 
-  const junctionX =
-    getPreTargetGapCenterX(root, firstSourceEl, targetEl) ??
-    entryX - mergeJunctionMinOffset()
+  const junctionX = confluenceJunctionX(root, targetEl, targetBox)
 
   // The trunk only reduces overlap when it can sit clear to the left of the
   // target edge and to the right of every source; otherwise decline the merge.

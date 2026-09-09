@@ -21,6 +21,7 @@ import {
   ARROW_VIEW_MODES,
   boardForMode,
   computeSituationSegments,
+  type ArrowSegment,
   type ArrowViewMode,
   type SituationSpec,
 } from './arrowSituationCatalog'
@@ -41,7 +42,7 @@ function segmentsFor(situation: SituationSpec, mode: ArrowViewMode) {
 }
 
 describe('arrow situation catalog — golden geometry', () => {
-  it('covers the S1–S10 catalog from the trigger-line plan, plus the S11 co-traveller', () => {
+  it('covers the S1–S10 catalog from the trigger-line plan, plus the S11 co-traveller and the S12 cross-column confluence', () => {
     expect(ARROW_SITUATIONS.map((s) => s.id)).toEqual([
       'S1',
       'S2',
@@ -54,6 +55,7 @@ describe('arrow situation catalog — golden geometry', () => {
       'S9',
       'S10',
       'S11',
+      'S12',
     ])
   })
 
@@ -112,7 +114,9 @@ describe('arrow situation catalog — golden geometry', () => {
   it('merges same-side arrivals and departures into one trunk (auto-detected)', () => {
     // S7 (confluence) and S8 (fan-out) are the two situations that share a
     // target/source side; both must gain a merge trunk with no cell-id gate.
-    for (const id of ['S7', 'S8']) {
+    // S12 is the confluence whose members leave from different columns — the
+    // same one fact, so still one trunk and one head.
+    for (const id of ['S7', 'S8', 'S12']) {
       const situation = ARROW_SITUATIONS.find((s) => s.id === id)!
       for (const mode of ARROW_VIEW_MODES) {
         if (situation.unsupported?.[mode]) continue
@@ -123,13 +127,13 @@ describe('arrow situation catalog — golden geometry', () => {
         expect(trunks, `${id}/${mode} drew no trunk`).toHaveLength(1)
         // A confluence trunk carries the single head; a fan-out trunk gathers
         // with no head (its drops carry the heads).
-        expect(trunks[0]!.showMarker).toBe(id === 'S7')
+        expect(trunks[0]!.showMarker).toBe(id !== 'S8')
       }
     }
   })
 
   it('the per-scenario off-switch disables the merge, restoring individual arrows', () => {
-    for (const id of ['S7', 'S8', 'S9']) {
+    for (const id of ['S7', 'S8', 'S9', 'S12']) {
       const situation = ARROW_SITUATIONS.find((s) => s.id === id)!
       for (const mode of ARROW_VIEW_MODES) {
         if (situation.unsupported?.[mode]) continue
@@ -155,6 +159,36 @@ describe('arrow situation catalog — golden geometry', () => {
           expect(segment.showMarker).toBeUndefined()
         }
       }
+    }
+  })
+
+  it('gathers a cross-column confluence on one trunk, in either member order', () => {
+    // S12's two arrivals leave from different columns, and the far one's lane
+    // holds no card in the column before the target. A gather read off one
+    // member would answer differently depending on which member that is, so
+    // listing the pair the other way round must draw the identical trunk —
+    // and neither order may lose the merge.
+    const situation = ARROW_SITUATIONS.find((s) => s.id === 'S12')!
+    const trunksOf = (segments: readonly ArrowSegment[]) =>
+      segments
+        .filter((segment) => /confluence/.test(segment.id))
+        .map((segment) => `${segment.id}|${segment.d}`)
+        .sort()
+
+    for (const mode of ARROW_VIEW_MODES) {
+      if (situation.unsupported?.[mode]) continue
+      const board = boardForMode(situation.base(), mode)
+      const reversed = {
+        ...board,
+        dependencies: [...board.dependencies].reverse(),
+      }
+
+      const asListed = trunksOf(computeSituationSegments(board))
+      expect(asListed, `S12/${mode} drew no trunk`).not.toHaveLength(0)
+      expect(
+        trunksOf(computeSituationSegments(reversed)),
+        `S12/${mode} gathered somewhere else when its members were listed the other way round`,
+      ).toEqual(asListed)
     }
   })
 

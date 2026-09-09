@@ -465,3 +465,69 @@ exports[`arrow situation catalog — golden geometry > S11 — Co-travellers sha
   ],
 }
 `;
+
+exports[`arrow situation catalog — golden geometry > S12 — N sources → one target, from DIFFERENT columns > integrated 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 432 90 L 432 304 Q 432 308 436 308 L 440 308",
+      "id": "s12-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 432 90",
+      "id": "s12-far-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 408 308 L 432 308",
+      "id": "s12-near-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S12 — N sources → one target, from DIFFERENT columns > side-by-side 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 432 90 L 432 234 Q 432 238 436 238 L 440 238",
+      "id": "s12-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 432 90",
+      "id": "s12-far-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 408 238 L 432 238",
+      "id": "s12-near-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;
+
+exports[`arrow situation catalog — golden geometry > S12 — N sources → one target, from DIFFERENT columns > single 1`] = `
+{
+  "segments": [
+    {
+      "d": "M 432 90 L 432 234 Q 432 238 436 238 L 440 238",
+      "id": "s12-target-confluence-left",
+      "showMarker": true,
+    },
+    {
+      "d": "M 200 90 L 432 90",
+      "id": "s12-far-dep",
+      "showMarker": false,
+    },
+    {
+      "d": "M 408 238 L 432 238",
+      "id": "s12-near-dep",
+      "showMarker": false,
+    },
+  ],
+}
+`;

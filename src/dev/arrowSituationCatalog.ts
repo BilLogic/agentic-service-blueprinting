@@ -763,4 +763,26 @@ export const ARROW_SITUATIONS: readonly SituationSpec[] = [
       ],
     }),
   },
+  {
+    id: 'S12',
+    title: 'N sources → one target, from DIFFERENT columns',
+    today: 'the merge declines and every source keeps its own head',
+    contract: 'confluence, whatever column a member leaves from',
+    note: 'Two sources arrive on the target’s left edge from different step columns: one from the column immediately before it, one two columns back in another lane — and the far lane holds no card in the column before the target. The gather is a property of the target’s column, so both still merge into one trunk with a single head; a junction read off whichever member the group lists first would sit inside the arrowhead here and decline.',
+    base: () => ({
+      rootBox: { left: 0, top: 0, width: 900, height: 420 },
+      rows: [
+        { key: 'lane-upper', cells: [cell('s12-far', 0, 0)] },
+        {
+          key: 'lane-lower',
+          cells: [cell('s12-near', 1, 1), cell('s12-target', 2, 1)],
+        },
+      ],
+      gaps: gapsUpTo(2),
+      dependencies: [
+        dep('s12-far-dep', 's12-far', 's12-target'),
+        dep('s12-near-dep', 's12-near', 's12-target'),
+      ],
+    }),
+  },
 ]
