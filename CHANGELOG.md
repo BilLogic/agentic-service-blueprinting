@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.25.2
+
+### Patch Changes
+
+- 3bfba0d: The stock-logo test cites no issue
+
+  `blueprintTechPictures.test.ts` opened with an issue number. The sentence says
+  what the test pins — a stock logo is data a touchpoint carries, not a table
+  baked into the renderer — and the address only said where the argument was
+  had. It is the one line keeping a deployment from holding this file identical.
+
 ## 1.25.1
 
 ### Patch Changes
@@ -3779,8 +3790,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
