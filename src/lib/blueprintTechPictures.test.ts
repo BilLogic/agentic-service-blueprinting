@@ -1,5 +1,5 @@
 /**
- * The detail panel's stock logo is DATA, not a table in the renderer (#326).
+ * The detail panel's stock logo is DATA, not a table in the renderer.
  *
  * A well-known tool's logo used to be a `Record<toolName, logo>` baked into
  * code, keyed on the deployment's own vocabulary — a foreign tool fell
