@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import {
+  filterPathsForScenarioUi,
   getBlueprintFallback,
   getFallbackPathsForScenario,
-  mergePathsWithFallback,
 } from '@/data/blueprintFallbacks'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { queryClient } from '@/lib/queryClient'
@@ -70,15 +70,21 @@ function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
   }
 }
 
-/** Group fetched path rows into the per-scenario / per-path blueprint maps. */
+/**
+ * Group fetched path rows into the per-scenario / per-path blueprint maps.
+ *
+ * Reached only when a database is configured, which is why nothing here
+ * reaches for the bundled sample: a scenario the database has no paths for is
+ * a scenario with no paths, and it draws its empty state rather than this
+ * kit's fixture wearing the deployment's name. The only registry call left is
+ * `filterPathsForScenarioUi`, which hides ids rather than supplying content.
+ */
 function deriveFromRows(
   rows: CanvasRawPath[],
   orderedScenarioIds: string[],
-  staticFallbacks: CanvasBlueprintMaps,
 ): CanvasBlueprintMaps {
   const grouped = new Map<string, CanvasRawPath[]>()
   const byPathId = new Map<string, BlueprintData>()
-  let anyFallback = false
 
   for (const row of rows) {
     const list = grouped.get(row.scenario_id) ?? []
@@ -88,7 +94,6 @@ function deriveFromRows(
     const resolved = resolveBlueprintForScenario(row.scenario_id, row)
     if (resolved.blueprint) {
       byPathId.set(row.id, resolved.blueprint)
-      if (resolved.source === 'fallback') anyFallback = true
     }
   }
 
@@ -100,7 +105,7 @@ function deriveFromRows(
     if (scenarioPaths.length > 0) {
       pathsMap.set(
         scenarioId,
-        mergePathsWithFallback(
+        filterPathsForScenarioUi(
           scenarioId,
           scenarioPaths.map((path) => ({
             id: path.id,
@@ -111,44 +116,20 @@ function deriveFromRows(
           })),
         ),
       )
-    } else {
-      const fallbackPaths = getFallbackPathsForScenario(scenarioId)
-      if (fallbackPaths.length > 0) {
-        pathsMap.set(scenarioId, fallbackPaths)
-      }
     }
 
     const chosen = pickPathForScenario(scenarioPaths)
     const resolved = resolveBlueprintForScenario(scenarioId, chosen)
     if (resolved.blueprint) {
       byScenario.set(scenarioId, resolved.blueprint)
-      if (resolved.source === 'fallback') anyFallback = true
-    } else {
-      const fallback = getBlueprintFallback(scenarioId)
-      if (fallback) {
-        byScenario.set(scenarioId, fallback)
-        anyFallback = true
-      }
     }
-  }
-
-  if (
-    byScenario.size === 0 &&
-    staticFallbacks.blueprintsByScenario.size > 0
-  ) {
-    return { ...staticFallbacks, usingFallback: true }
   }
 
   return {
     blueprintsByScenario: byScenario,
-    pathsByScenario:
-      pathsMap.size > 0 ? pathsMap : staticFallbacks.pathsByScenario,
-    blueprintsByPathId:
-      byPathId.size > 0 ? byPathId : staticFallbacks.blueprintsByPathId,
-    usingFallback:
-      anyFallback ||
-      (byScenario.size === 0 &&
-        staticFallbacks.blueprintsByScenario.size > 0),
+    pathsByScenario: pathsMap,
+    blueprintsByPathId: byPathId,
+    usingFallback: false,
   }
 }
 
@@ -248,12 +229,13 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
       // all → the static local fallbacks, same as before the split.
       return noDb ? staticFallbacks : EMPTY_MAPS
     }
-    // Per-scenario degradation: a failed scenario contributes no
-    // rows, and deriveFromRows already falls back to the bundled fixture
-    // for a scenario with nothing — the other scenarios keep their fetched
-    // data instead of the whole board swapping to statics.
+    // Per-scenario degradation: a failed scenario contributes no rows and
+    // therefore no board — the other scenarios keep their fetched data. It
+    // does NOT contribute the bundled fixture: a read that failed against a
+    // real database is an outage, and the sample is not what an outage looks
+    // like.
     const rows = results.flatMap((result) => result.data ?? [])
-    return deriveFromRows(rows, orderedScenarioIds, staticFallbacks)
+    return deriveFromRows(rows, orderedScenarioIds)
     // rowsKey stands in for the results array's per-render identity churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderedScenarioIds, noDb, allSettled, rowsKey, staticFallbacks])
@@ -271,7 +253,10 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
     blueprintsByPathId: derived.blueprintsByPathId,
     loading,
     error,
-    usingFallback: derived.usingFallback || anyError,
+    /** The board on screen IS the bundled sample — only ever true with no
+     *  database configured. A failed read against a real database is an
+     *  outage, not a fallback, and `error` is what reports it. */
+    usingFallback: derived.usingFallback,
     /** Real network progress: settled chunks over total chunks. A no-DB
      *  session has nothing on the wire — it reports complete, so the bar
      *  never parks below full while nothing is loading. */
