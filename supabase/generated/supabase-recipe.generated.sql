@@ -2122,3 +2122,13 @@ begin
   end if;
 end
 $posture$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000216000000_an_actor_can_be_part_of_another.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- UPDATE on this table is granted column by column, so a new column
+-- is not editable until it is named. Everything above is plain Postgres; this
+-- is the one line that is about a role, and roles are Supabase's half.
+
+grant update (parent_id) on public.stakeholders to authenticated;

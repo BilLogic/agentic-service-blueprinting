@@ -106,6 +106,11 @@ once; no service owns one, and a service "has" an actor exactly when one of
 its lanes names it (ADR 0003). A lane names its actor by `stakeholder_id`; a
 structural lane — the storyboard, the touchpoint rows — names nobody.
 
+An actor may be *part of* another — `parent_id` — so a deployment that
+names a function on one lane and a sub-function on another can still ask
+what the whole owns. Exactly one level: a parent has no parent. A lane
+always names the specific actor, never the one it rolls up into.
+
 **Status** — how far along a cell or a path is, on one shared six-value
 vocabulary, the `entity_status` domain: `proposed`, `planned`, `built`,
 `live`, `at_risk`, `deprecated`. Default `live` — a current-state blueprint

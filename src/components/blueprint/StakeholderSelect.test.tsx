@@ -64,6 +64,9 @@ describe('the read-only stakeholder field', () => {
           name: 'Regular Tutor',
           kind: 'individual',
           summary: 'Teaches the weekly session.',
+          // Not part of another actor — the flat case, which is every row
+          // until a deployment nests one.
+          parent_id: null,
           aliases: [],
           created_at: '2026-01-01T00:00:00Z',
           updated_at: '2026-01-01T00:00:00Z',
