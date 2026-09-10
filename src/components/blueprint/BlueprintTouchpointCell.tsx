@@ -9,7 +9,7 @@ import {
   TOUCHPOINT_ITEM_HEIGHT,
   TOUCHPOINT_ITEM_HEIGHT_COMPACT,
 } from '@/lib/blueprintLayout'
-import { getTouchpointTone } from '@/lib/touchpointColors'
+import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
@@ -73,7 +73,8 @@ export function BlueprintTouchpointCell({
   inline = false,
   'aria-describedby': ariaDescribedBy,
 }: BlueprintTouchpointCellProps) {
-  const tone = getTouchpointTone(item)
+  const resolveTone = useTouchpointToneResolver()
+  const tone = resolveTone(item)
   const fixedHeight = compact
     ? TOUCHPOINT_ITEM_HEIGHT_COMPACT
     : TOUCHPOINT_ITEM_HEIGHT
