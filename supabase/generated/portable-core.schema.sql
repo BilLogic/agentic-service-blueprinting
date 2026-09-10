@@ -3715,6 +3715,19 @@ ALTER TABLE ONLY public.evidence
     ADD CONSTRAINT evidence_pkey PRIMARY KEY (id);
 
 --
+-- Name: lanes lanes_path_position_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lanes
+    ADD CONSTRAINT lanes_path_position_unique UNIQUE (path_id, "position") DEFERRABLE INITIALLY DEFERRED;
+
+--
+-- Name: CONSTRAINT lanes_path_position_unique ON lanes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON CONSTRAINT lanes_path_position_unique ON public.lanes IS 'One lane per slot in a path. Deferred because reorder_lanes renumbers one statement per lane and add_lane opens a slot with a single self-colliding UPDATE; both are checked at commit, not mid-flight.';
+
+--
 -- Name: lanes lanes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3974,12 +3987,6 @@ CREATE INDEX evidence_service_id_idx ON public.evidence USING btree (service_id)
 --
 
 CREATE INDEX lanes_path_id_idx ON public.lanes USING btree (path_id);
-
---
--- Name: lanes_path_row_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX lanes_path_row_idx ON public.lanes USING btree (path_id, "position");
 
 --
 -- Name: lanes_stakeholder_id_idx; Type: INDEX; Schema: public; Owner: -
