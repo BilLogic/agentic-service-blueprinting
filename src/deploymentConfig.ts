@@ -83,6 +83,8 @@
  */
 import { BRAND, ORG_NAME } from './config'
 import { coverContent } from './content/coverContent'
+import { SAMPLE_NAV } from '@/data/sampleNav'
+import type { NavItem } from '@/types/nav'
 
 /**
  * The overlay an external deployment supplies. Sparse by construction: every
@@ -115,6 +117,16 @@ export type DeploymentConfig = {
     doctrine?: string
     enabledTools?: string[]
   }
+  /**
+   * The board a deployment shows before its own data arrives — offline, or
+   * while the first fetch is in flight. A deployment's own content, which is
+   * why it reaches the kit through here rather than being imported by the
+   * navigation model: a module of types and pure helpers that carries one
+   * repository's phases cannot be shared with the next.
+   */
+  sample?: {
+    nav?: NavItem[]
+  }
 }
 
 /**
@@ -135,6 +147,15 @@ export type ResolvedDeploymentConfig = {
   agent?: {
     doctrine?: string
     enabledTools?: string[]
+  }
+  /**
+   * Guaranteed non-empty, the way `brand.name` is guaranteed a string: the
+   * template's default supplies one, and a deployment that overlays an EMPTY
+   * array is saying "I have nothing to say" rather than "show nothing", the
+   * same reading `present()` gives an `undefined` field. Readers may index it.
+   */
+  sample: {
+    nav: NavItem[]
   }
 }
 
@@ -169,6 +190,7 @@ export type ResolvedDeploymentConfig = {
 export const asbDefaultConfig: DeploymentConfig = {
   brand: { name: ORG_NAME, accent: BRAND.accent },
   content: { workspaceTitle: coverContent.title },
+  sample: { nav: SAMPLE_NAV },
 }
 
 /**
@@ -215,10 +237,17 @@ export function resolveDeploymentConfig(
   }
   const content = mergeSection(asbDefaultConfig.content, config?.content)
   const agent = mergeSection(asbDefaultConfig.agent, config?.agent)
+  const overlaidNav = config?.sample?.nav
+  const sample = {
+    nav: [
+      ...(overlaidNav?.length ? overlaidNav : (asbDefaultConfig.sample?.nav ?? [])),
+    ],
+  }
 
   return {
     brand,
     ...(content ? { content } : {}),
     ...(agent ? { agent } : {}),
+    sample,
   }
 }

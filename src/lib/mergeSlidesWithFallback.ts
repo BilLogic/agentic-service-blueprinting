@@ -1,6 +1,5 @@
 import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
 import {
-  FALLBACK_NAV,
   getMainSlides,
   getSubslides,
   type NavItem,
@@ -41,7 +40,7 @@ function mergeSlideFromFallback(slide: NavItem, fallback: NavItem | undefined): 
  */
 export function mergeSlidesWithFallback(
   dbSlides: NavItem[],
-  fallbackSlides: NavItem[] = FALLBACK_NAV,
+  fallbackSlides: NavItem[],
 ): NavItem[] {
   if (dbSlides.length === 0) return fallbackSlides
 

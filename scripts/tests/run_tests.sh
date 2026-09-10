@@ -42,7 +42,7 @@ SEED_GEN="$REPO_ROOT/scripts/generate_seed_sql.py"
 FALLBACK_GEN="$REPO_ROOT/scripts/generate_fallbacks.py"
 REGISTRY="$REPO_ROOT/src/data/blueprintFallbacks.ts"
 GENERATED_TS="$REPO_ROOT/src/data/generatedBlueprints.ts"
-NAV="$REPO_ROOT/src/types/nav.ts"
+NAV="$REPO_ROOT/src/data/sampleNav.ts"
 
 TMP="$(mktemp -d)"
 PASS_COUNT=0
@@ -614,7 +614,7 @@ npx tsc -p tsconfig.app.json > "$TMP/tsc2.out" 2>&1 \
   || fail "fallback-register-tsc: type-check failed after --register — $(tail -20 "$TMP/tsc2.out")"
 pass "fallback-register (marker block rewritten; app type-checks against generated registry)"
 
-# --register also regenerates the offline nav (FALLBACK_NAV) from the IR service.
+# --register also regenerates the offline nav (SAMPLE_NAV) from the IR service.
 grep -q "GENERATED-NAV:BEGIN" "$NAV" || fail "nav-register: NAV BEGIN marker lost"
 grep -q "GENERATED-NAV:END" "$NAV" || fail "nav-register: NAV END marker lost"
 # Generated form drops the sample-only import + phase-id consts. Grep the
@@ -629,12 +629,12 @@ mod = open(sys.argv[2], encoding="utf-8").read()
 uuid_re = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
 block = nav.split("GENERATED-NAV:BEGIN", 1)[1].split("GENERATED-NAV:END", 1)[0]
 nav_ids = set(uuid_re.findall(block))
-assert nav_ids, "regenerated FALLBACK_NAV has no UUIDs"
+assert nav_ids, "regenerated SAMPLE_NAV has no UUIDs"
 scenario_ids = set(uuid_re.findall(mod))
 # phase ids won't appear in the blueprint module; require at least the scenarios present.
 assert nav_ids & scenario_ids, f"nav shares no ids with the generated module: {sorted(nav_ids)[:3]}"
 PY
-pass "nav-register (FALLBACK_NAV regenerated from the IR service; markers kept)"
+pass "nav-register (SAMPLE_NAV regenerated from the IR service; markers kept)"
 
 # Idempotent re-register (registry + nav).
 python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$GENERATED_TS" --register > /dev/null

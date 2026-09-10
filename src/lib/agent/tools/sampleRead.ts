@@ -1,3 +1,4 @@
+import { SAMPLE_NAV } from '@/data/sampleNav'
 import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
@@ -15,7 +16,6 @@ import {
   formatSliceList,
 } from '@/lib/agent/tools/format'
 import type { BlueprintData } from '@/types/blueprint'
-import { FALLBACK_NAV } from '@/types/nav'
 
 /**
  * Read tools answered from the BUNDLED SAMPLE, with no database anywhere.
@@ -49,17 +49,17 @@ function sampleBlueprintsFor(scenarioId: string): BlueprintData[] {
 
 /** Every sample blueprint, in nav order — the trial's whole universe. */
 function allSampleBlueprints(): BlueprintData[] {
-  return FALLBACK_NAV.filter((item) => item.parentId).flatMap((scenario) =>
+  return SAMPLE_NAV.filter((item) => item.parentId).flatMap((scenario) =>
     sampleBlueprintsFor(scenario.id),
   )
 }
 
 export function sampleListScenarios(): string {
   return formatScenarioList(
-    FALLBACK_NAV.filter((item) => !item.parentId).map((phase) => ({
+    SAMPLE_NAV.filter((item) => !item.parentId).map((phase) => ({
       id: phase.id,
       name: phase.label,
-      scenarios: FALLBACK_NAV.filter(
+      scenarios: SAMPLE_NAV.filter(
         (item) => item.parentId === phase.id,
       ).map((scenario) => ({
         id: scenario.id,
