@@ -36,6 +36,8 @@ import {
 type ArrowLayer = 'forward' | 'wrap'
 
 export type ColoredBlueprintDependency = BlueprintCellDependency & {
+  /** The PATH's kind. `kind` is taken: a cell dependency carries its own
+   *  (`leads_to` / `enables`), and intersecting the two collapses to `never`. */
   pathKind: PathKind
   opacity?: number
 }
@@ -46,7 +48,7 @@ type BlueprintDependencyArrowsProps = {
   scrollContainerRef: RefObject<HTMLElement | null>
   /** forward = in column gaps behind cells; wrap = loop overlay on top */
   layer: ArrowLayer
-  /** Used when dependencies do not include kind (single-path grids). */
+  /** Used when dependencies do not include pathKind (single-path grids). */
   pathKind?: PathKind
   /** When set with pathKind, arrows use the stable path identity color. */
   pathName?: string
@@ -110,7 +112,8 @@ export function BlueprintDependencyArrows({
 
   const updateArrows = useCallback(() => {
     const content = contentRef.current
-    // `needs` links are panel-only by design — arrows draw temporal dependencies only.
+    // `enables` is panel-only by design: a precondition causes nothing, so
+    // drawing it as an arrow would claim a handoff that never happens.
     const arrowDependencies = dependencies.filter((t) => (t.kind ?? 'leads_to') === 'leads_to')
     if (!content || arrowDependencies.length === 0) {
       setSegments([])
