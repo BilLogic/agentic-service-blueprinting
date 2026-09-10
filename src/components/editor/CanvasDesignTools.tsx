@@ -214,10 +214,12 @@ export function CanvasDesignTools() {
                 variant="warning"
                 className="pointer-events-auto cursor-help gap-1"
               >
-                <span
-                  className="size-1.5 rounded-full bg-warning"
-                  aria-hidden
-                />
+                {/* The role's solid fill, which is what a dot with no text
+                    in it wants: the badge's own tint is behind it, and the
+                    step this replaces was a ramp weight picked to be read as
+                    ink rather than as a fill. 2.47:1 on the tint in light,
+                    8.78:1 in dark — a mark, not a word. */}
+                <span className="size-1.5 rounded-full bg-warning" aria-hidden />
                 preview — nothing saves
               </Badge>
             }
