@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * The canvas stacking order, as far as a file can hold it.
  *
- * This used to pin `"lane === 'forward' ? 'z-0' : 'z-[30]'"` as an exact
+ * This used to pin `"layer === 'forward' ? 'z-0' : 'z-[30]'"` as an exact
  * substring, which made the test the reason the arbitrary spelling survived:
  * `z-30` and `z-[30]` are the same value written two ways, and the guard
  * enforced the minority one. Every z-index in the tree is written as a bare
@@ -79,7 +79,7 @@ describe('canvas stacking contract', () => {
     expect(connectorBand).toBeLessThan(connectorBands(legacyArrows).back)
   })
 
-  it('contains canvas-local lanes in one stacking context', () => {
+  it('contains canvas-local layers in one stacking context', () => {
     // Without `isolate` every band above competes with the app chrome rather
     // than with the other things on the board.
     expect(viewport).toMatch(/cn\('relative isolate /)
