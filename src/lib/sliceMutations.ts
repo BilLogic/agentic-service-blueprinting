@@ -186,6 +186,11 @@ export async function createSlice(
  * `record: false` is for callers that own a coarser entry — `createSlice`,
  * whose own inverse already takes the slides with it, and the revert path,
  * which must not log its own undo.
+ *
+ * Dropped slides leave their upload folders in the bucket. The inverse
+ * captures those `image_url`s, and `restore_slides` writes them back
+ * verbatim — deleting the object here would restore a row that points at
+ * nothing. A sweep can collect folders no row names; this write must not.
  */
 export async function replaceSlides(
   client: Client,
@@ -207,7 +212,6 @@ export async function replaceSlides(
   if (error) throw toAuthoringError(error)
   const existing = (data ?? []).map(asSlideWithImages)
   const previous: CapturedSlide[] = record ? existing : []
-  const keptIds = new Set(slides.map((slide) => slide.id).filter((id): id is string => Boolean(id)))
 
   const { error: deleteError } = await client
     .from('slides')
@@ -254,10 +258,6 @@ export async function replaceSlides(
       const { error: imageError } = await client.from('slide_images').insert(imageRows)
       if (imageError) throw toAuthoringError(imageError)
     }
-  }
-
-  for (const gone of existing.filter((row) => !keptIds.has(row.id))) {
-    await removeSlideUploadObjects(client, sliceId, gone.id)
   }
 
   // After the write, like every other entry: the ledger records what landed.

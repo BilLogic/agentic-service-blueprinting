@@ -66,11 +66,28 @@ describe('replacing slides keeps the authored image set', () => {
     expect(mutations).not.toMatch(/shows_all_images:\s*true/)
   })
 
-  it('removes uploads after the rewrite, and only for slides that did not come back', () => {
-    const replaceFn = mutations.slice(mutations.indexOf('export async function replaceSlides'))
-    const insertAt = replaceFn.indexOf('.insert(planned.map')
-    const storageAt = replaceFn.lastIndexOf('removeSlideUploadObjects')
-    expect(insertAt).toBeGreaterThan(-1)
-    expect(storageAt).toBeGreaterThan(insertAt)
+  it('leaves uploads of dropped slides, because the inverse still names them', () => {
+    const start = mutations.indexOf('export async function replaceSlides')
+    const end = mutations.indexOf('export async function duplicateSlice')
+    const replaceFn = mutations.slice(start, end)
+    expect(replaceFn).toContain('.insert(planned.map')
+    expect(replaceFn).not.toContain('removeSlideUploadObjects')
+  })
+})
+
+const revert = readFileSync(
+  fileURLToPath(new URL('./revertChange.ts', import.meta.url)),
+  'utf8',
+)
+
+describe('restoring slides keeps captured upload URLs', () => {
+  it('writes image_url verbatim and only deletes folders the inverse does not restore', () => {
+    const restoreFn = revert.slice(revert.indexOf("case 'restore_slides'"))
+    expect(restoreFn).toContain('image_url: member.image_url ?? null')
+    expect(restoreFn).toContain('image_url: member.image_url')
+    const droppedAt = restoreFn.indexOf('for (const slide of dropped)')
+    const storageAt = restoreFn.indexOf('removeSlideUploadObjects')
+    expect(droppedAt).toBeGreaterThan(-1)
+    expect(storageAt).toBeGreaterThan(droppedAt)
   })
 })

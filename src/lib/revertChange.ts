@@ -381,6 +381,9 @@ export async function executeRevert(
           if (inserted.error) throw toAuthoringError(inserted.error)
         }
       }
+      // Folders of slides the inverse does not restore — the forward write's
+      // leftovers. Captured rows keep theirs: replaceSlides left those
+      // objects so this verbatim `image_url` write still names a file.
       for (const slide of dropped) {
         await removeSlideUploadObjects(client, sliceId, slide.id)
       }

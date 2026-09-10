@@ -79,8 +79,10 @@ export function checkIllustrationFile(file: {
  * Dropping an image from the set leaves the object in the bucket, exactly as
  * clearing the old column already did, and for the same reason — a duplicate
  * can copy one slide's members onto another, and a delete here would break a
- * slide nobody asked to change. Deleting the slide itself is the other case:
- * `removeSlideUploadObjects` takes the folder with the row.
+ * slide nobody asked to change. Replacing a slice's slides leaves the folders
+ * of dropped slides too: the inverse still names those URLs, and undo would
+ * restore a row pointing at nothing. Deleting the slice itself is the case
+ * that takes the folders — there is no inverse.
  *
  * The `slices/` prefix is not decoration: the bucket's insert policy matches
  * on the object name, and an unprefixed path is refused. Keyed by the slide's
@@ -131,9 +133,10 @@ export function keysInSlideUploadFolder(
 /**
  * Delete every object in one slide's upload folder.
  *
- * The `slides` row cascade does not reach storage. Call this before the
- * row goes, while the slide id is still known. Listing an empty or
- * missing folder is a no-op.
+ * The `slides` row cascade does not reach storage. Call this when a slice
+ * is deleted, or when undo drops a slide the inverse does not restore,
+ * while the slide id is still known. Listing an empty or missing folder
+ * is a no-op.
  *
  * @param {Client} client - The signed-in Supabase client.
  * @param {string} sliceId - The slice that owns the slide.
