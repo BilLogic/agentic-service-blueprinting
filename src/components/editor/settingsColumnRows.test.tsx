@@ -5,9 +5,8 @@
  *
  * FACE. Monospace is for code and identifiers (`typography.md`). A model id
  * and an API key are identifiers and belong in it. A provider's label
- * (`Anthropic Claude`), the scope wording (`Active service`) and the
- * developer rows are ordinary English, and belong in the body face beside
- * the labels and prose around them.
+ * (`Anthropic Claude`) and the developer rows are ordinary English, and
+ * belong in the body face beside the labels and prose around them.
  *
  * ALIGNMENT. One label width down the whole column, so the control edge does
  * not jog partway down the popover. Which width is a design decision; that
@@ -47,8 +46,6 @@ const ROW_VALUE: Record<string, 'identifier' | 'prose'> = {
   // A model id — "claude-opus-5".
   Model: 'identifier',
   'API key': 'identifier',
-  // "Active service" / "All services".
-  Scope: 'prose',
   // A switch: no value text at all, so nothing that could be an identifier.
   Simulate: 'prose',
   // "Admin" / "Regular".
@@ -129,10 +126,5 @@ describe('the settings column, read as one column', () => {
     expect(wearsMono(openMenu() as Element)).toBe(true)
     closeMenu()
     expect(openMenu()).toBeNull()
-
-    // Scope: two English phrases.
-    fireEvent.click(screen.getByRole('button', { name: 'Active service' }))
-    expect(screen.getByText('All services')).toBeDefined()
-    expect(wearsMono(openMenu() as Element)).toBe(false)
   })
 })

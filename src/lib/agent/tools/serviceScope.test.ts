@@ -11,12 +11,15 @@ import { __resetActiveServiceIdCache } from '@/lib/service'
 
 /*
  * The scope seam. `resolveServiceScope` is what replaced the global
- * single-service cache: a read scopes to the active service by default, a
- * filter narrows to one or widens to all, and a single-service deployment
- * collapses every scope to the same set so it behaves exactly as before. The
- * catalog helpers assert the OTHER half of the decision that a service owns
- * its journey and shares the catalog — that a service's cast is derived by
- * JOIN through its journey, never a `service_id` on the catalog.
+ * single-service cache: a read covers EVERY service unless the call names one,
+ * a filter narrows to one or says `all` out loud, and a single-service
+ * deployment collapses every scope to the same set so it behaves exactly as
+ * before. The multi-service default is the case the old single-service
+ * short-circuit hid, so it is asserted here on a two-service fixture —
+ * including with a slug set, because the URL scopes the canvas and not the
+ * agent's reach. The catalog helpers assert the OTHER half of the decision that
+ * a service owns its journey and shares the catalog — that a service's cast is
+ * derived by JOIN through its journey, never a `service_id` on the catalog.
  */
 
 type Rec = { table: string; filters: Array<[string, ...unknown[]]>; select?: string }
@@ -87,61 +90,56 @@ afterEach(() => {
 describe('resolveServiceScope', () => {
   it('collapses to `all` on a single-service deployment, whatever the filter', async () => {
     const one = [TWO[0]]
-    await expect(
-      resolveServiceScope(servicesClient(one), { defaultMode: 'active' }),
-    ).resolves.toEqual({ kind: 'all' })
+    await expect(resolveServiceScope(servicesClient(one), {})).resolves.toEqual({
+      kind: 'all',
+    })
     // Even an explicit single-service name resolves to `all`: with one service
     // every scope is the same set, so the machinery is skipped entirely.
     await expect(
-      resolveServiceScope(servicesClient(one), {
-        serviceArg: 'Support Desk',
-        defaultMode: 'active',
-      }),
+      resolveServiceScope(servicesClient(one), { serviceArg: 'Support Desk' }),
     ).resolves.toEqual({ kind: 'all' })
   })
 
-  it('defaults to the ACTIVE service — the one the URL slug names', async () => {
-    setActiveServiceSlug('sales-pipeline')
-    await expect(
-      resolveServiceScope(servicesClient(TWO), { defaultMode: 'active' }),
-    ).resolves.toEqual({ kind: 'service', serviceId: 'svc-sales', serviceName: 'Sales Pipeline' })
+  it('covers the WHOLE deployment when the call names no service', async () => {
+    // The case the single-service short-circuit used to hide: with two
+    // services and no filter, a read is not narrowed to one of them.
+    await expect(resolveServiceScope(servicesClient(TWO), {})).resolves.toEqual({
+      kind: 'all',
+    })
+    // And with no options object at all — the argument is optional.
+    await expect(resolveServiceScope(servicesClient(TWO))).resolves.toEqual({
+      kind: 'all',
+    })
   })
 
-  it('defaults to the first service by created_at at the bare root (no slug)', async () => {
-    await expect(
-      resolveServiceScope(servicesClient(TWO), { defaultMode: 'active' }),
-    ).resolves.toEqual({ kind: 'service', serviceId: 'svc-support', serviceName: 'Support Desk' })
-  })
-
-  it('widens to `all` when the creator default is all', async () => {
+  it('still covers the whole deployment when a slug names one service', async () => {
+    // The URL scopes the CANVAS. It does not scope the agent's reach: the one
+    // service on screen is not a filter on a question that named none.
     setActiveServiceSlug('sales-pipeline')
-    await expect(
-      resolveServiceScope(servicesClient(TWO), { defaultMode: 'all' }),
-    ).resolves.toEqual({ kind: 'all' })
+    await expect(resolveServiceScope(servicesClient(TWO), {})).resolves.toEqual({
+      kind: 'all',
+    })
   })
 
   it('a filter narrows to one named service and widens with "all"', async () => {
-    // Active is support, but the filter names sales — the filter wins.
+    // The slug names support, but the filter names sales — the filter decides.
     setActiveServiceSlug('support-desk')
     await expect(
-      resolveServiceScope(servicesClient(TWO), {
-        serviceArg: 'Sales Pipeline',
-        defaultMode: 'active',
-      }),
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'Sales Pipeline' }),
     ).resolves.toEqual({ kind: 'service', serviceId: 'svc-sales', serviceName: 'Sales Pipeline' })
     // by slug, too
     await expect(
-      resolveServiceScope(servicesClient(TWO), { serviceArg: 'sales-pipeline', defaultMode: 'active' }),
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'sales-pipeline' }),
     ).resolves.toEqual({ kind: 'service', serviceId: 'svc-sales', serviceName: 'Sales Pipeline' })
-    // "all" widens deliberately, past the active default
+    // "all" is the default said out loud, and still widens past a named one
     await expect(
-      resolveServiceScope(servicesClient(TWO), { serviceArg: 'all', defaultMode: 'active' }),
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'all' }),
     ).resolves.toEqual({ kind: 'all' })
   })
 
   it('throws with the real service names when the filter names none of them', async () => {
     await expect(
-      resolveServiceScope(servicesClient(TWO), { serviceArg: 'Billing', defaultMode: 'active' }),
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'Billing' }),
     ).rejects.toThrow(/Support Desk, Sales Pipeline/)
   })
 })

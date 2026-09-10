@@ -28,11 +28,12 @@ import { resolveServiceBySlug, serviceSlug } from '@/lib/serviceSlug'
  * installation that booted at the bare root ends with its slug in the address
  * bar, and a reload lands on the same service.
  *
- * Without it the routing scheme is only half wired. `lib/service.ts` and
- * `lib/agent/tools/serviceScope.ts` both READ the store, `serviceRoute.ts`
- * parses the slug out of the boot path and builds the path back — but nothing
- * ever WROTE the store, so an app entered at `/` stayed at `/` forever and its
- * first read fell through to "the first service by created_at" every time.
+ * Without it the routing scheme is only half wired. `lib/service.ts` READS the
+ * store — and through it the agent's WRITE path, which lands a new row on the
+ * service on screen — while `serviceRoute.ts` parses the slug out of the boot
+ * path and builds the path back. But nothing ever WROTE the store, so an app
+ * entered at `/` stayed at `/` forever and its first read fell through to "the
+ * first service by created_at" every time.
  * This is the missing write.
  *
  * Journey reads do not consume this context — they resolve the id inside their

@@ -13,13 +13,15 @@ const str = (description: string) => ({ type: 'string', description })
 
 /**
  * The service-scope filter shared by the reads that take one. It is a FILTER,
- * not a navigation mode: omit it to stay within the active service (the one on
- * screen), name a service to narrow to it, or pass "all" to reach across every
- * service in the deployment. Inert on a single-service deployment, where every
- * value names the same one service.
+ * not a navigation mode, and it NARROWS: omitting it searches every service in
+ * the deployment, naming one confines the read to it, and "all" says the
+ * default out loud. The description has to say what omitting it gets, because
+ * that is the choice a model makes every time it calls one of these tools —
+ * and on a deployment with several services the difference is real. Inert on a
+ * single-service deployment, where every value names the same one service.
  */
 const SERVICE_SCOPE_PARAM = str(
-  'Optional. Which service to search: a service name, or "all" for every service in the deployment. Omit to use the active service (the one on screen). Ignored when the deployment has only one service.',
+  'Optional. Which service to search: a service name, or "all" for every service in the deployment. Omitting it searches EVERY service — the default is the whole deployment, not the one on screen. Name a service to confine the read to it. Ignored when the deployment has only one service.',
 )
 
 /**
@@ -187,7 +189,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'list_scenarios',
     description:
-      'List every phase and its scenarios, with ids. This is your table of contents and your orientation read. Scoped to the active service by default; pass service to narrow or widen.',
+      'List every phase and its scenarios, with ids. This is your table of contents and your orientation read. Covers every service by default; pass service to confine it to one.',
     parameters: {
       type: 'object',
       properties: { service: SERVICE_SCOPE_PARAM },
@@ -254,7 +256,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'list_stakeholders',
     description:
-      "The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `owner` and `Blueprint owner` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog; by default this shows the actors the active service's lanes actually pick, service:\"all\" the whole roster.",
+      "The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `owner` and `Blueprint owner` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog, and by default this shows the whole roster; pass service to see only the actors that one service's lanes actually pick.",
     parameters: {
       type: 'object',
       properties: { service: SERVICE_SCOPE_PARAM },
