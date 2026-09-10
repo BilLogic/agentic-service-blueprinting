@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
-import { useCanvasActive } from '@/contexts/canvasActiveContext'
+import { type ReactNode } from 'react'
+import { useCanvasActive, useCanvasActiveEffect } from '@/contexts/canvasActiveContext'
 import {
   SEMANTIC_ZOOM_THRESHOLD,
   useZoomPanViewport,
@@ -131,19 +131,17 @@ function ZoomPanViewportInner({
   // Cross-tree fly-to-cell: portalled surfaces (ledger drawer, agent
   // commands) resolve this at call time from the module registry —
   // `focusCells` is identity-stable, so this re-registers only on key moves.
-  useEffect(() => {
-    if (!canvasActive || !focusCellsKey) return
+  useCanvasActiveEffect(() => {
+    if (!focusCellsKey) return
     return registerFocusCells(focusCellsKey, focusCells)
-  }, [canvasActive, focusCells, focusCellsKey])
+  }, [focusCells, focusCellsKey])
 
-  useEffect(() => {
-    if (!canvasActive) return
+  useCanvasActiveEffect(() => {
     return registerActiveFocusCells(focusCells)
-  }, [canvasActive, focusCells])
+  }, [focusCells])
 
   // Agent parity: camera controls (otherwise keyboard-only ⌘+/⌘−/⌘0).
-  useEffect(() => {
-    if (!canvasActive) return
+  useCanvasActiveEffect(() => {
     // `fitToView` returns false when the canvas geometry could not be
     // measured (zero-height container, target not mounted) — no move was
     // started, so "completed" would be the false confidence this command
@@ -194,7 +192,6 @@ function ZoomPanViewportInner({
     ]
     return () => unregister.forEach((remove) => remove())
   }, [
-    canvasActive,
     cancelCamera,
     fitToView,
     getCameraState,
@@ -203,13 +200,12 @@ function ZoomPanViewportInner({
     zoomOut,
   ])
 
-  useEffect(() => {
-    if (!canvasActive) return
+  useCanvasActiveEffect(() => {
     return registerAgentUiContext('canvas-camera', () => {
       const camera = getCameraState()
       return `Canvas camera: ${Math.round(camera.zoom * 100)}%, ${camera.moving ? 'moving' : 'idle'}${focusCellsKey ? `, active scenario ${focusCellsKey}` : ''}.`
     })
-  }, [canvasActive, focusCellsKey, getCameraState])
+  }, [focusCellsKey, getCameraState])
 
   return (
     // The mode provider is mounted per *surface* (EditorShell for the base

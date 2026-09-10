@@ -1,4 +1,10 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  type DependencyList,
+  type ReactNode,
+} from 'react'
 
 /**
  * Whether this canvas is the one the reader is looking at.
@@ -28,4 +34,23 @@ export function CanvasActiveProvider({
 /** True when this tree may own the camera and agent canvas commands. */
 export function useCanvasActive(): boolean {
   return useContext(CanvasActiveContext)
+}
+
+/**
+ * `useEffect` that does not run while this canvas is not current (ADR 0010).
+ *
+ * @param effect - same contract as `useEffect`: optional cleanup
+ * @param deps - values the effect closes over; canvas-active is implied
+ */
+export function useCanvasActiveEffect(
+  effect: () => void | (() => void),
+  deps: DependencyList,
+): void {
+  const canvasActive = useCanvasActive()
+  useEffect(() => {
+    if (!canvasActive) return
+    return effect()
+    // Gate is canvasActive; callers list everything the effect reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasActive, ...deps])
 }
