@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useState,
   type RefObject,
@@ -324,8 +325,24 @@ export function IntegratedDependencyArrows({
     measureSize()
   }, [contentRef, layer, measureSize, mergeConfluences, pathById, dependencies])
 
+  // Split from the subscription effect below, and BEFORE paint. Every input
+  // this reads — cell boxes, the band's extent — is laid out by the same
+  // commit that schedules this, so measuring after paint means one frame of
+  // arrows drawn against the previous layout. Compare toggles are where that
+  // shows: the grid swaps to a different column set and the overlay spends a
+  // frame anchored to the old one.
+  //
+  // The cost is real — `updateArrows` sweeps the whole band — and a layout
+  // effect spends it before the browser paints. Two things make it the right
+  // trade anyway: the sweep is already frame-cached (`runArrowMeasurementPass`
+  // / `sharedCellIndex`, so a merged grid's overlay pair pays once), and it
+  // ran at this exact cadence before, just one frame later. Nothing server-
+  // renders — `main.tsx` is a plain `createRoot` — so there is no SSR warning
+  // to inherit, and measurement here already uses `useLayoutEffect`
+  // (`BlueprintColumnHandles`, `PhaseOverviewPhaseLoopArrow`).
+  useLayoutEffect(updateArrows, [updateArrows])
+
   useEffect(() => {
-    updateArrows()
     const content = contentRef.current
     if (!content) return
 
