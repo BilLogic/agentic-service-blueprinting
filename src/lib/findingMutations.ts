@@ -59,10 +59,13 @@ export type FindingDraft = {
   checkKey: string
   severity: FindingSeverity
   /**
-   * Ordered cell ids. Written to `cell_ids` and `cell_keys` alike: the table
-   * checks the two have equal cardinality, and a finding raised against live
-   * rows has no IR key path to record. An id is a worse trail than a key path
-   * and a far better one than an empty array.
+   * Ordered cell ids. A finding raised against live rows carries them into
+   * `cell_keys` too — the table checks the two have equal cardinality, and
+   * there is no IR key path to record for such a finding. An id is a worse
+   * trail than a key path and a far better one than an empty array.
+   *
+   * The two are still written as separate named fields, so an inverse can put
+   * each column back as it was rather than rebuilding one from the other.
    */
   cellIds: readonly string[]
   summary: string
@@ -86,6 +89,14 @@ export type FindingUpdate = {
   summary?: string | null
   runId?: string
   cellIds?: readonly string[]
+  /**
+   * Written and reverted SEPARATELY from `cell_ids`, even though a finding
+   * raised against live rows sets both to the same list. The two columns can
+   * hold different things — an imported finding carries real IR key paths
+   * here — so an inverse that names only `cellIds` restores that column and
+   * rewrites this one from it, losing the key paths for good.
+   */
+  cellKeys?: readonly string[]
   source?: FindingSource
   status?: FindingStatus
 }
@@ -103,10 +114,8 @@ function toPatch(update: FindingUpdate): FindingPatch {
   if (update.severity !== undefined) patch.severity = update.severity
   if (update.summary !== undefined) patch.summary = update.summary
   if (update.runId !== undefined) patch.run_id = update.runId
-  if (update.cellIds !== undefined) {
-    patch.cell_ids = [...update.cellIds]
-    patch.cell_keys = [...update.cellIds]
-  }
+  if (update.cellIds !== undefined) patch.cell_ids = [...update.cellIds]
+  if (update.cellKeys !== undefined) patch.cell_keys = [...update.cellKeys]
   if (update.source !== undefined) patch.source = update.source
   if (update.status !== undefined) patch.status = update.status
   return patch
@@ -144,6 +153,11 @@ export async function recordFinding(
       summary: draft.summary,
       runId: draft.runId,
       cellIds: draft.cellIds,
+      // Both, named separately, so the inverse can put each column back as it
+      // was. A finding raised against live rows has no key path to record, so
+      // the ids stand in for one here; that is not a reason to let the undo
+      // conflate them.
+      cellKeys: draft.cellIds,
       source: draft.source,
     })
     return { kind: 'deduped', findingId: open.id }
@@ -216,7 +230,9 @@ export async function updateFinding(
   // Before the write, while the previous values are still knowable.
   const { data: before, error: readError } = await client
     .from('audit_findings')
-    .select('id, check_key, severity, summary, run_id, cell_ids, source, status')
+    .select(
+      'id, check_key, severity, summary, run_id, cell_ids, cell_keys, source, status',
+    )
     .eq('id', findingId)
     .maybeSingle()
   if (readError) throw toAuthoringError(readError)
@@ -227,6 +243,7 @@ export async function updateFinding(
   if (update.summary !== undefined) previous.summary = before.summary
   if (update.runId !== undefined) previous.runId = before.run_id
   if (update.cellIds !== undefined) previous.cellIds = before.cell_ids
+  if (update.cellKeys !== undefined) previous.cellKeys = before.cell_keys
   if (update.source !== undefined) previous.source = before.source as FindingSource
   if (update.status !== undefined) previous.status = before.status as FindingStatus
 
