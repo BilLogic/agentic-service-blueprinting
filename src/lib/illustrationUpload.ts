@@ -7,7 +7,7 @@
  * for a 6 MB image is a long wait to be told nothing you can act on.
  */
 
-export const STORYBOARD_BUCKET = 'slice-illustrations'
+export const ILLUSTRATION_BUCKET = 'slice-illustrations'
 
 /** Matches `storage.buckets.file_size_limit` for this bucket. */
 export const MAX_STORYBOARD_BYTES = 5 * 1024 * 1024
@@ -20,7 +20,7 @@ export const MAX_STORYBOARD_BYTES = 5 * 1024 * 1024
  * would be a lie, and tightening here to match the old bucket would have to be
  * undone the moment the migration runs.
  */
-export const ALLOWED_STORYBOARD_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+export const ALLOWED_ILLUSTRATION_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 const EXTENSIONS: Record<string, string> = {
   'image/png': 'png',
@@ -39,7 +39,7 @@ export type StoryboardCheck =
  * "that image is too large" is the one worth saying — being told the format is
  * wrong sends someone off to convert a file that would still be rejected.
  */
-export function checkStoryboardFile(file: {
+export function checkIllustrationFile(file: {
   size: number
   type: string
   name?: string
@@ -55,36 +55,52 @@ export function checkStoryboardFile(file: {
   if (file.size === 0) {
     return { ok: false, problem: 'That file is empty.' }
   }
-  if (!ALLOWED_STORYBOARD_TYPES.includes(file.type)) {
+  if (!ALLOWED_ILLUSTRATION_TYPES.includes(file.type)) {
     return {
       ok: false,
-      problem: `${describeType(file.type)} cannot be used — storyboards must be PNG, JPEG or WebP.`,
+      problem: `${describeType(file.type)} cannot be used — illustrations must be PNG, JPEG or WebP.`,
     }
   }
   return { ok: true }
 }
 
 /**
- * Where the image lives, derived rather than random.
+ * Where one image lives: under its slide, under its own name.
  *
- * One path per screen means replacing an image overwrites it instead of
- * accumulating orphans nothing points at — a slice edited ten times would
- * otherwise leave nine files behind, and nothing in the app would ever list
- * them.
+ * This used to derive ONE path per slide and upsert onto it, so a replacement
+ * overwrote its predecessor and nothing was ever orphaned. That was the right
+ * trade while a slide held one image. A slide keeps a POOL now, and a pool
+ * whose members share a path is a pool of one.
+ *
+ * The orphan the old shape avoided is now real and deliberately tolerated:
+ * dropping an image from the pool leaves the object in the bucket, exactly as
+ * clearing the old column already did, and for the same reason — a merge can
+ * copy one slide's pool onto another, and a delete here would break a slide
+ * nobody asked to change. Storage is cheap; a slide that renders a broken
+ * image is not.
+ *
+ * Not overwriting also retires the cache-buster. `{src, updated_at}` existed
+ * because a URL's content could change under a reader; a name minted per
+ * upload means it never can.
  *
  * The `slices/` prefix is not decoration: the bucket's insert policy matches
- * on the object name, and an unprefixed path is refused. Keyed by the frame's
+ * on the object name, and an unprefixed path is refused. Keyed by the slide's
  * row id rather than its position, because positions move — splitting or
- * reordering frames renumbers them, and a position-keyed image would silently
- * end up on a different frame.
+ * reordering slides renumbers them, and a position-keyed image would silently
+ * end up on a different slide.
  */
-export function storyboardPath(
+export function illustrationPath(
   sliceId: string,
   itemId: string,
   mimeType: string,
 ): string {
   const extension = EXTENSIONS[mimeType] ?? 'png'
-  return `slices/${sliceId}/${itemId}.${extension}`
+  // A NEW name per upload, not one derived name upserted over. A slide keeps
+  // a pool, so a second image must not land on the first — and because no
+  // object is ever overwritten, a URL's content never changes and there is
+  // nothing for a cache-buster to bust. That is what retired the
+  // `{src, updated_at}` shape the single column carried.
+  return `slices/${sliceId}/${itemId}/${crypto.randomUUID()}.${extension}`
 }
 
 function formatMb(bytes: number): string {

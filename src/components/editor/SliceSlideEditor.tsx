@@ -3,11 +3,11 @@ import { ChevronDown, GripVertical, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { SliceStoryboardField } from '@/components/editor/SliceStoryboardField'
+import { SlideIllustrationField } from '@/components/editor/SlideIllustrationField'
 import { cn } from '@/lib/utils'
 import { describeCell } from '@/lib/canvasCellQuery'
 import type { DraftSlide, ValidationProblem } from '@/lib/sliceValidation'
-import type { Json } from '@/types/database'
+import type { Slide } from '@/types/database'
 
 /**
  * The slide editor, docked under the canvas while a slice is being edited.
@@ -28,7 +28,7 @@ export function SliceSlideEditor({
   activeSlide,
   problems,
   sliceId,
-  illustrationFor,
+  savedSlideFor,
   onActivate,
   onChange,
 }: {
@@ -41,7 +41,7 @@ export function SliceSlideEditor({
    * carried in the draft: the image is written straight to `slides` on
    * upload, so the draft would go stale the moment one lands.
    */
-  illustrationFor: (itemId: string) => Json | null
+  savedSlideFor: (itemId: string) => Slide | null
   onActivate: (index: number) => void
   onChange: (slides: DraftSlide[]) => void
 }) {
@@ -310,10 +310,10 @@ export function SliceSlideEditor({
               className="w-full shrink-0 resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-2xs outline-none focus-visible:border-ring"
             />
 
-            <SliceStoryboardField
+            <SlideIllustrationField
               sliceId={sliceId}
               itemId={slide.id}
-              illustration={slide.id ? illustrationFor(slide.id) : null}
+              saved={slide.id ? savedSlideFor(slide.id) : null}
             />
 
             {slideProblems.length > 0 ? (

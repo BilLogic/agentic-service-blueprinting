@@ -390,14 +390,19 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
             ids = [cell_id(locale, key) for key in keys]
             title = pick_text(slide.get("title"), locale, locales)
             narrative = pick_text(slide.get("narrative"), locale, locales)
+            # A slide keeps a POOL of images and shows one member of it, or
+            # none. An IR that names an illustration is naming both: the
+            # image goes into the pool, and it is what the slide shows.
             illustration = slide.get("illustration")
+            src = illustration.get("src") if isinstance(illustration, dict) else illustration
             lines.append(
                 "insert into public.slides "
-                "(id, slice_id, position, cell_ids, cell_keys, title, narrative, illustration) values ("
+                "(id, slice_id, position, cell_ids, cell_keys, title, narrative, "
+                "illustrations, active_illustration) values ("
                 f"{sql_quote(slice_item_id(locale, service_key, entry['key'], position))}, "
                 f"{sql_quote(sid)}, {position}, {sql_array(ids, 'uuid[]')}, "
                 f"{sql_array(keys, 'text[]')}, {sql_quote(title)}, {sql_quote(narrative)}, "
-                + (f"{sql_quote(json.dumps(illustration, ensure_ascii=False))}::jsonb" if illustration else "null")
+                + (f"{sql_array([src], 'text[]')}, {sql_quote(src)}" if src else "'{}'::text[], null")
                 + ");"
             )
         lines.append("")

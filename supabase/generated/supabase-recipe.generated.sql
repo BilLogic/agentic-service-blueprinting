@@ -2142,3 +2142,15 @@ grant update (part_of_id) on public.stakeholders to authenticated;
 -- braces on a host that replayed the grant rather than the rename.
 
 grant update (part_of_id) on public.stakeholders to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000218000000_a_slide_chooses_from_its_images.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the pool and the choice are authored, so the role that authors
+-- needs them. `slides` is granted whole-table UPDATE rather than column by
+-- column, so this is a no-op restatement wherever that grant is already in
+-- place; it is here so a host that reads only this file still arrives at the
+-- same permissions.
+
+grant update on public.slides to authenticated;

@@ -3368,11 +3368,15 @@ CREATE TABLE public.slides (
     cell_keys text[] DEFAULT '{}'::text[] NOT NULL,
     title text,
     narrative text,
-    illustration jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
-    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys)))
+    illustrations text[] DEFAULT '{}'::text[] NOT NULL,
+    active_frame_cell_id uuid,
+    active_illustration text,
+    CONSTRAINT slides_active_illustration_is_in_the_pool CHECK (((active_illustration IS NULL) OR (active_illustration = ANY (illustrations)))),
+    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys))),
+    CONSTRAINT slides_one_active_image CHECK ((num_nonnulls(active_frame_cell_id, active_illustration) <= 1))
 );
 
 --
@@ -3400,16 +3404,28 @@ COMMENT ON COLUMN public.slides.cell_keys IS 'IR key-paths paired with cell_ids 
 COMMENT ON COLUMN public.slides.title IS 'The words over this slide. A title rather than a name: it is authored content a reader reads, not structure a reader navigates.';
 
 --
--- Name: COLUMN slides.illustration; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.illustration IS '{src, alt, source: generated|uploaded|external, updated_at} — src validated https/storage-host on write and render.';
-
---
 -- Name: COLUMN slides.created_by; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.slides.created_by IS 'The caller at insert; null for service-key writes.';
+
+--
+-- Name: COLUMN slides.illustrations; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slides.illustrations IS 'Images an author uploaded for this slide, in author order. The slide''s pool, not what it shows: what it shows is chosen by the two active_ columns, and an unused upload is a legitimate resting state.';
+
+--
+-- Name: COLUMN slides.active_frame_cell_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slides.active_frame_cell_id IS 'Show this cell''s frame alone. Null with active_illustration null means show the whole strip.';
+
+--
+-- Name: COLUMN slides.active_illustration; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slides.active_illustration IS 'Show this uploaded image alone. Must be one of illustrations.';
 
 --
 -- Name: stakeholders; Type: TABLE; Schema: public; Owner: -
@@ -4346,6 +4362,13 @@ ALTER TABLE ONLY public.scenarios
 
 ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
+
+--
+-- Name: slides slides_active_frame_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slides
+    ADD CONSTRAINT slides_active_frame_cell_id_fkey FOREIGN KEY (active_frame_cell_id) REFERENCES public.cells(id) ON DELETE SET NULL;
 
 --
 -- Name: slides slides_slice_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

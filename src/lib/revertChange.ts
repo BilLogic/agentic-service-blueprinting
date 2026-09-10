@@ -46,7 +46,7 @@ import {
 } from '@/lib/evidenceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { updateFinding, type FindingUpdate } from '@/lib/findingMutations'
-import type { Database, Json } from '@/types/database'
+import type { Database } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 type EvidenceRowType = Database['public']['Tables']['evidence']['Row']
@@ -351,20 +351,27 @@ export async function executeRevert(
       requireRowsWritten(data, 'slice')
       return
     }
-    case 'restore_slide_illustration': {
-      // Undo of setting or clearing a slide image: put the captured pointer
-      // back, `null` included — clearing an image is as much a change as
-      // setting one, and its inverse is the previous pointer whatever it was.
+    case 'restore_slide_images': {
+      // Undo of a write to a slide's pool or its choice: put all three
+      // columns back as they were, empties and nulls included. Restoring the
+      // pool and the choice together is not optional — the choice must be a
+      // member of the pool, so writing one without the other can land on a
+      // state the check constraint refuses.
       //
       // The file itself is never touched here, in either direction. The
       // forward write leaves the object in the bucket precisely so this can
       // point at it again; a revert that re-uploaded, or that deleted on the
       // way back, would be reaching past what the change actually did.
       const slideId = stringArg(revert.args, 'slide_id')
-      const illustration = (revert.args.illustration ?? null) as Json | null
       const { data, error } = await client
         .from('slides')
-        .update({ illustration })
+        .update({
+          illustrations: (revert.args.illustrations ?? []) as string[],
+          active_frame_cell_id:
+            (revert.args.active_frame_cell_id ?? null) as string | null,
+          active_illustration:
+            (revert.args.active_illustration ?? null) as string | null,
+        })
         .eq('id', slideId)
         .select('id')
       if (error) throw toAuthoringError(error)

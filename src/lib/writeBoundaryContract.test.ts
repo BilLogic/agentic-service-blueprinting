@@ -14,7 +14,7 @@ import {
  * writes that reach it. A module that calls `.from('slides').update(…)`
  * itself skips the two steps every write is supposed to take — capture the
  * inverse before the write, `recordChange` after it — and neither omission is
- * visible at the call site. `SliceStoryboardField.tsx` set and cleared
+ * visible at the call site. `SlideIllustrationField.tsx` set and cleared
  * `slides.illustration` that way, so replacing a slide image destroyed the
  * previous picture with no record that it had existed and no revert control;
  * `agent/tools/registry.ts` wrote `audit_findings` that way, so an audit run
@@ -143,7 +143,7 @@ test('reads and storage are not writes, and this says so', () => {
   // condemning the read layer or the upload path.
   expect("await client.from('cells').select('id, title').eq('id', id)".match(TABLE_WRITE)).toBeNull()
   expect(
-    "client.storage.from(STORYBOARD_BUCKET).upload(path, file, { upsert: true })".match(
+    "client.storage.from(ILLUSTRATION_BUCKET).upload(path, file, { upsert: true })".match(
       TABLE_WRITE,
     ),
   ).toBeNull()

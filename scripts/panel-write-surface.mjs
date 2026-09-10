@@ -142,9 +142,10 @@ export const PANEL_WRITE_SURFACE = {
   // is covered, table-wide, by the verb the scan reads off that same module.
   audit_findings: ['severity', 'summary', 'run_id', 'cell_ids', 'cell_keys', 'source', 'status'],
   // src/lib/sliceMutations.ts. Slides are replaced wholesale — deleted and
-  // reinserted — so `illustration` is the only column the editor UPDATES.
+  // reinserted — so a slide's images are the only columns the editor UPDATES:
+  // the pool it uploads into, and the two that say which member it shows.
   slices: ['title', 'summary', 'kind', 'actor', 'authorship'],
-  slides: ['illustration'],
+  slides: ['illustrations', 'active_frame_cell_id', 'active_illustration'],
 }
 
 /**
