@@ -23,9 +23,6 @@ const mockSupabase = {
   // Template-only: the kit runs with no database at all, and that build
   // opens the key field without a session. `configured` is the gate.
   configured: true,
-  // Template-only: the composer also carries the developer portal, which
-  // reads the simulated tier off the same context.
-  devSimulation: { on: false, tier: 'regular' },
 }
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => mockSupabase,

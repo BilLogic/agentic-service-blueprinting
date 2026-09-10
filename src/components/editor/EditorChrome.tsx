@@ -1,5 +1,4 @@
 import { Home, PanelLeft, Play } from 'lucide-react'
-import { DevTierOverrideBadge } from '@/components/editor/DevPortal'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { PathSelectorMenu } from '@/components/editor/PathSelectorMenu'
 import { Badge } from '@/components/ui/badge'
@@ -123,9 +122,6 @@ export function WorkspaceBadges() {
           edit preview
         </Badge>
       ) : null}
-      {/* Third state, and the only simulated one: the developer portal's
-          tier override. */}
-      <DevTierOverrideBadge />
     </>
   )
 }

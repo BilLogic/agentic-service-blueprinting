@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
+import { Fragment, type ComponentType, type ReactNode } from 'react'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
@@ -51,7 +52,8 @@ import { queryClient } from '@/lib/queryClient'
  *      every band below may be skinned by it and none of it may be skinned
  *      half way down.
  *   2. INFRASTRUCTURE — the query cache, the theme, the database client.
- *      Nothing here renders anything the reader sees.
+ *      Nothing here renders anything the reader sees. `sessionOverlay`
+ *      closes this band, for the reason set out below.
  *   3. SHARED READS — the active service, then the two session-wide reads
  *      that hang off it. One query each, cached and shared by everything
  *      below, which is the whole reason they are providers rather than hooks
@@ -65,8 +67,31 @@ import { queryClient } from '@/lib/queryClient'
  * what is true of the whole installation to what is true of this moment on
  * this screen. When something new needs a home, place it in its band; if it
  * belongs to two, it is doing two things.
+ *
+ * ── THE ONE SEAM AN ENTRY MAY OPEN IN THE MIDDLE OF THE TREE ──────────────
+ *
+ * `config` skins the tree from OUTSIDE it, which is everything a deployment
+ * needs and nothing an installation's own tooling can use: tooling that wants
+ * to shadow what the tree believes about the session has to sit UNDER the
+ * database client, and no prop passed from an entry can get there by itself.
+ * `sessionOverlay` is that one place, and it is deliberately one place: a
+ * second component under `SupabaseProvider` and above everything that reads
+ * it, supplied by whoever mounted the app and absent by default.
+ *
+ * What fills it is not this repository's business, and this file names
+ * nothing that does. The kit's own `main.tsx` puts its developer portal there
+ * behind `import.meta.env.DEV`; a deployment passes nothing and pays a
+ * `Fragment`. That asymmetry is the point — the alternative is what this
+ * replaced, where the kit's tier simulator was mounted inside the shared
+ * editor chrome and every deployment carried the mount.
  */
-export function App({ config }: { config?: DeploymentConfig | null }) {
+export function App({
+  config,
+  sessionOverlay: SessionOverlay = Fragment,
+}: {
+  config?: DeploymentConfig | null
+  sessionOverlay?: ComponentType<{ children: ReactNode }>
+}) {
   return (
     <DeploymentConfigProvider config={config}>
       <QueryClientProvider client={queryClient}>
@@ -79,59 +104,61 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
          */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <SupabaseProvider>
-            {/*
-             * Resolves the URL slug to the active service and canonicalises
-             * the slug into the address bar. Above everything that reads a
-             * service, so no reader below it can see a stale one.
-             */}
-            <ActiveServiceProvider>
+            <SessionOverlay>
               {/*
-               * Above the editor so both the menubar identity headers and the
-               * canvas read one cached service query; the definition popovers
-               * on the board pick their per-kind example out of it by kind.
+               * Resolves the URL slug to the active service and canonicalises
+               * the slug into the address bar. Above everything that reads a
+               * service, so no reader below it can see a stale one.
                */}
-              <EntityExamplesProvider>
+              <ActiveServiceProvider>
                 {/*
-                 * One unscoped read of `touchpoints.tone` and `.aliases` for
-                 * the whole session, published to the module store every
-                 * touchpoint face resolves its colour through (#326 S6).
+                 * Above the editor so both the menubar identity headers and the
+                 * canvas read one cached service query; the definition popovers
+                 * on the board pick their per-kind example out of it by kind.
                  */}
-                <TouchpointRegistryProvider>
-                  <EditorProvider>
-                    <ViewStateProvider>
-                      <PathSelectionProvider>
-                        {/*
-                         * A comparison is a statement about the scenario it
-                         * was built in, so moving to another one collapses it.
-                         * Inside the provider it drives, under the editor
-                         * whose navigation it watches.
-                         */}
-                        <ScenarioPathSelectionReset />
-                        {/*
-                         * The board reaches the address bar here, beside the
-                         * reset, and for the same reason: it joins navigation,
-                         * the path selection and the tab state, and none of
-                         * those three providers may learn about the other two.
-                         */}
-                        <BoardAddressSync />
-                        <TooltipProvider delay={200}>
-                          <EditorErrorBoundary>
-                            <EditorShell />
-                          </EditorErrorBoundary>
+                <EntityExamplesProvider>
+                  {/*
+                   * One unscoped read of `touchpoints.tone` and `.aliases` for
+                   * the whole session, published to the module store every
+                   * touchpoint face resolves its colour through (#326 S6).
+                   */}
+                  <TouchpointRegistryProvider>
+                    <EditorProvider>
+                      <ViewStateProvider>
+                        <PathSelectionProvider>
                           {/*
-                           * Outside the boundary, on purpose: a write can fail
-                           * as the shell falls over, and the notice is what
-                           * says so. Inside it, the one message explaining the
-                           * blank screen would be caught by the blank screen.
+                           * A comparison is a statement about the scenario it
+                           * was built in, so moving to another one collapses it.
+                           * Inside the provider it drives, under the editor
+                           * whose navigation it watches.
                            */}
-                          <WriteFailureNotices />
-                        </TooltipProvider>
-                      </PathSelectionProvider>
-                    </ViewStateProvider>
-                  </EditorProvider>
-                </TouchpointRegistryProvider>
-              </EntityExamplesProvider>
-            </ActiveServiceProvider>
+                          <ScenarioPathSelectionReset />
+                          {/*
+                           * The board reaches the address bar here, beside the
+                           * reset, and for the same reason: it joins navigation,
+                           * the path selection and the tab state, and none of
+                           * those three providers may learn about the other two.
+                           */}
+                          <BoardAddressSync />
+                          <TooltipProvider delay={200}>
+                            <EditorErrorBoundary>
+                              <EditorShell />
+                            </EditorErrorBoundary>
+                            {/*
+                             * Outside the boundary, on purpose: a write can fail
+                             * as the shell falls over, and the notice is what
+                             * says so. Inside it, the one message explaining the
+                             * blank screen would be caught by the blank screen.
+                             */}
+                            <WriteFailureNotices />
+                          </TooltipProvider>
+                        </PathSelectionProvider>
+                      </ViewStateProvider>
+                    </EditorProvider>
+                  </TouchpointRegistryProvider>
+                </EntityExamplesProvider>
+              </ActiveServiceProvider>
+            </SessionOverlay>
           </SupabaseProvider>
         </ThemeProvider>
       </QueryClientProvider>
