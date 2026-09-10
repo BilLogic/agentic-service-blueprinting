@@ -37,7 +37,10 @@ export function useCanvasActive(): boolean {
 }
 
 /**
- * `useEffect` that does not run while this canvas is not current (ADR 0010).
+ * `useEffect` that does not run while this canvas is not current.
+ *
+ * An open view stays mounted when the reader moves off it, so every effect
+ * inside one keeps running unless it asks. This is the asking.
  *
  * @param effect - same contract as `useEffect`: optional cleanup
  * @param deps - values the effect closes over; canvas-active is implied
