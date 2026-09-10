@@ -2045,6 +2045,43 @@ CREATE FUNCTION public.slices_referencing(cell_ids uuid[]) RETURNS jsonb
 $_$;
 
 --
+-- Name: stakeholders_parent_is_flat(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.stakeholders_parent_is_flat() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if new.parent_id is not null
+     and (select parent_id from public.stakeholders where id = new.parent_id)
+         is not null then
+    raise exception
+      'stakeholder % cannot be part of %, which is already part of something else',
+      new.name, new.parent_id
+      using errcode = 'check_violation';
+  end if;
+
+  if new.parent_id is not null
+     and exists (select 1
+                 from public.stakeholders
+                 where parent_id = new.id) then
+    raise exception
+      'stakeholder % cannot be part of another: other actors are part of it',
+      new.name
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+--
+-- Name: FUNCTION stakeholders_parent_is_flat(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.stakeholders_parent_is_flat() IS 'Holds the cast list to one level of nesting. Both directions, because either edit breaks it: taking a parent that has one, or taking a parent while being one.';
+
+--
 -- Name: sync_cell_resources(uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3386,7 +3423,9 @@ CREATE TABLE public.stakeholders (
     aliases text[] DEFAULT '{}'::text[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT stakeholders_kind_check CHECK ((kind = ANY (ARRAY['recipient'::text, 'staff'::text, 'partner'::text, 'provider'::text, 'team'::text])))
+    parent_id uuid,
+    CONSTRAINT stakeholders_kind_check CHECK ((kind = ANY (ARRAY['recipient'::text, 'staff'::text, 'partner'::text, 'provider'::text, 'team'::text]))),
+    CONSTRAINT stakeholders_parent_not_self CHECK (((parent_id IS NULL) OR (parent_id <> id)))
 );
 
 --
@@ -3418,6 +3457,12 @@ COMMENT ON COLUMN public.stakeholders.summary IS 'Who this actor IS, for the dep
 --
 
 COMMENT ON COLUMN public.stakeholders.aliases IS 'Other spellings this blueprint has used for the same actor, so a match by name finds them.';
+
+--
+-- Name: COLUMN stakeholders.parent_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.stakeholders.parent_id IS 'The actor this one is part of, or null when it is not part of another. Exactly one level: a parent has no parent. A lane still names the specific actor; this is what lets a reader roll those up.';
 
 --
 -- Name: steps; Type: TABLE; Schema: public; Owner: -
@@ -4143,6 +4188,12 @@ CREATE TRIGGER set_steps_updated_at BEFORE UPDATE ON public.steps FOR EACH ROW E
 CREATE TRIGGER set_touchpoints_updated_at BEFORE UPDATE ON public.touchpoints FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 --
+-- Name: stakeholders stakeholders_parent_is_flat; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER stakeholders_parent_is_flat BEFORE INSERT OR UPDATE OF parent_id ON public.stakeholders FOR EACH ROW EXECUTE FUNCTION public.stakeholders_parent_is_flat();
+
+--
 -- Name: agent_messages agent_messages_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4302,6 +4353,13 @@ ALTER TABLE ONLY public.slices
 
 ALTER TABLE ONLY public.slides
     ADD CONSTRAINT slides_slice_id_fkey FOREIGN KEY (slice_id) REFERENCES public.slices(id) ON DELETE CASCADE;
+
+--
+-- Name: stakeholders stakeholders_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stakeholders
+    ADD CONSTRAINT stakeholders_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.stakeholders(id) ON DELETE SET NULL;
 
 --
 -- Name: steps steps_scenario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
