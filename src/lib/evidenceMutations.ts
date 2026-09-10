@@ -30,7 +30,7 @@ export type EvidenceDraft = {
   /**
    * The one thing worth keeping about this source, in the author's own words.
    *
-   * `ref` and `excerpt` were here too, and both are gone (21000208000000). A
+   * `ref` and `excerpt` were here too, and a later migration retired both. A
    * quote is one thing an author might write here, an observation is another,
    * and a URL is a third — the panel linkifies one written inside the note,
    * which is the whole job `ref` was carrying.
