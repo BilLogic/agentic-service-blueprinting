@@ -1,4 +1,10 @@
-import { useState, type DragEvent } from 'react'
+import { useEffect, useState, useSyncExternalStore, type DragEvent } from 'react'
+import {
+  getSlideSheetHeight,
+  persistSlideSheetHeight,
+  setSlideSheetHeight,
+  subscribeSlideSheetHeight,
+} from '@/lib/slideSheetHeight'
 import { ChevronDown, GripVertical, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +29,53 @@ import type { Slide } from '@/types/database'
  * - a **slide header** reorders slides (the "what order do they play in"
  *   question).
  */
+/**
+ * The sheet's top edge, dragged.
+ *
+ * Same shape as `AgentDockDivider`, and deliberately so: one gesture idiom
+ * for "make this region taller" rather than a second one that behaves
+ * almost the same. Listeners live on `window` because a pointer that leaves
+ * the 4px strip mid-drag must not end the drag.
+ */
+function SlideSheetDivider() {
+  const [resizing, setResizing] = useState(false)
+
+  useEffect(() => {
+    if (!resizing) return
+    const move = (event: PointerEvent) => {
+      // The sheet grows UPWARD, so the height is the distance from the
+      // pointer to the bottom of the window.
+      setSlideSheetHeight(window.innerHeight - event.clientY)
+    }
+    const up = () => {
+      setResizing(false)
+      persistSlideSheetHeight()
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+  }, [resizing])
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize the slides"
+      onPointerDown={(event) => {
+        event.preventDefault()
+        setResizing(true)
+      }}
+      className={cn(
+        'h-1 shrink-0 cursor-row-resize touch-none transition-colors',
+        resizing ? 'bg-border' : 'hover:bg-border/80',
+      )}
+    />
+  )
+}
+
 export function SliceSlideEditor({
   slides,
   activeSlide,
@@ -45,6 +98,14 @@ export function SliceSlideEditor({
   onActivate: (index: number) => void
   onChange: (slides: DraftSlide[]) => void
 }) {
+  const sheetHeight = useSyncExternalStore(
+    subscribeSlideSheetHeight,
+    getSlideSheetHeight,
+    // The server has no window, and a sheet that renders at a
+    // remembered height on the client and a different one in markup
+    // is a hydration mismatch on the surface that owns the slides.
+    () => 224,
+  )
   // What is currently being dragged. Kept in state rather than read from the
   // dataTransfer during dragover, because the payload is not readable there
   // in every browser — only on drop.
@@ -138,6 +199,12 @@ export function SliceSlideEditor({
 
   return (
     <div className="flex shrink-0 flex-col border-t border-border bg-sidebar">
+      {/*
+        Above the header, not below it: the grab target is the sheet's top
+        EDGE, which is the line a reader is already looking at when they want
+        it taller. Hidden while collapsed, where there is no height to drag.
+      */}
+      {collapsed ? null : <SlideSheetDivider />}
       <button
         type="button"
         aria-expanded={!collapsed}
@@ -154,7 +221,10 @@ export function SliceSlideEditor({
         Storyboard
       </button>
       {collapsed ? null : (
-    <div className="flex max-h-56 shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2">
+    <div
+      className="flex shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2"
+      style={{ maxHeight: sheetHeight }}
+    >
       {slides.map((slide, index) => {
         const slideProblems = problems.filter(
           (problem) => problem.slide === index,
@@ -209,6 +279,13 @@ export function SliceSlideEditor({
               </span>
               <Input
                 value={slide.title}
+                // A placeholder is not a label: it disappears the moment
+                // somebody types, so a FILLED card is two unnamed boxes, and
+                // a screen reader gets a hint rather than a name. The visible
+                // name lives on the field below, where there is room for one;
+                // here the number and the strip already say which slide this
+                // is, so the name is the accessible one.
+                aria-label={`Slide ${index + 1} title`}
                 placeholder="Slide title"
                 className="h-6 min-w-0 flex-1 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
                 onClick={(event) => event.stopPropagation()}
@@ -291,12 +368,22 @@ export function SliceSlideEditor({
               ))}
             </ul>
 
+            {/*
+              Narrative is the slide's CAPTION — the sentence a reader meets
+              under the title on the stage — and it is the one field on this
+              card whose name is not implied by anything around it. It gets a
+              visible one, in the schema's word.
+            */}
+            <label className="flex flex-col gap-0.5">
+              <span className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">
+                Narrative
+              </span>
             <textarea
               value={slide.narrative}
               rows={2}
               // shrink-0: the textarea holds its two rows and scrolls its
               // own overflow rather than being squeezed by the card.
-              placeholder="Narrative"
+              placeholder="What a reader meets under the title"
               onClick={(event) => event.stopPropagation()}
               onChange={(event) =>
                 onChange(
@@ -309,6 +396,7 @@ export function SliceSlideEditor({
               }
               className="w-full shrink-0 resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-2xs outline-none focus-visible:border-ring"
             />
+            </label>
 
             <SlideIllustrationField
               sliceId={sliceId}
