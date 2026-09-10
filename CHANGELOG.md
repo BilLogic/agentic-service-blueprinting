@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.28.2
+
+### Patch Changes
+
+- 4320ecd: An undo of a finding update restores both cell columns. `cellIds` wrote
+  `cell_ids` and `cell_keys` together but the captured inverse named only
+  `cellIds`, so reverting rebuilt `cell_keys` from the ids — discarding the IR
+  key paths an imported finding carries. The two are named separately now, and
+  `findingMutations.test.ts` holds the inverse to what the write moved.
+
 ## 1.28.1
 
 ### Patch Changes
@@ -3854,8 +3864,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
