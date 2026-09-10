@@ -31,7 +31,8 @@ export type CoverFigure = {
  * deployment has configured a `repoUrl`; there is no button form. */
 export type CoverGuideLink = {
   label: string
-  /** Repo-relative, e.g. `docs/guide/01-the-blueprint-model.md`. */
+  /** Repo-relative, resolved against the deployment's `repoUrl`. Which
+   * documents a deployment has is its own business, so no path here. */
   docPath: string
 }
 
