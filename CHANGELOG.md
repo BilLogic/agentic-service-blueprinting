@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.33.3
+
+### Patch Changes
+
+- 211a21c: One comment in `evidenceMutations.ts` named a migration filename. A migration
+  version is an address in one repository's series and resolves to something else,
+  or to nothing, in a deployment's own — which is why the drift gate refuses an
+  enrolled file that carries one. The sentence now says what happened without
+  naming the file it happened in.
+
 ## 1.33.2
 
 ### Patch Changes
@@ -3993,8 +4003,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
