@@ -262,8 +262,9 @@ so the blueprint stays the single source of the text.
 it cites. A slide nobody has touched (`shows_all_images`) shows every cited
 cell's frames and keeps doing so as the board changes. Once an author ticks
 or unticks, the set is explicit and the slide shows exactly those rows,
-including none. A slide and the board may differ only where somebody said
-they should. Its title is a `title` and not a `name`
+including none. Un-citing a cell drops that cell's member from the set;
+citing it again does not put it back. A slide and the board may differ only
+where somebody said they should. Its title is a `title` and not a `name`
 under the rule the board keeps throughout: `name` is for structure a reader
 navigates, `title` for authored content a reader reads.
 

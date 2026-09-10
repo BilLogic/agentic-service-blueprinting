@@ -2045,6 +2045,31 @@ CREATE FUNCTION public.slices_referencing(cell_ids uuid[]) RETURNS jsonb
 $_$;
 
 --
+-- Name: slide_images_drop_uncited_cells(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.slide_images_drop_uncited_cells() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if new.cell_ids is not distinct from old.cell_ids then
+    return new;
+  end if;
+  delete from public.slide_images
+   where slide_id = new.id
+     and cell_id is not null
+     and not (cell_id = any (coalesce(new.cell_ids, '{}'::uuid[])));
+  return new;
+end;
+$$;
+
+--
+-- Name: FUNCTION slide_images_drop_uncited_cells(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.slide_images_drop_uncited_cells() IS 'When a slide''s cell_ids change, drop slide_images rows whose cell is no longer cited. Positions of remaining members are left as they are.';
+
+--
 -- Name: stakeholders_part_of_is_flat(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4244,6 +4269,12 @@ CREATE TRIGGER set_steps_updated_at BEFORE UPDATE ON public.steps FOR EACH ROW E
 --
 
 CREATE TRIGGER set_touchpoints_updated_at BEFORE UPDATE ON public.touchpoints FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+--
+-- Name: slides slides_drop_uncited_slide_images; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER slides_drop_uncited_slide_images AFTER UPDATE OF cell_ids ON public.slides FOR EACH ROW EXECUTE FUNCTION public.slide_images_drop_uncited_cells();
 
 --
 -- Name: stakeholders stakeholders_part_of_is_flat; Type: TRIGGER; Schema: public; Owner: -
