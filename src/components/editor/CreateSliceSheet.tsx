@@ -21,7 +21,7 @@ import { errorMessage } from '@/lib/utils'
 
 /** One slide per cell. The starting shape, and the only one worth seeding. */
 function seedSlides(cellIds: readonly string[]): DraftSlide[] {
-  return cellIds.map((cell) => ({ cells: [cell], title: '', narrative: '' }))
+  return cellIds.map((cell) => ({ cells: [cell], title: '', caption: '' }))
 }
 
 /**

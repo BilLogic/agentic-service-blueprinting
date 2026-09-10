@@ -89,7 +89,7 @@
           "description": "Cells in this slide, in reading order. A cell may appear in at most one slide of a slice."
         },
         "title": { "$ref": "#/$defs/localeText" },
-        "narrative": {
+        "caption": {
           "$ref": "#/$defs/localeText",
           "description": "Prose for this slide. MUST NOT quote evidence excerpts or proposition figures verbatim — slices are public-read artifacts; cite by cell key instead."
         },

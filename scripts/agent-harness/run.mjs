@@ -261,7 +261,7 @@ async function realListSlices() {
 
 async function realGetSlice(sliceId) {
   const rows = await rest(
-    `slices?select=id,title,summary,kind,actor,authorship,slides(id,position,title,narrative,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
+    `slices?select=id,title,summary,kind,actor,authorship,slides(id,position,title,caption,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
   )
   if (!rows?.[0]) throw new Error('No slice with that id.')
   const slice = rows[0]

@@ -35,7 +35,8 @@ export type DraftSlide = {
   id?: string
   cells: string[]
   title: string
-  narrative: string
+  /** The sentence a reader meets under this slide's images. */
+  caption: string
 }
 
 export type DraftSlice = {

@@ -55,8 +55,8 @@ actually breaks:
   hand it to the `sb:map` skill, re-sign, re-import, then
   slice. A slice that asserts an unrecorded interaction is an invention
   wearing a citation.
-- ⚠ **REQUIRED — every claim traces to a cited cell.** Captions and
-  narrative may only say what the cells in that frame support. This is the
+- ⚠ **REQUIRED — every claim traces to a cited cell.** Titles and
+  captions may only say what the cells in that slide support. This is the
   single check `blueprint-reviewer` slice mode exists to run.
 - ⚠ **REQUIRED — no verbatim excerpts, ever.** Slices are written to
   public-read tables and to docs that get shared. Reference evidence and
@@ -81,7 +81,7 @@ actually breaks:
 ```
 imported + signed scenario
   → select   (slice_tools.py select → slices/<key>.json)
-  → write    (captions, narrative — cite, never quote)
+  → write    (titles, captions — cite, never quote)
   → validate (slice_tools.py validate, exit 0 required)
   → review   (blueprint-reviewer, slice mode)
   → import   (slice_tools.py sql → adapter → read-back)

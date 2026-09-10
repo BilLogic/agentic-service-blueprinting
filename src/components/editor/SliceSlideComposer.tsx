@@ -89,7 +89,7 @@ export function SliceSlideComposer({
     // drop zone is how a slide boundary comes into being.
     const next =
       target.slide >= withoutCell.length
-        ? [...withoutCell, { cells: [cell], title: '', narrative: '' }]
+        ? [...withoutCell, { cells: [cell], title: '', caption: '' }]
         : withoutCell.map((slide, index) =>
             index === target.slide
               ? {

@@ -2154,3 +2154,13 @@ grant update (part_of_id) on public.stakeholders to authenticated;
 -- same permissions.
 
 grant update on public.slides to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000219000000_a_slides_prose_is_a_caption.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- `slides` is granted whole-table UPDATE, so a renamed column keeps
+-- the grant under its new name. Naming it again is belt and braces on a host
+-- that replayed the grant rather than the rename.
+
+grant update on public.slides to authenticated;

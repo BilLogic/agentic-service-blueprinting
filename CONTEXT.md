@@ -258,7 +258,7 @@ so the blueprint stays the single source of the text.
 
 **Slide** — one row of a slice: one moment of it, as a reader meets it. Table
 `slides`, carrying `position`, the cited `cell_ids`/`cell_keys`, a `title`, a
-`narrative` and an optional `illustration`. What a slide shows is the *strip*
+`caption` and an optional `illustration`. What a slide shows is the *strip*
 of the cells it cites, unless its author has drawn ONE image for the whole
 slide — and the editor says so when they have, naming the frames the
 illustration stands in for. A slide and the board may differ only where
@@ -276,7 +276,7 @@ calling one a screen is that defect wearing a third word.
 
 The slice AUTHORING FORMAT says the same words as the columns it writes:
 `kind`, `summary`, `authorship`, `position`, `slides`. It used to say `type`,
-`description`, `origin`, `order` and `frames`, so an author had to hold two
+`description`, `origin`, `order`, `frames` and `narrative`, so an author had to hold two
 vocabularies to write one file, and the tooling carried a comment explaining
 the split. There is no alias for the old keys — a file that uses one is
 refused by name, told which word replaced which.

@@ -1488,12 +1488,12 @@ function buildDemoSlices() {
     created_at: FIXTURE_TIMESTAMP,
     updated_at: FIXTURE_TIMESTAMP,
   }
-  const item = (sliceOrdinal, sliceId, position, title, narrative, refs) => ({
+  const item = (sliceOrdinal, sliceId, position, title, caption, refs) => ({
     id: fid(0, 0, KIND.sliceItem, sliceOrdinal, position),
     slice_id: sliceId,
     position,
     title,
-    narrative,
+    caption,
     created_by: null,
     illustrations: [],
     active_frame_cell_id: null,
@@ -2042,7 +2042,7 @@ ${sqlRows(
 const sqlUuidArray = (ids) => `array[${ids.map((id) => `${q(id)}::uuid`).join(', ')}]`
 const sqlTextArray = (values) => `array[${values.map((value) => q(value)).join(', ')}]`
 
-seedParts.push(`insert into public.slides (id, slice_id, position, cell_ids, cell_keys, title, narrative) values
+seedParts.push(`insert into public.slides (id, slice_id, position, cell_ids, cell_keys, title, caption) values
 ${sqlRows(
   demoSlices.flatMap(({ items }) =>
     items.map((row) => [
@@ -2052,7 +2052,7 @@ ${sqlRows(
       sqlUuidArray(row.cell_ids),
       sqlTextArray(row.cell_keys),
       q(row.title),
-      q(row.narrative),
+      q(row.caption),
     ]),
   ),
 )};

@@ -135,7 +135,7 @@ export async function createSlice(
 
   const slides: DraftSlide[] =
     input.slides?.map((slide) => ({ ...slide })) ??
-    input.cellIds.map((cellId) => ({ cells: [cellId], title: '', narrative: '' }))
+    input.cellIds.map((cellId) => ({ cells: [cellId], title: '', caption: '' }))
 
   // `record: false` — the create is ONE change in the ledger, not a create
   // followed by a slide replacement of nothing. Its inverse deletes the slice,
@@ -209,7 +209,7 @@ export async function replaceSlides(
       cell_ids: [...slide.cells],
       cell_keys: [...slide.cells],
       title: slide.title.trim() || null,
-      narrative: slide.narrative.trim() || null,
+      caption: slide.caption.trim() || null,
     }))
 
     const { error } = await client.from('slides').insert(rows)
@@ -272,7 +272,7 @@ export async function duplicateSlice(
       cell_ids: item.cell_ids,
       cell_keys: item.cell_keys,
       title: item.title,
-      narrative: item.narrative,
+      caption: item.caption,
       illustrations: item.illustrations,
       active_frame_cell_id: item.active_frame_cell_id,
       active_illustration: item.active_illustration,

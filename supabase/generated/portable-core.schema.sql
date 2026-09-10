@@ -3367,7 +3367,7 @@ CREATE TABLE public.slides (
     cell_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     cell_keys text[] DEFAULT '{}'::text[] NOT NULL,
     title text,
-    narrative text,
+    caption text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
@@ -3402,6 +3402,12 @@ COMMENT ON COLUMN public.slides.cell_keys IS 'IR key-paths paired with cell_ids 
 --
 
 COMMENT ON COLUMN public.slides.title IS 'The words over this slide. A title rather than a name: it is authored content a reader reads, not structure a reader navigates.';
+
+--
+-- Name: COLUMN slides.caption; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slides.caption IS 'The sentence a reader meets under this slide''s images. Authored content, not a story the slide tells.';
 
 --
 -- Name: COLUMN slides.created_by; Type: COMMENT; Schema: public; Owner: -

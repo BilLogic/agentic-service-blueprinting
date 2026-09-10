@@ -913,7 +913,7 @@ export type Database = {
           active_frame_cell_id: string | null
           active_illustration: string | null
           illustrations: string[]
-          narrative: string | null
+          caption: string | null
           position: number
           slice_id: string
           updated_at: string
@@ -928,7 +928,7 @@ export type Database = {
           active_frame_cell_id?: string | null
           active_illustration?: string | null
           illustrations?: string[]
-          narrative?: string | null
+          caption?: string | null
           position: number
           slice_id: string
           updated_at?: string
@@ -943,7 +943,7 @@ export type Database = {
           active_frame_cell_id?: string | null
           active_illustration?: string | null
           illustrations?: string[]
-          narrative?: string | null
+          caption?: string | null
           position?: number
           slice_id?: string
           updated_at?: string

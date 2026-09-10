@@ -736,6 +736,17 @@ export const RENAME_MAP = Object.freeze(
       retired: [],
       copy: ['pill', 'pills', 'chip', 'chips'],
     },
+    // A slide's prose is a caption (`21000219000000`). `copy` is empty on
+    // purpose: `narrative` is ordinary English elsewhere — a cell's narrative,
+    // a numbered narrative, a frame's narrative — and retiring the word would
+    // false-positive those. What retired is the column, named as a fragment
+    // so the identifier sweep can see it without taking the noun.
+    {
+      renames: [{ from: 'slides.narrative', to: 'slides.caption' }],
+      migrations: ['21000219000000'],
+      retired: ['slides.narrative'],
+      copy: [],
+    },
     // A source carries one note (`21000208000000`). See the header for why the
     // one column `21000116000000` spared is the one that stopped being an
     // aside. `retired` and `copy` are empty on purpose: both words are live
