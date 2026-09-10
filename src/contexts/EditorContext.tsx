@@ -8,12 +8,12 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
-  FALLBACK_NAV,
   getSlideViewType,
   isSubslide,
   type EditorView,
@@ -266,14 +266,12 @@ function useNavSelectionState(slides: NavItem[]) {
   }, [slides, selectedPhaseId, selectedScenarioId])
 
   const cameraTargetId = selectedScenarioId ?? selectedPhaseId
-  const activeSlideId =
-    cameraTargetId ?? slides[0]?.id ?? FALLBACK_NAV[0].id
+  // `slides` is never empty: an empty database falls back to the deployment's
+  // sample nav, which `resolveDeploymentConfig` guarantees is non-empty.
+  const activeSlideId = cameraTargetId ?? slides[0]!.id
 
   const activeSlide = useMemo(
-    () =>
-      slides.find((slide) => slide.id === activeSlideId) ??
-      slides[0] ??
-      FALLBACK_NAV[0],
+    () => slides.find((slide) => slide.id === activeSlideId) ?? slides[0]!,
     [activeSlideId, slides],
   )
 
@@ -342,11 +340,13 @@ type EditorProviderProps = {
 
 export function EditorProvider({ children }: EditorProviderProps) {
   const { slides: dbSlides, loading, error, configured } = useServicePhases()
+  const { sample } = useDeploymentConfig()
+  const fallbackSlides = sample.nav
 
   const slides = useMemo(() => {
-    if (dbSlides.length === 0) return FALLBACK_NAV
-    return mergeSlidesWithFallback(dbSlides)
-  }, [dbSlides])
+    if (dbSlides.length === 0) return fallbackSlides
+    return mergeSlidesWithFallback(dbSlides, fallbackSlides)
+  }, [dbSlides, fallbackSlides])
 
   const nav = useNavSelectionState(slides)
 

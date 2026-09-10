@@ -1,8 +1,8 @@
+import { SAMPLE_NAV } from '@/data/sampleNav'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
-  FALLBACK_NAV,
   getMainSlides,
   isOverviewFlowArrowAnchorPhase,
   type NavItem,
@@ -22,7 +22,7 @@ const overviewSource = readFileSync(
   against the fallback and the second phase anchors a column drawn over the
   first.
 */
-const fallbackFirstPhaseId = getMainSlides(FALLBACK_NAV)[0]!.id
+const fallbackFirstPhaseId = getMainSlides(SAMPLE_NAV)[0]!.id
 
 const LOADED_NAV: NavItem[] = [
   { id: 'phase-intake', index: 1, label: 'Intake' },
@@ -39,11 +39,18 @@ describe('overview flow-arrow anchor', () => {
     )
   })
 
-  it('answers about the fallback when it is handed nothing', () => {
-    // Not a bug in the helper — its default is what makes the call site's
-    // omission invisible, and this is the answer that omission produces.
-    expect(isOverviewFlowArrowAnchorPhase(LOADED_NAV[0]!)).toBe(false)
-    expect(isOverviewFlowArrowAnchorPhase(LOADED_NAV[1]!)).toBe(true)
+  it('cannot be asked without a nav', () => {
+    // This used to be the defect: the helper defaulted to the sample nav, so
+    // a call site that forgot to pass the loaded one silently got answers
+    // about a board nobody was looking at — `LOADED_NAV[0]` false and
+    // `LOADED_NAV[1]` true, both backwards. The default is gone, so that call
+    // no longer compiles and the wrong answer has nowhere to come from.
+    //
+    // What is left to assert is that the sample is just another nav: handed
+    // it, the helper answers about IT, with no special standing.
+    const sampleFirst = getMainSlides(SAMPLE_NAV)[0]!
+    expect(isOverviewFlowArrowAnchorPhase(sampleFirst, SAMPLE_NAV)).toBe(true)
+    expect(isOverviewFlowArrowAnchorPhase(sampleFirst, LOADED_NAV)).toBe(false)
   })
 
   it('is asked about the phases the overview loaded, not the fallback', () => {

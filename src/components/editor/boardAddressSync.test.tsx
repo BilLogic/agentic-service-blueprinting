@@ -8,15 +8,17 @@
  * three behave TOGETHER. `boardAddress.test.ts` holds the vocabulary; this
  * holds sharing, reloading and the back button.
  *
- * Supabase is absent, so the editor falls back to `FALLBACK_NAV` — real phase
+ * Supabase is absent, so the editor falls back to `SAMPLE_NAV` — real phase
  * and scenario ids, no network.
  */
+import { SAMPLE_NAV } from '@/data/sampleNav'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BoardAddressSync } from '@/components/editor/BoardAddressSync'
 import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
+import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider, useEditor } from '@/contexts/EditorContext'
 import {
   PathSelectionProvider,
@@ -27,7 +29,6 @@ import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import { EMPTY_BOARD_ADDRESS, setBoardAddress } from '@/lib/boardAddress'
 import { setOpenCellId } from '@/lib/openCellStore'
 import type { PathListItem } from '@/lib/pathSelection'
-import { FALLBACK_NAV } from '@/types/nav'
 
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: null, configured: false, canWrite: false }),
@@ -39,17 +40,17 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
  *
  * The claims below need one phase and two of its scenarios — moving between
  * them is what the back button test steps through. Which entries those are is
- * a fact about whatever sample the deployment ships, and `FALLBACK_NAV` is not
+ * a fact about whatever sample the deployment ships, and `SAMPLE_NAV` is not
  * ordered phase-then-its-scenarios in every one of them: a sample that lists
  * all its phases first puts a phase, not a scenario, at index 1, and every
  * assertion here would then be about a navigation the app refuses.
  */
-const PARENT = FALLBACK_NAV.find(
+const PARENT = SAMPLE_NAV.find(
   (item) =>
     !item.parentId &&
-    FALLBACK_NAV.filter((child) => child.parentId === item.id).length >= 2,
+    SAMPLE_NAV.filter((child) => child.parentId === item.id).length >= 2,
 )!
-const [FIRST, SECOND] = FALLBACK_NAV.filter(
+const [FIRST, SECOND] = SAMPLE_NAV.filter(
   (item) => item.parentId === PARENT.id,
 )
 
@@ -100,6 +101,13 @@ const client = new QueryClient({
 function tree(catalog: Map<string, PathListItem[]>) {
   return (
     <QueryClientProvider client={client}>
+      {/*
+        The deployment seam sits above the editor, as it does in `App.tsx`:
+        `EditorProvider` reads the sample nav from it, so a tree without it
+        throws rather than quietly falling back — which is the point of the
+        seam. No config is passed, so this is the template's own sample.
+      */}
+      <DeploymentConfigProvider>
       <EditorProvider>
         <ViewStateProvider>
           <PathSelectionProvider>
@@ -109,6 +117,7 @@ function tree(catalog: Map<string, PathListItem[]>) {
           </PathSelectionProvider>
         </ViewStateProvider>
       </EditorProvider>
+      </DeploymentConfigProvider>
     </QueryClientProvider>
   )
 }
@@ -181,7 +190,7 @@ describe('a board can be sent to someone', () => {
     await boot('')
     await act(async () => editor().selectScenario(DISCOVERY))
     await settle()
-    // FALLBACK_NAV's Discovery is stored `stacked`.
+    // SAMPLE_NAV's Discovery is stored `stacked`.
     expect(new URLSearchParams(search()).get('view')).toBeNull()
 
     await act(async () => editor().setScenarioDisplayViewType(DISCOVERY, 'merged'))

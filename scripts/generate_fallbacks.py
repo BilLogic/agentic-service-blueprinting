@@ -22,8 +22,8 @@ marker-delimited block:
   * With --register, this script rewrites the block in place to import from
     the generated module (transactional: the registry is only rewritten after
     the generated module has been written successfully; re-running is
-    idempotent). It ALSO regenerates the offline nav list (FALLBACK_NAV) in
-    src/types/nav.ts from the IR service, between its own markers:
+    idempotent). It ALSO regenerates the offline nav list (SAMPLE_NAV) in
+    src/data/sampleNav.ts from the IR service, between its own markers:
 
         // GENERATED-NAV:BEGIN …
         // GENERATED-NAV:END
@@ -130,7 +130,7 @@ NAV_MARKER_BEGIN = "GENERATED-NAV:BEGIN"
 NAV_MARKER_END = "GENERATED-NAV:END"
 DEFAULT_OUT = Path("src/data/generatedBlueprints.ts")
 REGISTRY_FILE = Path("src/data/blueprintFallbacks.ts")
-NAV_FILE = Path("src/types/nav.ts")
+NAV_FILE = Path("src/data/sampleNav.ts")
 
 
 def ts_literal(value) -> str:
@@ -327,12 +327,12 @@ def rewrite_marker_block(
 
 
 # ---------------------------------------------------------------------------
-# Offline nav (src/types/nav.ts FALLBACK_NAV between the GENERATED-NAV markers)
+# Offline nav (src/data/sampleNav.ts SAMPLE_NAV between the GENERATED-NAV markers)
 # ---------------------------------------------------------------------------
 
 
 def nav_items(model: dict) -> list:
-    """The offline nav list (FALLBACK_NAV) derived from the IR service: one
+    """The offline nav list (SAMPLE_NAV) derived from the IR service: one
     entry per phase, each followed by its scenarios (subslides). Positional
     ordering only — mirrors the DB-backed nav the app builds from phases +
     scenarios, so fallback nav never drifts from the blueprint data."""
@@ -375,7 +375,7 @@ def nav_block(model: dict) -> str:
     return f"""// {NAV_MARKER_BEGIN} — managed by scripts/generate_fallbacks.py --register.
 // Replaced wholesale on registration; do not hand-edit. Offline nav derived
 // from the IR service (phases + their scenarios) for locale {model['locale']}.
-export const FALLBACK_NAV: NavItem[] = {ts_literal(nav_items(model))}
+export const SAMPLE_NAV: NavItem[] = {ts_literal(nav_items(model))}
 // {NAV_MARKER_END}"""
 
 
@@ -473,7 +473,7 @@ def main(argv=None) -> int:
         ):
             print(
                 f"ERROR: could not find the {NAV_MARKER_BEGIN} … {NAV_MARKER_END} markers "
-                f"in {nav_path} — replace the FALLBACK_NAV block with this (and keep the "
+                f"in {nav_path} — replace the SAMPLE_NAV block with this (and keep the "
                 "markers for next time):\n",
                 file=sys.stderr,
             )

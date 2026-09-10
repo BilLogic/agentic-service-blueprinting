@@ -14,13 +14,14 @@
  * registry WITH content yields pairs — an emptied-out reader would otherwise
  * look the same as an empty registry.
  */
+import { SAMPLE_NAV } from '@/data/sampleNav'
 import { describe, expect, it } from 'vitest'
 import { buildCompareModel, type CompareBlueprints } from '@/lib/compareSlots'
 import {
   getFallbackPathsForScenario,
   getRawBlueprintFallback,
 } from '@/data/blueprintFallbacks'
-import { FALLBACK_NAV, isSubslide } from '@/types/nav'
+import { isSubslide } from '@/types/nav'
 
 type PairResult = {
   scenario: string
@@ -33,7 +34,7 @@ type PairResult = {
 
 function collectPairs(): PairResult[] {
   const results: PairResult[] = []
-  const scenarios = FALLBACK_NAV.filter((item) => isSubslide(item))
+  const scenarios = SAMPLE_NAV.filter((item) => isSubslide(item))
   for (const scenario of scenarios) {
     const paths = getFallbackPathsForScenario(scenario.id)
     if (!paths || paths.length < 2) continue
@@ -64,7 +65,7 @@ function collectPairs(): PairResult[] {
 
 /** Scenarios the registry actually carries paths for. */
 function registeredScenarioCount(): number {
-  return FALLBACK_NAV.filter(
+  return SAMPLE_NAV.filter(
     (item) =>
       isSubslide(item) && (getFallbackPathsForScenario(item.id)?.length ?? 0) > 0,
   ).length
