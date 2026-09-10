@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ImagePlus, Loader2 } from 'lucide-react'
+import { ImagePlus, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { useSupabase } from '@/contexts/SupabaseProvider'
@@ -292,27 +292,44 @@ export function SlideIllustrationField({
         {uploads.map((src) => {
           const on = activeIllustration === src
           return (
-            <IconTooltip
-              key={src}
-              label={on ? 'Showing this illustration' : 'Show this illustration'}
-            >
-              <button
-                type="button"
-                disabled={busy}
-                aria-pressed={on}
-                onClick={() => (on ? void showStrip() : void showIllustration(src))}
-                onContextMenu={(event) => {
-                  event.preventDefault()
-                  void removeIllustration(src)
-                }}
-                className={cn(
-                  'min-w-0 flex-1 overflow-hidden rounded-sm border',
-                  on ? 'border-ring' : 'border-border opacity-45',
-                )}
+            /*
+              Removal used to be a right-click. That is not an affordance: it
+              is invisible, it does not exist on a touch screen, and a
+              keyboard never reaches it. The button is always drawn on an
+              upload — never on a frame, which belongs to a cell and cannot
+              be removed from here.
+            */
+            <div key={src} className="relative min-w-0 flex-1">
+              <IconTooltip
+                label={on ? 'Showing this illustration' : 'Show this illustration'}
               >
-                <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
-              </button>
-            </IconTooltip>
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-pressed={on}
+                  onClick={() => (on ? void showStrip() : void showIllustration(src))}
+                  className={cn(
+                    'w-full overflow-hidden rounded-sm border',
+                    on ? 'border-ring' : 'border-border opacity-45',
+                  )}
+                >
+                  <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
+                </button>
+              </IconTooltip>
+              <IconTooltip label="Remove this illustration from the slide">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled={busy}
+                  aria-label="Remove this illustration"
+                  className="absolute top-0.5 right-0.5 size-4 bg-background/80 text-muted-foreground hover:text-destructive"
+                  onClick={() => void removeIllustration(src)}
+                >
+                  <X className="size-2.5" aria-hidden />
+                </Button>
+              </IconTooltip>
+            </div>
           )
         })}
 
