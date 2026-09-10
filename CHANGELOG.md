@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.30.0
+
+### Minor Changes
+
+- eb2f1c7: The slice rename guard compares the fields a form was seeded from rather than
+  an `updated_at` stamp. A stamp-based guard can only be wrong in one of two
+  directions — refusing renames nobody raced, or waving through an overwrite of
+  someone else's — and which one depends on which stamp it sends.
+  `updateSliceMetaFromSeed` reads the row back at submit and refuses when the
+  meta has moved, at whatever stamp it now carries.
+
 ## 1.29.1
 
 ### Patch Changes
@@ -3883,8 +3894,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
