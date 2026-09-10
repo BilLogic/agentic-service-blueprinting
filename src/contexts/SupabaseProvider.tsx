@@ -51,16 +51,6 @@ type SupabaseContextValue = {
    */
   isEditPreview: boolean
   /**
-   * This session holds the editing tier, as the DATABASE answers it — the
-   * same `is_service_account()` seam the write RPCs assert and the
-   * restrictive write policies AND with, called over the Data API rather
-   * than re-derived from a claim. It is right whether or not the optional
-   * service-account recipe is applied, because the function it calls is the
-   * thing the recipe replaces.
-   * Sessions outside the tier view and use the agent read-only.
-   */
-  isServiceAccount: boolean
-  /**
    * May this session open the agent and hold its keys? IDENTITY, and
    * deliberately never tier: any signed-in session, plus the no-database
    * trial.
@@ -103,7 +93,13 @@ type SupabaseContextValue = {
   isSampleTrial: boolean
   /** Developer-portal tier simulation — client-side UI gating only. */
   devSimulation: DevSimulation
-  /** The write flag BEFORE the simulation, for the honest readout. */
+  /**
+   * The write flag before the developer-portal simulation.
+   *
+   * Exists so the portal can tell the truth about this session when the
+   * simulation is on. Never a gate — surfaces read `canWrite`. See
+   * `docs/adr/0011-one-question-a-surface-may-ask.md`.
+   */
   realCanWrite: boolean
 }
 
@@ -272,6 +268,8 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   // An answer belongs to the account it was asked about, so signing out — or
   // signing in as somebody else — retires it without waiting for a round trip.
   const answeredTier = tierAnswer?.userId === userId ? tierAnswer.tier : null
+  // Local, not published. `canWrite` below is the only question a surface
+  // asks of the session — see docs/adr/0011-one-question-a-surface-may-ask.md.
   const isServiceAccount = answeredTier === 'service' || isDevAuthoring
 
   /*
@@ -314,7 +312,6 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       canAgentWrite: canWrite && !isSampleTrial,
       isDevAuthoring,
       isEditPreview,
-      isServiceAccount,
       // Identity, not tier — on purpose, and the field's own doc says why.
       canAgent:
         isSampleTrial || (configured && (session !== null || isDevAuthoring)),
@@ -332,7 +329,6 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       isDevAuthoring,
       isEditPreview,
       isSampleTrial,
-      isServiceAccount,
       devSimulation,
     ],
   )

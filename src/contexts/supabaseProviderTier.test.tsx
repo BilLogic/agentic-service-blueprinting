@@ -49,7 +49,6 @@ function signedIn(role?: string) {
 
 type Snapshot = {
   canWrite: boolean
-  isServiceAccount: boolean
   canAgent: boolean
   isLoading: boolean
 }
@@ -60,7 +59,6 @@ async function settled(): Promise<Snapshot> {
     const value = useSupabase()
     latest = {
       canWrite: value.canWrite,
-      isServiceAccount: value.isServiceAccount,
       canAgent: value.canAgent,
       isLoading: value.isLoading,
     }
@@ -95,7 +93,6 @@ describe('the editing tier, with the optional recipe applied', () => {
     const value = await settled()
 
     expect(value.canWrite).toBe(false)
-    expect(value.isServiceAccount).toBe(false)
     expect(value.canAgent).toBe(false)
     expect(rpcCalls).toBe(0)
   })
@@ -107,7 +104,6 @@ describe('the editing tier, with the optional recipe applied', () => {
     const value = await settled()
 
     expect(value.canWrite).toBe(true)
-    expect(value.isServiceAccount).toBe(true)
   })
 
   it('gives a role-less account the board and the agent, and no write gate', async () => {
@@ -119,7 +115,6 @@ describe('the editing tier, with the optional recipe applied', () => {
     const value = await settled()
 
     expect(value.canWrite).toBe(false)
-    expect(value.isServiceAccount).toBe(false)
     expect(value.canAgent).toBe(true)
   })
 
@@ -133,7 +128,6 @@ describe('the editing tier, with the optional recipe applied', () => {
     const value = await settled()
 
     expect(value.canWrite).toBe(false)
-    expect(value.isServiceAccount).toBe(false)
   })
 })
 
@@ -147,7 +141,6 @@ describe('the editing tier, with the recipe skipped or deleted', () => {
     const value = await settled()
 
     expect(value.canWrite).toBe(true)
-    expect(value.isServiceAccount).toBe(true)
   })
 
   it('still gives an anonymous visitor nothing', async () => {
@@ -173,7 +166,6 @@ describe('the service-role key', () => {
     const value = await settled()
 
     expect(value.canWrite).toBe(true)
-    expect(value.isServiceAccount).toBe(true)
     expect(rpcCalls).toBe(0)
   })
 })
