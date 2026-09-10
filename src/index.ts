@@ -14,13 +14,6 @@
  * module — the two entry points are independent. Only the deployment seam is
  * exported here; the app's internals stay internal.
  *
- * `App` takes one other optional prop, `sessionOverlay`: a component mounted
- * under the database client and above everything that reads it, for tooling
- * an installation runs and the application does not know about. `config`
- * skins the tree from outside, which cannot reach that far in. This kit's own
- * developer portal is what fills it here, from `src/main.tsx` and only in a
- * development build; a host that has no such tooling passes nothing.
- *
  * Consumed as source (see `deploymentConfig.ts`): the host's bundler resolves
  * this repo's `@/` alias and Vite's `import.meta.env` / `?raw` imports.
  *

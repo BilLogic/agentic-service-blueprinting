@@ -18,36 +18,13 @@ import { storageKey } from '@/lib/storageNamespace'
  * What it changes: `canWrite` and `canAgentWrite` — the two flags the UI
  * gates authoring on. That is the whole reach.
  *
- * ── WHY THIS LIVES IN `dev/` AND NOT IN `src/` ────────────────────────────
- *
- * `src/` is the application, and it is shared: a deployment either copies it
- * or mounts it out of this package, and `vite.config.ts` says the choice is
- * all or nothing. So anything under `src/` is carried by every installation
- * of this kit. This is not application code. It is authoring convenience for
- * people working ON the kit, and no deployment has ever shipped a byte of it
- * — it only paid to carry it, and its two mount points were the reason
- * `components/editor/EditorChrome.tsx` could never be held byte-identical
- * across the kit and its deployments.
- *
- * `dev/` is outside the app source root, alongside the kit's other tooling.
- * Nothing in `src/` imports this file or knows it exists; `src/main.tsx` —
- * an entry every installation writes for itself — reaches it behind
- * `import.meta.env.DEV` and hands the overlay to `App` as its session
- * overlay. A production build never resolves the import, so this module is
- * absent from the bundle rather than present and switched off.
- *
- * ── THE TWO GUARANTEES, WHICH THE MOVE DOES NOT CHANGE ────────────────────
- *
  * Where it exists: development builds, and nowhere else. The reach above is
  * the client's BELIEF about the session, and a deployed site that lets a
  * stranger move it hands them the entire authoring surface, every control of
  * which then fails against the database. `devPortalEnabled` is that boundary
  * and `useDevSimulation` is where it is applied — one seam, above both the
  * flags and the two controls, so hiding the controls is never what is
- * standing between a stored value and a lifted flag. The directory is a
- * second, coarser guard in front of that one, not a replacement for it: the
- * seam is what a test can put the production answer in front of, and the
- * directory is not.
+ * standing between a stored value and a lifted flag.
  *
  * What it CANNOT change: anything server-side. RLS's restrictive policies
  * and the RPC grants never see this value; they are not consulted by it and

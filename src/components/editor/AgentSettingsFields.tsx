@@ -1,6 +1,7 @@
 import { AdminSessionFields } from '@/components/editor/AdminSessionFields'
 import { AgentProviderFields } from '@/components/editor/AgentProviderFields'
 import { AgentScopeField } from '@/components/editor/AgentScopeField'
+import { DevPortalSection } from '@/components/editor/DevPortal'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 
 /**
@@ -54,6 +55,10 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
           <AgentScopeField />
         </>
       ) : null}
+
+      {/* Template-only: the developer portal, which a deployment does not
+          carry. */}
+      <DevPortalSection />
     </div>
   )
 }

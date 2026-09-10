@@ -46,12 +46,6 @@ export default defineConfig({
     include: [
       'src/**/*.test.ts',
       'src/**/*.test.tsx',
-      // An installation's own tooling, outside the application source. It has
-      // contracts too — the developer portal's is the one that matters, since
-      // the behaviour it pins is what the portal must NOT do outside
-      // development. An installation with no `dev/` matches nothing here.
-      'dev/**/*.test.ts',
-      'dev/**/*.test.tsx',
       'scripts/tests/**/*.test.mjs',
     ],
   },
