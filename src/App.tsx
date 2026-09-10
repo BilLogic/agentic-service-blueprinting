@@ -7,6 +7,7 @@ import { WriteFailureNotices } from '@/components/editor/WriteFailureNotices'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
+import { BoardAddressSync } from '@/components/editor/BoardAddressSync'
 import { EditorProvider } from '@/contexts/EditorContext'
 import { EntityExamplesProvider } from '@/contexts/EntityExamplesContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
@@ -106,6 +107,13 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
                          * whose navigation it watches.
                          */}
                         <ScenarioPathSelectionReset />
+                        {/*
+                         * The board reaches the address bar here, beside the
+                         * reset, and for the same reason: it joins navigation,
+                         * the path selection and the tab state, and none of
+                         * those three providers may learn about the other two.
+                         */}
+                        <BoardAddressSync />
                         <TooltipProvider delay={200}>
                           <EditorErrorBoundary>
                             <EditorShell />

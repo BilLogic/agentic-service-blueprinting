@@ -14,6 +14,7 @@ import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
   FALLBACK_NAV,
+  getSlideViewType,
   isSubslide,
   type EditorView,
   type NavItem,
@@ -73,6 +74,19 @@ type EditorContextValue = {
   baseSlides: NavItem[]
   getScenarioDisplayViewType: (slide: NavItem) => SlideViewType
   setScenarioDisplayViewType: (
+    scenarioId: string,
+    layout: SlideViewType,
+  ) => void
+  /**
+   * Adopt a layout the URL asked for, without writing the row.
+   *
+   * A board's address carries `view` only when the reader had diverged from
+   * what the scenario remembers, so following the link has to reproduce the
+   * divergence — and reproducing it is not the same act as an editor choosing
+   * it. `setScenarioDisplayViewType` would persist, which would let anyone
+   * with write access re-lay a board out by opening a link someone sent them.
+   */
+  seedScenarioDisplayViewType: (
     scenarioId: string,
     layout: SlideViewType,
   ) => void
@@ -399,6 +413,25 @@ export function EditorProvider({ children }: EditorProviderProps) {
     [slides, client, canWrite, getScenarioDisplayViewType, clearLayoutOverride],
   )
 
+  const seedScenarioDisplayViewType = useCallback(
+    (scenarioId: string, layout: SlideViewType) => {
+      const slide = slides.find((item) => item.id === scenarioId)
+      if (!slide) return
+      // Nothing to override when the row already says it — and an override
+      // recorded anyway would keep asserting the old layout after an editor
+      // changed the row to something else.
+      if (getSlideViewType(slide) === layout) {
+        clearLayoutOverride(scenarioId)
+        return
+      }
+      setLayoutOverrides((current) => ({
+        ...current,
+        [scenarioId]: { layout, over: slide.layout },
+      }))
+    },
+    [slides, clearLayoutOverride],
+  )
+
   const slidesLoading = configured && loading && dbSlides.length === 0
   const slidesError = configured ? error : null
 
@@ -409,6 +442,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
       baseSlides: slides,
       getScenarioDisplayViewType,
       setScenarioDisplayViewType,
+      seedScenarioDisplayViewType,
       slidesLoading,
       slidesError,
     }),
@@ -417,6 +451,7 @@ export function EditorProvider({ children }: EditorProviderProps) {
       slides,
       getScenarioDisplayViewType,
       setScenarioDisplayViewType,
+      seedScenarioDisplayViewType,
       slidesLoading,
       slidesError,
     ],
