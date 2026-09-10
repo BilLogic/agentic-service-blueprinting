@@ -40,9 +40,12 @@ it. The knowledge lived in docblocks in one file.
 
 The provider still derives the tier and still uses it to compute `canWrite`.
 It does not put the tier on the context. `realCanWrite` stays published
-because the developer portal's readout has to tell the truth about the
-session before the simulation; it exists for that telling, and is never a
-gate.
+for one reason, and it is not a surface's: it is how the simulation's
+contract is asserted — with the simulation off, `canWrite` is the real
+session's answer, and the simulation moves `canWrite` and `canAgentWrite`
+and nothing else. Its only reader is `devPortal.test.tsx`. No component
+reads it, the portal included, which needs only `devSimulation`. A test is
+not a surface, and this flag is never a gate.
 
 The other published flags each have a real consumer of their own:
 `canAgent`, `canAgentWrite`, `canReadPrivate`, `configured`, `session`,

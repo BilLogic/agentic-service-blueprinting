@@ -96,9 +96,15 @@ type SupabaseContextValue = {
   /**
    * The write flag before the developer-portal simulation.
    *
-   * Exists so the portal can tell the truth about this session when the
-   * simulation is on. Never a gate — surfaces read `canWrite`. See
-   * `docs/adr/0011-one-question-a-surface-may-ask.md`.
+   * Published for one reason: it is how the simulation's contract is
+   * asserted — that with the simulation off, `canWrite` is the real
+   * session's answer, and that the simulation moves `canWrite` and
+   * `canAgentWrite` and nothing else. `devPortal.test.tsx` is its only
+   * reader, and a test is not a surface.
+   *
+   * No component reads it, including the portal itself, which needs only
+   * `devSimulation` to know it is on. Never a gate — surfaces read
+   * `canWrite`. See `docs/adr/0011-one-question-a-surface-may-ask.md`.
    */
   realCanWrite: boolean
 }
