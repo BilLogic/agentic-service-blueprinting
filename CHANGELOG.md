@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.33.2
+
+### Patch Changes
+
+- f50ffa1: One `cursor-help` outlived the decision that retired it. Three files already
+  say the help cursor is gone — `panelText.ts` names it as one of the two cues
+  that announced a word was defined, `EntityHeader.tsx` says "no `cursor-help`",
+  `panelShell.tsx` says the same — and a badge in the design toolbar still had
+  one. The class is removed, and `definitionCard.test.tsx` now asserts that none
+  survives anywhere, so the next one fails a test rather than a reading.
+
 ## 1.33.1
 
 ### Patch Changes
@@ -3982,8 +3993,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
