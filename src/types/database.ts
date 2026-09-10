@@ -1012,6 +1012,7 @@ export type Database = {
           id: string
           kind: string
           name: string
+          parent_id: string | null
           summary: string | null
           updated_at: string
         }
@@ -1021,6 +1022,7 @@ export type Database = {
           id?: string
           kind: string
           name: string
+          parent_id?: string | null
           summary?: string | null
           updated_at?: string
         }
@@ -1030,10 +1032,19 @@ export type Database = {
           id?: string
           kind?: string
           name?: string
+          parent_id?: string | null
           summary?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stakeholders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "stakeholders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       steps: {
         Row: {
