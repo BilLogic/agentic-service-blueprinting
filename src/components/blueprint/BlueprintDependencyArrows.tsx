@@ -329,7 +329,11 @@ export function BlueprintDependencyArrows({
       data-blueprint-arrows=""
       className={cn(
         'pointer-events-none absolute overflow-visible',
-        layer === 'forward' ? 'z-2' : 'z-30',
+        // The same hierarchy `IntegratedDependencyArrows` states: z-0, UNDER
+        // the z-1 cells, so an ordinary run that crosses a cell tucks behind
+        // it rather than striking through its face. The wrap layer stays above
+        // because it rides the empty corridors outside the rows.
+        layer === 'forward' ? 'z-0' : 'z-30',
       )}
       style={svgStyle}
       overflow="visible"
