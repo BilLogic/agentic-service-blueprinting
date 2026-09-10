@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.29.0
+
+### Minor Changes
+
+- 9bd68c8: The cell panel shows a cell's status without opening the editor.
+  `CellContentSection` renders it first, as a labelled `Field` with a hint and a
+  `StatusBadge` — a status changes how everything under it should be read, and a
+  reader had to enter edit mode to find it. The owner labels take `PANEL_TEXT`
+  rather than repeating its classes inline.
+
 ## 1.28.2
 
 ### Patch Changes
@@ -3864,8 +3874,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
