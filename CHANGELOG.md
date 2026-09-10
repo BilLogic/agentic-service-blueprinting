@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.22.1
+
+### Patch Changes
+
+- 30a6c7b: The storyboard walkthrough says what it is, and one error stops being unwrapped by hand
+
+  Two small things a deployment had already fixed and this repository had not.
+
+  The walkthrough dialog announced itself as "Presentation" — to a screen
+  reader, the only name it had. It is the storyboard walkthrough, and the app
+  calls it that everywhere a reader can see. The accessible name now agrees with
+  the visible vocabulary.
+
+  `StructureRowMenu` unwrapped a duplicate failure with an inline
+  `instanceof Error ? … : String(…)`. `errorMessage` in `lib/utils` is that
+  expression, the same file already imports it, and the rename path two hundred
+  lines down already used it. One spelling for one job.
+
 ## 1.22.0
 
 ### Minor Changes
@@ -3605,8 +3623,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                            "lanes_lane_role_check" … compliance_review
+                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
