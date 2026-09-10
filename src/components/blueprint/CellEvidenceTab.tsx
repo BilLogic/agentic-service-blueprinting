@@ -118,7 +118,7 @@ function AddSourceForm({
         type="button"
         variant="ghost"
         size="sm"
-        className="w-fit gap-1 text-xs text-muted-foreground"
+        className="w-fit gap-1 text-muted-foreground"
         onClick={() => setOpen(true)}
       >
         <Plus className="size-3" />

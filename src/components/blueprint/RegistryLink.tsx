@@ -85,7 +85,6 @@ export function RegistryLink({
           <Button
             type="button"
             size="sm"
-            className="h-7"
             disabled={!choice || busy}
             onClick={() => {
               const target = entries.find((entry) => entry.id === choice)
@@ -109,7 +108,7 @@ export function RegistryLink({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-destructive"
+        className="self-start px-2 text-muted-foreground hover:text-destructive"
         disabled={busy}
         onClick={() => {
           if (!client) return

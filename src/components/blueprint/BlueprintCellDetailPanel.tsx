@@ -1508,7 +1508,7 @@ function BlueprintCellDetailPanelBody() {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-foreground"
+                            className="self-start px-2 text-muted-foreground hover:text-foreground"
                             onClick={() => setAddingDependency(true)}
                           >
                             <Plus className="size-3" aria-hidden />

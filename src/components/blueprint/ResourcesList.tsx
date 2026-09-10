@@ -579,7 +579,6 @@ export function ResourcesList({
           type="button"
           variant="outline"
           size="sm"
-          className="h-7"
           disabled={!pasted.trim()}
           onClick={add}
         >
@@ -609,7 +608,7 @@ export function ResourcesList({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 self-start px-2 text-xs text-muted-foreground hover:text-foreground"
+            className="self-start px-2 text-muted-foreground hover:text-foreground"
             disabled={uploading || !client}
             onClick={() => chooseFile(null)}
           >
@@ -623,7 +622,6 @@ export function ResourcesList({
         <Button
           type="button"
           size="sm"
-          className="h-7"
           disabled={!dirty || busy || !client}
           onClick={() => void save()}
         >

@@ -112,7 +112,7 @@ export function StakeholderSelect({
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 w-full justify-between px-2 text-xs font-normal"
+              className="w-full justify-between px-2 font-normal"
             >
               <span className={cn('truncate', !selected && 'text-muted-foreground')}>
                 {selected ? selected.name : 'Nobody'}

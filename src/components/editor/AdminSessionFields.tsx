@@ -91,7 +91,6 @@ export function AdminSessionFields() {
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs"
           disabled={authBusy}
           onClick={signOut}
         >
@@ -127,7 +126,6 @@ export function AdminSessionFields() {
         />
         <Button
           size="sm"
-          className="h-7 text-xs"
           disabled={authBusy || emailDraft.trim() === '' || passwordDraft === ''}
           onClick={signIn}
         >
@@ -137,7 +135,7 @@ export function AdminSessionFields() {
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 justify-start px-1 text-xs text-muted-foreground"
+        className="justify-start px-1 text-muted-foreground"
         disabled={authBusy || emailDraft.trim() === ''}
         onClick={sendMagicLink}
       >

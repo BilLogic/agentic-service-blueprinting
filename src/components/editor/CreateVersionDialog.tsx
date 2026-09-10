@@ -144,7 +144,6 @@ export function CreateVersionDialog({
                   type="button"
                   size="sm"
                   variant={draft.pathKind === type ? 'default' : 'outline'}
-                  className="h-7 text-xs"
                   onClick={() => set('pathKind', type as PathKind)}
                 >
                   {PATH_KIND_LABELS[type]}
@@ -162,7 +161,6 @@ export function CreateVersionDialog({
                 type="button"
                 size="sm"
                 variant={draft.mode === 'blank' ? 'default' : 'outline'}
-                className="h-7 text-xs"
                 onClick={() => set('mode', 'blank')}
               >
                 Empty grid
@@ -171,7 +169,6 @@ export function CreateVersionDialog({
                 type="button"
                 size="sm"
                 variant={draft.mode === 'duplicate' ? 'default' : 'outline'}
-                className="h-7 text-xs"
                 disabled={versions.length === 0}
                 onClick={() => set('mode', 'duplicate')}
               >

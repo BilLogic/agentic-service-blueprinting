@@ -202,7 +202,6 @@ export function SliceEditSession({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 text-xs"
             disabled={busy}
             onClick={onClose}
           >
@@ -211,7 +210,6 @@ export function SliceEditSession({
           <Button
             type="button"
             size="sm"
-            className="h-7 text-xs"
             disabled={busy || problems.length > 0}
             onClick={handleSave}
           >
