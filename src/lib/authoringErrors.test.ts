@@ -35,7 +35,7 @@ const postgrest = (
   ({ name: 'PostgrestError', message, details, hint: '', code }) as PostgrestError
 
 /**
- * The shape `21000219000000` proves in its own post-conditions: two lanes
+ * The shape `21000223000000` proves in its own post-conditions: two lanes
  * forced into one slot inside a transaction, with the deferred check run at
  * the end. Deferral is why this is the only shape that reaches a person — a
  * reorder that merely passes through a collision never raises at all.

@@ -54,7 +54,7 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
     message: 'Two columns ended up in the same position. Reload and try the move again.',
   },
   {
-    // `21000219000000` is what makes this reachable. Its predecessor matched
+    // `21000223000000` is what makes this reachable. Its predecessor matched
     // `lanes_path_row_unique`, a name nothing has ever carried — the object on
     // those two columns was `lanes_path_row_idx`, a plain non-unique index —
     // so the branch was dead text and an author who put two lanes in one slot

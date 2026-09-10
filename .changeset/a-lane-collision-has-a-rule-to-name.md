@@ -12,7 +12,7 @@ vocabulary renames — so the branch was dead text, and an author who put two
 lanes in one slot met no refusal at all: the write succeeded and the board
 showed two lanes fighting for one row.
 
-**The rule.** `21000219000000` adds `lanes_path_position_unique` on
+**The rule.** `21000223000000` adds `lanes_path_position_unique` on
 `(path_id, position)`, deferrable and initially deferred, and drops the
 duplicate index the constraint's own index replaces. Deferred because both
 write paths that move lanes collide mid-transaction on ordinary use:
