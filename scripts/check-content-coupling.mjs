@@ -126,24 +126,8 @@ import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
-/**
- * Directories that hold shared code. Everything else is out of subject.
- *
- * `dev/` is the kit's own tooling rather than shared code, and is here for
- * the reason the tooling is separate at all: nothing enrolls it, nobody
- * reviews it as part of a deployment's tree, and a name or an id copied into
- * it would sit further from anyone's eye than one in `src/` ever did.
- */
-const ROOTS = [
-  'src/',
-  'dev/',
-  'skills/',
-  'agents/',
-  'references/',
-  'evals/',
-  'scripts/',
-  'docs/',
-]
+/** Directories that hold shared code. Everything else is out of subject. */
+const ROOTS = ['src/', 'skills/', 'agents/', 'references/', 'evals/', 'scripts/', 'docs/']
 
 /** The namespace `fid()` in scripts/generate_sample_blueprint.mjs mints. */
 export const SAMPLE_ID_PREFIX = 'f0000000-0000-4000-8000-'

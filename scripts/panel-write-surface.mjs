@@ -195,7 +195,7 @@ export function writeSurfaceEntries() {
  * Who the question is asked as.
  *
  * `authenticated` is one Postgres role and two entirely different people. The
- * app's own gate says so: `canWrite` in `src/contexts/SupabaseProvider.tsx`
+ * app's own gate says so: `realCanWrite` in `src/contexts/SupabaseProvider.tsx`
  * is `isServiceAccount || isEditPreview`, and the comment beside it calls the
  * restrictive policies "the wall". So an AUTHOR is a signed-in session whose
  * JWT carries `app_metadata.role = 'service'`, and a VIEWER is a signed-in
