@@ -72,13 +72,16 @@ export function SliceStoryboardField({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
+  // Same hook the presentation resolves through, and every card on the slice
+  // shares its fetches: `useSlice` is keyed on the slice, so N cards are one
+  // request. The strip is what this slide shows when no illustration stands
+  // in. Above the reader branch, because a hook below an early return runs in
+  // one render and not the next.
+  const { blueprint, items } = useSliceBlueprint(sliceId)
+
   if (!client || !canWrite) return null
 
   const current = parseSliceIllustration(illustration)
-  // Same hook the presentation resolves through, and every card on the slice
-  // shares its fetches: `useSlice` is keyed on the slice, so N cards are one
-  // request. The strip is what this slide shows when no image stands in.
-  const { blueprint, items } = useSliceBlueprint(sliceId)
   const slide = items.find((item) => item.id === itemId)
   const frames = slide ? resolveSlideStrip(blueprint, slide) : []
 
