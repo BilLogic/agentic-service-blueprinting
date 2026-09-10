@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Check, ChevronDown, Pencil, X } from 'lucide-react'
+import { PANEL_SELECT_TRIGGER_CLASS } from '@/components/blueprint/OptionSelect'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -116,11 +117,10 @@ export function OwnerTagSelect({
           <button
             type="button"
             aria-label={ariaLabel}
-            className={cn(
-              'flex h-8 w-full items-center justify-between gap-1 rounded-md border border-input bg-transparent px-2 text-left text-sm',
-              'outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
-              !value && 'text-muted-foreground',
-            )}
+            // The same trigger as every other select in the panel. The copy
+            // that used to be inlined here had fallen behind it: no hover
+            // border, no inset focus ring, and no disabled treatment.
+            className={cn(PANEL_SELECT_TRIGGER_CLASS, !value && 'text-muted-foreground')}
           >
             <span className="min-w-0 truncate">{value || placeholder}</span>
             <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
