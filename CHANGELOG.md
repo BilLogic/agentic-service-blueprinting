@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.34.0
+
+### Minor Changes
+
+- 1c4d483: An actor can be part of another actor.
+
+  `stakeholders` gains a nullable `parent_id` self-reference, so a deployment
+  that names a function on one lane and a sub-function on another can ask what
+  the whole owns. A lane still names the specific actor; the rollup is a join.
+
+  Held to exactly one level — a parent has no parent — by a trigger that checks
+  both directions, plus a `check` for the self-reference a single row can see on
+  its own. Depth is what turns a self-reference into a cycle, and one level keeps
+  the rollup a single join instead of a recursive CTE.
+
+  `UPDATE` on this table is granted column by column, so the new column is named
+  in a grant; without it the column would be silently uneditable.
+
+- c4ef8f4: The sample board reaches the deployment seam, and the nav helpers stop
+  guessing which board they are about.
+
+  `DeploymentConfig` gains a `sample.nav`: the board a deployment shows before
+  its own data arrives. `ResolvedDeploymentConfig.sample.nav` is guaranteed
+  non-empty the way `brand.name` is guaranteed a string — the template's default
+  supplies one, and an overlay of an EMPTY array reads as "I have nothing to
+  say" rather than "show nothing", the same reading `present()` already gives an
+  `undefined` field.
+
+  The array itself moves out of `@/types/nav` into `@/data/sampleNav`, which is
+  a deployment's own content. `types/nav.ts` is now types and pure helpers with
+  no sample in it.
+
+  Eleven helpers lose their `= FALLBACK_NAV` default parameter. A default that
+  names one particular board makes a forgotten argument invisible: the call site
+  compiles, and answers about a board nobody is looking at.
+  `overviewFlowArrowAnchor.test.ts` had pinned exactly that — two assertions
+  recording the wrong answers an omission produced. Those calls no longer
+  compile.
+
+  `EditorProvider` reads the sample through `useDeploymentConfig`, so it now
+  requires `DeploymentConfigProvider` above it — the nesting `App.tsx` already
+  has, with the seam outermost.
+
+### Patch Changes
+
+- ce79dcf: Two comments stop citing addresses that mean something else downstream.
+
+  `useCanvasActiveEffect` cited "ADR 0010". ADR numbers are per-repository:
+  0010 here is _open views stay mounted_, and in a deployment built on this kit
+  it is whatever that repository's tenth decision happened to be. The comment
+  read as authoritative in both places and was right in only one. It now states
+  the rule it was pointing at, which travels.
+
+  `CoverGuideLink.docPath` gave `docs/guide/01-the-blueprint-model.md` as its
+  example. That file exists in this repository and nowhere else, so the example
+  resolved to nothing wherever the kit is installed. The field is documented by
+  what it is measured against instead.
+
 ## 1.33.7
 
 ### Patch Changes
@@ -4052,8 +4110,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                        "lanes_lane_role_check" … compliance_review
+                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
