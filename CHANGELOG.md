@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.27.0
+
+### Minor Changes
+
+- e49cd7a: The top-strip workspace name is the service switcher. With more than one
+  service it becomes a dropdown over the roster; picking one makes it active and
+  lands on its base view. With one service — the common case — it is exactly the
+  workspace tab that shipped before, no chevron and no menu. One element in two
+  states, and the name still comes from the deployment config seam.
+
 ## 1.26.0
 
 ### Minor Changes
@@ -3813,8 +3823,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
