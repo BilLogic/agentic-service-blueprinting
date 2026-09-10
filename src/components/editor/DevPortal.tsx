@@ -65,7 +65,12 @@ function InfoHint({ label, className }: { label: string; className?: string }) {
   )
 }
 
-const ROW_LABEL = 'w-20 shrink-0 text-2xs text-muted-foreground'
+/*
+ * The settings column's shared row label. `w-14` is the agent rows' width,
+ * and these rows render into the same column — a second width here jogged
+ * the control edge partway down one popover.
+ */
+const ROW_LABEL = 'w-14 shrink-0 text-2xs text-muted-foreground'
 
 /**
  * Settings → "For developers".
@@ -89,7 +94,7 @@ export function DevPortalSection() {
   if (!devPortalEnabled()) return null
 
   return (
-    <div className="flex flex-col gap-2" data-dev-portal>
+    <div className="flex flex-col gap-2.5" data-dev-portal>
       <div className="my-0.5 border-t border-muted" />
 
       <div className="flex items-center gap-1">
