@@ -60,7 +60,24 @@ type SupabaseContextValue = {
    * Sessions outside the tier view and use the agent read-only.
    */
   isServiceAccount: boolean
-  /** Any signed-in session may open the agent (viewers chat read-only). */
+  /**
+   * May this session open the agent and hold its keys? IDENTITY, and
+   * deliberately never tier: any signed-in session, plus the no-database
+   * trial.
+   *
+   * Every other gate in this file narrows as the tier narrows, so a reader
+   * who has learned that the tier decides authoring will read this one as an
+   * oversight and "fix" it. It is a decision. The agent is a READING tool:
+   * someone who cannot edit a blueprint still needs to ask questions of it,
+   * and the key is theirs — pasted into their own browser, spending their own
+   * quota. Tier gates writing, not asking.
+   *
+   * The write half of that same line is `canAgentWrite` below, which is
+   * `canWrite` and therefore tier-sensitive. A regular creator configures the
+   * agent and asks it anything; the agent it talks to holds no write tools.
+   * Both halves are pinned by one test, so adding a tier check here fails
+   * naming this decision rather than restating the assertion.
+   */
   canAgent: boolean
   /**
    * Would the database let this client read a table outside the public
@@ -298,6 +315,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       isDevAuthoring,
       isEditPreview,
       isServiceAccount,
+      // Identity, not tier — on purpose, and the field's own doc says why.
       canAgent:
         isSampleTrial || (configured && (session !== null || isDevAuthoring)),
       canReadPrivate: configured && (session !== null || isDevAuthoring),
