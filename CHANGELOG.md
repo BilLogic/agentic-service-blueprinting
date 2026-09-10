@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.25.1
+
+### Patch Changes
+
+- b6f7e96: The edit-preview dot says why it is a fill
+
+  The warning dot in the edit-preview badge is a `bg-warning` fill, and nothing
+  said why that is right rather than a ramp weight. It is a dot with no text in
+  it: the badge's own tint sits behind it, so the mark wants the role's solid
+  fill, not ink. 2.47:1 on that tint in light and 8.78:1 in dark — a mark, not a
+  word, and a reader is not asked to read it.
+
+  Written down because the step this replaced was a ramp weight picked to be read
+  as ink, and without the note the next person picks one again.
+
+- 8933a3c: The touchpoint cell hears the registry
+
+  `BlueprintTouchpointCell` called `getTouchpointTone` directly. That function
+  reads a module store, and a module store is invisible to React — which is what
+  `useTouchpointToneResolver` was written for, and what its own comment says:
+
+  > a cell that called it directly would draw whatever the store held at its
+  > first render and never hear that the rows had landed.
+
+  So a touchpoint cell mounted before the deployment's colours arrived kept the
+  default tone until something else re-rendered it. Every other surface that
+  draws a touchpoint already takes the hook; this one call site never switched.
+
 ## 1.25.0
 
 ### Minor Changes
@@ -3751,8 +3779,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
