@@ -1,7 +1,6 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
 import { BlueprintStepStoryboard } from '@/components/blueprint/BlueprintStepStoryboard'
 import { BlueprintTouchpointCell } from '@/components/blueprint/BlueprintTouchpointCell'
-import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
   Tooltip,
   TooltipContent,
@@ -216,7 +215,12 @@ export function CompareCellBlock({
               status={slotCell?.status ?? status}
             />
           ) : (
-            <TouchpointCellFace
+            // The wrapper, not `TouchpointCellFace` directly: it is what
+            // carries `data-blueprint-touchpoint`, and
+            // `scrollBlueprintTouchpointCellIntoView` finds a named
+            // touchpoint by exactly that attribute. Drawn without it, a face
+            // in this grid is one nothing can scroll to.
+            <BlueprintTouchpointCell
               key={`${item}-${index}`}
               item={item}
               compact={compact}
