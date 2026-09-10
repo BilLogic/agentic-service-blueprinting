@@ -131,6 +131,8 @@ export function SlideStickyHeader({
   return (
     <div
       data-editor-navbar
+      // Flush left at every width: the sidebar is in flow and never draws over
+      // this column, so there is no overlay to surrender a margin to.
       className={cn(
         'relative flex items-center gap-3',
         BLUEPRINT_NAVBAR_BAR_CLASS,
