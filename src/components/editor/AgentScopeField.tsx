@@ -46,13 +46,16 @@ export function AgentScopeField() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 min-w-0 flex-1 justify-start font-mono text-xs"
+              className="h-7 min-w-0 flex-1 justify-start text-xs"
             >
               <span className="truncate">{SCOPE_LABELS[scope]}</span>
             </Button>
           }
         />
-        <DropdownMenuContent align="start" className="font-mono">
+        {/* Same values the trigger shows, so the same face — and these are
+            two English phrases rather than identifiers, so that face is the
+            body one. */}
+        <DropdownMenuContent align="start">
           {SCOPE_ORDER.map((mode) => (
             <DropdownMenuItem
               key={mode}

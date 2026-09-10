@@ -80,15 +80,17 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 min-w-0 flex-1 justify-start font-mono text-xs"
+                className="h-7 min-w-0 flex-1 justify-start text-xs"
               >
                 <span className="truncate">{providerLabel}</span>
               </Button>
             }
           />
-          {/* Same values the trigger shows, so the same face. Size is the
-              design system's menu default (12px). */}
-          <DropdownMenuContent align="start" className="font-mono">
+          {/* Same values the trigger shows, so the same face — and a
+              provider's label is English rather than an identifier, so that
+              face is the body one. Size is the design system's menu default
+              (12px). */}
+          <DropdownMenuContent align="start">
             {AGENT_PROVIDERS.map((entry) => (
               <DropdownMenuItem
                 key={entry.id}
