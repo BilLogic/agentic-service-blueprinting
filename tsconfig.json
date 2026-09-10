@@ -8,8 +8,16 @@
     // No baseUrl (removed in TypeScript 7) and no ignoreDeprecations — the
     // TS5101 trap that made bare `tsc --noEmit` silently typecheck nothing
     // is gone with them. `paths` resolves relative to this file.
+    //
+    // Two roots, tried in order: this repository's own `src`, then the
+    // package's, so a deployment that vendors the application instead of
+    // copying it resolves `@/…` without editing this file. Here the second
+    // is never reached. See `vite.config.ts` for the whole account.
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*",
+        "./node_modules/agentic-service-blueprinting/src/*"
+      ]
     }
   }
 }
