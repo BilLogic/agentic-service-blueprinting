@@ -1,0 +1,348 @@
+#!/usr/bin/env node
+/**
+ * Is this still the kit's blueprint, or is it yours?
+ *
+ * Two guards already sweep for content leaking the wrong way.
+ * `check:standalone` reads the NAMES of the deployment this kit was
+ * generalised from; `check:content-coupling` reads that deployment's CONTENT
+ * with the name filed off — a cell id copied out of its database, one of its
+ * lane actors, one of its scenario titles. Both face the same way: they
+ * protect the kit from the deployment it came out of. Neither faces an
+ * adopter, and until this file nothing in the repository did.
+ *
+ * This is the mirror. It knows the SAMPLE's own markers — the meta-blueprint,
+ * the service blueprint of this kit itself — and reports where a deployment
+ * is still carrying them.
+ *
+ *   node scripts/check-sample-content.mjs   (also: npm run check:sample-content)
+ *   node scripts/check-sample-content.mjs --all   (every site, not a sample)
+ *
+ * ── Advisory. It reports and exits 0, deliberately ─────────────────────────
+ *
+ * Every other check in `docs/engineering/checks.md` goes red on what it
+ * finds. This one must not, for two reasons that are both about who is
+ * reading it.
+ *
+ * A FRESH CLONE IS FULL OF SAMPLE CONTENT ON PURPOSE. `supabase/seed.sql` is
+ * a real blueprint — of this kit — and SETUP.md § 2 asks a new reader to run
+ * the app against it before configuring anything. A check that failed here
+ * would fail the state the kit ships in, which is not a defect to fix but the
+ * front door.
+ *
+ * A HALF-MIGRATED DEPLOYMENT IS A LEGITIMATE STATE. Adoption is a sequence:
+ * the seed goes first, the offline fallback registry follows, and there are
+ * days in between when both are true at once. Failing a build on the middle
+ * of a supported path teaches its owner to stop reading build output, and a
+ * guard whose readers have learned to skip it is worse than no guard.
+ *
+ * So the exit code is 0 whatever it finds, the report says so in its own
+ * words, and the only thing this check ever asks of anybody is that they read
+ * it. Its CI counterpart does not exist for the same reason: in this
+ * repository it would report the sample on every pull request, forever, and
+ * correctly.
+ *
+ * ── The subject ────────────────────────────────────────────────────────────
+ *
+ * Only the two places a DEPLOYMENT'S CONTENT lives:
+ *
+ *   - the seed the database is loaded from — whatever `[db.seed]` in
+ *     `supabase/config.toml` names, read with `resolveSeedFiles` from
+ *     `check-deployment-seed-loads.mjs` so a deployment that renamed or split
+ *     its seed is still swept;
+ *   - `src/data/`, the board the app renders when no database is configured.
+ *     That is the directory `scripts/generate_fallbacks.py --register`
+ *     rewrites, and its marker-delimited blocks are where an adopter's own
+ *     content lands.
+ *
+ * Everything else in the tree is out, and this is the whole reason the check
+ * can reach zero. `scripts/generate_sample_blueprint.mjs` IS the sample and
+ * always will be. `docs/connectors/supabase/database.md` quotes it as an
+ * example. `README.md` and `SETUP.md` describe it by name. None of those is
+ * a deployment's content, none of them goes away on adoption, and a sweep
+ * that reported them would never reach zero on any deployment, ever — which
+ * is the failure mode where a report becomes wallpaper.
+ *
+ * Tests are out, for the reason `check-content-coupling.mjs` states next
+ * door: a fixture has to be able to write the value down, and this check's
+ * own fixtures have to be able to plant one.
+ *
+ * ── The markers, and why each is drawn the way it is ───────────────────────
+ *
+ * 1. THE SAMPLE SERVICE. `Keeping a blueprint true`, and the slug
+ *    `keeping-a-blueprint-true` the seed writes beside it. This is the
+ *    anchor: no adopter writes that sentence by accident, and one hit is
+ *    enough to know whose board is loaded.
+ *
+ * 2. THE SAMPLE'S OWN ID NAMESPACE. `f0000000-0000-4000-8000-…`, minted by
+ *    `fid()` in `scripts/generate_sample_blueprint.mjs`. This is the marker
+ *    with the NAME FILED OFF — thirty-two hex digits that say nothing, and
+ *    the reason a deployment can look entirely its own in prose and still be
+ *    keyed on the kit's rows. The constant is imported from
+ *    `check-content-coupling.mjs` rather than copied, because the two guards
+ *    are one claim read from two sides: the prefix that guard trusts as proof
+ *    of origin is the prefix this one reports.
+ *
+ * 3. THE SAMPLE'S SCENARIO TITLES. The six the generator asserts, matched as
+ *    whole phrases. These are the softest of the three and are ranked last on
+ *    purpose — see below.
+ *
+ * ── What is NOT matched, deliberately ──────────────────────────────────────
+ *
+ * THE PHASE NAMES. `Discover`, `Setup`, `Operate`, `Maintain` are four of the
+ * most ordinary words a service blueprint can carry, and any adopter may
+ * reach for all four. Matching them would report a deployment for having
+ * phases.
+ *
+ * THE LANE ACTORS. `Blueprint owner`, `Stakeholders`, `Claude in the IDE`.
+ * The first two are the vocabulary this kit teaches — `CONTEXT.md` and the
+ * skills use them as the generic cast — so an adopter who names a lane
+ * `Blueprint owner` has taken the kit's ADVICE, not left its content behind.
+ *
+ * THE PATH NAMES. `A first look`, `From your documents`, `Findings triaged`.
+ * Ordinary English describing an ordinary branch. Same failure as the phases.
+ *
+ * And the boundary this check cannot cross, stated rather than papered over:
+ * A DEPLOYMENT THAT BLUEPRINTS A BLUEPRINTING SERVICE. Marker 3 is the one
+ * that can cry wolf — a team mapping their own use of this kit could
+ * honestly write `Map your service` as a scenario title. Two things keep that
+ * from being a reason not to ship the check. The report says which marker
+ * caught each line, so `the sample's scenario titles` and `the sample's own
+ * id namespace` never arrive as one undifferentiated number and a reader can
+ * dismiss the first while acting on the second. And the consequence of a
+ * false positive here is a sentence somebody reads and disagrees with, not a
+ * red build — which is the whole argument for the check being advisory, made
+ * from the other end.
+ */
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { SAMPLE_ID_PREFIX } from './check-content-coupling.mjs'
+import { resolveSeedFiles } from './check-deployment-seed-loads.mjs'
+
+const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+/** The offline half of a deployment's content — see the header. */
+export const FALLBACK_DIR = 'src/data'
+
+/** The database half, before `[db.seed]` gets a say. */
+export const DEFAULT_SEED = 'supabase/seed.sql'
+
+/** The six titles `scripts/generate_sample_blueprint.mjs` asserts. */
+export const SAMPLE_SCENARIO_TITLES = [
+  'Find the kit and see what it does',
+  'Map your service',
+  'Audit the check roster',
+  'Ideate a change (what-if)',
+  'Slice for an audience',
+  'Keep it current',
+]
+
+const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * The sample's markers, each with the reason it is drawn the way it is.
+ *
+ * Same shape as `PATTERNS` in `check-content-coupling.mjs`: `find` is applied
+ * per line with the `g` flag, and `why` is printed with the report, so a
+ * person who has never opened this file learns from the output what the
+ * marker is for. Ordered strongest first — the report keeps that order, and
+ * the order is the reader's triage.
+ */
+export const MARKERS = [
+  {
+    label: 'the sample service',
+    find: /Keeping a blueprint true|keeping-a-blueprint-true/gi,
+    why:
+      'the meta-blueprint’s service name — this kit mapped as its own ' +
+      'service. Replace it with yours: scripts/generate_seed_sql.py from a ' +
+      'validated blueprint file, or let sb:map build one from your documents.',
+  },
+  {
+    label: 'the sample’s own id namespace',
+    find: new RegExp(`${escape(SAMPLE_ID_PREFIX)}[0-9a-f]{12}`, 'gi'),
+    why:
+      'a row id minted by fid() in scripts/generate_sample_blueprint.mjs. ' +
+      'It names nothing, so content can read as entirely yours and still be ' +
+      'keyed on the kit’s rows — a re-import that mints its own ids is what ' +
+      'clears it.',
+  },
+  {
+    label: 'the sample’s scenario titles',
+    find: new RegExp(SAMPLE_SCENARIO_TITLES.map(escape).join('|'), 'gi'),
+    why:
+      'the six scenarios of the meta-blueprint, named for this kit’s own ' +
+      'skill journey. The softest of the three markers: a deployment that ' +
+      'blueprints a blueprinting service could write one of these honestly.',
+  },
+]
+
+/** A fixture is out of subject — see the header. */
+const TEST_FILE = /(?:^|\/)(?:tests?)\/|\.test\.[cm]?[jt]sx?$|\.test\.sh$/
+
+/** Binary payloads a content directory might happen to carry. */
+const BINARY = /\.(?:png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf|pdf|zip|mp4)$/i
+
+export function isScanned(path) {
+  return !BINARY.test(path) && !TEST_FILE.test(path)
+}
+
+/** Every file under one directory, depth-first, sorted, relative to `root`. */
+function filesUnder(root, dir) {
+  const absolute = join(root, dir)
+  let entries
+  try {
+    entries = readdirSync(absolute, { withFileTypes: true })
+  } catch {
+    return [] // a deployment that ships no such directory
+  }
+  const found = []
+  for (const entry of [...entries].sort((a, b) => a.name.localeCompare(b.name))) {
+    const path = `${dir}/${entry.name}`
+    if (entry.isDirectory()) found.push(...filesUnder(root, path))
+    else if (entry.isFile()) found.push(path)
+  }
+  return found
+}
+
+/**
+ * The two content surfaces, as paths relative to `root`, seed first.
+ *
+ * The seed comes from `[db.seed]` rather than from a hardcoded filename, so a
+ * deployment that renamed its seed or split it across several files is swept
+ * as it actually loads. When there is no config to read, the default stands.
+ */
+export function contentFiles(root = REPO_ROOT) {
+  const seeds = resolveSeedFiles(join(root, DEFAULT_SEED))
+    .map((file) => relative(root, file).split('\\').join('/'))
+    .filter((path) => !path.startsWith('..'))
+  const seen = new Set()
+  return [...seeds, ...filesUnder(root, FALLBACK_DIR)].filter((path) => {
+    if (seen.has(path) || !isScanned(path)) return false
+    seen.add(path)
+    return true
+  })
+}
+
+/**
+ * A value one line carries that could only have come from the kit's sample.
+ *
+ * @typedef {{ line: number, label: string, match: string, why: string, text: string }} Site
+ */
+
+/** Every `Site` in one file's source. */
+export function sitesIn(source) {
+  const found = []
+  source.split('\n').forEach((text, index) => {
+    for (const { label, find, why } of MARKERS) {
+      for (const hit of text.matchAll(find)) {
+        found.push({ line: index + 1, label, match: hit[0], why, text: text.trim() })
+      }
+    }
+  })
+  return found
+}
+
+/** Every site in a deployment's content surfaces. */
+export function findings(root = REPO_ROOT) {
+  const out = []
+  for (const path of contentFiles(root)) {
+    let source
+    try {
+      source = readFileSync(resolve(root, path), 'utf8')
+    } catch {
+      continue // removed between the listing and here
+    }
+    if (source.includes('\0')) continue // binary without a listed extension
+    for (const site of sitesIn(source)) out.push({ path, ...site })
+  }
+  return out
+}
+
+/**
+ * Sites folded to one group per marker and file, in `MARKERS` order.
+ *
+ * A fresh clone carries the sample's ids on well over a thousand lines, and a
+ * report that printed every one of them would be scrolled past rather than
+ * read. So the shape of the report is the shape of the answer: which marker,
+ * in which file, how many, and enough named sites to go and look.
+ */
+export function groupSites(sites, files = []) {
+  const groups = new Map()
+  for (const site of sites) {
+    const key = `${site.label}\0${site.path}`
+    const group = groups.get(key)
+    if (group) group.sites.push(site)
+    else groups.set(key, { label: site.label, path: site.path, why: site.why, sites: [site] })
+  }
+  const byLabel = MARKERS.map((marker) => marker.label)
+  const rank = (list, value) => (list.indexOf(value) === -1 ? list.length : list.indexOf(value))
+  return [...groups.values()].sort(
+    (a, b) =>
+      rank(byLabel, a.label) - rank(byLabel, b.label) ||
+      rank(files, a.path) - rank(files, b.path) ||
+      a.path.localeCompare(b.path),
+  )
+}
+
+/** Named sites printed per group before the count takes over. */
+export const EXAMPLES = 3
+
+function report(groups, { all }) {
+  for (const { label, path, why, sites } of groups) {
+    console.log(`  ${path} — ${sites.length} × ${label}`)
+    console.log(`    ${why}`)
+    const shown = all ? sites : sites.slice(0, EXAMPLES)
+    for (const site of shown) {
+      console.log(`      ${path}:${site.line} — ${site.match}`)
+      console.log(`        ${site.text.slice(0, 120)}`)
+    }
+    const rest = sites.length - shown.length
+    if (rest > 0) console.log(`      … and ${rest} more — run with --all to list them`)
+    console.log('')
+  }
+}
+
+function main(argv = process.argv.slice(2)) {
+  const all = argv.includes('--all')
+  const files = contentFiles()
+  const sites = findings()
+
+  if (sites.length === 0) {
+    console.log(
+      `no sample content in the ${files.length} file${files.length === 1 ? '' : 's'} ` +
+        'this deployment serves its blueprint from — ' +
+        `${MARKERS.length} markers, ${files.join(', ')}`,
+    )
+    return 0
+  }
+
+  const groups = groupSites(sites, files)
+  console.log(
+    'The kit’s own sample content — the meta-blueprint, this kit mapped as ' +
+      'its own service — is still what this deployment serves.\n',
+  )
+  report(groups, { all })
+  console.log(
+    `${sites.length} site${sites.length === 1 ? '' : 's'} across ` +
+      `${new Set(sites.map((site) => site.path)).size} of ${files.length} content ` +
+      `file${files.length === 1 ? '' : 's'}.\n` +
+      '\nThis is a report, and the check exits 0 on purpose. A fresh clone ' +
+      'ships the sample deliberately — SETUP.md § 2 asks you to run the app ' +
+      'against it before configuring anything — and a half-migrated ' +
+      'deployment, seed replaced and fallbacks not yet re-registered, is a ' +
+      'legitimate place to be for a while. Nothing here is failing.\n' +
+      '\nWhen you do want it gone: SETUP.md § 5 replaces the seed, and ' +
+      '`python3 scripts/generate_fallbacks.py --register` rewrites the ' +
+      'offline board under src/data/ to match it.',
+  )
+  return 0
+}
+
+// Same shape as scripts/check-content-coupling.mjs: comparing against a
+// hand-built `file://` URL silently no-ops whenever the path needs escaping,
+// so a checkout under a directory with a space in its name would run this
+// script and have it do nothing, successfully.
+const isMain =
+  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isMain) process.exit(main())
