@@ -87,9 +87,9 @@ export { REFERENCE_NAMES }
  *
  * The journey is the HARD per-service boundary: a service's rows are exactly
  * those under its phases, so scoping this read is one `service_id` filter and
- * needs no join. `all` — which is what a single-service deployment always
- * resolves to — skips the filter entirely and is byte-for-byte the unscoped
- * read this was before multi-service.
+ * needs no join. `all` — the default, and what a single-service deployment
+ * always resolves to — skips the filter entirely and is byte-for-byte the
+ * unscoped read this was before multi-service.
  */
 export async function listScenarios(
   client: Client,
@@ -151,8 +151,8 @@ export async function listLanes(client: Client): Promise<string> {
  * and shares the catalog — no stakeholder carries a `service_id`. Scoped to
  * one service, membership is IMPLICIT and derived by JOIN: the actors that
  * service's lanes actually pick (`serviceStakeholderIds`), not a `service_id`
- * lookup that does not exist. `all` — every single-service deployment
- * included — returns the whole catalog, which under the shared model is the
+ * lookup that does not exist. `all` — the default, and every single-service
+ * deployment — returns the whole catalog, which under the shared model is the
  * correct unscoped read.
  */
 export async function listStakeholders(

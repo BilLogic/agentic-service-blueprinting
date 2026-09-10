@@ -1,9 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { getActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { resolveServiceBySlug, type ServiceIdentity } from '@/lib/serviceSlug'
 import { findActiveServiceId, resolveFirstServiceId } from '@/lib/service'
-import type { AgentServiceScopeMode } from '@/lib/agent/settings'
 
 type Client = SupabaseClient<Database>
 
@@ -11,9 +9,9 @@ type Client = SupabaseClient<Database>
  * Which service(s) an agent read covers — the scope that replaced the old
  * global single-service cache.
  *
- * `all` means no scoping (every service, the whole deployment); `service` names
- * exactly one. A deployment with one service ALWAYS resolves to `all`, because
- * with one service every scope is the same set — see `resolveServiceScope`.
+ * `all` means no scoping (every service, the whole deployment) and is the
+ * DEFAULT; `service` names exactly one, and only a call that asks for one gets
+ * it — see `resolveServiceScope`.
  */
 export type ServiceScope =
   | { kind: 'all' }
@@ -26,22 +24,19 @@ type ServiceRow = ServiceIdentity & { id: string; name: string; created_at?: str
 
 /**
  * Resolve which service(s) a read covers, from the tool's optional `service`
- * argument and the creator's configured default.
+ * argument alone.
  *
  * The rules, in order:
- * - A deployment with **≤1 service** always resolves to `all`. With one service
- *   every scope names the same rows, so single-service behaviour is
- *   byte-for-byte today's unscoped read — and the whole join/post-filter
- *   machinery below is skipped, paying no extra query on the common case.
  * - `service: "all"` widens to every service (the deliberate cross-service read).
  * - `service: "<slug or name>"` narrows to that one service; an unknown name
  *   throws with the real ones listed, rather than silently searching everything.
- * - No `service`: the creator's default — `active` (the service the URL slug
- *   names, the one on screen) or `all`.
+ * - No `service`: **every service in the deployment**. A question that names no
+ *   service reads across all of them; a creator who wants one names it. Nothing
+ *   configures this — the URL slug scopes the canvas, not the agent's reach.
  */
 export async function resolveServiceScope(
   client: Client,
-  options: { serviceArg?: string; defaultMode: AgentServiceScopeMode },
+  options: { serviceArg?: string } = {},
 ): Promise<ServiceScope> {
   const { data, error } = await client
     .from('services')
@@ -51,8 +46,12 @@ export async function resolveServiceScope(
     (a.created_at ?? '').localeCompare(b.created_at ?? ''),
   )
 
-  // One service (the common case): every scope is the same single set. Return
-  // `all` so no read scopes, filters or joins — identical to pre-multi-service.
+  // One service: an OPTIMISATION now, not a rule. The default no longer needs
+  // it — the general path below returns the same `all` for an unnamed service —
+  // and what it still buys is the explicitly-named case: naming the only
+  // service would otherwise pay a join per read to narrow the shared catalog to
+  // the actors that service's lanes pick, hiding catalog rows no lane uses.
+  // With one service, unscoped IS the whole deployment, so return it directly.
   if (services.length <= 1) return SCOPE_ALL
 
   const arg = options.serviceArg?.trim()
@@ -72,14 +71,7 @@ export async function resolveServiceScope(
     return { kind: 'service', serviceId: match.id, serviceName: match.name }
   }
 
-  if (options.defaultMode === 'all') return SCOPE_ALL
-
-  // Default: the active service (the one the URL slug names), falling back to
-  // the first by created_at at the bare root — the same resolution the app's
-  // journey reads use, computed here over the list already in hand.
-  const slug = getActiveServiceSlug()
-  const active = (slug ? resolveServiceBySlug(services, slug) : null) ?? services[0]
-  return { kind: 'service', serviceId: active.id, serviceName: active.name }
+  return SCOPE_ALL
 }
 
 /**

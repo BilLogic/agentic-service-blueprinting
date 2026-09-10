@@ -87,7 +87,6 @@ import {
   resolveActiveServiceId,
   resolveServiceScope,
 } from '@/lib/agent/tools/serviceScope'
-import { getAgentServiceScopeMode } from '@/lib/agent/settings'
 import {
   sampleGetBlueprint,
   sampleGetCell,
@@ -107,11 +106,9 @@ type Client = SupabaseClient<Database>
 // consumers — one canonical path); this module owns only dispatch.
 
 // There is no global single-service cache any more: a deployment can hold more
-// than one service, so a READ scopes to the active service by default and a
-// WRITE lands on it. `serviceScope.ts` owns both resolutions — the read side
-// honours a per-call `service` argument and the creator's `serviceScope`
-// setting, and short-circuits to `all` whenever the deployment has one service,
-// which is byte-for-byte what the cache used to do.
+// than one service, so a READ covers every one of them unless the call names
+// one, and a WRITE lands on the service the URL slug names.
+// `serviceScope.ts` owns both resolutions.
 
 /** Mirrors the DB CHECK constraint so a bad kind fails before the insert. */
 const EVIDENCE_KINDS = new Set<string>([
@@ -152,15 +149,12 @@ function need(args: Record<string, unknown>, key: string): string {
 }
 
 /**
- * The scope one read covers: the tool's own `service` argument first, then the
- * creator's configured default. Resolved per call rather than cached, because
- * the active service changes as the user navigates.
+ * The scope one read covers: the tool's own `service` argument, or every
+ * service in the deployment when it names none. Resolved per call rather than
+ * cached, because a deployment's roster of services can change under it.
  */
 function readScope(client: Client, args: Record<string, unknown>) {
-  return resolveServiceScope(client, {
-    serviceArg: s(args, 'service'),
-    defaultMode: getAgentServiceScopeMode(),
-  })
+  return resolveServiceScope(client, { serviceArg: s(args, 'service') })
 }
 
 /**
