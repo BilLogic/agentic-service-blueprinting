@@ -181,11 +181,6 @@ export function annotationFontSizeLabel(fontSize: number): string {
   return ANNOTATION_FONT_SIZE_LABELS[fontSize] ?? `${fontSize}px`
 }
 
-/**
- * Text on a filled shape. Every fill in `ANNOTATION_FILL_SWATCHES` is step 300
- * or paper except the ink one, so this is a membership test rather than a
- * contrast computation — which is also what lets the fills stay `var()`.
- */
 /*
  * `isPaleAnnotationSwatch()` used to live here — `color !== ANNOTATION_INK`,
  * a membership test standing in for a contrast computation. It answered "is
