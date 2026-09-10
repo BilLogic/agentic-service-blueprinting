@@ -17,11 +17,7 @@ import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import {
-  parseSliceIllustration,
-  resolveSlideStrip,
-  sliceIllustrationUrl,
-} from '@/lib/sliceCells'
+import { activeSlideImage, resolveSlideStrip } from '@/lib/sliceCells'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell, BlueprintData } from '@/types/blueprint'
 import type { Slide } from '@/types/database'
@@ -227,16 +223,17 @@ export function SlicePresentation({
     )
   }
 
-  // Stage media resolution: an authored illustration wins; otherwise fall
-  // back to the slide's own cell frames (member cells first, then the
-  // storyboard-lane cell of the same step); no media → title-slide layout.
-  const illustration = parseSliceIllustration(item.illustration)
-  const framePictures = illustration
-    ? []
+  // Stage media: the slide's own choice if it made one, otherwise its whole
+  // strip — the frames of the cells it cites, member cells first and then the
+  // storyboard-lane cell of the same step. No media → title-slide layout.
+  //
+  // A choice that no longer resolves returns null and lands on the strip
+  // rather than on nothing: the strip is always a true answer about a slide,
+  // where a blank stage is never an informative one.
+  const chosen = activeSlideImage(blueprint, item)
+  const stageMedia: string[] = chosen
+    ? [chosen]
     : resolveSlideStrip(blueprint, item).slice(0, 3)
-  const stageMedia: string[] = illustration
-    ? [sliceIllustrationUrl(illustration)]
-    : framePictures
   const slideCellIds = new Set(item.cell_ids.map(resolveBlueprintCellId))
   const title = item.title ?? detail.slice.title
 

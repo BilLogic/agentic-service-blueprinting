@@ -53,11 +53,10 @@ export function SliceEditSession({
   const { client } = useSupabase()
   const mode = useCanvasModeValue()
   const [slides, setSlides] = useState<DraftSlide[]>(() => toDraftSlides(detail))
-  // Read from `detail`, not the draft: a storyboard upload writes straight to
-  // `slides` and refreshes the slice, so the draft never sees it.
-  const illustrationFor = useCallback(
-    (itemId: string) =>
-      detail.items.find((item) => item.id === itemId)?.illustration ?? null,
+  // Read from `detail`, not the draft: an illustration upload writes straight
+  // to `slides` and refreshes the slice, so the draft never sees it.
+  const savedSlideFor = useCallback(
+    (itemId: string) => detail.items.find((item) => item.id === itemId) ?? null,
     [detail.items],
   )
   const [activeSlide, setActiveSlide] = useState(0)
@@ -187,7 +186,7 @@ export function SliceEditSession({
             activeSlide={activeSlide}
             problems={problems}
             sliceId={detail.slice.id}
-            illustrationFor={illustrationFor}
+            savedSlideFor={savedSlideFor}
             onActivate={setActiveSlide}
             onChange={setSlides}
           />

@@ -89,7 +89,7 @@ const EVERY_WRITE = Object.keys({
   duplicate_slice: true,
   update_slice_meta: true,
   replace_slides: true,
-  update_slide_illustration: true,
+  update_slide_images: true,
   create_finding: true,
   update_finding: true,
 } satisfies Record<WriteFn, true>) as WriteFn[]

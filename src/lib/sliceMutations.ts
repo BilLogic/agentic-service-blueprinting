@@ -9,7 +9,7 @@ import {
   type WriteOutcome,
 } from '@/lib/optimisticConcurrency'
 import { authorshipAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
-import type { Database, Json, Slice } from '@/types/database'
+import type { Database, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
 
@@ -273,7 +273,9 @@ export async function duplicateSlice(
       cell_keys: item.cell_keys,
       title: item.title,
       narrative: item.narrative,
-      illustration: item.illustration,
+      illustrations: item.illustrations,
+      active_frame_cell_id: item.active_frame_cell_id,
+      active_illustration: item.active_illustration,
     }))
     const { error } = await client.from('slides').insert(rows)
     if (error) throw toAuthoringError(error)
@@ -408,14 +410,18 @@ function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
  * merged away used to report success and clear nothing; `requireRowsWritten`
  * is what turns that into the failure it always was.
  */
-export async function setSlideIllustration(
+export async function setSlideImages(
   client: Client,
   slideId: string,
-  illustration: Json | null,
+  next: {
+    illustrations: string[]
+    activeFrameCellId: string | null
+    activeIllustration: string | null
+  },
 ): Promise<void> {
   const { data: before, error: beforeError } = await client
     .from('slides')
-    .select('illustration')
+    .select('illustrations, active_frame_cell_id, active_illustration')
     .eq('id', slideId)
     .maybeSingle()
   if (beforeError) throw toAuthoringError(beforeError)
@@ -423,18 +429,39 @@ export async function setSlideIllustration(
 
   const { data, error } = await client
     .from('slides')
-    .update({ illustration })
+    .update({
+      illustrations: next.illustrations,
+      active_frame_cell_id: next.activeFrameCellId,
+      active_illustration: next.activeIllustration,
+    })
     .eq('id', slideId)
     .select('id')
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'slide')
 
   recordChange(
-    'update_slide_illustration',
-    { slide_id: slideId, cleared: illustration === null },
+    'update_slide_images',
     {
-      fn: 'restore_slide_illustration',
-      args: { slide_id: slideId, illustration: before.illustration },
+      slide_id: slideId,
+      // What CHANGED, not what the row now holds: a change list that says
+      // "3 images, showing one" on every write cannot be read for what an
+      // author actually did.
+      added: next.illustrations.length - before.illustrations.length,
+      showing:
+        next.activeIllustration !== null
+          ? 'one illustration'
+          : next.activeFrameCellId !== null
+            ? "one cell's frame"
+            : 'the whole strip',
+    },
+    {
+      fn: 'restore_slide_images',
+      args: {
+        slide_id: slideId,
+        illustrations: before.illustrations,
+        active_frame_cell_id: before.active_frame_cell_id,
+        active_illustration: before.active_illustration,
+      },
     },
   )
 }

@@ -910,7 +910,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
-          illustration: Json | null
+          active_frame_cell_id: string | null
+          active_illustration: string | null
+          illustrations: string[]
           narrative: string | null
           position: number
           slice_id: string
@@ -923,7 +925,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          illustration?: Json | null
+          active_frame_cell_id?: string | null
+          active_illustration?: string | null
+          illustrations?: string[]
           narrative?: string | null
           position: number
           slice_id: string
@@ -936,13 +940,22 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          illustration?: Json | null
+          active_frame_cell_id?: string | null
+          active_illustration?: string | null
+          illustrations?: string[]
           narrative?: string | null
           position?: number
           slice_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "slides_active_frame_cell_id_fkey"
+            columns: ["active_frame_cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "slice_items_slice_id_fkey"
             columns: ["slice_id"]

@@ -301,7 +301,7 @@ test('the scan reads writes, and not reads or uploads', () => {
   // two places at once.
   assert.equal("await client.from('cells').select('id, title').eq('id', id)".match(TABLE_WRITE), null)
   assert.equal(
-    'client.storage.from(STORYBOARD_BUCKET).upload(path, file, { upsert: true })'.match(TABLE_WRITE),
+    'client.storage.from(ILLUSTRATION_BUCKET).upload(path, file, { upsert: true })'.match(TABLE_WRITE),
     null,
   )
   const multiline = [

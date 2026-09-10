@@ -21,7 +21,10 @@ const item = (
     cell_keys: cellIds.map((id) => `key-${id}`),
     title: null,
     narrative: null,
-    illustration: null,
+    created_by: null,
+    illustrations: [],
+    active_frame_cell_id: null,
+    active_illustration: null,
     created_at: '',
     updated_at: '',
   }) as Slide

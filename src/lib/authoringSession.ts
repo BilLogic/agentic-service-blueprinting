@@ -116,7 +116,7 @@ export type WriteFn =
   | 'duplicate_slice'
   | 'update_slice_meta'
   | 'replace_slides'
-  | 'update_slide_illustration'
+  | 'update_slide_images'
   | 'create_finding'
   | 'update_finding'
 
@@ -443,11 +443,23 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
       ? 'Rebuilt a slice’s slides'
       : `Rebuilt a slice’s slides (${count} now)`
   },
-  // Set and cleared say different things, and the difference matters: one
-  // replaced a picture, the other took one away. Both are revertible, so the
-  // sentence is the only place a reader can tell which happened.
-  update_slide_illustration: (entry) =>
-    entry.args.cleared === true ? 'Removed a slide image' : 'Set a slide image',
+  // A slide's images are a pool and a choice, and one write can move either.
+  // Uploading says so; changing what is shown says WHAT is shown, because
+  // "showing the whole strip" and "showing one illustration" are the two a
+  // reader needs to tell apart when deciding whether to revert.
+  update_slide_images: (entry) => {
+    const added = typeof entry.args.added === 'number' ? entry.args.added : 0
+    const showing =
+      typeof entry.args.showing === 'string' ? entry.args.showing : 'the whole strip'
+    if (added > 0) {
+      return `Added ${added} slide image${added === 1 ? '' : 's'}, showing ${showing}`
+    }
+    if (added < 0) {
+      const gone = -added
+      return `Removed ${gone} slide image${gone === 1 ? '' : 's'}, showing ${showing}`
+    }
+    return `A slide now shows ${showing}`
+  },
   // Named by the check rather than by the finding, because that is the word
   // the reader recognises: a finding's id says nothing, and its summary is a
   // whole sentence of its own competing with this one.
