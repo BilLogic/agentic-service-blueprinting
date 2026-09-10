@@ -1192,17 +1192,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * Settle the framing this mount inherited from the tab it remounted into,
    * once and only once.
    *
-   * Returns whether that framing was adopted. It is adopted when the
-   * destination it was filed under still names the board on screen, that
-   * board measures to the same fit box it measured then, and the camera
-   * still points somewhere inside the canvas. Anything else is a board the
-   * framing no longer describes, so the snapshot is dropped and the caller
-   * falls back to the canonical fit.
-   *
-   * Called with nothing pending, or before the destination is resolved,
-   * this decides nothing and reports `false` — the caller's ordinary fit is
-   * then the correct behaviour, and the framing stays held for the
-   * resolution still to come.
+   * Returns `true` when that framing was adopted. `false` is two cases:
+   * the viewport still has no layout (pending stays true — wait, do not
+   * fit or zero), or the snapshot was dropped (pending is false — caller
+   * fits). Callers that must not confuse those use `resolveInheritedCamera`.
    */
   const adoptInheritedCamera = useCallback(
     (focusTarget: HTMLElement | null) => {
