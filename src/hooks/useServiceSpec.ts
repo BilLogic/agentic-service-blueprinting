@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { awaitOrAbort, resolveFirstServiceId } from '@/lib/service'
 import type { EntityExamples } from '@/lib/panelTerms'
@@ -49,14 +50,26 @@ export type ServiceSpec = {
  * summary and the examples, which anon may read perfectly well. Split out,
  * the refusal costs exactly the thing that was restricted:
  * `businessModelVisible` goes false and the rest still renders.
+ *
+ * Split out AND asked only when the reader may have it. `canReadPrivate` is
+ * the provider's answer to "would the database let this client read a table
+ * outside the public surface". Sent regardless, the request is refused for
+ * every signed-out visitor on every load, and the hook has to treat a 42501 as
+ * ordinary to stay harmless — which means a genuine outage on that table looks
+ * exactly like the signed-out case and nothing says so.
+ *
+ * The key carries the answer for the same reason. `staleTime` is infinite, so
+ * one key would serve an author the result their signed-out first paint cached
+ * and the business model would stay missing until a mutation or a reload. Both
+ * keys begin `service-spec:first`, which is the prefix `ServicePanel`
+ * invalidates.
  */
 export function useServiceSpec(): QueryResult<ServiceSpec | null> {
+  const { canReadPrivate } = useSupabase()
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<ServiceSpec | null>(
-    // The key stays constant: a deployment maps one service, and `ServicePanel`
-    // invalidates this literal key.
-    'service-spec:first',
+    canReadPrivate ? 'service-spec:first:private' : 'service-spec:first',
     async (client, signal) => {
       // The same first-service lookup every other read uses — the settled id
       // is cached module-level, so the panel does not add a `services` query
@@ -72,18 +85,19 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
       if (error) throw new Error(error.message)
       if (!service) return null
 
-      // Its own request, and its own failure. A refusal here is the ordinary
-      // signed-out case rather than an error worth surfacing — the row exists,
-      // this reader may not see it — so it resolves to null and the panel
-      // renders everything else. A genuine outage takes the same branch, which
-      // is the right trade: an author who cannot read the model also cannot
-      // write it, and the save is what tells them so.
-      const { data: modelRow } = await client
-        .from('business_models')
-        .select('funding, pricing, delivery_cost, revenue_model, partners')
-        .eq('service_id', service.id)
-        .abortSignal(signal)
-        .maybeSingle()
+      // Its own request, and only when it can succeed. A reader who may not
+      // have this table never sends it, so `businessModelVisible` goes false
+      // without a refusal to interpret. A refusal that DOES arrive is still
+      // tolerated — the grant can change under a live session — but it is no
+      // longer the every-load case, so it is worth reading in a log.
+      const { data: modelRow } = canReadPrivate
+        ? await client
+            .from('business_models')
+            .select('funding, pricing, delivery_cost, revenue_model, partners')
+            .eq('service_id', service.id)
+            .abortSignal(signal)
+            .maybeSingle()
+        : { data: null }
       const model = modelRow as
         | {
             funding: string | null
