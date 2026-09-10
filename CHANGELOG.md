@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.24.3
+
+### Patch Changes
+
+- 84504d2: The cover contract cites no plan
+
+  `coverPage.test.tsx` opened by citing `plan 2026-08-18-001` — a document in
+  the DEPLOYMENT's docs tree, which never existed here and has since been
+  retired there along with the rest of that tier. The sentence says what the
+  test pins; the address said where to read about it, and there is nowhere.
+
+  This was the one line keeping two otherwise byte-identical copies of this file
+  apart.
+
 ## 1.24.2
 
 ### Patch Changes
@@ -3716,8 +3730,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
