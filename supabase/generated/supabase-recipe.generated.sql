@@ -2131,4 +2131,14 @@ $posture$;
 -- is not editable until it is named. Everything above is plain Postgres; this
 -- is the one line that is about a role, and roles are Supabase's half.
 
-grant update (parent_id) on public.stakeholders to authenticated;
+grant update (part_of_id) on public.stakeholders to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000217000000_an_actor_is_part_of_another.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- UPDATE is granted column by column on this table, and a renamed
+-- column keeps the grant under its new name. Naming it again is belt and
+-- braces on a host that replayed the grant rather than the rename.
+
+grant update (part_of_id) on public.stakeholders to authenticated;
