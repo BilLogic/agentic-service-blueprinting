@@ -58,6 +58,7 @@ function renderSheet(over: Partial<Parameters<typeof MobileNavSheet>[0]> = {}) {
       phases={phases}
       scenariosByPhase={scenariosByPhase}
       slides={slides}
+      phasesLoading={false}
       expandedPhaseIds={allExpanded}
       onPhaseExpandedChange={onPhaseExpandedChange}
       selectedPhaseId={null}
@@ -167,5 +168,24 @@ describe('MobileNavSheet accordion and rail', () => {
   it('a truly empty slice list shows the empty message', () => {
     renderSheet({ surface: 'slices', slices: [], slicesLoading: false })
     expect(screen.getByText('No saved slices yet.')).toBeDefined()
+  })
+
+  /*
+    The phase list draws the same distinction the slice list does (#505).
+
+    It had no empty state at all before, because it could not be empty: a
+    read with no rows fell back to the kit's bundled sample. The drawer opens
+    itself on first load, so on a connected phone that fallback was the whole
+    first screen — this kit's phase names, under the deployment's name, every
+    time.
+  */
+  it('a loading phase list shows skeleton rows, not the empty message', () => {
+    renderSheet({ surface: 'blueprints', phases: [], phasesLoading: true })
+    expect(screen.queryByText('No phases in this workspace yet.')).toBeNull()
+  })
+
+  it('a truly empty phase list shows the empty message', () => {
+    renderSheet({ surface: 'blueprints', phases: [], phasesLoading: false })
+    expect(screen.getByText('No phases in this workspace yet.')).toBeDefined()
   })
 })

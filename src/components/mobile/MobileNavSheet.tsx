@@ -8,7 +8,10 @@ import {
 } from '@/components/ui/sheet'
 import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
 import { NavChildren, NavRow, NavSection } from '@/components/editor/SidebarNav'
-import { SliceListLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
+import {
+  SlideNavLoadingSkeleton,
+  SliceListLoadingSkeleton,
+} from '@/components/editor/EditorLoadingSkeletons'
 import { ThemeToggle } from '@/components/editor/ThemeToggle'
 import { getSlideDisplayLabel } from '@/types/nav'
 import { cn } from '@/lib/utils'
@@ -132,6 +135,7 @@ export function MobileNavSheet({
   phases,
   scenariosByPhase,
   slides,
+  phasesLoading,
   expandedPhaseIds,
   onPhaseExpandedChange,
   selectedPhaseId,
@@ -148,6 +152,8 @@ export function MobileNavSheet({
   phases: NavItem[]
   scenariosByPhase: Map<string, NavItem[]>
   slides: NavItem[]
+  /** The phase list is a fetch in flight, not a workspace with no phases. */
+  phasesLoading: boolean
   expandedPhaseIds: ReadonlySet<string>
   onPhaseExpandedChange: (phaseId: string, open: boolean) => void
   selectedPhaseId: string | null
@@ -230,6 +236,26 @@ export function MobileNavSheet({
                 loading={slicesLoading}
                 onSelectSlice={onSelectSlice}
               />
+            ) : phases.length === 0 ? (
+              /*
+                Loading and empty are different states here too — the same
+                distinction `SliceGroups` above already draws.
+
+                It had no reachable empty state at all until #505: a read with
+                no rows fell back to the kit's bundled sample, so this list
+                always had phases in it, and on a connected deployment they
+                were the kit's under the deployment's name. The drawer
+                auto-opens on first load, so that was the phone's whole first
+                screen. Now a configured workspace draws its own rows or says
+                it has none.
+              */
+              phasesLoading ? (
+                <SlideNavLoadingSkeleton rows={4} />
+              ) : (
+                <p className="px-2 py-1.5 text-xs text-sidebar-foreground/50">
+                  No phases in this workspace yet.
+                </p>
+              )
             ) : (
               <div className="flex flex-col gap-0.5">
                 {phases.map((phase) => {

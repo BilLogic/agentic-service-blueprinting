@@ -94,10 +94,18 @@ function SequenceNavPreview({
   )
 }
 
-/** Previous/next slide controls; renders nothing when the active slide is alone in its sequence. */
+/**
+ * Previous/next slide controls; renders nothing when the active slide is
+ * alone in its sequence — or when there is no active slide at all, which is a
+ * connected workspace whose phases have not arrived or which has none. A
+ * sequence of nothing has no neighbours to offer.
+ */
 export function EditorSequenceNav() {
   const { slides, activeSlideId, openDetail } = useEditor()
-  const { prev, next } = getSlideSequenceNav(activeSlideId, slides)
+  const { prev, next } =
+    activeSlideId === null
+      ? { prev: null, next: null }
+      : getSlideSequenceNav(activeSlideId, slides)
 
   if (!prev && !next) return null
 

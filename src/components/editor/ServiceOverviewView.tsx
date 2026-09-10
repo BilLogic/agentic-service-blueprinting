@@ -306,6 +306,7 @@ function ServiceOverviewViewImpl({
   const {
     slides,
     slidesLoading,
+    slidesError,
     openDetail,
     goHome,
     view,
@@ -367,13 +368,20 @@ function ServiceOverviewViewImpl({
       ? getSubslides(soloPhase.id, slides).map((scenario) => scenario.id)
       : slides.filter((slide) => isSubslide(slide)).map((slide) => slide.id)
   const isDetail = view === 'detail'
+  /*
+    Detail view with no active slide is not a state the reader can navigate
+    into — it is a connected workspace whose phases have not arrived yet, or
+    which has none, while the selection still names something. Nothing is
+    focused there, which is what the overview's own value already is.
+  */
   const focusedScenarioId =
-    isDetail && isSubslide(activeSlide) ? activeSlide.id : null
-  const focusedPhaseId = isDetail
-    ? isSubslide(activeSlide)
-      ? getParentSlide(activeSlide, slides)?.id
-      : activeSlide.id
-    : null
+    isDetail && activeSlide && isSubslide(activeSlide) ? activeSlide.id : null
+  const focusedPhaseId =
+    isDetail && activeSlide
+      ? isSubslide(activeSlide)
+        ? getParentSlide(activeSlide, slides)?.id
+        : activeSlide.id
+      : null
 
   const {
     pathsByScenario,
@@ -482,9 +490,11 @@ function ServiceOverviewViewImpl({
   // `focusNonce` bumps on each nav click so re-selecting the current row also
   // recenters after panning away.
   const focusedComparisonCameraKey = getFocusedComparisonCameraKey({
-    isFocusedScenario: isSubslide(activeSlide),
+    isFocusedScenario: activeSlide !== null && isSubslide(activeSlide),
     selectedPathIds: overviewSelectedPathIds,
-    displayViewType: getScenarioDisplayViewType(activeSlide) ?? 'stacked',
+    displayViewType: activeSlide
+      ? (getScenarioDisplayViewType(activeSlide) ?? 'stacked')
+      : 'stacked',
   })
   const fitKey = overviewReady
     ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusNonce}:${focusedComparisonCameraKey}`
@@ -773,6 +783,23 @@ function ServiceOverviewViewImpl({
   const noPathsSelected =
     overviewPaths.length > 0 && overviewSelectedPathIds.length === 0
 
+  /*
+    A connected workspace with no phases in it.
+
+    Unreachable until #505: an empty read used to fall back to the kit's
+    sample nav, so the canvas always had somebody's phases to draw — this
+    kit's, wearing the deployment's name. Now a configured deployment's board
+    is its rows and nothing else, so "there are no rows" is a state the reader
+    can be in, and it needs to say so rather than render as blank canvas.
+
+    Gated on `overviewReady`, which is what separates it from the OTHER way
+    this array is empty: the first fetch, still in flight. That one is the
+    progress bar's, and the two must never be confused on screen — a reader
+    told "no phases" during a slow load would go looking for a database
+    problem that does not exist.
+  */
+  const noPhases = overviewReady && phases.length === 0
+
   const handleInitialFitReady = useCallback(() => {
     // Loading-skeleton fits are not a destination. The callback is still
     // passed from the first render so the content fit cannot finish in the
@@ -781,8 +808,10 @@ function ServiceOverviewViewImpl({
   }, [onInitialFitReady, overviewReady])
 
   useLayoutEffect(() => {
-    if (contentSettled && noPathsSelected) onInitialFitReady?.()
-  }, [contentSettled, noPathsSelected, onInitialFitReady])
+    // Neither placeholder mounts a viewport, so neither will ever report a
+    // fit of its own — the surface is as ready as it is going to get.
+    if (contentSettled && (noPathsSelected || noPhases)) onInitialFitReady?.()
+  }, [contentSettled, noPathsSelected, noPhases, onInitialFitReady])
 
   const postToPreLoop = soloPhase
     ? null
@@ -813,7 +842,9 @@ function ServiceOverviewViewImpl({
   const cellDetailScenarioId = focusedScenarioId ?? soloScenarioId ?? null
 
   const focusedHeader = useMemo(() => {
-    if (!isDetail) return null
+    // No slide is no header. The band names the scenario or phase the reader
+    // is inside, and there is nothing to name.
+    if (!isDetail || !activeSlide) return null
 
     const scopeScenarioIds = isSubslide(activeSlide)
       ? [activeSlide.id]
@@ -925,7 +956,9 @@ function ServiceOverviewViewImpl({
             {...(revealStage < CANVAS_REVEAL_DONE
               ? {
                   'data-canvas-reveal-chrome':
-                    revealStage < CANVAS_REVEAL_LANES && !noPathsSelected
+                    revealStage < CANVAS_REVEAL_LANES &&
+                    !noPathsSelected &&
+                    !noPhases
                       ? 'pending'
                       : 'shown',
                 }
@@ -952,7 +985,31 @@ function ServiceOverviewViewImpl({
                 <NavbarZoomIndicator />
               </div>
             ) : null}
-            {noPathsSelected ? (
+            {noPhases ? (
+              <div className="absolute inset-0 flex">
+                <CanvasEmptyState
+                  /*
+                    A read that FAILED is empty too, and it is not the same
+                    sentence. "No phases recorded" is a statement about the
+                    database, and this surface has no standing to make it
+                    when the question never got an answer — the sidebar's
+                    alert is carrying the real reason.
+                  */
+                  title={
+                    slidesError
+                      ? 'The phases could not be loaded'
+                      : 'No phases in this workspace yet'
+                  }
+                  summary={
+                    slidesError
+                      ? 'The board is drawn from your database, and this read did not come back. The sidebar has the error.'
+                      : 'This board is drawn from your database, and it has no phases recorded. Add one from the sidebar to start the blueprint.'
+                  }
+                  // Paths are a filter over a board; there is no board.
+                  showRestoreAction={false}
+                />
+              </div>
+            ) : noPathsSelected ? (
               <div className="absolute inset-0 flex">
                 <CanvasEmptyState />
               </div>
@@ -1155,7 +1212,7 @@ function ServiceOverviewViewImpl({
                 the board directly: it fades out across stage 1 while the
                 lanes fade in, then unmounts at stage 2. Never a gap.
             */}
-            {!noPathsSelected ? (
+            {!noPathsSelected && !noPhases ? (
               // role=status lives HERE now: the shaped skeleton went
               // visibility-hidden (the bar is the one visible signal), and
               // visibility removes it from the accessibility tree with it.
