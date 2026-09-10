@@ -22,7 +22,9 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateEvidence, useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
 import { linkedTextSegments } from '@/lib/linkedText'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { resolveFirstServiceId } from '@/lib/service'
+import { cn } from '@/lib/utils'
 import type { Database, Evidence } from '@/types/database'
 
 const EVIDENCE_KINDS = [
@@ -68,7 +70,7 @@ function EvidenceRow({ row }: { row: Evidence }) {
     <li className="flex items-start gap-2 border-b border-muted py-2 last:border-0">
       {kindIcon(row.kind)}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="text-xs font-medium break-words text-foreground">
+        <p className={cn(PANEL_TEXT.sectionHeading, 'break-words')}>
           {row.title}{' '}
           <span className="font-normal text-muted-foreground">{row.kind}</span>
         </p>

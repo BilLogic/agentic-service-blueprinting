@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { SlideImagesField } from '@/components/editor/SlideImagesField'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
 import { describeCell } from '@/lib/canvasCellQuery'
 import type { DraftSlide, ValidationProblem } from '@/lib/sliceValidation'
@@ -209,7 +210,11 @@ export function SliceSlideEditor({
         type="button"
         aria-expanded={!collapsed}
         onClick={() => setCollapsed((value) => !value)}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-2xs font-medium text-muted-foreground hover:text-foreground"
+        className={cn(
+          'flex w-full items-center gap-1.5 px-3 py-1.5 text-left',
+          PANEL_TEXT.sectionLabel,
+          'hover:text-foreground',
+        )}
       >
         <ChevronDown
           className={cn(

@@ -538,7 +538,7 @@ type ToolEvent = Extract<TranscriptEvent, { kind: 'tool' }>
 function ToolDetail({ label, body }: { label: string; body: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-2xs font-medium tracking-wider text-muted-foreground uppercase">
+      <p className={cn(PANEL_TEXT.sectionLabel, 'tracking-wider uppercase')}>
         {label}
       </p>
       <pre className="mt-0.5 max-h-40 overflow-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs leading-snug whitespace-pre-wrap text-foreground/80">

@@ -341,7 +341,7 @@ export function RenameSliceDialog({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={PANEL_TEXT.sectionLabel}>
+            <span className={PANEL_TEXT.sectionHeading}>
               Subtitle{' '}
               <span className="font-normal text-muted-foreground/70">
                 · optional
