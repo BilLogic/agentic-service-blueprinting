@@ -15,7 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Field } from '@/components/blueprint/panelShell'
 import { useSupabase } from '@/contexts/SupabaseProvider'
@@ -190,11 +190,11 @@ function AddSourceForm({
         </select>
       </Field>
       <Field label="Title" required>
-        <Input
+        <FieldInput
+          size="sm"
           required
           placeholder="What the source is"
           aria-label="Title"
-          className="h-7 text-xs"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />

@@ -6,7 +6,7 @@ import {
 } from '@/components/editor/SegmentedControl'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { clearCellDependency, setCellDependency } from '@/lib/authoringRpc'
@@ -183,11 +183,11 @@ export function CellDependencyEditor({
           somewhere nothing renders. The placeholder is deliberately general:
           "why this edge exists" is narrower than what authors actually write,
           and a narrow frame is what sent them to the wrong field. */}
-      <Input
+      <FieldInput
+        size="sm"
         value={draft.note}
         aria-label="Note (optional)"
         placeholder="Anything worth knowing about this dependency"
-        className="h-7 text-xs"
         onChange={(event) =>
           setDraft((current) => ({ ...current, note: event.target.value }))
         }

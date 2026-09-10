@@ -3,7 +3,7 @@ import { Check, ChevronDown, Pencil, X } from 'lucide-react'
 import { PANEL_SELECT_TRIGGER_CLASS } from '@/components/blueprint/OptionSelect'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import {
   Popover,
   PopoverContent,
@@ -128,10 +128,11 @@ export function OwnerTagSelect({
         }
       />
       <PopoverContent align="start" className="w-56 p-1.5">
-        <Input
+        <FieldInput
+          size="sm"
           value={filter}
           placeholder="Find or create…"
-          className="mb-1 h-7 text-xs"
+          className="mb-1"
           autoFocus
           onChange={(event) => setFilter(event.target.value)}
           onKeyDown={(event) => {
@@ -158,10 +159,11 @@ export function OwnerTagSelect({
           {visible.map((tag) =>
             renaming === tag ? (
               <div key={tag} className="flex items-center gap-1 px-1 py-0.5">
-                <Input
+                <FieldInput
+                  size="xs"
                   value={renameText}
                   autoFocus
-                  className="h-6 flex-1 text-xs"
+                  className="flex-1"
                   onChange={(event) => setRenameText(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') void renameEverywhere(tag, renameText)

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { OwnerTagSelect } from '@/components/blueprint/OwnerTagSelect'
@@ -643,13 +644,14 @@ function CellPanelEditorForm({
         <div className="flex flex-col gap-1.5">
           {form.valueProps.map((entry, index) => (
             <div key={index} className="flex items-center gap-1.5">
-              <Input
+              <FieldInput
+                size="sm"
                 value={entry.for}
                 placeholder="For…"
                 // Suggests the audiences already in use — same tag logic as
                 // owners, lighter control: a datalist suggests, never blocks.
                 list="cell-value-audiences"
-                className="h-7 w-24 shrink-0 text-xs"
+                className="w-24 shrink-0"
                 onChange={(event) =>
                   set(
                     'valueProps',
@@ -661,10 +663,11 @@ function CellPanelEditorForm({
                   )
                 }
               />
-              <Input
+              <FieldInput
+                size="sm"
                 value={entry.value}
                 placeholder="…gets this"
-                className="h-7 min-w-0 flex-1 text-xs"
+                className="min-w-0 flex-1"
                 onChange={(event) =>
                   set(
                     'valueProps',

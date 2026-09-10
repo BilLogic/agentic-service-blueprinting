@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 
 /**
@@ -102,17 +102,18 @@ export function AdminSessionFields() {
 
   return (
     <>
-      <Input
+      <FieldInput
+        size="sm"
         type="email"
         value={emailDraft}
         onChange={(event) => setEmailDraft(event.target.value)}
         placeholder="admin@…"
-        className="h-7 text-xs"
         aria-label="Admin email"
         autoComplete="email"
       />
       <div className="flex items-center gap-2">
-        <Input
+        <FieldInput
+          size="sm"
           type="password"
           value={passwordDraft}
           onChange={(event) => setPasswordDraft(event.target.value)}
@@ -120,7 +121,7 @@ export function AdminSessionFields() {
             if (event.key === 'Enter') signIn()
           }}
           placeholder="Password"
-          className="h-7 min-w-0 flex-1 text-xs"
+          className="min-w-0 flex-1"
           aria-label="Admin password"
           autoComplete="current-password"
         />

@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { Skeleton } from '@/components/ui/skeleton'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { useSupabase } from '@/contexts/SupabaseProvider'
@@ -180,11 +180,12 @@ function ResourceListRow({
           <span className="sr-only">{`, ${row.url}`}</span>
         </span>
       ) : (
-        <Input
+        <FieldInput
+          size="xs"
           autoFocus
           value={renaming}
           aria-label={`Rename ${row.name}`}
-          className="h-6 min-w-0 flex-1 text-xs"
+          className="min-w-0 flex-1"
           onChange={(event) => setRenaming(event.target.value)}
           // Two exits, and blur is not one of them. The menu that opened this
           // is the only way in, and it hands focus back to its own trigger as
@@ -561,11 +562,12 @@ export function ResourcesList({
       ) : null}
 
       <div className="flex items-center gap-1.5">
-        <Input
+        <FieldInput
+          size="sm"
           value={pasted}
           placeholder="Paste a link…"
           aria-label="Paste a link"
-          className="h-7 flex-1 text-xs"
+          className="flex-1"
           aria-invalid={pasteProblem?.ok === false || undefined}
           onChange={(event) => setPasted(event.target.value)}
           onKeyDown={(event) => {

@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { listModels } from '@/lib/agent/providers/models'
 import {
   AGENT_PROVIDERS,
@@ -146,12 +146,13 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
         <span className="w-14 shrink-0 text-2xs text-muted-foreground">
           API key
         </span>
-        <Input
+        <FieldInput
+          size="sm"
           type="password"
           value={keyDraft}
           onChange={(event) => setKeyDraft(event.target.value)}
           placeholder={savedKey ? '••••••••  saved' : 'Paste key'}
-          className="h-7 min-w-0 flex-1 font-mono text-xs"
+          className="min-w-0 flex-1 font-mono"
           aria-label="API key"
         />
         <Button

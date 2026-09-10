@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import {
   Field,
@@ -257,12 +257,12 @@ function LanePanelBody({
       >
         {canEdit ? (
           <>
-            <Input
+            <FieldInput
+              size="sm"
               value={form.ownerTeam}
               // A datalist suggests, never blocks — same treatment as the
               // cell panel's owner field, and the same vocabulary behind it.
               list="lane-owner-tags"
-              className="h-7 text-xs"
               onChange={(event) => set('ownerTeam', event.target.value)}
             />
             <datalist id="lane-owner-tags">
@@ -351,11 +351,12 @@ function StringListField({
       <div className="flex flex-col gap-1.5">
         {values.map((value, index) => (
           <div key={index} className="flex items-center gap-1.5">
-            <Input
+            <FieldInput
+              size="sm"
               value={value}
               placeholder={placeholder}
               disabled={disabled}
-              className="h-7 min-w-0 flex-1 text-xs"
+              className="min-w-0 flex-1"
               onChange={(event) =>
                 onChange(
                   values.map((item, itemIndex) =>

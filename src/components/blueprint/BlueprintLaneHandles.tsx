@@ -7,7 +7,7 @@ import {
 } from 'react'
 import { Plus } from 'lucide-react'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { useAtScenarioLevel, useEditor } from '@/contexts/EditorContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useCellPick } from '@/contexts/cellPickContext'
@@ -178,11 +178,12 @@ function BlueprintLaneHandlesActive({
           className="pointer-events-auto absolute left-6 z-40 flex items-center gap-1.5 rounded-md border border-border bg-popover p-1.5 shadow-md"
           style={{ top: naming.y - 16, width: Math.min(260, bodyWidth - 48) }}
         >
-          <Input
+          <FieldInput
+            size="xs"
             ref={inputRef}
             value={name}
             placeholder="Lane name"
-            className="h-6 flex-1 text-xs"
+            className="flex-1"
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') void create()

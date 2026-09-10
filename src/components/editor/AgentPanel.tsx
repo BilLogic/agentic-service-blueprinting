@@ -39,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { Input } from '@/components/ui/input'
 import {
   InputGroup,
@@ -380,7 +381,8 @@ function AgentSessionsView({
       {/* Header: title, hover-priority actions — the Figma Pages row. */}
       <div className="flex h-9 shrink-0 items-center gap-1 px-2">
         {searchOpen ? (
-          <Input
+          <FieldInput
+            size="xs"
             ref={searchRef}
             autoFocus
             value={query}
@@ -392,7 +394,7 @@ function AgentSessionsView({
               }
             }}
             placeholder="Filter sessions…"
-            className="h-6 flex-1 text-xs"
+            className="flex-1"
             aria-label="Filter sessions"
           />
         ) : (

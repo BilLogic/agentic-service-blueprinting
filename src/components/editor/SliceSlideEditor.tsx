@@ -7,7 +7,7 @@ import {
 } from '@/lib/slideSheetHeight'
 import { ChevronDown, GripVertical, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { FieldInput } from '@/components/blueprint/FieldInput'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { SlideImagesField } from '@/components/editor/SlideImagesField'
 import { cn } from '@/lib/utils'
@@ -277,7 +277,8 @@ export function SliceSlideEditor({
               <span className="grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-3xs font-semibold text-contrast">
                 {index + 1}
               </span>
-              <Input
+              <FieldInput
+                size="xs"
                 value={slide.title}
                 // A placeholder is not a label: it disappears the moment
                 // somebody types, so a FILLED card is two unnamed boxes, and
@@ -287,7 +288,7 @@ export function SliceSlideEditor({
                 // is, so the name is the accessible one.
                 aria-label={`Slide ${index + 1} title`}
                 placeholder="Slide title"
-                className="h-6 min-w-0 flex-1 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+                className="min-w-0 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) =>
                   onChange(
