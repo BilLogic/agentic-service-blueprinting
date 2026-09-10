@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/popover'
 import { usePathSelectionContext } from '@/hooks/usePathSelection'
 import { getPathColor } from '@/lib/pathColorTheme'
+import { IconTooltip } from '@/components/editor/IconTooltip'
 import { cn } from '@/lib/utils'
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
@@ -51,41 +52,45 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
     >
       {options.length === 0 ? null : (
         <Popover>
-          <PopoverTrigger
-            render={
-              <button
-                type="button"
-                aria-label={`Paths shown: ${
-                  selected.length > 0
-                    ? selected.map((option) => option.name).join(', ')
-                    : 'none'
-                }`}
-                className={cn(
-                  'pointer-events-auto flex h-7 items-center gap-1.5 rounded-full border border-border bg-card',
-                  'px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground',
-                )}
-              >
-                <span className="flex items-center" aria-hidden>
-                  {dots.map((option, index) => (
-                    <span
-                      key={option.id}
-                      className={cn(
-                        'size-2.5 rounded-full ring-1 ring-card',
-                        index > 0 && '-ml-1',
-                      )}
-                      style={{ backgroundColor: getPathColor(option) }}
-                    />
-                  ))}
-                </span>
-                <span className="max-w-24 truncate">
-                  {selected.length === 1
-                    ? selected[0].name
-                    : `${selected.length} paths`}
-                </span>
-                <ChevronDown className="size-3 shrink-0" aria-hidden />
-              </button>
-            }
-          />
+          {/* Its face is dots and a count: the tooltip says what the control
+              does; the aria-label keeps the name. */}
+          <IconTooltip label="Choose which paths are shown">
+            <PopoverTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={`Paths shown: ${
+                    selected.length > 0
+                      ? selected.map((option) => option.name).join(', ')
+                      : 'none'
+                  }`}
+                  className={cn(
+                    'pointer-events-auto flex h-7 items-center gap-1.5 rounded-full border border-border bg-card',
+                    'px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground',
+                  )}
+                >
+                  <span className="flex items-center" aria-hidden>
+                    {dots.map((option, index) => (
+                      <span
+                        key={option.id}
+                        className={cn(
+                          'size-2.5 rounded-full ring-1 ring-card',
+                          index > 0 && '-ml-1',
+                        )}
+                        style={{ backgroundColor: getPathColor(option) }}
+                      />
+                    ))}
+                  </span>
+                  <span className="max-w-24 truncate">
+                    {selected.length === 1
+                      ? selected[0].name
+                      : `${selected.length} paths`}
+                  </span>
+                  <ChevronDown className="size-3 shrink-0" aria-hidden />
+                </button>
+              }
+            />
+          </IconTooltip>
           <PopoverContent align="end" className="w-72 p-1.5">
             {/* What a PATH is, where the reader picks one. The in-grid
                 path badge already carries this definition; the selector is the
