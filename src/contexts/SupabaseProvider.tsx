@@ -23,11 +23,6 @@ import type { Tier } from '../lib/backend/ports'
 import { sessionRefresher, setSessionReconciler } from '../lib/sessionReconcile'
 import type { Database } from '../types/database'
 import { hasKey, useAgentSettings } from '../lib/agent/settings'
-import {
-  applyDevSimulation,
-  useDevSimulation,
-  type DevSimulation,
-} from '../lib/devPortal'
 
 type SupabaseContextValue = {
   client: SupabaseClient<Database> | null
@@ -84,13 +79,16 @@ type SupabaseContextValue = {
    * read-only against the bundled sample blueprint.
    */
   isSampleTrial: boolean
-  /** Developer-portal tier simulation — client-side UI gating only. */
-  devSimulation: DevSimulation
-  /** The write flag BEFORE the simulation, for the honest readout. */
-  realCanWrite: boolean
 }
 
-const SupabaseContext = createContext<SupabaseContextValue | null>(null)
+/**
+ * Exported so an installation's own tooling can mount a second provider under
+ * this one and shadow what the tree believes about the session. Nothing in
+ * `src/` does — this app has exactly one provider of it, and a second one is
+ * a thing an ENTRY composes, never a thing the application arranges for
+ * itself.
+ */
+export const SupabaseContext = createContext<SupabaseContextValue | null>(null)
 
 type SupabaseProviderProps = {
   children: ReactNode
@@ -266,7 +264,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   const isLoading =
     isSessionLoading || (userId !== null && answeredTier === null)
 
-  const realCanWrite = configured && (isServiceAccount || isEditPreview)
+  const canWrite = configured && (isServiceAccount || isEditPreview)
 
   /*
    * No-database trial. With nothing configured, the canvas already renders
@@ -278,14 +276,6 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   const agentSettings = useAgentSettings()
   const isSampleTrial = !configured && hasKey(agentSettings)
 
-  /*
-   * Developer portal. Client-side ONLY: it moves what the UI believes about
-   * this session's tier and touches no policy. RLS and the RPC grants are
-   * unchanged and remain the authority — see lib/devPortal.ts.
-   */
-  const devSimulation = useDevSimulation()
-  const canWrite = applyDevSimulation(devSimulation, realCanWrite)
-
   const value = useMemo(
     () => ({
       client,
@@ -293,7 +283,6 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       session,
       isLoading,
       canWrite,
-      realCanWrite,
       canAgentWrite: canWrite && !isSampleTrial,
       isDevAuthoring,
       isEditPreview,
@@ -302,7 +291,6 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
         isSampleTrial || (configured && (session !== null || isDevAuthoring)),
       canReadPrivate: configured && (session !== null || isDevAuthoring),
       isSampleTrial,
-      devSimulation,
     }),
     [
       client,
@@ -310,12 +298,10 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       session,
       isLoading,
       canWrite,
-      realCanWrite,
       isDevAuthoring,
       isEditPreview,
       isSampleTrial,
       isServiceAccount,
-      devSimulation,
     ],
   )
 

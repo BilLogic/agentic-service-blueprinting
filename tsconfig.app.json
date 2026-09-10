@@ -37,5 +37,10 @@
     "noFallthroughCasesInSwitch": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src"]
+  // `dev` is this installation's own tooling — outside the application source
+  // every deployment carries, and reached only from `src/main.tsx` behind
+  // `import.meta.env.DEV`. It is typechecked with the app because it imports
+  // the app, and a tool that stops compiling is a tool nobody notices is
+  // broken. An installation with no `dev/` matches nothing here and is fine.
+  "include": ["src", "dev"]
 }
