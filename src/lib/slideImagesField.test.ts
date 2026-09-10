@@ -33,7 +33,15 @@ describe('a slide shows a set of images', () => {
   })
 
   it('does not offer remove on cell frames', () => {
-    expect(field).not.toMatch(/Remove this/)
+    expect(field).toContain('Remove this image')
+    expect(field).not.toContain('Remove this frame')
+  })
+
+  it('lets an upload join the set on a unique path', () => {
+    expect(field).toContain('joinUpload(publicUrl)')
+    expect(field).toContain('illustrationPath(sliceId, itemId, file.type)')
+    expect(field).toContain('upsert: false')
+    expect(field).toContain('isRenderableImageSrc(publicUrl)')
   })
 
   it('never truncates presentation at 3', () => {

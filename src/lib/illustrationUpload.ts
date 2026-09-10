@@ -65,29 +65,26 @@ export function checkIllustrationFile(file: {
 }
 
 /**
- * Where one image lives: under its slide, under its own name.
+ * Where one image lives: `slices/<sliceId>/<slideId>/<uuid>.ext`.
  *
- * This used to derive ONE path per slide and upsert onto it, so a replacement
- * overwrote its predecessor and nothing was ever orphaned. That was the right
- * trade while a slide held one image. A slide keeps a POOL now, and a pool
- * whose members share a path is a pool of one.
+ * A NEW name per upload, never an upsert onto a shared path. Two uploads
+ * must not collide, and because no object is overwritten a URL's content
+ * never changes.
  *
- * The orphan the old shape avoided is now real and deliberately tolerated:
- * dropping an image from the pool leaves the object in the bucket, exactly as
- * clearing the old column already did, and for the same reason — a merge can
- * copy one slide's pool onto another, and a delete here would break a slide
- * nobody asked to change. Storage is cheap; a slide that renders a broken
- * image is not.
- *
- * Not overwriting also retires the cache-buster. `{src, updated_at}` existed
- * because a URL's content could change under a reader; a name minted per
- * upload means it never can.
+ * Dropping an image from the set leaves the object in the bucket, exactly as
+ * clearing the old column already did, and for the same reason — a duplicate
+ * can copy one slide's members onto another, and a delete here would break a
+ * slide nobody asked to change. Deleting a slide also leaves the files: the
+ * row cascade does not reach storage, and this helper never did.
  *
  * The `slices/` prefix is not decoration: the bucket's insert policy matches
  * on the object name, and an unprefixed path is refused. Keyed by the slide's
- * row id rather than its position, because positions move — splitting or
- * reordering slides renumbers them, and a position-keyed image would silently
- * end up on a different slide.
+ * row id rather than its position, because positions move.
+ *
+ * @param {string} sliceId - The slice that owns the slide.
+ * @param {string} itemId - The slide's row id.
+ * @param {string} mimeType - Used only to pick the file extension.
+ * @returns {string} A unique object path in the slice-illustrations bucket.
  */
 export function illustrationPath(
   sliceId: string,
@@ -95,11 +92,6 @@ export function illustrationPath(
   mimeType: string,
 ): string {
   const extension = EXTENSIONS[mimeType] ?? 'png'
-  // A NEW name per upload, not one derived name upserted over. A slide keeps
-  // a pool, so a second image must not land on the first — and because no
-  // object is ever overwritten, a URL's content never changes and there is
-  // nothing for a cache-buster to bust. That is what retired the
-  // `{src, updated_at}` shape the single column carried.
   return `slices/${sliceId}/${itemId}/${crypto.randomUUID()}.${extension}`
 }
 

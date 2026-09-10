@@ -11908,6 +11908,31 @@ end
 $uncite$;
 
 -- ─────────────────────────────────────────────────────────────────────────
+-- 21000222000000_an_upload_joins_the_slide_set.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- An uploaded image is a member of the same set as a cell's frame.
+
+comment on column public.slide_images.image_url is
+  'Show this uploaded image. It joins the slide''s set; it does not replace '
+  'the cited cells'' frames.';
+
+
+do $upload$
+begin
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'slide_images'
+       and column_name = 'image_url'
+  ) then
+    raise exception 'slide_images.image_url is not there';
+  end if;
+end
+$upload$;
+
+-- ─────────────────────────────────────────────────────────────────────────
 -- 21000223000000_a_lane_position_is_unique_within_its_path.sql
 -- ─────────────────────────────────────────────────────────────────────────
 

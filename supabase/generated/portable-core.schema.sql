@@ -3410,7 +3410,7 @@ COMMENT ON COLUMN public.slide_images.cell_id IS 'Show this cell''s frame. Casca
 -- Name: COLUMN slide_images.image_url; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.slide_images.image_url IS 'Show this uploaded image. Unused until a slide can carry uploads in the set.';
+COMMENT ON COLUMN public.slide_images.image_url IS 'Show this uploaded image. It joins the slide''s set; it does not replace the cited cells'' frames.';
 
 --
 -- Name: slides; Type: TABLE; Schema: public; Owner: -

@@ -1,13 +1,22 @@
-import { useState } from 'react'
-import { IconTooltip } from '@/components/editor/IconTooltip'
+import { useRef, useState } from 'react'
+import { ImagePlus, Loader2, X } from 'lucide-react'
 import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
+import { IconTooltip } from '@/components/editor/IconTooltip'
+import { Button } from '@/components/ui/button'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import {
+  ALLOWED_ILLUSTRATION_TYPES,
+  ILLUSTRATION_BUCKET,
+  checkIllustrationFile,
+  illustrationPath,
+} from '@/lib/illustrationUpload'
+import {
   replaceSlideImageSet,
   type SlideImageMemberInput,
 } from '@/lib/sliceMutations'
+import { isRenderableImageSrc } from '@/lib/sliceCells'
 import { frameForCitedCell } from '@/lib/slideImages'
 import { cn, errorMessage } from '@/lib/utils'
 import type { Slide } from '@/types/database'
@@ -42,8 +51,9 @@ function withPositions(
  * Tiles are the cited cells' frames plus any `image_url` members already on
  * the row. The first tick or untick writes an explicit set
  * (`shows_all_images` false). Cell frames cannot be removed from the slide
- * here — only unticked. This list is the slide's images, not a step's frames
- * across lanes.
+ * here — only unticked. An upload joins the same set as an `image_url`
+ * member and is the only tile that can be removed. This list is the slide's
+ * images, not a step's frames across lanes.
  *
  * Only offered on a saved slide, because members are keyed by `slides.id`.
  */
@@ -59,6 +69,7 @@ export function SlideImagesField({
   saved: Slide | null
 }) {
   const { client, canWrite } = useSupabase()
+  const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const { blueprint, items } = useSliceBlueprint(sliceId)
@@ -160,6 +171,69 @@ export function SlideImagesField({
     void writeExplicit(next)
   }
 
+  /**
+   * Add an uploaded image as the next member. An untouched slide first
+   * materialises its cited frames so the upload joins them rather than
+   * replacing them.
+   *
+   * @param {string} url - Public URL of the uploaded object.
+   */
+  const joinUpload = async (url: string) => {
+    await writeExplicit([...explicitOrder(), { cell_id: null, image_url: url }])
+  }
+
+  /**
+   * Drop an upload from the set. The file is left in the bucket, matching
+   * the helper: a copied slide can still point at it.
+   *
+   * @param {string} url - The `image_url` member to drop.
+   */
+  const removeUpload = (url: string) => {
+    void writeExplicit(explicitOrder().filter((member) => member.image_url !== url))
+  }
+
+  const handleFile = async (file: File) => {
+    const check = checkIllustrationFile(file)
+    if (!check.ok) {
+      setProblem(check.problem)
+      return
+    }
+
+    setBusy(true)
+    setProblem(null)
+    let stage: 'upload' | 'row' = 'upload'
+    try {
+      const path = illustrationPath(sliceId, itemId, file.type)
+      const upload = await client.storage
+        .from(ILLUSTRATION_BUCKET)
+        .upload(path, file, { upsert: false, contentType: file.type })
+      if (upload.error) throw new Error(upload.error.message)
+
+      const {
+        data: { publicUrl },
+      } = client.storage.from(ILLUSTRATION_BUCKET).getPublicUrl(path)
+      if (!isRenderableImageSrc(publicUrl)) {
+        throw new Error('That image URL cannot be shown.')
+      }
+
+      stage = 'row'
+      await joinUpload(publicUrl)
+    } catch (uploadError) {
+      const message = errorMessage(uploadError)
+      console.error(`[slide-images] ${stage} failed:`, message)
+      if (stage === 'row') {
+        setProblem(message)
+      } else {
+        setProblem(
+          /mime|content type/i.test(message)
+            ? 'Storage refused that format. Until the authoring migration runs, only PNG is accepted.'
+            : 'That image could not be saved. The details are in the console.',
+        )
+      }
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-1" onClick={(event) => event.stopPropagation()}>
       <div className="flex items-baseline justify-between gap-2">
@@ -250,9 +324,51 @@ export function SlideImagesField({
                   {on ? '✓' : ''}
                 </button>
               </IconTooltip>
+              <IconTooltip label="Remove this image from the slide">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled={busy}
+                  aria-label="Remove this image"
+                  className="absolute top-0.5 right-0.5 size-4 bg-background/80 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeUpload(src)}
+                >
+                  <X className="size-2.5" aria-hidden />
+                </Button>
+              </IconTooltip>
             </div>
           )
         })}
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ALLOWED_ILLUSTRATION_TYPES.join(',')}
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            event.target.value = ''
+            if (file) void handleFile(file)
+          }}
+        />
+        <IconTooltip label="Upload an image for this slide">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            disabled={busy}
+            aria-label="Upload an image"
+            className="aspect-[4/3] w-16 shrink-0 rounded-sm border border-border border-dashed text-muted-foreground"
+            onClick={() => inputRef.current?.click()}
+          >
+            {busy ? (
+              <Loader2 className="size-3 animate-spin" aria-hidden />
+            ) : (
+              <ImagePlus className="size-3" aria-hidden />
+            )}
+          </Button>
+        </IconTooltip>
       </div>
 
       <p className="text-3xs text-muted-foreground">
