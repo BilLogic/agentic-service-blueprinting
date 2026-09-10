@@ -94,54 +94,6 @@ export function filterPathsForScenarioUi<T extends { id: string }>(
   return paths.filter((path) => !hiddenIds.has(path.id))
 }
 
-/** Union DB paths with registered fallback paths missing from the database. */
-export function mergePathsWithFallback<
-  T extends {
-    id: string
-    name: string
-    summary: string | null
-    note: string | null
-    kind: BlueprintData['path']['kind']
-  },
->(scenarioId: string | undefined, paths: readonly T[]): T[] {
-  const fallbackPaths = getFallbackPathsForScenario(scenarioId)
-  if (!scenarioId || fallbackPaths.length === 0) {
-    return filterPathsForScenarioUi(scenarioId, paths)
-  }
-
-  const merged = new Map(
-    filterPathsForScenarioUi(scenarioId, paths).map((path) => [path.id, path]),
-  )
-  for (const fallbackPath of fallbackPaths) {
-    const existing = merged.get(fallbackPath.id)
-    if (existing) {
-      merged.set(fallbackPath.id, {
-        ...existing,
-        name: existing.name.trim() ? existing.name : fallbackPath.name,
-        summary: existing.summary ?? fallbackPath.summary,
-        note: existing.note ?? fallbackPath.note,
-      })
-    } else {
-      const hasPathOfType = [...merged.values()].some(
-        (path) => path.kind === fallbackPath.kind,
-      )
-      if (!hasPathOfType) {
-        merged.set(fallbackPath.id, fallbackPath as T)
-      }
-    }
-  }
-
-  const order = fallbackPaths.map((path) => path.id)
-  return [...merged.values()].sort((a, b) => {
-    const aIndex = order.indexOf(a.id)
-    const bIndex = order.indexOf(b.id)
-    if (aIndex === -1 && bIndex === -1) return a.name.localeCompare(b.name)
-    if (aIndex === -1) return 1
-    if (bIndex === -1) return -1
-    return aIndex - bIndex
-  })
-}
-
 export function getFallbackPathsForScenario(
   scenarioId: string | undefined,
 ): FallbackPathListItem[] {

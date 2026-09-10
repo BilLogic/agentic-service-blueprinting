@@ -1,25 +1,24 @@
 /**
- * Which board a scenario draws, and what the fallback is allowed to add to it.
+ * Which board a scenario draws, and where it is allowed to come from.
  *
  * `resolveBlueprintForScenario` is the one place that decides between the two
- * sources a board can arrive from — the database, and the fallback blueprint
- * a build with no database serves — and then reconciles them. It once also
- * carried read-time repairs for one deployment's own rows, gated on that
- * deployment's hardcoded scenario and path UUIDs. Those are gone: the faults
- * they patched were corrected at source, and what is left is the general
- * rule.
+ * sources a board can arrive from — a deployment's database, and the sample
+ * blueprint bundled with the kit — and the rule it now applies is that they
+ * never mix. A configured database is the whole truth: its rows draw as they
+ * are, and where it holds nothing the board holds nothing. The sample answers
+ * only for a clone with no database configured at all.
  *
- * That rule is DB-WINS, and it is worth stating plainly because "merge" is
- * ambiguous and this one is not. A value the database holds is never
- * overwritten and never moved. A value it left empty may be filled from the
- * fallback. A row it does not have at all may be appended. Nothing is ever
- * removed. Every test below is one clause of that sentence.
+ * It used to merge them, DB-wins: every fallback lane, cell, step and
+ * dependency the rows lacked was appended, and a blank path name, summary or
+ * note was filled from the fallback's prose. The tests below are what replaced
+ * that suite, and the one they exist for is `a sparse board stays sparse` —
+ * an adopter's half-filled board must not come back wearing this kit's words.
  *
- * The fallback registry is mocked rather than read. This file is about the
- * merge, not about this deployment's twenty-odd fixture boards, and a test
- * that reached into `src/data` would fail the day somebody edited a fixture
- * for an unrelated reason — and would be unportable to the template, which
- * has its own. The registry's own contents are `check:seed-load`'s subject.
+ * Both the registry and the no-database gate are mocked rather than read. This
+ * file is about the decision, not about this deployment's twenty-odd fixture
+ * boards, and a test that reached into `src/data` would fail the day somebody
+ * edited a fixture for an unrelated reason. The registry's own contents are
+ * `check:seed-load`'s subject.
  */
 import { beforeEach, test, vi } from 'vitest'
 import assert from 'node:assert/strict'
@@ -30,20 +29,23 @@ import type {
   CellTouchpoint,
 } from '@/types/blueprint'
 import type { RawCell, RawPath } from '@/lib/normalizeBlueprint'
-import { BLUEPRINT_STEP_STORYBOARD_PLACEHOLDER } from '@/lib/blueprintStoryboardPlaceholder'
 
 type Registry = {
   fallback: BlueprintData | null
-  rawFallback: BlueprintData | null
+  /** Whether a database is configured — false means one is. */
+  sampleActive: boolean
 }
 
 const registry = vi.hoisted(
-  (): Registry => ({ fallback: null, rawFallback: null }),
+  (): Registry => ({ fallback: null, sampleActive: false }),
 )
 
 vi.mock('@/data/blueprintFallbacks', () => ({
   getBlueprintFallback: () => registry.fallback,
-  getRawBlueprintFallback: () => registry.rawFallback,
+}))
+
+vi.mock('@/lib/bundledSample', () => ({
+  isBundledSampleActive: () => registry.sampleActive,
 }))
 
 const { isBlueprintEmpty, resolveBlueprintForScenario } = await import(
@@ -52,6 +54,14 @@ const { isBlueprintEmpty, resolveBlueprintForScenario } = await import(
 
 const SCENARIO = 'scenario-1'
 const PATH = 'path-1'
+
+/**
+ * The one string every piece of sample content in this file carries. Nothing
+ * bearing it may appear on a board that came from a database — which is one
+ * `includes` rather than an assertion per field, so a field added to the merge
+ * later cannot slip past the suite by being new.
+ */
+const SAMPLE_MARK = 'sample-only'
 
 /** A fallback cell: no placements and no resources unless the test gives it some. */
 function fallbackCell(cell: Partial<BlueprintCell> & { id: string }): BlueprintCell {
@@ -82,6 +92,82 @@ function fallbackBlueprint(data: Partial<BlueprintData>): BlueprintData {
     cells: [],
     dependencies: [],
     ...data,
+  }
+}
+
+/**
+ * The sample as the registry would hand it over: a full board, every string
+ * marked, and one cell id (`cell-1`) deliberately shared with the database so
+ * the field-level fill has something to try.
+ */
+function markedSample(): BlueprintData {
+  const resources: CellResource[] = [
+    {
+      id: null,
+      name: 'sample-only Handbook',
+      kind: 'link',
+      url: 'https://example.invalid/sample-only',
+      placementId: null,
+      featured: false,
+    },
+  ]
+  const touchpoints: CellTouchpoint[] = [
+    {
+      id: null,
+      touchpointId: null,
+      name: 'sample-only Zoom',
+      kind: null,
+      summary: 'sample-only placement summary',
+      role: 'core',
+    },
+  ]
+
+  return {
+    path: {
+      id: PATH,
+      name: 'sample-only path name',
+      summary: 'sample-only path summary',
+      note: 'sample-only path note',
+      kind: 'happy',
+      status: 'live',
+    },
+    lanes: [
+      { id: 'sample-lane-a', name: 'sample-only Frontstage', position: 1 },
+      { id: 'sample-lane-b', name: 'sample-only Backstage', position: 2 },
+    ],
+    steps: [
+      { id: 'sample-step-0', name: 'sample-only Before', position: 0 },
+      { id: 'sample-step-2', name: 'sample-only After', position: 2 },
+    ],
+    cells: [
+      fallbackCell({
+        id: 'sample-cell-1',
+        lane_id: 'sample-lane-a',
+        step_id: 'sample-step-0',
+        content: 'sample-only content',
+        summary: 'sample-only summary',
+        frame: '/frames/sample-only.png',
+        resources,
+        touchpoints,
+      }),
+      // Same id as the database's one cell: every field it left empty is a
+      // field the merge used to fill from here.
+      fallbackCell({
+        id: 'cell-1',
+        content: 'sample-only content',
+        summary: 'sample-only summary',
+        frame: '/frames/sample-only.png',
+        resources,
+        touchpoints,
+      }),
+    ],
+    dependencies: [
+      {
+        id: 'sample-dep-1',
+        source_cell_id: 'sample-cell-1',
+        target_cell_id: 'cell-1',
+      },
+    ],
   }
 }
 
@@ -121,9 +207,20 @@ function cellNamed(data: BlueprintData, id: string): BlueprintCell {
   return cell
 }
 
+/** Nothing the sample carries is anywhere in this board, at any depth. */
+function assertNoSampleContent(data: BlueprintData | null): void {
+  assert.ok(data, 'expected a board')
+  assert.ok(
+    !JSON.stringify(data).includes(SAMPLE_MARK),
+    `sample content reached the board: ${JSON.stringify(data)}`,
+  )
+}
+
 beforeEach(() => {
   registry.fallback = null
-  registry.rawFallback = null
+  // The default for this file: a database IS configured, which is the state
+  // every adopter is in and the state the leak lived in.
+  registry.sampleActive = false
 })
 
 test('a board with no lanes is empty, whatever else it carries', () => {
@@ -134,25 +231,149 @@ test('a board with no lanes is empty, whatever else it carries', () => {
   assert.equal(isBlueprintEmpty(fallbackBlueprint({})), false)
 })
 
-test('no path and no fallback resolves to nothing rather than to an empty board', () => {
-  // The distinction the caller needs: a board that is empty is a board, and
-  // draws as one. `null` means there is nothing here to draw at all.
+test('a sparse board stays sparse: nothing from the sample reaches it', () => {
+  registry.fallback = markedSample()
+
+  const resolved = resolveBlueprintForScenario(
+    SCENARIO,
+    databasePath({
+      // One lane, one column, one cell, and every prose field left empty —
+      // the shape of a board somebody has only just started.
+      name: '',
+      summary: null,
+      note: null,
+      cells: [databaseCell({ id: 'cell-1' })],
+    }),
+  )
+
+  assert.equal(resolved.source, 'database')
+  assertNoSampleContent(resolved.blueprint)
+
+  const board = resolved.blueprint!
+  assert.deepEqual(board.lanes.map((lane) => lane.id), ['lane-a'])
+  assert.deepEqual(board.steps.map((step) => step.id), ['step-1'])
+  assert.deepEqual(board.cells.map((cell) => cell.id), ['cell-1'])
+  assert.deepEqual(board.dependencies, [])
+
+  // The empty fields stay empty. An empty summary is a summary nobody has
+  // written yet, and that is worth knowing.
+  const cell = cellNamed(board, 'cell-1')
+  assert.equal(cell.content, '')
+  assert.equal(cell.summary ?? null, null)
+  assert.equal(cell.frame ?? null, null)
+  assert.deepEqual(cell.resources ?? [], [])
+  assert.deepEqual(cell.touchpoints ?? [], [])
+  assert.equal(board.path.name, '')
+  assert.equal(board.path.summary, null)
+  assert.equal(board.path.note, null)
+})
+
+test('an empty lane is an empty lane', () => {
+  registry.fallback = fallbackBlueprint({
+    cells: [
+      fallbackCell({ id: 'sample-cell-1', content: 'sample-only content' }),
+    ],
+  })
+
+  const resolved = resolveBlueprintForScenario(
+    SCENARIO,
+    databasePath({ cells: [] }),
+  )
+
+  assert.equal(resolved.source, 'database')
+  assertNoSampleContent(resolved.blueprint)
+  assert.deepEqual(resolved.blueprint?.lanes.map((lane) => lane.id), ['lane-a'])
+  assert.deepEqual(resolved.blueprint?.cells, [])
+})
+
+test('a database board comes back with its lanes and steps in position order', () => {
+  const resolved = resolveBlueprintForScenario(
+    SCENARIO,
+    databasePath({
+      lanes: [
+        { id: 'lane-b', name: 'Student', position: 2 },
+        { id: 'lane-a', name: 'Tutor', position: 1 },
+      ],
+      path_steps: [
+        { position: 2, steps: { id: 'step-2', name: 'Leave', summary: null } },
+        { position: 1, steps: { id: 'step-1', name: 'Arrive', summary: null } },
+      ],
+      cells: [databaseCell({ id: 'cell-1', content: 'Greet' })],
+    }),
+  )
+
+  assert.equal(resolved.source, 'database')
+  assert.deepEqual(resolved.blueprint?.lanes.map((lane) => lane.id), [
+    'lane-a',
+    'lane-b',
+  ])
+  assert.deepEqual(resolved.blueprint?.steps.map((step) => step.id), [
+    'step-1',
+    'step-2',
+  ])
+  assert.equal(cellNamed(resolved.blueprint!, 'cell-1').content, 'Greet')
+})
+
+test('two lanes the database gave the same name are two lanes', () => {
+  // The merge used to collapse same-named lanes, because the fixture and the
+  // rows were authored apart and a fallback lane arrived under a name the
+  // database already had. With nothing being appended there is no such
+  // artefact left to clean up, and collapsing two rows a deployment wrote on
+  // purpose would be this function overruling the database again.
+  const resolved = resolveBlueprintForScenario(
+    SCENARIO,
+    databasePath({
+      lanes: [
+        { id: 'lane-a', name: 'Tutor', position: 1 },
+        { id: 'lane-a2', name: 'Tutor', position: 2 },
+      ],
+      cells: [
+        databaseCell({ id: 'cell-1' }),
+        databaseCell({ id: 'cell-2', lane_id: 'lane-a2' }),
+      ],
+    }),
+  )
+
+  assert.deepEqual(resolved.blueprint?.lanes.map((lane) => lane.id), [
+    'lane-a',
+    'lane-a2',
+  ])
+  assert.equal(cellNamed(resolved.blueprint!, 'cell-2').lane_id, 'lane-a2')
+})
+
+test('a path the database has no lanes for draws nothing, not the sample', () => {
+  registry.fallback = markedSample()
+
+  const resolved = resolveBlueprintForScenario(
+    SCENARIO,
+    databasePath({ lanes: [] }),
+  )
+
+  // `null` means there is nothing here to draw, and the caller renders its
+  // empty state. Before this it meant "here is the kit's board instead".
+  assert.deepEqual(resolved, { blueprint: null, source: null })
+})
+
+test('a scenario the database has no path for draws nothing, not the sample', () => {
+  registry.fallback = markedSample()
+
   assert.deepEqual(resolveBlueprintForScenario(SCENARIO, null), {
     blueprint: null,
     source: null,
   })
 })
 
-test('a path the database has no lanes for falls through to the fallback', () => {
-  registry.fallback = fallbackBlueprint({})
+test('no path and no sample resolves to nothing rather than to an empty board', () => {
+  registry.sampleActive = true
 
-  const resolved = resolveBlueprintForScenario(SCENARIO, databasePath({ lanes: [] }))
-
-  assert.equal(resolved.source, 'fallback')
-  assert.deepEqual(resolved.blueprint?.lanes.map((lane) => lane.id), ['lane-a'])
+  assert.deepEqual(resolveBlueprintForScenario(SCENARIO, null), {
+    blueprint: null,
+    source: null,
+  })
 })
 
-test('a fallback board comes back with its lanes and steps in position order', () => {
+test('with no database configured the sample is the board, in position order', () => {
+  registry.sampleActive = true
   registry.fallback = fallbackBlueprint({
     lanes: [
       { id: 'lane-b', name: 'Student', position: 2 },
@@ -162,6 +383,7 @@ test('a fallback board comes back with its lanes and steps in position order', (
       { id: 'step-2', name: 'Leave', position: 2 },
       { id: 'step-1', name: 'Arrive', position: 1 },
     ],
+    cells: [fallbackCell({ id: 'cell-1', content: 'Greet' })],
   })
 
   const resolved = resolveBlueprintForScenario(SCENARIO, null)
@@ -175,298 +397,33 @@ test('a fallback board comes back with its lanes and steps in position order', (
     'step-1',
     'step-2',
   ])
-})
-
-test('a database path with lanes wins, and says so', () => {
-  registry.fallback = fallbackBlueprint({})
-
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({ cells: [databaseCell({ id: 'cell-1', content: 'Greet' })] }),
-  )
-
-  assert.equal(resolved.source, 'database')
   assert.equal(cellNamed(resolved.blueprint!, 'cell-1').content, 'Greet')
 })
 
-test('the fallback fills a cell field the database left empty, and leaves a filled one alone', () => {
-  registry.fallback = fallbackBlueprint({
-    cells: [
-      fallbackCell({
-        id: 'cell-1',
-        content: 'Fallback content',
-        summary: 'Fallback summary',
-        frame: '/frames/fallback.png',
-      }),
-    ],
-  })
-
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({
-      cells: [
-        databaseCell({
-          id: 'cell-1',
-          content: 'Database content',
-          summary: '   ',
-          frame: null,
-        }),
-      ],
-    }),
-  )
-
-  const cell = cellNamed(resolved.blueprint!, 'cell-1')
-  assert.equal(cell.content, 'Database content')
-  // Whitespace is not a value. A summary of three spaces is an empty summary.
-  assert.equal(cell.summary, 'Fallback summary')
-  assert.equal(cell.frame, '/frames/fallback.png')
-})
-
-test('a placeholder frame counts as empty when the fallback has a real one, and not otherwise', () => {
-  registry.fallback = fallbackBlueprint({
-    cells: [
-      fallbackCell({ id: 'cell-1', frame: '/frames/real.png' }),
-      fallbackCell({
-        id: 'cell-2',
-        frame: BLUEPRINT_STEP_STORYBOARD_PLACEHOLDER,
-      }),
-    ],
-  })
-
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({
-      cells: [
-        databaseCell({
-          id: 'cell-1',
-          frame: BLUEPRINT_STEP_STORYBOARD_PLACEHOLDER,
-        }),
-        databaseCell({ id: 'cell-2', frame: '/frames/database.png' }),
-      ],
-    }),
-  )
-
-  assert.equal(cellNamed(resolved.blueprint!, 'cell-1').frame, '/frames/real.png')
-  // The reverse never happens: a real frame is never traded for a placeholder.
-  assert.equal(
-    cellNamed(resolved.blueprint!, 'cell-2').frame,
-    '/frames/database.png',
-  )
-})
-
-test('a fallback lane the database lacks is appended; one it has under another id is remapped', () => {
+test('with no database configured the sample keeps its lane deduplication', () => {
+  // A fixture authored across two paths can carry the same lane twice. The
+  // no-database board is the one place that still cleans up after itself,
+  // because there is no deployment whose data it could be overruling.
+  registry.sampleActive = true
   registry.fallback = fallbackBlueprint({
     lanes: [
-      // Same NAME as the database's lane, different id — the fixture and the
-      // rows were authored apart. Its cells must land on the database's lane
-      // rather than on a second lane drawn under the same heading.
-      { id: 'fallback-tutor', name: 'Tutor', position: 1 },
-      { id: 'lane-support', name: 'Support', position: 2 },
+      { id: 'lane-a', name: 'Tutor', position: 1 },
+      { id: 'lane-a-duplicate', name: 'Tutor', position: 2 },
     ],
     cells: [
-      fallbackCell({ id: 'cell-2', lane_id: 'fallback-tutor' }),
-      fallbackCell({ id: 'cell-3', lane_id: 'lane-support' }),
+      fallbackCell({
+        id: 'cell-2',
+        lane_id: 'lane-a-duplicate',
+        content: 'Greet',
+      }),
     ],
   })
 
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({ cells: [databaseCell({ id: 'cell-1' })] }),
-  )
+  const resolved = resolveBlueprintForScenario(SCENARIO, null)
 
-  assert.deepEqual(resolved.blueprint?.lanes.map((lane) => lane.id), [
-    'lane-a',
-    'lane-support',
-  ])
-  assert.equal(cellNamed(resolved.blueprint!, 'cell-2').lane_id, 'lane-a')
-  assert.equal(cellNamed(resolved.blueprint!, 'cell-3').lane_id, 'lane-support')
-})
-
-test('fallback steps and dependencies are appended, and steps come back in column order', () => {
-  registry.fallback = fallbackBlueprint({
-    steps: [
-      { id: 'step-1', name: 'Arrive', position: 1 },
-      { id: 'step-0', name: 'Before', position: 0 },
-    ],
-    cells: [fallbackCell({ id: 'cell-0', step_id: 'step-0' })],
-    dependencies: [
-      { id: 'dep-1', source_cell_id: 'cell-0', target_cell_id: 'cell-1' },
-    ],
-  })
-
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({ cells: [databaseCell({ id: 'cell-1' })] }),
-  )
-
-  assert.deepEqual(resolved.blueprint?.steps.map((step) => step.id), [
-    'step-0',
-    'step-1',
-  ])
-  assert.deepEqual(resolved.blueprint?.dependencies.map((edge) => edge.id), [
-    'dep-1',
-  ])
-})
-
-test('resources merge by name: an empty url fills, a filled one holds, a new name appends', () => {
-  const fallbackResources: CellResource[] = [
-    {
-      id: null,
-      name: 'Design',
-      kind: 'link',
-      url: 'https://fallback.example/design',
-      placementId: null,
-      featured: false,
-    },
-    {
-      id: null,
-      name: 'Handbook',
-      kind: 'link',
-      url: 'https://fallback.example/handbook',
-      placementId: null,
-      featured: false,
-    },
-    // Carries nothing the database could want, so it is not appended: a
-    // resource with nothing on the other end has nothing to render.
-    {
-      id: null,
-      name: 'Empty',
-      kind: 'link',
-      url: null,
-      placementId: null,
-      featured: false,
-    },
-  ]
-  registry.fallback = fallbackBlueprint({
-    cells: [fallbackCell({ id: 'cell-1', resources: fallbackResources })],
-  })
-
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({
-      cells: [
-        databaseCell({
-          id: 'cell-1',
-          resources: [
-            { position: 1, name: 'Design', url: null },
-            {
-              position: 2,
-              name: 'Handbook',
-              url: 'https://database.example/handbook',
-            },
-          ],
-        }),
-      ],
-    }),
-  )
-
-  const resources = cellNamed(resolved.blueprint!, 'cell-1').resources ?? []
-  assert.deepEqual(
-    resources.map((resource) => [resource.name, resource.url]),
-    [
-      ['Design', 'https://fallback.example/design'],
-      ['Handbook', 'https://database.example/handbook'],
-    ],
-  )
-})
-
-test('touchpoints merge by name: summary and role fill, and an empty fallback row is not appended', () => {
-  const fallbackTouchpoints: CellTouchpoint[] = [
-    {
-      id: null,
-      touchpointId: null,
-      name: 'Zoom',
-      kind: null,
-      summary: 'The tutor joins the breakout room.',
-      role: 'core',
-    },
-    {
-      id: null,
-      touchpointId: null,
-      name: 'Handbook',
-      kind: null,
-      summary: 'Looked up between questions.',
-      role: null,
-    },
-    { id: null, touchpointId: null, name: 'Email', kind: null, summary: null, role: null },
-  ]
-  registry.fallback = fallbackBlueprint({
-    cells: [fallbackCell({ id: 'cell-1', touchpoints: fallbackTouchpoints })],
-  })
-
-  const resolved = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({
-      cells: [
-        databaseCell({
-          id: 'cell-1',
-          cell_touchpoints: [
-            {
-              position: 1,
-              name: 'Zoom',
-              summary: null,
-              role: null,
-              touchpoints: null,
-            },
-          ],
-        }),
-      ],
-    }),
-  )
-
-  const touchpoints = cellNamed(resolved.blueprint!, 'cell-1').touchpoints ?? []
-  assert.deepEqual(
-    touchpoints.map((placement) => [
-      placement.name,
-      placement.summary,
-      placement.role,
-    ]),
-    [
-      ['Zoom', 'The tutor joins the breakout room.', 'core'],
-      ['Handbook', 'Looked up between questions.', null],
-    ],
-  )
-})
-
-test("the path's own summary and note fill from the fallback only when the database left them empty", () => {
-  // The key written here is `summary`, which is what the column is called and
-  // what `BlueprintPath` carries. It was `description` on one side once, and a
-  // key by that name landed beside the real one and was read by nobody — so
-  // the fallback's words for a route never appeared.
-  registry.rawFallback = fallbackBlueprint({
-    path: {
-      id: PATH,
-      name: 'Fallback name',
-      summary: 'When the student never joins.',
-      note: 'Fallback note',
-      kind: 'happy',
-      status: 'live',
-    },
-  })
-
-  const filled = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({
-      cells: [databaseCell({ id: 'cell-1' })],
-      summary: 'When the tutor is late.',
-      note: 'Database note',
-    }),
-  )
-  assert.equal(filled.blueprint?.path.summary, 'When the tutor is late.')
-  assert.equal(filled.blueprint?.path.note, 'Database note')
-
-  const empty = resolveBlueprintForScenario(
-    SCENARIO,
-    databasePath({
-      cells: [databaseCell({ id: 'cell-1' })],
-      name: '',
-      summary: null,
-      note: null,
-    }),
-  )
-  assert.equal(empty.blueprint?.path.summary, 'When the student never joins.')
-  assert.equal(empty.blueprint?.path.note, 'Fallback note')
-  assert.equal(empty.blueprint?.path.name, 'Fallback name')
-  // The retired key is gone rather than merely unread.
-  assert.ok(!('description' in (empty.blueprint?.path ?? {})))
+  // One lane under that heading, and the cells sit on it — whichever of the
+  // two ids the collapse kept (the one carrying the content).
+  const lanes = resolved.blueprint?.lanes ?? []
+  assert.deepEqual(lanes.map((lane) => lane.name), ['Tutor'])
+  assert.equal(cellNamed(resolved.blueprint!, 'cell-2').lane_id, lanes[0]!.id)
 })
