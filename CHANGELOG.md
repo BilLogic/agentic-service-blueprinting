@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.27.1
+
+### Patch Changes
+
+- ed55e60: Three contracts written against this template's own code, in a deployment built
+  on it, now run here: the DB-wins merge in `resolveBlueprintForScenario`, the
+  compare that weighs a cell's touchpoint placements, and the write gate's three
+  published flags. All three passed unmodified — they were held there only
+  because nobody had run them here.
+
 ## 1.27.0
 
 ### Minor Changes
@@ -3823,8 +3833,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
