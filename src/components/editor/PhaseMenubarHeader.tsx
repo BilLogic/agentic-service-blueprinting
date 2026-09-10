@@ -1,6 +1,7 @@
 import { Columns2, Diff, GitCompareArrows } from 'lucide-react'
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 import { EntityHeader } from '@/components/blueprint/EntityHeader'
+import { IconTooltip } from '@/components/editor/IconTooltip'
 import { BLUEPRINT_MENUBAR_HEADER_CLASS } from '@/components/editor/menubarHeaderLayout'
 import {
   SegmentedControl,
@@ -60,15 +61,32 @@ function resolveHeaderSummary(
  */
 function CompareViewToggle({ slide }: { slide: NavItem }) {
   const { getScenarioDisplayViewType, setScenarioDisplayViewType } = useEditor()
-  const current = getScenarioDisplayViewType(slide)
+  // A scenario that has never been toggled reads as Stacked here — the
+  // control has to point at a segment, and Stacked is the default view.
+  const current = getScenarioDisplayViewType(slide) ?? 'stacked'
 
+  // `label` is the name a screen reader hears; `hint` is what the control
+  // DOES, for the sighted reader hovering a glyph and the keyboard reader
+  // focusing one. Below xl the label is hidden and the glyph is the whole
+  // face, so the hint is the only sentence either of them gets.
   const segments: Array<{
     value: SlideViewType
     label: string
+    hint: string
     icon: typeof Columns2
   }> = [
-    { value: 'stacked', label: 'Stacked', icon: Columns2 },
-    { value: 'merged', label: 'Merged', icon: GitCompareArrows },
+    {
+      value: 'stacked',
+      label: 'Stacked',
+      hint: 'Show each path as its own band',
+      icon: Columns2,
+    },
+    {
+      value: 'merged',
+      label: 'Merged',
+      hint: 'Show the paths merged into one grid',
+      icon: GitCompareArrows,
+    },
   ]
 
   return (
@@ -77,17 +95,14 @@ function CompareViewToggle({ slide }: { slide: NavItem }) {
       value={current}
       onValueChange={(value) => setScenarioDisplayViewType(slide.id, value)}
     >
-      {segments.map(({ value, label, icon: Icon }) => (
-        <SegmentedControlItem
-          key={value}
-          value={value}
-          className="px-2"
-          aria-label={label}
-        >
-          <Icon className="size-3.5" aria-hidden />
-          {/* Narrow shells go icon-only; the aria-label keeps the name. */}
-          <span className="max-xl:hidden">{label}</span>
-        </SegmentedControlItem>
+      {segments.map(({ value, label, hint, icon: Icon }) => (
+        <IconTooltip key={value} label={hint}>
+          <SegmentedControlItem value={value} className="px-2" aria-label={label}>
+            <Icon className="size-3.5" aria-hidden />
+            {/* Narrow shells go icon-only; the aria-label keeps the name. */}
+            <span className="max-xl:hidden">{label}</span>
+          </SegmentedControlItem>
+        </IconTooltip>
       ))}
     </SegmentedControl>
   )
