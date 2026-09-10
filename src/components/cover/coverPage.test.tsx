@@ -5,7 +5,7 @@ import { COVER_MEASURE } from '@/components/cover/coverMeasure'
 import { CoverPageView } from '@/components/cover/CoverPage'
 import type { CoverContent } from '@/components/cover/coverModel'
 
-// Pins the cover page's surface contract (plan 2026-08-18-001): the tab
+// Pins the cover page's surface contract: the tab
 // machinery (roles, selection, body switching), the figure plate, the
 // empty-figure-slot rule, the single-action header, and the content-as-data
 // rule — the view renders whatever the content module says, with no strings
