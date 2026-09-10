@@ -1,7 +1,5 @@
 import { useRef, useState } from 'react'
-import { ImagePlus, Loader2, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { IconTooltip } from '@/components/editor/IconTooltip'
+import { ImagePlus, Images, Loader2 } from 'lucide-react'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import {
@@ -11,11 +9,17 @@ import {
   storyboardPath,
 } from '@/lib/storyboardUpload'
 import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from '@/components/editor/SegmentedControl'
+import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
+import {
   parseSliceIllustration,
+  resolveSlideStrip,
   sliceIllustrationUrl,
 } from '@/lib/sliceCells'
 import { setSlideIllustration } from '@/lib/sliceMutations'
-import { errorMessage } from '@/lib/utils'
+import { cn, errorMessage } from '@/lib/utils'
 import type { Json } from '@/types/database'
 
 /**
@@ -36,6 +40,22 @@ import type { Json } from '@/types/database'
  * it. The `updated_at` stamp written alongside is what busts the CDN cache;
  * without it a replaced image would keep showing the old one for as
  * long as the edge held it.
+ *
+ * ── Why the field shows the strip it is replacing ────────────────────────
+ *
+ * An image here does not JOIN the slide's strip, it REPLACES it: set the
+ * column and `SlicePresentation` drops the frames of the cited cells
+ * entirely. That is the behaviour authors want — one drawn illustration instead of
+ * three fragments — but it used to happen in silence. The empty state was a
+ * bare button that never mentioned the frames the slide was already showing,
+ * and the set state never mentioned the frames it had stopped showing, so a
+ * slide could differ from its own cells with nothing reporting it.
+ *
+ * The glossary is the reason this matters rather than being a nicety: it says
+ * what a slide shows IS the strip of the cells it cites, "so a slide and the
+ * board cannot disagree". They could. Now the disagreement is named where it
+ * is made — the mode is a segmented pair rather than an implication, and the
+ * displaced frames stay on screen underneath as the receipt.
  */
 export function SliceStoryboardField({
   sliceId,
@@ -55,6 +75,12 @@ export function SliceStoryboardField({
   if (!client || !canWrite) return null
 
   const current = parseSliceIllustration(illustration)
+  // Same hook the presentation resolves through, and every card on the slice
+  // shares its fetches: `useSlice` is keyed on the slice, so N cards are one
+  // request. The strip is what this slide shows when no image stands in.
+  const { blueprint, items } = useSliceBlueprint(sliceId)
+  const slide = items.find((item) => item.id === itemId)
+  const frames = slide ? resolveSlideStrip(blueprint, slide) : []
 
   const refresh = () => {
     invalidateQueries(`slice:${sliceId}`)
@@ -161,44 +187,80 @@ export function SliceStoryboardField({
         }}
       />
 
+      <SegmentedControl
+        aria-label="Slide illustration"
+        value={current ? 'picture' : 'frames'}
+        onValueChange={(value) => {
+          // Selecting the mode you are already in is not a request to redo
+          // it — re-picking "One illustration" with one set would reopen the
+          // file dialog on every stray click.
+          if (value === (current ? 'picture' : 'frames')) return
+          if (value === 'frames') void handleRemove()
+          else inputRef.current?.click()
+        }}
+      >
+        <SegmentedControlItem value="frames" className="px-2" aria-label="Cells' frames">
+          <Images className="size-3" aria-hidden />
+          <span className="max-xl:hidden">Cells&rsquo; frames</span>
+        </SegmentedControlItem>
+        <SegmentedControlItem value="picture" className="px-2" aria-label="One illustration">
+          {busy ? (
+            <Loader2 className="size-3 animate-spin" aria-hidden />
+          ) : (
+            <ImagePlus className="size-3" aria-hidden />
+          )}
+          <span className="max-xl:hidden">One illustration</span>
+        </SegmentedControlItem>
+      </SegmentedControl>
+
       {current ? (
-        <div className="relative overflow-hidden rounded-md border border-border">
-          <img
-            src={sliceIllustrationUrl(current)}
-            alt=""
-            className="aspect-[4/3] w-full object-cover"
-          />
-          <IconTooltip label="Remove the slide image" side="left">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Remove slide image"
-              disabled={busy}
-              className="absolute top-1 right-1 bg-background/80 text-muted-foreground hover:text-destructive"
-              onClick={handleRemove}
-            >
-              <X className="size-2.5" />
-            </Button>
-          </IconTooltip>
-        </div>
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+            aria-label="Replace the illustration"
+            className="overflow-hidden rounded-md border border-border"
+          >
+            <img
+              src={sliceIllustrationUrl(current)}
+              alt=""
+              className="aspect-[4/3] w-full object-cover"
+            />
+          </button>
+          {/*
+            The receipt. `frames.length` is what the illustration is standing in
+            for, and it is counted from the cells rather than remembered, so
+            it follows a slide whose citations change under it.
+          */}
+          <p className="text-3xs text-muted-foreground">
+            {frames.length > 0
+              ? `Standing in for ${frames.length} frame${frames.length === 1 ? '' : 's'} from the cells this slide cites`
+              : 'These cells carry no frames, so this illustration stands in for nothing'}
+          </p>
+        </>
       ) : null}
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={busy}
-        className="h-6 justify-start px-1.5 text-3xs text-muted-foreground hover:text-foreground"
-        onClick={() => inputRef.current?.click()}
-      >
-        {busy ? (
-          <Loader2 className="size-3 animate-spin" aria-hidden />
-        ) : (
-          <ImagePlus className="size-3" aria-hidden />
-        )}
-        {current ? 'Replace the slide image' : 'Add a slide image'}
-      </Button>
+      {frames.length > 0 ? (
+        // Dimmed under an illustration, plain without one: the same row is the
+        // default in one state and the receipt in the other.
+        <div className={cn('flex gap-1', current && 'opacity-45')}>
+          {frames.slice(0, 3).map((frame) => (
+            <img
+              key={frame}
+              src={frame}
+              alt=""
+              className="aspect-[4/3] min-w-0 flex-1 rounded-sm border border-border object-cover"
+            />
+          ))}
+        </div>
+      ) : current ? null : (
+        // Previously invisible: a slide whose cells have no frames showed a
+        // blank stage and said nothing about why.
+        <p className="text-3xs text-muted-foreground">
+          These cells carry no frames.
+        </p>
+      )}
 
       {problem ? (
         <p className="text-3xs text-destructive">{problem}</p>

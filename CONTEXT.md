@@ -257,9 +257,12 @@ selection. A slice *references* the cells it presents and never copies them,
 so the blueprint stays the single source of the text.
 
 **Slide** — one row of a slice: one moment of it, as a reader meets it. Table
-`slides`, carrying `position`, the cited `cell_ids`/`cell_keys`, a `title` and
-a `narrative`. What a slide shows is the *strip* of the cells it cites, so a
-slide and the board cannot disagree. Its title is a `title` and not a `name`
+`slides`, carrying `position`, the cited `cell_ids`/`cell_keys`, a `title`, a
+`narrative` and an optional `illustration`. What a slide shows is the *strip*
+of the cells it cites, unless its author has drawn ONE image for the whole
+slide — and the editor says so when they have, naming the frames the
+illustration stands in for. A slide and the board may differ only where
+somebody said they should. Its title is a `title` and not a `name`
 under the rule the board keeps throughout: `name` is for structure a reader
 navigates, `title` for authored content a reader reads.
 
