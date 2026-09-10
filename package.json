@@ -56,6 +56,7 @@
     "check:rpc-arguments": "node scripts/check-rpc-arguments.mjs",
     "check:standalone": "node scripts/check-standalone.mjs",
     "check:content-coupling": "node scripts/check-content-coupling.mjs",
+    "check:sample-content": "node scripts/check-sample-content.mjs",
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "docs:index": "node scripts/generate-docs-index.mjs",
     "check:docs-index": "node scripts/generate-docs-index.mjs --check",

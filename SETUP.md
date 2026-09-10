@@ -127,7 +127,7 @@ npm run build
 Then the guard set — every check CI runs, what each one is defending, and how
 to read its failure: [docs/engineering/checks.md](./docs/engineering/checks.md).
 
-Two of them do not run in CI and are yours to run locally:
+Two of them *cannot* run in CI and are yours to run locally:
 `npm run check:target` needs a live project, and
 `npm run check:deployment-seed-load` needs a deployment's own seed — a
 checkout CI does not have. Both are in
@@ -139,6 +139,25 @@ deployment's NAMES and `npm run check:content-coupling` for its CONTENT — a
 cell id pasted out of its database, one of its lane actors, one of its
 scenarios. The second names the file, the line, the value and the pattern that
 caught it.
+
+Those two read the tree for somebody else's content. The third reads it for
+*this kit's*, and it is the one to run after step 5:
+`npm run check:sample-content` reports where the bundled sample — the
+meta-blueprint, this kit mapped as its own service — is still what your
+deployment serves. It looks at the two places a deployment's content lives:
+the seed `[db.seed]` names, and `src/data/`, the board the app renders with no
+database. Three markers, named per finding so you can tell them apart: the
+sample service name, its own `f0000000-…` id namespace — which names nothing,
+so content can read as entirely yours and still be keyed on the kit's rows —
+and its six scenario titles.
+
+**It reports and exits 0, on purpose, and it is the only check here that
+does.** A fresh clone is full of sample content because step 2 asks you to run
+the app against it, and a half-migrated deployment — seed replaced,
+`src/data/` not yet re-registered — is a legitimate place to be for a while.
+Neither is a build to fail, and a check that failed on a supported path is one
+you would learn to scroll past. So it never goes red, in your CI or ours, and
+what it asks of you is that you read it.
 
 Three failures surprise people, so they are worth knowing up front. Editing
 anything under `skills/` or `references/` without running
