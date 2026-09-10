@@ -18,6 +18,7 @@ import {
   dial,
   inSrgbGamut,
   oklch,
+  oklchFromSrgb,
   oklchToLinearSrgb,
   palette,
   resolveColor,
@@ -25,6 +26,7 @@ import {
   resolvePaletteToken,
   resolveValue,
   stylesheet,
+  type Rgb,
 } from '@/lib/tokenModel'
 
 /**
@@ -668,6 +670,38 @@ describe.each([
 })
 
 /**
+ * How far apart two rendered colours are, in the space they are authored in.
+ *
+ * OKLab is near enough uniform that a Euclidean distance in it is a perceptual
+ * one, and unlike a contrast ratio it counts a hue step and a chroma step as
+ * separation rather than seeing lightness alone. Both colours are the
+ * GAMUT-MAPPED ones: two triples the browser chroma-reduces onto each other
+ * are one colour on the screen whatever the dials said.
+ */
+const perceptualDistance = (a: Rgb, b: Rgb) => {
+  const lab = (rgb: Rgb) => {
+    const [l, c, h] = oklchFromSrgb(rgb)
+    const radians = (h * Math.PI) / 180
+    return [l, c * Math.cos(radians), c * Math.sin(radians)] as const
+  }
+  const [al, aa, ab] = lab(a)
+  const [bl, ba, bb] = lab(b)
+  return Math.hypot(al - bl, aa - ba, ab - bb)
+}
+
+/**
+ * One just-noticeable difference, and the floor for 'these are two colours'.
+ *
+ * A fact about eyes rather than about this palette, which is what lets it
+ * travel — no brand is named by it and none can be tuned around it. The
+ * neutral template clears it by an order of magnitude, a deployment that
+ * gives both fills one accent and separates them by lightness alone clears it
+ * comfortably, and a palette that dials one fill onto the other lands at zero
+ * and fails.
+ */
+const JUST_NOTICEABLE = 0.02
+
+/**
  * Identity and action are two fills.
  *
  * `--brand` and `--primary` share the accent hue and nothing else. If they
@@ -682,11 +716,55 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
   const primary = resolveColor('--primary', theme)
 
   it('is a different colour from the action fill', () => {
-    // 1.5:1 is not a legibility floor, it is a "these are two colours" floor.
-    // The pair is at 4.43 light and 3.21 dark today; a fork that dialled brand
-    // onto primary would land at 1.
-    expect(contrast(brand, primary)).toBeGreaterThan(1.5)
+    /*
+     * A perceptual distance, not a contrast ratio.
+     *
+     * This used to ask `contrast(brand, primary) > 1.5`, and both halves of
+     * that were the template's greyscale talking. Contrast is a function of
+     * lightness alone, so it cannot see either of the ways a branded palette
+     * separates these two fills — a hue apart and a chroma apart both measure
+     * 1:1 — and 1.5 was read off a neutral seam that stands a near-black
+     * control beside a mid-grey identity. A deployment that gives both fills
+     * its accent and separates them by lightness alone measures 1.27 and
+     * fails a floor it has not violated.
+     *
+     * The claim underneath was never a legibility one; it is that identity
+     * and action are TWO fills. Held as a distance in OKLab it is the same
+     * claim for every brand, and it is the claim that actually bites: a pair
+     * no viewer can tell apart is one fill however it was dialled.
+     */
+    expect(perceptualDistance(brand, primary)).toBeGreaterThan(JUST_NOTICEABLE)
   })
+
+  it.each(['warning', 'destructive', 'info', 'success'] as const)(
+    'stays clear of the %s signal, so the signal still signals',
+    (role) => {
+      /*
+       * The failure a rebrand introduces and a greyscale template cannot
+       * have. Three of the four status hues pull fifteen percent of the way
+       * toward the accent for harmony, and `--success-hue` is PINNED rather
+       * than pulled for a reason semantic.css states in as many words: with
+       * the brand at 177.6 a brand-relative green would collide with
+       * `--primary`, and a success state has to stay distinguishable from a
+       * brand fill. That reason had nothing holding it — an accent moved onto
+       * a category anchor takes the category's fill with it, and a
+       * destructive that is the brand fill has lost the channel a fill exists
+       * to carry.
+       *
+       * Both accents, because either one can be the colour a status fill
+       * lands on, and the same just-noticeable floor for the same reason it
+       * is used above: it names no hue, so no brand can be tuned around it.
+       * The neutral template clears it by seven times over and the teal
+       * deployment by three at its closest — dark success, which is the pair
+       * the pinned hue was pinned for.
+       */
+      const signal = resolveColor(`--${role}`, theme)
+      expect(perceptualDistance(signal, brand)).toBeGreaterThan(JUST_NOTICEABLE)
+      expect(perceptualDistance(signal, primary)).toBeGreaterThan(
+        JUST_NOTICEABLE,
+      )
+    },
+  )
 
   it('is the accent at the lightness the dials authorise, and nothing else', () => {
     // `bg-brand` repointed from a ramp step, `hsl(var(--brand-default))`, to
