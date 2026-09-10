@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.33.5
+
+### Patch Changes
+
+- 0d325b3: A doc comment outlived the function it described. Removing
+  `isPaleAnnotationSwatch()` left one of its two doc blocks behind, still
+  explaining a membership test nothing performs any more.
+
 ## 1.33.4
 
 ### Patch Changes
@@ -4020,8 +4028,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
