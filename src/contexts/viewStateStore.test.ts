@@ -3,6 +3,7 @@ import {
   createInitialViewState,
   tabKey,
   viewStateReducer,
+  warmMounts,
   type ViewState,
 } from '@/contexts/viewStateStore'
 
@@ -13,6 +14,18 @@ import {
 
 const base = (): ViewState => createInitialViewState('')
 
+/** Open each slice in order; the last one is active. */
+function openSlices(ids: readonly string[]): ViewState {
+  let state = base()
+  for (const sliceId of ids) {
+    state = viewStateReducer(state, {
+      type: 'open',
+      tab: { kind: 'slice', sliceId },
+    })
+  }
+  return state
+}
+
 describe('createInitialViewState', () => {
   it('boots with no tabs and no pending state for a bare URL', () => {
     const state = createInitialViewState('')
@@ -20,6 +33,7 @@ describe('createInitialViewState', () => {
     expect(state.activeKey).toBeNull()
     expect(state.pendingUrlState).toBeNull()
     expect(state.missingSliceId).toBeNull()
+    expect(state.sliceActivationRecency).toEqual([])
   })
 
   it('holds a ?slice= boot link as pending, never applied blind', () => {
@@ -145,5 +159,145 @@ describe('tabKey', () => {
   it('is stable per kind + slice', () => {
     expect(tabKey({ kind: 'slice', sliceId: 'a' })).toBe('slice:a')
     expect(tabKey({ kind: 'present', sliceId: 'a' })).toBe('present:a')
+  })
+})
+
+describe('slice activation recency', () => {
+  it('records last activation, not strip order', () => {
+    let state = openSlices(['s-1', 's-2', 's-3'])
+    expect(state.sliceActivationRecency).toEqual([
+      'slice:s-1',
+      'slice:s-2',
+      'slice:s-3',
+    ])
+    state = viewStateReducer(state, { type: 'activate', key: 'slice:s-1' })
+    expect(state.sliceActivationRecency).toEqual([
+      'slice:s-2',
+      'slice:s-3',
+      'slice:s-1',
+    ])
+  })
+
+  it('drops a closed slice from recency', () => {
+    let state = openSlices(['s-1', 's-2'])
+    state = viewStateReducer(state, { type: 'close', key: 'slice:s-1' })
+    expect(state.sliceActivationRecency).toEqual(['slice:s-2'])
+  })
+})
+
+describe('warmMounts', () => {
+  it('keeps every open slice warm when two are open', () => {
+    const state = openSlices(['s-1', 's-2'])
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.baseWarm).toBe(false)
+    expect([...mounts.sliceKeys].sort()).toEqual(['slice:s-1', 'slice:s-2'])
+  })
+
+  it('does not mark the base canvas warm until this session mounted it', () => {
+    const state = openSlices(['s-1'])
+    expect(
+      warmMounts({
+        tabs: state.tabs,
+        activeKey: state.activeKey,
+        sessionMountedBase: false,
+        sliceActivationRecency: state.sliceActivationRecency,
+      }).baseWarm,
+    ).toBe(false)
+    expect(
+      warmMounts({
+        tabs: state.tabs,
+        activeKey: state.activeKey,
+        sessionMountedBase: true,
+        sliceActivationRecency: state.sliceActivationRecency,
+      }).baseWarm,
+    ).toBe(true)
+  })
+
+  it('keeps the current slice plus five other hidden slice trees', () => {
+    const state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7'])
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.sliceKeys).toContain('slice:s-7')
+    expect(mounts.sliceKeys).not.toContain('slice:s-1')
+    expect(mounts.sliceKeys).toHaveLength(6)
+  })
+
+  it('on the base view keeps at most five slice trees', () => {
+    let state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7', 's-8'])
+    state = viewStateReducer(state, { type: 'activate', key: null })
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: true,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.baseWarm).toBe(true)
+    expect(mounts.sliceKeys).toHaveLength(5)
+    expect(mounts.sliceKeys).not.toContain('slice:s-1')
+    expect(mounts.sliceKeys).not.toContain('slice:s-2')
+    expect(mounts.sliceKeys).not.toContain('slice:s-3')
+  })
+
+  it('never makes the current slice cold', () => {
+    let state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6'])
+    state = viewStateReducer(state, { type: 'activate', key: 'slice:s-1' })
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.sliceKeys).toContain('slice:s-1')
+  })
+
+  it('evicts by last activation, not strip order', () => {
+    let state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7'])
+    state = viewStateReducer(state, { type: 'activate', key: 'slice:s-2' })
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.sliceKeys).toContain('slice:s-2')
+    expect(mounts.sliceKeys).not.toContain('slice:s-1')
+  })
+
+  it('does not let an open present consume a slice slot', () => {
+    let state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7'])
+    state = viewStateReducer(state, {
+      type: 'open',
+      tab: { kind: 'present', sliceId: 's-7' },
+    })
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.presentKeys).toEqual(['present:s-7'])
+    expect(mounts.sliceKeys).toHaveLength(5)
+    expect(mounts.sliceKeys).toContain('slice:s-7')
+  })
+
+  it('drops a closed slice from the warm set', () => {
+    let state = openSlices(['s-1', 's-2'])
+    state = viewStateReducer(state, { type: 'close', key: 'slice:s-1' })
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.sliceKeys).toEqual(['slice:s-2'])
   })
 })

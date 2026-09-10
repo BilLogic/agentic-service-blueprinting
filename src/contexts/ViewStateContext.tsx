@@ -191,6 +191,7 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
       tabs: state.tabs,
       activeKey: state.activeKey,
       activeTab,
+      sliceActivationRecency: state.sliceActivationRecency,
       pendingUrlState: state.pendingUrlState,
       restoredSlide: state.restoredSlide,
       missingSliceId: state.missingSliceId,

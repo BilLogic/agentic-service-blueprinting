@@ -24,6 +24,7 @@ import {
 } from '@/lib/agent/uiBridge'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
+import { useCanvasActive } from '@/contexts/canvasActiveContext'
 
 type CanvasAnnotationProviderProps = {
   children: ReactNode
@@ -33,6 +34,7 @@ export function CanvasAnnotationProvider({
   children,
 }: CanvasAnnotationProviderProps) {
   const mode = useCanvasModeValue()
+  const canvasActive = useCanvasActive()
   const [tool, setTool] = useState<CanvasAnnotationTool>('select')
   const [penColor, setPenColor] = useState(ANNOTATION_INK)
   const [penStrokeWidth, setPenStrokeWidth] = useState(
@@ -76,9 +78,9 @@ export function CanvasAnnotationProvider({
   // The agent's marker pen: boxes around cells (+ an optional text note),
   // in the same scratch layer, same data shape, same ephemerality as human
   // marks. Coordinates un-project the camera exactly like clientToLocal.
-  useEffect(
-    () =>
-      registerAgentAnnotator((cellIds, note) => {
+  useEffect(() => {
+    if (!canvasActive) return
+    return registerAgentAnnotator((cellIds, note) => {
         const layer = document.querySelector<HTMLElement>(
           '[data-canvas-annotation-layer]',
         )
@@ -131,11 +133,11 @@ export function CanvasAnnotationProvider({
           ])
         }
         return `Drew boxes around ${drawn} cell(s)${note ? ' with a note' : ''}. Marks are ephemeral — the capture menu saves or sends them.`
-      }),
-    [],
-  )
+      })
+  }, [canvasActive])
 
   useEffect(() => {
+    if (!canvasActive) return
     const tools: CanvasAnnotationTool[] = [
       'select',
       'hand',
@@ -168,17 +170,16 @@ export function CanvasAnnotationProvider({
       }),
     ]
     return () => unregister.forEach((remove) => remove())
-  }, [clearAnnotations])
+  }, [canvasActive, clearAnnotations])
 
-  useEffect(
-    () =>
-      registerAgentUiContext(
-        'canvas-tool',
-        () =>
-          `Canvas interaction: ${mode} mode, ${tool} tool, ${annotations.length} annotation(s).`,
-      ),
-    [annotations.length, mode, tool],
-  )
+  useEffect(() => {
+    if (!canvasActive) return
+    return registerAgentUiContext(
+      'canvas-tool',
+      () =>
+        `Canvas interaction: ${mode} mode, ${tool} tool, ${annotations.length} annotation(s).`,
+    )
+  }, [annotations.length, canvasActive, mode, tool])
 
   /**
    * Two values, deliberately. The tool half is memoized on the tool fields
