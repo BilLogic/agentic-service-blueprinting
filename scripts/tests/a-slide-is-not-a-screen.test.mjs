@@ -37,7 +37,7 @@
  * claim on. `sourceFilesUnder` already drops them.
  *
  * THERE IS NO ASSERTION ABOUT `frame`, deliberately. A frame is a real thing
- * on this surface — `SlideIllustrationField` uploads one — so no rule about the
+ * on this surface — `SlideImagesField` shows one — so no rule about the
  * word can be written that is not a list of today's identifiers, and a census
  * breaks on the next unrelated edit. `screen` admits an invariant precisely
  * because it names nothing here at all.

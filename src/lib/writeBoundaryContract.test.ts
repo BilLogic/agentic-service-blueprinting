@@ -14,8 +14,8 @@ import {
  * writes that reach it. A module that calls `.from('slides').update(…)`
  * itself skips the two steps every write is supposed to take — capture the
  * inverse before the write, `recordChange` after it — and neither omission is
- * visible at the call site. `SlideIllustrationField.tsx` set and cleared
- * `slides.illustration` that way, so replacing a slide image destroyed the
+ * visible at the call site. A slide image field once set and cleared
+ * `slides.illustration` with a bare client call, so replacing a slide image destroyed the
  * previous picture with no record that it had existed and no revert control;
  * `agent/tools/registry.ts` wrote `audit_findings` that way, so an audit run
  * rewrote findings a person had triaged and left nothing in the list saying
@@ -132,7 +132,7 @@ test('nothing outside the mutation layer writes to a table directly', () => {
         'Move the write into src/lib/<area>Mutations.ts: read the previous ' +
         'value and carry it as the captured inverse, write with `.select()` ' +
         'so `requireRowsWritten` can tell a zero-row write from a successful ' +
-        'one, then recordChange(). `setSlideIllustration` in sliceMutations.ts ' +
+        'one, then recordChange(). `replaceSlideImageSet` in sliceMutations.ts ' +
         'is the smallest complete example.',
   ).toEqual([])
 })

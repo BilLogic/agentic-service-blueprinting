@@ -24,8 +24,8 @@ Commands:
     slice_tools.py sql      --ir IR --slices FILE --locale en   # adapter input
     slice_tools.py doc      --ir IR --slices FILE --locale en   # markdown
 
-`select` writes a slice-file skeleton to stdout; the agent edits captions and
-narrative, then validates. Nothing here talks to a database.
+`select` writes a slice-file skeleton to stdout; the agent edits titles and
+captions, then validates. Nothing here talks to a database.
 """
 
 from __future__ import annotations
@@ -62,6 +62,8 @@ RETIRED_SLICE_KEYS = {
     "origin": "authorship",
     "order": "position",
     "frames": "slides",
+    "narrative": "caption",
+    "illustration": "slide_images",
 }
 
 
@@ -308,6 +310,12 @@ def validate_slices(index: dict, doc: dict) -> list[str]:
         scenarios_touched = set()
         seen_cells = set()
         for slide_index, slide in enumerate(slides):
+            for retired, now in RETIRED_SLICE_KEYS.items():
+                if retired in slide:
+                    problems.append(
+                        f"slice {label} slide {slide_index}: '{retired}' is now "
+                        f"'{now}' — the file's keys say what the columns say"
+                    )
             keys = slide.get("cells", [])
             if not keys:
                 problems.append(f"slice {label} slide {slide_index}: no cells")
@@ -389,21 +397,15 @@ def emit_sql(index: dict, doc: dict, locale: str, service_id: str) -> str:
             keys = slide["cells"]
             ids = [cell_id(locale, key) for key in keys]
             title = pick_text(slide.get("title"), locale, locales)
-            narrative = pick_text(slide.get("narrative"), locale, locales)
-            # A slide keeps a POOL of images and shows one member of it, or
-            # none. An IR that names an illustration is naming both: the
-            # image goes into the pool, and it is what the slide shows.
-            illustration = slide.get("illustration")
-            src = illustration.get("src") if isinstance(illustration, dict) else illustration
+            caption = pick_text(slide.get("caption"), locale, locales)
             lines.append(
                 "insert into public.slides "
-                "(id, slice_id, position, cell_ids, cell_keys, title, narrative, "
-                "illustrations, active_illustration) values ("
+                "(id, slice_id, position, cell_ids, cell_keys, title, caption, "
+                "shows_all_images) values ("
                 f"{sql_quote(slice_item_id(locale, service_key, entry['key'], position))}, "
                 f"{sql_quote(sid)}, {position}, {sql_array(ids, 'uuid[]')}, "
-                f"{sql_array(keys, 'text[]')}, {sql_quote(title)}, {sql_quote(narrative)}, "
-                + (f"{sql_array([src], 'text[]')}, {sql_quote(src)}" if src else "'{}'::text[], null")
-                + ");"
+                f"{sql_array(keys, 'text[]')}, {sql_quote(title)}, {sql_quote(caption)}, "
+                "true);"
             )
         lines.append("")
 
@@ -435,9 +437,9 @@ def emit_doc(index: dict, doc: dict, locale: str) -> str:
             title = pick_text(slide.get("title"), locale, locales) or f"Slide {position}"
             out.append(f"## {position}. {title}")
             out.append("")
-            narrative = pick_text(slide.get("narrative"), locale, locales)
-            if narrative:
-                out.append(narrative)
+            caption = pick_text(slide.get("caption"), locale, locales)
+            if caption:
+                out.append(caption)
                 out.append("")
             for key in slide["cells"]:
                 path_key, lane_key, step_key = key.split("/")[3:6]
@@ -484,7 +486,7 @@ def build_skeleton(args, index: dict) -> dict:
     for slide in slides:
         step_key = slide[0].split("/")[5]
         title = steps[step_key]["name"] if step_key in steps else {"en": ""}
-        skeleton_slides.append({"title": title, "narrative": {"en": ""}, "cells": slide})
+        skeleton_slides.append({"title": title, "caption": {"en": ""}, "cells": slide})
 
     return {
         "schema_version": "1.0.0",

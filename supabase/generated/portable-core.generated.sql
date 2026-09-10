@@ -11574,6 +11574,365 @@ end
 $chosen$;
 
 -- ─────────────────────────────────────────────────────────────────────────
+-- 21000219000000_a_slides_prose_is_a_caption.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- A slide's prose is a caption.
+--
+-- `slides.narrative` named the sentence a reader meets under the images as if
+-- it were a story the slide told. It is the words under the pictures: a
+-- caption. The column moves and nothing else does — no behaviour change, no
+-- drop, no add.
+
+alter table public.slides rename column narrative to caption;
+
+comment on column public.slides.caption is
+  'The sentence a reader meets under this slide''s images. Authored content, '
+  'not a story the slide tells.';
+
+
+do $caption$
+begin
+  if exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'slides'
+       and column_name = 'narrative'
+  ) then
+    raise exception 'slides.narrative is still there';
+  end if;
+
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'slides'
+       and column_name = 'caption'
+  ) then
+    raise exception 'slides.caption is not there';
+  end if;
+end
+$caption$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000220000000_a_slide_shows_a_set_of_its_cells_frames.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- A slide shows an ordered set of its cells' frames.
+--
+-- `21000218000000` gave a slide a pool and a single choice: all its frames,
+-- or one member. The useful middle — some of the frames, in an order the
+-- author chose, including none — was still unreachable, and an upload still
+-- replaced the board rather than joining it.
+--
+-- The set is a table. Each member names exactly one source: a cited cell, or
+-- (from the next ticket) an uploaded URL. `shows_all_images` is the
+-- untouched default; the first tick writes rows and clears it.
+
+alter table public.slides
+  add column shows_all_images boolean not null default true;
+
+comment on column public.slides.shows_all_images is
+  'True until an author ticks or unticks the set. True means show every '
+  'cited cell''s frame and keep doing so as the board changes. False means '
+  'show exactly slide_images, including none.';
+
+create table public.slide_images (
+  id        uuid primary key default gen_random_uuid(),
+  slide_id  uuid not null references public.slides (id) on delete cascade,
+  position  integer not null,
+  cell_id   uuid references public.cells (id) on delete cascade,
+  image_url text,
+  constraint slide_images_one_source
+    check (num_nonnulls(cell_id, image_url) = 1),
+  constraint slide_images_position_unique unique (slide_id, position)
+);
+
+comment on table public.slide_images is
+  'The ordered set of images a slide shows once an author has chosen. '
+  'Empty with slides.shows_all_images false is "show nothing"; empty with '
+  'shows_all_images true is the untouched default and is not stored.';
+
+comment on column public.slide_images.cell_id is
+  'Show this cell''s frame. Cascades away if the cell is deleted.';
+
+comment on column public.slide_images.image_url is
+  'Show this uploaded image. Unused until a slide can carry uploads in the set.';
+
+-- Carry the single choice forward as a one-member set.
+insert into public.slide_images (slide_id, position, cell_id)
+select id, 0, active_frame_cell_id
+  from public.slides
+ where active_frame_cell_id is not null;
+
+insert into public.slide_images (slide_id, position, image_url)
+select id, 0, active_illustration
+  from public.slides
+ where active_illustration is not null;
+
+update public.slides
+   set shows_all_images = false
+ where active_frame_cell_id is not null
+    or active_illustration is not null;
+
+alter table public.slides
+  drop constraint if exists slides_one_active_image,
+  drop constraint if exists slides_active_illustration_is_in_the_pool;
+
+alter table public.slides
+  drop column illustrations,
+  drop column active_frame_cell_id,
+  drop column active_illustration;
+
+
+do $rehearse$
+declare
+  svc uuid;
+  ph uuid;
+  sc uuid;
+  pa uuid;
+  ln uuid;
+  st uuid;
+  c1 uuid;
+  c2 uuid;
+  slc uuid;
+  sld uuid;
+  n integer;
+  refused boolean;
+begin
+  insert into public.services (name) values ('slide-images-rehearsal') returning id into svc;
+  insert into public.phases (service_id, name, position) values (svc, 'p', 0) returning id into ph;
+  insert into public.scenarios (phase_id, name, position) values (ph, 's', 0) returning id into sc;
+  insert into public.paths (scenario_id, name, kind) values (sc, 'happy', 'happy') returning id into pa;
+  insert into public.lanes (path_id, name, position) values (pa, 'lane', 0) returning id into ln;
+  insert into public.steps (scenario_id, name) values (sc, 'step') returning id into st;
+  insert into public.path_steps (path_id, step_id, position) values (pa, st, 0);
+  insert into public.cells (path_id, lane_id, step_id, content, position)
+  values (pa, ln, st, 'one', 0) returning id into c1;
+  insert into public.cells (path_id, lane_id, step_id, content, position)
+  values (pa, ln, st, 'two', 1) returning id into c2;
+  insert into public.slices (service_id, kind, title)
+  values (svc, 'custom', 'rehearsal') returning id into slc;
+  insert into public.slides (slice_id, position, cell_ids, cell_keys, shows_all_images)
+  values (slc, 0, array[c1, c2], array['k1','k2'], false)
+  returning id into sld;
+
+  -- Mixed set accepted.
+  insert into public.slide_images (slide_id, position, cell_id, image_url)
+  values (sld, 0, c1, null),
+         (sld, 1, null, 'https://example.com/a.png');
+
+  -- Both sources refused.
+  refused := false;
+  begin
+    insert into public.slide_images (slide_id, position, cell_id, image_url)
+    values (sld, 2, c2, 'https://example.com/b.png');
+  exception
+    when check_violation then refused := true;
+  end;
+  if not refused then
+    raise exception 'both sources were accepted';
+  end if;
+
+  -- Neither refused.
+  refused := false;
+  begin
+    insert into public.slide_images (slide_id, position, cell_id, image_url)
+    values (sld, 3, null, null);
+  exception
+    when check_violation then refused := true;
+  end;
+  if not refused then
+    raise exception 'neither source was accepted';
+  end if;
+
+  -- Duplicate position refused.
+  refused := false;
+  begin
+    insert into public.slide_images (slide_id, position, cell_id)
+    values (sld, 0, c2);
+  exception
+    when unique_violation then refused := true;
+  end;
+  if not refused then
+    raise exception 'duplicate position was accepted';
+  end if;
+
+  -- Deleting a cell removes only its own member.
+  delete from public.cells where id = c1;
+  select count(*) into n from public.slide_images where slide_id = sld;
+  if n <> 1 then
+    raise exception 'deleting a cell removed % members, expected 1 remaining', n;
+  end if;
+  if exists (select 1 from public.slide_images where slide_id = sld and cell_id = c1) then
+    raise exception 'the deleted cell''s member is still there';
+  end if;
+
+  delete from public.services where id = svc;
+end
+$rehearse$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000221000000_unciting_a_cell_drops_it_from_the_set.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Un-citing a cell drops that cell from the slide's image set.
+--
+-- `slide_images.cell_id` members are a choice about cells THIS slide cites.
+-- When `cell_ids` loses a cell, that member has nothing to show and is
+-- deleted. Other members keep their positions. `shows_all_images` is not
+-- touched: an authored empty set stays an authored empty set, not the
+-- untouched default. Citing the cell again does not put the member back.
+
+create function public.slide_images_drop_uncited_cells()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.cell_ids is not distinct from old.cell_ids then
+    return new;
+  end if;
+  delete from public.slide_images
+   where slide_id = new.id
+     and cell_id is not null
+     and not (cell_id = any (coalesce(new.cell_ids, '{}'::uuid[])));
+  return new;
+end;
+$$;
+
+comment on function public.slide_images_drop_uncited_cells() is
+  'When a slide''s cell_ids change, drop slide_images rows whose cell is no '
+  'longer cited. Positions of remaining members are left as they are.';
+
+create trigger slides_drop_uncited_slide_images
+  after update of cell_ids on public.slides
+  for each row execute function public.slide_images_drop_uncited_cells();
+
+
+do $uncite$
+declare
+  svc uuid;
+  ph uuid;
+  sc uuid;
+  pa uuid;
+  ln uuid;
+  st uuid;
+  c1 uuid;
+  c2 uuid;
+  c3 uuid;
+  slc uuid;
+  sld uuid;
+  n integer;
+  p integer;
+begin
+  insert into public.services (name) values ('slide-uncite-rehearsal') returning id into svc;
+  insert into public.phases (service_id, name, position) values (svc, 'p', 0) returning id into ph;
+  insert into public.scenarios (phase_id, name, position) values (ph, 's', 0) returning id into sc;
+  insert into public.paths (scenario_id, name, kind) values (sc, 'happy', 'happy') returning id into pa;
+  insert into public.lanes (path_id, name, position) values (pa, 'lane', 0) returning id into ln;
+  insert into public.steps (scenario_id, name) values (sc, 'step') returning id into st;
+  insert into public.path_steps (path_id, step_id, position) values (pa, st, 0);
+  insert into public.cells (path_id, lane_id, step_id, content, position)
+  values (pa, ln, st, 'one', 0) returning id into c1;
+  insert into public.cells (path_id, lane_id, step_id, content, position)
+  values (pa, ln, st, 'two', 1) returning id into c2;
+  insert into public.cells (path_id, lane_id, step_id, content, position)
+  values (pa, ln, st, 'three', 2) returning id into c3;
+  insert into public.slices (service_id, kind, title)
+  values (svc, 'custom', 'rehearsal') returning id into slc;
+  insert into public.slides (slice_id, position, cell_ids, cell_keys, shows_all_images)
+  values (slc, 0, array[c1, c2, c3], array['k1','k2','k3'], false)
+  returning id into sld;
+
+  insert into public.slide_images (slide_id, position, cell_id, image_url)
+  values (sld, 0, c1, null),
+         (sld, 1, null, 'https://example.com/a.png'),
+         (sld, 2, c2, null),
+         (sld, 3, c3, null);
+
+  -- Un-cite c2; c1, the upload, and c3 remain, at their original positions.
+  update public.slides
+     set cell_ids = array[c1, c3],
+         cell_keys = array['k1','k3']
+   where id = sld;
+
+  select count(*) into n from public.slide_images where slide_id = sld;
+  if n <> 3 then
+    raise exception 'unciting one cell left % members, expected 3', n;
+  end if;
+  if exists (select 1 from public.slide_images where slide_id = sld and cell_id = c2) then
+    raise exception 'the uncited cell''s member is still there';
+  end if;
+  select position into p from public.slide_images where slide_id = sld and cell_id = c3;
+  if p <> 3 then
+    raise exception 'remaining member was reindexed to %, expected 3', p;
+  end if;
+  select position into p from public.slide_images
+   where slide_id = sld and image_url = 'https://example.com/a.png';
+  if p <> 1 then
+    raise exception 'upload member was reindexed to %, expected 1', p;
+  end if;
+
+  -- Re-citing c2 does not put the member back.
+  update public.slides
+     set cell_ids = array[c1, c2, c3],
+         cell_keys = array['k1','k2','k3']
+   where id = sld;
+  if exists (select 1 from public.slide_images where slide_id = sld and cell_id = c2) then
+    raise exception 're-citing a cell resurrected its image member';
+  end if;
+
+  -- Un-cite every remaining cell member; the flag stays false (chose nothing).
+  update public.slides
+     set cell_ids = '{}'::uuid[],
+         cell_keys = '{}'::text[]
+   where id = sld;
+  select count(*) into n from public.slide_images
+   where slide_id = sld and cell_id is not null;
+  if n <> 0 then
+    raise exception 'unciting every cell left % cell members', n;
+  end if;
+  if exists (
+    select 1 from public.slides where id = sld and shows_all_images
+  ) then
+    raise exception 'emptying the set flipped the slide back to untouched';
+  end if;
+  select count(*) into n from public.slide_images where slide_id = sld;
+  if n <> 1 then
+    raise exception 'the upload member was dropped with the cells';
+  end if;
+
+  delete from public.services where id = svc;
+end
+$uncite$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000222000000_an_upload_joins_the_slide_set.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- An uploaded image is a member of the same set as a cell's frame.
+
+comment on column public.slide_images.image_url is
+  'Show this uploaded image. It joins the slide''s set; it does not replace '
+  'the cited cells'' frames.';
+
+
+do $upload$
+begin
+  if not exists (
+    select 1
+      from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'slide_images'
+       and column_name = 'image_url'
+  ) then
+    raise exception 'slide_images.image_url is not there';
+  end if;
+end
+$upload$;
+
+-- ─────────────────────────────────────────────────────────────────────────
 -- 21000223000000_a_lane_position_is_unique_within_its_path.sql
 -- ─────────────────────────────────────────────────────────────────────────
 

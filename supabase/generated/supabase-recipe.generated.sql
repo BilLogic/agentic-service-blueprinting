@@ -2154,3 +2154,101 @@ grant update (part_of_id) on public.stakeholders to authenticated;
 -- same permissions.
 
 grant update on public.slides to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000219000000_a_slides_prose_is_a_caption.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- `slides` is granted whole-table UPDATE, so a renamed column keeps
+-- the grant under its new name. Naming it again is belt and braces on a host
+-- that replayed the grant rather than the rename.
+
+grant update on public.slides to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000220000000_a_slide_shows_a_set_of_its_cells_frames.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- anyone may read the set; a signed-in author writes it the
+-- same way they write `slides`. The app replaces the set rather than
+-- patching members, so INSERT and DELETE are the verbs, not UPDATE.
+
+alter table public.slide_images enable row level security;
+
+create policy slide_images_select_anon on public.slide_images
+  for select to anon using (true);
+create policy slide_images_select_auth on public.slide_images
+  for select to authenticated using (true);
+create policy slide_images_insert_auth on public.slide_images
+  for insert to authenticated with check (true);
+create policy slide_images_delete_auth on public.slide_images
+  for delete to authenticated using (true);
+
+grant select on public.slide_images to anon, authenticated;
+grant insert, delete on public.slide_images to authenticated;
+grant update on public.slides to authenticated;
+
+-- An owner DO block never meets these policies. The probe below is the
+-- same question the editor asks: a signed-in session, with the author
+-- JWT claims the write-surface check uses, inserting one member.
+
+do $rls$
+declare
+  svc uuid;
+  ph uuid;
+  sc uuid;
+  pa uuid;
+  ln uuid;
+  st uuid;
+  cell uuid;
+  slc uuid;
+  sld uuid;
+  n integer;
+begin
+  if to_regrole('authenticated') is null
+     or not pg_has_role(current_user, 'authenticated', 'USAGE') then
+    raise notice 'slide_images rls probe skipped: no authenticated role';
+    return;
+  end if;
+
+  insert into public.services (name) values ('slide-images-rls') returning id into svc;
+  insert into public.phases (service_id, name, position) values (svc, 'p', 0) returning id into ph;
+  insert into public.scenarios (phase_id, name, position) values (ph, 's', 0) returning id into sc;
+  insert into public.paths (scenario_id, name, kind) values (sc, 'happy', 'happy') returning id into pa;
+  insert into public.lanes (path_id, name, position) values (pa, 'lane', 0) returning id into ln;
+  insert into public.steps (scenario_id, name) values (sc, 'step') returning id into st;
+  insert into public.path_steps (path_id, step_id, position) values (pa, st, 0);
+  insert into public.cells (path_id, lane_id, step_id, content, position)
+  values (pa, ln, st, 'one', 0) returning id into cell;
+  insert into public.slices (service_id, kind, title)
+  values (svc, 'custom', 'rls') returning id into slc;
+  insert into public.slides (slice_id, position, cell_ids, cell_keys, shows_all_images)
+  values (slc, 0, array[cell], array['k'], false)
+  returning id into sld;
+
+  begin
+    perform set_config(
+      'request.jwt.claims',
+      '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","app_metadata":{"role":"service"}}',
+      true);
+    set local role authenticated;
+    begin
+      insert into public.slide_images (slide_id, position, cell_id, image_url)
+      values (sld, 0, cell, null);
+      get diagnostics n = row_count;
+    exception
+      when insufficient_privilege then n := 0;
+    end;
+    if n is distinct from 1 then
+      raise exception
+        'a signed-in author could not insert a slide_images member (row_count=%)',
+        n;
+    end if;
+    raise exception 'slide-images rls' using errcode = 'ASB01';
+  exception
+    when sqlstate 'ASB01' then null;
+  end;
+
+  delete from public.services where id = svc;
+end
+$rls$;

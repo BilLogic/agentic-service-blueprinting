@@ -55,8 +55,8 @@ python3 skills/slice/scripts/slice_tools.py select \
   --path <path> --kind journey --lane <lane> --key <slice-key> --actor "<label>"
 ```
 
-Emits a slice-file skeleton on stdout: slides already grouped, captions
-seeded from step names, narrative blank. Redirect it into `slices/<key>.json`
+Emits a slice-file skeleton on stdout: slides already grouped, titles
+seeded from step names, caption blank. Redirect it into `slices/<key>.json`
 and edit from there. Never hand-assemble cell keys — a typo becomes a UUID
 that resolves to nothing, and the app renders it as a missing cell.
 
@@ -66,7 +66,7 @@ framed blank.
 
 ## 3. Write the prose
 
-Per frame: a title (the moment) and a narrative (what happens, and what it
+Per frame: a title (the moment) and a caption (what happens, and what it
 costs the actor). Per slice: a title and a summary that says who it is
 for and what question it answers.
 
@@ -74,7 +74,7 @@ Rules that are not style preferences:
 
 - **Cite, never quote.** Slices land in public-read tables. Reference
   evidence by cell key or title; never paste an interview excerpt or a
-  proposition figure into a title, narrative, or doc.
+  proposition figure into a title, caption, or doc.
 - **Personas, not people.** "A first-week field technician", never a participant's name,
   employer, or contact string.
 - **No claim without a cell.** If a sentence cannot point at a cell in its own

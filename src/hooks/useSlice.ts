@@ -5,6 +5,7 @@ import {
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import type { Slice, Slide } from '@/types/database'
+import { asSlideWithImages } from '@/lib/slideImages'
 
 export type SliceDetail = {
   slice: Slice
@@ -39,13 +40,13 @@ export function useSlice(sliceId: string): QueryResult<SliceDetail> {
 
       const { data: items, error: itemsError } = await client
         .from('slides')
-        .select('*')
+        .select('*, slide_images(*)')
         .eq('slice_id', sliceId)
         .order('position', { ascending: true })
         .abortSignal(signal)
       if (itemsError) throw new Error(itemsError.message)
 
-      return { slice, items: items ?? [] }
+      return { slice, items: (items ?? []).map(asSlideWithImages) }
     },
     fallback,
   )

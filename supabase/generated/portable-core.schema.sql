@@ -2045,6 +2045,31 @@ CREATE FUNCTION public.slices_referencing(cell_ids uuid[]) RETURNS jsonb
 $_$;
 
 --
+-- Name: slide_images_drop_uncited_cells(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.slide_images_drop_uncited_cells() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+  if new.cell_ids is not distinct from old.cell_ids then
+    return new;
+  end if;
+  delete from public.slide_images
+   where slide_id = new.id
+     and cell_id is not null
+     and not (cell_id = any (coalesce(new.cell_ids, '{}'::uuid[])));
+  return new;
+end;
+$$;
+
+--
+-- Name: FUNCTION slide_images_drop_uncited_cells(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.slide_images_drop_uncited_cells() IS 'When a slide''s cell_ids change, drop slide_images rows whose cell is no longer cited. Positions of remaining members are left as they are.';
+
+--
 -- Name: stakeholders_part_of_is_flat(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3357,6 +3382,37 @@ COMMENT ON COLUMN public.slices.summary IS 'What this slice is for, in a sentenc
 COMMENT ON COLUMN public.slices.authorship IS 'Who wrote it: generated, customized or human. Named for the act, not the source, because a human may author a slice outright.';
 
 --
+-- Name: slide_images; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.slide_images (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    slide_id uuid NOT NULL,
+    "position" integer NOT NULL,
+    cell_id uuid,
+    image_url text,
+    CONSTRAINT slide_images_one_source CHECK ((num_nonnulls(cell_id, image_url) = 1))
+);
+
+--
+-- Name: TABLE slide_images; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.slide_images IS 'The ordered set of images a slide shows once an author has chosen. Empty with slides.shows_all_images false is "show nothing"; empty with shows_all_images true is the untouched default and is not stored.';
+
+--
+-- Name: COLUMN slide_images.cell_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slide_images.cell_id IS 'Show this cell''s frame. Cascades away if the cell is deleted.';
+
+--
+-- Name: COLUMN slide_images.image_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slide_images.image_url IS 'Show this uploaded image. It joins the slide''s set; it does not replace the cited cells'' frames.';
+
+--
 -- Name: slides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3367,16 +3423,12 @@ CREATE TABLE public.slides (
     cell_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
     cell_keys text[] DEFAULT '{}'::text[] NOT NULL,
     title text,
-    narrative text,
+    caption text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
-    illustrations text[] DEFAULT '{}'::text[] NOT NULL,
-    active_frame_cell_id uuid,
-    active_illustration text,
-    CONSTRAINT slides_active_illustration_is_in_the_pool CHECK (((active_illustration IS NULL) OR (active_illustration = ANY (illustrations)))),
-    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys))),
-    CONSTRAINT slides_one_active_image CHECK ((num_nonnulls(active_frame_cell_id, active_illustration) <= 1))
+    shows_all_images boolean DEFAULT true NOT NULL,
+    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys)))
 );
 
 --
@@ -3404,28 +3456,22 @@ COMMENT ON COLUMN public.slides.cell_keys IS 'IR key-paths paired with cell_ids 
 COMMENT ON COLUMN public.slides.title IS 'The words over this slide. A title rather than a name: it is authored content a reader reads, not structure a reader navigates.';
 
 --
+-- Name: COLUMN slides.caption; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slides.caption IS 'The sentence a reader meets under this slide''s images. Authored content, not a story the slide tells.';
+
+--
 -- Name: COLUMN slides.created_by; Type: COMMENT; Schema: public; Owner: -
 --
 
 COMMENT ON COLUMN public.slides.created_by IS 'The caller at insert; null for service-key writes.';
 
 --
--- Name: COLUMN slides.illustrations; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN slides.shows_all_images; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.slides.illustrations IS 'Images an author uploaded for this slide, in author order. The slide''s pool, not what it shows: what it shows is chosen by the two active_ columns, and an unused upload is a legitimate resting state.';
-
---
--- Name: COLUMN slides.active_frame_cell_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.active_frame_cell_id IS 'Show this cell''s frame alone. Null with active_illustration null means show the whole strip.';
-
---
--- Name: COLUMN slides.active_illustration; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.active_illustration IS 'Show this uploaded image alone. Must be one of illustrations.';
+COMMENT ON COLUMN public.slides.shows_all_images IS 'True until an author ticks or unticks the set. True means show every cited cell''s frame and keep doing so as the board changes. False means show exactly slide_images, including none.';
 
 --
 -- Name: stakeholders; Type: TABLE; Schema: public; Owner: -
@@ -3832,6 +3878,20 @@ ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_pkey PRIMARY KEY (id);
 
 --
+-- Name: slide_images slide_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_pkey PRIMARY KEY (id);
+
+--
+-- Name: slide_images slide_images_position_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_position_unique UNIQUE (slide_id, "position");
+
+--
 -- Name: slides slides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4211,6 +4271,12 @@ CREATE TRIGGER set_steps_updated_at BEFORE UPDATE ON public.steps FOR EACH ROW E
 CREATE TRIGGER set_touchpoints_updated_at BEFORE UPDATE ON public.touchpoints FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 --
+-- Name: slides slides_drop_uncited_slide_images; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER slides_drop_uncited_slide_images AFTER UPDATE OF cell_ids ON public.slides FOR EACH ROW EXECUTE FUNCTION public.slide_images_drop_uncited_cells();
+
+--
 -- Name: stakeholders stakeholders_part_of_is_flat; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4371,11 +4437,18 @@ ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
 
 --
--- Name: slides slides_active_frame_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: slide_images slide_images_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.slides
-    ADD CONSTRAINT slides_active_frame_cell_id_fkey FOREIGN KEY (active_frame_cell_id) REFERENCES public.cells(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id) ON DELETE CASCADE;
+
+--
+-- Name: slide_images slide_images_slide_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_slide_id_fkey FOREIGN KEY (slide_id) REFERENCES public.slides(id) ON DELETE CASCADE;
 
 --
 -- Name: slides slides_slice_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

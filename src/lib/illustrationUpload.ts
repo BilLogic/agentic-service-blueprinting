@@ -1,3 +1,8 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
+
+type Client = SupabaseClient<Database>
+
 /**
  * Storyboard images for a slice screen.
  *
@@ -58,36 +63,35 @@ export function checkIllustrationFile(file: {
   if (!ALLOWED_ILLUSTRATION_TYPES.includes(file.type)) {
     return {
       ok: false,
-      problem: `${describeType(file.type)} cannot be used — illustrations must be PNG, JPEG or WebP.`,
+      problem: `${describeType(file.type)} cannot be used — images must be PNG, JPEG or WebP.`,
     }
   }
   return { ok: true }
 }
 
 /**
- * Where one image lives: under its slide, under its own name.
+ * Where one image lives: `slices/<sliceId>/<slideId>/<uuid>.ext`.
  *
- * This used to derive ONE path per slide and upsert onto it, so a replacement
- * overwrote its predecessor and nothing was ever orphaned. That was the right
- * trade while a slide held one image. A slide keeps a POOL now, and a pool
- * whose members share a path is a pool of one.
+ * A NEW name per upload, never an upsert onto a shared path. Two uploads
+ * must not collide, and because no object is overwritten a URL's content
+ * never changes.
  *
- * The orphan the old shape avoided is now real and deliberately tolerated:
- * dropping an image from the pool leaves the object in the bucket, exactly as
- * clearing the old column already did, and for the same reason — a merge can
- * copy one slide's pool onto another, and a delete here would break a slide
- * nobody asked to change. Storage is cheap; a slide that renders a broken
- * image is not.
- *
- * Not overwriting also retires the cache-buster. `{src, updated_at}` existed
- * because a URL's content could change under a reader; a name minted per
- * upload means it never can.
+ * Dropping an image from the set leaves the object in the bucket, exactly as
+ * clearing the old column already did, and for the same reason — a duplicate
+ * can copy one slide's members onto another, and a delete here would break a
+ * slide nobody asked to change. Replacing a slice's slides leaves the folders
+ * of dropped slides too: the inverse still names those URLs, and undo would
+ * restore a row pointing at nothing. Deleting the slice itself is the case
+ * that takes the folders — there is no inverse.
  *
  * The `slices/` prefix is not decoration: the bucket's insert policy matches
  * on the object name, and an unprefixed path is refused. Keyed by the slide's
- * row id rather than its position, because positions move — splitting or
- * reordering slides renumbers them, and a position-keyed image would silently
- * end up on a different slide.
+ * row id rather than its position, because positions move.
+ *
+ * @param {string} sliceId - The slice that owns the slide.
+ * @param {string} itemId - The slide's row id.
+ * @param {string} mimeType - Used only to pick the file extension.
+ * @returns {string} A unique object path in the slice-illustrations bucket.
  */
 export function illustrationPath(
   sliceId: string,
@@ -95,12 +99,63 @@ export function illustrationPath(
   mimeType: string,
 ): string {
   const extension = EXTENSIONS[mimeType] ?? 'png'
-  // A NEW name per upload, not one derived name upserted over. A slide keeps
-  // a pool, so a second image must not land on the first — and because no
-  // object is ever overwritten, a URL's content never changes and there is
-  // nothing for a cache-buster to bust. That is what retired the
-  // `{src, updated_at}` shape the single column carried.
-  return `slices/${sliceId}/${itemId}/${crypto.randomUUID()}.${extension}`
+  return `${slideUploadFolder(sliceId, itemId)}/${crypto.randomUUID()}.${extension}`
+}
+
+/**
+ * The storage folder that holds one slide's uploads.
+ *
+ * @param {string} sliceId - The slice that owns the slide.
+ * @param {string} slideId - The slide's row id.
+ * @returns {string} `slices/<sliceId>/<slideId>`.
+ */
+export function slideUploadFolder(sliceId: string, slideId: string): string {
+  return `slices/${sliceId}/${slideId}`
+}
+
+/**
+ * Object keys to delete for every file listed in a slide's upload folder.
+ *
+ * @param {string} folder - From `slideUploadFolder`.
+ * @param {readonly { name: string }[]} listed - What storage returned for that folder.
+ * @returns {string[]} Full object keys, one per listed name.
+ */
+export function keysInSlideUploadFolder(
+  folder: string,
+  listed: readonly { name: string }[],
+): string[] {
+  return listed
+    .map((object) => object.name.trim())
+    .filter((name) => name.length > 0)
+    .map((name) => `${folder}/${name}`)
+}
+
+/**
+ * Delete every object in one slide's upload folder.
+ *
+ * The `slides` row cascade does not reach storage. Call this when a slice
+ * is deleted, or when undo drops a slide the inverse does not restore,
+ * while the slide id is still known. Listing an empty or missing folder
+ * is a no-op.
+ *
+ * @param {Client} client - The signed-in Supabase client.
+ * @param {string} sliceId - The slice that owns the slide.
+ * @param {string} slideId - The slide whose folder is being removed.
+ * @returns {Promise<void>} Resolves when the folder is empty or gone.
+ */
+export async function removeSlideUploadObjects(
+  client: Client,
+  sliceId: string,
+  slideId: string,
+): Promise<void> {
+  const folder = slideUploadFolder(sliceId, slideId)
+  const bucket = client.storage.from(ILLUSTRATION_BUCKET)
+  const listed = await bucket.list(folder)
+  if (listed.error) throw new Error(listed.error.message)
+  const keys = keysInSlideUploadFolder(folder, listed.data ?? [])
+  if (keys.length === 0) return
+  const removed = await bucket.remove(keys)
+  if (removed.error) throw new Error(removed.error.message)
 }
 
 function formatMb(bytes: number): string {

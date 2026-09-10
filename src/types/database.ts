@@ -902,6 +902,45 @@ export type Database = {
           },
         ]
       }
+      slide_images: {
+        Row: {
+          id: string
+          slide_id: string
+          position: number
+          cell_id: string | null
+          image_url: string | null
+        }
+        Insert: {
+          id?: string
+          slide_id: string
+          position: number
+          cell_id?: string | null
+          image_url?: string | null
+        }
+        Update: {
+          id?: string
+          slide_id?: string
+          position?: number
+          cell_id?: string | null
+          image_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slide_images_slide_id_fkey"
+            columns: ["slide_id"]
+            isOneToOne: false
+            referencedRelation: "slides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slide_images_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slides: {
         Row: {
           title: string | null
@@ -910,11 +949,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
-          active_frame_cell_id: string | null
-          active_illustration: string | null
-          illustrations: string[]
-          narrative: string | null
+          caption: string | null
           position: number
+          shows_all_images: boolean
           slice_id: string
           updated_at: string
         }
@@ -925,11 +962,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          active_frame_cell_id?: string | null
-          active_illustration?: string | null
-          illustrations?: string[]
-          narrative?: string | null
+          caption?: string | null
           position: number
+          shows_all_images?: boolean
           slice_id: string
           updated_at?: string
         }
@@ -940,22 +975,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          active_frame_cell_id?: string | null
-          active_illustration?: string | null
-          illustrations?: string[]
-          narrative?: string | null
+          caption?: string | null
           position?: number
+          shows_all_images?: boolean
           slice_id?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "slides_active_frame_cell_id_fkey"
-            columns: ["active_frame_cell_id"]
-            isOneToOne: false
-            referencedRelation: "cells"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "slice_items_slice_id_fkey"
             columns: ["slice_id"]
@@ -1492,7 +1518,10 @@ export type Scenario = Database['public']['Tables']['scenarios']['Row']
 export type Step = Database['public']['Tables']['steps']['Row']
 
 export type Slice = Database['public']['Tables']['slices']['Row']
-export type Slide = Database['public']['Tables']['slides']['Row']
+export type SlideImage = Database['public']['Tables']['slide_images']['Row']
+export type Slide = Database['public']['Tables']['slides']['Row'] & {
+  slide_images?: SlideImage[]
+}
 export type Evidence = Database['public']['Tables']['evidence']['Row']
 export type Finding = Database['public']['Tables']['audit_findings']['Row']
 export type EvidenceCount = Database['public']['Views']['evidence_counts']['Row']

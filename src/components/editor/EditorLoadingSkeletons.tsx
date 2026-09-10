@@ -245,7 +245,7 @@ const PRESENTATION_SKELETON_FRAMES = [2, 3, 1]
 
 /**
  * Presentation tab placeholder — header band, stage (frame counter, media
- * area, title + narrative lines, cell-badge row) and filmstrip, at the
+ * area, title + caption lines, cell-badge row) and filmstrip, at the
  * loaded stage's own paddings. The root pins `.dark` exactly as the real
  * stage does, so the skeleton paints in stage tokens whatever the app theme.
  */

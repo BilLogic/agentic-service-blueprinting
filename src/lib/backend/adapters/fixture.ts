@@ -124,7 +124,7 @@ export function createFixtureBackend(): Backend {
             .map((item) => ({
               position: item.position,
               title: item.title ?? '',
-              body: item.narrative,
+              body: item.caption,
               cellIds: item.cell_ids ?? [],
             }))
             .sort((a, b) => a.position - b.position),

@@ -28,7 +28,7 @@ function toDraftSlides(detail: SliceDetail): DraftSlide[] {
       id: item.id,
       cells: [...item.cell_ids],
       title: item.title ?? '',
-      narrative: item.narrative ?? '',
+      caption: item.caption ?? '',
     }))
 }
 
@@ -92,7 +92,7 @@ export function SliceEditSession({
         }
         // No slides yet (every one was emptied) — the click starts one.
         if (current.length === 0) {
-          return [{ cells: [cellId], title: '', narrative: '' }]
+          return [{ cells: [cellId], title: '', caption: '' }]
         }
         const target = Math.min(activeSlide, current.length - 1)
         return current.map((slide, index) =>

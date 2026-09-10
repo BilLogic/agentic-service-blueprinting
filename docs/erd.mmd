@@ -59,6 +59,8 @@ erDiagram
   cell_touchpoints ||--o{ resources : "points at"
   services ||--o{ slices : "has many"
   slices ||--o{ slides : "has many"
+  slides ||--o{ slide_images : "shows"
+  cells ||--o{ slide_images : "frame for"
   services ||--o{ audit_findings : "has many"
   services ||--o{ evidence : "has many"
   services ||--o| business_models : "has 0..1"
@@ -226,9 +228,17 @@ erDiagram
     uuid[] cell_ids "SOFT refs to cells - no FK, survive re-import"
     text[] cell_keys "IR key-paths paired with cell_ids for recovery"
     text title
-    text narrative
-    jsonb illustration "{src, alt, source, updated_at}"
+    text caption
+    boolean shows_all_images "true = every cited cell frame"
     uuid created_by
+  }
+
+  slide_images {
+    uuid id PK
+    uuid slide_id FK "unique (slide_id, position)"
+    int position
+    uuid cell_id FK "exactly one of cell_id / image_url"
+    text image_url
   }
 
   audit_findings {

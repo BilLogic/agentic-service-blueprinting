@@ -736,6 +736,54 @@ export const RENAME_MAP = Object.freeze(
       retired: [],
       copy: ['pill', 'pills', 'chip', 'chips'],
     },
+    // A slide's prose is a caption (`21000219000000`). `copy` is empty on
+    // purpose: `narrative` is ordinary English elsewhere — a cell's narrative,
+    // a numbered narrative, a frame's narrative — and retiring the word would
+    // false-positive those. What retired is the column, named as a fragment
+    // so the identifier sweep can see it without taking the noun.
+    {
+      renames: [{ from: 'slides.narrative', to: 'slides.caption' }],
+      migrations: ['21000219000000'],
+      retired: ['slides.narrative'],
+      copy: [],
+    },
+    // A slide shows a set (`21000220000000`). The single-choice columns — the
+    // jsonb `illustration`, then the pool-and-choice of `21000218000000` —
+    // fold onto `slide_images`. `copy` is empty: `illustration` is still how
+    // the upload helper and the storage bucket are named, and retiring the
+    // English word would false-positive those.
+    {
+      renames: [
+        {
+          from: 'slides.illustration',
+          to: null,
+          because:
+            'dropped by 21000218000000, then the pool that replaced it is ' +
+            'dropped by 21000220000000. A slide now shows a set in slide_images.',
+        },
+        {
+          from: 'slides.illustrations',
+          to: 'slide_images',
+          because:
+            '21000220000000 drops the array: the set is a table, not a column.',
+        },
+        {
+          from: 'slides.active_illustration',
+          to: null,
+          because:
+            'dropped. A chosen upload is a slide_images.image_url member.',
+        },
+        {
+          from: 'slides.active_frame_cell_id',
+          to: null,
+          because:
+            'dropped. A chosen frame is a slide_images.cell_id member.',
+        },
+      ],
+      migrations: ['21000218000000', '21000220000000'],
+      retired: ['active_illustration', 'active_frame_cell_id'],
+      copy: [],
+    },
     // A source carries one note (`21000208000000`). See the header for why the
     // one column `21000116000000` spared is the one that stopped being an
     // aside. `retired` and `copy` are empty on purpose: both words are live

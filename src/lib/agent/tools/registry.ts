@@ -270,7 +270,7 @@ export async function dispatchTool(
       const sliceId = need(args, 'slice_id')
       const { data, error } = await client
         .from('slices')
-        .select('id, title, summary, kind, actor, authorship, slides(id, position, title, narrative, cell_ids)')
+        .select('id, title, summary, kind, actor, authorship, slides(id, position, title, caption, cell_ids)')
         .eq('id', sliceId)
         .maybeSingle()
       if (error) throw new Error(error.message)
@@ -279,7 +279,7 @@ export async function dispatchTool(
         .sort((a, b) => a.position - b.position)
         .map(
           (slide, index) =>
-            `slide ${index + 1}: cells [${(slide.cell_ids ?? []).join(', ')}]${slide.title ? ` title "${slide.title}"` : ''}${slide.narrative ? ` narrative "${slide.narrative}"` : ''}`,
+            `slide ${index + 1}: cells [${(slide.cell_ids ?? []).join(', ')}]${slide.title ? ` title "${slide.title}"` : ''}${slide.caption ? ` caption "${slide.caption}"` : ''}`,
         )
       return `slice "${data.title}" (${data.id}) type=${data.kind}${data.actor ? ` actor=${data.actor}` : ''}\n${slides.join('\n') || '(no slides)'}`
     }
@@ -718,8 +718,8 @@ export async function dispatchTool(
                 )
               : [],
             title: typeof slide.title === 'string' ? slide.title : '',
-            narrative:
-              typeof slide.narrative === 'string' ? slide.narrative : '',
+            caption:
+              typeof slide.caption === 'string' ? slide.caption : '',
           }),
         )
         await replaceSlides(client, sliceId, slides)

@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { ChevronLeft, ChevronRight, CornerUpLeft } from 'lucide-react'
+import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
 import { SlicePresentationLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import { IconTooltip } from '@/components/editor/IconTooltip'
@@ -17,7 +18,7 @@ import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import { activeSlideImage, resolveSlideStrip } from '@/lib/sliceCells'
+import { imagesThisSlideShows } from '@/lib/slideImages'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell, BlueprintData } from '@/types/blueprint'
 import type { Slide } from '@/types/database'
@@ -223,17 +224,12 @@ export function SlicePresentation({
     )
   }
 
-  // Stage media: the slide's own choice if it made one, otherwise its whole
-  // strip — the frames of the cells it cites, member cells first and then the
-  // storyboard-lane cell of the same step. No media → title-slide layout.
-  //
-  // A choice that no longer resolves returns null and lands on the strip
-  // rather than on nothing: the strip is always a true answer about a slide,
-  // where a blank stage is never an informative one.
-  const chosen = activeSlideImage(blueprint, item)
-  const stageMedia: string[] = chosen
-    ? [chosen]
-    : resolveSlideStrip(blueprint, item).slice(0, 3)
+  // Stage media: whatever `imagesThisSlideShows` resolves — every cited
+  // frame on an untouched slide, or exactly the authored rows. Never
+  // truncated. No media → title-slide layout.
+  const shownImages = imagesThisSlideShows(blueprint, item)
+  const stageMedia = shownImages.map((image) => image.src)
+  const stageSiblings = shownImages.map((image) => ({ src: image.src, alt: '' }))
   const slideCellIds = new Set(item.cell_ids.map(resolveBlueprintCellId))
   const title = item.title ?? detail.slice.title
 
@@ -273,33 +269,42 @@ export function SlicePresentation({
                   {/* Media is the star — large centered area; multiple cell
                       frames on one slide sit side by side. */}
                   <div className="flex max-w-full items-center justify-center gap-4">
-                    {stageMedia.map((src) => (
-                      <img
-                        key={src}
+                    {stageMedia.map((src, index) => (
+                      <ZoomableImage
+                        key={`${src}-${index}`}
                         src={src}
-                        alt={title}
-                        className={cn(
-                          'max-h-[60vh] w-auto rounded-lg object-contain',
-                          stageMedia.length > 1
-                            ? 'min-w-0 bg-card/40 p-2'
-                            : 'max-w-full',
-                        )}
-                        style={
-                          stageMedia.length > 1
-                            ? {
-                                maxWidth: `${Math.floor(94 / stageMedia.length)}%`,
-                              }
-                            : undefined
-                        }
-                      />
+                        alt=""
+                        triggerLabel="Enlarge image"
+                        siblings={stageSiblings}
+                        siblingIndex={index}
+                        triggerClassName="min-w-0"
+                      >
+                        <img
+                          src={src}
+                          alt=""
+                          className={cn(
+                            'max-h-[60vh] w-auto rounded-lg object-contain',
+                            stageMedia.length > 1
+                              ? 'min-w-0 bg-card/40 p-2'
+                              : 'max-w-full',
+                          )}
+                          style={
+                            stageMedia.length > 1
+                              ? {
+                                  maxWidth: `${Math.floor(94 / stageMedia.length)}%`,
+                                }
+                              : undefined
+                          }
+                        />
+                      </ZoomableImage>
                     ))}
                   </div>
                   <h2 className="max-w-3xl text-2xl font-semibold text-balance">
                     {title}
                   </h2>
-                  {item.narrative && (
+                  {item.caption && (
                     <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-                      {item.narrative}
+                      {item.caption}
                     </p>
                   )}
                 </>
@@ -309,9 +314,9 @@ export function SlicePresentation({
                   <h2 className="mt-6 max-w-3xl text-3xl font-semibold text-balance">
                     {title}
                   </h2>
-                  {item.narrative && (
+                  {item.caption && (
                     <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
-                      {item.narrative}
+                      {item.caption}
                     </p>
                   )}
                 </>

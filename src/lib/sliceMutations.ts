@@ -9,6 +9,8 @@ import {
   type WriteOutcome,
 } from '@/lib/optimisticConcurrency'
 import { authorshipAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
+import { removeSlideUploadObjects } from '@/lib/illustrationUpload'
+import { asSlideWithImages, imageSetCarriedOntoReplacedSlide } from '@/lib/slideImages'
 import type { Database, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
@@ -16,10 +18,12 @@ type Client = SupabaseClient<Database>
 /**
  * A `slides` row exactly as the server stores it — what a slide revert
  * puts back. Captured verbatim rather than rebuilt from the draft shape: a
- * slide carries `illustration` and `cell_keys` that `DraftSlide` has no field
- * for, and a "restore" that silently dropped them would not be one.
+ * slide carries `cell_keys` that `DraftSlide` has no field for, and a
+ * "restore" that silently dropped them would not be one.
  */
 type SlideRow = Database['public']['Tables']['slides']['Row']
+type SlideImageRow = Database['public']['Tables']['slide_images']['Row']
+type CapturedSlide = SlideRow & { slide_images?: SlideImageRow[] }
 
 /**
  * What deleting a slice would destroy.
@@ -85,6 +89,15 @@ export async function deleteSlice(
   sliceId: string,
   title?: string,
 ): Promise<void> {
+  const { data: slides, error: slidesError } = await client
+    .from('slides')
+    .select('id')
+    .eq('slice_id', sliceId)
+  if (slidesError) throw toAuthoringError(slidesError)
+  for (const slide of slides ?? []) {
+    await removeSlideUploadObjects(client, sliceId, slide.id)
+  }
+
   const { error } = await client.from('slices').delete().eq('id', sliceId)
   if (error) throw toAuthoringError(error)
   recordChange('delete_slice', { slice_id: sliceId, title: title ?? null })
@@ -135,7 +148,7 @@ export async function createSlice(
 
   const slides: DraftSlide[] =
     input.slides?.map((slide) => ({ ...slide })) ??
-    input.cellIds.map((cellId) => ({ cells: [cellId], title: '', narrative: '' }))
+    input.cellIds.map((cellId) => ({ cells: [cellId], title: '', caption: '' }))
 
   // `record: false` — the create is ONE change in the ledger, not a create
   // followed by a slide replacement of nothing. Its inverse deletes the slice,
@@ -173,6 +186,11 @@ export async function createSlice(
  * `record: false` is for callers that own a coarser entry — `createSlice`,
  * whose own inverse already takes the slides with it, and the revert path,
  * which must not log its own undo.
+ *
+ * Dropped slides leave their upload folders in the bucket. The inverse
+ * captures those `image_url`s, and `restore_slides` writes them back
+ * verbatim — deleting the object here would restore a row that points at
+ * nothing. A sweep can collect folders no row names; this write must not.
  */
 export async function replaceSlides(
   client: Client,
@@ -184,17 +202,16 @@ export async function replaceSlides(
 
   // Before the delete, or there is nothing left to capture. Ordered so the
   // restored rows go back in the order they were read, which is the order
-  // `position` already encodes.
-  let previous: SlideRow[] = []
-  if (record) {
-    const { data, error } = await client
-      .from('slides')
-      .select()
-      .eq('slice_id', sliceId)
-      .order('position', { ascending: true })
-    if (error) throw toAuthoringError(error)
-    previous = data ?? []
-  }
+  // `position` already encodes. The same read carries each authored image
+  // set onto the replacement row that still names that slide.
+  const { data, error } = await client
+    .from('slides')
+    .select('*, slide_images(*)')
+    .eq('slice_id', sliceId)
+    .order('position', { ascending: true })
+  if (error) throw toAuthoringError(error)
+  const existing = (data ?? []).map(asSlideWithImages)
+  const previous: CapturedSlide[] = record ? existing : []
 
   const { error: deleteError } = await client
     .from('slides')
@@ -203,17 +220,44 @@ export async function replaceSlides(
   if (deleteError) throw toAuthoringError(deleteError)
 
   if (slides.length > 0) {
-    const rows = slides.map((slide, position) => ({
-      slice_id: sliceId,
-      position,
-      cell_ids: [...slide.cells],
-      cell_keys: [...slide.cells],
-      title: slide.title.trim() || null,
-      narrative: slide.narrative.trim() || null,
-    }))
+    const planned = slides.map((slide, position) => {
+      const prior = slide.id ? existing.find((row) => row.id === slide.id) : undefined
+      const carried = imageSetCarriedOntoReplacedSlide(prior, slide.cells)
+      return {
+        row: {
+          ...(prior ? { id: prior.id } : {}),
+          slice_id: sliceId,
+          position,
+          cell_ids: [...slide.cells],
+          cell_keys: [...slide.cells],
+          title: slide.title.trim() || null,
+          caption: slide.caption.trim() || null,
+          shows_all_images: carried.showsAllImages,
+        },
+        members: carried.members,
+      }
+    })
 
-    const { error } = await client.from('slides').insert(rows)
-    if (error) throw toAuthoringError(error)
+    const { data: inserted, error: insertError } = await client
+      .from('slides')
+      .insert(planned.map((item) => item.row))
+      .select('id, position')
+    if (insertError) throw toAuthoringError(insertError)
+
+    const imageRows = planned.flatMap((item) => {
+      const copied = (inserted ?? []).find((row) => row.position === item.row.position)
+      if (!copied || item.members.length === 0) return []
+      return item.members.map((member) => ({
+        slide_id: copied.id,
+        position: member.position,
+        cell_id: member.cell_id,
+        image_url: member.image_url,
+      }))
+    })
+    if (imageRows.length > 0) {
+      const { error: imageError } = await client.from('slide_images').insert(imageRows)
+      if (imageError) throw toAuthoringError(imageError)
+    }
   }
 
   // After the write, like every other entry: the ledger records what landed.
@@ -246,10 +290,11 @@ export async function duplicateSlice(
 
   const { data: items, error: itemsError } = await client
     .from('slides')
-    .select()
+    .select('*, slide_images(*)')
     .eq('slice_id', sliceId)
     .order('position', { ascending: true })
   if (itemsError) throw toAuthoringError(itemsError)
+  const sourceSlides = (items ?? []).map(asSlideWithImages)
 
   const { data: copy, error: insertError } = await client
     .from('slices')
@@ -265,20 +310,32 @@ export async function duplicateSlice(
     .single()
   if (insertError) throw toAuthoringError(insertError)
 
-  if ((items ?? []).length > 0) {
-    const rows = (items ?? []).map((item) => ({
+  if (sourceSlides.length > 0) {
+    const rows = sourceSlides.map((item) => ({
       slice_id: copy.id,
       position: item.position,
       cell_ids: item.cell_ids,
       cell_keys: item.cell_keys,
       title: item.title,
-      narrative: item.narrative,
-      illustrations: item.illustrations,
-      active_frame_cell_id: item.active_frame_cell_id,
-      active_illustration: item.active_illustration,
+      caption: item.caption,
+      shows_all_images: item.shows_all_images,
     }))
-    const { error } = await client.from('slides').insert(rows)
+    const { data: copies, error } = await client.from('slides').insert(rows).select()
     if (error) throw toAuthoringError(error)
+    const imageRows = sourceSlides.flatMap((item) => {
+      const copied = (copies ?? []).find((row) => row.position === item.position)
+      if (!copied) return []
+      return (item.slide_images ?? []).map((member) => ({
+        slide_id: copied.id,
+        position: member.position,
+        cell_id: member.cell_id,
+        image_url: member.image_url,
+      }))
+    })
+    if (imageRows.length > 0) {
+      const { error: imageError } = await client.from('slide_images').insert(imageRows)
+      if (imageError) throw toAuthoringError(imageError)
+    }
   }
 
   // One entry for the whole copy, inverted by deleting the copy — the slides
@@ -391,79 +448,111 @@ function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
   )
 }
 
+/** One member of a slide's authored image set, as the writer sends it. */
+export type SlideImageMemberInput = {
+  position: number
+  cell_id: string | null
+  image_url: string | null
+}
+
 /**
- * Set or clear one slide's image.
+ * Replace one slide's authored image set.
  *
- * The upload itself belongs to the caller — this writes the row that points at
- * it, which is the half that has to reach the ledger. `null` clears the
- * pointer and deliberately leaves the file in the bucket: after a merge two
- * slides can share a derived path, and deleting the object would blank a slide
- * nobody asked to change. Storage is cheap; an empty slide is not.
- *
- * The previous value is read first and carried as the inverse, so replacing an
- * image is reversible. Without it, replacing was the one write in the editor
- * that destroyed something outright — the old picture was gone, and the change
- * list did not even say it had been there.
- *
- * `.select()` is not decoration. `.update().eq('id', …)` on a row that is gone
- * returns `error: null` and no rows, so clearing the image on a slide that was
- * merged away used to report success and clear nothing; `requireRowsWritten`
- * is what turns that into the failure it always was.
+ * `slide_images` is outside the write surface: the set is deleted and
+ * re-inserted as a whole rather than patched row by row. `shows_all_images`
+ * is the discriminator — an empty set with the flag false is "chose nothing",
+ * not the untouched default.
  */
-export async function setSlideImages(
+export async function replaceSlideImageSet(
   client: Client,
   slideId: string,
   next: {
-    illustrations: string[]
-    activeFrameCellId: string | null
-    activeIllustration: string | null
+    showsAllImages: boolean
+    members: SlideImageMemberInput[]
   },
 ): Promise<void> {
   const { data: before, error: beforeError } = await client
     .from('slides')
-    .select('illustrations, active_frame_cell_id, active_illustration')
+    .select('shows_all_images, slide_images(*)')
     .eq('id', slideId)
     .maybeSingle()
   if (beforeError) throw toAuthoringError(beforeError)
   if (!before) throw new Error('That slide no longer exists — nothing was written.')
+  const previousMembers = asSlideWithImages(before).slide_images ?? []
 
-  const { data, error } = await client
-    .from('slides')
-    .update({
-      illustrations: next.illustrations,
-      active_frame_cell_id: next.activeFrameCellId,
-      active_illustration: next.activeIllustration,
-    })
-    .eq('id', slideId)
-    .select('id')
-  if (error) throw toAuthoringError(error)
-  requireRowsWritten(data, 'slide')
+  await writeSlideImageSet(client, slideId, next)
 
   recordChange(
     'update_slide_images',
     {
       slide_id: slideId,
-      // What CHANGED, not what the row now holds: a change list that says
-      // "3 images, showing one" on every write cannot be read for what an
-      // author actually did.
-      added: next.illustrations.length - before.illustrations.length,
-      showing:
-        next.activeIllustration !== null
-          ? 'one illustration'
-          : next.activeFrameCellId !== null
-            ? "one cell's frame"
-            : 'the whole strip',
+      shows_all_images: next.showsAllImages,
+      member_count: next.members.length,
     },
     {
       fn: 'restore_slide_images',
       args: {
         slide_id: slideId,
-        illustrations: before.illustrations,
-        active_frame_cell_id: before.active_frame_cell_id,
-        active_illustration: before.active_illustration,
+        shows_all_images: before.shows_all_images,
+        members: previousMembers.map((member) => ({
+          position: member.position,
+          cell_id: member.cell_id,
+          image_url: member.image_url,
+        })),
       },
     },
   )
+}
+
+/**
+ * Put a captured image set back. Used by revert; does not write the ledger.
+ */
+export async function restoreSlideImageSet(
+  client: Client,
+  slideId: string,
+  next: {
+    shows_all_images: boolean
+    members: SlideImageMemberInput[]
+  },
+): Promise<void> {
+  await writeSlideImageSet(client, slideId, {
+    showsAllImages: next.shows_all_images,
+    members: next.members,
+  })
+}
+
+/**
+ * Write `shows_all_images` and replace every `slide_images` row for one slide.
+ */
+async function writeSlideImageSet(
+  client: Client,
+  slideId: string,
+  next: {
+    showsAllImages: boolean
+    members: SlideImageMemberInput[]
+  },
+): Promise<void> {
+  const { data, error } = await client
+    .from('slides')
+    .update({ shows_all_images: next.showsAllImages })
+    .eq('id', slideId)
+    .select('id')
+  if (error) throw toAuthoringError(error)
+  requireRowsWritten(data, 'slide')
+
+  const { error: deleteError } = await client.from('slide_images').delete().eq('slide_id', slideId)
+  if (deleteError) throw toAuthoringError(deleteError)
+
+  if (next.members.length === 0) return
+  const { error: insertError } = await client.from('slide_images').insert(
+    next.members.map((member) => ({
+      slide_id: slideId,
+      position: member.position,
+      cell_id: member.cell_id,
+      image_url: member.image_url,
+    })),
+  )
+  if (insertError) throw toAuthoringError(insertError)
 }
 
 /**

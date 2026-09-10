@@ -443,22 +443,17 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
       ? 'Rebuilt a slice’s slides'
       : `Rebuilt a slice’s slides (${count} now)`
   },
-  // A slide's images are a pool and a choice, and one write can move either.
-  // Uploading says so; changing what is shown says WHAT is shown, because
-  // "showing the whole strip" and "showing one illustration" are the two a
-  // reader needs to tell apart when deciding whether to revert.
+  // A slide's images are a set. The summary names the count, or that the
+  // slide is back to showing every cited cell's frames.
   update_slide_images: (entry) => {
-    const added = typeof entry.args.added === 'number' ? entry.args.added : 0
-    const showing =
-      typeof entry.args.showing === 'string' ? entry.args.showing : 'the whole strip'
-    if (added > 0) {
-      return `Added ${added} slide image${added === 1 ? '' : 's'}, showing ${showing}`
+    if (entry.args.shows_all_images === true) {
+      return 'A slide now shows every cited cell’s frames'
     }
-    if (added < 0) {
-      const gone = -added
-      return `Removed ${gone} slide image${gone === 1 ? '' : 's'}, showing ${showing}`
-    }
-    return `A slide now shows ${showing}`
+    const count =
+      typeof entry.args.member_count === 'number' ? entry.args.member_count : null
+    if (count === 0) return 'A slide now shows no images'
+    if (count === null) return 'Edited a slide’s images'
+    return `A slide now shows ${count} image${count === 1 ? '' : 's'}`
   },
   // Named by the check rather than by the finding, because that is the word
   // the reader recognises: a finding's id says nothing, and its summary is a
