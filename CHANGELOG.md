@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.35.0
+
+### Minor Changes
+
+- 6281442: A slide chooses from its images; it does not swap one set for the other.
+
+  `slides.illustration` held ONE image and, when set, replaced the slide's strip
+  entirely. `21000115000000` kept that column and named what would settle it —
+  "if it should later become an append to the strip rather than a substitute".
+  Append is the wrong answer too: an author who wants one drawn image instead of
+  three fragments is not asking for four.
+
+  The slide keeps a pool and chooses from it. `illustrations text[]` is what an
+  author uploaded; `active_frame_cell_id` and `active_illustration` say which
+  member it shows, and both null means the whole strip — the default, and what
+  every existing row still does. A slide can now show ONE frame, which it could
+  not ask for before.
+
+  The choice is two columns rather than a jsonb reference so `on delete set
+null` retires it when its cell goes; a check keeps them mutually exclusive and
+  a second keeps the shown illustration inside the pool.
+
+  Uploads stop overwriting each other, which retires the `{src, updated_at}`
+  cache-buster: a name minted per upload means a URL's content never changes.
+
+  Three modules stop calling this a storyboard. A storyboard is a LANE; this is
+  a slide's illustration, and `SliceStoryboardField`, `storyboardUpload.ts` and
+  `STORYBOARD_BUCKET` all said otherwise while the bucket itself was already
+  named `slice-illustrations`.
+
+- d39a902: `stakeholders.parent_id` becomes `stakeholders.part_of_id`.
+
+  `parent_id` names a shape, and the shape it names is a tree of any depth. The
+  column is held to exactly one level, so a reader who trusts the name reaches
+  for a recursive CTE, or nests a third level and is refused by a trigger the
+  name gave no warning about.
+
+  `part_of_id` names the relationship instead. Membership is flat by nature, and
+  it is the word the column comment and the glossary already used.
+
+  Forward-only rather than an amendment: 21000216000000 is released, and a
+  released migration is somebody else's applied history even when it is one
+  version old.
+
 ## 1.34.0
 
 ### Minor Changes
@@ -4110,8 +4154,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
