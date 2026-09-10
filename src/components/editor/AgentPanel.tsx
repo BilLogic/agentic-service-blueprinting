@@ -1195,7 +1195,7 @@ function AgentChatView({
               <InputGroupAddon align="inline-start" className="self-start py-1.5">
                 <Badge
                   variant="secondary"
-                  className="gap-0.5 border-primary/25 bg-primary/10 pr-0.5 font-mono text-2xs text-primary"
+                  className="gap-0.5 border-primary/25 bg-primary/10 font-mono text-primary"
                 >
                   {pendingSkill.label}
                   <IconTooltip label="Drop the skill from this message">

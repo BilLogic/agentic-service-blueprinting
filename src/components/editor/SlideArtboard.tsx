@@ -48,7 +48,7 @@ export function SlideArtboard({
   const content = (
     <div className="pointer-events-none flex flex-col items-center gap-2">
       {isSubslide(slide) && (
-        <Badge variant="secondary" className="text-3xs font-normal">
+        <Badge variant="secondary" className="font-normal">
           Scenario
         </Badge>
       )}

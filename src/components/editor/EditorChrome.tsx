@@ -94,7 +94,6 @@ export function WorkspaceBadges() {
       {isDevAuthoring ? (
         <Badge
           variant="warning"
-          className="h-auto px-1.5 py-0.5 text-3xs"
           title="Local authoring key in use — writes go to the live database"
         >
           authoring
@@ -107,7 +106,7 @@ export function WorkspaceBadges() {
       {isEditPreview ? (
         <Badge
           variant="secondary"
-          className="h-auto bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground"
+          className="bg-muted text-muted-foreground"
           title="Edit UI preview — no authoring key, so writes will be refused"
         >
           edit preview

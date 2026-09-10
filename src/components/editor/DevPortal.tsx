@@ -39,7 +39,7 @@ export function DevTierOverrideBadge() {
     <Badge
       variant="warning"
       data-dev-tier-badge={devSimulation.tier}
-      className="h-auto shrink-0 px-1.5 py-0.5 text-3xs"
+      className="shrink-0"
       title="Developer portal: the UI is simulating a tier. Your real account is unchanged, and the server still decides every write."
     >
       simulating {devSimulation.tier}

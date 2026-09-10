@@ -212,7 +212,7 @@ export function CanvasDesignTools() {
             render={
               <Badge
                 variant="warning"
-                className="pointer-events-auto h-auto cursor-help gap-1 px-2 py-0.5 text-3xs"
+                className="pointer-events-auto cursor-help gap-1"
               >
                 <span
                   className="size-1.5 rounded-full bg-warning"
