@@ -361,3 +361,18 @@ it there.
 **Sprawl** — a document too long even when every line of it is live: attention
 thins across the whole of it. The cure is the ladder rather than a shorter
 sentence. Distinct from *bloat*, which is dead weight.
+
+## The session
+
+**identity** — whether anyone is signed in.
+
+**tier** — regular creator, or the editing privilege the database reports
+for this session.
+
+**build** — a dev server, or a production bundle.
+
+**config** — whether a database is connected.
+
+**active service** — the single service the URL slug names. There is no
+inactive service and no flag that marks one; a reader who takes it as a
+filter over many gets a plural where the code means a singular.

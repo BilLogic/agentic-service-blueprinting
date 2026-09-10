@@ -26,8 +26,8 @@ import { storageKey } from '@/lib/storageNamespace'
  * The developer portal's contract, pinned.
  *
  * The simulation is CLIENT-SIDE: it may move `canWrite` and `canAgentWrite`
- * and nothing else. A version of it that also flipped, say, `isServiceAccount`
- * or `configured` would be a lie the rest of the app reads as fact — which is
+ * and nothing else. A version of it that also flipped, say, `configured`
+ * would be a lie the rest of the app reads as fact — which is
  * why "and nothing else" is a test, not a comment.
  *
  * These tests run with NO Supabase env, which is also the no-database agent
@@ -43,7 +43,6 @@ const REAL_TIER_KEYS = [
   'configured',
   'isDevAuthoring',
   'isEditPreview',
-  'isServiceAccount',
   'canAgent',
   'isSampleTrial',
   'realCanWrite',
@@ -250,6 +249,7 @@ describe('the no-database agent trial', () => {
     const after = readContext()
     expect(after.isSampleTrial).toBe(true)
     expect(after.canAgent).toBe(true)
+    expect(after.canWrite).toBe(false)
     // The agent opens; it does NOT gain write tools. Even simulating admin
     // cannot conjure a database to write to.
     expect(after.canAgentWrite).toBe(false)

@@ -67,6 +67,7 @@ const ROUTING = [
   ['Where does state shared across surfaces live?', 'docs/adr/0005-cross-surface-state-is-a-module-store.md'],
   ['When may a surface I am adding stop showing its skeleton?', 'docs/adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md'],
   ['Does switching a still-open view remount the canvas?', 'docs/adr/0010-open-views-stay-mounted.md'],
+  ['What may a surface ask of the session?', 'docs/adr/0011-one-question-a-surface-may-ask.md'],
   ['Why is this colour token derived, and where does it part from upstream?', 'docs/adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md'],
   ['Add or move a document', 'docs/guidelines/documentation.md'],
   ['Propose a change; what a commit and a pull request carry', 'docs/guidelines/contributing.md'],
