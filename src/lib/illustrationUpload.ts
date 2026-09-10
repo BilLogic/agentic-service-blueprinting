@@ -1,3 +1,8 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
+
+type Client = SupabaseClient<Database>
+
 /**
  * Storyboard images for a slice screen.
  *
@@ -58,7 +63,7 @@ export function checkIllustrationFile(file: {
   if (!ALLOWED_ILLUSTRATION_TYPES.includes(file.type)) {
     return {
       ok: false,
-      problem: `${describeType(file.type)} cannot be used — illustrations must be PNG, JPEG or WebP.`,
+      problem: `${describeType(file.type)} cannot be used — images must be PNG, JPEG or WebP.`,
     }
   }
   return { ok: true }
@@ -74,8 +79,8 @@ export function checkIllustrationFile(file: {
  * Dropping an image from the set leaves the object in the bucket, exactly as
  * clearing the old column already did, and for the same reason — a duplicate
  * can copy one slide's members onto another, and a delete here would break a
- * slide nobody asked to change. Deleting a slide also leaves the files: the
- * row cascade does not reach storage, and this helper never did.
+ * slide nobody asked to change. Deleting the slide itself is the other case:
+ * `removeSlideUploadObjects` takes the folder with the row.
  *
  * The `slices/` prefix is not decoration: the bucket's insert policy matches
  * on the object name, and an unprefixed path is refused. Keyed by the slide's
@@ -92,7 +97,62 @@ export function illustrationPath(
   mimeType: string,
 ): string {
   const extension = EXTENSIONS[mimeType] ?? 'png'
-  return `slices/${sliceId}/${itemId}/${crypto.randomUUID()}.${extension}`
+  return `${slideUploadFolder(sliceId, itemId)}/${crypto.randomUUID()}.${extension}`
+}
+
+/**
+ * The storage folder that holds one slide's uploads.
+ *
+ * @param {string} sliceId - The slice that owns the slide.
+ * @param {string} slideId - The slide's row id.
+ * @returns {string} `slices/<sliceId>/<slideId>`.
+ */
+export function slideUploadFolder(sliceId: string, slideId: string): string {
+  return `slices/${sliceId}/${slideId}`
+}
+
+/**
+ * Object keys to delete for every file listed in a slide's upload folder.
+ *
+ * @param {string} folder - From `slideUploadFolder`.
+ * @param {readonly { name: string }[]} listed - What storage returned for that folder.
+ * @returns {string[]} Full object keys, one per listed name.
+ */
+export function keysInSlideUploadFolder(
+  folder: string,
+  listed: readonly { name: string }[],
+): string[] {
+  return listed
+    .map((object) => object.name.trim())
+    .filter((name) => name.length > 0)
+    .map((name) => `${folder}/${name}`)
+}
+
+/**
+ * Delete every object in one slide's upload folder.
+ *
+ * The `slides` row cascade does not reach storage. Call this before the
+ * row goes, while the slide id is still known. Listing an empty or
+ * missing folder is a no-op.
+ *
+ * @param {Client} client - The signed-in Supabase client.
+ * @param {string} sliceId - The slice that owns the slide.
+ * @param {string} slideId - The slide whose folder is being removed.
+ * @returns {Promise<void>} Resolves when the folder is empty or gone.
+ */
+export async function removeSlideUploadObjects(
+  client: Client,
+  sliceId: string,
+  slideId: string,
+): Promise<void> {
+  const folder = slideUploadFolder(sliceId, slideId)
+  const bucket = client.storage.from(ILLUSTRATION_BUCKET)
+  const listed = await bucket.list(folder)
+  if (listed.error) throw new Error(listed.error.message)
+  const keys = keysInSlideUploadFolder(folder, listed.data ?? [])
+  if (keys.length === 0) return
+  const removed = await bucket.remove(keys)
+  if (removed.error) throw new Error(removed.error.message)
 }
 
 function formatMb(bytes: number): string {

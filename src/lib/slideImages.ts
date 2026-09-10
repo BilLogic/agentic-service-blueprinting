@@ -92,3 +92,46 @@ export function asSlideWithImages(row: unknown): Slide {
   const list = Array.isArray(members) ? members : members ? [members] : []
   return { ...slide, slide_images: list }
 }
+
+/** The image set a replaced slide keeps, once its citations may have changed. */
+export type CarriedSlideImageSet = {
+  showsAllImages: boolean
+  members: Array<{
+    position: number
+    cell_id: string | null
+    image_url: string | null
+  }>
+}
+
+/**
+ * The image set a `replace_slides` rewrite should put back on one slide.
+ *
+ * Save and the agent tool delete every `slides` row and insert again. The
+ * authored set lives on the old row, so it has to travel with the draft's
+ * id: an untouched slide stays untouched; an authored slide keeps its
+ * members except any cell no longer cited. Positions of what remains are
+ * left as they were. A draft with no matching row is a new slide and
+ * defaults to showing every cited frame.
+ *
+ * @param {SlideWithImageSet | undefined} prior - The row about to be deleted, if this draft still names it.
+ * @param {readonly string[]} nextCellIds - Citations the replacement will store.
+ * @returns {CarriedSlideImageSet} Flag and members to write on the new row.
+ */
+export function imageSetCarriedOntoReplacedSlide(
+  prior: SlideWithImageSet | undefined,
+  nextCellIds: readonly string[],
+): CarriedSlideImageSet {
+  if (!prior || prior.shows_all_images) {
+    return { showsAllImages: true, members: [] }
+  }
+  const cited = new Set(nextCellIds)
+  const members = [...(prior.slide_images ?? [])]
+    .filter((row) => row.cell_id == null || cited.has(row.cell_id))
+    .sort((left, right) => left.position - right.position)
+    .map((row) => ({
+      position: row.position,
+      cell_id: row.cell_id,
+      image_url: row.image_url,
+    }))
+  return { showsAllImages: false, members }
+}

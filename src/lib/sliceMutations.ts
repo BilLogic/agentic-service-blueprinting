@@ -9,7 +9,8 @@ import {
   type WriteOutcome,
 } from '@/lib/optimisticConcurrency'
 import { authorshipAfterEdit, type DraftSlide, type SliceKind } from '@/lib/sliceValidation'
-import { asSlideWithImages } from '@/lib/slideImages'
+import { removeSlideUploadObjects } from '@/lib/illustrationUpload'
+import { asSlideWithImages, imageSetCarriedOntoReplacedSlide } from '@/lib/slideImages'
 import type { Database, Slice } from '@/types/database'
 
 type Client = SupabaseClient<Database>
@@ -88,6 +89,15 @@ export async function deleteSlice(
   sliceId: string,
   title?: string,
 ): Promise<void> {
+  const { data: slides, error: slidesError } = await client
+    .from('slides')
+    .select('id')
+    .eq('slice_id', sliceId)
+  if (slidesError) throw toAuthoringError(slidesError)
+  for (const slide of slides ?? []) {
+    await removeSlideUploadObjects(client, sliceId, slide.id)
+  }
+
   const { error } = await client.from('slices').delete().eq('id', sliceId)
   if (error) throw toAuthoringError(error)
   recordChange('delete_slice', { slice_id: sliceId, title: title ?? null })
@@ -187,16 +197,20 @@ export async function replaceSlides(
 
   // Before the delete, or there is nothing left to capture. Ordered so the
   // restored rows go back in the order they were read, which is the order
-  // `position` already encodes.
-  let previous: CapturedSlide[] = []
-  if (record) {
-    const { data, error } = await client
-      .from('slides')
-      .select('*, slide_images(*)')
-      .eq('slice_id', sliceId)
-      .order('position', { ascending: true })
-    if (error) throw toAuthoringError(error)
-    previous = (data ?? []).map(asSlideWithImages)
+  // `position` already encodes. The same read carries each authored image
+  // set onto the replacement row that still names that slide.
+  const { data, error } = await client
+    .from('slides')
+    .select('*, slide_images(*)')
+    .eq('slice_id', sliceId)
+    .order('position', { ascending: true })
+  if (error) throw toAuthoringError(error)
+  const existing = (data ?? []).map(asSlideWithImages)
+  const previous: CapturedSlide[] = record ? existing : []
+  const keptIds = new Set(slides.map((slide) => slide.id).filter((id): id is string => Boolean(id)))
+
+  for (const gone of existing.filter((row) => !keptIds.has(row.id))) {
+    await removeSlideUploadObjects(client, sliceId, gone.id)
   }
 
   const { error: deleteError } = await client
@@ -206,18 +220,44 @@ export async function replaceSlides(
   if (deleteError) throw toAuthoringError(deleteError)
 
   if (slides.length > 0) {
-    const rows = slides.map((slide, position) => ({
-      slice_id: sliceId,
-      position,
-      cell_ids: [...slide.cells],
-      cell_keys: [...slide.cells],
-      title: slide.title.trim() || null,
-      caption: slide.caption.trim() || null,
-      shows_all_images: true,
-    }))
+    const planned = slides.map((slide, position) => {
+      const prior = slide.id ? existing.find((row) => row.id === slide.id) : undefined
+      const carried = imageSetCarriedOntoReplacedSlide(prior, slide.cells)
+      return {
+        row: {
+          ...(prior ? { id: prior.id } : {}),
+          slice_id: sliceId,
+          position,
+          cell_ids: [...slide.cells],
+          cell_keys: [...slide.cells],
+          title: slide.title.trim() || null,
+          caption: slide.caption.trim() || null,
+          shows_all_images: carried.showsAllImages,
+        },
+        members: carried.members,
+      }
+    })
 
-    const { error } = await client.from('slides').insert(rows)
-    if (error) throw toAuthoringError(error)
+    const { data: inserted, error: insertError } = await client
+      .from('slides')
+      .insert(planned.map((item) => item.row))
+      .select('id, position')
+    if (insertError) throw toAuthoringError(insertError)
+
+    const imageRows = planned.flatMap((item) => {
+      const copied = (inserted ?? []).find((row) => row.position === item.row.position)
+      if (!copied || item.members.length === 0) return []
+      return item.members.map((member) => ({
+        slide_id: copied.id,
+        position: member.position,
+        cell_id: member.cell_id,
+        image_url: member.image_url,
+      }))
+    })
+    if (imageRows.length > 0) {
+      const { error: imageError } = await client.from('slide_images').insert(imageRows)
+      if (imageError) throw toAuthoringError(imageError)
+    }
   }
 
   // After the write, like every other entry: the ledger records what landed.

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { imagesThisSlideShows } from '@/lib/slideImages'
+import {
+  imageSetCarriedOntoReplacedSlide,
+  imagesThisSlideShows,
+} from '@/lib/slideImages'
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slide } from '@/types/database'
 
@@ -165,5 +168,66 @@ describe('what images does this slide show', () => {
       }),
     )
     expect(shown).toHaveLength(4)
+  })
+})
+
+describe('the image set a replaced slide keeps', () => {
+  it('defaults a new slide to showing every cited frame', () => {
+    expect(imageSetCarriedOntoReplacedSlide(undefined, ['c-1'])).toEqual({
+      showsAllImages: true,
+      members: [],
+    })
+  })
+
+  it('leaves an untouched slide untouched when its citations change', () => {
+    expect(
+      imageSetCarriedOntoReplacedSlide(slide({ shows_all_images: true }), ['c-1']),
+    ).toEqual({ showsAllImages: true, members: [] })
+  })
+
+  it('drops an uncited cell and leaves the other members, including uploads', () => {
+    const carried = imageSetCarriedOntoReplacedSlide(
+      slide({
+        shows_all_images: false,
+        slide_images: [
+          {
+            id: 'a',
+            slide_id: 'slide-1',
+            position: 0,
+            cell_id: 'c-1',
+            image_url: null,
+          },
+          {
+            id: 'b',
+            slide_id: 'slide-1',
+            position: 1,
+            cell_id: null,
+            image_url: 'https://example.com/upload.png',
+          },
+          {
+            id: 'c',
+            slide_id: 'slide-1',
+            position: 4,
+            cell_id: 'c-2',
+            image_url: null,
+          },
+        ],
+      }),
+      ['c-1'],
+    )
+    expect(carried.showsAllImages).toBe(false)
+    expect(carried.members).toEqual([
+      { position: 0, cell_id: 'c-1', image_url: null },
+      { position: 1, cell_id: null, image_url: 'https://example.com/upload.png' },
+    ])
+  })
+
+  it('keeps an authored empty set empty, not untouched', () => {
+    expect(
+      imageSetCarriedOntoReplacedSlide(
+        slide({ shows_all_images: false, slide_images: [] }),
+        ['c-1'],
+      ),
+    ).toEqual({ showsAllImages: false, members: [] })
   })
 })

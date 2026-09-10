@@ -49,3 +49,19 @@ describe('a slide shows a set of images', () => {
     expect(presentation).not.toContain('.slice(0, 3)')
   })
 })
+
+const mutations = readFileSync(
+  fileURLToPath(new URL('./sliceMutations.ts', import.meta.url)),
+  'utf8',
+)
+
+describe('replacing slides keeps the authored image set', () => {
+  it('carries members from the prior row instead of forcing untouched', () => {
+    expect(mutations).toContain('imageSetCarriedOntoReplacedSlide')
+    expect(mutations).not.toMatch(/shows_all_images:\s*true/)
+  })
+
+  it('removes uploads when a slide itself is deleted', () => {
+    expect(mutations).toContain('removeSlideUploadObjects')
+  })
+})

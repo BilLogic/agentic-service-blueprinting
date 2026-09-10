@@ -44,6 +44,7 @@ import {
   updateEvidence,
   type EvidenceUpdate,
 } from '@/lib/evidenceMutations'
+import { removeSlideUploadObjects } from '@/lib/illustrationUpload'
 import { restoreSlideImageSet, type SlideImageMemberInput } from '@/lib/sliceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { updateFinding, type FindingUpdate } from '@/lib/findingMutations'
@@ -319,6 +320,23 @@ export async function executeRevert(
       const rows = revert.args.rows
       if (!Array.isArray(rows)) {
         throw new Error('This change’s captured slides are malformed.')
+      }
+      const keepIds = new Set(
+        rows.flatMap((raw) =>
+          raw && typeof raw === 'object' && typeof (raw as { id?: unknown }).id === 'string'
+            ? [(raw as { id: string }).id]
+            : [],
+        ),
+      )
+      const { data: current, error: currentError } = await client
+        .from('slides')
+        .select('id')
+        .eq('slice_id', sliceId)
+      if (currentError) throw toAuthoringError(currentError)
+      for (const slide of current ?? []) {
+        if (!keepIds.has(slide.id)) {
+          await removeSlideUploadObjects(client, sliceId, slide.id)
+        }
       }
       const cleared = await client
         .from('slides')
