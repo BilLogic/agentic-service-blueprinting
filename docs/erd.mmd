@@ -171,7 +171,7 @@ erDiagram
     text kind "recipient | staff | partner | provider | team"
     text summary "who this actor IS, for the deployment"
     text[] aliases "other spellings this blueprint used for the same actor"
-    uuid parent_id FK "the actor this one is part of; exactly one level — a parent has no parent"
+    uuid part_of_id FK "the actor this one is part of; exactly one level — an actor that is part of something is part of nothing further"
   }
 
   cell_touchpoints {
