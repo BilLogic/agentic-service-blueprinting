@@ -245,7 +245,11 @@ export function CanvasPhaseSection({
       <div className="relative flex flex-col gap-4">{children}</div>
       {showFlowArrow ? (
         <div
-          className="pointer-events-none absolute z-50 -translate-x-1/2"
+          // Structural connector: above the phase frame, below the z-30
+          // title badges and far below the z-60 annotation surface — the
+          // band `PhaseOverviewPhaseLoopArrow` already uses for the same
+          // kind of line.
+          className="pointer-events-none absolute z-20 -translate-x-1/2"
           style={{
             left: 'var(--phase-flow-arrow-left, 50%)',
             top: `calc(100% + ${sectionBottomInset}px)`,
