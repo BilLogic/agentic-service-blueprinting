@@ -11,6 +11,13 @@
  * open the exact cell it quoted. It belongs to the BASE view — a
  * slice tab is a different reading of the blueprint, so `slice` wins and `cell`
  * is dropped when both appear rather than opening a panel behind a tab.
+ *
+ * The base view also carries the BOARD — which phase, scenario, path selection
+ * and view mode the reader is looking at. Those params and their meaning are
+ * `boardAddress.ts`; this module only makes sure they survive, because every
+ * write of the search goes through `serializeUrlViewState` and a serializer
+ * that rebuilt the search from the tab alone would blank the board out of the
+ * address bar each time a cell panel opened.
  */
 
 /*
@@ -19,6 +26,8 @@
  * spells the params the same way, so keeping them in one object is what makes
  * "the link format" a thing that can be read rather than grepped for.
  */
+import { appendBoardParams, getBoardAddress } from '@/lib/boardAddress'
+
 const PARAMS = {
   cell: 'cell',
   slice: 'slice',
@@ -79,6 +88,10 @@ export function serializeUrlViewState(state: UrlViewState): string {
   switch (state.kind) {
     case 'blueprint':
       if (state.cellId) params.set(PARAMS.cell, state.cellId)
+      // The board rides the base view only, for the reason `cell` does: a
+      // slice tab is a different reading of the blueprint, and a board behind
+      // one is a place the link would not open on.
+      appendBoardParams(params, getBoardAddress())
       break
     case 'slice':
       params.set(PARAMS.slice, state.sliceId)
