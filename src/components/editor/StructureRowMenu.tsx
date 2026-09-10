@@ -151,11 +151,7 @@ export function StructureRowContextMenu({
       // refused duplicate — a tier guard, a name collision — indistinguishable
       // from a menu item that does not work: the click closed the menu and
       // nothing appeared, anywhere.
-      setDuplicateError(
-        duplicateFailure instanceof Error
-          ? duplicateFailure.message
-          : String(duplicateFailure),
-      )
+      setDuplicateError(errorMessage(duplicateFailure))
     } finally {
       setBusy(false)
     }
