@@ -20,6 +20,13 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
  * sit in, the section headings, the rule between them, and the `canAgent`
  * gate that decides whether the second half exists at all.
  *
+ * That gate is `canAgent` and NOT `canWrite`: a regular creator and an admin
+ * see the same provider, model and key rows. The agent is a reading tool, the
+ * key is the creator's own, and tier gates writing rather than asking — the
+ * write half of the line is `canAgentWrite`, which the agent panel reads and
+ * this surface does not. `SupabaseProvider`'s `canAgent` carries the whole
+ * reasoning; a tier check added here fails a test that names the decision.
+ *
  * `active` is only the model-list fetch gate: skip the provider round-trip
  * while the surface is closed.
  */
