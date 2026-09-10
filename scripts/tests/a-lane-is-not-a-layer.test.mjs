@@ -120,6 +120,19 @@
  * inside a stacking context. The collocation is real in both directions,
  * which is exactly why proximity cannot decide it.
  *
+ * A WRAPPED NOUN PHRASE IS THE THIRD SHAPE, and unlike the two above it is
+ * cheap to close: every pattern here is line-local, so `boot\nlane` — the
+ * phrase split across a line break — walks past a rule that forbids `boot
+ * lane` outright. ADR 0007 carried it for months. Joining wrapped lines
+ * before matching would catch it; that is a real upgrade someone should make.
+ *
+ * A PATTERN HIT IS A FLAG ON THE PARAGRAPH, NOT THE LINE. `aa2b3582` fixed
+ * exactly the two lines this file's patterns matched in ADR 0007 and left two
+ * more standing in the same sentences — one of them the very next clause,
+ * where "the shell's boot layer" is followed by "released by the lane alone".
+ * Anaphora is how this defect survives a cleanup: the corrected sentence
+ * names the referent, and the sentence after it says "the lane".
+ *
  * NEITHER WAS WIDENED FOR, deliberately. The first needs `lane === 'forward'`
  * listed, which the paragraph above argues against and the test below still
  * asserts returns nothing. The second needs a rule that reads the sentence.

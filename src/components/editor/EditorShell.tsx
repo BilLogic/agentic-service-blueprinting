@@ -557,7 +557,7 @@ function DesktopEditorShell() {
 
   /*
     The identity bars above the canvas hold their own skeletons while this
-    lane is up, so the bar, the sidebar and the board arrive on one beat.
+    layer is up, so the bar, the sidebar and the board arrive on one beat.
     Published rather than passed: the bars sit deep inside canvas content,
     the same distance away as the collapsed state above.
 
