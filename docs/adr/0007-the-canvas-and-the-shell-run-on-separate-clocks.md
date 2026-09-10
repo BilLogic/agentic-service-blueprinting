@@ -34,11 +34,10 @@ new that arrives on screen.
 They are driven by different things. The shell's stagger runs on frames and
 waits on nothing; it is choreography over space that is already reserved. The
 canvas's ladder waits on a board being laid out and painted, and it starts over
-whenever the base canvas remounts. When this record was written, that remount
-happened every time a tab stopped covering it. Open views in the working set
-now stay mounted ([ADR 0010](./0010-open-views-stay-mounted.md)), so uncover is
-no longer a remount. The ladder still restarts on a real remount (first open,
-a cold slice, cover).
+whenever that canvas remounts. When this record was written, uncover was a
+remount. That assumption is superseded by
+[ADR 0010](./0010-open-views-stay-mounted.md). The ladder still restarts on a
+real remount.
 
 One clock would have to be the canvas's, because it is the one that can be slow.
 It is also the one that restarts, and a shell driven by it re-runs its whole

@@ -118,6 +118,7 @@ function ZoomPanViewportInner({
     fitBottomInset,
     animateFit,
     refitOnResize: refitOnResize && canvasActive,
+    windowZoomKeys: canvasActive,
     cameraStateKey,
     cameraDestinationKey,
     cameraDestinationResolved,

@@ -218,6 +218,31 @@ describe('warmMounts', () => {
     ).toBe(true)
   })
 
+  it('keeps the current base view warm before the session flag is set', () => {
+    const state = base()
+    expect(
+      warmMounts({
+        tabs: state.tabs,
+        activeKey: null,
+        sessionMountedBase: false,
+        sliceActivationRecency: [],
+      }).baseWarm,
+    ).toBe(true)
+  })
+
+  it('does not mark the base canvas warm while a slice URL is still pending', () => {
+    const state = createInitialViewState('?slice=s-1')
+    expect(
+      warmMounts({
+        tabs: state.tabs,
+        activeKey: state.activeKey,
+        sessionMountedBase: false,
+        sliceActivationRecency: state.sliceActivationRecency,
+        pendingUrl: state.pendingUrlState !== null,
+      }).baseWarm,
+    ).toBe(false)
+  })
+
   it('keeps the current slice plus five other hidden slice trees', () => {
     const state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7'])
     const mounts = warmMounts({
@@ -261,6 +286,7 @@ describe('warmMounts', () => {
 
   it('evicts by last activation, not strip order', () => {
     let state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7'])
+    state = viewStateReducer(state, { type: 'activate', key: 'slice:s-1' })
     state = viewStateReducer(state, { type: 'activate', key: 'slice:s-2' })
     const mounts = warmMounts({
       tabs: state.tabs,
@@ -269,7 +295,8 @@ describe('warmMounts', () => {
       sliceActivationRecency: state.sliceActivationRecency,
     })
     expect(mounts.sliceKeys).toContain('slice:s-2')
-    expect(mounts.sliceKeys).not.toContain('slice:s-1')
+    expect(mounts.sliceKeys).toContain('slice:s-1')
+    expect(mounts.sliceKeys).not.toContain('slice:s-3')
   })
 
   it('does not let an open present consume a slice slot', () => {
@@ -286,6 +313,24 @@ describe('warmMounts', () => {
     })
     expect(mounts.presentKeys).toEqual(['present:s-7'])
     expect(mounts.sliceKeys).toHaveLength(5)
+    expect(mounts.sliceKeys).toContain('slice:s-7')
+  })
+
+  it('keeps present mounted on another view without shrinking the slice set', () => {
+    let state = openSlices(['s-1', 's-2', 's-3', 's-4', 's-5', 's-6', 's-7'])
+    state = viewStateReducer(state, {
+      type: 'open',
+      tab: { kind: 'present', sliceId: 's-7' },
+    })
+    state = viewStateReducer(state, { type: 'activate', key: 'slice:s-7' })
+    const mounts = warmMounts({
+      tabs: state.tabs,
+      activeKey: state.activeKey,
+      sessionMountedBase: false,
+      sliceActivationRecency: state.sliceActivationRecency,
+    })
+    expect(mounts.presentKeys).toEqual(['present:s-7'])
+    expect(mounts.sliceKeys).toHaveLength(6)
     expect(mounts.sliceKeys).toContain('slice:s-7')
   })
 

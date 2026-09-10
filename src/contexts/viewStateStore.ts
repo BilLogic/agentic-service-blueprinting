@@ -74,12 +74,18 @@ export type WarmMounts = {
  * hidden slices are the least-recently activated working set.
  *
  * @param input.sessionMountedBase - the reader has already opened the base canvas this session
+ * @param input.pendingUrl - a boot URL is still unresolved; the current view is not the base canvas
  */
 export function warmMounts(input: {
   tabs: TabDescriptor[]
   activeKey: TabKey | null
   sessionMountedBase: boolean
   sliceActivationRecency: TabKey[]
+  /**
+   * True while a boot URL is still unresolved. The current view is not the
+   * base canvas yet, so a slice-only visit must not mark the base warm.
+   */
+  pendingUrl?: boolean
 }): WarmMounts {
   const presentKeys = input.tabs
     .filter((tab) => tab.kind === 'present')
@@ -103,8 +109,9 @@ export function warmMounts(input: {
   const sliceKeys = currentSlice
     ? [...new Set([...warmHidden, currentSlice])]
     : warmHidden
+  const currentIsBase = input.activeKey === null && !input.pendingUrl
   return {
-    baseWarm: input.sessionMountedBase,
+    baseWarm: input.sessionMountedBase || currentIsBase,
     sliceKeys,
     presentKeys,
   }

@@ -857,6 +857,13 @@ function DesktopEditorShell() {
   )
 }
 
+/**
+ * One warm view in the stacked host. Hidden layers stay laid out so the
+ * camera survives; they are inert and do not own the agent.
+ *
+ * @param current - this layer is the view the reader is looking at
+ * @param resetKey - error-boundary identity for this tree
+ */
 function FrozenViewLayer({
   current,
   resetKey,
@@ -885,9 +892,15 @@ function FrozenViewLayer({
 }
 
 /**
- * Mounts the warm set: the base canvas (if this session already opened it)
- * plus warm slice/present views. Hidden trees stay laid out so the camera
- * does not die, but they do not own the agent or the reveal publisher.
+ * Mounts the warm set: the base canvas (if this session already opened it,
+ * or if it is the current view) plus warm slice/present views. Hidden trees
+ * stay laid out so the camera does not die, but they do not own the agent
+ * or the reveal publisher.
+ *
+ * @param sessionMountedBase - this session has already built the base canvas
+ * @param leavingPresent - play the 320ms leave pose on the current present view
+ * @param onReturn - land on the slice after the present leave wait
+ * @param onRevealStage - publish the current base canvas ladder to the shell
  */
 function WarmMountedViews({
   sessionMountedBase,
@@ -900,15 +913,17 @@ function WarmMountedViews({
   onReturn: (sliceId: string) => void
   onRevealStage: (stage: number) => void
 }) {
-  const { tabs, activeTab, activeKey, sliceActivationRecency } = useViewState()
+  const { tabs, activeTab, activeKey, sliceActivationRecency, pendingUrlState } =
+    useViewState()
 
   const mounts = warmMounts({
     tabs,
     activeKey,
     sessionMountedBase,
     sliceActivationRecency,
+    pendingUrl: pendingUrlState !== null,
   })
-  const currentIsBase = activeTab === null
+  const currentIsBase = activeTab === null && pendingUrlState === null
 
   return (
     <>
