@@ -18,9 +18,11 @@ import {
   sourceMatching,
   stripComments,
   stylesheet,
+  stylesheetMatching,
   stylesheets,
   winningDeclaration,
 } from '@/lib/tokenModel'
+import type { Medium, Scope, StyleUse } from '@/lib/tokenModel'
 
 /**
  * The seam's own guard.
@@ -255,6 +257,166 @@ describe('the source reader', () => {
  * so the model reads the declaration instead. These cases are the ones that
  * would let it read a declaration wrongly and say nothing.
  */
+/**
+ * The stylesheet half of the reader, and the property that decides how wide a
+ * stylesheet rule can be: a stylesheet's prose is not a use of what it names.
+ *
+ * Every rule this model backed read `src/**.tsx` and stopped there, so a
+ * stylesheet was free to consume a name at a tier the same rule forbade a
+ * component to touch. `stylesheetMatching` is the half that closes that, and
+ * the cases below are the ones a raw-text scan of the same files gets wrong.
+ *
+ * This codebase writes a paragraph above almost every block, and those
+ * paragraphs quote the names they explain. `colors.css`'s header spells
+ * `var(--color-amber-100)` twice to explain the Tailwind namespace split, and
+ * a text scan reports both — which would make the first `var()` rule fail on a
+ * file that paints nothing, and teach the next reader that the rule cannot be
+ * trusted. Matching declared VALUES rather than text is what avoids that, and
+ * it is worth asserting rather than assuming.
+ */
+describe('the stylesheet reader', () => {
+  it('reads a value, not the prose that names it', () => {
+    // Two in colors.css's header, nought in its declarations: this file
+    // declares the ramp, and registration — the self-referential
+    // `--color-amber-100: var(--color-amber-100)` — happens in theme.css.
+    expect(stylesheet('colors.css').text).toContain('var(--color-amber-100)')
+    const prose = stylesheetMatching(/var\(--color-amber-100\)/g).filter(
+      (use) => use.file === 'colors.css',
+    )
+    expect(prose).toEqual([])
+  })
+
+  it('reads values, not the declarations that sit beside them', () => {
+    // A declaration site — a name followed by its colon — is text every
+    // stylesheet is full of and no VALUE ever contains. A text scan reports
+    // `semantic.css` here; a value scan reports nothing, which is the whole
+    // difference. The name itself is read as a value elsewhere, so this is
+    // the left-hand side being excluded rather than the name being absent.
+    expect(stylesheet('semantic.css').text).toContain('--annotation-selected:')
+    expect(stylesheetMatching(/--annotation-selected:/g)).toEqual([])
+    expect(
+      stylesheetMatching(/var\(--annotation-selected\)/g).length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('reports a match at the line it sits on in the file on disk', () => {
+    const matches = stylesheetMatching(/var\(--color-blue-900\)/g)
+    expect(matches.length).toBeGreaterThan(0)
+    for (const use of matches) {
+      const line = stylesheet(use.file).text.split('\n')[use.line - 1]
+      expect(line).toContain(use.match)
+    }
+  })
+
+  it('carries the layer, so a rule can scope itself by tier rather than by filename', () => {
+    const registered = stylesheetMatching(/var\(--color-amber-100\)/g)
+    expect(registered.map((use) => `${use.file}:${use.layer}`)).toContain(
+      'theme.css:registry',
+    )
+  })
+
+  it('names the declaration a match was carried by, not just the file', () => {
+    // The same text in two tiers, told apart by what carries it: theme.css
+    // registers the step self-referentially, semantic.css spends it on a
+    // role. A rule that may forbid one and not the other needs both halves.
+    const uses = stylesheetMatching(/var\(--color-blue-900\)/g)
+    const carried = uses.map(
+      (use) => `${use.file}:${use.layer}:${use.property}`,
+    )
+    expect(carried).toContain('theme.css:registry:--color-blue-900')
+    expect(carried).toContain('semantic.css:semantic:--annotation-selected')
+    const role = uses.find((use) => use.property === '--annotation-selected')!
+    expect(role.selector).toContain(':root')
+    expect(role.match).toBe('var(--color-blue-900)')
+  })
+
+  it('reports every match in a value, not the first', () => {
+    // `[data-ground='card']` derives `--ground` from two elevation names in
+    // one `calc()`. A reader that stopped at the first match would report a
+    // declaration as reading half of what it reads.
+    const elevations = stylesheetMatching(
+      /var\(--elevation[a-z0-9-]*\)/g,
+    ).filter((use) => use.selector === "[data-ground='card']")
+    expect(elevations.map((use) => use.match)).toEqual([
+      'var(--elevation-step)',
+      'var(--elevation-2)',
+    ])
+  })
+
+  it('finds nothing for a pattern no declared value carries', () => {
+    expect(stylesheetMatching(/var\(--no-such-name-anywhere\)/g)).toEqual([])
+  })
+})
+
+/**
+ * The two answers this reader gives that the deployment's copy does not, kept
+ * whole while it grew the two it was missing.
+ *
+ * `Medium` and `Scope` are not decoration on the cascade — they are the second
+ * and third question a rule asks after "which theme". A change that widened
+ * the reader's reach and quietly narrowed either of these would be a reader
+ * that answers more questions and fewer of the ones already being asked.
+ */
+describe('the reader still answers by medium and by scope', () => {
+  it('takes a medium and reads the cascade that medium reaches', () => {
+    const screen: Medium = 'screen'
+    const print: Medium = 'print'
+    // `print.css` restates `--surface` inside `@media print`; on screen the
+    // theme file wins, on paper the print block does.
+    expect(winningDeclaration('--surface', 'dark', screen)?.file).toBe(
+      'themes/dark.css',
+    )
+    expect(winningDeclaration('--surface', 'dark', print)?.file).toBe(
+      'print.css',
+    )
+    // And the mirror: colors.css wraps its dark palette in `@media screen`,
+    // so a printed dark page reads the light ramp above it.
+    expect(winningDeclaration('--color-blue-900', 'dark', screen)?.selector).toBe(
+      '.dark',
+    )
+    expect(winningDeclaration('--color-blue-900', 'dark', print)?.selector).toBe(
+      ':root',
+    )
+  })
+
+  it('takes a scope and reads the subtree it names', () => {
+    const root: Scope = []
+    const card: Scope = ["[data-ground='card']"]
+    // `--ground` is declared at `[data-ground]` and re-derived per surface.
+    // Reading it at the root and on a card must not give the same answer, or
+    // the subtree arithmetic in semantic.css is not being read at all.
+    const atRoot = resolveValue('--ground', 'dark', 'screen', root)
+    const onCard = resolveValue('--ground', 'dark', 'screen', card)
+    expect(atRoot).toBeDefined()
+    expect(onCard).toBeDefined()
+    expect(onCard).not.toBe(atRoot)
+    expect(winningDeclaration('--ground', 'dark', 'screen', card)?.selector).toBe(
+      "[data-ground='card']",
+    )
+    // A scope is spelled the way the stylesheet spells it, so the scopes a
+    // rule asks about come from the stylesheet rather than a list of its own.
+    const declared = rulesDeclaring('--ground').map((rule) => rule.selector)
+    expect(declared).toContain(card[0])
+  })
+
+  it('answers both repos through one shape', () => {
+    // The point of the merge: one reader, and a `StyleUse` sits beside the
+    // medium and scope answers rather than in place of them.
+    const use: StyleUse | undefined = stylesheetMatching(
+      /var\(--color-blue-900\)/g,
+    )[0]
+    expect(use).toBeDefined()
+    expect(typeof use!.match).toBe('string')
+    expect(typeof use!.property).toBe('string')
+    expect(typeof use!.selector).toBe('string')
+    expect(typeof use!.file).toBe('string')
+    expect(typeof use!.line).toBe('number')
+    expect(declarationsIn(use!.file).some((d) => d.line === use!.line)).toBe(
+      true,
+    )
+  })
+})
+
 describe('the colour reader', () => {
   it('reads a slash as alpha in a component slot and as division inside calc', () => {
     // `oklch(from x l calc(c / 2) h / 30%)` divides once and separates once.
