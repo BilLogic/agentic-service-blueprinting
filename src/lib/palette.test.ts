@@ -6,6 +6,7 @@ import {
   TOUCHPOINT_TONES,
 } from '@/lib/blueprintCellStyle'
 import {
+  PATH_IDENTITY_PERIOD,
   PATH_KIND_COLORS,
   getPathColor,
   getPathDashArray,
@@ -124,14 +125,54 @@ describe('brand fill', () => {
     expect(dial('--hue', 'dark')).toBe(HUE)
   })
 
-  it('ships hue-neutral, so nothing inherits a previous brand', () => {
-    // The one assertion that is about the TEMPLATE rather than the mechanism:
-    // a fork that brands the app updates this expectation deliberately, which
-    // is the point — a brand should never arrive by accident.
-    expect(THEME_DIALS.light.C).toBe(0)
-    expect(THEME_DIALS.dark.C).toBe(0)
-    expect(dial('--chroma', 'light')).toBe(0)
-    expect(dial('--chroma', 'dark')).toBe(0)
+  it('wears one identity in both themes, whatever a fork dials it to', () => {
+    /*
+     * This used to read `expect(THEME_DIALS.light.C).toBe(0)` four times over,
+     * and its own comment conceded the point: "the one assertion that is about
+     * the TEMPLATE rather than the mechanism … a fork updates this expectation
+     * deliberately". An assertion a fork must edit is an assertion that does
+     * not travel, and the greyscale seam is already stated where it belongs —
+     * in `themes/light.css`, beside the dials themselves.
+     *
+     * What replaces it is the claim the number was standing in for. A brand
+     * that changes saturation when the lights go out is two brands, exactly as
+     * a brand that changes hue is — and the hue half of that is asserted
+     * directly above. Held as a relation, it is true of the neutral template
+     * (0 and 0) and of a branded deployment (0.135 and 0.135) alike, and it
+     * fails for the thing either of them would get wrong.
+     */
+    expect(THEME_DIALS.dark.C).toBe(THEME_DIALS.light.C)
+    expect(dial('--brand-chroma', 'dark')).toBe(dial('--brand-chroma', 'light'))
+  })
+
+  it('declares every chroma dial in both theme files, so none arrives by leak', () => {
+    /*
+     * The other half of "a brand should never arrive by accident", and the
+     * half that is actually a mechanism: `themes/light.css` declares most of
+     * its dials under a bare `:root`, which matches under dark as well. A dial
+     * written in one file and not the other is inherited by the other mode
+     * rather than chosen for it — and `light.css` says so in as many words
+     * beside `--surface-hue`: a dial that arrives in the other mode by leak
+     * reads the same as one that arrived by mistake.
+     *
+     * `--chroma` is on this list but NOT on the mode-invariance one above. It
+     * tints the canvas rather than the identity, and a dark theme that wants a
+     * breath of colour in its greys where the light one wants none is a real
+     * choice rather than a drift — it just has to be a written one.
+     */
+    const themes = {
+      light: stylesheet('themes/light.css').text,
+      dark: stylesheet('themes/dark.css').text,
+    }
+    for (const name of ['--chroma', '--primary-chroma', '--brand-chroma']) {
+      for (const [theme, text] of Object.entries(themes)) {
+        expect(`${theme} declares ${name}`).toBe(
+          new RegExp(`^\\s*${name}:`, 'm').test(text)
+            ? `${theme} declares ${name}`
+            : `${theme} inherits ${name}`,
+        )
+      }
+    }
   })
 
   it('inverts the fill between themes, since a neutral one has to', () => {
@@ -282,9 +323,9 @@ describe('path badges', () => {
   })
 
   describe.each(['light', 'dark'] as const)('%s open set', (theme) => {
-    // The type defaults were measured above, but a custom-named path draws
-    // its badge from the open set — seven more fills that also render white
-    // text.
+    // The type defaults were measured above, but a variant draws its badge
+    // from the open set — four more fills whose derived ink has to hold the
+    // same floor.
     const open = [
       ...new Set(
         Array.from({ length: 40 }, (_, i) =>
@@ -307,48 +348,96 @@ describe('path badges', () => {
     })
   })
 
-  it('separates two unregistered custom-named paths', () => {
-    const a = getPathColor({ kind: 'variant', name: 'Alpha' })
-    const b = getPathColor({ kind: 'variant', name: 'Beta' })
-    expect(a === b).toBe(false)
+  it('keeps the open set clear of the two reserved colours', () => {
+    /*
+     * The reservation is only worth what it costs if a reader never sees the
+     * reserved hues used for anything else. Name-independence — that a
+     * `happy` or an `exception` answers from its type and never looks at what
+     * the path is called — is asserted in `pathColorTheme.test.ts`, where the
+     * function lives. What is asserted HERE is the other half, and the half
+     * that is about the palette: the set a variant is drawn from does not
+     * contain either reserved colour, so nothing that is not a happy path can
+     * come out looking like one.
+     *
+     * Compared by FAMILY rather than by token, because a variant drawn one
+     * step off the happy path's green would still read as green. Both sides
+     * are read off the module, so a fork that re-hues the whole thing is
+     * measured on its own colours rather than on the template's.
+     */
+    const family = (token: string) => /--color-([a-z]+)-/.exec(token)![1]
+    const reserved = new Set(
+      (['happy', 'exception'] as const).map((kind) =>
+        family(PATH_KIND_COLORS[kind]),
+      ),
+    )
+    const open = new Set(
+      Array.from({ length: 40 }, (_, i) =>
+        family(getPathColor({ kind: 'variant', name: `Path ${i}` })),
+      ),
+    )
+    expect([...open].filter((f) => reserved.has(f))).toEqual([])
   })
 
-  it('gives a custom-named path a dash off the open set, not the type default', () => {
-    // The failure this replaces: every custom-named path fell through to its
-    // type's one dash, so colour was the only channel telling them apart
-    // (SC 1.4.1). They must instead hash into the open set, exactly like
-    // their colour does — the pairing is asserted below.
+  it('gives every non-happy path a dash off the open set, not a type default', () => {
+    // The failure this replaces: every named path fell through to its type's
+    // one dash, so colour was the only channel telling them apart
+    // (SC 1.4.1). Only `happy` keeps a type dash, because a scenario can only
+    // ever hold one of those.
     //
     // Distinctness ACROSS a roster is deliberately not asserted: the open set
     // is finite, so two names can share a slot, and the guarantee on offer is
     // that colour and dash travel together — never that colour separates two
     // paths a dash does not.
-    const typeDefault = getPathDashArray({
-      kind: 'variant',
-      name: 'Alternate Path',
-    })
     const named = [
       'Set Preferences',
-      'Check Preferences',
+      'Import Preferences',
       'Update Preferences',
     ].map((name) => getPathDashArray({ kind: 'variant', name }))
     expect(new Set(named).size).toBeGreaterThan(1)
     expect(named.every((dash) => dash !== undefined)).toBe(true)
-    expect(typeDefault).toBe('12 5')
+    expect(
+      getPathDashArray({ kind: 'happy', name: 'Anything at all' }),
+    ).toBeUndefined()
   })
 
-  it('pairs a distinct dash with every family in the open set', () => {
-    // Colour and dash hash off the same key, so the pattern is a real second
-    // channel for SC 1.4.1 only if the two lists are the same length.
-    const seen = new Map<string, string | undefined>()
-    for (let i = 0; i < 40; i++) {
-      const path = { kind: 'variant' as const, name: `Path ${i}` }
+  it('draws one family with several patterns, so the dash carries its own information', () => {
+    // Colour and dash index the same slot through lists of DIFFERENT length,
+    // so a repeated colour lands on a different dash and the pair stays unique
+    // for the lowest common multiple of the two — which, the lengths being
+    // coprime, is their product.
+    //
+    // This used to assert the opposite: one colour, always one dash. That made
+    // the second channel redundant with the first, which is the same as having
+    // one — two paths sharing a colour shared a dash too and were
+    // indistinguishable (SC 1.4.1).
+    //
+    // Both lengths are MEASURED off the module rather than retyped, so a fifth
+    // family or an eighth pattern is caught here instead of quietly halving
+    // the number of paths a board can draw apart.
+    const sample = Array.from(
+      { length: 400 },
+      (_, i) => ({ kind: 'variant' as const, name: `Path ${i}` }),
+    )
+    const colours = new Set(sample.map(getPathColor)).size
+    const dashes = new Set(sample.map(getPathDashArray)).size
+    expect(colours * dashes).toBe(PATH_IDENTITY_PERIOD)
+
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
+    expect(gcd(colours, dashes)).toBe(1)
+
+    // Coprime lengths are the claim; this is the consequence a reader cares
+    // about — one family is drawn with more than one pattern, so the pattern
+    // is carrying information the hue does not.
+    const perColour = new Map<string, Set<string | undefined>>()
+    for (const path of sample) {
       const colour = getPathColor(path)
-      const dash = getPathDashArray(path)
-      if (seen.has(colour)) expect(seen.get(colour)).toBe(dash)
-      else seen.set(colour, dash)
+      const seen = perColour.get(colour) ?? new Set()
+      seen.add(getPathDashArray(path))
+      perColour.set(colour, seen)
     }
-    expect(new Set(seen.values()).size).toBe(seen.size)
+    expect(
+      [...perColour.values()].every((patterns) => patterns.size > 1),
+    ).toBe(true)
   })
 })
 
@@ -405,9 +494,9 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
   })
 
   it('keeps the open set off the lane families', () => {
-    // A custom-named path is drawn as a line across the lanes it touches.
-    // Before the open set moved onto the tone families, most such paths
-    // rendered in the hue of a lane they crossed.
+    // A variant is drawn as a line across the lanes it touches. Before the
+    // open set moved onto the tone families, most such paths rendered in the
+    // hue of a lane they crossed.
     const lanes = familiesIn('lane')
     const pathFamilies = new Set(
       Array.from({ length: 40 }, (_, i) =>
@@ -424,7 +513,7 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
    * The test above was titled "keeps NAMED paths off the lane families" and
    * sampled forty synthetic names all hard-coded to `kind: 'variant'`.
    * `getPathColor` short-circuits every other kind straight to
-   * `PATH_KIND_COLORS`, so the sample could only ever produce the seven open
+   * `PATH_KIND_COLORS`, so the sample could only ever produce the open
    * families — the one set that is disjoint from the lanes by construction.
    * `happy` and `exception` were structurally unreachable through it, and
    * `happy` is green against the green `actor` lane.
@@ -432,13 +521,18 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
    * Widening the sample fails, and that failure is the finding. The honest fix
    * is to narrow the claim rather than reshuffle the palette: nine lane
    * families plus seven touchpoint tones is sixteen, and there is no spare
-   * hue for green or blue to move to. What CAN be held is that the overlap is
-   * exactly this list, known, and drawn at a weight nothing can confuse with a
-   * lane fill.
+   * hue for green to move to. What CAN be held is that the overlap is exactly
+   * ONE, known, and drawn at a weight nothing can confuse with a lane fill.
+   *
+   * It was two until the open set reserved green and red. `variant` was blue
+   * against the blue `evidence` lane, and unlike green it had somewhere to go:
+   * a variant reads the open set now, and the type entry it falls back to
+   * moved onto that set's first family. One overlap is a fact about a full
+   * palette; two was a fact about nobody having looked.
    */
-  const KNOWN_LANE_OVERLAP = ['happy', 'variant']
+  const KNOWN_LANE_OVERLAP = ['happy']
 
-  it('names every path type that shares a lane family', () => {
+  it('has exactly one path type sharing a lane family, and names it', () => {
     const lanes = familiesIn('lane')
     const overlapping = Object.entries(PATH_KIND_COLORS)
       .filter(([, token]) => lanes.has(/--color-([a-z]+)-/.exec(token)![1]))
@@ -446,8 +540,8 @@ describe('lane roles and touchpoint tones stay disjoint', () => {
     expect(overlapping).toEqual(KNOWN_LANE_OVERLAP)
   })
 
-  it('draws every overlap at a different weight from the lane it crosses', () => {
-    // What makes the collisions survivable: the path is a line at the text
+  it('draws that overlap at a different weight from the lane it crosses', () => {
+    // What makes the one collision survivable: the path is a line at the text
     // step, the lane is a fill six steps lighter. Same family, nothing like
     // the same colour.
     const laneFill = Number(CELL_STEP.surface)
