@@ -59,6 +59,17 @@ type SupabaseContextValue = {
   /** Any signed-in session may open the agent (viewers chat read-only). */
   canAgent: boolean
   /**
+   * Would the database let this client read a table outside the public
+   * surface? Restricted tables — `business_models` is the one in this tree —
+   * revoke SELECT from `anon` and name `authenticated` in their policy, so a
+   * request for one is refused for every signed-out reader on every load.
+   *
+   * A read gated on this is not sent when it cannot succeed. The alternative
+   * is sending it and swallowing the refusal as ordinary, which swallows a
+   * genuine outage along with it.
+   */
+  canReadPrivate: boolean
+  /**
    * Does the agent get WRITE tools this send? `canWrite` minus the
    * no-database trial, where there is no database to write to and the write
    * specs are never registered.
@@ -274,6 +285,7 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
       isServiceAccount,
       canAgent:
         isSampleTrial || (configured && (session !== null || isDevAuthoring)),
+      canReadPrivate: configured && (session !== null || isDevAuthoring),
       isSampleTrial,
       devSimulation,
     }),
