@@ -73,7 +73,7 @@ export async function sliceDeletionImpact(
  *
  * Recorded in the session ledger with **no** revert, and named in `DESTRUCTIVE`
  * so Save asks twice. There is deliberately no captured inverse: unlike a
- * scenario or path delete there is no `deleted_structure` archive for slices,
+ * scenario or path delete nothing archives a slice's rows,
  * so nothing exists to put back. An entry with a revert control that could not
  * actually restore the slides would be worse than one without.
  *

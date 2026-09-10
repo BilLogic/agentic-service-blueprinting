@@ -292,7 +292,7 @@ client wrappers in `src/lib/authoringRpc.ts`). The roster:
   `rename_owner_tag`
 - **Reorders**: `reorder_steps`, `set_path_steps`, `reorder_lanes`
 - **Dependencies**: `create_cell_dependency`, `clear_cell_dependency`
-- **Deletes** (each archives to `deleted_structure` and returns the
+- **Deletes** (each archives to `authoring_changes` and returns the
   archive id): `delete_scenario`, `delete_path`, `remove_step`,
   `remove_lane`, `remove_lanes`, `delete_cell`
 

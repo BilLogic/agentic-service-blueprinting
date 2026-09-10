@@ -206,21 +206,10 @@ alter table public.business_models alter column created_by set default auth.uid(
 -- 20260818000000_authoring_foundation.sql
 -- ─────────────────────────────────────────────────────────────────────────
 
--- everything from here is roles, RLS, grants and the storage
--- bucket, plus the one column default that stamps the caller.
-alter table public.deleted_structure alter column deleted_by set default auth.uid();
 
-alter table public.deleted_structure enable row level security;
 
 -- Readable by anyone who can read the blueprint (the recovery list is part of
--- the editor); written only by the delete functions, which run as definer.
-drop policy if exists "deleted_structure_select" on public.deleted_structure;
-create policy "deleted_structure_select" on public.deleted_structure
-  for select using (true);
-
-grant select on public.deleted_structure to anon, authenticated;
-revoke insert, update, delete, truncate on public.deleted_structure
-  from anon, authenticated;
+-- the editor);
 
 -- ---------------------------------------------------------------------------
 -- Ordinary column writes the panel does directly (no function needed): the
@@ -350,6 +339,9 @@ exception
   when insufficient_privilege then
     raise notice 'storage.objects policies skipped (not owner): bucket writes stay service-key only until these are added via the dashboard.';
 end $$;
+-- 6 statement(s) on public.deleted_structure are not here: a later
+-- migration drops that table, and its policy and grants went with it.
+
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 20260818001000_authoring_operations.sql
@@ -2071,3 +2063,62 @@ begin
   end if;
 end
 $recipe_proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000215000000_every_authoring_write_leaves_a_record.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the caller stamp, row-level security and the role grants. The log
+-- itself is plain Postgres; who may read it is the host's enforcement.
+alter table public.authoring_changes alter column author_id set default auth.uid();
+
+alter table public.authoring_changes enable row level security;
+
+-- Readable by anyone who can read the blueprint — the change list and the
+-- recovery list are both part of the editor. Written only through the
+-- functions below, all of which are definer.
+drop policy if exists "authoring_changes_select" on public.authoring_changes;
+create policy "authoring_changes_select" on public.authoring_changes
+  for select using (true);
+
+grant select on public.authoring_changes to anon, authenticated;
+revoke insert, update, delete, truncate on public.authoring_changes
+  from anon, authenticated;
+-- Postgres grants EXECUTE to PUBLIC at CREATE time, so the revoke is
+-- the operative statement of the pair and the grant names the one role meant
+-- to hold it. A deployment that serves the board to readers stays read-only.
+revoke execute on function
+  public.record_authoring_change(text, jsonb, jsonb, text, uuid) from public, anon;
+grant execute on function
+  public.record_authoring_change(text, jsonb, jsonb, text, uuid) to authenticated;
+-- who may read the recovery list.
+grant select on public.trash to anon, authenticated;
+-- the two post-conditions that are about roles, and therefore about
+-- the host rather than about the log.
+do $posture$
+declare
+  bad int;
+begin
+  -- THE CLIENT'S APPEND IS NOT REACHABLE BY anon. Reachable by anon it is a
+  -- write surface on a read-only deployment.
+  if has_function_privilege(
+       'anon',
+       'public.record_authoring_change(text, jsonb, jsonb, text, uuid)',
+       'execute') then
+    raise exception 'anon can execute record_authoring_change';
+  end if;
+
+  -- anon AND authenticated HOLD NO DIRECT WRITE ON THE LOG. Asserting it here
+  -- means the migration that introduces the table cannot be the one that
+  -- breaks the posture.
+  select count(*) into bad
+  from information_schema.role_table_grants
+  where table_schema = 'public'
+    and table_name = 'authoring_changes'
+    and grantee in ('anon', 'authenticated')
+    and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
+  if bad <> 0 then
+    raise exception '% direct write grants survive on public.authoring_changes', bad;
+  end if;
+end
+$posture$;

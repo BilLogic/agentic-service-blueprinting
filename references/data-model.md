@@ -8,7 +8,7 @@ spelling they shipped with (`20260729120000_derived_layer.sql`,
 `20260803001000_slices_origin_allows_human.sql`) and the authoring
 migrations (`20260818000000_authoring_foundation.sql` — provenance
 `origin` columns, `cells.cell_key` identity, `position`,
-`deleted_structure`, direct-column grants;
+the deletion archive, direct-column grants;
 `20260818001000_authoring_operations.sql` — the `SECURITY DEFINER` RPCs
 that are the only sanctioned write path for structure;
 `20260818002000_service_account_tier.sql` — OPTIONAL recipe splitting

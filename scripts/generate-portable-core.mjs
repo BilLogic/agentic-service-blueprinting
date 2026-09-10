@@ -112,7 +112,11 @@ function trim(lines) {
  * and not a silent one. A drop is the same class of change: a column-scoped
  * grant written in 21000113000000 still named `screenshots` after
  * 21000119000000 dropped it, and the recipe refused to apply on top of the
- * core it was written for.
+ * core it was written for. A dropped TABLE is that same argument one size up —
+ * the row-level security, the policy and the grants a fragment wrote for a
+ * table the core later drops describe a relation that is not there by the time
+ * the recipe runs, and Postgres dropped every one of them with the table, so
+ * the fragment says what the database holds either way.
  *
  * A table rename is global — the name is unique in the schema, so every
  * mention of it is a mention of that table. A COLUMN rename is not: a column
@@ -133,6 +137,7 @@ export function renamesIn(sql) {
   // One `alter table` may drop several columns in one statement.
   const alter = /^\s*alter table (?:if exists )?(?:public\.)?(\w+)\b([^;]*);/gim
   const dropped = /\bdrop column (?:if exists )?(\w+)/gi
+  const droppedTable = /^\s*drop table (?:if exists )?(?:public\.)?(\w+)\s*(?:cascade|restrict)?\s*;/gim
   const found = []
   for (const [match, from, to] of sql.matchAll(table)) {
     found.push([sql.indexOf(match), { kind: 'identifier', from, to }])
@@ -147,6 +152,9 @@ export function renamesIn(sql) {
     for (const [, column_] of body.matchAll(dropped)) {
       found.push([sql.indexOf(match), { kind: 'dropped-column', table: table_, column: column_ }])
     }
+  }
+  for (const [match, table_] of sql.matchAll(droppedTable)) {
+    found.push([sql.indexOf(match), { kind: 'dropped-table', table: table_ }])
   }
   found.sort((a, b) => a[0] - b[0])
   for (const [, op] of found) ops.push(op)
@@ -211,6 +219,22 @@ export function applyRename(sql, op) {
     return statements(sql)
       .map((piece) => (speaksOf.test(piece) ? piece.replace(word, op.to) : piece))
       .join('')
+  }
+  if (op.kind === 'dropped-table') {
+    // The table is gone by the time the recipe runs, and Postgres took its
+    // policy and its grants with it, so a fragment that still enables RLS on
+    // it or grants SELECT on it describes nothing. The statements come out
+    // and a comment says which drop removed them, so the recipe reads as a
+    // record of what happened rather than as a file with a hole in it.
+    const speaksOf = new RegExp(`\\b(?:public\\.)?${op.table}\\b`, 'i')
+    let removed = 0
+    const kept = statements(sql).filter((piece) => {
+      if (piece.trim() === '' || !speaksOf.test(piece)) return true
+      removed += 1
+      return false
+    })
+    if (removed === 0) return sql
+    return `${kept.join('')}\n-- ${removed} statement(s) on public.${op.table} are not here: a later\n-- migration drops that table, and its policy and grants went with it.\n`
   }
   if (op.kind === 'dropped-column') {
     // A column-scoped grant on the table loses the column from its list.
