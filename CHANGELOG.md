@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.25.3
+
+### Patch Changes
+
+- e22e14a: The Phase 4b data gate report survives a registry with nothing registered.
+  `generate_fallbacks.py --register` fills the offline registry for a deployment
+  that keeps blueprint content offline; one whose content lives entirely in its
+  database registers nothing, and the report asserted at least one compared pair.
+  It now says there is nothing to compare and stops, and still asserts that a
+  registry WITH content yields pairs.
+
 ## 1.25.2
 
 ### Patch Changes
@@ -3790,8 +3801,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
