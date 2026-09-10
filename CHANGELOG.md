@@ -1,5 +1,261 @@
 # Changelog
 
+## 1.36.0
+
+### Minor Changes
+
+- 2ca1837: A check reports where the kit's own content is still what a deployment serves.
+
+  Two guards already sweep for content leaking the wrong way — `check:standalone`
+  for the NAMES of the deployment this kit was generalised from, and
+  `check:content-coupling` for that deployment's CONTENT with the name filed off.
+  Both protect the kit from the deployment it came out of. Neither faces an
+  adopter, and nothing else did either: of the checks that shipped, none answered
+  _is what this deployment serves still the kit's blueprint rather than its own?_
+
+  `npm run check:sample-content` is the mirror. It knows the meta-blueprint's
+  markers — the service name `Keeping a blueprint true`, the `f0000000-…` id
+  namespace `fid()` mints, and the six scenario titles — and reports where a
+  deployment still carries them, naming the file, the line and the value the way
+  the content guard does. The id marker is the one with the name filed off: it is
+  thirty-two hex digits that say nothing, so content can read as entirely an
+  adopter's and still be keyed on the kit's rows. Its prefix is imported from
+  `check-content-coupling.mjs` rather than copied, because the two guards are one
+  claim read from two sides — the value that guard trusts as proof of origin is
+  the value this one reports.
+
+  **Subject is only the two places a deployment's content lives**: the seed
+  `[db.seed]` names, and `src/data/`, the board the app renders with no database.
+  The generator, this repository's docs and its README are out. Each of them
+  names the sample and always will, and a sweep that included them could never
+  reach zero on any deployment — which is how a report becomes wallpaper.
+
+  **Advisory: it reports and exits 0**, says so in its own output and in its
+  header, and is not in CI. Both states it reports are legitimate. A fresh clone
+  is full of sample content because SETUP.md § 2 asks a new reader to run the app
+  against it; a half-migrated deployment — seed replaced, `src/data/` not yet
+  re-registered — is a supported place to stand for a while. Failing either would
+  fail a supported path, and a check whose readers have learned to scroll past it
+  is worse than none.
+
+  Documented where an adopter meets it — SETUP.md § Before you push — as well as
+  in the guard set.
+
+- 7b8d831: A connected database is the whole truth: the bundled sample renders only when
+  no database is configured.
+
+  **Content on screen today will disappear.** If your deployment has a database
+  and your board has gaps, some of what you are looking at is not yours — it is
+  this kit's sample, appended underneath your rows. After this release those
+  lanes, columns, cells, dependencies and path names are gone, and the gaps they
+  were covering are visible. Nothing of yours is deleted: the rows in your
+  database are untouched, and everything that disappears is content that was
+  never in it.
+
+  What to do about it. Open each board once after upgrading and look for what
+  went missing — that is the list of things the sample was answering for. Where
+  you want the content, author it: it is now a row in your database like any
+  other. Where you do not, the empty lane is the correct answer and was the
+  answer all along. A scenario or path the database has nothing for now draws
+  nothing rather than the kit's board, so a tab that empties out is a tab whose
+  content was never yours either.
+
+  **What changed.** `resolveBlueprintForScenario` no longer merges the two
+  sources. On the database path it used to append every fallback lane, cell,
+  step and dependency the rows lacked and fill a blank path name, summary or
+  note from the fallback's prose, then report `source: 'database'` — so the leak
+  was invisible, and the content that leaked was a blueprint of this kit wearing
+  the adopter's path names. The path list did the same through
+  `mergePathsWithFallback`, which is removed with it.
+
+  **Telling the two states apart.** A `sample data` badge sits in the workspace
+  chrome whenever no database is configured. It is the one state the sample is
+  reachable in, and connecting a backend hides it permanently.
+
+- 9625089: A lane collision has a rule to name, and the message that names it fires.
+
+  `src/lib/authoringErrors.ts` matched `lanes_path_row_unique` to say "Two lanes
+  ended up in the same position." Nothing has ever carried that name. The object
+  on those two columns was `lanes_path_row_idx`, a plain non-unique index created
+  by the template schema as `layers_path_row_idx` and carried through the
+  vocabulary renames — so the branch was dead text, and an author who put two
+  lanes in one slot met no refusal at all: the write succeeded and the board
+  showed two lanes fighting for one row.
+
+  **The rule.** `21000223000000` adds `lanes_path_position_unique` on
+  `(path_id, position)`, deferrable and initially deferred, and drops the
+  duplicate index the constraint's own index replaces. Deferred because both
+  write paths that move lanes collide mid-transaction on ordinary use:
+  `reorder_lanes` renumbers one statement per lane, and `add_lane` opens a slot
+  with a single self-colliding `UPDATE`. An immediate constraint would refuse
+  every drag of a lane. The migration proves both shapes, and the duplicate that
+  settles, on a fixture it rolls back.
+
+  **The message.** The matcher now names that constraint, so the sentence it was
+  written for reaches the author instead of the generic duplicate line.
+
+  **The guard.** `authoringErrors.test.ts` drives the database's own text through
+  the translator, and holds every identifier-shaped matcher in the table against
+  `supabase/generated/portable-core.schema.sql`. A matcher naming something the
+  schema does not create now fails a test rather than failing silently in front
+  of an author.
+
+- 9701142: The navigation is the rows: the bundled sample no longer merges into a
+  connected deployment's tabs.
+
+  **Content on screen today will disappear, and some sentences will change.**
+  If your deployment has a database and any of your phase or scenario ids came
+  from this kit's sample, part of your navigation is not yours. Two things were
+  happening on every render:
+
+  - **Your summaries were being overwritten.** The merge tested the sample's
+    summary FIRST and yours only if the sample had none, so wherever an id
+    collided the tab described this kit's own service in this kit's words —
+    even when your summary was perfectly good. Your `scenarios.layout` lost the
+    same way for any scenario the sample registers a blueprint for. After this
+    release your rows read exactly as your database holds them.
+  - **Scenarios you deleted were coming back.** A scenario the sample ships,
+    under a phase you kept, was appended to the nav whether or not your database
+    still had it. Those tabs are gone. Since `resolveBlueprintForScenario`
+    stopped filling holes from the sample they had nothing behind them anyway:
+    a tab that opened onto an empty board is exactly the one this removes.
+
+  Nothing of yours is deleted. Your rows are untouched; everything that
+  disappears is content that was never in your database. A tab that vanishes is
+  a scenario you do not have, and a summary that changes is the one you wrote.
+
+  **What to do about it.** Open the nav once after upgrading. Where a tab is
+  gone and you want it, author the scenario — it is a row like any other. Where
+  a summary now reads differently, that is your `phases.summary` or
+  `scenarios.summary` speaking for the first time; fill in the blank ones you
+  find.
+
+  **What changed.** `src/lib/mergeSlidesWithFallback.ts` is removed, and
+  `EditorContext` reads the fetched slides straight through. The whole-nav
+  fallback is unchanged: a read with no rows at all — no database configured, or
+  the first fetch still in flight — still shows the deployment's `sample.nav`,
+  whole and unmixed, which is what a fresh clone's onboarding depends on.
+
+- a8af070: The path open set reserves green and red.
+
+  **Four families, not seven.** A path with a name rather than a type used to be
+  drawn from seven families — indigo, tomato, purple, gold, crimson, yellow, red
+  — which meant a variant could come out crimson, tomato or outright red while
+  not being an exception at all. Red is the one colour on a service blueprint a
+  reader should never have to decode, and spending it on a route that is merely
+  different is what makes it need decoding. The open set is now `indigo, purple,
+gold, yellow`; green belongs to the happy path and red to exceptions, always.
+
+  **A reserved type never consults the name.** `getPathColor` short-circuits
+  `happy` and `exception` to their type colour before it looks at anything else,
+  so renaming an exception cannot make it stop being red. Two exceptions in one
+  scenario are therefore the same fill by design — which is why the dash is now
+  read from the path instead of from its type, since inside that scenario the
+  dash is the only channel left. Seven patterns against four families, kept
+  coprime on purpose: a repeated hue lands on a different pattern, so the pair is
+  unique for 28 paths where the old arrangement — seven against seven, both off
+  one hash — repeated after 7.
+
+  **One lane overlap instead of two.** `variant` was blue against the blue
+  `evidence` lane, and a 2px path line could land in exactly the hue of a lane it
+  crossed. Its fallback moved onto the open set's first family. The remaining
+  overlap is `happy` against the green `actor` lane, which cannot be reallocated
+  — nine lane families plus seven touchpoint tones is the whole palette — so it
+  is named in `palette.test.ts` and held to a heavier step than the lane fill.
+
+  **The hash carries more, so it is a real one.** Slots came off a sum of
+  character codes, which is order-invariant: two names built from the same
+  letters took the same colour AND the same dash. That was survivable while seven
+  families were open and pinned paths skipped the hash; it is not, now that every
+  unpinned path goes through it. FNV-1a.
+
+  **The palette tests measure the mechanism.** The brand assertion read
+  `expect(THEME_DIALS.light.C).toBe(0)` and conceded in its own comment that a
+  fork would have to edit it. It now asserts what the number stood for — that
+  chroma does not change between themes, true of a neutral template and a branded
+  deployment alike — plus that every chroma dial is declared in both theme files
+  rather than leaking across. The path assertions read the open set off the
+  module rather than naming the template's hues.
+
+- cbbd107: The slide card names its fields, offers removal where it can be seen, and the
+  slide sheet is draggable.
+
+  **Labels.** The card had no `<label>` at all — both fields were placeholders,
+  and a placeholder disappears the moment somebody types. A filled card was two
+  unnamed boxes, and a screen reader got a hint rather than a name. Narrative
+  takes a visible one in the schema's word; the title takes an accessible one,
+  because the number and the strip beside it already say which slide it is.
+
+  **Removal.** An uploaded illustration could only be removed by right-clicking
+  it: invisible, absent on a touch screen, unreachable by keyboard. Every
+  upload now carries a visible remove button. Frames do not — a frame belongs
+  to its cell and cannot be removed from here.
+
+  **Height.** The slide sheet was a fixed 224px. Five slides citing three cells
+  each is more than that, so the rows that did not fit were reachable only by
+  scrolling inside a strip that also scrolls sideways — two axes in one small
+  box, on the surface where slides are written. Its top edge is now a drag
+  handle, in the same idiom `AgentDockDivider` already uses, and the height is
+  remembered.
+
+### Patch Changes
+
+- 1b4d7b6: A slide shows a set of images.
+
+  The single-choice columns are gone. A slide nobody has touched shows every cited cell's frames; once an author ticks or unticks, `slide_images` is the set.
+
+- 1b4d7b6: A slide's prose is a caption.
+
+  `slides.narrative` named the sentence under the images as if it were a story
+  the slide told. It is a caption, and the column, the authoring format, the
+  editor label and the agent tools now say so.
+
+- 1b4d7b6: An upload joins a slide's image set.
+
+  A file saved under `slices/<sliceId>/<slideId>/<uuid>.ext` becomes an `image_url` member of the same set as the cited frames, with a remove control on uploads only.
+
+- 7a1adab: The stacking contract says layer where it means layer.
+
+  Two sentences in `src/lib/canvasStackingContract.test.ts` were carried over by
+  the `layers` → `lanes` word replacement while meaning the other word. Neither
+  is about a row of the board.
+
+  **The comment misquoted the code it documents.** The header recalls the
+  assertion the file used to make, and the quotation had been rewritten along
+  with everything else: it pinned `"lane === 'forward' ? 'z-0' : 'z-[30]'"` as
+  an exact substring. `IntegratedDependencyArrows.tsx` reads `layer`, and so
+  does the regex twenty lines below the comment, so the paragraph explaining why
+  the exact-substring pin was dropped named an identifier that has never
+  existed. The `z-[30]` inside it is left alone — the arbitrary spelling is the
+  whole point of that paragraph, and it is quoting history, not the current
+  source.
+
+  **The test title named the wrong noun.** `contains canvas-local lanes in one
+stacking context` is about `isolate` and the z bands above it. It reads
+  `layers` again.
+
+  Both spellings are what the file held before the rename, so this restores
+  rather than decides.
+
+  **The guard says what it could not see.**
+  `scripts/tests/a-lane-is-not-a-layer.test.mjs` already keeps a section for its
+  own limits, and these are two shapes that belong in it: an identifier quoted
+  inside a comment, where `tsc` cannot do the sweep the guard's patterns lean on
+  it for, and a test title whose layer word sits after the noun rather than
+  before it. Neither was widened for. The first would mean listing
+  `lane === 'forward'`, which that header argues against and a test still
+  asserts finds nothing; the second would mean reading the whole line, which
+  would fire on the true sentences in `EditorShell` and `ScenarioBlueprintPanel`
+  that put a lane rail and stacking slots in one breath.
+
+  **Why it shipped here.** The file is on a deployment's reconciled allowlist,
+  which promises byte-identity with this kit's copy, so the fix comes upstream
+  and returns with a pin bump rather than being applied downstream.
+
+- 1b4d7b6: Un-citing a cell drops it from the slide's image set.
+
+  A `cell_ids` change deletes `slide_images` rows whose cell is no longer cited. Remaining members keep their positions, and an emptied set stays authored rather than flipping back to untouched.
+
 ## 1.35.0
 
 ### Minor Changes
@@ -4154,8 +4410,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
