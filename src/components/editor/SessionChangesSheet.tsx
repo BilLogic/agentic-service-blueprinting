@@ -537,7 +537,7 @@ export function SessionChangesSheet() {
               variant="ghost"
               size="sm"
               aria-label={`Review ${changes.length} changes`}
-              className="pointer-events-auto h-7 shrink-0 gap-1.5 border border-primary/30 bg-primary/10 px-2.5 text-xs text-primary hover:bg-primary/15 hover:text-primary"
+              className="pointer-events-auto shrink-0 gap-1.5 border border-primary/30 bg-primary/10 px-2.5 text-primary hover:bg-primary/15 hover:text-primary"
             >
               <History className="size-3.5" aria-hidden />
               Changes
@@ -611,7 +611,7 @@ export function SessionChangesSheet() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 shrink-0 px-2 text-xs"
+                  className="shrink-0 px-2"
                   onClick={() => setConfirming(null)}
                 >
                   Cancel
@@ -620,7 +620,7 @@ export function SessionChangesSheet() {
                   type="button"
                   variant="destructive"
                   size="sm"
-                  className="h-7 shrink-0 px-2.5 text-xs"
+                  className="shrink-0 px-2.5"
                   onClick={() =>
                     void revertAll().catch((error: unknown) => {
                       console.error('[authoring] revert all failed:', error)
@@ -639,7 +639,7 @@ export function SessionChangesSheet() {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 shrink-0 px-2 text-xs"
+                  className="shrink-0 px-2"
                   onClick={() => setConfirming(null)}
                 >
                   Cancel
@@ -647,7 +647,7 @@ export function SessionChangesSheet() {
                 <Button
                   type="button"
                   size="sm"
-                  className="h-7 shrink-0 gap-1.5 px-2.5 text-xs"
+                  className="shrink-0 gap-1.5 px-2.5"
                   onClick={save}
                 >
                   <Check className="size-3.5" aria-hidden />
@@ -662,7 +662,7 @@ export function SessionChangesSheet() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground"
+                    className="shrink-0 gap-1.5 px-2 text-muted-foreground"
                     disabled={reverting}
                     onClick={() => setConfirming('revert')}
                   >
@@ -676,7 +676,7 @@ export function SessionChangesSheet() {
                 <Button
                   type="button"
                   size="sm"
-                  className="h-7 shrink-0 gap-1.5 px-2.5 text-xs"
+                  className="shrink-0 gap-1.5 px-2.5"
                   disabled={reverting}
                   onClick={save}
                 >

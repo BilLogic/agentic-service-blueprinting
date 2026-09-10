@@ -217,7 +217,6 @@ export function CreateBlueprintDialog({
                     type="button"
                     size="sm"
                     variant={draft.phaseId === phase.id ? 'default' : 'outline'}
-                    className="h-7 text-xs"
                     onClick={() => set('phaseId', phase.id)}
                   >
                     {phase.name}
@@ -243,7 +242,6 @@ export function CreateBlueprintDialog({
                   type="button"
                   size="sm"
                   variant={draft.layout === type ? 'default' : 'outline'}
-                  className="h-7 text-xs"
                   onClick={() => set('layout', type)}
                 >
                   {LAYOUT_LABELS[type]}

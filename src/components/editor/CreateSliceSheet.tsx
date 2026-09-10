@@ -220,7 +220,7 @@ export function CreateSliceSheet({
               <Button
                 type="button"
                 size="sm"
-                className="h-7 shrink-0 px-2.5 text-xs"
+                className="shrink-0 px-2.5"
                 disabled={cellCount === 0}
                 onClick={() => setStep('name')}
               >
@@ -281,7 +281,7 @@ export function CreateSliceSheet({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs"
+                className="px-2"
                 disabled={busy}
                 onClick={() => onOpenChange(false)}
               >
@@ -290,7 +290,7 @@ export function CreateSliceSheet({
               <Button
                 type="button"
                 size="sm"
-                className="h-7 px-2.5 text-xs"
+                className="px-2.5"
                 disabled={busy || problems.length > 0 || cellIds.length === 0}
                 onClick={handleCreate}
               >

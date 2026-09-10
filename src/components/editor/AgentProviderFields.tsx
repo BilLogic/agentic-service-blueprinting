@@ -80,7 +80,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 min-w-0 flex-1 justify-start text-xs"
+                className="min-w-0 flex-1 justify-start"
               >
                 <span className="truncate">{providerLabel}</span>
               </Button>
@@ -116,7 +116,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 min-w-0 flex-1 justify-start font-mono text-xs"
+                className="min-w-0 flex-1 justify-start font-mono"
               >
                 <span className="truncate">{modelFor(settings)}</span>
               </Button>
@@ -156,7 +156,6 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
         />
         <Button
           size="sm"
-          className="h-7 text-xs"
           disabled={keyDraft.trim() === ''}
           onClick={() => {
             saveAgentSettings({

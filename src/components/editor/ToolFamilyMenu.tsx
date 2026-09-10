@@ -126,7 +126,7 @@ export function ToolFamilyMenu({
                   variant="ghost"
                   size="sm"
                   aria-label={`${label} tools`}
-                  className="h-7 w-4 shrink-0 rounded-l-none px-0 text-muted-foreground hover:text-foreground"
+                  className="w-4 shrink-0 rounded-l-none px-0 text-muted-foreground hover:text-foreground"
                 >
                   <ChevronDown className="size-3" aria-hidden />
                 </Button>

@@ -46,7 +46,7 @@ export function AgentScopeField() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 min-w-0 flex-1 justify-start text-xs"
+              className="min-w-0 flex-1 justify-start"
             >
               <span className="truncate">{SCOPE_LABELS[scope]}</span>
             </Button>
