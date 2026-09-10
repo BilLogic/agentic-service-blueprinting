@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.33.6
+
+### Patch Changes
+
+- dd896e8: The owner select's trigger is the panel's shared one again. Its inlined copy of
+  the classes had fallen behind `PANEL_SELECT_TRIGGER_CLASS`: no hover border, no
+  inset focus ring, and no disabled treatment, so one control in a column of
+  selects answered a pointer differently from all its neighbours.
+
 ## 1.33.5
 
 ### Patch Changes
@@ -4028,8 +4037,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
