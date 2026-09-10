@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.29.1
+
+### Patch Changes
+
+- 04cf10c: Touchpoint faces in the compare grid carry `data-blueprint-touchpoint` again.
+  `CompareCellBlock` rendered `TouchpointCellFace` directly, bypassing the
+  wrapper that sets the attribute — so `scrollBlueprintTouchpointCellIntoView`
+  could not find a named touchpoint in that view and silently scrolled nothing.
+
 ## 1.29.0
 
 ### Minor Changes
@@ -3874,8 +3883,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
