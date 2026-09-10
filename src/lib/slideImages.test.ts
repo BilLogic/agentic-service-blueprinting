@@ -169,6 +169,44 @@ describe('what images does this slide show', () => {
     )
     expect(shown).toHaveLength(4)
   })
+
+  it('untouched shows each cited cell id, not a strip companion', () => {
+    const withStoryboard = {
+      ...blueprint,
+      lanes: [
+        { id: 'l-1', name: 'Lane', role: null, position: 0 },
+        { id: 'l-story', name: 'Storyboard', role: 'storyboard', position: 1 },
+      ],
+      cells: [
+        ...blueprint.cells,
+        {
+          id: 'c-story',
+          lane_id: 'l-story',
+          step_id: 'st-1',
+          content: 'storyboard',
+          frame: '/storyboards/companion.png',
+          summary: null,
+          links: [],
+        },
+      ],
+    } as unknown as BlueprintData
+    const shown = imagesThisSlideShows(withStoryboard, slide())
+    expect(shown.map((image) => image.src)).toEqual([
+      '/storyboards/one.png',
+      '/storyboards/two.png',
+    ])
+    expect(shown.map((image) => image.cellId)).toEqual(['c-1', 'c-2'])
+  })
+
+  it('first tick materialises exactly the images the untouched view showed', () => {
+    const shown = imagesThisSlideShows(blueprint, slide())
+    expect(
+      shown.map((image) => ({ cell_id: image.cellId, image_url: image.imageUrl })),
+    ).toEqual([
+      { cell_id: 'c-1', image_url: null },
+      { cell_id: 'c-2', image_url: null },
+    ])
+  })
 })
 
 describe('the image set a replaced slide keeps', () => {

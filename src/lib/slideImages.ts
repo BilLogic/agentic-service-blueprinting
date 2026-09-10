@@ -1,8 +1,6 @@
-import {
-  isRenderableImageSrc,
-  resolveSlideStrip,
-} from '@/lib/sliceCells'
+import { isRenderableImageSrc } from '@/lib/sliceCells'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
+import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slide, SlideImage } from '@/types/database'
 
@@ -29,19 +27,46 @@ export function frameForCitedCell(
   blueprint: BlueprintData | null,
   cellId: string,
 ): string | null {
-  const cell = blueprint?.cells.find((candidate) => candidate.id === cellId)
+  const canonical = resolveBlueprintCellId(cellId)
+  const cell = blueprint?.cells.find(
+    (candidate) => candidate.id === canonical || candidate.id === cellId,
+  )
   const frame = cell?.frame?.trim()
   if (!frame || isBlueprintStepStoryboardPlaceholder(frame)) return null
   return frame
 }
 
 /**
+ * The cited cells' own frames, in the slide's cell order.
+ *
+ * This is the rule both the untouched view and the tick model use. It is
+ * not a strip: a strip also pulls in the storyboard companion of each
+ * cell's step, and that expansion is what made the first tick drop an
+ * image the reader had just been shown.
+ *
+ * @param {BlueprintData | null} blueprint - The board the cells are drawn on.
+ * @param {readonly string[]} cellIds - Citations, in the order the slide stores them.
+ * @returns {Array<{ src: string; cellId: string }>} Frames a tick can name.
+ */
+export function framesOfCitedCells(
+  blueprint: BlueprintData | null,
+  cellIds: readonly string[],
+): Array<{ src: string; cellId: string }> {
+  const frames: Array<{ src: string; cellId: string }> = []
+  for (const cellId of cellIds) {
+    const src = frameForCitedCell(blueprint, cellId)
+    if (src) frames.push({ src, cellId })
+  }
+  return frames
+}
+
+/**
  * What images does this slide show.
  *
- * An untouched slide (`shows_all_images`, no authored rows) tracks the board:
- * every cited cell's frames, in the slide's own cell order, via
- * `resolveSlideStrip`. The first tick or untick makes the set explicit; from
- * then on the slide shows exactly its rows, including none.
+ * An untouched slide (`shows_all_images`) tracks the board: every cited
+ * cell's own frame, in the slide's cell order. The first tick or untick
+ * makes the set explicit from that same list; from then on the slide shows
+ * exactly its rows, including none.
  *
  * @param {BlueprintData | null} blueprint - Cells whose frames fill an untouched slide.
  * @param {SlideWithImageSet} slide - The slide, with `slide_images` embedded.
@@ -52,9 +77,9 @@ export function imagesThisSlideShows(
   slide: SlideWithImageSet,
 ): ShownSlideImage[] {
   if (slide.shows_all_images) {
-    return resolveSlideStrip(blueprint, slide).map((src) => ({
+    return framesOfCitedCells(blueprint, slide.cell_ids).map(({ src, cellId }) => ({
       src,
-      cellId: null,
+      cellId,
       imageUrl: null,
     }))
   }

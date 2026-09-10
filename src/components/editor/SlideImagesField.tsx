@@ -17,17 +17,9 @@ import {
   type SlideImageMemberInput,
 } from '@/lib/sliceMutations'
 import { isRenderableImageSrc } from '@/lib/sliceCells'
-import { frameForCitedCell } from '@/lib/slideImages'
+import { framesOfCitedCells, imagesThisSlideShows } from '@/lib/slideImages'
 import { cn, errorMessage } from '@/lib/utils'
 import type { Slide } from '@/types/database'
-
-/**
- * One cited cell that can appear in the slide's image set.
- */
-type CitedFrame = {
-  cellId: string
-  src: string
-}
 
 /**
  * Reindex members to a dense 0..n-1 sequence.
@@ -78,12 +70,10 @@ export function SlideImagesField({
   if (!itemId) return null
 
   const slide = items.find((item) => item.id === itemId) ?? saved
-  const citedFrames: CitedFrame[] = (slide?.cell_ids ?? [])
-    .map((cellId) => {
-      const src = frameForCitedCell(blueprint, cellId)
-      return src ? { cellId, src } : null
-    })
-    .filter((entry): entry is CitedFrame => entry !== null)
+  const citedFrames = framesOfCitedCells(blueprint, slide?.cell_ids ?? [])
+  const shown = slide
+    ? imagesThisSlideShows(blueprint, slide)
+    : citedFrames.map(({ src, cellId }) => ({ src, cellId, imageUrl: null }))
 
   const urlMembers = [...(slide?.slide_images ?? [])]
     .filter((row) => row.image_url)
@@ -91,7 +81,7 @@ export function SlideImagesField({
 
   const showingAll = slide?.shows_all_images ?? true
   const selectedCellIds = showingAll
-    ? new Set(citedFrames.map((frame) => frame.cellId))
+    ? new Set(shown.map((image) => image.cellId).filter((id): id is string => Boolean(id)))
     : new Set(
         (slide?.slide_images ?? [])
           .map((row) => row.cell_id)
@@ -105,10 +95,9 @@ export function SlideImagesField({
           .filter((url): url is string => Boolean(url)),
       )
 
-  const siblings = [
-    ...citedFrames.map((frame) => ({ src: frame.src, alt: '' })),
-    ...urlMembers.map((row) => ({ src: row.image_url ?? '', alt: '' })),
-  ].filter((sibling) => sibling.src.length > 0)
+  const siblings = shown
+    .filter((image) => image.src.length > 0)
+    .map((image) => ({ src: image.src, alt: '' }))
 
   const refresh = () => {
     invalidateQueries(`slice:${sliceId}`)
@@ -147,9 +136,9 @@ export function SlideImagesField({
         .sort((left, right) => left.position - right.position)
         .map((row) => ({ cell_id: row.cell_id, image_url: row.image_url }))
     }
-    return citedFrames.map((frame) => ({
-      cell_id: frame.cellId,
-      image_url: null,
+    return shown.map((image) => ({
+      cell_id: image.cellId,
+      image_url: image.imageUrl,
     }))
   }
 
@@ -250,7 +239,7 @@ export function SlideImagesField({
       </div>
 
       <div className="flex gap-1 overflow-x-auto">
-        {citedFrames.map((frame, index) => {
+        {citedFrames.map((frame) => {
           const on = selectedCellIds.has(frame.cellId)
           return (
             <div key={frame.cellId} className="relative w-16 shrink-0">
@@ -259,7 +248,10 @@ export function SlideImagesField({
                 alt=""
                 triggerLabel="Enlarge frame"
                 siblings={siblings}
-                siblingIndex={index}
+                siblingIndex={Math.max(
+                  0,
+                  siblings.findIndex((sibling) => sibling.src === frame.src),
+                )}
                 triggerClassName={cn(
                   'w-16 shrink-0 overflow-hidden rounded-sm border',
                   on ? 'border-ring' : 'border-border opacity-45',
@@ -288,7 +280,7 @@ export function SlideImagesField({
           )
         })}
 
-        {urlMembers.map((row, index) => {
+        {urlMembers.map((row) => {
           const src = row.image_url ?? ''
           if (!src) return null
           const on = selectedUrls.has(src)
@@ -299,7 +291,10 @@ export function SlideImagesField({
                 alt=""
                 triggerLabel="Enlarge image"
                 siblings={siblings}
-                siblingIndex={citedFrames.length + index}
+                siblingIndex={Math.max(
+                  0,
+                  siblings.findIndex((sibling) => sibling.src === src),
+                )}
                 triggerClassName={cn(
                   'w-16 shrink-0 overflow-hidden rounded-sm border',
                   on ? 'border-ring' : 'border-border opacity-45',

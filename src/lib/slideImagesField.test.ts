@@ -48,6 +48,11 @@ describe('a slide shows a set of images', () => {
     expect(presentation).toContain('imagesThisSlideShows')
     expect(presentation).not.toContain('.slice(0, 3)')
   })
+
+  it('ticks from the same resolver the untouched view uses', () => {
+    expect(field).toContain('framesOfCitedCells')
+    expect(field).toContain('imagesThisSlideShows')
+  })
 })
 
 const mutations = readFileSync(
@@ -61,7 +66,11 @@ describe('replacing slides keeps the authored image set', () => {
     expect(mutations).not.toMatch(/shows_all_images:\s*true/)
   })
 
-  it('removes uploads when a slide itself is deleted', () => {
-    expect(mutations).toContain('removeSlideUploadObjects')
+  it('removes uploads after the rewrite, and only for slides that did not come back', () => {
+    const replaceFn = mutations.slice(mutations.indexOf('export async function replaceSlides'))
+    const insertAt = replaceFn.indexOf('.insert(planned.map')
+    const storageAt = replaceFn.lastIndexOf('removeSlideUploadObjects')
+    expect(insertAt).toBeGreaterThan(-1)
+    expect(storageAt).toBeGreaterThan(insertAt)
   })
 })

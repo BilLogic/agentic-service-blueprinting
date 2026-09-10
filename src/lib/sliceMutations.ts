@@ -209,10 +209,6 @@ export async function replaceSlides(
   const previous: CapturedSlide[] = record ? existing : []
   const keptIds = new Set(slides.map((slide) => slide.id).filter((id): id is string => Boolean(id)))
 
-  for (const gone of existing.filter((row) => !keptIds.has(row.id))) {
-    await removeSlideUploadObjects(client, sliceId, gone.id)
-  }
-
   const { error: deleteError } = await client
     .from('slides')
     .delete()
@@ -258,6 +254,10 @@ export async function replaceSlides(
       const { error: imageError } = await client.from('slide_images').insert(imageRows)
       if (imageError) throw toAuthoringError(imageError)
     }
+  }
+
+  for (const gone of existing.filter((row) => !keptIds.has(row.id))) {
+    await removeSlideUploadObjects(client, sliceId, gone.id)
   }
 
   // After the write, like every other entry: the ledger records what landed.

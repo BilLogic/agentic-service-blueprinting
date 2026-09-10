@@ -333,11 +333,7 @@ export async function executeRevert(
         .select('id')
         .eq('slice_id', sliceId)
       if (currentError) throw toAuthoringError(currentError)
-      for (const slide of current ?? []) {
-        if (!keepIds.has(slide.id)) {
-          await removeSlideUploadObjects(client, sliceId, slide.id)
-        }
-      }
+      const dropped = (current ?? []).filter((slide) => !keepIds.has(slide.id))
       const cleared = await client
         .from('slides')
         .delete()
@@ -345,44 +341,48 @@ export async function executeRevert(
       if (cleared.error) throw toAuthoringError(cleared.error)
       // An empty capture is a real answer, not a failure: the slice genuinely
       // had no slides before the write, so putting none back IS the inverse.
-      if (rows.length === 0) return
-      const payloads: SlideRow[] = []
-      const memberSets: Array<{ slideId: string; members: SlideImageMemberInput[] }> = []
-      for (const raw of rows) {
-        if (!raw || typeof raw !== 'object') {
-          throw new Error('This change’s captured slides are malformed.')
+      if (rows.length > 0) {
+        const payloads: SlideRow[] = []
+        const memberSets: Array<{ slideId: string; members: SlideImageMemberInput[] }> = []
+        for (const raw of rows) {
+          if (!raw || typeof raw !== 'object') {
+            throw new Error('This change’s captured slides are malformed.')
+          }
+          const { slide_images, ...rest } = raw as SlideRow & {
+            slide_images?: SlideImageMemberInput[]
+          }
+          if (typeof rest.id !== 'string') {
+            throw new Error('This change’s captured slides are malformed.')
+          }
+          payloads.push(rest)
+          memberSets.push({
+            slideId: rest.id,
+            members: Array.isArray(slide_images)
+              ? slide_images.map((member) => ({
+                  position: member.position,
+                  cell_id: member.cell_id ?? null,
+                  image_url: member.image_url ?? null,
+                }))
+              : [],
+          })
         }
-        const { slide_images, ...rest } = raw as SlideRow & {
-          slide_images?: SlideImageMemberInput[]
+        const restored = await client.from('slides').insert(payloads)
+        if (restored.error) throw toAuthoringError(restored.error)
+        for (const set of memberSets) {
+          if (set.members.length === 0) continue
+          const inserted = await client.from('slide_images').insert(
+            set.members.map((member) => ({
+              slide_id: set.slideId,
+              position: member.position,
+              cell_id: member.cell_id,
+              image_url: member.image_url,
+            })),
+          )
+          if (inserted.error) throw toAuthoringError(inserted.error)
         }
-        if (typeof rest.id !== 'string') {
-          throw new Error('This change’s captured slides are malformed.')
-        }
-        payloads.push(rest)
-        memberSets.push({
-          slideId: rest.id,
-          members: Array.isArray(slide_images)
-            ? slide_images.map((member) => ({
-                position: member.position,
-                cell_id: member.cell_id ?? null,
-                image_url: member.image_url ?? null,
-              }))
-            : [],
-        })
       }
-      const restored = await client.from('slides').insert(payloads)
-      if (restored.error) throw toAuthoringError(restored.error)
-      for (const set of memberSets) {
-        if (set.members.length === 0) continue
-        const inserted = await client.from('slide_images').insert(
-          set.members.map((member) => ({
-            slide_id: set.slideId,
-            position: member.position,
-            cell_id: member.cell_id,
-            image_url: member.image_url,
-          })),
-        )
-        if (inserted.error) throw toAuthoringError(inserted.error)
+      for (const slide of dropped) {
+        await removeSlideUploadObjects(client, sliceId, slide.id)
       }
       return
     }
