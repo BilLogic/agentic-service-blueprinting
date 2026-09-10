@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.28.0
+
+### Minor Changes
+
+- 8d0a756: The service panel no longer sends the `business_models` read for a reader the
+  database will refuse. `SupabaseProvider` publishes `canReadPrivate`, and
+  `useServiceSpec` gates the restricted request on it — so a signed-out visitor
+  pays no refused round-trip per load, and a 42501 that does arrive is a signal
+  again rather than the ordinary case the hook had to swallow.
+
 ## 1.27.1
 
 ### Patch Changes
@@ -3833,8 +3843,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
