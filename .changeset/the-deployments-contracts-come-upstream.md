@@ -20,7 +20,7 @@ contract written against shared code that fails here is a measurement of real
 divergence between the two trees, named file by file, and it belongs to the
 convergence work rather than to this changeset.
 
-Six of the twenty named a deployment — a fixture called `PLUS App`, a slug,
+Six of the twenty named a deployment — a fixture named after the deployment, a slug,
 a comment naming the bot that builds a link. Those are neutralised, which is
 what the standalone guard is for, and one comment misused `lane` where it
 meant a boot signal.
