@@ -384,6 +384,9 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
   const sectionTitleSummary = sectionTitleLabel
     ? slide.summary
     : undefined
+  const sectionTitleInfoTooltip = sectionTitleLabel
+    ? (slide.note ?? null)
+    : null
 
   // The chrome this panel will ACTUALLY have. A locked panel carries no
   // resize handle, and an estimate that budgets one is dead gray space —
@@ -417,10 +420,7 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
     navigateLabel: onNavigate ? `Open ${scenarioName} scenario` : undefined,
     panelTitleLabel: sectionTitleLabel,
     panelTitleSummary: sectionTitleSummary,
-    // No note fed here by default. The prop is the seam a fork uses to hang
-    // a per-scenario aside on the panel title (e.g. "runs in parallel with
-    // …"); the template has nowhere to store one, so it stays empty.
-    panelTitleInfoTooltip: null,
+    panelTitleInfoTooltip: sectionTitleInfoTooltip,
     focusSlideId: slide.id,
     dimmed,
     focusActive,

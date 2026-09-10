@@ -57,7 +57,7 @@ const content = (over: Partial<CoverContent> = {}): CoverContent => ({
           paragraphs: ['This section carries its own weight.'],
         },
       ],
-      link: { label: 'Learn more →', docPath: 'docs/guide/02-x.md' },
+      link: { label: 'Learn more →', docPath: 'guide/section.md' },
     },
     {
       value: 'two',
@@ -288,7 +288,7 @@ describe('CoverPageView', () => {
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
     const link = screen.getByRole('link', { name: 'Learn more →' })
     expect(link.getAttribute('href')).toBe(
-      'https://example.test/repo/blob/main/docs/guide/02-x.md',
+      'https://example.test/repo/blob/main/guide/section.md',
     )
     expect(link.tagName).toBe('A')
   })
