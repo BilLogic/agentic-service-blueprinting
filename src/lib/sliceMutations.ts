@@ -273,9 +273,7 @@ export async function duplicateSlice(
       cell_keys: item.cell_keys,
       title: item.title,
       narrative: item.narrative,
-      illustrations: item.illustrations,
-      active_frame_cell_id: item.active_frame_cell_id,
-      active_illustration: item.active_illustration,
+      images: item.images,
     }))
     const { error } = await client.from('slides').insert(rows)
     if (error) throw toAuthoringError(error)
@@ -392,75 +390,90 @@ function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
 }
 
 /**
- * Set or clear one slide's image.
+ * A slide's pool and the strip it shows, written together.
  *
- * The upload itself belongs to the caller — this writes the row that points at
- * it, which is the half that has to reach the ledger. `null` clears the
- * pointer and deliberately leaves the file in the bucket: after a merge two
- * slides can share a derived path, and deleting the object would blank a slide
- * nobody asked to change. Storage is cheap; an empty slide is not.
+ * Together because they constrain each other: a strip member may only name an
+ * image the slide has, so dropping an upload while a member still points at
+ * it is a state the database refuses. Writing the pool first and the strip
+ * second would spend a round trip in exactly that state.
  *
- * The previous value is read first and carried as the inverse, so replacing an
- * image is reversible. Without it, replacing was the one write in the editor
- * that destroyed something outright — the old picture was gone, and the change
- * list did not even say it had been there.
+ * The strip is REPLACED rather than patched. It is a small ordered set, and a
+ * diff against it — which member moved, which left — is more machinery than
+ * re-stating it, with more ways to be wrong. `replaceSlides` takes the same
+ * view of a slice's slides for the same reason.
  *
- * `.select()` is not decoration. `.update().eq('id', …)` on a row that is gone
- * returns `error: null` and no rows, so clearing the image on a slide that was
- * merged away used to report success and clear nothing; `requireRowsWritten`
- * is what turns that into the failure it always was.
+ * `.select()` is not decoration. `.update().eq('id', …)` on a row that is
+ * gone returns `error: null` and no rows, so editing the images of a slide
+ * that was merged away would report success and change nothing;
+ * `requireRowsWritten` is what turns that into the failure it always was.
  */
 export async function setSlideImages(
   client: Client,
   slideId: string,
   next: {
-    illustrations: string[]
-    activeFrameCellId: string | null
-    activeIllustration: string | null
+    images: string[]
+    /** In order. Each member names a cell OR an image, never both. */
+    strip: Array<{ cellId: string; imageUrl?: never } | { cellId?: never; imageUrl: string }>
   },
 ): Promise<void> {
   const { data: before, error: beforeError } = await client
     .from('slides')
-    .select('illustrations, active_frame_cell_id, active_illustration')
+    .select('images, slide_strip(cell_id, image_url, position)')
     .eq('id', slideId)
     .maybeSingle()
   if (beforeError) throw toAuthoringError(beforeError)
   if (!before) throw new Error('That slide no longer exists — nothing was written.')
 
+  // The strip goes first. A pool that shrinks under a member still naming one
+  // of the images it lost is the one ordering the database will not accept.
+  const { error: clearError } = await client
+    .from('slide_strip')
+    .delete()
+    .eq('slide_id', slideId)
+  if (clearError) throw toAuthoringError(clearError)
+
   const { data, error } = await client
     .from('slides')
-    .update({
-      illustrations: next.illustrations,
-      active_frame_cell_id: next.activeFrameCellId,
-      active_illustration: next.activeIllustration,
-    })
+    .update({ images: next.images })
     .eq('id', slideId)
     .select('id')
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'slide')
 
+  if (next.strip.length > 0) {
+    const { error: insertError } = await client.from('slide_strip').insert(
+      next.strip.map((member, index) => ({
+        slide_id: slideId,
+        position: index + 1,
+        cell_id: member.cellId ?? null,
+        image_url: member.imageUrl ?? null,
+      })),
+    )
+    if (insertError) throw toAuthoringError(insertError)
+  }
+
+  const wasShowing = (before.slide_strip ?? []).length
   recordChange(
     'update_slide_images',
     {
       slide_id: slideId,
-      // What CHANGED, not what the row now holds: a change list that says
-      // "3 images, showing one" on every write cannot be read for what an
-      // author actually did.
-      added: next.illustrations.length - before.illustrations.length,
-      showing:
-        next.activeIllustration !== null
-          ? 'one illustration'
-          : next.activeFrameCellId !== null
-            ? "one cell's frame"
-            : 'the whole strip',
+      // What CHANGED, not what the row now holds: a change list that restates
+      // the whole slide on every write cannot be read for what an author did.
+      added: next.images.length - before.images.length,
+      showing: next.strip.length,
     },
     {
       fn: 'restore_slide_images',
       args: {
         slide_id: slideId,
-        illustrations: before.illustrations,
-        active_frame_cell_id: before.active_frame_cell_id,
-        active_illustration: before.active_illustration,
+        images: before.images,
+        strip: [...(before.slide_strip ?? [])]
+          .sort((a, b) => a.position - b.position)
+          .map((member) => ({
+            cell_id: member.cell_id,
+            image_url: member.image_url,
+          })),
+        was_showing: wasShowing,
       },
     },
   )

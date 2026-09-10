@@ -13,7 +13,7 @@ import { SlideIllustrationField } from '@/components/editor/SlideIllustrationFie
 import { cn } from '@/lib/utils'
 import { describeCell } from '@/lib/canvasCellQuery'
 import type { DraftSlide, ValidationProblem } from '@/lib/sliceValidation'
-import type { Slide } from '@/types/database'
+import type { SlideWithStrip } from '@/hooks/useSlice'
 
 /**
  * The slide editor, docked under the canvas while a slice is being edited.
@@ -94,7 +94,7 @@ export function SliceSlideEditor({
    * carried in the draft: the image is written straight to `slides` on
    * upload, so the draft would go stale the moment one lands.
    */
-  savedSlideFor: (itemId: string) => Slide | null
+  savedSlideFor: (itemId: string) => SlideWithStrip | null
   onActivate: (index: number) => void
   onChange: (slides: DraftSlide[]) => void
 }) {
@@ -235,9 +235,9 @@ export function SliceSlideEditor({
           <div
             key={index}
             className={cn(
-              // min-h-0 + overflow-hidden: a card taller than the strip must
+              // min-h-0 + overflow-hidden: a card taller than the sheet must
               // clip inside itself, not paint its narrative over the next
-              // row's captions.
+              // card's.
               'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-1.5 overflow-hidden rounded-lg border bg-card p-2 transition-colors',
               isActive ? 'border-primary' : 'border-border',
               dropTarget === index && 'ring-2 ring-primary/40',
@@ -369,10 +369,12 @@ export function SliceSlideEditor({
             </ul>
 
             {/*
-              Narrative is the slide's CAPTION — the sentence a reader meets
-              under the title on the stage — and it is the one field on this
-              card whose name is not implied by anything around it. It gets a
-              visible one, in the schema's word.
+              NARRATIVE, not "caption": the column is `slides.narrative` and
+              the glossary lists it by that name, so a second word for it here
+              would be a second word for one thing. It is the sentence a
+              reader meets under the title on the stage, and the one field on
+              this card whose name nothing around it implies, so it gets a
+              visible label in the model's own word.
             */}
             <label className="flex flex-col gap-0.5">
               <span className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">

@@ -141,13 +141,13 @@ revoke update on public.phases from authenticated;
 grant update (business_impact, operational_requirements) on public.phases to authenticated;
 
 -- ============================================================
--- 5. Storage bucket for slice illustrations
+-- 5. Storage bucket for slice images
 -- ============================================================
 -- Object paths come only from DB ids/positions:
 --   slices/<slice_id>/frame-<position>.png, slices/<slice_id>/character-ref.png
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('slice-illustrations', 'slice-illustrations', true, 5242880, array['image/png'])
+values ('slice-images', 'slice-images', true, 5242880, array['image/png'])
 on conflict (id) do nothing;
 
 -- storage.objects policies fail on hosted Supabase when the migration role doesn't own
@@ -325,14 +325,14 @@ begin
   create policy "slice_illustrations_insert" on storage.objects
     for insert to authenticated
     with check (
-      bucket_id = 'slice-illustrations'
+      bucket_id = 'slice-images'
       and name ~ '^slices/[0-9a-f-]{36}/([0-9a-f-]{36}|frame-[0-9]+|character-ref)\.(png|jpg|webp)$'
     );
   create policy "slice_illustrations_update" on storage.objects
     for update to authenticated
-    using (bucket_id = 'slice-illustrations')
+    using (bucket_id = 'slice-images')
     with check (
-      bucket_id = 'slice-illustrations'
+      bucket_id = 'slice-images'
       and name ~ '^slices/[0-9a-f-]{36}/([0-9a-f-]{36}|frame-[0-9]+|character-ref)\.(png|jpg|webp)$'
     );
 exception
@@ -2154,3 +2154,22 @@ grant update (part_of_id) on public.stakeholders to authenticated;
 -- same permissions.
 
 grant update on public.slides to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000219000000_a_slide_shows_a_set_of_images.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- a new table is unreachable until it is granted and its policies
+-- exist. Everything above is plain Postgres; roles are Supabase's half.
+
+alter table public.slide_strip enable row level security;
+
+create policy slide_strip_select_anon on public.slide_strip
+  for select to anon using (true);
+create policy slide_strip_select_auth on public.slide_strip
+  for select to authenticated using (true);
+create policy slide_strip_write_auth on public.slide_strip
+  for all to authenticated using (true) with check (true);
+
+grant select on public.slide_strip to anon, authenticated;
+grant insert, update, delete on public.slide_strip to authenticated;

@@ -142,10 +142,11 @@ export const PANEL_WRITE_SURFACE = {
   // is covered, table-wide, by the verb the scan reads off that same module.
   audit_findings: ['severity', 'summary', 'run_id', 'cell_ids', 'cell_keys', 'source', 'status'],
   // src/lib/sliceMutations.ts. Slides are replaced wholesale — deleted and
-  // reinserted — so a slide's images are the only columns the editor UPDATES:
-  // the pool it uploads into, and the two that say which member it shows.
+  // reinserted — so the pool is the only column on `slides` the editor
+  // UPDATES; what a slide SHOWS is rows in `slide_strip`, which the editor
+  // inserts and deletes rather than updating.
   slices: ['title', 'summary', 'kind', 'actor', 'authorship'],
-  slides: ['illustrations', 'active_frame_cell_id', 'active_illustration'],
+  slides: ['images'],
 }
 
 /**
@@ -169,6 +170,11 @@ export const OUTSIDE_THE_SURFACE = [
     table: 'agent_messages',
     because:
       'the other half of the same transcript, written by the same module under the same best-effort contract.',
+  },
+  {
+    table: 'slide_strip',
+    because:
+      'what a slide shows is REPLACED, never patched: src/lib/sliceMutations.ts and src/lib/revertChange.ts both delete the slide\'s members and insert the new ones, because a small ordered set is cheaper to re-state than to diff. Columns on this page are an UPDATE claim, and there is no UPDATE to claim — listing them would make the check ask the database for a grant no author needs. INSERT and DELETE for `authenticated` are what 21000219000000 grants.',
   },
 ]
 

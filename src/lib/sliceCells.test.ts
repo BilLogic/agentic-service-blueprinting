@@ -22,9 +22,7 @@ const item = (
     title: null,
     narrative: null,
     created_by: null,
-    illustrations: [],
-    active_frame_cell_id: null,
-    active_illustration: null,
+    images: [],
     created_at: '',
     updated_at: '',
   }) as Slide

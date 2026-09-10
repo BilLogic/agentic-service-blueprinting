@@ -352,30 +352,46 @@ export async function executeRevert(
       return
     }
     case 'restore_slide_images': {
-      // Undo of a write to a slide's pool or its choice: put all three
-      // columns back as they were, empties and nulls included. Restoring the
-      // pool and the choice together is not optional — the choice must be a
-      // member of the pool, so writing one without the other can land on a
-      // state the check constraint refuses.
+      // Undo of a write to a slide's pool or the strip it shows: put both
+      // back as they were, empties included. Both together is not optional —
+      // a strip member may only name an image the slide has, so restoring one
+      // without the other can land on a state the database refuses.
       //
-      // The file itself is never touched here, in either direction. The
-      // forward write leaves the object in the bucket precisely so this can
-      // point at it again; a revert that re-uploaded, or that deleted on the
-      // way back, would be reaching past what the change actually did.
+      // The files themselves are never touched here, in either direction. The
+      // forward write leaves objects in the bucket precisely so this can point
+      // at them again; a revert that re-uploaded, or that deleted on the way
+      // back, would be reaching past what the change actually did.
       const slideId = stringArg(revert.args, 'slide_id')
+
+      const { error: clearError } = await client
+        .from('slide_strip')
+        .delete()
+        .eq('slide_id', slideId)
+      if (clearError) throw toAuthoringError(clearError)
+
       const { data, error } = await client
         .from('slides')
-        .update({
-          illustrations: (revert.args.illustrations ?? []) as string[],
-          active_frame_cell_id:
-            (revert.args.active_frame_cell_id ?? null) as string | null,
-          active_illustration:
-            (revert.args.active_illustration ?? null) as string | null,
-        })
+        .update({ images: (revert.args.images ?? []) as string[] })
         .eq('id', slideId)
         .select('id')
       if (error) throw toAuthoringError(error)
       requireRowsWritten(data, 'slide')
+
+      const strip = (revert.args.strip ?? []) as Array<{
+        cell_id: string | null
+        image_url: string | null
+      }>
+      if (strip.length > 0) {
+        const { error: insertError } = await client.from('slide_strip').insert(
+          strip.map((member, index) => ({
+            slide_id: slideId,
+            position: index + 1,
+            cell_id: member.cell_id,
+            image_url: member.image_url,
+          })),
+        )
+        if (insertError) throw toAuthoringError(insertError)
+      }
       return
     }
     case 'restore_slice_meta': {

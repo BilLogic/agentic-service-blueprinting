@@ -902,6 +902,45 @@ export type Database = {
           },
         ]
       }
+      slide_strip: {
+        Row: {
+          cell_id: string | null
+          id: string
+          image_url: string | null
+          position: number
+          slide_id: string
+        }
+        Insert: {
+          cell_id?: string | null
+          id?: string
+          image_url?: string | null
+          position: number
+          slide_id: string
+        }
+        Update: {
+          cell_id?: string | null
+          id?: string
+          image_url?: string | null
+          position?: number
+          slide_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slide_strip_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "cells"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slide_strip_slide_id_fkey"
+            columns: ["slide_id"]
+            isOneToOne: false
+            referencedRelation: "slides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slides: {
         Row: {
           title: string | null
@@ -910,9 +949,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
-          active_frame_cell_id: string | null
-          active_illustration: string | null
-          illustrations: string[]
+          images: string[]
           narrative: string | null
           position: number
           slice_id: string
@@ -925,9 +962,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          active_frame_cell_id?: string | null
-          active_illustration?: string | null
-          illustrations?: string[]
+          images?: string[]
           narrative?: string | null
           position: number
           slice_id: string
@@ -940,22 +975,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          active_frame_cell_id?: string | null
-          active_illustration?: string | null
-          illustrations?: string[]
+          images?: string[]
           narrative?: string | null
           position?: number
           slice_id?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "slides_active_frame_cell_id_fkey"
-            columns: ["active_frame_cell_id"]
-            isOneToOne: false
-            referencedRelation: "cells"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "slice_items_slice_id_fkey"
             columns: ["slice_id"]

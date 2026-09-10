@@ -17,10 +17,10 @@ import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import { activeSlideImage, resolveSlideStrip } from '@/lib/sliceCells'
+import { resolveChosenStrip, resolveSlideStrip } from '@/lib/sliceCells'
 import { cn } from '@/lib/utils'
 import type { BlueprintCell, BlueprintData } from '@/types/blueprint'
-import type { Slide } from '@/types/database'
+import type { SlideWithStrip } from '@/hooks/useSlice'
 
 const CELL_SNIPPET_MAX_LENGTH = 60
 
@@ -223,17 +223,19 @@ export function SlicePresentation({
     )
   }
 
-  // Stage media: the slide's own choice if it made one, otherwise its whole
-  // strip — the frames of the cells it cites, member cells first and then the
+  // Stage media: the strip its author chose, if they chose one. Otherwise the
+  // frames of the cells it cites — member cells first, then the
   // storyboard-lane cell of the same step. No media → title-slide layout.
   //
-  // A choice that no longer resolves returns null and lands on the strip
-  // rather than on nothing: the strip is always a true answer about a slide,
-  // where a blank stage is never an informative one.
-  const chosen = activeSlideImage(blueprint, item)
-  const stageMedia: string[] = chosen
-    ? [chosen]
-    : resolveSlideStrip(blueprint, item).slice(0, 3)
+  // A chosen strip whose members no longer resolve comes back empty and lands
+  // on the cited cells rather than on nothing: the cells are always a true
+  // answer about a slide, where a blank stage is never an informative one.
+  //
+  // The chosen strip is NOT capped at three. Three is a cap on a derived
+  // list nobody picked; a strip somebody assembled shows what they assembled.
+  const chosen = resolveChosenStrip(blueprint, item)
+  const stageMedia: string[] =
+    chosen.length > 0 ? chosen : resolveSlideStrip(blueprint, item).slice(0, 3)
   const slideCellIds = new Set(item.cell_ids.map(resolveBlueprintCellId))
   const title = item.title ?? detail.slice.title
 
@@ -397,7 +399,7 @@ function PresentationFilmstrip({
   cellById,
   onSelect,
 }: {
-  items: readonly Slide[]
+  items: readonly SlideWithStrip[]
   activeSlide: number
   cellById: ReadonlyMap<string, BlueprintCell>
   onSelect: (slide: number) => void

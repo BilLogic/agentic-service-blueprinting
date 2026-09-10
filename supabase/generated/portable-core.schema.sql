@@ -3357,6 +3357,37 @@ COMMENT ON COLUMN public.slices.summary IS 'What this slice is for, in a sentenc
 COMMENT ON COLUMN public.slices.authorship IS 'Who wrote it: generated, customized or human. Named for the act, not the source, because a human may author a slice outright.';
 
 --
+-- Name: slide_strip; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.slide_strip (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    slide_id uuid NOT NULL,
+    "position" integer NOT NULL,
+    cell_id uuid,
+    image_url text,
+    CONSTRAINT slide_strip_one_source CHECK ((num_nonnulls(cell_id, image_url) = 1))
+);
+
+--
+-- Name: TABLE slide_strip; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.slide_strip IS 'What one slide shows, in order: a member per row, each either a cell''s frame or one of the slide''s own images. NO ROWS means the slide shows the frames of the cells it cites, which is the default and what most slides do.';
+
+--
+-- Name: COLUMN slide_strip.cell_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slide_strip.cell_id IS 'Show this cell''s frame. A real reference, so deleting the cell removes the member rather than leaving an id that renders blank.';
+
+--
+-- Name: COLUMN slide_strip.image_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slide_strip.image_url IS 'Show this uploaded image. One of the slide''s `images`.';
+
+--
 -- Name: slides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3371,12 +3402,8 @@ CREATE TABLE public.slides (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
-    illustrations text[] DEFAULT '{}'::text[] NOT NULL,
-    active_frame_cell_id uuid,
-    active_illustration text,
-    CONSTRAINT slides_active_illustration_is_in_the_pool CHECK (((active_illustration IS NULL) OR (active_illustration = ANY (illustrations)))),
-    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys))),
-    CONSTRAINT slides_one_active_image CHECK ((num_nonnulls(active_frame_cell_id, active_illustration) <= 1))
+    images text[] DEFAULT '{}'::text[] NOT NULL,
+    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys)))
 );
 
 --
@@ -3410,22 +3437,10 @@ COMMENT ON COLUMN public.slides.title IS 'The words over this slide. A title rat
 COMMENT ON COLUMN public.slides.created_by IS 'The caller at insert; null for service-key writes.';
 
 --
--- Name: COLUMN slides.illustrations; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN slides.images; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.slides.illustrations IS 'Images an author uploaded for this slide, in author order. The slide''s pool, not what it shows: what it shows is chosen by the two active_ columns, and an unused upload is a legitimate resting state.';
-
---
--- Name: COLUMN slides.active_frame_cell_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.active_frame_cell_id IS 'Show this cell''s frame alone. Null with active_illustration null means show the whole strip.';
-
---
--- Name: COLUMN slides.active_illustration; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.active_illustration IS 'Show this uploaded image alone. Must be one of illustrations.';
+COMMENT ON COLUMN public.slides.images IS 'Images an author uploaded for this slide, in author order. The slide''s pool, not what it shows: what it shows is `slide_strip`, and an upload nothing points at is a legitimate resting state.';
 
 --
 -- Name: stakeholders; Type: TABLE; Schema: public; Owner: -
@@ -3819,6 +3834,20 @@ ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_pkey PRIMARY KEY (id);
 
 --
+-- Name: slide_strip slide_strip_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_strip
+    ADD CONSTRAINT slide_strip_pkey PRIMARY KEY (id);
+
+--
+-- Name: slide_strip slide_strip_position_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_strip
+    ADD CONSTRAINT slide_strip_position_unique UNIQUE (slide_id, "position");
+
+--
 -- Name: slides slides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4052,6 +4081,12 @@ CREATE INDEX scenarios_phase_order_idx ON public.scenarios USING btree (phase_id
 --
 
 CREATE INDEX slices_service_id_idx ON public.slices USING btree (service_id);
+
+--
+-- Name: slide_strip_slide_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX slide_strip_slide_id_idx ON public.slide_strip USING btree (slide_id);
 
 --
 -- Name: slides_cell_ids_idx; Type: INDEX; Schema: public; Owner: -
@@ -4364,11 +4399,18 @@ ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
 
 --
--- Name: slides slides_active_frame_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: slide_strip slide_strip_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.slides
-    ADD CONSTRAINT slides_active_frame_cell_id_fkey FOREIGN KEY (active_frame_cell_id) REFERENCES public.cells(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.slide_strip
+    ADD CONSTRAINT slide_strip_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id) ON DELETE CASCADE;
+
+--
+-- Name: slide_strip slide_strip_slide_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_strip
+    ADD CONSTRAINT slide_strip_slide_id_fkey FOREIGN KEY (slide_id) REFERENCES public.slides(id) ON DELETE CASCADE;
 
 --
 -- Name: slides slides_slice_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

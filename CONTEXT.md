@@ -78,10 +78,18 @@ drawn from the cells beside it.
 storyboard holds at most one. A frame is never a row of a slice; that is a
 *slide*.
 
-**Strip** — a step's frames, read across the lanes: the script for that moment.
-**Not a column.** It is derived at render time from the frames of the step's
-cells, which is why a strip and the frames it is made of cannot disagree. A
-*slide* shows one too, and it is the same word for the same thing.
+**Strip** — the images something shows, in order: for a step, its frames read
+across the lanes — the script for that moment. A step's strip is **never a
+column**: it is derived at render time from the frames of the step's cells,
+which is why a strip and the frames it is made of cannot disagree.
+
+A *slide* shows a strip too, and it is the same word for the same thing — but
+a slide's may be **assembled**. Left alone it is derived exactly like a step's,
+from the frames of the cells the slide cites, and that is what most slides do.
+An author who wants otherwise picks the members: `slide_strip`, one row each,
+every row either a cell's frame or one of the slide's own `images`, in an
+order they chose. Assembled or derived, a slide says which in the editor
+rather than differing from its cells in silence.
 
 **Touchpoint** — a thing a moment happens through: an app, a document, a
 physical object, a channel. One `touchpoints` row per name across the whole

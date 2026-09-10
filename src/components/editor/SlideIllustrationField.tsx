@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { ImagePlus, Loader2, X } from 'lucide-react'
+import { Check, ImagePlus, Loader2, X } from 'lucide-react'
+import { ZoomableImage, type ZoomableImageSibling } from '@/components/blueprint/ZoomableImage'
 import { Button } from '@/components/ui/button'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { useSupabase } from '@/contexts/SupabaseProvider'
@@ -11,8 +12,8 @@ import {
   illustrationPath,
 } from '@/lib/illustrationUpload'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
-import type { Slide } from '@/types/database'
-import { resolveSlideStrip } from '@/lib/sliceCells'
+import type { SlideWithStrip } from '@/hooks/useSlice'
+
 import { setSlideImages } from '@/lib/sliceMutations'
 import { cn, errorMessage } from '@/lib/utils'
 
@@ -51,6 +52,46 @@ import { cn, errorMessage } from '@/lib/utils'
  * is made — the mode is a segmented pair rather than an implication, and the
  * displaced frames stay on screen underneath as the receipt.
  */
+/**
+ * The tick that puts one image in the slide's strip.
+ *
+ * Its own control rather than a click on the thumbnail, because the thumbnail
+ * already has a job: opening the image, the way every other image in this app
+ * opens. Two meanings on one target would make both of them guesses.
+ */
+function StripTick({
+  on,
+  busy,
+  label,
+  onToggle,
+}: {
+  on: boolean
+  busy: boolean
+  label: string
+  onToggle: () => void
+}) {
+  return (
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={on}
+        aria-label={label}
+        disabled={busy}
+        onClick={onToggle}
+        className={cn(
+          'absolute top-0.5 left-0.5 grid size-4 place-items-center rounded-sm border',
+          on
+            ? 'border-ring bg-background text-foreground'
+            : 'border-border bg-background/80 text-transparent hover:text-muted-foreground',
+        )}
+      >
+        <Check className="size-2.5" aria-hidden />
+      </button>
+    </IconTooltip>
+  )
+}
+
 export function SlideIllustrationField({
   sliceId,
   itemId,
@@ -60,7 +101,7 @@ export function SlideIllustrationField({
   /** `slides.id`. Absent means the slide has never been saved. */
   itemId: string | undefined
   /** The SAVED row, or null for a slide that has never been written. */
-  saved: Slide | null
+  saved: SlideWithStrip | null
 }) {
   const { client, canWrite } = useSupabase()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -77,20 +118,69 @@ export function SlideIllustrationField({
   if (!client || !canWrite) return null
 
   const slide = items.find((item) => item.id === itemId) ?? saved
-  const frames = slide ? resolveSlideStrip(blueprint, slide) : []
-  const uploads = slide?.illustrations ?? []
-  const activeIllustration = slide?.active_illustration ?? null
-  const activeFrameCellId = slide?.active_frame_cell_id ?? null
-  const showingWholeStrip =
-    activeIllustration === null && activeFrameCellId === null
+  const uploads = slide?.images ?? []
 
-  // The cells whose frames the strip is made of, in the same order, so a
-  // thumbnail can name the cell it would pin the slide to.
-  const frameCellIds = (slide?.cell_ids ?? []).filter((cellId) =>
+  // The cells this slide cites that actually carry a frame, in citation
+  // order. A cell without one has nothing to offer the strip and would be an
+  // empty box a reader could tick.
+  const frameCells = (slide?.cell_ids ?? []).filter((cellId) =>
     blueprint?.cells.some(
       (cell) => cell.id === cellId && (cell.frame?.trim().length ?? 0) > 0,
     ),
   )
+  const frameSrcById = new Map(
+    (blueprint?.cells ?? [])
+      .filter((cell) => (cell.frame?.trim().length ?? 0) > 0)
+      .map((cell) => [cell.id, cell.frame!.trim()]),
+  )
+
+  // What is ticked, in the order somebody put it in. An EMPTY strip is the
+  // default rather than a missing value: the slide shows the frames of the
+  // cells it cites, which is what most slides do.
+  const chosen = [...(slide?.slide_strip ?? [])].sort(
+    (a, b) => a.position - b.position,
+  )
+  const chosenCells = new Set(
+    chosen.map((member) => member.cell_id).filter((id): id is string => id !== null),
+  )
+  const chosenImages = new Set(
+    chosen
+      .map((member) => member.image_url)
+      .filter((url): url is string => url !== null),
+  )
+  const showingCitedCells = chosen.length === 0
+
+  // One ordered group for the viewer to swipe: the cited frames, then the
+  // slide's own images, which is the order the row draws them in. `siblings`
+  // is the same array for every tile — the index is which one was opened.
+  const siblings: ZoomableImageSibling[] = [
+    ...frameCells.map((cellId, index) => ({
+      src: frameSrcById.get(cellId) ?? '',
+      alt: `Frame from cited cell ${index + 1}`,
+    })),
+    ...uploads.map((src, index) => ({
+      src,
+      alt: `Uploaded image ${index + 1}`,
+    })),
+  ]
+
+  /** The strip as the mutation wants it, with one member toggled. */
+  const stripWith = (
+    member: { cellId: string } | { imageUrl: string },
+    on: boolean,
+  ) => {
+    const current = chosen.map((entry) =>
+      entry.cell_id ? { cellId: entry.cell_id } : { imageUrl: entry.image_url! },
+    )
+    const same = (entry: { cellId?: string; imageUrl?: string }) =>
+      'cellId' in member
+        ? entry.cellId === member.cellId
+        : entry.imageUrl === member.imageUrl
+    // Ticking APPENDS rather than inserting in citation order: the order is
+    // the author's, and a tick that reshuffled what they already arranged
+    // would be undoing their work to be tidy.
+    return on ? [...current, member] : current.filter((entry) => !same(entry))
+  }
 
   const refresh = () => {
     invalidateQueries(`slice:${sliceId}`)
@@ -130,10 +220,12 @@ export function SlideIllustrationField({
       // An upload JOINS the pool and becomes what the slide shows, because
       // that is what somebody who just picked a file meant. It does not
       // displace an earlier upload: the pool is why this column is an array.
+      // The upload joins the pool AND what the slide shows, because that is
+      // what somebody who just picked a file meant. It displaces nothing: a
+      // strip already holding members keeps them and gains one.
       await setSlideImages(client, itemId, {
-        illustrations: [...uploads, publicUrl],
-        activeFrameCellId: null,
-        activeIllustration: publicUrl,
+        images: [...uploads, publicUrl],
+        strip: [...stripWith({ imageUrl: publicUrl }, true)],
       })
 
       refresh()
@@ -157,17 +249,25 @@ export function SlideIllustrationField({
     }
   }
 
-  /** Every write from the gallery, so the failure sentence is phrased once. */
+  /** Every write from the strip, so the failure sentence is phrased once. */
   const write = async (next: {
-    illustrations: string[]
-    activeFrameCellId: string | null
-    activeIllustration: string | null
+    images?: string[]
+    strip?: Array<{ cellId: string } | { imageUrl: string }>
   }) => {
     if (!itemId) return
     setBusy(true)
     setProblem(null)
     try {
-      await setSlideImages(client, itemId, next)
+      await setSlideImages(client, itemId, {
+        images: next.images ?? uploads,
+        strip:
+          next.strip ??
+          chosen.map((entry) =>
+            entry.cell_id
+              ? { cellId: entry.cell_id }
+              : { imageUrl: entry.image_url! },
+          ),
+      })
       refresh()
     } catch (writeError) {
       // The mutation has already phrased this for a person — a slide that was
@@ -182,39 +282,17 @@ export function SlideIllustrationField({
     }
   }
 
-  const showStrip = () =>
-    write({
-      illustrations: uploads,
-      activeFrameCellId: null,
-      activeIllustration: null,
-    })
-
-  const showFrame = (cellId: string) =>
-    write({
-      illustrations: uploads,
-      activeFrameCellId: cellId,
-      activeIllustration: null,
-    })
-
-  const showIllustration = (src: string) =>
-    write({
-      illustrations: uploads,
-      activeFrameCellId: null,
-      activeIllustration: src,
-    })
-
-  const removeIllustration = (src: string) => {
-    // The file is left in the bucket. A merge can copy one slide's pool onto
-    // another, and a delete here would break a slide nobody asked to change.
+  const removeImage = (src: string) => {
+    // The file is left in the bucket. A merge can copy one slide's images
+    // onto another, and a delete here would break a slide nobody asked to
+    // change.
     //
-    // Dropping what is being SHOWN falls back to the strip in the same write:
-    // the choice must be a member of the pool, so leaving it behind would
-    // land on a state the check constraint refuses.
-    const remaining = uploads.filter((candidate) => candidate !== src)
+    // Its strip member goes in the SAME write: a member may only name an
+    // image the slide has, so dropping one and leaving the other would land
+    // on a state the database refuses.
     return write({
-      illustrations: remaining,
-      activeFrameCellId: null,
-      activeIllustration: activeIllustration === src ? null : activeIllustration,
+      images: uploads.filter((candidate) => candidate !== src),
+      strip: stripWith({ imageUrl: src }, false),
     })
   }
 
@@ -240,91 +318,103 @@ export function SlideIllustrationField({
       />
 
       {/*
-        The label. Without one the row is three thumbnails and a guess: the
-        schema's word for what a slide shows is STRIP, and the reader who
-        sees it here is the same one who reads it in the glossary.
+        The label. Without one the row is thumbnails and a guess. STRIP is
+        what the model calls the images a slide shows — the same word a step's
+        row of frames carries, because it is the same thing at a different
+        grain.
       */}
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">
           Strip
         </span>
         <span className="text-3xs text-muted-foreground">
-          {showingWholeStrip
-            ? frames.length > 0
-              ? 'showing all'
+          {showingCitedCells
+            ? frameCells.length > 0
+              ? 'the cited cells'
               : 'no frames'
-            : `showing 1 of ${frames.length + uploads.length}`}
+            : `${chosen.length} of ${frameCells.length + uploads.length}`}
         </span>
       </div>
 
-      <div className="flex gap-1">
-        {frameCellIds.map((cellId, index) => {
-          const src = frames[index]
+      {/*
+        FIXED tiles, not `flex-1`. Sized by the tile and never by the count,
+        so one image and six images draw the same box — a lone `+` that
+        stretched to the card's whole width said "this is a big empty thing"
+        about a slide that simply has no frames yet. The row scrolls instead.
+
+        Three targets per tile, which is why the tile cannot also be small:
+        the IMAGE opens the viewer (the same `ZoomableImage` every other
+        image in the app opens through, siblings and all), the TICK includes
+        it in the strip, and `×` removes an upload from the pool entirely.
+      */}
+      <div className="flex gap-1 overflow-x-auto pb-0.5">
+        {frameCells.map((cellId, index) => {
+          const src = frameSrcById.get(cellId)
           if (!src) return null
-          const on = showingWholeStrip || activeFrameCellId === cellId
+          const on = chosenCells.has(cellId)
           return (
-            <IconTooltip
-              key={cellId}
-              label={
-                activeFrameCellId === cellId
-                  ? 'Showing this frame alone — press to go back to the whole strip'
-                  : 'Show this frame alone'
-              }
-            >
-              <button
-                type="button"
-                disabled={busy}
-                aria-pressed={on}
-                onClick={() =>
-                  activeFrameCellId === cellId ? void showStrip() : void showFrame(cellId)
-                }
-                className={cn(
-                  'min-w-0 flex-1 overflow-hidden rounded-sm border',
-                  on ? 'border-ring' : 'border-border opacity-45',
+            <div key={cellId} className="relative w-16 shrink-0">
+              <ZoomableImage
+                src={src}
+                alt={`Frame from cited cell ${index + 1}`}
+                triggerLabel={`Open the frame from cited cell ${index + 1}`}
+                triggerClassName={cn(
+                  'block w-full overflow-hidden rounded-sm border',
+                  on || showingCitedCells
+                    ? 'border-ring'
+                    : 'border-border opacity-45',
                 )}
+                siblings={siblings}
+                siblingIndex={index}
               >
                 <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
-              </button>
-            </IconTooltip>
+              </ZoomableImage>
+              <StripTick
+                on={on}
+                busy={busy}
+                label={
+                  on
+                    ? 'Stop showing this frame'
+                    : 'Show this frame on the slide'
+                }
+                onToggle={() => void write({ strip: stripWith({ cellId }, !on) })}
+              />
+            </div>
           )
         })}
 
-        {uploads.map((src) => {
-          const on = activeIllustration === src
+        {uploads.map((src, index) => {
+          const on = chosenImages.has(src)
           return (
-            /*
-              Removal used to be a right-click. That is not an affordance: it
-              is invisible, it does not exist on a touch screen, and a
-              keyboard never reaches it. The button is always drawn on an
-              upload — never on a frame, which belongs to a cell and cannot
-              be removed from here.
-            */
-            <div key={src} className="relative min-w-0 flex-1">
-              <IconTooltip
-                label={on ? 'Showing this illustration' : 'Show this illustration'}
+            <div key={src} className="relative w-16 shrink-0">
+              <ZoomableImage
+                src={src}
+                alt={`Uploaded image ${index + 1}`}
+                triggerLabel={`Open uploaded image ${index + 1}`}
+                triggerClassName={cn(
+                  'block w-full overflow-hidden rounded-sm border',
+                  on ? 'border-ring' : 'border-border opacity-45',
+                )}
+                siblings={siblings}
+                siblingIndex={frameCells.length + index}
               >
-                <button
-                  type="button"
-                  disabled={busy}
-                  aria-pressed={on}
-                  onClick={() => (on ? void showStrip() : void showIllustration(src))}
-                  className={cn(
-                    'w-full overflow-hidden rounded-sm border',
-                    on ? 'border-ring' : 'border-border opacity-45',
-                  )}
-                >
-                  <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
-                </button>
-              </IconTooltip>
-              <IconTooltip label="Remove this illustration from the slide">
+                <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
+              </ZoomableImage>
+              <StripTick
+                on={on}
+                busy={busy}
+                label={on ? 'Stop showing this image' : 'Show this image on the slide'}
+                onToggle={() => void write({ strip: stripWith({ imageUrl: src }, !on) })}
+              />
+              <IconTooltip label="Remove this image from the slide">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
                   disabled={busy}
-                  aria-label="Remove this illustration"
+                  aria-label="Remove this image"
                   className="absolute top-0.5 right-0.5 size-4 bg-background/80 text-muted-foreground hover:text-destructive"
-                  onClick={() => void removeIllustration(src)}
+                  onClick={() => void removeImage(src)}
                 >
                   <X className="size-2.5" aria-hidden />
                 </Button>
@@ -333,14 +423,14 @@ export function SlideIllustrationField({
           )
         })}
 
-        <IconTooltip label="Upload an illustration for this slide">
+        <IconTooltip label="Upload an image for this slide">
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             disabled={busy}
-            aria-label="Upload an illustration"
-            className="aspect-[4/3] h-auto min-w-0 flex-1 rounded-sm border border-border border-dashed text-muted-foreground"
+            aria-label="Upload an image"
+            className="aspect-[4/3] h-auto w-16 shrink-0 rounded-sm border border-border border-dashed text-muted-foreground"
             onClick={() => inputRef.current?.click()}
           >
             {busy ? (
@@ -352,17 +442,12 @@ export function SlideIllustrationField({
         </IconTooltip>
       </div>
 
-      {/*
-        The caption says what the choice DOES, in the schema's words. Counted
-        from the cells on every render rather than remembered, so it follows a
-        slide whose citations change under it.
-      */}
       <p className="text-3xs text-muted-foreground">
-        {showingWholeStrip
-          ? frames.length > 0
-            ? 'The slide shows the frames of the cells it cites.'
+        {showingCitedCells
+          ? frameCells.length > 0
+            ? 'The slide shows the frames of the cells it cites. Tick any to choose instead.'
             : 'These cells carry no frames. The slide shows its title alone.'
-          : `Standing in for ${frames.length} frame${frames.length === 1 ? '' : 's'} from the cells this slide cites.`}
+          : 'The slide shows what is ticked, in the order it was ticked.'}
       </p>
 
       {problem ? (

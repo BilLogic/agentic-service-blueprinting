@@ -9,6 +9,7 @@ import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { getBlueprintScenarioId } from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slide } from '@/types/database'
+import type { SlideWithStrip } from '@/hooks/useSlice'
 
 /** Scan the local fallback registry for the scenario owning these cells. */
 export function findFallbackScenarioForCells(
@@ -171,47 +172,58 @@ export function resolveSlideStrip(
 }
 
 /**
- * The images a slide can show: its own uploads first, then the frames of the
- * cells it cites. One list, in the order an author reads it, and the source
- * of every choice `activeSlideImage` can return.
+ * What the slide SHOWS, in order.
+ *
+ * An EMPTY strip is the default and the common case: it means the slide shows
+ * the frames of the cells it cites, which is what a slide did before it could
+ * choose and what most slides still do. A slide only carries members when
+ * somebody picked them.
+ *
+ * A member that no longer resolves — a cell whose frame was cleared, an image
+ * dropped from the pool — is skipped rather than rendered as a gap. If that
+ * empties the strip, the caller falls back to the cited cells, because the
+ * cells are always a true answer about a slide where a blank stage is never
+ * an informative one.
  */
-export function slideImagePool(
+export function resolveChosenStrip(
   blueprint: BlueprintData | null,
-  item: Slide,
-): { illustrations: string[]; frames: string[] } {
-  return {
-    illustrations: item.illustrations.filter(isRenderableImageSrc),
-    frames: resolveSlideStrip(blueprint, item),
+  item: SlideWithStrip,
+): string[] {
+  const cellById = new Map((blueprint?.cells ?? []).map((cell) => [cell.id, cell]))
+  const members = [...item.slide_strip].sort((a, b) => a.position - b.position)
+
+  const sources: string[] = []
+  for (const member of members) {
+    if (member.image_url) {
+      if (
+        item.images.includes(member.image_url) &&
+        isRenderableImageSrc(member.image_url)
+      ) {
+        sources.push(member.image_url)
+      }
+      continue
+    }
+    if (!member.cell_id) continue
+    const frame = cellById.get(member.cell_id)?.frame?.trim()
+    if (!frame || isBlueprintStepStoryboardPlaceholder(frame)) continue
+    if (isRenderableImageSrc(frame)) sources.push(frame)
   }
+  return sources
 }
 
 /**
- * What the slide SHOWS, resolved from its two choice columns.
- *
- * `null` means it made no choice and shows its whole strip — the default, and
- * what every slide did before it could choose. A choice that no longer
- * resolves (a frame whose cell lost its image, an upload dropped from the
- * pool) also lands here rather than rendering nothing: the strip is always a
- * true answer, where a blank stage is never an informative one.
+ * The images a slide could show: the frames of the cells it cites, then its
+ * own uploads. One list, in the order an author reads it, and the pool every
+ * member of a strip is drawn from.
  */
-export function activeSlideImage(
+export function slideImagePool(
   blueprint: BlueprintData | null,
-  item: Slide,
-): string | null {
-  if (item.active_illustration) {
-    return isRenderableImageSrc(item.active_illustration) &&
-      item.illustrations.includes(item.active_illustration)
-      ? item.active_illustration
-      : null
+  item: SlideWithStrip,
+): { frames: string[]; images: string[] } {
+  return {
+    frames: resolveSlideStrip(blueprint, item),
+    images: item.images.filter(isRenderableImageSrc),
   }
-  if (!item.active_frame_cell_id) return null
-
-  const cell = blueprint?.cells.find(
-    (candidate) => candidate.id === item.active_frame_cell_id,
-  )
-  const frame = cell?.frame?.trim()
-  if (!frame || isBlueprintStepStoryboardPlaceholder(frame)) return null
-  return isRenderableImageSrc(frame) ? frame : null
 }
 
 /**

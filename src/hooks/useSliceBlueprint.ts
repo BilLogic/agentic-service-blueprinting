@@ -1,19 +1,22 @@
 import { useMemo } from 'react'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
-import { useSlice, type SliceDetail } from '@/hooks/useSlice'
+import {
+  useSlice,
+  type SliceDetail,
+  type SlideWithStrip,
+} from '@/hooks/useSlice'
 import { useSliceScenarioId } from '@/hooks/useSliceScenarioId'
 import type { QueryResult } from '@/hooks/useSupabaseQuery'
 import { pickBlueprintForCells } from '@/lib/sliceCells'
 import type { BlueprintData } from '@/types/blueprint'
-import type { Slide } from '@/types/database'
 
 export type SliceBlueprint = {
   /** Raw slice query result, for loading / error branches. */
   result: QueryResult<SliceDetail>
   /** Loaded detail (error branches fall back); null while unavailable. */
   detail: SliceDetail | null
-  /** The slice's frames sorted by position. */
-  items: Slide[]
+  /** The slice's slides, sorted by position, each with its chosen strip. */
+  items: SlideWithStrip[]
   /** Cell ids across all frames, in frame order then in-frame order. */
   cellIds: string[]
   /** Scenario resolution result (gated until `detail` exists). */
