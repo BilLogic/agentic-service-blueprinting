@@ -2,12 +2,20 @@ import { CANVAS_FIT_SELECTOR, MAX_ZOOM } from '@/hooks/useZoomPanViewport'
 import { BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN } from '@/lib/slideLayout'
 import { isSubslide, type EditorView, type NavItem } from '@/types/nav'
 
-/** CSS selector for the canvas region the camera should frame. */
+/**
+ * CSS selector for the canvas region the camera should frame.
+ *
+ * A null slide is "there is no board to frame" — a connected workspace whose
+ * phases have not arrived, or which has none. The whole-canvas selector is
+ * the honest answer there: it is what the overview already uses, and it fits
+ * an empty canvas without asking for an element that does not exist.
+ */
 export function getCanvasFocusSelector(
   view: EditorView,
-  activeSlide: NavItem,
+  activeSlide: NavItem | null,
 ): string {
-  if (view === 'home' || view === 'landing') return CANVAS_FIT_SELECTOR
+  if (view === 'home' || view === 'landing' || !activeSlide)
+    return CANVAS_FIT_SELECTOR
   if (isSubslide(activeSlide)) {
     return `[data-focus-slide-id="${activeSlide.id}"]`
   }

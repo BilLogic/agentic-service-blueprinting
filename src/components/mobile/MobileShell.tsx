@@ -59,6 +59,7 @@ export function MobileShell() {
   const {
     view,
     slides,
+    slidesLoading,
     selectPhase,
     selectScenario,
     selectedPhaseId,
@@ -387,6 +388,7 @@ export function MobileShell() {
         phases={phases}
         scenariosByPhase={scenariosByPhase}
         slides={slides}
+        phasesLoading={slidesLoading}
         expandedPhaseIds={expandedPhaseIds}
         onPhaseExpandedChange={setPhaseExpanded}
         selectedPhaseId={selectedPhaseId}

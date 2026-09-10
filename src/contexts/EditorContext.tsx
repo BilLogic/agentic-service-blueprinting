@@ -11,6 +11,7 @@ import {
 import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useServicePhases } from '@/hooks/useServicePhases'
+import { isBundledSampleActive } from '@/lib/bundledSample'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
   getSlideViewType,
@@ -91,9 +92,13 @@ type EditorContextValue = {
   ) => void
   slidesLoading: boolean
   slidesError: string | null
-  /** Compat view of the camera target; falls back to the first slide. */
-  activeSlideId: string
-  activeSlide: NavItem
+  /**
+   * Compat view of the camera target; falls back to the first slide, and is
+   * null when there is no slide to fall back to — a configured deployment
+   * whose rows have not arrived, or which has none.
+   */
+  activeSlideId: string | null
+  activeSlide: NavItem | null
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null)
@@ -265,12 +270,25 @@ function useNavSelectionState(slides: NavItem[]) {
   }, [slides, selectedPhaseId, selectedScenarioId])
 
   const cameraTargetId = selectedScenarioId ?? selectedPhaseId
-  // `slides` is never empty: an empty database falls back to the deployment's
-  // sample nav, which `resolveDeploymentConfig` guarantees is non-empty.
-  const activeSlideId = cameraTargetId ?? slides[0]!.id
+  /*
+    There may be no active slide, and saying so is the point.
+
+    These two used to end in `slides[0]!` — a non-null assertion resting on a
+    fallback that is now gone. A configured deployment's navigation is its
+    rows (see `EditorProvider` below), so `slides` is empty while the first
+    fetch is in flight and stays empty for a database that genuinely holds no
+    phases. The `!` would have been a crash in both.
+
+    Nullable rather than a placeholder slide: a stand-in has an id and a
+    label, and anything holding one draws it. The types carry the absence
+    instead, so every reader is made to decide what it does with no board —
+    and the compiler, not a code review, is what enumerates them.
+  */
+  const activeSlideId = cameraTargetId ?? slides[0]?.id ?? null
 
   const activeSlide = useMemo(
-    () => slides.find((slide) => slide.id === activeSlideId) ?? slides[0]!,
+    () =>
+      slides.find((slide) => slide.id === activeSlideId) ?? slides[0] ?? null,
     [activeSlideId, slides],
   )
 
@@ -361,15 +379,31 @@ export function EditorProvider({ children }: EditorProviderProps) {
    * Same rule as `lib/resolveBlueprint.ts` (#493): a hole in a deployment's
    * own content is information, and the merge deleted that information.
    *
-   * The remaining branch is not that merge and is not a fill. A read with no
-   * rows AT ALL is the pre-data state — no database configured, or the first
-   * fetch still in flight — and what it shows is the deployment's own
-   * `sample.nav`, whole and unmixed. It is also what keeps this array
-   * non-empty, which `activeSlideId` below and every reader of `activeSlide`
-   * depend on.
+   * The remaining branch used to be "no rows at all → the sample", and that
+   * reached further than it read. A read comes back with no rows in three
+   * states, not one: no database configured, a database whose first fetch is
+   * still in flight, and a database that genuinely holds no phases. Only the
+   * first of the three is the fresh clone the sample exists for. The other
+   * two are a connected deployment, and on both of them the sample arrived as
+   * theirs — on EVERY page load for the second, in the window before the
+   * fetch resolves, which is the common one. #496 called that a leak when it
+   * came through a merge; it is the same leak when it comes through timing.
+   *
+   * So the question is `isBundledSampleActive()` — the same one the board
+   * asks, so the two surfaces cannot answer it differently — and not "did
+   * this read come back empty". A configured deployment's navigation is its
+   * rows, whatever they are, including none of them.
+   *
+   * The cost is that this array is no longer non-empty. `activeSlideId` and
+   * `activeSlide` in `useNavSelectionState` are nullable for that reason, and
+   * `slidesLoading` below is what tells a surface whether an empty nav is a
+   * fetch in flight or a workspace with no phases in it.
    */
   const slides = useMemo(
-    () => (dbSlides.length === 0 ? fallbackSlides : dbSlides),
+    () =>
+      dbSlides.length === 0 && isBundledSampleActive()
+        ? fallbackSlides
+        : dbSlides,
     [dbSlides, fallbackSlides],
   )
 

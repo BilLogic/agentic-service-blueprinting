@@ -10,9 +10,19 @@
  * the sample IS the navigation, whole, because a fresh clone's nav is
  * load-bearing for onboarding exactly as its board is.
  *
+ * A database that answers with NOTHING is a database that answers (#505).
+ * Zero rows reaches the nav two ways — a workspace with no phases in it, and
+ * every page load in the window before the first fetch resolves — and both
+ * used to draw the sample. The second is the common one: for a deployment
+ * that never overlaid `sample.nav`, this kit's phase and scenario names were
+ * rendered as theirs, briefly, on every single load.
+ *
  * The seam under test is the real one end to end: `useServicePhases` is NOT
  * mocked, only the Supabase provider is, so the no-database case runs the
- * hook's actual unconfigured path rather than a stand-in for it.
+ * hook's actual unconfigured path rather than a stand-in for it. The
+ * `isSupabaseConfigured` mock below moves WITH the provider's `configured`
+ * for the same reason — in the app they are one function, and a test where
+ * they disagree is testing a state that cannot happen.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, waitFor } from '@testing-library/react'
@@ -35,6 +45,14 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
     configured: supabase.configured,
     canWrite: false,
   }),
+}))
+
+// `isBundledSampleActive()` — the one question that decides whether the kit's
+// sample may be on screen — reads this, and the provider's `configured` is
+// this same call. One flag drives both so they cannot drift here either.
+vi.mock('@/lib/supabase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/supabase')>()),
+  isSupabaseConfigured: () => supabase.configured,
 }))
 
 /**
@@ -123,12 +141,47 @@ const connectedClient = {
     relation === 'services' ? table([{ id: SERVICE_ID }]) : table(PHASE_ROWS),
 }
 
+/** A phases read that never settles: the first fetch, still in flight. */
+function pendingTable() {
+  const never = new Promise<never>(() => {})
+  const chain = {
+    select: () => chain,
+    eq: () => chain,
+    order: () => chain,
+    limit: () => chain,
+    abortSignal: () => chain,
+    then: (
+      resolve?: (value: unknown) => unknown,
+      reject?: (reason: unknown) => unknown,
+    ) => never.then(resolve, reject),
+  }
+  return chain
+}
+
+/** Configured, and the structure query has not come back yet. */
+const inFlightClient = {
+  from: (relation: string) =>
+    relation === 'services' ? table([{ id: SERVICE_ID }]) : pendingTable(),
+}
+
+/** Configured, answered, and holding no phases at all. */
+const emptyClient = {
+  from: (relation: string) =>
+    relation === 'services' ? table([{ id: SERVICE_ID }]) : table([]),
+}
+
 let observed: NavItem[] | null = null
+let observedLoading: boolean | null = null
+let observedActiveSlideId: string | null = null
+let observedActiveSlide: NavItem | null = null
 
 function Probe() {
-  const { slides } = useEditor()
+  const { slides, slidesLoading, activeSlideId, activeSlide } = useEditor()
   useEffect(() => {
     observed = slides
+    observedLoading = slidesLoading
+    observedActiveSlideId = activeSlideId
+    observedActiveSlide = activeSlide
   })
   return null
 }
@@ -156,7 +209,19 @@ afterEach(() => {
   supabase.configured = false
   supabase.client = null
   observed = null
+  observedLoading = null
+  observedActiveSlideId = null
+  observedActiveSlide = null
 })
+
+/** Every sentence, label and note the sample could put on screen. */
+function sampleProse(): string[] {
+  return SAMPLE_NAV.flatMap((item) =>
+    [item.label, item.summary, item.note]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value)),
+  )
+}
 
 describe('the editor navigation', () => {
   it('is the sample, whole, when no database is configured', async () => {
@@ -208,5 +273,59 @@ describe('the editor navigation', () => {
     for (const summary of SAMPLE_SUMMARIES) {
       expect(prose).not.toContain(summary)
     }
+  })
+
+  /*
+    The two ways a configured database says nothing.
+
+    Neither is the fresh clone the sample exists for, and the difference
+    between them is the whole reason `slidesLoading` is asserted alongside the
+    nav: the app has to be able to tell "still asking" from "asked, and there
+    is nothing", because one is a spinner and the other is an empty state.
+  */
+  it('is empty, not the sample, while the first fetch is in flight', async () => {
+    supabase.configured = true
+    supabase.client = inFlightClient
+    await mount()
+
+    // The window this test exists for. Before #505 the nav here was
+    // SAMPLE_NAV — the kit's phases and scenarios, wearing the deployment's
+    // name, on every page load.
+    expect(observed).toEqual([])
+    expect(observedLoading).toBe(true)
+    for (const phrase of sampleProse()) {
+      expect(JSON.stringify(observed)).not.toContain(phrase)
+    }
+  })
+
+  it('is empty, not the sample, when the database genuinely has no phases', async () => {
+    supabase.configured = true
+    supabase.client = emptyClient
+    await mount()
+    await waitFor(() => {
+      expect(observedLoading).toBe(false)
+    })
+
+    // Answered, and the answer was none. That is the deployment's own board,
+    // and an empty one is a fact about it — not an invitation to draw ours.
+    expect(observed).toEqual([])
+    for (const phrase of sampleProse()) {
+      expect(JSON.stringify(observed)).not.toContain(phrase)
+    }
+  })
+
+  it('still has no active slide to crash on when the nav is empty', async () => {
+    supabase.configured = true
+    supabase.client = emptyClient
+    await mount()
+    await waitFor(() => {
+      expect(observedLoading).toBe(false)
+    })
+
+    // `activeSlideId`/`activeSlide` used to end in `slides[0]!`. Reading them
+    // with an empty nav is the crash that assertion was hiding; they are
+    // nullable now, and null is what an empty nav has.
+    expect(observedActiveSlideId).toBeNull()
+    expect(observedActiveSlide).toBeNull()
   })
 })
