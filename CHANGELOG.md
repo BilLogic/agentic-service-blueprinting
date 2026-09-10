@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.24.1
+
+### Patch Changes
+
+- 12d9a93: The placement gate's contract names the function, not a migration filename
+
+  `placementGateContract.test.ts` pointed twice at `20260830160000`. A migration
+  filename is an address in one repository's series and means nothing in
+  another's, so the two copies of this shared file could not be held identical
+  while it stood there. `sync_cell_touchpoints` is the thing being named, and
+  naming it is enough.
+
 ## 1.24.0
 
 ### Minor Changes
@@ -3681,8 +3693,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
