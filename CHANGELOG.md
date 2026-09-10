@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.31.0
+
+### Minor Changes
+
+- 2266da5: Three icon-only controls in the phase menubar now say what they do. Stacked,
+  Merged and the path selector each carried an `aria-label` and nothing else, so
+  a sighted reader hovering the glyph and a keyboard reader focusing it were both
+  told nothing. Each gains an `IconTooltip` with action copy, and the compare
+  toggle falls back to Stacked when a scenario has never been toggled, so the
+  control always points at a segment.
+
 ## 1.30.0
 
 ### Minor Changes
@@ -3894,8 +3905,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
