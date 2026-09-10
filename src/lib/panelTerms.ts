@@ -15,7 +15,15 @@
  * touch/press affordance every other field label already uses.
  *
  * A definition may hang off a label here because the label names a word this
- * app made up, not ordinary English on a form.
+ * app made up, not ordinary English on a form. That is a deliberate exception
+ * to the rule that a definition hangs off a BADGE, and the shape these two
+ * take is `Field`, which the badge rule exempts as a field explaining its own
+ * input.
+ *
+ * `evidence` was once listed to survive with them, on the belief that it was
+ * already a badge. It was a TAB, beside Dependencies and Resources, and a tab
+ * is a label — so all three lost theirs together rather than one of them being
+ * singled out for a definition its neighbours could not have.
  *
  * Each entry is a card SECTION's body, under an eyebrow that already prints
  * the term, so neither opens by naming the term again.
