@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.33.1
+
+### Patch Changes
+
+- 5747e59: The integrated overlay's connectors are measured before the browser paints
+  rather than after it. Every input the sweep reads — cell boxes, the band's
+  extent — is laid out by the same commit that scheduled it, so measuring in an
+  ordinary effect drew one frame of arrows against the previous layout. A compare
+  toggle is where that showed: the grid swaps to a different column set and the
+  overlay spent a frame anchored to the old one.
+- aef92f9: `panelTerms.ts` says why a definition may hang off these two labels at all. It
+  had lost the half that makes the sentence checkable — that this is a deliberate
+  exception to the badge rule, and that the shape both take is `Field`, which the
+  rule exempts as a field explaining its own input — and the note that `evidence`
+  was once listed here on the belief that it was a badge, when it was a tab.
+
 ## 1.33.0
 
 ### Minor Changes
@@ -3966,8 +3982,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
