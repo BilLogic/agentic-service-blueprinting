@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.26.0
+
+### Minor Changes
+
+- 58e4abf: The cell panel reads its cell off the board instead of fetching it. The board
+  query now carries `cells.function`, `form`, `value_props`, `owner`,
+  `perceived_owner` and `steps.summary`, the normalizer maps them (and `position`,
+  which was selected and dropped), and `useBlueprintCell` hands a panel the cell
+  already in memory. `useCellSpec` and `useCellContent` are gone, and with them up
+  to two round-trips per cell on panel open and the skeletons they needed.
+  `cellSpecContract.test.ts` holds the select and the normalizer to each other.
+
 ## 1.25.3
 
 ### Patch Changes
@@ -3801,8 +3813,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
