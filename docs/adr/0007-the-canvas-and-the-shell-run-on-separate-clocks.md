@@ -17,13 +17,13 @@ The shell stages its own arrival: the aside commits its width in one go, then
 the parts of the sidebar fade in behind one another. The canvas runs a separate
 ladder of reveal rungs and reports which rung it is on. The two meet only by
 READING — the shell reads that rung to decide when to lift the sidebar's boot
-lane, and an identity bar above the canvas reads the lane to decide when its own
+layer, and an identity bar above the canvas reads the layer to decide when its own
 skeleton may end. Every link points the same way, and nothing reads back.
 
 The words for the phases of arrival are defined in
 [CONTEXT.md](../../CONTEXT.md) § Five words for arrival. How each half is wired
 is written where it is wired — the shell's in `EditorShell.tsx`, the rungs in
-`canvasRevealContext.ts`, the published lane in `shellBootStore.ts` — and is
+`canvasRevealContext.ts`, the published layer in `shellBootStore.ts` — and is
 deliberately not repeated here. Two copies of a rule is one rule and one lie,
 and a record that restated those comments would be that hazard rather than an
 account of it. What this holds is the shape, and what the shape costs anything
@@ -84,7 +84,7 @@ watching.
 itself what to draw while it waits; when it may stop waiting is a question about
 the screen it is part of. An identity bar answers the first with its own hold
 session and the second by reading the shell's boot layer, and it needs both — a
-bar released by the lane alone would show a name it does not have yet.
+bar released by the layer alone would show a name it does not have yet.
 
 **Arriving together stops being automatic, and that is the price.** Two clocks
 mean the beat a new surface lands on is something somebody decides rather than

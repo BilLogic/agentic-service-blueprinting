@@ -98,6 +98,48 @@
  * A guard that also listed `lane === 'forward'` would be enumerating what the
  * compiler already reports.
  *
+ * A QUOTED IDENTIFIER IN A COMMENT IS THE HOLE IN THAT ARGUMENT, and
+ * `canvasStackingContract.test.ts` sat in it from the rename until a
+ * deployment reading the same file found it. That file's header
+ * recalls the assertion it used to make, quoting the ternary as a string:
+ * "pin `lane === 'forward' ? ...` as an exact substring". The sweep rewrote a
+ * `layer` that no compiler was ever going to read, so the paragraph above
+ * does not hold — `tsc` sweeps identifiers in CODE, and prose quoting an
+ * identifier has no such backstop. The comment then misquoted the very line
+ * it documents, which is the worst form this defect takes: the reader who
+ * checks the code against the comment finds them disagreeing and cannot tell
+ * which one moved.
+ *
+ * A TEST TITLE IS THE SECOND SHAPE, from that same file: `contains
+ * canvas-local lanes in one stacking context`. Here the layer word is right
+ * there in the sentence and is even in `LAYER_SENSE` — but it sits AFTER the
+ * noun, inside `stacking context`, and these patterns read the word BEFORE.
+ * Reading the whole line instead would fire on true sentences: `EditorShell`
+ * and `ScenarioBlueprintPanel` both describe "one lane rail" and slots
+ * "stacking each path's version" in one breath, and a lane genuinely does sit
+ * inside a stacking context. The collocation is real in both directions,
+ * which is exactly why proximity cannot decide it.
+ *
+ * A WRAPPED NOUN PHRASE IS THE THIRD SHAPE, and unlike the two above it is
+ * cheap to close: every pattern here is line-local, so `boot\nlane` — the
+ * phrase split across a line break — walks past a rule that forbids `boot
+ * lane` outright. ADR 0007 carried it for months. Joining wrapped lines
+ * before matching would catch it; that is a real upgrade someone should make.
+ *
+ * A PATTERN HIT IS A FLAG ON THE PARAGRAPH, NOT THE LINE. `aa2b3582` fixed
+ * exactly the two lines this file's patterns matched in ADR 0007 and left two
+ * more standing in the same sentences — one of them the very next clause,
+ * where "the shell's boot layer" is followed by "released by the lane alone".
+ * Anaphora is how this defect survives a cleanup: the corrected sentence
+ * names the referent, and the sentence after it says "the lane".
+ *
+ * NEITHER WAS WIDENED FOR, deliberately. The first needs `lane === 'forward'`
+ * listed, which the paragraph above argues against and the test below still
+ * asserts returns nothing. The second needs a rule that reads the sentence.
+ * Both are written down here instead, because a limit this section names is
+ * one the next reader can work around, and a limit it hides is one they
+ * rediscover the way this one was rediscovered — from downstream.
+ *
  * IF THIS PRODUCES A FALSE POSITIVE, THE ANSWER IS A CONVERSATION ABOUT THE
  * SENTENCE, NOT A NEW EXEMPTION. A genuine board lane described with one of
  * these words is a sentence worth rereading; if it survives the reread, the
