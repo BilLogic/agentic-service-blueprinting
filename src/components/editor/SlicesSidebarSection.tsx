@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { duplicateSlice, sliceToken, updateSliceMeta } from '@/lib/sliceMutations'
+import { duplicateSlice, updateSliceMetaFromSeed } from '@/lib/sliceMutations'
 import { isSliceKind } from '@/lib/sliceValidation'
 import { errorMessage } from '@/lib/utils'
 import { reportWriteFailure } from '@/lib/writeFailures'
@@ -248,13 +248,23 @@ export function SlicesSidebarSection() {
 /**
  * Rename a slice — title and subtitle, the two fields creating one asks for.
  *
- * `updateSliceMeta` is a guarded update: it carries the `updated_at` the row
- * was loaded with and matches on it, so a rename typed over a slice someone
- * else has since changed fails rather than silently overwriting them. That is
- * also why the whole meta goes back — type, actor and origin are re-sent
- * unchanged rather than dropped.
+ * Exported for `sliceRenameGuard.test.tsx`, which drives the save rather than
+ * reading it: the guard below has been wrong in both directions, and neither
+ * wrong version looked any different from this one.
+ *
+ * The whole form — not just the two fields on screen — is frozen at the moment
+ * it opens, and `updateSliceMetaFromSeed` guards on that seed: it reads the
+ * row back at submit and refuses when the meta has moved since. So a rename
+ * typed over a slice someone else has since changed fails rather than silently
+ * overwriting them, and a rename over a row that merely got a newer stamp
+ * still lands. Guarding on the stamp alone could only ever have one of those
+ * two, whichever stamp it picked.
+ *
+ * That seed is also why the whole meta goes back — type, actor and origin are
+ * re-sent as the user last saw them rather than dropped, which is what the
+ * comparison just promised they still are.
  */
-function RenameSliceDialog({
+export function RenameSliceDialog({
   slice,
   open,
   onOpenChange,
@@ -271,27 +281,29 @@ function RenameSliceDialog({
 
   // Re-seed on every open, cleared on close — keying on slice.id kept a
   // cancelled edit's junk alive for the same slice, one Enter from saving.
-  const [seeded, setSeeded] = useState(false)
-  if (open && slice && !seeded) {
-    setSeeded(true)
+  // The row is held rather than a `seeded` flag: it is what the save compares
+  // against, so the two can never disagree about which open it belongs to.
+  const [seed, setSeed] = useState<SliceListEntry | null>(null)
+  if (open && slice && !seed) {
+    setSeed(slice)
     setTitle(slice.title)
     setSummary(slice.summary ?? '')
     setError(null)
   }
-  if (!open && seeded) setSeeded(false)
+  if (!open && seed) setSeed(null)
 
   const save = async () => {
-    if (!client || !slice || busy || !title.trim()) return
+    if (!client || !seed || busy || !title.trim()) return
     setBusy(true)
     setError(null)
     let outcome
     try {
-      outcome = await updateSliceMeta(client, slice.id, sliceToken(slice), {
+      outcome = await updateSliceMetaFromSeed(client, seed.id, seed, {
         title,
         summary,
-        sliceKind: isSliceKind(slice.kind) ? slice.kind : 'custom',
-        actor: slice.actor ?? '',
-        authorship: slice.authorship ?? 'human',
+        sliceKind: isSliceKind(seed.kind) ? seed.kind : 'custom',
+        actor: seed.actor ?? '',
+        authorship: seed.authorship ?? 'human',
       })
     } catch (renameError) {
       setBusy(false)
@@ -304,8 +316,8 @@ function RenameSliceDialog({
       onOpenChange(false)
       return
     }
-    // `readWriteOutcome` throws on a real error, so the only other outcome
-    // is a lost race on `updated_at`.
+    // `readWriteOutcome` throws on a real error, so the only other outcome is
+    // a row that moved — edited elsewhere, or gone.
     setError('This slice changed somewhere else. Reopen it and try again.')
   }
 
