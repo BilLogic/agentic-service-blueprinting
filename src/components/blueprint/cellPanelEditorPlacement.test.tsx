@@ -65,20 +65,25 @@ vi.mock('@/lib/authoringRpc', () => ({
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: {}, configured: true, canWrite: true }),
 }))
-vi.mock('@/hooks/useCellContent', () => ({
-  useCellContent: () => ({
-    status: 'ready',
-    data: {
-      content: 'Intake portal',
-      summary: 'Where a report is filed.',
-      owner: null,
-      perceived_owner: null,
-      resources: [],
-    },
+// The editor reads the whole cell off the board it was opened from, so the
+// board is where the cell's text and owner pair have to be for these to run.
+vi.mock('@/contexts/BlueprintCellDetailContext', () => ({
+  useBlueprintCellDetailOptional: () => ({
+    blueprints: [
+      {
+        cells: [
+          {
+            id: 'cell-1',
+            content: 'Intake portal',
+            summary: 'Where a report is filed.',
+            owner: null,
+            perceived_owner: null,
+            resources: [],
+          },
+        ],
+      },
+    ],
   }),
-}))
-vi.mock('@/hooks/useCellSpec', () => ({
-  useCellSpec: () => ({ status: 'ready', data: null }),
 }))
 vi.mock('@/hooks/useValueAudiences', () => ({
   useValueAudiences: () => ({ status: 'ready', data: [] }),
