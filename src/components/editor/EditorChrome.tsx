@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useWorkspaceTitle } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSidebarCollapsedState } from '@/contexts/sidebarCollapsedContext'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
 
 type SidebarCollapseButtonProps = {
@@ -161,7 +162,7 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
           and the sidebar comes back at the left edge — a toggle at the far
           right sat as far from the thing it summons as this strip allows. */}
       <SidebarCollapseButton collapsed onToggle={onExpand} size="icon-sm" />
-      <p className="shrink-0 truncate text-xs font-medium text-foreground">
+      <p className={cn('shrink-0 truncate', PANEL_TEXT.sectionHeading)}>
         {editorTitle}
       </p>
       {summary ? (

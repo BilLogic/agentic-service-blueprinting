@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useBlueprintCell } from '@/hooks/useBlueprintCell'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { parseValueProps } from '@/lib/valueProps'
 
 /**
@@ -21,7 +22,7 @@ function SpecSection({
 }) {
   return (
     <section className="flex flex-col gap-1">
-      <h3 className="text-2xs font-medium text-muted-foreground">
+      <h3 className={PANEL_TEXT.sectionLabel}>
         {title}
       </h3>
       {text !== undefined ? (

@@ -174,6 +174,7 @@ import {
 } from '@/lib/agent/settings'
 import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
 import { AgentTrialBanner } from '@/components/editor/AgentTrialBanner'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
 
 /**
@@ -939,7 +940,7 @@ function AgentChatView({
           title="Rename session"
           className="group/title flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="min-w-0 truncate text-xs font-medium text-foreground">
+          <span className={cn('min-w-0 truncate', PANEL_TEXT.sectionHeading)}>
             {session.title}
           </span>
           <Pencil

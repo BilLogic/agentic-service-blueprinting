@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { duplicateSlice, updateSliceMetaFromSeed } from '@/lib/sliceMutations'
 import { isSliceKind } from '@/lib/sliceValidation'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
 import { reportWriteFailure } from '@/lib/writeFailures'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
@@ -329,7 +330,7 @@ export function RenameSliceDialog({
         </DialogHeader>
         <div className="flex flex-col gap-2.5 px-6">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Title</span>
+            <span className={PANEL_TEXT.sectionHeading}>Title</span>
             <Input
               value={title}
               autoFocus
@@ -340,7 +341,7 @@ export function RenameSliceDialog({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className={PANEL_TEXT.sectionLabel}>
               Subtitle{' '}
               <span className="font-normal text-muted-foreground/70">
                 · optional

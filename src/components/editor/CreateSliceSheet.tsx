@@ -17,6 +17,7 @@ import { findFirstServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
 import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
 
 /** One slide per cell. The starting shape, and the only one worth seeding. */
@@ -194,7 +195,7 @@ export function CreateSliceSheet({
             </IconTooltip>
           ) : null}
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-foreground">New slice</p>
+            <p className={PANEL_TEXT.sectionHeading}>New slice</p>
             {/*
               What the selection *is*, stated rather than asked. The old
               five-way toggle made the author classify something the picking
@@ -232,7 +233,7 @@ export function CreateSliceSheet({
           <>
             <div className="flex flex-col gap-2.5 px-3 py-3">
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-foreground">
+                <span className={PANEL_TEXT.sectionHeading}>
                   Title<span className="ml-0.5 text-destructive">*</span>
                 </span>
                 <Input
@@ -248,7 +249,7 @@ export function CreateSliceSheet({
                   pixels and cost a discovery. Required-ness is carried by the
                   labels, not by which field is on screen. */}
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className={PANEL_TEXT.sectionLabel}>
                   Subtitle{' '}
                   <span className="font-normal text-muted-foreground/70">
                     · optional

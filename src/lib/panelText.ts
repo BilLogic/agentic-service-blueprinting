@@ -1,5 +1,5 @@
 /**
- * The panel type scale — four roles, named once.
+ * The panel type scale — five roles, named once.
  *
  * Five panels and three tabs had drifted into six treatments for four jobs: a
  * section label was `text-2xs font-medium text-muted-foreground` in the spec
@@ -8,6 +8,13 @@
  * `text-xs text-muted-foreground` in another. Naming the roles is what makes
  * the repetition survive the next panel — a class list copied by hand drifts,
  * a constant does not.
+ *
+ * Labels are two roles, not one. A *section heading* (`sectionHeading`) is
+ * the title of a group inside a dialog or popover: one size larger, one ink
+ * darker, so it reads as a heading. A *field label* (`sectionLabel`) sits
+ * beside or above a control and annotates it. They are not interchangeable.
+ * A third spelling — `sectionLabel` with `font-medium` dropped — is not a
+ * third role; it is `sectionLabel` with a class missing.
  */
 export const PANEL_TEXT = {
   /**
@@ -29,7 +36,20 @@ export const PANEL_TEXT = {
   title: 'min-w-0 text-sm font-semibold leading-normal text-foreground',
   /** Counts and relationships under the title. Never restates the title. */
   meta: 'text-2xs leading-tight text-muted-foreground',
-  /** Names a field or a group. Always the same weight, size and colour. */
+  /**
+   * The stronger label: a group title in a dialog or popover, a dialog
+   * field that reads as a heading, or chrome that already wore this
+   * class list (the collapsed sidebar title, an agent session name).
+   *
+   * One size larger and one ink darker than `sectionLabel`, so it reads as a
+   * heading rather than as an annotation on a control.
+   */
+  sectionHeading: 'text-xs font-medium text-foreground',
+  /**
+   * Names a field. Always the same weight, size and colour.
+   *
+   * Not a group title — that is `sectionHeading`.
+   */
   sectionLabel: 'text-2xs font-medium text-muted-foreground',
   /** Authored prose — what the panel exists to show. */
   value: 'text-sm text-foreground/80',

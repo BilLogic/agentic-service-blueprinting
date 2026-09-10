@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPath, duplicatePath } from '@/lib/authoringRpc'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
 import {
   PATH_KINDS,
@@ -126,7 +127,7 @@ export function CreateVersionDialog({
           data-create-version-fields=""
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Name</span>
+            <span className={PANEL_TEXT.sectionHeading}>Name</span>
             <Input
               value={draft.name}
               autoFocus
@@ -136,7 +137,7 @@ export function CreateVersionDialog({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Kind</span>
+            <span className={PANEL_TEXT.sectionHeading}>Kind</span>
             <div className="flex flex-wrap gap-1.5">
               {PATH_KINDS.map((type) => (
                 <Button
@@ -153,7 +154,7 @@ export function CreateVersionDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">
+            <span className={PANEL_TEXT.sectionHeading}>
               Start from
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -179,7 +180,7 @@ export function CreateVersionDialog({
 
           {versions.length > 0 ? (
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-foreground">
+              <span className={PANEL_TEXT.sectionHeading}>
                 {draft.mode === 'duplicate' ? 'Version to copy' : 'Lanes from'}
               </span>
               <select

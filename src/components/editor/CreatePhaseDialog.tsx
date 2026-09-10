@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPhase } from '@/lib/authoringRpc'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
 
 /**
@@ -84,7 +85,7 @@ export function CreatePhaseDialog({
 
         <div className="flex flex-col gap-3 px-6" data-create-phase-fields="">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Name</span>
+            <span className={PANEL_TEXT.sectionHeading}>Name</span>
             <Input
               value={name}
               autoFocus

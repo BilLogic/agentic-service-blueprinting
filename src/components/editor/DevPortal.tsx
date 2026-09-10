@@ -7,6 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
 import {
   devPortalEnabled,
@@ -70,7 +71,7 @@ function InfoHint({ label, className }: { label: string; className?: string }) {
  * and these rows render into the same column — a second width here jogged
  * the control edge partway down one popover.
  */
-const ROW_LABEL = 'w-14 shrink-0 text-2xs text-muted-foreground'
+const ROW_LABEL = cn('w-14 shrink-0', PANEL_TEXT.sectionLabel)
 
 /**
  * Settings → "For developers".
@@ -98,7 +99,7 @@ export function DevPortalSection() {
       <div className="my-0.5 border-t border-muted" />
 
       <div className="flex items-center gap-1">
-        <p className="text-xs font-medium text-foreground">For developers</p>
+        <p className={PANEL_TEXT.sectionHeading}>For developers</p>
         <InfoHint label="Simulates a permission tier in this browser only. Row-level security and the RPC grants are unchanged, so a write your real account cannot make still fails server-side." />
       </div>
 

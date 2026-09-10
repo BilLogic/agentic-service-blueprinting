@@ -22,6 +22,7 @@ import {
   type DeletableKind,
   type ImpactSummary,
 } from '@/lib/deletionSafety'
+import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
 
 export type DeletionTarget = {
@@ -240,7 +241,7 @@ export function DeleteStructureDialog({
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-3">
               <label
                 htmlFor={inputId}
-                className="text-xs font-medium text-foreground"
+                className={PANEL_TEXT.sectionHeading}
               >
                 Type{' '}
                 <span className="rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-foreground">

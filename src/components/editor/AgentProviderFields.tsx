@@ -15,6 +15,10 @@ import {
   saveAgentSettings,
   useAgentSettings,
 } from '@/lib/agent/settings'
+import { PANEL_TEXT } from '@/lib/panelText'
+import { cn } from '@/lib/utils'
+
+const ROW_LABEL = cn('w-14 shrink-0', PANEL_TEXT.sectionLabel)
 
 /**
  * The agent's provider, model and key — the half of the settings surface
@@ -71,7 +75,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-2xs text-muted-foreground">
+        <span className={ROW_LABEL}>
           Provider
         </span>
         <DropdownMenu>
@@ -107,7 +111,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-2xs text-muted-foreground">
+        <span className={ROW_LABEL}>
           Model
         </span>
         <DropdownMenu>
@@ -143,7 +147,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-2xs text-muted-foreground">
+        <span className={ROW_LABEL}>
           API key
         </span>
         <Input

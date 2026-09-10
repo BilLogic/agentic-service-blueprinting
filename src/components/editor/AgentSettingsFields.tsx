@@ -2,6 +2,7 @@ import { AdminSessionFields } from '@/components/editor/AdminSessionFields'
 import { AgentProviderFields } from '@/components/editor/AgentProviderFields'
 import { DevPortalSection } from '@/components/editor/DevPortal'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { PANEL_TEXT } from '@/lib/panelText'
 
 /**
  * Admin sign-in, then the agent's provider / model / key — the whole of
@@ -41,7 +42,7 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
     <div className="flex flex-col gap-2.5">
       {/* Show/hide the chat is the rail's ✦ toggle — settings hold
           settings, not surface toggles. */}
-      <p className="text-xs font-medium text-foreground">Admin</p>
+      <p className={PANEL_TEXT.sectionHeading}>Admin</p>
       {/* Template-only: an unconfigured build has no account to sign in to,
           so the front door is a sentence rather than a form. */}
       {configured ? (
@@ -56,7 +57,7 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
       {showAgentSettings ? (
         <>
           <div className="my-0.5 border-t border-muted" />
-          <p className="text-xs font-medium text-foreground">Agent</p>
+          <p className={PANEL_TEXT.sectionHeading}>Agent</p>
           <AgentProviderFields active={active} />
         </>
       ) : null}
