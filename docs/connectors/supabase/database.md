@@ -368,7 +368,7 @@ credentials.
 | `20260729120000_derived_layer.sql` | The records about the board: `slices`, `slides`, `findings` (open-fingerprint partial unique index), `evidence`, `propositions`, `evidence_counts` view, cell/lane/phase spec columns, `cell_dependencies.kind` |
 | `20260730090000_derived_layer_grants_hardening.sql` | Explicit Data API grants, anon write-privilege revokes, pinned `search_path`, attribution columns, evidence `cell_key` pairing |
 | `20260803001000_slices_origin_allows_human.sql` | Adds `human` to the `slices.origin` vocabulary (in-app authored slices) |
-| `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.position` (+ widened uniqueness), deferrable `path_steps` ordering, `deleted_structure` archive, direct-column grants for panel edits |
+| `20260818000000_authoring_foundation.sql` | Authoring foundation: `origin` provenance columns, `cells.cell_key` identity, `cells.position` (+ widened uniqueness), deferrable `path_steps` ordering, the deletion archive, direct-column grants for panel edits |
 | `20260818001000_authoring_operations.sql` | Authoring operations: the `SECURITY DEFINER` RPCs (create/duplicate/rename/reorder/delete structure, `upsert_cell`, dependencies) that are the only sanctioned write path for structural shape |
 | `20260818002000_service_account_tier.sql` | OPTIONAL recipe: splits `authenticated` into service accounts (edit everything) and regular accounts (view + agent surfaces) via RESTRICTIVE policies + `is_service_account()` |
 | `20260819000000_agent_surface.sql` | Agent surface: `agent_sessions`/`agent_messages` chat persistence (authenticated-only) and the findings insert/update grants for in-app agent runs |
@@ -549,6 +549,20 @@ Ops lessons this repo carries as rules for anyone adding migrations:
   shared project. An applied-but-uncommitted migration makes the repo lie
   about the shared schema; the next contributor's `db reset` or diff runs
   against a state the migrations directory cannot reproduce.
+- **One log records every authoring write, and it has two writers.**
+  `public.authoring_changes` is append-only — two triggers refuse UPDATE,
+  DELETE and TRUNCATE on it, so the definer functions and the service key
+  cannot rewrite it either. The client appends through
+  `record_authoring_change`, which takes the operation, its arguments, its
+  captured inverse and the author, and takes no payload parameter at all:
+  a caller cannot claim to have deleted something. The six delete RPCs
+  append their own row, because a destroyed row's payload can only be
+  captured inside the transaction that destroys it. `public.trash` is a
+  view over the rows that carry a `deleted_kind`, so the recovery list is
+  a filter on the record rather than a second table kept in step with it.
+  It is AUDIT-ONLY: `revert` is stored so a row can say what would undo
+  it, and nothing replays it — `executeRevert` accepts only a branded
+  `SessionEntry` that the session stack alone mints.
 - **Undo paths couple to insert policies.** Migrations are append-only
   (an undo is a new migration), and client-side undo is policy-coupled: a
   revert that re-inserts a deleted row verbatim (evidence restore is the

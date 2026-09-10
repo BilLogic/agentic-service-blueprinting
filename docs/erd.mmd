@@ -16,7 +16,8 @@
 %%        audit_findings.source ∈ (audit | whatif | import-sweep); severity ∈ (info | warn | critical);
 %%          status ∈ (open | resolved | dismissed)
 %%        evidence.kind ∈ (interview | survey | analytics | doc | meeting | decision | observation | other)
-%%        deleted_structure.kind ∈ (scenario | path | lane | step | cell)
+%%        authoring_changes.author ∈ (human | agent)
+%%        authoring_changes.deleted_kind ∈ (scenario | path | lane | step | cell)
 %% Integrity: cells.path_id must match lanes.path_id AND (path_id, step_id) must exist in
 %%            path_steps (DB trigger cells_validate_path_match). Import order:
 %%            paths → steps → path_steps → lanes → cells → cell_dependencies.
@@ -30,8 +31,11 @@
 %%            ASSUMPTION (derived state, never stored). evidence_counts (view) exposes
 %%            cell_id → count publicly without content.
 %% Writes: structural shape goes through SECURITY DEFINER RPCs only (create/duplicate/rename/
-%%            delete operations); deletes archive their full payload into deleted_structure in
-%%            the same transaction. Every write RPC asserts is_service_account() in-body
+%%            delete operations). Every authoring write is recorded in authoring_changes —
+%%            the client appends through record_authoring_change, and the delete RPCs append
+%%            their own row carrying the full payload, in the same transaction as the cascade.
+%%            trash (view) is the deletions in that log, in the shape the retired
+%%            deleted_structure table had. Every write RPC asserts is_service_account() in-body
 %%            (default true; the optional tier recipe swaps in a JWT app_metadata check).
 erDiagram
   services ||--o{ phases : "has many"
@@ -263,12 +267,17 @@ erDiagram
     text partners
   }
 
-  deleted_structure {
+  authoring_changes {
     uuid id PK
-    timestamptz deleted_at
-    uuid deleted_by "auth.uid() at delete"
-    text kind "scenario | path | lane | step | cell"
+    timestamptz at
+    text author "human | agent"
+    uuid author_id "auth.uid() at write"
+    uuid agent_session_id "the agent conversation; set iff author = agent"
+    text fn "the operation: an authoring RPC, or a direct-column mutation name"
+    jsonb args "exactly what was sent, ids not names"
+    jsonb revert "the captured inverse {fn, args}, where one exists"
+    text deleted_kind "scenario | path | lane | step | cell; null unless a delete"
     text label "human name for the undo toast / recovery list"
-    jsonb payload "every deleted row, natural-keyed, dependency order"
+    jsonb payload "every deleted row, natural-keyed, dependency order; set iff deleted_kind"
     jsonb affected_slices "[{slice_id, title, cell_keys}]"
   }

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { toAuthoringError } from '@/lib/authoringErrors'
-import type { ChangeEntry } from '@/lib/authoringSession'
+import type { SessionEntry } from '@/lib/authoringSession'
 import {
   restoreCellTouchpoints,
   updateCellContent,
@@ -97,10 +97,22 @@ function optionalStringArg(args: Record<string, unknown>, key: string): string {
  * The caller removes the entry (`forgetChange`) and re-reads the grid —
  * every revert is structural or content-bearing, and pessimistic re-read is
  * the house rule for both.
+ *
+ * ── WHERE THE INPUT MAY COME FROM ─────────────────────────────────────────
+ *
+ * A `SessionEntry`, and nothing else. That type is minted only by
+ * `recordChange`, so the entry handed in here was assembled by the build that
+ * is now reading it — never fetched, never deserialised, never older than the
+ * code applying it. `public.authoring_changes` keeps the same information
+ * durably and is not a source for this function: a row out of it is a
+ * `ChangeEntry`-shaped object at best and will not type-check as a
+ * `SessionEntry`. `revertBoundaryContract.test.ts` is the rest of that wall —
+ * it refuses a cast that would mint the brand anywhere but the session module,
+ * and refuses a signature here that widens the parameter back out.
  */
 export async function executeRevert(
   client: Client,
-  entry: ChangeEntry,
+  entry: SessionEntry,
 ): Promise<void> {
   const revert = entry.revert
   if (!revert) {

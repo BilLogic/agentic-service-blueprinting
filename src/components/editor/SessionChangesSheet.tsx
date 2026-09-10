@@ -19,7 +19,7 @@ import {
   sessionHasDestructive,
   sessionSnapshot,
   subscribeToSession,
-  type ChangeEntry,
+  type SessionEntry,
 } from '@/lib/authoringSession'
 import { scrollBlueprintCellIntoView } from '@/lib/blueprintCellConnections'
 import { executeRevert } from '@/lib/revertChange'
@@ -29,9 +29,9 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { cn, errorMessage } from '@/lib/utils'
 
 /** Server snapshot for SSR — there is no session before hydration. */
-const EMPTY: ChangeEntry[] = []
+const EMPTY: SessionEntry[] = []
 
-function useSessionChanges(): ChangeEntry[] {
+function useSessionChanges(): SessionEntry[] {
   return useSyncExternalStore(subscribeToSession, sessionSnapshot, () => EMPTY)
 }
 
@@ -88,7 +88,7 @@ type LeftBehind = {
 /** Revert one entry and clean up after it — shared by the row and ⌘Z. */
 async function revertEntry(
   client: NonNullable<ReturnType<typeof useSupabase>['client']>,
-  entry: ChangeEntry,
+  entry: SessionEntry,
 ): Promise<RevertOutcome> {
   if (revertsInFlight.has(entry.id)) return 'already-in-flight'
   revertsInFlight.add(entry.id)
@@ -146,7 +146,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * silently doing nothing forever: the newest revertible change is the
  * answer to "undo" even when a non-revertible one landed after it.
  */
-function useUndoHotkey(changes: ChangeEntry[]) {
+function useUndoHotkey(changes: SessionEntry[]) {
   const { client } = useSupabase()
 
   useEffect(() => {
@@ -276,7 +276,7 @@ async function revertAgentSession(
     return 'This command is only available to the agent, and no agent session is attributed right now.'
   if (isRevertInFlight()) return 'A revert is already in flight — wait for it.'
 
-  const mine = (entry: ChangeEntry) =>
+  const mine = (entry: SessionEntry) =>
     entry.author === 'agent' && entry.agentSessionId === sessionId
   if (!sessionSnapshot().some(mine))
     return 'You have not made any changes in this session, so there is nothing of yours to take back.'
@@ -720,7 +720,7 @@ function ChangeRow({
    */
   reverting,
 }: {
-  entry: ChangeEntry
+  entry: SessionEntry
   reverting: boolean
 }) {
   const { client } = useSupabase()

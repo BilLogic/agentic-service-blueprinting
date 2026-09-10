@@ -13,8 +13,8 @@ import type { Database } from '@/types/database'
  *
  * The plan's rule is that no delete affordance ships before its archive
  * exists. That is enforced structurally — `canDelete` below — rather than by
- * remembering, because a delete button on a schema with no `deleted_structure`
- * table destroys imported blueprint content with nothing behind it.
+ * remembering, because a delete button on a schema with no recovery archive
+ * destroys imported blueprint content with nothing behind it.
  */
 
 /**
@@ -64,8 +64,8 @@ export type DeletionReadiness =
 /**
  * Whether deleting is available at all.
  *
- * `archiveAvailable` comes from the app checking that `deleted_structure` is
- * present. Absent, the affordance is hidden rather than disabled: a disabled
+ * `archiveAvailable` comes from the app checking that `public.trash` — the
+ * deletions in the append-only change log — is present. Absent, the affordance is hidden rather than disabled: a disabled
  * delete button invites someone to go looking for how to enable it, and there
  * is no safe way to.
  */

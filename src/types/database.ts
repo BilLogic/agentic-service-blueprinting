@@ -29,6 +29,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      authoring_changes: {
+        Row: {
+          affected_slices: Json
+          agent_session_id: string | null
+          args: Json
+          at: string
+          author: string
+          author_id: string | null
+          deleted_kind: string | null
+          fn: string
+          id: string
+          label: string | null
+          payload: Json | null
+          revert: Json | null
+        }
+        Insert: {
+          affected_slices?: Json
+          agent_session_id?: string | null
+          args?: Json
+          at?: string
+          author?: string
+          author_id?: string | null
+          deleted_kind?: string | null
+          fn: string
+          id?: string
+          label?: string | null
+          payload?: Json | null
+          revert?: Json | null
+        }
+        Update: {
+          affected_slices?: Json
+          agent_session_id?: string | null
+          args?: Json
+          at?: string
+          author?: string
+          author_id?: string | null
+          deleted_kind?: string | null
+          fn?: string
+          id?: string
+          label?: string | null
+          payload?: Json | null
+          revert?: Json | null
+        }
+        Relationships: []
+      }
       agent_messages: {
         Row: {
           created_at: string
@@ -274,36 +319,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      deleted_structure: {
-        Row: {
-          affected_slices: Json
-          deleted_at: string
-          deleted_by: string | null
-          id: string
-          kind: string
-          label: string
-          payload: Json
-        }
-        Insert: {
-          affected_slices?: Json
-          deleted_at?: string
-          deleted_by?: string | null
-          id?: string
-          kind: string
-          label: string
-          payload: Json
-        }
-        Update: {
-          affected_slices?: Json
-          deleted_at?: string
-          deleted_by?: string | null
-          id?: string
-          kind?: string
-          label?: string
-          payload?: Json
-        }
-        Relationships: []
       }
       evidence: {
         Row: {
@@ -1067,6 +1082,36 @@ export type Database = {
         }
         Relationships: []
       }
+      trash: {
+        Row: {
+          affected_slices: Json | null
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string | null
+          kind: string | null
+          label: string | null
+          payload: Json | null
+        }
+        Insert: {
+          affected_slices?: Json | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string | null
+          kind?: string | null
+          label?: string | null
+          payload?: Json | null
+        }
+        Update: {
+          affected_slices?: Json | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string | null
+          kind?: string | null
+          label?: string | null
+          payload?: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_lane: {
@@ -1137,6 +1182,16 @@ export type Database = {
       key_slug: { Args: { value: string }; Returns: string }
       mint_cell_key: {
         Args: { lane_id: string; path_id: string; step_id: string }
+        Returns: string
+      }
+      record_authoring_change: {
+        Args: {
+          agent_session_id?: string | null
+          args?: Json
+          author?: string
+          fn: string
+          revert?: Json | null
+        }
         Returns: string
       }
       remove_lane: {

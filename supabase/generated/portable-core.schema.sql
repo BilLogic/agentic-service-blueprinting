@@ -129,6 +129,20 @@ end;
 $$;
 
 --
+-- Name: authoring_changes_are_append_only(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.authoring_changes_are_append_only() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+begin
+  raise exception 'public.authoring_changes is append-only; % is not permitted on it', tg_op
+    using errcode = '42501';
+end;
+$$;
+
+--
 -- Name: cell_natural_key(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -380,8 +394,8 @@ begin
     raise exception 'Unknown cell';
   end if;
 
-  insert into public.deleted_structure (kind, label, payload, affected_slices)
-  values ('cell', coalesce(public.cell_natural_key(cell_id), 'cell'), payload,
+  insert into public.authoring_changes (fn, deleted_kind, label, payload, affected_slices)
+  values ('delete_cell', 'cell', coalesce(public.cell_natural_key(cell_id), 'cell'), payload,
           public.slices_referencing(array[cell_id]))
   returning id into archive_id;
 
@@ -431,8 +445,8 @@ begin
   ) into payload
   from public.paths p where p.id = path_id;
 
-  insert into public.deleted_structure (kind, label, payload, affected_slices)
-  values ('path', impact ->> 'label', payload, impact -> 'affected_slices')
+  insert into public.authoring_changes (fn, deleted_kind, label, payload, affected_slices)
+  values ('delete_path', 'path', impact ->> 'label', payload, impact -> 'affected_slices')
   returning id into archive_id;
 
   delete from public.paths where id = path_id;
@@ -490,8 +504,8 @@ begin
     raise exception 'Unknown blueprint';
   end if;
 
-  insert into public.deleted_structure (kind, label, payload, affected_slices)
-  values ('scenario', impact ->> 'label', payload, impact -> 'affected_slices')
+  insert into public.authoring_changes (fn, deleted_kind, label, payload, affected_slices)
+  values ('delete_scenario', 'scenario', impact ->> 'label', payload, impact -> 'affected_slices')
   returning id into archive_id;
 
   delete from public.scenarios where id = scenario_id;
@@ -975,6 +989,51 @@ CREATE FUNCTION public.mint_cell_key(path_id uuid, lane_id uuid, step_id uuid) R
 $_$;
 
 --
+-- Name: record_authoring_change(text, jsonb, jsonb, text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.record_authoring_change(fn text, args jsonb DEFAULT '{}'::jsonb, revert jsonb DEFAULT NULL::jsonb, author text DEFAULT 'human'::text, agent_session_id uuid DEFAULT NULL::uuid) RETURNS uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  change_id uuid;
+begin
+  -- The same service-account gate every other write function carries. The
+  -- append runs after the write it records, so anyone who got here already
+  -- passed it once; carrying it means the log's write surface cannot be
+  -- wider than the surface it describes.
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint'
+      using errcode = '42501';
+  end if;
+
+  if record_authoring_change.fn is null
+     or btrim(record_authoring_change.fn) = '' then
+    raise exception 'A recorded change has to name the operation that made it';
+  end if;
+
+  insert into public.authoring_changes (fn, args, revert, author, agent_session_id)
+  values (
+    record_authoring_change.fn,
+    coalesce(record_authoring_change.args, '{}'::jsonb),
+    record_authoring_change.revert,
+    coalesce(record_authoring_change.author, 'human'),
+    record_authoring_change.agent_session_id
+  )
+  returning id into change_id;
+
+  return change_id;
+end;
+$$;
+
+--
+-- Name: FUNCTION record_authoring_change(fn text, args jsonb, revert jsonb, author text, agent_session_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.record_authoring_change(fn text, args jsonb, revert jsonb, author text, agent_session_id uuid) IS 'Append one authoring write to public.authoring_changes. Called by src/lib/authoringLog.ts after the write it records has already succeeded, so the log can never claim a change the database does not have.';
+
+--
 -- Name: remove_lane(uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1010,8 +1069,8 @@ begin
               from public.cells c where c.id = any(affected))
   ) into payload;
 
-  insert into public.deleted_structure (kind, label, payload, affected_slices)
-  values ('lane', lane_name, payload, public.slices_referencing(affected))
+  insert into public.authoring_changes (fn, deleted_kind, label, payload, affected_slices)
+  values ('remove_lane', 'lane', lane_name, payload, public.slices_referencing(affected))
   returning id into archive_id;
 
   delete from public.lanes l
@@ -1068,8 +1127,8 @@ begin
               from public.cells c where c.id = any(affected))
   ) into payload;
 
-  insert into public.deleted_structure (kind, label, payload, affected_slices)
-  values ('lane', coalesce(label, 'lane'), payload,
+  insert into public.authoring_changes (fn, deleted_kind, label, payload, affected_slices)
+  values ('remove_lanes', 'lane', coalesce(label, 'lane'), payload,
           public.slices_referencing(affected))
   returning id into archive_id;
 
@@ -1145,8 +1204,8 @@ begin
   ) into payload
   from public.steps s where s.id = step_id;
 
-  insert into public.deleted_structure (kind, label, payload, affected_slices)
-  values ('step', impact ->> 'label', payload, impact -> 'affected_slices')
+  insert into public.authoring_changes (fn, deleted_kind, label, payload, affected_slices)
+  values ('remove_step', 'step', impact ->> 'label', payload, impact -> 'affected_slices')
   returning id into archive_id;
 
   delete from public.cells
@@ -2533,6 +2592,63 @@ COMMENT ON COLUMN public.audit_findings.summary IS 'The finding''s own sentence 
 COMMENT ON COLUMN public.audit_findings.fingerprint IS 'check_key + sorted cell_keys hash. Dedupe/reopen identity across runs.';
 
 --
+-- Name: authoring_changes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.authoring_changes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    at timestamp with time zone DEFAULT now() NOT NULL,
+    author text DEFAULT 'human'::text NOT NULL,
+    author_id uuid,
+    agent_session_id uuid,
+    fn text NOT NULL,
+    args jsonb DEFAULT '{}'::jsonb NOT NULL,
+    revert jsonb,
+    deleted_kind text,
+    label text,
+    payload jsonb,
+    affected_slices jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT authoring_changes_affected_slices_check CHECK ((jsonb_typeof(affected_slices) = 'array'::text)),
+    CONSTRAINT authoring_changes_agent_session_check CHECK (((author = 'agent'::text) = (agent_session_id IS NOT NULL))),
+    CONSTRAINT authoring_changes_args_check CHECK ((jsonb_typeof(args) = 'object'::text)),
+    CONSTRAINT authoring_changes_author_check CHECK ((author = ANY (ARRAY['human'::text, 'agent'::text]))),
+    CONSTRAINT authoring_changes_deleted_kind_check CHECK ((deleted_kind = ANY (ARRAY['scenario'::text, 'path'::text, 'lane'::text, 'step'::text, 'cell'::text]))),
+    CONSTRAINT authoring_changes_fn_check CHECK ((btrim(fn) <> ''::text)),
+    CONSTRAINT authoring_changes_payload_check CHECK (((deleted_kind IS NULL) = (payload IS NULL))),
+    CONSTRAINT authoring_changes_revert_check CHECK (((revert IS NULL) OR (jsonb_typeof(revert) = 'object'::text)))
+);
+
+--
+-- Name: TABLE authoring_changes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.authoring_changes IS 'Append-only record of every authoring write. Audit-only: the in-memory stack in src/lib/authoringSession.ts is still the undo affordance, and nothing replays `revert` from here. A row with `deleted_kind` set is a deletion and carries the rows it destroyed; `public.trash` is the view over exactly those.';
+
+--
+-- Name: COLUMN authoring_changes.agent_session_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.authoring_changes.agent_session_id IS 'The agent conversation this write belongs to. No foreign key on purpose: the record has to outlive the session it names.';
+
+--
+-- Name: COLUMN authoring_changes.fn; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.authoring_changes.fn IS 'The operation: an authoring RPC name, or one of the direct-table mutation names the client logs under. Matches the WriteFn union in src/lib/authoringSession.ts.';
+
+--
+-- Name: COLUMN authoring_changes.args; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.authoring_changes.args IS 'Exactly what was sent. Ids, not names — a name is resolved at render because a name is a thing that changes.';
+
+--
+-- Name: COLUMN authoring_changes.revert; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.authoring_changes.revert IS 'The captured inverse, {fn, args}, where one exists. Recorded so a row can say what would undo it. Nothing replays it — see the header.';
+
+--
 -- Name: business_models; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2744,21 +2860,6 @@ COMMENT ON COLUMN public.cells."position" IS 'Ordering within one (lane, step) s
 --
 
 COMMENT ON COLUMN public.cells.status IS 'How far along the thing this cell describes is. Defaults to live — a current-state blueprint documents what is in use.';
-
---
--- Name: deleted_structure; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.deleted_structure (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    deleted_at timestamp with time zone DEFAULT now() NOT NULL,
-    deleted_by uuid,
-    kind text NOT NULL,
-    label text NOT NULL,
-    payload jsonb NOT NULL,
-    affected_slices jsonb DEFAULT '[]'::jsonb NOT NULL,
-    CONSTRAINT deleted_structure_kind_check CHECK ((kind = ANY (ARRAY['scenario'::text, 'path'::text, 'lane'::text, 'step'::text, 'cell'::text])))
-);
 
 --
 -- Name: evidence; Type: TABLE; Schema: public; Owner: -
@@ -3427,6 +3528,27 @@ COMMENT ON COLUMN public.touchpoints.tone IS 'The palette family this touchpoint
 COMMENT ON COLUMN public.touchpoints.aliases IS 'The other spellings that mean this touchpoint — an older name the service has stopped using, a label that carried its own specification, a lower-case one a person typed into a cell. The name is the identity; these resolve to it. The deployment''s own history, which is why it is a column and not a literal in touchpointColors.ts. Nullable rather than NOT NULL DEFAULT ''{}'' like stakeholders.aliases: null means no aliases have been considered, which is what every row means until somebody says otherwise. Uniqueness against other names and aliases is not constrained here — that rule settles a read, so it belongs with the resolver, which resolves a collision in favour of the name.';
 
 --
+-- Name: trash; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.trash WITH (security_invoker='true') AS
+ SELECT id,
+    at AS deleted_at,
+    author_id AS deleted_by,
+    deleted_kind AS kind,
+    label,
+    payload,
+    affected_slices
+   FROM public.authoring_changes c
+  WHERE (deleted_kind IS NOT NULL);
+
+--
+-- Name: VIEW trash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON VIEW public.trash IS 'The deletions in public.authoring_changes, in the shape the retired deleted_structure table had. A filter over the one log, so the recovery list cannot drift from the record of what happened.';
+
+--
 -- Name: agent_messages agent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3453,6 +3575,13 @@ ALTER TABLE ONLY public.agent_sessions
 
 ALTER TABLE ONLY public.audit_findings
     ADD CONSTRAINT audit_findings_pkey PRIMARY KEY (id);
+
+--
+-- Name: authoring_changes authoring_changes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.authoring_changes
+    ADD CONSTRAINT authoring_changes_pkey PRIMARY KEY (id);
 
 --
 -- Name: business_models business_models_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3516,13 +3645,6 @@ ALTER TABLE ONLY public.cells
 
 ALTER TABLE ONLY public.cells
     ADD CONSTRAINT cells_pkey PRIMARY KEY (id);
-
---
--- Name: deleted_structure deleted_structure_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.deleted_structure
-    ADD CONSTRAINT deleted_structure_pkey PRIMARY KEY (id);
 
 --
 -- Name: evidence evidence_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3715,6 +3837,24 @@ CREATE UNIQUE INDEX audit_findings_open_fingerprint_idx ON public.audit_findings
 CREATE INDEX audit_findings_service_id_idx ON public.audit_findings USING btree (service_id);
 
 --
+-- Name: authoring_changes_agent_session_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX authoring_changes_agent_session_idx ON public.authoring_changes USING btree (agent_session_id) WHERE (agent_session_id IS NOT NULL);
+
+--
+-- Name: authoring_changes_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX authoring_changes_at_idx ON public.authoring_changes USING btree (at DESC);
+
+--
+-- Name: authoring_changes_deleted_kind_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX authoring_changes_deleted_kind_idx ON public.authoring_changes USING btree (deleted_kind, at DESC) WHERE (deleted_kind IS NOT NULL);
+
+--
 -- Name: cell_dependencies_source_cell_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3755,12 +3895,6 @@ CREATE INDEX cells_path_id_idx ON public.cells USING btree (path_id);
 --
 
 CREATE INDEX cells_step_id_idx ON public.cells USING btree (step_id);
-
---
--- Name: deleted_structure_deleted_at_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX deleted_structure_deleted_at_idx ON public.deleted_structure USING btree (deleted_at DESC);
 
 --
 -- Name: evidence_cell_id_idx; Type: INDEX; Schema: public; Owner: -
@@ -3881,6 +4015,18 @@ CREATE INDEX steps_scenario_id_idx ON public.steps USING btree (scenario_id);
 --
 
 CREATE INDEX touchpoints_stakeholder_id_idx ON public.touchpoints USING btree (stakeholder_id);
+
+--
+-- Name: authoring_changes authoring_changes_no_rewrite; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER authoring_changes_no_rewrite BEFORE DELETE OR UPDATE ON public.authoring_changes FOR EACH ROW EXECUTE FUNCTION public.authoring_changes_are_append_only();
+
+--
+-- Name: authoring_changes authoring_changes_no_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER authoring_changes_no_truncate BEFORE TRUNCATE ON public.authoring_changes FOR EACH STATEMENT EXECUTE FUNCTION public.authoring_changes_are_append_only();
 
 --
 -- Name: cells cells_validate_path_match; Type: TRIGGER; Schema: public; Owner: -

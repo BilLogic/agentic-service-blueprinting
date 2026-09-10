@@ -14,6 +14,10 @@ import {
   hasDevAuthoringUi,
   isSupabaseConfigured,
 } from '../lib/supabase'
+import {
+  setAuthoringLogWriter,
+  supabaseAuthoringLogWriter,
+} from '../lib/authoringLog'
 import { createSupabaseIdentity } from '../lib/backend/adapters/supabaseIdentity'
 import type { Tier } from '../lib/backend/ports'
 import { sessionRefresher, setSessionReconciler } from '../lib/sessionReconcile'
@@ -99,6 +103,17 @@ type SupabaseProviderProps = {
  * the actual contract — same reasoning as lib/queryClient.ts.
  */
 const sharedClient = createSupabaseClient()
+
+/*
+ * The durable change log's writer, installed here for the same reason the
+ * client is a module singleton: `recordChange` is a plain function with no
+ * component and no client around it, and there is exactly one client per page.
+ * Null in no-DB mode, where the append is simply not attempted and the
+ * in-memory change list still works.
+ */
+setAuthoringLogWriter(
+  sharedClient ? supabaseAuthoringLogWriter(sharedClient) : null,
+)
 
 export function SupabaseProvider({ children }: SupabaseProviderProps) {
   const configured = isSupabaseConfigured()
