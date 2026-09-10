@@ -1193,9 +1193,19 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     (focusTarget: HTMLElement | null) => {
       if (!restoredCameraPendingRef.current) return false
       if (!cameraDestinationResolvedRef.current) return false
-      restoredCameraPendingRef.current = false
       const container = containerRef.current
       const content = contentRef.current
+      /*
+        No layout yet is not evidence the framing is wrong. Discarding here
+        zeroed the camera on a returning tab whose viewport was still 0×0.
+        Missing container or content is the same “not yet”: leave the restore
+        pending; the resize observer retries once the viewport can be measured.
+      */
+      if (!container || !content) return false
+      if (container.clientWidth <= 0 || container.clientHeight <= 0) {
+        return false
+      }
+      restoredCameraPendingRef.current = false
       const snapshot = restoredSnapshotRef.current
       /*
         The snapshot, NOT the live transform. A mount that waited out a
@@ -1294,6 +1304,9 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     if (restoredCameraPendingRef.current && cameraDestinationResolvedRef.current) {
       pendingFocusTransferRef.current = null
       if (adoptInheritedCamera(nextFocusTarget)) return
+      // Still waiting for a measurable box — do not zero the camera or
+      // spend the fit on an empty viewport.
+      if (restoredCameraPendingRef.current) return
       // Dropped: the mount seeded the camera with a framing that turns out
       // to describe another board, so clear it before the fit below rather
       // than easing away from a place the reader was never taken.
@@ -1484,6 +1497,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       focusTargetRef.current = focusTarget
       return
     }
+    if (restoredCameraPendingRef.current) return
     // No inherited framing survives, and the fit that would have covered
     // this is already spent on the placeholder. Fit the real board now, as
     // a jump: arriving content is not a navigation.
@@ -1541,6 +1555,17 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     let debounceTimer = 0
 
     const onResize = () => {
+      if (
+        restoredCameraPendingRef.current &&
+        cameraDestinationResolvedRef.current
+      ) {
+        const focusTarget =
+          contentRef.current?.querySelector<HTMLElement>(
+            fitSelectorRef.current,
+          ) ?? null
+        if (adoptInheritedCamera(focusTarget)) return
+        if (restoredCameraPendingRef.current) return
+      }
       // A rotation is not a window drag: flipping the aspect ratio
       // invalidates whatever framing the user had built, and on a phone
       // there is no Reset control to recover with — so an orientation flip
@@ -1677,6 +1702,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     refitDebounceMs,
     runPendingFit,
     suppressResizeRefit,
+    adoptInheritedCamera,
   ])
 
   /**
