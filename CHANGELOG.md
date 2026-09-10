@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.20.1
+
+### Patch Changes
+
+- d15118a: The docked navbar says why it is flush left
+
+  `SlideStickyHeader` sits hard against the left edge of the main column with no
+  margin, and nothing in the file said why. The sidebar is in flow rather than
+  overlaid, so there is no overlay to surrender a margin to — an absence that
+  reads as an oversight until someone knows that.
+
+  Written down here because the deployment had already written it down there:
+  this is a shared file whose two copies differed by that comment alone. It goes
+  upstream so both can carry it.
+
 ## 1.20.0
 
 ### Minor Changes
@@ -3534,8 +3549,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                      "lanes_lane_role_check" … compliance_review
+                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
