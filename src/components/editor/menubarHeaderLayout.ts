@@ -26,6 +26,19 @@ export const CELL_DETAIL_PANEL_TOP_GAP_PX = 16
  * drawer clear of the bottom canvas chrome (the annotation toolbar band) with
  * the same 16px breathing room as CELL_DETAIL_PANEL_TOP_GAP_PX.
  */
+/**
+ * Height of the bottom canvas chrome (the annotation toolbar band) plus the
+ * same 16px breathing room the top gap uses. Named, because a bare
+ * `bottom-[61px]` is a number nobody can check against the thing it clears.
+ */
+export const CELL_DETAIL_PANEL_BOTTOM_GAP_PX = 61
+/*
+  Written out, not interpolated. Tailwind reads SOURCE text: a template
+  literal produces a class at runtime that the compiler never saw, so
+  `!bottom-[61px]` had no rule behind it and the drawer ran to the bottom of
+  the viewport, under the annotation toolbar. The test below keeps the literal
+  and the constant in step.
+*/
 export const CELL_DETAIL_PANEL_BOTTOM_CLASS = '!bottom-[61px]'
 
 /** The canvas region the panel measures against. */
