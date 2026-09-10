@@ -11,7 +11,6 @@ import {
 import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useServicePhases } from '@/hooks/useServicePhases'
-import { mergeSlidesWithFallback } from '@/lib/mergeSlidesWithFallback'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
   getSlideViewType,
@@ -343,10 +342,36 @@ export function EditorProvider({ children }: EditorProviderProps) {
   const { sample } = useDeploymentConfig()
   const fallbackSlides = sample.nav
 
-  const slides = useMemo(() => {
-    if (dbSlides.length === 0) return fallbackSlides
-    return mergeSlidesWithFallback(dbSlides, fallbackSlides)
-  }, [dbSlides, fallbackSlides])
+  /**
+   * The navigation, from ONE source.
+   *
+   * Rows ARE the navigation when there are rows: as they came back, never
+   * topped up and never overwritten. `mergeSlidesWithFallback` used to run
+   * here on every connected render, and it pointed the wrong way. Wherever a
+   * slide id collided with the sample's it took the SAMPLE's summary — the
+   * fallback was tested first, so a deployment's own sentence lost to this
+   * kit's even when theirs was perfectly good — took the sample's `layout`
+   * for any id the sample registers, and appended every sample scenario the
+   * database no longer had under a phase it still did. An adopter read this
+   * kit's prose about this kit's service under their own phase names, with
+   * nothing on screen saying so; and a scenario they had DELETED came back as
+   * a tab whose board, now that `resolveBlueprint` no longer fills holes from
+   * the sample, draws nothing at all.
+   *
+   * Same rule as `lib/resolveBlueprint.ts` (#493): a hole in a deployment's
+   * own content is information, and the merge deleted that information.
+   *
+   * The remaining branch is not that merge and is not a fill. A read with no
+   * rows AT ALL is the pre-data state — no database configured, or the first
+   * fetch still in flight — and what it shows is the deployment's own
+   * `sample.nav`, whole and unmixed. It is also what keeps this array
+   * non-empty, which `activeSlideId` below and every reader of `activeSlide`
+   * depend on.
+   */
+  const slides = useMemo(
+    () => (dbSlides.length === 0 ? fallbackSlides : dbSlides),
+    [dbSlides, fallbackSlides],
+  )
 
   const nav = useNavSelectionState(slides)
 
