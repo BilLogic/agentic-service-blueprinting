@@ -306,6 +306,21 @@ function isSameFitGeometry(
   )
 }
 
+/**
+ * True when the viewport cannot be measured yet. A 0×0 box is not evidence
+ * the saved framing is wrong; the restore must wait rather than discard.
+ */
+function viewportHasNoLayout(container: HTMLElement | null): boolean {
+  return (
+    container === null ||
+    container.clientWidth <= 0 ||
+    container.clientHeight <= 0
+  )
+}
+
+/** Outcome of trying to take a remount's inherited framing. */
+type InheritedCameraAttempt = 'adopted' | 'waiting' | 'dropped'
+
 type FocusPaintSnapshot = {
   element: HTMLElement
   opacity: string
@@ -1196,16 +1211,16 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       const container = containerRef.current
       const content = contentRef.current
       /*
-        No layout yet is not evidence the framing is wrong. Discarding here
-        zeroed the camera on a returning tab whose viewport was still 0×0.
-        Missing container or content is the same “not yet”: leave the restore
-        pending; the resize observer retries once the viewport can be measured.
+        Wait only when the viewport has no layout yet. A measurable viewport
+        with no board cannot name this destination — drop and let the caller
+        fit, rather than holding restore forever.
       */
-      if (!container || !content) return false
-      if (container.clientWidth <= 0 || container.clientHeight <= 0) {
+      if (viewportHasNoLayout(container)) return false
+      restoredCameraPendingRef.current = false
+      if (!content) {
+        restoredSnapshotRef.current = undefined
         return false
       }
-      restoredCameraPendingRef.current = false
       const snapshot = restoredSnapshotRef.current
       /*
         The snapshot, NOT the live transform. A mount that waited out a
@@ -1259,6 +1274,20 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     [commitTransform, resolveSemanticOutcome],
   )
 
+  /**
+   * Adopt the inherited framing, wait for a measurable viewport, or drop it.
+   * Callers must not zero or fit while this is `waiting`.
+   *
+   * @param focusTarget - Named fit target on the board, if any
+   */
+  const resolveInheritedCamera = useCallback(
+    (focusTarget: HTMLElement | null): InheritedCameraAttempt => {
+      if (adoptInheritedCamera(focusTarget)) return 'adopted'
+      return restoredCameraPendingRef.current ? 'waiting' : 'dropped'
+    },
+    [adoptInheritedCamera],
+  )
+
   useLayoutEffect(() => {
     if (resetKey === undefined) return
     // A newer semantic destination owns the camera immediately. Waiting for
@@ -1303,10 +1332,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     focusTargetRef.current = nextFocusTarget
     if (restoredCameraPendingRef.current && cameraDestinationResolvedRef.current) {
       pendingFocusTransferRef.current = null
-      if (adoptInheritedCamera(nextFocusTarget)) return
-      // Still waiting for a measurable box — do not zero the camera or
-      // spend the fit on an empty viewport.
-      if (restoredCameraPendingRef.current) return
+      const attempt = resolveInheritedCamera(nextFocusTarget)
+      if (attempt === 'adopted' || attempt === 'waiting') return
       // Dropped: the mount seeded the camera with a framing that turns out
       // to describe another board, so clear it before the fit below rather
       // than easing away from a place the reader was never taken.
@@ -1471,7 +1498,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     commitTransform,
     cameraOutcomeKey,
     resolveSemanticOutcome,
-    adoptInheritedCamera,
+    resolveInheritedCamera,
   ])
 
   /*
@@ -1493,11 +1520,12 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       contentRef.current?.querySelector<HTMLElement>(fitSelectorRef.current) ??
       null
     cancelFitAnimation()
-    if (adoptInheritedCamera(focusTarget)) {
+    const attempt = resolveInheritedCamera(focusTarget)
+    if (attempt === 'adopted') {
       focusTargetRef.current = focusTarget
       return
     }
-    if (restoredCameraPendingRef.current) return
+    if (attempt === 'waiting') return
     // No inherited framing survives, and the fit that would have covered
     // this is already spent on the placeholder. Fit the real board now, as
     // a jump: arriving content is not a navigation.
@@ -1507,7 +1535,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   }, [
     cameraDestinationResolved,
     cameraDestinationKey,
-    adoptInheritedCamera,
+    resolveInheritedCamera,
     cancelFitAnimation,
     runPendingFit,
   ])
@@ -1563,8 +1591,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
           contentRef.current?.querySelector<HTMLElement>(
             fitSelectorRef.current,
           ) ?? null
-        if (adoptInheritedCamera(focusTarget)) return
-        if (restoredCameraPendingRef.current) return
+        if (resolveInheritedCamera(focusTarget) !== 'dropped') return
       }
       // A rotation is not a window drag: flipping the aspect ratio
       // invalidates whatever framing the user had built, and on a phone
@@ -1702,7 +1729,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     refitDebounceMs,
     runPendingFit,
     suppressResizeRefit,
-    adoptInheritedCamera,
+    resolveInheritedCamera,
   ])
 
   /**

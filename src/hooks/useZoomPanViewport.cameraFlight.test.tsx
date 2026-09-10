@@ -62,6 +62,7 @@ function Harness({
   cameraOutcomeKey,
   onFitReady,
   containerSize = { width: 1000, height: 600 },
+  mountBoard = true,
 }: {
   resetKey: string
   target: Rect
@@ -71,6 +72,8 @@ function Harness({
   cameraOutcomeKey?: string
   onFitReady?: () => void
   containerSize?: { width: number; height: number }
+  /** False omits the board node so a sized viewport cannot measure it. */
+  mountBoard?: boolean
 }) {
   const camera = useZoomPanViewport({
     resetKey,
@@ -102,42 +105,44 @@ function Harness({
         camera.containerRef(node)
       }}
     >
-      <div
-        data-zoom-pan-content=""
-        ref={(node) => {
-          camera.contentRef.current = node
-          if (node) {
-            stampBox(node, { width: 1200, height: 600 })
-            node.getBoundingClientRect = () => {
-              const camera = cameraState()
-              return rect({
-                left: camera.pan.x,
-                top: camera.pan.y,
-                width: 1200 * camera.zoom,
-                height: 600 * camera.zoom,
-              })
-            }
-          }
-        }}
-      >
+      {mountBoard ? (
         <div
-          data-target=""
-          data-blueprint-cell="cell-1"
+          data-zoom-pan-content=""
           ref={(node) => {
-            if (!node) return
-            stampBox(node, target)
-            node.getBoundingClientRect = () => {
-              const camera = cameraState()
-              return rect({
-                left: camera.pan.x + target.left * camera.zoom,
-                top: camera.pan.y + target.top * camera.zoom,
-                width: target.width * camera.zoom,
-                height: target.height * camera.zoom,
-              })
+            camera.contentRef.current = node
+            if (node) {
+              stampBox(node, { width: 1200, height: 600 })
+              node.getBoundingClientRect = () => {
+                const camera = cameraState()
+                return rect({
+                  left: camera.pan.x,
+                  top: camera.pan.y,
+                  width: 1200 * camera.zoom,
+                  height: 600 * camera.zoom,
+                })
+              }
             }
           }}
-        />
-      </div>
+        >
+          <div
+            data-target=""
+            data-blueprint-cell="cell-1"
+            ref={(node) => {
+              if (!node) return
+              stampBox(node, target)
+              node.getBoundingClientRect = () => {
+                const camera = cameraState()
+                return rect({
+                  left: camera.pan.x + target.left * camera.zoom,
+                  top: camera.pan.y + target.top * camera.zoom,
+                  width: target.width * camera.zoom,
+                  height: target.height * camera.zoom,
+                })
+              }
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -656,6 +661,42 @@ describe('viewport camera flights', () => {
     expect(cameraState()).toMatchObject({
       moving: false,
       pan: { x: 125, y: -40 },
+      zoom: 1,
+    })
+  })
+
+  it('falls back to the default fit when a measurable viewport has no board', () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const first = render(
+      <Harness
+        resetKey="initial"
+        target={target}
+        cameraStateKey="desktop:slice:missing-board-restore-test"
+        cameraDestinationKey="scenario-a"
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+      panCamera(125, -40)
+    })
+    first.unmount()
+
+    render(
+      <Harness
+        resetKey="return"
+        target={target}
+        cameraStateKey="desktop:slice:missing-board-restore-test"
+        cameraDestinationKey="scenario-a"
+        mountBoard={false}
+      />,
+    )
+    act(() => {
+      flushFrame(32)
+      flushFrame(48)
+    })
+    expect(cameraState()).toMatchObject({
+      pan: { x: 0, y: 0 },
       zoom: 1,
     })
   })
