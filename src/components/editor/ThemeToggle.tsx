@@ -55,12 +55,17 @@ export function ThemeToggle({ className, size = 'icon-xs' }: ThemeToggleProps) {
          * the shared micro-interaction value, and reduced motion collapses it to
          * a plain swap.
          */}
-        <span className="relative grid size-3.5 place-items-center">
+        {/* ONE positioning layer. `popLayout` already takes the OUTGOING
+            glyph out of flow and holds its box, so absolutely positioning
+            the resident one as well was a second mechanism doing the first
+            one's job — and the `relative` it needed existed only to anchor
+            it. The grid centres both. */}
+        <span className="grid size-3.5 place-items-center">
           <AnimatePresence initial={false} mode="popLayout">
             {mounted ? (
               <motion.span
                 key={isDark ? 'sun' : 'moon'}
-                className="absolute inset-0 grid place-items-center"
+                className="grid place-items-center"
                 initial={{ opacity: 0, rotate: -90 }}
                 animate={{ opacity: 1, rotate: 0 }}
                 exit={{ opacity: 0, rotate: 90 }}

@@ -43,8 +43,14 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // ONE variant, two shapes. There used to be a second entry here whose
+        // class string was byte-for-byte identical to this one, so a touchpoint
+        // face read as a different component when it is the same cell with a
+        // different corner radius. The radius comes from
+        // `blueprintCellButtonClassName`'s `touchpoint` variant, which is where
+        // a shape belongs.
         blueprint:
-          "border-transparent bg-clip-border text-foreground shadow-none ring-offset-0 transition-[box-shadow,transform,opacity] duration-150 ease-out [background-color:var(--background-blueprint-cell-panel,var(--background-blueprint-cell,var(--secondary)))] hover:[background-color:var(--background-blueprint-cell-hover,var(--background-blueprint-cell-panel,var(--background-blueprint-cell)))] aria-pressed:[background-color:var(--background-blueprint-cell-pressed,var(--background-blueprint-cell-hover))] aria-pressed:text-foreground aria-pressed:shadow-sm aria-pressed:ring-2 aria-pressed:ring-[color:var(--ring-blueprint-cell,var(--ring))] focus-visible:border-[color:var(--ring-blueprint-cell,var(--ring))] focus-visible:ring-[color:var(--ring-blueprint-cell,var(--ring))] focus-visible:ring-offset-0",
+          "border-transparent bg-clip-border text-foreground shadow-none ring-offset-0 transition-[box-shadow,transform,opacity] duration-150 ease-out [background-color:var(--background-blueprint-cell-panel,var(--background-blueprint-cell,var(--secondary)))] hover:[background-color:var(--background-blueprint-cell-hover,var(--background-blueprint-cell-panel,var(--background-blueprint-cell)))] aria-pressed:[background-color:var(--background-blueprint-cell-pressed,var(--background-blueprint-cell-hover))] aria-pressed:text-foreground aria-pressed:shadow-sm aria-pressed:inset-ring-2 aria-pressed:inset-ring-[color:var(--ring-blueprint-cell,var(--ring))] focus-visible:border-[color:var(--ring-blueprint-cell,var(--ring))] focus-visible:ring-[color:var(--ring-blueprint-cell,var(--ring))] focus-visible:ring-offset-0",
       },
       size: {
         default:
