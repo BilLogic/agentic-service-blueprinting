@@ -1,4 +1,4 @@
-import { useCellContent } from '@/hooks/useCellContent'
+import { useBlueprintCell } from '@/hooks/useBlueprintCell'
 
 /**
  * The owner pair, read-only.
@@ -8,20 +8,17 @@ import { useCellContent } from '@/hooks/useCellContent'
  * gap is a finding: the person on the other side thinks they are dealing with
  * someone other than whoever is accountable.
  *
- * Read from the database when one is configured, otherwise from the bundled
- * sample content — the pair is not a database-only feature.
+ * The pair comes off the board already in memory — the columns ride the board
+ * query rather than a request of their own, so this renders in the same commit
+ * as the panel around it.
  *
  * Editing does not live here anymore: in Edit mode the panel swaps this
  * section for `CellPanelEditor`, one form with one Save for the whole cell.
  */
 export function CellContentSection({ cellId }: { cellId: string | null }) {
-  const result = useCellContent(cellId)
+  const cell = useBlueprintCell(cellId)
 
-  if (!cellId) return null
-  if (result.status !== 'ready') return null
-
-  const cell = result.data
-  if (!cell) return null
+  if (!cellId || !cell) return null
 
   const owner = cell.owner?.trim() ?? ''
   const perceived = cell.perceived_owner?.trim() ?? ''

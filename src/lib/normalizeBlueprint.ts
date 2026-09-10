@@ -9,7 +9,7 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
-import type { PathKind } from '@/types/database'
+import type { Json, PathKind } from '@/types/database'
 import { cellResourcesFromRows, type RawCellResource } from '@/lib/cellResources'
 import {
   cellTouchpointsFromRows,
@@ -35,10 +35,21 @@ export type RawCell = {
   lane_id: string
   step_id: string
   content: string
+  /** The cell's index inside its slot; absent data sorts as 0. */
+  position?: number | null
   frame?: string | null
   summary?: string | null
   /** The `entity_status` column, as text; anything unknown reads as absent. */
   status?: string | null
+  /**
+   * The spec block and the owner pair (`cells.function` … `cells.value_props`),
+   * carried with the board rather than fetched when a panel opens.
+   */
+  function?: string | null
+  form?: string | null
+  value_props?: Json | null
+  owner?: string | null
+  perceived_owner?: string | null
   /** `resources` rows embedded by the board query. */
   resources?: RawCellResource[] | null
   /** `cell_touchpoints` rows embedded by the board query. */
@@ -48,7 +59,7 @@ export type RawCell = {
 
 type RawPathStep = {
   position: number
-  steps: { id: string; name: string } | null
+  steps: { id: string; name: string; summary?: string | null } | null
 }
 
 export type RawLane = {
@@ -87,6 +98,7 @@ export function flattenPathSteps(raw: RawPathStep[]): BlueprintStep[] {
         {
           id: row.steps.id,
           name: row.steps.name,
+          summary: row.steps.summary ?? null,
           position: row.position,
         },
       ]
@@ -242,6 +254,10 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     lane_id: cell.lane_id,
     step_id: cell.step_id,
     content: cell.content,
+    // Selected by the board query, typed on `BlueprintCell` and sorted on.
+    // Without it every slot sort is `0 - 0` and a slot holding more than one
+    // cell renders in whatever order the database happened to return.
+    position: cell.position ?? 0,
     frame: cell.frame ?? null,
     summary: cell.summary ?? null,
     // Narrowed rather than passed through: the column is a plain text with a
@@ -250,6 +266,15 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     status: asEntityStatus(cell.status),
     resources: cellResourcesFromRows(cell.resources),
     touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),
+    // Carried with the board rather than fetched on panel open: two round
+    // trips per cell, for five columns the board can hold.
+    function: cell.function ?? null,
+    form: cell.form ?? null,
+    // The column is jsonb; the type names the shape the panel renders. Absent
+    // rather than empty, so "unset" and "set to nothing" stay distinguishable.
+    value_props: (cell.value_props ?? undefined) as BlueprintCell['value_props'],
+    owner: cell.owner ?? null,
+    perceived_owner: cell.perceived_owner ?? null,
   }))
   const dependencies =
     raw.cell_dependencies && raw.cell_dependencies.length > 0

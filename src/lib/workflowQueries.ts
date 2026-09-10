@@ -22,7 +22,8 @@ export const PATH_BLUEPRINT_SELECT = `
     position,
     steps (
       id,
-      name
+      name,
+      summary
     )
   ),
   cells (
@@ -34,6 +35,11 @@ export const PATH_BLUEPRINT_SELECT = `
     frame,
     summary,
     status,
+    "function",
+    form,
+    value_props,
+    owner,
+    perceived_owner,
     resources!resources_cell_id_fkey (
       id,
       position,

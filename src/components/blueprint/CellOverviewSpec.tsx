@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useCellSpec } from '@/hooks/useCellSpec'
+import { useBlueprintCell } from '@/hooks/useBlueprintCell'
 import { parseValueProps } from '@/lib/valueProps'
 
 /**
@@ -39,23 +39,19 @@ type CellOverviewSpecProps = {
 
 /**
  * FUNCTION / FORM / VALUE PROPOSITION spec block in the panel's inline overview,
- * read-only. Sections render only when authored — from the database when one
- * is configured, otherwise from the bundled sample content, so a keyless clone
- * sees the same block. A cell in neither renders nothing at all.
+ * read-only. Sections render only when authored, from the board already in
+ * memory; a cell with no spec renders nothing at all.
  *
  * Editing lives in `CellPanelEditor` — the panel's one form, one Save.
  */
 export function CellOverviewSpec({ cellId }: CellOverviewSpecProps) {
-  const specResult = useCellSpec(cellId)
+  const spec = useBlueprintCell(cellId)
 
   if (!cellId) return null
-  // Nothing is rendered while the query is in flight — not even a reserved
-  // placeholder. Most cells have no spec at all, so reserving space meant the
-  // block (and everything below it, including the tab row) grew for ~250 ms
-  // and then collapsed again on *every* cell switch.
-  if (specResult.status !== 'ready') return null
-
-  const spec = specResult.data
+  // No in-flight state to render around. The block used to hold ~250 ms for a
+  // query of its own, so that it did not grow and then collapse on every cell
+  // switch; the board carries the spec columns now, and this renders in the
+  // same commit as the panel around it.
   const functionText = spec?.function?.trim() ?? ''
   const formText = spec?.form?.trim() ?? ''
   const valueProps = parseValueProps(spec?.value_props ?? null)

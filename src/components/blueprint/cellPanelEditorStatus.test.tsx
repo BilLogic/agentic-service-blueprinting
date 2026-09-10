@@ -46,25 +46,21 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 vi.mock('@/contexts/BlueprintCellDetailContext', () => ({
   useBlueprintCellDetailOptional: () => ({
     blueprints: [
-      { cells: [{ id: 'cell-1', content: 'Intake portal', status: 'planned' }] },
+      {
+        cells: [
+          {
+            id: 'cell-1',
+            content: 'Intake portal',
+            summary: 'Where a report is filed.',
+            owner: 'Support',
+            perceived_owner: 'The council',
+            status: 'planned',
+            resources: [],
+          },
+        ],
+      },
     ],
   }),
-}))
-
-vi.mock('@/hooks/useCellContent', () => ({
-  useCellContent: () => ({
-    status: 'ready',
-    data: {
-      content: 'Intake portal',
-      summary: 'Where a report is filed.',
-      owner: 'Support',
-      perceived_owner: 'The council',
-      resources: [],
-    },
-  }),
-}))
-vi.mock('@/hooks/useCellSpec', () => ({
-  useCellSpec: () => ({ status: 'ready', data: null }),
 }))
 vi.mock('@/hooks/useValueAudiences', () => ({
   useValueAudiences: () => ({ status: 'ready', data: [] }),

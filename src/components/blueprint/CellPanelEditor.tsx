@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,9 +14,7 @@ import {
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
 import { invalidateCanvasBlueprintsForPath } from '@/hooks/useCanvasBlueprints'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
-import { useCellContent } from '@/hooks/useCellContent'
-import { useCellSpec } from '@/hooks/useCellSpec'
+import { useBlueprintCell } from '@/hooks/useBlueprintCell'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useNameOnlyPlacements } from '@/hooks/useRegistryTouchpoints'
@@ -117,35 +115,6 @@ function placementDraft(placement: CellTouchpoint): PlacementDetailDraft {
   }
 }
 
-/**
- * The cell's status, read off the board the panel was opened from.
- *
- * `useCellContent` asks `cells` for four columns and this is a fifth, which
- * looks like the obvious place for it. It is not: the board query already
- * selects `status`, the normalizer already maps it, and
- * `entityStatusContract.test.ts` already holds both of those true — so the
- * value is in memory before the panel opens, and a second read would pay a
- * round-trip to fetch what the app has. It is also the direction a deployment
- * built on this template has already gone, having replaced that per-cell
- * query with a board read outright.
- *
- * Null means the board does not hold this cell — the sample-content board,
- * where `useCellContent` has no row either and the editor renders nothing for
- * an existing cell. `live` then comes from the column's own default rather
- * than from a guess about a row.
- */
-function useCellStatusFromBoard(cellId: string | null): EntityStatus | null {
-  const detail = useBlueprintCellDetailOptional()
-  const blueprints = detail?.blueprints
-  return useMemo(() => {
-    if (!cellId || !blueprints) return null
-    for (const blueprint of blueprints) {
-      const found = blueprint.cells.find((cell) => cell.id === cellId)
-      if (found) return found.status ?? null
-    }
-    return null
-  }, [cellId, blueprints])
-}
 
 /**
  * The whole cell in one form, one Save.
@@ -196,41 +165,33 @@ export function CellPanelEditor({
   onDone: () => void
 }) {
   const { configured } = useSupabase()
-  const contentResult = useCellContent(configured && cellId ? cellId : null)
-  const specResult = useCellSpec(configured && cellId ? cellId : null)
-  const boardStatus = useCellStatusFromBoard(configured ? cellId : null)
+  // The whole cell, off the board the panel was opened from. Two per-cell
+  // queries used to fetch nine columns here — content, summary, the owner
+  // pair, the spec block — and the board query now selects every one of them,
+  // so the values are in memory before the panel opens. There is no loading
+  // state left to render around and no request left to fail.
+  const cell = useBlueprintCell(configured && cellId ? cellId : null)
   // A placement is editable only when it has a row behind it.
   const editable = placement?.id ? placement : null
 
   if (cellId) {
-    if (contentResult.status === 'loading' || specResult.status === 'loading') {
-      return null
-    }
-    if (contentResult.status === 'error' || specResult.status === 'error') {
-      return (
-        <p className="text-xs text-destructive">
-          This cell's fields could not be loaded — close the panel and try
-          again.
-        </p>
-      )
-    }
-    const content = contentResult.data
-    const spec = specResult.data
-    if (!content) return null
+    // Null means the board does not hold this cell, and there is nothing to
+    // edit — the same case the fetch answered with no row.
+    if (!cell) return null
 
     const baseline: FormState = {
-      content: content.content,
+      content: cell.content,
       // The DB truth. The *field* may be seeded with the links-derived
       // fallback below, but diffs and reverts compare against this — an
       // owner-only edit must not smuggle the fallback prose into the
       // summary column, and undo must restore what the DB actually held.
-      summary: content.summary ?? '',
-      owner: content.owner ?? '',
-      perceivedOwner: content.perceived_owner ?? '',
-      functionText: spec?.function ?? '',
-      formText: spec?.form ?? '',
-      valueProps: parseValueProps(spec?.value_props ?? null),
-      status: boardStatus ?? DEFAULT_ENTITY_STATUS,
+      summary: cell.summary ?? '',
+      owner: cell.owner ?? '',
+      perceivedOwner: cell.perceived_owner ?? '',
+      functionText: cell.function ?? '',
+      formText: cell.form ?? '',
+      valueProps: parseValueProps(cell.value_props ?? null),
+      status: cell.status ?? DEFAULT_ENTITY_STATUS,
       placement: editable ? placementDraft(editable) : EMPTY_PLACEMENT,
     }
 
@@ -246,7 +207,7 @@ export function CellPanelEditor({
         placement={editable}
         placementResources={placementResources}
         baseline={baseline}
-        seededSummary={content.summary ?? fallbackSummary}
+        seededSummary={cell.summary ?? fallbackSummary}
         onDone={onDone}
       />
     )
