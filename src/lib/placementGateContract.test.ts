@@ -9,8 +9,8 @@ import { expect, test } from 'vitest'
  * decides whether that is allowed to happen: only a touchpoint-BEARING cell
  * gets placements, because `cells.content` on an actor lane is a sentence
  * about what somebody did, and syncing it would file that sentence in the
- * catalog as a tool. That rule lives inside `sync_cell_touchpoints`
- * (20260830160000) and is proven there in SQL.
+ * catalog as a tool. That rule lives inside `sync_cell_touchpoints` and is
+ * proven there in SQL.
  *
  * It lives in exactly one place, which is what makes it worth guarding here.
  * A gate in a function is only a gate while nothing writes around it, and
@@ -29,8 +29,8 @@ import { expect, test } from 'vitest'
  * a swap, the uniqueness constraint is DEFERRABLE INITIALLY DEFERRED, and
  * PostgREST gives every statement its own transaction. A reorder issued from
  * the client raises 23505 on the first row, every time. That defect is
- * already written up at the top of `20260830160000`; this stops it coming
- * back through a different door.
+ * already written up where `sync_cell_touchpoints` is defined; this stops it
+ * coming back through a different door.
  *
  * Companion to `writeBoundaryContract.test.ts`, not a duplicate of it: that
  * one says writes must live in a `*Mutations` module, this one says what a
