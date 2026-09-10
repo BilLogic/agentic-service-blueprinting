@@ -2164,3 +2164,26 @@ grant update on public.slides to authenticated;
 -- that replayed the grant rather than the rename.
 
 grant update on public.slides to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000220000000_a_slide_shows_a_set_of_its_cells_frames.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- anyone may read the set; only the service account writes it.
+-- The app replaces the set rather than patching members, so INSERT and
+-- DELETE are the verbs, not UPDATE.
+
+alter table public.slide_images enable row level security;
+
+create policy slide_images_select_anon on public.slide_images
+  for select to anon using (true);
+create policy slide_images_select_auth on public.slide_images
+  for select to authenticated using (true);
+create policy slide_images_insert_service_only on public.slide_images
+  for insert to authenticated with check (public.is_service_account());
+create policy slide_images_delete_service_only on public.slide_images
+  for delete to authenticated using (public.is_service_account());
+
+grant select on public.slide_images to anon, authenticated;
+grant insert, delete on public.slide_images to authenticated;
+grant update on public.slides to authenticated;

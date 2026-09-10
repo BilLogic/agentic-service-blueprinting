@@ -258,11 +258,12 @@ so the blueprint stays the single source of the text.
 
 **Slide** — one row of a slice: one moment of it, as a reader meets it. Table
 `slides`, carrying `position`, the cited `cell_ids`/`cell_keys`, a `title`, a
-`caption` and an optional `illustration`. What a slide shows is the *strip*
-of the cells it cites, unless its author has drawn ONE image for the whole
-slide — and the editor says so when they have, naming the frames the
-illustration stands in for. A slide and the board may differ only where
-somebody said they should. Its title is a `title` and not a `name`
+`caption`, and an ordered set of images (`slide_images`) drawn from the cells
+it cites. A slide nobody has touched (`shows_all_images`) shows every cited
+cell's frames and keeps doing so as the board changes. Once an author ticks
+or unticks, the set is explicit and the slide shows exactly those rows,
+including none. A slide and the board may differ only where somebody said
+they should. Its title is a `title` and not a `name`
 under the rule the board keeps throughout: `name` is for structure a reader
 navigates, `title` for authored content a reader reads.
 

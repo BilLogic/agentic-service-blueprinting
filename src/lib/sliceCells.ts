@@ -135,7 +135,7 @@ export function resolveSliceCells(
  */
 export function resolveSlideStrip(
   blueprint: BlueprintData | null,
-  item: Slide,
+  item: Pick<Slide, 'cell_ids'>,
 ): string[] {
   if (!blueprint) return []
 
@@ -168,50 +168,6 @@ export function resolveSlideStrip(
   }
 
   return frames
-}
-
-/**
- * The images a slide can show: its own uploads first, then the frames of the
- * cells it cites. One list, in the order an author reads it, and the source
- * of every choice `activeSlideImage` can return.
- */
-export function slideImagePool(
-  blueprint: BlueprintData | null,
-  item: Slide,
-): { illustrations: string[]; frames: string[] } {
-  return {
-    illustrations: item.illustrations.filter(isRenderableImageSrc),
-    frames: resolveSlideStrip(blueprint, item),
-  }
-}
-
-/**
- * What the slide SHOWS, resolved from its two choice columns.
- *
- * `null` means it made no choice and shows its whole strip — the default, and
- * what every slide did before it could choose. A choice that no longer
- * resolves (a frame whose cell lost its image, an upload dropped from the
- * pool) also lands here rather than rendering nothing: the strip is always a
- * true answer, where a blank stage is never an informative one.
- */
-export function activeSlideImage(
-  blueprint: BlueprintData | null,
-  item: Slide,
-): string | null {
-  if (item.active_illustration) {
-    return isRenderableImageSrc(item.active_illustration) &&
-      item.illustrations.includes(item.active_illustration)
-      ? item.active_illustration
-      : null
-  }
-  if (!item.active_frame_cell_id) return null
-
-  const cell = blueprint?.cells.find(
-    (candidate) => candidate.id === item.active_frame_cell_id,
-  )
-  const frame = cell?.frame?.trim()
-  if (!frame || isBlueprintStepStoryboardPlaceholder(frame)) return null
-  return isRenderableImageSrc(frame) ? frame : null
 }
 
 /**

@@ -3357,6 +3357,37 @@ COMMENT ON COLUMN public.slices.summary IS 'What this slice is for, in a sentenc
 COMMENT ON COLUMN public.slices.authorship IS 'Who wrote it: generated, customized or human. Named for the act, not the source, because a human may author a slice outright.';
 
 --
+-- Name: slide_images; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.slide_images (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    slide_id uuid NOT NULL,
+    "position" integer NOT NULL,
+    cell_id uuid,
+    image_url text,
+    CONSTRAINT slide_images_one_source CHECK ((num_nonnulls(cell_id, image_url) = 1))
+);
+
+--
+-- Name: TABLE slide_images; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.slide_images IS 'The ordered set of images a slide shows once an author has chosen. Empty with slides.shows_all_images false is "show nothing"; empty with shows_all_images true is the untouched default and is not stored.';
+
+--
+-- Name: COLUMN slide_images.cell_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slide_images.cell_id IS 'Show this cell''s frame. Cascades away if the cell is deleted.';
+
+--
+-- Name: COLUMN slide_images.image_url; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.slide_images.image_url IS 'Show this uploaded image. Unused until a slide can carry uploads in the set.';
+
+--
 -- Name: slides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3371,12 +3402,8 @@ CREATE TABLE public.slides (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by uuid,
-    illustrations text[] DEFAULT '{}'::text[] NOT NULL,
-    active_frame_cell_id uuid,
-    active_illustration text,
-    CONSTRAINT slides_active_illustration_is_in_the_pool CHECK (((active_illustration IS NULL) OR (active_illustration = ANY (illustrations)))),
-    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys))),
-    CONSTRAINT slides_one_active_image CHECK ((num_nonnulls(active_frame_cell_id, active_illustration) <= 1))
+    shows_all_images boolean DEFAULT true NOT NULL,
+    CONSTRAINT slides_keys_match_ids CHECK ((cardinality(cell_ids) = cardinality(cell_keys)))
 );
 
 --
@@ -3416,22 +3443,10 @@ COMMENT ON COLUMN public.slides.caption IS 'The sentence a reader meets under th
 COMMENT ON COLUMN public.slides.created_by IS 'The caller at insert; null for service-key writes.';
 
 --
--- Name: COLUMN slides.illustrations; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN slides.shows_all_images; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.slides.illustrations IS 'Images an author uploaded for this slide, in author order. The slide''s pool, not what it shows: what it shows is chosen by the two active_ columns, and an unused upload is a legitimate resting state.';
-
---
--- Name: COLUMN slides.active_frame_cell_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.active_frame_cell_id IS 'Show this cell''s frame alone. Null with active_illustration null means show the whole strip.';
-
---
--- Name: COLUMN slides.active_illustration; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.slides.active_illustration IS 'Show this uploaded image alone. Must be one of illustrations.';
+COMMENT ON COLUMN public.slides.shows_all_images IS 'True until an author ticks or unticks the set. True means show every cited cell''s frame and keep doing so as the board changes. False means show exactly slide_images, including none.';
 
 --
 -- Name: stakeholders; Type: TABLE; Schema: public; Owner: -
@@ -3836,6 +3851,20 @@ COMMENT ON CONSTRAINT services_slug_key ON public.services IS 'One slug per serv
 
 ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_pkey PRIMARY KEY (id);
+
+--
+-- Name: slide_images slide_images_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_pkey PRIMARY KEY (id);
+
+--
+-- Name: slide_images slide_images_position_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_position_unique UNIQUE (slide_id, "position");
 
 --
 -- Name: slides slides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -4377,11 +4406,18 @@ ALTER TABLE ONLY public.slices
     ADD CONSTRAINT slices_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
 
 --
--- Name: slides slides_active_frame_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: slide_images slide_images_cell_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.slides
-    ADD CONSTRAINT slides_active_frame_cell_id_fkey FOREIGN KEY (active_frame_cell_id) REFERENCES public.cells(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_cell_id_fkey FOREIGN KEY (cell_id) REFERENCES public.cells(id) ON DELETE CASCADE;
+
+--
+-- Name: slide_images slide_images_slide_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.slide_images
+    ADD CONSTRAINT slide_images_slide_id_fkey FOREIGN KEY (slide_id) REFERENCES public.slides(id) ON DELETE CASCADE;
 
 --
 -- Name: slides slides_slice_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

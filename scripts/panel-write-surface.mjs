@@ -142,10 +142,11 @@ export const PANEL_WRITE_SURFACE = {
   // is covered, table-wide, by the verb the scan reads off that same module.
   audit_findings: ['severity', 'summary', 'run_id', 'cell_ids', 'cell_keys', 'source', 'status'],
   // src/lib/sliceMutations.ts. Slides are replaced wholesale — deleted and
-  // reinserted — so a slide's images are the only columns the editor UPDATES:
-  // the pool it uploads into, and the two that say which member it shows.
+  // reinserted — so the only slide column the editor UPDATES is
+  // `shows_all_images`. The members live in `slide_images`, which is replaced
+  // as a set and listed in OUTSIDE_THE_SURFACE.
   slices: ['title', 'summary', 'kind', 'actor', 'authorship'],
-  slides: ['illustrations', 'active_frame_cell_id', 'active_illustration'],
+  slides: ['shows_all_images'],
 }
 
 /**
@@ -169,6 +170,11 @@ export const OUTSIDE_THE_SURFACE = [
     table: 'agent_messages',
     because:
       'the other half of the same transcript, written by the same module under the same best-effort contract.',
+  },
+  {
+    table: 'slide_images',
+    because:
+      "a set is replaced rather than patched: the editor deletes the slide's members and inserts the next set in one write, so there is no column list to grant for UPDATE.",
   },
 ]
 

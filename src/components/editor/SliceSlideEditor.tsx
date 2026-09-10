@@ -9,7 +9,7 @@ import { ChevronDown, GripVertical, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { SlideIllustrationField } from '@/components/editor/SlideIllustrationField'
+import { SlideImagesField } from '@/components/editor/SlideImagesField'
 import { cn } from '@/lib/utils'
 import { describeCell } from '@/lib/canvasCellQuery'
 import type { DraftSlide, ValidationProblem } from '@/lib/sliceValidation'
@@ -398,7 +398,7 @@ export function SliceSlideEditor({
             />
             </label>
 
-            <SlideIllustrationField
+            <SlideImagesField
               sliceId={sliceId}
               itemId={slide.id}
               saved={slide.id ? savedSlideFor(slide.id) : null}

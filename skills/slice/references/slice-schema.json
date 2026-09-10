@@ -92,16 +92,6 @@
         "caption": {
           "$ref": "#/$defs/localeText",
           "description": "Prose for this slide. MUST NOT quote evidence excerpts or proposition figures verbatim — slices are public-read artifacts; cite by cell key instead."
-        },
-        "illustration": {
-          "type": "object",
-          "description": "Optional image for this slide. Written by the storyboard sub-flow, not by hand.",
-          "additionalProperties": true,
-          "properties": {
-            "url": { "type": "string" },
-            "prompt": { "type": "string", "description": "Redacted prompt — persona archetype only, never a real person, org, or contact string." },
-            "updated_at": { "type": "string", "description": "Stamped on regeneration; the app cache-busts on it." }
-          }
         }
       }
     }

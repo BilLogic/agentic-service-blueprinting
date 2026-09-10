@@ -44,6 +44,7 @@ import {
   updateEvidence,
   type EvidenceUpdate,
 } from '@/lib/evidenceMutations'
+import { restoreSlideImageSet, type SlideImageMemberInput } from '@/lib/sliceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { updateFinding, type FindingUpdate } from '@/lib/findingMutations'
 import type { Database } from '@/types/database'
@@ -327,10 +328,44 @@ export async function executeRevert(
       // An empty capture is a real answer, not a failure: the slice genuinely
       // had no slides before the write, so putting none back IS the inverse.
       if (rows.length === 0) return
-      const restored = await client
-        .from('slides')
-        .insert(rows as SlideRow[])
+      const payloads: SlideRow[] = []
+      const memberSets: Array<{ slideId: string; members: SlideImageMemberInput[] }> = []
+      for (const raw of rows) {
+        if (!raw || typeof raw !== 'object') {
+          throw new Error('This change’s captured slides are malformed.')
+        }
+        const { slide_images, ...rest } = raw as SlideRow & {
+          slide_images?: SlideImageMemberInput[]
+        }
+        if (typeof rest.id !== 'string') {
+          throw new Error('This change’s captured slides are malformed.')
+        }
+        payloads.push(rest)
+        memberSets.push({
+          slideId: rest.id,
+          members: Array.isArray(slide_images)
+            ? slide_images.map((member) => ({
+                position: member.position,
+                cell_id: member.cell_id ?? null,
+                image_url: member.image_url ?? null,
+              }))
+            : [],
+        })
+      }
+      const restored = await client.from('slides').insert(payloads)
       if (restored.error) throw toAuthoringError(restored.error)
+      for (const set of memberSets) {
+        if (set.members.length === 0) continue
+        const inserted = await client.from('slide_images').insert(
+          set.members.map((member) => ({
+            slide_id: set.slideId,
+            position: member.position,
+            cell_id: member.cell_id,
+            image_url: member.image_url,
+          })),
+        )
+        if (inserted.error) throw toAuthoringError(inserted.error)
+      }
       return
     }
     case 'delete_slice_row': {
@@ -352,30 +387,16 @@ export async function executeRevert(
       return
     }
     case 'restore_slide_images': {
-      // Undo of a write to a slide's pool or its choice: put all three
-      // columns back as they were, empties and nulls included. Restoring the
-      // pool and the choice together is not optional — the choice must be a
-      // member of the pool, so writing one without the other can land on a
-      // state the check constraint refuses.
-      //
-      // The file itself is never touched here, in either direction. The
-      // forward write leaves the object in the bucket precisely so this can
-      // point at it again; a revert that re-uploaded, or that deleted on the
-      // way back, would be reaching past what the change actually did.
+      // Undo of a write to a slide's image set: put the flag and the members
+      // back as they were. The files themselves are never touched here.
       const slideId = stringArg(revert.args, 'slide_id')
-      const { data, error } = await client
-        .from('slides')
-        .update({
-          illustrations: (revert.args.illustrations ?? []) as string[],
-          active_frame_cell_id:
-            (revert.args.active_frame_cell_id ?? null) as string | null,
-          active_illustration:
-            (revert.args.active_illustration ?? null) as string | null,
-        })
-        .eq('id', slideId)
-        .select('id')
-      if (error) throw toAuthoringError(error)
-      requireRowsWritten(data, 'slide')
+      const members = Array.isArray(revert.args.members)
+        ? (revert.args.members as SlideImageMemberInput[])
+        : []
+      await restoreSlideImageSet(client, slideId, {
+        shows_all_images: revert.args.shows_all_images === true,
+        members,
+      })
       return
     }
     case 'restore_slice_meta': {
