@@ -38,9 +38,23 @@ export function BlueprintLaneHandles({
   bodyRef: RefObject<HTMLDivElement | null>
 }) {
   const mode = useCanvasModeValue()
-  const atScenarioLevel = useAtScenarioLevel()
   const pick = useCellPick()
   const { client, canWrite } = useSupabase()
+
+  if (mode !== 'design' || pick === null || !canWrite || client === null)
+    return null
+  return <BlueprintLaneHandlesActive bodyRef={bodyRef} />
+}
+
+/** Mounted only while authoring, so read-mode boards do not subscribe every
+ *  lane overlay to the combined navigation context. */
+function BlueprintLaneHandlesActive({
+  bodyRef,
+}: {
+  bodyRef: RefObject<HTMLDivElement | null>
+}) {
+  const atScenarioLevel = useAtScenarioLevel()
+  const { client } = useSupabase()
   const { selectedScenarioId } = useEditor()
   const [boundaries, setBoundaries] = useState<Boundary[]>([])
   const [bodyWidth, setBodyWidth] = useState(0)
@@ -51,10 +65,7 @@ export function BlueprintLaneHandles({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const active =
-    mode === 'design' &&
-    pick !== null &&
     atScenarioLevel &&
-    canWrite &&
     client !== null &&
     selectedScenarioId !== null
 

@@ -148,7 +148,10 @@ export function CanvasPhaseSection({
   // `navigable` also gates the data-canvas-phase-interactive pan-ignore
   // marker below: in focus mode the click affordance is gone, and a drag
   // inside the board must PAN, not die on that attribute.
-  const navigable = interactive && !focusActive
+  // `onNavigate` absent means nothing happens on a click, and a section that
+  // says it is navigable while nothing is listening is a promise to a reader
+  // and to a keyboard that the section cannot keep.
+  const navigable = interactive && !focusActive && Boolean(onNavigate)
 
   const handleSectionClick = (event: MouseEvent<HTMLElement>) => {
     if (!navigable || isBlueprintPanelTarget(event.target)) return
