@@ -212,7 +212,7 @@ export function CanvasDesignTools() {
             render={
               <Badge
                 variant="warning"
-                className="pointer-events-auto cursor-help gap-1"
+                className="pointer-events-auto gap-1"
               >
                 {/* The role's solid fill, which is what a dot with no text
                     in it wants: the badge's own tint is behind it, and the

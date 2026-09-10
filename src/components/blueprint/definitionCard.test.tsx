@@ -337,6 +337,10 @@ describe('nothing on the page announces that a word is defined', () => {
     expect(liveClassMatches(/decoration-dotted/)).toEqual([])
   })
 
+  it('no help cursor survives it', () => {
+    expect(liveClassMatches(/cursor-help/)).toEqual([])
+  })
+
   it('the canvas title draws no icon beside the name', () => {
     renderWithEntityDetail(
       <EntityTitleAffordance kind="scenario" id="s-1" label="Warm-Up" />,
