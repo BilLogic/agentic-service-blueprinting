@@ -138,10 +138,18 @@ export function keysInSlideUploadFolder(
  * while the slide id is still known. Listing an empty or missing folder
  * is a no-op.
  *
+ * **The rows are counted.** A storage delete refused by row-level security
+ * matches nothing, returns no error, and hands back an empty list — so for as
+ * long as this bucket had no DELETE policy, every call reported success and
+ * left the objects where they were. `21000224000000` writes that policy; this
+ * count is what says so afterwards, and what will say so again if the policy
+ * is ever dropped or narrowed past the keys `illustrationPath` writes.
+ *
  * @param {Client} client - The signed-in Supabase client.
  * @param {string} sliceId - The slice that owns the slide.
  * @param {string} slideId - The slide whose folder is being removed.
  * @returns {Promise<void>} Resolves when the folder is empty or gone.
+ * @throws {Error} When storage refuses, or removes fewer objects than listed.
  */
 export async function removeSlideUploadObjects(
   client: Client,
@@ -156,6 +164,14 @@ export async function removeSlideUploadObjects(
   if (keys.length === 0) return
   const removed = await bucket.remove(keys)
   if (removed.error) throw new Error(removed.error.message)
+  const gone = removed.data?.length ?? 0
+  if (gone !== keys.length) {
+    throw new Error(
+      `Storage removed ${gone} of ${keys.length} image${keys.length === 1 ? '' : 's'} ` +
+        `for this slide. A delete that matches no object is not an error, so the ` +
+        `bucket's delete policy is missing or does not admit these keys.`,
+    )
+  }
 }
 
 function formatMb(bytes: number): string {

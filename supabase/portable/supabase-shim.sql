@@ -121,3 +121,23 @@ create table if not exists storage.objects (
 );
 
 alter table storage.objects enable row level security;
+
+-- The grants Supabase itself carries on `storage.objects`. Without them a
+-- rehearsal that BECOMES `authenticated` and attempts an object write meets
+-- `permission denied for table objects` instead of the bucket policy's answer —
+-- the same shape of wrong answer the missing `grant usage on schema auth` above
+-- gave (#369), and the reason nothing here could ask whether a bucket policy
+-- admits the key the app writes. Verified against a deployed project:
+-- `role_table_grants` on storage.objects lists anon, authenticated and
+-- service_role with the full DML set, and `nspacl` on `storage` carries
+-- `anon=U` and `authenticated=U`.
+--
+-- Not a widening: RLS is on above, so a role holding these still sees only what
+-- a policy admits, which is what makes asking as the role worth anything.
+--
+-- `storage.buckets` is deliberately left ungranted. Supabase grants it too, but
+-- guards it with RLS this file does not model, and a stand-in that hands anon
+-- the rows without the policy that hides them would answer differently from the
+-- thing it stands in for. Nothing here reads that table as a role.
+grant usage on schema storage to anon, authenticated;
+grant all on storage.objects to anon, authenticated;
