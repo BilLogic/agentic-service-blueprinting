@@ -29,7 +29,6 @@ import {
   ANNOTATION_FILL_SWATCHES,
   ANNOTATION_FONT_SIZES,
   ANNOTATION_INK,
-  isPaleAnnotationSwatch,
   ANNOTATION_STICKY_BG,
   ANNOTATION_STICKY_SIZE,
   ANNOTATION_STICKY_SWATCHES,
@@ -61,6 +60,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { IconTooltip } from '@/components/editor/IconTooltip'
+import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 
 type DraftPen = {
@@ -210,8 +210,23 @@ function ColorSwatch({
   onSelect: () => void
   empty?: boolean
 }) {
-  const isLight = !empty && isPaleAnnotationSwatch(color)
-
+  /*
+   * The check is drawn in the ink `[data-blueprint-fill]` derives from the
+   * swatch's own fill, not in a colour picked by a membership test.
+   *
+   * What was here: `isPaleAnnotationSwatch()` — `color !== ANNOTATION_INK` —
+   * choosing a frozen near-black for every swatch but one. The fills are
+   * theme-flipping ramp steps, so in dark mode near-black sat on near-black:
+   * measured 1.13-1.20:1 on the step-300 fill row and 1.33-1.72:1 on the
+   * step-500 sticky row. The one exception was broken in the opposite
+   * direction — the Ink swatch took the `text-white` branch, and slate-1200
+   * flips to near-white in dark, so it measured 1.17:1, white on white. And
+   * light mode failed too, on the step-1100 stroke row: 2.50:1 on violet.
+   *
+   * A membership test cannot answer "is this pale?" for a value that inverts.
+   * A derivation cannot be wrong for its fill, because it is a function of it.
+   * `annotationSwatchContrast.test.ts` measures every swatch in both themes.
+   */
   return (
     <IconTooltip label={label}>
       <button
@@ -219,6 +234,7 @@ function ColorSwatch({
         aria-label={label}
         aria-pressed={selected}
         onClick={onSelect}
+        data-blueprint-fill={empty ? undefined : ''}
         className={cn(
           'relative size-6 shrink-0 rounded-full border transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
           empty
@@ -226,13 +242,14 @@ function ColorSwatch({
             : 'hairline-border-annotation-plate border-annotation-plate',
           selected && 'scale-110 ring-2 ring-foreground/80 ring-offset-1',
         )}
-        style={empty ? undefined : { backgroundColor: color }}
+        style={empty || !color ? undefined : getBlueprintFillStyle(color)}
       >
         {selected ? (
           <Check
             className={cn(
               'absolute inset-0 m-auto size-3 stroke-[2.5]',
-              empty || isLight ? 'text-annotation-plate-foreground' : 'text-white',
+              // Empty has no fill to derive from; it keeps the plate's ink.
+              empty && 'text-annotation-plate-foreground',
             )}
             aria-hidden
           />
