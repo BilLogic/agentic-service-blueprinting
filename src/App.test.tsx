@@ -66,9 +66,7 @@ describe('App (fallback render, zero config)', () => {
 describe('the editor shell', () => {
   const aside = () => document.querySelector('[data-editor-sidebar]')
 
-  it(
-    'collapses the whole aside on the cover, and opens it on entry',
-    async () => {
+  it('collapses the whole aside on the cover, and opens it on entry', async () => {
     render(<App />)
     // The cover is full-bleed: the aside is mounted, at zero width, with no
     // rail left over — `data-collapsed` says the aside is gone, not narrowed.
@@ -92,10 +90,7 @@ describe('the editor shell', () => {
     expect(document.querySelector('[data-editor-rail]')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Blueprints' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Slices' })).toBeDefined()
-  },
-  // Whole-app mount; 5s is tight once the suite has already built canvases.
-  15_000,
-)
+  })
 })
 
 // The deployment seam, end to end: a host mounts the same App with a config,

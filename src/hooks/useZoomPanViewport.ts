@@ -128,7 +128,7 @@ type UseZoomPanViewportOptions = {
    * When false, skip window ⌘+/−/0. Hidden warm views stay mounted and
    * must not zoom a camera the reader is not looking at.
    */
-  windowZoomKeys?: boolean
+  enableWindowZoomKeys?: boolean
 }
 
 /**
@@ -380,7 +380,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     cameraDestinationResolved = true,
     onFitReady,
     cameraOutcomeKey,
-    windowZoomKeys = true,
+    enableWindowZoomKeys = true,
   } = options
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -2437,10 +2437,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * container. Zoom is the one camera control with no on-screen affordance in
    * Design mode, so requiring the board to be focused first would leave a
    * mouse-only reader with no way in at all. Hidden warm views pass
-   * `windowZoomKeys: false` so a second mounted viewport does not double-fire.
+   * `enableWindowZoomKeys: false` so a second mounted viewport does not double-fire.
    */
   useEffect(() => {
-    if (!windowZoomKeys) return
+    if (!enableWindowZoomKeys) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey)) return
       if (isEditableKeyboardTarget(event.target)) return
@@ -2458,7 +2458,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [fitToView, windowZoomKeys, zoomIn, zoomOut])
+  }, [enableWindowZoomKeys, fitToView, zoomIn, zoomOut])
 
   /**
    * Keyboard pan, and a camera that follows focus.

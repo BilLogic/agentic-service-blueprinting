@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createInitialViewState,
+  isBaseViewCurrent,
   tabKey,
   viewStateReducer,
   warmMounts,
@@ -218,28 +219,25 @@ describe('warmMounts', () => {
     ).toBe(true)
   })
 
-  it('keeps the current base view warm before the session flag is set', () => {
-    const state = base()
-    expect(
-      warmMounts({
-        tabs: state.tabs,
-        activeKey: null,
-        sessionMountedBase: false,
-        sliceActivationRecency: [],
-      }).baseWarm,
-    ).toBe(true)
-  })
-
   it('does not mark the base canvas warm while a slice URL is still pending', () => {
     const state = createInitialViewState('?slice=s-1')
+    expect(isBaseViewCurrent({ activeKey: state.activeKey, pendingUrl: true })).toBe(
+      false,
+    )
     expect(
       warmMounts({
         tabs: state.tabs,
         activeKey: state.activeKey,
         sessionMountedBase: false,
         sliceActivationRecency: state.sliceActivationRecency,
-        pendingUrl: state.pendingUrlState !== null,
       }).baseWarm,
+    ).toBe(false)
+  })
+
+  it('treats a null active key as the base view once the URL has settled', () => {
+    expect(isBaseViewCurrent({ activeKey: null, pendingUrl: false })).toBe(true)
+    expect(
+      isBaseViewCurrent({ activeKey: 'slice:s-1', pendingUrl: false }),
     ).toBe(false)
   })
 

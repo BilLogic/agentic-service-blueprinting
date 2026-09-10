@@ -41,6 +41,7 @@ import {
 } from '@/contexts/canvasRevealContext'
 import { EditorSidebarBootSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import {
+  isBaseViewCurrent,
   tabKey,
   useViewState,
   warmMounts,
@@ -139,7 +140,7 @@ function DesktopEditorShell() {
     togglePhaseExpanded,
     setScenarioDisplayViewType,
   } = useEditor()
-  const { activeTab, activateTab, openTab, closeTab, pendingUrlState } =
+  const { activeTab, activeKey, activateTab, openTab, closeTab, pendingUrlState } =
     useViewState()
   const { canAgent } = useSupabase()
   // `?cell=` boot deep link — the receiving end of the share link the agent
@@ -164,11 +165,15 @@ function DesktopEditorShell() {
   }, [])
   const isLanding = view === 'landing'
   const [sessionMountedBase, setSessionMountedBase] = useState(false)
-  useEffect(() => {
-    if (!isLanding && activeTab === null && pendingUrlState === null) {
-      setSessionMountedBase(true)
-    }
-  }, [activeTab, isLanding, pendingUrlState])
+  const viewingBase =
+    !isLanding &&
+    isBaseViewCurrent({
+      activeKey,
+      pendingUrl: pendingUrlState !== null,
+    })
+  if (viewingBase && !sessionMountedBase) {
+    setSessionMountedBase(true)
+  }
 
   const activeTabKind = activeTab?.kind ?? null
 
@@ -913,7 +918,7 @@ function WarmMountedViews({
   onReturn: (sliceId: string) => void
   onRevealStage: (stage: number) => void
 }) {
-  const { tabs, activeTab, activeKey, sliceActivationRecency, pendingUrlState } =
+  const { tabs, activeKey, sliceActivationRecency, pendingUrlState } =
     useViewState()
 
   const mounts = warmMounts({
@@ -921,13 +926,16 @@ function WarmMountedViews({
     activeKey,
     sessionMountedBase,
     sliceActivationRecency,
+  })
+  const currentIsBase = isBaseViewCurrent({
+    activeKey,
     pendingUrl: pendingUrlState !== null,
   })
-  const currentIsBase = activeTab === null && pendingUrlState === null
+  const showBase = mounts.baseWarm || currentIsBase
 
   return (
     <>
-      {mounts.baseWarm ? (
+      {showBase ? (
         <FrozenViewLayer current={currentIsBase} resetKey="blueprint">
           <StoryboardWalkthroughShell>
             <div
