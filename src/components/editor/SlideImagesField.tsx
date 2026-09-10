@@ -277,7 +277,7 @@ export function SlideImagesField({
                   aria-label={on ? 'Untick this frame' : 'Tick this frame'}
                   onClick={() => toggleCell(frame.cellId)}
                   className={cn(
-                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-[10px] leading-none',
+                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-3xs leading-none',
                     on ? 'border-ring' : 'border-border',
                   )}
                 >
@@ -317,7 +317,7 @@ export function SlideImagesField({
                   aria-label={on ? 'Untick this image' : 'Tick this image'}
                   onClick={() => toggleUrl(src)}
                   className={cn(
-                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-[10px] leading-none',
+                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-3xs leading-none',
                     on ? 'border-ring' : 'border-border',
                   )}
                 >
