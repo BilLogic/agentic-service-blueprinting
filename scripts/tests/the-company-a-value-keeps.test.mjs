@@ -32,8 +32,7 @@
  * values the reason is stronger than "we chose not to": under `src/` the
  * retired words are LIVE. `pathKindTheme.ts` matches `'unhappy path'` and
  * `'alternative path'` against the name an author types, because the fold took
- * the KIND and left the names alone; `pathColorTheme.ts` keys two registry
- * entries on the same distinction. Those are correct, current code.
+ * the KIND and left the names alone. That is correct, current code.
  *
  * Measured: the company rule below over every comment under `src/` returns
  * ten sentences, of which two are defects. The other eight are the app

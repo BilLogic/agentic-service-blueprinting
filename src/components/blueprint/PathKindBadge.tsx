@@ -46,8 +46,9 @@ export function PathKindBadge({
         // and has no name to look up. Reading the type map directly is what the
         // deleted Tailwind-class map did, minus the duplicate source of truth —
         // going through `getPathColor` would need a name, and a fabricated one
-        // misses PATH_COLOR_REGISTRY and falls into the hash branch for
-        // `alternative` and `named`.
+        // would hash a `variant` into an arbitrary slot of the open set. The
+        // type entry is that set's first family for exactly this reason, so the
+        // archetype reads as one of the paths it stands for.
         style={{
           ...getBlueprintFillStyle(PATH_KIND_COLORS[pathKind]),
           ...style,

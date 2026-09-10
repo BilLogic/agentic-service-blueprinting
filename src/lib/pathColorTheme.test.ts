@@ -13,33 +13,84 @@ import {
  * resolve the tokens against the stylesheet.
  */
 describe('path identity', () => {
-  it('gives every non-happy kind a distinct dash pattern', () => {
-    // Only the closed kinds resolve to their own `PATH_KIND_DASH` entry. A
-    // path with no registry entry hashes into the open set instead, so asking
-    // for its "kind dash" measures the hash rather than the kind. Those are
-    // covered by the colour+dash pairing assertion in palette.test.ts.
+  it('gives every non-happy path its own dash pattern', () => {
+    // The dash belongs to the PATH, not to its type. It used to belong to the
+    // type — one entry each — which was fine while a scenario held at most one
+    // path per type and wrong the moment one held several variants. Only
+    // `happy` keeps a type dash, because a scenario can only ever have one.
     //
-    // THREE kinds since each thing was given one spelling, not four:
-    // `unhappy` and `alternative` were one kind under two names, and they are
-    // now one dash. Two paths that used to differ by kind alone still read
-    // apart, because the registry keys on kind AND name — `variant:Sad Path`
-    // and `variant:Alternate Path` are separate entries, and that separation
-    // was always doing the work.
-    const closed = [
-      { kind: 'happy', name: 'Happy Path' },
-      { kind: 'variant', name: 'Sad Path' },
-      { kind: 'exception', name: 'Boom' },
+    // Dash uniqueness is load-bearing rather than decorative: an `exception`
+    // takes the reserved type colour, so within a scenario the dash is the
+    // ONLY channel separating one exception from another.
+    const paths = [
+      { kind: 'happy', name: 'Signs up without conflicts' },
+      { kind: 'exception', name: 'Payment declined' },
+      { kind: 'exception', name: 'Address unverifiable' },
+      { kind: 'variant', name: 'Pays by invoice' },
     ] as const
-    const dashes = closed.map(getPathDashArray)
+    const dashes = paths.map(getPathDashArray)
     expect(dashes[0]).toBeUndefined() // happy stays solid
     const nonHappy = dashes.slice(1)
     expect(new Set(nonHappy).size).toBe(nonHappy.length)
   })
 
+  it('holds a reserved type to its colour whatever the path is called', () => {
+    // Green and red are spent so a reader can trust them without learning
+    // anything, which only works if the name cannot override them. This is the
+    // assertion that keeps the reservation real: `getPathColor` does not
+    // consult the name for either type at all.
+    expect(getPathColor({ kind: 'happy', name: 'Anything at all' })).toBe(
+      getPathColor({ kind: 'happy', name: 'Something else entirely' }),
+    )
+    expect(getPathColor({ kind: 'exception', name: 'Payment declined' })).toBe(
+      getPathColor({ kind: 'exception', name: 'Address unverifiable' }),
+    )
+  })
+
+  it('tells two exceptions apart, though the reservation gives them one colour', () => {
+    // What reserving a colour costs, stated as a test rather than left to be
+    // discovered. Every exception on a board is the same fill by design, so
+    // inside one scenario the dash is the ONLY channel a reader has for
+    // telling one from another — which is why the dash is read from the path
+    // and not, as it once was, from the type.
+    const both = ['Payment declined', 'Address unverifiable'] as const
+    const colours = both.map((name) => getPathColor({ kind: 'exception', name }))
+    expect(new Set(colours).size).toBe(1) // one reserved colour, by design
+    const dashes = both.map((name) =>
+      getPathDashArray({ kind: 'exception', name }),
+    )
+    expect(new Set(dashes).size).toBe(2)
+  })
+
+  it('keeps a variant on one colour wherever it appears', () => {
+    // The slot is keyed on the NAME alone. Keying it on `${kind}:${name}` is
+    // what the retired registry did, and a re-type silently dropped a path out
+    // of its entry and re-coloured it — with the dash moving too.
+    const here = { kind: 'variant', name: 'Set Preferences' } as const
+    const there = { kind: 'variant', name: 'Set Preferences' } as const
+    expect(getPathColor(here)).toBe(getPathColor(there))
+    expect(getPathDashArray(here)).toBe(getPathDashArray(there))
+  })
+
   it('separates two unregistered custom-named paths', () => {
     const a = { kind: 'variant', name: 'Alpha' } as const
     const b = { kind: 'variant', name: 'Beta' } as const
-    // They may share a hue slot, but not both a hue and a dash.
+    // They may share a hue slot — four families is not many — but not both a
+    // hue and a dash. The pair is the guarantee.
+    const same =
+      getPathColor(a) === getPathColor(b) &&
+      getPathDashArray(a) === getPathDashArray(b)
+    expect(same).toBe(false)
+  })
+
+  it('separates two names built from the same letters', () => {
+    // 'Alpha'/'Beta' above pass under any hash, including a plain character
+    // sum — their letters differ. Anagrams are the case a sum cannot see, and
+    // they are not hypothetical: two plausible names for sibling routes in one
+    // scenario took the same colour AND the same dash under the sum this file
+    // used to hash with.
+    const a = { kind: 'variant', name: 'Check Preferences' } as const
+    const b = { kind: 'variant', name: 'Preferences Check' } as const
     const same =
       getPathColor(a) === getPathColor(b) &&
       getPathDashArray(a) === getPathDashArray(b)
@@ -47,8 +98,8 @@ describe('path identity', () => {
   })
 
   it('reads the same dash from a colour key as from the path', () => {
-    const path = { kind: 'variant', name: 'Sad Path' } as const
-    expect(getPathDashArrayFromKey('variant:Sad Path')).toBe(
+    const path = { kind: 'exception', name: 'Payment declined' } as const
+    expect(getPathDashArrayFromKey('exception:Payment declined')).toBe(
       getPathDashArray(path),
     )
     // Bare key with no colon is the legacy default-path form.
