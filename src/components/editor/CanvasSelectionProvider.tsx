@@ -22,6 +22,7 @@ import {
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { allCellsInReadingOrder } from '@/lib/canvasCellQuery'
+import { useCanvasActive } from '@/contexts/canvasActiveContext'
 
 /** Toggle each id in or out, preserving pick order for the ones that stay. */
 function toggleInto(current: string[], cellIds: readonly string[]): string[] {
@@ -62,6 +63,7 @@ function toggleInto(current: string[], cellIds: readonly string[]): string[] {
  */
 export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
   const mode = useCanvasModeValue()
+  const canvasActive = useCanvasActive()
   /*
     A picker may already own this surface. The slice edit session provides
     its own — clicks mean "put this cell in the highlighted slide", not
@@ -185,6 +187,7 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
   // the same pickMany/clear the marquee and lane/column headers call.
   useEffect(() => {
     if (outer !== null) return // a session picker owns clicks here
+    if (!canvasActive) return
     const unregister = [
       registerAgentUiCommand({
         name: 'select_cells',
@@ -213,18 +216,18 @@ export function CanvasSelectionProvider({ children }: { children: ReactNode }) {
       }),
     ]
     return () => unregister.forEach((fn) => fn())
-  }, [outer, pickMany, clear])
+  }, [canvasActive, outer, pickMany, clear])
 
   // Report the gathered selection to the agent's UI-context collector —
   // "what the user selected" in Design mode is exactly this ordered list.
   useEffect(() => {
-    if (picked.length === 0) return
+    if (!canvasActive || picked.length === 0) return
     return registerAgentUiContext(
       'design-picks',
       () =>
         `User's Design-mode selection (${picked.length} cells, in pick order): ${picked.join(', ')}`,
     )
-  }, [picked])
+  }, [canvasActive, picked])
 
   useEffect(() => {
     if (mode !== 'design') return

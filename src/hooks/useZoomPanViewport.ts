@@ -124,6 +124,11 @@ type UseZoomPanViewportOptions = {
   onFitReady?: () => void
   /** Semantic selection id used to report an exact navigation outcome. */
   cameraOutcomeKey?: string
+  /**
+   * When false, skip window ⌘+/−/0. Hidden warm views stay mounted and
+   * must not zoom a camera the reader is not looking at.
+   */
+  enableWindowZoomKeys?: boolean
 }
 
 /**
@@ -375,6 +380,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     cameraDestinationResolved = true,
     onFitReady,
     cameraOutcomeKey,
+    enableWindowZoomKeys = true,
   } = options
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -2430,13 +2436,11 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * WINDOW, deliberately — unlike the arrow-key pan below, which binds to the
    * container. Zoom is the one camera control with no on-screen affordance in
    * Design mode, so requiring the board to be focused first would leave a
-   * mouse-only reader with no way in at all. The cost is that a second mounted
-   * viewport would double-fire this; one mounts per screen today (the
-   * comparison view shipped as panes INSIDE the single viewport, not as a
-   * second one), and the day that changes, this moves to the container the way
-   * pan already has.
+   * mouse-only reader with no way in at all. Hidden warm views pass
+   * `enableWindowZoomKeys: false` so a second mounted viewport does not double-fire.
    */
   useEffect(() => {
+    if (!enableWindowZoomKeys) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey)) return
       if (isEditableKeyboardTarget(event.target)) return
@@ -2454,7 +2458,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [fitToView, zoomIn, zoomOut])
+  }, [enableWindowZoomKeys, fitToView, zoomIn, zoomOut])
 
   /**
    * Keyboard pan, and a camera that follows focus.

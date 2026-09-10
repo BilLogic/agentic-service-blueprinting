@@ -66,6 +66,18 @@ describe('agent camera bridge', () => {
     await expect(agentFocusCell('cell-1')).resolves.toContain('Focused')
   })
 
+  it('does not fly a hidden viewport that has unregistered', async () => {
+    const hidden = registerActiveFocusCells(async () => ({
+      kind: 'flown',
+      completion: 'completed',
+    }))
+    hidden()
+    await expect(agentFocusCell('cell-1')).resolves.toContain(
+      'No active canvas camera is available',
+    )
+  })
+
+
   it('gives up on a fly that never settles instead of wedging the loop', async () => {
     vi.useFakeTimers()
     cleanups.push(registerActiveFocusCells(() => new Promise(() => {})))

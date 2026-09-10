@@ -3,6 +3,7 @@ import { useCanvasAnnotationTool } from '@/contexts/canvasAnnotationContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { getCanvasSpaceHeld } from '@/lib/canvasKeyboardState'
+import { currentCanvasElement } from '@/lib/canvasCellQuery'
 import { pickModeForMarquee } from '@/lib/cellPickGrammar'
 
 /** Chrome a marquee must never start on — these own their own drags. */
@@ -55,7 +56,7 @@ export function MarqueeSelection() {
     // means "move the camera", and this listener claims the gesture in the
     // capture phase before the pan handler can ever see it.
     if (mode !== 'design' || tool === 'hand' || !pick) return
-    const root = document.querySelector('[data-zoom-pan-root]')
+    const root = currentCanvasElement('[data-zoom-pan-root]')
     if (!(root instanceof HTMLElement)) return
 
     const onPointerDown = (event: PointerEvent) => {

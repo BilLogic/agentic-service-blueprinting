@@ -31,6 +31,11 @@ export type ViewState = {
   tabs: TabDescriptor[]
   /** Active tab key; `null` means the base blueprint view. */
   activeKey: TabKey | null
+  /**
+   * Open slice keys in activation order, oldest first. Present keys are
+   * never stored here — they do not take a warm-set slot.
+   */
+  sliceActivationRecency: TabKey[]
   /** Parsed boot URL, held until the slice list loads (never applied blind). */
   pendingUrlState: UrlViewState | null
   /** Slide restored from a `?mode=present&slide=` deep link. */
@@ -47,10 +52,88 @@ export function createInitialViewState(search: string): ViewState {
   return {
     tabs: [],
     activeKey: null,
+    sliceActivationRecency: [],
     pendingUrlState: parseUrlViewState(search),
     restoredSlide: null,
     missingSliceId: null,
   }
+}
+
+/** How many hidden slice trees may stay mounted besides the current view. */
+export const HIDDEN_SLICE_WARM_LIMIT = 5
+
+export type WarmMounts = {
+  /**
+   * True once this session has mounted the base canvas. The shell also
+   * mounts the base view when it is current, even if this is still false.
+   */
+  baseWarm: boolean
+  sliceKeys: TabKey[]
+  presentKeys: TabKey[]
+}
+
+/**
+ * True when the reader is on the base canvas — no tab, no unresolved deep link.
+ *
+ * @param input.activeKey - the active tab, or null on the base view
+ * @param input.pendingUrl - a boot URL is still unresolved
+ */
+export function isBaseViewCurrent(input: {
+  activeKey: TabKey | null
+  pendingUrl: boolean
+}): boolean {
+  return input.activeKey === null && !input.pendingUrl
+}
+
+/**
+ * Which open views stay mounted. The current view is always included;
+ * hidden slices are the least-recently activated working set.
+ *
+ * @param input.sessionMountedBase - the reader has already opened the base canvas this session
+ */
+export function warmMounts(input: {
+  tabs: TabDescriptor[]
+  activeKey: TabKey | null
+  sessionMountedBase: boolean
+  sliceActivationRecency: TabKey[]
+}): WarmMounts {
+  const presentKeys = input.tabs
+    .filter((tab) => tab.kind === 'present')
+    .map(tabKey)
+  const sliceKeysAll = input.tabs
+    .filter((tab) => tab.kind === 'slice')
+    .map(tabKey)
+  const currentSlice =
+    input.activeKey !== null && input.activeKey.startsWith('slice:')
+      ? input.activeKey
+      : null
+  const hidden = sliceKeysAll.filter((key) => key !== currentSlice)
+  const recencyKnown = input.sliceActivationRecency.filter((key) =>
+    hidden.includes(key),
+  )
+  const unknown = hidden.filter(
+    (key) => !input.sliceActivationRecency.includes(key),
+  )
+  const recencyOfHidden = [...unknown, ...recencyKnown]
+  const warmHidden = recencyOfHidden.slice(-HIDDEN_SLICE_WARM_LIMIT)
+  const sliceKeys = currentSlice
+    ? [...new Set([...warmHidden, currentSlice])]
+    : warmHidden
+  return {
+    baseWarm: input.sessionMountedBase,
+    sliceKeys,
+    presentKeys,
+  }
+}
+
+/** Move a slice key to the newest end of recency. Present keys are ignored. */
+function touchSliceRecency(state: ViewState, key: TabKey | null): ViewState {
+  if (key === null || !key.startsWith('slice:')) return state
+  const sliceActivationRecency = [
+    ...state.sliceActivationRecency.filter((item) => item !== key),
+    key,
+  ]
+  return { ...state, sliceActivationRecency }
 }
 
 /** Close a set of tab keys. */
@@ -75,7 +158,14 @@ function closeKeys(state: ViewState, keys: ReadonlySet<TabKey>): ViewState {
     }
   }
 
-  return { ...state, tabs, activeKey }
+  return {
+    ...state,
+    tabs,
+    activeKey,
+    sliceActivationRecency: state.sliceActivationRecency.filter(
+      (key) => !keys.has(key),
+    ),
+  }
 }
 
 export function viewStateReducer(state: ViewState, action: ViewStateAction): ViewState {
@@ -83,9 +173,13 @@ export function viewStateReducer(state: ViewState, action: ViewStateAction): Vie
     case 'open': {
       const key = tabKey(action.tab)
       if (state.tabs.some((tab) => tabKey(tab) === key)) {
-        return state.activeKey === key ? state : { ...state, activeKey: key }
+        if (state.activeKey === key) return state
+        return touchSliceRecency({ ...state, activeKey: key }, key)
       }
-      return { ...state, tabs: [...state.tabs, action.tab], activeKey: key }
+      return touchSliceRecency(
+        { ...state, tabs: [...state.tabs, action.tab], activeKey: key },
+        key,
+      )
     }
     case 'close':
       return closeKeys(state, new Set([action.key]))
@@ -94,7 +188,7 @@ export function viewStateReducer(state: ViewState, action: ViewStateAction): Vie
       if (action.key !== null && !state.tabs.some((tab) => tabKey(tab) === action.key)) {
         return state
       }
-      return { ...state, activeKey: action.key }
+      return touchSliceRecency({ ...state, activeKey: action.key }, action.key)
     }
     case 'closeForSlice':
       return closeKeys(
@@ -145,6 +239,8 @@ export type ViewStateContextValue = {
   activeKey: TabKey | null
   /** Active tab descriptor; `null` means the base blueprint view. */
   activeTab: TabDescriptor | null
+  /** Open slice keys, oldest activation first. */
+  sliceActivationRecency: TabKey[]
   pendingUrlState: UrlViewState | null
   restoredSlide: { sliceId: string; slide: number } | null
   /** Slice id from a deep link that resolved to nothing; null once dismissed. */

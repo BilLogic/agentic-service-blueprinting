@@ -36,6 +36,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | May I move a file under references/ or skills/? | docs/adr/0004-reference-paths-are-a-published-interface.md |
 | Where does state shared across surfaces live? | docs/adr/0005-cross-surface-state-is-a-module-store.md |
 | When may a surface I am adding stop showing its skeleton? | docs/adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md |
+| Does switching a still-open view remount the canvas? | docs/adr/0010-open-views-stay-mounted.md |
 | Why is this colour token derived, and where does it part from upstream? | docs/adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md |
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
@@ -64,4 +65,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-22 protocol documents are indexed in [docs/index.md](./docs/index.md).
+23 protocol documents are indexed in [docs/index.md](./docs/index.md).

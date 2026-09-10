@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useEditor } from '@/contexts/EditorContext'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
@@ -41,10 +41,12 @@ import {
 } from '@/contexts/canvasRevealContext'
 import { EditorSidebarBootSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import {
+  isBaseViewCurrent,
   tabKey,
   useViewState,
-  type TabDescriptor,
+  warmMounts,
 } from '@/contexts/viewStateStore'
+import { CanvasActiveProvider } from '@/contexts/canvasActiveContext'
 import {
   registerAgentUiBridge,
   registerAgentUiContext,
@@ -138,7 +140,8 @@ function DesktopEditorShell() {
     togglePhaseExpanded,
     setScenarioDisplayViewType,
   } = useEditor()
-  const { activeTab, activateTab, openTab, closeTab } = useViewState()
+  const { activeTab, activeKey, activateTab, openTab, closeTab, pendingUrlState } =
+    useViewState()
   const { canAgent } = useSupabase()
   // `?cell=` boot deep link — the receiving end of the share link the agent
   // hands back with a cited cell. Mounted here because it needs the editor's
@@ -161,6 +164,16 @@ function DesktopEditorShell() {
     setSidebarCollapsed(collapsed)
   }, [])
   const isLanding = view === 'landing'
+  const [sessionMountedBase, setSessionMountedBase] = useState(false)
+  const viewingBase =
+    !isLanding &&
+    isBaseViewCurrent({
+      activeKey,
+      pendingUrl: pendingUrlState !== null,
+    })
+  if (viewingBase && !sessionMountedBase) {
+    setSessionMountedBase(true)
+  }
 
   const activeTabKind = activeTab?.kind ?? null
 
@@ -181,11 +194,9 @@ function DesktopEditorShell() {
     if (activeTabKind !== null) setPanel('slices')
   }
 
-  // Leaving presentation runs before the tab actually switches: tabs unmount
-  // on switch, so the exit animation has to play while the present tab is
-  // still mounted. `leavingPresent` drops the shell back to its non-present
-  // pose (sidebar expands) while the presentation surface fades out, then
-  // the tab switch lands at the end of the same 320 ms.
+  // Leaving presentation plays the pose/fade while the present view is
+  // still the current one, then switches to the slice. The slice may
+  // already be warm; the wait is the sidebar expand, not an unmount.
   const [leavingPresent, setLeavingPresent] = useState(false)
   const leaveTimer = useRef<number | null>(null)
   useEffect(
@@ -638,15 +649,6 @@ function DesktopEditorShell() {
     shellCommandsRef.current = shellCommands
   })
 
-  // What counts as a content switch for the crossfade. Navigation *inside*
-  // the base canvas (home ⇄ detail) is a camera move, not a screen change,
-  // so it deliberately keeps the same key.
-  const contentKey = activeTab
-    ? tabKey(activeTab)
-    : isLanding
-      ? 'landing'
-      : 'blueprint'
-
   const sidebarBody = (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-row">
       <EditorRail
@@ -838,43 +840,19 @@ function DesktopEditorShell() {
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="relative min-h-0 min-w-0 flex-1">
-              {/*
-                Only the active tab's content mounts, so switching is a
-                fade-through rather than a true crossfade: the keyed wrapper
-                remounts and the incoming surface fades up over 200 ms after
-                the 75 ms stagger the sidebar already uses.
-              */}
-              <div
-                key={contentKey}
-                className="absolute inset-0"
-                data-editor-content=""
-              >
-                {/*
-                  A second boundary, inside the one App.tsx puts around the
-                  whole shell. That outer one is the last line before a white
-                  screen, and it takes the tab strip, the sidebar, the rail
-                  and the agent dock down with the board — which is the wrong
-                  trade for a throw that came from one canvas. A crash here
-                  costs the reader the view they were on and nothing else:
-                  the chrome stays, and every other tab is one click away.
-
-                  `resetKey` is the content key, so navigating is enough to
-                  recover — the boundary's own documented contract, and the
-                  reason a single throw does not read as "the app crashes
-                  constantly". This does not soften the decision that the
-                  board is always fully mounted: it still is, and this
-                  unmounts it only for a throw the alternative would have
-                  unmounted anyway.
-                */}
-                <EditorErrorBoundary resetKey={contentKey}>
-                  <ActiveTabContent
-                    tab={activeTab}
-                    isLanding={isLanding}
+              <div className="absolute inset-0" data-editor-content="">
+                {isLanding ? (
+                  <EditorErrorBoundary resetKey="landing">
+                    <CoverPage content={coverContent} />
+                  </EditorErrorBoundary>
+                ) : (
+                  <WarmMountedViews
+                    sessionMountedBase={sessionMountedBase}
                     leavingPresent={leavingPresent}
                     onReturn={exitPresentation}
                     onRevealStage={setRevealStage}
                   />
-                </EditorErrorBoundary>
+                )}
               </div>
             </div>
           </main>
@@ -884,50 +862,115 @@ function DesktopEditorShell() {
   )
 }
 
-function ActiveTabContent({
-  tab,
-  isLanding,
+/**
+ * One warm view in the stacked host. Hidden layers stay laid out so the
+ * camera survives; they are inert and do not own the agent.
+ *
+ * @param current - this layer is the view the reader is looking at
+ * @param resetKey - error-boundary identity for this tree
+ */
+function FrozenViewLayer({
+  current,
+  resetKey,
+  children,
+}: {
+  current: boolean
+  resetKey: string
+  children: ReactNode
+}) {
+  return (
+    <div
+      className="absolute inset-0"
+      aria-hidden={!current}
+      inert={!current}
+      style={{
+        visibility: current ? 'visible' : 'hidden',
+        pointerEvents: current ? 'auto' : 'none',
+        zIndex: current ? 1 : 0,
+      }}
+    >
+      <EditorErrorBoundary resetKey={resetKey}>
+        <CanvasActiveProvider active={current}>{children}</CanvasActiveProvider>
+      </EditorErrorBoundary>
+    </div>
+  )
+}
+
+/**
+ * Mounts the warm set: the base canvas (if this session already opened it,
+ * or if it is the current view) plus warm slice/present views. Hidden trees
+ * stay laid out so the camera does not die, but they do not own the agent
+ * or the reveal publisher.
+ *
+ * @param sessionMountedBase - this session has already built the base canvas
+ * @param leavingPresent - play the 320ms leave pose on the current present view
+ * @param onReturn - land on the slice after the present leave wait
+ * @param onRevealStage - publish the current base canvas ladder to the shell
+ */
+function WarmMountedViews({
+  sessionMountedBase,
   leavingPresent,
   onReturn,
   onRevealStage,
 }: {
-  tab: TabDescriptor | null
-  isLanding: boolean
+  sessionMountedBase: boolean
   leavingPresent: boolean
   onReturn: (sliceId: string) => void
-  /** Handed to the base canvas only — see `ServiceOverviewView`. */
   onRevealStage: (stage: number) => void
 }) {
-  if (tab === null) {
-    // Base blueprint view — existing landing / home / detail behavior.
-    return isLanding ? (
-      <CoverPage content={coverContent} />
-    ) : (
-      // No provider here: the base surface's mode is the shell's, so the
-      // sidebar and this canvas are always in the same one.
-      <StoryboardWalkthroughShell>
-        <div
-          className="absolute inset-0 flex min-h-0 flex-col"
-          data-editor-view
-        >
-          {/* The one canvas that boots WITH the sidebar, so the one that
-              drives its boot layer — see `onRevealStage`. */}
-          <ServiceOverviewView onRevealStage={onRevealStage} />
-        </div>
-      </StoryboardWalkthroughShell>
-    )
-  }
-  switch (tab.kind) {
-    case 'slice':
-      return <SliceView key={tabKey(tab)} sliceId={tab.sliceId} />
-    case 'present':
-      return (
-        <SlicePresentation
-          key={tabKey(tab)}
-          sliceId={tab.sliceId}
-          leaving={leavingPresent}
-          onReturn={() => onReturn(tab.sliceId)}
-        />
-      )
-  }
+  const { tabs, activeKey, sliceActivationRecency, pendingUrlState } =
+    useViewState()
+
+  const mounts = warmMounts({
+    tabs,
+    activeKey,
+    sessionMountedBase,
+    sliceActivationRecency,
+  })
+  const currentIsBase = isBaseViewCurrent({
+    activeKey,
+    pendingUrl: pendingUrlState !== null,
+  })
+  const showBase = mounts.baseWarm || currentIsBase
+
+  return (
+    <>
+      {showBase ? (
+        <FrozenViewLayer current={currentIsBase} resetKey="blueprint">
+          <StoryboardWalkthroughShell>
+            <div
+              className="absolute inset-0 flex min-h-0 flex-col"
+              data-editor-view
+            >
+              <ServiceOverviewView
+                onRevealStage={currentIsBase ? onRevealStage : undefined}
+              />
+            </div>
+          </StoryboardWalkthroughShell>
+        </FrozenViewLayer>
+      ) : null}
+      {tabs.map((tab) => {
+        const key = tabKey(tab)
+        const warm =
+          tab.kind === 'slice'
+            ? mounts.sliceKeys.includes(key)
+            : mounts.presentKeys.includes(key)
+        if (!warm) return null
+        const current = activeKey === key
+        return (
+          <FrozenViewLayer key={key} current={current} resetKey={key}>
+            {tab.kind === 'slice' ? (
+              <SliceView sliceId={tab.sliceId} />
+            ) : (
+              <SlicePresentation
+                sliceId={tab.sliceId}
+                leaving={leavingPresent && current}
+                onReturn={() => onReturn(tab.sliceId)}
+              />
+            )}
+          </FrozenViewLayer>
+        )
+      })}
+    </>
+  )
 }

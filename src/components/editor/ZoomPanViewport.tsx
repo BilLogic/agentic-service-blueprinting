@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useCanvasActive } from '@/contexts/canvasActiveContext'
 import {
   SEMANTIC_ZOOM_THRESHOLD,
   useZoomPanViewport,
@@ -87,6 +88,7 @@ function ZoomPanViewportInner({
   cameraOutcomeKey,
   onFitReady,
 }: ZoomPanViewportProps) {
+  const canvasActive = useCanvasActive()
   const { isAnnotating } = useCanvasAnnotationTool()
   const {
     containerRef,
@@ -115,7 +117,8 @@ function ZoomPanViewportInner({
     fitTopInset,
     fitBottomInset,
     animateFit,
-    refitOnResize,
+    refitOnResize: refitOnResize && canvasActive,
+    enableWindowZoomKeys: canvasActive,
     cameraStateKey,
     cameraDestinationKey,
     cameraDestinationResolved,
@@ -129,14 +132,18 @@ function ZoomPanViewportInner({
   // commands) resolve this at call time from the module registry —
   // `focusCells` is identity-stable, so this re-registers only on key moves.
   useEffect(() => {
-    if (!focusCellsKey) return
+    if (!canvasActive || !focusCellsKey) return
     return registerFocusCells(focusCellsKey, focusCells)
-  }, [focusCells, focusCellsKey])
+  }, [canvasActive, focusCells, focusCellsKey])
 
-  useEffect(() => registerActiveFocusCells(focusCells), [focusCells])
+  useEffect(() => {
+    if (!canvasActive) return
+    return registerActiveFocusCells(focusCells)
+  }, [canvasActive, focusCells])
 
   // Agent parity: camera controls (otherwise keyboard-only ⌘+/⌘−/⌘0).
   useEffect(() => {
+    if (!canvasActive) return
     // `fitToView` returns false when the canvas geometry could not be
     // measured (zero-height container, target not mounted) — no move was
     // started, so "completed" would be the false confidence this command
@@ -186,16 +193,23 @@ function ZoomPanViewportInner({
       }),
     ]
     return () => unregister.forEach((remove) => remove())
-  }, [cancelCamera, fitToView, getCameraState, panBy, zoomIn, zoomOut])
+  }, [
+    canvasActive,
+    cancelCamera,
+    fitToView,
+    getCameraState,
+    panBy,
+    zoomIn,
+    zoomOut,
+  ])
 
-  useEffect(
-    () =>
-      registerAgentUiContext('canvas-camera', () => {
-        const camera = getCameraState()
-        return `Canvas camera: ${Math.round(camera.zoom * 100)}%, ${camera.moving ? 'moving' : 'idle'}${focusCellsKey ? `, active scenario ${focusCellsKey}` : ''}.`
-      }),
-    [focusCellsKey, getCameraState],
-  )
+  useEffect(() => {
+    if (!canvasActive) return
+    return registerAgentUiContext('canvas-camera', () => {
+      const camera = getCameraState()
+      return `Canvas camera: ${Math.round(camera.zoom * 100)}%, ${camera.moving ? 'moving' : 'idle'}${focusCellsKey ? `, active scenario ${focusCellsKey}` : ''}.`
+    })
+  }, [canvasActive, focusCellsKey, getCameraState])
 
   return (
     // The mode provider is mounted per *surface* (EditorShell for the base

@@ -300,9 +300,9 @@ separates it from every other word here.
 **boot** — the sidebar's once-per-entry latch: `off`, `armed`, `skeletoning`. It
 answers whether this is the reader arriving or a surface they have already
 loaded coming back — a question no rung of the canvas's ladder can answer,
-because the canvas starts that ladder again every time it is uncovered.
-`skeletoning` was called *staging* until the collision with the rung below was
-named.
+because a canvas that stayed mounted does not restart that ladder, and one that
+remounts does. `skeletoning` was called *staging* until the collision with the
+rung below was named.
 
 **revealStage** — the canvas's ladder, six rungs from `CANVAS_REVEAL_STAGING` to
 `CANVAS_REVEAL_DONE`. It says how much of the board is painted and nothing about
