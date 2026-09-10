@@ -13,9 +13,27 @@
 
 const CELL_SELECTOR = '[data-blueprint-cell][data-blueprint-cell-interactive]'
 
-/** The mounted canvas. Tabs unmount on switch, so at most one exists. */
+/**
+ * The element the reader is looking at. Hidden warm views stay in the
+ * document under `inert`, so a bare `querySelector` would return the first
+ * mounted tree — usually the base canvas sitting behind a slice.
+ *
+ * @param selector - a canvas-scoped CSS selector
+ */
+export function currentCanvasElement<T extends Element>(
+  selector: string,
+): T | null {
+  const matches = document.querySelectorAll(selector)
+  for (const element of matches) {
+    if (element.closest('[inert]')) continue
+    return element as T
+  }
+  return null
+}
+
+/** The current canvas. Hidden warm views are skipped. */
 function canvasRoot(): ParentNode | null {
-  return document.querySelector('[data-zoom-pan-root]')
+  return currentCanvasElement('[data-zoom-pan-root]')
 }
 
 function cellId(element: Element): string | null {

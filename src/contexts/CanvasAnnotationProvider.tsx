@@ -25,6 +25,7 @@ import {
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useCanvasActive } from '@/contexts/canvasActiveContext'
+import { currentCanvasElement } from '@/lib/canvasCellQuery'
 
 type CanvasAnnotationProviderProps = {
   children: ReactNode
@@ -81,7 +82,7 @@ export function CanvasAnnotationProvider({
   useEffect(() => {
     if (!canvasActive) return
     return registerAgentAnnotator((cellIds, note) => {
-        const layer = document.querySelector<HTMLElement>(
+        const layer = currentCanvasElement<HTMLElement>(
           '[data-canvas-annotation-layer]',
         )
         if (!layer) return 'No annotatable canvas is open right now.'
@@ -89,9 +90,10 @@ export function CanvasAnnotationProvider({
         const scale = layerRect.width / Math.max(layer.offsetWidth, 1)
         let drawn = 0
         let anchor: { x: number; y: number } | null = null
+        const root = currentCanvasElement('[data-zoom-pan-root]')
         for (const cellId of cellIds) {
-          const el = document.querySelector(
-            `[data-blueprint-cell="${cellId}"]`,
+          const el = root?.querySelector(
+            `[data-blueprint-cell="${CSS.escape(cellId)}"]`,
           )
           if (!el) continue
           const rect = el.getBoundingClientRect()

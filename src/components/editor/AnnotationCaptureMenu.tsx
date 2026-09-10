@@ -16,6 +16,7 @@ import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { setPendingAgentAttachment } from '@/lib/agent/attachments'
 import { openAgentSurface } from '@/lib/agent/uiBridge'
+import { currentCanvasElement } from '@/lib/canvasCellQuery'
 import {
   captureMarks,
   describeMarks,
@@ -49,7 +50,7 @@ export function AnnotationCaptureMenu() {
   // Marks live in the annotation layer's local space; cell rects come from
   // the DOM in screen space. Undo the camera by measuring the layer itself:
   // its on-screen rect vs its layout size gives the zoom, its origin the pan.
-  const layerElement = document.querySelector<HTMLElement>(
+  const layerElement = currentCanvasElement<HTMLElement>(
     '[data-canvas-annotation-layer]',
   )
   const layerRect = layerElement?.getBoundingClientRect()
@@ -60,8 +61,9 @@ export function AnnotationCaptureMenu() {
   const originLeft = layerRect?.left ?? 0
   const originTop = layerRect?.top ?? 0
 
+  const root = currentCanvasElement('[data-zoom-pan-root]')
   const cellRects = Array.from(
-    document.querySelectorAll('[data-blueprint-cell]'),
+    root?.querySelectorAll('[data-blueprint-cell]') ?? [],
   ).flatMap((element) => {
     const cellId = element.getAttribute('data-blueprint-cell')
     if (!cellId) return []
