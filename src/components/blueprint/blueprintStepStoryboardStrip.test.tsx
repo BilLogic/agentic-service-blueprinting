@@ -43,3 +43,30 @@ describe('the storyboard strip has no per-frame label', () => {
     expect(source).not.toMatch(/\btext-(?:2xs|3xs|4xs|5xs)\b/)
   })
 })
+
+/*
+  A rounded box inset inside another looks wrong unless its radius is the
+  outer radius minus the inset. `rounded-sm` is `--radius - 4px`, a pixel
+  proud of that here: invisible while the cell face is near-transparent, and
+  obvious once selection paints an opaque fill behind the frame, because the
+  gap pinches at the corners.
+
+  jsdom draws no corners, so what is asserted is what the geometry follows
+  from: the frame's radius is the cell's radius less 5px, and the cell still
+  carries the rounding and the inset those 5px are — `p-1`'s 4px and the
+  button's 1px border. Change the cell's rounding or padding and this fails,
+  which is the point: the frame's radius has to change with it.
+*/
+describe('a frame sits concentrically inside the cell', () => {
+  it('rounds the frame by the cell radius less the inset and the border', () => {
+    render(<BlueprintStepStoryboard frames={['front.png']} />)
+    const cell = screen.getByRole('button', { name: 'Step storyboard' })
+    const frame = cell.querySelector('img') as HTMLImageElement
+
+    expect(cell.className).toContain('rounded-lg')
+    expect(cell.className).toMatch(/\bp-1\b/)
+    expect(cell.className).toMatch(/(^|\s)border(\s|$)/)
+    expect(frame.className).toContain('rounded-[calc(var(--radius-lg)-5px)]')
+    expect(frame.className).not.toContain('rounded-sm')
+  })
+})

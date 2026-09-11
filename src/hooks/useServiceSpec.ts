@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import { awaitOrAbort, resolveFirstServiceId } from '@/lib/service'
+import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import type { EntityExamples } from '@/lib/panelTerms'
 
 // Re-exported from its canonical home in `panelTerms`, beside the kinds it is
@@ -35,12 +35,22 @@ export type ServiceSpec = {
 }
 
 /**
- * The service, and its business model.
+ * The ACTIVE service, and its business model.
  *
- * Three round-trips rather than one. The counts cannot be taken from the same
- * row, so this panel paints its placeholder like the other three — and the
- * business model has to be its OWN request rather than an embed, because it is
- * the one restricted table in the set.
+ * Active is the board's word: the service the URL slug names, or the first by
+ * `created_at` at the bare root. It is resolved through `findActiveServiceId`,
+ * the lookup the board's own reads make, because this read used to take the
+ * first row unconditionally — and with a second service in the database the
+ * header described one service while the canvas drew another. One resolver is
+ * what makes them agree. Its settled id is cached and shared in flight, so the
+ * lookup adds no `services` query to the ones the canvas already made.
+ *
+ * Then one round-trip, not three in a row. The service row, its counts and its
+ * business model each need only the id and none needs another, so they go out
+ * together. The counts cannot be taken from the same row, so this panel paints
+ * its placeholder like the other three — and the business model has to be its
+ * OWN request rather than an embed, because it is the one restricted table in
+ * the set.
  *
  * The migration that hardened the derived layer's grants revoked
  * `business_models` from `anon`, and its select policy names `authenticated`.
@@ -63,60 +73,60 @@ export type ServiceSpec = {
  * and the business model would stay missing until a mutation or a reload. Both
  * keys begin `service-spec:first`, which is the prefix `ServicePanel`
  * invalidates.
+ *
+ * And there is no key at all until the session is known. `canReadPrivate` is
+ * false while the session is still loading, so a read keyed then is the
+ * anonymous one, and an author paid for it and then for the signed-in one.
+ * `getSession()` resolves from storage; the wait is not a network wait.
  */
 export function useServiceSpec(): QueryResult<ServiceSpec | null> {
-  const { canReadPrivate } = useSupabase()
+  const { canReadPrivate, isLoading: sessionLoading } = useSupabase()
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<ServiceSpec | null>(
-    canReadPrivate ? 'service-spec:first:private' : 'service-spec:first',
+    sessionLoading
+      ? null
+      : canReadPrivate
+        ? 'service-spec:first:private'
+        : 'service-spec:first',
     async (client, signal) => {
-      // The same first-service lookup every other read uses — the settled id
-      // is cached module-level, so the panel does not add a `services` query
-      // of its own to the ones the canvas already made.
-      const serviceId = await awaitOrAbort(resolveFirstServiceId(client), signal)
+      const serviceId = await awaitOrAbort(findActiveServiceId(client), signal)
+      if (!serviceId) return null
 
-      const { data: service, error } = await client
-        .from('services')
-        .select('id, name, summary, entity_examples')
-        .eq('id', serviceId)
-        .abortSignal(signal)
-        .maybeSingle()
-      if (error) throw new Error(error.message)
+      const [serviceResponse, phaseResponse, modelResponse] = await Promise.all([
+        client
+          .from('services')
+          .select('id, name, summary, entity_examples')
+          .eq('id', serviceId)
+          .abortSignal(signal)
+          .maybeSingle(),
+        client
+          .from('phases')
+          .select('id, scenarios(id)')
+          .eq('service_id', serviceId)
+          .abortSignal(signal),
+        // Its own request, and only when it can succeed. A reader who may not
+        // have this table never sends it, so `businessModelVisible` goes false
+        // without a refusal to interpret. A refusal that DOES arrive is still
+        // tolerated — the grant can change under a live session — but it is
+        // no longer the every-load case, so it is worth reading in a log.
+        canReadPrivate
+          ? client
+              .from('business_models')
+              .select('funding, pricing, delivery_cost, revenue_model, partners')
+              .eq('service_id', serviceId)
+              .abortSignal(signal)
+              .maybeSingle()
+          : null,
+      ])
+
+      if (serviceResponse.error) throw new Error(serviceResponse.error.message)
+      const service = serviceResponse.data
       if (!service) return null
+      if (phaseResponse.error) throw new Error(phaseResponse.error.message)
 
-      // Its own request, and only when it can succeed. A reader who may not
-      // have this table never sends it, so `businessModelVisible` goes false
-      // without a refusal to interpret. A refusal that DOES arrive is still
-      // tolerated — the grant can change under a live session — but it is no
-      // longer the every-load case, so it is worth reading in a log.
-      const { data: modelRow } = canReadPrivate
-        ? await client
-            .from('business_models')
-            .select('funding, pricing, delivery_cost, revenue_model, partners')
-            .eq('service_id', service.id)
-            .abortSignal(signal)
-            .maybeSingle()
-        : { data: null }
-      const model = modelRow as
-        | {
-            funding: string | null
-            pricing: string | null
-            delivery_cost: string | null
-            revenue_model: string | null
-            partners: string | null
-          }
-        | null
-        | undefined
-
-      const { data: phases, error: phaseError } = await client
-        .from('phases')
-        .select('id, scenarios(id)')
-        .eq('service_id', service.id)
-        .abortSignal(signal)
-      if (phaseError) throw new Error(phaseError.message)
-
-      const rows = phases ?? []
+      const model = modelResponse?.data ?? null
+      const rows = phaseResponse.data ?? []
       return {
         id: service.id as string,
         name: service.name as string,

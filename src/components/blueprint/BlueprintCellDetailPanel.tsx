@@ -896,19 +896,6 @@ function BlueprintCellDetailPanelBody() {
     draft entirely — a cancelled cell never existed.
   */
   if (!selection && draft) {
-    const blueprint = getBlueprintForPath(blueprints, draft.pathId)
-    const laneRecord =
-      blueprint?.lanes.find((lane) => lane.name === draft.laneName) ?? null
-    const zone =
-      laneRecord && blueprint
-        ? getBlueprintLaneZone(laneRecord, blueprint.lanes)
-        : 'frontstage'
-    const draftLaneStyle = getBlueprintLaneStyle(
-      draft.laneName,
-      zone,
-      laneRecord?.role,
-    )
-
     return (
       <PanelDrawerShell
         open={drawerOpen}
@@ -946,16 +933,7 @@ function BlueprintCellDetailPanelBody() {
           </IconTooltip>
         </DrawerHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 blueprint-scroll">
-          <span
-            // geometry: packs the lane name into the badge's fixed height.
-            className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium leading-none"
-            style={{
-              backgroundColor: draftLaneStyle.lane,
-              color: 'var(--foreground-blueprint-cell)',
-            }}
-          >
-            {draft.laneName}
-          </span>
+          {laneBadge}
           <CellPanelEditor cellId={null} draft={draft} onDone={clearSelection} />
         </div>
         {/* The editor portals Create/Cancel here — panel-level footing. */}

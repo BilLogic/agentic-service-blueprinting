@@ -64,8 +64,31 @@ function StoryboardPictureStrip({
             alt=""
             loading="lazy"
             decoding="async"
+            /*
+              The CONCENTRIC radius, not a token picked by eye. A rounded box
+              inset inside another looks wrong unless its radius is the outer
+              radius minus the inset. `rounded-sm` is `--radius - 4px`, one
+              pixel proud of that here — invisible while the cell face is
+              near-transparent, and obvious the moment selection paints an
+              opaque fill behind the frame, because the gap pinches at the
+              corners. That is why hover looked right and selection did not.
+
+              Spelled from the cell's own radius, the way the other inset
+              radii in this tree are: `--radius-lg` is what the cell's
+              `rounded-lg` resolves to, and the 5px is the inset — 4px of the
+              cell's `p-1` and the 1px border in the button's own class. The
+              padding is a literal here rather than `var(--spacing)`, which
+              Tailwind emits but no stylesheet in this tree declares; the
+              storyboard strip test holds the cell to `rounded-lg` and `p-1`,
+              so changing either fails there rather than pinching here.
+
+              The radius lands on the artwork because the box IS the artwork:
+              no width is set, so `max-h-full max-w-full` scales the frame to
+              its own aspect rather than stretching the box and letterboxing
+              the picture inside it, which would round empty space instead.
+            */
             className={cn(
-              'max-h-full max-w-full rounded-sm object-contain object-center',
+              'max-h-full max-w-full rounded-[calc(var(--radius-lg)-5px)] object-contain object-center',
               hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
             )}
           />

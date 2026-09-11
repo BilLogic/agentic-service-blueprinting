@@ -131,10 +131,11 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
       separately here (`service-entity-examples:first`) rather than riding the
       spec.
 
-      This moves the board too: `useServicePhases` and `useSlices` resolve
-      `findActiveServiceId`, so the dropped caches come back scoped to the
-      newly-active service rather than to whichever one is first by
-      `created_at`.
+      Every one of those reads resolves `findActiveServiceId` — the board's
+      `useServicePhases` and `useSlices`, and the service's `useServiceSpec`
+      and `useServiceEntityExamples` — so the dropped caches come back scoped
+      to the newly-active service rather than to whichever one is first by
+      `created_at`, and the header names the service the canvas draws.
     */
     invalidateStructure()
     invalidateQueries('service-spec')
