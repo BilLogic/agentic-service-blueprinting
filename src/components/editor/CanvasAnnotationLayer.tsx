@@ -259,16 +259,25 @@ function ColorSwatch({
   )
 }
 
+/**
+ * The stroke-weight picker, which lives inside a style bar and nowhere else.
+ *
+ * It used to take a `dark` prop and branch on it — `dark ? 'bg-white' :
+ * 'bg-foreground'` — which is a colour decision written in TypeScript, and the
+ * wrong language for one: nothing about the weight of a line depends on state
+ * a component can compute. The branch had exactly one caller and it always
+ * passed `dark`, so the themed arm was unreachable; what the prop actually
+ * encoded was "I am drawn on the annotation chrome", which is now said once,
+ * in the tokens, and cannot be got wrong at a call site.
+ */
 function StrokeWidthSwatch({
   width,
   selected,
   onSelect,
-  dark = false,
 }: {
   width: number
   selected: boolean
   onSelect: () => void
-  dark?: boolean
 }) {
   return (
     <IconTooltip label={`${width}px`}>
@@ -279,20 +288,13 @@ function StrokeWidthSwatch({
         onClick={onSelect}
         className={cn(
           'flex size-6 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          dark
-            ? selected
-              ? 'border-white/25 bg-white/15'
-              : 'hover:bg-white/10'
-            : selected
-              ? 'border-border bg-muted'
-              : 'hover:bg-muted',
+          selected
+            ? 'border-(--border-annotation-chrome-selected) bg-(--wash-annotation-chrome-strong)'
+            : 'hover:bg-(--wash-annotation-chrome)',
         )}
       >
         <span
-          className={cn(
-            'block w-3.5 rounded-full',
-            dark ? 'bg-white' : 'bg-foreground',
-          )}
+          className="block w-3.5 rounded-full bg-(--foreground-annotation-chrome)"
           style={{ height: Math.min(width, 4) }}
           aria-hidden
         />
@@ -319,7 +321,7 @@ function ResizeHandles({
           aria-label={`Resize ${handle}`}
           data-annotation-editable=""
           data-resize-handle={handle}
-          className="pointer-events-auto absolute z-20 size-3 rounded-[2px] border-2 border-annotation-selected bg-white shadow-none"
+          className="pointer-events-auto absolute z-20 size-3 rounded-[2px] border-2 border-annotation-selected bg-(--background-annotation-plate) shadow-none"
           style={{
             cursor: RESIZE_CURSOR[handle],
             ...(handle.includes('n') ? { top: -6 } : { bottom: -6 }),
@@ -337,7 +339,7 @@ function ResizeHandles({
 }
 
 const SHAPE_TOOLBAR_TRIGGER_CLASS =
-  'flex h-8 items-center gap-0.5 rounded-full px-2 text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+  'flex h-8 items-center gap-0.5 rounded-full px-2 text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring-annotation-chrome)'
 
 /**
  * The round icon-only slot in the floating style bars (currently every
@@ -346,16 +348,21 @@ const SHAPE_TOOLBAR_TRIGGER_CLASS =
  * no label gutter.
  */
 const SHAPE_TOOLBAR_ICON_BUTTON_CLASS =
-  'flex size-8 items-center justify-center rounded-full text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40'
+  'flex size-8 items-center justify-center rounded-full text-(--foreground-annotation-chrome-secondary) transition-colors hover:bg-(--wash-annotation-chrome) hover:text-(--foreground-annotation-chrome) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring-annotation-chrome)'
 
 const SHAPE_TOOLBAR_MENU_CLASS =
-  'border-0 bg-annotation-chrome text-white shadow-floating ring-1 ring-white/10'
+  'border-0 bg-annotation-chrome text-(--foreground-annotation-chrome) shadow-floating ring-1 ring-(--border-annotation-chrome-overlay)'
 
 const SHAPE_TOOLBAR_ITEM_CLASS =
-  'gap-2 text-white focus:bg-white/10 focus:text-white data-[highlighted]:bg-white/10 data-[highlighted]:text-white'
+  'gap-2 text-(--foreground-annotation-chrome) focus:bg-(--wash-annotation-chrome) focus:text-(--foreground-annotation-chrome) data-[highlighted]:bg-(--wash-annotation-chrome) data-[highlighted]:text-(--foreground-annotation-chrome)'
 
 function ShapeToolbarDivider() {
-  return <div className="mx-0.5 h-4 w-px shrink-0 bg-white/20" aria-hidden />
+  return (
+    <div
+      className="mx-0.5 h-4 w-px shrink-0 bg-(--border-annotation-chrome-divider)"
+      aria-hidden
+    />
+  )
 }
 
 /**
@@ -377,7 +384,7 @@ function ShapeToolbarTooltip({
       label={label}
       side="top"
       sideOffset={8}
-      className="rounded-md bg-annotation-chrome px-2.5 py-1.5 font-medium text-white shadow-floating **:!bg-annotation-chrome **:!fill-annotation-chrome"
+      className="rounded-md bg-annotation-chrome px-2.5 py-1.5 font-medium text-(--foreground-annotation-chrome) shadow-floating **:!bg-annotation-chrome **:!fill-annotation-chrome"
     >
       {children}
     </IconTooltip>
@@ -461,7 +468,7 @@ function ShapeStyleBar({
           >
             <span
               className={cn(
-                'size-4 rounded-full border border-white/30',
+                'size-4 rounded-full border border-(--border-annotation-chrome)',
                 !fillPreview && 'swatch-empty-dark',
               )}
               style={fillPreview ? { backgroundColor: fillPreview } : undefined}
@@ -478,7 +485,7 @@ function ShapeStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-xs font-medium tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
             Fill
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -544,7 +551,7 @@ function ShapeStyleBar({
           onMouseDown={(e) => e.preventDefault()}
         >
           <div className="mb-1.5 flex items-center justify-between gap-3">
-            <span className="text-xs font-medium tracking-wide text-white/55 uppercase">
+            <span className="text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
               Stroke
             </span>
             {shape.color ? (
@@ -555,12 +562,13 @@ function ShapeStyleBar({
                     width={width}
                     selected={shape.strokeWidth === width}
                     onSelect={() => onChange({ strokeWidth: width })}
-                    dark
                   />
                 ))}
               </div>
             ) : (
-              <span className="text-xs text-white/55">None</span>
+              <span className="text-xs text-(--foreground-annotation-chrome-tertiary)">
+                None
+              </span>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -643,7 +651,7 @@ function StickyStyleBar({
             className={SHAPE_TOOLBAR_TRIGGER_CLASS}
           >
             <span
-              className="size-4 rounded-full border border-white/30"
+              className="size-4 rounded-full border border-(--border-annotation-chrome)"
               style={{ backgroundColor: sticky.color }}
               aria-hidden
             />
@@ -658,7 +666,7 @@ function StickyStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-xs font-medium tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
             Color
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -707,8 +715,8 @@ function StickyStyleBar({
                 setSizeOpen(false)
               }}
               className={cn(
-                'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-white transition-colors hover:bg-white/10',
-                sticky.fontSize === size && 'bg-white/10',
+                'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
+                sticky.fontSize === size && 'bg-(--wash-annotation-chrome)',
               )}
             >
               {annotationFontSizeLabel(size)}
@@ -730,7 +738,7 @@ function StickyStyleBar({
           onClick={() => onChange({ bold: !sticky.bold })}
           className={cn(
             SHAPE_TOOLBAR_TRIGGER_CLASS,
-            sticky.bold && 'bg-white/15',
+            sticky.bold && 'bg-(--wash-annotation-chrome-strong)',
           )}
         >
           <Bold className="size-3.5" aria-hidden />
@@ -745,7 +753,7 @@ function StickyStyleBar({
           onClick={() => onChange({ strike: !sticky.strike })}
           className={cn(
             SHAPE_TOOLBAR_TRIGGER_CLASS,
-            sticky.strike && 'bg-white/15',
+            sticky.strike && 'bg-(--wash-annotation-chrome-strong)',
           )}
         >
           <Strikethrough className="size-3.5" aria-hidden />
@@ -812,7 +820,7 @@ function TextStyleBar({
             className={SHAPE_TOOLBAR_TRIGGER_CLASS}
           >
             <span
-              className="size-4 rounded-full border border-white/30"
+              className="size-4 rounded-full border border-(--border-annotation-chrome)"
               style={{ backgroundColor: text.color }}
               aria-hidden
             />
@@ -827,7 +835,7 @@ function TextStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-xs font-medium tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
             Color
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -876,8 +884,8 @@ function TextStyleBar({
                 setSizeOpen(false)
               }}
               className={cn(
-                'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-white transition-colors hover:bg-white/10',
-                text.fontSize === size && 'bg-white/10',
+                'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
+                text.fontSize === size && 'bg-(--wash-annotation-chrome)',
               )}
             >
               {annotationFontSizeLabel(size)}
@@ -899,7 +907,7 @@ function TextStyleBar({
           onClick={() => onChange({ bold: !text.bold })}
           className={cn(
             SHAPE_TOOLBAR_TRIGGER_CLASS,
-            text.bold && 'bg-white/15',
+            text.bold && 'bg-(--wash-annotation-chrome-strong)',
           )}
         >
           <Bold className="size-3.5" aria-hidden />
@@ -914,7 +922,7 @@ function TextStyleBar({
           onClick={() => onChange({ strike: !text.strike })}
           className={cn(
             SHAPE_TOOLBAR_TRIGGER_CLASS,
-            text.strike && 'bg-white/15',
+            text.strike && 'bg-(--wash-annotation-chrome-strong)',
           )}
         >
           <Strikethrough className="size-3.5" aria-hidden />
@@ -950,8 +958,8 @@ function TextStyleBar({
                 setAlignOpen(false)
               }}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-white transition-colors hover:bg-white/10',
-                align === id && 'bg-white/10',
+                'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
+                align === id && 'bg-(--wash-annotation-chrome)',
               )}
             >
               <Icon className="size-3.5" aria-hidden />
@@ -1285,7 +1293,7 @@ function TextAnnotationNode({
         className={cn(
           'absolute min-w-[4rem] box-border',
           canInteract ? 'pointer-events-auto' : 'pointer-events-none',
-          showChrome && 'border-2 border-annotation-selected bg-white',
+          showChrome && 'border-2 border-annotation-selected bg-(--background-annotation-plate)',
           canDrag && !editing && 'cursor-grab active:cursor-grabbing',
         )}
         style={{
