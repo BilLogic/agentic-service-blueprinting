@@ -56,7 +56,7 @@ function classNameString(file: string, needle: string): string {
 
 describe('classListOf', () => {
   it('splits a single class string on whitespace', () => {
-    const cellBadge = classNameString(CELL_BADGE_FILE, 'text-xs text-muted-foreground')
+    const cellBadge = classNameString(CELL_BADGE_FILE, 'text-sm text-foreground')
     expect(classListOf(cellBadge)).toEqual(cellBadge.split(/\s+/).filter(Boolean))
   })
 
@@ -87,8 +87,8 @@ describe('classListHas', () => {
   })
 
   it('is false when any token class is missing', () => {
-    const cellBadge = classNameString(CELL_BADGE_FILE, 'text-xs text-muted-foreground')
-    expect(classListHas(cellBadge, 'text-xs text-muted-foreground')).toBe(true)
+    const cellBadge = classNameString(CELL_BADGE_FILE, 'text-sm text-foreground')
+    expect(classListHas(cellBadge, 'text-sm text-foreground')).toBe(true)
     expect(classListHas(cellBadge, 'text-xs font-medium')).toBe(false)
   })
 })
@@ -99,7 +99,7 @@ describe('classListsIn', () => {
     const lists = classListsIn(source, CELL_BADGE_FILE)
     expect(
       lists.some((site) =>
-        classListHas(site.classes, 'text-xs text-muted-foreground'),
+        classListHas(site.classes, 'text-sm text-foreground'),
       ),
     ).toBe(true)
   })
@@ -149,7 +149,7 @@ describe('classLists', () => {
       sites.some(
         (site) =>
           site.file === CELL_BADGE_FILE &&
-          classListHas(site.classes, 'text-xs text-muted-foreground'),
+          classListHas(site.classes, 'text-sm text-foreground'),
       ),
     ).toBe(true)
     expect(

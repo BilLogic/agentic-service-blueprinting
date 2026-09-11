@@ -77,20 +77,20 @@ export function SliceHeaderBand({
         <div className="flex min-w-0 items-center gap-2">
           {/* No ◇ glyph: the header already says what this is; a decorative
               icon just indents the title away from its own caption. */}
-          <h2 className="min-w-0 truncate text-sm font-semibold">
+          <h2 className="min-w-0 truncate text-sm font-semibold text-foreground">
             {detail.slice.title}
           </h2>
           {/* A raw `kind` enum, not a written label — mono so it reads
               as the stored value it is, on a real filled badge. */}
           <Badge
             variant="secondary"
-            className="shrink-0 border-muted bg-foreground/5 font-mono text-muted-foreground"
+            className="shrink-0 border-muted bg-foreground/5 font-mono text-foreground"
           >
             {detail.slice.kind}
           </Badge>
         </div>
         <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
-          <p className="min-w-0 truncate text-xs text-muted-foreground">
+          <p className="min-w-0 truncate text-sm text-foreground">
             {description || '—'}
           </p>
           {/* Warning reads as a tinted badge rather than amber body copy:
@@ -100,7 +100,7 @@ export function SliceHeaderBand({
               that tint in light and 14:1 in dark, with the edge a quiet
               1.24–1.27:1 off it. */}
           {missingCellCount > 0 && (
-            <span className="shrink-0 rounded-sm border border-border-warning bg-surface-warning px-1.5 py-0.5 text-xs text-foreground">
+            <span className="shrink-0 rounded-sm border border-border-warning bg-surface-warning px-1.5 py-0.5 text-sm text-foreground">
               {missingCellCount} {missingCellCount === 1 ? 'cell' : 'cells'} no
               longer in the blueprint
             </span>

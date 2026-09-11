@@ -246,7 +246,7 @@ export function SliceSlideComposer({
             )}
           >
             <div className="mb-1.5 flex items-center gap-1.5">
-              <span className="shrink-0 text-3xs font-medium tracking-wide text-muted-foreground uppercase">
+              <span className="shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Slide {slideIndex + 1}
               </span>
               {/*
@@ -317,7 +317,7 @@ export function SliceSlideComposer({
                           {described.label}
                         </span>
                         {described.lane ? (
-                          <span className="block truncate text-3xs text-muted-foreground">
+                          <span className="block truncate text-xs text-muted-foreground">
                             {described.lane}
                           </span>
                         ) : null}
@@ -359,7 +359,7 @@ export function SliceSlideComposer({
         <div
           data-drop-slot={`${slides.length}:0`}
           className={cn(
-            'flex h-9 items-center justify-center rounded-lg border border-dashed text-2xs transition-colors',
+            'flex h-9 items-center justify-center rounded-lg border border-dashed text-xs transition-colors',
             slot?.slide === slides.length
               ? 'border-primary text-primary'
               : 'border-border text-muted-foreground',

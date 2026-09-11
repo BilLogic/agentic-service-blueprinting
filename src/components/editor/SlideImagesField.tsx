@@ -226,10 +226,10 @@ export function SlideImagesField({
   return (
     <div className="flex flex-col gap-1" onClick={(event) => event.stopPropagation()}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
           Images
         </span>
-        <span className="text-3xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {showingAll
             ? citedFrames.length > 0
               ? 'showing all cited frames'
@@ -269,7 +269,9 @@ export function SlideImagesField({
                   aria-label={on ? 'Untick this frame' : 'Tick this frame'}
                   onClick={() => toggleCell(frame.cellId)}
                   className={cn(
-                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-3xs leading-none',
+                    // geometry: the tick sits in a size-4 box; the rung's
+                    // line box would overflow it.
+                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-xs leading-none',
                     on ? 'border-ring' : 'border-border',
                   )}
                 >
@@ -312,7 +314,9 @@ export function SlideImagesField({
                   aria-label={on ? 'Untick this image' : 'Tick this image'}
                   onClick={() => toggleUrl(src)}
                   className={cn(
-                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-3xs leading-none',
+                    // geometry: the tick sits in a size-4 box; the rung's
+                    // line box would overflow it.
+                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-xs leading-none',
                     on ? 'border-ring' : 'border-border',
                   )}
                 >
@@ -366,7 +370,7 @@ export function SlideImagesField({
         </IconTooltip>
       </div>
 
-      <p className="text-3xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {showingAll
           ? citedFrames.length > 0
             ? 'The slide shows every cited cell’s frame, and will pick up newly cited cells.'
@@ -376,7 +380,7 @@ export function SlideImagesField({
             : 'This slide shows exactly the images ticked here.'}
       </p>
 
-      {problem ? <p className="text-3xs text-destructive">{problem}</p> : null}
+      {problem ? <p className="text-xs text-destructive">{problem}</p> : null}
     </div>
   )
 }

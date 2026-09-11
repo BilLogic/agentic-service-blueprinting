@@ -94,7 +94,7 @@ function SlideHeaderContent({
             </ScenarioTitleDefinition>
           </div>
           {summary ? (
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               {summary}
             </p>
           ) : null}
