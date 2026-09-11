@@ -25,6 +25,7 @@ import { useCanvasMode } from '@/contexts/canvasModeContext'
 import { SliceMembershipContext } from '@/contexts/sliceMembershipContext'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
+import { sliceFocusCellsKey } from '@/lib/canvasFocusCells'
 import { resolveSliceCells } from '@/lib/sliceCells'
 import { cn } from '@/lib/utils'
 
@@ -284,6 +285,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
             <ServiceOverviewView
               skeletonHoldKey={skeletonHoldKey}
               cameraStateKey={`${mobileShell ? 'mobile' : 'desktop'}:slice:${sliceId}`}
+              focusCellsKey={sliceFocusCellsKey(sliceId)}
               soloScenarioId={scenarioId}
               renderHeader={() => header}
               renderHeaderSkeleton={() => <SliceHeaderBandSkeleton />}
