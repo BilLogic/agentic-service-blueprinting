@@ -6,16 +6,17 @@
  * it MORE available, not less — "don't think of an elephant". The fix is to
  * prompt the positive: state the target behaviour, so the banned one is never
  * spoken. A prohibition earns its place as a hard guardrail that cannot be
- * phrased positively — the secret rule is the whole of that category here —
- * and even then it carries its positive twin.
+ * phrased positively — a rule that holds for every skill, inline in the router
+ * because it binds before any pointer fires, is that category — and even then
+ * it carries its positive twin.
  *
  * This is a RATCHET, not a threshold. A threshold invites arguing about the
  * number and gets switched off the day it blocks someone; a ratchet only asks
- * that the count go down. It is this template's instance of the standard's negation
- * ratchet (BilLogic/agentic-service-blueprinting#139, #135) and is
- * deliberately the same metric, the same five tokens and the same
- * quoted-speech rule as the deployment's `scripts/check-negation-ratchet.mjs`,
- * so that one harness review reads both numbers the same way.
+ * that the count go down. It is the standard's negation ratchet, and the same
+ * file in every repository that carries it — the same metric, the same five
+ * tokens and the same quoted-speech rule — so that one harness review reads
+ * every repository's number the same way. Only the number is each
+ * repository's own.
  *
  * ── WHAT IS COUNTED, AND WHAT IS NOT ────────────────────────────────────────
  *
@@ -32,17 +33,17 @@
  * identifier, and `Say "I don't know"` is an instruction TO do something.
  *
  * SCOPE is the always-loaded tier — the files in `scripts/always-loaded.mjs`,
- * which cost every session their whole length before any task begins. The
- * skills under `skills/` and the rulebook under `references/` load when a
- * pointer fires, and `docs/adr/` is append-only: a decision record saying
- * "X is not reversible" ADDS prohibitions by doing its job, so a ratchet over
- * it would rise by construction.
+ * which cost every session their whole length before any task begins.
+ * Everything else loads when a pointer fires, and `docs/adr/` is append-only:
+ * a decision record saying "X is not reversible" ADDS prohibitions by doing
+ * its job, so a ratchet over it would rise by construction.
  *
  * ── THE RECORDED COUNT ──────────────────────────────────────────────────────
  *
- * `RECORDED` is the baseline, kept here rather than in a JSON file beside it
- * because the corpus is one file: a separate baseline would be a second place
- * to look for a single number. It carries the FILE COUNT as well as the token
+ * `RECORDED` is the baseline, kept in `scripts/repo-config.mjs` with this
+ * repository's other numbers rather than in a JSON file beside this script:
+ * one place to look for every number a check holds this repository to, and a
+ * script that is the same in every repository. It carries the FILE COUNT as well as the token
  * count, and a run measuring fewer files fails — a ratchet fails only when the
  * count RISES, so a corpus that lost a file clears it every time and reports a
  * smaller, greener number while doing so.
@@ -60,6 +61,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
+import { repoConfig } from './repo-config.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
@@ -69,8 +71,8 @@ export const PROHIBITION_TOKENS = ['never', "don't", 'do not', 'cannot', 'must n
 /** What the number is called wherever it is written down or printed. */
 export const METRIC = 'prohibition tokens'
 
-/** The baseline: what the tier scored when this was last recorded (#139). */
-export const RECORDED = { files: 1, tokens: 1 }
+/** The baseline: what the tier scored when this repository last recorded it. */
+export const RECORDED = repoConfig.router.prohibitions
 
 const PROHIBITION = new RegExp(`\\b(${PROHIBITION_TOKENS.join('|')})\\b`, 'gi')
 const stripQuoted = (text) => text.replace(/"[^"\n]*"/g, '""').replace(/`[^`\n]*`/g, '``')
@@ -111,15 +113,16 @@ export function verdict({ files, counts, total }, recorded = RECORDED) {
         `${recorded.files} this count was recorded over.\n` +
         '  -> A ratchet fails only when the count RISES, so a tier that lost a file passes\n' +
         '     every time, and passes with a SMALLER number that reads like progress. If a\n' +
-        '     file left the tier on purpose, re-record RECORDED and say which, and why.',
+        '     file left the tier on purpose, re-record router.prohibitions in\n' +
+        '     scripts/repo-config.mjs and say which, and why.',
     )
   } else if (total > recorded.tokens) {
     failures.push(
       `[negation] ${METRIC} across the ${TIER_NOUN} rose ${recorded.tokens} -> ${total} (${census}).\n` +
         '  -> state the target behaviour instead of banning its opposite. A ban that is a real\n' +
-        '     guardrail keeps its place — the secret rule is that category here — but pair it\n' +
-        '     with the positive so attention lands on what to do. If the rise is deliberate,\n' +
-        '     raise RECORDED.tokens in scripts/check-negation-ratchet.mjs and say why.',
+        '     guardrail keeps its place — a rule that holds for every skill is that category —\n' +
+        '     but pair it with the positive so attention lands on what to do. If the rise is\n' +
+        '     deliberate, raise router.prohibitions.tokens in scripts/repo-config.mjs and say why.',
     )
   }
   const fell = total < recorded.tokens
@@ -128,7 +131,10 @@ export function verdict({ files, counts, total }, recorded = RECORDED) {
     line:
       `[negation] ${total} ${METRIC} (${PROHIBITION_TOKENS.join(' / ')}) across the ` +
       `${TIER_NOUN}, against a recorded ${recorded.tokens} — ${census}` +
-      (fell ? `. Down ${recorded.tokens - total}: lower RECORDED.tokens to ${total}.` : '.'),
+      (fell
+        ? `. Down ${recorded.tokens - total}: lower router.prohibitions.tokens in ` +
+          `scripts/repo-config.mjs to ${total}.`
+        : '.'),
   }
 }
 
