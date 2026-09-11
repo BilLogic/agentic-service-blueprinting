@@ -256,7 +256,12 @@ export function SliceSlideEditor({
           )}
           aria-hidden
         />
-        Storyboard
+        {/*
+          "Slides", not "Storyboard": the storyboard is a lane of the board,
+          and what this sheet holds is slides — its own buttons say "Add
+          slide", "Remove slide 2" and "Keep slide".
+        */}
+        Slides
       </button>
       {collapsed ? null : (
     <div

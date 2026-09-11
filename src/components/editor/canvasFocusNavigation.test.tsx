@@ -40,7 +40,7 @@ describe('dimmed canvas navigation', () => {
     expect(onNavigate).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps a different phase clickable and exposes its dim state', () => {
+  it('keeps a different phase clickable and dims its parts, not itself', () => {
     const onNavigate = vi.fn()
     render(
       <CanvasPhaseSection
@@ -57,14 +57,41 @@ describe('dimmed canvas navigation', () => {
     const phase = screen.getByRole('button', {
       name: 'Open Onboarding phase',
     })
-    // The section is both the dimmed surface and the button, so the dim is
-    // read off the marker it carries rather than off a class. What has to hold
-    // is that dimming never takes the button out of reach.
+    // Dimming never takes the phase out of reach: nothing on it or above it
+    // is inert.
     expect(phase.hasAttribute('inert')).toBe(false)
     expect(phase.closest('[inert]')).toBeNull()
+    // The dim is keyed on this marker, and lands on the section's frame,
+    // badge and scenarios. The section itself carries no opacity: it is the
+    // button, and a translucent button would hold every scenario inside it
+    // at its own opacity, so none of them could lift on hover.
     expect(phase.hasAttribute('data-canvas-focus-dimmed')).toBe(true)
+    expect(phase.className).not.toMatch(/\bopacity-\d/)
 
     phase.click()
     expect(onNavigate).toHaveBeenCalledTimes(1)
+  })
+
+  it("sets the phase badge on the frame's own left edge", () => {
+    const { container } = render(
+      <CanvasPhaseSection
+        title="Onboarding"
+        ordinal={2}
+        phaseId="phase-onboarding"
+        variant="overview"
+      >
+        <div>Phase contents</div>
+      </CanvasPhaseSection>,
+    )
+
+    const frame = container.querySelector<HTMLElement>('[data-phase-frame]')
+    const badge = container.querySelector<HTMLElement>(
+      '[data-phase-title-badge]',
+    )
+    // A label that names a container reads as belonging to it only when their
+    // edges agree — with a wide band, a badge inset from the frame drifts over
+    // the first scenario instead.
+    expect(frame?.style.left).toBe('-120px')
+    expect(badge?.style.left).toBe(frame?.style.left)
   })
 })
