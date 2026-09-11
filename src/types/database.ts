@@ -1303,6 +1303,15 @@ export type Database = {
         Args: { dependency_id: string; name: string | null; note: string | null }
         Returns: undefined
       }
+      update_cell_dependency: {
+        Args: {
+          dependency_id: string
+          kind: string
+          note: string | null
+          target_cell_id: string
+        }
+        Returns: Json
+      }
       set_path_steps: {
         Args: { path_id: string; step_ids: string[] }
         Returns: undefined

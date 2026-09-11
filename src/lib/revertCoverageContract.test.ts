@@ -22,7 +22,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   setCellDependency,
+  updateCellDependency,
   upsertCell,
+  type CellDependencyBefore,
   type CellDependencyRow,
   type CellDependencyWrite,
   type CellWrite,
@@ -99,6 +101,10 @@ const RPC_BACKED = new Set([
   // returned inverse; the inverse of each is itself an RPC.
   'set_placement_touchpoint',
   'restore_placement',
+  // Editing a connection where it sits is one function, and its inverse is
+  // that same function pointed at the row it returned, keyed on the row's own
+  // id — so the default branch calls it back as is.
+  'update_cell_dependency',
   // The inverse of the half of `set_cell_dependency` that UPDATED: the two
   // prose columns, on one row, by id. It exists only to be an undo, like the
   // two names above it, and is reached through the default branch.
@@ -398,6 +404,91 @@ describe('a cell upsert’s inverse follows what it did, not what it is called',
   it('offers no undo for an update whose before-state did not come back', async () => {
     const { client } = written({ id: 'cell-1', inserted: false, previous: null })
     await upsertCell(client, AT)
+
+    const [entry] = sessionSnapshot()
+    expect(entry.revert).toBeUndefined()
+  })
+})
+
+/**
+ * An edit in place is undone by itself, pointed at the row it returned.
+ *
+ * `update_cell_dependency` changes one row's kind, target and note and hands
+ * back the row as it stood. The inverse is the same function fed those values,
+ * keyed on the row's own id — so an edit that moved the target is undone on the
+ * row that moved, not on whatever joins the new pair by the time undo runs.
+ */
+describe('an edit in place is undone by itself, keyed on the row', () => {
+  const edited = (before: CellDependencyBefore | null) => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
+    const client = {
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        calls.push({ fn, args })
+        return { data: fn === 'update_cell_dependency' ? before : null, error: null }
+      },
+    } as unknown as SupabaseClient<Database>
+    return { client, calls }
+  }
+
+  const AS_IT_STOOD: CellDependencyBefore = {
+    id: 'dep-1',
+    source_cell_id: 'cell-a',
+    target_cell_id: 'cell-b',
+    kind: 'leads_to',
+    note: 'what the author wrote',
+  }
+
+  /** Kind, target and note all move, so an inverse that missed one shows. */
+  const THE_EDIT = {
+    dependencyId: 'dep-1',
+    kind: 'enables' as const,
+    targetCellId: 'cell-c',
+    note: null,
+  }
+
+  beforeEach(() => {
+    clearSession()
+  })
+
+  it('records the row as it stood as the inverse', async () => {
+    const { client } = edited(AS_IT_STOOD)
+    await updateCellDependency(client, THE_EDIT)
+
+    const [entry] = sessionSnapshot()
+    expect(entry.fn).toBe('update_cell_dependency')
+    expect(entry.revert).toEqual({
+      fn: 'update_cell_dependency',
+      args: {
+        dependency_id: 'dep-1',
+        kind: 'leads_to',
+        target_cell_id: 'cell-b',
+        note: 'what the author wrote',
+      },
+    })
+  })
+
+  it('puts the edge back where it started when the undo runs', async () => {
+    const { client, calls } = edited(AS_IT_STOOD)
+    await updateCellDependency(client, THE_EDIT)
+
+    const [entry] = sessionSnapshot()
+    await executeRevert(client, entry)
+
+    expect(calls.map((call) => call.fn)).toEqual([
+      'update_cell_dependency',
+      'update_cell_dependency',
+    ])
+    expect(calls[1].args).toEqual({
+      dependency_id: 'dep-1',
+      kind: 'leads_to',
+      target_cell_id: 'cell-b',
+      note: 'what the author wrote',
+    })
+  })
+
+  it('offers no undo when the row as it stood did not come back', async () => {
+    const { client } = edited(null)
+    await updateCellDependency(client, THE_EDIT)
 
     const [entry] = sessionSnapshot()
     expect(entry.revert).toBeUndefined()

@@ -739,8 +739,8 @@ function BlueprintCellDetailPanelBody() {
   }, [blueprints, pathEntry?.pathId, resolvedCellId])
 
   // Only outgoing arrows: this cell owns the ones it is the source of, and
-  // those are the ones it may remove. An incoming arrow belongs to the cell at
-  // the other end, and is edited from there.
+  // those are the ones it may change or remove. An incoming arrow belongs to
+  // the cell at the other end, and is edited from there.
   const existingDependencies = useMemo<ExistingDependency[]>(
     () =>
       connections.outgoing.map((connection) => ({
@@ -752,6 +752,7 @@ function BlueprintCellDetailPanelBody() {
           connection.laneName,
         ),
         kind: connection.linkKind,
+        note: connection.linkNote,
       })),
     [connections.outgoing],
   )
@@ -1063,6 +1064,29 @@ function BlueprintCellDetailPanelBody() {
       scrollBlueprintCellIntoView(cellId)
     })
   }
+
+  /*
+    Edit mode's half of the Dependencies list. Null in view mode, and null is
+    what makes the list read-only — the same component either way. The panel
+    supplies what the rows cannot work out for themselves (who the source is,
+    where an arrow may point, what already exists) plus the one navigation only
+    the panel can perform.
+  */
+  const dependencyEditing =
+    canEdit && dependencySource
+      ? {
+          source: dependencySource,
+          candidates: dependencyCandidates,
+          existing: existingDependencies,
+          // The pencil NAVIGATES: the panel swaps to the cell that owns the
+          // arrow, exactly as clicking any other row here does. Not a second
+          // panel, and not an inline editor for another cell's row.
+          onEditFromOwner: (cellId: string) => {
+            setActiveTab('dependencies')
+            handleConnectionSelect(cellId)
+          },
+        }
+      : null
 
   const handleTechSelect = (cellId: string, techItem: string) => {
     const pathId = pathEntry?.pathId
@@ -1466,9 +1490,13 @@ function BlueprintCellDetailPanelBody() {
                   {activeTab === 'dependencies' ? (
                     <>
                       <CellDependencySections
+                        // Keyed on the cell, so the row whose note field is
+                        // open does not carry over to the next cell.
+                        key={resolvedCellId ?? 'no-cell'}
                         connections={connections}
                         otherTech={otherTechEntries}
                         selectedLaneRowPosition={selectedLaneRowPosition}
+                        editing={dependencyEditing}
                         onCellSelect={handleConnectionSelect}
                         onTechSelect={handleTechSelect}
                       />

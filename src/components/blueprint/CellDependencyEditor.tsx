@@ -1,16 +1,22 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { Loader2, Pencil, X } from 'lucide-react'
 import {
   SegmentedControl,
   SegmentedControlItem,
 } from '@/components/editor/SegmentedControl'
 import { IconTooltip } from '@/components/editor/IconTooltip'
+import { OptionSelect } from '@/components/blueprint/OptionSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { clearCellDependency, setCellDependency } from '@/lib/authoringRpc'
 import {
+  clearCellDependency,
+  setCellDependency,
+  updateCellDependency,
+} from '@/lib/authoringRpc'
+import {
+  DEPENDENCY_EDIT_TEXT,
   DEPENDENCY_KINDS,
   DEPENDENCY_KIND_HINTS,
   DEPENDENCY_KIND_LABELS,
@@ -19,13 +25,346 @@ import {
   type DraftDependency,
 } from '@/lib/dependencyValidation'
 import type { DependencyKind } from '@/lib/authoringRpc'
-import { errorMessage } from '@/lib/utils'
+import { cn, errorMessage } from '@/lib/utils'
 
 export type ExistingDependency = {
   id: string
   targetCellId: string
   targetLabel: string
   kind: string
+  note: string | null
+}
+
+/**
+ * What a connection row needs in order to be edited where it sits.
+ *
+ * OWNERSHIP. A cell edits only the connections it is the SOURCE of. An
+ * arriving connection belongs to the cell at the other end and is edited from
+ * there, which is what `InboundRowPencil` is: not a statement that the row is
+ * uneditable, but the way to go and edit it.
+ *
+ * Candidates come from the caller rather than a query here: the panel already
+ * holds the version's cells, and re-reading them would be a second round trip
+ * for data on screen.
+ */
+export type DependencyEditing = {
+  source: DependencyEndpoint
+  candidates: DependencyEndpoint[]
+  /** Every edge this cell is the source of — the duplicate check reads it. */
+  existing: ExistingDependency[]
+  /** Which row has its note field open; one at a time, or null. */
+  activeDependencyId: string | null
+  onActivate: (dependencyId: string | null) => void
+  /** Select the cell an arriving connection belongs to. */
+  onEditFromOwner: (cellId: string) => void
+}
+
+const KIND_OPTIONS = DEPENDENCY_KINDS.map((kind) => ({
+  value: kind,
+  label: DEPENDENCY_KIND_LABELS[kind],
+}))
+
+/*
+  Two selects on one line, in a panel a few hundred pixels wide. Not the
+  segmented control the add form wears: both kind words plus a target select
+  do not fit on one line, and the row has to stay one line or it is not the
+  row the reader was already looking at.
+*/
+const KIND_SELECT_CLASS = 'h-7 w-[5.75rem] shrink-0 gap-0.5 px-1.5 text-xs'
+const TARGET_SELECT_CLASS = 'h-7 min-w-0 flex-1 gap-0.5 px-1.5 text-xs'
+
+/** Indents the note field and the kind hint under the row they belong to. */
+const ROW_DETAIL_INDENT = 'pl-1'
+
+function refresh() {
+  // Arrows are drawn from the grid read, so the canvas has to re-read —
+  // invalidating a panel-local query would leave the line on screen.
+  invalidateQueries('service-phases')
+}
+
+/**
+ * The trailing control on an editable row: remove, or — while its write is in
+ * flight — the row's own spinner.
+ *
+ * Per row, deliberately. A tab-wide busy state would freeze seven rows because
+ * the eighth is saving, and a tab-wide error would put the message as far from
+ * the row that failed as the panel allows.
+ */
+function RowAction({
+  busy,
+  label,
+  onClick,
+}: {
+  busy: boolean
+  label: string
+  onClick: () => void
+}) {
+  if (busy) {
+    return (
+      <span
+        className="flex size-7 shrink-0 items-center justify-center"
+        role="status"
+        aria-label="Saving"
+      >
+        <Loader2 className="size-3 animate-spin text-muted-foreground" aria-hidden />
+      </span>
+    )
+  }
+  return (
+    <IconTooltip label={label}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        aria-label={label}
+        onClick={onClick}
+      >
+        <X className="size-3" />
+      </Button>
+    </IconTooltip>
+  )
+}
+
+/** The kind hint, attached to the control it describes and nothing else. */
+function KindHint({ kind }: { kind: DependencyKind }) {
+  return (
+    <p className={cn('text-xs text-muted-foreground', ROW_DETAIL_INDENT)}>
+      {DEPENDENCY_KIND_HINTS[kind]}
+    </p>
+  )
+}
+
+/**
+ * The one prose field a dependency has, labelled — the same words the add form
+ * uses, because it is the same field.
+ */
+function NoteField({
+  value,
+  disabled,
+  onChange,
+  onCommit,
+}: {
+  value: string
+  disabled: boolean
+  onChange: (next: string) => void
+  onCommit: () => void
+}) {
+  return (
+    <label className={cn('flex flex-col gap-1', ROW_DETAIL_INDENT)}>
+      <span className="text-xs font-medium text-muted-foreground">
+        {DEPENDENCY_EDIT_TEXT.noteLabel}
+        <span className="font-normal text-muted-foreground/70">
+          {' '}
+          {DEPENDENCY_EDIT_TEXT.noteOptional}
+        </span>
+      </span>
+      <Input
+        value={value}
+        disabled={disabled}
+        placeholder={DEPENDENCY_EDIT_TEXT.notePlaceholder}
+        className="h-7 text-xs"
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onCommit}
+      />
+    </label>
+  )
+}
+
+/** The message goes under the row that produced it, never at the top of a tab. */
+function RowError({ message }: { message: string }) {
+  return (
+    <p
+      className={cn('text-xs text-destructive', ROW_DETAIL_INDENT)}
+      data-dependency-row-error=""
+    >
+      {message}
+    </p>
+  )
+}
+
+/**
+ * One connection this cell owns, as fields, where the row already sits.
+ *
+ * Kind and target save the moment they change; the note saves on blur, because
+ * a round trip per keystroke is a write per letter of a sentence.
+ *
+ * Every one of those goes through `updateCellDependency`, and it has to.
+ * `setCellDependency` upserts on (source, target, kind): a new kind or a new
+ * target is a new conflict key, so editing either through it INSERTS a second
+ * row and orphans the first, which the board keeps drawing.
+ *
+ * The note travels on EVERY write, including the two that are not about it.
+ * The function takes all three or none — an update told nothing about the note
+ * would clear it — so changing a kind carries the sentence along unchanged.
+ */
+export function DependencyEditRow({
+  dependencyId,
+  kind,
+  targetCellId,
+  note,
+  editing,
+}: {
+  dependencyId: string
+  kind: DependencyKind
+  targetCellId: string
+  note: string | null
+  editing: DependencyEditing
+}) {
+  const { client } = useSupabase()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [draftNote, setDraftNote] = useState(note ?? '')
+  const [seed, setSeed] = useState(note ?? '')
+
+  // The stored note changed under us — a save landed, or another session wrote
+  // it. Re-seed rather than keep showing a draft of a value that is gone.
+  if (seed !== (note ?? '')) {
+    setSeed(note ?? '')
+    setDraftNote(note ?? '')
+  }
+
+  const active = editing.activeDependencyId === dependencyId
+
+  const write = async (next: {
+    kind: DependencyKind
+    targetCellId: string
+    note: string
+  }) => {
+    if (!client || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await updateCellDependency(client, {
+        dependencyId,
+        kind: next.kind,
+        targetCellId: next.targetCellId,
+        note: next.note.trim() || null,
+      })
+      refresh()
+    } catch (writeError) {
+      setError(errorMessage(writeError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async () => {
+    if (!client || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await clearCellDependency(client, dependencyId)
+      refresh()
+    } catch (removeError) {
+      setError(errorMessage(removeError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const targetLabel =
+    editing.candidates.find((entry) => entry.cellId === targetCellId)?.label ??
+    targetCellId
+  const targetOptions = editing.candidates
+    .filter((entry) => entry.cellId !== editing.source.cellId)
+    .map((entry) => ({ value: entry.cellId, label: entry.label }))
+
+  return (
+    <li
+      className="border-b border-muted px-2 py-1.5 last:border-0"
+      data-dependency-row={dependencyId}
+      onFocusCapture={() => editing.onActivate(dependencyId)}
+      onPointerDownCapture={() => editing.onActivate(dependencyId)}
+    >
+      {/* Dimmed while its own write is in flight. The rest of the list stays
+          live — nothing about this row's save makes the next one untrue. */}
+      <div
+        className={cn(
+          'flex flex-col gap-1.5 transition-opacity',
+          busy ? 'opacity-60' : undefined,
+        )}
+      >
+        <div className="flex items-center gap-1.5">
+          <OptionSelect
+            value={kind}
+            options={KIND_OPTIONS}
+            disabled={busy}
+            className={KIND_SELECT_CLASS}
+            aria-label={`Connection kind for ${targetLabel}`}
+            onChange={(next) => {
+              editing.onActivate(dependencyId)
+              void write({ kind: next, targetCellId, note: draftNote })
+            }}
+          />
+          <OptionSelect
+            value={targetCellId}
+            options={targetOptions}
+            disabled={busy}
+            className={TARGET_SELECT_CLASS}
+            aria-label={`Connects to ${targetLabel}`}
+            onChange={(next) => {
+              editing.onActivate(dependencyId)
+              void write({ kind, targetCellId: next, note: draftNote })
+            }}
+          />
+          <RowAction
+            busy={busy}
+            label={`Remove the connection to ${targetLabel}`}
+            onClick={() => void remove()}
+          />
+        </div>
+        {active ? <KindHint kind={kind} /> : null}
+        {active ? (
+          <NoteField
+            value={draftNote}
+            disabled={busy}
+            onChange={setDraftNote}
+            onCommit={() => {
+              if (draftNote.trim() === (note ?? '')) return
+              void write({ kind, targetCellId, note: draftNote })
+            }}
+          />
+        ) : null}
+        {error ? <RowError message={error} /> : null}
+      </div>
+    </li>
+  )
+}
+
+/**
+ * A connection this cell does not own, and the way to go and edit it.
+ *
+ * A control, not a sentence. "Edited from the other cell" would state a fact
+ * that only ever interests someone who wants to change the row, and the pencil
+ * is what that person needs.
+ */
+export function InboundRowPencil({
+  ownerCellId,
+  ownerLabel,
+  onEditFromOwner,
+}: {
+  ownerCellId: string
+  ownerLabel: string
+  onEditFromOwner: (cellId: string) => void
+}) {
+  const label = `Edit in “${ownerLabel}”`
+  return (
+    <span className="absolute top-1 right-1">
+      <IconTooltip label={label}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-foreground"
+          aria-label={label}
+          onClick={() => onEditFromOwner(ownerCellId)}
+        >
+          <Pencil className="size-3" />
+        </Button>
+      </IconTooltip>
+    </span>
+  )
 }
 
 /**
@@ -36,9 +375,11 @@ export type ExistingDependency = {
  * unreadable, and most "this depends on that" facts are constraints rather
  * than handoffs — worth recording, not worth drawing.
  *
- * Candidates come from the caller rather than a query here: the panel already
- * holds the version's cells, and re-reading them would be a second round trip
- * for data on screen.
+ * The form adds, and only adds. It used to list the cell's outgoing
+ * connections above itself, each with a remove button, which put every edge on
+ * the tab twice once the rows became editable where they sit. Removing and
+ * changing a connection are the row's own controls now; `existing` is still
+ * read, by the duplicate check.
  */
 export function CellDependencyEditor({
   source,
@@ -65,12 +406,6 @@ export function CellDependencyEditor({
     candidates.find((entry) => entry.cellId === draft.targetCellId) ?? null
   const problems = validateDraftDependency(draft, source, target, existing)
 
-  const refresh = () => {
-    // Arrows are drawn from the grid read, so the canvas has to re-read —
-    // invalidating a panel-local query would leave the line on screen.
-    invalidateQueries('service-phases')
-  }
-
   const handleAdd = async () => {
     if (!client || busy || problems.length > 0 || !draft.targetCellId) return
     setBusy(true)
@@ -91,53 +426,8 @@ export function CellDependencyEditor({
     }
   }
 
-  const handleRemove = async (dependencyId: string) => {
-    if (!client || busy) return
-    setBusy(true)
-    setError(null)
-    try {
-      await clearCellDependency(client, dependencyId)
-      refresh()
-    } catch (removeError) {
-      setError(errorMessage(removeError))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <div className="flex flex-col gap-3" data-cell-dependency-editor="">
-      {existing.length > 0 ? (
-        <ul className="flex flex-col gap-1">
-          {existing.map((entry) => (
-            <li
-              key={entry.id}
-              className="flex items-center gap-2 text-xs text-foreground/80"
-            >
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
-                {DEPENDENCY_KIND_LABELS[entry.kind as DependencyKind] ??
-                  entry.kind}
-              </span>
-              <span className="min-w-0 flex-1 truncate">{entry.targetLabel}</span>
-              <IconTooltip
-                label={`Remove the connection to ${entry.targetLabel}`}
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove connection to ${entry.targetLabel}`}
-                  disabled={busy}
-                  onClick={() => handleRemove(entry.id)}
-                >
-                  <X className="size-3" />
-                </Button>
-              </IconTooltip>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
       {/* One control, two positions — the same track-and-raised-square
           vocabulary as the View/Edit switch, because that is what this is:
           a mode for the connection, not two competing buttons. */}
@@ -165,7 +455,7 @@ export function CellDependencyEditor({
           }))
         }
         className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
-        aria-label="Connect to"
+        aria-label={DEPENDENCY_EDIT_TEXT.connectTo}
       >
         <option value="">Pick a cell…</option>
         {candidates
@@ -180,13 +470,11 @@ export function CellDependencyEditor({
       {/* The one prose field, and it writes the column the row reads back.
           It used to write `name` — specified as a badge, the word on the
           arrow — while the row drew `note`, so a sentence typed here landed
-          somewhere nothing renders. The placeholder is deliberately general:
-          "why this edge exists" is narrower than what authors actually write,
-          and a narrow frame is what sent them to the wrong field. */}
+          somewhere nothing renders. */}
       <Input
         value={draft.note}
-        aria-label="Note (optional)"
-        placeholder="Anything worth knowing about this dependency"
+        aria-label={`${DEPENDENCY_EDIT_TEXT.noteLabel} ${DEPENDENCY_EDIT_TEXT.noteOptional}`}
+        placeholder={DEPENDENCY_EDIT_TEXT.notePlaceholder}
         className="h-7 text-xs"
         onChange={(event) =>
           setDraft((current) => ({ ...current, note: event.target.value }))

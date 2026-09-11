@@ -2462,3 +2462,14 @@ begin
   end if;
 end
 $proof$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000226000000_a_dependency_can_be_edited_where_it_sits.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the grants name the Supabase roles. The function is core; who may
+-- call it is this deployment's enforcement of the contract, on the same terms
+-- as every other authoring write.
+
+revoke execute on function public.update_cell_dependency(uuid, text, uuid, text) from anon;
+grant execute on function public.update_cell_dependency(uuid, text, uuid, text) to authenticated;

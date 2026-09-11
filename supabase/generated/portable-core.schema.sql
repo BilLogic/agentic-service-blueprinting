@@ -2492,6 +2492,86 @@ $$;
 COMMENT ON FUNCTION public.sync_placement_resources(p_placement_id uuid, p_rows jsonb) IS 'The touchpoint''s list at one cell, replaced in order: delete the rows not named, update the named ones (name, url, position — never kind or featured), insert the rest. Refuses another placement''s id and a placement that is gone.';
 
 --
+-- Name: update_cell_dependency(uuid, text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_cell_dependency(dependency_id uuid, kind text, target_cell_id uuid, note text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  previous public.cell_dependencies;
+  source_path uuid;
+  target_path uuid;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint'
+      using errcode = '42501';
+  end if;
+
+  -- Locked, because every check below is read-then-write: without the lock
+  -- two concurrent edits of one row can both pass the uniqueness check, and
+  -- the second meets the constraint instead of the sentence.
+  select d.* into previous
+    from public.cell_dependencies d
+   where d.id = update_cell_dependency.dependency_id
+   for update;
+  if previous.id is null then
+    raise exception 'That connection no longer exists';
+  end if;
+
+  -- The checks `set_cell_dependency` makes, asked of the row's own source
+  -- rather than of an argument.
+  if update_cell_dependency.kind not in ('leads_to', 'enables') then
+    raise exception 'Unknown dependency kind %', update_cell_dependency.kind;
+  end if;
+  if previous.source_cell_id = update_cell_dependency.target_cell_id then
+    raise exception 'A cell cannot depend on itself';
+  end if;
+
+  select c.path_id into source_path from public.cells c
+    where c.id = previous.source_cell_id;
+  select c.path_id into target_path from public.cells c
+    where c.id = update_cell_dependency.target_cell_id;
+  if source_path is null or target_path is null then
+    raise exception 'Both cells must exist';
+  end if;
+  -- Arrows are drawn within one path's grid; a cross-path arrow has nowhere
+  -- to render and is what validate_ir.py rejects on import.
+  if source_path <> target_path then
+    raise exception 'Both cells must be in the same path of the journey';
+  end if;
+
+  -- The one check the sibling does not need, because its upsert absorbs the
+  -- collision and this update meets it. Said in the panel's words rather than
+  -- as a constraint name.
+  if exists (
+    select 1 from public.cell_dependencies d
+     where d.source_cell_id = previous.source_cell_id
+       and d.target_cell_id = update_cell_dependency.target_cell_id
+       and d.kind = update_cell_dependency.kind
+       and d.id <> previous.id
+  ) then
+    raise exception 'That connection already exists';
+  end if;
+
+  update public.cell_dependencies d
+     set target_cell_id = update_cell_dependency.target_cell_id,
+         kind = update_cell_dependency.kind,
+         note = nullif(btrim(update_cell_dependency.note), '')
+   where d.id = previous.id;
+
+  return jsonb_build_object(
+    'id', previous.id,
+    'source_cell_id', previous.source_cell_id,
+    'target_cell_id', previous.target_cell_id,
+    'kind', previous.kind,
+    'note', previous.note
+  );
+end;
+$$;
+
+--
 -- Name: update_scenario_layout(uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
