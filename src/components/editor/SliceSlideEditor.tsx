@@ -76,6 +76,27 @@ function SlideSheetDivider() {
   )
 }
 
+/**
+ * Whether anything between `from` and `stop` can still scroll the way a
+ * vertical wheel of `deltaY` points — a card, or a caption's textarea.
+ */
+function scrollsVertically(
+  from: Element | null,
+  stop: Element,
+  deltaY: number,
+): boolean {
+  for (let node = from; node && node !== stop; node = node.parentElement) {
+    if (!(node instanceof HTMLElement)) continue
+    if (node.scrollHeight <= node.clientHeight) continue
+    const room =
+      deltaY > 0
+        ? node.scrollHeight - node.clientHeight - node.scrollTop
+        : node.scrollTop
+    if (room > 1) return true
+  }
+  return false
+}
+
 export function SliceSlideEditor({
   slides,
   activeSlide,
@@ -222,8 +243,30 @@ export function SliceSlideEditor({
       </button>
       {collapsed ? null : (
     <div
-      className="flex shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2"
-      style={{ maxHeight: sheetHeight }}
+      // `height`, not `maxHeight`: the divider sets the sheet's size the way
+      // the sidebar's edge sets the sidebar's. A maximum let the strip stop
+      // at its tallest card, so a drag past that moved nothing.
+      //
+      // No sideways scroll bar: a trackpad swipes across natively, and a
+      // mouse wheel is turned sideways below.
+      className="blueprint-scroll flex shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2"
+      style={{ height: sheetHeight }}
+      onWheel={(event) => {
+        // A wheel that is mostly sideways is already scrolling the strip.
+        if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return
+        // A card with somewhere left to go keeps the wheel; at its end the
+        // turn passes to the strip, the way nested page scrolling hands off.
+        if (
+          scrollsVertically(
+            event.target as Element,
+            event.currentTarget,
+            event.deltaY,
+          )
+        ) {
+          return
+        }
+        event.currentTarget.scrollLeft += event.deltaY
+      }}
     >
       {slides.map((slide, index) => {
         const slideProblems = problems.filter(
@@ -234,11 +277,12 @@ export function SliceSlideEditor({
         return (
           <div
             key={index}
+            data-slide-card=""
             className={cn(
-              // min-h-0 + overflow-hidden: a card taller than the strip must
-              // clip inside itself, not paint its caption over the next
-              // row's captions.
-              'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-1.5 overflow-hidden rounded-lg border bg-card p-2 transition-colors',
+              // min-h-0 + overflow-y-auto: a card taller than the sheet
+              // scrolls inside itself. Clipping it hid the images and the
+              // caption with no way to reach them.
+              'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-1.5 overflow-y-auto overscroll-y-contain rounded-lg border bg-card p-2 transition-colors',
               isActive ? 'border-primary' : 'border-border',
               dropTarget === index && 'ring-2 ring-primary/40',
             )}
@@ -306,7 +350,9 @@ export function SliceSlideEditor({
               />
             </div>
 
-            <ul className="flex max-h-24 min-h-8 shrink-0 flex-col gap-1 overflow-y-auto">
+            {/* No scroll box of its own: the card scrolls, and a capped list
+                inside it was a second box answering the same wheel. */}
+            <ul className="flex min-h-8 shrink-0 flex-col gap-1">
               {slide.cells.map((cell, cellIndex) => (
                 <li
                   key={cell}
