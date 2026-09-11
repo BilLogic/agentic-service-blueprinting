@@ -78,6 +78,7 @@ function mountEditor(slides: DraftSlide[]) {
         savedSlideFor={() => null}
         onActivate={() => {}}
         onChange={() => {}}
+        onRemoveCells={() => {}}
       />
     </TooltipProvider>,
   )

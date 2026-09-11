@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { SliceSlideEditor } from '@/components/editor/SliceSlideEditor'
+import { SlideRemovalDialog } from '@/components/editor/SlideRemovalDialog'
 import { CellPickContext, type CellPickApi } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
@@ -18,6 +19,12 @@ import {
   validateDraftSlice,
   type DraftSlide,
 } from '@/lib/sliceValidation'
+import type { SlideWithImageSet } from '@/lib/slideImages'
+import {
+  settleSlides,
+  toggleSlideCell,
+  type SlideRemoval,
+} from '@/lib/slideRemoval'
 import { errorMessage } from '@/lib/utils'
 
 /** The saved slice, as slides the editor can mutate. */
@@ -77,30 +84,48 @@ export function SliceEditSession({
     [detail.slice, slides],
   )
 
-  const toggle = useCallback(
-    (cellId: string) => {
-      setSlides((current) => {
-        const owner = current.findIndex((slide) => slide.cells.includes(cellId))
-        if (owner !== -1) {
-          return current
-            .map((slide, index) =>
-              index === owner
-                ? { ...slide, cells: slide.cells.filter((id) => id !== cellId) }
-                : slide,
-            )
-            .filter((slide) => slide.cells.length > 0)
-        }
-        // No slides yet (every one was emptied) — the click starts one.
-        if (current.length === 0) {
-          return [{ cells: [cellId], title: '', caption: '' }]
-        }
-        const target = Math.min(activeSlide, current.length - 1)
-        return current.map((slide, index) =>
-          index === target ? { ...slide, cells: [...slide.cells, cellId] } : slide,
-        )
-      })
+  // A change waiting on the removal confirmation: what stays if it is
+  // confirmed, and the slides it would take along with their content.
+  const [pending, setPending] = useState<{
+    kept: DraftSlide[]
+    lost: SlideRemoval[]
+  } | null>(null)
+
+  // Uploads live on the saved row, not the draft — see `savedSlideFor`.
+  const uploadsFor = useCallback(
+    (slide: DraftSlide) => {
+      if (!slide.id) return 0
+      const saved = savedSlideFor(slide.id) as SlideWithImageSet | null
+      return (
+        saved?.slide_images?.filter((member) => member.image_url).length ?? 0
+      )
     },
-    [activeSlide],
+    [savedSlideFor],
+  )
+
+  // Every way cells leave slides comes through here: the strip's drags and
+  // ✕, and the canvas's clicks and clear. A slide the change empties goes;
+  // one that carries a caption or an upload goes only once that is confirmed.
+  const takeCells = useCallback(
+    (next: DraftSlide[]) => {
+      const { kept, lost } = settleSlides(slides, next, uploadsFor)
+      if (lost.length > 0) setPending({ kept, lost })
+      else setSlides(kept)
+    },
+    [slides, uploadsFor],
+  )
+
+  // One settle for the whole batch, so a multi-pick that empties two slides
+  // asks once, about both.
+  const toggle = useCallback(
+    (cellIds: readonly string[]) =>
+      takeCells(
+        cellIds.reduce(
+          (current, cellId) => toggleSlideCell(current, cellId, activeSlide),
+          slides,
+        ),
+      ),
+    [activeSlide, slides, takeCells],
   )
 
   const pick = useMemo<CellPickApi>(() => {
@@ -117,11 +142,11 @@ export function SliceEditSession({
       orderOf: (cellId) => order.get(cellId),
       // Editing a slice is always additive-by-toggle: a plain click adding a
       // cell must not wipe the slides already built.
-      pick: (cellId) => toggle(cellId),
-      pickMany: (cellIds) => cellIds.forEach(toggle),
-      clear: () => setSlides([]),
+      pick: (cellId) => toggle([cellId]),
+      pickMany: (cellIds) => toggle(cellIds),
+      clear: () => takeCells(slides.map((slide) => ({ ...slide, cells: [] }))),
     }
-  }, [slides, toggle])
+  }, [slides, takeCells, toggle])
 
   const handleSave = async () => {
     if (!client || busy || problems.length > 0) return
@@ -189,8 +214,18 @@ export function SliceEditSession({
             savedSlideFor={savedSlideFor}
             onActivate={setActiveSlide}
             onChange={setSlides}
+            onRemoveCells={takeCells}
           />
         ) : null}
+
+        <SlideRemovalDialog
+          lost={pending?.lost ?? null}
+          onKeep={() => setPending(null)}
+          onRemove={() => {
+            if (pending) setSlides(pending.kept)
+            setPending(null)
+          }}
+        />
 
         <div className="flex shrink-0 items-center gap-2 border-t border-border bg-sidebar px-3 py-1.5">
           {/* Problems only. The old standing instruction sentence was chrome
