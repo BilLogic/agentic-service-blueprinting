@@ -28,7 +28,10 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground",
+        // A badge DESCRIBES. On a primary fill it reads as an action the
+        // person could take, and the board is full of them — so the resting
+        // tag is page-adjacent with caption ink and the control edge.
+        default: "border-input bg-card text-muted-foreground",
         secondary: "bg-secondary text-secondary-foreground",
         destructive:
           "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40",

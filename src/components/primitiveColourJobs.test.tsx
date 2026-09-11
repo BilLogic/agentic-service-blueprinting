@@ -6,6 +6,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { InputGroup } from '@/components/ui/input-group'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { badgeVariants } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 /*
  * WHICH COLOUR JOB each shared primitive applies — the class, not the hex.
@@ -35,9 +44,13 @@ function hasResting(classes: string, utility: string): boolean {
   return classes.split(/\s+/).includes(utility)
 }
 
+/**
+ * Read off the DOCUMENT, not the render container: the floating primitives
+ * portal out of it, and a container-scoped query silently finds nothing.
+ */
 function classesOf(slot: string, ui: React.ReactElement): string {
-  const { container } = render(ui)
-  const node = container.querySelector(`[data-slot="${slot}"]`)
+  render(ui)
+  const node = document.querySelector(`[data-slot="${slot}"]`)
   if (!node) throw new Error(`no [data-slot="${slot}"] rendered`)
   return node.className
 }
@@ -137,5 +150,74 @@ describe('a switch uses named colours', () => {
     const classes = classesOf('switch-thumb', <Switch />)
     expect(classes).toContain('ring-border')
     expect(classes).not.toContain('ring-black/')
+  })
+})
+
+describe('floating chrome sits on the page', () => {
+  it('seats a tooltip on the page, not on an inverted slab', async () => {
+    const classes = classesOf(
+      'tooltip-content',
+      <TooltipProvider>
+        <Tooltip open>
+          <TooltipTrigger>trigger</TooltipTrigger>
+          <TooltipContent>What this does</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    )
+    expect(hasResting(classes, 'bg-background')).toBe(true)
+    expect(hasResting(classes, 'text-foreground')).toBe(true)
+    // The inverted pair this replaced: a slab of ink with contrast text reads
+    // as a different surface from everything else that floats.
+    expect(hasResting(classes, 'bg-foreground')).toBe(false)
+    expect(hasResting(classes, 'text-contrast')).toBe(false)
+    // Page-coloured on a page needs its own edge, or it has none at all.
+    expect(classes).toContain('ring-border-overlay')
+  })
+
+  it('seats a dialog on the page surface, not the card plate', () => {
+    const classes = classesOf(
+      'dialog-content',
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Title</DialogTitle>
+        </DialogContent>
+      </Dialog>,
+    )
+    expect(hasResting(classes, 'bg-background')).toBe(true)
+    expect(hasResting(classes, 'bg-card')).toBe(false)
+  })
+})
+
+describe('badges and buttons pick the same jobs', () => {
+  it('makes the default badge a quiet tag', () => {
+    const classes = badgeVariants({ variant: 'default' })
+    expect(classes).toContain('bg-card')
+    expect(classes).toContain('text-muted-foreground')
+    expect(classes).toContain('border-input')
+    expect(hasResting(classes, 'bg-primary')).toBe(false)
+  })
+
+  it('keeps an outline button page-coloured in dark as well as light', () => {
+    // The dark-mode wash this dropped made an outline button read as a filled
+    // one at night: the variant changed meaning with the lights.
+    const classes = buttonVariants({ variant: 'outline' })
+    expect(hasResting(classes, 'bg-background')).toBe(true)
+    expect(classes).not.toContain('dark:bg-input/30')
+    expect(classes).not.toContain('dark:hover:bg-input/50')
+  })
+
+  it('lifts a ghost button on hover with the accent, not the resting elevation', () => {
+    const classes = buttonVariants({ variant: 'ghost' })
+    expect(classes).toContain('hover:bg-accent')
+    expect(classes).not.toContain('hover:bg-muted')
+  })
+
+  it('fills a destructive button solid', () => {
+    // A 10% tint reads as a badge describing a risk rather than a button that
+    // performs one.
+    const classes = buttonVariants({ variant: 'destructive' })
+    expect(hasResting(classes, 'bg-destructive')).toBe(true)
+    expect(hasResting(classes, 'text-destructive-foreground')).toBe(true)
+    expect(classes).not.toContain('bg-destructive/10')
   })
 })

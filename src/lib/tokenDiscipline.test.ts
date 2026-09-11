@@ -334,11 +334,6 @@ const ABSOLUTE_EXEMPT_FILES: ReadonlyArray<{ file: string; because: string }> = 
       'upstream shadcn overlay scrim (components.json — the CLI owns this file)',
   },
   {
-    file: 'components/ui/sheet.tsx',
-    because:
-      'upstream shadcn overlay scrim (components.json — the CLI owns this file)',
-  },
-  {
     file: 'lib/filterToolbarButton.ts',
     because:
       'a 4% black hairline on a raised plate, which is a shadow written as a ring rather than an edge colour — the neutral semantics invert and a shadow must not, so it darkens in light and disappears in dark, which is what a shadow does',

@@ -18,12 +18,18 @@ const buttonVariants = cva(
         // resting token; no `--*-hover` state token exists.
         default:
           "rounded-md border-primary-border bg-primary text-primary-foreground shadow-none hover:bg-primary/90",
+        // Page-coloured in BOTH themes. The dark-mode `input/30` wash this
+        // dropped made an outline button read as a filled one at night, so
+        // the variant changed meaning with the lights.
         outline:
-          "border-border bg-background shadow-sm hover:bg-muted hover:text-foreground hover:shadow aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-border bg-background shadow-sm hover:bg-accent hover:text-foreground hover:shadow aria-expanded:bg-accent aria-expanded:text-foreground dark:border-input",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground aria-pressed:bg-secondary/60 aria-pressed:text-secondary-foreground aria-pressed:shadow-sm aria-pressed:ring-2 aria-pressed:ring-ring/40",
-        // Pressed ≠ hover. A ghost toggle's hover fill is `--muted`, the
-        // neutral elevation; its PRESSED state is the app's *selected*
+        // Pressed ≠ hover. A ghost toggle's hover fill is `--accent`, the
+        // lift every other quiet hover in this system uses — it was `--muted`,
+        // which is the elevation a RESTING plate sits at, so a hovered ghost
+        // button looked like a raised panel rather than a button answering the
+        // pointer. Its PRESSED state is the app's *selected*
         // vocabulary — the `--sidebar-selected` brand tint (semantic.css
         // "Sidebar selection language"), same as `data-active` rows in
         // `sidebar.tsx` and the rail's selected buttons. The
@@ -39,9 +45,12 @@ const buttonVariants = cva(
         // weight is reserved on this component rather than spent on resting
         // labels.
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground aria-pressed:bg-sidebar-selected aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:hover:bg-sidebar-selected aria-pressed:hover:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground aria-pressed:bg-sidebar-selected aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:hover:bg-sidebar-selected aria-pressed:hover:text-foreground",
+        // SOLID. A 10% tint reads as a badge describing a risk rather than a
+        // button that performs one, and this is the variant where being
+        // unmistakable is the point.
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
         // ONE variant, two shapes. There used to be a second entry here whose
         // class string was byte-for-byte identical to this one, so a touchpoint
