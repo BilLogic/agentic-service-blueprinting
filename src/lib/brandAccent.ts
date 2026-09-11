@@ -19,7 +19,7 @@ import { hexToRgb, oklchFromSrgb } from '@/lib/oklch'
  * derived from the ring, and — through the harmony pull in `semantic.css` —
  * the status hues, which lean a fraction of the way toward the brand.
  *
- * Every one of those except the last is multiplied by a CHROMA, and THIS KIT
+ * Every one of those except the last is multiplied by a CHROMA, and THIS TEMPLATE
  * SHIPS EVERY CHROMA AT ZERO. `themes/light.css` and `themes/dark.css` set
  * `--chroma: 0` and `--primary-chroma: 0`, and the `--brand-*` ramp beside them
  * is greyscale HSL literals that no hue dial touches. So against the template's
@@ -31,7 +31,7 @@ import { hexToRgb, oklchFromSrgb } from '@/lib/oklch'
  * That is not a defect in this module, it is the contract the theme files
  * already state: "`--hue` must stay the OKLCH hue of that ramp". An accent is a
  * DIAL ON A RAMP, not a paint job, and rebranding is this field plus the ramp
- * beside it. A deployment that mounts this package imports the kit's
+ * beside it. A deployment that mounts this package imports the template's
  * `styles.css` and then layers its own theme file over it — its `--chroma`,
  * its `--primary-chroma`, its `--brand-*` steps — and `brand.accent` is the
  * hue those steps are drawn at. Set the field alone and the only visible effect

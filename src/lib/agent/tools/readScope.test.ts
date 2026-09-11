@@ -12,7 +12,7 @@ import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
  * the shared catalog does not have.
  *
  * The deployment this came from pins the same pair over `search_blueprint`,
- * whose ranked read needs a `public.search_blueprint` RPC this kit has no
+ * whose ranked read needs a `public.search_blueprint` RPC this template has no
  * migration for; `list_scenarios` is the journey read the template scopes
  * instead.
  */

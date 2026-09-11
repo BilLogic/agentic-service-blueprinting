@@ -174,9 +174,9 @@ describe('MobileNavSheet accordion and rail', () => {
     The phase list draws the same distinction the slice list does (#505).
 
     It had no empty state at all before, because it could not be empty: a
-    read with no rows fell back to the kit's bundled sample. The drawer opens
+    read with no rows fell back to the template's bundled sample. The drawer opens
     itself on first load, so on a connected phone that fallback was the whole
-    first screen — this kit's phase names, under the deployment's name, every
+    first screen — this template's phase names, under the deployment's name, every
     time.
   */
   it('a loading phase list shows skeleton rows, not the empty message', () => {

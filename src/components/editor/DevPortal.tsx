@@ -75,7 +75,7 @@ const ROW_LABEL = 'w-14 shrink-0 text-2xs text-muted-foreground'
 /**
  * Settings → "For developers".
  *
- * Someone building on the kit needs to see both tiers without provisioning
+ * Someone building on the template needs to see both tiers without provisioning
  * two accounts. This flips what the CLIENT believes; the server is untouched.
  *
  * Two controls, because there are exactly two decisions: is the simulation

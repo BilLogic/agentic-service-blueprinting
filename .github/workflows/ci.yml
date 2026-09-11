@@ -65,7 +65,7 @@ jobs:
       # a 404 at the seam, and #168 shipped one for a release — the panel could
       # not save an arrow at all. Static, reads the committed schema dump.
       - run: npm run check:rpc-arguments
-      # The standalone claim: no tracked file names the deployment this kit
+      # The standalone claim: no tracked file names the deployment this template
       # was generalised from.
       - run: npm run check:standalone
       # The other half of the same claim. The sweep above reads NAMES; a cell

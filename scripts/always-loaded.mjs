@@ -44,7 +44,7 @@
  * Adding a file here is a deliberate act that moves three checks at once, which
  * is the intended cost of growing a tier that every session pays for.
  *
- * Shared shape with the deployment this kit was generalised from
+ * Shared shape with the deployment this template was generalised from
  * (BilLogic/agentic-service-blueprinting#139): same module, same two exports,
  * same reasoning. Only the census of near misses differs, because only this
  * repository ships a plugin manifest.

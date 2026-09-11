@@ -26,7 +26,7 @@ Which flag answers which axis:
 - **build** — `isDevAuthoring`, `isEditPreview`, `devSimulation`
 - **config** — `configured`
 
-The kit used to publish `isServiceAccount` as well — the tier, as the
+The template used to publish `isServiceAccount` as well — the tier, as the
 database answers it — with a full docblock and no consumer outside the
 provider and its own tests. A sibling deployment refused to publish that
 flag, on the grounds that an exported second answer which says
@@ -68,7 +68,7 @@ reads `canAgent`. Neither reads the tier.
 
 ## What this rejects
 
-**Publishing the tier alongside `canWrite`**, which is what this kit did,
+**Publishing the tier alongside `canWrite`**, which is what this template did,
 and which a reader who finds the tier computed will reach for. It looks
 like completeness. It is a second gate. Once a surface gates on it, taking
 it back is a hunt through every consumer — which is why the decision is an

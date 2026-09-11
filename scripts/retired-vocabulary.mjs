@@ -817,6 +817,20 @@ export const RENAME_MAP = Object.freeze(
       retired: [],
       copy: [],
     },
+    // #552. One name for the thing a deployment runs: template. "Kit" was a
+    // second spelling of the same idea — the canonical application every
+    // deployment installs — and it reached a reader on the no-database status
+    // line. Never a database identifier, so `retired` is empty; the copy list
+    // is the whole of the row. Whole-word, because a substring would flag
+    // `kitchen`, `toolkit` and every `-webkit-` utility this tree writes.
+    // No migration, so the pair carries no `because`: there is no SQL for it
+    // to be an excuse about.
+    {
+      renames: [{ from: 'kit', to: 'template' }],
+      migrations: [],
+      retired: [],
+      copy: ['kit'],
+    },
   ].map((row) => {
     const renames = Object.freeze(row.renames.map((pair) => Object.freeze({ ...pair })))
     return Object.freeze({

@@ -11,7 +11,7 @@ import {
  * The reader for `brand.accent`, and the one thing this template needs it to
  * do: nothing.
  *
- * `BRAND` here carries no accent — the kit's `--brand-*` ramp is greyscale, so
+ * `BRAND` here carries no accent — the template's `--brand-*` ramp is greyscale, so
  * there is no hue for one to name — and `asbDefaultConfig` passes that absence
  * straight through. The assertion below is what makes that provable rather
  * than argued: the dial the theme files declare is never written, so a

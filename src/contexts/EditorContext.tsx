@@ -368,10 +368,10 @@ export function EditorProvider({ children }: EditorProviderProps) {
    * here on every connected render, and it pointed the wrong way. Wherever a
    * slide id collided with the sample's it took the SAMPLE's summary — the
    * fallback was tested first, so a deployment's own sentence lost to this
-   * kit's even when theirs was perfectly good — took the sample's `layout`
+   * template's even when theirs was perfectly good — took the sample's `layout`
    * for any id the sample registers, and appended every sample scenario the
    * database no longer had under a phase it still did. An adopter read this
-   * kit's prose about this kit's service under their own phase names, with
+   * template's prose about this template's service under their own phase names, with
    * nothing on screen saying so; and a scenario they had DELETED came back as
    * a tab whose board, now that `resolveBlueprint` no longer fills holes from
    * the sample, draws nothing at all.

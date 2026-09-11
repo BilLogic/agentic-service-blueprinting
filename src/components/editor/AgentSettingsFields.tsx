@@ -49,7 +49,7 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
       ) : (
         <p className="text-3xs leading-snug text-muted-foreground">
           No database configured — there is no account to sign in to. The
-          canvas is showing the kit’s bundled sample blueprint.
+          canvas is showing the template’s bundled sample blueprint.
         </p>
       )}
 

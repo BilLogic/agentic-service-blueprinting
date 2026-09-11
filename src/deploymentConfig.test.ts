@@ -30,7 +30,7 @@ describe('asbDefaultConfig', () => {
     expect(BRAND.accent).toBeUndefined()
     expect(asbDefaultConfig.brand?.accent).toBeUndefined()
 
-    // The kit ships no pins. A deployment that wants some supplies them.
+    // The template ships no pins. A deployment that wants some supplies them.
     expect(asbDefaultConfig.pathColorPins).toEqual({})
   })
 })
@@ -51,7 +51,7 @@ describe('resolveDeploymentConfig', () => {
       // `useWorkspaceTitle` falls through an empty section to `brand.name`.
       expect(resolved.content).toEqual({})
       expect(resolved.agent).toBeUndefined()
-      // No map is today's kit: every name falls through to the hash.
+      // No map is today's template: every name falls through to the hash.
       expect(resolved.pathColorPins).toEqual({})
     }
   })

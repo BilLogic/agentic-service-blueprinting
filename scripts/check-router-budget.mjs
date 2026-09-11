@@ -27,7 +27,7 @@
  * file by tens of chars and must not turn the build red; only a cut big enough
  * to change what the budget describes does.
  *
- * This is this kit's instance of the standard's always-loaded budget
+ * This is this template's instance of the standard's always-loaded budget
  * (BilLogic/agentic-service-blueprinting#139, #135). It differs from the
  * deployment's copy in the two numbers and nothing else: the router here is
  * smaller, because the skill routing table carries four rows rather than a

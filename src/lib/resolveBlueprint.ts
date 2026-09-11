@@ -37,7 +37,7 @@ function sortBlueprintSteps(data: BlueprintData): BlueprintData {
  * fallback lane, cell, step and dependency the rows lacked and filled a blank
  * path name, summary or note from the fallback's prose. It read as generosity
  * and worked as a leak: an adopter who connected their own backend kept seeing
- * this kit's content wherever their board had a gap, presented as their own,
+ * this template's content wherever their board had a gap, presented as their own,
  * with nothing on screen reporting it. A hole in a board is information; the
  * merge deleted that information and put a stranger's words in its place.
  */

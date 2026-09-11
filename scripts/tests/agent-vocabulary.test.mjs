@@ -72,17 +72,22 @@ const EXEMPT = [
 /**
  * Retired prose spellings, and what to say instead.
  *
- * Both entries are collective nouns for the same four records, and both were
- * retired for the same reason: no one word is true of `evidence`, `findings`,
- * `slices` and `slides` at once. There is no third noun, so the replacement is
- * to name the record — or, where a sentence genuinely covers all four, to
- * enumerate them. The header of `scripts/retired-vocabulary.mjs` carries the
- * argument, which is also why that file is not swept: it is code, and the one
- * place these two phrases are allowed to be written out.
+ * The first two entries are collective nouns for the same four records, and
+ * both were retired for the same reason: no one word is true of `evidence`,
+ * `findings`, `slices` and `slides` at once. There is no third noun, so the
+ * replacement is to name the record — or, where a sentence genuinely covers
+ * all four, to enumerate them. The header of `scripts/retired-vocabulary.mjs`
+ * carries the argument, which is also why that file is not swept: it is code,
+ * and the one place those two phrases are allowed to be written out.
+ *
+ * `kit` is the third. It named the template (#552). Whole-word, so `kitchen`,
+ * `toolkit` and `kitfox` stay live English. The map's copy list is what holds
+ * the same word on screen; this list holds it in published markdown.
  */
 const RETIRED_PROSE = [
   { pattern: /derived[\s-]+layer/gi, use: 'the record’s own name' },
   { pattern: /analysis[\s-]+tier/gi, use: 'the record’s own name' },
+  { pattern: /\bkit\b/gi, use: 'template' },
 ]
 
 /**
@@ -95,7 +100,7 @@ const RETIRED_PROSE = [
  * the test green. `CONTEXT.md` opens every definition with the term in bold,
  * so that is what is looked for.
  */
-const MUST_BE_DEFINED = ['Slice', 'Finding', 'Evidence', 'Spec']
+const MUST_BE_DEFINED = ['Slice', 'Finding', 'Evidence', 'Spec', 'Template', 'Deployment']
 
 function guardFailure(location, message) {
   return `${location}: ${message}\nRun: ${RERUN}`
@@ -244,6 +249,13 @@ test('the sweep can fail', () => {
   // Neither pattern is a sweep for the word "analysis" or the word "layer".
   assert.equal(hits('the audit tier of this analysis, one layer at a time').length, 0)
   assert.equal(hits('a slice belongs to the slice; evidence belongs to nobody').length, 0)
+  // #552 — kit names the template. Whole-word, so kitchen / toolkit / kitfox
+  // stay live English.
+  assert.equal(hits('cloned the kit').length, 1)
+  assert.equal(hits('the Kit ships a sample').length, 1)
+  assert.equal(hits('kitchen').length, 0)
+  assert.equal(hits('the toolkit').length, 0)
+  assert.equal(hits('kitfox').length, 0)
 })
 
 test('the definition check can fail, and is not satisfied by a substring', () => {

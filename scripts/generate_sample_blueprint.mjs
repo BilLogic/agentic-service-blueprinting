@@ -2,9 +2,9 @@
 /**
  * Sample-content generator — the META-BLUEPRINT: the service blueprint OF
  * this template itself. The sample service maps the journey a team actually
- * runs with the kit (Discover → Setup → Operate → Maintain, with Maintain
+ * runs with the template (Discover → Setup → Operate → Maintain, with Maintain
  * looping back to Operate), so the product demonstrates itself and every cell
- * doubles as true documentation of how the kit behaves.
+ * doubles as true documentation of how the template behaves.
  *
  * Phases carry the arc of the work; SCENARIO names carry the skill vocabulary
  * (map, audit, ideate/what-if, slice), so the phase row never repeats what the
@@ -34,7 +34,7 @@
  * The sample content is English-only, deliberately. Non-ASCII rendering is a
  * real guarantee and is tested — against `scripts/tests/sample-ir.json`, a
  * fixture whose whole job is to be bilingual — not demonstrated here, where a
- * CJK lane label in an otherwise English kit reads to an adopter as leftover
+ * CJK lane label in an otherwise English template reads to an adopter as leftover
  * contamination from someone else's deployment. See the note on the spine
  * lane below.
  *   - the cell spec: differing owner / perceived_owner pairs (the case the
@@ -166,7 +166,7 @@ const PHASES = [
     key: 'DISCOVER',
     name: 'Discover',
     summary:
-      'The evaluation before any commitment: find the kit, run it with no backend, and decide whether it fits the team.',
+      'The evaluation before any commitment: find the template, run it with no backend, and decide whether it fits the team.',
   },
   {
     ordinal: 2,
@@ -218,7 +218,7 @@ const LANES = [
     This carried a bilingual CJK display name ('服务负责人 · Blueprint
     owner') as the template's non-ASCII rendering smoke test. Removed: this
     is the sample blueprint an adopter meets on first run and on the cover
-    page, and a Chinese lane label in an otherwise English kit reads as
+    page, and a Chinese lane label in an otherwise English template reads as
     leftover contamination from another deployment rather than as a
     deliberate i18n demonstration — which is exactly how it was reported.
 
@@ -269,13 +269,13 @@ const MAP_LANES = [
  */
 const SCENARIOS = [
   // -------------------------------------------------------------------
-  // 1 · Find the kit and see what it does — Discover (the smallest board)
+  // 1 · Find the template and see what it does — Discover (the smallest board)
   // -------------------------------------------------------------------
   {
     ordinal: 1,
     key: 'DISCOVER',
     phaseKey: 'DISCOVER',
-    name: 'Find the kit and see what it does',
+    name: 'Find the template and see what it does',
     summary:
       'The evaluation before any commitment: the pitch, the bundled sample board, a run with nothing configured, and the decision that it fits.',
     order: 1,
@@ -346,7 +346,7 @@ const SCENARIOS = [
         lane: 'scripts', col: 5,
         content: 'run_tests.sh\nagent-harness --smoke',
         summary:
-          'Both go green on a keyless clone — a reviewer can check the kit’s claims before configuring anything.',
+          'Both go green on a keyless clone — a reviewer can check the template’s claims before configuring anything.',
         resources: [repoLink('scripts/tests/run_tests.sh', 'scripts/tests/run_tests.sh')],
       },
 
@@ -367,7 +367,7 @@ const SCENARIOS = [
         lane: 'refs', col: 5,
         content: 'AGENTS.md\nguide/03 — the plugin',
         summary:
-          'What a reader opens next: the conventions an agent follows in this repo, and how the kit ships as an installable plugin.',
+          'What a reader opens next: the conventions an agent follows in this repo, and how the template ships as an installable plugin.',
         resources: [
           repoLink('AGENTS.md', 'AGENTS.md'),
           repoLink('guide/03 — The plugin', 'docs/guide/03-the-plugin.md'),
@@ -630,9 +630,9 @@ const SCENARIOS = [
         lane: 'refs', col: 9,
         content: 'secret_guard.py — the service-role key never reaches disk or transcript',
         owner: 'The blueprint owner’s own machine',
-        perceivedOwner: 'The kit',
+        perceivedOwner: 'The template',
         summary:
-          'The guard runs in the owner’s harness, on their machine — the kit ships the hook, it never holds the key.',
+          'The guard runs in the owner’s harness, on their machine — the template ships the hook, it never holds the key.',
         resources: [repoLink('hooks/secret_guard.py', 'hooks/secret_guard.py')],
       },
       {
@@ -1120,7 +1120,7 @@ const SCENARIOS = [
         name: 'Update what changed',
         kind: 'happy',
         summary:
-          'The smallest loop in the kit: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.',
+          'The smallest loop in the template: one scenario edited, re-signed, and re-imported, with the rest reported as no-ops.',
       },
     ],
     steps: [
@@ -1176,7 +1176,7 @@ const SCENARIOS = [
       },
       {
         lane: 'refs', col: 3,
-        content: 'customization.md — how a workspace is upgraded when the kit moves under it',
+        content: 'customization.md — how a workspace is upgraded when the template moves under it',
         resources: [repoLink('references/customization.md', 'references/customization.md')],
       },
     ],
@@ -1568,7 +1568,7 @@ function buildDemoSlices() {
         'One blueprint file becomes two targets in the same pass — a data module the keyless app imports, and a transactional seed for Postgres. Neither is asked to be trusted: the verification is a second, independent read, not the first write’s own report.',
         [demoCellRef('MAP_SERVICE', 'DOCS', 'scripts', 9)]),
       item(2, stepId, 3, 'What the guardrail is doing while it happens',
-        'The interesting lane, and the reason to read this step vertically. A service-role key is in play for exactly this step, and a hook makes sure it never reaches disk or transcript. It runs on the owner’s own machine — the kit ships the hook, it never holds the key.',
+        'The interesting lane, and the reason to read this step vertically. A service-role key is in play for exactly this step, and a hook makes sure it never reaches disk or transcript. It runs on the owner’s own machine — the template ships the hook, it never holds the key.',
         [demoCellRef('MAP_SERVICE', 'DOCS', 'refs', 9)]),
       item(2, stepId, 4, 'What you see at the end of it',
         'The imported scenario, read back live in the browser. Until this renders, the import is a claim.',
@@ -1654,11 +1654,11 @@ const header = `// GENERATED by scripts/generate_sample_blueprint.mjs — edit t
 // of this template itself. One service (${SERVICE.name}), four phases
 // (Discover → Setup → Operate → Maintain, Maintain looping back to Operate),
 // six
-// scenarios named for the skill journey — evaluating the kit, sb:map from two
+// scenarios named for the skill journey — evaluating the template, sb:map from two
 // starting points (two divergent paths, each omitting the other's column),
 // the sb:audit roster (happy vs a reopened finding), sb:whatif on a copy,
 // sb:slice for one audience, and the small update loop. Every cell is a true
-// statement about how the kit behaves, so the sample doubles as
+// statement about how the template behaves, so the sample doubles as
 // documentation. Registered as the offline fallback content in
 // src/data/blueprintFallbacks.ts and src/types/nav.ts; the matching database
 // seed is generated into supabase/seed.sql.

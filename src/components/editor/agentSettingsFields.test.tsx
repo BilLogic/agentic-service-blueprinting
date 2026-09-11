@@ -20,7 +20,7 @@ const mockSupabase = {
   client: {} as unknown,
   session: null as Session | null,
   canAgent: false,
-  // Template-only: the kit runs with no database at all, and that build
+  // Template-only: the template runs with no database at all, and that build
   // opens the key field without a session. `configured` is the gate.
   configured: true,
   // Template-only: the composer also carries the developer portal, which

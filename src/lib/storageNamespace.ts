@@ -3,7 +3,7 @@
  *
  * A CONFIGURATION SEAM. Every key written to `window.localStorage` is
  * prefixed, and the prefix names the INSTALLATION rather than the code: this
- * kit ships as `sb-`, and an adopter gives its own installation a prefix of
+ * template ships as `sb-`, and an adopter gives its own installation a prefix of
  * its own. Two installations served from one origin would otherwise read each
  * other's settings, sessions and chat placement, so the prefix is the one
  * thing about a stored key that must differ per install.
@@ -47,13 +47,13 @@
  * time `storageKey` reads it, and a later call that disagrees throws.
  *
  * The prefix is frozen in a second, longer sense too. Change it ONCE, when
- * adopting the kit. After that the keys already sitting in readers' browsers
+ * adopting the template. After that the keys already sitting in readers' browsers
  * carry it, and nothing migrates them, so a later change silently forgets
  * every saved API key, session list and remembered path.
  */
 
 /**
- * The prefix this kit ships with, and the default every installation starts
+ * The prefix this template ships with, and the default every installation starts
  * from. An app that copies the repo edits this line; a deployment that mounts
  * the package leaves it alone and calls `configureStorageNamespace`.
  */

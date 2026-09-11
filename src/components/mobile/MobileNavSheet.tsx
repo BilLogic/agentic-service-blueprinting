@@ -242,9 +242,9 @@ export function MobileNavSheet({
                 distinction `SliceGroups` above already draws.
 
                 It had no reachable empty state at all until #505: a read with
-                no rows fell back to the kit's bundled sample, so this list
+                no rows fell back to the template's bundled sample, so this list
                 always had phases in it, and on a connected deployment they
-                were the kit's under the deployment's name. The drawer
+                were the template's under the deployment's name. The drawer
                 auto-opens on first load, so that was the phone's whole first
                 screen. Now a configured workspace draws its own rows or says
                 it has none.

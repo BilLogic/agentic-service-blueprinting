@@ -1,7 +1,7 @@
 import { isSupabaseConfigured } from '@/lib/supabase'
 
 /**
- * Is the kit's bundled sample content allowed on screen at all?
+ * Is the template's bundled sample content allowed on screen at all?
  *
  * Once a deployment has a database, that database is the whole truth: what it
  * holds is the board, and what it lacks is a hole. The sample — the
@@ -12,7 +12,7 @@ import { isSupabaseConfigured } from '@/lib/supabase'
  *
  * The question is deliberately NOT "did this read come back empty". An
  * adopter's board with a gap must draw the gap; filling it from the sample
- * hands them a blueprint of this kit under their own path names, and nothing
+ * hands them a blueprint of this template under their own path names, and nothing
  * on screen says so.
  *
  * It asks `isSupabaseConfigured()` rather than re-reading the environment, so
