@@ -139,12 +139,12 @@ describe('what moving the size out of the wrappers did not change', () => {
   })
 
   it('still lets a call site override the variant it is given', () => {
-    // The phase badge on the canvas asks for `text-2xs`, a scale the variant
-    // does not offer. `className` is merged last, so it still wins.
+    // A scale the variant does not offer. `className` is merged last, so it
+    // still wins.
     const classes = classesOf(
-      <ScenarioTitleBadge name="Warm-Up" className="font-mono text-2xs" />,
+      <ScenarioTitleBadge name="Warm-Up" className="font-mono text-lg" />,
     )
-    expect(classes).toContain('text-2xs')
+    expect(classes).toContain('text-lg')
     expect(classes).not.toContain('text-xs')
   })
 })

@@ -293,7 +293,7 @@ test('the non-colour namespaces are out of subject, and say so by passing', () =
     { name: '--radius-panel', value: '6px' },
     { name: '--width-listbox', value: '320px' },
     { name: '--shadow-floating', value: '0 8px 28px rgb(0 0 0 / 0.3)' },
-    { name: '--text-2xs', value: '0.6875rem' },
+    { name: '--text-xs', value: '.75rem' },
     { name: '--font-mono', value: "var(--font-source-code-pro), monospace" },
   ]) {
     assert.equal(registryFault(entry, never), null, entry.name)

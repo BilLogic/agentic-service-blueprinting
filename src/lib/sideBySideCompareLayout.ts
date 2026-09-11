@@ -80,12 +80,12 @@ export const COMPARE_CARD_PADDING_X = 12
  * The painted rail: room for two-word lane names ("Front Stage Actions") and,
  * the binding case, the canonical "LINE OF …" divider captions.
  *
- * 208 -> 214 on 2026-08-21. "LINE OF INTERNAL INTERACTION" measures ~221px at
- * `text-2xs` with its tracking and is `shrink-0` — it neither wraps nor
- * truncates — so at 208 it overflowed the painted rail and the only thing
- * between those words and the path outline was COMPARE_RAIL_GUTTER. That made
- * the gutter carry a constraint it should not have, and forced it wide enough
- * to leave the lane label stranded.
+ * 208 -> 214 on 2026-08-21. "LINE OF INTERNAL INTERACTION" measured ~221px
+ * at the caption size then in use, with its tracking, and is `shrink-0` —
+ * it neither wraps nor truncates — so at 208 it overflowed the painted rail
+ * and the only thing between those words and the path outline was
+ * COMPARE_RAIL_GUTTER. That made the gutter carry a constraint it should
+ * not have, and forced it wide enough to leave the lane label stranded.
  *
  * 214 is what the caption needs once it shares the lane label's left inset
  * (BLUEPRINT_SLOT_INSET_LEFT, 14px, down from 20). The caption now ends inside

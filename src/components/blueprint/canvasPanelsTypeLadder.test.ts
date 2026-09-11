@@ -25,7 +25,7 @@ import { sourceFiles } from '@/lib/tokenModel'
  * 12px (`xs`) is canvas chrome and panel labels/meta. 13px (`sm`) is
  * panel titles and values. Weight and colour separate those four jobs,
  * because one pixel is not a signal. Slice/presentation, the editor
- * shell, cover/mobile helpers, and deleting `--text-2xs` are other
+ * shell, cover/mobile helpers, and the sub-12px contract are other
  * batches.
  */
 

@@ -2,16 +2,25 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import {
+  classListHas,
+  classListOf,
+  classLists,
+  classListsIn,
+  type ClassListInput,
+} from '@/lib/classList'
 import { declarationsIn } from '@/lib/tokenModel'
 
 /**
- * The expand half of the type ladder: new values land on the names the tree
- * already uses, and the sub-12px rungs stay so nothing that still names them
- * breaks. ADR 0012 is the ruling; this file is what would fail if a running-text
- * rung lost its pairing, or if the two scopes collapsed into one.
+ * The type ladder, and the guards that hold it. ADR 0012.
+ *
+ * Nine rungs, two scopes, one ratio each. Nothing below `xs`. On a
+ * presentation surface the floor is `sm`. The roster must know both
+ * scopes, or a legitimate mono `sm` (14px) reads as off-ladder.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url))
+const THEME = readFileSync(resolve(HERE, 'theme.css'), 'utf8')
 const INPUT = readFileSync(resolve(HERE, '../components/ui/input.tsx'), 'utf8')
 
 const RUNGS = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl'] as const
@@ -52,14 +61,19 @@ const RATIO: Record<(typeof RUNGS)[number], string> = {
   '5xl': '1',
 }
 
-const SUB_XS = {
-  '--text-2xs': '0.6875rem',
-  '--text-3xs': '0.625rem',
-  '--text-4xs': '0.5625rem',
-  '--text-5xs': '0.5rem',
-} as const
-
 const MONO_SELECTOR = '.font-mono, code, kbd, pre, samp'
+
+const BELOW_XS = /^(?:[a-z-]+:)*!?text-(?:2xs|3xs|4xs|5xs)$/
+const AT_OR_BELOW_XS = /^(?:[a-z-]+:)*!?text-(?:xs|2xs|3xs|4xs|5xs)$/
+const ARBITRARY_SIZE =
+  /^(?:[a-z-]+:)*!?text-\[(\d+(?:\.\d+)?|\.\d+)(px|rem)\]$/
+
+/** Cover plus the three presentation-stage files whose floor is `sm`. */
+const PRESENTATION_FILES = new Set([
+  'components/editor/SlicePresentation.tsx',
+  'components/editor/SliceHeaderBand.tsx',
+  'components/editor/SlideArtboard.tsx',
+])
 
 /**
  * Collapse a CSS numeric so `.8125rem` and `0.8125rem` compare equal.
@@ -80,6 +94,120 @@ function declaredAs(name: string, needle: string) {
   return declarationsIn('theme.css').find(
     (entry) => entry.name === name && entry.selector.includes(needle),
   )
+}
+
+/**
+ * A size-rung declaration the roster can judge.
+ */
+type SizeDecl = {
+  name: string
+  value: string
+  selector: string
+}
+
+/**
+ * The rung of a size custom property, or null.
+ *
+ * `--text-sm` → `sm`. `--text-color-*` and `--text-*--line-height` are
+ * not sizes. Any other `--text-*` is a rung, including a name the nine
+ * do not use — that is how a tenth rung fails instead of slipping past
+ * a pattern that only knows `xs`/`sm`/`xl`.
+ *
+ * @param name - a custom property
+ */
+function sizeRungOf(name: string): string | null {
+  if (!name.startsWith('--text-')) return null
+  if (name.startsWith('--text-color-')) return null
+  if (name.includes('--line-height')) return null
+  return name.slice('--text-'.length)
+}
+
+/**
+ * Size-rung declarations in `theme.css`, both scopes.
+ *
+ * Line-heights and `--text-color-*` stay out: those are not rungs.
+ */
+function textSizeDeclarations(): SizeDecl[] {
+  return declarationsIn('theme.css').filter(
+    (entry) => sizeRungOf(entry.name) !== null,
+  )
+}
+
+/**
+ * Declarations whose rung is not one of the nine the ADR tables.
+ *
+ * @param decls - size custom properties
+ */
+function offRoster(decls: readonly SizeDecl[]): SizeDecl[] {
+  return decls.filter((entry) => {
+    const rung = sizeRungOf(entry.name)
+    return !rung || !(RUNGS as readonly string[]).includes(rung)
+  })
+}
+
+/**
+ * Format a size declaration so a failure names the scope and the rung.
+ *
+ * @param entry - one size custom property
+ */
+function describeDecl(entry: SizeDecl): string {
+  const scope = entry.selector.includes('.font-mono') ? 'mono' : 'sans'
+  return `${scope} ${entry.name}: ${entry.value}`
+}
+
+/**
+ * Pixel size of an arbitrary `text-[Npx]` / `text-[Nrem]` utility, or null.
+ *
+ * @param token - one class
+ */
+function arbitraryPx(token: string): number | null {
+  const match = ARBITRARY_SIZE.exec(token)
+  if (!match) return null
+  const n = Number(match[1])
+  return match[2] === 'rem' ? n * 16 : n
+}
+
+/**
+ * True iff `classes` names a rung below `xs`, or an absolute size below 12px.
+ *
+ * @param classes - one class list
+ */
+function belowFloor(classes: ClassListInput): boolean {
+  return classListOf(classes).some((token) => {
+    if (BELOW_XS.test(token)) return true
+    const px = arbitraryPx(token)
+    return px !== null && px < 12
+  })
+}
+
+/**
+ * True iff `classes` names `xs` or a rung below it.
+ *
+ * @param classes - one class list
+ */
+function atOrBelowXs(classes: ClassListInput): boolean {
+  return classListOf(classes).some((token) => AT_OR_BELOW_XS.test(token))
+}
+
+/**
+ * Whether `file` is a presentation surface, whose floor is `sm`.
+ *
+ * Cover copy and the three stage files. Editing chrome under
+ * `components/editor/` stays on `xs` and is not in this set.
+ *
+ * @param file - path relative to `src`, as `classLists()` reports it
+ */
+function isPresentationSurface(file: string): boolean {
+  return file.startsWith('components/cover/') || PRESENTATION_FILES.has(file)
+}
+
+/**
+ * Format a class-list site so a failure names the file, the line, and the classes.
+ *
+ * @param site - one class list
+ */
+function describeSite(site: { file: string; line: number; classes: string[] }): string {
+  return `${site.file}:${site.line}: ${site.classes.join(' ')}`
 }
 
 describe('the type ladder', () => {
@@ -111,14 +239,6 @@ describe('the type ladder', () => {
     expect(monoLeadings).toEqual([])
   })
 
-  it('keeps the four sub-12px rungs at the values call sites still name', () => {
-    for (const [name, value] of Object.entries(SUB_XS)) {
-      const entry = declaredAs(name, '@theme')
-      expect(entry, name).toBeDefined()
-      expect(entry?.value).toBe(value)
-    }
-  })
-
   it('gives text-sm a 13px face and an 18.57px box in prose, and 14px / 20px in code', () => {
     // The ratio is `calc(1.25 / .875)`: a 20px line box for what was a 14px
     // rung. The same ratio meeting sans sm (13px) is 18.571…px; meeting mono
@@ -142,5 +262,132 @@ describe('the type ladder', () => {
     expect(INPUT).toMatch(/\btext-lg\b/)
     expect(INPUT).toMatch(/\bmd:text-sm\b/)
     expect(INPUT).not.toMatch(/\btext-base\b/)
+  })
+})
+
+describe('the roster', () => {
+  it('fails a tenth rung in either scope', () => {
+    const tenthSans: SizeDecl = {
+      name: '--text-6xl',
+      value: '4rem',
+      selector: '@theme',
+    }
+    const tenthMono: SizeDecl = {
+      name: '--text-tiny',
+      value: '0.5rem',
+      selector: MONO_SELECTOR,
+    }
+    expect(offRoster([tenthSans]).map(describeDecl)).toEqual([
+      'sans --text-6xl: 4rem',
+    ])
+    expect(offRoster([tenthMono]).map(describeDecl)).toEqual([
+      'mono --text-tiny: 0.5rem',
+    ])
+  })
+
+  it('passes a legitimate mono sm', () => {
+    const mono = declaredAs('--text-sm', '.font-mono')
+    expect(mono, 'mono --text-sm').toBeDefined()
+    expect(compactRem(mono?.value ?? '')).toBe(compactRem(MONO.sm))
+    expect(Number.parseFloat(mono?.value ?? '') * 16).toBe(14)
+    // A roster that only knew sans sizes would take 14px as off-ladder:
+    // sans sm is 13px, and 14px is on no sans rung.
+    const sansPx = new Set(
+      Object.values(SANS).map((value) => Number.parseFloat(value) * 16),
+    )
+    expect(sansPx.has(14)).toBe(false)
+    expect(offRoster([mono!])).toEqual([])
+  })
+
+  it('declares no size rung off the roster, in either scope', () => {
+    const extra = offRoster(textSizeDeclarations())
+    expect(extra.map(describeDecl), extra.map(describeDecl).join('\n')).toEqual(
+      [],
+    )
+  })
+})
+
+describe('the floor', () => {
+  it('fails a class that names a rung below xs', () => {
+    const sites = classListsIn(
+      `<span className="text-2xs font-medium text-muted-foreground">Label</span>`,
+    )
+    expect(sites.some((site) => classListHas(site.classes, 'text-2xs'))).toBe(
+      true,
+    )
+    expect(sites.some((site) => belowFloor(site.classes))).toBe(true)
+  })
+
+  it('fails an arbitrary font-size below 12px', () => {
+    const sites = classListsIn(`<span className="text-[11px]">Hint</span>`)
+    expect(sites.some((site) => belowFloor(site.classes))).toBe(true)
+    const rem = classListsIn(`<span className="text-[0.6875rem]">Hint</span>`)
+    expect(rem.some((site) => belowFloor(site.classes))).toBe(true)
+  })
+
+  it('passes xs and a 12px arbitrary size', () => {
+    expect(
+      belowFloor(classListsIn(`<span className="text-xs">Chrome</span>`)[0]!.classes),
+    ).toBe(false)
+    expect(
+      belowFloor(
+        classListsIn(`<span className="text-[12px]">Chrome</span>`)[0]!.classes,
+      ),
+    ).toBe(false)
+  })
+
+  it('holds the authored tree at xs or above', { timeout: 20_000 }, () => {
+    const offenders = classLists().filter((site) => belowFloor(site.classes))
+    expect(
+      offenders.map(describeSite),
+      offenders.map(describeSite).join('\n'),
+    ).toEqual([])
+  })
+})
+
+describe('the display floor', () => {
+  it('fails xs on a presentation-surface component', () => {
+    const sites = classListsIn(
+      `<p className="text-xs text-foreground">Caption</p>`,
+      'components/editor/SlicePresentation.tsx',
+    )
+    expect(sites.every((site) => isPresentationSurface(site.file))).toBe(true)
+    expect(sites.some((site) => classListHas(site.classes, 'text-xs'))).toBe(
+      true,
+    )
+    expect(sites.some((site) => atOrBelowXs(site.classes))).toBe(true)
+  })
+
+  it('passes xs on editor chrome', () => {
+    const sites = classListsIn(
+      `<span className="text-xs font-medium text-muted-foreground">Sessions</span>`,
+      'components/editor/AgentPanel.tsx',
+    )
+    expect(sites.some((site) => isPresentationSurface(site.file))).toBe(false)
+    expect(sites.some((site) => atOrBelowXs(site.classes))).toBe(true)
+  })
+
+  it('holds presentation surfaces at sm or above', { timeout: 20_000 }, () => {
+    const offenders = classLists().filter(
+      (site) => isPresentationSurface(site.file) && atOrBelowXs(site.classes),
+    )
+    expect(
+      offenders.map(describeSite),
+      offenders.map(describeSite).join('\n'),
+    ).toEqual([])
+  })
+})
+
+describe('the 4xs/5xs geometry defence', () => {
+  it('is answered, pointing at ADR 0012, and the four rungs are gone', () => {
+    expect(THEME).toMatch(/theme\.css:531-534/)
+    expect(THEME).toMatch(/ADR 0012/)
+    expect(THEME).toMatch(/a rung is chosen for the text's/)
+    expect(THEME).toMatch(/never to fit a container/)
+    expect(THEME).not.toMatch(/the rungs remain until then/)
+    for (const name of ['--text-2xs', '--text-3xs', '--text-4xs', '--text-5xs']) {
+      expect(THEME, name).not.toMatch(new RegExp(`${name}:`))
+      expect(declaredAs(name, '@theme'), name).toBeUndefined()
+    }
   })
 })

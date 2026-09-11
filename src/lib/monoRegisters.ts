@@ -331,12 +331,12 @@ export function staleNamed(
  * The declared size of `rung` on `scope`'s ladder.
  *
  * The nine running-text rungs are declared twice: sans on `@theme`, mono
- * sizes on `.font-mono, code, kbd, pre, samp`. Sub-12px rungs live only on
- * the root and resolve the same in both scopes. Looking up `sm` against
- * the sans column yields 13px, which is on no mono rung — that is the
- * trap. Looking it up against the mono column yields 14px.
+ * sizes on `.font-mono, code, kbd, pre, samp`. Nothing below `xs` exists
+ * in either scope. Looking up `sm` against the sans column yields 13px,
+ * which is on no mono rung — that is the trap. Looking it up against the
+ * mono column yields 14px.
  *
- * @param rung - a type-scale name (`sm`, `xs`, `2xs`, …)
+ * @param rung - a type-scale name (`sm`, `xs`, …)
  * @param scope - which face's ladder to read
  */
 export function rungSize(rung: string, scope: 'sans' | 'mono'): string | undefined {

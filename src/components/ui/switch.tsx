@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 
 /**
  * The on/off track. Sized for the compact settings rows (`h-4`), which is
- * the same vertical rhythm as a `text-2xs` label beside it.
+ * the same vertical rhythm as a `text-xs` label beside it.
  */
 function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
   return (

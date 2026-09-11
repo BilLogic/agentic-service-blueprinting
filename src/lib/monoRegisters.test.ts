@@ -35,7 +35,7 @@ describe('signalledRegisters', () => {
     // #536's overlap — a call site belongs to exactly one.
     expect(
       signalledRegisters(
-        'font-mono text-2xs font-medium tracking-[0.2em] tabular-nums uppercase',
+        'font-mono text-xs font-medium tracking-[0.2em] tabular-nums uppercase',
       ),
     ).toEqual([2, 3])
   })
@@ -51,7 +51,7 @@ describe('signalledRegisters', () => {
 
 describe('pairingViolations', () => {
   it('register 2 without tabular-nums fails', () => {
-    expect(pairingViolations('font-mono text-3xs', 2)).toEqual([
+    expect(pairingViolations('font-mono text-xs', 2)).toEqual([
       'register 2 without tabular-nums',
     ])
   })

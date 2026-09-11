@@ -8,10 +8,11 @@
  * the numbers on the left are assembled from four constants in three files
  * while the ones on the right are assembled from two.
  *
- * What made it hard: "LINE OF INTERNAL INTERACTION" is ~221px at `text-2xs`
- * and is `shrink-0`, so at the old 208px rail it overflowed and the gutter was
- * the only thing between those words and the board. Every value that made the
- * lane row look right put the caption on the outline, and vice versa.
+ * What made it hard: "LINE OF INTERNAL INTERACTION" measured ~221px at the
+ * caption size then in use and is `shrink-0`, so at the old 208px rail it
+ * overflowed and the gutter was the only thing between those words and the
+ * board. Every value that made the lane row look right put the caption on
+ * the outline, and vice versa.
  *
  * Two changes took the text out of the gutter's job: widening the rail to 214,
  * and dropping the caption's left inset entirely. A lane label is a label IN
