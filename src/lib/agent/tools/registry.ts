@@ -104,6 +104,8 @@ import {
   sampleListSlices,
 } from '@/lib/agent/tools/sampleRead'
 import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
+import { searchBlueprint } from '@/lib/agent/tools/search'
+import type { AgentSearchIndex } from '@/deploymentConfig'
 
 type Client = SupabaseClient<Database>
 
@@ -211,11 +213,29 @@ const SCENARIO_LEVELS = ['phase', 'scenario'] as const
  * attributed to the agent session for the ledger's ✦ badge, and the query
  * cache is invalidated so the canvas repaints live.
  */
+/**
+ * What one session may reach that another may not.
+ *
+ * Only ranked search needs this today, and it needs it because the capability
+ * is not a property of the deployment alone: it is the deployment's index list
+ * MET BY the person's own provider key, which lives in their browser and is
+ * known only to the caller. So the loop resolves it once per send and hands it
+ * down, rather than this module reaching for a key.
+ */
+export type DispatchContext = {
+  /**
+   * The index this person's key can embed against, and that key — or `null`
+   * for a keyword-and-structural run. Absent means the same as `null`.
+   */
+  meaning?: { index: AgentSearchIndex; apiKey: string } | null
+}
+
 export async function dispatchTool(
   client: Client | null,
   agentSessionId: string,
   name: string,
   args: Record<string, unknown>,
+  context: DispatchContext = {},
 ): Promise<string> {
   // No-database trial: the read tools answer from the bundled sample, and
   // the roster the panel registered contains nothing else. A call from
@@ -233,6 +253,22 @@ export async function dispatchTool(
       return listBlueprint(client, {
         granularity: SCENARIO_LEVELS,
         scope: await readScope(client, args),
+      })
+    case 'search_blueprint':
+      return searchBlueprint(client, {
+        query: need(args, 'query'),
+        granularity: Array.isArray(args.granularity)
+          ? args.granularity.filter(
+              (value): value is string => typeof value === 'string',
+            )
+          : undefined,
+        phase: s(args, 'phase'),
+        scenario: s(args, 'scenario'),
+        pathKind: s(args, 'kind'),
+        laneRole: s(args, 'lane_role'),
+        limit: typeof args.limit === 'number' ? args.limit : undefined,
+        scope: await readScope(client, args),
+        meaning: context.meaning ?? null,
       })
     case 'get_blueprint':
       return getBlueprint(client, need(args, 'scenario_id'))

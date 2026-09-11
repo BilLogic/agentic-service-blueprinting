@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   type ReactNode,
@@ -13,6 +14,7 @@ import {
 import { ORG_NAME } from '@/config'
 import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
+import { configureAgentSearch } from '@/lib/agent/searchPlan'
 import { configurePathColorPins } from '@/lib/pathColorTheme'
 
 /**
@@ -84,6 +86,19 @@ export function DeploymentConfigProvider({
   useLayoutEffect(() => {
     configureCellBudget(cellBudget)
   }, [cellBudget])
+
+  /**
+   * The search state onto the agent's plan module. An ORDINARY effect, not a
+   * layout one: nothing painted depends on it, and the first thing that reads
+   * it is a tool roster assembled when someone sends a message. Absent —
+   * which is every deployment that has not built ranked search, and the
+   * template itself — configures the off state explicitly rather than
+   * leaving whatever a previous mount left behind.
+   */
+  const agentSearch = resolved.agent?.search
+  useEffect(() => {
+    configureAgentSearch(agentSearch)
+  }, [agentSearch])
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>

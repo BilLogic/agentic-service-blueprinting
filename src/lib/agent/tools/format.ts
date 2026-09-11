@@ -681,3 +681,76 @@ export function formatCompareDiff(
   )
   return lines.join('\n')
 }
+
+/**
+ * A row of ranked blueprint search, as the deployment's `search_blueprint`
+ * function returns one.
+ *
+ * Deliberately loose about the columns this rendering does not read: the
+ * function is a DEPLOYMENT's, so a deployment may return more (scores,
+ * timestamps) and this must keep working when it does.
+ */
+export type BlueprintSearchRow = {
+  kind: string
+  id: string
+  snippet?: string | null
+  description?: string | null
+  lane?: string | null
+  step?: string | null
+  scenario?: string | null
+  phase?: string | null
+  path?: string | null
+  matched_by?: string | null
+  total_matched?: number | null
+}
+
+/** Which arms of the search actually ran, for the header and the empty line. */
+export type BlueprintSearchArms = {
+  /** Did the question get embedded and a meaning arm run? */
+  meaning: boolean
+}
+
+/**
+ * Ranked matches, and — this is the load-bearing part — an honest account of
+ * WHICH ARMS RAN.
+ *
+ * A zero-row answer is where a search tool does its worst damage. "Nothing
+ * matches" invites the model to report that the blueprint has no such moment,
+ * and on a keyword-only run that inference is simply wrong: the moment can be
+ * mapped in different words. So the empty text names the arms that ran and
+ * says what their silence does and does not prove, and it says something
+ * DIFFERENT when meaning matching ran, because then a near-miss in other
+ * words would have been found.
+ *
+ * The header carries the corpus-wide total for the same reason `list_` says
+ * when it clipped: a top-k answer must not read as the whole set.
+ */
+export function formatBlueprintSearch(
+  rows: readonly BlueprintSearchRow[],
+  query: string,
+  arms: BlueprintSearchArms,
+): string {
+  if (rows.length === 0) {
+    return arms.meaning
+      ? `Nothing matches "${query}" by words or by meaning. Both arms ran, so a moment described in OTHER words would have been found — but say "nothing in the blueprint matched this search", not "the blueprint does not cover this". list_blueprint shows what exists.`
+      : `Nothing matches the words "${query}". This search matched WORDS ONLY — no meaning matching ran — so that means no row USES those words, and NOT that the blueprint has no such moment. Try the board's own vocabulary, or list_blueprint to see what exists.`
+  }
+  const total = Number(rows[0].total_matched ?? rows.length)
+  const how = arms.meaning ? 'words and meaning' : 'words only'
+  const header = `${rows.length} shown of ${total} matching (${how}):`
+  const lines = rows.map((row) => {
+    const where = [row.phase, row.scenario, row.path, row.step, row.lane]
+      .filter(Boolean)
+      .join(' › ')
+    // A structural row IS its breadcrumb, so its name is not repeated; a cell
+    // is identified by its content, first line only.
+    const body =
+      row.kind === 'cell'
+        ? `"${(row.snippet ?? '').split('\n')[0]}"`
+        : `"${row.snippet ?? ''}"`
+    const detail = row.description ? ` — ${row.description}` : ''
+    const matched = row.matched_by ? `  [${row.matched_by}]` : ''
+    return `[${row.kind}] ${body} · ${where}${detail} (${row.id})${matched}`
+  })
+  return [header, ...lines].join('\n')
+}

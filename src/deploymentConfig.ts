@@ -130,6 +130,60 @@ export type CellContentBudgetOverlay = {
 }
 
 /**
+ * One vector index a deployment's database actually holds, named by the
+ * provider that built it, the model it was built with, and the size that
+ * model was asked for.
+ *
+ * All three matter and none is decoration. A question's embedding and a
+ * cell's embedding can only be compared inside one vector space, and a space
+ * is `(model, dimensions)` — so a question embedded by `text-embedding-3-small`
+ * at 768 cannot be scored against cells embedded by `gemini-embedding-001` at
+ * 768, and the database is expected to refuse the pairing rather than rank it
+ * as noise. `provider` is how a browser knows whether the key it holds can
+ * even reach the model: a person on a Google key cannot call OpenAI's
+ * embedding endpoint, however well the numbers line up.
+ *
+ * This list states WHAT THE DEPLOYMENT HOLDS. It is not a wish, not a
+ * preference order, and not permission to build anything: an entry with no
+ * index behind it makes the database raise on every meaning search a person
+ * attempts.
+ */
+export type AgentSearchIndex = {
+  provider: 'google' | 'openai'
+  /** The embedding model's own name, as the database records it. */
+  model: string
+  /** The size that model was asked for, matching the index column. */
+  dimensions: number
+}
+
+/**
+ * Whether the in-app agent has ranked search at all, and which vector indexes
+ * its database holds.
+ *
+ * `enabled` is a statement about the DATABASE, not a taste: it says this
+ * deployment's schema carries the `search_blueprint` function. The template's
+ * own schema does not, which is why the default is `false` and the tool is
+ * absent from the agent's roster rather than present and failing.
+ *
+ * `indexes` is opt-in on top of that. Left out, ranked search runs on the
+ * function's keyword and structural arms only. Listed, a person whose own
+ * provider matches an entry has their question embedded with their own key
+ * and gets meaning matching too — and a person whose provider matches
+ * nothing listed is not offered the tool, rather than being handed a keyword
+ * consolation dressed as the same search.
+ */
+export type AgentSearchConfig = {
+  enabled?: boolean
+  indexes?: AgentSearchIndex[]
+}
+
+/** {@link AgentSearchConfig} with both fields settled. */
+export type ResolvedAgentSearchConfig = {
+  enabled: boolean
+  indexes: AgentSearchIndex[]
+}
+
+/**
  * The overlay an external deployment supplies. Sparse by construction: every
  * section and every field is optional, and what is left out is inherited from
  * `asbDefaultConfig`.
@@ -149,16 +203,20 @@ export type DeploymentConfig = {
     coverTitle?: string
   }
   /**
-   * RESERVED. The in-app agent is a configurable surface — its doctrine (a
-   * system-prompt overlay) and the tools it may call are set by the
-   * deployment, not hardcoded, the same way brand and content are. The fields
-   * are declared here so the shape is stable, but nothing reads them yet:
-   * later slices wire `doctrine` into the agent's prompt assembly and
-   * `enabledTools` into its tool registry. Present and unused, on purpose.
+   * The in-app agent is a configurable surface — its doctrine (a
+   * system-prompt overlay), the tools it may call, and whether its ranked
+   * search exists at all are set by the deployment, not hardcoded, the same
+   * way brand and content are.
+   *
+   * `search` IS READ. `doctrine` and `enabledTools` are still declared shape
+   * with no reader: later slices wire `doctrine` into the agent's prompt
+   * assembly and `enabledTools` into its tool registry. Present and unused,
+   * on purpose.
    */
   agent?: {
     doctrine?: string
     enabledTools?: string[]
+    search?: AgentSearchConfig
   }
   /**
    * The board a deployment shows before its own data arrives — offline, or
@@ -217,6 +275,14 @@ export type ResolvedDeploymentConfig = {
   agent?: {
     doctrine?: string
     enabledTools?: string[]
+    /**
+     * Settled when the deployment names a search section, absent when it does
+     * not — the same sparseness as its two neighbours. An absent section is
+     * the template's own state, which `asbDefaultAgentSearch` spells out:
+     * search off, nothing listed. Readers go through
+     * `configureAgentSearch`, which takes `undefined` and means exactly that.
+     */
+    search?: ResolvedAgentSearchConfig
   }
   /**
    * Guaranteed non-empty, the way `brand.name` is guaranteed a string: the
@@ -290,6 +356,19 @@ export const asbDefaultCellBudget: CellContentBudget = {
   touchpointLabels: { target: 120, warning: 120 },
 }
 
+/**
+ * The template's own search state: OFF, with nothing listed.
+ *
+ * Not a conservative default chosen for taste — the template's schema holds no
+ * `search_blueprint` function, so a tool switched on here would be a tool that
+ * raises `relation does not exist` on its first call. A deployment whose
+ * database does hold it says so on its own config.
+ */
+export const asbDefaultAgentSearch: ResolvedAgentSearchConfig = {
+  enabled: false,
+  indexes: [],
+}
+
 export const asbDefaultConfig: DeploymentConfig = {
   brand: { name: ORG_NAME, accent: BRAND.accent },
   content: { workspaceTitle: coverContent.title },
@@ -361,6 +440,24 @@ function mergeCellBudget(
 }
 
 /**
+ * Settle a supplied search section, copying it all the way down.
+ *
+ * `mergeSection` is one level deep and would pass the index array's ENTRIES
+ * through by reference, so a host that edited an entry after mount would
+ * silently change which model the browser embeds with. Absent stays absent:
+ * the template's own state is not a section anyone supplied.
+ */
+function mergeAgentSearch(
+  over: AgentSearchConfig | undefined,
+): ResolvedAgentSearchConfig | undefined {
+  if (!over) return undefined
+  return {
+    enabled: over.enabled ?? asbDefaultAgentSearch.enabled,
+    indexes: (over.indexes ?? []).map((index) => ({ ...index })),
+  }
+}
+
+/**
  * Resolve a deployment's overlay against the template defaults. A deep merge
  * one level into each section, so a deployment can set `brand.logo` without
  * having to restate `brand.name`. An absent or `null` config resolves to the
@@ -376,7 +473,18 @@ export function resolveDeploymentConfig(
     name: config?.brand?.name ?? asbDefaultConfig.brand?.name ?? ORG_NAME,
   }
   const content = mergeSection(asbDefaultConfig.content, config?.content)
-  const agent = mergeSection(asbDefaultConfig.agent, config?.agent)
+  const mergedAgent = mergeSection(asbDefaultConfig.agent, config?.agent)
+  // `mergeSection` is one level deep, so it copied the overlay's own `search`
+  // object across by reference. Drop that reference and put the settled deep
+  // copy in its place. A host that named no search section leaves the key off
+  // entirely, so an untouched `agent` resolves to exactly what it did before
+  // this field existed.
+  const { search: suppliedSearch, ...agentRest } = mergedAgent ?? {}
+  void suppliedSearch
+  const search = mergeAgentSearch(config?.agent?.search)
+  const agent = mergedAgent
+    ? { ...agentRest, ...(search ? { search } : {}) }
+    : undefined
   const overlaidNav = config?.sample?.nav
   const sample = {
     nav: [

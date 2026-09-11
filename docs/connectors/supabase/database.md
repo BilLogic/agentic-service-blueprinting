@@ -478,6 +478,88 @@ registers the document through `registerReferenceDocs` or
 `REFERENCE_NAMES_EXTRA` (see `references/customization.md`). The template's
 reference loader never imports that file by path.
 
+## Ranked search (`search_blueprint`), which this schema does not ship
+
+**The failure this answers**: a person asks the in-app agent "where does a
+first-time visitor get stuck?" in their own words and is told nothing matched —
+when the moment is mapped, in different words. Every other read this template makes goes through
+PostgREST against tables defined here, so it works wherever the template does.
+Ranked search does not: it needs a database function this schema has no
+migration for.
+
+So the tool is OFF and ABSENT unless a deployment says otherwise, and what a
+deployment says lives on its config rather than in a fork of the tool:
+
+```ts
+agent: {
+  search: {
+    enabled: true,
+    indexes: [{ provider: 'google', model: 'gemini-embedding-001', dimensions: 768 }],
+  },
+}
+```
+
+`enabled` is a claim about the database, not a preference: it says this
+deployment's schema carries `search_blueprint`. With it false or absent the
+tool is not on the agent's roster at all — absent, not failing.
+
+### What the function must accept and return
+
+The template calls one function with these arguments, and reads these columns
+off each row. A deployment may accept and return more; it may not rename or
+drop these.
+
+| Argument | Meaning |
+| --- | --- |
+| `q` | the words to match |
+| `granularity` | which rungs to search: `phase`, `scenario`, `path`, `step`, `lane`, `cell` |
+| `match_count` | top-k cut-off |
+| `filter_phase`, `filter_scenario`, `filter_path_kind`, `filter_lane_role` | narrowing, all optional |
+| `query_embedding` | the question's vector in pgvector text form, sent only when a meaning arm is expected |
+| `embed_model` | the model name that vector came from |
+
+| Column | Read for |
+| --- | --- |
+| `kind`, `id` | what the row is, and the id every later write names |
+| `snippet`, `description` | the line the agent shows |
+| `phase`, `scenario`, `path`, `step`, `lane` | the breadcrumb |
+| `matched_by` | which arm found this row, shown per result |
+| `total_matched` | the corpus-wide total, so a top-k answer is not read as the whole set |
+
+The function must raise an error whose message contains `embedding model
+mismatch` when `embed_model` names a model it holds no index for. Scoring a
+vector from the wrong space would rank noise and look like a working search;
+raising makes a misconfigured index list visible in a deployment's own logs.
+The template answers that one error with a single keyword-and-structural retry,
+and then tells the model that meaning matching did not run.
+
+### The two keys, and why the index is the deployment's job
+
+Meaning matching needs two vectors in one space: the question's, and every
+cell's. They come from different keys, and only one of them is the template's
+business.
+
+- **The question** is embedded in the browser with the PERSON's own provider
+  key, as `RETRIEVAL_QUERY`, at the model and size the listed index names. The
+  key goes to that provider's embedding endpoint and nowhere else — never to
+  this database, never into a log, and never into a URL.
+- **The cells** are embedded by the deployment's own job with a SERVER-HELD
+  credential, as `RETRIEVAL_DOCUMENT`. The template holds no such credential,
+  builds no index, and refreshes nothing.
+
+Every listed entry therefore needs an index that already exists, built with
+exactly that model at exactly that size, and the document/query task types
+above are not interchangeable: swapping them produces an index that scores
+plausibly and ranks badly.
+
+Listing no index at all is a supported state, not a half-configured one: the
+tool is offered and runs the function's keyword and structural arms. What is
+NOT supported is listing an index a person's provider cannot reach and hoping
+they get keyword search — those people are not offered the tool, quietly,
+because a keyword search presented as the same search everyone else has is
+worse than no tool. A person on an Anthropic key is always in that group:
+Anthropic has no embedding model.
+
 ## Migration desync: the repair
 
 **Who needs this**: forks created before the reserved band existed, whose local

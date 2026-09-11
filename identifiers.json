@@ -225,6 +225,7 @@
     "open_phase",
     "open_scenario",
     "replace_slides",
+    "search_blueprint",
     "set_canvas_mode",
     "set_sidebar",
     "ui_command",

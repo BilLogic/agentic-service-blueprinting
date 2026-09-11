@@ -10,12 +10,14 @@ import type {
   AgentProviderAdapter,
   AgentToolCallPart,
 } from '@/lib/agent/providers/provider'
-import { dispatchTool } from '@/lib/agent/tools/registry'
+import { dispatchTool, type DispatchContext } from '@/lib/agent/tools/registry'
+import { agentSearchPlan } from '@/lib/agent/searchPlan'
 import {
   MOBILE_READ_TOOL_NAMES,
   SAMPLE_TRIAL_TOOL_NAMES,
   TOOL_SPECS,
   WRITE_TOOL_NAMES,
+  sessionRoster,
 } from '@/lib/agent/tools/specs'
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
@@ -389,17 +391,30 @@ export async function sendToAgent(input: {
   let writesThisSend = 0
   const WRITE_BATCH_LIMIT = 8
 
-  // The mobile shell is view-only for EVERY tier, service accounts included
-  // — the agent there gets the reading roster and nothing else. Re-sampled
-  // every round: a run spans many tool rounds, and a tablet rotated across
-  // the breakpoint mid-run must not keep a roster the shell on screen
-  // no longer matches. UX gate only; the server-side RPC tier enforcement
-  // is the real wall.
-  let mobileReading = isMobileViewport()
   // No database, no writes — not "refused writes", ABSENT ones. The roster
   // is the sample-trial whitelist, and the paragraph below tells the model
   // what it is looking at so it stops trying to author.
   const sampleTrial = client === null
+  /**
+   * Ranked search: whether this session has it at all, and whether its
+   * question can be embedded.
+   *
+   * Resolved ONCE per send, here, because it is the only capability that
+   * depends on the person's own provider key — the deployment lists the
+   * vector indexes its database holds, and the key in this browser either
+   * reaches one of them or does not. Three outcomes, and the quiet one
+   * matters: not offered means the spec is filtered out of the roster, so the
+   * model never sees a tool it cannot call and the person is never told they
+   * are on a lesser search. The two offered outcomes differ only in whether
+   * `meaning` rides down to the dispatcher.
+   */
+  const searchPlan = agentSearchPlan(settings.provider)
+  const dispatchContext: DispatchContext = {
+    meaning:
+      searchPlan.offered && searchPlan.index
+        ? { index: searchPlan.index, apiKey }
+        : null,
+  }
   // The stable system prefix (role + adapter + skill — everything before
   // the live context) is byte-identical across this send's rounds; its
   // length lets caching providers put a cache breakpoint there.
@@ -410,7 +425,14 @@ export async function sendToAgent(input: {
       // Rebuilt every round: the live UI context changes as the agent's own
       // navigation tools move the canvas mid-conversation — and so can the
       // shell itself (rotation across the breakpoint).
-      mobileReading = isMobileViewport()
+      //
+      // The mobile shell is view-only for EVERY tier, service accounts
+      // included — the agent there gets the reading roster and nothing else.
+      // Sampled per round rather than per send because a run spans many tool
+      // rounds, and a tablet rotated across the breakpoint mid-run must not
+      // keep a roster the shell on screen no longer matches. UX gate only;
+      // the server-side RPC tier enforcement is the real wall.
+      const mobileReading = isMobileViewport()
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
@@ -433,15 +455,14 @@ export async function sendToAgent(input: {
             : ''),
         systemStableLength,
         messages: run.messages,
-        // One pass: mobile's whitelist already contains zero write tools
-        // (pinned by mobileRoster.test.ts), so it subsumes the tier filter.
-        tools: TOOL_SPECS.filter((spec) =>
-          sampleTrial
-            ? SAMPLE_TRIAL_TOOL_NAMES.has(spec.name)
-            : mobileReading
-              ? MOBILE_READ_TOOL_NAMES.has(spec.name)
-              : allowWrites || !WRITE_TOOL_NAMES.has(spec.name),
-        ),
+        // One pass, and the gates' ORDER is part of the contract — it lives
+        // in `sessionRoster`, next to the rosters it reads.
+        tools: sessionRoster(TOOL_SPECS, {
+          sampleTrial,
+          mobileReading,
+          allowWrites,
+          searchOffered: searchPlan.offered,
+        }),
         apiKey,
         model: modelFor(settings),
         signal: controller.signal,
@@ -519,6 +540,22 @@ export async function sendToAgent(input: {
           })
           continue
         }
+        if (call.name === 'search_blueprint' && !searchPlan.offered) {
+          // Not on this session's roster, so only a model inventing a name
+          // gets here. The refusal says the tool does not exist rather than
+          // explaining the index list — the person's provider choice is not
+          // the model's business, and a hint would invite it to ask them to
+          // change keys.
+          results.parts.push({
+            type: 'tool_result',
+            toolCallId: call.id,
+            name: call.name,
+            result:
+              'There is no search_blueprint tool in this session. Use list_blueprint for what exists at a level, and get_blueprint for one scenario.',
+            isError: true,
+          })
+          continue
+        }
         if (isWrite(call) && !allowWrites) {
           results.parts.push({
             type: 'tool_result',
@@ -550,7 +587,13 @@ export async function sendToAgent(input: {
           continue
         }
         try {
-          const output = await dispatchTool(client, sessionId, call.name, call.args)
+          const output = await dispatchTool(
+            client,
+            sessionId,
+            call.name,
+            call.args,
+            dispatchContext,
+          )
           // Counted AFTER success: a write that failed changed nothing and
           // must not eat batch budget.
           if (isWrite(call)) writesThisSend += 1

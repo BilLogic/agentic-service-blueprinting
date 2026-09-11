@@ -91,6 +91,11 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
   'list_references',
   'list_blueprint',
   'list_scenarios',
+  // A phone asking "where do we chase a missing document" is the Q&A this
+  // shell exists for, and ranked search is the read that answers it. Offered
+  // here on the same terms as anywhere else: `searchPlan.ts` still decides
+  // whether this session has it at all.
+  'search_blueprint',
   'get_blueprint',
   'compare_blueprint',
   'get_cell',
@@ -165,6 +170,10 @@ export const READ_TOOL_NAMES = new Set([
   'list_references',
   'list_blueprint',
   'list_scenarios',
+  // Classified as a read here even though it is OFTEN NOT OFFERED: this set
+  // partitions `TOOL_SPECS`, and the spec exists in every build. Whether a
+  // session may call it is `searchPlan.ts`'s question, not this set's.
+  'search_blueprint',
   'get_blueprint',
   'compare_blueprint',
   'get_cell',
@@ -205,6 +214,43 @@ export const INTERFACE_TOOL_NAMES = new Set([
   'annotate_cells',
   'ui_command',
 ])
+
+/**
+ * Which specs one session may see.
+ *
+ * Four gates, and they are NOT independent conditions on one list — they are
+ * ordered, because each subsumes the ones below it. The no-database trial and
+ * the mobile shell are whitelists that already exclude every write, so a write
+ * filter applied after either would be dead code, and a reader who reorders
+ * them gets a roster that is wrong in a way tests of individual gates would
+ * miss. Ranked search sits OUTSIDE that order: it is removed from whatever the
+ * other gates produced, because whether the deployment has a search function
+ * and whether this person's key can reach its index are questions none of the
+ * other three ask.
+ *
+ * A function rather than an expression inside the loop, so the ordering above
+ * is stated once and tested directly.
+ */
+export function sessionRoster(
+  specs: readonly ToolSpec[],
+  session: {
+    /** No Supabase configured: reads answer from the bundled sample. */
+    sampleTrial: boolean
+    /** The mobile shell is up — view-only for every tier. */
+    mobileReading: boolean
+    /** A service account. Viewers get no write tools at all. */
+    allowWrites: boolean
+    /** Does ranked search exist for this session? `searchPlan.ts` decides. */
+    searchOffered: boolean
+  },
+): ToolSpec[] {
+  return specs.filter((spec) => {
+    if (spec.name === 'search_blueprint' && !session.searchOffered) return false
+    if (session.sampleTrial) return SAMPLE_TRIAL_TOOL_NAMES.has(spec.name)
+    if (session.mobileReading) return MOBILE_READ_TOOL_NAMES.has(spec.name)
+    return session.allowWrites || !WRITE_TOOL_NAMES.has(spec.name)
+  })
+}
 
 /** The tools that mutate data — the loop enforces batch etiquette on these. */
 export const WRITE_TOOL_NAMES = new Set([
@@ -285,6 +331,36 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: {
       type: 'object',
       properties: { service: SERVICE_SCOPE_PARAM },
+    },
+  },
+  {
+    name: 'search_blueprint',
+    description:
+      'Find things by WHAT THEY SAY, when you do not know which scenario holds them — "where do we chase a missing document", "which cells mention the billing system". Results are RANKED and cut off at limit; the header reports how many matched in total, so quote that number when you show a subset, and every row reports matched_by. ' +
+      'READ THE HEADER BEFORE YOU CONCLUDE ANYTHING FROM A SMALL OR EMPTY RESULT. It names the arms that actually ran for this session — "words only", or "words and meaning". On a words-only run, a question phrased differently from the board\'s own wording can return nothing even though the moment IS mapped: zero rows there means "no row uses these words", NEVER "the blueprint does not cover this". Re-search with the board\'s vocabulary, or call list_blueprint to see what exists, before reporting an absence either way. ' +
+      'Use list_blueprint for the COMPLETE set at a level, and get_blueprint when you already know the scenario. ' +
+      'AFTER you find cells, POINT AT THEM: open_scenario, then focus_cell on the one you are talking about. Finding a cell is not showing it — the user is looking at a canvas, and an answer they cannot see on screen is half an answer.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: str("The words to match, in the blueprint's own vocabulary where you know it"),
+        granularity: {
+          type: 'array',
+          description:
+            'Levels to search: phase, scenario, path, step, lane, cell. Defaults to ["cell"]. Add "path" or "scenario" when hunting for a named branch.',
+          items: { type: 'string' },
+        },
+        phase: str('Optional. Restrict to the phase with this name (any case)'),
+        scenario: str('Optional. Restrict to the scenario with this name (any case)'),
+        kind: str(`Optional. Restrict to paths of this kind: ${PATH_KINDS.join(' | ')}`),
+        lane_role: LANE_ROLE_FILTER_PARAM,
+        service: SERVICE_SCOPE_PARAM,
+        limit: {
+          type: 'number',
+          description: 'Max rows (default 15, max 100). The true total is reported either way.',
+        },
+      },
+      required: ['query'],
     },
   },
   {
