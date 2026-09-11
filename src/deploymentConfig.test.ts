@@ -6,6 +6,7 @@ import {
   resolveDeploymentConfig,
   type DeploymentConfig,
 } from './deploymentConfig'
+import { DEFAULT_LANE_SET } from './lib/blueprintValidation'
 
 // The deployment seam's one contract: a sparse overlay resolves against the
 // template defaults, and the standalone app — no config at all — reads exactly
@@ -32,6 +33,11 @@ describe('asbDefaultConfig', () => {
 
     // The template ships no pins. A deployment that wants some supplies them.
     expect(asbDefaultConfig.pathColorPins).toEqual({})
+
+    // The lanes a new blueprint starts with are the template's standard set,
+    // named once in `blueprintValidation.ts` and referenced here, never
+    // restated. A deployment's own lanes belong on its overlay.
+    expect(asbDefaultConfig.defaultLanes).toEqual(DEFAULT_LANE_SET)
 
     // The current single cap, expressed as target and warning per lane kind.
     // A deployment's own numbers (for example 80/100 and 32/48) belong on
@@ -92,6 +98,35 @@ describe('resolveDeploymentConfig', () => {
     expect(resolved.pathColorPins).not.toBe(pathColorPins)
     pathColorPins.North = 0
     expect(resolved.pathColorPins).toEqual({ 'Alpha Path': 2 })
+  })
+
+  it("resolves the default lanes to the template's standard set when a deployment names none", () => {
+    for (const config of [undefined, null, {}, { defaultLanes: [] }]) {
+      const resolved = resolveDeploymentConfig(config)
+      // An EMPTY list is "nothing to say", as with `sample.nav`: a blueprint
+      // with no lanes at all is not a default anyone means to supply.
+      expect(resolved.defaultLanes).toEqual(DEFAULT_LANE_SET)
+      expect(resolved.defaultLanes).not.toBe(DEFAULT_LANE_SET)
+    }
+  })
+
+  it('carries a supplied lane set whole, without aliasing it', () => {
+    const defaultLanes = [
+      { name: 'Storyboard', lane_role: 'storyboard', position: 0 },
+      { name: 'Caller', lane_role: 'customer_actions', position: 1 },
+    ]
+    const resolved = resolveDeploymentConfig({ defaultLanes })
+    // Replaced, not merged: a deployment's lanes are its whole vocabulary,
+    // and a template lane spliced in beside them would be one it never chose.
+    expect(resolved.defaultLanes).toEqual(defaultLanes)
+    expect(resolved.defaultLanes).not.toBe(defaultLanes)
+    expect(resolved.defaultLanes[1]).not.toBe(defaultLanes[1])
+    defaultLanes[1].name = 'Mutated'
+    defaultLanes.push({ name: 'Extra', lane_role: 'support_actions', position: 2 })
+    expect(resolved.defaultLanes.map((lane) => lane.name)).toEqual([
+      'Storyboard',
+      'Caller',
+    ])
   })
 
   it('a brand override keeps the fields it does not restate', () => {
