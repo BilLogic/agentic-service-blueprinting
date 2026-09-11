@@ -143,6 +143,7 @@ async function main() {
     sources: { columns, comments: comments.body, readable },
     baseline,
     check,
+    record,
   })
 
   if (!check) {
