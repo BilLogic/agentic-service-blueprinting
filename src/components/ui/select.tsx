@@ -6,12 +6,13 @@ import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the
- * trigger sits on the RAISED control plate with a hover edge, so a chooser
- * does not read as another text well; an unchosen value takes hint grey like
- * any empty field; the chevron and section label are hint grey as chrome; an
- * unselected row is caption grey and the chosen one restores full ink; and the
- * popup's ring is the overlay edge rather than a raw foreground tint.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the trigger sits on the RAISED control plate with a
+ * hover edge, so a chooser does not read as another text well; an
+ * unchosen value takes hint grey like any empty field; the chevron and
+ * section label are hint grey as chrome; an unselected row is caption
+ * grey and the chosen one restores full ink; and the popup's ring is the
+ * overlay edge rather than a raw foreground tint.
  */
 
 const Select = SelectPrimitive.Root

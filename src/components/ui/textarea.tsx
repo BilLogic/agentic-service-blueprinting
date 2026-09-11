@@ -3,15 +3,15 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the sunk
- * `bg-field` plate and the hint-grey placeholder, for the reasons `input.tsx`
- * states. A long placeholder on caption grey is the worst case of the defect —
- * it reads as a paragraph somebody wrote.
- *
- * The read-only pair rides along for the same reason it is on `input.tsx`: a
- * read-only textarea was byte-identical to an editable one, so a locked field
- * looked like a place to type in the one control where the invitation is
- * largest. `enabled:` gates it because CSS `:read-only` also matches disabled.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the sunk `bg-field` plate and the hint-grey
+ * placeholder, for the reasons `input.tsx` states. A long placeholder on
+ * caption grey is the worst case of the defect — it reads as a paragraph
+ * somebody wrote.  The read-only pair rides along for the same reason it
+ * is on `input.tsx`: a read-only textarea was byte-identical to an
+ * editable one, so a locked field looked like a place to type in the one
+ * control where the invitation is largest. `enabled:` gates it because
+ * CSS `:read-only` also matches disabled.
  */
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (

@@ -9,16 +9,15 @@ import { XIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the
- * overlay is the page colour at high opacity rather than a black veil, so the
- * page stays faintly visible behind the panel instead of being replaced by a
- * flat slab.
- *
- * That makes the panel's own edge load-bearing, and it is stated: the popover
- * plate and a 90%-opaque page scrim are within ~0.005 lightness of each other
- * in the light theme, so the hairline is NAMED (`border-border-overlay`)
- * rather than left to whatever the default border colour resolves to. Without
- * it the panel and the scrim are one continuous field of white, separated only
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the overlay is the page colour at high opacity rather
+ * than a black veil, so the page stays faintly visible behind the panel
+ * instead of being replaced by a flat slab.  That makes the panel's own
+ * edge load-bearing, and it is stated: the popover plate and a 90%-opaque
+ * page scrim are within ~0.005 lightness of each other in the light
+ * theme, so the hairline is NAMED (`border-border-overlay`) rather than
+ * left to whatever the default border colour resolves to. Without it the
+ * panel and the scrim are one continuous field of white, separated only
  * by a shadow.
  */
 

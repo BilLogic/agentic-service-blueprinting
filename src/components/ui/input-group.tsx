@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the group
- * sits on `bg-field`, the same sunk well `input.tsx` sits on, so an add-on and
- * the field it wraps read as one control instead of a plate with a hole in it.
- * Its own control slots stay `bg-transparent` — they are inside this plate, not
- * beside it.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the group sits on `bg-field`, the same sunk well
+ * `input.tsx` sits on, so an add-on and the field it wraps read as one
+ * control instead of a plate with a hole in it. Its own control slots
+ * stay `bg-transparent` — they are inside this plate, not beside it.
  */
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (

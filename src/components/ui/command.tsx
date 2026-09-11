@@ -17,11 +17,11 @@ import { SearchIcon, CheckIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: an empty
- * palette search takes hint grey, like every other empty field; the group
- * heading and the shortcut are hint grey as chrome, the list body stays
- * caption grey, and a separator inside a floating menu uses the overlay edge
- * rather than the page divider.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: an empty palette search takes hint grey, like every
+ * other empty field; the group heading and the shortcut are hint grey as
+ * chrome, the list body stays caption grey, and a separator inside a
+ * floating menu uses the overlay edge rather than the page divider.
  */
 
 function Command({

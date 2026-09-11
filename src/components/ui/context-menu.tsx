@@ -6,10 +6,10 @@ import { ChevronRightIcon, CheckIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the
- * section label and the shortcut are hint grey as chrome, and the popup's edge
- * is the overlay edge, so every floating menu separates from the page the same
- * way.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the section label and the shortcut are hint grey as
+ * chrome, and the popup's edge is the overlay edge, so every floating
+ * menu separates from the page the same way.
  */
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {

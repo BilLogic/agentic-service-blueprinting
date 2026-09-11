@@ -4,13 +4,14 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: a resting
- * toggle is caption grey, so the pressed one reads as the chosen state. The
- * ON state restores full-strength ink alongside its fill — without that, a
- * pressed toggle sat at caption grey while HOVERING an unpressed neighbour
- * gave it stronger ink, so the pointer made the wrong control look chosen.
- * Every sibling here does the same: tabs `data-active:text-foreground`, ghost
- * button `aria-pressed:text-foreground`, command item `data-selected:`.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: a resting toggle is caption grey, so the pressed one
+ * reads as the chosen state. The ON state restores full-strength ink
+ * alongside its fill — without that, a pressed toggle sat at caption grey
+ * while HOVERING an unpressed neighbour gave it stronger ink, so the
+ * pointer made the wrong control look chosen. Every sibling here does the
+ * same: tabs `data-active:text-foreground`, ghost button `aria-
+ * pressed:text-foreground`, command item `data-selected:`.
  */
 const toggleVariants = cva(
   "group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted aria-pressed:text-foreground data-[state=on]:bg-muted data-[state=on]:text-foreground dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",

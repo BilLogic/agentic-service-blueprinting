@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: a dialog
- * sits on the PAGE surface with ordinary ink rather than on the card plate —
- * a card is a thing on a page, and a dialog is a page of its own — and its
- * description is hint grey.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: a dialog sits on the PAGE surface with ordinary ink
+ * rather than on the card plate — a card is a thing on a page, and a
+ * dialog is a page of its own — and its description is hint grey.
  */
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
