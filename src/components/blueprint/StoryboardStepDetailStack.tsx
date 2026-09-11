@@ -77,7 +77,7 @@ export function StoryboardStepDetailStack({
         {entries.map((entry, index) => (
           <p
             key={`label-${entry.laneName}`}
-            className="self-start text-xs font-medium leading-snug text-foreground/90"
+            className="self-start text-xs font-medium text-foreground/90"
             style={{ gridColumn: index + 1, gridRow: 2 }}
           >
             {entry.label}
@@ -87,7 +87,7 @@ export function StoryboardStepDetailStack({
         {entries.map((entry, index) => (
           <p
             key={`summary-${entry.laneName}`}
-            className="line-clamp-3 self-start overflow-hidden text-sm leading-relaxed whitespace-pre-wrap text-foreground"
+            className="line-clamp-3 self-start overflow-hidden text-sm whitespace-pre-wrap text-foreground"
             style={{ gridColumn: index + 1, gridRow: 3 }}
           >
             {entry.summary || (
@@ -139,10 +139,10 @@ export function StoryboardStepDetailStack({
               />
             </ZoomableImage>
           </div>
-          <p className="text-xs font-medium leading-snug text-foreground/90">
+          <p className="text-xs font-medium text-foreground/90">
             {entry.label}
           </p>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+          <p className="text-sm whitespace-pre-wrap text-foreground">
             {entry.summary || (
               <span className="text-muted-foreground">No summary</span>
             )}

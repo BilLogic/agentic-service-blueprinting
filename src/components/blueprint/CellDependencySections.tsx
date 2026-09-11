@@ -139,12 +139,12 @@ function DependencyRow({
         </span>
       </span>
       {connection.contentPreview && !connection.isTech ? (
-        <span className={cn('truncate text-2xs text-muted-foreground', detailIndentClass)}>
+        <span className={cn('truncate text-xs text-muted-foreground', detailIndentClass)}>
           {connection.contentPreview}
         </span>
       ) : null}
       {connection.linkNote ? (
-        <span className={cn(WHY_LINE_QUIET_CLASS, 'text-2xs leading-snug text-muted-foreground italic', detailIndentClass)}>
+        <span className={cn(WHY_LINE_QUIET_CLASS, 'text-xs text-muted-foreground italic', detailIndentClass)}>
           {connection.linkNote}
         </span>
       ) : null}
@@ -153,7 +153,7 @@ function DependencyRow({
 
   return (
     <li className="group border-b border-muted last:border-0">
-      <div className="flex flex-col gap-0.5 px-2 py-1.5 text-xs leading-snug transition-colors group-hover:bg-accent group-focus-within:bg-accent">
+      <div className="flex flex-col gap-0.5 px-2 py-1.5 text-xs transition-colors group-hover:bg-accent group-focus-within:bg-accent">
         {connection.linkNote ? (
           <Tooltip>
             <TooltipTrigger render={row} />
@@ -183,7 +183,8 @@ function DependencyRow({
                   compact
                   asSpan
                   inline
-                  className="!w-fit max-w-full !px-2 !py-0.5 !text-3xs !font-normal leading-none text-foreground/75"
+                  // geometry: packs the name into the compact inline face, not a canvas cell.
+                  className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-foreground/75"
                 />
               </button>
             ))}
@@ -203,7 +204,7 @@ function DependencyGroup({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">
+      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         {title}
       </p>
       <ul className="flex flex-col">{children}</ul>
@@ -345,7 +346,8 @@ export function CellDependencySections({
                     compact
                     asSpan
                     inline
-                    className="!w-fit max-w-full !px-2 !py-0.5 !text-3xs !font-normal leading-none text-foreground/75"
+                    // geometry: packs the name into the compact inline face, not a canvas cell.
+                  className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-foreground/75"
                   />
                 </button>
               ))}

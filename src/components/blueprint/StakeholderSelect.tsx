@@ -63,11 +63,11 @@ export function StakeholderSelect({
       about the service that it does not know.
     */
     if (result.status === 'loading') {
-      return <p className="text-2xs font-normal leading-tight text-muted-foreground">Loading the cast…</p>
+      return <p className="text-xs font-normal text-muted-foreground">Loading the cast…</p>
     }
     if (result.status === 'error') {
       return (
-        <p className="text-2xs font-normal leading-tight text-muted-foreground">
+        <p className="text-xs font-normal text-muted-foreground">
           The cast could not be loaded: {result.message}
         </p>
       )
@@ -90,7 +90,7 @@ export function StakeholderSelect({
           kind={selected.kind as StakeholderKind}
           summary={selected.summary}
         />
-        <span className="text-2xs font-normal leading-tight text-muted-foreground">
+        <span className="text-xs font-normal text-muted-foreground">
           {STAKEHOLDER_KIND_LABELS[selected.kind as StakeholderKind]}
         </span>
       </div>
@@ -160,7 +160,7 @@ export function StakeholderSelect({
         second mechanism for one fact.
       */}
       {selected?.summary ? (
-        <p className="text-2xs leading-snug text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {selected.summary}
         </p>
       ) : null}
@@ -194,7 +194,7 @@ function StakeholderRow({
         aria-hidden
       />
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="max-w-24 shrink-0 truncate text-2xs text-muted-foreground">
+      <span className="max-w-24 shrink-0 truncate text-xs text-muted-foreground">
         {hint}
       </span>
     </button>

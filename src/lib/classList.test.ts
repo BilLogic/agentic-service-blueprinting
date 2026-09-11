@@ -27,7 +27,7 @@ const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CELL_BADGE_FILE = 'components/editor/SlicePresentation.tsx'
 const SEQUENCE_BADGE_FILE = 'components/blueprint/BlueprintCellButton.tsx'
-const EYEBROW_FILE = 'components/blueprint/ScenarioSlideHeader.tsx'
+const EYEBROW_FILE = 'components/blueprint/ScenarioTitleBadge.tsx'
 const HEADER_TEXT_FILE = 'lib/canvasHeaderStyle.ts'
 const HEADER_CN_FILE = 'components/blueprint/StepHeaderAffordance.tsx'
 const NAMED_CN_FILE = 'components/blueprint/StepPanel.tsx'
@@ -64,9 +64,9 @@ describe('classListOf', () => {
     // Pieces of the sequence badge, fed in the shape `cn()` actually takes.
     const sequenceBadge = classNameString(
       SEQUENCE_BADGE_FILE,
-      'font-mono text-3xs font-medium',
+      'font-mono text-xs font-medium',
     )
-    const [mono, size, weight, nums] = ['font-mono', 'text-3xs', 'font-medium', 'tabular-nums']
+    const [mono, size, weight, nums] = ['font-mono', 'text-xs', 'font-medium', 'tabular-nums']
     expect(sequenceBadge.split(/\s+/)).toEqual(expect.arrayContaining([mono, size, weight, nums]))
     expect(
       classListOf([`${mono} ${size}`, false, null, undefined, [weight, nums]]),
@@ -105,14 +105,16 @@ describe('classListsIn', () => {
   })
 
   it('reads a class list split across cn() arguments', () => {
-    // The phase eyebrow writes `uppercase` in one argument and the size in
-    // the next (`compact ? 'text-3xs' : 'text-xs'`). No quoted string in
-    // the file holds both; the call site as a list does.
+    // The title badge writes `leading-none` in one argument and tracking
+    // in the next (`phaseTone ? 'tracking-wider' : 'tracking-tight'`). No
+    // quoted string in the file holds both; the call site as a list does.
     const source = sourceOf(EYEBROW_FILE)
-    expect(source).not.toMatch(/['"][^'"]*uppercase[^'"]*text-xs[^'"]*['"]/)
+    expect(source).not.toMatch(/['"][^'"]*leading-none[^'"]*tracking-wider[^'"]*['"]/)
     const lists = classListsIn(source, EYEBROW_FILE)
     expect(
-      lists.some((site) => classListHas(site.classes, ['uppercase', 'text-xs'])),
+      lists.some((site) =>
+        classListHas(site.classes, ['leading-none', 'tracking-wider']),
+      ),
     ).toBe(true)
   })
 
@@ -164,7 +166,7 @@ describe('classLists', () => {
       sites.some(
         (site) =>
           site.file === NAMED_CN_FILE &&
-          classListHas(site.classes, ['text-2xs', 'truncate']),
+          classListHas(site.classes, ['text-xs', 'truncate']),
       ),
     ).toBe(true)
   })
@@ -172,8 +174,15 @@ describe('classLists', () => {
   it('enforces no rule of its own', () => {
     // The reader reports what is written, including sizes and weights a
     // later guard may forbid. Returning them is the whole of its job.
+    // Plant the size: after the canvas/panel migrate, the tree no longer
+    // writes `text-2xs`, so a live walk cannot be the proof.
+    const forbidden = classListsIn(
+      `<span className="text-2xs font-medium">Label</span>`,
+    )
+    expect(forbidden.some((site) => site.classes.includes('text-2xs'))).toBe(
+      true,
+    )
     const sites = classLists()
-    expect(sites.some((site) => site.classes.includes('text-2xs'))).toBe(true)
     expect(sites.some((site) => site.classes.includes('font-semibold'))).toBe(
       true,
     )

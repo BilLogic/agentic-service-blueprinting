@@ -61,7 +61,7 @@ export function CellContentSection({ cellId }: { cellId: string | null }) {
 function OwnerCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-2xs font-medium text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <span className="text-sm font-normal text-foreground/80">{value}</span>
     </div>
   )

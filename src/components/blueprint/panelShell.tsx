@@ -279,7 +279,7 @@ export function Field({
     <span
       className={cn(
         'w-fit',
-        'text-2xs font-medium text-muted-foreground',
+        'text-xs font-medium text-muted-foreground',
         // Only where there is something behind it — and now the focus ring
         // alone. The help cursor and the dotted rule went with every other
         // announcement that a word is defined.
@@ -349,7 +349,7 @@ export function PanelHeader({
         <DrawerTitle className="sr-only">{title}</DrawerTitle>
         <DrawerDescription className="sr-only">{description}</DrawerDescription>
         <Breadcrumb className="min-w-0">
-          <BreadcrumbList className="flex-nowrap gap-0.5 text-2xs font-normal leading-tight text-muted-foreground">
+          <BreadcrumbList className="flex-nowrap gap-0.5 text-xs font-normal text-muted-foreground">
             {shown.map((crumb, index) => (
               <Fragment key={`${crumb}-${index}`}>
                 <BreadcrumbItem className="min-w-0">
@@ -394,8 +394,8 @@ export function PanelHeader({
  * The identity block every entity panel opens with: what this is, then where
  * it sits and how big it is.
  *
- * Typography is the cell panel's, exactly — `text-sm font-semibold leading-snug
- * tracking-tight` for the name and the 11px `text-2xs` step for the meta line.
+ * Typography is the cell panel's, exactly — `text-sm font-semibold`
+ * for the name and `text-xs` muted for the meta line.
  * Three panels each inventing their own heading is how a shell stops reading
  * as one surface.
  */
@@ -421,8 +421,8 @@ export function PanelIdentity({
   return (
     <div className="flex min-w-0 flex-col items-start gap-1.5">
       {badge}
-      {title ? <p className="min-w-0 text-sm font-semibold leading-normal text-foreground">{title}</p> : null}
-      {meta ? <p className="text-2xs font-normal leading-tight text-muted-foreground">{meta}</p> : null}
+      {title ? <p className="min-w-0 text-sm font-semibold text-foreground">{title}</p> : null}
+      {meta ? <p className="text-xs font-normal text-muted-foreground">{meta}</p> : null}
       {children}
     </div>
   )

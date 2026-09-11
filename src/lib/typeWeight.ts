@@ -41,7 +41,7 @@ const RETIRED = new Set(['bold', 'extrabold', 'black'])
  * quietly stops recognising the heading.
  */
 export const HEADING_TOKENS = [
-  'min-w-0 text-sm font-semibold leading-normal text-foreground',
+  'min-w-0 text-sm font-semibold text-foreground',
   'CANVAS_HEADER_TEXT',
   'BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS',
 ] as const

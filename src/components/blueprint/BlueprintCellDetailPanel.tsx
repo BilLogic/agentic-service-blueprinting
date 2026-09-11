@@ -850,7 +850,7 @@ function BlueprintCellDetailPanelBody() {
               onValueChange={setPanelSurface}
             />
           ) : (
-            <span className="min-w-0 text-sm font-semibold leading-normal text-foreground">
+            <span className="min-w-0 text-sm font-semibold text-foreground">
               Differences
             </span>
           )}
@@ -919,10 +919,10 @@ function BlueprintCellDetailPanelBody() {
         {surfaceSwitcher}
         <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
-            <DrawerTitle className="min-w-0 text-sm font-semibold leading-normal text-foreground">
+            <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
               New cell
             </DrawerTitle>
-            <DrawerDescription className="text-2xs text-muted-foreground">
+            <DrawerDescription className="text-xs text-muted-foreground">
               {[
                 draft.phaseName,
                 draft.scenarioName,
@@ -947,7 +947,8 @@ function BlueprintCellDetailPanelBody() {
         </DrawerHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 blueprint-scroll">
           <span
-            className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-3xs font-medium leading-tight"
+            // geometry: packs the lane name into the badge's fixed height.
+            className="w-fit max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium leading-none"
             style={{
               backgroundColor: draftLaneStyle.lane,
               color: 'var(--foreground-blueprint-cell)',
@@ -979,7 +980,7 @@ function BlueprintCellDetailPanelBody() {
         {surfaceSwitcher}
         <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
-            <DrawerTitle className="min-w-0 text-sm font-semibold leading-normal text-foreground">
+            <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
               Cell details
             </DrawerTitle>
             <DrawerDescription className="sr-only">
@@ -1116,7 +1117,7 @@ function BlueprintCellDetailPanelBody() {
 
   const cellBreadcrumb = (
     <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-0.5 text-2xs leading-tight text-muted-foreground">
+      <BreadcrumbList className="flex-nowrap gap-0.5 text-xs text-muted-foreground">
         {phaseName ? (
           <>
             <BreadcrumbItem className="min-w-0">
@@ -1400,7 +1401,7 @@ function BlueprintCellDetailPanelBody() {
           <div className="shrink-0 px-4 pt-2">
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md text-2xs text-muted-foreground transition-colors duration-(--motion-micro) hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="inline-flex items-center gap-1 rounded-md text-xs text-muted-foreground transition-colors duration-(--motion-micro) hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               onClick={() => {
                 setReturnToDifferences(false)
                 setPanelSurface('differences')
@@ -1470,7 +1471,7 @@ function BlueprintCellDetailPanelBody() {
                     <TabsTrigger
                       key={value}
                       value={value}
-                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-2xs font-normal text-muted-foreground/60 hover:text-muted-foreground data-active:text-foreground/90 after:bottom-[-1px] after:bg-foreground/70"
+                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-muted-foreground/60 hover:text-muted-foreground data-active:text-foreground/90 after:bottom-[-1px] after:bg-foreground/70"
                     >
                       <TabIcon className="size-3" aria-hidden />
                       {label}

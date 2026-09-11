@@ -64,7 +64,7 @@ export function PathSummaryTooltip({
       <TooltipContent
         side={side}
         sideOffset={6}
-        className="max-w-xs text-left leading-relaxed"
+        className="max-w-xs text-left"
       >
         {includeTitle || showNameInTooltip ? (
           pathName ? (

@@ -202,7 +202,7 @@ function StepPanelBody({
                 </div>
                 {/* Provenance, quietly: which lane drew this frame. The
                     frame's MEANING is the summary above it. */}
-                <figcaption className="truncate text-2xs font-normal leading-tight text-muted-foreground">
+                <figcaption className="truncate text-xs font-normal text-muted-foreground">
                   {frame.laneName}
                 </figcaption>
               </figure>

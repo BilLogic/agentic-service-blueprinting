@@ -54,6 +54,7 @@ export function PathKindBadge({
           ...style,
         }}
       >
+        {/* geometry: packs the name into the badge's fixed height. */}
         <span className="truncate leading-none tracking-tight">{label}</span>
       </Badge>
     </PathSummaryTooltip>

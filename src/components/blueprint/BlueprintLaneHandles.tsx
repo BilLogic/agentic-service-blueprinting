@@ -194,7 +194,7 @@ function BlueprintLaneHandlesActive({
             }}
           />
           {error ? (
-            <span className="max-w-40 truncate text-3xs text-destructive">
+            <span className="max-w-40 truncate text-xs text-destructive">
               {error}
             </span>
           ) : null}
