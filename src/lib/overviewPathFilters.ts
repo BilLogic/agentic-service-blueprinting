@@ -6,7 +6,7 @@ export function getOverviewPathKey(path: Pick<PathListItem, 'kind' | 'name'>): s
   return getPathColorKey(path)
 }
 
-/** One entry per unique path name/type across all overview scenarios. */
+/** One entry per path identity (`kind:name`) across the given scenarios. */
 export function collectOverviewPathOptions(
   pathsByScenario: Map<string, PathListItem[]>,
 ): PathOption[] {
@@ -41,21 +41,4 @@ export function collectOverviewPathOptionsForScenarios(
     if (paths?.length) scoped.set(scenarioId, paths)
   }
   return collectOverviewPathOptions(scoped)
-}
-
-export function isOverviewPathFilterChecked(
-  pathKey: string,
-  _pathsByScenario: Map<string, PathListItem[]>,
-  activePathKeys: readonly string[],
-): boolean {
-  return activePathKeys.includes(pathKey)
-}
-
-export function toggleOverviewPathFilter(
-  pathKey: string,
-  _pathsByScenario: Map<string, PathListItem[]>,
-  _getSelectedPathIds: (scenarioId: string) => string[],
-  togglePathKey: (pathKey: string) => void,
-): void {
-  togglePathKey(pathKey)
 }

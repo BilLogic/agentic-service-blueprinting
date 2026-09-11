@@ -3,6 +3,7 @@ import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { PathKindColorKey } from '@/components/blueprint/PathKindColorKey'
 import { formatPathPickerLabel } from '@/components/blueprint/PathMultiSelect'
+import { StatusBadge } from '@/components/blueprint/StatusBadge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +94,10 @@ export function WalkthroughPathSelect({
                 >
                   <span className="truncate">{label}</span>
                 </PathSummaryTooltip>
+                <StatusBadge
+                  status={blueprint.path.status}
+                  definition={false}
+                />
               </DropdownMenuRadioItem>
             )
           })}

@@ -41,13 +41,55 @@ import { cn } from '@/lib/utils'
 export function StatusBadge({
   status,
   className,
+  definition = true,
 }: {
   status: EntityStatus | null | undefined
   className?: string
+  /**
+   * False inside a row that is already one control — a picker's button, its
+   * checkbox label, a menu item. The word then joins that control's text
+   * instead of nesting a second, focusable control inside it, which would
+   * take a click meant for the row and sit where a screen reader cannot
+   * reach it cleanly.
+   */
+  definition?: boolean
 }) {
   if (!status) return null
 
   const needsAttention = status === 'at_risk' || status === 'deprecated'
+
+  const badge = (
+    <Badge
+      // The amber treatment is the badge's OWN warning variant, asked for by
+      // name rather than re-derived here out of a tint and an edge. The
+      // badge is where the reasoning for that shape is written down and
+      // measured, and a wrapper carrying its own copy of it is a second
+      // answer to a question that already has one.
+      //
+      // What changes is the ink. This wrote `--foreground` on the tint —
+      // ordinary copy on a tinted badge, at 20:1 — where the variant writes
+      // the role's own ink for its own tint, 13:1 in light and 9:1 in dark.
+      // Still far clear of AA, and now the word carries the status itself
+      // rather than leaving the tint to carry it alone.
+      variant={needsAttention ? 'warning' : 'outline'}
+      // Reachable without a pointer: where the word IS the control, the
+      // definition has to be gettable by keyboard too — hover is never the
+      // only way in. No help cursor and no dotted rule — both are gone
+      // everywhere; the popover is what carries the definition to a reader
+      // with no pointer at all. No hover colour — see `ui/badge.tsx`.
+      tabIndex={definition ? 0 : undefined}
+      className={cn(
+        'shrink-0 gap-0 font-normal',
+        status === 'live' && 'text-foreground/80',
+        isUnbuilt(status) && 'border-dashed text-muted-foreground',
+        className,
+      )}
+    >
+      {ENTITY_STATUS_SHORT[status]}
+    </Badge>
+  )
+
+  if (!definition) return badge
 
   return (
     <DefinitionPopover
@@ -58,34 +100,7 @@ export function StatusBadge({
         },
       ]}
     >
-      <Badge
-        // The amber treatment is the badge's OWN warning variant, asked for by
-        // name rather than re-derived here out of a tint and an edge. The
-        // badge is where the reasoning for that shape is written down and
-        // measured, and a wrapper carrying its own copy of it is a second
-        // answer to a question that already has one.
-        //
-        // What changes is the ink. This wrote `--foreground` on the tint —
-        // ordinary copy on a tinted badge, at 20:1 — where the variant writes
-        // the role's own ink for its own tint, 13:1 in light and 9:1 in dark.
-        // Still far clear of AA, and now the word carries the status itself
-        // rather than leaving the tint to carry it alone.
-        variant={needsAttention ? 'warning' : 'outline'}
-        // Reachable without a pointer: the word IS the control, so the
-        // definition has to be gettable by keyboard too — hover is never the
-        // only way in. No help cursor and no dotted rule — both are gone
-        // everywhere; the popover is what carries the definition to a reader
-        // with no pointer at all. No hover colour — see `ui/badge.tsx`.
-        tabIndex={0}
-        className={cn(
-          'shrink-0 gap-0 font-normal',
-          status === 'live' && 'text-foreground/80',
-          isUnbuilt(status) && 'border-dashed text-muted-foreground',
-          className,
-        )}
-      >
-        {ENTITY_STATUS_SHORT[status]}
-      </Badge>
+      {badge}
     </DefinitionPopover>
   )
 }

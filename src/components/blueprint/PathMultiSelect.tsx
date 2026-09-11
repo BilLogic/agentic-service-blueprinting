@@ -1,20 +1,24 @@
 import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { PathKindColorKey } from '@/components/blueprint/PathKindColorKey'
+import { StatusBadge } from '@/components/blueprint/StatusBadge'
+import type { EntityStatus } from '@/lib/entityStatus'
 import { filterToolbarButtonClass } from '@/lib/filterToolbarButton'
 import { cn } from '@/lib/utils'
 import type { PathKind } from '@/types/database'
 
 export type PathOption = {
   /**
-   * The *filter* key, not a row id. Overview filtering folds paths that share
-   * a name and type across scenarios into one option, so this is
-   * `${kind}:${name}` — never a uuid. Anything that writes to a path row
-   * wants `pathIds` instead.
+   * The path's identity key, not a row id: `${kind}:${name}`, never a uuid.
+   * Selection is keyed on it, so one option can stand for paths that share a
+   * name and a kind. Anything that writes to a path row wants `pathIds`
+   * instead.
    */
   id: string
   name: string
   summary: string | null
   kind: PathKind
+  /** How far along this route is. Absent on an option built without one. */
+  status?: EntityStatus | null
   /**
    * The real path uuids folded into this option, in the order they were
    * collected. Present only on options built by `collectOverviewPathOptions`;
@@ -143,6 +147,7 @@ function PathNotionToggle({
       >
         <span>{pathLabel}</span>
       </PathSummaryTooltip>
+      <StatusBadge status={path.status} definition={false} />
     </button>
   )
 }
@@ -175,6 +180,7 @@ export function PathToolbarButton({
       >
         <span>{pathLabel}</span>
       </PathSummaryTooltip>
+      <StatusBadge status={path.status} definition={false} />
     </button>
   )
 }
@@ -233,6 +239,7 @@ function PathCheckbox({
       >
         <span className="min-w-0 cursor-default text-left">{pathLabel}</span>
       </PathSummaryTooltip>
+      <StatusBadge status={path.status} definition={false} />
     </label>
   )
 }

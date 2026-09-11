@@ -1,6 +1,7 @@
 import {
   Fragment,
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -167,6 +168,7 @@ type ServicePhaseSectionProps = {
   onOpenPhase?: (phaseId: string) => void
   /** OPTIONAL, and the same gate one level down: opens a scenario. */
   openScenario?: (scenarioId: string) => void
+  getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType | undefined
 }
 
 function ServicePhaseSection({
@@ -178,6 +180,7 @@ function ServicePhaseSection({
   displayViewType,
   onOpenPhase,
   openScenario,
+  getScenarioDisplayViewType,
   showFlowArrow = false,
   isFlowArrowAnchor = false,
   isLoopArrowFrom = false,
@@ -219,6 +222,7 @@ function ServicePhaseSection({
         onlyScenarioId={onlyScenarioId}
         loading={false}
         openDetail={openScenario}
+        getScenarioDisplayViewType={getScenarioDisplayViewType}
       />
     </CanvasPhaseSection>
   )
@@ -328,6 +332,22 @@ function ServiceOverviewViewImpl({
   } = useEditor()
 
   /*
+    A canvas click is a transition.
+
+    Opening a scenario re-renders the phase bodies for the new focus. Marked
+    as a transition, that render yields to input instead of holding the frame
+    the click landed on. The camera loses nothing by it: its flight starts
+    from the first frame drawn after the commit (`createCameraFlightPlan`),
+    not from the click.
+  */
+  const openCanvasDetail = useCallback(
+    (slideId: string) => {
+      startTransition(() => openDetail(slideId))
+    },
+    [openDetail],
+  )
+
+  /*
     THE CANVAS DOES NOT NAVIGATE ON A PHONE.
 
     Every move between scenarios and between phases belongs to the drawer
@@ -350,7 +370,7 @@ function ServiceOverviewViewImpl({
     taps. Panning and pinching over them are unaffected; the pan handler
     never consulted these.
   */
-  const canvasNavigate = mobileShell ? undefined : openDetail
+  const canvasNavigate = mobileShell ? undefined : openCanvasDetail
 
   const allPhases = useMemo(() => getMainSlides(slides), [slides])
   const soloPhase = useMemo(() => {
@@ -370,11 +390,21 @@ function ServiceOverviewViewImpl({
     () => (soloPhase ? [soloPhase] : allPhases),
     [allPhases, soloPhase],
   )
-  const scenarioIds = soloScenarioId
-    ? [soloScenarioId]
-    : soloPhase
-      ? getSubslides(soloPhase.id, slides).map((scenario) => scenario.id)
-      : slides.filter((slide) => isSubslide(slide)).map((slide) => slide.id)
+  // A stable scope identity is load-bearing for render isolation: rebuilding
+  // this array on every navigation recreates the path-selection callbacks,
+  // which defeats the phase bodies' memo and reconciles every one of them
+  // before the camera can draw its first frame.
+  const scenarioIds = useMemo(
+    () =>
+      soloScenarioId
+        ? [soloScenarioId]
+        : soloPhase
+          ? getSubslides(soloPhase.id, slides).map((scenario) => scenario.id)
+          : slides
+              .filter((slide) => isSubslide(slide))
+              .map((slide) => slide.id),
+    [slides, soloPhase, soloScenarioId],
+  )
   const isDetail = view === 'detail'
   /*
     Detail view with no active slide is not a state the reader can navigate
@@ -396,16 +426,38 @@ function ServiceOverviewViewImpl({
     blueprintsByPathId,
     loading: blueprintsLoading,
     progress: blueprintsProgress,
-    filterPaths: overviewPaths,
-    filterSelectedPathIds: overviewSelectedPathIds,
     layout: overviewViewType,
-    resolveSelectedPathIds,
+    resolveDrawnPathIds,
   } = usePhaseBlueprintFilters({
     scenarioIds,
     slides,
     getScenarioDisplayViewType,
     setScenarioDisplayViewType,
+    focusedScenarioId,
   })
+
+  /*
+    What the canvas draws, gathered — across the whole scope, and for the
+    focused scenario alone. A phase row is a survey, one happy path per
+    scenario, and the focused scenario draws the reader's selection. That
+    rule is `resolveDrawnPathIds`, and everything here reads it rather than
+    the selection store, so the panels, the camera and the header can never
+    disagree about what is on screen.
+  */
+  const drawnPathIds = useMemo(() => {
+    const ids: string[] = []
+    for (const [scenarioId, paths] of pathsByScenario) {
+      ids.push(...resolveDrawnPathIds(scenarioId, paths))
+    }
+    return ids
+  }, [pathsByScenario, resolveDrawnPathIds])
+  const focusedDrawnPathIds = useMemo(() => {
+    if (!focusedScenarioId) return []
+    return resolveDrawnPathIds(
+      focusedScenarioId,
+      pathsByScenario.get(focusedScenarioId) ?? [],
+    )
+  }, [focusedScenarioId, pathsByScenario, resolveDrawnPathIds])
 
   const overviewReady = !slidesLoading && !blueprintsLoading
   // Content holds until the bar has visibly REACHED 100%: readiness flips
@@ -441,7 +493,9 @@ function ServiceOverviewViewImpl({
   const cameraSurface = {
     mobileShell,
     isDetail,
-    selectedPathCount: overviewSelectedPathIds.length,
+    // The focused scenario's own count: a phase row draws one path per
+    // scenario, and a row of surveys is not a comparison.
+    selectedPathCount: focusedDrawnPathIds.length,
   }
   const minFitZoom = getMinFitZoom(cameraSurface)
   const semanticZoomThreshold = getSemanticZoomThreshold(cameraSurface)
@@ -499,7 +553,7 @@ function ServiceOverviewViewImpl({
   // recenters after panning away.
   const focusedComparisonCameraKey = getFocusedComparisonCameraKey({
     isFocusedScenario: activeSlide !== null && isSubslide(activeSlide),
-    selectedPathIds: overviewSelectedPathIds,
+    selectedPathIds: focusedDrawnPathIds,
     displayViewType: activeSlide
       ? (getScenarioDisplayViewType(activeSlide) ?? 'stacked')
       : 'stacked',
@@ -706,7 +760,7 @@ function ServiceOverviewViewImpl({
     */
     if (!overviewSettled || !overviewEl || revealStartedRef.current) return
     /*
-      A WARM MOUNT STILL WAITS. Tried and reverted, 2026-08-18.
+      A WARM MOUNT STILL WAITS. Tried and reverted.
 
       A review flagged that keying the bar on the reveal hands warm mounts a
       ceremony they used to be spared, and proposed jumping straight to done
@@ -788,17 +842,31 @@ function ServiceOverviewViewImpl({
     }
   }, [overviewSettled, overviewEl])
 
-  const noPathsSelected =
-    overviewPaths.length > 0 && overviewSelectedPathIds.length === 0
+  /*
+    The reader cleared every path in the scenario they are inside.
+
+    A phase row always draws its happy paths, so this is never "the row is
+    empty" — it is the focused scenario drawing nothing. Left to the row, that
+    scenario would simply drop out of it while still being the camera's
+    target; the empty state names what happened and offers the way back.
+    Without a focus, only a scope where nothing draws at all qualifies.
+  */
+  const focusedPaths = focusedScenarioId
+    ? (pathsByScenario.get(focusedScenarioId) ?? [])
+    : []
+  const noPathsSelected = focusedScenarioId
+    ? focusedPaths.length > 0 && focusedDrawnPathIds.length === 0
+    : pathsByScenario.size > 0 && drawnPathIds.length === 0
 
   /*
     A connected workspace with no phases in it.
 
-    Unreachable until #505: an empty read used to fall back to the template's
-    sample nav, so the canvas always had somebody's phases to draw — this
-    template's, wearing the deployment's name. Now a configured deployment's board
-    is its rows and nothing else, so "there are no rows" is a state the reader
-    can be in, and it needs to say so rather than render as blank canvas.
+    Unreachable while an empty read fell back to the template's sample nav:
+    the canvas always had somebody's phases to draw — this template's,
+    wearing the deployment's name. Since a connected database became the
+    whole truth, a configured deployment's board is its rows and nothing
+    else, so "there are no rows" is a state the reader can be in, and it
+    needs to say so rather than render as blank canvas.
 
     Gated on `overviewReady`, which is what separates it from the OTHER way
     this array is empty: the first fetch, still in flight. That one is the
@@ -854,31 +922,35 @@ function ServiceOverviewViewImpl({
     // is inside, and there is nothing to name.
     if (!isDetail || !activeSlide) return null
 
-    const scopeScenarioIds = isSubslide(activeSlide)
-      ? [activeSlide.id]
-      : getSubslides(activeSlide.id, slides).map((scenario) => scenario.id)
+    /*
+      Paths only when a SCENARIO is focused. A phase header offers none: its
+      row draws one happy path per scenario, and there is nothing to choose
+      between. The header still renders — title, view type — with no path
+      control on it.
+    */
+    if (!isSubslide(activeSlide)) {
+      return { slide: activeSlide, paths: [], selectedPathIds: [] }
+    }
 
     const scopedPaths = collectOverviewPathOptionsForScenarios(
       pathsByScenario,
-      scopeScenarioIds,
+      [activeSlide.id],
     )
-    const scopedPathIds = new Set(scopedPaths.map((path) => path.id))
-    const scopedSelectedPathIds = overviewSelectedPathIds.filter((id) =>
-      scopedPathIds.has(id),
-    )
+    /*
+      An option's `id` is its identity KEY (`kind:name`), while the drawn ids
+      are real path ids. `pathIds` carries the row ids an option was built
+      from, which is where the two meet.
+    */
+    const drawn = new Set(focusedDrawnPathIds)
 
     return {
       slide: activeSlide,
       paths: scopedPaths,
-      selectedPathIds: scopedSelectedPathIds,
+      selectedPathIds: scopedPaths
+        .filter((path) => (path.pathIds ?? []).some((id) => drawn.has(id)))
+        .map((path) => path.id),
     }
-  }, [
-    activeSlide,
-    isDetail,
-    overviewSelectedPathIds,
-    pathsByScenario,
-    slides,
-  ])
+  }, [activeSlide, isDetail, focusedDrawnPathIds, pathsByScenario])
 
   // The viewport below has already scheduled this fit with animation
   // suppressed (child effects run before parent effects), so release the
@@ -1174,10 +1246,16 @@ function ServiceOverviewViewImpl({
                             slides={slides}
                             pathsByScenario={pathsByScenario}
                             blueprintsByPathId={blueprintsByPathId}
-                            getSelectedPathIds={resolveSelectedPathIds}
+                            // A phase row draws each scenario's happy path;
+                            // the focused scenario draws the reader's
+                            // selection. One resolver for both.
+                            getSelectedPathIds={resolveDrawnPathIds}
                             displayViewType={overviewViewType}
                             onOpenPhase={canvasNavigate}
                             openScenario={canvasNavigate}
+                            getScenarioDisplayViewType={
+                              getScenarioDisplayViewType
+                            }
                             dimmed={dimPhase}
                             focusActive={phaseIsFocused}
                             focusedScenarioId={

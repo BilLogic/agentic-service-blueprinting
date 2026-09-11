@@ -1,10 +1,9 @@
-import { Fragment, useCallback, useId, useMemo, useRef } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo, useRef } from 'react'
 import {
   getScenarioBlueprintPanelHeight,
-  ScenarioBlueprintPanel,
+  ScenarioBlueprintPanelBody,
 } from '@/components/blueprint/ScenarioBlueprintPanel'
 import { CanvasEmptyState } from '@/components/editor/CanvasEmptyState'
-import { useEditor } from '@/contexts/EditorContext'
 import { useAlignedPhaseRowPanelHeight } from '@/hooks/useAlignedPhaseRowPanelHeight'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
 import { defaultSelectedPathIds } from '@/lib/pathSelection'
@@ -55,6 +54,11 @@ type PhaseScenarioOverviewProps = {
    * tap on a board cannot move between scenarios — the drawer owns that.
    */
   openDetail?: (scenarioId: string) => void
+  /**
+   * The scenario's own layout choice, `undefined` when it has made none —
+   * which is what lets `displayViewType` reach it.
+   */
+  getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType | undefined
 }
 
 function PhaseScenarioConnector({ width }: { width: number }) {
@@ -107,8 +111,16 @@ function PhaseScenarioConnector({ width }: { width: number }) {
   )
 }
 
-/** A phase frame on the overview canvas: its scenario panels plus the flow arrows between them. */
-export function PhaseScenarioOverview({
+/**
+ * A phase frame on the overview canvas: its scenario panels plus the flow
+ * arrows between them.
+ *
+ * Memoised, with what it needs from the editor handed in as props. It used to
+ * read the editor context itself, and that context carries the navigation
+ * state, so every click re-rendered every phase body on the canvas — every
+ * panel and every cell — in the commit the camera's flight starts from.
+ */
+export const PhaseScenarioOverview = memo(function PhaseScenarioOverview({
   phase,
   slides,
   className,
@@ -123,8 +135,8 @@ export function PhaseScenarioOverview({
   dimAllScenarios = false,
   onlyScenarioId = null,
   openDetail,
+  getScenarioDisplayViewType,
 }: PhaseScenarioOverviewProps) {
-  const { getScenarioDisplayViewType } = useEditor()
   const isOverview = variant === 'overview'
 
   /*
@@ -275,6 +287,31 @@ export function PhaseScenarioOverview({
     resolveViewType,
   ])
 
+  /*
+    One stable navigate handler per scenario.
+
+    The panels are memoised, and an inline `() => openDetail(scenario.id)` is
+    a new identity on every render, so every panel and all of its cells
+    re-rendered whenever anything above them changed — the row height
+    settling included, which lands in the same commit as the camera ease.
+
+    No opener means no navigation. The view above decides that — on a phone
+    every move between scenarios belongs to the drawer — and withholding the
+    handler is what makes the panel genuinely inert: `navigable` in
+    `ResizableComparePanel` is gated on it existing, so there is no
+    `role="button"`, no pointer cursor and no aria-label promising a
+    destination, instead of a button that swallows taps. Panning and pinching
+    over it are unaffected, and so is opening a cell.
+  */
+  const navigateByScenario = useMemo(() => {
+    const handlers = new Map<string, () => void>()
+    if (!openDetail) return handlers
+    for (const scenario of scenarios) {
+      handlers.set(scenario.id, () => openDetail(scenario.id))
+    }
+    return handlers
+  }, [scenarios, openDetail])
+
   const rowRef = useRef<HTMLDivElement>(null)
   const selectedPathsMeasureKey = scenarios
     .map((scenario) => selectedPathIdsFor(scenario).join(','))
@@ -395,7 +432,7 @@ export function PhaseScenarioOverview({
 
         return (
           <Fragment key={scenario.id}>
-            <ScenarioBlueprintPanel
+            <ScenarioBlueprintPanelBody
               slide={scenario}
               slides={slides}
               paths={paths}
@@ -427,24 +464,14 @@ export function PhaseScenarioOverview({
               lockPanelHeight={alignPanelHeights}
               excludeFromRowHeight={isExcluded(scenario.id)}
               displayViewType={scenarioViewType}
-              /*
-                No opener means no navigation. The view above decides that —
-                on a phone every move between scenarios belongs to the
-                drawer — and withholding the handler is what makes the panel
-                genuinely inert: `navigable` in `ResizableComparePanel` is
-                gated on it existing, so there is no `role="button"`, no
-                pointer cursor and no aria-label promising a destination,
-                instead of a button that swallows taps. Panning and pinching
-                over it are unaffected, and so is opening a cell.
-              */
-              onNavigate={
-                openDetail ? () => openDetail(scenario.id) : undefined
-              }
+              // A stable handler, or none at all — see `navigateByScenario`.
+              onNavigate={navigateByScenario.get(scenario.id)}
               dimmed={
                 dimAllScenarios ||
                 (focusedScenarioId !== null && !isFocusedScenario)
               }
               focusActive={isFocusedScenario}
+              getScenarioDisplayViewType={getScenarioDisplayViewType}
             />
 
             {renderScenarioSeparator(index, visibleScenarioSelections.length)}
@@ -453,4 +480,4 @@ export function PhaseScenarioOverview({
       })}
     </div>
   )
-}
+})
