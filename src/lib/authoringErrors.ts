@@ -64,6 +64,15 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
     message: 'Two lanes ended up in the same position. Reload and try the move again.',
   },
   {
+    // A findings fingerprint collision is neither a name nor a position: it is
+    // a reopen racing a twin that is already open, which the partial unique
+    // index over open fingerprints refuses by design. Match it before the
+    // generic sentence, or the author is told to rename something they never
+    // named.
+    match: 'findings_open_fingerprint',
+    message: 'That finding is already open — reload to see the one that exists.',
+  },
+  {
     match: 'duplicate key value',
     message: 'Something with that name or position already exists here.',
   },

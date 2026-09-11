@@ -14,6 +14,17 @@ describe('parseUrlViewState', () => {
     })
   })
 
+  it('still reads a link written before the param was renamed', () => {
+    // `frame` was this param's name before `slide`, and a presentation link
+    // is a thing people paste into chat. Without the alias every one of those
+    // already sent lands on slide 1 with nothing reporting it.
+    expect(parseUrlViewState('?slice=s-1&mode=present&frame=3')).toEqual({
+      kind: 'present',
+      sliceId: 's-1',
+      slide: 3,
+    })
+  })
+
   it('reads a cell share link', () => {
     expect(parseUrlViewState('?cell=c-9')).toEqual({ kind: 'blueprint', cellId: 'c-9' })
   })
@@ -50,5 +61,11 @@ describe('serializeUrlViewState', () => {
     expect(
       serializeUrlViewState({ kind: 'present', sliceId: 's-1', slide: 2 }),
     ).toBe('?slice=s-1&mode=present&slide=2')
+  })
+
+  it('never writes the retired param back', () => {
+    const search = serializeUrlViewState({ kind: 'present', sliceId: 's-1', slide: 3 })
+    expect(search).toContain('slide=3')
+    expect(search).not.toContain('frame=')
   })
 })

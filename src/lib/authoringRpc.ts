@@ -397,7 +397,9 @@ export function createScenario(
     lane_source_path_id: input.laneSourcePathId ?? null,
     lane_set: input.laneSet ?? [],
     step_count: input.stepCount ?? 5,
-    path_name: input.pathName ?? 'Happy Path',
+    // A name, not a kind: the first version is created with kind `happy`
+    // already, so the fallback must not spell the kind a second time.
+    path_name: input.pathName ?? 'Main path',
   })
 }
 
