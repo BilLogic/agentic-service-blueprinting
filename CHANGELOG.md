@@ -152,11 +152,11 @@ docs checks read this repository's own numbers from `scripts/repo-config.mjs`.
   ```ts
   export const deploymentConfig: DeploymentConfig = {
     defaultLanes: [
-      { name: "Storyboard", lane_role: "storyboard", position: 0 },
-      { name: "Caller", lane_role: "customer_actions", position: 1 },
+      { name: 'Storyboard', lane_role: 'storyboard', position: 0 },
+      { name: 'Caller', lane_role: 'customer_actions', position: 1 },
       // …one entry per lane, top to bottom
     ],
-  };
+  }
   ```
 
   `CreateBlueprintDialog` now reads the deployment config, so a test that renders it has to wrap it in `DeploymentConfigProvider`, the same way the app already does.
@@ -5277,8 +5277,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                        "lanes_lane_role_check" … compliance_review
+                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
