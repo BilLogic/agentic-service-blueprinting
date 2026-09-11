@@ -25,6 +25,7 @@ export function BlueprintEmptyCellSlot({
   laneId,
   stepId,
   laneName,
+  laneRole,
   stepName,
   stepIndex,
   scenarioName,
@@ -37,6 +38,8 @@ export function BlueprintEmptyCellSlot({
   laneId: string
   stepId: string
   laneName: string
+  /** Carried onto the draft, so the new cell is measured by the lane's role. */
+  laneRole: string | null
   stepName: string
   stepIndex: number
   scenarioName?: string
@@ -81,6 +84,7 @@ export function BlueprintEmptyCellSlot({
             laneId,
             stepId,
             laneName,
+            laneRole,
             stepName,
             stepIndex,
             scenarioName,

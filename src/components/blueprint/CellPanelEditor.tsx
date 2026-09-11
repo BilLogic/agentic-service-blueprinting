@@ -51,6 +51,13 @@ export type DraftCellTarget = {
   laneId: string
   stepId: string
   laneName: string
+  /**
+   * The lane's role, as the board read it. Which budget a new cell is measured
+   * against is the role's question, the same one an existing cell asks; the
+   * name alone answers it only for the legacy lane names, and `lanes.name` is
+   * free-form.
+   */
+  laneRole: string | null
   stepName: string
   stepIndex: number
   scenarioName?: string
@@ -86,16 +93,18 @@ const EMPTY_PLACEMENT: PlacementDetailDraft = {
 /**
  * Which per-kind budget a panel field is measured against.
  *
- * A draft names its lane; an existing cell looks the lane up on the board
- * the panel was opened from. Either missing falls through to prose, matching
- * the agent tool's fallback when it cannot see a role.
+ * A draft carries its lane's name and role; an existing cell looks the lane
+ * up on the board the panel was opened from. Either missing falls through to
+ * prose, matching the agent tool's fallback when it cannot see a role.
  */
 function budgetKindForEditor(
   cellId: string | null,
   draft: DraftCellTarget | undefined,
   blueprints: BlueprintData[] | undefined,
 ): CellBudgetKind {
-  if (draft) return cellBudgetKindForLane({ name: draft.laneName })
+  if (draft) {
+    return cellBudgetKindForLane({ name: draft.laneName, role: draft.laneRole })
+  }
   if (!cellId || !blueprints) return cellBudgetKindForLane(null)
   for (const blueprint of blueprints) {
     const cell = blueprint.cells.find((entry) => entry.id === cellId)

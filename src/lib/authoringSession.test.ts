@@ -1,5 +1,14 @@
 import { test, expect } from 'vitest'
-import { describeChange, type ChangeEntry, type WriteFn } from '@/lib/authoringSession'
+import {
+  clearSession,
+  describeChange,
+  groupChanges,
+  recordChange,
+  sessionHasDestructive,
+  sessionSnapshot,
+  type ChangeEntry,
+  type WriteFn,
+} from '@/lib/authoringSession'
 
 /**
  * The two guarantees `WriteFn` exists to make. Both are compile-time — this
@@ -174,4 +183,132 @@ test('an update with no recoverable before-state still reads as an edit', () => 
   expect(describeChange(entry)).toBe('Edited a cell’s text')
   const edge: ChangeEntry = { id: 'c6', fn: 'set_cell_dependency', args: {}, at: 0 }
   expect(describeChange(edge)).toBe('Edited a connection')
+})
+
+/*
+ * The session change log itself.
+ *
+ * The list is what makes "discard all changes" trustworthy, so what is pinned
+ * here is that it never lies: it describes what was done rather than which
+ * table moved, it groups changes that would otherwise be indistinguishable,
+ * and it knows which of them destroy something.
+ */
+
+/** A hand-built entry. `fn` is loose so an operation outside the union can be asked about. */
+const entry = (fn: string, args: Record<string, unknown> = {}): ChangeEntry => ({
+  id: 'x',
+  fn: fn as WriteFn,
+  args,
+  at: 0,
+})
+
+test('a change is only logged once it has been recorded', () => {
+  clearSession()
+  expect(sessionSnapshot()).toHaveLength(0)
+  recordChange('add_step', { path_id: 'p1', name: 'Greet' })
+  expect(sessionSnapshot()).toHaveLength(1)
+  clearSession()
+  expect(sessionSnapshot()).toHaveLength(0)
+})
+
+test('saving clears the list without touching anything else', () => {
+  clearSession()
+  recordChange('add_step', { path_id: 'p1' })
+  recordChange('add_lane', { scenario_id: 's1' })
+  expect(sessionSnapshot()).toHaveLength(2)
+  clearSession()
+  expect(sessionSnapshot()).toEqual([])
+})
+
+test('the snapshot is a new array per change, so subscribers re-render', () => {
+  clearSession()
+  const before = sessionSnapshot()
+  recordChange('add_step', {})
+  expect(sessionSnapshot()).not.toBe(before)
+  clearSession()
+})
+
+test('changes are named by what was done, never by table', () => {
+  expect(describeChange(entry('add_step', { name: 'Greet' }))).toBe('Added step “Greet”')
+  expect(describeChange(entry('add_step'))).toBe('Added a step')
+  expect(describeChange(entry('remove_lane'))).toBe('Deleted a lane')
+})
+
+test('an unknown operation still appears rather than vanishing', () => {
+  // Silence would be the one failure the sheet exists to prevent: a change
+  // that happened and is not listed.
+  expect(describeChange(entry('some_new_rpc'))).toBe('some new rpc')
+})
+
+test('a duplicate names the copy it made', () => {
+  // `duplicate_scenario` once shipped with no case and fell to the old
+  // switch's default, so the sheet listed the raw function name — which reads
+  // plausibly enough that nobody caught it. The sentence is pinned here with
+  // its sibling.
+  expect(describeChange(entry('duplicate_scenario', { name: 'Intake (copy)' }))).toBe(
+    'Duplicated a blueprint as “Intake (copy)”',
+  )
+  expect(describeChange(entry('duplicate_path', { name: 'Happy Path (copy)' }))).toBe(
+    'Duplicated a path as “Happy Path (copy)”',
+  )
+})
+
+test('a duplicated blueprint groups with the blueprint it copied', () => {
+  // duplicate_scenario's args carry `source_scenario_id` and nothing else the
+  // grouper knew about, so the row landed in the no-path bucket — away from
+  // every other change to the same blueprint.
+  const groups = groupChanges([
+    entry('add_lane', { scenario_id: 's1' }),
+    entry('duplicate_scenario', { source_scenario_id: 's1', name: 'Copy' }),
+  ])
+  expect(groups).toHaveLength(1)
+  expect(groups[0].pathId).toBe('s1')
+})
+
+test('a blank name is not quoted as an empty string', () => {
+  expect(describeChange(entry('add_lane', { name: '   ' }))).toBe('Added lane')
+})
+
+test('changes group by the path they touched', () => {
+  const groups = groupChanges([
+    entry('add_step', { path_id: 'p1' }),
+    entry('upsert_cell', { path_id: 'p2' }),
+    entry('add_step', { path_id: 'p1' }),
+  ])
+  expect(groups).toHaveLength(2)
+  expect(groups[0].pathId).toBe('p1')
+  expect(groups[0].entries).toHaveLength(2)
+  expect(groups[1].pathId).toBe('p2')
+})
+
+test('changes with no path fall into their own bucket, not a wrong one', () => {
+  const groups = groupChanges([
+    entry('create_phase', { lifecycle_id: 'l1' }),
+    entry('add_step', { path_id: 'p1' }),
+  ])
+  expect(groups[0].pathId).toBeNull()
+  expect(groups[1].pathId).toBe('p1')
+})
+
+test('grouping preserves the order changes were made in', () => {
+  const groups = groupChanges([
+    entry('add_step', { path_id: 'p1', name: 'first' }),
+    entry('add_step', { path_id: 'p1', name: 'second' }),
+  ])
+  expect(groups[0].entries.map((e) => e.args.name)).toEqual(['first', 'second'])
+})
+
+test('a destructive session is flagged, an additive one is not', () => {
+  expect(sessionHasDestructive([entry('add_step'), entry('upsert_cell')])).toBe(false)
+  expect(sessionHasDestructive([entry('add_step'), entry('remove_lane')])).toBe(true)
+})
+
+test('a slice delete is named and counts as destructive', () => {
+  expect(
+    describeChange(entry('delete_slice', { slice_id: 's1', title: 'Customer journey' })),
+  ).toBe('Deleted slice “Customer journey”')
+  expect(describeChange(entry('delete_slice', { slice_id: 's1', title: null }))).toBe(
+    'Deleted a slice',
+  )
+  expect(sessionHasDestructive([entry('delete_slice')])).toBe(true)
 })

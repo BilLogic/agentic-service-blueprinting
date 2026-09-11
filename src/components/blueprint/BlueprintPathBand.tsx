@@ -360,6 +360,9 @@ function CompareLaneRow({
           laneId={blueprintLane.id}
           stepId={step.id}
           laneName={lane.name}
+          // The path's own lane, the one the cell will live in — the same
+          // lane an existing cell's budget is read from.
+          laneRole={blueprintLane.role ?? null}
           stepName={step.name}
           stepIndex={stepIndex}
           scenarioName={scenarioName}
