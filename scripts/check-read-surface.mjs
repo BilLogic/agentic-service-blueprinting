@@ -5,11 +5,9 @@
  * Sibling of scripts/check-write-surface.mjs, and here for the same reason:
  * `references/canvas-adapter.md` is normative for the canvas agent, so a tool
  * name in it is an interface the agent believes it has. The write surface had
- * drifted; so had the read surface, in five places at once — `get_reference`
- * for `get_reference`, `list_blueprint` and `search_blueprint` for
- * `get_blueprint`, `create_finding` for `create_finding`, `update_finding`
- * for `update_finding`. None of those tools have ever existed. An agent
- * that follows the document calls a name the registry has no entry for.
+ * drifted; so had the read surface, in five places at once, each one a tool
+ * name the registry had no entry for. An agent that follows the document
+ * calls exactly the names it finds there, whether or not they exist.
  *
  * Two assertions, because the two failures are different shapes:
  *
@@ -17,7 +15,7 @@
  *      source of truth; the adapter's read-surface row must list exactly it,
  *      in both directions — same comparison the write check makes.
  *
- *   2. THE WHOLE DOCUMENT. Four of the five wrong names above were in prose,
+ *   2. THE WHOLE DOCUMENT. Four of those five wrong names were in prose,
  *      not in a row, so a row-scoped check would have walked past them. Every
  *      backticked snake_case token in the file must therefore name a real
  *      tool, or be listed in NOT_TOOLS below. That list is short on purpose:
