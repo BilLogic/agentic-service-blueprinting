@@ -71,12 +71,24 @@ type SearchResponse = {
  * The one loosely-typed line in this module. See the header for why the
  * generated types cannot carry this function.
  */
-function searchRpc(client: Client, args: SearchBlueprintArgs): Promise<SearchResponse> {
+function searchRpc(
+  client: Client,
+  args: SearchBlueprintArgs,
+  /**
+   * The run's abort signal, carried down to the request itself. Stop has to
+   * reach a call that is WAITING on somebody else's network: a ranked search
+   * over a large board is the slowest read the agent makes, so cancelling
+   * only between calls leaves the longest one running after the person asked
+   * it to stop.
+   */
+  signal?: AbortSignal,
+): Promise<SearchResponse> {
   const call = client.rpc as unknown as (
     name: 'search_blueprint',
     args: SearchBlueprintArgs,
-  ) => Promise<SearchResponse>
-  return call('search_blueprint', args)
+  ) => { abortSignal(signal: AbortSignal): PromiseLike<SearchResponse> } & PromiseLike<SearchResponse>
+  const builder = call('search_blueprint', args)
+  return Promise.resolve(signal ? builder.abortSignal(signal) : builder)
 }
 
 /** The default rungs a ranked search covers when the caller names none. */
@@ -161,10 +173,12 @@ async function scopeRows(
   client: Client,
   rows: BlueprintSearchRow[],
   scope: ServiceScope,
+  signal?: AbortSignal,
 ): Promise<ScopedRows> {
   if (scope.kind === 'all')
     return { rows, otherService: 0, ambiguous: 0, unplaceable: 0 }
-  const { data, error } = await client.from('phases').select('name, service_id')
+  const ownership = client.from('phases').select('name, service_id')
+  const { data, error } = await (signal ? ownership.abortSignal(signal) : ownership)
   if (error) throw new Error(error.message)
   const owners = new Map<string, Set<string>>()
   for (const phase of data ?? []) {
@@ -296,6 +310,7 @@ export async function searchBlueprint(
     meaningAttempted
       ? { ...base, query_embedding: embedding, embed_model: embedModel }
       : base,
+    options.signal,
   )
 
   let rows = response.data
@@ -308,7 +323,7 @@ export async function searchBlueprint(
       throw new Error(response.error.message)
     // The deployment listed an index its function does not hold. One keyword
     // and structural call, then the text says meaning did not run.
-    const retry = await searchRpc(client, base)
+    const retry = await searchRpc(client, base, options.signal)
     if (retry.error) throw new Error(retry.error.message)
     rows = retry.data
     meaningRan = false
@@ -316,7 +331,7 @@ export async function searchBlueprint(
 
   const scope = options.scope ?? SCOPE_ALL
   const returned = rows ?? []
-  const scoped = await scopeRows(client, returned, scope)
+  const scoped = await scopeRows(client, returned, scope, options.signal)
   return formatBlueprintSearch(scoped.rows, options.query, {
     meaning: meaningRan,
     // The total stays the function's own — the corpus-wide count is what the

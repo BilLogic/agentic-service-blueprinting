@@ -404,9 +404,11 @@ export async function sendToAgent(input: {
    * vector indexes its database holds, and the key in this browser either
    * reaches one of them or does not. Three outcomes, and the quiet one
    * matters: not offered means the spec is filtered out of the roster, so the
-   * model never sees a tool it cannot call and the person is never told they
-   * are on a lesser search. The two offered outcomes differ only in whether
-   * `meaning` rides down to the dispatcher.
+   * model cannot call the tool and the person is never told they are on a
+   * lesser search. The shared adapter reference still lists the name as part
+   * of the read surface and says a tool absent from the tool list does not
+   * exist here — see searchPlan.ts on why the mention stays. The two offered
+   * outcomes differ only in whether `meaning` rides down to the dispatcher.
    */
   const searchPlan = agentSearchPlan(settings.provider)
   const dispatchContext: DispatchContext = {

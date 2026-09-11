@@ -182,6 +182,47 @@ describe('searchBlueprint with no index to embed against', () => {
   })
 })
 
+/**
+ * A client that records which requests were handed the run's abort signal.
+ *
+ * Pressing Stop has to reach a call that is WAITING, not just the gap
+ * between calls: a ranked search over a large board is the slowest read the
+ * agent makes. A signal that only guards the loop leaves that request
+ * running after the person asked it to stop, so what is asserted is that the
+ * signal arrived at the request itself.
+ */
+function signalRecordingClient(phases: Array<{ name: string; service_id: string }>): {
+  client: SupabaseClient<Database>
+  signalled: string[]
+} {
+  const signalled: string[] = []
+  const client = {
+    rpc: (name: string) => {
+      const answer = { data: [{ ...ROW, phase: 'Onboarding' }], error: null }
+      return {
+        abortSignal: (signal: AbortSignal) => {
+          signalled.push(`${name}:${signal instanceof AbortSignal}`)
+          return Promise.resolve(answer)
+        },
+        then: (onF: (v: unknown) => unknown) => Promise.resolve(answer).then(onF),
+      }
+    },
+    from: (table: string) => {
+      const answer = { data: phases, error: null }
+      const builder = {
+        select: () => builder,
+        abortSignal: (signal: AbortSignal) => {
+          signalled.push(`${table}:${signal instanceof AbortSignal}`)
+          return Promise.resolve(answer)
+        },
+        then: (onF: (v: unknown) => unknown) => Promise.resolve(answer).then(onF),
+      }
+      return builder
+    },
+  } as unknown as SupabaseClient<Database>
+  return { client, signalled }
+}
+
 describe('searchBlueprint under a service scope', () => {
   /** A client whose phases table places each phase name in one service. */
   function scopedClient(
@@ -272,7 +313,7 @@ describe('searchBlueprint under a service scope', () => {
     // service:"all" as the only remedy — would send the caller away from the
     // rows they were asking for.
     expect(text).toContain('The top 1 of 3 rows matching')
-    expect(text).toContain('are all outside Tutoring')
+    expect(text).toContain('came back in other services, none in Tutoring')
     expect(text).toContain('not about Tutoring')
     expect(text).toContain('raise limit')
     expect(text).not.toContain('no row USES those words')
@@ -296,6 +337,11 @@ describe('searchBlueprint under a service scope', () => {
     })
     expect(text).toContain('more than one service uses')
     expect(text).not.toContain('cell-1')
+    // A row nobody could place is not a row somewhere else. Both services own
+    // a phase called Intake, so this row may well be Tutoring's — saying it
+    // came back elsewhere would state the one thing this cannot know.
+    expect(text).not.toContain('in other services')
+    expect(text).toContain('not known to be outside it')
   })
 
   it('counts a row with no phase apart from one in another service', async () => {
@@ -313,6 +359,8 @@ describe('searchBlueprint under a service scope', () => {
       meaning: { index: GOOGLE_INDEX, apiKey: KEY },
     })
     expect(text).toContain('carrying no phase at all')
+    expect(text).not.toContain('in other services')
+    expect(text).toContain('not known to be outside it')
     expect(text).not.toContain('more than one service uses')
   })
 
@@ -441,5 +489,40 @@ describe('searchBlueprint argument guards', () => {
     await searchBlueprint(client, { query: 'q', limit: -5, meaning: null })
     expect(calls[0].args.match_count).toBe(1)
     expect(calls[1].args.match_count).toBe(1)
+  })
+})
+
+describe('stop reaches the requests, not only the gaps between them', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('hands the signal to the search call and to the ownership read', async () => {
+    stubEmbed()
+    const { client, signalled } = signalRecordingClient([
+      { name: 'Onboarding', service_id: 'svc-1' },
+    ])
+    const controller = new AbortController()
+    await searchBlueprint(client, {
+      query: 'q',
+      scope: { kind: 'service', serviceId: 'svc-1', serviceName: 'Tutoring' },
+      meaning: { index: GOOGLE_INDEX, apiKey: KEY },
+      signal: controller.signal,
+    })
+    expect(signalled).toEqual(['search_blueprint:true', 'phases:true'])
+  })
+
+  it('works unchanged when there is no signal to hand down', async () => {
+    // The dispatcher may call without one, and a client builder that has no
+    // `abortSignal` must not be reached in that case.
+    stubEmbed()
+    const { client, signalled } = signalRecordingClient([
+      { name: 'Onboarding', service_id: 'svc-1' },
+    ])
+    const text = await searchBlueprint(client, {
+      query: 'q',
+      scope: { kind: 'service', serviceId: 'svc-1', serviceName: 'Tutoring' },
+      meaning: { index: GOOGLE_INDEX, apiKey: KEY },
+    })
+    expect(signalled).toEqual([])
+    expect(text).toContain('cell-1')
   })
 })
