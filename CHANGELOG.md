@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.40.2
+
+A vendored file names the decision it diverges for, never the record number.
+
+Seventeen citations of a record number went out with the colour-job pass:
+sixteen headers reading `(ADR 0014)` and one reading `(ADR 0008)`. A record
+number belongs to the repository that assigned it, and this tree is consumed as
+source — so a deployment reading `ADR 0014` in a file it shares with this
+template resolves it against its own records, where 0014 is a different
+decision or none at all. The reader arrives at the wrong page, or at no page,
+and believes they have the reason.
+
+The headers now say it in words: a divergence from the vendored source is
+allowed only with a stated reason, and the reason is the sentence that follows.
+
+A test holds the rule where the files are written. It existed only downstream
+before, in a deployment's reconciled gate, which runs against an installed copy
+after a release — which is how sixteen of them shipped and were found by a
+deployment bumping its pin.
+
+### Upgrading a deployment
+
+Nothing renders differently. If your deployment enrols any of the vendored
+primitives as reconciled files, adopt this release's copies: the bytes changed
+in comments only.
+
 ## 1.40.1
 
 Shared controls apply the same colour jobs as the design system these
