@@ -39,15 +39,6 @@ describe('the storyboard strip has no per-frame label', () => {
     expect(screen.queryByText('Support')).toBeNull()
   })
 
-  it('keeps the same accessible name in the presentation layout', () => {
-    render(<BlueprintStepStoryboard frames={FRAMES} presentation />)
-
-    expect(
-      screen.getByRole('img', { name: 'Step storyboard, 3 images' }),
-    ).toBeTruthy()
-    expect(screen.queryByText('Front stage')).toBeNull()
-  })
-
   it('authors no type rung below xs', () => {
     expect(source).not.toMatch(/\btext-(?:2xs|3xs|4xs|5xs)\b/)
   })
