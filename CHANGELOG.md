@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.37.1
+
+### Patch Changes
+
+- 4869a6c: Shared files name the decision they cite instead of an address that means
+  something else in a deployment.
+
+  Five comments in the stylesheet cited an ADR by number, and one each in the
+  illustration upload, the deployment config and the mobile navigation sheet
+  cited a migration version or an issue number, and the reference loader cited
+  an ADR by number. A deployment reads these files
+  byte for byte, and in its own repository each of those addresses names a
+  different record or nothing. Comment-only; no behaviour changes.
+
 ## 1.37.0
 
 A type system written down and enforced, three new deployment config seams,
@@ -4965,8 +4979,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
