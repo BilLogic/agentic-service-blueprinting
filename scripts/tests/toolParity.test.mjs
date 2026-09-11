@@ -5,10 +5,11 @@ import assert from 'node:assert/strict'
 
 /**
  * The eval harness must run against the app's tool surface. The spec
- * DECLARATIONS are one-sourced — run.mjs bundles `app-surface.entry.ts` with
- * rolldown at startup, and that entry re-exports TOOL_SPECS /
- * WRITE_TOOL_NAMES / MOBILE_READ_TOOL_NAMES from specs.ts — so the check is
- * that the import wiring still exists and no fork has crept back in.
+ * DECLARATIONS are one-sourced — `surface.mjs` bundles `app-surface.entry.ts`
+ * with rolldown once per run, that entry re-exports TOOL_SPECS /
+ * WRITE_TOOL_NAMES / MOBILE_READ_TOOL_NAMES from specs.ts, and every harness
+ * module imports them from `surface.mjs` — so the check is that the import
+ * wiring still exists and no fork has crept back in.
  *
  * Deliberately text-parsed: `registry.ts` imports supabase-js and Vite
  * `?raw` markdown, so it cannot be loaded from Node without a bundler.
@@ -34,14 +35,21 @@ function setMembers(source, name) {
 const specs = read('src/lib/agent/tools/specs.ts')
 const registry = read('src/lib/agent/tools/registry.ts')
 const harness = read('scripts/agent-harness/run.mjs')
+const bundler = read('scripts/agent-harness/surface.mjs')
 const surfaceEntry = read('scripts/agent-harness/app-surface.entry.ts')
 
 test('harness imports the app tool specs instead of forking them', () => {
-  // The wiring: rolldown bundles the surface entry, the entry re-exports the
-  // rosters from specs.ts, and the harness destructures them from the bundle.
+  // The wiring: surface.mjs bundles the surface entry, the entry re-exports
+  // the rosters from specs.ts, and the runner destructures them from the
+  // bundle surface.mjs hands it.
   assert.ok(
-    harness.includes('scripts/agent-harness/app-surface.entry.ts'),
-    'run.mjs no longer bundles scripts/agent-harness/app-surface.entry.ts',
+    bundler.includes('scripts/agent-harness/app-surface.entry.ts'),
+    'surface.mjs no longer bundles scripts/agent-harness/app-surface.entry.ts',
+  )
+  assert.match(
+    harness,
+    /import\s*\{\s*surface\s*\}\s*from\s*'\.\/surface\.mjs'/,
+    'run.mjs no longer takes the bundled surface from surface.mjs',
   )
   assert.match(
     surfaceEntry,
@@ -65,6 +73,7 @@ test('harness imports the app tool specs instead of forking them', () => {
   // imported roster.
   for (const [file, source] of [
     ['run.mjs', harness],
+    ['surface.mjs', bundler],
     ['app-surface.entry.ts', surfaceEntry],
   ]) {
     assert.ok(
@@ -80,6 +89,26 @@ test('harness imports the app tool specs instead of forking them', () => {
       `${file} contains inline tool-spec declarations — the fork is back`,
     )
   }
+})
+
+/**
+ * The case file's write list is the dangerous one: a name missing from it
+ * makes a "no writes happened" trace check PASS, so drift there hides itself
+ * instead of failing loudly. `harness-write-list.test.mjs` pins that it is
+ * imported from the bundled surface; this pins that what the trace checks
+ * count against IS that roster, not a set built from it or beside it.
+ */
+test('cases.mjs counts writes against the app write roster itself', () => {
+  const cases = read('scripts/agent-harness/cases.mjs')
+  assert.match(
+    cases,
+    /^const WRITES = WRITE_TOOL_NAMES\s*$/m,
+    'cases.mjs WRITES is no longer the imported WRITE_TOOL_NAMES roster',
+  )
+  assert.ok(
+    !/WRITES\s*=\s*new Set\(/.test(cases),
+    'cases.mjs builds its own write set again — it will drift from specs.ts',
+  )
 })
 
 test('every write tool is dispatchable', () => {
