@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { listScenarios, listStakeholders } from '@/lib/agent/tools/read'
+import { listBlueprint, listStakeholders } from '@/lib/agent/tools/read'
 import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
 
 /*
@@ -11,10 +11,9 @@ import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
  * catalog read narrows by the implicit-membership join rather than by a column
  * the shared catalog does not have.
  *
- * The deployment this came from pins the same pair over `search_blueprint`,
- * whose ranked read needs a `public.search_blueprint` RPC this template has no
- * migration for; `list_scenarios` is the journey read the template scopes
- * instead.
+ * `list_blueprint` is the journey read, and it scopes straight off
+ * `phases.service_id` with plain PostgREST reads — no ranked search, and no
+ * database function this template does not ship.
  */
 
 type Rec = { table: string; select?: string; filters: string[] }
@@ -44,6 +43,9 @@ function fakeClient(handlers: {
       order() {
         return b
       },
+      range() {
+        return b
+      },
       then(onF: (v: unknown) => unknown, onR?: (e: unknown) => unknown) {
         return Promise.resolve(
           handlers.from ? handlers.from(rec) : { data: [], error: null },
@@ -67,52 +69,40 @@ const SALES: ServiceScope = {
   serviceName: 'Sales Pipeline',
 }
 
-describe('listScenarios scope', () => {
-  const PHASES = [
-    {
-      id: 'ph-sales',
-      name: 'Prospecting',
-      position: 1,
-      scenarios: [
-        { id: 'sc-demo', name: 'Book a demo', summary: null, position: 1 },
-      ],
-    },
-  ]
+describe('listBlueprint scope', () => {
+  const JOURNEY: Record<string, unknown[]> = {
+    phases: [
+      { id: 'ph-sales', name: 'Prospecting', summary: null, position: 1, service_id: 'svc-sales' },
+    ],
+    scenarios: [
+      { id: 'sc-demo', phase_id: 'ph-sales', name: 'Book a demo', summary: null, position: 1 },
+    ],
+  }
+  const journeyClient = () =>
+    fakeClient({ from: (rec) => ({ data: JOURNEY[rec.table] ?? [], error: null }) })
+  const ORIENTATION = ['phase', 'scenario']
 
   it('scoped to a service filters the journey by service_id', async () => {
-    const client = fakeClient({
-      from: (rec) =>
-        rec.table === 'phases'
-          ? { data: PHASES, error: null }
-          : { data: [], error: null },
-    })
-    const out = await listScenarios(client, SALES)
+    const client = journeyClient()
+    const out = await listBlueprint(client, { granularity: ORIENTATION, scope: SALES })
     expect(out).toContain('Prospecting')
+    expect(out).toContain('Book a demo')
     // The journey is the hard per-service boundary, so the scope is one
-    // column filter and no join.
+    // column filter on phases and no join.
+    expect(readLog(client)[0]!.table).toBe('phases')
     expect(readLog(client)[0]!.filters).toEqual(['service_id'])
   })
 
   it('widened to all reads every phase, unfiltered', async () => {
-    const client = fakeClient({
-      from: (rec) =>
-        rec.table === 'phases'
-          ? { data: PHASES, error: null }
-          : { data: [], error: null },
-    })
-    const out = await listScenarios(client, { kind: 'all' })
+    const client = journeyClient()
+    const out = await listBlueprint(client, { granularity: ORIENTATION, scope: { kind: 'all' } })
     expect(out).toContain('Prospecting')
     expect(readLog(client)[0]!.filters).toEqual([])
   })
 
-  it('defaults to all when no scope is passed (byte-for-byte the old read)', async () => {
-    const client = fakeClient({
-      from: (rec) =>
-        rec.table === 'phases'
-          ? { data: PHASES, error: null }
-          : { data: [], error: null },
-    })
-    await listScenarios(client)
+  it('defaults to all when no scope is passed', async () => {
+    const client = journeyClient()
+    await listBlueprint(client, { granularity: ORIENTATION })
     expect(readLog(client)[0]!.filters).toEqual([])
   })
 })

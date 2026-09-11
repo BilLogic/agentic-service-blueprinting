@@ -11,6 +11,8 @@ import {
   type CompareSlot,
 } from '@/lib/compareSlots'
 import type { BlueprintData, CellResource } from '@/types/blueprint'
+import { CANONICAL_LANE_ROLES } from '@/lib/laneRoles'
+import { PATH_KINDS } from '@/lib/versionValidation'
 
 /**
  * The read tools' TEXT SHAPE, with no data source attached.
@@ -27,23 +29,329 @@ import type { BlueprintData, CellResource } from '@/types/blueprint'
  * precisely.
  */
 
-export type ScenarioListPhase = {
-  id: string
-  name: string
-  scenarios: Array<{ id: string; name: string; summary?: string | null }>
+/**
+ * The rungs of the journey walk, top down — the levels `list_blueprint` can
+ * enumerate. A step is a column of its scenario that each of its paths places;
+ * a lane and a cell belong to one path.
+ */
+export const GRANULARITY_LEVELS = [
+  'phase',
+  'scenario',
+  'path',
+  'step',
+  'lane',
+  'cell',
+] as const
+
+export type GranularityLevel = (typeof GRANULARITY_LEVELS)[number]
+
+/** Rows a list returns when the caller names no limit, and the most it may name. */
+const DEFAULT_LIST_LIMIT = 200
+const MAX_LIST_LIMIT = 500
+
+/**
+ * The journey as either source holds it: one array per rung, each row naming
+ * its parent by id. Order inside an array does not matter — the walk sorts —
+ * so the PostgREST read and the bundled sample hand over what they have.
+ */
+export type JourneyTree = {
+  phases: ReadonlyArray<{
+    id: string
+    name: string
+    summary?: string | null
+    position: number
+    serviceId?: string | null
+  }>
+  scenarios: ReadonlyArray<{
+    id: string
+    phaseId: string
+    name: string
+    summary?: string | null
+    position: number
+  }>
+  paths: ReadonlyArray<{
+    id: string
+    scenarioId: string
+    name: string
+    summary?: string | null
+    kind: string
+  }>
+  steps: ReadonlyArray<{
+    id: string
+    scenarioId: string
+    name: string
+    placements: ReadonlyArray<{ pathId: string; position: number }>
+  }>
+  lanes: ReadonlyArray<{
+    id: string
+    pathId: string
+    name: string
+    role?: string | null
+    position: number
+  }>
+  cells: ReadonlyArray<{
+    id: string
+    laneId: string
+    stepId: string
+    content: string
+    summary?: string | null
+    position?: number | null
+  }>
 }
 
-export function formatScenarioList(phases: ScenarioListPhase[]): string {
-  const lines: string[] = []
-  for (const phase of phases) {
-    lines.push(`Phase "${phase.name}" (${phase.id})`)
-    for (const scenario of phase.scenarios) {
-      lines.push(
-        `  Scenario "${scenario.name}" (${scenario.id})${scenario.summary ? ` — ${scenario.summary}` : ''}`,
+/** A `list_blueprint` call, in the words its tool arguments carry. */
+export type BlueprintListOptions = {
+  granularity: readonly string[]
+  phase?: string
+  scenario?: string
+  pathKind?: string
+  laneRole?: string
+  limit?: number
+}
+
+/** The same call, checked against its vocabularies, with the limit settled. */
+export type BlueprintListRequest = {
+  levels: ReadonlySet<GranularityLevel>
+  phase?: string
+  scenario?: string
+  pathKind?: string
+  laneRole?: string
+  limit: number
+}
+
+const isOneOf = (vocabulary: readonly string[], word: string) =>
+  vocabulary.includes(word)
+
+/**
+ * Check a `list_blueprint` call before anything is read.
+ *
+ * Every word it takes that is not a name has a closed vocabulary — six rungs,
+ * three path kinds, eight lane roles — so a word outside one is refused with
+ * the list rather than read as a filter that matches nothing. An empty answer
+ * to a misspelled filter looks exactly like an empty blueprint, and "there are
+ * none" is the one sentence a `list_` read may not get wrong.
+ */
+export function listBlueprintRequest(
+  options: BlueprintListOptions,
+): BlueprintListRequest {
+  const levels = GRANULARITY_LEVELS.join(', ')
+  if (options.granularity.length === 0)
+    throw new Error(`granularity is required — one or more of ${levels}.`)
+  const unknown = options.granularity.filter(
+    (level) => !isOneOf(GRANULARITY_LEVELS, level),
+  )
+  if (unknown.length > 0)
+    throw new Error(
+      `Unknown granularity: ${unknown.join(', ')}. Use one or more of ${levels}.`,
+    )
+  const pathKind = options.pathKind?.trim() || undefined
+  if (pathKind && !isOneOf(PATH_KINDS, pathKind))
+    throw new Error(`Unknown kind "${pathKind}". Use one of ${PATH_KINDS.join(', ')}.`)
+  const laneRole = options.laneRole?.trim() || undefined
+  if (laneRole && !isOneOf(CANONICAL_LANE_ROLES, laneRole))
+    throw new Error(
+      `Unknown lane_role "${laneRole}". Use one of ${CANONICAL_LANE_ROLES.join(', ')}.`,
+    )
+  const asked =
+    typeof options.limit === 'number' && Number.isFinite(options.limit)
+      ? Math.floor(options.limit)
+      : DEFAULT_LIST_LIMIT
+  return {
+    levels: new Set(options.granularity as GranularityLevel[]),
+    phase: options.phase?.trim().toLowerCase() || undefined,
+    scenario: options.scenario?.trim().toLowerCase() || undefined,
+    pathKind,
+    laneRole,
+    limit: Math.min(Math.max(asked, 1), MAX_LIST_LIMIT),
+  }
+}
+
+/**
+ * One row of the list: a thing at one rung, and the rungs above it. `detail`
+ * is the text after the dash — a summary for most rungs, a lane's role — and
+ * is no column's name, so it is not spelled like one.
+ */
+type ListRow = {
+  kind: GranularityLevel
+  id: string
+  name: string
+  detail?: string | null
+  phase: string
+  scenario?: string
+  path?: string
+  step?: string
+  lane?: string
+}
+
+function groupBy<T>(rows: ReadonlyArray<T>, key: (row: T) => string): Map<string, T[]> {
+  const groups = new Map<string, T[]>()
+  for (const row of rows) {
+    const group = groups.get(key(row))
+    if (group) group.push(row)
+    else groups.set(key(row), [row])
+  }
+  return groups
+}
+
+const byName = (a: { name: string; id: string }, b: { name: string; id: string }) =>
+  a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+
+const byPosition = (
+  a: { position: number; name: string; id: string },
+  b: { position: number; name: string; id: string },
+) => a.position - b.position || byName(a, b)
+
+/**
+ * A scenario's steps, each listed ONCE under the first path that places it.
+ *
+ * A step is a column of its scenario, and the paths that share it each place
+ * it at their own position — so the walk goes path by path, in path order, and
+ * a step already listed is not listed again. A step no path places is still a
+ * column of the scenario and comes last, unless a kind filter asked for the
+ * steps of paths of that kind, which it is on none of.
+ */
+function stepRows(
+  steps: JourneyTree['steps'],
+  paths: JourneyTree['paths'],
+  above: { phase: string; scenario: string },
+  kindFiltered: boolean,
+): ListRow[] {
+  const rows: ListRow[] = []
+  const listed = new Set<string>()
+  for (const path of paths) {
+    const placed = steps
+      .flatMap((step) =>
+        step.placements
+          .filter((placement) => placement.pathId === path.id)
+          .map((placement) => ({ step, position: placement.position })),
       )
+      .sort((a, b) => a.position - b.position || byName(a.step, b.step))
+    for (const { step } of placed) {
+      if (listed.has(step.id)) continue
+      listed.add(step.id)
+      rows.push({ kind: 'step', id: step.id, name: step.name, ...above, path: path.name, step: step.name })
     }
   }
-  return lines.join('\n') || 'No phases found.'
+  if (!kindFiltered) {
+    for (const step of steps.filter((entry) => !listed.has(entry.id)).sort(byName))
+      rows.push({ kind: 'step', id: step.id, name: step.name, ...above, step: step.name })
+  }
+  return rows
+}
+
+/**
+ * The walk: phases in journey order, each one's scenarios, each scenario's
+ * steps and then its paths by name, each path's lanes top to bottom, and each
+ * lane's cells in step order — the order a person reads the board in.
+ *
+ * A filter narrows its own rung and everything below it. A filter set BELOW a
+ * rung drops that rung's rows: a scenario filter drops phases, a kind filter
+ * drops phases and scenarios, and a lane-role filter keeps only lanes and
+ * cells. A phase row cannot say which of its paths is an exception, so listing
+ * it under that filter would claim something the row does not show.
+ */
+function walkJourney(tree: JourneyTree, request: BlueprintListRequest): ListRow[] {
+  const { levels, pathKind, laneRole } = request
+  const scenariosOf = groupBy(tree.scenarios, (scenario) => scenario.phaseId)
+  const pathsOf = groupBy(tree.paths, (path) => path.scenarioId)
+  const stepsOf = groupBy(tree.steps, (step) => step.scenarioId)
+  const lanesOf = groupBy(tree.lanes, (lane) => lane.pathId)
+  const cellsOf = groupBy(tree.cells, (cell) => cell.laneId)
+  const stepNames = new Map(tree.steps.map((step) => [step.id, step.name]))
+
+  const rows: ListRow[] = []
+  const phases = [...tree.phases].sort(
+    (a, b) => (a.serviceId ?? '').localeCompare(b.serviceId ?? '') || byPosition(a, b),
+  )
+  for (const phase of phases) {
+    if (request.phase && phase.name.toLowerCase() !== request.phase) continue
+    if (levels.has('phase') && !request.scenario && !pathKind && !laneRole)
+      rows.push({ kind: 'phase', id: phase.id, name: phase.name, detail: phase.summary, phase: phase.name })
+
+    for (const scenario of [...(scenariosOf.get(phase.id) ?? [])].sort(byPosition)) {
+      if (request.scenario && scenario.name.toLowerCase() !== request.scenario) continue
+      const above = { phase: phase.name, scenario: scenario.name }
+      if (levels.has('scenario') && !pathKind && !laneRole)
+        rows.push({ kind: 'scenario', id: scenario.id, name: scenario.name, detail: scenario.summary, ...above })
+
+      const paths = (pathsOf.get(scenario.id) ?? [])
+        .filter((path) => !pathKind || path.kind === pathKind)
+        .sort(byName)
+      const steps = stepsOf.get(scenario.id) ?? []
+      if (levels.has('step') && !laneRole)
+        rows.push(...stepRows(steps, paths, above, Boolean(pathKind)))
+
+      for (const path of paths) {
+        const onPath = { ...above, path: path.name }
+        if (levels.has('path') && !laneRole)
+          rows.push({ kind: 'path', id: path.id, name: path.name, detail: path.summary, ...onPath })
+        if (!levels.has('lane') && !levels.has('cell')) continue
+
+        const columns = new Map<string, number>()
+        for (const step of steps)
+          for (const placement of step.placements)
+            if (placement.pathId === path.id) columns.set(step.id, placement.position)
+        const column = (stepId: string) => columns.get(stepId) ?? Number.MAX_SAFE_INTEGER
+
+        for (const lane of [...(lanesOf.get(path.id) ?? [])].sort(byPosition)) {
+          if (laneRole && lane.role !== laneRole) continue
+          if (levels.has('lane'))
+            rows.push({ kind: 'lane', id: lane.id, name: lane.name, detail: lane.role, ...onPath, lane: lane.name })
+          if (!levels.has('cell')) continue
+          const cells = [...(cellsOf.get(lane.id) ?? [])].sort(
+            (a, b) =>
+              column(a.stepId) - column(b.stepId) ||
+              (a.position ?? 0) - (b.position ?? 0) ||
+              a.id.localeCompare(b.id),
+          )
+          for (const cell of cells)
+            rows.push({
+              kind: 'cell',
+              id: cell.id,
+              name: cell.content,
+              detail: cell.summary,
+              ...onPath,
+              step: stepNames.get(cell.stepId),
+              lane: lane.name,
+            })
+        }
+      }
+    }
+  }
+  return rows
+}
+
+/**
+ * One row as a line. The rungs above it ride along as a breadcrumb, so a row
+ * says where it is without a second read; a cell is named by the first line of
+ * its text, and the id closes the line for the write that follows.
+ */
+function listLine(row: ListRow): string {
+  const where = [row.phase, row.scenario, row.path, row.step, row.lane]
+    .filter(Boolean)
+    .join(' › ')
+  const name = row.kind === 'cell' ? row.name.split('\n')[0] : row.name
+  const detail = row.detail ? ` — ${row.detail}` : ''
+  return `[${row.kind}] "${name}" · ${where}${detail} (${row.id})`
+}
+
+/**
+ * `list_blueprint`'s answer: the walk, clipped at the caller's limit, under a
+ * header that carries the TRUE total — the number that lets a model say "all
+ * N" honestly, and that says so when the list it is holding is not all of it.
+ */
+export function formatBlueprintList(
+  tree: JourneyTree,
+  request: BlueprintListRequest,
+): string {
+  const rows = walkJourney(tree, request)
+  if (rows.length === 0) return 'Nothing at that granularity within those filters.'
+  const shown = rows.slice(0, request.limit)
+  const header =
+    shown.length < rows.length
+      ? `${shown.length} of ${rows.length} (clipped — raise limit or narrow the filters):`
+      : `${rows.length} of ${rows.length}:`
+  return [header, ...shown.map(listLine)].join('\n')
 }
 
 type DependencyEdge = {

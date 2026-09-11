@@ -1,5 +1,5 @@
 /**
- * One roster of lane roles, in the five places that have to state it.
+ * One roster of lane roles, in the six places that have to state it.
  *
  * `lanes_lane_role_check` has closed `lanes.lane_role` to eight values since
  * `21000122000000`. The wire format did not follow: `references/ir-schema.json`
@@ -22,6 +22,12 @@
  * It drifted in both directions at once and stayed that way (#212): two keys
  * no row could ever hold, and no key for `partner_actions`, which rows do
  * hold. Nothing in the app can notice a colour that is never asked for.
+ *
+ * The sixth is the one a model reads. `LANE_ROLE_FILTER_PARAM` is the whole
+ * description of the value set the canvas agent's `lane_role` filter is ever
+ * given, so a role it still offers after the constraint dropped one is not
+ * cosmetic: the filter matches no lane and the read reports an empty set as
+ * the answer.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
@@ -138,5 +144,19 @@ test('src/lib/blueprintTheme.ts fills by the same list', () => {
       'constraint does not admit is a fill no stored role can reach; a role the map omits ' +
       'falls through to the zone fallback and is drawn as a lane it is not. Adding a role is ' +
       'a multi-file act — see references/lane-roles.md.',
+  )
+})
+
+test("the canvas agent's lane-role filter offers the same list", async () => {
+  // Imported rather than read as text: the list is built from
+  // `CANONICAL_LANE_ROLES`, so there is no literal in the spec to read.
+  const { LANE_ROLE_FILTER_PARAM } = await import('@/lib/agent/tools/specs')
+  const offered = /one of: ([a-z_ |]+)$/.exec(LANE_ROLE_FILTER_PARAM.description)
+  assert.ok(offered, 'LANE_ROLE_FILTER_PARAM no longer ends with "one of: a | b | …"')
+  assert.deepEqual(
+    sorted(offered[1].split(' | ')),
+    sorted(constraintRoles()),
+    'the lane_role filter the agent is offered and lanes_lane_role_check disagree. A role ' +
+      'the filter offers and no row can hold returns an empty read that reports success.',
   )
 })

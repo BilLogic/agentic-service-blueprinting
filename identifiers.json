@@ -208,6 +208,7 @@
     "get_session",
     "get_slice",
     "get_ui_state",
+    "list_blueprint",
     "list_cell_dependencies",
     "list_evidence",
     "list_findings",

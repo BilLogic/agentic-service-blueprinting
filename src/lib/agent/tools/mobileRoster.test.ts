@@ -45,7 +45,7 @@ describe('mobile agent tool roster', () => {
 
   it('keeps the core reading loop available', () => {
     for (const name of [
-      'list_scenarios',
+      'list_blueprint',
       'get_blueprint',
       'get_cell',
       'open_phase',

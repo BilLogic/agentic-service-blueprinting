@@ -22,11 +22,17 @@ export {
   sampleGetCell,
   sampleGetSlice,
   sampleListCellDependencies,
+  sampleListBlueprint,
   sampleListLanes,
   sampleListOwnerTags,
-  sampleListScenarios,
   sampleListSlices,
 } from '@/lib/agent/tools/sampleRead'
+/**
+ * The journey list's check, walk and text, so the harness's database read of
+ * `list_blueprint` answers in the app's words: the harness fetches the rows
+ * over REST and hands them to the same function the app's read does.
+ */
+export { formatBlueprintList, listBlueprintRequest } from '@/lib/agent/tools/format'
 /**
  * The reference vocabulary, so `list_references` answers from the app's own
  * list rather than a second copy the harness would have to keep in step.
