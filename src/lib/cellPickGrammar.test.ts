@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { detailClickCloses } from '@/lib/cellPickGrammar'
+import {
+  clickOpensDetail,
+  clickPicks,
+  detailClickCloses,
+  pickModeForClick,
+  pickModeForMarquee,
+  type ClickModifiers,
+} from '@/lib/cellPickGrammar'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 
 /**
@@ -162,5 +169,72 @@ describe('detailClickCloses', () => {
         next: touchpoint('Phone'),
       }),
     ).toBe(true)
+  })
+})
+
+/**
+ * What a modifier means when a cell is clicked.
+ *
+ * The grammar was once spread across three call sites with slightly different
+ * opinions, which is how a selection becomes messy: every gesture individually
+ * defensible, no two agreeing. The table in `cellPickGrammar` is the only
+ * place the answer lives, and these pin it.
+ */
+const click = (mods: Partial<ClickModifiers> = {}): ClickModifiers => ({
+  shiftKey: false,
+  metaKey: false,
+  ctrlKey: false,
+  ...mods,
+})
+
+describe('the pick grammar', () => {
+  it('toggles on a plain click, so a set is built and left by clicking', () => {
+    // `toggle` is in-if-out, out-if-in, so there is no separate "deselect"
+    // gesture that could be missing.
+    expect(pickModeForClick(click(), true)).toBe('toggle')
+  })
+
+  it('reaches across a run with shift when the picker gathers', () => {
+    expect(pickModeForClick(click({ shiftKey: true }), true)).toBe('range')
+  })
+
+  it('falls back to toggle on shift when there is no run to reach across', () => {
+    // A slice edit session picks one cell into the active frame; there is no
+    // ordered gathering to span, so a range would select something arbitrary.
+    expect(pickModeForClick(click({ shiftKey: true }), false)).toBe('toggle')
+  })
+
+  it('reads the cell on cmd and ctrl, and never touches the selection', () => {
+    // The open gesture must not be producible by clicking fast, which is why
+    // it is a held modifier and why double-click means nothing: in a toggle
+    // grammar, click-in click-out IS a fast double-click.
+    expect(clickOpensDetail(click({ metaKey: true }))).toBe(true)
+    expect(clickOpensDetail(click({ ctrlKey: true }))).toBe(true)
+    expect(clickOpensDetail(click())).toBe(false)
+    expect(clickOpensDetail(click({ shiftKey: true }))).toBe(false)
+    expect(clickPicks(click({ metaKey: true }), true)).toBe(false)
+    expect(clickPicks(click({ ctrlKey: true }), true)).toBe(false)
+  })
+
+  it('lets cmd win over shift when both are held — a read stays a read', () => {
+    expect(clickOpensDetail(click({ shiftKey: true, metaKey: true }))).toBe(true)
+    expect(clickPicks(click({ shiftKey: true, metaKey: true }), true)).toBe(false)
+  })
+
+  it('replaces on a bare marquee and widens on a shift marquee', () => {
+    expect(pickModeForMarquee({ shiftKey: false })).toBe('replace')
+    expect(pickModeForMarquee({ shiftKey: true })).toBe('add')
+  })
+
+  it('lets only a shift click reach the picker outside Edit mode', () => {
+    expect(clickPicks(click(), false)).toBe(false)
+    expect(clickPicks(click({ shiftKey: true }), false)).toBe(true)
+    // ⌘/ctrl is the open gesture everywhere; it never picks.
+    expect(clickPicks(click({ metaKey: true }), false)).toBe(false)
+    expect(clickPicks(click({ ctrlKey: true }), false)).toBe(false)
+  })
+
+  it('lets every plain click reach the picker in Edit mode', () => {
+    expect(clickPicks(click(), true)).toBe(true)
   })
 })
