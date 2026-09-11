@@ -513,52 +513,78 @@
 }
 
 /*
- * The type scale's own rungs, at both ends of Tailwind's.
+ * The type ladder. ADR 0012.
  *
- * Sub-xs type steps. Tailwind's scale bottoms out at text-xs (12px); the
- * editor's dense chrome (badges, kickers, axis labels) uses 11px and 10px
- * constantly, so the two sizes are named rather than repeated as
- * text-[11px]/text-[10px] literals. No --text-*--line-height on purpose:
- * the utilities set font-size only, exactly like the arbitrary values they
- * replaced — call sites keep their own leading-* / inherited line-height.
- * A plain @theme block (not `inline`) because these are literal values, not
- * indirections into semantic tokens.
+ * A rung is declared twice and a ratio once. Sans sizes and the
+ * `--text-*--line-height` pairings live here, on `@theme`, which is the root
+ * registration. Mono sizes — sizes only — sit in the scoped block below.
+ * Monospace renders optically smaller at the same nominal size, which is why
+ * browsers default it to 13px against 16px; a reader who deletes the second
+ * block as a duplicate will make every code face look smaller than the prose
+ * introducing it.
  *
- * The 9px and 8px rungs are the same argument one step further down, and they
- * are two rungs rather than one because the two sizes are not
- * interchangeable: 9px is the digit inside a size-4 sequence badge, where the
- * glyph has to clear the circle's padding, and 8px is a nowrap caption under a
+ * The pairings used to be absent on purpose: "the utilities set font-size
+ * only; call sites keep their own leading-*". That was theme.css:520-522. The
+ * tree then carried seventy authored leadings against two on the reference
+ * page. The answer changed; the comment is this one. Pair the ratio, not the
+ * pixel, so a rung can be retuned without its box being redesigned.
+ *
+ * Sub-xs rungs stay until every call site has moved off them. The 9px and 8px
+ * rungs are two rather than one because the two sizes are not interchangeable:
+ * 9px is the digit inside a size-4 sequence badge, where the glyph has to
+ * clear the circle's padding, and 8px is a nowrap caption under a
  * storyboard-lane thumbnail, where any growth is a clipped label. Collapsing
- * them would be a design change nobody asked for, and the ladder stays uniform
- * at one step per rung: 11, 10, 9, 8.
+ * them would be a design change nobody asked for — that was theme.css:531-534,
+ * and it was correct about the geometries. The governing rule is now ADR 0012:
+ * a rung is chosen for the text's job, never to fit a container. Both
+ * geometries are resized on their own tickets; the rungs remain until then.
  *
- * --text-5xl is that same argument at the other end. Two display headings sit
- * above the body ladder — the scenario slide title at 40px and the cover
- * title at 36px — and both were written out, as text-[2.5rem] and
- * text-[2.25rem]. In rem, which is how they slipped past a font-size guard
- * scoped to px. 36px needed nothing: it is Tailwind's text-4xl exactly, and
- * ScenarioSlideHeader already reaches for that rung two headings further
- * down. 40px had no name at all.
- *
- * It is a retune of Tailwind's 5xl (3rem) rather than a new name, which is
- * what --radius-2xl / -3xl / -4xl above already do to Tailwind's fixed
- * 16 / 24 / 32 — the large rungs are this app's ladder, not upstream's. 48px
- * is a size nothing here renders, and a rung nothing renders is an invitation
- * to render it. Nothing in the tree wrote text-5xl before this change, so
- * retuning it resized nothing; the slide title below now writes it, and
- * writes it at the 40px it already rendered.
- *
- * The --line-height pairing is unset for the same reason the rungs above
- * declare none. Tailwind ships one with its own 5xl (1.0), and both display
- * headings set their own leading — leading-[1.15] and sm:leading-tight — so
- * the pairing is dead weight that would only ever surface at a third call
- * site, as a heading whose line-height silently collapsed to 1.
+ * A plain @theme block (not `inline`) because these are literal values, not
+ * indirections into semantic tokens. No root font-size: the browser's is the
+ * accessibility setting.
  */
 @theme {
+  --text-xs: .75rem;
+  --text-xs--line-height: calc(1 / .75);
+  --text-sm: .8125rem;
+  --text-sm--line-height: calc(1.25 / .875);
+  --text-base: .9375rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.125rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.75rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --text-4xl: 2.125rem;
+  --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-5xl: 2.875rem;
+  --text-5xl--line-height: 1;
   --text-2xs: 0.6875rem; /* 11px */
   --text-3xs: 0.625rem; /* 10px */
   --text-4xs: 0.5625rem; /* 9px */
   --text-5xs: 0.5rem; /* 8px */
-  --text-5xl: 2.5rem; /* 40px */
-  --text-5xl--line-height: initial;
+}
+
+/*
+ * Mono scope: sizes only. The root ratio meeting a larger size yields a
+ * larger box, so this column lands on upstream Tailwind's line boxes without
+ * restating them.
+ */
+.font-mono,
+code,
+kbd,
+pre,
+samp {
+  --text-xs: .75rem;
+  --text-sm: .875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
 }
