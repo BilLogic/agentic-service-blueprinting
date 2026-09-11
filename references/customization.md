@@ -155,7 +155,10 @@ const config: DeploymentConfig = {
 ```
 
 - `enabled: false` or no `agent.search` at all: the tool is absent from the
-  agent's roster. Nothing refers to a capability the database does not have.
+  agent's roster, so nothing can call it and nobody is told they are missing
+  it. The shared read-surface reference still lists the name, and says a tool
+  absent from the tool list does not exist in the session — a name the model
+  cannot act on, rather than an offer.
 - `enabled: true`, `indexes` empty or omitted: the tool is offered to
   everyone, and matches words and structure only.
 - `enabled: true` with indexes listed: a person whose own chat provider

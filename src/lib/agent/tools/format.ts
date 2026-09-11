@@ -777,8 +777,17 @@ export function formatBlueprintSearch(
     // "none of them are in <service>" would be a claim about the corpus made
     // from the top of a list, and it would send the caller to service:"all",
     // the one remedy that cannot surface the in-scope rows.
+    //
+    // "Outside <service>" is said only of rows that were actually PLACED
+    // somewhere else. A row dropped as ambiguous (a phase name two services
+    // share) or unplaceable (no phase breadcrumb at all) was placed NOWHERE,
+    // and may well belong to the scope — so the same sentence would state as
+    // fact the one thing this cannot know, and then contradict itself a clause
+    // later by admitting the rows could not be placed.
+    if (arms.scope && arms.scope.otherService > 0)
+      return `The top ${arms.scope.returned} of ${arms.total} rows matching "${query}" (${how}) came back in other services, none in ${arms.scope.name}. That is a fact about the TOP of the ranking, not about ${arms.scope.name} — it may hold matches that lost to rows elsewhere. To find them: add phase or scenario from ${arms.scope.name}, or raise limit. Pass service:"all" to see the rows that did come back. Never report this as the blueprint not covering it.${couldNotPlace}`
     if (arms.scope && arms.scope.returned > 0)
-      return `The top ${arms.scope.returned} of ${arms.total} rows matching "${query}" (${how}) are all outside ${arms.scope.name}. That is a fact about the TOP of the ranking, not about ${arms.scope.name} — it may hold matches that lost to rows elsewhere. To find them: add phase or scenario from ${arms.scope.name}, or raise limit. Pass service:"all" to see the rows that did come back. Never report this as the blueprint not covering it.${couldNotPlace}`
+      return `The top ${arms.scope.returned} of ${arms.total} rows matching "${query}" (${how}) could not be placed in any service, so none could be shown for ${arms.scope.name} — they are not known to be outside it.${couldNotPlace} Pass service:"all" to see them as they came back.`
     return arms.meaning
       ? `Nothing matches "${query}" by words or by meaning. Both arms ran, so a moment described in OTHER words would have been found — but say "nothing in the blueprint matched this search", not "the blueprint does not cover this". list_blueprint shows what exists.`
       : `Nothing matches the words "${query}". This search matched WORDS ONLY — no meaning matching ran — so that means no row USES those words, and NOT that the blueprint has no such moment. Try the board's own vocabulary, or list_blueprint to see what exists.`

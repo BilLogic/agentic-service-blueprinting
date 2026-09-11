@@ -17,11 +17,21 @@ import type { AgentProviderId } from '@/lib/agent/settings'
  *   offered, index: entry   the question is embedded first, meaning too
  *
  * `offered: false` is QUIET. The person is not told they are missing a tool,
- * no error is raised, and the model never sees a name it cannot call — a tool
- * absent from the roster cannot be described in a way that implies a
- * capability this session does not have. That matters most for the case it
- * exists for: a person on an Anthropic key, where a keyword-only search
- * offered as "search" would read as the same search everyone else gets.
+ * no error is raised, and the model is never HANDED a name it cannot call —
+ * a spec absent from the roster cannot be invoked, so nothing describes a
+ * capability this session has. That matters most for the case it exists for:
+ * a person on an Anthropic key, where a keyword-only search offered as
+ * "search" would read as the same search everyone else gets.
+ *
+ * Quiet, not silent, and the difference is worth stating. The shared canvas
+ * adapter reference is injected whole on every send and lists the full read
+ * surface, this tool among it — so the model does read the NAME even where
+ * the roster withholds the tool. That row says a tool missing from the tool
+ * list does not exist in the session, that nothing substitutes for it, and
+ * that there is nothing for the person to change, which is what keeps the
+ * mention from becoming an offer. Withholding the name from that reference
+ * instead would leave the one surface that claims to be the complete read
+ * surface incomplete.
  */
 export type AgentSearchPlan =
   | { offered: false }
