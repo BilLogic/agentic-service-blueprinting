@@ -36,7 +36,9 @@
  * effect, so a deployment's map is in force before the board paints; and
  * `cellBudget` is written onto the length-guidance module in that effect
  * too, so the person under the field and the agent in the tool result read
- * the same thresholds before the first paint. `brand.logo`,
+ * the same thresholds before the first paint. `defaultLanes` is read by the
+ * create dialog through `useDeploymentConfig`, and is the lane set a new
+ * blueprint starts with when nothing is copied. `brand.logo`,
  * `content.coverTitle` and the whole `agent` block are declared shape with no
  * reader: the cover heading and the workspace breadcrumb still take
  * `coverContent.title` and `ORG_NAME` directly. They migrate onto this type in
@@ -89,6 +91,8 @@
 import { BRAND, ORG_NAME } from './config'
 import { coverContent } from './content/coverContent'
 import { SAMPLE_NAV } from '@/data/sampleNav'
+import type { LaneSetEntry } from '@/lib/authoringRpc'
+import { DEFAULT_LANE_SET } from '@/lib/blueprintValidation'
 import type { NavItem } from '@/types/nav'
 
 /**
@@ -181,6 +185,18 @@ export type DeploymentConfig = {
    * numbers supplies them here rather than editing the shared budget module.
    */
   cellBudget?: CellContentBudgetOverlay
+  /**
+   * The lanes a new blueprint starts with when nothing is copied, top to
+   * bottom. A deployment's own vocabulary — the names its boards actually use
+   * — which is why it arrives here rather than being written into the shared
+   * validation module. Each entry carries a role from the closed lane-role
+   * vocabulary, because the dividers are drawn from roles, not names.
+   *
+   * Replaced, never merged: a supplied list is the whole set. An omitted or
+   * EMPTY list is the template's standard set, read the way `sample.nav` is —
+   * a blueprint with no lanes is not a default anyone means to supply.
+   */
+  defaultLanes?: LaneSetEntry[]
 }
 
 /**
@@ -223,6 +239,12 @@ export type ResolvedDeploymentConfig = {
    * one kind keeps the other.
    */
   cellBudget: CellContentBudget
+  /**
+   * Guaranteed non-empty, the way `sample.nav` is: the template's standard set
+   * unless the deployment names lanes of its own. Readers may pass it straight
+   * to `laneSetFor`.
+   */
+  defaultLanes: LaneSetEntry[]
 }
 
 /**
@@ -277,6 +299,7 @@ export const asbDefaultConfig: DeploymentConfig = {
     prose: { ...asbDefaultCellBudget.prose },
     touchpointLabels: { ...asbDefaultCellBudget.touchpointLabels },
   },
+  defaultLanes: DEFAULT_LANE_SET,
 }
 
 /**
@@ -365,6 +388,12 @@ export function resolveDeploymentConfig(
     ...present(config?.pathColorPins),
   } as Record<string, number>
   const cellBudget = mergeCellBudget(config?.cellBudget)
+  // Each entry copied, so a later edit to the host's list cannot reach a
+  // blueprint created after it.
+  const overlaidLanes = config?.defaultLanes
+  const defaultLanes = (
+    overlaidLanes?.length ? overlaidLanes : (asbDefaultConfig.defaultLanes ?? [])
+  ).map((lane) => ({ ...lane }))
 
   return {
     brand,
@@ -373,5 +402,6 @@ export function resolveDeploymentConfig(
     sample,
     pathColorPins,
     cellBudget,
+    defaultLanes,
   }
 }
