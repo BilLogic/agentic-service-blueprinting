@@ -550,7 +550,7 @@ export function PanelKindBadge({
         it — measured, the badge came out brand teal on every lane. The values
         are the tokens `[data-blueprint-lane]` publishes, so nothing here is a
         colour; this is the same idiom BlueprintStepStoryboard uses for the
-        presentation frame.
+        cell face.
       */
       style={{
         backgroundColor: 'var(--background-blueprint-cell)',
