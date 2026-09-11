@@ -89,7 +89,6 @@
  */
 @import './global.css';
 @import './semantic.css';
-@import './compat.css';
 @import './themes/light.css';
 @import './themes/dark.css';
 
