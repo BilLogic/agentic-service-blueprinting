@@ -3,7 +3,8 @@ import type { DependencyKind } from '@/lib/authoringRpc'
 /**
  * Dependency rules, checked before the round trip.
  *
- * Mirrors what `set_cell_dependency` raises. The database stays the authority
+ * Mirrors what `set_cell_dependency` raises; `update_cell_dependency` raises
+ * the same sentences for an edit in place. The database stays the authority
  * — two people can connect the same cells at once — but a rule you meet by
  * being rejected is a rule you have to guess at first.
  */
@@ -38,6 +39,25 @@ export const DEPENDENCY_KIND_LABELS: Record<DependencyKind, string> = {
   leads_to: 'Leads to',
   enables: 'Enables',
 }
+
+/**
+ * The words the dependency editor is made of, held beside the vocabulary they
+ * describe rather than inside the components that render them. The add form
+ * and the row editor say the same things, so they say them from one place.
+ *
+ * ONE PROSE FIELD, AND IT IS `note`. It is labelled rather than described by
+ * its placeholder, because a placeholder names the box only until somebody
+ * types into it. The copy is deliberately wide: "why this edge exists" tells
+ * an author their sentence is unwelcome unless it is a justification, and a
+ * note on a dependency is whatever is worth recording about it.
+ */
+export const DEPENDENCY_EDIT_TEXT = {
+  noteLabel: 'Note',
+  /** Rendered beside the label, never inside the field. */
+  noteOptional: '(optional)',
+  notePlaceholder: 'Anything worth knowing about this dependency',
+  connectTo: 'Connect to',
+} as const
 
 export type DraftDependency = {
   sourceCellId: string

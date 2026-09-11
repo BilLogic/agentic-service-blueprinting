@@ -102,6 +102,7 @@ export type WriteFn =
   | 'update_evidence'
   | 'delete_evidence'
   | 'set_cell_dependency'
+  | 'update_cell_dependency'
   | 'clear_cell_dependency'
   | 'reorder_steps'
   | 'set_path_steps'
@@ -414,6 +415,7 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
     entry.revert?.fn === 'clear_cell_dependency'
       ? 'Connected two cells'
       : 'Edited a connection',
+  update_cell_dependency: () => 'Edited a connection',
   clear_cell_dependency: () => 'Removed a connection',
   reorder_steps: () => 'Reordered the steps',
   set_path_steps: () => 'Reordered the steps',
