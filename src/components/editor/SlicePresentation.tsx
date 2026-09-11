@@ -149,7 +149,7 @@ export function SlicePresentation({
    * so the focus is left pending for the viewport to consume when it
    * registers — including when the tab was not already open.
    *
-   * @param cellId - The cited cell this pill names.
+   * @param cellId - The cited cell this badge names.
    */
   const openSliceCell = useCallback(
     (cellId: string) => {

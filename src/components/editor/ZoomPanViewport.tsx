@@ -42,7 +42,7 @@ type ZoomPanViewportProps = {
    * Registers this viewport's `focusCells` in the module registry under
    * this key (the focused scenario's slide id, or a slice-stable key on a
    * slice tab) — the fly-to-cell pipeline for the difference ledger, the
-   * divergence strip, agent commands, and presentation cell pills.
+   * divergence strip, agent commands, and presentation cell badges.
    * Registering also consumes any pending focus waiting for this key.
    */
   focusCellsKey?: string

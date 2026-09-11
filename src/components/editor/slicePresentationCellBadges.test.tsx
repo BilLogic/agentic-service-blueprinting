@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Two pills on one slide must open two different cells.
+ * Two badges on one slide must open two different cells.
  *
- * Every pill used to call the same no-argument handler, so they all opened
- * the slice and none of them the cell they named. The pills still open the
+ * Every badge used to call the same no-argument handler, so they all opened
+ * the slice and none of them the cell they named. The badges still open the
  * slice tab — a tab descriptor carries no cell — and each one leaves a
  * pending focus for its own cell, consumed when the slice viewport
  * registers.
@@ -14,7 +14,7 @@ import type { SliceBlueprint } from '@/hooks/useSliceBlueprint'
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slice, Slide } from '@/types/database'
 
-const SLICE_ID = 'slice-pills'
+const SLICE_ID = 'slice-badges'
 const CELL_A = 'cell-alpha'
 const CELL_B = 'cell-beta'
 
@@ -137,8 +137,8 @@ function recordingFocus(): {
   return { focus, calls }
 }
 
-describe('presentation cell pills', () => {
-  it('opens two different cells, and names the action on each pill', () => {
+describe('presentation cell badges', () => {
+  it('opens two different cells, and names the action on each badge', () => {
     const { focus, calls } = recordingFocus()
     const remove = registerFocusCells(sliceFocusCellsKey(SLICE_ID), focus)
     render(<SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />)

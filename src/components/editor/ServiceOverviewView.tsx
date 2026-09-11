@@ -281,7 +281,7 @@ type ServiceOverviewViewProps = {
   cameraStateKey?: string
   /**
    * Override the viewport's `focusCells` registry key. Slice tabs pass a
-   * slice-stable key so a presentation pill can leave a pending focus that
+   * slice-stable key so a presentation badge can leave a pending focus that
    * this viewport consumes when it registers — the tab descriptor carries
    * no cell. Without an override the key is the focused (or solo) scenario.
    */

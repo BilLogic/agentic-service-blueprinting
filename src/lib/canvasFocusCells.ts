@@ -1,13 +1,13 @@
 /**
  * The single cell-focus pipeline's bridge: `useZoomPanViewport` owns the
  * camera (fly + pulse), but its callers — the portalled difference-ledger
- * drawer, the divergence strip, agent commands, presentation cell pills —
+ * drawer, the divergence strip, agent commands, presentation cell badges —
  * live outside the viewport's React tree. The viewport registers its
  * `focusCells` here, keyed by the focused scenario's slide id or by a
  * slice-stable key; callers resolve AT CALL TIME so a re-mounted viewport
  * is never driven through a stale closure.
  *
- * A slice tab is addressed by the slice alone, so a pill that wants a
+ * A slice tab is addressed by the slice alone, so a badge that wants a
  * cell cannot put that cell on the tab. It leaves a pending focus under
  * the slice key; `registerFocusCells` consumes it when the viewport that
  * can fly exists.
@@ -74,7 +74,7 @@ export function clearPendingSliceCellFocus(): void {
 /**
  * Register this viewport's `focusCells` under `key`. If a pending slice
  * focus is waiting for that key, it flies immediately — that is how a
- * presentation pill lands after the slice tab mounts.
+ * presentation badge lands after the slice tab mounts.
  *
  * @param key - Scenario slide id, or {@link sliceFocusCellsKey} for a slice tab.
  * @param focusCells - The live viewport's fly-to-cell function.
