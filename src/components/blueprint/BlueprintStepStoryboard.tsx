@@ -6,9 +6,9 @@ import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
+/** One image on the storyboard strip. Lane names belong to the walkthrough, not here. */
 export type BlueprintStepStoryboardPicture = {
   frame: string
-  label?: string
 }
 
 type BlueprintStepStoryboardProps = {
@@ -31,6 +31,15 @@ function normalizePictures(
   )
 }
 
+/**
+ * The frames for one step, filling the cell face.
+ *
+ * There is no per-frame caption. The 8px lane-name under each thumbnail
+ * existed only because the face was split to leave a strip for type; the
+ * walkthrough still names lanes (`STORYBOARD_LANE_SHORT_LABELS`).
+ *
+ * @param {{ frames: readonly BlueprintStepStoryboardPicture[], className?: string }} props
+ */
 function StoryboardPictureStrip({
   frames,
   className,
@@ -38,9 +47,6 @@ function StoryboardPictureStrip({
   frames: readonly BlueprintStepStoryboardPicture[]
   className?: string
 }) {
-  const showLabels =
-    frames.some((entry) => Boolean(entry.label?.trim()))
-
   return (
     <div
       className={cn(
@@ -50,26 +56,19 @@ function StoryboardPictureStrip({
     >
       {frames.map((entry, index) => (
         <div
-          key={`${entry.frame}-${entry.label ?? index}`}
-          className="flex h-full min-h-0 max-h-full min-w-0 flex-1 flex-col items-center justify-center gap-0.5 self-stretch overflow-hidden"
+          key={`${entry.frame}-${index}`}
+          className="flex h-full min-h-0 max-h-full min-w-0 flex-1 items-center justify-center overflow-hidden"
         >
-          <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden">
-            <img
-              src={entry.frame}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className={cn(
-                'max-h-full max-w-full rounded-sm object-contain object-center',
-                hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
-              )}
-            />
-          </div>
-          {showLabels && entry.label?.trim() ? (
-            <p className="w-full shrink-0 whitespace-nowrap px-0.5 text-center text-5xs font-medium leading-none tracking-tight text-foreground/80">
-              {entry.label}
-            </p>
-          ) : null}
+          <img
+            src={entry.frame}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={cn(
+              'max-h-full max-w-full rounded-sm object-contain object-center',
+              hasEmbeddedStoryboardFrame(entry.frame) && 'scale-[1.08]',
+            )}
+          />
         </div>
       ))}
     </div>
