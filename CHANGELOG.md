@@ -1,5 +1,86 @@
 # Changelog
 
+## 1.38.0
+
+The slide sheet behaves like a sidebar, the canvas agent reads back more of
+what the board holds, and a set of fixes a deployment grew come home.
+
+**The slide sheet.** The divider sets its height, a card taller than the
+sheet scrolls inside itself, the caption grows into the room the card has,
+and the sideways scroll bar is gone. A slide has no delete button: it goes
+when its last cell does, and asks first when it carries a caption or an
+uploaded image.
+
+**The agent.** `get_blueprint` shows each path's dependency edges, `get_cell`
+shows the cell's resources, `list_findings` filters by cell, and a
+deployment's registered canvas adapter now reaches the system prompt.
+
+**Fixes.** A dependency maps the same way through either door, revert
+coverage reaches touchpoint mutations, the open-findings duplicate is named,
+and a new blueprint's first version is named for its route rather than
+prefilled with its kind.
+
+### Upgrading a deployment
+
+- `SliceSlideEditor` takes a new required `onRemoveCells` prop. A deployment
+  that renders it directly passes a handler that settles the slides a change
+  emptied; the template's `SliceEditSession` does this with `settleSlides`.
+- A replacement `canvas-adapter` registered through `registerReferenceDocs`
+  now reaches the agent's prompt as well as `get_reference`.
+- Nothing to apply to the database.
+
+### Minor Changes
+
+- a84409b: The canvas agent reads back more of what the board holds, and a deployment's
+  own adapter reaches the agent's prompt.
+
+  `get_blueprint` now lists each path's dependency edges after its grid,
+  source-first with the edge's kind and id. The board query always joined them;
+  the text dropped them, so the agent could write an arrow and not see it in the
+  grid. `get_cell` now includes the cell's resources, each one's name and url.
+  `list_findings` takes an optional `cell_id` and returns only the findings that
+  cite that cell. The no-database sample trial gives the same answers for all of
+  these.
+
+  `create_cell_dependency` now says in its description that `leads_to` and
+  `enables` are not inverses, since a precondition causes nothing. The tool
+  declarations gain a comment on how tools are named.
+
+  The `get_reference` description tells the agent to read `blueprint` first only
+  when a deployment has registered a document by that name. Standalone, the
+  wording is unchanged.
+
+  The canvas adapter now says what the code does: a read that takes a `service`
+  filter covers every service in the deployment when the filter is left out. It
+  used to say such a read stayed on the service on screen. A test holds every
+  tool description and the adapter to that behaviour.
+
+  The system prompt now takes the canvas adapter from the same record
+  `get_reference` serves. Before, a deployment that registered a replacement
+  adapter through `registerReferenceDocs` changed what `get_reference` returned
+  but not the prompt.
+
+  The eval harness takes its write list from the app's write roster instead of a
+  hand-written copy. The copy named one tool twice and left out the evidence and
+  stakeholder writes.
+
+### Patch Changes
+
+- 5dbdc21: A board's dependencies now come out of the normalizer the same way whichever door they arrive through. The top-level `cell_dependencies` branch spread the raw row, so any extra column the query carried rode along onto the edge; both branches now share one mapping that lists the six fields an edge has. Tests hold the two doors to the same shape.
+
+  A finding that is reopened while an open twin already exists now says so ("That finding is already open") instead of the generic "something with that name or position already exists", which asked the author to rename something they never named.
+
+  Guards close three gaps. The revert-coverage contract now reads `touchpointMutations.ts`, and lists `rename_touchpoint` as the real function its undo calls. The cell-spec contract now compares every column the board selects for a cell against the normalizer's mapper, not just the five spec columns. And tests pin the retired `frame` presentation-link param as still readable and never written back, plus the undo of a placement edit captured when placements still had screenshot and URL columns.
+
+  Creating a scenario no longer fills the first version's name with "Happy Path": a kind is not a name, and the version already carries its kind. The field starts empty with an example placeholder, the validation message says what a good name looks like, and the RPC fallback is "Main path". `BlueprintStep` now types the `summary` the normalizer already maps, and the dependency `kind` and `note` docs say what each value means.
+
+- a61796f: The slide sheet works like a sidebar turned on its side.
+
+  - It takes the height its divider gives it. The divider used to set only a maximum, so dragging past the tallest card moved nothing.
+  - A card taller than the sheet scrolls inside itself instead of cutting off its images and caption. The caption grows into whatever height the card has left.
+  - The sideways scroll bar is gone. A trackpad swipes across, and a mouse wheel scrolls the strip sideways once the card under the pointer has nowhere left to scroll.
+  - A slide has no delete button any more. Taking its last cell out removes it, whether the cell leaves by the strip's ✕, a drag to another slide, a click on the canvas, or clearing the canvas. When the slide carries a caption or an uploaded image, a confirmation names the slide and what goes with it ("Remove slide 2, “Setup”?"), with Keep slide as the safe answer.
+
 ## 1.37.1
 
 ### Patch Changes
@@ -4979,8 +5060,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.

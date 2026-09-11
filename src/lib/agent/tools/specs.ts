@@ -12,6 +12,41 @@ import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 const str = (description: string) => ({ type: 'string', description })
 
 /**
+ * NAMING — the rule a tool here is named by.
+ *
+ * A tool name is `<verb>_<noun>`. The verb states the CONTRACT (what the
+ * caller may assume about the result); the noun states the entity family.
+ *
+ *   search_  ranked matches for a query — truncated at k, snippets only
+ *   list_    the COMPLETE set at a level — no query, always projected
+ *   get_     named ids — full bodies, bounded BY the ids being required
+ *   compare_ / measure_   derived, not stored
+ *   create_ / update_ / upsert_ / duplicate_ / replace_   data writes
+ *   set_     UI STATE ONLY — never a data write
+ *   open_ / focus_   move the user's canvas
+ *
+ * `list_` and `search_` stay apart because their success criteria are
+ * opposite: enumeration must be COMPLETE, ranking must be RELEVANT. A model
+ * that reaches for a ranked door on an enumeration question gets a silent
+ * top-k truncation and reports a partial set as the whole one. Nothing here
+ * ranks yet; the verb is kept for the first read that does.
+ *
+ * `list_` and `get_` stay apart because `get_` REQUIRES ids, and that
+ * requirement is the payload guardrail — it makes "every cell at full body"
+ * impossible by construction rather than by a conditional check.
+ *
+ * NAME vs PARAMETER. A narrowing of the same records rides in a parameter
+ * (`service`, `status`, `cell_id`); a different record type earns a name.
+ * Evidence hangs off a cell but is not part of one, so it is `list_evidence`
+ * rather than an option on `get_cell`. What a row owns outright — a cell's
+ * resources — rides in that row's own read.
+ *
+ * A tool name is NOT a table name and NOT an RPC name. The agent tool
+ * `create_step` dispatches to the Postgres RPC `add_step`; renaming one must
+ * never rename the other.
+ */
+
+/**
  * The service-scope filter shared by the reads that take one. It is a FILTER,
  * not a navigation mode, and it NARROWS: omitting it searches every service in
  * the deployment, naming one confines the read to it, and "all" says the
@@ -176,10 +211,22 @@ export const WRITE_TOOL_NAMES = new Set([
   'update_stakeholder',
 ])
 
+/**
+ * The first-read pointer at a deployment's own account of its blueprint.
+ *
+ * The template ships no `blueprint` reference; a deployment registers one
+ * through `registerReferenceDocs`. So the pointer is written only when that
+ * name is served — standalone, it would aim the model's first call at a
+ * reference that does not exist.
+ */
+const READ_FIRST = REFERENCE_NAMES.includes('blueprint')
+  ? 'Read blueprint first for what this blueprint is, what a status licenses you to say and what absence means; lane-roles'
+  : 'Read lane-roles'
+
 export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_reference',
-    description: `Read a rulebook reference before acting on its topic. Available: ${REFERENCE_NAMES.filter((n) => n !== 'canvas-adapter').join(', ')}. Read lane-roles and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`,
+    description: `Read a rulebook reference before acting on its topic. Available: ${REFERENCE_NAMES.filter((n) => n !== 'canvas-adapter').join(', ')}. ${READ_FIRST} and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`,
     parameters: {
       type: 'object',
       properties: { name: str('Reference name, e.g. "lane-roles"') },
@@ -198,7 +245,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'get_blueprint',
     description:
-      'Full grid of one scenario: every path with its steps, lanes, and cells (ids included). Read before writing into a scenario. ("Blueprint" unqualified means the whole workspace; this tool returns one scenario\'s grid.)',
+      'Full grid of one scenario: every path with its steps, lanes, cells (ids included) and the dependency arrows between its cells, source-first with each one\'s kind. Read before writing into a scenario. ("Blueprint" unqualified means the whole workspace; this tool returns one scenario\'s grid.)',
     parameters: {
       type: 'object',
       properties: { scenario_id: str('Scenario id from list_scenarios') },
@@ -728,7 +775,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'create_cell_dependency',
     description:
-      'Connect two cells on the SAME path. kind "leads_to" = source makes target happen (drawn as an arrow); "enables" = source makes target possible without causing it (panel-only) — "X only makes sense once Y is true" reads as Y enables X, source-first. State which kind you chose and why in your reply. Arrows only where they add information.',
+      'Connect two cells on the SAME path. BOTH kinds read source-first. kind "leads_to" = the source makes the target happen (drawn as an arrow); "enables" = the source makes the target possible without causing it (panel-only, never drawn) — "B only makes sense once A is true" is A enables B, so the PRECONDITION is the source. They are NOT inverses: a precondition causes nothing, so do not record one as leads_to. State which kind you chose and why in your reply. Arrows only where they add information.',
     parameters: {
       type: 'object',
       properties: {
@@ -761,6 +808,9 @@ export const TOOL_SPECS: ToolSpec[] = [
           enum: ['open', 'resolved', 'dismissed', 'all'],
           description: 'Filter; default open',
         },
+        cell_id: str(
+          'Only findings that cite this cell. Use when the human asks whether anything is flagged on one moment.',
+        ),
       },
     },
   },

@@ -31,6 +31,12 @@ export type BlueprintStep = {
   id: string
   name: string
   position: number
+  /**
+   * What this moment is, across every lane — the storyboard caption. The
+   * normalizer maps it from `path_steps`; optional because a hand-written
+   * fixture, or a board in the legacy `steps` shape, may not carry it.
+   */
+  summary?: string | null
 }
 
 /**
@@ -177,11 +183,18 @@ export type BlueprintCellDependency = {
   id: string
   source_cell_id: string
   target_cell_id: string
-  /** leads_to = makes the target happen, drawn (default); enables = makes it possible, panel only. */
+  /**
+   * `leads_to` (default) — this cell makes the other one happen; drawn as an
+   * arrow. `enables` — this cell makes the other one possible; recorded in
+   * the panel, never drawn. Not inverses of each other.
+   */
   kind?: 'leads_to' | 'enables'
   /** What this edge is called, e.g. a channel tag like "Email". */
   name?: string | null
-  /** Why-line shown in the cell panel dependencies tab. */
+  /**
+   * Why the edge exists, in the author's own words. Null when nothing was
+   * said, never missing: the normalizer writes it through either door.
+   */
   note?: string | null
 }
 

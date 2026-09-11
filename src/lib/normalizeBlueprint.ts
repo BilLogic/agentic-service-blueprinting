@@ -114,18 +114,39 @@ function resolveSteps(raw: RawPath): BlueprintStep[] {
   )
 }
 
+/**
+ * The one mapping from a raw dependency row to an edge on the board.
+ *
+ * A board arrives with its edges either gathered into a top-level
+ * `cell_dependencies` array or nested under each cell as `outgoing`, and the
+ * two doors used to hold two copies of this mapping. They drifted: the
+ * top-level copy spread the row, so every column the select happened to carry
+ * rode along onto the edge, and its `note` was there only because the spread
+ * put it there. One mapping, listing its six fields, so there is nothing left
+ * to drift.
+ *
+ * `sourceCellId` is a parameter because only the nested door knows it from
+ * context: the row under a cell does not name its own source.
+ */
+function toBlueprintDependency(
+  raw: RawOutgoingDependency,
+  sourceCellId: string,
+): BlueprintCellDependency {
+  return {
+    id: raw.id,
+    source_cell_id: sourceCellId,
+    target_cell_id: raw.target_cell_id,
+    kind: normalizeDependencyKind(raw.kind),
+    name: raw.name ?? null,
+    note: raw.note ?? null,
+  }
+}
+
 function flattenDependenciesFromCells(cells: RawCell[]): BlueprintCellDependency[] {
   const dependencies: BlueprintCellDependency[] = []
   for (const cell of cells) {
     for (const outgoing of cell.outgoing ?? []) {
-      dependencies.push({
-        id: outgoing.id,
-        source_cell_id: cell.id,
-        target_cell_id: outgoing.target_cell_id,
-        kind: normalizeDependencyKind(outgoing.kind),
-        name: outgoing.name ?? null,
-        note: outgoing.note ?? null,
-      })
+      dependencies.push(toBlueprintDependency(outgoing, cell.id))
     }
   }
   return dependencies
@@ -278,12 +299,9 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
   }))
   const dependencies =
     raw.cell_dependencies && raw.cell_dependencies.length > 0
-      ? raw.cell_dependencies.map((dependency) => ({
-          ...dependency,
-          kind: normalizeDependencyKind(dependency.kind),
-          name: dependency.name ?? null,
-          note: dependency.note ?? null,
-        }))
+      ? raw.cell_dependencies.map((dependency) =>
+          toBlueprintDependency(dependency, dependency.source_cell_id),
+        )
       : flattenDependenciesFromCells(rawCells)
 
   return sortBlueprintLanes({

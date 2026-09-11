@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { TOOL_SPECS } from '@/lib/agent/tools/specs'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import {
@@ -141,6 +143,55 @@ describe('resolveServiceScope', () => {
     await expect(
       resolveServiceScope(servicesClient(TWO), { serviceArg: 'Billing' }),
     ).rejects.toThrow(/Support Desk, Sales Pipeline/)
+  })
+})
+
+/*
+ * What the agent is TOLD about an omitted service, held to what an omitted
+ * service DOES. The two drifted once already: the resolver read every service
+ * while the rulebook said an unnamed read stayed on the service on screen, so
+ * a model that trusted the words believed a whole-deployment answer covered
+ * only the board in front of the human.
+ */
+describe('the words about an omitted service match the behaviour', () => {
+  const EVERY_SERVICE = /omitting it searches every service/i
+  const ACTIVE_SERVICE = /(active service|service on screen|one on screen\))/i
+
+  const scoped = TOOL_SPECS.filter((spec) =>
+    Object.keys(spec.parameters.properties ?? {}).includes('service'),
+  )
+
+  it('omitting `service` resolves to every service on a multi-service deployment', async () => {
+    setActiveServiceSlug('sales-pipeline')
+    await expect(resolveServiceScope(servicesClient(TWO), {})).resolves.toEqual({
+      kind: 'all',
+    })
+  })
+
+  it('every read that takes `service` says omitting it covers every service', () => {
+    expect(scoped.length).toBeGreaterThan(0)
+    for (const spec of scoped) {
+      const param = (spec.parameters.properties as Record<string, { description?: string }>)
+        .service
+      expect(param?.description, spec.name).toMatch(EVERY_SERVICE)
+      expect(spec.description, spec.name).not.toMatch(/default[^.]*\b(active|on screen)\b/i)
+    }
+  })
+
+  it('the canvas adapter says the same, in the source and in the served copy', () => {
+    for (const path of [
+      '../../../../references/canvas-adapter.md',
+      '../skill/references/canvas-adapter.md',
+    ]) {
+      const adapter = readFileSync(new URL(path, import.meta.url), 'utf8')
+      const row = adapter
+        .split('\n')
+        .find((line) => line.startsWith('| Work across several services'))
+      expect(row, path).toBeTruthy()
+      expect(row, path).toMatch(/every service/i)
+      expect(row, path).not.toMatch(ACTIVE_SERVICE)
+      for (const spec of scoped) expect(row, `${path} ${spec.name}`).toContain(`\`${spec.name}\``)
+    }
   })
 })
 

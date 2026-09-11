@@ -5,7 +5,7 @@ import {
   setSlideSheetHeight,
   subscribeSlideSheetHeight,
 } from '@/lib/slideSheetHeight'
-import { ChevronDown, GripVertical, Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, GripVertical, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
@@ -76,6 +76,27 @@ function SlideSheetDivider() {
   )
 }
 
+/**
+ * Whether anything between `from` and `stop` can still scroll the way a
+ * vertical wheel of `deltaY` points — a card, or a caption's textarea.
+ */
+function scrollsVertically(
+  from: Element | null,
+  stop: Element,
+  deltaY: number,
+): boolean {
+  for (let node = from; node && node !== stop; node = node.parentElement) {
+    if (!(node instanceof HTMLElement)) continue
+    if (node.scrollHeight <= node.clientHeight) continue
+    const room =
+      deltaY > 0
+        ? node.scrollHeight - node.clientHeight - node.scrollTop
+        : node.scrollTop
+    if (room > 1) return true
+  }
+  return false
+}
+
 export function SliceSlideEditor({
   slides,
   activeSlide,
@@ -84,6 +105,7 @@ export function SliceSlideEditor({
   savedSlideFor,
   onActivate,
   onChange,
+  onRemoveCells,
 }: {
   slides: DraftSlide[]
   activeSlide: number
@@ -96,7 +118,14 @@ export function SliceSlideEditor({
    */
   savedSlideFor: (itemId: string) => Slide | null
   onActivate: (index: number) => void
+  /** Titles, captions, a new slide, a new order: taken as given. */
   onChange: (slides: DraftSlide[]) => void
+  /**
+   * Cells taken out of slides, by a drag or the ✕. Every slide keeps its
+   * position and an emptied one is still there, so the receiver can see
+   * which slides the change emptied and settle them.
+   */
+  onRemoveCells: (slides: DraftSlide[]) => void
 }) {
   const sheetHeight = useSyncExternalStore(
     subscribeSlideSheetHeight,
@@ -125,11 +154,22 @@ export function SliceSlideEditor({
   // and while the canvas is the subject the strip collapses to one bar.
   const [collapsed, setCollapsed] = useState(false)
 
-  const update = (next: DraftSlide[]) => {
-    onChange(next)
+  const endDrag = () => {
     setDragging(null)
     setDropTarget(null)
     setCellDrop(null)
+  }
+
+  const update = (next: DraftSlide[]) => {
+    onChange(next)
+    endDrag()
+  }
+
+  // Cells leaving slides take the other door: a slide the change empties is
+  // the session's to settle, and it asks first when there is content to lose.
+  const takeCells = (next: DraftSlide[]) => {
+    onRemoveCells(next)
+    endDrag()
   }
 
   const moveCell = (cell: string, to: number, at?: number) => {
@@ -162,9 +202,8 @@ export function SliceSlideEditor({
         ],
       }
     })
-    // A slide emptied by the move disappears — an empty slide is not a
-    // renderable state, and leaving one behind would just fail validation.
-    update(next.filter((slide) => slide.cells.length > 0))
+    // A slide the move empties is left in place for the session to settle.
+    takeCells(next)
   }
 
   const moveSlide = (from: number, to: number) => {
@@ -176,14 +215,13 @@ export function SliceSlideEditor({
   }
 
   const removeCell = (slideIndex: number, cell: string) => {
-    const next = slides
-      .map((slide, index) =>
+    takeCells(
+      slides.map((slide, index) =>
         index === slideIndex
           ? { ...slide, cells: slide.cells.filter((id) => id !== cell) }
           : slide,
-      )
-      .filter((slide) => slide.cells.length > 0)
-    update(next)
+      ),
+    )
   }
 
   // Running cell number across slides — the same sequence the saved slice
@@ -222,8 +260,30 @@ export function SliceSlideEditor({
       </button>
       {collapsed ? null : (
     <div
-      className="flex shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2"
-      style={{ maxHeight: sheetHeight }}
+      // `height`, not `maxHeight`: the divider sets the sheet's size the way
+      // the sidebar's edge sets the sidebar's. A maximum let the strip stop
+      // at its tallest card, so a drag past that moved nothing.
+      //
+      // No sideways scroll bar: a trackpad swipes across natively, and a
+      // mouse wheel is turned sideways below.
+      className="blueprint-scroll flex shrink-0 gap-2 overflow-x-auto overflow-y-hidden px-2 pb-2"
+      style={{ height: sheetHeight }}
+      onWheel={(event) => {
+        // A wheel that is mostly sideways is already scrolling the strip.
+        if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return
+        // A card with somewhere left to go keeps the wheel; at its end the
+        // turn passes to the strip, the way nested page scrolling hands off.
+        if (
+          scrollsVertically(
+            event.target as Element,
+            event.currentTarget,
+            event.deltaY,
+          )
+        ) {
+          return
+        }
+        event.currentTarget.scrollLeft += event.deltaY
+      }}
     >
       {slides.map((slide, index) => {
         const slideProblems = problems.filter(
@@ -234,11 +294,12 @@ export function SliceSlideEditor({
         return (
           <div
             key={index}
+            data-slide-card=""
             className={cn(
-              // min-h-0 + overflow-hidden: a card taller than the strip must
-              // clip inside itself, not paint its caption over the next
-              // row's captions.
-              'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-1.5 overflow-hidden rounded-lg border bg-card p-2 transition-colors',
+              // min-h-0 + overflow-y-auto: a card taller than the sheet
+              // scrolls inside itself. Clipping it hid the images and the
+              // caption with no way to reach them.
+              'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-1.5 overflow-y-auto overscroll-y-contain rounded-lg border bg-card p-2 transition-colors',
               isActive ? 'border-primary' : 'border-border',
               dropTarget === index && 'ring-2 ring-primary/40',
             )}
@@ -306,7 +367,9 @@ export function SliceSlideEditor({
               />
             </div>
 
-            <ul className="flex max-h-24 min-h-8 shrink-0 flex-col gap-1 overflow-y-auto">
+            {/* No scroll box of its own: the card scrolls, and a capped list
+                inside it was a second box answering the same wheel. */}
+            <ul className="flex min-h-8 shrink-0 flex-col gap-1">
               {slide.cells.map((cell, cellIndex) => (
                 <li
                   key={cell}
@@ -379,15 +442,16 @@ export function SliceSlideEditor({
               card whose name is not implied by anything around it. It gets a
               visible one, in the schema's word.
             */}
-            <label className="flex flex-col gap-0.5">
+            <label className="flex shrink-0 grow flex-col gap-0.5">
               <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Caption
               </span>
             <textarea
               value={slide.caption}
               rows={2}
-              // shrink-0: the textarea holds its two rows and scrolls its
-              // own overflow rather than being squeezed by the card.
+              // grow: the caption takes whatever height the card has left,
+              // so a taller sheet is a roomier caption. min-h-14 holds two
+              // rows when the card is full and the card scrolls instead.
               placeholder="What a reader meets under the title"
               onClick={(event) => event.stopPropagation()}
               onChange={(event) =>
@@ -399,7 +463,7 @@ export function SliceSlideEditor({
                   ),
                 )
               }
-              className="w-full shrink-0 resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-xs outline-none focus-visible:border-ring"
+              className="min-h-14 w-full grow resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-xs outline-none focus-visible:border-ring"
             />
             </label>
 
@@ -415,26 +479,9 @@ export function SliceSlideEditor({
               </p>
             ) : null}
 
-            {/* Split and Merge are gone everywhere in slices — dragging a
-                cell between slides IS both. Delete is the only action a
-                drag cannot express, revealed on hover. */}
-            <div className="flex items-center opacity-0 transition-opacity group-hover/slide:opacity-100 focus-within:opacity-100">
-              <IconTooltip label={`Delete slide ${index + 1}`}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Delete slide ${index + 1}`}
-                  className="ml-auto text-muted-foreground hover:text-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    update(slides.filter((_, itemIndex) => itemIndex !== index))
-                  }}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
-              </IconTooltip>
-            </div>
+            {/* No delete button. Split and Merge went because dragging a
+                cell between slides is both; delete went because taking a
+                slide's last cell out is it. */}
           </div>
         )
       })}

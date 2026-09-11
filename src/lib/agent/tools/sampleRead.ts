@@ -11,10 +11,12 @@ import {
   formatFields,
   formatLaneVocabulary,
   formatOwnerTags,
+  formatResources,
   formatScenarioList,
   formatSliceDetail,
   formatSliceList,
 } from '@/lib/agent/tools/format'
+import { cellResources } from '@/lib/cellResources'
 import type { BlueprintData } from '@/types/blueprint'
 
 /**
@@ -86,7 +88,8 @@ export function sampleGetCompareDiff(
 /**
  * The same field roster `read.ts` selects from `cells` — the sample content
  * carries the cell spec (owner, perceived owner, function, form, value
- * props), so the keyless answer is the DB answer minus the database.
+ * props) and the cell's resources, so the keyless answer is the DB answer
+ * minus the database.
  */
 export function sampleGetCell(cellId: string): string {
   for (const blueprint of allSampleBlueprints()) {
@@ -100,6 +103,7 @@ export function sampleGetCell(cellId: string): string {
       ['function', cell.function],
       ['form', cell.form],
       ['value_props', cell.value_props?.length ? JSON.stringify(cell.value_props) : null],
+      ['resources', formatResources(cellResources(cell))],
       ['lane_id', cell.lane_id],
       ['step_id', cell.step_id],
       ['position', cell.position],

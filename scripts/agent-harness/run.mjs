@@ -14,7 +14,8 @@
  *
  * One-sourced vs mirrored (be honest about which is which):
  * - ONE-SOURCED: tool specs/rosters and the offline fixture are IMPORTED
- *   from src (rolldown bundles app-surface.entry.ts at startup). role.md,
+ *   from src (surface.mjs has rolldown bundle app-surface.entry.ts at
+ *   startup; cases.mjs takes its write roster from the same bundle). role.md,
  *   canvas-adapter.md and the skill files are the SAME FILES the app loads
  *   (`?raw` there, readFileSync here). No copies, so no drift.
  * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildSystem + the tier /
@@ -40,6 +41,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CASES } from './cases.mjs'
+import { surface } from './surface.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -122,23 +124,8 @@ async function rest(pathAndQuery) {
 }
 
 // ---------------------------------------------------------------------------
-// One-sourced app surface: rolldown bundles specs + fixture from src.
+// One-sourced app surface: surface.mjs bundles specs + fixture from src.
 // ---------------------------------------------------------------------------
-async function loadAppSurface() {
-  const { rolldown } = await import('rolldown')
-  const bundle = await rolldown({
-    input: resolve(ROOT, 'scripts/agent-harness/app-surface.entry.ts'),
-    // Honor tsconfig's `@/*` → `src/*` path alias.
-    resolve: { alias: { '@': resolve(ROOT, 'src') } },
-    logLevel: 'silent',
-  })
-  const { output } = await bundle.generate({ format: 'esm' })
-  await bundle.close()
-  return import(
-    `data:text/javascript;base64,${Buffer.from(output[0].code).toString('base64')}`
-  )
-}
-const surface = await loadAppSurface()
 const { TOOL_SPECS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES } = surface
 
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)

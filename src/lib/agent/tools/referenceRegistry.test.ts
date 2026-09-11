@@ -72,6 +72,53 @@ describe('the reference registry', () => {
     expect(getReference?.description).toContain('blueprint')
   })
 
+  /**
+   * The pointer at `blueprint` names a document only a deployment supplies.
+   * Standalone there is nothing by that name, and a description telling the
+   * model to read it first sends its first call to an "Unknown reference".
+   */
+  it('points the agent at the blueprint document only when one is registered', async () => {
+    const standalone = await import('@/lib/agent/tools/specs')
+    const bare = standalone.TOOL_SPECS.find((spec) => spec.name === 'get_reference')
+    expect(bare?.description).not.toMatch(/Read blueprint first/)
+
+    vi.resetModules()
+    const { registerReferenceDocs } = await import(
+      '@/lib/agent/tools/referenceRegistry'
+    )
+    registerReferenceDocs({ blueprint: '# This service\n' })
+    const { TOOL_SPECS } = await import('@/lib/agent/tools/specs')
+    const getReference = TOOL_SPECS.find((spec) => spec.name === 'get_reference')
+    expect(getReference?.description).toMatch(/Read blueprint first/)
+  })
+
+  it("the system prompt carries the template's own adapter standalone", async () => {
+    const { buildSystem } = await import('@/lib/agent/loop')
+    const adapter = readFileSync(
+      new URL('../skill/references/canvas-adapter.md', import.meta.url),
+      'utf8',
+    )
+    expect(buildSystem('')).toContain(adapter)
+  })
+
+  /**
+   * The prompt is where the adapter is binding — it is in every turn, in
+   * full. A replacement served by `get_reference` and absent from the prompt
+   * leaves the agent following the template's rules while a tool it rarely
+   * calls describes the deployment's.
+   */
+  it('a registered replacement adapter reaches the system prompt', async () => {
+    const { registerReferenceDocs } = await import(
+      '@/lib/agent/tools/referenceRegistry'
+    )
+    registerReferenceDocs({ 'canvas-adapter': '# Our own adapter\n' })
+
+    const { buildSystem } = await import('@/lib/agent/loop')
+    const system = buildSystem('')
+    expect(system).toContain('# Our own adapter\n')
+    expect(system).not.toContain('# Canvas adapter — running the blueprint skills')
+  })
+
   it('overriding a document the template serves replaces it and adds no name', async () => {
     const { registerReferenceDocs } = await import(
       '@/lib/agent/tools/referenceRegistry'

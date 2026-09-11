@@ -78,6 +78,35 @@ describe('a lane collision, in the words the database uses', () => {
   })
 })
 
+/**
+ * A reopen racing a twin that is already open: the finding write reads for an
+ * open row with the same fingerprint, finds none, and inserts — while another
+ * write does the same. The partial unique index over open fingerprints refuses
+ * the second, which is the index doing its job, not a name clash.
+ */
+const FINDING_TWIN = postgrest(
+  'duplicate key value violates unique constraint "audit_findings_open_fingerprint_idx"',
+  'Key (service_id, fingerprint)=(17d54a45-65ab-4670-8035-fb7bc0a0b256, missing-owner:9d7c0f2c) already exists.',
+  '23505',
+)
+
+describe('an open finding twin, in the words the database uses', () => {
+  it('says the finding is already open rather than asking for a rename', () => {
+    // The generic duplicate line matches this text too, and would tell the
+    // author "something with that name or position already exists here" — a
+    // name they never typed.
+    expect(toAuthoringError(FINDING_TWIN).message).toBe(
+      'That finding is already open — reload to see the one that exists.',
+    )
+  })
+
+  it('keeps the database text on `.raw`, and off the screen', () => {
+    const error = toAuthoringError(FINDING_TWIN)
+    expect(error.raw).toContain('audit_findings_open_fingerprint_idx')
+    expect(error.message).not.toContain('fingerprint')
+  })
+})
+
 /** Every `match:` literal in the module, in table order. */
 function matchers(source: string): string[] {
   return [...source.matchAll(/match:\s*'([^']+)'/g)].map((m) => m[1])
@@ -107,8 +136,8 @@ describe('the translations that name a database object', () => {
   const created = schemaNames(SCHEMA)
 
   it('is not an empty subject', () => {
-    // Two today. If this reaches zero the check below has stopped checking.
-    expect(identifiers.length).toBeGreaterThanOrEqual(2)
+    // Three today. If this reaches zero the check below has stopped checking.
+    expect(identifiers.length).toBeGreaterThanOrEqual(3)
   })
 
   it('reads a schema dump that has names in it', () => {
