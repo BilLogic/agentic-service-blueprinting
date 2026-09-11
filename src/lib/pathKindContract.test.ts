@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BLUEPRINT_ARROW_PATH_KINDS } from '@/components/blueprint/BlueprintArrowMarkerDefs'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'
 import { PATH_KIND_ARROW_COLORS, PATH_KIND_COLORS } from '@/lib/pathColorTheme'
-import { PATH_KIND_LABELS, PATH_KIND_SHORT_LABELS } from '@/lib/pathKindTheme'
+import { PATH_KIND_LABELS } from '@/lib/pathKindTheme'
 import { PATH_KINDS } from '@/lib/versionValidation'
 import type { PathKind as DatabasePathKind } from '@/types/database'
 
@@ -45,8 +45,7 @@ const ROSTERS: Record<string, readonly string[]> = {
 
 /** Every compiler-guarded `Record<PathKind, …>`, keyed on the same vocabulary. */
 const KIND_KEYED_MAPS: Record<string, Record<string, unknown>> = {
-  'versionValidation PATH_KIND_LABELS': PATH_KIND_LABELS,
-  PATH_KIND_SHORT_LABELS,
+  PATH_KIND_LABELS,
   PATH_KIND_COLORS,
   PATH_KIND_ARROW_COLORS,
 }

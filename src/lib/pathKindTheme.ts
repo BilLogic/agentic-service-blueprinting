@@ -9,17 +9,17 @@ import type { PathKind } from '@/types/database'
 
 export { PATH_KIND_ARROW_COLORS, PATH_KIND_COLORS } from '@/lib/pathColorTheme'
 
-export const PATH_KIND_SHORT_LABELS: Record<PathKind, string> = {
+/**
+ * The one word a path kind is called, wherever it is shown: the badge, the
+ * colour key, the new-path picker. One map, so the same kind cannot read
+ * "Happy" in one place and "Happy path" in the next.
+ */
+export const PATH_KIND_LABELS: Record<PathKind, string> = {
   happy: 'Happy',
   variant: 'Variant',
   exception: 'Exception',
 }
 
-export const PATH_KIND_LABELS: Record<PathKind, string> = {
-  happy: 'Happy path',
-  variant: 'Variant',
-  exception: 'Exception',
-}
 export const PATH_KIND_SECTION_BORDER_WIDTH = 3
 
 export function getPathKindSectionBorderStyle(
@@ -61,19 +61,17 @@ export function getPathKindSuffixIfNeeded(path: {
   name: string
   kind: PathKind
 }): string | null {
-  const short = PATH_KIND_SHORT_LABELS[path.kind]
-  const full = PATH_KIND_LABELS[path.kind]
+  const label = PATH_KIND_LABELS[path.kind]
   const normalized = path.name.toLowerCase()
 
   if (
     normalized.includes(path.kind) ||
-    normalized.includes(short.toLowerCase()) ||
-    normalized.includes(full.toLowerCase())
+    normalized.includes(label.toLowerCase())
   ) {
     return null
   }
 
-  return short
+  return label
 }
 
 /**
