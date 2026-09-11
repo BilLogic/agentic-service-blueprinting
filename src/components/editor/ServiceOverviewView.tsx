@@ -279,6 +279,13 @@ type ServiceOverviewViewProps = {
   onRevealStage?: (stage: number) => void
   /** Session-local identity for restoring this canvas after a tab remount. */
   cameraStateKey?: string
+  /**
+   * Override the viewport's `focusCells` registry key. Slice tabs pass a
+   * slice-stable key so a presentation pill can leave a pending focus that
+   * this viewport consumes when it registers — the tab descriptor carries
+   * no cell. Without an override the key is the focused (or solo) scenario.
+   */
+  focusCellsKey?: string
   /** Notifies an embedding transition after this destination is fitted. */
   onInitialFitReady?: () => void
 }
@@ -298,6 +305,7 @@ function ServiceOverviewViewImpl({
   floatingChrome,
   onRevealStage,
   cameraStateKey,
+  focusCellsKey: focusCellsKeyOverride,
   onInitialFitReady,
 }: ServiceOverviewViewProps = {}) {
   const overviewRef = useRef<HTMLDivElement>(null)
@@ -1045,7 +1053,12 @@ function ServiceOverviewViewImpl({
                 cameraDestinationResolved={overviewSettled}
                 cameraOutcomeKey={cameraTargetId ?? undefined}
                 onFitReady={handleInitialFitReady}
-                focusCellsKey={focusedScenarioId ?? soloScenarioId ?? undefined}
+                focusCellsKey={
+                  focusCellsKeyOverride ??
+                  focusedScenarioId ??
+                  soloScenarioId ??
+                  undefined
+                }
               >
                 <DeferredSkeleton
                   loading={!overviewSettled}

@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
+import { requestSliceCellFocus } from '@/lib/canvasFocusCells'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { imagesThisSlideShows } from '@/lib/slideImages'
@@ -143,8 +144,18 @@ export function SlicePresentation({
     }
   }
 
-  const openSliceTab = useCallback(
-    () => openTab({ kind: 'slice', sliceId }),
+  /**
+   * Open the slice tab on this cell. The tab descriptor carries no cell,
+   * so the focus is left pending for the viewport to consume when it
+   * registers — including when the tab was not already open.
+   *
+   * @param cellId - The cited cell this pill names.
+   */
+  const openSliceCell = useCallback(
+    (cellId: string) => {
+      requestSliceCellFocus(sliceId, [cellId])
+      openTab({ kind: 'slice', sliceId })
+    },
     [openTab, sliceId],
   )
 
@@ -333,17 +344,23 @@ export function SlicePresentation({
 
         {/* Cell badges — subtle row at the bottom of the stage. */}
         <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 px-24 pt-3 pb-4">
-          {item.cell_ids.map((cellId) => (
-            <button
-              key={cellId}
-              type="button"
-              onClick={openSliceTab}
-              title="Open in slice focus view"
-              className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {cellSnippet(cellById.get(resolveBlueprintCellId(cellId)))}
-            </button>
-          ))}
+          {item.cell_ids.map((cellId) => {
+            const snippet = cellSnippet(
+              cellById.get(resolveBlueprintCellId(cellId)),
+            )
+            return (
+              <button
+                key={cellId}
+                type="button"
+                onClick={() => openSliceCell(cellId)}
+                aria-label={`Open ${snippet} in the slice`}
+                title="Open in slice focus view"
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                {snippet}
+              </button>
+            )
+          })}
         </div>
 
         {blueprint && (
