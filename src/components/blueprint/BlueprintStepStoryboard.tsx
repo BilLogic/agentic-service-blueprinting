@@ -20,8 +20,6 @@ type BlueprintStepStoryboardProps = {
   stepIndex?: number
   opacity?: number
   frames?: readonly string[] | readonly BlueprintStepStoryboardPicture[]
-  /** Larger walkthrough/presentation layout — images scale to fit without clipping. */
-  presentation?: boolean
   'aria-describedby'?: string
 }
 
@@ -88,7 +86,6 @@ export function BlueprintStepStoryboard({
   stepIndex,
   opacity,
   frames,
-  presentation = false,
   'aria-describedby': ariaDescribedBy,
 }: BlueprintStepStoryboardProps) {
   const displayPictures = normalizePictures(frames ?? [])
@@ -110,23 +107,6 @@ export function BlueprintStepStoryboard({
 
   if (!hasRealPictures) {
     return null
-  }
-
-  if (presentation) {
-    return (
-      <div
-        className={cn(
-          'flex w-full items-stretch justify-center gap-2 rounded-xl p-3 ring-1 ring-border-muted',
-          'h-[min(16rem,35vh)] min-h-[12.5rem]',
-          className,
-        )}
-        style={{ backgroundColor: 'var(--background-blueprint-cell)' }}
-        role="img"
-        aria-label={ariaLabel}
-      >
-        <StoryboardPictureStrip frames={displayPictures} />
-      </div>
-    )
   }
 
   return (
