@@ -171,7 +171,7 @@ describe('MobileNavSheet accordion and rail', () => {
   })
 
   /*
-    The phase list draws the same distinction the slice list does (#505).
+    The phase list draws the same distinction the slice list does.
 
     It had no empty state at all before, because it could not be empty: a
     read with no rows fell back to the template's bundled sample. The drawer opens

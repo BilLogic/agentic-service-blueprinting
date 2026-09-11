@@ -141,7 +141,7 @@ export function keysInSlideUploadFolder(
  * **The rows are counted.** A storage delete refused by row-level security
  * matches nothing, returns no error, and hands back an empty list — so for as
  * long as this bucket had no DELETE policy, every call reported success and
- * left the objects where they were. `21000224000000` writes that policy; this
+ * left the objects where they were. A migration now writes that policy; this
  * count is what says so afterwards, and what will say so again if the policy
  * is ever dropped or narrowed past the keys `illustrationPath` writes.
  *
