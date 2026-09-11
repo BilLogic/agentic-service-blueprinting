@@ -22,10 +22,12 @@ export function renderInline(text: string): ReactNode {
       return <em key={index}>{part.slice(1, -1)}</em>
     }
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      // Inherit the enclosing rung so the invocation matches the sentence
+      // beside it — a smaller em size would sit below the display floor.
       return (
         <code
           key={index}
-          className="rounded-sm bg-muted/60 px-1 py-0.5 font-mono text-[0.85em]"
+          className="rounded-sm bg-muted/60 px-1 py-0.5 font-mono"
         >
           {part.slice(1, -1)}
         </code>

@@ -307,4 +307,71 @@ describe('CoverPageView', () => {
     render(<CoverPageView content={content()} onOpenCanvas={vi.fn()} />)
     expect(screen.getByText('bold').tagName).toBe('STRONG')
   })
+
+  it('keeps cover copy on the display floor: sm or above, never muted-only', () => {
+    const { container } = render(
+      <CoverPageView
+        content={content({
+          lede: 'A lede with a `command`.',
+          tabs: [
+            {
+              value: 'one',
+              label: 'First tab',
+              intro: 'Tab intro copy.',
+              sections: [
+                {
+                  kind: 'prose',
+                  id: 'p1',
+                  heading: 'First heading',
+                  paragraphs: ['First body.'],
+                },
+                {
+                  kind: 'defs',
+                  id: 'd1',
+                  heading: 'A defs list',
+                  columns: { term: 'Term', definition: 'Meaning' },
+                  items: [{ term: 'first term', definition: 'What it means.' }],
+                },
+              ],
+            },
+          ],
+        })}
+        onOpenCanvas={vi.fn()}
+      />,
+    )
+
+    const title = screen.getByRole('heading', { level: 1 })
+    expect(title.className).toMatch(/\btext-3xl\b/)
+    expect(title.className).not.toMatch(/\bleading-/)
+
+    const lede = container.querySelector('header p')
+    expect(lede?.className).toMatch(/\btext-base\b/)
+    expect(lede?.className).toMatch(/\btext-foreground\b/)
+    expect(lede?.className).not.toMatch(/text-muted-foreground/)
+    expect(lede?.className).not.toMatch(/\bleading-/)
+
+    const command = screen.getByText('command')
+    expect(command.tagName).toBe('CODE')
+    expect(command.className).toMatch(/\bfont-mono\b/)
+    expect(command.className).not.toMatch(/text-\[/)
+
+    const intro = screen.getByText('Tab intro copy.')
+    expect(intro.className).toMatch(/\btext-sm\b/)
+    expect(intro.className).toMatch(/\btext-foreground\b/)
+    expect(intro.className).not.toMatch(/text-muted-foreground/)
+
+    const body = screen.getByText('First body.')
+    expect(body.className).toMatch(/\btext-sm\b/)
+    expect(body.className).toMatch(/\btext-foreground\b/)
+    expect(body.className).not.toMatch(/text-muted-foreground/)
+
+    const table = screen.getByRole('table')
+    expect(table.className).toMatch(/\btext-sm\b/)
+    expect(table.className).not.toMatch(/\btext-xs\b/)
+    const definition = screen.getByText('What it means.')
+    expect(definition.tagName).toBe('TD')
+    expect(definition.className).toMatch(/\btext-foreground\b/)
+    expect(definition.className).not.toMatch(/text-muted-foreground/)
+    expect(definition.className).not.toMatch(/\bleading-/)
+  })
 })

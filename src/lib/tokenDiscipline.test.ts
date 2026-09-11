@@ -345,11 +345,12 @@ test('z-index is spelled one way, so a contract cannot pin the other', () => {
  * already Tailwind's `text-4xl`.
  *
  * `em` is NOT covered, and that is a rule rather than a hole. `text-[0.85em]`
- * on markdown inline code and `text-[0.8em]` in `coverInline` are a proportion
+ * and `text-[0.8em]` on markdown inline and fenced code are a proportion
  * of whatever encloses them — the same code at a different enclosing size is a
  * different number of pixels, which is the point — and no fixed rung can
  * express that. A rung is an absolute size: every `--text-*` this codebase
- * declares is one, commented in px.
+ * declares is one, commented in px. Cover inline code inherits its enclosing
+ * rung instead, so it matches the sentence beside it.
  *
  * The other exemption is vendored, and it is a named list rather than a
  * narrower pattern — see `VENDORED_FONT_SIZE_LITERALS` directly below. A

@@ -28,11 +28,12 @@ export const PANEL_TEXT = {
    * a short name ("Watches one frame at a time, and follows the locator back
    * to where it sits on the board."). Negative tracking plus 1.375 leading on a
    * semibold sentence is the worst of the available combinations: the letters
-   * crowd and the lines crowd at once. Default tracking, normal leading.
+   * crowd and the lines crowd at once. Default tracking; the rung supplies
+   * the box (ADR 0012).
    */
-  title: 'min-w-0 text-sm font-semibold leading-normal text-foreground',
+  title: 'min-w-0 text-sm font-semibold text-foreground',
   /** Counts and relationships under the title. Never restates the title. */
-  meta: 'text-2xs font-normal leading-tight text-muted-foreground',
+  meta: 'text-2xs font-normal text-muted-foreground',
   /** Names a field or a group. Always the same weight, size and colour. */
   sectionLabel: 'text-2xs font-medium text-muted-foreground',
   /** Authored prose — what the panel exists to show. */
