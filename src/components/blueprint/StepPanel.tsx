@@ -13,8 +13,6 @@ import { PanelTextareaField } from '@/components/blueprint/PanelTextareaField'
 import { PanelSectionLabel } from '@/components/blueprint/PanelSectionLabel'
 import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { PANEL_TERMS } from '@/lib/panelTerms'
-import { PANEL_TEXT } from '@/lib/panelText'
-import { cn } from '@/lib/utils'
 import { useStepSpec, type StepSpec } from '@/hooks/useStepSpec'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
@@ -204,7 +202,7 @@ function StepPanelBody({
                 </div>
                 {/* Provenance, quietly: which lane drew this frame. The
                     frame's MEANING is the summary above it. */}
-                <figcaption className={cn(PANEL_TEXT.meta, 'truncate')}>
+                <figcaption className="truncate text-2xs font-normal leading-tight text-muted-foreground">
                   {frame.laneName}
                 </figcaption>
               </figure>
@@ -220,7 +218,7 @@ function StepPanelBody({
             {step.positions.map((entry) => (
               <li
                 key={`${entry.pathName}-${entry.position}`}
-                className={PANEL_TEXT.value}
+                className="text-sm font-normal text-foreground/80"
               >
                 <span className="font-medium text-foreground">
                   {entry.pathName}

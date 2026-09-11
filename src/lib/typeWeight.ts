@@ -31,16 +31,17 @@ const FUNCTIONAL = new Set(['medium', 'semibold'])
 const RETIRED = new Set(['bold', 'extrabold', 'black'])
 
 /**
- * Named class lists that *are* headings, even when the tag they land on
- * is a `span` or a `p`. Panel title, canvas column/row header, menubar
- * title — the three the doctrine lists by job rather than by tag.
+ * Class lists that *are* headings, even when the tag they land on is a
+ * `span` or a `p`. Panel title (the inlined class string), canvas
+ * column/row header, menubar title — the three the doctrine lists by job
+ * rather than by tag.
  *
  * Every entry must still appear in the tree; `typeWeight.test.ts` holds
  * that, so a rename cannot leave a dead token behind while the guard
  * quietly stops recognising the heading.
  */
 export const HEADING_TOKENS = [
-  'PANEL_TEXT.title',
+  'min-w-0 text-sm font-semibold leading-normal text-foreground',
   'CANVAS_HEADER_TEXT',
   'BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS',
 ] as const

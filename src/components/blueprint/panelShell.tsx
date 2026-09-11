@@ -33,7 +33,6 @@ import {
   rememberedSheetSnap,
   rememberSheetSnap,
 } from '@/lib/panelSheetSnap'
-import { PANEL_TEXT } from '@/lib/panelText'
 import {
   blueprintLaneAttrs,
   blueprintToneAttrs,
@@ -280,7 +279,7 @@ export function Field({
     <span
       className={cn(
         'w-fit',
-        PANEL_TEXT.sectionLabel,
+        'text-2xs font-medium text-muted-foreground',
         // Only where there is something behind it — and now the focus ring
         // alone. The help cursor and the dotted rule went with every other
         // announcement that a word is defined.
@@ -350,7 +349,7 @@ export function PanelHeader({
         <DrawerTitle className="sr-only">{title}</DrawerTitle>
         <DrawerDescription className="sr-only">{description}</DrawerDescription>
         <Breadcrumb className="min-w-0">
-          <BreadcrumbList className={cn('flex-nowrap gap-0.5', PANEL_TEXT.meta)}>
+          <BreadcrumbList className="flex-nowrap gap-0.5 text-2xs font-normal leading-tight text-muted-foreground">
             {shown.map((crumb, index) => (
               <Fragment key={`${crumb}-${index}`}>
                 <BreadcrumbItem className="min-w-0">
@@ -422,8 +421,8 @@ export function PanelIdentity({
   return (
     <div className="flex min-w-0 flex-col items-start gap-1.5">
       {badge}
-      {title ? <p className={PANEL_TEXT.title}>{title}</p> : null}
-      {meta ? <p className={PANEL_TEXT.meta}>{meta}</p> : null}
+      {title ? <p className="min-w-0 text-sm font-semibold leading-normal text-foreground">{title}</p> : null}
+      {meta ? <p className="text-2xs font-normal leading-tight text-muted-foreground">{meta}</p> : null}
       {children}
     </div>
   )

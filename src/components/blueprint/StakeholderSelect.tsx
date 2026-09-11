@@ -12,7 +12,6 @@ import {
   useStakeholders,
   type StakeholderKind,
 } from '@/hooks/useStakeholders'
-import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
 
 /**
@@ -64,11 +63,11 @@ export function StakeholderSelect({
       about the service that it does not know.
     */
     if (result.status === 'loading') {
-      return <p className={PANEL_TEXT.meta}>Loading the cast…</p>
+      return <p className="text-2xs font-normal leading-tight text-muted-foreground">Loading the cast…</p>
     }
     if (result.status === 'error') {
       return (
-        <p className={PANEL_TEXT.meta}>
+        <p className="text-2xs font-normal leading-tight text-muted-foreground">
           The cast could not be loaded: {result.message}
         </p>
       )
@@ -79,7 +78,7 @@ export function StakeholderSelect({
       // reads the same way, which is the one case this cannot distinguish and
       // the one where "nobody owns this" is also the honest answer.)
       return (
-        <p className={PANEL_TEXT.value}>
+        <p className="text-sm font-normal text-foreground/80">
           <span className="text-muted-foreground">Nobody — a structural row.</span>
         </p>
       )
@@ -91,7 +90,7 @@ export function StakeholderSelect({
           kind={selected.kind as StakeholderKind}
           summary={selected.summary}
         />
-        <span className={PANEL_TEXT.meta}>
+        <span className="text-2xs font-normal leading-tight text-muted-foreground">
           {STAKEHOLDER_KIND_LABELS[selected.kind as StakeholderKind]}
         </span>
       </div>

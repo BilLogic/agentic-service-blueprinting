@@ -25,7 +25,6 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { uploadAttachment } from '@/lib/attachmentUpload'
 import { hostOf } from '@/lib/cellResources'
-import { PANEL_TEXT } from '@/lib/panelText'
 import { linkPresentation } from '@/lib/resourcePresentation'
 import { validateResourceUrl } from '@/lib/resourceUrl'
 import { ROW_REVEAL_CLASS } from '@/lib/rowReveal'
@@ -429,7 +428,7 @@ export function ResourcesList({
     <div className="flex flex-col gap-2" data-resources-list="">
       {hint ? (
         <div className="flex flex-col gap-0.5">
-          <span className={PANEL_TEXT.sectionLabel}>Resources</span>
+          <span className="text-2xs font-medium text-muted-foreground">Resources</span>
           <p className="text-3xs text-muted-foreground">{hint}</p>
         </div>
       ) : null}

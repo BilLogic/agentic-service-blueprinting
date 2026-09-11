@@ -102,8 +102,6 @@ import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
 import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
 import { PANEL_TERMS } from '@/lib/panelTerms'
-import { PANEL_TEXT } from '@/lib/panelText'
-import { cn } from '@/lib/utils'
 import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { DependencyEndpoint } from '@/lib/dependencyValidation'
@@ -852,7 +850,7 @@ function BlueprintCellDetailPanelBody() {
               onValueChange={setPanelSurface}
             />
           ) : (
-            <span className={PANEL_TEXT.title}>
+            <span className="min-w-0 text-sm font-semibold leading-normal text-foreground">
               Differences
             </span>
           )}
@@ -921,7 +919,7 @@ function BlueprintCellDetailPanelBody() {
         {surfaceSwitcher}
         <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
-            <DrawerTitle className={PANEL_TEXT.title}>
+            <DrawerTitle className="min-w-0 text-sm font-semibold leading-normal text-foreground">
               New cell
             </DrawerTitle>
             <DrawerDescription className="text-2xs text-muted-foreground">
@@ -981,7 +979,7 @@ function BlueprintCellDetailPanelBody() {
         {surfaceSwitcher}
         <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
-            <DrawerTitle className={PANEL_TEXT.title}>
+            <DrawerTitle className="min-w-0 text-sm font-semibold leading-normal text-foreground">
               Cell details
             </DrawerTitle>
             <DrawerDescription className="sr-only">
@@ -1358,7 +1356,7 @@ function BlueprintCellDetailPanelBody() {
             its own Summary field. */}
         {!editingCell && detailSummaryText.trim() && !summaryRepeatsTitle ? (
           <Field label="Summary" hint="What the detail fields add up to.">
-            <p className={cn('whitespace-pre-wrap', PANEL_TEXT.value)}>
+            <p className="whitespace-pre-wrap text-sm font-normal text-foreground/80">
               {detailSummaryText.trim()}
             </p>
           </Field>

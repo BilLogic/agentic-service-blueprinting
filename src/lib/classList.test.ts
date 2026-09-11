@@ -28,7 +28,8 @@ const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const CELL_BADGE_FILE = 'components/editor/SlicePresentation.tsx'
 const SEQUENCE_BADGE_FILE = 'components/blueprint/BlueprintCellButton.tsx'
 const EYEBROW_FILE = 'components/blueprint/ScenarioSlideHeader.tsx'
-const PANEL_TEXT_FILE = 'lib/panelText.ts'
+const HEADER_TEXT_FILE = 'lib/canvasHeaderStyle.ts'
+const HEADER_CN_FILE = 'components/blueprint/StepHeaderAffordance.tsx'
 const NAMED_CN_FILE = 'components/blueprint/StepPanel.tsx'
 
 /** Read a source file under `src/`, as the tree spells it. */
@@ -128,14 +129,14 @@ describe('classListsIn', () => {
     ).toBe(true)
   })
 
-  it('reads cn(PANEL_TEXT.x, extra) as the named list plus the extra class', () => {
+  it('reads cn(CANVAS_HEADER_TEXT, extra) as the named list plus the extra class', () => {
     const lists = classListsIn(
-      `${sourceOf(PANEL_TEXT_FILE)}\n${sourceOf(NAMED_CN_FILE)}`,
-      NAMED_CN_FILE,
+      `${sourceOf(HEADER_TEXT_FILE)}\n${sourceOf(HEADER_CN_FILE)}`,
+      HEADER_CN_FILE,
     )
     expect(
       lists.some((site) =>
-        classListHas(site.classes, ['text-2xs', 'text-muted-foreground', 'truncate']),
+        classListHas(site.classes, ['text-xs', 'font-semibold', 'truncate']),
       ),
     ).toBe(true)
   })

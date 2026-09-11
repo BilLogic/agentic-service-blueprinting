@@ -1,7 +1,6 @@
 import { Field } from '@/components/blueprint/panelShell'
 import { StatusBadge } from '@/components/blueprint/StatusBadge'
 import { useBlueprintCell } from '@/hooks/useBlueprintCell'
-import { PANEL_TEXT } from '@/lib/panelText'
 
 /**
  * The cell's status and its owner pair, read-only.
@@ -62,8 +61,8 @@ export function CellContentSection({ cellId }: { cellId: string | null }) {
 function OwnerCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className={PANEL_TEXT.sectionLabel}>{label}</span>
-      <span className={PANEL_TEXT.value}>{value}</span>
+      <span className="text-2xs font-medium text-muted-foreground">{label}</span>
+      <span className="text-sm font-normal text-foreground/80">{value}</span>
     </div>
   )
 }

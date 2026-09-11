@@ -16,7 +16,6 @@ import {
 import { LanePanelLoading } from '@/components/blueprint/panelLoading'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertTriangle } from 'lucide-react'
-import { PANEL_TEXT } from '@/lib/panelText'
 import { StakeholderSelect } from '@/components/blueprint/StakeholderSelect'
 import { useLaneSpec, type LaneSpec } from '@/hooks/useLaneSpec'
 import { useOwnerTags } from '@/hooks/useOwnerTags'
@@ -274,7 +273,7 @@ function LanePanelBody({
         ) : (
           // A disabled empty input reads as a broken control. Read-only is
           // prose, the same as every other value in these panels.
-          <p className={PANEL_TEXT.value}>
+          <p className="text-sm font-normal text-foreground/80">
             {form.ownerTeam || (
               <span className="text-muted-foreground">
                 Not specified — no team recorded for this lane.
