@@ -64,7 +64,7 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
 ])
 
 /**
- * The no-database TRIAL roster — the only tools registered when the kit runs
+ * The no-database TRIAL roster — the only tools registered when the template runs
  * with no Supabase configured and the user has supplied a provider key. Every
  * entry resolves from the bundled sample blueprint (`tools/sampleRead.ts`) or
  * from the browser itself; nothing here touches a database, and no write tool

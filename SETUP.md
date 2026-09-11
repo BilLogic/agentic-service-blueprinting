@@ -141,14 +141,14 @@ scenarios. The second names the file, the line, the value and the pattern that
 caught it.
 
 Those two read the tree for somebody else's content. The third reads it for
-*this kit's*, and it is the one to run after step 5:
+*this template's*, and it is the one to run after step 5:
 `npm run check:sample-content` reports where the bundled sample — the
-meta-blueprint, this kit mapped as its own service — is still what your
+meta-blueprint, this template mapped as its own service — is still what your
 deployment serves. It looks at the two places a deployment's content lives:
 the seed `[db.seed]` names, and `src/data/`, the board the app renders with no
 database. Three markers, named per finding so you can tell them apart: the
 sample service name, its own `f0000000-…` id namespace — which names nothing,
-so content can read as entirely yours and still be keyed on the kit's rows —
+so content can read as entirely yours and still be keyed on the template's rows —
 and its six scenario titles.
 
 **It reports and exits 0, on purpose, and it is the only check here that

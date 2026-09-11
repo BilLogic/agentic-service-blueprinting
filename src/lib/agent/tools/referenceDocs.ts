@@ -21,7 +21,7 @@ import { registeredReferenceDocs } from '@/lib/agent/tools/referenceRegistry'
 
 /**
  * WHERE the rulebook's documents come from — a FORK SEAM for an app that
- * COPIES this kit, and the place a deployment's own documents are folded in.
+ * COPIES this template, and the place a deployment's own documents are folded in.
  *
  * `read.ts` serves these under bare names, and is meant to be identical in
  * both. It cannot be while it also names the paths: this repo is the
@@ -34,14 +34,14 @@ import { registeredReferenceDocs } from '@/lib/agent/tools/referenceRegistry'
  * module above this one imports a record with the same shape from the same
  * path either way.
  *
- * An adopting app may also serve documents this kit has none of, and may
+ * An adopting app may also serve documents this template has none of, and may
  * override one of these with a copy of its own — its registry differs, so a
  * rulebook that enumerates tool names cannot always be shared. An app that
  * copies this repo puts both in this file and in `referenceNamesExtra.ts`,
  * which is what lets the shared name list stay shared. A DEPLOYMENT that
  * mounts the package cannot edit either, and does not need to: it hands its
  * documents to `registerReferenceDocs` before it imports the app, and they are
- * merged over the kit's below. Read `referenceRegistry.ts` for the ordering
+ * merged over the template's below. Read `referenceRegistry.ts` for the ordering
  * rule and why that call is not a `DeploymentConfig` field.
  *
  * Adding a reference means four edits: the source file plus its row in
@@ -73,7 +73,7 @@ const TEMPLATE_REFERENCE_DOCS: Record<string, string> = {
 }
 
 /**
- * What `read.ts` serves: this kit's own documents, with a deployment's
+ * What `read.ts` serves: this template's own documents, with a deployment's
  * registered ones merged over them. Standalone the registry is empty and this
  * IS `TEMPLATE_REFERENCE_DOCS`. Built once, while this module evaluates, which
  * is the whole reason registration has to precede the app's import.

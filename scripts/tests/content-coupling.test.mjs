@@ -91,7 +91,7 @@ test('a placeholder somebody typed passes; the version and variant nibbles do no
 
 test('a role name from the deployment’s cast is caught', () => {
   assert.deepEqual(labels('name: str(\'e.g. "Lead Tutor"\')'), [
-    'the cast of the deployment this kit was generalised from',
+    'the cast of the deployment this template was generalised from',
   ])
   assert.deepEqual(matches('// four "Regular Tutor" lanes'), ['Tutor'])
   assert.deepEqual(matches('reminds tutors to check them'), ['tutors'])

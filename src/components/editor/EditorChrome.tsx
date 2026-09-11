@@ -89,13 +89,13 @@ export function WorkspaceBadges() {
   const { configured, isDevAuthoring, isEditPreview } = useSupabase()
   return (
     <>
-      {/* Which of the two worlds this is: the kit's bundled sample, or a
+      {/* Which of the two worlds this is: the template's bundled sample, or a
           deployment's own database. Connecting one hides the sample for good,
           gaps and all — too large a difference to leave to the code. */}
       {!configured ? (
         <Badge
           variant="outline"
-          title="No database configured — every board here is the kit's bundled sample. Connect one and it is replaced by your own rows, including where they are empty."
+          title="No database configured — every board here is the template's bundled sample. Connect one and it is replaced by your own rows, including where they are empty."
         >
           sample data
         </Badge>

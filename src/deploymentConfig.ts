@@ -122,7 +122,7 @@ export type DeploymentConfig = {
   /**
    * The board a deployment shows before its own data arrives — offline, or
    * while the first fetch is in flight. A deployment's own content, which is
-   * why it reaches the kit through here rather than being imported by the
+   * why it reaches the template through here rather than being imported by the
    * navigation model: a module of types and pure helpers that carries one
    * repository's phases cannot be shared with the next.
    */
@@ -134,7 +134,7 @@ export type DeploymentConfig = {
    * to the hash. The slot is an index into that set (indigo, purple, gold,
    * yellow) and the matching dash list: colour and dash are both read from it
    * so the pair cannot drift. Names absent from the map keep the ordinary
-   * assignment. An omitted or empty map is the kit's own behaviour.
+   * assignment. An omitted or empty map is the template's own behaviour.
    */
   pathColorPins?: Record<string, number>
 }
@@ -170,7 +170,7 @@ export type ResolvedDeploymentConfig = {
   /**
    * Guaranteed a map, the way `sample.nav` is guaranteed an array: the
    * template's default supplies an empty one, and a deployment that overlays
-   * pins is adding names, not replacing a vocabulary the kit does not have.
+   * pins is adding names, not replacing a vocabulary the template does not have.
    */
   pathColorPins: Record<string, number>
 }
@@ -193,7 +193,7 @@ export type ResolvedDeploymentConfig = {
  * Both of those resolve to `undefined` in this repository, and that is the
  * template's honest state rather than an oversight: `coverContent.ts` omits
  * `title` on purpose so the cover heading falls back to `ORG_NAME`, and
- * `BRAND` ships no accent because this kit's `--brand-*` ramp is greyscale.
+ * `BRAND` ships no accent because this template's `--brand-*` ramp is greyscale.
  * `present()` drops an undefined field, so the resolved brand is unchanged and
  * the wordmark still falls through to `ORG_NAME`; `applyBrandAccent` writes
  * nothing for an absent accent, so the theme files' own dial stands. The one

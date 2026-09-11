@@ -4,7 +4,7 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 /**
  * The no-database trial's one piece of chrome. One line — what the agent is
  * reading and what it cannot do — with the rest behind the ⓘ. No alarm
- * colour: nothing is wrong here; this is the kit working without a backend.
+ * colour: nothing is wrong here; this is the template working without a backend.
  *
  * Inline rather than a flex row: the panel narrows to a few hundred pixels,
  * and a sentence that reflows is still one line of copy, where a truncated
@@ -19,7 +19,7 @@ export function AgentTrialBanner() {
       <span className="font-medium text-foreground">Sample data, read-only.</span>{' '}
       Connect a database to author.{' '}
       <IconTooltip
-        label="No database is configured, so the agent reads the kit's bundled sample blueprint and is registered with read tools only."
+        label="No database is configured, so the agent reads the template's bundled sample blueprint and is registered with read tools only."
         side="bottom"
       >
         <button

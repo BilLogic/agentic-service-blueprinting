@@ -103,7 +103,7 @@
  *
  * `student`, `session`, `lesson`. Live generic words in a service blueprint —
  * a session is a moment on any board. Matching them would report the domain
- * this kit is for.
+ * this template is for.
  *
  * `Front Stage Tech`, `Customer Actions`, `Support Actions`. Standard service-
  * blueprint row names, and a documented compatibility surface here:
@@ -173,7 +173,7 @@ export const PATTERNS = [
       'Look the row up by name, or mint the id from the sample generator.',
   },
   {
-    label: 'the cast of the deployment this kit was generalised from',
+    label: 'the cast of the deployment this template was generalised from',
     find: /\btutors?\b/gi,
     why:
       'that deployment is a tutoring service and this is its staff. Use the ' +

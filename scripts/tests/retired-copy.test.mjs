@@ -202,6 +202,27 @@ test('the singular is a live word, and only the retired plural is flagged', () =
   assert.deepEqual(found, ['"propositions"'])
 })
 
+/**
+ * #552 — "kit" named the template, and "template" is the one word now.
+ * Whole-word, because a substring would flag `kitchen`, `toolkit`, `kitfox`
+ * and every `-webkit-` utility this tree actually writes.
+ */
+test('kit is retired as a whole word, and words that merely contain it pass', () => {
+  const planted = [
+    {
+      file: 'components/planted.tsx',
+      code: [
+        '<span>cloned the kit</span>',
+        '<Field label="kitchen" />',
+        '<img alt="the toolkit" />',
+        '<Button aria-label="kitfox" />',
+      ].join('\n'),
+    },
+  ]
+  const found = offenders(readerFacingStrings(planted)).map((one) => one.split(' — ')[1])
+  assert.deepEqual(found, ['"kit"'])
+})
+
 /* ------------------------------------------------------------- the figures */
 
 /**

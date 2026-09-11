@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * Is this still the kit's blueprint, or is it yours?
+ * Is this still the template's blueprint, or is it yours?
  *
  * Two guards already sweep for content leaking the wrong way.
- * `check:standalone` reads the NAMES of the deployment this kit was
+ * `check:standalone` reads the NAMES of the deployment this template was
  * generalised from; `check:content-coupling` reads that deployment's CONTENT
  * with the name filed off — a cell id copied out of its database, one of its
  * lane actors, one of its scenario titles. Both face the same way: they
- * protect the kit from the deployment it came out of. Neither faces an
+ * protect the template from the deployment it came out of. Neither faces an
  * adopter, and until this file nothing in the repository did.
  *
  * This is the mirror. It knows the SAMPLE's own markers — the meta-blueprint,
- * the service blueprint of this kit itself — and reports where a deployment
+ * the service blueprint of this template itself — and reports where a deployment
  * is still carrying them.
  *
  *   node scripts/check-sample-content.mjs   (also: npm run check:sample-content)
@@ -24,9 +24,9 @@
  * reading it.
  *
  * A FRESH CLONE IS FULL OF SAMPLE CONTENT ON PURPOSE. `supabase/seed.sql` is
- * a real blueprint — of this kit — and SETUP.md § 2 asks a new reader to run
+ * a real blueprint — of this template — and SETUP.md § 2 asks a new reader to run
  * the app against it before configuring anything. A check that failed here
- * would fail the state the kit ships in, which is not a defect to fix but the
+ * would fail the state the template ships in, which is not a defect to fix but the
  * front door.
  *
  * A HALF-MIGRATED DEPLOYMENT IS A LEGITIMATE STATE. Adoption is a sequence:
@@ -77,7 +77,7 @@
  *    `fid()` in `scripts/generate_sample_blueprint.mjs`. This is the marker
  *    with the NAME FILED OFF — thirty-two hex digits that say nothing, and
  *    the reason a deployment can look entirely its own in prose and still be
- *    keyed on the kit's rows. The constant is imported from
+ *    keyed on the template's rows. The constant is imported from
  *    `check-content-coupling.mjs` rather than copied, because the two guards
  *    are one claim read from two sides: the prefix that guard trusts as proof
  *    of origin is the prefix this one reports.
@@ -94,16 +94,16 @@
  * phases.
  *
  * THE LANE ACTORS. `Blueprint owner`, `Stakeholders`, `Claude in the IDE`.
- * The first two are the vocabulary this kit teaches — `CONTEXT.md` and the
+ * The first two are the vocabulary this template teaches — `CONTEXT.md` and the
  * skills use them as the generic cast — so an adopter who names a lane
- * `Blueprint owner` has taken the kit's ADVICE, not left its content behind.
+ * `Blueprint owner` has taken the template's ADVICE, not left its content behind.
  *
  * THE PATH NAMES. `A first look`, `From your documents`, `Findings triaged`.
  * Ordinary English describing an ordinary branch. Same failure as the phases.
  *
  * And the boundary this check cannot cross, stated rather than papered over:
  * A DEPLOYMENT THAT BLUEPRINTS A BLUEPRINTING SERVICE. Marker 3 is the one
- * that can cry wolf — a team mapping their own use of this kit could
+ * that can cry wolf — a team mapping their own use of this template could
  * honestly write `Map your service` as a scenario title. Two things keep that
  * from being a reason not to ship the check. The report says which marker
  * caught each line, so `the sample's scenario titles` and `the sample's own
@@ -129,7 +129,7 @@ export const DEFAULT_SEED = 'supabase/seed.sql'
 
 /** The six titles `scripts/generate_sample_blueprint.mjs` asserts. */
 export const SAMPLE_SCENARIO_TITLES = [
-  'Find the kit and see what it does',
+  'Find the template and see what it does',
   'Map your service',
   'Audit the check roster',
   'Ideate a change (what-if)',
@@ -153,7 +153,7 @@ export const MARKERS = [
     label: 'the sample service',
     find: /Keeping a blueprint true|keeping-a-blueprint-true/gi,
     why:
-      'the meta-blueprint’s service name — this kit mapped as its own ' +
+      'the meta-blueprint’s service name — this template mapped as its own ' +
       'service. Replace it with yours: scripts/generate_seed_sql.py from a ' +
       'validated blueprint file, or let sb:map build one from your documents.',
   },
@@ -163,14 +163,14 @@ export const MARKERS = [
     why:
       'a row id minted by fid() in scripts/generate_sample_blueprint.mjs. ' +
       'It names nothing, so content can read as entirely yours and still be ' +
-      'keyed on the kit’s rows — a re-import that mints its own ids is what ' +
+      'keyed on the template’s rows — a re-import that mints its own ids is what ' +
       'clears it.',
   },
   {
     label: 'the sample’s scenario titles',
     find: new RegExp(SAMPLE_SCENARIO_TITLES.map(escape).join('|'), 'gi'),
     why:
-      'the six scenarios of the meta-blueprint, named for this kit’s own ' +
+      'the six scenarios of the meta-blueprint, named for this template’s own ' +
       'skill journey. The softest of the three markers: a deployment that ' +
       'blueprints a blueprinting service could write one of these honestly.',
   },
@@ -224,7 +224,7 @@ export function contentFiles(root = REPO_ROOT) {
 }
 
 /**
- * A value one line carries that could only have come from the kit's sample.
+ * A value one line carries that could only have come from the template's sample.
  *
  * @typedef {{ line: number, label: string, match: string, why: string, text: string }} Site
  */
@@ -318,7 +318,7 @@ function main(argv = process.argv.slice(2)) {
 
   const groups = groupSites(sites, files)
   console.log(
-    'The kit’s own sample content — the meta-blueprint, this kit mapped as ' +
+    'The template’s own sample content — the meta-blueprint, this template mapped as ' +
       'its own service — is still what this deployment serves.\n',
   )
   report(groups, { all })

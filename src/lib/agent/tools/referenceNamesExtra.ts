@@ -1,5 +1,5 @@
 /**
- * Reference documents an app that COPIES this kit serves and the kit has none
+ * Reference documents an app that COPIES this template serves and the template has none
  * of — the leaf half of the reference-docs fork seam.
  *
  * A deployment that MOUNTS the package uses the other seam and leaves this
@@ -7,7 +7,7 @@
  * `registerReferenceDocs` (see `referenceRegistry.ts`) takes its documents and
  * `referenceNames.ts` splices their names into the same slot as this list.
  *
- * Empty here, and that is the honest statement rather than a stub: this kit
+ * Empty here, and that is the honest statement rather than a stub: this template
  * describes no particular service, so it has nothing service-specific to add
  * to the rulebook. An app built from it fills this in — its own account of
  * the service it blueprints is the obvious entry — and `referenceNames.ts`

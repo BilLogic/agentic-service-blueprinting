@@ -65,7 +65,7 @@ export function DeploymentConfigProvider({
   /**
    * The pin table onto the colour theme, as a LAYOUT effect for the same
    * reason as the accent: the map is in force before the first paint, so a
-   * named path cannot flash the hash colour and then jump. Empty (the kit
+   * named path cannot flash the hash colour and then jump. Empty (the template
    * default) writes an empty table, which is today's assignment.
    */
   const pathColorPins = resolved.pathColorPins

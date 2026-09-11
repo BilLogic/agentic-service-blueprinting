@@ -2,7 +2,7 @@
 /**
  * Does this package still stand alone?
  *
- * The kit is published as a template anyone can adopt, and it says so. But it
+ * The template is published as a template anyone can adopt, and it says so. But it
  * was generalised out of one company's in-house deployment, and for months the
  * claim was never checked: a sweep found eighteen surviving references to that
  * deployment — its repo name, its Slack bot, its migration filenames — all of

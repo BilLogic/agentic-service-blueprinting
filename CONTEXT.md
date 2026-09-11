@@ -28,6 +28,14 @@ behind it is
 [`references/interface-schema-map.md`](references/interface-schema-map.md),
 generated from the list CI acts on.
 
+## The application
+
+**Template** — the canonical application: its code, its schema and its defaults.
+Published and installable, and the one codebase every deployment runs.
+
+**Deployment** — an installation of the template that supplies its own content,
+brand and data through its config, and carries no application code of its own.
+
 ## The blueprint
 
 **Service** — the whole thing being blueprinted, and the top container. One
@@ -331,7 +339,7 @@ path is: that one is stored in a column, this one only ever describes a read.
 ## The writing vocabulary
 
 Five words for how a document is written and reached, shared with the
-deployment this kit was generalised from so that one harness review of both
+deployment this template was generalised from so that one harness review of both
 repositories uses one language.
 
 **Pointer** — a line held in always-loaded context that names material outside

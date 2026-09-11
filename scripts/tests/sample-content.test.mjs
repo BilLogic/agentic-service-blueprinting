@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * The kit's own content, checked from the side an adopter stands on.
+ * The template's own content, checked from the side an adopter stands on.
  *
  * The two sibling suites hold guards that must reach zero in this repository
  * and stay there. This one holds the opposite pair, and the pair is the whole
  * point: in a FRESH CLONE the report is full, because the sample really is
  * what the app serves, and on a deployment that has put its own content in it
  * is empty. A check that could not tell those two apart would be a check that
- * reported the domain this kit is for.
+ * reported the domain this template is for.
  *
  * The adopted half is a fabricated tree rather than a sibling checkout, so
  * the claim is held on every machine rather than only on one that happens to
@@ -106,7 +106,7 @@ test('the seed swept is the one [db.seed] names, not the one this repo happens t
   const root = tree({
     ...ADOPTED,
     'supabase/config.toml': '[db.seed]\nenabled = true\nsql_paths = ["./seeds/blueprint.sql"]\n',
-    'supabase/seed.sql': '-- left behind by the kit, and no longer loaded\n',
+    'supabase/seed.sql': '-- left behind by the template, and no longer loaded\n',
     'supabase/seeds/blueprint.sql':
       "insert into public.services (name) values ('Keeping a blueprint true');",
   })
@@ -162,7 +162,7 @@ test('the phase names pass — matching them would report a deployment for havin
   assert.deepEqual(labels("{ name: 'Maintain', position: 4 },"), [])
 })
 
-test('the lane actors pass — an adopter who writes them has taken the kit’s advice', () => {
+test('the lane actors pass — an adopter who writes them has taken the template’s advice', () => {
   assert.deepEqual(labels("{ name: 'Blueprint owner', role: 'customer_actions' },"), [])
   assert.deepEqual(labels("{ name: 'Stakeholders', role: null },"), [])
 })

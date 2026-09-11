@@ -3,7 +3,7 @@
  *
  * `resolveBlueprintForScenario` is the one place that decides between the two
  * sources a board can arrive from — a deployment's database, and the sample
- * blueprint bundled with the kit — and the rule it now applies is that they
+ * blueprint bundled with the template — and the rule it now applies is that they
  * never mix. A configured database is the whole truth: its rows draw as they
  * are, and where it holds nothing the board holds nothing. The sample answers
  * only for a clone with no database configured at all.
@@ -12,7 +12,7 @@
  * dependency the rows lacked was appended, and a blank path name, summary or
  * note was filled from the fallback's prose. The tests below are what replaced
  * that suite, and the one they exist for is `a sparse board stays sparse` —
- * an adopter's half-filled board must not come back wearing this kit's words.
+ * an adopter's half-filled board must not come back wearing this template's words.
  *
  * Both the registry and the no-database gate are mocked rather than read. This
  * file is about the decision, not about this deployment's twenty-odd fixture
@@ -350,7 +350,7 @@ test('a path the database has no lanes for draws nothing, not the sample', () =>
   )
 
   // `null` means there is nothing here to draw, and the caller renders its
-  // empty state. Before this it meant "here is the kit's board instead".
+  // empty state. Before this it meant "here is the template's board instead".
   assert.deepEqual(resolved, { blueprint: null, source: null })
 })
 

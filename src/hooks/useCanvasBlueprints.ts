@@ -76,7 +76,7 @@ function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
  * Reached only when a database is configured, which is why nothing here
  * reaches for the bundled sample: a scenario the database has no paths for is
  * a scenario with no paths, and it draws its empty state rather than this
- * kit's fixture wearing the deployment's name. The only registry call left is
+ * template's fixture wearing the deployment's name. The only registry call left is
  * `filterPathsForScenarioUi`, which hides ids rather than supplying content.
  */
 function deriveFromRows(

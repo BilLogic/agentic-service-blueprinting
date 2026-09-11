@@ -5,8 +5,8 @@ import type { NavItem } from '@/types/nav'
  *
  * It lives here rather than in `@/types/nav` because it is a deployment's
  * CONTENT, not part of the navigation model: every repository built on this
- * kit ships a different one, and a module of types and pure helpers that
- * carries one repository's phases cannot be shared with the next. The kit
+ * template ships a different one, and a module of types and pure helpers that
+ * carries one repository's phases cannot be shared with the next. The template
  * reads it through `DeploymentConfig.sample.nav`, which is what makes it
  * replaceable rather than baked in.
  */

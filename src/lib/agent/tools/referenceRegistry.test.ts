@@ -53,7 +53,7 @@ describe('the reference registry', () => {
     expect(getReference?.description).toContain('blueprint')
   })
 
-  it('overriding a document the kit serves replaces it and adds no name', async () => {
+  it('overriding a document the template serves replaces it and adds no name', async () => {
     const { registerReferenceDocs } = await import(
       '@/lib/agent/tools/referenceRegistry'
     )

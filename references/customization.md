@@ -218,7 +218,7 @@ target actually holds.
 ### Stale workspaces & the audit-skill fallback
 
 Workspaces scaffolded before the audit skill split may lack its files, and
-the two layouts genuinely differ: the kit repo carries the split layout
+the two layouts genuinely differ: the template repo carries the split layout
 (`skills/audit/SKILL.md`, check docs at `skills/audit/references/check-*.md`,
 `skills/audit/scripts/audit_tools.py`), while installed-plugin layouts may be
 pre-split — check docs at `references/check-*.md` with no `skills/audit/`
@@ -227,8 +227,8 @@ missing when they merely live at the other path, so **try both paths**:
 look under `skills/audit/references/` first, then `references/`, and treat
 a file as absent only when neither has it.
 
-To bring a stale workspace current, **re-vendor from the kit repo**
+To bring a stale workspace current, **re-vendor from the template repo**
 concretely: copy `skills/audit/` (the SKILL.md, the `references/check-*.md`
 docs, and `scripts/audit_tools.py`) plus `references/audit-playbook.md`
-from the kit repo into the workspace, then continue the upgrade recipe
+from the template repo into the workspace, then continue the upgrade recipe
 above from step 4.

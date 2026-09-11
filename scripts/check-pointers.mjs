@@ -54,7 +54,7 @@
  * (BilLogic/agentic-service-blueprinting#139, #135) — same pointer grammar,
  * same filler set, same failure shape — so that one harness review reads both
  * repositories the same way. It differs in two places, both because this
- * repository is the kit rather than an app:
+ * repository is the template rather than an app:
  *
  *   - `py` joins the extension list. The validator and the secret hook this
  *     router points at are Python (`scripts/validate_ir.py`,

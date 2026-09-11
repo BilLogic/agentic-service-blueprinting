@@ -125,7 +125,7 @@ const step = (family: string, weight: 1000 | 1100) =>
  * authored here. A board that holds several variants in one scenario can
  * hand-pick their slots when the hash puts two of them closer together than a
  * reader can follow; the deployment says so on `pathColorPins`, and this file
- * stays identical across installs. An empty table (the default) is the kit's
+ * stays identical across installs. An empty table (the default) is the template's
  * own behaviour: every name hashes.
  *
  * A slot is a NUMBER, not a colour, and colour and stroke pattern are both
@@ -149,7 +149,7 @@ let pinnedPathSlots: Record<string, number> = {}
  *
  * A slot is an index into the open set — indigo, purple, gold, yellow, and
  * the matching dash list — so colour and dash stay a pair. An empty map (the
- * default) leaves every name to the ordinary hash assignment: the kit's own
+ * default) leaves every name to the ordinary hash assignment: the template's own
  * behaviour, and the behaviour of any deployment that does not supply pins.
  *
  * Called from `DeploymentConfigProvider` in a layout effect, and from tests

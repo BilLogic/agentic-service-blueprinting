@@ -146,14 +146,22 @@ export function appSources() {
  * The selector is the map's own shape and not a position in it: a row with an
  * empty `retired` list renamed no database object, and a row with an empty
  * `migrations` list was never applied to a database at all. A row that is both
- * renamed the app's own vocabulary and nothing else — which is precisely the
- * kind of rename no schema and no generated type can hold, and precisely what
- * this file exists to hold instead. `pill`/`chip` is that row today, and if a
- * second is ever added these walks take it on the day the map does.
+ * *and* retired more than one name renamed the app's own vocabulary — two
+ * words for two ideas, which is precisely the kind of rename no schema and no
+ * generated type can hold, and precisely what this file exists to hold
+ * instead. `pill`/`chip` is that row today.
+ *
+ * The other no-migration row is `kit` (#552). It is one word, held by Check C
+ * as a whole-word copy spelling. A substring walk of `kit` would flag
+ * `WebKit` and every `-webkit-` utility, which is why this file does not
+ * take it.
  */
 export const RETIRED_DESIGN_WORDS = Object.freeze(
   RENAME_MAP.filter(
-    (row) => row.retired.length === 0 && row.migrations.length === 0,
+    (row) =>
+      row.retired.length === 0 &&
+      row.migrations.length === 0 &&
+      new Set(row.was).size > 1,
   ).flatMap((row) => row.was),
 )
 

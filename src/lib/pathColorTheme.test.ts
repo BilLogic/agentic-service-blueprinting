@@ -121,7 +121,7 @@ describe('path identity', () => {
 
 /**
  * A deployment pins names to slots through config, never by editing this
- * module. Invented names only — the kit holds no deployment's vocabulary.
+ * module. Invented names only — the template holds no deployment's vocabulary.
  */
 describe('deployment path-colour pins', () => {
   afterEach(() => {

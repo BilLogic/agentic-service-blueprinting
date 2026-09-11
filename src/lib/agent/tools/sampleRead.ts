@@ -22,7 +22,7 @@ import type { BlueprintData } from '@/types/blueprint'
  *
  * Two consumers, one implementation:
  *
- * 1. The no-database agent trial — a developer who cloned the kit, has no
+ * 1. The no-database agent trial — a developer who cloned the template, has no
  *    Supabase project, and pastes a provider key. The canvas already renders
  *    the sample blueprint from these same fallback modules; the agent now
  *    reads the same content instead of being unavailable.

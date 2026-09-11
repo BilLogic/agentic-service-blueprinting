@@ -11,7 +11,7 @@
  *
  * This is a RATCHET, not a threshold. A threshold invites arguing about the
  * number and gets switched off the day it blocks someone; a ratchet only asks
- * that the count go down. It is this kit's instance of the standard's negation
+ * that the count go down. It is this template's instance of the standard's negation
  * ratchet (BilLogic/agentic-service-blueprinting#139, #135) and is
  * deliberately the same metric, the same five tokens and the same
  * quoted-speech rule as the deployment's `scripts/check-negation-ratchet.mjs`,

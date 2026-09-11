@@ -786,9 +786,9 @@ function ServiceOverviewViewImpl({
   /*
     A connected workspace with no phases in it.
 
-    Unreachable until #505: an empty read used to fall back to the kit's
+    Unreachable until #505: an empty read used to fall back to the template's
     sample nav, so the canvas always had somebody's phases to draw — this
-    kit's, wearing the deployment's name. Now a configured deployment's board
+    template's, wearing the deployment's name. Now a configured deployment's board
     is its rows and nothing else, so "there are no rows" is a state the reader
     can be in, and it needs to say so rather than render as blank canvas.
 

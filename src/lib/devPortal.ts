@@ -4,7 +4,7 @@ import { storageKey } from '@/lib/storageNamespace'
 /**
  * Developer portal — a CLIENT-SIDE tier simulator.
  *
- * Someone building on this kit has to see both tiers: the ADMIN surfaces
+ * Someone building on this template has to see both tiers: the ADMIN surfaces
  * (Design mode, handles, panel editors, the agent's write tools) and the
  * REGULAR surfaces the same screens collapse to. Today that costs a second
  * account and a sign-out/sign-in round trip per look. This lets one session

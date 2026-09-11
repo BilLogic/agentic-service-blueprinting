@@ -3,7 +3,7 @@
  * Whose navigation the editor shows.
  *
  * One rule, the same one `resolveBlueprint.test.ts` holds for the board: with
- * a database answering, its rows are the navigation. Nothing from the kit's
+ * a database answering, its rows are the navigation. Nothing from the template's
  * bundled sample may reach the tabs — not a summary displacing the
  * deployment's own, not a layout, and not a scenario the deployment deleted
  * coming back as a tab with nothing behind it. With no database configured,
@@ -14,7 +14,7 @@
  * Zero rows reaches the nav two ways — a workspace with no phases in it, and
  * every page load in the window before the first fetch resolves — and both
  * used to draw the sample. The second is the common one: for a deployment
- * that never overlaid `sample.nav`, this kit's phase and scenario names were
+ * that never overlaid `sample.nav`, this template's phase and scenario names were
  * rendered as theirs, briefly, on every single load.
  *
  * The seam under test is the real one end to end: `useServicePhases` is NOT
@@ -47,7 +47,7 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   }),
 }))
 
-// `isBundledSampleActive()` — the one question that decides whether the kit's
+// `isBundledSampleActive()` — the one question that decides whether the template's
 // sample may be on screen — reads this, and the provider's `configured` is
 // this same call. One flag drives both so they cannot drift here either.
 vi.mock('@/lib/supabase', async (importOriginal) => ({
@@ -84,7 +84,7 @@ const OWN_LAYOUT = SAMPLE_KEPT!.layout === 'merged' ? 'stacked' : 'merged'
 const SERVICE_ID = '00000000-0000-4000-8000-0000000000ff'
 
 /**
- * The rows a deployment that adopted this kit's ids, rewrote their prose and
+ * The rows a deployment that adopted this template's ids, rewrote their prose and
  * DELETED one scenario has. Same phase id, same first-scenario id, different
  * sentences — the collision the merge needed to do damage.
  */
@@ -289,7 +289,7 @@ describe('the editor navigation', () => {
     await mount()
 
     // The window this test exists for. Before #505 the nav here was
-    // SAMPLE_NAV — the kit's phases and scenarios, wearing the deployment's
+    // SAMPLE_NAV — the template's phases and scenarios, wearing the deployment's
     // name, on every page load.
     expect(observed).toEqual([])
     expect(observedLoading).toBe(true)

@@ -54,7 +54,7 @@ function mountFloating(paths: PathOption[]) {
   /*
     Inside the deployment config's provider, which `App` mounts above the whole
     tree. The navbar's wordmark reads it through `useWorkspaceTitle`, and that
-    hook throws outside the provider rather than returning the kit's own name —
+    hook throws outside the provider rather than returning the template's own name —
     a host that forgot to wrap would otherwise ship its chrome quietly labelled
     with somebody else's. A surface rendered on its own brings the provider,
     and passing no config is what standalone does, so the wordmark here is the

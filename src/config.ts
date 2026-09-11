@@ -30,7 +30,7 @@ export type Brand = {
  *
  * Omitting the field is a real value here rather than a hole waiting to be
  * filled. `styles/themes/light.css` and `dark.css` ship `--chroma: 0` and
- * `--primary-chroma: 0` over a greyscale `--brand-*` ramp, so this kit has no
+ * `--primary-chroma: 0` over a greyscale `--brand-*` ramp, so this template has no
  * brand colour for an accent to be the hue of — the `--hue: 159` those files
  * declare is pinned to `--brand-hue-reference` to keep the status hues on
  * their anchors, not because anything is painted at 159. Naming a hex here
