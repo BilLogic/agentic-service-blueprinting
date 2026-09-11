@@ -246,7 +246,7 @@ export function SliceSlideComposer({
             )}
           >
             <div className="mb-1.5 flex items-center gap-1.5">
-              <span className="shrink-0 text-3xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <span className="shrink-0 text-3xs font-medium tracking-wide text-muted-foreground uppercase">
                 Slide {slideIndex + 1}
               </span>
               {/*
@@ -301,7 +301,7 @@ export function SliceSlideComposer({
                           <GripVertical className="size-3" aria-hidden />
                         </button>
                       </IconTooltip>
-                      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-primary text-4xs font-semibold text-primary-foreground">
+                      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-primary text-4xs font-medium text-primary-foreground">
                         {running}
                       </span>
                       <span className="min-w-0 flex-1">

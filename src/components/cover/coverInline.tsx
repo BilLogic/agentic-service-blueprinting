@@ -13,7 +13,7 @@ export function renderInline(text: string): ReactNode {
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
       return (
-        <strong key={index} className="font-semibold text-foreground">
+        <strong key={index} className="font-medium text-foreground">
           {part.slice(2, -2)}
         </strong>
       )

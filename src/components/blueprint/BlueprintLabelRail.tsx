@@ -29,6 +29,7 @@ import {
 import {
   BLUEPRINT_SLOT_INSET,
   BLUEPRINT_SLOT_INSET_COMPACT,
+  CANVAS_HEADER_TEXT,
 } from '@/lib/canvasHeaderStyle'
 import { cn } from '@/lib/utils'
 import type { BlueprintLane } from '@/types/blueprint'
@@ -336,7 +337,10 @@ export function BlueprintLabelRow({
               type="button"
               onClick={selectLane}
               data-blueprint-row-header=""
-              className="group/lane relative min-w-0 flex-1 cursor-pointer rounded-sm text-left text-sm font-semibold leading-normal whitespace-normal break-words underline-offset-4 hover:underline"
+              className={cn(
+                CANVAS_HEADER_TEXT,
+                'group/lane relative min-w-0 flex-1 cursor-pointer rounded-sm text-left whitespace-normal break-words underline-offset-4 hover:underline',
+              )}
               style={{ color: labelColor }}
             >
               {row.label}
@@ -353,7 +357,10 @@ export function BlueprintLabelRow({
         ) : (
           <span
             data-blueprint-row-header=""
-            className="relative min-w-0 flex-1 text-left text-sm font-semibold leading-normal whitespace-normal break-words"
+            className={cn(
+              CANVAS_HEADER_TEXT,
+              'relative min-w-0 flex-1 text-left whitespace-normal break-words',
+            )}
             style={{ color: labelColor }}
           >
             {row.label}

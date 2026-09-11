@@ -72,8 +72,6 @@ export function ScenarioTitleBadge({
         size="fitted"
         className={cn(
           'max-w-full gap-1 overflow-visible border-transparent',
-          pathKind && 'font-semibold',
-          (panelTone || phaseTone) && 'font-semibold',
           className,
         )}
         style={{

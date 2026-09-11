@@ -93,7 +93,7 @@ export function WorkspaceServiceSwitcher({
         />
       </div>
       <PopoverContent align="start" className="w-64 p-1.5">
-        <span className="flex w-fit px-2 pb-1 pt-0.5 text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="flex w-fit px-2 pb-1 pt-0.5 text-3xs font-medium uppercase tracking-wider text-muted-foreground">
           Services
         </span>
         <ul className="flex flex-col gap-0.5">

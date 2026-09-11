@@ -39,7 +39,7 @@ export function PathKindBadge({
         // this badge's compact is NOT `PathLabelBadge`'s.
         size={compact ? 'roomy' : 'comfortable'}
         className={cn(
-          'max-w-full cursor-default border-transparent font-semibold',
+          'max-w-full cursor-default border-transparent font-medium',
           className,
         )}
         // Keyed on path *type*, not a path name: this badge labels an archetype

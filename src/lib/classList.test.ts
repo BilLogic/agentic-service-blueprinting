@@ -63,9 +63,9 @@ describe('classListOf', () => {
     // Pieces of the sequence badge, fed in the shape `cn()` actually takes.
     const sequenceBadge = classNameString(
       SEQUENCE_BADGE_FILE,
-      'font-mono text-3xs font-semibold',
+      'font-mono text-3xs font-medium',
     )
-    const [mono, size, weight, nums] = ['font-mono', 'text-3xs', 'font-semibold', 'tabular-nums']
+    const [mono, size, weight, nums] = ['font-mono', 'text-3xs', 'font-medium', 'tabular-nums']
     expect(sequenceBadge.split(/\s+/)).toEqual(expect.arrayContaining([mono, size, weight, nums]))
     expect(
       classListOf([`${mono} ${size}`, false, null, undefined, [weight, nums]]),

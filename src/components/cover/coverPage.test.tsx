@@ -266,7 +266,7 @@ describe('CoverPageView', () => {
       'first term',
       'second term',
     ])
-    expect(rowHeaders[0]?.className).toContain('font-semibold')
+    expect(rowHeaders[0]?.className).toContain('font-medium')
   })
 
   it('stacks every figure section the same way — no side-by-side variant', () => {

@@ -99,7 +99,7 @@ export function BlueprintDividerBadge({
     <Badge
       data-blueprint-fill
       className={cn(
-        'border-transparent font-semibold uppercase leading-none tracking-[0.06em]',
+        'border-transparent font-medium uppercase leading-none tracking-[0.06em]',
         connected ? 'rounded-l-sm rounded-r-none' : 'rounded-sm',
       )}
       style={getBlueprintFillStyle(BLUEPRINT_THEME.dividerBadgeBg)}

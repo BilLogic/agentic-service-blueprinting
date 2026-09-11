@@ -55,7 +55,7 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
               and not as another sentence competing with it. */}
           <span
             data-definition-eyebrow=""
-            className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-3xs font-medium uppercase tracking-wider text-muted-foreground"
           >
             {section.eyebrow}
           </span>

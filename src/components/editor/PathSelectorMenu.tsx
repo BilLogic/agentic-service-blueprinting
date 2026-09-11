@@ -98,7 +98,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                 same word and the same explanation, reachable on hover, focus
                 and tap. */}
             <EntityDefinitionPopover kind="path" side="left">
-              <span className="flex w-fit px-2 pb-1 pt-0.5 text-3xs font-semibold uppercase tracking-wider text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <span className="flex w-fit px-2 pb-1 pt-0.5 text-3xs font-medium uppercase tracking-wider text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                 Path
               </span>
             </EntityDefinitionPopover>
