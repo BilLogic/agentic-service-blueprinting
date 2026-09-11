@@ -17,20 +17,39 @@ export const AGENT_PROVIDERS: Array<{ id: AgentProviderId; label: string }> = [
 ]
 
 /**
- * FALLBACK model lists, shown only until a key is saved — with a key, the
- * dropdown lists the provider's own list-models endpoint (models.ts), so
- * it is current by construction. First entry is the default.
- * Verified against provider docs 2026-08-04.
+ * The model list shown BEFORE a key is saved, and nothing else.
+ *
+ * With a key, the dropdown lists the provider's own list-models endpoint
+ * (`providers/models.ts`), so it is current by construction. This list is what
+ * a person sees while deciding whether the feature is worth a key — which is
+ * the worst possible place for a name a year out of date, because it is read
+ * as what this app can do rather than as a default someone forgot to edit.
+ *
+ * THE POLICY, so the next refresh is a decision already made:
+ *
+ *   Three entries per provider, newest first. The first is `DEFAULT_MODELS`,
+ *   so it must be a model the provider currently serves and a sane default for
+ *   an in-browser assistant — not the largest model on the price list.
+ *
+ *   No previews, no dated snapshots, no aliases the provider may repoint. A
+ *   preview disappears; a dated snapshot retires; an alias makes two people
+ *   running "the same model" run different ones.
+ *
+ *   Verified by CALLING each provider's list-models endpoint on the day of the
+ *   change, not by recollection and not from a docs page — an id can be
+ *   published and still 404 for a given account.
+ *
+ * Verified 2026-09-11. Google: called, `gemini-3.8-flash` is the newest
+ * generally available chat model. Anthropic: the three tiers a person chooses
+ * between; the list is deliberately not every id the account can reach.
+ * OpenAI: taken from the published model docs and NOT confirmed against
+ * `/v1/models`, because no OpenAI key was available — the one entry here that
+ * is a claim rather than a measurement.
  */
 export const MODEL_OPTIONS: Record<AgentProviderId, string[]> = {
-  google: [
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-  ],
+  google: ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite'],
   anthropic: ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'],
-  openai: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini'],
+  openai: ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
 }
 
 export const DEFAULT_MODELS: Record<AgentProviderId, string> = {
