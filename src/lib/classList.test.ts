@@ -174,8 +174,15 @@ describe('classLists', () => {
   it('enforces no rule of its own', () => {
     // The reader reports what is written, including sizes and weights a
     // later guard may forbid. Returning them is the whole of its job.
+    // Plant the size: after the canvas/panel migrate, the tree no longer
+    // writes `text-2xs`, so a live walk cannot be the proof.
+    const forbidden = classListsIn(
+      `<span className="text-2xs font-medium">Label</span>`,
+    )
+    expect(forbidden.some((site) => site.classes.includes('text-2xs'))).toBe(
+      true,
+    )
     const sites = classLists()
-    expect(sites.some((site) => site.classes.includes('text-2xs'))).toBe(true)
     expect(sites.some((site) => site.classes.includes('font-semibold'))).toBe(
       true,
     )
