@@ -5,6 +5,7 @@ import {
 } from '@/data/blueprintFallbacks'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
+  formatBlueprintList,
   formatBlueprints,
   formatCellDependencies,
   formatCompareDiff,
@@ -12,9 +13,11 @@ import {
   formatLaneVocabulary,
   formatOwnerTags,
   formatResources,
-  formatScenarioList,
   formatSliceDetail,
   formatSliceList,
+  listBlueprintRequest,
+  type BlueprintListOptions,
+  type JourneyTree,
 } from '@/lib/agent/tools/format'
 import { cellResources } from '@/lib/cellResources'
 import type { BlueprintData } from '@/types/blueprint'
@@ -56,20 +59,73 @@ function allSampleBlueprints(): BlueprintData[] {
   )
 }
 
-export function sampleListScenarios(): string {
-  return formatScenarioList(
-    SAMPLE_NAV.filter((item) => !item.parentId).map((phase) => ({
-      id: phase.id,
-      name: phase.label,
-      scenarios: SAMPLE_NAV.filter(
-        (item) => item.parentId === phase.id,
-      ).map((scenario) => ({
-        id: scenario.id,
-        name: scenario.label,
-        summary: scenario.summary,
-      })),
-    })),
-  )
+type Rows<K extends keyof JourneyTree> = Array<JourneyTree[K][number]>
+
+/**
+ * The bundled sample as a journey tree — the shape `list_blueprint`'s database
+ * read builds from its tables, built here from the fallbacks the canvas
+ * renders. A step is merged by id across its scenario's paths, because it is
+ * one column of the scenario that each path places at its own position.
+ */
+function sampleJourneyTree(): JourneyTree {
+  const phases: Rows<'phases'> = []
+  const scenarios: Rows<'scenarios'> = []
+  const paths: Rows<'paths'> = []
+  const steps = new Map<
+    string,
+    { id: string; scenarioId: string; name: string; placements: Array<{ pathId: string; position: number }> }
+  >()
+  const lanes: Rows<'lanes'> = []
+  const cells: Rows<'cells'> = []
+  for (const item of SAMPLE_NAV) {
+    if (!item.parentId) {
+      phases.push({ id: item.id, name: item.label, summary: item.summary, position: item.index })
+      continue
+    }
+    scenarios.push({
+      id: item.id,
+      phaseId: item.parentId,
+      name: item.label,
+      summary: item.summary,
+      position: item.index,
+    })
+    for (const blueprint of sampleBlueprintsFor(item.id)) {
+      const { path } = blueprint
+      paths.push({ id: path.id, scenarioId: item.id, name: path.name, summary: path.summary, kind: path.kind })
+      for (const step of blueprint.steps) {
+        const placed = steps.get(step.id) ?? {
+          id: step.id,
+          scenarioId: item.id,
+          name: step.name,
+          placements: [],
+        }
+        placed.placements.push({ pathId: path.id, position: step.position })
+        steps.set(step.id, placed)
+      }
+      for (const lane of blueprint.lanes)
+        lanes.push({ id: lane.id, pathId: path.id, name: lane.name, role: lane.role ?? null, position: lane.position })
+      for (const cell of blueprint.cells)
+        cells.push({
+          id: cell.id,
+          laneId: cell.lane_id,
+          stepId: cell.step_id,
+          content: cell.content,
+          summary: cell.summary,
+          position: cell.position,
+        })
+    }
+  }
+  return { phases, scenarios, paths, steps: [...steps.values()], lanes, cells }
+}
+
+/**
+ * `list_blueprint` with no database: the same check, the same walk and the
+ * same text as the live read, over the bundled sample. The sample is one
+ * service, so there is no scope to apply — exactly as a single-service
+ * deployment ignores the argument.
+ */
+export function sampleListBlueprint(options: BlueprintListOptions): string {
+  return formatBlueprintList(sampleJourneyTree(), listBlueprintRequest(options))
 }
 
 export function sampleGetBlueprint(scenarioId: string): string {

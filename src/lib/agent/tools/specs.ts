@@ -1,5 +1,7 @@
 import type { ToolSpec } from '@/lib/agent/providers/provider'
 import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
+import { CANONICAL_LANE_ROLES } from '@/lib/laneRoles'
+import { PATH_KINDS } from '@/lib/versionValidation'
 
 /**
  * The static allow-list — the agent's entire reach. Each write dispatches
@@ -60,6 +62,20 @@ const SERVICE_SCOPE_PARAM = str(
 )
 
 /**
+ * The lane-role filter, one constant for every read that takes one.
+ *
+ * A spec is the only description of a value set the model ever sees, so this
+ * list is built from `CANONICAL_LANE_ROLES` — the app's copy of the closed
+ * `lanes.lane_role` constraint — rather than written out a second time. A
+ * hand-kept copy is how a filter goes on offering a role the constraint has
+ * retired: it matches no lane, and the read comes back empty while reporting
+ * success. The lane-role roster test holds this to the constraint as well.
+ */
+export const LANE_ROLE_FILTER_PARAM = str(
+  `Optional. Restrict to lanes with this role, one of: ${CANONICAL_LANE_ROLES.join(' | ')}`,
+)
+
+/**
  * The mobile reading roster — the ONLY tools offered while the mobile shell
  * is up, for every tier including service accounts. Mobile is view-only by
  * decision (2026-08-08 plan): navigation, reading, and Q&A; no writes, no
@@ -73,6 +89,7 @@ const SERVICE_SCOPE_PARAM = str(
 export const MOBILE_READ_TOOL_NAMES = new Set([
   'get_reference',
   'list_references',
+  'list_blueprint',
   'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
@@ -112,6 +129,7 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
 export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
   'get_reference',
   'list_references',
+  'list_blueprint',
   'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
@@ -145,6 +163,7 @@ export const READ_TOOL_NAMES = new Set([
   'list_ui_commands',
   'get_reference',
   'list_references',
+  'list_blueprint',
   'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
@@ -234,9 +253,35 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
+    name: 'list_blueprint',
+    description:
+      'The COMPLETE set of things at one or more levels of the journey, with ids — granularity picks the levels: phase, scenario, path, step, lane, cell. This is your table of contents and your "what exists" answer: every row comes back, up to limit, under a header with the true total, so it is the honest way to say "all N scenarios" or "every exception path". Start here — granularity ["phase","scenario"] is the orientation read. Filters narrow the set, and a filter set below a level drops that level: scenario drops phases, kind drops phases and scenarios, lane_role keeps only lanes and cells. Covers every service by default; pass service to confine it to one. When you already know the scenario and want its grid laid out, use get_blueprint.',
+    parameters: {
+      type: 'object',
+      properties: {
+        granularity: {
+          type: 'array',
+          description:
+            'One or more of: phase, scenario, path, step, lane, cell. Ask for the level you need — "cell" across a whole deployment can run to many hundreds of rows.',
+          items: { type: 'string' },
+        },
+        phase: str('Optional. Restrict to the phase with this name (any case)'),
+        scenario: str('Optional. Restrict to the scenario with this name (any case)'),
+        kind: str(`Optional. Restrict to paths of this kind: ${PATH_KINDS.join(' | ')}`),
+        lane_role: LANE_ROLE_FILTER_PARAM,
+        service: SERVICE_SCOPE_PARAM,
+        limit: {
+          type: 'number',
+          description: 'Max rows (default 200, max 500). The true total is reported either way.',
+        },
+      },
+      required: ['granularity'],
+    },
+  },
+  {
     name: 'list_scenarios',
     description:
-      'List every phase and its scenarios, with ids. This is your table of contents and your orientation read. Covers every service by default; pass service to confine it to one.',
+      'Alias of list_blueprint with granularity ["phase","scenario"], kept for one release so a caller that learned this name still gets an answer, and removed after it. Call list_blueprint instead. Covers every service by default; pass service to confine it to one.',
     parameters: {
       type: 'object',
       properties: { service: SERVICE_SCOPE_PARAM },
@@ -248,7 +293,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       'Full grid of one scenario: every path with its steps, lanes, cells (ids included) and the dependency arrows between its cells, source-first with each one\'s kind. Read before writing into a scenario. ("Blueprint" unqualified means the whole workspace; this tool returns one scenario\'s grid.)',
     parameters: {
       type: 'object',
-      properties: { scenario_id: str('Scenario id from list_scenarios') },
+      properties: { scenario_id: str('Scenario id from list_blueprint') },
       required: ['scenario_id'],
     },
   },
@@ -259,7 +304,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: {
       type: 'object',
       properties: {
-        scenario_id: str('Scenario id from list_scenarios'),
+        scenario_id: str('Scenario id from list_blueprint'),
         path_ids: {
           type: 'array',
           description:
@@ -443,7 +488,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       'Navigate the user\'s canvas to a phase. Use when asked to go to / show / open something, or to show your work after writing into it.',
     parameters: {
       type: 'object',
-      properties: { phase_id: str('Phase id from list_scenarios') },
+      properties: { phase_id: str('Phase id from list_blueprint') },
       required: ['phase_id'],
     },
   },
@@ -453,7 +498,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       'Navigate the user\'s canvas to a scenario. Open the scenario before focus_cell.',
     parameters: {
       type: 'object',
-      properties: { scenario_id: str('Scenario id from list_scenarios') },
+      properties: { scenario_id: str('Scenario id from list_blueprint') },
       required: ['scenario_id'],
     },
   },
@@ -556,7 +601,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: {
       type: 'object',
       properties: {
-        phase_id: str('Phase id from list_scenarios'),
+        phase_id: str('Phase id from list_blueprint'),
         name: str('Scenario name'),
         path_name: str('First path name; defaults to "Happy Path"'),
         step_count: { type: 'number', description: 'Initial step columns (default 5)' },
@@ -606,7 +651,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: {
       type: 'object',
       properties: {
-        source_scenario_id: str('Scenario id from list_scenarios'),
+        source_scenario_id: str('Scenario id from list_blueprint'),
         name: str('Name for the copy; the UI convention is "<source name> (copy)"'),
       },
       required: ['source_scenario_id', 'name'],

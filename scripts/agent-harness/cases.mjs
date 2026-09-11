@@ -136,6 +136,7 @@ export const CASES = [
         id: 'reads-before-proposing',
         fn: (trace) =>
           calls(trace, 'get_blueprint').length > 0 ||
+          calls(trace, 'list_blueprint').length > 0 ||
           calls(trace, 'list_scenarios').length > 0 ||
           'proposed without reading anything',
       },
@@ -301,7 +302,7 @@ Active tab: base blueprint view (no slice tab)`,
     // --smoke: exercises fixture/DB reads + dry-run write plumbing keyless.
     smokeCalls: [
       ['get_reference', { name: 'lane-roles' }],
-      ['list_scenarios', {}],
+      ['list_blueprint', { granularity: ['phase', 'scenario'] }],
       ['create_lane', { scenario_id: 'smoke', name: 'Quality Assurance' }],
     ],
     smokeReply: 'Adding the Quality Assurance lane now (one line of narration first).',
@@ -313,7 +314,9 @@ Active tab: base blueprint view (no slice tab)`,
           const firstWrite = firstIndex(trace, (t) => WRITES.has(t.name))
           if (firstWrite === -1) return 'never wrote the lane'
           const refBefore = trace.slice(0, firstWrite).some((t) => t.name === 'get_reference')
-          const readBefore = trace.slice(0, firstWrite).some((t) => t.name === 'get_blueprint' || t.name === 'list_scenarios')
+          const readBefore = trace
+            .slice(0, firstWrite)
+            .some((t) => ['get_blueprint', 'list_blueprint', 'list_scenarios'].includes(t.name))
           if (!refBefore) return 'no get_reference before the write (lane-roles / lane-vocabulary)'
           if (!readBefore) return 'no blueprint read before the write'
           return true

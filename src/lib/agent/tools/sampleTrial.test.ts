@@ -6,8 +6,8 @@ import {
   sampleGetSlice,
   sampleListCellDependencies,
   sampleListLanes,
+  sampleListBlueprint,
   sampleListOwnerTags,
-  sampleListScenarios,
   sampleListSlices,
 } from '@/lib/agent/tools/sampleRead'
 import {
@@ -51,14 +51,14 @@ describe('the sample-trial tool roster', () => {
     ).map((spec) => spec.name)
     expect(offered.length).toBe(SAMPLE_TRIAL_TOOL_NAMES.size)
     expect(offered.some((name) => WRITE_TOOL_NAMES.has(name))).toBe(false)
-    for (const name of ['list_scenarios', 'get_blueprint', 'get_cell'])
+    for (const name of ['list_blueprint', 'list_scenarios', 'get_blueprint', 'get_cell'])
       expect(offered).toContain(name)
   })
 })
 
 describe('sample reads resolve from the bundled fallbacks', () => {
   it('lists every sample phase and every sample scenario with ids', () => {
-    const text = sampleListScenarios()
+    const text = sampleListBlueprint({ granularity: ['phase', 'scenario'] })
     for (const scenarioId of Object.keys(SAMPLE_BLUEPRINTS_BY_SCENARIO))
       expect(text).toContain(scenarioId)
   })
@@ -201,6 +201,7 @@ describe('trial dispatch never reaches a database', () => {
     const cell = Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)[0]![0]!.cells[0]!
     const stubs: Record<string, Record<string, unknown>> = {
       get_reference: { name: 'lane-roles' },
+      list_blueprint: { granularity: ['phase', 'scenario'] },
       get_blueprint: { scenario_id: 'nope' },
       compare_blueprint: { scenario_id: 'nope' },
       get_cell: { cell_id: cell.id },

@@ -80,13 +80,14 @@ import {
   listEvidence,
   listLanes,
   listOwnerTags,
+  listBlueprint,
   listReferences,
-  listScenarios,
   listSessions,
   listSlices,
   listStakeholders,
   readReference,
 } from '@/lib/agent/tools/read'
+import type { BlueprintListOptions } from '@/lib/agent/tools/format'
 import {
   resolveActiveServiceId,
   resolveServiceScope,
@@ -98,8 +99,8 @@ import {
   sampleGetSlice,
   sampleListCellDependencies,
   sampleListLanes,
+  sampleListBlueprint,
   sampleListOwnerTags,
-  sampleListScenarios,
   sampleListSlices,
 } from '@/lib/agent/tools/sampleRead'
 import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
@@ -181,6 +182,31 @@ function readScope(client: Client, args: Record<string, unknown>) {
 }
 
 /**
+ * A `list_blueprint` call's words, read once for both dispatchers — the live
+ * read and the no-database trial take the same arguments and refuse the same
+ * ones, so what each argument means is decided here and nowhere else.
+ */
+function listBlueprintArgs(args: Record<string, unknown>): BlueprintListOptions {
+  return {
+    granularity: Array.isArray(args.granularity)
+      ? args.granularity.filter((value): value is string => typeof value === 'string')
+      : [],
+    phase: s(args, 'phase'),
+    scenario: s(args, 'scenario'),
+    pathKind: s(args, 'kind'),
+    laneRole: s(args, 'lane_role'),
+    limit: typeof args.limit === 'number' ? args.limit : undefined,
+  }
+}
+
+/**
+ * What `list_scenarios` answers: `list_blueprint` at the orientation levels.
+ * The old name stays for one release as an alias, and this is the whole of
+ * what distinguishes it — same read, same text.
+ */
+const SCENARIO_LEVELS = ['phase', 'scenario'] as const
+
+/**
  * Execute one tool call. Returns the text the model sees. Writes are
  * attributed to the agent session for the ledger's ✦ badge, and the query
  * cache is invalidated so the canvas repaints live.
@@ -198,8 +224,16 @@ export async function dispatchTool(
   switch (name) {
     case 'get_reference':
       return readReference(need(args, 'name'))
+    case 'list_blueprint':
+      return listBlueprint(client, {
+        ...listBlueprintArgs(args),
+        scope: await readScope(client, args),
+      })
     case 'list_scenarios':
-      return listScenarios(client, await readScope(client, args))
+      return listBlueprint(client, {
+        granularity: SCENARIO_LEVELS,
+        scope: await readScope(client, args),
+      })
     case 'get_blueprint':
       return getBlueprint(client, need(args, 'scenario_id'))
     case 'compare_blueprint': {
@@ -868,8 +902,10 @@ async function dispatchSampleTool(
   switch (name) {
     case 'get_reference':
       return readReference(need(args, 'name'))
+    case 'list_blueprint':
+      return sampleListBlueprint(listBlueprintArgs(args))
     case 'list_scenarios':
-      return sampleListScenarios()
+      return sampleListBlueprint({ granularity: SCENARIO_LEVELS })
     case 'get_blueprint':
       return sampleGetBlueprint(need(args, 'scenario_id'))
     case 'compare_blueprint': {

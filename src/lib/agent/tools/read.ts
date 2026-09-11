@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import {
+  formatBlueprintList,
   formatBlueprints,
   formatCellDependencies,
   formatCompareDiff,
@@ -10,9 +11,12 @@ import {
   formatLaneVocabulary,
   formatOwnerTags,
   formatResources,
-  formatScenarioList,
   formatSliceList,
   formatStakeholderList,
+  listBlueprintRequest,
+  type BlueprintListOptions,
+  type GranularityLevel,
+  type JourneyTree,
 } from '@/lib/agent/tools/format'
 import { cellResourcesFromRows } from '@/lib/cellResources'
 import { normalizeBlueprint, type RawPath } from '@/lib/normalizeBlueprint'
@@ -85,41 +89,191 @@ export function readReference(name: string): string {
 export { REFERENCE_NAMES }
 
 /**
- * The orientation read — every phase and its scenarios.
- *
- * The journey is the HARD per-service boundary: a service's rows are exactly
- * those under its phases, so scoping this read is one `service_id` filter and
- * needs no join. `all` — the default, and what a single-service deployment
- * always resolves to — skips the filter entirely and is byte-for-byte the
- * unscoped read this was before multi-service.
+ * How many rows one PostgREST request asks for. The server answers at most its
+ * own `max_rows` whatever is asked, so this is a request and not a promise —
+ * `readAll` keeps asking until the exact count says it holds everything.
  */
-export async function listScenarios(
-  client: Client,
-  scope: ServiceScope = SCOPE_ALL,
-): Promise<string> {
-  let query = client
-    .from('phases')
-    .select(
-      'id, name, position, scenarios (id, name, summary, position)',
-    )
-    .order('position')
-  if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
+const PAGE_SIZE = 1000
 
-  return formatScenarioList(
-    (data ?? []).map((phase) => ({
-      id: phase.id,
-      name: phase.name,
-      scenarios: [...(phase.scenarios ?? [])]
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-        .map((scenario) => ({
-          id: scenario.id,
-          name: scenario.name,
-          summary: scenario.summary,
-        })),
+type Page<T> = PromiseLike<{
+  data: T[] | null
+  error: { message: string } | null
+  count?: number | null
+}>
+
+/**
+ * Every row a query matches, however many requests that takes.
+ *
+ * A plain select stops at the server's row cap and hands back what it got as
+ * though it were the whole table. For most reads a cap is only a cap, but
+ * `list_blueprint` promises a TRUE total, and a total counted off a clipped
+ * read is the one wrong answer it exists not to give. So each page asks for the
+ * exact count, and the read goes on until it holds that many rows. With no
+ * count it stops at the first short page.
+ */
+async function readAll<T>(
+  page: (from: number, to: number) => Page<T>,
+): Promise<T[]> {
+  const rows: T[] = []
+  for (;;) {
+    const { data, error, count } = await page(rows.length, rows.length + PAGE_SIZE - 1)
+    if (error) throw new Error(error.message)
+    const got = data ?? []
+    rows.push(...got)
+    if (got.length === 0) return rows
+    if (typeof count === 'number' ? rows.length >= count : got.length < PAGE_SIZE)
+      return rows
+  }
+}
+
+/** A table read only when one of the requested rungs needs it. */
+function readIf<T>(wanted: boolean, read: () => Promise<T[]>): Promise<T[]> {
+  return wanted ? read() : Promise.resolve([])
+}
+
+/**
+ * The journey under a scope — one read per table, and only the tables the
+ * requested rungs need.
+ *
+ * The scope is one column on `phases`. The journey is the HARD per-service
+ * boundary, so a service's rows are exactly those under its phases: the walk
+ * never descends into a phase the scope left out, and no table below needs a
+ * filter of its own. `all` — the default, and what a single-service deployment
+ * always resolves to — reads every phase.
+ */
+async function readJourneyTree(
+  client: Client,
+  levels: ReadonlySet<GranularityLevel>,
+  scope: ServiceScope,
+): Promise<JourneyTree> {
+  const needs = (...rungs: GranularityLevel[]) => rungs.some((rung) => levels.has(rung))
+  const [phases, scenarios, paths, steps, lanes, cells] = await Promise.all([
+    readAll((from, to) => {
+      let query = client
+        .from('phases')
+        .select('id, name, summary, position, service_id', { count: 'exact' })
+      if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
+      return query.order('id').range(from, to)
+    }),
+    readIf(needs('scenario', 'path', 'step', 'lane', 'cell'), () =>
+      readAll((from, to) =>
+        client
+          .from('scenarios')
+          .select('id, phase_id, name, summary, position', { count: 'exact' })
+          .order('id')
+          .range(from, to),
+      ),
+    ),
+    readIf(needs('path', 'step', 'lane', 'cell'), () =>
+      readAll((from, to) =>
+        client
+          .from('paths')
+          .select('id, scenario_id, name, summary, kind', { count: 'exact' })
+          .order('id')
+          .range(from, to),
+      ),
+    ),
+    readIf(needs('step', 'cell'), () =>
+      readAll((from, to) =>
+        client
+          .from('steps')
+          .select('id, scenario_id, name, path_steps (path_id, position)', {
+            count: 'exact',
+          })
+          .order('id')
+          .range(from, to),
+      ),
+    ),
+    readIf(needs('lane', 'cell'), () =>
+      readAll((from, to) =>
+        client
+          .from('lanes')
+          .select('id, path_id, name, lane_role, position', { count: 'exact' })
+          .order('id')
+          .range(from, to),
+      ),
+    ),
+    readIf(needs('cell'), () =>
+      readAll((from, to) =>
+        client
+          .from('cells')
+          .select('id, lane_id, step_id, content, summary, position', {
+            count: 'exact',
+          })
+          .order('id')
+          .range(from, to),
+      ),
+    ),
+  ])
+  return {
+    phases: phases.map((row) => ({
+      id: row.id,
+      name: row.name,
+      summary: row.summary,
+      position: row.position,
+      serviceId: row.service_id,
     })),
-  )
+    scenarios: scenarios.map((row) => ({
+      id: row.id,
+      phaseId: row.phase_id,
+      name: row.name,
+      summary: row.summary,
+      position: row.position,
+    })),
+    paths: paths.map((row) => ({
+      id: row.id,
+      scenarioId: row.scenario_id,
+      name: row.name,
+      summary: row.summary,
+      kind: row.kind,
+    })),
+    steps: steps.map((row) => ({
+      id: row.id,
+      scenarioId: row.scenario_id,
+      name: row.name,
+      placements: (row.path_steps ?? []).map((placement) => ({
+        pathId: placement.path_id,
+        position: placement.position,
+      })),
+    })),
+    lanes: lanes.map((row) => ({
+      id: row.id,
+      pathId: row.path_id,
+      name: row.name,
+      role: row.lane_role,
+      position: row.position,
+    })),
+    cells: cells.map((row) => ({
+      id: row.id,
+      laneId: row.lane_id,
+      stepId: row.step_id,
+      content: row.content,
+      summary: row.summary,
+      position: row.position,
+    })),
+  }
+}
+
+/**
+ * The COMPLETE set at one or more rungs of the journey walk — phase, scenario,
+ * path, step, lane, cell — with ids, in the order a person reads the board.
+ *
+ * `list_`, not `search_`: no query, no ranking, and no truncation past the
+ * caller's own limit, with the true total in the header so a clipped list says
+ * it was clipped. It reads the tables the board already reads, over plain
+ * PostgREST; the walk and the text live in `format.ts`, where the no-database
+ * twin shares them. `list_scenarios` is this read at ['phase', 'scenario'].
+ *
+ * The call is checked before anything is read, so a word outside a vocabulary
+ * costs no round trip.
+ */
+export async function listBlueprint(
+  client: Client,
+  options: BlueprintListOptions & { scope?: ServiceScope },
+): Promise<string> {
+  const request = listBlueprintRequest(options)
+  const tree = await readJourneyTree(client, request.levels, options.scope ?? SCOPE_ALL)
+  return formatBlueprintList(tree, request)
 }
 
 export function listReferences(): string {

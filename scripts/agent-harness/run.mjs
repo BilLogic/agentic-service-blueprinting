@@ -163,29 +163,91 @@ const {
   sampleGetCell,
   sampleGetSlice,
   sampleListOwnerTags,
-  sampleListScenarios,
+  sampleListBlueprint,
   sampleListSlices,
   sampleListLanes,
   sampleListCellDependencies,
+  formatBlueprintList,
+  listBlueprintRequest,
   REFERENCE_NAMES,
 } = surface
 
 // ---------------------------------------------------------------------------
 // Real (PostgREST) read implementations.
 // ---------------------------------------------------------------------------
-async function realListScenarios() {
-  const data = await rest(
-    'phases?select=id,name,position,scenarios(id,name,summary,position)&order=position',
+
+/**
+ * Every row a PostgREST path matches, a page at a time. The server answers at
+ * most its own max_rows per request, and `list_blueprint`'s total has to be
+ * the true one, so this asks until a page comes back empty.
+ */
+async function restAll(pathAndQuery) {
+  const rows = []
+  for (;;) {
+    const page = await rest(`${pathAndQuery}&order=id&limit=1000&offset=${rows.length}`)
+    if (!page?.length) return rows
+    rows.push(...page)
+  }
+}
+
+const word = (value) => (typeof value === 'string' && value.trim() ? value : undefined)
+
+/** A `list_blueprint` call's arguments, in the words the app's check takes. */
+function listArgs(args) {
+  return {
+    granularity: Array.isArray(args.granularity)
+      ? args.granularity.filter((level) => typeof level === 'string')
+      : [],
+    phase: word(args.phase),
+    scenario: word(args.scenario),
+    pathKind: word(args.kind),
+    laneRole: word(args.lane_role),
+    limit: typeof args.limit === 'number' ? args.limit : undefined,
+  }
+}
+
+/**
+ * Mirrors read.ts: the rows come over REST, and the check, the walk and the
+ * text are the app's own, from the bundled surface — so the answer is the
+ * app's answer. `service` is not applied: the harness reads one deployment
+ * as anon, the way its other scoped reads do.
+ */
+async function realListBlueprint(options) {
+  const request = listBlueprintRequest(options)
+  const needs = (...rungs) => rungs.some((rung) => request.levels.has(rung))
+  const [phases, scenarios, paths, steps, lanes, cells] = await Promise.all([
+    restAll('phases?select=id,name,summary,position,service_id'),
+    needs('scenario', 'path', 'step', 'lane', 'cell')
+      ? restAll('scenarios?select=id,phase_id,name,summary,position')
+      : [],
+    needs('path', 'step', 'lane', 'cell')
+      ? restAll('paths?select=id,scenario_id,name,summary,kind')
+      : [],
+    needs('step', 'cell')
+      ? restAll('steps?select=id,scenario_id,name,path_steps(path_id,position)')
+      : [],
+    needs('lane', 'cell')
+      ? restAll('lanes?select=id,path_id,name,lane_role,position')
+      : [],
+    needs('cell')
+      ? restAll('cells?select=id,lane_id,step_id,content,summary,position')
+      : [],
+  ])
+  return formatBlueprintList(
+    {
+      phases: phases.map((r) => ({ ...r, serviceId: r.service_id })),
+      scenarios: scenarios.map((r) => ({ ...r, phaseId: r.phase_id })),
+      paths: paths.map((r) => ({ ...r, scenarioId: r.scenario_id })),
+      steps: steps.map((r) => ({
+        ...r,
+        scenarioId: r.scenario_id,
+        placements: (r.path_steps ?? []).map((p) => ({ pathId: p.path_id, position: p.position })),
+      })),
+      lanes: lanes.map((r) => ({ ...r, pathId: r.path_id, role: r.lane_role })),
+      cells: cells.map((r) => ({ ...r, laneId: r.lane_id, stepId: r.step_id })),
+    },
+    request,
   )
-  return data
-    .map((phase) => {
-      const scenarios = (phase.scenarios ?? [])
-        .sort((a, b) => a.position - b.position)
-        .map((s) => `  Scenario "${s.name}" (${s.id})${s.summary ? ` — ${s.summary}` : ''}`)
-        .join('\n')
-      return `Phase "${phase.name}" (${phase.id})${scenarios ? `\n${scenarios}` : ''}`
-    })
-    .join('\n')
 }
 
 async function realGetBlueprint(scenarioId) {
@@ -460,8 +522,16 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
           'utf8',
         )
         return record.result
+      case 'list_blueprint':
+        record.result = HAS_DB
+          ? await realListBlueprint(listArgs(args))
+          : sampleListBlueprint(listArgs(args))
+        return record.result
+      // The one-release alias: the same read at the orientation levels.
       case 'list_scenarios':
-        record.result = HAS_DB ? await realListScenarios() : sampleListScenarios()
+        record.result = HAS_DB
+          ? await realListBlueprint({ granularity: ['phase', 'scenario'] })
+          : sampleListBlueprint({ granularity: ['phase', 'scenario'] })
         return record.result
       case 'get_blueprint':
         record.result = HAS_DB
