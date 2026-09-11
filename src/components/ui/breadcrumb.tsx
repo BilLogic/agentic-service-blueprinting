@@ -5,6 +5,13 @@ import { useRender } from "@base-ui/react/use-render"
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the links
+ * and separators are hint grey (chrome), while the trail itself stays caption
+ * grey and the current page stays full-strength ink. A trail is a caption that
+ * has to be readable; the links inside it are not the content.
+ */
+
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (
     <nav

@@ -8,6 +8,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ground } from "@/lib/ground"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: a dialog
+ * sits on the PAGE surface with ordinary ink rather than on the card plate —
+ * a card is a thing on a page, and a dialog is a page of its own — and its
+ * description is hint grey.
+ */
+
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }

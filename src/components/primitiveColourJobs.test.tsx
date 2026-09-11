@@ -5,7 +5,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { InputGroup } from '@/components/ui/input-group'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toggleVariants } from '@/components/ui/toggle'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { badgeVariants } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import {
@@ -15,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { CardDescription } from '@/components/ui/card'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Breadcrumb,
@@ -110,10 +118,36 @@ describe('a locked value looks like a caption', () => {
     expect(classes).toContain('read-only:border-border')
   })
 
-  it('still fades the whole control when disabled', () => {
+  it('locks a read-only Textarea the same way, since it invites typing most', () => {
+    // A read-only textarea used to be byte-identical to an editable one, so
+    // the largest invitation to type was the one control that never said it
+    // was locked.
+    const classes = classesOf('textarea', <Textarea readOnly value="Live" />)
+    expect(classes).toContain('read-only:text-muted-foreground')
+    expect(classes).toContain('read-only:border-border')
+  })
+
+  it('does not let the locked look fire on a disabled field', () => {
+    // CSS `:read-only` matches a DISABLED input too, so an ungated
+    // `read-only:` put the locked look on top of the fade — a disabled field
+    // reading as a caption on an ordinary border, which is not what disabled
+    // means here. Both controls gate it on `enabled:`.
+    for (const classes of [
+      classesOf('input', <Input disabled />),
+      classesOf('textarea', <Textarea disabled />),
+    ]) {
+      expect(classes).toContain('enabled:read-only:text-muted-foreground')
+      expect(classes).not.toMatch(/(?<!enabled:)read-only:text-muted-foreground/)
+    }
+  })
+
+  it('still fades the whole control when disabled, on both controls', () => {
     // Not upstream's Input-only "disabled ink is tertiary": their own textarea
-    // fades the plate, and two controls must not disagree about disabled.
+    // fades the plate, and two controls must not disagree about disabled. The
+    // assertion covers both, or it passes while they disagree.
     expect(classesOf('input', <Input disabled />)).toContain('disabled:opacity-50')
+    cleanup()
+    expect(classesOf('textarea', <Textarea disabled />)).toContain('disabled:opacity-50')
   })
 })
 
@@ -131,6 +165,25 @@ describe('a chooser looks raised', () => {
     expect(hasResting(classes, 'bg-transparent')).toBe(false)
     expect(classes).not.toContain('dark:bg-input/30')
     expect(classes).toContain('hover:border-control-hover')
+  })
+
+  it('restores full ink on the chosen row, so the check is not the only mark', () => {
+    // The rows are caption grey so the chosen one stands out; without this the
+    // selected row was the same ink as the rest and only the glyph said so.
+    // `data-selected` is Base UI's own attribute for the selected item.
+    const classes = classesOf(
+      'select-item',
+      <Select open defaultValue="a">
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="a">A</SelectItem>
+        </SelectContent>
+      </Select>,
+    )
+    expect(classes).toContain('text-muted-foreground')
+    expect(classes).toContain('data-selected:text-foreground')
   })
 
   it('gives an unchosen select the same hint grey as an empty field', () => {
@@ -177,6 +230,18 @@ describe('a switch uses named colours', () => {
   })
 })
 
+describe('a chosen control is not the quiet one', () => {
+  it('restores ink on a pressed toggle, so hover cannot outrank it', () => {
+    // The resting toggle is caption grey and hover restores ink. Without ink
+    // on the ON state, pointing at an UNPRESSED neighbour made it look more
+    // chosen than the pressed one.
+    const classes = toggleVariants({ variant: 'default' })
+    expect(classes).toContain('text-muted-foreground')
+    expect(classes).toContain('aria-pressed:text-foreground')
+    expect(classes).toContain('data-[state=on]:text-foreground')
+  })
+})
+
 describe('floating chrome sits on the page', () => {
   it('seats a tooltip on the page, not on an inverted slab', async () => {
     const classes = classesOf(
@@ -196,6 +261,22 @@ describe('floating chrome sits on the page', () => {
     expect(hasResting(classes, 'text-contrast')).toBe(false)
     // Page-coloured on a page needs its own edge, or it has none at all.
     expect(classes).toContain('ring-border-overlay')
+  })
+
+  it('gives a sheet a named edge, since its scrim is the page colour', () => {
+    // The overlay is `bg-background/90`, and in the light theme the popover
+    // plate computes to within ~0.005 lightness of it — so panel and scrim are
+    // one field of white unless the hairline is a colour somebody chose.
+    const classes = classesOf(
+      'sheet-content',
+      <Sheet open>
+        <SheetContent>content</SheetContent>
+      </Sheet>,
+    )
+    expect(classes).toContain('border-border-overlay')
+    expect(classesOf('sheet-overlay', <Sheet open><SheetContent>c</SheetContent></Sheet>)).toContain(
+      'bg-background/90',
+    )
   })
 
   it('seats a dialog on the page surface, not the card plate', () => {

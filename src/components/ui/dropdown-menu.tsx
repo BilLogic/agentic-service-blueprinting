@@ -5,6 +5,12 @@ import { cn } from "@/lib/utils"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the label,
+ * the chevron and the shortcut are hint grey as chrome, and the popup carries
+ * the overlay edge like every other floating menu.
+ */
+
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />
 }
@@ -125,7 +131,7 @@ function DropdownMenuSubTrigger({
       {...props}
     >
       {children}
-      <ChevronRightIcon className="ml-auto text-tertiary-foreground group-focus/dropdown-menu-item:text-accent-foreground" />
+      <ChevronRightIcon className="ml-auto text-tertiary-foreground" />
     </MenuPrimitive.SubmenuTrigger>
   )
 }

@@ -3,6 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: an
+ * inactive tab is hint grey through one token, replacing an opacity in light
+ * plus a token override in dark — the same rung spelled two ways could drift
+ * between themes.
+ */
+
 function Tabs({
   className,
   orientation = "horizontal",

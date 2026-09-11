@@ -2,6 +2,14 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: a tooltip
+ * sits on the PAGE surface with ordinary ink and the overlay edge, not on an
+ * inverted slab. An inverted tooltip reads as a different surface from
+ * everything else that floats — and page-coloured on a page needs its own
+ * edge, or it has none at all.
+ */
+
 function TooltipProvider({
   delay = 0,
   ...props
