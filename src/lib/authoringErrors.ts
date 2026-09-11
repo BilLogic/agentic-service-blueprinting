@@ -39,7 +39,7 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
   {
     match: 'cells.step_id must be linked',
     message:
-      'That column is not part of this version yet. Add the column to the version before putting a cell in it.',
+      'That step is not part of this version yet. Add the step to the version before putting a cell in it.',
   },
   {
     match: 'cells.path_id must match lanes.path_id',
@@ -51,10 +51,11 @@ const TRANSLATIONS: Array<{ match: string; message: string }> = [
   },
   {
     match: 'path_steps_path_column_unique',
-    message: 'Two columns ended up in the same position. Reload and try the move again.',
+    message: 'Two steps ended up in the same position. Reload and try the move again.',
   },
   {
-    // `21000223000000` is what makes this reachable. Its predecessor matched
+    // The decision that a lane's position is unique within its path is what
+    // makes this reachable. Its predecessor matched
     // `lanes_path_row_unique`, a name nothing has ever carried — the object on
     // those two columns was `lanes_path_row_idx`, a plain non-unique index —
     // so the branch was dead text and an author who put two lanes in one slot

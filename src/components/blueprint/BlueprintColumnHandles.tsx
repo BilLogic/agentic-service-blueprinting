@@ -193,11 +193,11 @@ export function BlueprintColumnHandles({
       {columns.map((column, stepIndex) => (
         <IconTooltip
           key={steps[stepIndex]?.id ?? stepIndex}
-          label={`Select the ${steps[stepIndex]?.name ?? 'column'} column`}
+          label={`Select the ${steps[stepIndex]?.name ?? 'step'} step`}
         >
           <button
             type="button"
-            aria-label={`Select the ${steps[stepIndex]?.name ?? 'column'} column`}
+            aria-label={`Select the ${steps[stepIndex]?.name ?? 'step'} step`}
             onClick={(event) => {
               // Scoped to *this* column's blueprint, not the whole canvas: the
               // overview shows every scenario at once, and a handle that
