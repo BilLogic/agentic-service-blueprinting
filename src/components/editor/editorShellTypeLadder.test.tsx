@@ -13,6 +13,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
 import { CreateBlueprintDialog } from '@/components/editor/CreateBlueprintDialog'
+import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import {
   classListHas,
   classLists,
@@ -321,7 +322,9 @@ describe('the settings popover reseats labels above hints', () => {
 describe('a create dialog reseats field labels above hints', () => {
   it('renders the Name label at sm and a helper at xs', () => {
     render(
-      <CreateBlueprintDialog open onOpenChange={() => undefined} />,
+      <DeploymentConfigProvider>
+        <CreateBlueprintDialog open onOpenChange={() => undefined} />
+      </DeploymentConfigProvider>,
     )
     const name = screen.getByText('Name')
     expect(name.className.split(/\s+/)).toContain('text-sm')

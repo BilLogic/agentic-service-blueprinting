@@ -11,12 +11,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { createScenario } from '@/lib/authoringRpc'
 import {
-  DEFAULT_LANE_SET,
   LAYOUT_LABELS,
   MAX_STEP_COUNT,
   MIN_STEP_COUNT,
@@ -117,6 +117,9 @@ export function CreateBlueprintDialog({
   const { client } = useSupabase()
   const phases = useServicePhases()
   const laneSources = useLaneSources()
+  // The standard set is the deployment's to name; standalone it resolves to
+  // the template's own.
+  const { defaultLanes } = useDeploymentConfig()
   const [draft, setDraft] = useState<DraftBlueprint>(EMPTY_DRAFT)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -152,7 +155,7 @@ export function CreateBlueprintDialog({
         name: draft.name,
         layout: draft.layout,
         laneSourcePathId: draft.laneSourcePathId,
-        laneSet: laneSetFor(draft),
+        laneSet: laneSetFor(draft, defaultLanes),
         stepCount: draft.stepCount,
         pathName: draft.pathName,
       })
@@ -270,7 +273,7 @@ export function CreateBlueprintDialog({
               aria-label="Copy lanes from"
             >
               <option value="">
-                Standard set ({DEFAULT_LANE_SET.length} lanes)
+                Standard set ({defaultLanes.length} lanes)
               </option>
               {sources.map((source: LaneSource) => (
                 <option key={source.pathId} value={source.pathId}>

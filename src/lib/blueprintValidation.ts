@@ -32,7 +32,13 @@ export const LAYOUT_HINTS: Record<Layout, string> = {
 }
 
 /**
- * The lanes a scenario starts with when nothing is copied.
+ * The template's own lanes for a scenario that copies nothing.
+ *
+ * A deployment names its own on the config's `defaultLanes`, and the create
+ * dialog passes the resolved set to {@link laneSetFor}; this constant is what
+ * that resolves to when the deployment names none. So an installation whose
+ * boards use different lane names supplies them there and leaves this module
+ * as it is.
  *
  * Deliberately the standard set rather than something minimal: an empty lane
  * rail invites inventing a private vocabulary, which is the drift copying
@@ -70,7 +76,7 @@ export type DraftBlueprint = {
   phaseId: string | null
   name: string
   layout: Layout
-  /** Copy lanes from this version. Null means use `DEFAULT_LANE_SET`. */
+  /** Copy lanes from this version. Null means use the default lanes. */
   laneSourcePathId: string | null
   stepCount: number
   pathName: string
@@ -114,7 +120,18 @@ export function validateDraftBlueprint(draft: DraftBlueprint): string[] {
   return problems
 }
 
-/** The lane set a draft will actually be created with. */
-export function laneSetFor(draft: DraftBlueprint): LaneSetEntry[] {
-  return draft.laneSourcePathId ? [] : DEFAULT_LANE_SET
+/**
+ * The lane set a draft will actually be created with.
+ *
+ * `defaultLanes` is the set a new blueprint starts with when nothing is
+ * copied — the deployment's, resolved from its config, so the dialog passes
+ * what `useDeploymentConfig()` resolved. Omitted, it is this template's own.
+ * The lanes come in as an argument rather than being read here so this module
+ * stays a set of pure checks, identical in every installation.
+ */
+export function laneSetFor(
+  draft: DraftBlueprint,
+  defaultLanes: LaneSetEntry[] = DEFAULT_LANE_SET,
+): LaneSetEntry[] {
+  return draft.laneSourcePathId ? [] : defaultLanes
 }
