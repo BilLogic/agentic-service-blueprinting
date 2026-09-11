@@ -32,9 +32,10 @@ const slides: DraftSlide[] = [
 /**
  * The open sheet and its sideways strip.
  *
+ * @param {(next: DraftSlide[]) => void} onRemoveCells Receives cells taken out.
  * @returns {{ strip: HTMLElement, cards: HTMLElement[] }} The strip and its slide cards.
  */
-function mountSheet() {
+function mountSheet(onRemoveCells: (next: DraftSlide[]) => void = () => {}) {
   const { container } = render(
     <TooltipProvider>
       <SliceSlideEditor
@@ -45,6 +46,7 @@ function mountSheet() {
         savedSlideFor={() => null}
         onActivate={() => {}}
         onChange={() => {}}
+        onRemoveCells={onRemoveCells}
       />
     </TooltipProvider>,
   )
@@ -99,6 +101,41 @@ describe('a card taller than the sheet scrolls inside itself', () => {
     const list = cards[0].querySelector('ul') as HTMLElement
     expect(list.className).not.toMatch(/\bmax-h-/)
     expect(list.className).not.toMatch(/\boverflow-y-auto\b/)
+  })
+})
+
+describe('a slide goes when its cells do', () => {
+  it('has no delete button', () => {
+    mountSheet()
+    expect(screen.queryByRole('button', { name: /delete slide/i })).toBeNull()
+  })
+
+  it('hands a removal on with the emptied slide still in its place', () => {
+    const onRemoveCells = vi.fn()
+    mountSheet(onRemoveCells)
+    // The fourth ✕ is the second slide's only cell.
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Remove cell from slice' })[3],
+    )
+    expect(onRemoveCells).toHaveBeenCalledWith([
+      slides[0],
+      { ...slides[1], cells: [] },
+    ])
+  })
+})
+
+describe('the caption fills the card', () => {
+  it('grows into the height the card has left, and keeps two rows when it has none', () => {
+    mountSheet()
+    const caption = screen.getAllByPlaceholderText(
+      'What a reader meets under the title',
+    )[0]
+    expect(caption.className).toMatch(/\bgrow\b/)
+    expect(caption.className).toMatch(/\bmin-h-14\b/)
+    expect(caption.className).not.toMatch(/\bshrink-0\b/)
+    const field = caption.closest('label') as HTMLElement
+    expect(field.className).toMatch(/\bgrow\b/)
+    expect(field.className).toMatch(/\bshrink-0\b/)
   })
 })
 

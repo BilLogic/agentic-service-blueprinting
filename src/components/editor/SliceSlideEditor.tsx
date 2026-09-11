@@ -5,7 +5,7 @@ import {
   setSlideSheetHeight,
   subscribeSlideSheetHeight,
 } from '@/lib/slideSheetHeight'
-import { ChevronDown, GripVertical, Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, GripVertical, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IconTooltip } from '@/components/editor/IconTooltip'
@@ -105,6 +105,7 @@ export function SliceSlideEditor({
   savedSlideFor,
   onActivate,
   onChange,
+  onRemoveCells,
 }: {
   slides: DraftSlide[]
   activeSlide: number
@@ -117,7 +118,14 @@ export function SliceSlideEditor({
    */
   savedSlideFor: (itemId: string) => Slide | null
   onActivate: (index: number) => void
+  /** Titles, captions, a new slide, a new order: taken as given. */
   onChange: (slides: DraftSlide[]) => void
+  /**
+   * Cells taken out of slides, by a drag or the ✕. Every slide keeps its
+   * position and an emptied one is still there, so the receiver can see
+   * which slides the change emptied and settle them.
+   */
+  onRemoveCells: (slides: DraftSlide[]) => void
 }) {
   const sheetHeight = useSyncExternalStore(
     subscribeSlideSheetHeight,
@@ -146,11 +154,22 @@ export function SliceSlideEditor({
   // and while the canvas is the subject the strip collapses to one bar.
   const [collapsed, setCollapsed] = useState(false)
 
-  const update = (next: DraftSlide[]) => {
-    onChange(next)
+  const endDrag = () => {
     setDragging(null)
     setDropTarget(null)
     setCellDrop(null)
+  }
+
+  const update = (next: DraftSlide[]) => {
+    onChange(next)
+    endDrag()
+  }
+
+  // Cells leaving slides take the other door: a slide the change empties is
+  // the session's to settle, and it asks first when there is content to lose.
+  const takeCells = (next: DraftSlide[]) => {
+    onRemoveCells(next)
+    endDrag()
   }
 
   const moveCell = (cell: string, to: number, at?: number) => {
@@ -183,9 +202,8 @@ export function SliceSlideEditor({
         ],
       }
     })
-    // A slide emptied by the move disappears — an empty slide is not a
-    // renderable state, and leaving one behind would just fail validation.
-    update(next.filter((slide) => slide.cells.length > 0))
+    // A slide the move empties is left in place for the session to settle.
+    takeCells(next)
   }
 
   const moveSlide = (from: number, to: number) => {
@@ -197,14 +215,13 @@ export function SliceSlideEditor({
   }
 
   const removeCell = (slideIndex: number, cell: string) => {
-    const next = slides
-      .map((slide, index) =>
+    takeCells(
+      slides.map((slide, index) =>
         index === slideIndex
           ? { ...slide, cells: slide.cells.filter((id) => id !== cell) }
           : slide,
-      )
-      .filter((slide) => slide.cells.length > 0)
-    update(next)
+      ),
+    )
   }
 
   // Running cell number across slides — the same sequence the saved slice
@@ -425,15 +442,16 @@ export function SliceSlideEditor({
               card whose name is not implied by anything around it. It gets a
               visible one, in the schema's word.
             */}
-            <label className="flex flex-col gap-0.5">
+            <label className="flex shrink-0 grow flex-col gap-0.5">
               <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 Caption
               </span>
             <textarea
               value={slide.caption}
               rows={2}
-              // shrink-0: the textarea holds its two rows and scrolls its
-              // own overflow rather than being squeezed by the card.
+              // grow: the caption takes whatever height the card has left,
+              // so a taller sheet is a roomier caption. min-h-14 holds two
+              // rows when the card is full and the card scrolls instead.
               placeholder="What a reader meets under the title"
               onClick={(event) => event.stopPropagation()}
               onChange={(event) =>
@@ -445,7 +463,7 @@ export function SliceSlideEditor({
                   ),
                 )
               }
-              className="w-full shrink-0 resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-xs outline-none focus-visible:border-ring"
+              className="min-h-14 w-full grow resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-xs outline-none focus-visible:border-ring"
             />
             </label>
 
@@ -461,26 +479,9 @@ export function SliceSlideEditor({
               </p>
             ) : null}
 
-            {/* Split and Merge are gone everywhere in slices — dragging a
-                cell between slides IS both. Delete is the only action a
-                drag cannot express, revealed on hover. */}
-            <div className="flex items-center opacity-0 transition-opacity group-hover/slide:opacity-100 focus-within:opacity-100">
-              <IconTooltip label={`Delete slide ${index + 1}`}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Delete slide ${index + 1}`}
-                  className="ml-auto text-muted-foreground hover:text-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    update(slides.filter((_, itemIndex) => itemIndex !== index))
-                  }}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
-              </IconTooltip>
-            </div>
+            {/* No delete button. Split and Merge went because dragging a
+                cell between slides is both; delete went because taking a
+                slide's last cell out is it. */}
           </div>
         )
       })}
