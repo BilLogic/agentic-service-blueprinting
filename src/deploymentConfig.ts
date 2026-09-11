@@ -27,13 +27,16 @@
  * not one, and a seam that overstates its reach is the defect it exists to
  * prevent.
  *
- * WIRED TODAY: the wordmark, the accent, and the path-colour pins.
- * `content.workspaceTitle ?? brand.name ?? ORG_NAME` is what app chrome calls
- * this installation, read through `useWorkspaceTitle` by the tab strip and
- * the editor shell; `brand.accent` is written onto the root's `--hue` by
- * `DeploymentConfigProvider` before the first paint; and `pathColorPins` is
- * written onto the path-colour theme in the same layout effect, so a
- * deployment's map is in force before the board paints. `brand.logo`,
+ * WIRED TODAY: the wordmark, the accent, the path-colour pins, and the cell
+ * budget. `content.workspaceTitle ?? brand.name ?? ORG_NAME` is what app
+ * chrome calls this installation, read through `useWorkspaceTitle` by the
+ * tab strip and the editor shell; `brand.accent` is written onto the root's
+ * `--hue` by `DeploymentConfigProvider` before the first paint;
+ * `pathColorPins` is written onto the path-colour theme in the same layout
+ * effect, so a deployment's map is in force before the board paints; and
+ * `cellBudget` is written onto the length-guidance module in that effect
+ * too, so the person under the field and the agent in the tool result read
+ * the same thresholds before the first paint. `brand.logo`,
  * `content.coverTitle` and the whole `agent` block are declared shape with no
  * reader: the cover heading and the workspace breadcrumb still take
  * `coverContent.title` and `ORG_NAME` directly. They migrate onto this type in
@@ -89,6 +92,40 @@ import { SAMPLE_NAV } from '@/data/sampleNav'
 import type { NavItem } from '@/types/nav'
 
 /**
+ * One length budget, in characters: a target and a warning.
+ *
+ * The two rungs can be the same number — this template's default is, because
+ * it used to have a single cap. A deployment that wants a softer first note
+ * and a harder second one supplies two different values.
+ */
+export type CellContentBudgetRung = {
+  target: number
+  warning: number
+}
+
+/**
+ * Per-lane-kind cell text budget. Prose cells and touchpoint labels are
+ * budgeted separately.
+ *
+ * A deployment overlay example of the shape (not this template's default):
+ * `{ prose: { target: 80, warning: 100 }, touchpointLabels: { target: 32, warning: 48 } }`.
+ * Those figures belong on a deployment's config, not in the shared module.
+ */
+export type CellContentBudget = {
+  prose: CellContentBudgetRung
+  touchpointLabels: CellContentBudgetRung
+}
+
+/**
+ * Sparse overlay for {@link CellContentBudget}: either kind, and either rung
+ * of a kind, may be omitted and falls through to the template default.
+ */
+export type CellContentBudgetOverlay = {
+  prose?: Partial<CellContentBudgetRung>
+  touchpointLabels?: Partial<CellContentBudgetRung>
+}
+
+/**
  * The overlay an external deployment supplies. Sparse by construction: every
  * section and every field is optional, and what is left out is inherited from
  * `asbDefaultConfig`.
@@ -137,6 +174,13 @@ export type DeploymentConfig = {
    * assignment. An omitted or empty map is the kit's own behaviour.
    */
   pathColorPins?: Record<string, number>
+  /**
+   * How much text a cell may carry before the person and the agent are
+   * advised. Optional: an omitted budget is the template's current
+   * thresholds (120/120 on both kinds). A deployment that wants different
+   * numbers supplies them here rather than editing the shared budget module.
+   */
+  cellBudget?: CellContentBudgetOverlay
 }
 
 /**
@@ -173,6 +217,12 @@ export type ResolvedDeploymentConfig = {
    * pins is adding names, not replacing a vocabulary the kit does not have.
    */
   pathColorPins: Record<string, number>
+  /**
+   * Guaranteed complete, the way `pathColorPins` is guaranteed a map: the
+   * template's default supplies both kinds, and a deployment that overlays
+   * one kind keeps the other.
+   */
+  cellBudget: CellContentBudget
 }
 
 /**
@@ -203,11 +253,30 @@ export type ResolvedDeploymentConfig = {
  * of them reaches a field through `?.`. `deploymentConfig.test.ts` holds all
  * of it.
  */
+/**
+ * The template's current single cap, expressed as target and warning per
+ * lane kind. 120 is today's geometry (and the old hard stop). A deployment
+ * that wants a different pair supplies it on the overlay — do not fork this
+ * object for numbers.
+ *
+ * The prose target is meant to equal what four lines of cell text hold.
+ * Re-measure once #542 lands (cell text rung 14px → 13px); do not invent a
+ * new number ahead of that.
+ */
+export const asbDefaultCellBudget: CellContentBudget = {
+  prose: { target: 120, warning: 120 },
+  touchpointLabels: { target: 120, warning: 120 },
+}
+
 export const asbDefaultConfig: DeploymentConfig = {
   brand: { name: ORG_NAME, accent: BRAND.accent },
   content: { workspaceTitle: coverContent.title },
   sample: { nav: SAMPLE_NAV },
   pathColorPins: {},
+  cellBudget: {
+    prose: { ...asbDefaultCellBudget.prose },
+    touchpointLabels: { ...asbDefaultCellBudget.touchpointLabels },
+  },
 }
 
 /**
@@ -238,6 +307,37 @@ function mergeSection<T extends object>(
 }
 
 /**
+ * Copy one rung. Nested objects are cloned so a later mutation of the host
+ * overlay cannot reach into the resolved config.
+ */
+function copyRung(
+  base: CellContentBudgetRung,
+  over?: Partial<CellContentBudgetRung>,
+): CellContentBudgetRung {
+  return {
+    target: over?.target ?? base.target,
+    warning: over?.warning ?? base.warning,
+  }
+}
+
+/**
+ * Resolve the cell budget: each kind and each rung falls through to
+ * {@link asbDefaultCellBudget} when the overlay omits it. The numbers live
+ * only on that constant — this copies them, it does not restate them.
+ */
+function mergeCellBudget(
+  over: CellContentBudgetOverlay | undefined,
+): CellContentBudget {
+  return {
+    prose: copyRung(asbDefaultCellBudget.prose, over?.prose),
+    touchpointLabels: copyRung(
+      asbDefaultCellBudget.touchpointLabels,
+      over?.touchpointLabels,
+    ),
+  }
+}
+
+/**
  * Resolve a deployment's overlay against the template defaults. A deep merge
  * one level into each section, so a deployment can set `brand.logo` without
  * having to restate `brand.name`. An absent or `null` config resolves to the
@@ -264,6 +364,7 @@ export function resolveDeploymentConfig(
     ...present(asbDefaultConfig.pathColorPins),
     ...present(config?.pathColorPins),
   } as Record<string, number>
+  const cellBudget = mergeCellBudget(config?.cellBudget)
 
   return {
     brand,
@@ -271,5 +372,6 @@ export function resolveDeploymentConfig(
     ...(agent ? { agent } : {}),
     sample,
     pathColorPins,
+    cellBudget,
   }
 }

@@ -32,6 +32,14 @@ describe('asbDefaultConfig', () => {
 
     // The kit ships no pins. A deployment that wants some supplies them.
     expect(asbDefaultConfig.pathColorPins).toEqual({})
+
+    // The current single cap, expressed as target and warning per lane kind.
+    // A deployment's own numbers (for example 80/100 and 32/48) belong on
+    // its overlay, not here.
+    expect(asbDefaultConfig.cellBudget).toEqual({
+      prose: { target: 120, warning: 120 },
+      touchpointLabels: { target: 120, warning: 120 },
+    })
   })
 })
 
@@ -53,7 +61,28 @@ describe('resolveDeploymentConfig', () => {
       expect(resolved.agent).toBeUndefined()
       // No map is today's kit: every name falls through to the hash.
       expect(resolved.pathColorPins).toEqual({})
+      // A deployment supplying no budget gets the template's current cap,
+      // both rungs, both kinds.
+      expect(resolved.cellBudget).toEqual({
+        prose: { target: 120, warning: 120 },
+        touchpointLabels: { target: 120, warning: 120 },
+      })
     }
+  })
+
+  it('carries a supplied cell budget without aliasing it, filling omitted kinds from the template', () => {
+    const cellBudget = {
+      prose: { target: 80, warning: 100 },
+    }
+    const resolved = resolveDeploymentConfig({ cellBudget })
+    expect(resolved.cellBudget).toEqual({
+      prose: { target: 80, warning: 100 },
+      touchpointLabels: { target: 120, warning: 120 },
+    })
+    expect(resolved.cellBudget).not.toBe(cellBudget)
+    expect(resolved.cellBudget.prose).not.toBe(cellBudget.prose)
+    cellBudget.prose.target = 1
+    expect(resolved.cellBudget.prose.target).toBe(80)
   })
 
   it('carries a supplied path-colour pin map without aliasing it', () => {
