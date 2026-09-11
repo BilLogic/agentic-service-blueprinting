@@ -142,7 +142,7 @@ function CompareDifferencesCount({ slide }: { slide: NavItem }) {
             ? 'Close the difference ledger'
             : `Open the difference ledger (${count} differences)`
       }
-      className="h-6 gap-1 px-2 text-2xs text-muted-foreground hover:text-foreground"
+      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
       onClick={() => (open ? cellDetail.closePanel() : cellDetail.openDifferences())}
     >
       <Diff className="size-3.5" aria-hidden />
@@ -150,7 +150,8 @@ function CompareDifferencesCount({ slide }: { slide: NavItem }) {
       <span
         aria-hidden
         className={cn(
-          'ml-0.5 rounded-full px-1.5 py-px font-mono text-3xs leading-none tabular-nums',
+          // geometry: the count is a digit packed into a 24px rounded control, not a prose line.
+          'ml-0.5 rounded-full px-1.5 py-px font-mono text-xs leading-none tabular-nums',
           // Resting: neutral. Pressed: brand tint one step stronger than the
           // button's own selected fill, so the count stays legible on it.
           open

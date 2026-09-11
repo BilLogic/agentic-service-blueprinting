@@ -186,7 +186,7 @@ export function CreateBlueprintDialog({
           data-create-blueprint-fields=""
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Name</span>
+            <span className="text-sm font-medium text-foreground">Name</span>
             <Input
               value={draft.name}
               autoFocus
@@ -196,7 +196,7 @@ export function CreateBlueprintDialog({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Phase</span>
+            <span className="text-sm font-medium text-foreground">Phase</span>
             {fixedPhaseId ? (
               <p className="text-sm text-foreground/80">
                 {phaseRows.find(
@@ -227,7 +227,7 @@ export function CreateBlueprintDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Layout</span>
+            <span className="text-sm font-medium text-foreground">Layout</span>
             {/*
               Buttons rather than a ToggleGroup, matching the phase row above.
               The toggle's pressed state is `bg-muted`, which resolves to white
@@ -254,7 +254,7 @@ export function CreateBlueprintDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Lanes</span>
+            <span className="text-sm font-medium text-foreground">Lanes</span>
             <p className="text-xs text-muted-foreground">
               Copying from an existing blueprint keeps the lane names the same,
               which is what lets two blueprints be read side by side.
@@ -264,7 +264,7 @@ export function CreateBlueprintDialog({
               onChange={(event) =>
                 set('laneSourcePathId', event.target.value || null)
               }
-              className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+              className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
               aria-label="Copy lanes from"
             >
               <option value="">
@@ -279,7 +279,7 @@ export function CreateBlueprintDialog({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">
+            <span className="text-sm font-medium text-foreground">
               First version
             </span>
             <Input
@@ -290,7 +290,7 @@ export function CreateBlueprintDialog({
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Columns</span>
+            <span className="text-sm font-medium text-foreground">Columns</span>
             <Input
               type="number"
               min={MIN_STEP_COUNT}

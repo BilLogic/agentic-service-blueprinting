@@ -206,6 +206,7 @@ export function DeleteStructureDialog({
                     key={fact.noun}
                     className="min-w-28 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2"
                   >
+                    {/* geometry: the count is a display numeral packed into the fact card, not a prose line. */}
                     <div className="text-xl leading-none font-medium tabular-nums text-destructive">
                       {fact.count}
                     </div>
@@ -218,7 +219,7 @@ export function DeleteStructureDialog({
               </div>
 
               {impact.warnings.length > 0 ? (
-                <ul className="flex flex-col gap-1 text-xs text-foreground/80">
+                <ul className="flex flex-col gap-1 text-sm text-foreground/80">
                   {impact.warnings.map((line) => (
                     <li key={line}>{line}</li>
                   ))}
@@ -240,7 +241,7 @@ export function DeleteStructureDialog({
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-3">
               <label
                 htmlFor={inputId}
-                className="text-xs font-medium text-foreground"
+                className="text-sm font-medium text-foreground"
               >
                 Type{' '}
                 <span className="rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-foreground">

@@ -85,7 +85,7 @@ export function AdminSessionFields() {
   if (session) {
     return (
       <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-2xs text-muted-foreground">
+        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
           {session.user.email ?? 'Signed in'}
         </span>
         <Button
@@ -107,7 +107,7 @@ export function AdminSessionFields() {
         value={emailDraft}
         onChange={(event) => setEmailDraft(event.target.value)}
         placeholder="admin@…"
-        className="h-7 text-xs"
+        className="h-7 text-sm"
         aria-label="Admin email"
         autoComplete="email"
       />
@@ -120,7 +120,7 @@ export function AdminSessionFields() {
             if (event.key === 'Enter') signIn()
           }}
           placeholder="Password"
-          className="h-7 min-w-0 flex-1 text-xs"
+          className="h-7 min-w-0 flex-1 text-sm"
           aria-label="Admin password"
           autoComplete="current-password"
         />
@@ -142,13 +142,13 @@ export function AdminSessionFields() {
         Email me a sign-in link instead
       </Button>
       {authError ? (
-        <p className="text-3xs leading-snug text-destructive">{authError}</p>
+        <p className="text-xs text-destructive">{authError}</p>
       ) : linkSent ? (
-        <p className="text-3xs leading-snug text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Link sent — check that inbox, then open it on this device.
         </p>
       ) : (
-        <p className="text-3xs leading-snug text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Signing in unlocks editing and the agent on this device.
         </p>
       )}

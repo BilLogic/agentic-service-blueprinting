@@ -154,7 +154,7 @@ export function CanvasDesignTools() {
               ? 'Click cells to add them'
               : 'Make slice'}
             {picked.length > 0 ? (
-              <span className="rounded-full bg-primary/15 px-1.5 text-3xs font-medium tabular-nums">
+              <span className="rounded-full bg-primary/15 px-1.5 text-xs font-medium tabular-nums">
                 {picked.length}
               </span>
             ) : null}

@@ -41,7 +41,7 @@ export function WorkspaceServiceSwitcher({
   const workspaceName = useWorkspaceTitle()
 
   const containerClass = cn(
-    'flex shrink-0 items-center rounded-md border text-xs',
+    'flex shrink-0 items-center rounded-md border text-sm',
     active
       ? 'border-border bg-background shadow-sm'
       : 'border-transparent hover:bg-accent',
@@ -93,7 +93,7 @@ export function WorkspaceServiceSwitcher({
         />
       </div>
       <PopoverContent align="start" className="w-64 p-1.5">
-        <span className="flex w-fit px-2 pb-1 pt-0.5 text-3xs font-medium uppercase tracking-wider text-muted-foreground">
+        <span className="flex w-fit px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Services
         </span>
         <ul className="flex flex-col gap-0.5">
@@ -112,7 +112,7 @@ export function WorkspaceServiceSwitcher({
                     onActivate()
                   }}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent',
+                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent',
                     isActive
                       ? 'font-medium text-foreground'
                       : 'text-muted-foreground',

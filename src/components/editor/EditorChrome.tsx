@@ -161,7 +161,7 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
           and the sidebar comes back at the left edge — a toggle at the far
           right sat as far from the thing it summons as this strip allows. */}
       <SidebarCollapseButton collapsed onToggle={onExpand} size="icon-sm" />
-      <p className="shrink-0 truncate text-xs font-medium text-foreground">
+      <p className="shrink-0 truncate text-sm font-medium text-foreground">
         {editorTitle}
       </p>
       {summary ? (
@@ -179,7 +179,7 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
             <Button
               type="button"
               size="sm"
-              className="ml-0.5 h-6 shrink-0 px-2 text-2xs"
+              className="ml-0.5 h-6 shrink-0 px-2 text-xs"
               onClick={summary.action.onClick}
             >
               <Play className="size-3" aria-hidden />

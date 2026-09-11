@@ -264,7 +264,7 @@ function ChangeCount({
   return (
     <span
       className={cn(
-        'flex shrink-0 items-center gap-0.5 text-2xs tabular-nums',
+        'flex shrink-0 items-center gap-0.5 text-xs tabular-nums',
         className,
       )}
       title={`${count} change${count === 1 ? '' : 's'} from this session`}
@@ -396,7 +396,7 @@ function AgentSessionsView({
             aria-label="Filter sessions"
           />
         ) : (
-          <p className="min-w-0 flex-1 truncate pl-1 text-2xs font-medium tracking-wider text-sidebar-foreground/60 uppercase">
+          <p className="min-w-0 flex-1 truncate pl-1 text-xs font-medium tracking-wider text-sidebar-foreground/60 uppercase">
             Sessions
           </p>
         )}
@@ -433,7 +433,7 @@ function AgentSessionsView({
       </div>
 
       {pendingAttachment ? (
-        <p className="mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-2xs text-muted-foreground">
+        <p className="mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
           <Pencil className="mt-px size-3 shrink-0" aria-hidden />
           <span>
             {pendingAttachment.label} ready — open or start a session to send
@@ -537,10 +537,10 @@ type ToolEvent = Extract<TranscriptEvent, { kind: 'tool' }>
 function ToolDetail({ label, body }: { label: string; body: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-2xs font-medium tracking-wider text-muted-foreground uppercase">
+      <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
-      <pre className="mt-0.5 max-h-40 overflow-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs leading-snug whitespace-pre-wrap text-foreground/80">
+      <pre className="mt-0.5 max-h-40 overflow-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs whitespace-pre-wrap text-foreground/80">
         {body}
       </pre>
     </div>
@@ -939,7 +939,7 @@ function AgentChatView({
           title="Rename session"
           className="group/title flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="min-w-0 truncate text-xs font-medium text-foreground">
+          <span className="min-w-0 truncate text-sm font-medium text-foreground">
             {session.title}
           </span>
           <Pencil
@@ -1085,10 +1085,10 @@ function AgentChatView({
             {attachment ? (
               <Attachment size="sm" className="w-full">
                 <AttachmentContent>
-                  <AttachmentTitle className="text-xs">
+                  <AttachmentTitle className="text-sm">
                     {attachment.label}
                   </AttachmentTitle>
-                  <AttachmentDescription className="text-2xs">
+                  <AttachmentDescription className="text-xs">
                     {attachment.lines.join(' · ')}
                   </AttachmentDescription>
                 </AttachmentContent>
@@ -1155,12 +1155,12 @@ function AgentChatView({
                     value={command.id}
                     disabled={!command.content}
                     onSelect={() => pickSkill(command)}
-                    className="items-baseline gap-2 text-xs"
+                    className="items-baseline gap-2 text-sm"
                   >
                     <span className="shrink-0 font-mono text-foreground">
                       {command.label}
                     </span>
-                    <span className="min-w-0 flex-1 leading-snug text-muted-foreground">
+                    <span className="min-w-0 flex-1 text-muted-foreground">
                       {command.summary}
                     </span>
                   </CommandItem>
@@ -1216,6 +1216,7 @@ function AgentChatView({
               // No imperative height write: the DS Textarea is
               // `field-sizing-content`, so the browser grows it. max-h caps
               // it at ~6 lines and then it scrolls, as before.
+              // geometry: min-h-7 is a 28px composer box; a 20px line sits in the padding.
               className="max-h-30 min-h-7 py-1.5 leading-5"
               value={draft}
               onChange={(event) => {

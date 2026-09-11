@@ -66,7 +66,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                   }`}
                   className={cn(
                     'pointer-events-auto flex h-7 items-center gap-1.5 rounded-full border border-border bg-card',
-                    'px-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground',
+                    'px-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
                   )}
                 >
                   <span className="flex items-center" aria-hidden>
@@ -98,7 +98,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                 same word and the same explanation, reachable on hover, focus
                 and tap. */}
             <EntityDefinitionPopover kind="path" side="left">
-              <span className="flex w-fit px-2 pb-1 pt-0.5 text-3xs font-medium uppercase tracking-wider text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <span className="flex w-fit px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                 Path
               </span>
             </EntityDefinitionPopover>
@@ -112,7 +112,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                       aria-pressed={checked}
                       onClick={() => togglePathKey(option.id)}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
                         'hover:bg-accent',
                         checked
                           ? 'font-medium text-foreground'

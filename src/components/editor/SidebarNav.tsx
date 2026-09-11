@@ -287,7 +287,7 @@ export function NavSection({
           <span className={cn(CHEVRON_SLOT_CLASS, CHEVRON_REVEAL_CLASS)}>
             <NavChevron open={open} />
           </span>
-          <span className="min-w-0 flex-1 truncate py-1.5 text-2xs font-medium tracking-wider text-sidebar-foreground/60 uppercase">
+          <span className="min-w-0 flex-1 truncate py-1.5 text-xs font-medium tracking-wider text-sidebar-foreground/60 uppercase">
             {title}
           </span>
         </CollapsibleTrigger>

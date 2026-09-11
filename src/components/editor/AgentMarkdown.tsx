@@ -15,7 +15,7 @@ export function AgentMarkdown({
   className?: string
 }) {
   return (
-    <div className={cn('space-y-1.5 text-sm leading-relaxed', className)}>
+    <div className={cn('space-y-1.5 text-sm', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

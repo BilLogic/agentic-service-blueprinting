@@ -126,7 +126,7 @@ export function CreateVersionDialog({
           data-create-version-fields=""
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Name</span>
+            <span className="text-sm font-medium text-foreground">Name</span>
             <Input
               value={draft.name}
               autoFocus
@@ -136,7 +136,7 @@ export function CreateVersionDialog({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Kind</span>
+            <span className="text-sm font-medium text-foreground">Kind</span>
             <div className="flex flex-wrap gap-1.5">
               {PATH_KINDS.map((type) => (
                 <Button
@@ -153,7 +153,7 @@ export function CreateVersionDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">
+            <span className="text-sm font-medium text-foreground">
               Start from
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -179,7 +179,7 @@ export function CreateVersionDialog({
 
           {versions.length > 0 ? (
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground">
                 {draft.mode === 'duplicate' ? 'Version to copy' : 'Lanes from'}
               </span>
               <select
@@ -187,7 +187,7 @@ export function CreateVersionDialog({
                 onChange={(event) =>
                   set('sourcePathId', event.target.value || null)
                 }
-                className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+                className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
                 aria-label={
                   draft.mode === 'duplicate' ? 'Version to copy' : 'Lanes from'
                 }
@@ -208,7 +208,7 @@ export function CreateVersionDialog({
 
           {draft.mode === 'duplicate' ? (
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-xs text-foreground">
+              <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={draft.copyCells}
@@ -216,7 +216,7 @@ export function CreateVersionDialog({
                 />
                 Copy the cell text
               </label>
-              <label className="flex items-center gap-2 text-xs text-foreground">
+              <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={draft.copyDependencies}
