@@ -7,6 +7,8 @@ import {
   formatBlueprintSearch,
   type BlueprintSearchRow,
 } from '@/lib/agent/tools/format'
+import { CANONICAL_LANE_ROLES } from '@/lib/laneRoles'
+import { PATH_KINDS } from '@/lib/versionValidation'
 import { SCOPE_ALL, type ServiceScope } from '@/lib/agent/tools/serviceScope'
 
 type Client = SupabaseClient<Database>
@@ -102,6 +104,20 @@ const MIN_LIMIT = 1
 const MODEL_MISMATCH = /embedding model mismatch/i
 
 /**
+ * pgvector's own refusal when the vector's width is not the column's:
+ * `different vector dimensions 768 and 1536`.
+ *
+ * Reachable even though `embedQuestion` checks the width it got against the
+ * width it asked for — because a deployment can LIST a size its index column
+ * does not hold. The provider then returns a perfectly correct 768-wide vector
+ * for a 1536-wide column, and nothing in the browser can know. It is the same
+ * class of fault as a model the function holds no index for: a configuration
+ * slip, loud in the deployment's logs, and no reason to deny the person the
+ * words arm.
+ */
+const DIMENSION_MISMATCH = /different vector dimensions/i
+
+/**
  * Keep only the rows under the scoped service's phases.
  *
  * The journey is a hard per-service boundary, so a service's rows are exactly
@@ -128,10 +144,17 @@ const MODEL_MISMATCH = /embedding model mismatch/i
  */
 type ScopedRows = {
   rows: BlueprintSearchRow[]
-  /** Rows the function returned that this service could not claim. */
-  dropped: number
-  /** Of those, the ones no service could claim unambiguously. */
+  /** Placed in a DIFFERENT service. */
+  otherService: number
+  /** Placed nowhere: more than one service owns a phase of that name. */
   ambiguous: number
+  /**
+   * Placed nowhere: the row carried no phase breadcrumb at all, which the
+   * contract requires. Counted apart from the other two because it is a fault
+   * in the deployment's function, not a fact about its data — and reporting it
+   * as "in another service" would send someone looking in the wrong place.
+   */
+  unplaceable: number
 }
 
 async function scopeRows(
@@ -139,7 +162,8 @@ async function scopeRows(
   rows: BlueprintSearchRow[],
   scope: ServiceScope,
 ): Promise<ScopedRows> {
-  if (scope.kind === 'all') return { rows, dropped: 0, ambiguous: 0 }
+  if (scope.kind === 'all')
+    return { rows, otherService: 0, ambiguous: 0, unplaceable: 0 }
   const { data, error } = await client.from('phases').select('name, service_id')
   if (error) throw new Error(error.message)
   const owners = new Map<string, Set<string>>()
@@ -150,17 +174,23 @@ async function scopeRows(
     owners.set(key, set)
   }
   const kept: BlueprintSearchRow[] = []
+  let otherService = 0
   let ambiguous = 0
+  let unplaceable = 0
   for (const row of rows) {
     const services = row.phase ? owners.get(row.phase.toLowerCase()) : undefined
-    if (!services || services.size === 0) continue
+    if (!services || services.size === 0) {
+      unplaceable += 1
+      continue
+    }
     if (services.size > 1) {
       ambiguous += 1
       continue
     }
     if (services.has(scope.serviceId)) kept.push(row)
+    else otherService += 1
   }
-  return { rows: kept, dropped: rows.length - kept.length, ambiguous }
+  return { rows: kept, otherService, ambiguous, unplaceable }
 }
 
 export type BlueprintSearchOptions = {
@@ -204,16 +234,29 @@ export async function searchBlueprint(
   const requested = options.granularity?.length
     ? options.granularity
     : DEFAULT_GRANULARITY
-  // Checked before anything is embedded or read, the way `list_blueprint`
-  // checks its own: a rung outside the vocabulary reaches a deployment's
-  // function as a word it does not know, comes back empty, and reads as "no
-  // row uses those words" — an absence the caller then reports.
+  // EVERY closed vocabulary is checked before anything is embedded or read,
+  // the way `list_blueprint` checks its own. A word outside one reaches a
+  // deployment's function as a value it does not know, comes back empty, and
+  // renders as "no row uses those words" — an absence the caller then reports
+  // as the blueprint's. The function's contract does not require it to raise
+  // on an unknown filter value, so this is the only place it can be caught.
   const unknown = requested.filter(
     (level) => !GRANULARITY_LEVELS.includes(level as never),
   )
   if (unknown.length > 0)
     throw new Error(
       `Unknown granularity: ${unknown.join(', ')}. Use one or more of ${GRANULARITY_LEVELS.join(', ')}.`,
+    )
+  if (options.pathKind && !PATH_KINDS.includes(options.pathKind as never))
+    throw new Error(
+      `Unknown path kind: ${options.pathKind}. Use one of ${PATH_KINDS.join(', ')}.`,
+    )
+  if (
+    options.laneRole &&
+    !CANONICAL_LANE_ROLES.includes(options.laneRole as never)
+  )
+    throw new Error(
+      `Unknown lane role: ${options.laneRole}. Use one of ${CANONICAL_LANE_ROLES.join(', ')}.`,
     )
   const base: SearchBlueprintArgs = {
     q: options.query,
@@ -258,7 +301,10 @@ export async function searchBlueprint(
   let rows = response.data
   let meaningRan = meaningAttempted
   if (response.error) {
-    if (!(meaningAttempted && MODEL_MISMATCH.test(response.error.message)))
+    const refusedTheVector =
+      MODEL_MISMATCH.test(response.error.message) ||
+      DIMENSION_MISMATCH.test(response.error.message)
+    if (!(meaningAttempted && refusedTheVector))
       throw new Error(response.error.message)
     // The deployment listed an index its function does not hold. One keyword
     // and structural call, then the text says meaning did not run.
@@ -281,8 +327,15 @@ export async function searchBlueprint(
       ? {
           scope: {
             name: scope.serviceName,
-            dropped: scoped.dropped,
+            // What the SCOPE saw, which is the top-k and not the corpus. The
+            // difference is why the text below cannot say "none of them are in
+            // this service": the function ranked and clipped before any of
+            // this ran, so a service with hundreds of matches can be absent
+            // from the rows purely by losing the ranking.
+            returned: returned.length,
+            otherService: scoped.otherService,
             ambiguous: scoped.ambiguous,
+            unplaceable: scoped.unplaceable,
           },
         }
       : {}),

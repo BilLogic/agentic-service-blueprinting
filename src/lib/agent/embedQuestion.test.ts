@@ -204,6 +204,26 @@ describe('embedQuestion — every failure is an EmbedQuestionError', () => {
     expect(String((error as Error).message)).toContain('768')
   })
 
+  it('sends nothing at all when the caller’s signal is ALREADY aborted', async () => {
+    // `addEventListener('abort')` never fires on a signal that is already
+    // aborted, and one is reachable: the dispatcher awaits a scope read over
+    // the network between the loop's own abort check and this call. Without an
+    // entry check, Stop would still send the person's key to their provider —
+    // and then the keyword search would run on top.
+    const controller = new AbortController()
+    controller.abort()
+    const calls = stubFetch({ embedding: { values: VECTOR } })
+    const error = await embedQuestion({
+      question: 'q',
+      index: GOOGLE_INDEX,
+      apiKey: KEY,
+      signal: controller.signal,
+    }).catch((e: unknown) => e)
+    expect(calls).toHaveLength(0)
+    expect(error).not.toBeInstanceOf(EmbedQuestionError)
+    expect((error as Error).name).toBe('AbortError')
+  })
+
   it('lets the caller’s own abort through, so Stop does not become a fallback', async () => {
     const controller = new AbortController()
     vi.stubGlobal(

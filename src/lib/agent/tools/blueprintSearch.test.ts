@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { searchBlueprint } from '@/lib/agent/tools/search'
+import { CANONICAL_LANE_ROLES } from '@/lib/laneRoles'
+import { PATH_KINDS } from '@/lib/versionValidation'
 
 /*
  * WHAT THE TOOL DOES, seen from the two edges it touches: what it sends to the
@@ -116,8 +118,8 @@ describe('searchBlueprint with a matching index', () => {
       granularity: ['cell', 'path'],
       phase: 'Onboarding',
       scenario: 'Warm-Up',
-      pathKind: 'exception',
-      laneRole: 'frontstage',
+      pathKind: PATH_KINDS[0],
+      laneRole: CANONICAL_LANE_ROLES[0],
       limit: 5000,
       meaning: { index: GOOGLE_INDEX, apiKey: KEY },
     })
@@ -125,8 +127,8 @@ describe('searchBlueprint with a matching index', () => {
       granularity: ['cell', 'path'],
       filter_phase: 'Onboarding',
       filter_scenario: 'Warm-Up',
-      filter_path_kind: 'exception',
-      filter_lane_role: 'frontstage',
+      filter_path_kind: PATH_KINDS[0],
+      filter_lane_role: CANONICAL_LANE_ROLES[0],
       match_count: 100,
     })
   })
@@ -245,7 +247,9 @@ describe('searchBlueprint under a service scope', () => {
       scope: SCOPE,
       meaning: { index: GOOGLE_INDEX, apiKey: KEY },
     })
-    expect(text).toContain('1 shown, in Tutoring, of 3 matching across the deployment')
+    expect(text).toContain(
+      '1 shown, in Tutoring, from the top 1 of 3 matching across the deployment',
+    )
   })
 
   it('does not call rows that matched elsewhere an empty blueprint', async () => {
@@ -262,8 +266,15 @@ describe('searchBlueprint under a service scope', () => {
       scope: SCOPE,
       meaning: { index: GOOGLE_INDEX, apiKey: KEY },
     })
-    expect(text).toContain('none of them are in Tutoring')
-    expect(text).toContain('service:"all"')
+    // NOT "none of them are in Tutoring": the function ranked and clipped
+    // before the scope filter ran, so all this knows is where the top of the
+    // list landed. Claiming the service holds nothing — and offering
+    // service:"all" as the only remedy — would send the caller away from the
+    // rows they were asking for.
+    expect(text).toContain('The top 1 of 3 rows matching')
+    expect(text).toContain('are all outside Tutoring')
+    expect(text).toContain('not about Tutoring')
+    expect(text).toContain('raise limit')
     expect(text).not.toContain('no row USES those words')
   })
 
@@ -285,6 +296,24 @@ describe('searchBlueprint under a service scope', () => {
     })
     expect(text).toContain('more than one service uses')
     expect(text).not.toContain('cell-1')
+  })
+
+  it('counts a row with no phase apart from one in another service', async () => {
+    // A missing breadcrumb is a fault in the deployment's function, not a
+    // fact about its data — reporting it as "in another service" would send
+    // someone looking where there is nothing to find.
+    stubEmbed()
+    const { client } = scopedClient([{ name: 'Onboarding', service_id: 'svc-1' }], {
+      data: [{ ...ROW, phase: null }],
+      error: null,
+    })
+    const text = await searchBlueprint(client, {
+      query: 'q',
+      scope: SCOPE,
+      meaning: { index: GOOGLE_INDEX, apiKey: KEY },
+    })
+    expect(text).toContain('carrying no phase at all')
+    expect(text).not.toContain('more than one service uses')
   })
 
   it('passes every row through when the scope is the whole deployment', async () => {
@@ -332,6 +361,25 @@ describe('searchBlueprint when the meaning arm cannot run', () => {
     expect(text).toContain('cell-1')
   })
 
+  it('falls back when the database refuses the vector’s WIDTH, not just its model', async () => {
+    // A deployment can list a size its index column does not hold: the
+    // provider returns a correct-by-request vector, and nothing in the browser
+    // can know. pgvector names the two widths, which is a configuration slip,
+    // not a broken search.
+    stubEmbed()
+    const { client, calls } = fakeClient([
+      { data: null, error: { message: 'different vector dimensions 768 and 1536' } },
+      { data: [ROW], error: null },
+    ])
+    const text = await searchBlueprint(client, {
+      query: 'q',
+      meaning: { index: GOOGLE_INDEX, apiKey: KEY },
+    })
+    expect(calls).toHaveLength(2)
+    expect(calls[1].args.embed_model).toBeUndefined()
+    expect(text).toContain('words only')
+  })
+
   it('surfaces any other database error instead of reporting an empty blueprint', async () => {
     stubEmbed()
     const { client, calls } = fakeClient([
@@ -371,6 +419,17 @@ describe('searchBlueprint argument guards', () => {
       }),
     ).rejects.toThrow(/Unknown granularity: cells/)
     expect(embed.count()).toBe(0)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('refuses a path kind and a lane role outside their vocabularies', async () => {
+    const { client, calls } = fakeClient([{ data: [], error: null }])
+    await expect(
+      searchBlueprint(client, { query: 'q', pathKind: 'unhappy', meaning: null }),
+    ).rejects.toThrow(/Unknown path kind: unhappy/)
+    await expect(
+      searchBlueprint(client, { query: 'q', laneRole: 'middlestage', meaning: null }),
+    ).rejects.toThrow(/Unknown lane role: middlestage/)
     expect(calls).toHaveLength(0)
   })
 

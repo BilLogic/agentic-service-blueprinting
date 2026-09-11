@@ -111,6 +111,12 @@ async function attempt<T>(
   signal: AbortSignal | undefined,
   run: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
+  // Checked BEFORE anything is sent, because `addEventListener('abort')` never
+  // fires on a signal that is already aborted — and one is reachable here: the
+  // dispatcher awaits a scope read over the network between the loop's own
+  // abort check and this call. Without this, Stop would still send the
+  // person's key to their provider and then run the keyword search too.
+  if (signal?.aborted) throw new DOMException('aborted', 'AbortError')
   const controller = new AbortController()
   const abort = () => controller.abort()
   signal?.addEventListener('abort', abort)

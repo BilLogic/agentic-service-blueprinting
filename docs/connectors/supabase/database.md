@@ -535,7 +535,10 @@ reported, rather than handed to the wrong service. A deployment with several
 services is better off giving its phases distinct names.
 
 The function must raise an error whose message contains `embedding model
-mismatch` when `embed_model` names a model it holds no index for. Scoring a
+mismatch` when `embed_model` names a model it holds no index for. pgvector's own
+width refusal (`different vector dimensions …`) is read the same way, because a
+deployment that lists a size its column does not hold produces a vector the
+provider was right to return and the column is right to reject. Scoring a
 vector from the wrong space would rank noise and look like a working search;
 raising makes a misconfigured index list visible in a deployment's own logs.
 The template answers that one error with a single keyword-and-structural retry,

@@ -715,15 +715,23 @@ export type BlueprintSearchArms = {
    */
   total: number
   /**
-   * Present when the read was confined to one service. `dropped` counts rows
-   * the function returned that this service could not claim; `ambiguous` is
-   * the subset no service could claim, because more than one owns a phase of
-   * that name.
+   * Present when the read was confined to one service, and every number here
+   * is about the ROWS THE FUNCTION RETURNED — its clipped top-k — not the
+   * corpus. That distinction is the whole reason these are separate fields:
+   * a service can hold hundreds of matches and appear in none of the returned
+   * rows simply by losing the ranking, so nothing here may be phrased as a
+   * fact about the service.
    */
   scope?: {
     name: string
-    dropped: number
+    /** How many rows the function returned before any of this filtering. */
+    returned: number
+    /** Rows placed in a different service. */
+    otherService: number
+    /** Rows no service could claim: more than one owns that phase name. */
     ambiguous: number
+    /** Rows carrying no phase breadcrumb, which the contract requires. */
+    unplaceable: number
   }
 }
 
@@ -748,22 +756,36 @@ export function formatBlueprintSearch(
   arms: BlueprintSearchArms,
 ): string {
   const how = arms.meaning ? 'words and meaning' : 'words only'
-  const ambiguous =
-    arms.scope && arms.scope.ambiguous > 0
-      ? ` ${arms.scope.ambiguous} row${arms.scope.ambiguous === 1 ? '' : 's'} sat in a phase name more than one service uses, so ${arms.scope.ambiguous === 1 ? 'it could' : 'they could'} not be placed — narrow with phase or scenario, or pass service:"all".`
+  const unplaced = arms.scope
+    ? [
+        arms.scope.ambiguous > 0
+          ? `${arms.scope.ambiguous} in a phase name more than one service uses`
+          : '',
+        arms.scope.unplaceable > 0
+          ? `${arms.scope.unplaceable} carrying no phase at all`
+          : '',
+      ].filter(Boolean)
+    : []
+  const couldNotPlace =
+    unplaced.length > 0
+      ? ` Some rows could not be placed in any service: ${unplaced.join(', ')} — narrow with phase or scenario, or pass service:"all".`
       : ''
   if (rows.length === 0) {
-    // A scope that emptied the rows is NOT an empty result, and saying so is
-    // the difference between "nothing matched" and "nothing matched here".
-    if (arms.scope && arms.scope.dropped > 0)
-      return `${arms.scope.dropped} row${arms.scope.dropped === 1 ? '' : 's'} matched "${query}" (${how}), but none of them are in ${arms.scope.name}. Pass service:"all" to see them, or name the service you mean. Do not report this as the blueprint not covering it.${ambiguous}`
+    // A scope that emptied the rows is NOT an empty result — and it is also
+    // not proof the service has no match. The function RANKED AND CLIPPED
+    // first, so all this knows is that the top-k landed elsewhere. Saying
+    // "none of them are in <service>" would be a claim about the corpus made
+    // from the top of a list, and it would send the caller to service:"all",
+    // the one remedy that cannot surface the in-scope rows.
+    if (arms.scope && arms.scope.returned > 0)
+      return `The top ${arms.scope.returned} of ${arms.total} rows matching "${query}" (${how}) are all outside ${arms.scope.name}. That is a fact about the TOP of the ranking, not about ${arms.scope.name} — it may hold matches that lost to rows elsewhere. To find them: add phase or scenario from ${arms.scope.name}, or raise limit. Pass service:"all" to see the rows that did come back. Never report this as the blueprint not covering it.${couldNotPlace}`
     return arms.meaning
       ? `Nothing matches "${query}" by words or by meaning. Both arms ran, so a moment described in OTHER words would have been found — but say "nothing in the blueprint matched this search", not "the blueprint does not cover this". list_blueprint shows what exists.`
       : `Nothing matches the words "${query}". This search matched WORDS ONLY — no meaning matching ran — so that means no row USES those words, and NOT that the blueprint has no such moment. Try the board's own vocabulary, or list_blueprint to see what exists.`
   }
   const total = arms.total
   const header = arms.scope
-    ? `${rows.length} shown, in ${arms.scope.name}, of ${total} matching across the deployment (${how}):${ambiguous}`
+    ? `${rows.length} shown, in ${arms.scope.name}, from the top ${arms.scope.returned} of ${total} matching across the deployment (${how}):${couldNotPlace}`
     : `${rows.length} shown of ${total} matching (${how}):`
   const lines = rows.map((row) => {
     const where = [row.phase, row.scenario, row.path, row.step, row.lane]
