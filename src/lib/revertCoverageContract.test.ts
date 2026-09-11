@@ -54,6 +54,7 @@ const MUTATION_MODULES = [
   'sliceMutations.ts',
   'stakeholderMutations.ts',
   'stepSpecMutations.ts',
+  'touchpointMutations.ts',
   'placementResourceMutations.ts',
   'placementLinkMutations.ts',
 ] as const
@@ -82,6 +83,10 @@ const RPC_BACKED = new Set([
   'rename_path',
   'rename_phase',
   'rename_scenario',
+  // The rename has to move the registry row and every bearing cell's text in
+  // one transaction, so it is a function, and its inverse is that same
+  // function pointed back at the previous name.
+  'rename_touchpoint',
   // The header toggle's write, self-inverse with the previous layout, so
   // the default branch calls it back as is.
   'update_scenario_layout',

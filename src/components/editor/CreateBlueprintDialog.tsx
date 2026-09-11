@@ -84,7 +84,9 @@ const EMPTY_DRAFT: DraftBlueprint = {
   layout: 'stacked',
   laneSourcePathId: null,
   stepCount: 5,
-  pathName: 'Happy Path',
+  // Empty rather than prefilled with a kind: the author names the route, and
+  // the validator says what a good name looks like if they do not.
+  pathName: '',
 }
 
 /**
@@ -284,7 +286,7 @@ export function CreateBlueprintDialog({
             </span>
             <Input
               value={draft.pathName}
-              placeholder="Happy Path"
+              placeholder="e.g. Signs up without conflicts"
               onChange={(event) => set('pathName', event.target.value)}
             />
           </label>

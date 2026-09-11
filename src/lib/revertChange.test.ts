@@ -140,3 +140,47 @@ describe('executeRevert restores an empty summary', () => {
     ).rejects.toThrow(/missing its .summary. value/)
   })
 })
+
+/**
+ * A ledger entry outlives the schema it was recorded under.
+ *
+ * "Edited a touchpoint at this cell" once captured four placement columns;
+ * two of them — the screenshot list and the URL — are not columns any more,
+ * because what a placement points at became a resource of its own. Reverting
+ * an entry captured before that must still restore the two that are, and must
+ * not send the two that are not: PostgREST answers an unknown column with a
+ * 400, which would make every such entry unrevertable.
+ */
+describe('reverting a placement edit captured under the older columns', () => {
+  it('restores summary and role, and sends nothing for the retired columns', async () => {
+    const { client, updates } = fakeClient('cell_touchpoints', [
+      { id: 'ct-1', summary: 'New words.', role: 'peripheral' },
+    ])
+    recordChange(
+      'update_touchpoint_placement',
+      { placement_id: 'ct-1' },
+      {
+        fn: 'restore_touchpoint_placement',
+        args: {
+          placement_id: 'ct-1',
+          // As an entry from before the retirement captured it: four columns.
+          columns: {
+            summary: 'The words before.',
+            screenshots: ['/images/checkout-form.png'],
+            url: 'https://example.com/designs/checkout',
+            role: null,
+          },
+        },
+      },
+    )
+
+    await executeRevert(client, sessionSnapshot().at(-1)!)
+
+    expect(updates).toHaveLength(1)
+    expect(updates[0]).toMatchObject({
+      table: 'cell_touchpoints',
+      filters: { id: 'ct-1' },
+    })
+    expect(updates[0]?.patch).toEqual({ summary: 'The words before.', role: null })
+  })
+})
