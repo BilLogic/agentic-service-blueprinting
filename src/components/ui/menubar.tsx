@@ -22,6 +22,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CheckIcon } from "lucide-react"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: shortcuts
+ * are hint grey as chrome, and the popups carry the overlay edge, so a menubar
+ * menu separates from the page exactly as a dropdown does.
+ */
+
 function Menubar({ className, ...props }: MenubarPrimitive.Props) {
   return (
     <MenubarPrimitive
@@ -218,7 +224,7 @@ function MenubarShortcut({
     <DropdownMenuShortcut
       data-slot="menubar-shortcut"
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground group-focus/menubar-item:text-accent-foreground",
+        "ml-auto text-xs tracking-widest text-tertiary-foreground group-focus/menubar-item:text-accent-foreground",
         className
       )}
       {...props}

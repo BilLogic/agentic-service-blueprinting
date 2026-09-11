@@ -469,7 +469,10 @@ function CanvasModeSwitch({
             {/* The mode's name first, because that is what the icon stands
                 for and the reason the tooltip was waited for. */}
             <span className="font-medium">{label}</span>
-            <span className="text-contrast/70">
+            {/* Caption ink, not contrast ink: the tooltip sits on the page
+                surface now, and `text-contrast` is the page's own lightness —
+                it was legible only against the inverted slab this replaced. */}
+            <span className="text-muted-foreground">
               {value === 'view'
                 ? 'Read, navigate and mark up'
                 : 'Author — cells become selectable'}

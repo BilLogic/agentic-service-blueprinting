@@ -300,12 +300,14 @@ export function CompareCellBlock({
         sideOffset={6}
         className="flex max-w-72 flex-col items-start gap-1.5 text-left"
       >
-        <span className="text-contrast/70">Used in</span>
+        {/* Caption ink: the tooltip is page-coloured now, so contrast ink
+            would be the page colour on the page. */}
+        <span className="text-muted-foreground">Used in</span>
         {pathMembership!.map((membership) => (
           <span key={membership.pathName} className="flex items-center gap-2">
             <span
               aria-hidden
-              className="size-2 shrink-0 rounded-full ring-1 ring-contrast/25"
+              className="size-2 shrink-0 rounded-full ring-1 ring-border"
               style={{ backgroundColor: membership.color }}
             />
             <span>{membership.pathName}</span>

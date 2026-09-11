@@ -5,6 +5,13 @@ import { cn } from "@/lib/utils"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the
+ * section label and the shortcut are hint grey as chrome, and the popup's edge
+ * is the overlay edge, so every floating menu separates from the page the same
+ * way.
+ */
+
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
 }
@@ -83,7 +90,7 @@ function ContextMenuLabel({
       data-slot="context-menu-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        "px-1.5 py-1 text-xs font-medium text-tertiary-foreground data-inset:pl-7",
         className
       )}
       {...props}
@@ -249,7 +256,7 @@ function ContextMenuShortcut({
     <span
       data-slot="context-menu-shortcut"
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground group-focus/context-menu-item:text-accent-foreground",
+        "ml-auto text-xs tracking-widest text-tertiary-foreground group-focus/context-menu-item:text-accent-foreground",
         className
       )}
       {...props}

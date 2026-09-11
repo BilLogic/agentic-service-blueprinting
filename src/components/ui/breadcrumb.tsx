@@ -5,6 +5,13 @@ import { useRender } from "@base-ui/react/use-render"
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the links
+ * and separators are hint grey (chrome), while the trail itself stays caption
+ * grey and the current page stays full-strength ink. A trail is a caption that
+ * has to be readable; the links inside it are not the content.
+ */
+
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
   return (
     <nav
@@ -48,7 +55,10 @@ function BreadcrumbLink({
     defaultTagName: "a",
     props: mergeProps<"a">(
       {
-        className: cn("transition-colors hover:text-foreground", className),
+        className: cn(
+          "text-tertiary-foreground transition-colors hover:text-foreground",
+          className,
+        ),
       },
       props
     ),
@@ -82,7 +92,7 @@ function BreadcrumbSeparator({
       data-slot="breadcrumb-separator"
       role="presentation"
       aria-hidden="true"
-      className={cn("[&>svg]:size-3.5", className)}
+      className={cn("text-tertiary-foreground [&>svg]:size-3.5", className)}
       {...props}
     >
       {children ?? (

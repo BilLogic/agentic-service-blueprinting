@@ -8,6 +8,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ground } from "@/lib/ground"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: a dialog
+ * sits on the PAGE surface with ordinary ink rather than on the card plate —
+ * a card is a thing on a page, and a dialog is a page of its own — and its
+ * description is hint grey.
+ */
+
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
@@ -60,7 +67,7 @@ function DialogContent({
           // (different variant = no conflict), which is how small dialogs
           // like Rename session rendered 896px wide. Callers own their
           // width; the mobile cap below is the only default.
-          "fixed top-1/2 left-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl bg-card text-card-foreground shadow-lg ring-1 ring-border-overlay transition duration-200 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
+          "fixed top-1/2 left-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden rounded-xl bg-background text-foreground shadow-lg ring-1 ring-border-overlay transition duration-200 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
           className,
         )}
         {...props}
@@ -132,7 +139,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-tertiary-foreground", className)}
       {...props}
     />
   )

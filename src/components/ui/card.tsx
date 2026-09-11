@@ -3,6 +3,12 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { ground } from "@/lib/ground"
 
+/*
+ * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the card
+ * description is hint grey, one rung past captions, so it recedes behind the
+ * title instead of competing with it.
+ */
+
 function Card({
   className,
   size = "default",
@@ -52,7 +58,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-tertiary-foreground", className)}
       {...props}
     />
   )
