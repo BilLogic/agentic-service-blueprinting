@@ -147,6 +147,22 @@ export type CellDependencyWrite = {
 }
 
 /**
+ * One dependency row as it stood BEFORE an edit in place — what
+ * `update_cell_dependency` hands back.
+ *
+ * Its whole purpose is the inverse. Keyed on `id`, so undoing an edit restores
+ * the row that was edited; an inverse keyed on (source, target, kind) would
+ * restore *a* row joining those two cells, which after a second edit is not the
+ * same thing.
+ *
+ * `note` is here because an undo that put the kind and the target back and left
+ * the author's sentence overwritten would be an undo of most of the edit.
+ * `name` is not, because the edit never touches it: there is nothing about it
+ * to restore.
+ */
+export type CellDependencyBefore = Omit<CellDependencyRow, 'name'>
+
+/**
  * What the column accepts, which is now what the client says.
  *
  * `side-by-side` and `integrated` were the historical tokens, translated at a
@@ -343,6 +359,28 @@ function deriveRevert(
           note: previous.note,
         },
       }
+    }
+    case 'update_cell_dependency': {
+      // Self-inverse: the function that changed the row is the function that
+      // changes it back, pointed at the values it returned. That is only sound
+      // because it returns the row AS IT STOOD and keys on the row's own id —
+      // an edit that moved the target would otherwise be undone by writing to
+      // whatever now joins the new pair.
+      //
+      // Every argument the function takes is in the returned row, so the
+      // inverse is total: nothing the edit could change is left out of it.
+      const before = data as CellDependencyBefore | null
+      return before?.id
+        ? {
+            fn: 'update_cell_dependency',
+            args: {
+              dependency_id: before.id,
+              kind: before.kind,
+              target_cell_id: before.target_cell_id,
+              note: before.note,
+            },
+          }
+        : undefined
     }
     default:
       return undefined
@@ -660,6 +698,43 @@ export function setCellDependency(
     kind: input.kind ?? 'leads_to',
     name: input.name ?? null,
     note: input.note ?? null,
+  })
+}
+
+/**
+ * Change one dependency row where it sits — its kind, where it points, and its
+ * note — in one transaction.
+ *
+ * `setCellDependency` cannot do this, and it is not a near miss. It upserts on
+ * (source, target, kind), so a new kind or a new target is a new conflict key:
+ * the edit INSERTS a second row and leaves the first behind, drawn. Only the
+ * note edits in place through it. A client-side clear-then-set is not the
+ * answer either — two transactions, so a failure between them destroys the
+ * edge, and two ledger rows whose undo only half works.
+ *
+ * Returns the row as it stood, which `deriveRevert` turns into an inverse keyed
+ * on the row's own id. The edge's `name` is neither sent nor returned: the edit
+ * leaves it as the row held it.
+ */
+export function updateCellDependency(
+  client: Client,
+  input: {
+    dependencyId: string
+    kind: DependencyKind
+    targetCellId: string
+    /**
+     * Anything worth knowing about this dependency. Empty clears it; the
+     * function trims. Required rather than optional, because an omitted note
+     * on an update would be an erase nobody asked for.
+     */
+    note: string | null
+  },
+): Promise<CellDependencyBefore> {
+  return call<CellDependencyBefore>(client, 'update_cell_dependency', {
+    dependency_id: input.dependencyId,
+    kind: input.kind,
+    target_cell_id: input.targetCellId,
+    note: input.note,
   })
 }
 

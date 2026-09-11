@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ArrowDown,
   ArrowLeft,
@@ -6,6 +6,11 @@ import {
   ArrowUp,
   Plus,
 } from 'lucide-react'
+import {
+  DependencyEditRow,
+  InboundRowPencil,
+  type DependencyEditing,
+} from '@/components/blueprint/CellDependencyEditor'
 import { TouchpointCellFace } from '@/components/blueprint/TouchpointCellFace'
 import {
   Tooltip,
@@ -99,14 +104,26 @@ function DirectionIcon({ direction }: { direction: RowDirection }) {
  */
 const WHY_LINE_QUIET_CLASS = '[@media(pointer:fine)]:sr-only'
 
+/** Lane and step, as the row itself says them — and as the pencil names them. */
+function connectionRowLabel(connection: BlueprintCellConnection): string {
+  return `${connection.laneName} · Step ${connection.stepIndex + 1}`
+}
+
 function DependencyRow({
   connection,
   direction,
+  action,
   onCellSelect,
   onTechSelect,
 }: {
   connection: BlueprintCellConnection
   direction: RowDirection
+  /**
+   * Absolutely positioned at the row's top right — the arriving row's pencil.
+   * Overlaid rather than laid out beside the text, because the pencil belongs
+   * to the whole row rather than to its first line.
+   */
+  action?: ReactNode
 } & SelectHandlers) {
   const detail = useBlueprintCellDetailOptional()
 
@@ -152,8 +169,18 @@ function DependencyRow({
   )
 
   return (
-    <li className="group border-b border-muted last:border-0">
-      <div className="flex flex-col gap-0.5 px-2 py-1.5 text-xs transition-colors group-hover:bg-accent group-focus-within:bg-accent">
+    <li
+      className={cn(
+        'group border-b border-muted last:border-0',
+        action ? 'relative' : undefined,
+      )}
+    >
+      <div
+        className={cn(
+          'flex flex-col gap-0.5 px-2 py-1.5 text-xs transition-colors group-hover:bg-accent group-focus-within:bg-accent',
+          action ? 'pr-8' : undefined,
+        )}
+      >
         {connection.linkNote ? (
           <Tooltip>
             <TooltipTrigger render={row} />
@@ -190,6 +217,7 @@ function DependencyRow({
             ))}
           </span>
         ) : null}
+        {action}
       </div>
     </li>
   )
@@ -203,7 +231,7 @@ function DependencyGroup({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" data-dependency-group={title}>
       <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
         {title}
       </p>
@@ -214,38 +242,66 @@ function DependencyGroup({
 
 type CellDependencySectionsProps = {
   connections: BlueprintCellConnections
-  /** Same-step tech without an explicit dependency (kept from panel v1). */
+  /** Touchpoints on the same step that no connection of this cell names. */
   otherTech: CellDependencyTechEntry[]
   /** Lane row position of the selected cell — orients up/down glyphs. */
   selectedLaneRowPosition?: number
+  /**
+   * Present only in edit mode. Absent, this is exactly the read list it has
+   * always been — the same component, not a second one.
+   */
+  editing?: Omit<DependencyEditing, 'activeDependencyId' | 'onActivate'> | null
   className?: string
 } & SelectHandlers
 
 /**
- * Dependencies tab: grouped SET OFF BY (incoming dependencies) / SETS OFF
- * (outgoing dependencies) / NEEDS (functional links, both directions). Rows keep
- * the hover-preview and click-to-navigate behavior, with the direction
- * glyphs and indented detail lines from the previous dependency table.
- * Read-only — link editing is an agent path.
+ * Dependencies tab: grouped by the kind and by which end of it this cell is.
+ *
+ *   Follows      `leads_to` arriving       Leads to   `leads_to` leaving
+ *   Enabled by   `enables` arriving        Enables    `enables` leaving
+ *
+ * The recorded kind is split by end the way the drawn kind is. One group for
+ * both ends read "Enables › A" at the target, i.e. as this cell enabling A —
+ * the inversion the rename existed to end. Each end gets its own word.
+ *
+ * ONE LIST, IN BOTH MODES. Edit mode does not add a second list of the same
+ * edges — it turns the rows this cell OWNS (the two leaving groups) into the
+ * fields for those rows, where they already sit, and hangs a pencil on the
+ * arriving ones, which belong to the cell at the other end. The headings, the
+ * grouping and the reading order are the same in both modes, because they are
+ * the same list.
+ *
+ * The last group, "Also on this step", is the touchpoints standing in the same
+ * step that nothing on this cell points at. A touchpoint is not always
+ * technology, so the heading says where they stand rather than what they are.
  */
 export function CellDependencySections({
   connections,
   otherTech,
   selectedLaneRowPosition = -1,
+  editing = null,
   onCellSelect,
   onTechSelect,
   className,
 }: CellDependencySectionsProps) {
+  /*
+    Which owned row has its note field open. One at a time: "the row being
+    edited" is a singular thing, and a note field under every owned row would
+    be eight fields where most edges carry no note. Set on focus or
+    pointer-down within a row and cleared only when another row claims it —
+    never on blur, because the select's list is a portal and losing focus to it
+    would close the row that opened it.
+  */
+  const [activeDependencyId, setActiveDependencyId] = useState<string | null>(
+    null,
+  )
+
   const follows = connections.incoming.filter(
     (connection) => connection.linkKind === 'leads_to',
   )
   const leadsTo = connections.outgoing.filter(
     (connection) => connection.linkKind === 'leads_to',
   )
-
-  // The recorded kind, split by end the way the drawn kind is. One group for
-  // both ends read "Enables › A" at the target, i.e. as this cell enabling A —
-  // the inversion the rename existed to end. Each end gets its own word.
   const enabledBy = connections.incoming.filter(
     (connection) => connection.linkKind === 'enables',
   )
@@ -280,58 +336,73 @@ export function CellDependencySections({
   const direction = (connection: BlueprintCellConnection, flow: RowFlow) =>
     resolveRowDirection(connection, flow, selectedLaneRowPosition)
 
+  const rowEditing: DependencyEditing | null = editing
+    ? { ...editing, activeDependencyId, onActivate: setActiveDependencyId }
+    : null
+
+  /** A leaving row — this cell's own — as the fields for that row, or as read. */
+  const leavingRow = (connection: BlueprintCellConnection, keyPrefix: string) =>
+    rowEditing ? (
+      <DependencyEditRow
+        key={`edit:${connection.dependencyId}`}
+        dependencyId={connection.dependencyId}
+        kind={connection.linkKind}
+        targetCellId={connection.cellId}
+        note={connection.linkNote}
+        editing={rowEditing}
+      />
+    ) : (
+      <DependencyRow
+        key={`${keyPrefix}:${connection.dependencyId}`}
+        connection={connection}
+        direction={direction(connection, 'out')}
+        {...handlers}
+      />
+    )
+
+  /** An arriving row: flat text, and in edit mode the way to its owner. */
+  const arrivingRow = (connection: BlueprintCellConnection, keyPrefix: string) => (
+    <DependencyRow
+      key={`${keyPrefix}:${connection.dependencyId}`}
+      connection={connection}
+      direction={direction(connection, 'in')}
+      action={
+        rowEditing ? (
+          <InboundRowPencil
+            ownerCellId={connection.cellId}
+            ownerLabel={connectionRowLabel(connection)}
+            onEditFromOwner={rowEditing.onEditFromOwner}
+          />
+        ) : undefined
+      }
+      {...handlers}
+    />
+  )
+
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       {follows.length > 0 ? (
         <DependencyGroup title="Follows">
-          {follows.map((connection) => (
-            <DependencyRow
-              key={`in:${connection.dependencyId}`}
-              connection={connection}
-              direction={direction(connection, 'in')}
-              {...handlers}
-            />
-          ))}
+          {follows.map((connection) => arrivingRow(connection, 'in'))}
         </DependencyGroup>
       ) : null}
       {leadsTo.length > 0 ? (
         <DependencyGroup title="Leads to">
-          {leadsTo.map((connection) => (
-            <DependencyRow
-              key={`out:${connection.dependencyId}`}
-              connection={connection}
-              direction={direction(connection, 'out')}
-              {...handlers}
-            />
-          ))}
+          {leadsTo.map((connection) => leavingRow(connection, 'out'))}
         </DependencyGroup>
       ) : null}
       {enabledBy.length > 0 ? (
         <DependencyGroup title="Enabled by">
-          {enabledBy.map((connection) => (
-            <DependencyRow
-              key={`enabled-by:${connection.dependencyId}`}
-              connection={connection}
-              direction={direction(connection, 'in')}
-              {...handlers}
-            />
-          ))}
+          {enabledBy.map((connection) => arrivingRow(connection, 'enabled-by'))}
         </DependencyGroup>
       ) : null}
       {enables.length > 0 ? (
         <DependencyGroup title="Enables">
-          {enables.map((connection) => (
-            <DependencyRow
-              key={`enables:${connection.dependencyId}`}
-              connection={connection}
-              direction={direction(connection, 'out')}
-              {...handlers}
-            />
-          ))}
+          {enables.map((connection) => leavingRow(connection, 'enables'))}
         </DependencyGroup>
       ) : null}
       {remainingTech.length > 0 ? (
-        <DependencyGroup title="Tech in this step">
+        <DependencyGroup title="Also on this step">
           <li className="px-2 py-1.5">
             <span className="flex flex-wrap gap-1">
               {remainingTech.map((entry) => (
@@ -347,7 +418,7 @@ export function CellDependencySections({
                     asSpan
                     inline
                     // geometry: packs the name into the compact inline face, not a canvas cell.
-                  className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-foreground/75"
+                    className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-foreground/75"
                   />
                 </button>
               ))}

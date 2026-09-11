@@ -113,10 +113,10 @@ export const LABEL_COLUMNS = Object.freeze(
         "The word IS the value — `kind = 'enables'` leaving, the recorded dependency that never draws — and `kind` is the name of the place holding it.",
     },
     {
-      label: 'Tech in this step',
+      label: 'Also on this step',
       names: ['cells.content'],
       because:
-        "Not a field of anything: it heads the technology standing in the same step that nothing on this cell points at, and each item under it is one line parsed out of a tech cell's content. `content` names where the words live; the label names which cells they came from.",
+        "Not a field of anything: it heads the touchpoints standing in the same step that nothing on this cell points at, and each item under it is one name parsed out of a touchpoint cell's content. A touchpoint is not always technology, so the label says where the items stand rather than what they are. `content` names where the words live.",
     },
     {
       label: 'Registry',
