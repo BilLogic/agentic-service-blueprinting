@@ -1,5 +1,157 @@
 # Changelog
 
+## 1.39.0
+
+A connection is edited where it sits, a deployment names the lanes a new
+blueprint starts with, the canvas agent lists the whole blueprint, and a phase
+row draws each scenario's happy path.
+
+**Dependencies.** In Edit mode, each connection a cell is the source of becomes
+a row of fields in the group it already sits in. The kind and the target save
+when they change, and the note saves when its field loses focus. A connection
+that arrives from another cell opens that cell. One database function,
+`update_cell_dependency`, makes the edit in one transaction, so changing a kind
+or a target no longer leaves a second row drawn.
+
+**The overview.** A phase row draws each scenario's happy path, and the focused
+scenario draws what its own picker says. Every path picker shows each path's
+status. Scenario panels sit further apart, focus dims a phase's parts rather
+than the whole phase, zoomed out each cell is its own block, and the slide
+sheet's header says "Slides".
+
+**The agent.** `list_blueprint` lists phases, scenarios, paths, steps, lanes or
+cells, with ids, in the order a person reads the board, under a header with the
+true total. `list_scenarios` is its alias for one release.
+
+**Also:** a path kind reads one word everywhere (Happy, Variant, Exception).
+Visible copy says "step" where it meant a step. A new cell gets its lane role's
+budget. The service header describes the service on the canvas. The token guard
+catches absolute white and black and `var(--color-…)` reaches. The prose and
+docs checks read this repository's own numbers from `scripts/repo-config.mjs`.
+
+### Upgrading a deployment
+
+- Apply `21000226000000_a_dependency_can_be_edited_where_it_sits.sql`. It adds
+  `update_cell_dependency`. Until it is applied, an edit made in the
+  Dependencies panel fails under its row with a "function does not exist"
+  message, while adding and removing connections keep working. A deployment
+  that renders `CellDependencySections` itself passes the new optional
+  `editing` prop to turn edit mode on.
+- To start new blueprints with a deployment's own lanes, supply
+  `DeploymentConfig.defaultLanes`. A supplied list replaces the template's
+  standard set whole. Left out or empty, the standard set is unchanged.
+- `CreateBlueprintDialog` now reads the deployment config, so a test that
+  renders it wraps it in `DeploymentConfigProvider`.
+- `PATH_KIND_SHORT_LABELS` is removed. `PATH_KIND_LABELS` in
+  `@/lib/pathKindTheme` now holds the one-word labels, and `versionValidation`
+  no longer exports it.
+- The agent tool `list_blueprint` is added. `list_scenarios` stays for this
+  release as its alias and is then removed. `listScenarios`,
+  `sampleListScenarios` and `formatScenarioList` are removed; use
+  `listBlueprint`, `sampleListBlueprint` and `formatBlueprintList`.
+- `usePhaseBlueprintFilters` no longer returns `filterPaths`,
+  `filterSelectedPathIds` or `toggleFilterPath`, and takes a
+  `focusedScenarioId`. `PathsSidebarSection` and `ScenarioBlueprintPanel` are
+  removed.
+- The service-scope and reference-registry tests read
+  `readReference('canvas-adapter')`, the adapter the agent is served after any
+  `registerReferenceDocs` replacement, rather than a file at a fixed path. A
+  deployment can hold them byte for byte.
+- The router, glossary, sweep and docs-index scripts read their numbers from
+  `scripts/repo-config.mjs`. A deployment that takes those scripts writes its
+  own copy of that file.
+- Visible copy changes that a deployment's own tests may match: the create
+  dialog's count field says "Steps" where it said "Columns", along with the
+  step handle and two authoring errors; the last dependency group says "Also on
+  this step"; the slide sheet's header says "Slides". The copy guard now fails
+  if "column" or "columns" comes back on screen.
+- Nothing else to apply to the database.
+
+### Plugin contract
+
+- `list_blueprint` joins the agent tool names in `identifiers.json`. It is an
+  addition; `list_scenarios` keeps its place as an alias.
+
+### Minor Changes
+
+- 2ff069c: A connection in a cell's Dependencies tab can be edited where it sits. In Edit mode, each connection the cell is the source of becomes a row of fields in the group it already sits in. The kind and the target save as soon as they change, and the note saves when its field loses focus. A connection that arrives from another cell carries a pencil that opens that cell, because a cell edits only the connections it is the source of. A row that cannot save says why underneath itself. The groups keep their split by direction (Follows, Leads to, Enabled by, Enables), and the last group is renamed from "Tech in this step" to "Also on this step". The add form no longer repeats the cell's connections, because each row now carries its own remove control.
+
+  The edit is one database function, `update_cell_dependency`, which changes a row's kind, target and note in one transaction. Changing a kind or a target through `set_cell_dependency` used to insert a second row and leave the first one drawn. The new function returns the row as it stood, and the session's undo feeds those values straight back, keyed on the row's own id.
+
+  **Upgrading a deployment:** apply `21000226000000_a_dependency_can_be_edited_where_it_sits.sql`. Until it is applied, an edit made in the panel fails with a "function does not exist" message under the row, while adding and removing connections keep working. A deployment that renders `CellDependencySections` itself passes the new optional `editing` prop to turn edit mode on; without it, the list reads as before.
+
+- dfef5a2: A deployment names the lanes a new blueprint starts with. `DeploymentConfig` has a new optional field, `defaultLanes`, which is a list of `LaneSetEntry` (`{ name, lane_role, position }`). When someone creates a blueprint without copying lanes from an existing one, the new blueprint starts with those lanes, and the lane picker's "Standard set" option counts them. If the field is left out or empty, the new blueprint starts with the template's standard set, which is unchanged: Storyboard, Customer Actions, Front Stage Touchpoints, Front Stage Actions, Back Stage Touchpoints, Back Stage Actions and Support Actions. A supplied list replaces that set whole and is never merged with it.
+
+  `blueprintValidation.ts` no longer has to be forked for a deployment's own lanes. `laneSetFor(draft, defaultLanes)` takes the resolved lanes as an argument, and `CreateBlueprintDialog` passes what `useDeploymentConfig()` resolved. To supply its lanes, a deployment adds the field to the config it passes to `App`:
+
+  ```ts
+  export const deploymentConfig: DeploymentConfig = {
+    defaultLanes: [
+      { name: 'Storyboard', lane_role: 'storyboard', position: 0 },
+      { name: 'Caller', lane_role: 'customer_actions', position: 1 },
+      // …one entry per lane, top to bottom
+    ],
+  }
+  ```
+
+  `CreateBlueprintDialog` now reads the deployment config, so a test that renders it has to wrap it in `DeploymentConfigProvider`, the same way the app already does.
+
+- 5059d40: A phase canvas now draws each scenario's happy path and nothing else. The phase header no longer offers a path filter: it folded paths across scenarios by kind and name, and once every path has its own name that fold folds nothing, so it listed unrelated routes as though they were one choice. The focused scenario still draws what the reader picks in its path picker, and its variants and exceptions stay reachable there. Choosing a path inside one scenario no longer changes what the scenarios beside it draw, even when they have a path of the same name. Clearing every path in a focused scenario shows the "No paths selected" state with its restore action, rather than dropping that scenario out of its row.
+
+  Every path picker now shows each path's status (the top-bar path menu, the scenario path checklist and toggles, and the walkthrough's path menu). The board's query already selected `paths.status`; it now reaches the path list instead of being dropped. Inside a picker the status is part of the row's text rather than a second focusable control nested in it, so a click on it still toggles the path.
+
+  The editor's `getScenarioDisplayViewType` now answers `undefined` for a scenario that has made no layout choice, so a phase row's shared view reaches those scenarios and an explicit "stacked" is no longer indistinguishable from no choice. Choosing Stacked for a scenario with no choice still writes nothing.
+
+  The overview canvas renders less on navigation: phase bodies are memoised with stable per-scenario handlers and a stable scope, and a canvas click opens its scenario as a React transition. The unused `PathsSidebarSection` component, the `ScenarioBlueprintPanel` wrapper that nothing mounted any more, and the dead `isOverviewPathFilterChecked` and `toggleOverviewPathFilter` helpers are removed. `usePhaseBlueprintFilters` no longer returns `filterPaths`, `filterSelectedPathIds` or `toggleFilterPath`; it returns `resolveHappyPathIds` and `resolveDrawnPathIds` beside `resolveSelectedPathIds`, and takes a `focusedScenarioId`.
+
+- e1e80ef: The slide sheet's header says "Slides", and the overview gives every target room of its own.
+
+  **The slide sheet.** Its collapsible header said "Storyboard", which is the name of a lane. What the sheet holds is slides, and its own buttons already said so ("Add slide", "Remove slide 2", "Keep slide"). The header now says "Slides" too. The Storyboard lane keeps its name.
+
+  **Room on the overview.** Scenario panels in a phase row sit 360px apart, up from 192px. The phase frame pads its row by 120px at the sides, up from 24px, and by 48px at the bottom, up from 24px. The top inset stays at 28px. Zoomed out, neighbouring scenarios and the phase band around them no longer blur into one target. The phase badge now sits on the frame's own left edge instead of a band's width in from it.
+
+  **Focus dims the parts, not the phase.** When a phase or scenario has focus, the phases around it used to dim as one translucent layer, with a desaturating filter and cells made pass-through. Nothing inside that layer could become clearer than it, and it stacked under the fade the camera plays during a flight. Now each dimmed phase dims its frame, its badge and each scenario separately, with opacity only. A dimmed phase stays clickable. Hovering its band lifts the whole phase part-way, and hovering one of its scenarios brings that scenario up to full ink without lifting its siblings.
+
+  **The blocks tier.** Zoomed out past the text threshold, each drawn cell becomes its own block. A row of touchpoints is no longer one slab, and a cell without an id is no longer left as text. The row and column labels become neutral skeleton bars in the same boxes, and in forced-colors mode those bars take the system ink.
+
+  **Touch.** A scroll region inside the board that carries `.blueprint-scroll` now takes `touch-action: pan-x pan-y`, so one finger can scroll it while pinch-zoom stays with the canvas.
+
+- 8552572: The canvas agent gains `list_blueprint`: the complete set of phases, scenarios, paths, steps, lanes or cells — any mix of them — with ids, in the order a person reads the board. It takes `phase` and `scenario` by name, `kind` for paths, `lane_role` for lanes and cells, and the shared `service` scope, and returns every matching row up to `limit` (default 200, at most 500) under a header with the true total, so a clipped list says it was clipped. It is a plain list: no query and no ranking. A word outside a vocabulary (a rung, a path kind, a lane role) is refused with the list rather than read as a filter that matches nothing. It reads the tables the board already reads, over plain PostgREST, a page at a time so the total survives the server's row cap, and needs no new database function. The no-database trial answers it from the bundled sample through the same walk and the same text.
+
+  `list_scenarios` is now an alias of `list_blueprint` with granularity `["phase","scenario"]`, and its description says so. It stays for one release and is then removed. Its output takes the list's row shape. An earlier release recorded that the journey read would stay `list_scenarios`; this reverses that.
+
+  `LANE_ROLE_FILTER_PARAM` is exported from `src/lib/agent/tools/specs.ts`, built from `CANONICAL_LANE_ROLES`, and held to the lane-role constraint by the lane-role roster test. `listScenarios`, `sampleListScenarios` and `formatScenarioList` are removed; use `listBlueprint`, `sampleListBlueprint` and `formatBlueprintList`. The canvas adapter names `list_blueprint` in its read and service rows, and the eval harness answers both names.
+
+### Patch Changes
+
+- d15e25b: A path kind is called one word, the same everywhere: Happy, Variant, Exception. The badge said "Happy" while the new-path picker, the colour key's hover title and the badge's own tooltip said "Happy path", because the labels lived in two maps in `pathKindTheme.ts` and a third copy in `versionValidation.ts`. There is now one map, `PATH_KIND_LABELS` in `pathKindTheme.ts`, and a test mounts the badge, its tooltip, the colour key and the picker and holds that each kind reads the same single word on all four. A name an author gives a path is untouched: a path called "Happy path" keeps that name.
+
+  **Upgrading a deployment.** `PATH_KIND_SHORT_LABELS` is gone, and `PATH_KIND_LABELS` replaces it: it now holds the one-word labels. `versionValidation` no longer exports `PATH_KIND_LABELS`; import it from `@/lib/pathKindTheme`. Nothing to apply to the database.
+
+- cbc90d5: The router, glossary, sweep and docs-index checks now read the numbers and paths that belong to one repository from a single file, `scripts/repo-config.mjs`: the router's character budget and slack, the recorded prohibition count, the folders the prose sweeps read, the interface map's path, and the docs index's routing table and reading paths. The scripts themselves carry no repository's values any more, so a deployment can keep the same scripts and write its own config file. Every check prints exactly what it printed before; the one generated change is the banner on `INDEX.md`, which now says to edit the routing table in the config file. Failure messages that told you which constant to change now name the config file.
+
+  The sweep no longer throws when a folder it is told to read does not exist. A repository without `references/`, `skills/` or `agents/` gets its docs swept and nothing else, and a test holds that. The sweep's list of skipped trees is now called `DATED_RECORDS`, because it holds decision records, not history in general.
+
+- 0509e66: A new cell is measured by its lane's role. The draft a new cell opens on now carries the role of the lane it was opened in, so a cell created in a touchpoint lane with a custom name gets the touchpoint budget, the same as an existing cell in that lane. Before, only the legacy lane names reached it.
+
+  The template now tests modules it shipped untested: annotation capture, the dependency and version authoring rules, deletion safety, slice kinds, cell content writes, the cell pick grammar, finding fingerprints and the session change log. New source checks pin that an ambiguous embed names its foreign key, that an alias does not bring back a retired name, that a form key is a column, that a definition hangs off a badge, that every entity kind defines itself, that no fill name carries a retired word, that both dependency kinds read source-first, and that the agent tool schemas and handlers agree on argument names. Two component tests pin that a dimmed scenario or phase stays navigable and that the badge row mounts the simulated-tier badge.
+
+- 40dbe61: The service-scope and reference-registry tests now pass in a deployment that holds them byte for byte. They check the canvas adapter the agent is actually served, meaning the reference registry's `canvas-adapter` record after any `registerReferenceDocs` replacement, against the live tool specs. They no longer read a file at a fixed repository path. The test comparing the source `references/canvas-adapter.md` with its generated copy still runs here, and skips where there is no `references/` folder. A new case shows that a registered replacement adapter is the one checked against the tools that take `service`.
+
+  Visible copy now says "step" wherever it meant a step: the create dialog's count field ("Steps", previously "Columns"), its whole-number message, the step handle's tooltip and accessible name ("Select the … step"), and the two authoring errors about a step missing from a version or two steps sharing a position. "column" and "columns" join the retired copy words, so the reader-facing copy guard fails if either comes back on screen.
+
+  `authoringErrors.ts` and its test name the decision that a lane's position is unique within its path, in place of a migration version.
+
+- 02d5ee7: The service header and the definition examples now describe the service the board is drawing. Both used to read the first service by creation date, so with more than one service the header could name a different service from the one on the canvas. They now resolve the active service the same way the board does, wait for the session before asking, and send the counts and the business model together.
+
+  The new-cell form names its row with the real lane badge, tinted in that lane's colour; it used to paint a role name as a colour and render untinted. The evidence form uses the panel's own select for Kind and sets Kind and Title on one row. The Value editor suggests audiences from the stakeholder registry first, then anything already written that the registry does not know. Storyboard frames are rounded concentrically inside their cell, so selection no longer pinches the corners.
+
+  Tests now cover the role select, a name-only touchpoint's interactive face, and the stakeholder, status, field-label and divider definitions, and their fixtures no longer carry one deployment's vocabulary.
+
+- 4f2926a: The token-discipline guard now reads the two routes to a primitive colour that it used to miss. Absolute `white` and `black` utilities, including their alpha forms such as `bg-white/10` and `ring-black/[0.04]`, count as ramp steps. A `var(--color-{ramp}-{step})` reach is also caught, both in TypeScript and in every stylesheet outside the layers that declare or register the ramps. Categorical colour, such as lane identity fills, path inks, annotation swatches and modal scrims, is exempted file by file with a reason. Each exemption list is checked so that an entry falls away once its file no longer needs it.
+
+  The annotation style bars no longer spell absolute white. They use the mode-invariant ink ladder that `semantic.css` already declared for that chrome (`--foreground-annotation-chrome` and its rungs). Every rung is the same white at the alpha the call site already used, so nothing changes on screen. The stroke-weight swatch lost the `dark` prop it branched on, because its only caller always passed it.
+
 ## 1.38.0
 
 The slide sheet behaves like a sidebar, the canvas agent reads back more of
@@ -5060,8 +5212,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
