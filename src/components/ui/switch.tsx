@@ -26,7 +26,13 @@ function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "peer inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-control-raised p-px transition-colors outline-none",
+        // The EDGE is what makes off legible. `--control-raised` is a ~2% white
+        // wash, which against a 0.995 page is very nearly the page itself — so
+        // the named wash alone left an off switch with no visible track,
+        // measured on a render rather than assumed. `border-border` gives it
+        // one hairline; on it, the primary fill carries the shape and the edge
+        // steps aside.
+        "peer inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border border-border bg-control-raised p-px transition-colors outline-none data-checked:border-transparent",
         "focus-visible:ring-[3px] focus-visible:ring-ring/50",
         "data-checked:bg-primary",
         "data-disabled:cursor-not-allowed data-disabled:opacity-50",

@@ -161,6 +161,15 @@ describe('a switch uses named colours', () => {
     expect(classesOf('switch', <Switch />)).toContain('data-checked:bg-primary')
   })
 
+  it('gives the off track an edge, since the wash alone is nearly the page', () => {
+    // Measured, not assumed: `--control-raised` is about a 2% white wash, and
+    // against a 0.995-lightness page that is very nearly the page itself. The
+    // named wash was applied as specified and left no visible track.
+    const classes = classesOf('switch', <Switch />)
+    expect(classes).toContain('border-border')
+    expect(classes).toContain('data-checked:border-transparent')
+  })
+
   it('gives the thumb a named hairline', () => {
     const classes = classesOf('switch-thumb', <Switch />)
     expect(classes).toContain('ring-border')
