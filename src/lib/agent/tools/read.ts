@@ -9,10 +9,12 @@ import {
   formatFields,
   formatLaneVocabulary,
   formatOwnerTags,
+  formatResources,
   formatScenarioList,
   formatSliceList,
   formatStakeholderList,
 } from '@/lib/agent/tools/format'
+import { cellResourcesFromRows } from '@/lib/cellResources'
 import { normalizeBlueprint, type RawPath } from '@/lib/normalizeBlueprint'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
 import {
@@ -348,11 +350,18 @@ export async function getCompareDiff(
   )
 }
 
+/**
+ * One cell in full, with what it points at.
+ *
+ * The resources ride in the cell's own read because they are the cell's rows:
+ * the panel shows them under the cell, the grid query embeds them, and an
+ * agent asked "where does this moment link to?" had no read that answered.
+ */
 export async function getCell(client: Client, cellId: string): Promise<string> {
   const { data, error } = await client
     .from('cells')
     .select(
-      'id, content, summary, owner, perceived_owner, function, form, value_props, lane_id, step_id, position',
+      'id, content, summary, owner, perceived_owner, function, form, value_props, lane_id, step_id, position, resources!resources_cell_id_fkey (id, position, kind, name, url, cell_touchpoint_id, featured)',
     )
     .eq('id', cellId)
     .maybeSingle()
@@ -366,6 +375,7 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
     ['function', data.function],
     ['form', data.form],
     ['value_props', data.value_props ? JSON.stringify(data.value_props) : null],
+    ['resources', formatResources(cellResourcesFromRows(data.resources))],
     ['lane_id', data.lane_id],
     ['step_id', data.step_id],
     ['position', data.position],

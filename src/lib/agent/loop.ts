@@ -22,7 +22,7 @@ import { collectAgentUiContext } from '@/lib/agent/uiBridge'
 import { agentUiCommandMutates } from '@/lib/agent/uiCommands'
 import type { AgentAttachment } from '@/lib/agent/attachments'
 import type { AgentSkillCommand } from '@/lib/agent/skills'
-import canvasAdapterDoc from '@/lib/agent/skill/references/canvas-adapter.md?raw'
+import { REFERENCE_DOCS } from '@/lib/agent/tools/referenceDocs'
 import roleDoc from '@/lib/agent/role.md?raw'
 import {
   hasKey,
@@ -60,7 +60,14 @@ const ADAPTERS: Record<string, AgentProviderAdapter> = {
  */
 const ROLE = roleDoc.trimEnd()
 
-
+/**
+ * The adapter comes out of the same record `get_reference` serves, not from a
+ * file import of its own. A deployment that registers a replacement
+ * `canvas-adapter` through `registerReferenceDocs` means it for the agent, and
+ * the prompt is where the adapter binds — in full, every turn. Read from its
+ * own import, the prompt kept the template's rules while the tool served the
+ * deployment's.
+ */
 export function buildSystem(
   contextNote: string,
   skill?: AgentSkillCommand | null,
@@ -68,7 +75,7 @@ export function buildSystem(
   return [
     ROLE,
     '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
-    canvasAdapterDoc,
+    REFERENCE_DOCS['canvas-adapter'],
     skill?.content
       ? `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
       : '',
