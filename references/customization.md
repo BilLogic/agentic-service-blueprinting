@@ -13,6 +13,7 @@ migration in the same change.
 - View types & path types
 - Scale
 - Agent account
+- Agent search
 - Portfolio conventions (consultants / agencies)
 - Template upgrade recipe (⚠ compat check required)
 
@@ -132,6 +133,47 @@ seams — never by teaching the template's reference loader a path:
 After adopting a release, the reference loader stays byte-identical to this
 template's: extra names go through those two seams, not a path import of another
 repository's file.
+
+## Agent search
+
+The in-app agent's ranked search (`search_blueprint`) is OFF in this template,
+because this template's schema has no such function. A deployment whose
+database does carry one switches it on, and lists whatever vector indexes that
+database holds:
+
+```ts
+const config: DeploymentConfig = {
+  agent: {
+    search: {
+      enabled: true,
+      indexes: [
+        { provider: 'google', model: 'gemini-embedding-001', dimensions: 768 },
+      ],
+    },
+  },
+}
+```
+
+- `enabled: false` or no `agent.search` at all: the tool is absent from the
+  agent's roster. Nothing refers to a capability the database does not have.
+- `enabled: true`, `indexes` empty or omitted: the tool is offered to
+  everyone, and matches words and structure only.
+- `enabled: true` with indexes listed: a person whose own chat provider
+  matches an entry has their question embedded with their own key and gets
+  meaning matching too. A person whose provider matches nothing listed is not
+  offered the tool, quietly — including every Anthropic key, since Anthropic
+  has no embedding model.
+
+An entry must name an index that EXISTS, built with exactly that model at
+exactly that size. Building and refreshing it is the deployment's own job,
+with its own server-held credential; the template only ever embeds the
+question, in the browser, with the person's key. The function contract and the
+`RETRIEVAL_DOCUMENT` / `RETRIEVAL_QUERY` pairing are in
+`docs/connectors/supabase/database.md`.
+
+Adding a second provider later is a config and data change — build the index,
+add the entry. No template change is needed, because the OpenAI embed path
+ships here already.
 
 ## Portfolio conventions (consultants / agencies)
 

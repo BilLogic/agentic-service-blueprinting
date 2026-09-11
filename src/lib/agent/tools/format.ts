@@ -681,3 +681,125 @@ export function formatCompareDiff(
   )
   return lines.join('\n')
 }
+
+/**
+ * A row of ranked blueprint search, as the deployment's `search_blueprint`
+ * function returns one.
+ *
+ * Deliberately loose about the columns this rendering does not read: the
+ * function is a DEPLOYMENT's, so a deployment may return more (scores,
+ * timestamps) and this must keep working when it does.
+ */
+export type BlueprintSearchRow = {
+  kind: string
+  id: string
+  snippet?: string | null
+  description?: string | null
+  lane?: string | null
+  step?: string | null
+  scenario?: string | null
+  phase?: string | null
+  path?: string | null
+  matched_by?: string | null
+  total_matched?: number | null
+}
+
+/** Which arms of the search ran, and what the scope did to the rows. */
+export type BlueprintSearchArms = {
+  /** Did the question get embedded and a meaning arm run? */
+  meaning: boolean
+  /**
+   * The function's own corpus-wide total, which is what the header promises.
+   * Passed in rather than read off row zero because a scope filter can empty
+   * the rows while leaving that number true and load-bearing.
+   */
+  total: number
+  /**
+   * Present when the read was confined to one service, and every number here
+   * is about the ROWS THE FUNCTION RETURNED — its clipped top-k — not the
+   * corpus. That distinction is the whole reason these are separate fields:
+   * a service can hold hundreds of matches and appear in none of the returned
+   * rows simply by losing the ranking, so nothing here may be phrased as a
+   * fact about the service.
+   */
+  scope?: {
+    name: string
+    /** How many rows the function returned before any of this filtering. */
+    returned: number
+    /** Rows placed in a different service. */
+    otherService: number
+    /** Rows no service could claim: more than one owns that phase name. */
+    ambiguous: number
+    /** Rows carrying no phase breadcrumb, which the contract requires. */
+    unplaceable: number
+  }
+}
+
+/**
+ * Ranked matches, and — this is the load-bearing part — an honest account of
+ * WHICH ARMS RAN.
+ *
+ * A zero-row answer is where a search tool does its worst damage. "Nothing
+ * matches" invites the model to report that the blueprint has no such moment,
+ * and on a keyword-only run that inference is simply wrong: the moment can be
+ * mapped in different words. So the empty text names the arms that ran and
+ * says what their silence does and does not prove, and it says something
+ * DIFFERENT when meaning matching ran, because then a near-miss in other
+ * words would have been found.
+ *
+ * The header carries the corpus-wide total for the same reason `list_` says
+ * when it clipped: a top-k answer must not read as the whole set.
+ */
+export function formatBlueprintSearch(
+  rows: readonly BlueprintSearchRow[],
+  query: string,
+  arms: BlueprintSearchArms,
+): string {
+  const how = arms.meaning ? 'words and meaning' : 'words only'
+  const unplaced = arms.scope
+    ? [
+        arms.scope.ambiguous > 0
+          ? `${arms.scope.ambiguous} in a phase name more than one service uses`
+          : '',
+        arms.scope.unplaceable > 0
+          ? `${arms.scope.unplaceable} carrying no phase at all`
+          : '',
+      ].filter(Boolean)
+    : []
+  const couldNotPlace =
+    unplaced.length > 0
+      ? ` Some rows could not be placed in any service: ${unplaced.join(', ')} — narrow with phase or scenario, or pass service:"all".`
+      : ''
+  if (rows.length === 0) {
+    // A scope that emptied the rows is NOT an empty result — and it is also
+    // not proof the service has no match. The function RANKED AND CLIPPED
+    // first, so all this knows is that the top-k landed elsewhere. Saying
+    // "none of them are in <service>" would be a claim about the corpus made
+    // from the top of a list, and it would send the caller to service:"all",
+    // the one remedy that cannot surface the in-scope rows.
+    if (arms.scope && arms.scope.returned > 0)
+      return `The top ${arms.scope.returned} of ${arms.total} rows matching "${query}" (${how}) are all outside ${arms.scope.name}. That is a fact about the TOP of the ranking, not about ${arms.scope.name} — it may hold matches that lost to rows elsewhere. To find them: add phase or scenario from ${arms.scope.name}, or raise limit. Pass service:"all" to see the rows that did come back. Never report this as the blueprint not covering it.${couldNotPlace}`
+    return arms.meaning
+      ? `Nothing matches "${query}" by words or by meaning. Both arms ran, so a moment described in OTHER words would have been found — but say "nothing in the blueprint matched this search", not "the blueprint does not cover this". list_blueprint shows what exists.`
+      : `Nothing matches the words "${query}". This search matched WORDS ONLY — no meaning matching ran — so that means no row USES those words, and NOT that the blueprint has no such moment. Try the board's own vocabulary, or list_blueprint to see what exists.`
+  }
+  const total = arms.total
+  const header = arms.scope
+    ? `${rows.length} shown, in ${arms.scope.name}, from the top ${arms.scope.returned} of ${total} matching across the deployment (${how}):${couldNotPlace}`
+    : `${rows.length} shown of ${total} matching (${how}):`
+  const lines = rows.map((row) => {
+    const where = [row.phase, row.scenario, row.path, row.step, row.lane]
+      .filter(Boolean)
+      .join(' › ')
+    // A structural row IS its breadcrumb, so its name is not repeated; a cell
+    // is identified by its content, first line only.
+    const body =
+      row.kind === 'cell'
+        ? `"${(row.snippet ?? '').split('\n')[0]}"`
+        : `"${row.snippet ?? ''}"`
+    const detail = row.description ? ` — ${row.description}` : ''
+    const matched = row.matched_by ? `  [${row.matched_by}]` : ''
+    return `[${row.kind}] ${body} · ${where}${detail} (${row.id})${matched}`
+  })
+  return [header, ...lines].join('\n')
+}

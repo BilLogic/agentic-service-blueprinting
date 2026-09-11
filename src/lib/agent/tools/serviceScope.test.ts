@@ -7,7 +7,6 @@ import type { Database } from '@/types/database'
 import {
   resolveServiceScope,
   serviceStakeholderIds,
-  servicePhaseNames,
 } from '@/lib/agent/tools/serviceScope'
 import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { __resetActiveServiceIdCache } from '@/lib/service'
@@ -244,18 +243,6 @@ describe('the words about an omitted service match the behaviour', () => {
       expect(readFileSync(GENERATED_ADAPTER, 'utf8')).toBe(readFileSync(SOURCE_ADAPTER, 'utf8'))
     },
   )
-})
-
-describe('servicePhaseNames', () => {
-  it("returns the service's phase names, lowercased", async () => {
-    const client = fakeClient((rec) =>
-      rec.table === 'phases'
-        ? { data: [{ name: 'Onboarding' }, { name: 'In-session' }], error: null }
-        : { data: [], error: null },
-    )
-    const names = await servicePhaseNames(client, 'svc-sales')
-    expect([...names].sort()).toEqual(['in-session', 'onboarding'])
-  })
 })
 
 describe('serviceStakeholderIds — the implicit-membership JOIN', () => {

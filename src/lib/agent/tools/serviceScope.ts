@@ -84,28 +84,6 @@ export async function resolveActiveServiceId(client: Client): Promise<string> {
   return (await findActiveServiceId(client)) ?? (await resolveFirstServiceId(client))
 }
 
-/**
- * The (lowercased) phase names in a service's journey.
- *
- * A blueprint-wide search returns rows with no service column of their own. The
- * journey is a HARD per-service boundary, so a service's rows are exactly those
- * under its phases, and a search that reports each row's phase name as its
- * breadcrumb can be post-filtered by this set. Name, not id, is the only
- * per-service key such a breadcrumb surfaces — a limitation that only bites the
- * (unusual) case of two services sharing a phase name.
- */
-export async function servicePhaseNames(
-  client: Client,
-  serviceId: string,
-): Promise<Set<string>> {
-  const { data, error } = await client
-    .from('phases')
-    .select('name')
-    .eq('service_id', serviceId)
-  if (error) throw new Error(error.message)
-  return new Set((data ?? []).map((row) => (row.name ?? '').toLowerCase()))
-}
-
 async function selectIds(
   query: PromiseLike<{ data: Array<{ id: string }> | null; error: { message: string } | null }>,
 ): Promise<string[]> {
