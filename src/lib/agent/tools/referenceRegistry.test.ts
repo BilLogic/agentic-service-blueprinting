@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
@@ -16,11 +17,29 @@ describe('the reference registry', () => {
   it('is empty in the standalone template', async () => {
     const { REFERENCE_NAMES } = await import('@/lib/agent/tools/referenceNames')
     const { REFERENCE_DOCS } = await import('@/lib/agent/tools/referenceDocs')
+    const { REFERENCE_NAMES_EXTRA } = await import(
+      '@/lib/agent/tools/referenceNamesExtra'
+    )
     expect(REFERENCE_NAMES).toContain('canvas-adapter')
     expect(REFERENCE_NAMES).not.toContain('blueprint')
+    expect(REFERENCE_NAMES_EXTRA).toEqual([])
     expect(Object.keys(REFERENCE_DOCS).sort()).toEqual(
       [...REFERENCE_NAMES].sort(),
     )
+  })
+
+  /**
+   * A generated account is a deployment's own content. The template loader must
+   * stay byte-identical after a deployment adopts it, so extra names arrive
+   * only through `REFERENCE_NAMES_EXTRA` (copy) or `registerReferenceDocs`
+   * (mount) — never a path import of another repo's file.
+   */
+  it('the template loader imports no generated account by path', () => {
+    const docs = readFileSync(new URL('./referenceDocs.ts', import.meta.url), 'utf8')
+    const names = readFileSync(new URL('./referenceNames.ts', import.meta.url), 'utf8')
+    expect(docs).not.toMatch(/blueprint\.md/)
+    expect(docs).not.toMatch(/from ['"][^'"]*\/docs\//)
+    expect(names).not.toMatch(/blueprint\.md/)
   })
 
   it("a deployment's own document is served, and named after the adapter", async () => {

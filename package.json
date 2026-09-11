@@ -72,7 +72,9 @@
     "check:deployment-seed-load": "node scripts/check-deployment-seed-loads.mjs",
     "check:glossary": "node scripts/check-glossary-only.mjs",
     "interface-map": "node scripts/generate-interface-schema-map.mjs",
-    "check:interface-map": "node scripts/generate-interface-schema-map.mjs --check"
+    "check:interface-map": "node scripts/generate-interface-schema-map.mjs --check",
+    "agent-account": "node scripts/generate-agent-account.mjs",
+    "check:agent-account": "node scripts/generate-agent-account.mjs --check"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

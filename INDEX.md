@@ -26,6 +26,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | Write or change an audit check | references/audit-playbook.md |
 | Fork this template and change it for my org | references/customization.md |
 | Connect the app to a database; what a column means; row-level security | docs/connectors/supabase/database.md |
+| Generate a deployment's agent account from a connected database | docs/agents/blueprint.md |
 | My migration history desynced from upstream | docs/connectors/supabase/database.md |
 | Bring a backend that is not Supabase | references/adapter-contract.md + supabase/generated/portable-core.generated.sql |
 | CI went red and I do not know what the check defends | docs/engineering/checks.md |
@@ -77,4 +78,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-35 protocol documents are indexed in [docs/index.md](./docs/index.md).
+36 protocol documents are indexed in [docs/index.md](./docs/index.md).
