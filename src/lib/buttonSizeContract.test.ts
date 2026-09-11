@@ -29,7 +29,7 @@
  *    only its type, so it sits next to an untouched sibling a fraction of a
  *    pixel off. Changing BOTH is a different control rather than a near-miss,
  *    and five call sites are: the filter and ledger openers, the replace and
- *    retry controls and the scenario action all pair `h-6` with `text-2xs`, a
+ *    retry controls and the scenario action all pair `h-6` with `text-xs`, a
  *    whole step down the ladder rather than a wobble on one rung.
  *
  * The rung is read off `buttonVariants` rather than spelled out here, so a

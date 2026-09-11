@@ -36,8 +36,8 @@ import { classUsesMatching, sourceFiles, sourceMatching } from '@/lib/tokenModel
  *
  * Three rules are NEW here rather than widened, and they are the reason this
  * conversion is worth more than a scope change. `styles/theme.css` already
- * declares the rungs — `--text-4xs`, `--text-5xs`, `--text-5xl`, the radius
- * ladder — because that sheet converged with the deployment's ahead of this.
+ * declares the rungs — `--text-5xl`, the radius ladder — because that sheet
+ * converged with the deployment's ahead of this.
  * The vocabulary was there and nothing held the call sites to it, so nine bare
  * `rounded`, five bracketed z-indexes and four font-size literals had
  * accumulated against rungs that already existed. A token nothing enforces is
@@ -330,19 +330,17 @@ test('z-index is spelled one way, so a contract cannot pin the other', () => {
 /**
  * A font size written out is a rung that was never added.
  *
- * The type scale bottoms out below Tailwind's, on purpose: `--text-2xs` (11px)
- * and `--text-3xs` (10px) exist because the editor's dense chrome kept writing
- * `text-[11px]`/`text-[10px]`, and naming them made the ladder reusable.
- * `--text-4xs` (9px), `--text-5xs` (8px) and `--text-5xl` (40px) are already
- * declared in `styles/theme.css` for exactly the same reason — and four call
- * sites were still writing the literal, because nothing in this repository
- * asked them not to.
+ * The type scale floors at `xs` (12px). ADR 0012: a rung is chosen for the
+ * text's job, never to fit a container. `--text-5xl` is already declared in
+ * `styles/theme.css` for the same reason a literal is forbidden — and four
+ * call sites were still writing the literal, because nothing in this
+ * repository asked them not to.
  *
  * The rule reads px AND rem, because a px-scoped pattern leaves the identical
  * gap open at the top of the scale: the two display headings were written in
  * rem — `text-[2.5rem]` on the scenario slide title, `sm:text-[2.25rem]` on the
- * cover title — and neither is a px literal. 40px is `--text-5xl` and 36px was
- * already Tailwind's `text-4xl`.
+ * cover title — and neither is a px literal. `--text-5xl` is the top rung
+ * (46px sans / 48px mono) and 36px was already Tailwind's `text-4xl`.
  *
  * `em` is NOT covered, and that is a rule rather than a hole. `text-[0.85em]`
  * and `text-[0.8em]` on markdown inline and fenced code are a proportion
@@ -403,7 +401,7 @@ test('font sizes come from a named rung, not a px or rem literal', () => {
   assert.deepEqual(
     offenders,
     [],
-    `Arbitrary font size — name the rung in styles/theme.css instead (text-2xs / -3xs / -4xs / -5xs below text-xs, text-4xl / -5xl above text-3xl):\n${offenders.join('\n')}`,
+    `Arbitrary font size — name the rung in styles/theme.css instead (text-xs is the floor; text-4xl / -5xl above text-3xl):\n${offenders.join('\n')}`,
   )
 })
 
