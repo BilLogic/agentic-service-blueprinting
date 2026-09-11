@@ -24,15 +24,15 @@
  * dynamically.
  */
 
+import { WRITE_TOOL_NAMES } from './surface.mjs'
+
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-const WRITES = new Set([
-  'create_step', 'create_lane', 'upsert_cell', 'update_cell',
-  'update_cell', 'create_cell_dependency', 'update_path',
-  'create_phase', 'create_scenario', 'create_path', 'duplicate_path',
-  'duplicate_scenario',
-  'create_slice', 'update_slice', 'replace_slides',
-  'create_finding', 'update_finding',
-])
+
+// What counts as a write is the app's own write roster, from the bundle the
+// runner loads. A list restated here drifts the way any copy does: it named
+// one tool twice and missed the evidence and stakeholder writes, so "no
+// writes before the nod" passed while the agent recorded a source.
+const WRITES = WRITE_TOOL_NAMES
 
 const writesIn = (trace, turn) =>
   trace.filter((t) => WRITES.has(t.name) && (turn === undefined || t.turn === turn))

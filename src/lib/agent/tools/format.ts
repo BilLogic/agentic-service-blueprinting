@@ -10,7 +10,7 @@ import {
   type CompareBlueprints,
   type CompareSlot,
 } from '@/lib/compareSlots'
-import type { BlueprintData } from '@/types/blueprint'
+import type { BlueprintData, CellResource } from '@/types/blueprint'
 
 /**
  * The read tools' TEXT SHAPE, with no data source attached.
@@ -46,10 +46,36 @@ export function formatScenarioList(phases: ScenarioListPhase[]): string {
   return lines.join('\n') || 'No phases found.'
 }
 
-/** One section per path: header, step row, then lane-by-lane cell lines. */
+type DependencyEdge = {
+  id: string
+  source_cell_id: string
+  target_cell_id: string
+  kind?: string | null
+  name?: string | null
+}
+
+/**
+ * One dependency edge, source-first — the direction both kinds read in
+ * (`A leads_to B`, `A enables B`), so the arrow in the text points the way
+ * the arrow on the canvas does. The grid read and the edge list print an edge
+ * the same way, so an id read in one is found in the other.
+ */
+function dependencyLine(edge: DependencyEdge): string {
+  const name = edge.name ? ` "${edge.name}"` : ''
+  return `${edge.source_cell_id} --${edge.kind ?? 'leads_to'}--> ${edge.target_cell_id}${name} (${edge.id})`
+}
+
+/**
+ * One section per path: header, step row, lane-by-lane cell lines, then the
+ * path's dependency edges.
+ *
+ * The edges are part of the grid because the board query already joins them
+ * and the canvas already draws them. Leaving them out made the grid read the
+ * one place an agent could not see an arrow it had just written.
+ */
 export function formatBlueprints(blueprints: readonly BlueprintData[]): string {
   const sections: string[] = []
-  for (const { path, steps, lanes, cells } of blueprints) {
+  for (const { path, steps, lanes, cells, dependencies } of blueprints) {
     const lines: string[] = [
       `Path "${path.name}" (${path.id}, type ${path.kind})`,
       `Steps: ${steps
@@ -75,6 +101,10 @@ export function formatBlueprints(blueprints: readonly BlueprintData[]): string {
         }
       }
     }
+    if (dependencies.length > 0) {
+      lines.push(`Edges (${dependencies.length}):`)
+      for (const edge of dependencies) lines.push(`  ${dependencyLine(edge)}`)
+    }
     sections.push(lines.join('\n'))
   }
   return sections.join('\n\n')
@@ -86,6 +116,20 @@ export function formatFields(fields: Array<[string, unknown]>): string {
     .filter(([, value]) => value !== null && value !== undefined && value !== '')
     .map(([key, value]) => `${key}: ${String(value)}`)
     .join('\n')
+}
+
+/**
+ * A cell's resources as one field value: each one's name then its url, in the
+ * order the author put them. Null when there are none, so `formatFields` drops
+ * the line rather than printing an empty one.
+ */
+export function formatResources(
+  resources: readonly CellResource[],
+): string | null {
+  if (resources.length === 0) return null
+  return resources
+    .map((resource) => `${resource.name} ${resource.url ?? ''}`.trim())
+    .join('; ')
 }
 
 export function formatSliceList(
@@ -163,19 +207,9 @@ export function formatStakeholderList(
     .join('\n')
 }
 
-/**
- * The dependency edges, source-first — the direction both kinds read in
- * (`A leads_to B`, `A enables B`), so the arrow in the text points the way
- * the arrow on the canvas does.
- */
+/** The dependency edges on their own, one `dependencyLine` each. */
 export function formatCellDependencies(
-  rows: ReadonlyArray<{
-    id: string
-    source_cell_id: string
-    target_cell_id: string
-    kind?: string | null
-    name?: string | null
-  }>,
+  rows: ReadonlyArray<DependencyEdge>,
   cellId?: string,
 ): string {
   if (rows.length === 0) {
@@ -184,11 +218,7 @@ export function formatCellDependencies(
   const header = cellId
     ? `${rows.length} link(s) touching ${cellId}:`
     : `${rows.length} link(s)${rows.length === 200 ? ' (capped at 200)' : ''}:`
-  const lines = rows.map((edge) => {
-    const name = edge.name ? ` "${edge.name}"` : ''
-    return `${edge.source_cell_id} --${edge.kind ?? 'leads_to'}--> ${edge.target_cell_id}${name} (${edge.id})`
-  })
-  return [header, ...lines].join('\n')
+  return [header, ...rows.map(dependencyLine)].join('\n')
 }
 
 export type EvidenceLineRow = {

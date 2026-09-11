@@ -110,6 +110,28 @@ describe('sample reads resolve from the bundled fallbacks', () => {
     for (const tag of expected) expect(text).toContain(tag)
   })
 
+  it('shows the arrows in the grid, the way the database read does', () => {
+    const [scenarioId, blueprints] = Object.entries(
+      SAMPLE_BLUEPRINTS_BY_SCENARIO,
+    ).find(([, list]) => list.some((blueprint) => blueprint.dependencies.length > 0))!
+    const edge = blueprints.flatMap((blueprint) => blueprint.dependencies)[0]!
+    const grid = sampleGetBlueprint(scenarioId)
+    expect(grid).toContain('Edges (')
+    expect(grid).toContain(
+      `${edge.source_cell_id} --${edge.kind ?? 'leads_to'}--> ${edge.target_cell_id}`,
+    )
+  })
+
+  it("reads a cell's resources, the way the database read does", () => {
+    const cell = Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)
+      .flat()
+      .flatMap((blueprint) => blueprint.cells)
+      .find((entry) => (entry.resources ?? []).length > 0)
+    expect(cell).toBeTruthy()
+    const first = cell!.resources![0]!
+    expect(sampleGetCell(cell!.id)).toContain(`resources: ${first.name}`)
+  })
+
   it('answers for an unknown scenario or cell instead of throwing', () => {
     expect(sampleGetBlueprint('nope')).toBe('No paths in this scenario.')
     expect(sampleGetCell('nope')).toBe('No cell with id nope.')
