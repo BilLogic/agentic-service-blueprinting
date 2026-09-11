@@ -1,55 +1,75 @@
 import { describe, expect, it } from 'vitest'
-import { classListOf } from '@/lib/classList'
-import { PANEL_TEXT } from '@/lib/panelText'
+import { classListHas, classLists } from '@/lib/classList'
+import { sourceFiles } from '@/lib/tokenModel'
 
 /**
- * Title / label / value / meta at 12–13px, distinguished by weight and
- * colour alone. ADR 0012: one pixel is not a signal, so the hierarchy
- * size used to carry moves onto those two axes. Colour takes over the
- * value-vs-meta split.
+ * Former `PANEL_TEXT` class lists, copied from `src/lib/panelText.ts` on
+ * origin/main after #533. #537 retires the constant; the 21 JSX call sites
+ * must still write these utilities. #535 moves meta and sectionLabel off
+ * `text-2xs`; this ticket does not.
  */
+const FORMER_PANEL_TEXT = {
+  title: 'min-w-0 text-sm font-semibold leading-normal text-foreground',
+  meta: 'text-2xs font-normal leading-tight text-muted-foreground',
+  sectionLabel: 'text-2xs font-medium text-muted-foreground',
+  value: 'text-sm font-normal text-foreground/80',
+} as const
 
-const WEIGHT = /^font-(normal|medium|semibold)$/
-const COLOUR = /^text-(foreground|muted-foreground)/
+type PanelRole = keyof typeof FORMER_PANEL_TEXT
 
 /**
- * The weight and colour utilities a panel role writes.
- *
- * Missing weight is 400 — the working weight need not be spelled. The
- * test still records it so two roles that share a colour cannot hide
- * behind an omitted class.
- *
- * @param classes - a PANEL_TEXT role
+ * Per-file counts of `PANEL_TEXT.*` JSX sites on origin/main after #533.
+ * #537 cites 28; the tree holds 21. The test enumerates those 21 so a
+ * coincidental `text-2xs font-medium text-muted-foreground` elsewhere
+ * cannot satisfy a missing call site.
  */
-function weightAndColour(classes: string): { weight: string; colour: string } {
-  const list = classListOf(classes)
-  const weight = list.find((token) => WEIGHT.test(token))
-  const colour = list.find((token) => COLOUR.test(token))
-  expect(weight, `a weight utility on ${classes}`).toBeDefined()
-  expect(colour, `a colour utility on ${classes}`).toBeDefined()
-  return { weight: weight!, colour: colour! }
+const FORMER_SITE_COUNTS: Readonly<
+  Record<string, Partial<Record<PanelRole, number>>>
+> = {
+  'components/blueprint/BlueprintCellDetailPanel.tsx': { title: 3, value: 1 },
+  'components/blueprint/CellContentSection.tsx': {
+    sectionLabel: 1,
+    value: 1,
+  },
+  'components/blueprint/CellPanelEditor.tsx': { meta: 1, sectionLabel: 1 },
+  'components/blueprint/LanePanel.tsx': { value: 1 },
+  'components/blueprint/PanelSectionLabel.tsx': { sectionLabel: 1 },
+  'components/blueprint/ResourcesList.tsx': { sectionLabel: 1 },
+  'components/blueprint/StakeholderSelect.tsx': { meta: 3, value: 1 },
+  'components/blueprint/StepPanel.tsx': { meta: 1, value: 1 },
+  'components/blueprint/panelShell.tsx': {
+    title: 1,
+    meta: 2,
+    sectionLabel: 1,
+  },
 }
 
-describe('PANEL_TEXT', () => {
-  it('distinguishes title, label, value and meta by weight and colour', () => {
-    const title = weightAndColour(PANEL_TEXT.title)
-    const label = weightAndColour(PANEL_TEXT.sectionLabel)
-    const value = weightAndColour(PANEL_TEXT.value)
-    const meta = weightAndColour(PANEL_TEXT.meta)
+describe('the former PANEL_TEXT call sites', () => {
+  it('still write the classes the constant resolved to', { timeout: 20_000 }, () => {
+    const sites = classLists()
+    let total = 0
+    for (const [file, roles] of Object.entries(FORMER_SITE_COUNTS)) {
+      for (const [role, expected] of Object.entries(roles) as [
+        PanelRole,
+        number,
+      ][]) {
+        const count = sites.filter(
+          (site) =>
+            site.file === file &&
+            classListHas(site.classes, FORMER_PANEL_TEXT[role]),
+        ).length
+        expect(count, `${file} ${role}`).toBe(expected)
+        total += expected
+      }
+    }
+    expect(total).toBe(21)
+  })
 
-    expect(title).toEqual({ weight: 'font-semibold', colour: 'text-foreground' })
-    expect(label).toEqual({
-      weight: 'font-medium',
-      colour: 'text-muted-foreground',
-    })
-    expect(value.weight).toBe('font-normal')
-    expect(meta.weight).toBe('font-normal')
-    expect(value.colour).not.toBe(meta.colour)
-    expect(meta.colour).toBe('text-muted-foreground')
-
-    const signatures = [title, label, value, meta].map(
-      (role) => `${role.weight} ${role.colour}`,
-    )
-    expect(new Set(signatures).size).toBe(4)
+  it('and the tree names no PANEL_TEXT identifier', () => {
+    const hits = sourceFiles().filter((file) => /\bPANEL_TEXT\b/.test(file.code))
+    expect(
+      hits.map((file) => file.file),
+      'PANEL_TEXT remains in the tree',
+    ).toEqual([])
   })
 })

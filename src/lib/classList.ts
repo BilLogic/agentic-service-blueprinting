@@ -94,7 +94,7 @@ export function classListHas(
  *    to the call site, because a guard asks whether the site *contains*
  *    these classes, not whether it always applies them
  *
- * Named constants (`PANEL_TEXT.meta`, `MONO_NUM_CLASS`) expand when the
+ * Named constants (`CANVAS_HEADER_TEXT`, `MONO_NUM_CLASS`) expand when the
  * same source declares them, or when `names` carries a table built from
  * the rest of the tree.
  */
@@ -118,7 +118,7 @@ export function classListsIn(
  * whole of `src`, comments stripped, tests excluded — so a guard written
  * against this reader and a guard written against the token model are
  * looking at the same tree. Named class-list constants resolve across
- * files: `cn(PANEL_TEXT.meta, 'truncate')` is the named list plus
+ * files: `cn(CANVAS_HEADER_TEXT, 'truncate')` is the named list plus
  * `truncate`, not `truncate` alone.
  */
 export function classLists(): ClassListSite[] {
@@ -176,8 +176,8 @@ function looksLikeClassList(classes: readonly string[]): boolean {
  * Named class-list constants declared in `source`.
  *
  * `const MONO_NUM_CLASS = 'font-mono tabular-nums'` stores under
- * `MONO_NUM_CLASS`. `PANEL_TEXT = { meta: 'text-2xs …' }` stores under
- * `PANEL_TEXT.meta`. The names are how a later `cn(PANEL_TEXT.meta, 'truncate')`
+ * `MONO_NUM_CLASS`. An object of class strings stores each property as
+ * `Name.property`. The names are how a later `cn(MONO_NUM_CLASS, 'truncate')`
  * becomes one list instead of the extra class alone.
  */
 function namedClassListsIn(source: string): Map<string, string[]> {
@@ -307,7 +307,7 @@ function stringLiteralsIn(text: string): string[] {
 }
 
 /**
- * Resolvable names in `text`: `PANEL_TEXT.meta`, `MONO_NUM_CLASS`.
+ * Resolvable names in `text`: `CANVAS_HEADER_TEXT`, `MONO_NUM_CLASS`.
  *
  * Camel-case identifiers are props and predicates (`className`, `isOn`) and
  * are not looked up. A name followed by `(` is a call, not a class list.

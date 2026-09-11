@@ -39,7 +39,6 @@ import {
   type PlacementDetailColumns,
   type PlacementDetailDraft,
 } from '@/lib/touchpointMutations'
-import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
 import type { BlueprintData, CellResource, CellTouchpoint } from '@/types/blueprint'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
@@ -539,7 +538,7 @@ function CellPanelEditorForm({
           onChange={(event) => set('content', event.target.value)}
         />
         {lengthGuidance.message ? (
-          <p role="status" className={PANEL_TEXT.meta}>
+          <p role="status" className="text-2xs font-normal leading-tight text-muted-foreground">
             {lengthGuidance.message}
           </p>
         ) : null}
@@ -562,7 +561,7 @@ function CellPanelEditorForm({
       {placement ? (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
           <div className="flex flex-col gap-0.5">
-            <span className={PANEL_TEXT.sectionLabel}>
+            <span className="text-2xs font-medium text-muted-foreground">
               “{placement.name}” at this step
             </span>
             <p className="text-3xs text-muted-foreground">

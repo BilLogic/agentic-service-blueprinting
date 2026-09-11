@@ -3,7 +3,6 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { classLists, type ClassListSite } from '@/lib/classList'
-import { PANEL_TEXT } from '@/lib/panelText'
 import { sourceFiles } from '@/lib/tokenModel'
 
 /**
@@ -11,9 +10,8 @@ import { sourceFiles } from '@/lib/tokenModel'
  * style helpers land on the new ladder. ADR 0012.
  *
  * The reader is `classLists` — a quoted-string search misses a token split
- * across `cn()` arguments. `PANEL_TEXT.meta` / `sectionLabel` stay on
- * `text-2xs` until #537 retires the role layer; every other authored class
- * on these surfaces is at `xs` or above.
+ * across `cn()` arguments. #537 retired the panel role layer, so these
+ * surfaces name no rung below `xs`.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -38,7 +36,6 @@ function inScope(file: string): boolean {
     file.startsWith('components/cover/') ||
     file.startsWith('components/mobile/') ||
     file === 'components/EditorErrorBoundary.tsx' ||
-    file === 'lib/panelText.ts' ||
     file === 'lib/filterToolbarButton.ts'
   )
 }
@@ -122,30 +119,13 @@ function uncommentedLeading(file: string): string[] {
   return offenders
 }
 
-describe('PANEL_TEXT is the one helper still below xs', () => {
-  it('keeps meta and sectionLabel on 2xs until the role layer retires', () => {
-    expect(PANEL_TEXT.meta.split(/\s+/)).toContain('text-2xs')
-    expect(PANEL_TEXT.sectionLabel.split(/\s+/)).toContain('text-2xs')
-  })
-
-  it('does not write a sub-xs rung on title or value', () => {
-    expect(PANEL_TEXT.title.split(/\s+/).some((token) => SUB_XS.test(token))).toBe(
-      false,
-    )
-    expect(PANEL_TEXT.value.split(/\s+/).some((token) => SUB_XS.test(token))).toBe(
-      false,
-    )
-  })
-})
-
 describe('authored classes on these surfaces', () => {
-  it('name no rung below xs, other than inside PANEL_TEXT', { timeout: 20_000 }, () => {
-    const offenders = scopedSites(classLists()).filter((site) => {
-      if (site.file === 'lib/panelText.ts') return false
-      return site.classes.some(
+  it('name no rung below xs', { timeout: 20_000 }, () => {
+    const offenders = scopedSites(classLists()).filter((site) =>
+      site.classes.some(
         (token) => SUB_XS.test(token) || ARBITRARY_SIZE.test(token),
-      )
-    })
+      ),
+    )
     expect(offenders.map(describeSite), offenders.map(describeSite).join('\n')).toEqual(
       [],
     )

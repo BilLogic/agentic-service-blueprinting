@@ -1,4 +1,3 @@
-import { PANEL_TEXT } from '@/lib/panelText'
 import { cn } from '@/lib/utils'
 
 /**
@@ -24,6 +23,6 @@ export function PanelSectionLabel({
   className?: string
 }) {
   return (
-    <span className={cn(PANEL_TEXT.sectionLabel, className)}>{children}</span>
+    <span className={cn('text-2xs font-medium text-muted-foreground', className)}>{children}</span>
   )
 }

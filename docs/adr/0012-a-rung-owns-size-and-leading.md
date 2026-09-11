@@ -1,11 +1,11 @@
 ---
-summary: A text style is a rung, a weight and a colour — the rung owns size and leading, the call site owns weight and tracking, two ladders are selected by face, and a semantic type-role layer is the alternative this tree already tried.
+summary: A text style is a rung, a weight and a colour — the rung owns size and leading, the call site owns weight and tracking, two ladders are selected by face, a semantic type-role layer is the alternative this tree already tried, and the four panel judgements that layer held live in this record.
 ---
 
 # 12. A rung owns size and leading; a call site owns weight and tracking
 
 **Status** Accepted — 2026-09-10
-**Context** `src/styles/theme.css`, `src/lib/panelText.ts`,
+**Context** `src/styles/theme.css`,
 [ADR 0008](./0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md),
 issue #531
 
@@ -175,10 +175,18 @@ the text's job, never to fit a container.
 
 **A semantic type-role layer** (`PANEL_TEXT` grown until every call site
 asks for a role by name). Tried; 3.9% adoption; invisible at the call site;
-the reference has none. The judgements those four roles encoded — a panel
-title, meta that is never a restatement of the title, a field label, a
-value — outlive the constant and belong in this record when the constant
-goes, not as a second naming layer.
+the reference has none. The constant is retired. The four jobs it named
+are rules here, written at the call site as a rung, a weight and a colour:
+
+- **title** — a panel's heading is `text-sm`, semibold (600), full ink.
+- **meta** — counts and relationships under a title, and never a
+  restatement of the title.
+- **sectionLabel** — a field's name, always the same weight, size and
+  colour.
+- **value** — authored prose, the thing the panel exists to show.
+
+Under the ladder, title and value share `sm`; meta and sectionLabel share
+`xs`. Weight and colour separate them: 600 / 400 and 500 / 400-muted.
 
 **One register for monospace**, "machine-generated, full stop." It would
 break aligned numerals and the eyebrow register while claiming the

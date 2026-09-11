@@ -84,8 +84,7 @@ describe('heading tokens', () => {
   it('passes font-semibold on a named heading token even when the tag is not a heading', () => {
     expect(
       weightFaultsIn(`
-        const PANEL_TEXT = { title: 'min-w-0 text-sm font-semibold text-foreground' }
-        <p className={PANEL_TEXT.title}>Cell name</p>
+        <p className="min-w-0 text-sm font-semibold leading-normal text-foreground">Cell name</p>
       `),
     ).toEqual([])
   })
@@ -100,7 +99,7 @@ describe('heading tokens', () => {
       `heading token no longer written: ${stale.join(', ')}`,
     ).toEqual([])
     expect(code).toMatch(
-      /PANEL_TEXT[\s\S]{0,2000}title:\s*'[^']*font-semibold/,
+      /min-w-0 text-sm font-semibold leading-normal text-foreground/,
     )
     expect(code).toMatch(/CANVAS_HEADER_TEXT\s*=\s*'[^']*font-semibold/)
     expect(code).toMatch(
