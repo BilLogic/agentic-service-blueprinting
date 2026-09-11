@@ -29,6 +29,20 @@ import type { AgentSearchIndex } from '@/deploymentConfig'
  * carried in browser history, in proxy logs and in `Referer` headers, so the
  * key rides in `x-goog-api-key` instead. Changing that is a privacy
  * regression, and `embedQuestion.test.ts` fails if a key ever reaches a URL.
+ *
+ * ── EVERY FAILURE HERE IS AN EmbedQuestionError ────────────────────────────
+ *
+ * One exception type, thrown for every way this can fail — a rate limit, an
+ * outage, a blocked host, a body that is not JSON, a vector of the wrong
+ * width, a stall. That is not tidiness: the caller distinguishes "the meaning
+ * arm could not run" (fall back to words and structure) from "the search
+ * broke" (surface it), and the difference is THIS type. A `TypeError` escaping
+ * from `fetch` because the person is offline would be read as the second and
+ * would turn a bad connection into an empty blueprint.
+ *
+ * A caller's own abort is the one thing that passes through untouched: the
+ * person pressed Stop, and a keyword search running after that is work nobody
+ * asked for.
  */
 
 /** The provider's own embedding endpoints. Header auth on both. */
@@ -48,6 +62,27 @@ const OPENAI_BASE = 'https://api.openai.com/v1'
 const GOOGLE_TASK_TYPE = 'RETRIEVAL_QUERY'
 
 /**
+ * How long a question's embed may take before the words arm answers instead.
+ *
+ * There has to be a number. Without one, a provider endpoint that accepts the
+ * connection and then stalls hangs the tool call for as long as the tab is
+ * open, and the person sees a spinner rather than the keyword results they
+ * could have had. Eight seconds is the same bound the deployment-side bot
+ * puts on its own embed call.
+ */
+const TIMEOUT_MS = 8000
+
+/**
+ * A note on SCALE, because it is a real trap one layer down: Gemini's
+ * embedding models return a normalized vector at their native width and an
+ * UNNORMALIZED one when a smaller `outputDimensionality` is asked for — which
+ * is every call here, since an index column is narrower than the model. That
+ * is harmless for a function scoring with cosine distance, which normalizes as
+ * it goes, and wrong for one scoring with inner product, which does not. The
+ * contract doc tells a deployment to score with cosine for this reason.
+ */
+
+/**
  * A failed embed. Separate from a database error so the caller can tell "the
  * meaning arm could not run" from "the search itself broke" — the first falls
  * back to keyword and structural matching, the second surfaces.
@@ -59,39 +94,100 @@ export class EmbedQuestionError extends Error {
   }
 }
 
+/** Did this rejection come from the CALLER's abort rather than our own? */
+function isCallerAbort(error: unknown, signal?: AbortSignal): boolean {
+  return Boolean(signal?.aborted) && error instanceof Error && error.name === 'AbortError'
+}
+
+/**
+ * Run one provider call under a deadline, with every failure normalized.
+ *
+ * The caller's signal and the deadline are two different aborts and must not
+ * be confused: the first is the person pressing Stop and propagates, the
+ * second is a stalled provider and becomes a fallback.
+ */
+async function attempt<T>(
+  what: string,
+  signal: AbortSignal | undefined,
+  run: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal?.addEventListener('abort', abort)
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, TIMEOUT_MS)
+  try {
+    return await run(controller.signal)
+  } catch (error) {
+    if (isCallerAbort(error, signal)) throw error
+    if (timedOut) throw new EmbedQuestionError(`${what} timed out`)
+    if (error instanceof EmbedQuestionError) throw error
+    // Offline, DNS, TLS, a blocked host, a body that is not JSON: the meaning
+    // arm could not run, which is all the caller needs to know.
+    throw new EmbedQuestionError(
+      `${what} failed: ${error instanceof Error ? error.name : 'unknown error'}`,
+    )
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', abort)
+  }
+}
+
+/**
+ * The width check, and why it is here rather than left to the database.
+ *
+ * A deployment that lists 768 while its index column holds 1536 gets a
+ * pgvector error naming the widths — which is neither the `embedding model
+ * mismatch` the fallback watches for nor anything a person can act on, so the
+ * whole search would fail on a configuration slip. Caught here, it is a failed
+ * embed like any other and the words arm still answers.
+ */
+function checkedVector(
+  what: string,
+  values: number[] | undefined,
+  index: AgentSearchIndex,
+): number[] {
+  if (!values?.length) throw new EmbedQuestionError(`${what} returned no vector`)
+  if (values.length !== index.dimensions)
+    throw new EmbedQuestionError(
+      `${what} returned ${values.length} dimensions, not the ${index.dimensions} the index holds`,
+    )
+  return values
+}
+
 async function embedWithGoogle(
   question: string,
   index: AgentSearchIndex,
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<number[]> {
-  const response = await fetch(
-    `${GOOGLE_BASE}/models/${encodeURIComponent(index.model)}:embedContent`,
-    {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        // NOT `?key=` — see the module header.
-        'x-goog-api-key': apiKey,
+  const what = 'google embed'
+  return attempt(what, signal, async (inner) => {
+    const response = await fetch(
+      `${GOOGLE_BASE}/models/${encodeURIComponent(index.model)}:embedContent`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          // NOT `?key=` — see the module header.
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          model: `models/${index.model}`,
+          content: { parts: [{ text: question }] },
+          taskType: GOOGLE_TASK_TYPE,
+          outputDimensionality: index.dimensions,
+        }),
+        signal: inner,
       },
-      body: JSON.stringify({
-        model: `models/${index.model}`,
-        content: { parts: [{ text: question }] },
-        taskType: GOOGLE_TASK_TYPE,
-        outputDimensionality: index.dimensions,
-      }),
-      signal,
-    },
-  )
-  if (!response.ok)
-    throw new EmbedQuestionError(`google embed ${response.status}`)
-  const body = (await response.json()) as {
-    embedding?: { values?: number[] }
-  }
-  const values = body.embedding?.values
-  if (!values?.length)
-    throw new EmbedQuestionError('google embed returned no vector')
-  return values
+    )
+    if (!response.ok) throw new EmbedQuestionError(`${what} ${response.status}`)
+    const body = (await response.json()) as { embedding?: { values?: number[] } }
+    return checkedVector(what, body.embedding?.values, index)
+  })
 }
 
 async function embedWithOpenAi(
@@ -100,30 +196,29 @@ async function embedWithOpenAi(
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<number[]> {
-  const response = await fetch(`${OPENAI_BASE}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: index.model,
-      input: question,
-      // The listed size, always sent: OpenAI's default is the model's full
-      // width, and an index built at 768 cannot score a 1536-wide question.
-      dimensions: index.dimensions,
-    }),
-    signal,
+  const what = 'openai embed'
+  return attempt(what, signal, async (inner) => {
+    const response = await fetch(`${OPENAI_BASE}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: index.model,
+        input: question,
+        // The listed size, always sent: OpenAI's default is the model's full
+        // width, and an index built at 768 cannot score a 1536-wide question.
+        dimensions: index.dimensions,
+      }),
+      signal: inner,
+    })
+    if (!response.ok) throw new EmbedQuestionError(`${what} ${response.status}`)
+    const body = (await response.json()) as {
+      data?: Array<{ embedding?: number[] }>
+    }
+    return checkedVector(what, body.data?.[0]?.embedding, index)
   })
-  if (!response.ok)
-    throw new EmbedQuestionError(`openai embed ${response.status}`)
-  const body = (await response.json()) as {
-    data?: Array<{ embedding?: number[] }>
-  }
-  const values = body.data?.[0]?.embedding
-  if (!values?.length)
-    throw new EmbedQuestionError('openai embed returned no vector')
-  return values
 }
 
 /**

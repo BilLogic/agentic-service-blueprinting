@@ -526,6 +526,14 @@ drop these.
 | `matched_by` | which arm found this row, shown per result |
 | `total_matched` | the corpus-wide total, so a top-k answer is not read as the whole set |
 
+EVERY row must carry `phase`, including a phase's own row, which names itself.
+That column is how a read confined to one service places a row, because the
+function takes no service argument — a row without it cannot be placed and is
+dropped. And because `phases.name` is not unique across services, a phase name
+two services share places nothing either: those rows are dropped, counted, and
+reported, rather than handed to the wrong service. A deployment with several
+services is better off giving its phases distinct names.
+
 The function must raise an error whose message contains `embedding model
 mismatch` when `embed_model` names a model it holds no index for. Scoring a
 vector from the wrong space would rank noise and look like a working search;
@@ -551,6 +559,13 @@ Every listed entry therefore needs an index that already exists, built with
 exactly that model at exactly that size, and the document/query task types
 above are not interchangeable: swapping them produces an index that scores
 plausibly and ranks badly.
+
+Score with COSINE (pgvector's `<=>`), not inner product. Gemini's embedding
+models return a normalized vector at their native width and an unnormalized
+one whenever a smaller size is asked for — which is every call the template
+makes, since an index column is narrower than the model. Cosine normalizes as
+it scores and is unaffected; inner product is not, and would rank by vector
+length.
 
 Listing no index at all is a supported state, not a half-configured one: the
 tool is offered and runs the function's keyword and structural arms. What is

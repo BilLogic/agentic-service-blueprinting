@@ -18,6 +18,13 @@ import { EmbedQuestionError, embedQuestion } from '@/lib/agent/embedQuestion'
 
 const KEY = 'sk-a-persons-own-key-0123456789'
 
+/**
+ * A vector of the width the index below holds. Not decoration: a returned
+ * vector of the wrong width is a configuration fault this module catches, so
+ * every success case has to be the RIGHT width or it is testing the guard.
+ */
+const VECTOR = Array.from({ length: 768 }, (_, i) => (i % 13) / 13)
+
 const GOOGLE_INDEX = {
   provider: 'google' as const,
   model: 'gemini-embedding-001',
@@ -62,23 +69,25 @@ afterEach(() => {
 
 describe('embedQuestion — Google', () => {
   it('sends the index’s model, size and the question task type', async () => {
-    const calls = stubFetch({ embedding: { values: [0.1, 0.2, 0.3] } })
+    const calls = stubFetch({ embedding: { values: VECTOR } })
     const vector = await embedQuestion({
-      question: 'where do tutors get stuck?',
+      question: 'where does a first-time visitor get stuck?',
       index: GOOGLE_INDEX,
       apiKey: KEY,
     })
-    expect(vector).toEqual([0.1, 0.2, 0.3])
+    expect(vector).toEqual(VECTOR)
     expect(calls).toHaveLength(1)
     const body = JSON.parse(String(calls[0].init.body))
     expect(calls[0].url).toContain('gemini-embedding-001:embedContent')
     expect(body.taskType).toBe('RETRIEVAL_QUERY')
     expect(body.outputDimensionality).toBe(768)
-    expect(body.content.parts[0].text).toBe('where do tutors get stuck?')
+    expect(body.content.parts[0].text).toBe(
+      'where does a first-time visitor get stuck?',
+    )
   })
 
   it('puts the key in x-goog-api-key and NEVER in the URL', async () => {
-    const calls = stubFetch({ embedding: { values: [1] } })
+    const calls = stubFetch({ embedding: { values: VECTOR } })
     await embedQuestion({
       question: 'anything',
       index: GOOGLE_INDEX,
@@ -111,13 +120,13 @@ describe('embedQuestion — Google', () => {
 
 describe('embedQuestion — OpenAI', () => {
   it('sends the model and the listed size, keyed by an Authorization header', async () => {
-    const calls = stubFetch({ data: [{ embedding: [0.5, 0.6] }] })
+    const calls = stubFetch({ data: [{ embedding: VECTOR }] })
     const vector = await embedQuestion({
-      question: 'late call-off',
+      question: 'a missing document',
       index: OPENAI_INDEX,
       apiKey: KEY,
     })
-    expect(vector).toEqual([0.5, 0.6])
+    expect(vector).toEqual(VECTOR)
     const body = JSON.parse(String(calls[0].init.body))
     expect(calls[0].url).toBe('https://api.openai.com/v1/embeddings')
     expect(body.model).toBe('text-embedding-3-small')
@@ -137,10 +146,83 @@ describe('embedQuestion — OpenAI', () => {
 
 describe('embedQuestion — no key', () => {
   it('raises rather than calling the provider keyless', async () => {
-    const calls = stubFetch({ embedding: { values: [1] } })
+    const calls = stubFetch({ embedding: { values: VECTOR } })
     await expect(
       embedQuestion({ question: 'q', index: GOOGLE_INDEX, apiKey: '' }),
     ).rejects.toBeInstanceOf(EmbedQuestionError)
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('embedQuestion — every failure is an EmbedQuestionError', () => {
+  it('wraps a network-level rejection, so a bad connection is not a broken search', async () => {
+    // Offline, DNS, TLS, a blocked host: `fetch` itself rejects, and an
+    // escaping TypeError would surface as the search failing rather than the
+    // meaning arm being unavailable.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      }),
+    )
+    const error = await embedQuestion({
+      question: 'q',
+      index: GOOGLE_INDEX,
+      apiKey: KEY,
+    }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(EmbedQuestionError)
+    expect(String((error as Error).message)).not.toContain(KEY)
+  })
+
+  it('wraps a body that is not JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON')
+        },
+      }) as unknown as Response),
+    )
+    await expect(
+      embedQuestion({ question: 'q', index: GOOGLE_INDEX, apiKey: KEY }),
+    ).rejects.toBeInstanceOf(EmbedQuestionError)
+  })
+
+  it('refuses a vector of the wrong width rather than letting pgvector refuse it', async () => {
+    // A deployment listing 768 while its column holds another width would get
+    // a pgvector error the fallback does not recognise, and the whole search
+    // would fail on a configuration slip.
+    stubFetch({ embedding: { values: [0.1, 0.2, 0.3] } })
+    const error = await embedQuestion({
+      question: 'q',
+      index: GOOGLE_INDEX,
+      apiKey: KEY,
+    }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(EmbedQuestionError)
+    expect(String((error as Error).message)).toContain('768')
+  })
+
+  it('lets the caller’s own abort through, so Stop does not become a fallback', async () => {
+    const controller = new AbortController()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        controller.abort()
+        const error = new Error('aborted')
+        error.name = 'AbortError'
+        void init
+        throw error
+      }),
+    )
+    const error = await embedQuestion({
+      question: 'q',
+      index: GOOGLE_INDEX,
+      apiKey: KEY,
+      signal: controller.signal,
+    }).catch((e: unknown) => e)
+    expect(error).not.toBeInstanceOf(EmbedQuestionError)
+    expect((error as Error).name).toBe('AbortError')
   })
 })

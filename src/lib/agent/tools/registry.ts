@@ -209,11 +209,6 @@ function listBlueprintArgs(args: Record<string, unknown>): BlueprintListOptions 
 const SCENARIO_LEVELS = ['phase', 'scenario'] as const
 
 /**
- * Execute one tool call. Returns the text the model sees. Writes are
- * attributed to the agent session for the ledger's ✦ badge, and the query
- * cache is invalidated so the canvas repaints live.
- */
-/**
  * What one session may reach that another may not.
  *
  * Only ranked search needs this today, and it needs it because the capability
@@ -228,8 +223,18 @@ export type DispatchContext = {
    * for a keyword-and-structural run. Absent means the same as `null`.
    */
   meaning?: { index: AgentSearchIndex; apiKey: string } | null
+  /**
+   * The run's abort signal. Pressing Stop must reach a call that is waiting
+   * on somebody else's network, not just the gap between calls.
+   */
+  signal?: AbortSignal
 }
 
+/**
+ * Execute one tool call. Returns the text the model sees. Writes are
+ * attributed to the agent session for the ledger's ✦ badge, and the query
+ * cache is invalidated so the canvas repaints live.
+ */
 export async function dispatchTool(
   client: Client | null,
   agentSessionId: string,
@@ -269,6 +274,7 @@ export async function dispatchTool(
         limit: typeof args.limit === 'number' ? args.limit : undefined,
         scope: await readScope(client, args),
         meaning: context.meaning ?? null,
+        signal: context.signal,
       })
     case 'get_blueprint':
       return getBlueprint(client, need(args, 'scenario_id'))

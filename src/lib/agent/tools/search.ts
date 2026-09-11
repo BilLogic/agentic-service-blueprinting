@@ -3,14 +3,11 @@ import type { Database } from '@/types/database'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import { EmbedQuestionError, embedQuestion } from '@/lib/agent/embedQuestion'
 import {
+  GRANULARITY_LEVELS,
   formatBlueprintSearch,
   type BlueprintSearchRow,
 } from '@/lib/agent/tools/format'
-import {
-  SCOPE_ALL,
-  servicePhaseNames,
-  type ServiceScope,
-} from '@/lib/agent/tools/serviceScope'
+import { SCOPE_ALL, type ServiceScope } from '@/lib/agent/tools/serviceScope'
 
 type Client = SupabaseClient<Database>
 
@@ -84,6 +81,13 @@ function searchRpc(client: Client, args: SearchBlueprintArgs): Promise<SearchRes
 const DEFAULT_GRANULARITY = ['cell']
 const DEFAULT_LIMIT = 15
 const MAX_LIMIT = 100
+/**
+ * A floor as well as a cap. `limit: 0` is a number, so it survives the
+ * dispatcher's type check and would ask the function for nothing — which comes
+ * back as an empty result the model reads as "no such moment". One row is the
+ * smallest honest answer to a search.
+ */
+const MIN_LIMIT = 1
 
 /**
  * `embedding model mismatch` is the function's own refusal when the model
@@ -102,23 +106,61 @@ const MODEL_MISMATCH = /embedding model mismatch/i
  *
  * The journey is a hard per-service boundary, so a service's rows are exactly
  * those whose phase breadcrumb belongs to it. A deployment's search function
- * takes no service filter, so this narrows its output here instead —
- * meaning results are held to the same scope as every other read. `all`,
- * which includes every single-service deployment, passes straight through.
- * `total_matched` is rewritten to the kept count so the header stays honest
- * within the scope rather than quoting a deployment-wide total.
+ * takes no service filter, so this narrows its output here instead — meaning
+ * results are held to the same scope as every other read. `all`, which
+ * includes every single-service deployment, passes straight through.
+ *
+ * ── WHY A NAME IS NOT ENOUGH, AND WHAT IS DONE ABOUT IT ───────────────────
+ *
+ * The rows carry a phase NAME, not a phase id, and `phases.name` is not
+ * unique across services: two services may each own an "Intake". Placing a
+ * row by name alone would hand service A a row belonging to service B, which
+ * is the one thing a scoped read must never do. So a name owned by more than
+ * one service places nothing — those rows are dropped and COUNTED, and the
+ * text says so, because silently dropping them would read as "nothing
+ * matched". Narrowing with `phase` or `scenario` is the way out for a caller
+ * who hits it.
+ *
+ * A row with no phase name cannot be placed either, for the same reason. The
+ * contract doc requires every row to carry its phase breadcrumb — including a
+ * phase's own row, which names itself — precisely so this is reachable only
+ * by a deployment whose function breaks that promise.
  */
+type ScopedRows = {
+  rows: BlueprintSearchRow[]
+  /** Rows the function returned that this service could not claim. */
+  dropped: number
+  /** Of those, the ones no service could claim unambiguously. */
+  ambiguous: number
+}
+
 async function scopeRows(
   client: Client,
   rows: BlueprintSearchRow[],
   scope: ServiceScope,
-): Promise<BlueprintSearchRow[]> {
-  if (scope.kind === 'all') return rows
-  const phaseNames = await servicePhaseNames(client, scope.serviceId)
-  const kept = rows.filter(
-    (row) => row.phase != null && phaseNames.has(row.phase.toLowerCase()),
-  )
-  return kept.map((row) => ({ ...row, total_matched: kept.length }))
+): Promise<ScopedRows> {
+  if (scope.kind === 'all') return { rows, dropped: 0, ambiguous: 0 }
+  const { data, error } = await client.from('phases').select('name, service_id')
+  if (error) throw new Error(error.message)
+  const owners = new Map<string, Set<string>>()
+  for (const phase of data ?? []) {
+    const key = phase.name.toLowerCase()
+    const set = owners.get(key) ?? new Set<string>()
+    set.add(phase.service_id)
+    owners.set(key, set)
+  }
+  const kept: BlueprintSearchRow[] = []
+  let ambiguous = 0
+  for (const row of rows) {
+    const services = row.phase ? owners.get(row.phase.toLowerCase()) : undefined
+    if (!services || services.size === 0) continue
+    if (services.size > 1) {
+      ambiguous += 1
+      continue
+    }
+    if (services.has(scope.serviceId)) kept.push(row)
+  }
+  return { rows: kept, dropped: rows.length - kept.length, ambiguous }
 }
 
 export type BlueprintSearchOptions = {
@@ -159,12 +201,27 @@ export async function searchBlueprint(
   client: Client,
   options: BlueprintSearchOptions,
 ): Promise<string> {
+  const requested = options.granularity?.length
+    ? options.granularity
+    : DEFAULT_GRANULARITY
+  // Checked before anything is embedded or read, the way `list_blueprint`
+  // checks its own: a rung outside the vocabulary reaches a deployment's
+  // function as a word it does not know, comes back empty, and reads as "no
+  // row uses those words" — an absence the caller then reports.
+  const unknown = requested.filter(
+    (level) => !GRANULARITY_LEVELS.includes(level as never),
+  )
+  if (unknown.length > 0)
+    throw new Error(
+      `Unknown granularity: ${unknown.join(', ')}. Use one or more of ${GRANULARITY_LEVELS.join(', ')}.`,
+    )
   const base: SearchBlueprintArgs = {
     q: options.query,
-    granularity: options.granularity?.length
-      ? options.granularity
-      : DEFAULT_GRANULARITY,
-    match_count: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
+    granularity: requested,
+    match_count: Math.max(
+      MIN_LIMIT,
+      Math.min(Math.trunc(options.limit ?? DEFAULT_LIMIT), MAX_LIMIT),
+    ),
     ...(options.phase ? { filter_phase: options.phase } : {}),
     ...(options.scenario ? { filter_scenario: options.scenario } : {}),
     ...(options.pathKind ? { filter_path_kind: options.pathKind } : {}),
@@ -211,6 +268,23 @@ export async function searchBlueprint(
     meaningRan = false
   }
 
-  const scoped = await scopeRows(client, rows ?? [], options.scope ?? SCOPE_ALL)
-  return formatBlueprintSearch(scoped, options.query, { meaning: meaningRan })
+  const scope = options.scope ?? SCOPE_ALL
+  const returned = rows ?? []
+  const scoped = await scopeRows(client, returned, scope)
+  return formatBlueprintSearch(scoped.rows, options.query, {
+    meaning: meaningRan,
+    // The total stays the function's own — the corpus-wide count is what the
+    // header promises, and rewriting it to the in-scope count would report a
+    // clipped top-k as the whole matching set.
+    total: Number(returned[0]?.total_matched ?? returned.length),
+    ...(scope.kind === 'service'
+      ? {
+          scope: {
+            name: scope.serviceName,
+            dropped: scoped.dropped,
+            ambiguous: scoped.ambiguous,
+          },
+        }
+      : {}),
+  })
 }

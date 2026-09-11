@@ -414,6 +414,7 @@ export async function sendToAgent(input: {
       searchPlan.offered && searchPlan.index
         ? { index: searchPlan.index, apiKey }
         : null,
+    signal: controller.signal,
   }
   // The stable system prefix (role + adapter + skill — everything before
   // the live context) is byte-identical across this send's rounds; its
