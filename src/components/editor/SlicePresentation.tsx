@@ -261,7 +261,7 @@ export function SlicePresentation({
 
           <div className="min-w-0 flex-1 overflow-y-auto px-2">
             <div className="flex min-h-full flex-col items-center justify-center gap-4 py-4 text-center">
-              <p className="font-mono text-2xs font-medium tracking-[0.2em] text-muted-foreground/70 tabular-nums uppercase">
+              <p className="font-mono text-2xs font-medium text-muted-foreground/70 tabular-nums uppercase">
                 Slide {clampedSlide + 1} of {slideCount}
               </p>
               {stageMedia.length > 0 ? (
