@@ -121,12 +121,12 @@ const step = (family: string, weight: 1000 | 1100) =>
 /**
  * Names pinned to a slot in the open set, rather than left to the hash.
  *
- * The escape hatch, and the one declaration in this file a deployment is
- * expected to fill in: a board that holds several variants in one scenario can
- * hand-pick their slots here when the hash puts two of them closer together
- * than a reader can follow. The template ships none, because its own sample
- * names are its own and a kit should not pin a vocabulary its adopters do not
- * share.
+ * Written by {@link configurePathColorPins} from the deployment config, never
+ * authored here. A board that holds several variants in one scenario can
+ * hand-pick their slots when the hash puts two of them closer together than a
+ * reader can follow; the deployment says so on `pathColorPins`, and this file
+ * stays identical across installs. An empty table (the default) is the kit's
+ * own behaviour: every name hashes.
  *
  * A slot is a NUMBER, not a colour, and colour and stroke pattern are both
  * read from it — so the pair can never drift, which is the same guarantee the
@@ -142,7 +142,26 @@ const step = (family: string, weight: 1000 | 1100) =>
  * slot and back into the hash. A path's identity is what it is called; its
  * type is a fact about it.
  */
-const PINNED_PATH_SLOTS: Record<string, number> = {}
+let pinnedPathSlots: Record<string, number> = {}
+
+/**
+ * Replace the pin table {@link getPathColor} and {@link getPathDashArray} read.
+ *
+ * A slot is an index into the open set — indigo, purple, gold, yellow, and
+ * the matching dash list — so colour and dash stay a pair. An empty map (the
+ * default) leaves every name to the ordinary hash assignment: the kit's own
+ * behaviour, and the behaviour of any deployment that does not supply pins.
+ *
+ * Called from `DeploymentConfigProvider` in a layout effect, and from tests
+ * directly. Replaces rather than merges: the resolved config is the whole
+ * table. The map is copied, so a later mutation of the host object cannot
+ * reach into the theme.
+ *
+ * @param map Path name → slot index. Names absent from the map fall through.
+ */
+export function configurePathColorPins(map: Record<string, number>): void {
+  pinnedPathSlots = { ...map }
+}
 
 /** The open set, by slot. Step 1100, the badge weight. */
 const EXTENDED_PATH_COLORS = PATH_OPEN_FAMILIES.map((f) =>
@@ -272,7 +291,7 @@ function hashKey(key: string): number {
  * two can never come apart.
  */
 function pathSlot(path: PathColorInput): number {
-  return PINNED_PATH_SLOTS[path.name] ?? hashKey(path.name)
+  return pinnedPathSlots[path.name] ?? hashKey(path.name)
 }
 
 /**

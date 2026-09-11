@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
+  configurePathColorPins,
   getPathColor,
   getPathDashArray,
   getPathDashArrayFromKey,
@@ -115,5 +116,43 @@ describe('path identity', () => {
       getPathSectionBorderStyle({ kind: 'exception', name: 'Boom' })
         .borderStyle,
     ).toBe('dashed')
+  })
+})
+
+/**
+ * A deployment pins names to slots through config, never by editing this
+ * module. Invented names only — the kit holds no deployment's vocabulary.
+ */
+describe('deployment path-colour pins', () => {
+  afterEach(() => {
+    configurePathColorPins({})
+  })
+
+  it('pins a named path to a slot, and an unmapped name falls through', () => {
+    const pinned = { kind: 'variant', name: 'Alpha Path' } as const
+    const north = { kind: 'variant', name: 'North' } as const
+    const ordinaryNorthColour = getPathColor(north)
+    const ordinaryNorthDash = getPathDashArray(north)
+
+    // Colour and dash both come off the slot, so a second name on the same
+    // slot is indistinguishable from the first — the pair stays together.
+    configurePathColorPins({ 'Alpha Path': 2, 'Witness': 2 })
+    const witness = { kind: 'variant', name: 'Witness' } as const
+    expect(getPathColor(pinned)).toBe(getPathColor(witness))
+    expect(getPathDashArray(pinned)).toBe(getPathDashArray(witness))
+
+    // A different slot is a different pair, so the pin is doing work rather
+    // than agreeing with the hash by accident.
+    configurePathColorPins({ 'Alpha Path': 0 })
+    const slotZeroColour = getPathColor(pinned)
+    const slotZeroDash = getPathDashArray(pinned)
+    configurePathColorPins({ 'Alpha Path': 1 })
+    expect(getPathColor(pinned)).not.toBe(slotZeroColour)
+    expect(getPathDashArray(pinned)).not.toBe(slotZeroDash)
+
+    // North is absent from the map, so it keeps the ordinary assignment.
+    configurePathColorPins({ 'Alpha Path': 2 })
+    expect(getPathColor(north)).toBe(ordinaryNorthColour)
+    expect(getPathDashArray(north)).toBe(ordinaryNorthDash)
   })
 })
