@@ -27,8 +27,12 @@
  */
 export { App } from './App'
 export {
+  asbDefaultCellBudget,
   asbDefaultConfig,
   resolveDeploymentConfig,
+  type CellContentBudget,
+  type CellContentBudgetOverlay,
+  type CellContentBudgetRung,
   type DeploymentConfig,
   type ResolvedDeploymentConfig,
 } from './deploymentConfig'

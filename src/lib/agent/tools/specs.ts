@@ -693,7 +693,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         path_id: str('Path id'),
         lane_id: str('Lane id from get_blueprint'),
         step_id: str('Step id (from get_blueprint)'),
-        content: str('The cell text — a journey moment, not a system capability. Aim for 120 characters: the canvas reads at a glance and shows what fits, so put detail in the summary. Longer text is written in full and comes back with a note. Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".'),
+        content: str('The cell text — a journey moment, not a system capability. Aim for the canvas budget: the canvas reads at a glance and shows what fits, so put detail in the summary. Longer text is written in full and comes back with a note naming the thresholds. Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".'),
       },
       required: ['path_id', 'lane_id', 'step_id', 'content'],
     },
@@ -706,7 +706,7 @@ export const TOOL_SPECS: ToolSpec[] = [
       type: 'object',
       properties: {
         cell_id: str('Cell id'),
-        content: str('New cell text; aim for 120 characters, and longer text is written in full with a note back (detail belongs in summary); omit to keep'),
+        content: str('New cell text; aim for the canvas budget, and longer text is written in full with a note back naming the thresholds (detail belongs in summary); omit to keep'),
         summary: str('New summary; omit to keep'),
         owner: str('Owner tag; omit to keep'),
         perceived_owner: str('Perceived-owner tag; omit to keep'),

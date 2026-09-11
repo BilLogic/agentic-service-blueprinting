@@ -45,7 +45,11 @@ import {
 } from '@/lib/cellContentMutations'
 import { DEFAULT_ENTITY_STATUS, asEntityStatus } from '@/lib/entityStatus'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
-import { getCellContentLengthGuidance } from '@/lib/cellContentLimits'
+import {
+  cellBudgetKindForLane,
+  getCellContentLengthGuidance,
+  type CellBudgetKind,
+} from '@/lib/cellContentLimits'
 import { findingFingerprint } from '@/lib/findingFingerprint'
 import {
   recordFinding,
@@ -146,6 +150,25 @@ function need(args: Record<string, unknown>, key: string): string {
   const value = s(args, key)
   if (!value) throw new Error(`Missing required argument "${key}".`)
   return value
+}
+
+/**
+ * Which cell-text budget a write is measured against, from the lane the
+ * cell sits on. Falls through to prose when the lane cannot be read — the
+ * same fallback the panel uses when it cannot see a role.
+ */
+async function laneBudgetKind(
+  client: Client,
+  laneId: string | null | undefined,
+): Promise<CellBudgetKind> {
+  if (!laneId) return cellBudgetKindForLane(null)
+  const { data, error } = await client
+    .from('lanes')
+    .select('name, lane_role')
+    .eq('id', laneId)
+    .maybeSingle()
+  if (error || !data) return cellBudgetKindForLane(null)
+  return cellBudgetKindForLane({ name: data.name, role: data.lane_role })
 }
 
 /**
@@ -398,8 +421,12 @@ export async function dispatchTool(
         // Advice, not a gate. The budget is a judgement about how much copy
         // looks right in a card, and the canvas clamps its preview to a fixed
         // face either way, so long text is written and reported rather than
-        // thrown away — see `cellContentLimits`.
-        const lengthGuidance = getCellContentLengthGuidance(newContent)
+        // thrown away — see `cellContentLimits`. Same function, same
+        // thresholds as the note under the person's field.
+        const lengthGuidance = getCellContentLengthGuidance(
+          newContent,
+          await laneBudgetKind(client, laneId),
+        )
         const written = await upsertCell(client, {
           pathId: need(args, 'path_id'),
           laneId,
@@ -426,7 +453,7 @@ export async function dispatchTool(
         const cellId = need(args, 'cell_id')
         const { data, error } = await client
           .from('cells')
-          .select('content, summary, owner, perceived_owner, status, function, form, value_props')
+          .select('content, summary, owner, perceived_owner, status, function, form, value_props, lane_id')
           .eq('id', cellId)
           .maybeSingle()
         if (error) throw new Error(error.message)
@@ -457,7 +484,10 @@ export async function dispatchTool(
           const lengthGuidance =
             nextContent === undefined
               ? null
-              : getCellContentLengthGuidance(nextContent)
+              : getCellContentLengthGuidance(
+                  nextContent,
+                  await laneBudgetKind(client, data.lane_id),
+                )
           const previous: CellContentUpdate = {
             content: data.content ?? '',
             summary: data.summary ?? '',

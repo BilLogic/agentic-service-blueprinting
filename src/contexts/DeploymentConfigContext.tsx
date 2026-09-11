@@ -12,6 +12,7 @@ import {
 } from '@/deploymentConfig'
 import { ORG_NAME } from '@/config'
 import { applyBrandAccent } from '@/lib/brandAccent'
+import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configurePathColorPins } from '@/lib/pathColorTheme'
 
 /**
@@ -72,6 +73,17 @@ export function DeploymentConfigProvider({
   useLayoutEffect(() => {
     configurePathColorPins(pathColorPins)
   }, [pathColorPins])
+
+  /**
+   * The cell budget onto the length-guidance module, as a LAYOUT effect for
+   * the same reason as the pins: the numbers are in force before the first
+   * paint, so the person under the field and the agent in the tool result
+   * cannot briefly see the template cap and then jump.
+   */
+  const cellBudget = resolved.cellBudget
+  useLayoutEffect(() => {
+    configureCellBudget(cellBudget)
+  }, [cellBudget])
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>

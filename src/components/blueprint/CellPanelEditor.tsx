@@ -14,12 +14,17 @@ import {
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
 import { invalidateCanvasBlueprintsForPath } from '@/hooks/useCanvasBlueprints'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { useBlueprintCell } from '@/hooks/useBlueprintCell'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useNameOnlyPlacements } from '@/hooks/useRegistryTouchpoints'
 import { upsertCell } from '@/lib/authoringRpc'
-import { CELL_CONTENT_MAX } from '@/lib/cellContentLimits'
+import {
+  cellBudgetKindForLane,
+  getCellContentLengthGuidance,
+  type CellBudgetKind,
+} from '@/lib/cellContentLimits'
 import { updateCellContent } from '@/lib/cellContentMutations'
 import {
   DEFAULT_ENTITY_STATUS,
@@ -36,7 +41,7 @@ import {
 } from '@/lib/touchpointMutations'
 import { PANEL_TEXT } from '@/lib/panelText'
 import { errorMessage } from '@/lib/utils'
-import type { CellResource, CellTouchpoint } from '@/types/blueprint'
+import type { BlueprintData, CellResource, CellTouchpoint } from '@/types/blueprint'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseCellContentItems } from '@/lib/parseCellContent'
 import { parseValueProps, type ValueProp } from '@/lib/valueProps'
@@ -77,6 +82,29 @@ type FormState = {
 const EMPTY_PLACEMENT: PlacementDetailDraft = {
   summary: '',
   role: null,
+}
+
+/**
+ * Which per-kind budget a panel field is measured against.
+ *
+ * A draft names its lane; an existing cell looks the lane up on the board
+ * the panel was opened from. Either missing falls through to prose, matching
+ * the agent tool's fallback when it cannot see a role.
+ */
+function budgetKindForEditor(
+  cellId: string | null,
+  draft: DraftCellTarget | undefined,
+  blueprints: BlueprintData[] | undefined,
+): CellBudgetKind {
+  if (draft) return cellBudgetKindForLane({ name: draft.laneName })
+  if (!cellId || !blueprints) return cellBudgetKindForLane(null)
+  for (const blueprint of blueprints) {
+    const cell = blueprint.cells.find((entry) => entry.id === cellId)
+    if (!cell) continue
+    const lane = blueprint.lanes?.find((entry) => entry.id === cell.lane_id)
+    if (lane) return cellBudgetKindForLane(lane)
+  }
+  return cellBudgetKindForLane(null)
 }
 
 /**
@@ -261,6 +289,7 @@ function CellPanelEditorForm({
   onDone: () => void
 }) {
   const { client } = useSupabase()
+  const detail = useBlueprintCellDetailOptional()
   const audiencesResult = useValueAudiences()
   const nameOnlyResult = useNameOnlyPlacements(cellId)
   const nameOnly = nameOnlyResult.status === 'ready' ? nameOnlyResult.data : []
@@ -314,6 +343,8 @@ function CellPanelEditorForm({
     }))
 
   const blocked = !form.content.trim()
+  const budgetKind = budgetKindForEditor(cellId, draft, detail?.blueprints)
+  const lengthGuidance = getCellContentLengthGuidance(form.content, budgetKind)
 
   const effectiveSummary = summaryTouched
     ? form.summary
@@ -502,15 +533,16 @@ function CellPanelEditorForm({
         <Input
           value={form.content}
           autoFocus={cellId === null}
-          // The cell-content budget: a cell is read at a glance, and the
-          // lane grid's row rhythm assumes ~5-6 wrapped lines. Detail
-          // belongs in Summary. Stopping the field at the budget PREVENTS,
-          // which is what a box someone is typing into should do; the
-          // agent's write path advises instead, because text already
-          // composed is worth more kept than discarded (cellContentLimits).
-          maxLength={CELL_CONTENT_MAX}
+          // Advice, not a gate. The same note the agent receives in its
+          // tool result lands under this field at the same thresholds;
+          // stopping the box used to contradict that (cellContentLimits).
           onChange={(event) => set('content', event.target.value)}
         />
+        {lengthGuidance.message ? (
+          <p role="status" className={PANEL_TEXT.meta}>
+            {lengthGuidance.message}
+          </p>
+        ) : null}
       </Field>
 
       {/*
