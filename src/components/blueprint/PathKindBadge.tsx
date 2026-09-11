@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { PathSummaryTooltip } from '@/components/blueprint/PathSummaryTooltip'
 import { Badge } from '@/components/ui/badge'
 import { getBlueprintFillStyle, PATH_KIND_COLORS } from '@/lib/pathColorTheme'
-import { PATH_KIND_LABELS, PATH_KIND_SHORT_LABELS } from '@/lib/pathKindTheme'
+import { PATH_KIND_LABELS } from '@/lib/pathKindTheme'
 import { cn } from '@/lib/utils'
 import type { PathKind } from '@/types/database'
 
@@ -24,12 +24,12 @@ export function PathKindBadge({
   style,
   side = 'top',
 }: PathKindBadgeProps) {
-  const label = PATH_KIND_SHORT_LABELS[pathKind]
+  const label = PATH_KIND_LABELS[pathKind]
 
   return (
     <PathSummaryTooltip
       summary={summary}
-      pathName={PATH_KIND_LABELS[pathKind]}
+      pathName={label}
       side={side}
     >
       <Badge

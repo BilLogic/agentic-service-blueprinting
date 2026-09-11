@@ -14,10 +14,10 @@ import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPath, duplicatePath } from '@/lib/authoringRpc'
+import { PATH_KIND_LABELS } from '@/lib/pathKindTheme'
 import { errorMessage } from '@/lib/utils'
 import {
   PATH_KINDS,
-  PATH_KIND_LABELS,
   describeVersionOutcome,
   validateDraftVersion,
   type DraftVersion,
