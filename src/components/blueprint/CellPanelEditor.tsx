@@ -538,7 +538,7 @@ function CellPanelEditorForm({
           onChange={(event) => set('content', event.target.value)}
         />
         {lengthGuidance.message ? (
-          <p role="status" className="text-2xs font-normal leading-tight text-muted-foreground">
+          <p role="status" className="text-xs font-normal text-muted-foreground">
             {lengthGuidance.message}
           </p>
         ) : null}
@@ -561,10 +561,10 @@ function CellPanelEditorForm({
       {placement ? (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
           <div className="flex flex-col gap-0.5">
-            <span className="text-2xs font-medium text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               “{placement.name}” at this step
             </span>
-            <p className="text-3xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               This touchpoint’s own words here. The same tool at another
               step keeps its own.
             </p>

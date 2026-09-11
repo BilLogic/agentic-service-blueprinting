@@ -68,7 +68,7 @@ export function RegistryLink({
       data-registry-link=""
       data-name-only-placement={placement.name}
     >
-      <p className="text-2xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         The registry has no “{placement.name}”. Link it to the entry it was
         about, or take it off this cell.
       </p>

@@ -50,6 +50,7 @@ export function ScenarioSlideHeader({
           <ScenarioTitleDefinition slide={slide}>
             <h1
               className={cn(
+                // geometry: 5xl is a display title; 1.15 is tighter than the rung's box so the scenario name stays one line on the slide.
                 'w-fit rounded-sm text-5xl font-semibold leading-[1.15] tracking-tight text-foreground outline-none',
                 'focus-visible:ring-2 focus-visible:ring-ring/50',
               )}
@@ -59,7 +60,7 @@ export function ScenarioSlideHeader({
           </ScenarioTitleDefinition>
         </div>
         {summary && (
-          <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">
+          <p className="mt-2 max-w-2xl text-base text-muted-foreground">
             {summary}
           </p>
         )}
@@ -93,12 +94,7 @@ export function ScenarioSlideHeader({
     >
       <div className="min-w-0">
         {phaseLabel && (
-          <p
-            className={cn(
-              'font-medium uppercase tracking-wide text-muted-foreground',
-              compact ? 'text-3xs' : 'text-xs',
-            )}
-          >
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {phaseLabel}
           </p>
         )}
@@ -124,7 +120,7 @@ export function ScenarioSlideHeader({
           <p
             className={cn(
               'mt-2 max-w-3xl text-muted-foreground',
-              compact ? 'text-xs leading-relaxed' : 'text-base leading-relaxed',
+              compact ? 'text-xs' : 'text-base',
             )}
           >
             {summary}

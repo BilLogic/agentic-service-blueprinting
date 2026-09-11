@@ -147,6 +147,7 @@ export function blueprintCellButtonClassName({
   if (variant === 'touchpoint') {
     return cn(
       shared,
+      // geometry: packs two label lines into TOUCHPOINT_ITEM_HEIGHT.
       'rounded-full text-center leading-snug',
       compact ? 'px-2.5 py-2' : 'px-3 py-2.5',
       className,
@@ -164,6 +165,7 @@ export function blueprintCellButtonClassName({
 
   return cn(
     shared,
+    // geometry: wraps the narrative face inside NARRATIVE_CELL_HEIGHT.
     'rounded-lg flex-1 items-start justify-start text-left leading-relaxed',
     compact ? 'px-3 py-2.5' : 'px-4 py-3.5',
     className,

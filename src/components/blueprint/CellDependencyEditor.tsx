@@ -114,7 +114,7 @@ export function CellDependencyEditor({
               key={entry.id}
               className="flex items-center gap-2 text-xs text-foreground/80"
             >
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-3xs font-medium">
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
                 {DEPENDENCY_KIND_LABELS[entry.kind as DependencyKind] ??
                   entry.kind}
               </span>

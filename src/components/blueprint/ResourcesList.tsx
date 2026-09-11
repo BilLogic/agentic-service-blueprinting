@@ -428,8 +428,8 @@ export function ResourcesList({
     <div className="flex flex-col gap-2" data-resources-list="">
       {hint ? (
         <div className="flex flex-col gap-0.5">
-          <span className="text-2xs font-medium text-muted-foreground">Resources</span>
-          <p className="text-3xs text-muted-foreground">{hint}</p>
+          <span className="text-xs font-medium text-muted-foreground">Resources</span>
+          <p className="text-xs text-muted-foreground">{hint}</p>
         </div>
       ) : null}
 
@@ -464,7 +464,7 @@ export function ResourcesList({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-1.5 text-2xs"
+                  className="h-6 px-1.5 text-xs"
                   disabled={busy || uploading}
                   onClick={() => chooseFile(row.key)}
                 >
@@ -530,14 +530,14 @@ export function ResourcesList({
             <span className="min-w-0 flex-1 truncate">{nameOfFile(pending.file)}</span>
             {pending.failed ? (
               <>
-                <span className="shrink-0 text-2xs text-destructive">
+                <span className="shrink-0 text-xs text-destructive">
                   The file did not upload.
                 </span>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-6 px-1.5 text-2xs"
+                  className="h-6 px-1.5 text-xs"
                   onClick={() => void upload(pending.file, pending.replaceKey)}
                 >
                   Retry

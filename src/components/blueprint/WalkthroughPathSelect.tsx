@@ -64,6 +64,7 @@ export function WalkthroughPathSelect({
           type={selected.path.kind}
           name={selected.path.name}
         />
+        {/* geometry: packs the name into the trigger's fixed height. */}
         <span className="truncate leading-none tracking-tight">{selectedLabel}</span>
         <ChevronDown className="size-3.5 shrink-0 opacity-70" aria-hidden />
       </DropdownMenuTrigger>

@@ -60,7 +60,8 @@ export function BlueprintDividerRailLabel({
       // read as clickable and it is not.
       {...(meaning ? { tabIndex: 0 } : {})}
       className={cn(
-        'shrink-0 border-current/30 font-medium uppercase leading-none tracking-[0.08em]',
+        // geometry: packs the caption into the badge's fixed height, not a prose line.
+        'shrink-0 border-current/30 font-medium uppercase leading-none tracking-wider',
       )}
       style={{ color: BLUEPRINT_THEME.dividerLabel }}
     >
@@ -99,7 +100,8 @@ export function BlueprintDividerBadge({
     <Badge
       data-blueprint-fill
       className={cn(
-        'border-transparent font-medium uppercase leading-none tracking-[0.06em]',
+        // geometry: packs the caption into the badge's fixed height, not a prose line.
+        'border-transparent font-medium uppercase leading-none tracking-wide',
         connected ? 'rounded-l-sm rounded-r-none' : 'rounded-sm',
       )}
       style={getBlueprintFillStyle(BLUEPRINT_THEME.dividerBadgeBg)}

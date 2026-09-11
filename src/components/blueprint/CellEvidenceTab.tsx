@@ -73,7 +73,7 @@ function EvidenceRow({ row }: { row: Evidence }) {
           <span className="font-normal text-muted-foreground">{row.kind}</span>
         </p>
         {row.note ? (
-          <p className="text-2xs leading-snug break-words text-muted-foreground">
+          <p className="text-xs break-words text-muted-foreground">
             {linkedTextSegments(row.note).map((segment, index) =>
               segment.kind === 'link' ? (
                 <a

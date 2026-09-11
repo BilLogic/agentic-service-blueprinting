@@ -306,7 +306,7 @@ export function BlueprintCellButton({
         <span
           aria-hidden
           data-slice-pick-badge=""
-          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-primary text-3xs font-medium text-primary-foreground shadow-sm"
+          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-primary text-xs font-medium text-primary-foreground shadow-sm"
         >
           {pickOrder}
         </span>
@@ -314,7 +314,7 @@ export function BlueprintCellButton({
         <span
           aria-hidden
           data-slice-sequence-badge=""
-          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-foreground font-mono text-3xs font-medium text-contrast tabular-nums shadow-sm"
+          className="absolute -top-2 -left-2 z-10 grid size-5 place-items-center rounded-full bg-foreground font-mono text-xs font-medium text-contrast tabular-nums shadow-sm"
         >
           {sliceSequence}
         </span>

@@ -89,7 +89,10 @@ export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
               >
                 <span aria-hidden>◇</span>
                 <span className="min-w-0 flex-1 truncate">{slice.title}</span>
-                <span className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-px font-mono text-3xs leading-tight text-muted-foreground">
+                <span
+                  // geometry: packs the count into a fitted badge, not a prose line.
+                  className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-px font-mono text-xs leading-none text-muted-foreground"
+                >
                   {slice.kind}
                 </span>
               </button>

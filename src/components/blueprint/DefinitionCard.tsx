@@ -55,14 +55,14 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
               and not as another sentence competing with it. */}
           <span
             data-definition-eyebrow=""
-            className="text-3xs font-medium uppercase tracking-wider text-muted-foreground"
+            className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
           >
             {section.eyebrow}
           </span>
           <span
             data-definition-body=""
             className={cn(
-              'text-xs leading-relaxed text-foreground',
+              'text-xs text-foreground',
               section.unwritten && 'italic opacity-80',
             )}
           >

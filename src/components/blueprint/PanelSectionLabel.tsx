@@ -23,6 +23,6 @@ export function PanelSectionLabel({
   className?: string
 }) {
   return (
-    <span className={cn('text-2xs font-medium text-muted-foreground', className)}>{children}</span>
+    <span className={cn('text-xs font-medium text-muted-foreground', className)}>{children}</span>
   )
 }

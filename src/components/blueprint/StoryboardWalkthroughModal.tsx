@@ -144,7 +144,7 @@ export function StoryboardWalkthroughModal() {
                 Presentation for {pathName || 'this path'}
               </DialogDescription>
               <Breadcrumb className="min-w-0">
-                <BreadcrumbList className="flex-nowrap gap-0.5 text-2xs leading-tight text-muted-foreground">
+                <BreadcrumbList className="flex-nowrap gap-0.5 text-xs text-muted-foreground">
                   {phaseName ? (
                     <>
                       <BreadcrumbItem className="min-w-0">

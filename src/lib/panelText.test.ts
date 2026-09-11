@@ -3,15 +3,14 @@ import { classListHas, classLists } from '@/lib/classList'
 import { sourceFiles } from '@/lib/tokenModel'
 
 /**
- * Former `PANEL_TEXT` class lists, copied from `src/lib/panelText.ts` on
- * origin/main after #533. #537 retires the constant; the 21 JSX call sites
- * must still write these utilities. #535 moves meta and sectionLabel off
- * `text-2xs`; this ticket does not.
+ * Former `PANEL_TEXT` class lists, now written inline. Title and value
+ * sit on `sm`; label and meta sit on `xs`. Weight and colour separate
+ * the four jobs. ADR 0012.
  */
 const FORMER_PANEL_TEXT = {
-  title: 'min-w-0 text-sm font-semibold leading-normal text-foreground',
-  meta: 'text-2xs font-normal leading-tight text-muted-foreground',
-  sectionLabel: 'text-2xs font-medium text-muted-foreground',
+  title: 'min-w-0 text-sm font-semibold text-foreground',
+  meta: 'text-xs font-normal text-muted-foreground',
+  sectionLabel: 'text-xs font-medium text-muted-foreground',
   value: 'text-sm font-normal text-foreground/80',
 } as const
 
@@ -20,7 +19,7 @@ type PanelRole = keyof typeof FORMER_PANEL_TEXT
 /**
  * Per-file counts of `PANEL_TEXT.*` JSX sites on origin/main after #533.
  * #537 cites 28; the tree holds 21. The test enumerates those 21 so a
- * coincidental `text-2xs font-medium text-muted-foreground` elsewhere
+ * coincidental `text-xs font-medium text-muted-foreground` elsewhere
  * cannot satisfy a missing call site.
  */
 const FORMER_SITE_COUNTS: Readonly<
