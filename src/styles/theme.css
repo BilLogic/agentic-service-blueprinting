@@ -438,8 +438,8 @@
    * weight axis comes in one file. A fork that wants a different face swaps
    * the import and this default together.
    *
-   * No heading font, no type-scale overrides, no weight overrides: Supabase
-   * defines none, and headings are this stack at a heavier weight.
+   * No heading font, no type-scale overrides. Weight has a two-scope
+   * `--font-weight-normal` knob on the ladder block below — ADR 0012.
    */
   /*
    * The fallback chain sits OUTSIDE the var() slot on purpose. Inside it,
@@ -566,10 +566,19 @@
   --text-3xs: 0.625rem; /* 10px */
   --text-4xs: 0.5625rem; /* 9px */
   --text-5xs: 0.5rem; /* 8px */
+  /*
+   * ADR 0012. The reference sets sans `--font-weight-normal` to 450 because
+   * Inter reads light at 400, and leaves the mono scope at 400 because
+   * Source Code Pro does not need the bump. Ubuntu Sans holds its colour
+   * at 400 down to 12px, so both scopes stay at 400. The two-scope
+   * mechanism is taken so the knob exists; the 450 is not.
+   */
+  --font-weight-normal: 400;
 }
 
 /*
- * Mono scope: sizes only. The root ratio meeting a larger size yields a
+ * Mono scope: sizes, and the same `--font-weight-normal` knob as the root
+ * (ADR 0012 — both 400). The root ratio meeting a larger size yields a
  * larger box, so this column lands on upstream Tailwind's line boxes without
  * restating them.
  */
@@ -587,4 +596,5 @@ samp {
   --text-3xl: 1.875rem;
   --text-4xl: 2.25rem;
   --text-5xl: 3rem;
+  --font-weight-normal: 400;
 }

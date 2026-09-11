@@ -77,7 +77,7 @@ export function StoryboardStepDetailStack({
         {entries.map((entry, index) => (
           <p
             key={`label-${entry.laneName}`}
-            className="self-start text-xs font-semibold leading-snug text-foreground/90"
+            className="self-start text-xs font-medium leading-snug text-foreground/90"
             style={{ gridColumn: index + 1, gridRow: 2 }}
           >
             {entry.label}
@@ -139,7 +139,7 @@ export function StoryboardStepDetailStack({
               />
             </ZoomableImage>
           </div>
-          <p className="text-xs font-semibold leading-snug text-foreground/90">
+          <p className="text-xs font-medium leading-snug text-foreground/90">
             {entry.label}
           </p>
           <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">

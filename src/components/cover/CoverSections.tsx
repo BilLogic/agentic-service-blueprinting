@@ -175,13 +175,13 @@ function DefsTable({
           <tr className="bg-muted/50">
             <th
               scope="col"
-              className="border-b border-border px-4 py-2.5 font-semibold text-foreground"
+              className="border-b border-border px-4 py-2.5 font-medium text-foreground"
             >
               {columns.term}
             </th>
             <th
               scope="col"
-              className="border-b border-border px-4 py-2.5 font-semibold text-foreground"
+              className="border-b border-border px-4 py-2.5 font-medium text-foreground"
             >
               {columns.definition}
             </th>
@@ -195,7 +195,7 @@ function DefsTable({
             >
               <th
                 scope="row"
-                className="w-44 px-4 py-3 align-top font-semibold text-foreground"
+                className="w-44 px-4 py-3 align-top font-medium text-foreground"
               >
                 {item.term}
               </th>

@@ -478,7 +478,7 @@ function ShapeStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-3xs font-semibold tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-3xs font-medium tracking-wide text-white/55 uppercase">
             Fill
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -544,7 +544,7 @@ function ShapeStyleBar({
           onMouseDown={(e) => e.preventDefault()}
         >
           <div className="mb-1.5 flex items-center justify-between gap-3">
-            <span className="text-3xs font-semibold tracking-wide text-white/55 uppercase">
+            <span className="text-3xs font-medium tracking-wide text-white/55 uppercase">
               Stroke
             </span>
             {shape.color ? (
@@ -658,7 +658,7 @@ function StickyStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-3xs font-semibold tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-3xs font-medium tracking-wide text-white/55 uppercase">
             Color
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -827,7 +827,7 @@ function TextStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-3xs font-semibold tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-3xs font-medium tracking-wide text-white/55 uppercase">
             Color
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1205,7 +1205,7 @@ function StickyAnnotationNode({
             editing || selected
               ? 'pointer-events-auto cursor-text'
               : 'pointer-events-none cursor-inherit',
-            annotation.bold && 'font-bold',
+            annotation.bold && 'font-medium',
             annotation.strike && 'line-through',
           )}
           style={{
@@ -1321,7 +1321,7 @@ function TextAnnotationNode({
               'w-full resize-none px-1.5 py-1 font-sans leading-snug outline-none',
               'pointer-events-auto cursor-text',
               textAlignClass,
-              annotation.bold && 'font-bold',
+              annotation.bold && 'font-medium',
               annotation.strike && 'line-through',
               showChrome
                 ? 'border-0 bg-transparent text-inherit'
@@ -1341,7 +1341,7 @@ function TextAnnotationNode({
             className={cn(
               'max-w-full px-1.5 py-1 whitespace-pre-wrap font-sans leading-snug',
               textAlignClass,
-              annotation.bold && 'font-bold',
+              annotation.bold && 'font-medium',
               annotation.strike && 'line-through',
             )}
           >

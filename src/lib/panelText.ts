@@ -1,6 +1,11 @@
 /**
  * The panel type scale — four roles, named once.
  *
+ * ADR 0012: under the new ladder the two content rungs are 12px and 13px,
+ * so title / label / value / meta are distinguished by weight and colour,
+ * not by a size gap. 600 on the title, 500 on the label, 400 on value and
+ * meta; colour takes over the value-vs-meta split.
+ *
  * Five panels and three tabs had drifted into six treatments for four jobs: a
  * section label was `text-2xs font-medium text-muted-foreground` in the spec
  * sections and `text-3xs font-semibold uppercase tracking-wide` in the
@@ -13,9 +18,8 @@ export const PANEL_TEXT = {
   /**
    * The thing itself: a cell's own words, an entity's name.
    *
-   * `font-semibold`, not bold: at 14px in a narrow drawer, bold sets the title
-   * shouting over the prose directly under it, which is what the panel exists
-   * to show.
+   * 600, the heading weight — ADR 0012. Not bold: at this size in a narrow
+   * drawer, 700 shouts over the prose the panel exists to show.
    *
    * And NOT `tracking-tight leading-snug`, which is what it carried until
    * 2026-08-21. Both are display-type devices — they exist to pull a large
@@ -28,11 +32,11 @@ export const PANEL_TEXT = {
    */
   title: 'min-w-0 text-sm font-semibold leading-normal text-foreground',
   /** Counts and relationships under the title. Never restates the title. */
-  meta: 'text-2xs leading-tight text-muted-foreground',
+  meta: 'text-2xs font-normal leading-tight text-muted-foreground',
   /** Names a field or a group. Always the same weight, size and colour. */
   sectionLabel: 'text-2xs font-medium text-muted-foreground',
   /** Authored prose — what the panel exists to show. */
-  value: 'text-sm text-foreground/80',
+  value: 'text-sm font-normal text-foreground/80',
 } as const
 
 /*

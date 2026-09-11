@@ -50,7 +50,7 @@ export function ScenarioSlideHeader({
           <ScenarioTitleDefinition slide={slide}>
             <h1
               className={cn(
-                'w-fit rounded-sm text-5xl font-bold leading-[1.15] tracking-tight text-foreground outline-none',
+                'w-fit rounded-sm text-5xl font-semibold leading-[1.15] tracking-tight text-foreground outline-none',
                 'focus-visible:ring-2 focus-visible:ring-ring/50',
               )}
             >

@@ -852,7 +852,7 @@ function BlueprintCellDetailPanelBody() {
               onValueChange={setPanelSurface}
             />
           ) : (
-            <span className="text-sm font-bold tracking-tight">
+            <span className={PANEL_TEXT.title}>
               Differences
             </span>
           )}
@@ -921,7 +921,7 @@ function BlueprintCellDetailPanelBody() {
         {surfaceSwitcher}
         <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
-            <DrawerTitle className="text-sm font-bold tracking-tight">
+            <DrawerTitle className={PANEL_TEXT.title}>
               New cell
             </DrawerTitle>
             <DrawerDescription className="text-2xs text-muted-foreground">
@@ -981,7 +981,7 @@ function BlueprintCellDetailPanelBody() {
         {surfaceSwitcher}
         <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
           <div className="min-w-0 flex-1">
-            <DrawerTitle className="text-sm font-bold tracking-tight">
+            <DrawerTitle className={PANEL_TEXT.title}>
               Cell details
             </DrawerTitle>
             <DrawerDescription className="sr-only">

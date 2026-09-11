@@ -203,7 +203,7 @@ function DependencyGroup({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-3xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <p className="text-3xs font-medium tracking-wide text-muted-foreground uppercase">
         {title}
       </p>
       <ul className="flex flex-col">{children}</ul>

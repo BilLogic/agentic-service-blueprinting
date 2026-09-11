@@ -395,7 +395,7 @@ export function PanelHeader({
  * The identity block every entity panel opens with: what this is, then where
  * it sits and how big it is.
  *
- * Typography is the cell panel's, exactly — `text-sm font-bold leading-snug
+ * Typography is the cell panel's, exactly — `text-sm font-semibold leading-snug
  * tracking-tight` for the name and the 11px `text-2xs` step for the meta line.
  * Three panels each inventing their own heading is how a shell stops reading
  * as one surface.

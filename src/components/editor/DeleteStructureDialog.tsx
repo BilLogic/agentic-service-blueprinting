@@ -206,7 +206,7 @@ export function DeleteStructureDialog({
                     key={fact.noun}
                     className="min-w-28 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2"
                   >
-                    <div className="text-xl leading-none font-semibold tabular-nums text-destructive">
+                    <div className="text-xl leading-none font-medium tabular-nums text-destructive">
                       {fact.count}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">

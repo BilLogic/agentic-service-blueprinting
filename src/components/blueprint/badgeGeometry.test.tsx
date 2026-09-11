@@ -132,7 +132,7 @@ describe('what moving the size out of the wrappers did not change', () => {
       'cursor-default',
       'gap-1',
       'border-transparent',
-      'font-semibold',
+      'font-medium',
     ]) {
       expect(classes).toContain(kept)
     }

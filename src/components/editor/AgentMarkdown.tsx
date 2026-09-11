@@ -21,7 +21,7 @@ export function AgentMarkdown({
         components={{
           p: ({ children }) => <p>{children}</p>,
           strong: ({ children }) => (
-            <strong className="font-semibold">{children}</strong>
+            <strong className="font-medium">{children}</strong>
           ),
           a: ({ href, children }) => (
             <a
@@ -41,13 +41,13 @@ export function AgentMarkdown({
           ),
           li: ({ children }) => <li>{children}</li>,
           h1: ({ children }) => (
-            <p className="font-semibold">{children}</p>
+            <h1 className="font-semibold">{children}</h1>
           ),
           h2: ({ children }) => (
-            <p className="font-semibold">{children}</p>
+            <h2 className="font-semibold">{children}</h2>
           ),
           h3: ({ children }) => (
-            <p className="font-semibold">{children}</p>
+            <h3 className="font-semibold">{children}</h3>
           ),
           code: ({ children, className: codeClassName }) => {
             // Fenced blocks arrive wrapped in <pre>; inline code has no
@@ -82,7 +82,7 @@ export function AgentMarkdown({
             </div>
           ),
           th: ({ children }) => (
-            <th className="border-b border-border px-1.5 py-1 text-left font-semibold">
+            <th className="border-b border-border px-1.5 py-1 text-left font-medium">
               {children}
             </th>
           ),

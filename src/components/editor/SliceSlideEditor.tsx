@@ -274,7 +274,7 @@ export function SliceSlideEditor({
                 className="size-3 shrink-0 text-muted-foreground/50"
                 aria-hidden
               />
-              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-3xs font-semibold text-contrast">
+              <span className="grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-3xs font-medium text-contrast">
                 {index + 1}
               </span>
               <Input
