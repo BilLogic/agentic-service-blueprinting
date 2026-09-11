@@ -1,5 +1,560 @@
 # Changelog
 
+## 1.37.0
+
+A type system written down and enforced, three new deployment config seams,
+and the decision records that govern the template moved into it.
+
+**The type system.** Two ladders selected by face: sans rungs from 12 to 46px,
+and the mono scope on its own scale. Leading comes from the rung, and one
+working weight is 400, with 500 for labels and 600 for headings. The floor is
+12px. The four sub-12px rungs (`text-2xs` to `text-5xs`) are deleted, and a
+guard fails a tenth rung in either scope. The rules are ADR 0012.
+
+**Deployment config.** Three things a deployment used to change by editing
+shared code now come from `DeploymentConfig`:
+
+- `pathColorPins`: path names pinned to a colour slot
+- `cellBudget`: the cell-text target and warning for each lane kind. The
+  cell editor's 120-character hard stop is gone, and a person and the agent
+  get the same advice at the same thresholds.
+- the agent account: `npm run agent-account` renders a deployment's account
+  of its schema from a connected database, and `check:agent-account` holds
+  it. A deployment registers the generated document through the
+  extra-reference seam.
+
+**Decision records.** Nine ADRs about the template's code and how a
+deployment consumes it now live here, as 0013 to 0021. Five copies that had
+drifted are folded into this repository's records.
+
+**Also:** "template" replaces "kit" everywhere, including on-screen text. A
+presentation cell badge opens its own cell, including when the slice tab was
+not open. The storyboard's unreachable presentation layout and its 8px lane
+caption are gone.
+
+### Upgrading a deployment
+
+- A class naming `text-2xs`, `text-3xs`, `text-4xs` or `text-5xs` no longer
+  generates a size and silently falls back to the inherited one. Move it to
+  `xs`, or to the rung the text's job calls for.
+- Apply `21000225000000_a_comment_is_prose_that_ships_to_agents.sql` before
+  running `npm run agent-account`. It adds `public.schema_comments()`.
+- To keep budget numbers other than 120, supply `cellBudget`. Pins that lived
+  in the theme file move to `pathColorPins`.
+
+### Minor Changes
+
+- 987c838: A database that answers with nothing is still the answer: the bundled sample
+  no longer fills a connected deployment's navigation while the first fetch is
+  in flight, or when the workspace genuinely has no phases.
+
+  **A connected deployment was showing this kit's phase and scenario names on
+  every page load.** Not through a merge — #497 closed that one — but through
+  timing. The navigation fell back to `sample.nav` whenever the structure read
+  came back with no rows, and "no rows" covers three states, not one: no
+  database configured, a database whose first fetch has not returned yet, and a
+  database that holds no phases. Only the first is the fresh clone the sample
+  exists for. On the other two the sample arrived as the deployment's own, with
+  nothing on screen saying so — and the second of those happens on every single
+  load, in the window before the query resolves.
+
+  The question the navigation asks is now `isBundledSampleActive()`, the same
+  one the board has asked since #493: is a database configured at all. A
+  configured deployment's navigation is its rows, whatever they are, including
+  none of them.
+
+  **What you will see change.** If your deployment has a database, the phase
+  list is briefly empty on load where it used to be briefly full of somebody
+  else's phases, and a workspace with no phases in it now says so — "No phases
+  in this workspace yet", on the canvas and in the phone's drawer — instead of
+  drawing this kit's blueprint. Loading and empty are deliberately different on
+  screen: a load is the progress bar and the skeleton rows it always was, and
+  only a read that has actually come back bare gets the empty message. If no
+  database is configured, nothing changes at all; the fresh-clone nav is
+  exactly what it was, and the test that pins it as EXACTLY `SAMPLE_NAV` is the
+  one that already existed.
+
+  **What changed under it.** `EditorContext`'s `slides` is no longer guaranteed
+  non-empty, so `activeSlideId` and `activeSlide` are `string | null` and
+  `NavItem | null` rather than two `slides[0]!` assertions resting on a fallback
+  that has gone. Every reader was made to say what it does with no board: the
+  canvas draws an empty state, the docked header and the prev/next controls
+  draw nothing, and the camera falls back to fitting the whole canvas. The
+  phone's phase list gained the loading skeleton and empty message its slice
+  list already had.
+
+- 55ef0ac: The agent searches every service, and nothing configures that.
+
+  The ⚙ settings popover carried a `Scope` row — `Active service` or
+  `All services` — offered as the creator's default when a question names no
+  service. It configured nothing. `resolveServiceScope` returned the
+  whole-deployment scope before the setting was ever read whenever the
+  deployment held one service, which is the kit's sample and every deployment
+  that exists. A control that cannot change an outcome is worse than no control:
+  it invites a reader to believe the app has a behaviour it does not have.
+
+  **The default is now every service.** A question that names none reads across
+  the whole deployment. A creator who wants one names it, which the per-call
+  `service` argument already does — a service name narrows, `"all"` widens, and
+  an unknown name still throws with the real names listed. `resolveServiceScope`
+  no longer takes a `defaultMode`, and `AgentServiceScopeMode`, the stored
+  `serviceScope` setting, `serviceScopeMode`, `getAgentServiceScopeMode` and
+  `AgentScopeField.tsx` are gone. A scope left in a browser's localStorage is
+  simply never read again; nothing migrates it.
+
+  **Where this is felt.** On a one-service deployment it is a no-op — that is
+  what the short-circuit already guaranteed. On a deployment with several it is a
+  real behaviour change: a question naming no service now reads across all of
+  them where it previously read the one the URL slug names. The agent's own tool
+  description is where a model finds that out, so the `service` parameter now
+  says that omitting it searches EVERY service and that the default is the whole
+  deployment, not the one on screen.
+
+  **The row also mis-taught the vocabulary.** "Active service" here meant the ONE
+  service the URL slug names, singular. There is no `active` column on
+  `services` and no such thing as an inactive one, so a reader who took the
+  phrase for "the ones switched on" got a plural where the code meant a
+  singular.
+
+  **What is pinned.** `serviceScope.test.ts` asserts the multi-service default
+  the old short-circuit hid: on a two-service fixture, a call naming no service
+  resolves to the whole deployment — including when a slug names one, because
+  the URL scopes the canvas and not the agent's reach. The single-service
+  short-circuit stays as an OPTIMISATION and says so: the default no longer needs
+  it, and what it still buys is the explicitly-named case, where narrowing to the
+  only service would pay a join per read and hide catalog rows no lane picks.
+
+### Patch Changes
+
+- 7305345: A presentation cell badge lands on its cell when the slice tab was not open.
+
+  The pending focus was spent the moment the slice viewport registered, while
+  its board was still behind the loading skeleton, so the flight missed and the
+  tab opened at its default framing. A miss before the board settles now keeps
+  the request, and the viewport lands it once its first fit completes. A miss
+  after that is final.
+
+- ba61277: Let a deployment pin path colours through its config.
+
+  The one declaration a deployment is expected to change lived inside the
+  shared theme file, so that file could never be identical across installs.
+  The kit default is empty; a supplied name maps to a colour slot; anything
+  else falls through to the ordinary assignment.
+
+- e22dede: Add a class-list reader that matches a token in any order.
+
+  A type rule is almost never about one utility. "Labels are medium" is
+  `text-xs` + `font-medium` together; "an eyebrow is register 3" is
+  `font-mono` + `uppercase` + `tracking-*` together. A guard that searches
+  for a quoted string is defeated the moment those classes are reordered
+  or split across `cn()` arguments — which is how the tree actually
+  writes them.
+
+  **The reader takes a class list, however the call site spelled it**, and
+  answers whether every class of a token is present, in any order. Three
+  spellings, and all three are one list: a single `className="…"` string,
+  arguments of `cn()`, and a class inside a conditional. Named constants
+  such as `PANEL_TEXT.meta` expand, so `cn(PANEL_TEXT.meta, 'truncate')`
+  is the named list plus `truncate`, not the extra class alone.
+
+  **It enforces no rule of its own.** It is the seam the weight guard, the
+  mono-register guard and the rung roster are written with. What it
+  cannot see, no rule built on it can fail.
+
+- 9e6b7cd: A regular creator keeps the agent, and the gate says why.
+
+  Nothing renders differently. A signed-in regular creator and a signed-in admin
+  already saw the same ⚙ settings popover — the same Provider, Model and API-key
+  rows — because the agent block is gated on `canAgent`, which asks whether there
+  is a session and never asks the tier. What changes is that this stops being
+  true by accident.
+
+  **The decision.** The agent is a reading tool. Someone who cannot edit a
+  blueprint still needs to ask questions of it, and the key is theirs — pasted
+  into their own browser, spending their own quota. Tier gates writing, not
+  asking. `canAgent`'s own doc in `SupabaseProvider` now says that, and the
+  composer that reads it says which flag it is reading and which one it is not.
+  The reasoning sits at the seam because every other gate in that file narrows as
+  the tier narrows, so this one reads as an oversight to anyone who arrives at it
+  cold.
+
+  **Both halves are pinned together.** `agentTierLine.test.tsx` renders the real
+  provider over a fake client and asserts, for one signed-in regular session,
+  that the three agent rows are on screen AND that `canAgentWrite` is false — the
+  agent it talks to holds read tools only. A second case shows an admin getting
+  the same three rows, so the write tools are the whole difference between the
+  tiers. Reading either assertion alone makes the other look like the bug, which
+  is why they are one test. Tier-gating the settings surface fails it with the
+  ruling in the message rather than a restated boolean.
+
+- fae6d21: A slide upload lives in a folder of its own, and the bucket admits it.
+
+  **A stock install of this kit could not accept a slide image at all.**
+  `illustrationPath` writes `slices/<slice>/<slide>/<id>.<ext>` — three path
+  segments, because a slide's images became a set and a set needs a folder per
+  slide — and `slice_illustrations_insert` had matched exactly two ever since
+  the bucket was made. So every upload was refused by row-level security _after
+  the whole file had gone over the wire_: a 403 at the end of an upload, from a
+  policy no screen can explain, and nothing an adopter could do about it short
+  of writing the policy by hand.
+
+  The policy moved rather than the key, because the key is what the app and the
+  rows depend on. The older spellings — one image per slide, `frame-N`,
+  `character-ref` — stay accepted, so objects already in the bucket keep
+  resolving.
+
+  **The same bucket had never had a DELETE policy.** Deleting a slice calls
+  `removeSlideUploadObjects` on each of its slides, and with no policy that call
+  matched nothing, returned no error, and left every image where it was. There
+  is now a DELETE policy, bounded by the same name pattern as the insert and
+  taking its tier gate from the same restrictive companion — and the sweep
+  **counts the rows it removed** instead of reading a non-error return as a yes,
+  which is the exact trap that hid this for a release.
+
+  A revertible slide drop still leaves its folder alone. `replaceSlides` does
+  not sweep, and `restore_slides` only sweeps the slides its inverse does not
+  put back: those `image_url`s are written back verbatim, so an object deleted
+  there would restore a row pointing at nothing. A slice deleted outright has no
+  inverse to protect, and its objects go.
+
+  **What compares them now.** The pattern and the path builder drifted because
+  nothing ever put them side by side. `src/lib/storageKeyPolicies.test.ts` reads
+  every `storage.objects` policy that matches on `name` out of the migrations,
+  runs the real key builders, and asserts the pattern accepts the key each one
+  produces and admits exactly the path depths that bucket declares. A policy
+  matching on a name with no key builder pinned to it fails that file, so a new
+  bucket cannot repeat this quietly. The migration carries the second half in
+  SQL: the pattern decides correctly about nine names, and the pattern it
+  decided about is the one the three policies actually carry, read back out of
+  the catalogue.
+
+  The CI shim now carries the grants Supabase itself holds on `storage.objects`,
+  without which no rehearsal here could ever have asked a bucket policy anything
+  — it would have met `permission denied` before reaching the policy's answer.
+
+- e75c945: A small button is one size, and the rung is what says so: thirty-seven
+  `size="sm"` call sites stop restating the height and the font size the size
+  already sets.
+
+  **Two buttons in the same column rendered at two different sizes, and which
+  one you got depended on whether the author had remembered to type a class.**
+  `ResourcesList` had the pair adjacent on screen: "Upload a file" carried
+  `text-xs` and rendered at 12px, while "Save resources" fourteen lines below
+  carried only `h-7` and inherited the `sm` rung's own `text-[0.8rem]`, 12.8px.
+  `CellPanelEditor` had the same split between "Add value proposition" and the
+  Save/Cancel row under it. Thirty-seven of seventy-four `size="sm"` call sites
+  wrote one or both of those classes; thirty-seven did not, so the rung decided
+  half the buttons and the call site decided the other half.
+
+  **The overrides are gone rather than the rung retuned.** `components.json`
+  points the shadcn CLI at `@/components/ui`, so `button.tsx` is regenerated
+  rather than authored — `tokenDiscipline.test.ts` already names its
+  `text-[0.8rem]` as vendored for that reason, and a retune there would be
+  deleted by the next `npx shadcn add button`. The size the rung sets was never
+  the problem; nothing trusting it was.
+
+  **What you will see change.** Thirty-three small buttons that were a shade
+  under the rung now sit on it — the same 12.8px their untouched neighbours have
+  had all along, so an editor panel's controls agree with each other for the
+  first time. Nothing changes height: `h-7` was the rung's own value at every
+  site that wrote it. Overrides that decide something else stand, including the
+  ones that decide a size on purpose: `EditorZoomIndicator` keeps its `h-8`
+  elevated card, and the five controls that pair `h-6` with `text-2xs` — the
+  filter and ledger openers, replace, retry and the scenario action — are a
+  whole step down the ladder rather than a wobble on one rung, and keep it.
+
+  **What holds it.** `lib/buttonSizeContract.test.ts` reads the rung off
+  `buttonVariants` and every `size="sm"` call site off the tree, and asks
+  `tailwind-merge` — the resolver `cn` runs at render time — which classes are a
+  height and which are a font size, so neither the rung's numbers nor the list of
+  rung names is written down twice. Two clauses: the rung's height is never
+  restated, and a font size is never set on top of the rung's own box.
+
+- abfa780: Every presentation cell badge opens its own cell.
+
+  Clicking any badge under a slide called the same handler with no argument, so
+  they all opened the slice tab and none of them the cell they named. Each badge
+  now leaves a pending focus for that cell, then opens the slice tab. The slice
+  viewport consumes the pending focus when it registers, because a slice tab's
+  address carries no cell.
+
+  **What you will see.** On a slide with two cited cells, the two badges open two
+  different cells in the slice. A badge's accessible name says it opens that cell
+  in the slice.
+
+  **What holds it.** `requestSliceCellFocus` stores the request when no viewport
+  is registered for the slice yet, and `registerFocusCells` flies when that
+  viewport appears. A component test clicks two badges and asserts two different
+  cell ids.
+
+- 64ee45e: Monospace is for identifiers, and two settings rows are prose.
+
+  Read the ⚙ settings popover's agent rows top to bottom and the face used to
+  alternate for no reason a reader could recover: Provider, Model, API key and
+  Scope were all monospace, and two of the four render English.
+
+  `typography.md` gives mono one job — code, identifiers, and the time-marker
+  register. A model id (`claude-opus-5`) and an API key are identifiers and keep
+  it. `Anthropic Claude` is an `AGENT_PROVIDERS` label and `Active service` is
+  one of two phrases naming a search default; both are ordinary words, and they
+  now set in the body face beside the labels and prose they sit among. Trigger
+  and open menu move together — the menu shows the same values, so it takes the
+  same face.
+
+  **The column agrees on one label width.** The agent rows label at `w-14` and
+  the developer rows labelled at `w-20`, and both render into the same
+  `flex flex-col gap-2.5` column inside one `w-72` popover, so the control edge
+  jogged 64px to 88px partway down the panel. The developer rows take the agent
+  rows' width, and their section spaces itself at the column's `gap-2.5` rather
+  than a `gap-2` of its own.
+
+  **What is pinned.** `settingsColumnRows.test.tsx` asserts the rule rather than
+  today's classes: a table says what kind of thing each row's VALUE is — an
+  identifier or prose — and the face is derived from that, in the row and in the
+  open menu. A row added to the column without an entry fails the roster, so the
+  next row cannot quietly pick a face nobody chose. The alignment test never
+  names a width; it asserts there is exactly one.
+
+  **Why it shipped here.** `AgentProviderFields.tsx` and `AgentScopeField.tsx`
+  are on a deployment's reconciled allowlist, which promises byte-identity with
+  this kit's copy, so the fix comes upstream and returns with a pin bump.
+
+- 41fffd4: Monospace stays in its three registers, and the guard knows the two ladders.
+
+  A `font-mono` call site belongs to exactly one job: code and stored values,
+  aligned numerals beside `tabular-nums`, or an eyebrow and wordmark. The
+  scan is the class-list reader, so a token present in any order still
+  counts, and size is evaluated against the ladder of the scope the site
+  renders in — `text-sm` is 13px in prose and 14px inside `.font-mono`,
+  and a guard that assumed one ladder would fail a legible code size.
+
+- 9b30de0: One name for the thing a deployment runs: template.
+
+  The glossary now defines **Template** (the canonical application every
+  deployment installs) and **Deployment** (an installation that supplies its
+  own content, brand and data, and carries no application code). "Kit" is
+  retired as a whole word — on-screen copy, comments and published docs —
+  and the vocabulary guard fails a reintroduced `kit` without flagging
+  `kitchen`, `toolkit` or `-webkit-`.
+
+- d43a236: A surface asks `canWrite`, not the editing tier.
+
+  The provider still derives the tier and still uses it to compute the write
+  gate. It no longer publishes that answer. `realCanWrite` stays, named as the
+  developer portal's honest readout and never as a second gate. ADR 0011 is
+  the ruling; the glossary defines the four axes and `active service`.
+
+- 24f3114: One working weight, and a guard that names the ADR.
+
+  400 is all content, 500 is the one emphasis, 600 is headings only, and
+  700 is retired. Both scopes of `--font-weight-normal` stay at 400:
+  Ubuntu Sans holds colour at 400, so the Inter 450 is not ported. The
+  guard reads class lists, not quoted strings, and fails a second
+  functional weight.
+
+- cdbfe6c: `npm run agent-account -- --record` no longer fails on the run that records.
+
+  The ratchet was judged against the baseline the run was replacing, so the
+  first record reported the baseline missing and a re-record after a coverage
+  gain reported it stale — both failures naming the very command that raised
+  them, and both exiting 1. A recording run now writes the baseline and skips
+  those two failures; the account's own drift check still applies.
+
+- aaae7d7: The blueprint canvas and its panels land on the new type ladder.
+
+  Sub-12px rungs lift onto `xs`. Panel titles and values sit on `sm`;
+  labels and meta sit on `xs`, distinguished by weight and colour. Canvas
+  cell chrome stays at `xs` and the face heights do not change. Hand-written
+  `leading-*` drops except where a comment names the geometry that still
+  needs it.
+
+- c5a8989: Let a deployment supply the cell-text budget through its config.
+
+  The template used to stop a person at 120 characters while the agent could
+  write past that point and only hear about it afterwards. The cap protected
+  nothing in the schema, and the number lived in shared code a deployment
+  could not overlay. The kit default is still that single cap, expressed as
+  target and warning per lane kind; a deployment supplies its own pair, and
+  both writers get the same advice at those thresholds.
+
+- 5cd03ae: The cover, the mobile shell and the leftover style helpers land on the new
+  ladder.
+
+  Cover copy sits at `sm` or above and is never muted-only; inline code
+  inherits the sentence beside it. Hand-written `leading-*` on these
+  surfaces is gone — the rung supplies the box. `PANEL_TEXT`'s `2xs` roles
+  stay until that layer retires. Mobile chrome at phone width keeps `xs`
+  and does not zoom on focus.
+
+- 0f65847: The editor shell lands on the new type ladder, and 12px becomes chrome.
+
+  Menu items, buttons, field labels and settings rows move to `sm` (13px).
+  Hints, meta and helper text sit on `xs` (12px). Sub-12px rungs in the
+  shell lift onto that floor. Hand-written `leading-*` drops except where
+  a comment names the geometry that still needs it.
+
+- 9d2e3f5: The new type ladder lands on the names the tree already uses.
+
+  Sans and mono declare the nine rungs at the measured values; the
+  line-height ratios sit once on the root. Sub-12px rungs stay until their
+  call sites move. The field input goes to `lg` so a 15px `base` cannot
+  zoom the page on focus.
+
+- 369eb9d: The palette suite measures a brand it does not name: identity and action are
+  two colours by a perceptual distance, and a status signal stays clear of the
+  accent.
+
+  **A test a fork has to edit is a test that does not travel.** `palette.test.ts`
+  held `contrast(brand, primary) > 1.5` as its "these are two colours" floor, and
+  both halves of that were this template's greyscale talking. Contrast is a
+  function of lightness alone, so it cannot see either of the ways a branded
+  palette separates the two fills — a hue apart and a chroma apart both measure
+  1:1 — and 1.5 was read off a neutral seam that stands a near-black control
+  beside a mid-grey identity. A deployment that gives both fills one accent and
+  separates them by lightness alone measures 1.27 and fails a floor it has not
+  violated. It was the last assertion in the file an adopter had to edit to get a
+  green suite, which is the habit this repo spends real effort discouraging
+  everywhere else.
+
+  **What replaces it is the claim the ratio was standing in for.** Identity and
+  action are TWO fills, held as a Euclidean distance in OKLab — the space these
+  are authored in — against a floor of one just-noticeable difference. Hue and
+  chroma count as separation now, and the colours measured are the gamut-mapped
+  ones, because two triples the browser reduces onto each other are one colour on
+  the screen whatever the dials said. The floor is a fact about eyes rather than
+  about a palette: no brand is named by it and none can be tuned around it. This
+  template clears it at 0.39 and 0.33, a branded deployment at 0.07, and a
+  palette that dials one fill onto the other lands at 0.
+
+  **The reason `semantic.css` already gave, now held.** `--success-hue` is pinned
+  rather than pulled toward the accent, and the comment beside it says why: a
+  brand-relative green would collide with `--primary`, and a success state has to
+  stay distinguishable from a brand fill. Nothing asserted it. Warning,
+  destructive, info and success are each measured against both accents at the
+  same just-noticeable floor, in both themes — so an accent moved onto a category
+  anchor fails here rather than shipping a destructive fill that is the brand
+  fill and carries no signal at all.
+
+  **Demonstrated rather than claimed.** With a real deployment's dials in the
+  theme files — one accent, both modes, chroma 0.135 — the file passes 279 of 279
+  with no assertion edited. Deliberately broken palettes still fail: the identity
+  dialled onto the action fill (0), the identity a hundredth of a lightness step
+  off it (0.01), a focus ring dialled into the canvas (1.11:1), and a green brand
+  dialled onto the success anchor (0).
+
+- 429f6e9: Retire the panel type-role layer; write the utilities at the call site.
+
+  PANEL_TEXT named four jobs and hid the classes behind a constant 3.9% of
+  call sites reached. The four judgements live in ADR 0012; each former
+  site writes the same rung, weight and colour it resolved to.
+
+- 5665197: The slice and presentation surfaces land on the new type ladder.
+
+  Editing chrome — the composer, the storyboard sheet, the sidebar — sits on
+  `xs`. Stage text sits on `sm` or above and is never muted-only: headings,
+  captions, the cell-badge row, slide navigation and the sticky header all
+  carry full ink. Sub-12px rungs on these files lift onto that floor.
+  Hand-written `leading-*` drops except where a comment names the geometry
+  that still needs it.
+
+- 93da572: The storyboard's presentation layout is unreachable.
+
+  `BlueprintStepStoryboard` kept a second panel behind `presentation={true}`.
+  Nothing passed that prop — the only caller is the compare cell, which used
+  the default cell face. Wiring the walkthrough onto that branch would have
+  meant migrating a working layout onto dead code. The prop, the branch, and
+  the panel are gone; the walkthrough's own presentation row is the one that
+  remains.
+
+- 1644889: The stylesheet reader answers a question about stylesheets: `tokenModel` gains
+  `stylesheetMatching`, the counterpart to `sourceMatching` it never had.
+
+  **Every rule built on this model could read the application and not the
+  stylesheet it is written beside.** `sourceMatching` sweeps `src/**.ts(x)` and
+  reports a `file:line: match` for each hit, and that is how the token discipline
+  rules find a raw hex or a forbidden tier. A stylesheet was outside the sample
+  entirely, so `semantic.css` was free to spend a primitive that the same rule
+  forbade a component to touch, and the rule would pass while saying nothing.
+  Widening the model once widens it for every rule that asks, which is what the
+  seam exists for.
+
+  **Declared values, not raw text.** A text scan of these files is wrong here in
+  a way that is easy to miss: this codebase writes a paragraph of prose above
+  almost every block, and those paragraphs quote the names they explain.
+  `colors.css`'s header spells `var(--color-amber-100)` twice to explain the
+  Tailwind namespace split, in a file that paints nothing — a text scan reports
+  both, the first rule written on it fails on a comment, and the next reader
+  learns the rule cannot be trusted. `stylesheetMatching` walks the declarations
+  the model already parses, whose comments are blanked upstream, so a paragraph
+  about a name is not a use of it.
+
+  **A match carries where it came from, not just which file.** Each `StyleUse`
+  reports the matched text, the property whose value carried it, the selector
+  that declaration sits under, the file and line on disk, and the token layer —
+  so a rule can say "not at the semantic tier" rather than naming the files that
+  happen to be semantic today, and can tell `theme.css` registering a step
+  (`--color-blue-900: var(--color-blue-900)`) apart from `semantic.css` spending
+  it on `--annotation-selected`.
+
+  **What holds it.** Seven cases in `lib/tokenModel.test.ts`, all against this
+  repo's own stylesheets rather than a fixture: the prose in `colors.css` is not
+  a use, a declaration's left-hand side is not a value, a reported line is the
+  line the match sits on in the file on disk, the layer arrives with the match,
+  the carrying property and selector arrive with it, and a `calc()` reading two
+  elevation names reports both rather than the first. A raw-text reimplementation
+  of the same signature fails four of them.
+
+  **`Medium` and `Scope` are asserted rather than assumed.** They are the second
+  and third question a rule asks after "which theme" — which cascade, and which
+  subtree — and a reader that grew reach while quietly losing either would answer
+  more questions and fewer of the ones already asked. Two cases now hold them:
+  `--surface` flips between `themes/dark.css` and `print.css` with the medium
+  while `--color-blue-900` flips the other way, and `--ground` resolves to one
+  value at the root and another at `[data-ground='card']`, with the scope taken
+  from the stylesheet rather than written down beside it.
+
+- 8c02e75: Delete the four sub-12px type rungs and guard the ladder.
+
+  `--text-2xs` through `--text-5xs` go. The roster fails a tenth rung in
+  either scope and passes a legitimate mono `sm`. Authored classes cannot
+  name a rung below `xs` or an absolute size below 12px. Presentation
+  surfaces cannot carry `xs` or smaller. The geometry defence in
+  `theme.css` is answered, pointing at ADR 0012.
+
+- 9cbe601: Let a deployment generate an agent account from a connected database.
+
+  The schema account an agent reads was built beside one install and imported
+  by path, so that loader could never match this template's. The generator and its
+  check live here now; each deployment's generated document is its own
+  content, registered through the existing extra-reference seams. With no
+  database configured nothing is generated or registered, and the agent's
+  reference list stays this template's own.
+
+- 300bb65: The template holds the ADRs that govern it.
+
+  Nine records move here from BilLogic/plus-uno-blueprint, renumbered after 0012. Five mirrored pairs are folded into this copy; where they disagreed,
+  the schema or the code decided.
+
+- 28509f8: The type system's rules, written down before any of them is enforced.
+
+  ADR 0012 records the four axes, the two-scope ladder, the numbers taken
+  from the reference and the two declined, and that a semantic type-role
+  layer is the alternative this tree already tried. The glossary names the
+  eight words a reader needs.
+
+- ed95c51: Resize two containers so the type floor can rise to 12px.
+
+  A nine-pixel digit inside a sixteen-pixel circle already clipped at two digits,
+  and an eight-pixel storyboard caption existed only because the cell face was
+  split first. Cited-cell order is a ruler column — right-aligned, fixed-width,
+  mono with tabular figures, at `xs`. The slide badge sizes to its content
+  (`h-5 min-w-5 px-1`), so one digit stays a circle and two or more grow it.
+  The storyboard strip no longer draws a per-frame lane name; the
+  walkthrough still does.
+
+  The numbers this replaces were two-digit and three-digit cases. A one-digit
+  fixture would have missed both bugs.
+
 ## 1.36.0
 
 ### Minor Changes
@@ -4410,8 +4965,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
