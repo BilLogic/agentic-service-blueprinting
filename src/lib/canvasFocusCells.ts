@@ -9,8 +9,10 @@
  *
  * A slice tab is addressed by the slice alone, so a badge that wants a
  * cell cannot put that cell on the tab. It leaves a pending focus under
- * the slice key; `registerFocusCells` consumes it when the viewport that
- * can fly exists.
+ * the slice key. `registerFocusCells` tries it when the viewport registers,
+ * and `flushPendingFocus` lands it once that viewport's first fit is done:
+ * a slice tab registers while its board is still behind the loading
+ * skeleton, and a flight at a board with no cells on it is a miss.
  */
 
 export type FocusCellsResult =
@@ -24,6 +26,8 @@ export type FocusCellsFn = (
 
 const registry = new Map<string, FocusCellsFn>()
 const pendingByKey = new Map<string, string[]>()
+/** The latest request per key, so a stale miss never displaces a newer one. */
+const latestByKey = new Map<string, string[]>()
 let activeFocusCells: FocusCellsFn | null = null
 
 /**
@@ -40,10 +44,12 @@ export function sliceFocusCellsKey(sliceId: string): string {
 /**
  * Ask a slice tab's viewport to fly to these cells.
  *
- * If that viewport is already registered, it flies now. Otherwise the
- * request is stored and {@link registerFocusCells} consumes it when the
- * viewport appears — a slice tab's address carries no cell, so this is
- * session state rather than part of the tab descriptor.
+ * If that viewport is already registered, it flies now; a miss there (the
+ * tab is open but its board is still loading) keeps the request for the
+ * viewport's next fit. Otherwise the request is stored and
+ * {@link registerFocusCells} tries it when the viewport appears. A slice
+ * tab's address carries no cell, so this is session state rather than part
+ * of the tab descriptor.
  *
  * @param sliceId - The slice whose tab should receive the focus.
  * @param cellIds - Cells to bring into view, in the order `focusCells` reads them.
@@ -54,13 +60,10 @@ export function requestSliceCellFocus(
 ): void {
   const key = sliceFocusCellsKey(sliceId)
   const ids = [...cellIds]
-  const focusCells = registry.get(key)
-  if (focusCells) {
-    pendingByKey.delete(key)
-    void focusCells(ids)
-    return
-  }
   pendingByKey.set(key, ids)
+  latestByKey.set(key, ids)
+  const focusCells = registry.get(key)
+  if (focusCells) attemptPendingFocus(key, focusCells, false)
 }
 
 /**
@@ -69,12 +72,54 @@ export function requestSliceCellFocus(
  */
 export function clearPendingSliceCellFocus(): void {
   pendingByKey.clear()
+  latestByKey.clear()
+}
+
+/**
+ * Try the pending focus for `key` on this viewport.
+ *
+ * Taken off the table before the flight starts, so a second trigger cannot
+ * fly the same request twice. A miss before the board has settled puts it
+ * back for {@link flushPendingFocus}, unless a newer request has been made
+ * since — a slow miss must not displace the badge the reader clicked last. A miss from the flush is final: the board is drawn, and a
+ * cell it does not hold will not appear.
+ *
+ * @param key - The registry key the viewport serves.
+ * @param focusCells - The live viewport's fly-to-cell function.
+ * @param final - True once the viewport has fitted its board.
+ */
+function attemptPendingFocus(
+  key: string,
+  focusCells: FocusCellsFn,
+  final: boolean,
+): void {
+  const ids = pendingByKey.get(key)
+  if (!ids) return
+  pendingByKey.delete(key)
+  void Promise.resolve(focusCells(ids)).then((result) => {
+    if (final || result.kind !== 'miss') return
+    if (latestByKey.get(key) === ids && !pendingByKey.has(key)) {
+      pendingByKey.set(key, ids)
+    }
+  })
+}
+
+/**
+ * Land a pending focus once the viewport serving `key` has fitted its board.
+ * `ZoomPanViewport` calls this when a fit completes, which is the first
+ * moment a slice tab opened from a presentation badge has cells to fly to.
+ *
+ * @param key - The registry key the viewport serves.
+ */
+export function flushPendingFocus(key: string): void {
+  const focusCells = registry.get(key)
+  if (focusCells) attemptPendingFocus(key, focusCells, true)
 }
 
 /**
  * Register this viewport's `focusCells` under `key`. If a pending slice
- * focus is waiting for that key, it flies immediately — that is how a
- * presentation badge lands after the slice tab mounts.
+ * focus is waiting for that key, it is tried at once. A board still loading
+ * misses, and the request then waits for {@link flushPendingFocus}.
  *
  * @param key - Scenario slide id, or {@link sliceFocusCellsKey} for a slice tab.
  * @param focusCells - The live viewport's fly-to-cell function.
@@ -84,11 +129,7 @@ export function registerFocusCells(
   focusCells: FocusCellsFn,
 ): () => void {
   registry.set(key, focusCells)
-  const pending = pendingByKey.get(key)
-  if (pending) {
-    pendingByKey.delete(key)
-    void focusCells(pending)
-  }
+  attemptPendingFocus(key, focusCells, false)
   return () => {
     if (registry.get(key) === focusCells) registry.delete(key)
   }
