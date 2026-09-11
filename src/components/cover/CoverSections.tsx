@@ -23,7 +23,7 @@ function SectionHeading({ children }: { children: ReactNode }) {
 
 function Paragraph({ children }: { children: ReactNode }) {
   return (
-    <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+    <p className="text-sm text-foreground sm:text-base">
       {children}
     </p>
   )
@@ -149,12 +149,12 @@ function FigureStack({
  * on a muted ground, bordered rows, and the term column carrying the weight.
  * Every colour is a token, so both themes follow the same rules.
  *
- * One type rung below the page's prose (`text-xs sm:text-sm`, not
- * `text-sm sm:text-base`). A table is denser than a paragraph — two columns,
- * a header row, five-plus data rows in view at once — and running it at
- * paragraph size read heavier than the prose around it despite carrying
- * less per row. The rung below is still comfortably above the 3xs/2xs badge
- * sizes elsewhere on the page; it is one step, not a jump to caption text.
+ * One type rung below the page's prose (`text-sm`, not `text-sm sm:text-base`).
+ * A table is denser than a paragraph — two columns, a header row, five-plus
+ * data rows in view at once — and running it at paragraph size read heavier
+ * than the prose around it despite carrying less per row. The display floor
+ * is `sm`, so the step below the desktop `base` prose is the floor rather
+ * than a caption rung.
  */
 function DefsTable({
   columns,
@@ -170,7 +170,7 @@ function DefsTable({
         COVER_MEASURE,
       )}
     >
-      <table className="w-full border-collapse text-left text-xs sm:text-sm">
+      <table className="w-full border-collapse text-left text-sm">
         <thead>
           <tr className="bg-muted/50">
             <th
@@ -199,7 +199,7 @@ function DefsTable({
               >
                 {item.term}
               </th>
-              <td className="px-4 py-3 align-top leading-relaxed text-muted-foreground">
+              <td className="px-4 py-3 align-top text-foreground">
                 {renderInline(item.definition)}
               </td>
             </tr>
@@ -361,7 +361,7 @@ export function CoverSections({
       {intro ? (
         <p
           className={cn(
-            'text-sm leading-relaxed text-muted-foreground sm:text-base',
+            'text-sm text-foreground sm:text-base',
             COVER_MEASURE,
           )}
         >
