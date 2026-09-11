@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   AlignCenter,
   AlignLeft,
@@ -485,9 +486,9 @@ function ShapeStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
+          <Eyebrow className="mb-1.5 block text-(--foreground-annotation-chrome-tertiary)">
             Fill
-          </div>
+          </Eyebrow>
           <div className="flex flex-wrap items-center gap-1.5">
             <ColorSwatch
               empty
@@ -551,9 +552,9 @@ function ShapeStyleBar({
           onMouseDown={(e) => e.preventDefault()}
         >
           <div className="mb-1.5 flex items-center justify-between gap-3">
-            <span className="text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
+            <Eyebrow className="text-(--foreground-annotation-chrome-tertiary)">
               Stroke
-            </span>
+            </Eyebrow>
             {shape.color ? (
               <div className="flex items-center gap-0.5">
                 {ANNOTATION_STROKE_WIDTHS.map((width) => (
@@ -666,9 +667,9 @@ function StickyStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
+          <Eyebrow className="mb-1.5 block text-(--foreground-annotation-chrome-tertiary)">
             Color
-          </div>
+          </Eyebrow>
           <div className="flex flex-wrap items-center gap-1.5">
             {ANNOTATION_STICKY_SWATCHES.map((swatch) => (
               <ColorSwatch
@@ -835,9 +836,9 @@ function TextStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-xs font-medium tracking-wide text-(--foreground-annotation-chrome-tertiary) uppercase">
+          <Eyebrow className="mb-1.5 block text-(--foreground-annotation-chrome-tertiary)">
             Color
-          </div>
+          </Eyebrow>
           <div className="flex flex-wrap items-center gap-1.5">
             {ANNOTATION_STROKE_SWATCHES.map((swatch) => (
               <ColorSwatch

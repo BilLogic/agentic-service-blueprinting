@@ -258,16 +258,25 @@ describe('the agent panel reseats chrome below UI text', () => {
   it('keeps the Sessions eyebrow on xs and the row title on sm', () => {
     const source = sourceOf('components/editor/AgentPanel.tsx')
     const sites = classListsIn(source, 'components/editor/AgentPanel.tsx')
+
+    // The eyebrow's rung is not in this file any more, and that is the point:
+    // it is `Eyebrow`, spelled once, after twenty-odd call sites had written
+    // it by hand at two different letterspacings. What this panel still owns
+    // is the sidebar ink; the size and the case are the primitive's.
     const eyebrow = sites.find((site) =>
-      classListHas(site.classes, [
-        'uppercase',
-        'tracking-wider',
-        'text-sidebar-foreground/60',
-      ]),
+      classListHas(site.classes, ['text-sidebar-foreground/60']),
     )
     expect(eyebrow, 'Sessions eyebrow').toBeDefined()
-    expect(eyebrow?.classes).toContain('text-xs')
     expect(eyebrow?.classes).not.toContain('text-sm')
+
+    const primitive = classListsIn(
+      sourceOf('components/blueprint/Eyebrow.tsx'),
+      'components/blueprint/Eyebrow.tsx',
+    )
+    const register = primitive.find((site) => classListHas(site.classes, ['uppercase']))
+    expect(register, 'the eyebrow register').toBeDefined()
+    expect(register?.classes).toContain('text-xs')
+    expect(register?.classes).not.toContain('text-sm')
 
     const rowTitle = sites.find((site) =>
       classListHas(site.classes, [

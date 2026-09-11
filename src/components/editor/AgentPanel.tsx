@@ -7,6 +7,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   ChevronLeft,
   ChevronRight,
@@ -396,9 +397,9 @@ function AgentSessionsView({
             aria-label="Filter sessions"
           />
         ) : (
-          <p className="min-w-0 flex-1 truncate pl-1 text-xs font-medium tracking-wider text-sidebar-foreground/60 uppercase">
+          <Eyebrow className="min-w-0 flex-1 truncate pl-1 text-sidebar-foreground/60">
             Sessions
-          </p>
+          </Eyebrow>
         )}
         <IconTooltip label="Filter sessions by name" side="bottom">
           <Button
@@ -537,9 +538,9 @@ type ToolEvent = Extract<TranscriptEvent, { kind: 'tool' }>
 function ToolDetail({ label, body }: { label: string; body: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+      <Eyebrow>
         {label}
-      </p>
+      </Eyebrow>
       <pre className="mt-0.5 max-h-40 overflow-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs whitespace-pre-wrap text-foreground/80">
         {body}
       </pre>

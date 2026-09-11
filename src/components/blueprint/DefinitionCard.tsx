@@ -1,4 +1,5 @@
 import type { ReactElement, RefObject } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   Popover,
   PopoverContent,
@@ -53,12 +54,9 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
         >
           {/* Small caps, so the word reads as a label on the sentence under it
               and not as another sentence competing with it. */}
-          <span
-            data-definition-eyebrow=""
-            className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          >
+          <Eyebrow className="block" data-definition-eyebrow="">
             {section.eyebrow}
-          </span>
+          </Eyebrow>
           <span
             data-definition-body=""
             className={cn(

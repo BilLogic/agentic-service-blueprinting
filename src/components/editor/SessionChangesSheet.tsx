@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useEffect, useRef, useState } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { Check, Crosshair, History, Undo2 } from 'lucide-react'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
@@ -581,9 +582,9 @@ export function SessionChangesSheet() {
                   heading for the obvious.
                 */}
                 {groups.length > 1 ? (
-                  <p className="px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  <Eyebrow className="px-2 py-1">
                     {pathLabel(group.pathId)}
-                  </p>
+                  </Eyebrow>
                 ) : null}
                 {group.entries.map((entry) => (
                   <ChangeRow key={entry.id} entry={entry} reverting={reverting} />

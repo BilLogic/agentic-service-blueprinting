@@ -45,7 +45,22 @@ function Panel({ onNavigate }: { onNavigate: (key: string) => void }) {
       <button
         type="button"
         onClick={() =>
-          detail.selectCell({ cellId: 'cell-1', paths: [{ pathId: 'p1', cellId: 'cell-1' }] })
+          detail.selectCell({
+            scenarioName: 'Warm-Up',
+            laneName: 'Tutor',
+            stepId: 'step-1',
+            stepName: 'Join',
+            stepIndex: 0,
+            paths: [
+              {
+                cellId: 'cell-1',
+                pathId: 'p1',
+                pathName: 'Happy',
+                pathKind: 'happy',
+                content: 'Tutor waits for the room to open',
+              },
+            ],
+          })
         }
       >
         open
@@ -56,7 +71,9 @@ function Panel({ onNavigate }: { onNavigate: (key: string) => void }) {
       <button type="button" onClick={() => onNavigate('service-canvas:board::none:0')}>
         stay on the board
       </button>
-      <span data-testid="open">{detail.selection ? detail.selection.cellId : 'none'}</span>
+      <span data-testid="open">
+        {detail.selection ? (detail.selection.paths[0]?.cellId ?? 'none') : 'none'}
+      </span>
     </div>
   )
 }

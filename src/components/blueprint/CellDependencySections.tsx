@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { PanelSectionLabel } from '@/components/blueprint/PanelSectionLabel'
 import {
   ArrowDown,
   ArrowLeft,
@@ -232,9 +233,7 @@ function DependencyGroup({
 }) {
   return (
     <div className="flex flex-col gap-1" data-dependency-group={title}>
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {title}
-      </p>
+      <PanelSectionLabel>{title}</PanelSectionLabel>
       <ul className="flex flex-col">{children}</ul>
     </div>
   )

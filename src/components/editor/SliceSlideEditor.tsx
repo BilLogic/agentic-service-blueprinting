@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type DragEvent } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   getSlideSheetHeight,
   persistSlideSheetHeight,
@@ -448,9 +449,9 @@ export function SliceSlideEditor({
               visible one, in the schema's word.
             */}
             <label className="flex shrink-0 grow flex-col gap-0.5">
-              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              <Eyebrow>
                 Caption
-              </span>
+              </Eyebrow>
             <textarea
               value={slide.caption}
               rows={2}

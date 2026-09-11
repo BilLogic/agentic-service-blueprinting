@@ -1,4 +1,5 @@
 import { NotionPropertyRow } from '@/components/blueprint/NotionPropertyRow'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { ScenarioTitleDefinition } from '@/components/blueprint/ScenarioTitleDefinition'
 import { ScenarioSlideFilters } from '@/components/blueprint/ScenarioSlideFilters'
 import { PathMultiSelect, type PathOption } from '@/components/blueprint/PathMultiSelect'
@@ -94,9 +95,9 @@ export function ScenarioSlideHeader({
     >
       <div className="min-w-0">
         {phaseLabel && (
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <Eyebrow>
             {phaseLabel}
-          </p>
+          </Eyebrow>
         )}
         <div
           className={cn(

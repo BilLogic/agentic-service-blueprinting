@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { Check, ChevronDown } from 'lucide-react'
 import {
   Popover,
@@ -93,9 +94,9 @@ export function WorkspaceServiceSwitcher({
         />
       </div>
       <PopoverContent align="start" className="w-64 p-1.5">
-        <span className="flex w-fit px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <Eyebrow className="flex w-fit px-2 pb-1 pt-0.5">
           Services
-        </span>
+        </Eyebrow>
         <ul className="flex flex-col gap-0.5">
           {services.map((svc) => {
             const isActive = svc.slug === activeSlug
