@@ -40,6 +40,16 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | What may a surface ask of the session? | docs/adr/0011-one-question-a-surface-may-ask.md |
 | Why is this colour token derived, and where does it part from upstream? | docs/adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md |
 | Which axis of a text style does a rung own, and why are there two ladders? | docs/adr/0012-a-rung-owns-size-and-leading.md |
+| Where do layout numbers the runtime does math on live? | docs/adr/0013-typescript-owns-layout-numbers.md |
+| May I edit a file under src/components/ui/? | docs/adr/0014-vendored-primitives-stay-pristine.md |
+| Does focusing a scenario unmount the rest of the board? | docs/adr/0015-the-board-is-always-fully-mounted.md |
+| Why do queries never refetch on focus? | docs/adr/0016-reads-never-refetch-on-their-own.md |
+| Why are the large editor components not split? | docs/adr/0017-large-component-splits-wait-for-an-end-to-end-round.md |
+| What does featured mean on a resource? | docs/adr/0018-featured-is-one-column-two-verbs.md |
+| Is this repo a fork of a deployment, or the canonical template? | docs/adr/0019-the-deployment-is-a-deployment-of-the-template.md |
+| How does a deployment consume this template? | docs/adr/0020-the-deployment-imports-the-template.md |
+| Who owns the canvas agent, and how may a deployment tune it? | docs/adr/0021-the-template-owns-the-agent.md |
+| What decisions have been recorded, and under which numbers? | docs/adr/overview.md |
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
 | See what is already being worked on | GitHub issues — the queue is not in this repo |
@@ -67,4 +77,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-25 protocol documents are indexed in [docs/index.md](./docs/index.md).
+35 protocol documents are indexed in [docs/index.md](./docs/index.md).

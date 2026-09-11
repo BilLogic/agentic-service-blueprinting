@@ -4,7 +4,10 @@ summary: State that must outlive a mount point, or be read by code with no hooks
 
 # 5. Cross-surface state is a module store, not context
 
-**Status** Accepted — 2026-09-06
+**Status** Accepted — 2026-09-06. Amended 2026-09-10 (#551): the instance
+list gained `canvasModeContext.ts` and `canvasChromeResize.ts`, which this
+tree already had and the deployment's copy (BilLogic/plus-uno-blueprint
+ADR 0005) listed.
 **Context** [#163](https://github.com/BilLogic/agentic-service-blueprinting/issues/163)
 
 ## Context
@@ -27,7 +30,8 @@ Two conditions send state here, and either one is sufficient:
 The live instances each carry their reason in their own header comment:
 `agent/placement.ts`, `agent/panelState.ts`, `agent/settings.ts`,
 `agent/sessions.ts`, `contexts/activeServiceStore.ts`,
-`contexts/shellBootStore.ts`, `contexts/sidebarCollapsedContext.ts`,
+`contexts/canvasModeContext.ts`, `contexts/shellBootStore.ts`,
+`contexts/sidebarCollapsedContext.ts`, `lib/canvasChromeResize.ts`,
 `lib/compareReviewStore.ts`, `lib/openCellStore.ts`, `lib/authoringSession.ts`,
 and `hooks/useMobileShell.ts` (a media query as an external store).
 

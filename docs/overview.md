@@ -27,7 +27,7 @@ anything.
 
 | Folder | What is in it |
 | --- | --- |
-| [`adr/`](./adr/) | The decisions, numbered. ADR 1 draws the line between the two contract tiers and freezes the identifier layer; ADR 2 records why five folders keep names that break the grammar. |
+| [`adr/`](./adr/) | The decisions, numbered. The list and the mapping from records that moved in are [`adr/overview.md`](./adr/overview.md). |
 | [`agents/`](./agents/) | Repository-specific configuration for engineering skills: issue tracker, triage labels, and domain-doc layout. |
 | [`guide/`](./guide/) | Four numbered parts, for a person reading start to finish: the model, using it, the plugin, operations. The guide links into the protocol rather than restating it. |
 | [`guidelines/`](./guidelines/) | How we work — writing documentation, and proposing a change. |

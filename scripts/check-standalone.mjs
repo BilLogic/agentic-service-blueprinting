@@ -127,12 +127,56 @@ export function scannedFiles(root = REPO_ROOT) {
   })
 }
 
+/**
+ * A citation of the deployment repository this template was generalised from.
+ * Issue #551 moved ADRs here; a cross-reference that could be read from either
+ * side has to name the repository as well as the number, and that repository's
+ * GitHub path is `BilLogic/plus-uno-blueprint`. The citation is the pointer,
+ * not coupling — a line that names "uno" or "PLUS" *beside* the citation still
+ * fails.
+ */
+const SOURCE_REPO_CITATION = /BilLogic\/plus-uno-blueprint/g
+
+/**
+ * Character spans on one line that are a source-repository citation.
+ *
+ * @param {string} text
+ * @returns {Array<[number, number]>}
+ */
+function sourceRepoCitationSpans(text) {
+  const spans = []
+  SOURCE_REPO_CITATION.lastIndex = 0
+  for (const match of text.matchAll(SOURCE_REPO_CITATION)) {
+    spans.push([match.index, match.index + match[0].length])
+  }
+  return spans
+}
+
+/**
+ * Whether `index` falls inside any of `spans`.
+ *
+ * @param {number} index
+ * @param {Array<[number, number]>} spans
+ */
+function isInsideSpan(index, spans) {
+  return spans.some(([start, end]) => index >= start && index < end)
+}
+
 /** Every `{ line, label, text }` in one file's source. */
 export function violationsIn(source) {
   const found = []
   source.split('\n').forEach((text, index) => {
+    const citations = sourceRepoCitationSpans(text)
     for (const { label, test } of PATTERNS) {
-      if (test.test(text)) found.push({ line: index + 1, label, text: text.trim() })
+      const global = new RegExp(
+        test.source,
+        test.flags.includes('g') ? test.flags : `${test.flags}g`,
+      )
+      for (const match of text.matchAll(global)) {
+        if (isInsideSpan(match.index, citations)) continue
+        found.push({ line: index + 1, label, text: text.trim() })
+        break
+      }
     }
   })
   return found

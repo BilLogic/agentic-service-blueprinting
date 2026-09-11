@@ -4,7 +4,12 @@ summary: The plans concept is retired rather than kept for the plans that might 
 
 # 9. The queue is issues, a durable decision is an ADR, and there is no plans folder
 
-**Status** Accepted — 2026-09-09
+**Status** Accepted — 2026-09-09. Diffed against
+BilLogic/plus-uno-blueprint ADR 0016 on 2026-09-10 (#551): that copy retired
+eighty-six files across `docs/plans/`, `docs/ideation/` and
+`docs/brainstorms/`, and carved out `docs/archive/`. This tree never held
+those folders, so this copy — the empty-room doctrine and the machinery
+behind it — is the record of what was actually here.
 **Context** `docs/overview.md`, `docs/guidelines/documentation.md`,
 `scripts/generate-docs-index.mjs`, `scripts/swept-docs.mjs`,
 `scripts/check-standalone.mjs`

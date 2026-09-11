@@ -4,7 +4,13 @@ summary: Style enforcement rides one queryable token model instead of a reader p
 
 # 6. One token model is the single seam for style enforcement
 
-**Status** Accepted — 2026-09-06
+**Status** Accepted — 2026-09-06. Amended 2026-09-10 (#551): the deployment's
+copy (BilLogic/plus-uno-blueprint ADR 0001) claimed the compiled artifact is
+an input to the model. `src/lib/tokenModel.ts` in this tree states the
+opposite — it is not in the model, and nothing asserted today needs it — so
+this copy stands. `motion.test.ts` now asserts against the same model; 
+`canvasStackingContract.test.ts` and `railRhythmContract.test.ts` still read
+source themselves.
 **Context** `src/lib/tokenModel.ts`, `src/styles/tokens.test.ts`,
 `src/lib/palette.test.ts`, `src/lib/tokenDiscipline.test.ts`
 

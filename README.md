@@ -203,7 +203,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | [supabase/seed.sql](./supabase/seed.sql) | Generated sample seed |
 | [supabase/generated/](./supabase/generated/) | The portable core and the Supabase recipe, generated from the migrations' partition marks |
 | [docs/guide/](./docs/guide/) | The four guides: the model, using it, the plugin, operations |
-| [docs/adr/](./docs/adr/) | The decisions: the two contract tiers and the frozen identifier layer, and why five folders keep their names |
+| [docs/adr/](./docs/adr/) | The decisions, numbered. The list is [docs/adr/overview.md](./docs/adr/overview.md) |
 | [docs/connectors/supabase/](./docs/connectors/supabase/) | The reference recipe as an operated database: columns, row-level security, the migration desync runbook |
 | [docs/engineering/](./docs/engineering/) | Cutting a release, and every guard behind a red build |
 | [docs/guidelines/](./docs/guidelines/) | Writing documentation here, and proposing a change |
