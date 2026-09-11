@@ -38,20 +38,21 @@ function SequenceNavPreview({
   const label = (
     <span
       className={cn(
+        // geometry: two lines packed into a size-sm button, so they share one height.
         'flex min-w-0 flex-col leading-tight',
         isPrev ? 'items-start text-left' : 'items-end text-right',
       )}
     >
       <span
         className={cn(
-          'w-full truncate text-3xs font-normal text-muted-foreground',
+          'w-full truncate text-xs font-normal text-muted-foreground',
           !phaseLabel && 'invisible',
         )}
         aria-hidden={!phaseLabel}
       >
         {phaseLabel ?? '\u00A0'}
       </span>
-      <span className="w-full truncate text-xs font-medium">{title}</span>
+      <span className="w-full truncate text-sm font-medium">{title}</span>
     </span>
   )
 

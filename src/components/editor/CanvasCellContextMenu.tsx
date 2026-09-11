@@ -155,7 +155,7 @@ export function CanvasCellContextMenu() {
       style={{ left: menu.x, top: menu.y, width: MENU.width }}
       // Positioned in viewport coordinates, so it does not scale or drift with
       // the camera the way anything inside the canvas would.
-      className="fixed z-50 overflow-hidden rounded-md border border-border bg-popover p-1 text-xs shadow-md"
+      className="fixed z-50 overflow-hidden rounded-md border border-border bg-popover p-1 text-sm shadow-md"
       onContextMenu={(event) => event.preventDefault()}
     >
       <button

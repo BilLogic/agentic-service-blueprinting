@@ -69,7 +69,7 @@ function AgentDockChrome({
           className="size-3 shrink-0 text-muted-foreground/50 group-hover/agent-grab:text-muted-foreground"
           aria-hidden
         />
-        <span className="min-w-0 flex-1 truncate text-2xs font-medium text-muted-foreground">
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
           Agent
         </span>
         <IconTooltip

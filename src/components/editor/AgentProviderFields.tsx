@@ -71,7 +71,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-2xs text-muted-foreground">
+        <span className="w-14 shrink-0 text-sm text-muted-foreground">
           Provider
         </span>
         <DropdownMenu>
@@ -89,7 +89,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
           {/* Same values the trigger shows, so the same face — and a
               provider's label is English rather than an identifier, so that
               face is the body one. Size is the design system's menu default
-              (12px). */}
+              (13px). */}
           <DropdownMenuContent align="start">
             {AGENT_PROVIDERS.map((entry) => (
               <DropdownMenuItem
@@ -107,7 +107,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-2xs text-muted-foreground">
+        <span className="w-14 shrink-0 text-sm text-muted-foreground">
           Model
         </span>
         <DropdownMenu>
@@ -143,7 +143,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="w-14 shrink-0 text-2xs text-muted-foreground">
+        <span className="w-14 shrink-0 text-sm text-muted-foreground">
           API key
         </span>
         <Input
@@ -151,7 +151,7 @@ export function AgentProviderFields({ active = true }: { active?: boolean }) {
           value={keyDraft}
           onChange={(event) => setKeyDraft(event.target.value)}
           placeholder={savedKey ? '••••••••  saved' : 'Paste key'}
-          className="h-7 min-w-0 flex-1 font-mono text-xs"
+          className="h-7 min-w-0 flex-1 font-mono text-sm"
           aria-label="API key"
         />
         <Button

@@ -138,7 +138,7 @@ function PathChecklist({
               // easy to miss at a glance, and this is the row that says what
               // the canvas is currently showing.
               className={cn(
-                'flex min-w-0 flex-1 items-center gap-1 rounded-md pl-1 text-left text-xs transition-colors',
+                'flex min-w-0 flex-1 items-center gap-1 rounded-md pl-1 text-left text-sm transition-colors',
                 selected
                   ? 'font-medium text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/85 group-hover/path-row:text-sidebar-accent-foreground',

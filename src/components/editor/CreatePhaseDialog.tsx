@@ -84,7 +84,7 @@ export function CreatePhaseDialog({
 
         <div className="flex flex-col gap-3 px-6" data-create-phase-fields="">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-foreground">Name</span>
+            <span className="text-sm font-medium text-foreground">Name</span>
             <Input
               value={name}
               autoFocus

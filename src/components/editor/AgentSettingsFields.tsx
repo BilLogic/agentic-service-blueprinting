@@ -41,13 +41,13 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
     <div className="flex flex-col gap-2.5">
       {/* Show/hide the chat is the rail's ✦ toggle — settings hold
           settings, not surface toggles. */}
-      <p className="text-xs font-medium text-foreground">Admin</p>
+      <p className="text-sm font-medium text-foreground">Admin</p>
       {/* Template-only: an unconfigured build has no account to sign in to,
           so the front door is a sentence rather than a form. */}
       {configured ? (
         <AdminSessionFields />
       ) : (
-        <p className="text-3xs leading-snug text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           No database configured — there is no account to sign in to. The
           canvas is showing the template’s bundled sample blueprint.
         </p>
@@ -56,7 +56,7 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
       {showAgentSettings ? (
         <>
           <div className="my-0.5 border-t border-muted" />
-          <p className="text-xs font-medium text-foreground">Agent</p>
+          <p className="text-sm font-medium text-foreground">Agent</p>
           <AgentProviderFields active={active} />
         </>
       ) : null}

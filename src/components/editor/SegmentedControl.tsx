@@ -52,7 +52,7 @@ export function SegmentedControl<V extends string>({
 
 /**
  * One segment. Resting segments are quiet text on the track; the pressed
- * one is the raised square. Sizing (`h-6`/`px-2.5`/`text-2xs`) is the
+ * one is the raised square. Sizing (`h-6`/`px-2.5`/`text-xs`) is the
  * shared vocabulary — call sites only override geometry (icon-only
  * squares, tighter padding), never the on/off treatment.
  */
@@ -63,7 +63,7 @@ export function SegmentedControlItem({
   return (
     <ToggleGroupItem
       className={cn(
-        'h-6 min-w-0 gap-1.5 rounded-md px-2.5 text-2xs font-medium text-muted-foreground transition-colors',
+        'h-6 min-w-0 gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors',
         'hover:bg-transparent hover:text-foreground',
         'aria-pressed:bg-background aria-pressed:text-primary aria-pressed:shadow-sm aria-pressed:hover:bg-background aria-pressed:hover:text-primary',
         className,

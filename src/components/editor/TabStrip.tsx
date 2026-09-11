@@ -360,7 +360,7 @@ export function TabStrip({
           <div
             key={key}
             className={cn(
-              'flex shrink-0 items-center rounded-md border text-xs',
+              'flex shrink-0 items-center rounded-md border text-sm',
               active
                 ? 'border-border bg-background shadow-sm'
                 : 'border-transparent hover:bg-accent',

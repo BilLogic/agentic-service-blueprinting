@@ -478,7 +478,7 @@ function ShapeStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-3xs font-medium tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-xs font-medium tracking-wide text-white/55 uppercase">
             Fill
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -544,7 +544,7 @@ function ShapeStyleBar({
           onMouseDown={(e) => e.preventDefault()}
         >
           <div className="mb-1.5 flex items-center justify-between gap-3">
-            <span className="text-3xs font-medium tracking-wide text-white/55 uppercase">
+            <span className="text-xs font-medium tracking-wide text-white/55 uppercase">
               Stroke
             </span>
             {shape.color ? (
@@ -560,7 +560,7 @@ function ShapeStyleBar({
                 ))}
               </div>
             ) : (
-              <span className="text-3xs text-white/55">None</span>
+              <span className="text-xs text-white/55">None</span>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -658,7 +658,7 @@ function StickyStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-3xs font-medium tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-xs font-medium tracking-wide text-white/55 uppercase">
             Color
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -686,7 +686,7 @@ function StickyStyleBar({
             aria-label="Text size"
             className={cn(SHAPE_TOOLBAR_TRIGGER_CLASS, 'min-w-[4.75rem]')}
           >
-            <span className="text-xs font-medium tracking-tight">{sizeLabel}</span>
+            <span className="text-sm font-medium tracking-tight">{sizeLabel}</span>
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </PopoverTrigger>
         </ShapeToolbarTooltip>
@@ -827,7 +827,7 @@ function TextStyleBar({
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="mb-1.5 text-3xs font-medium tracking-wide text-white/55 uppercase">
+          <div className="mb-1.5 text-xs font-medium tracking-wide text-white/55 uppercase">
             Color
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -855,7 +855,7 @@ function TextStyleBar({
             aria-label="Text size"
             className={cn(SHAPE_TOOLBAR_TRIGGER_CLASS, 'min-w-[4.75rem]')}
           >
-            <span className="text-xs font-medium tracking-tight">{sizeLabel}</span>
+            <span className="text-sm font-medium tracking-tight">{sizeLabel}</span>
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </PopoverTrigger>
         </ShapeToolbarTooltip>
@@ -1092,6 +1092,7 @@ function ShapeAnnotationNode({
               value={annotation.text}
               placeholder="Add text…"
               rows={Math.max(1, annotation.text.split('\n').length)}
+              // geometry: type is fitted to the drawn annotation box.
               className={cn(
                 'max-h-full w-full resize-none border-0 bg-transparent text-center font-sans leading-snug outline-none placeholder:opacity-40',
                 isEllipse && 'px-3',
@@ -1104,6 +1105,7 @@ function ShapeAnnotationNode({
           ) : (
             <div
               data-annotation-text=""
+              // geometry: type is fitted to the drawn annotation box.
               className={cn(
                 'pointer-events-auto max-h-full w-full overflow-hidden text-center font-sans text-sm leading-snug whitespace-pre-wrap break-words',
                 isEllipse && 'px-3',
@@ -1200,6 +1202,7 @@ function StickyAnnotationNode({
           value={annotation.text}
           placeholder="Sticky note…"
           readOnly={!editing}
+          // geometry: type is fitted to the drawn annotation box.
           className={cn(
             'size-full resize-none border-0 font-sans leading-snug text-annotation-plate-foreground outline-none placeholder:text-annotation-plate-foreground/45',
             editing || selected
@@ -1317,6 +1320,7 @@ function TextAnnotationNode({
             value={annotation.text}
             placeholder="Type…"
             rows={2}
+            // geometry: type is fitted to the drawn annotation box.
             className={cn(
               'w-full resize-none px-1.5 py-1 font-sans leading-snug outline-none',
               'pointer-events-auto cursor-text',
@@ -1338,6 +1342,7 @@ function TextAnnotationNode({
           />
         ) : (
           <div
+            // geometry: type is fitted to the drawn annotation box.
             className={cn(
               'max-w-full px-1.5 py-1 whitespace-pre-wrap font-sans leading-snug',
               textAlignClass,

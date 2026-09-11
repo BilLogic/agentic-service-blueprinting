@@ -163,7 +163,7 @@ export function StructureRowContextMenu({
         <ContextMenuTrigger className="block w-full">
           {children}
         </ContextMenuTrigger>
-        <ContextMenuContent className="text-xs">
+        <ContextMenuContent className="text-sm">
           <ContextMenuItem onClick={() => setRenaming(true)}>
             <Pencil className="size-3.5" aria-hidden />
             Rename
