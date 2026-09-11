@@ -4,8 +4,8 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from "@/lib/utils"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), in colour jobs only, no
- * geometry and no timing:
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only, no geometry and no timing:
  *
  *  - the resting plate is `bg-field`, the sunk well this system derives for
  *    text entry, in place of `bg-transparent` + a dark-mode `input/30` wash.

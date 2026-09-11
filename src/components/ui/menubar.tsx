@@ -23,9 +23,10 @@ import {
 import { CheckIcon } from "lucide-react"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: shortcuts
- * are hint grey as chrome, and the popups carry the overlay edge, so a menubar
- * menu separates from the page exactly as a dropdown does.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: shortcuts are hint grey as chrome, and the popups
+ * carry the overlay edge, so a menubar menu separates from the page
+ * exactly as a dropdown does.
  */
 
 function Menubar({ className, ...props }: MenubarPrimitive.Props) {

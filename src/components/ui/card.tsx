@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the card
- * description is hint grey, one rung past captions, so it recedes behind the
- * title instead of competing with it.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the card description is hint grey, one rung past
+ * captions, so it recedes behind the title instead of competing with it.
  */
 
 function Card({

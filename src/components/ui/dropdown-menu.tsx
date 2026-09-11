@@ -6,9 +6,10 @@ import { ChevronRightIcon, CheckIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only: the label,
- * the chevron and the shortcut are hint grey as chrome, and the popup carries
- * the overlay edge like every other floating menu.
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only: the label, the chevron and the shortcut are hint grey
+ * as chrome, and the popup carries the overlay edge like every other
+ * floating menu.
  */
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {

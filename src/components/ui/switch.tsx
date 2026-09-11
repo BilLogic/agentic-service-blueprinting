@@ -5,7 +5,8 @@ import { Switch as SwitchPrimitive } from "@base-ui/react/switch"
 import { cn } from "@/lib/utils"
 
 /*
- * DIVERGENCE from the vendored source (ADR 0014), colour jobs only:
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Colour jobs only:
  *
  *  - the off track is `bg-control-raised`, the named control wash, in place of
  *    `black/[0.14]` and a dark-mode `white/20`. Raw black and raw white are a
@@ -15,7 +16,8 @@ import { cn } from "@/lib/utils"
  *    reason.
  *
  * On stays `bg-primary`: a switch that is on is a filled control, and filled
- * controls in this system are primary, not brand (ADR 0008).
+ * controls in this system are primary, not brand — a token names a job,
+ * and the filled-control job is primary.
  */
 /**
  * The on/off track. Sized for the compact settings rows (`h-4`), which is
