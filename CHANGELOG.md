@@ -1,5 +1,70 @@
 # Changelog
 
+## 1.40.0
+
+The canvas agent can search the blueprint by what it says — on the deployments
+that have built ranked search, and with the person's own key doing the one step
+a browser can honestly do.
+
+**The tool, and why it is usually absent.** `search_blueprint` is ranked
+retrieval for when the caller has words but not a name or an id. It is the one
+read that needs a database function this template's schema does not ship, so it
+is OFF by default: a deployment whose database carries the function says so with
+`agent.search.enabled`, and until then the tool is not on the agent's roster at
+all. Absent, rather than present and failing on its first call. Results are cut
+at `limit` (default 15, at most 100) under a header with the corpus-wide total,
+every row reports `matched_by`, and the `phase`, `scenario`, `kind`, `lane_role`
+and `service` narrowing the journey reads take applies here too.
+
+**A person's own key embeds the question.** `agent.search.indexes` lists the
+vector indexes a deployment's database holds — `{ provider, model, dimensions }`
+— and when the person's current chat provider matches an entry, their question
+is embedded in their browser with their own key, at that entry's model and size.
+Two keys, one model: the person's key embeds the question, the deployment's own
+job embeds the cells with a server-held credential this template never holds.
+Google embeds through `embedContent` with the key in `x-goog-api-key`, never a
+query string, as `RETRIEVAL_QUERY`; OpenAI through its embeddings endpoint with
+an `Authorization` header and the listed size, so serving OpenAI-key users later
+is a deployment's index and config rather than another template change.
+Anthropic has no embedding model and is never listed.
+
+**Who is offered what.** An empty index list is a supported state: the tool is
+offered to everyone and matches words and structure only. A listed index the
+person's provider cannot reach is different — those people are not offered the
+tool, quietly, because a keyword search presented as the same search everyone
+else has is worse than no tool.
+
+**Nothing claims an arm that did not run.** The result header names the arms
+that ran, and a zero-row answer says what their silence does and does not prove.
+A failed embed — a rate limit, an outage, an offline browser, a body that is not
+JSON, a vector of the wrong width, an eight-second stall — falls back to exactly
+one words-and-structure call; every other database error surfaces, so a broken
+search is never reported as a search that found nothing. A scoped read keeps the
+function's own corpus-wide total rather than retotalling to what the scope kept,
+and rows that matched in another service are reported as that. Rows are placed
+by phase name, so a phase name two services share places nothing and the count
+is named in the text instead of the row going to the wrong service.
+
+**A scope speaks for the ranking, not for the service.** The function ranks and
+clips before any per-service filtering can run, so when the whole top-k lands
+outside the scope the text says exactly that — the top N of T matching rows are
+elsewhere — and names the remedies that can surface the in-scope rows: add a
+phase or scenario, or raise the limit. Rows placed in another service, rows no
+service could claim, and rows carrying no phase breadcrumb are counted apart,
+because the last is a fault in the function rather than a fact about the data.
+Every closed filter vocabulary is checked before anything is embedded.
+
+**For adopters.** `docs/connectors/supabase/database.md` states the function's
+argument and column contract, the `embedding model mismatch` requirement, the
+`RETRIEVAL_DOCUMENT` / `RETRIEVAL_QUERY` pairing, and that every row must carry
+its phase breadcrumb. `references/customization.md` shows the config.
+
+### Plugin contract
+
+- `search_blueprint` is a new agent tool name in `identifiers.json`. Additive:
+  nothing was renamed, and a deployment that does not switch search on never
+  sees it.
+
 ## 1.39.0
 
 A connection is edited where it sits, a deployment names the lanes a new
@@ -87,11 +152,11 @@ docs checks read this repository's own numbers from `scripts/repo-config.mjs`.
   ```ts
   export const deploymentConfig: DeploymentConfig = {
     defaultLanes: [
-      { name: 'Storyboard', lane_role: 'storyboard', position: 0 },
-      { name: 'Caller', lane_role: 'customer_actions', position: 1 },
+      { name: "Storyboard", lane_role: "storyboard", position: 0 },
+      { name: "Caller", lane_role: "customer_actions", position: 1 },
       // …one entry per lane, top to bottom
     ],
-  }
+  };
   ```
 
   `CreateBlueprintDialog` now reads the deployment config, so a test that renders it has to wrap it in `DeploymentConfigProvider`, the same way the app already does.
@@ -5212,8 +5277,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
