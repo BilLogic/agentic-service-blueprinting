@@ -8,7 +8,22 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { badgeVariants } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { CardDescription } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb'
 import {
   Tooltip,
   TooltipContent,
@@ -219,5 +234,65 @@ describe('badges and buttons pick the same jobs', () => {
     expect(hasResting(classes, 'bg-destructive')).toBe(true)
     expect(hasResting(classes, 'text-destructive-foreground')).toBe(true)
     expect(classes).not.toContain('bg-destructive/10')
+  })
+})
+
+describe('quiet chrome recedes one rung past captions', () => {
+  it('drops dialog and card descriptions to hint grey', () => {
+    const dialog = classesOf(
+      'dialog-description',
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Title</DialogTitle>
+          <DialogDescription>What this asks for</DialogDescription>
+        </DialogContent>
+      </Dialog>,
+    )
+    expect(dialog).toContain('text-tertiary-foreground')
+    cleanup()
+    const card = classesOf('card-description', <CardDescription>Sub</CardDescription>)
+    expect(card).toContain('text-tertiary-foreground')
+  })
+
+  it('quiets an inactive tab with one job, not an opacity in light and a token in dark', () => {
+    // `text-foreground/60` paired with a dark-mode override meant the same
+    // rung was spelled two ways and could drift between themes.
+    const classes = classesOf(
+      'tabs-trigger',
+      <Tabs defaultValue="a">
+        <TabsList>
+          <TabsTrigger value="a">A</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    )
+    expect(classes).toContain('text-tertiary-foreground')
+    expect(classes).not.toContain('text-foreground/60')
+    expect(classes).not.toContain('dark:text-muted-foreground')
+  })
+
+  it('keeps the breadcrumb trail readable while its links recede', () => {
+    render(
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="#">Workspace</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>This page</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>,
+    )
+    const link = document.querySelector('[data-slot="breadcrumb-link"]')
+    const separator = document.querySelector('[data-slot="breadcrumb-separator"]')
+    const list = document.querySelector('[data-slot="breadcrumb-list"]')
+    const page = document.querySelector('[data-slot="breadcrumb-page"]')
+    expect(link?.className).toContain('text-tertiary-foreground')
+    expect(separator?.className).toContain('text-tertiary-foreground')
+    // The trail and the page you are on are NOT chrome: one is the caption
+    // that has to be readable, the other is where you are.
+    expect(list?.className).toContain('text-muted-foreground')
+    expect(page?.className).toContain('text-foreground')
   })
 })

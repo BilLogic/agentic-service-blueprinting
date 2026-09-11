@@ -48,7 +48,10 @@ function BreadcrumbLink({
     defaultTagName: "a",
     props: mergeProps<"a">(
       {
-        className: cn("transition-colors hover:text-foreground", className),
+        className: cn(
+          "text-tertiary-foreground transition-colors hover:text-foreground",
+          className,
+        ),
       },
       props
     ),
@@ -82,7 +85,7 @@ function BreadcrumbSeparator({
       data-slot="breadcrumb-separator"
       role="presentation"
       aria-hidden="true"
-      className={cn("[&>svg]:size-3.5", className)}
+      className={cn("text-tertiary-foreground [&>svg]:size-3.5", className)}
       {...props}
     >
       {children ?? (
