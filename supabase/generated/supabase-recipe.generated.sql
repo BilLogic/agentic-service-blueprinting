@@ -2445,3 +2445,20 @@ begin
   end if;
 end
 $the_pattern$;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000225000000_a_comment_is_prose_that_ships_to_agents.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the grant names the Supabase roles. The function itself is core;
+-- who may call it over PostgREST is this deployment's business.
+
+grant execute on function public.schema_comments() to anon, authenticated, service_role;
+
+do $proof$
+begin
+  if not has_function_privilege('anon', 'public.schema_comments()', 'execute') then
+    raise exception 'proof: anon cannot execute schema_comments()';
+  end if;
+end
+$proof$;

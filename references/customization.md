@@ -12,6 +12,7 @@ migration in the same change.
 - Theming & branding
 - View types & path types
 - Scale
+- Agent account
 - Portfolio conventions (consultants / agencies)
 - Template upgrade recipe (⚠ compat check required)
 
@@ -102,6 +103,35 @@ means more lanes. The validator emits **soft warnings** above ergonomic
 thresholds, never errors; the shipped sample content (8 paths across 6
 scenarios, one 7-lane roster, widest board 8 lanes × 10 steps, one custom
 role) is the proof fixture.
+
+## Agent account
+
+A connected database can generate an agent-facing account of its schema —
+vocabulary from `src/lib/panelTerms.ts`, table and column comments from
+`public.schema_comments()`. The generator and its check live in this template;
+the generated document is the deployment's own content.
+
+```bash
+npm run agent-account                 # splice the generated sections
+npm run agent-account -- --record    # …and record the coverage ratchet
+npm run check:agent-account            # fail if the account or the ratchet drifted
+```
+
+With no database configured, both commands print a skip and exit 0. Nothing
+is generated, nothing is registered, and the agent's `get_reference` list
+is this template's own.
+
+A deployment that has generated the account registers it through the existing
+seams — never by teaching the template's reference loader a path:
+
+- **Copying this repo:** add the name to `REFERENCE_NAMES_EXTRA` and the
+  `?raw` import to `referenceDocs.ts`.
+- **Mounting the package:** call `registerReferenceDocs({ blueprint: account })`
+  from a module imported before the app (`bootstrap.ts` is the example).
+
+After adopting a release, the reference loader stays byte-identical to this
+template's: extra names go through those two seams, not a path import of another
+repository's file.
 
 ## Portfolio conventions (consultants / agencies)
 

@@ -1780,6 +1780,40 @@ $$;
 COMMENT ON FUNCTION public.restore_placement(p_row jsonb, p_resources jsonb) IS 'The inverse of remove_placement: the row back under its own id, resources included.';
 
 --
+-- Name: schema_comments(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.schema_comments() RETURNS TABLE(relation text, column_name text, comment text)
+    LANGUAGE sql STABLE
+    SET search_path TO 'pg_catalog'
+    AS $$
+  select c.relname::text,
+         null,
+         obj_description(c.oid, 'pg_class')
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public'
+     and c.relkind in ('r', 'v', 'm')
+     and obj_description(c.oid, 'pg_class') is not null
+  union all
+  select c.relname::text,
+         a.attname::text,
+         col_description(c.oid, a.attnum)
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+   where n.nspname = 'public'
+     and c.relkind in ('r', 'v', 'm')
+     and col_description(c.oid, a.attnum) is not null
+$$;
+
+--
+-- Name: FUNCTION schema_comments(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.schema_comments() IS 'Every table, view and column comment in public. A comment is prose that ships to agents, so the agent-account generator renders the schema section from it rather than restating the catalog.';
+
+--
 -- Name: set_cell_dependency(uuid, uuid, text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 

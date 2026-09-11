@@ -48,6 +48,7 @@ Procedure: [releasing.md](./releasing.md).
 | `npm run check:function-bodies` | A `language sql` function in `public` does not resolve when it is CALLED. A SQL body is stored as text and resolved at call time, so a rename moves the relation and leaves every body naming it untouched: the function keeps existing, keeps dumping cleanly, and raises `42P01` the first time anybody calls it. Creation is no defence — the body was valid when it was written, and the rename that falsified it validates nothing. This stands up the same stack as the row above, then calls every `language sql` function with a typed null per argument inside a rolled-back transaction, plus `slices_referencing` and `deletion_impact` with real ids out of the seed. Only the SQLSTATEs meaning "that is not there" fail it (undefined table, column, function, schema); a function raising its own exception on null input has already answered the question and is reported as tolerated. `--self-test` plants the defect in its own order — a table, a body that reads it, then the rename — and asserts the call is reported, because a sweep where everything answers looks identical to one that called nothing. This is #171: `21000115000000` renamed `slice_items` to `slides`, `slices_referencing` kept reading the old name, and since `deletion_impact` reads that function and every delete RPC reads `deletion_impact`, no structural delete could succeed on a fresh core. |
 | `npm run check:deployment-seed-load` | *Not in CI — it needs a deployment's checkout.* A **deployment's own** seed does not load onto this template's portable core, or loads and does not render to `anon`. Same stack as the row above with the last step swapped: the deployment's seed replaces this repository's, loaded in the order the deployment itself states under `[db.seed]` in its `supabase/config.toml`. This is the behavioural-parity substrate a reconciliation ticket reads against — the sibling row proves the loop closes on content this repo generated, which the generator and the schema can hardly disagree about; only a real deployment's content answers whether the core is *sufficient*. It applies the seed with `ON_ERROR_STOP` **off** on purpose, because here the failing statements are the deliverable rather than a bug to stop at: every one is collected, grouped by reason with counts and examples, and knock-on failures (a foreign key whose row an earlier failure never inserted, the core's own `cells: …` raises, an aborted transaction block) are listed separately so the one root cause is not buried under the forty it caused. Point it at a deployment with `-- --seed <path>` or `DEPLOYMENT_SEED=<path>`; with neither it looks for a checkout beside this one that ships a `supabase/seed.sql` and states a different package name, and **skips with a message** when there is none or more than one. |
 | `npm run check:target` | *Not in CI — it needs a live project.* Asks the configured database for `public.schema_version` and distinguishes never migrated from stale from fine. Worth running once against any target, because the fallback renders perfectly over a database that was never migrated. |
+| `npm run check:agent-account` | *Not in CI — it needs a live project.* A connected database's agent-facing account has drifted from `panelTerms.ts`, `database.ts` or `pg_description`, or column-comment coverage fell. Writes with `npm run agent-account`; `--record` moves the ratchet. With no database configured it prints a skip and exits 0 — the template's bundled sample is that path, and a check that always skipped would read as an answer. Fixture coverage of the renderers, the ratchet and the skip lives in `scripts/tests/agent-account.test.mjs`, which does run in CI. |
 
 The `portable-core` CI job goes further than a diff: it applies the generated
 core to a stock `postgres:17` with nothing in front of it, applies the recipe
@@ -57,19 +58,21 @@ inventories, loads the seed onto a third and reads it back as `anon`
 stayed green. A guard nobody has watched fail is a guard nobody knows the shape
 of.
 
-**The two local guards.** `check:target` and `check:deployment-seed-load` are
-the two checks CI cannot run, and for the same reason in both cases: a CI
-runner has one repository and no live project, so neither has anything to look
-at. (`check:sample-content`, in the next section, is outside CI for a
-different reason — CI *could* run it, and what it would report every time is
-correct.) `check:deployment-seed-load` would therefore *skip* on
+**The three local guards.** `check:target`, `check:agent-account` and
+`check:deployment-seed-load` are the checks CI cannot run, and for the same
+reason in each case: a CI runner has one repository and no live project, so
+none of them has anything to look at. (`check:sample-content`, in the next
+section, is outside CI for a different reason — CI *could* run it, and what
+it would report every time is correct.) `check:deployment-seed-load` would
+therefore *skip* on
 every run — and a check that always skips is worse than absent, because the
 green tick reads as an answer. Run them by hand: `check:target` whenever you
-point a checkout at a database, and `check:deployment-seed-load` before a
-release, from a machine that has a deployment checked out beside this one. Its
-own parsing and skip logic are covered by
-`scripts/tests/deployment-seed-load.test.mjs`, which does run in CI — the part
-that can be wrong without a database is held there.
+point a checkout at a database, `check:agent-account` against that same
+database once an account exists, and `check:deployment-seed-load` before a
+release, from a machine that has a deployment checked out beside this one.
+The parts that can be wrong without a database are held in CI —
+`scripts/tests/deployment-seed-load.test.mjs` and
+`scripts/tests/agent-account.test.mjs`.
 
 ## 4. The pipeline, and the claims about the repo itself
 

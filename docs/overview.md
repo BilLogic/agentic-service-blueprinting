@@ -28,7 +28,7 @@ anything.
 | Folder | What is in it |
 | --- | --- |
 | [`adr/`](./adr/) | The decisions, numbered. The list and the mapping from records that moved in are [`adr/overview.md`](./adr/overview.md). |
-| [`agents/`](./agents/) | Repository-specific configuration for engineering skills: issue tracker, triage labels, and domain-doc layout. |
+| [`agents/`](./agents/) | Repository-specific configuration for engineering skills: issue tracker, triage labels, and domain-doc layout. Also the skeleton of a deployment's agent-facing schema account, filled by `npm run agent-account` when a database is connected and left unregistered otherwise. |
 | [`guide/`](./guide/) | Four numbered parts, for a person reading start to finish: the model, using it, the plugin, operations. The guide links into the protocol rather than restating it. |
 | [`guidelines/`](./guidelines/) | How we work — writing documentation, and proposing a change. |
 | [`engineering/`](./engineering/) | Procedure for whoever runs the repository: cutting a release, and the guard set behind every red build. |

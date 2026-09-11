@@ -457,6 +457,27 @@ are still local — the CLI answers directly:
 supabase migration list --linked
 ```
 
+## The agent account
+
+**The failure this answers**: an agent reads a schema section that was typed
+by hand, and a column comment, a type or a panel definition moved underneath
+it. The generator splices those two sections from the live catalog and the
+code; the check fails when they drift or when column-comment coverage falls.
+
+```bash
+npm run agent-account                 # splice docs/agents/blueprint.md
+npm run agent-account -- --record    # record the coverage ratchet
+npm run check:agent-account            # fail on drift
+```
+
+With no database configured (missing `VITE_SUPABASE_*`, or still the
+example placeholders) both commands print a skip and exit 0. Nothing is
+generated and nothing is registered — the agent's reference list is this
+template's own. A deployment that has a database runs the generator, then
+registers the document through `registerReferenceDocs` or
+`REFERENCE_NAMES_EXTRA` (see `references/customization.md`). The template's
+reference loader never imports that file by path.
+
 ## Migration desync: the repair
 
 **Who needs this**: forks created before the reserved band existed, whose local

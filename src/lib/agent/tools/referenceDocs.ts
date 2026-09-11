@@ -41,8 +41,10 @@ import { registeredReferenceDocs } from '@/lib/agent/tools/referenceRegistry'
  * which is what lets the shared name list stay shared. A DEPLOYMENT that
  * mounts the package cannot edit either, and does not need to: it hands its
  * documents to `registerReferenceDocs` before it imports the app, and they are
- * merged over the template's below. Read `referenceRegistry.ts` for the ordering
- * rule and why that call is not a `DeploymentConfig` field.
+ * merged over the template's below. A generated agent account is that case — the
+ * generator lives here, the document is the deployment's, and this loader
+ * imports no deployment file by path. Read `referenceRegistry.ts` for the
+ * ordering rule and why that call is not a `DeploymentConfig` field.
  *
  * Adding a reference means four edits: the source file plus its row in
  * `scripts/sync-canvas-skills.mjs`, the import and the row here, the name in
