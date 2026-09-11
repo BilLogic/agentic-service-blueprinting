@@ -102,7 +102,7 @@ export function validateDraftBlueprint(draft: DraftBlueprint): string[] {
     problems.push('Pick how the versions should be laid out.')
   }
   if (!Number.isInteger(draft.stepCount)) {
-    problems.push('The number of columns must be a whole number.')
+    problems.push('The number of steps must be a whole number.')
   } else if (draft.stepCount < MIN_STEP_COUNT) {
     problems.push('A scenario needs at least one step.')
   } else if (draft.stepCount > MAX_STEP_COUNT) {
