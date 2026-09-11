@@ -39,6 +39,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | Does switching a still-open view remount the canvas? | docs/adr/0010-open-views-stay-mounted.md |
 | What may a surface ask of the session? | docs/adr/0011-one-question-a-surface-may-ask.md |
 | Why is this colour token derived, and where does it part from upstream? | docs/adr/0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md |
+| Which axis of a text style does a rung own, and why are there two ladders? | docs/adr/0012-a-rung-owns-size-and-leading.md |
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
 | See what is already being worked on | GitHub issues — the queue is not in this repo |
@@ -66,4 +67,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-24 protocol documents are indexed in [docs/index.md](./docs/index.md).
+25 protocol documents are indexed in [docs/index.md](./docs/index.md).

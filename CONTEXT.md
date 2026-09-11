@@ -345,8 +345,8 @@ decides whether a session gets there. What a pointer points at is a
 it: an in-file step, then an in-file reference, then a **disclosed** reference
 behind a pointer. A skill's `SKILL.md` is the top rung of its own ladder, and
 the reference files it names are the rungs below. **Not the canvas's reveal
-ladder** in § Five words for arrival, which is about how much of a board is
-painted.
+ladder** in § Five words for arrival, and **not the type ladder** in § The type
+system.
 
 **Disclosed** — a reference pushed out of the always-loaded tier and behind a
 pointer, loaded only when that pointer fires. Everything under `docs/`,
@@ -376,3 +376,35 @@ for this session.
 **active service** — the single service the URL slug names. There is no
 inactive service and no flag that marks one; a reader who takes it as a
 filter over many gets a plural where the code means a singular.
+
+## The type system
+
+Eight words for how text is sized, weighted and faced. They are set out
+together because the axes look interchangeable until each is named, and
+because **ladder** and **rung** already mean something else in this file.
+
+**rung** — one named size on the type scale: `xs`, `sm`, `base`, and so on. A
+rung owns its size and, through pairing, its line-height. **Not a rung of
+the canvas's reveal ladder**, and not a rung of the writing ladder.
+
+**ladder** — the ordered set of type rungs a face may use. Two exist, selected
+by scope. **Not the writing ladder** above, and **not the canvas's reveal
+ladder**.
+
+**scope** — which face a ladder applies to. Sans sizes live on the root; mono
+sizes are scoped to monospace elements, sizes only, because monospace renders
+optically smaller at the same nominal value.
+
+**pairing** — the line-height ratio declared once on the root for each rung,
+so the same ratio meeting a larger mono size yields a larger box.
+
+**leading** — the line box a rung carries. A call site does not write a
+leading utility unless it overrides for geometry.
+
+**tracking** — letter-spacing. A call-site decision; the rung does not own it.
+
+**working weight** — 400, the weight of all content. 500 is the one emphasis;
+600 is headings only.
+
+**density** — which surface the text is on, and therefore which rung it asks
+for: canvas chrome, editor UI, panel, presentation.
