@@ -339,11 +339,6 @@ const ABSOLUTE_EXEMPT_FILES: ReadonlyArray<{ file: string; because: string }> = 
       'upstream shadcn overlay scrim (components.json — the CLI owns this file)',
   },
   {
-    file: 'components/ui/switch.tsx',
-    because:
-      'the off track and the thumb ring on the upstream primitive (components.json — the CLI owns this file). Both are the shapes this list already exempts elsewhere: the track is a neutral tint with its own dark-mode pair, so it darkens in light and lightens in dark rather than inverting with a role, and the ring is a 5% black hairline that is a shadow written as a ring',
-  },
-  {
     file: 'lib/filterToolbarButton.ts',
     because:
       'a 4% black hairline on a raised plate, which is a shadow written as a ring rather than an edge colour — the neutral semantics invert and a shadow must not, so it darkens in light and disappears in dark, which is what a shadow does',
