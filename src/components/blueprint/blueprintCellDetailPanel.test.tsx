@@ -415,6 +415,9 @@ describe('the new-cell form', () => {
     laneId: 'lane-1',
     stepId: 'step-1',
     laneName: 'Customer',
+    // The role the board read off the lane below — the draft and the lane
+    // record agree, so the badge's tint is the lane's and nothing else's.
+    laneRole: 'customer_actions',
     stepName: 'Hears about the service',
     stepIndex: 0,
     scenarioName: 'Discovery',
