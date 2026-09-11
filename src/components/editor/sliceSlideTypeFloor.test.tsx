@@ -2,14 +2,13 @@
 /**
  * Two slice numbers used to live in a circle sized first, then the digit
  * shrunk to fit. A two-digit cited-cell order already overflowed a 16px
- * chip at 9px; a two-digit slide index sat in a 20px chip at 10px. The
+ * badge at 9px; a two-digit slide index sat in a 20px badge at 10px. The
  * floor cannot rise to 12px while those boxes still decide the type.
  *
  * The order is a ruler column — right-aligned, fixed-width, mono with
- * tabular figures, at `xs`. The slide badge keeps its chip but sizes to
- * its content so one digit stays a circle and two or more grow it. A
- * one-digit fixture would miss both bugs, so every case below is two
- * digits and three.
+ * tabular figures, at `xs`. The slide badge sizes to its content so one
+ * digit stays a circle and two or more grow it. A one-digit fixture
+ * would miss both bugs, so every case below is two digits and three.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -116,14 +115,14 @@ describe('cited-cell order is a ruler column', () => {
   })
 
   it('does not author a type rung below xs on the order numeral', () => {
-    // The chip this replaced was `text-4xs` inside `size-4`. The lane
+    // The badge this replaced was `text-4xs` inside `size-4`. The lane
     // subtitle and "Slide N" header are labels, not this number.
     expect(composerSource).not.toMatch(/\btext-4xs\b/)
   })
 })
 
 describe('the slide badge sizes to its content', () => {
-  it('renders two-digit and three-digit indexes in a content-sized pill at xs', () => {
+  it('renders two-digit and three-digit indexes in a content-sized badge at xs', () => {
     const slides = Array.from({ length: 100 }, () => slide(['cell-a']))
     const { container } = mountEditor(slides)
     openStoryboard()
@@ -141,12 +140,14 @@ describe('the slide badge sizes to its content', () => {
       expect(badge.className).toMatch(/\bmin-w-5\b/)
       expect(badge.className).toMatch(/\bpx-1\b/)
       expect(badge.className).toMatch(/\btext-xs\b/)
+      expect(badge.className).toMatch(/\bfont-medium\b/)
+      expect(badge.className).not.toMatch(/\bfont-semibold\b/)
       expect(badge.className).not.toMatch(/\bsize-5\b/)
       expect(badge.className).not.toMatch(BELOW_XS)
       expect(badge.className).not.toMatch(/\b(truncate|overflow-hidden)\b/)
     }
 
-    // One digit still has a box to sit in — the pill does not collapse.
+    // One digit still has a box to sit in — the badge does not collapse.
     const one = screen.getByLabelText('Slide 1 title')
       .previousElementSibling as HTMLElement
     expect(one.textContent).toBe('1')

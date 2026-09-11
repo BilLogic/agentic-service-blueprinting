@@ -275,11 +275,11 @@ export function SliceSlideEditor({
                 aria-hidden
               />
               {/*
-                Content-sized pill: `h-5 min-w-5` keeps one digit a circle,
+                Content-sized badge: `h-5 min-w-5` keeps one digit a circle,
                 `px-1` grows it for two or more. The old `size-5` + 10px
                 digit clipped at two.
               */}
-              <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-foreground px-1 text-xs font-semibold text-contrast">
+              <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-foreground px-1 text-xs font-medium text-contrast">
                 {index + 1}
               </span>
               <Input

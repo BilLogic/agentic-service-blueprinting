@@ -302,12 +302,12 @@ export function SliceSlideComposer({
                         </button>
                       </IconTooltip>
                       {/*
-                        A ruler column, not a chip. A 16px circle at 9px
+                        A ruler column, not a filled square. A 16px circle at 9px
                         already clipped two digits; the running count
                         (`offsets[slide] + cell + 1`) has to show a slice
                         of a hundred cells. Mono + tabular-nums is register 2
                         of the mono model — same treatment as the canvas
-                        sequence badge and the phase-menubar count pill.
+                        sequence badge and the phase-menubar count badge.
                       */}
                       <span className="w-6 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
                         {running}
