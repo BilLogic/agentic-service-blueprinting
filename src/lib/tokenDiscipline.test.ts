@@ -10,6 +10,7 @@ import {
   stylesheetMatching,
   type TokenLayer,
 } from '@/lib/tokenModel'
+import { BRAND } from '@/config'
 
 /**
  * The token-discipline rule, enforced — now against the one model.
@@ -464,18 +465,77 @@ const RAW_HEX = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g
 const hexIsExempt = (match: string): boolean =>
   HEX_EXEMPT_FILES.some((entry) => match.startsWith(`${entry.file}:`))
 
-/*
- * No seam exemption here, and that is a property of the template rather than
- * an oversight. The deployment this template is forked into carries one hex in
- * `config.ts` — the accent its brand tokens are derived FROM — and exempts it
- * by re-deriving it (`the hex IS BRAND.accent`) rather than by listing the
- * file. The template ships the brand seam neutral: `config.ts` exports a name
- * and nothing else, `--chroma` and `--primary-chroma` are 0, and the
- * `--brand-*` ramp is greyscale. There is no colour at the seam to excuse, so
- * every hex in this tree is either a dev instrument or an offender.
+/**
+ * THE ONE PLACE A HEX BELONGS, and why the rule has to know about it.
+ *
+ * `config.ts` is the brand seam. A deployment built on this template writes
+ * its own accent there and layers a theme whose `--brand-*` ramp is drawn at
+ * that hue. The accent cannot itself be a token, because it is the input the
+ * tokens are derived FROM — so a rule that forbids every hex in source forbids
+ * the one hex the architecture requires, and a deployment adopting this guard
+ * has to either fork it or unenrol the file. Both are worse than saying it
+ * here.
+ *
+ * So the seam is allowed exactly ONE hex, and it is CHECKED rather than merely
+ * permitted: the hex present must be the accent `BRAND` exports. A second hex,
+ * or one that is not the accent, is a colour hiding in the only file nothing
+ * else guards.
+ *
+ * This template has no accent, so the allowance is zero here and the rule is
+ * exactly as strict as it was. That is the point of writing it this way: the
+ * behaviour is identical in the tree with no brand and correct in the tree
+ * that has one, so a single file serves both and neither has to fork it.
  */
-test('source carries no raw hex colours', () => {
-  const offenders = sourceMatching(RAW_HEX).filter((use) => !hexIsExempt(use))
+function seamOffence(seam: readonly string[], accent: string | undefined): string | null {
+  if (accent === undefined) {
+    return seam.length === 0
+      ? null
+      : `config.ts carries a hex but BRAND exports no accent — name it as the accent or take it out:\n${seam.join('\n')}`
+  }
+  if (seam.length !== 1) {
+    return `config.ts may carry exactly one hex, the brand accent:\n${seam.join('\n')}`
+  }
+  // Compared as a colour, not as text: `#0B6E4F` and `#0b6e4f` are the same
+  // paint, and a rule that called one of them an offender would be reporting a
+  // typing habit rather than a colour.
+  const hex = seam[0].slice(seam[0].lastIndexOf(' ') + 1).toLowerCase()
+  return hex === accent.toLowerCase()
+    ? null
+    : `the hex in config.ts is not the accent it exports: ${seam[0]}`
+}
+
+/**
+ * The seam rule, on inputs this tree cannot produce.
+ *
+ * Half of `seamOffence` is unreachable in a template with no accent, and it is
+ * the half the deployment runs. Checking it against fabricated seams is the
+ * only way the branch a fork depends on is exercised at all before the fork
+ * runs it.
+ */
+test('the brand seam allows one hex, and only the accent', () => {
+  const at = (hex: string) => `config.ts:21: ${hex}`
+  assert.equal(seamOffence([], undefined), null)
+  assert.equal(seamOffence([at('#0b6e4f')], '#0b6e4f'), null)
+  // Case is a typing habit, not a different colour.
+  assert.equal(seamOffence([at('#0B6E4F')], '#0b6e4f'), null)
+  // A hex with no accent to be: the seam is not a place to keep a colour.
+  assert.ok(seamOffence([at('#0b6e4f')], undefined))
+  // An accent with a second hex beside it, which the accent's own exemption
+  // would otherwise carry through unread.
+  assert.ok(seamOffence([at('#0b6e4f'), at('#ff0000')], '#0b6e4f'))
+  // A hex that is not the accent: branded-looking, and unrelated to the ramp
+  // every token in the deployment is drawn from.
+  assert.ok(seamOffence([at('#ff0000')], '#0b6e4f'))
+  // An accent declared and no hex present — the theme is drawn at a hue the
+  // seam never states.
+  assert.ok(seamOffence([], '#0b6e4f'))
+})
+
+test('source carries no raw hex colours, bar the one the brand seam takes', () => {
+  const found = sourceMatching(RAW_HEX)
+  const seam = found.filter((entry) => entry.startsWith('config.ts:'))
+  assert.equal(seamOffence(seam, BRAND.accent), null)
+  const offenders = found.filter((use) => !hexIsExempt(use) && !seam.includes(use))
   assert.deepEqual(
     offenders,
     [],
