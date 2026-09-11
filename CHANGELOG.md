@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.40.1
+
+Shared controls apply the same colour jobs as the design system these
+primitives were ported from, and a scoped ranked search stops claiming rows are
+somewhere it cannot know they are. No mix dial moved: the numbers already
+matched, and what was wrong was which job got applied.
+
+**An empty field looks empty.** A placeholder sat on caption grey — the colour
+of text somebody had typed — so an empty field read as one that already held a
+note. Empty Input, Textarea, select and command search take hint grey. Text
+entry sits on the sunk `bg-field` plate instead of borrowing the page colour;
+the select trigger sits on the raised control plate with a hover edge, so a
+chooser is raised where a field is sunk. A read-only field reads as a caption
+on the ordinary border — on both Input and Textarea, and gated on `enabled:`,
+because CSS `:read-only` also matches a disabled field.
+
+**Floating chrome sits on the page.** A tooltip is a page-coloured surface with
+ordinary ink and the overlay ring every other floating surface carries, rather
+than an inverted slab; a dialog sits on the page surface, not the card plate; a
+sheet overlay is the page colour at high opacity, with the panel's own hairline
+named rather than defaulted, because the two are within ~0.005 lightness in the
+light theme. The default badge is a quiet tag, an outline button keeps the page
+colour in dark as well as light, a ghost button lifts on the accent, and a
+destructive button is a solid fill rather than a tint that read as a badge
+describing a risk.
+
+**Quiet chrome recedes, and a chosen control does not.** Descriptions, inactive
+tabs, chevrons, section labels, shortcuts, group headings, breadcrumb links and
+separators drop one rung to hint grey; captions that must stay readable do not
+move. A chosen select row and a pressed toggle restore full ink, so the
+selection is not the quietest thing on screen — before this, hovering an
+unpressed toggle made it look more chosen than the pressed one.
+
+**Vocabulary.** `compat.css` and its three alias names are gone, with a ratchet
+that refuses their return: a second spelling with no consumers reads as
+available, so a borrowed snippet gets rewritten into the semantic name rather
+than re-registering the alias. Each vendored file states in a header which job
+changed and why, per ADR 0014, so a re-vendor is a merge rather than a surprise.
+
+**The agent's ranked search tells the truth about scope.** Under a `service`
+scope, an empty result said the rows were "all outside" that service whenever
+any came back — including when every one of them was dropped as ambiguous (a
+phase name two services share) or unplaceable (no phase breadcrumb). Those rows
+were placed nowhere and may belong to the scope, so the sentence asserted the
+one thing the tool cannot know. "Outside" is now said only of rows actually
+placed elsewhere. Stop also reaches the search call and the phase-ownership
+read, not only the question's embed, so pressing it cancels the slowest read the
+agent makes.
+
+**The brand seam may carry its own hex.** `config.ts` is where an installation
+writes its accent, and that accent cannot be a token — it is the input the
+tokens are derived from. The no-raw-hex rule forbade it anyway, so a deployment
+had to fork the rule or unenrol the file. The rule now allows the seam exactly
+one hex and checks that it IS the accent `BRAND` exports, which is stricter than
+an exemption: a second hex, or one unrelated to the ramp, still fails. This
+template exports no accent, so the allowance here is zero and nothing about its
+own tree changes.
+
 ## 1.40.0
 
 The canvas agent can search the blueprint by what it says — on the deployments
