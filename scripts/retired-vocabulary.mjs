@@ -831,6 +831,22 @@ export const RENAME_MAP = Object.freeze(
       retired: [],
       copy: ['kit'],
     },
+    // A step is the glossary's word for what the board draws as a column, and
+    // the create dialog's count field said "Columns" above a value that
+    // becomes `path_steps` rows. Nothing in the schema was ever called
+    // `column` — `column_position` is retired above — so the identifier list
+    // is empty and the copy list is the whole row: a row and a column are how
+    // a lane and a step happen to be DRAWN, a rendering fact rather than a
+    // domain one. A layout column that is not a step is still safe, because
+    // this guard's subject is reader-facing copy only: a `className`, a
+    // `data-*` attribute and an identifier are never read. A deployment built
+    // on this template already enforced the same row.
+    {
+      renames: [{ from: 'columns', to: 'steps' }],
+      migrations: [],
+      retired: [],
+      copy: ['column', 'columns'],
+    },
   ].map((row) => {
     const renames = Object.freeze(row.renames.map((pair) => Object.freeze({ ...pair })))
     return Object.freeze({

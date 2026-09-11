@@ -223,6 +223,30 @@ test('kit is retired as a whole word, and words that merely contain it pass', ()
   assert.deepEqual(found, ['"kit"'])
 })
 
+/**
+ * "Columns" labelled a count of steps, and "step" is the glossary's word for
+ * what the board draws as a column. A layout column kept in a `className`, a
+ * `data-*` attribute or an identifier is never this guard's subject, so it
+ * needs no exemption, and it is planted here beside the copy the guard must
+ * flag.
+ */
+test('a step is not called a column on screen, and a layout column in code passes', () => {
+  const planted = [
+    {
+      file: 'components/planted.tsx',
+      code: [
+        '<span>Columns</span>',
+        '<Button aria-label="Select the Sign up column" />',
+        '<div className="grid-cols-3 flex-col" data-blueprint-column-header="">',
+        '  <span>Steps</span>',
+        '</div>',
+      ].join('\n'),
+    },
+  ]
+  const found = offenders(readerFacingStrings(planted)).map((one) => one.split(' — ')[1])
+  assert.deepEqual(found.sort(), ['"column"', '"columns"'])
+})
+
 /* ------------------------------------------------------------- the figures */
 
 /**

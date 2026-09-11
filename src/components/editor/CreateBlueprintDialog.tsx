@@ -91,9 +91,9 @@ const EMPTY_DRAFT: DraftBlueprint = {
 
 /**
  * Create a scenario: where it lives, what it is called, what lanes it starts
- * with, and how many columns.
+ * with, and how many steps.
  *
- * Columns are created empty and named "Step 1…n" — naming them here would be
+ * Steps are created empty and named "Step 1…n" — naming them here would be
  * five text fields answering a question nobody can answer before they have
  * seen the grid. The lane set is the decision worth making up front, because
  * lanes are what a scenario is compared along.
@@ -292,7 +292,7 @@ export function CreateBlueprintDialog({
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-foreground">Columns</span>
+            <span className="text-sm font-medium text-foreground">Steps</span>
             <Input
               type="number"
               min={MIN_STEP_COUNT}
