@@ -106,6 +106,10 @@ export const REGISTER_2: readonly NamedSurface[] = [
     file: 'components/editor/SlicePresentation.tsx',
     because: 'slide numbers in the filmstrip and the presentation eyebrow',
   },
+  {
+    file: 'components/editor/SliceSlideComposer.tsx',
+    because: 'cited-cell order — a ruler column of digits',
+  },
 ]
 
 /**

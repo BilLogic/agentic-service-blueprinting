@@ -301,7 +301,15 @@ export function SliceSlideComposer({
                           <GripVertical className="size-3" aria-hidden />
                         </button>
                       </IconTooltip>
-                      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-primary text-4xs font-medium text-primary-foreground">
+                      {/*
+                        A ruler column, not a filled square. A 16px circle at 9px
+                        already clipped two digits; the running count
+                        (`offsets[slide] + cell + 1`) has to show a slice
+                        of a hundred cells. Mono + tabular-nums is register 2
+                        of the mono model — same treatment as the canvas
+                        sequence badge and the phase-menubar count badge.
+                      */}
+                      <span className="w-6 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
                         {running}
                       </span>
                       <span className="min-w-0 flex-1">
