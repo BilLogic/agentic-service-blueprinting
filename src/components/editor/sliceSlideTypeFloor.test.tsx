@@ -85,12 +85,15 @@ function mountEditor(slides: DraftSlide[]) {
 }
 
 /**
- * Expand the storyboard sheet. It starts collapsed; the badges live inside.
+ * Expand the slide sheet. It starts collapsed; the badges live inside.
+ *
+ * The header says "Slides", not "Storyboard": the storyboard is a lane, and
+ * what the sheet holds is slides — its own buttons add, remove and keep them.
  *
  * @returns {void}
  */
-function openStoryboard() {
-  screen.getByRole('button', { name: 'Storyboard' }).click()
+function openSlideSheet() {
+  screen.getByRole('button', { name: 'Slides' }).click()
 }
 
 describe('cited-cell order is a ruler column', () => {
@@ -126,7 +129,7 @@ describe('the slide badge sizes to its content', () => {
   it('renders two-digit and three-digit indexes in a content-sized badge at xs', () => {
     const slides = Array.from({ length: 100 }, () => slide(['cell-a']))
     const { container } = mountEditor(slides)
-    openStoryboard()
+    openSlideSheet()
 
     const two = screen.getByLabelText('Slide 12 title')
       .previousElementSibling as HTMLElement

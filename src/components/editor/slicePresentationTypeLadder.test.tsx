@@ -41,7 +41,7 @@ const SLICE_PRESENTATION = new Set([
 
 /**
  * Display surfaces whose floor is `sm`. Editing chrome (the composer, the
- * storyboard sheet, the sidebar) stays on `xs` and is not in this set.
+ * slide sheet, the sidebar) stays on `xs` and is not in this set.
  */
 const STAGE_FILES = new Set([
   'components/editor/SlicePresentation.tsx',

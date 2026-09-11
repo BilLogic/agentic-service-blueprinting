@@ -61,6 +61,67 @@
     border-color: var(--color-slate-800);
   }
 
+  /*
+   * A phase out of focus dims its children, not itself.
+   *
+   * Opacity on the section would composite its whole subtree into one
+   * translucent layer, and a hovered scenario inside it could change fill and
+   * shadow but never become clearer than that layer. So the frame, the badge
+   * and each scenario wrapper dim on their own — the same three the camera
+   * fades during a flight — and one scenario can lift out of a dimmed phase
+   * without lifting its siblings.
+   *
+   * Opacity only, on the camera's duration and ease: the dim and the flight
+   * are one gesture. No filter: transitioning one repaints everything under
+   * it on every frame of the ease.
+   */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    > [data-phase-frame],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    > [data-phase-title-badge],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id] {
+    opacity: 0.3;
+    transition-property: opacity;
+    transition-duration: var(--motion-camera);
+    transition-timing-function: var(--ease-camera);
+  }
+
+  /* Hovering or focusing the phase band previews the whole phase. Hovering
+     one of its scenarios opts the group out, so the group does not compete
+     with the target. */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has([data-phase-scenario-panel]:is(:hover, :focus-within))
+    )
+    > [data-phase-frame],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has([data-phase-scenario-panel]:is(:hover, :focus-within))
+    )
+    > [data-phase-title-badge],
+  [data-canvas-phase-section][data-canvas-focus-dimmed]:is(
+      :hover,
+      :focus-within
+    ):not(
+      :has([data-phase-scenario-panel]:is(:hover, :focus-within))
+    )
+    [data-focus-slide-id] {
+    opacity: 0.7;
+  }
+
+  /* The scenario under the pointer, or holding focus, comes up to full ink. */
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id]:has(> [data-phase-scenario-panel]:hover),
+  [data-canvas-phase-section][data-canvas-focus-dimmed]
+    [data-focus-slide-id]:has(> [data-phase-scenario-panel]:focus-within) {
+    opacity: 1;
+  }
+
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
     background-color: var(--color-slate-600);
@@ -549,9 +610,16 @@
    * camera moved (overview → phase stays in blocks and did not). The camera
    * now keeps this tier for that zoom-in and marks the named destination
    * with `data-camera-flight-reveal` so only that subtree shows text.
+   *
+   * Keyed on `data-blueprint-cell-anchor`, the marker every drawn cell
+   * carries, and not on `data-blueprint-cell`, which names a cell's id. The
+   * touchpoint lane's container carries the id without the anchor, so keyed
+   * on the id a row of touchpoints became one slab; keyed on the anchor each
+   * touchpoint is its own block, and a cell drawn without an id is a block
+   * too.
    */
   [data-semantic-tier='blocks']
-    [data-blueprint-cell]:not(
+    [data-blueprint-cell-anchor]:not(
       :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
     )
     > * {
@@ -559,11 +627,56 @@
   }
 
   [data-semantic-tier='blocks']
-    [data-blueprint-cell]:not(
+    [data-blueprint-cell-anchor]:not(
       :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
     ) {
     background-color: var(--border);
     border-color: transparent;
+  }
+
+  /*
+   * Axis labels keep their boxes at every tier. At overview zoom their words
+   * are smudge like the cells' text, so they become neutral skeleton bars in
+   * the same boxes: the rail and the header row still read as structure, and
+   * nothing reflows when the tier flips.
+   */
+  [data-semantic-tier='blocks']
+    [data-blueprint-column-header]:not(
+      :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+    )
+    > span,
+  [data-semantic-tier='blocks']
+    [data-blueprint-row-header]:not(
+      :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+    ) {
+    color: transparent !important;
+  }
+
+  [data-semantic-tier='blocks']
+    [data-blueprint-column-header]:not(
+      :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+    )
+    > span::after,
+  [data-semantic-tier='blocks']
+    [data-blueprint-row-header]:not(
+      :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+    )::after {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: min(72%, 96px);
+    height: 0.65em;
+    border-radius: 999px;
+    background-color: var(--border);
+    content: '';
+    transform: translateY(-50%);
+  }
+
+  [data-semantic-tier='blocks']
+    [data-blueprint-column-header]
+    > span::after {
+    left: 14%;
+    width: 72%;
   }
 
   /*
@@ -605,11 +718,23 @@
     }
 
     [data-semantic-tier='blocks']
-      [data-blueprint-cell]:not(
+      [data-blueprint-cell-anchor]:not(
         :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
       ) {
       background-color: CanvasText;
       border-color: CanvasText;
+    }
+
+    [data-semantic-tier='blocks']
+      [data-blueprint-column-header]:not(
+        :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+      )
+      > span::after,
+    [data-semantic-tier='blocks']
+      [data-blueprint-row-header]:not(
+        :where([data-camera-flight-reveal], [data-camera-flight-reveal] *)
+      )::after {
+      background-color: CanvasText;
     }
   }
 }
@@ -654,16 +779,41 @@
    * Chromium walks the ancestor chain correctly and never showed this, which
    * is why it survived verification — the browser pane is Chromium.
    *
-   * The blanket descendant selector is safe here BECAUSE the board holds no
-   * scrollable region: the canvas pans instead of scrolling, so there is no
-   * gesture inside it that belongs to the browser. Anything that does need
-   * native scrolling (the cell detail sheet) is portalled out of this
-   * subtree. Not scoped to `pointer: coarse` — `touch-action` is inert for
-   * mouse input, and a touchscreen laptop needs it too.
+   * The blanket descendant selector reaches one kind of thing it should not,
+   * and the rule below is that exception: a region inside the board that
+   * scrolls natively. Everything else pans instead of scrolling, and anything
+   * that needs native scrolling outright (the cell detail sheet) is
+   * portalled out of this subtree. Not scoped to `pointer: coarse` —
+   * `touch-action` is inert for mouse input, and a touchscreen laptop needs
+   * it too.
    */
   [data-zoom-pan-content],
   [data-zoom-pan-content] * {
     touch-action: none;
+  }
+
+  /*
+   * A scroll region inside the board gets its axes back.
+   *
+   * `pan-x pan-y`, not `auto`: scrolling goes to the browser, pinch-zoom stays
+   * the canvas's. Two fingers over an overflowing region must still zoom the
+   * board, which is what the touch claim in `useZoomPanViewport` says from the
+   * other side — one finger over a scrolling region is released, two are
+   * always claimed.
+   *
+   * `.blueprint-scroll` is the class a scroll container in this app carries,
+   * so the rule keys on an authored intent. Whether the region actually
+   * overflows is `canvasScrollRegions.ts`'s question, which CSS cannot ask: a
+   * region that carries the class and overflows nothing starts no scroll, and
+   * the finger's stream reaches the camera as before.
+   *
+   * Descendants too, for the reason the blanket rule has them: the browser
+   * reads the touched element's own value, and a finger lands on the content,
+   * never on the scroll container itself.
+   */
+  [data-zoom-pan-content] .blueprint-scroll,
+  [data-zoom-pan-content] .blueprint-scroll * {
+    touch-action: pan-x pan-y;
   }
 }
 

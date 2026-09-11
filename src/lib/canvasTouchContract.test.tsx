@@ -250,6 +250,19 @@ describe('the CSS declaration, which only a browser can verify', () => {
     )
   })
 
+  it('gives a scroll region inside the board its scroll axes back', () => {
+    // The touch path above releases one finger over an overflowing region.
+    // Under the blanket `none` the browser would still have nothing to
+    // scroll with, so the release would free the finger for no gesture.
+    // `pan-x pan-y`, not `auto`: pinch-zoom stays the canvas's.
+    expect(
+      CSS.replace(/\s+/g, ' '),
+      'without this a finger cannot scroll a region the wheel scrolls; verify getComputedStyle(region).touchAction in Safari',
+    ).toContain(
+      '[data-zoom-pan-content] .blueprint-scroll, [data-zoom-pan-content] .blueprint-scroll * { touch-action: pan-x pan-y; }',
+    )
+  })
+
   it('suppresses WebKit’s text gestures on the viewport', () => {
     // The selection drag and the long-press callout are a separate stream
     // steal from the one above; both have to stay dead.

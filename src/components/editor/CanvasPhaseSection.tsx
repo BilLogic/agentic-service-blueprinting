@@ -163,26 +163,24 @@ export function CanvasPhaseSection({
       ref={sectionRef}
       className={cn(
         /*
-          OPACITY only, on the camera's own duration and ease.
+          No dim on the section itself — neither an opacity nor a filter.
 
-          This transitioned `filter` too — desaturating an entire phase
-          section, hundreds of cells, every frame of the ease, at the exact
-          moment the camera is animating the whole board. That is a
-          full-board repaint per frame competing with the navigation, and it
-          was the residual stutter. `blueprint.css` already documents the
-          rule for the slice dim ("transitioning a filter repaints every
-          non-member cell on every frame"); the navigation dim simply never
-          learned it. Saturation now lands on frame one, under a section
-          still near-opaque, so the pair still reads as one event.
+          A dimmed phase carries `data-canvas-focus-dimmed`, and
+          `blueprint.css` dims its frame, its badge and each of its
+          scenarios one by one. Either property on the section would
+          composite the whole subtree into one layer, and nothing inside a
+          translucent ancestor can become clearer than it: a hovered
+          scenario in a dimmed phase could change fill and shadow and still
+          sit at the section's opacity. Those three children are also what
+          the camera fades during a flight, so a dim here would stack under
+          that fade.
 
-          Duration and ease are the CAMERA's, not the fade's: the dim and
-          the fly-to are one gesture, and a 200 ms dim under a 420 ms glide
-          finished less than halfway through the move.
+          Nothing inside is made inert either, the same treatment a dimmed
+          scenario panel gets. A cell in a dimmed phase ignores its own click
+          (`BlueprintCellButton`) and lets it through to the scenario or the
+          phase around it.
         */
         'relative inline-flex w-max flex-col items-start',
-        'transition-opacity duration-(--motion-camera) ease-structural',
-        dimmed &&
-          'opacity-30 saturate-50 [&_[data-blueprint-cell-interactive]]:pointer-events-none',
         navigable &&
           'cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         className,
@@ -241,7 +239,11 @@ export function CanvasPhaseSection({
         className="pointer-events-auto absolute z-30 max-w-[min(100%,28rem)] border-transparent font-mono uppercase tracking-wider"
         style={{
           top: -sectionTopInset,
-          left: sectionInset,
+          // On the frame's own left edge, which sits at `-sectionInset`: a
+          // label that names a container reads as belonging to it only when
+          // their edges agree. Inset from that edge, the badge floated a
+          // band's width in from the corner it labels.
+          left: -sectionInset,
           transform: 'translateY(-50%)',
         }}
       />
