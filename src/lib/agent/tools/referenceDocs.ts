@@ -49,8 +49,8 @@ import { registeredReferenceDocs } from '@/lib/agent/tools/referenceRegistry'
  * Adding a reference means four edits: the source file plus its row in
  * `scripts/sync-canvas-skills.mjs`, the import and the row here, the name in
  * `referenceNames.ts`, and the published path in
- * `scripts/check-reference-paths.mjs` (ADR 0004 — those paths are an
- * interface consumers import by name). `read.ts` throws at module init if the
+ * `scripts/check-reference-paths.mjs` (by the decision that reference paths
+ * are a published interface — consumers import them by name). `read.ts` throws at module init if the
  * record and the name list disagree.
  */
 const TEMPLATE_REFERENCE_DOCS: Record<string, string> = {

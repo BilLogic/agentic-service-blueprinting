@@ -241,7 +241,7 @@ export function MobileNavSheet({
                 Loading and empty are different states here too — the same
                 distinction `SliceGroups` above already draws.
 
-                It had no reachable empty state at all until #505: a read with
+                It once had no reachable empty state at all: a read with
                 no rows fell back to the template's bundled sample, so this list
                 always had phases in it, and on a connected deployment they
                 were the template's under the deployment's name. The drawer

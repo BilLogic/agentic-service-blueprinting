@@ -439,7 +439,7 @@
    * the import and this default together.
    *
    * No heading font, no type-scale overrides. Weight has a two-scope
-   * `--font-weight-normal` knob on the ladder block below — ADR 0012.
+   * `--font-weight-normal` knob on the ladder block below — the decision that a rung owns size and leading.
    */
   /*
    * The fallback chain sits OUTSIDE the var() slot on purpose. Inside it,
@@ -513,7 +513,7 @@
 }
 
 /*
- * The type ladder. ADR 0012.
+ * The type ladder, held by the decision that a rung owns size and leading.
  *
  * A rung is declared twice and a ratio once. Sans sizes and the
  * `--text-*--line-height` pairings live here, on `@theme`, which is the root
@@ -533,8 +533,8 @@
  * size-4 sequence badge… 8px is a nowrap caption under a storyboard-lane
  * thumbnail. Collapsing them would be a design change nobody asked for" —
  * that was theme.css:531-534, and it was correct about the geometries then.
- * #538 changed both containers. ADR 0012: a rung is chosen for the text's
- * job, never to fit a container. Nothing below xs exists in either scope.
+ * Both containers have since been resized.
+ * The rule: a rung is chosen for the text's job, never to fit a container. Nothing below xs exists in either scope.
  * The floor is 12px.
  *
  * A plain @theme block (not `inline`) because these are literal values, not
@@ -561,7 +561,7 @@
   --text-5xl: 2.875rem;
   --text-5xl--line-height: 1;
   /*
-   * ADR 0012. The reference sets sans `--font-weight-normal` to 450 because
+   * Recorded under the decision that a rung owns size and leading. The reference sets sans `--font-weight-normal` to 450 because
    * Inter reads light at 400, and leaves the mono scope at 400 because
    * Source Code Pro does not need the bump. Ubuntu Sans holds its colour
    * at 400 down to 12px, so both scopes stay at 400. The two-scope
@@ -572,7 +572,7 @@
 
 /*
  * Mono scope: sizes, and the same `--font-weight-normal` knob as the root
- * (ADR 0012 — both 400). The root ratio meeting a larger size yields a
+ * (both 400, under the decision that a rung owns size and leading). The root ratio meeting a larger size yields a
  * larger box, so this column lands on upstream Tailwind's line boxes without
  * restating them.
  */

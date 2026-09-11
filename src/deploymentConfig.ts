@@ -260,8 +260,8 @@ export type ResolvedDeploymentConfig = {
  * object for numbers.
  *
  * The prose target is meant to equal what four lines of cell text hold.
- * Re-measure once #542 lands (cell text rung 14px → 13px); do not invent a
- * new number ahead of that.
+ * The cell text rung has moved from 14px to 13px, which fits more; measure
+ * against the current rung before changing this number, rather than guessing.
  */
 export const asbDefaultCellBudget: CellContentBudget = {
   prose: { target: 120, warning: 120 },

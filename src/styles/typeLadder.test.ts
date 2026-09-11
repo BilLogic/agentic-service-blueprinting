@@ -379,9 +379,9 @@ describe('the display floor', () => {
 })
 
 describe('the 4xs/5xs geometry defence', () => {
-  it('is answered, pointing at ADR 0012, and the four rungs are gone', () => {
+  it('is answered, naming the type-ladder decision, and the four rungs are gone', () => {
     expect(THEME).toMatch(/theme\.css:531-534/)
-    expect(THEME).toMatch(/ADR 0012/)
+    expect(THEME).toMatch(/the decision that a rung owns size and leading/)
     expect(THEME).toMatch(/a rung is chosen for the text's/)
     expect(THEME).toMatch(/never to fit a container/)
     expect(THEME).not.toMatch(/the rungs remain until then/)
