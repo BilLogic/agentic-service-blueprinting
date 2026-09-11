@@ -7,19 +7,21 @@
  * shapes — a category half in a small-caps eyebrow and an instance half in a
  * plain medium-weight name, inside one card.
  *
- * The board wiring is exercised through the two labels this template renders a
- * definition popover on — a path badge and a scenario/phase title badge — plus
- * the per-service example the popover grounds each generic definition with.
+ * The board wiring is exercised through the three labels that render a
+ * category and an instance — a path badge, a scenario/phase title badge and a
+ * stakeholder badge — plus the per-service example the popover grounds each
+ * generic definition with.
  *
  * What is rendered and what is read as text, and why:
  *
- *   - the card, the two-section surfaces and the canvas title are RENDERED,
- *     because the claims are about what a reader sees and in what order;
+ *   - the card, the two-section surfaces, `StatusBadge`, the two made-up
+ *     words' `Field` labels and the canvas title are RENDERED, because the
+ *     claims are about what a reader sees and in what order;
  *   - "no cue and no ⓘ survive" is read as TEXT, because it is a claim about
  *     the whole tree and no single render can observe an absence everywhere.
  */
 import type { ReactElement, ReactNode } from 'react'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -29,8 +31,19 @@ import {
 } from '@/components/blueprint/DefinitionCard'
 import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
 import { EntityTitleAffordance } from '@/components/blueprint/EntityTitleAffordance'
+import { BlueprintDividerRailLabel } from '@/components/blueprint/BlueprintDividerBadge'
+import { PanelSectionLabel } from '@/components/blueprint/PanelSectionLabel'
+import { Field } from '@/components/blueprint/panelShell'
 import { PathLabelBadge } from '@/components/blueprint/PathLabelBadge'
 import { ScenarioTitleBadge } from '@/components/blueprint/ScenarioTitleBadge'
+import { StakeholderBadge } from '@/components/blueprint/StakeholderBadge'
+import { StatusBadge } from '@/components/blueprint/StatusBadge'
+import { ENTITY_STATUS_MEANING } from '@/lib/entityStatus'
+import {
+  STAKEHOLDER_KIND_LABELS,
+  STAKEHOLDER_KIND_MEANING,
+  type StakeholderKind,
+} from '@/hooks/useStakeholders'
 import {
   ENTITY_EXAMPLE_PLACEHOLDER,
   ENTITY_KIND_DEFINITIONS,
@@ -167,9 +180,9 @@ describe('a definition opens on hover, and is reachable without a pointer', () =
   })
 })
 
-/* ----------------------------------------- the two board-label surfaces */
+/* --------------------------------------- the three two-section surfaces */
 
-describe('the board labels that show a category and an instance', () => {
+describe('the labels that show a category and an instance', () => {
   const rendered: Array<[string, () => void, string]> = [
     [
       'a path badge',
@@ -187,9 +200,21 @@ describe('the board labels that show a category and an instance', () => {
       'a scenario title badge',
       () =>
         render(
-          <ScenarioTitleBadge name="Warm-Up" summary="The first minutes." />,
+          <ScenarioTitleBadge name="Site Visit" summary="The first hour on site." />,
         ),
-      'Warm-Up',
+      'Site Visit',
+    ],
+    [
+      'a stakeholder badge',
+      () =>
+        render(
+          <StakeholderBadge
+            name="Site Surveyor"
+            kind="staff"
+            summary="The surveyor a household meets on every visit."
+          />,
+        ),
+      'Site Surveyor',
     ],
   ]
 
@@ -246,6 +271,139 @@ describe('an entity definition', () => {
     // The placeholder changes the BODY only. The heading is the heading.
     expect(body(instance).className).toContain('italic')
     expect(eyebrow(instance).className).toBe(eyebrow(sections(card)[0]).className)
+  })
+})
+
+/* ------------------------------------------------- the stakeholder card */
+
+describe('the stakeholder card', () => {
+  it('shows the kind, that kind meaning, then the name and its summary', async () => {
+    render(
+      <StakeholderBadge
+        name="Site Surveyor"
+        kind="staff"
+        summary="The surveyor a household meets on every visit."
+      />,
+    )
+    hover(screen.getByText('Site Surveyor'))
+    const first = await screen.findByText(STAKEHOLDER_KIND_LABELS.staff, {
+      selector: '[data-definition-eyebrow]',
+    })
+    const card = first.closest('[data-definition-card]') as HTMLElement
+    const [kind, instance] = sections(card)
+
+    expect(eyebrow(kind).textContent).toBe('Staff')
+    expect(body(kind).textContent).toBe(STAKEHOLDER_KIND_MEANING.staff)
+    expect(eyebrow(instance).textContent).toBe('Site Surveyor')
+    expect(body(instance).textContent).toBe(
+      'The surveyor a household meets on every visit.',
+    )
+  })
+
+  it('has a meaning for all five kinds, and says a team owns a lane and is never one', () => {
+    const kinds: StakeholderKind[] = [
+      'recipient',
+      'staff',
+      'partner',
+      'provider',
+      'team',
+    ]
+    for (const kind of kinds) {
+      // Long enough to be a definition rather than a restated label — the
+      // same floor the entity-kind definitions are held to.
+      expect(STAKEHOLDER_KIND_MEANING[kind].length, kind).toBeGreaterThan(40)
+    }
+    // The one sentence carrying the schema: a team reaches a lane through
+    // `owner_team` and is never its `stakeholder_id`, because a team does not
+    // stand in the room. If this is ever wrong, the schema is wrong with it.
+    expect(STAKEHOLDER_KIND_MEANING.team).toMatch(/owns a lane and is never one/)
+  })
+})
+
+/* ------------------------------------------------------- the status badge */
+
+describe('StatusBadge', () => {
+  it('discloses what the status means, in a card and not a tooltip', async () => {
+    render(<StatusBadge status="built" />)
+    hover(screen.getByText('Built'))
+    expect(await screen.findByText(ENTITY_STATUS_MEANING.built)).toBeDefined()
+    expect(document.querySelector('[data-definition-card]')).not.toBeNull()
+  })
+
+  it('is reachable by keyboard focus', () => {
+    render(<StatusBadge status="live" />)
+    const badge = screen.getByText('Live')
+    expect(badge.getAttribute('tabindex')).toBe('0')
+    badge.focus()
+    expect(document.activeElement).toBe(badge)
+  })
+})
+
+/* ------------------------------- a made-up word is a plain field label */
+
+describe('a made-up word is a plain field label, and still explains itself', () => {
+  /*
+    The two made-up words — `Touchpoint`, `Storyboard` — are plain `Field`
+    labels beside Summary and Status. Stacked among a cell's value badges, an
+    outline badge read as a mystery tag rather than a field label. The
+    definition does not vanish: it hangs off the label's own hint popover, the
+    touch and press affordance every other field label already uses.
+
+    What is asserted is what a reader can reach: the caption is a plain label,
+    not a badge, and hovering it still discloses the definition.
+  */
+  it('Touchpoint is a plain label, not a badge, and hovering it gives the definition', async () => {
+    render(
+      <Field label="Touchpoint" hint={PANEL_TERMS.touchpoint}>
+        <span>a value</span>
+      </Field>,
+    )
+    const label = screen.getByText('Touchpoint')
+    expect(label.hasAttribute('data-panel-term-badge')).toBe(false)
+    hover(label)
+    expect(await screen.findByText(PANEL_TERMS.touchpoint)).not.toBeNull()
+  })
+
+  it('an ordinary section label discloses nothing at all', async () => {
+    // `Status` names a field holding a status. A sentence saying so helps
+    // nobody.
+    render(<PanelSectionLabel>Status</PanelSectionLabel>)
+    const label = screen.getByText('Status')
+    expect(label.hasAttribute('tabindex')).toBe(false)
+    hover(label)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.querySelector('[data-definition-card]')).toBeNull()
+  })
+
+  it('a divider is an outlined block, and says what its line separates', async () => {
+    // The three divider lines are the whole grammar of a service blueprint;
+    // a rail that stated them in the register of every other row label hid
+    // that.
+    render(<BlueprintDividerRailLabel label="line of interaction" />)
+    const block = screen.getByText('line of interaction')
+    expect(block.hasAttribute('data-blueprint-row-header')).toBe(true)
+    expect(block.className).toContain('uppercase')
+    hover(block)
+    expect(
+      await screen.findByText(/Above it, what the customer does/),
+    ).not.toBeNull()
+  })
+
+  it('the term heads its own definition, once, rather than opening the sentence', async () => {
+    render(
+      <Field label="Storyboard" hint={PANEL_TERMS.storyboard}>
+        <span>frames</span>
+      </Field>,
+    )
+    hover(screen.getByText('Storyboard'))
+    const shown = await screen.findByText(PANEL_TERMS.storyboard)
+    const card = shown.closest('[data-definition-card]')
+    expect(card).not.toBeNull()
+    expect(
+      within(card as HTMLElement).getAllByText('Storyboard', {
+        selector: '[data-definition-eyebrow]',
+      }),
+    ).toHaveLength(1)
   })
 })
 
@@ -343,7 +501,7 @@ describe('nothing on the page announces that a word is defined', () => {
 
   it('the canvas title draws no icon beside the name', () => {
     renderWithEntityDetail(
-      <EntityTitleAffordance kind="scenario" id="s-1" label="Warm-Up" />,
+      <EntityTitleAffordance kind="scenario" id="s-1" label="Site Visit" />,
     )
     const block = document.querySelector('[data-entity-title]') as HTMLElement
     // The ⓘ existed because a hover-only control is invisible on touch. The
@@ -391,9 +549,9 @@ describe('a definition hangs off a badge, never off a label', () => {
     // off it: no `aria-haspopup`, which is what marks a definition trigger
     // elsewhere in this file.
     renderWithEntityDetail(
-      <EntityTitleAffordance kind="scenario" id="s-1" label="Warm-Up" />,
+      <EntityTitleAffordance kind="scenario" id="s-1" label="Site Visit" />,
     )
-    const title = screen.getByRole('button', { name: 'View details: Warm-Up' })
+    const title = screen.getByRole('button', { name: 'View details: Site Visit' })
     expect(title.hasAttribute('aria-haspopup')).toBe(false)
   })
 
@@ -423,7 +581,7 @@ describe('the example grounds the generic definition in this deployment', () => 
   it('shows the authored example under the kind, set like every other section', async () => {
     render(
       <EntityExamplesContext.Provider
-        value={{ lane: 'The tutor row on this board' }}
+        value={{ lane: 'The installer row on this board' }}
       >
         <EntityDefinitionPopover kind="lane">
           <span>Front stage</span>
@@ -432,7 +590,7 @@ describe('the example grounds the generic definition in this deployment', () => 
     )
     hover(screen.getByText('Front stage'))
     const card = (
-      await screen.findByText('The tutor row on this board')
+      await screen.findByText('The installer row on this board')
     ).closest('[data-definition-card]') as HTMLElement
     const [kind, example] = sections(card)
     expect(sections(card)).toHaveLength(2)
@@ -444,7 +602,7 @@ describe('the example grounds the generic definition in this deployment', () => 
   it('is picked by kind — a phase popover shows the phase example, not another', async () => {
     render(
       <EntityExamplesContext.Provider
-        value={{ phase: 'Warm-up', lane: 'The tutor row' }}
+        value={{ phase: 'Site survey', lane: 'The installer row' }}
       >
         <EntityDefinitionPopover kind="phase">
           <span>A phase</span>
@@ -452,8 +610,8 @@ describe('the example grounds the generic definition in this deployment', () => 
       </EntityExamplesContext.Provider>,
     )
     hover(screen.getByText('A phase'))
-    await screen.findByText('Warm-up')
-    expect(screen.queryByText('The tutor row')).toBeNull()
+    await screen.findByText('Site survey')
+    expect(screen.queryByText('The installer row')).toBeNull()
   })
 
   it('renders nothing for a reader when the example is blank', async () => {

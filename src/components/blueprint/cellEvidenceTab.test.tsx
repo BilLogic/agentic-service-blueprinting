@@ -13,10 +13,17 @@
  * So every assertion here is what a person sees: a label, a rendered anchor,
  * the absence of a separator. The one exception is the argument `addEvidence`
  * is called with, which is the agent-facing half of the same claim.
+ *
+ * A placeholder cannot do a label's job — it describes a box only until
+ * somebody types into it — so the labelling assertions are made twice, empty
+ * and full. A field says it may be left empty the one way this panel says
+ * it: `Field`'s asterisk on the field that may not, rather than the word
+ * "optional" beside the ones that may.
  */
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
+import { PANEL_TEXTAREA_CLASS } from '@/components/blueprint/panelShell'
 import type { Evidence } from '@/types/database'
 
 /** The draft the tab hands the mutation — the agent-facing half of the claim. */
@@ -83,21 +90,86 @@ describe('the add-a-source form', () => {
     expect(form).not.toBeNull()
     expect(form?.querySelector('hr')).toBeNull()
     expect(form?.querySelector('[role="separator"]')).toBeNull()
+    expect(form?.querySelector('.border-t')).toBeNull()
     // Three controls, and the count is the assertion: a fourth would be the
-    // author sorting a sentence into boxes again.
+    // author sorting a sentence into boxes again. Counted by the panel's own
+    // control slots rather than by tag, because the panel select renders a
+    // trigger button over a hidden native input, and a bare `input` sweep
+    // counts that hidden one as a field an author can see.
     expect(
-      form?.querySelectorAll('input, textarea, select'),
+      form?.querySelectorAll(
+        '[data-slot="input"], [data-slot="select-trigger"], textarea',
+      ),
     ).toHaveLength(3)
   })
 
-  it('labels every field, so no purpose is carried by grey text alone', () => {
+  it('sets the kind and the title on one row, and the note under them', () => {
+    // A kind is a short enum and a title is a sentence. Stacked, they were
+    // two of three full-width boxes in a narrow panel, and the enum was as
+    // wide as the sentence.
     const view = open()
+    const form = view.container.querySelector('form') as HTMLFormElement
+    const rowOf = (control: HTMLElement) =>
+      Array.from(form.children).find((child) => child.contains(control))
+
+    const kindRow = rowOf(view.getByLabelText('Kind'))
+    expect(kindRow).toBeDefined()
+    expect(rowOf(view.getByLabelText('Title'))).toBe(kindRow)
+    expect(rowOf(view.getByLabelText('Note'))).not.toBe(kindRow)
+  })
+
+  it('labels every field, and keeps saying so once they are full', () => {
+    const view = open()
+
+    // The label a reader sees, and the name the control answers to.
     for (const label of ['Kind', 'Title', 'Note']) {
       expect(view.getByText(label, { selector: 'span' })).toBeTruthy()
       expect(view.getByLabelText(label)).toBeTruthy()
     }
     expect(view.queryByLabelText('Source reference')).toBeNull()
     expect(view.queryByLabelText('Source excerpt')).toBeNull()
+
+    fireEvent.change(view.getByLabelText('Title'), {
+      target: { value: 'Site visit, household 3' },
+    })
+    fireEvent.change(view.getByLabelText('Note'), {
+      target: { value: 'Household 3 found the consent form on the second try.' },
+    })
+    expect(view.getByText('Title', { selector: 'span' })).toBeTruthy()
+    expect(view.getByText('Note', { selector: 'span' })).toBeTruthy()
+  })
+
+  it('marks the one field that cannot be left empty, and says it once', () => {
+    const view = open()
+    const title = view.getByText('Title', { selector: 'span' }).parentElement
+    const note = view.getByText('Note', { selector: 'span' }).parentElement
+    expect(title?.textContent).toBe('Title*')
+    expect(note?.textContent).toBe('Note')
+    expect(view.container.textContent).not.toContain('optional')
+  })
+
+  it('wears the shared input, the panel select and the panel textarea', () => {
+    const { getByLabelText, container } = open()
+
+    // The kind control is the panel's own select, not a bare `<select>`
+    // wearing hand-written classes — which clipped its value and was the one
+    // control in the panel with no hover state.
+    expect(container.querySelector('select')).toBeNull()
+    const kind = getByLabelText('Kind')
+    expect(kind.getAttribute('data-slot')).toBe('select-trigger')
+
+    // The title is the shared input at its own size. The two share a row, so
+    // they share a height: a title squeezed to `h-7` beside an `h-8` trigger
+    // is a row whose baselines do not meet.
+    const title = getByLabelText('Title')
+    expect(title.getAttribute('data-slot')).toBe('input')
+    expect(title.className).toContain('h-8')
+    expect(title.className).not.toMatch(/\bh-7\b/)
+    expect(kind.className).toContain('h-8')
+
+    // The cell panel's multi-line treatment, shared from `panelShell` rather
+    // than a fifth copy of its focus ring.
+    expect(getByLabelText('Note').className).toBe(PANEL_TEXTAREA_CLASS)
   })
 
   it('saves a source that is only a kind and a title', async () => {
@@ -131,10 +203,10 @@ describe('the add-a-source form', () => {
 
 describe('a saved source', () => {
   it('renders the kind as a word beside the title', () => {
-    rows = [source({ id: 'e-1', kind: 'meeting', title: 'Warm-up review' })]
+    rows = [source({ id: 'e-1', kind: 'meeting', title: 'Intake review' })]
     const view = render(<CellEvidenceTab cellId="cell-1" />)
     const row = view.getByRole('listitem')
-    expect(row.textContent).toContain('Warm-up review')
+    expect(row.textContent).toContain('Intake review')
     expect(row.textContent).toContain('meeting')
   })
 
@@ -142,7 +214,7 @@ describe('a saved source', () => {
     rows = [
       source({
         id: 'e-1',
-        note: 'Team agreed every warm-up must state that help is available on demand',
+        note: 'Team agreed every intake call must state that help is available on demand',
       }),
     ]
     const view = render(<CellEvidenceTab cellId="cell-1" />)

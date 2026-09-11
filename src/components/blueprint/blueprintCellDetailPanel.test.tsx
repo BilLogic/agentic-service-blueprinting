@@ -25,6 +25,12 @@
  *     a recording attached to a support row had its summary rendered while
  *     the name it belonged to was suppressed — and the role a person could
  *     set on it had no reader anywhere.
+ *   - **A new cell's lane badge is the lane badge.** The draft branch drew
+ *     its own span and painted it with `backgroundColor: style.lane`, which
+ *     is a role key ("actor"), not a colour. The browser dropped the
+ *     declaration and the row a new cell was being written into rendered
+ *     untinted, where every saved cell's panel names its row in that row's
+ *     own colour.
  *
  * The panel's children are stubbed. Each of them reads the database through
  * its own hooks and each has, or deserves, its own test; standing them all up
@@ -32,8 +38,13 @@
  */
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
-import type { CellResource, CellTouchpoint } from '@/types/blueprint'
+import type {
+  BlueprintData,
+  CellResource,
+  CellTouchpoint,
+} from '@/types/blueprint'
 
 /*
   The panel's own context, handed to it directly.
@@ -44,9 +55,9 @@ import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 */
 const detail = {
   selection: null as BlueprintCellSelection | null,
-  blueprints: [],
+  blueprints: [] as BlueprintData[],
   panelState: { surface: 'details' } as { surface: 'details' | 'differences' } | null,
-  draftCell: null,
+  draftCell: null as DraftCellTarget | null,
   isOpen: true,
   clearSelection: () => {},
   selectCell: () => {},
@@ -113,6 +124,11 @@ vi.mock('@/components/blueprint/CompareDifferencesSurface', () => ({
 }))
 vi.mock('@/components/blueprint/StoryboardStepDetailStack', () => ({
   StoryboardStepDetailStack: () => <div data-stub="storyboard-stack" />,
+}))
+// The new-cell form. Only the draft branch mounts it, and what is asserted
+// there is the badge the panel draws above it.
+vi.mock('@/components/blueprint/CellPanelEditor', () => ({
+  CellPanelEditor: () => <div data-stub="cell-panel-editor" />,
 }))
 
 import { BlueprintCellDetailPanel } from '@/components/blueprint/BlueprintCellDetailPanel'
@@ -390,5 +406,58 @@ describe('the summary a cell panel shows', () => {
     )
 
     expect(screen.queryByText('Summary')).toBeNull()
+  })
+})
+
+describe('the new-cell form', () => {
+  const DRAFT: DraftCellTarget = {
+    pathId: 'path-1',
+    laneId: 'lane-1',
+    stepId: 'step-1',
+    laneName: 'Customer',
+    stepName: 'Hears about the service',
+    stepIndex: 0,
+    scenarioName: 'Discovery',
+    phaseName: 'Intake',
+  }
+
+  beforeEach(() => {
+    detail.draftCell = DRAFT
+    detail.blueprints = [
+      {
+        path: {
+          id: 'path-1',
+          name: 'Happy path',
+          summary: null,
+          note: null,
+          kind: 'happy',
+          status: 'live',
+        },
+        lanes: [
+          { id: 'lane-1', name: 'Customer', role: 'customer_actions', position: 0 },
+        ],
+        steps: [],
+        cells: [],
+        dependencies: [],
+      },
+    ]
+  })
+
+  afterEach(() => {
+    detail.draftCell = null
+    detail.blueprints = []
+  })
+
+  it("names the row it is written into with that row's own badge", async () => {
+    render(<BlueprintCellDetailPanel />)
+    await screen.findByText('New cell')
+
+    // The lane badge is tinted by the stylesheet through the role it
+    // carries. A hand-rolled span carrying the role as an inline colour
+    // carries no role at all: the browser drops the declaration and the badge
+    // is left untinted.
+    const badge = screen.getByText('Customer').closest('[data-blueprint-lane]')
+    expect(badge, 'no lane badge above the new-cell form').not.toBeNull()
+    expect(badge!.getAttribute('data-blueprint-lane')).toBe('actor')
   })
 })

@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Field } from '@/components/blueprint/panelShell'
+import { OptionSelect } from '@/components/blueprint/OptionSelect'
+import { Field, PANEL_TEXTAREA_CLASS } from '@/components/blueprint/panelShell'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateEvidence, useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
@@ -48,6 +49,18 @@ const KIND_ICONS: Record<EvidenceKind, typeof FileText> = {
   observation: Eye,
   other: CircleDashed,
 }
+
+/**
+ * The kinds, as the panel writes words: one capital, and nothing else.
+ *
+ * Derived from `EVIDENCE_KINDS` rather than listed a second time — a hand-kept
+ * label table is a second place for the vocabulary to be true, and the only
+ * difference between the stored word and the shown one is its first letter.
+ */
+const KIND_OPTIONS = EVIDENCE_KINDS.map((kind) => ({
+  value: kind,
+  label: kind.charAt(0).toUpperCase() + kind.slice(1),
+}))
 
 function kindIcon(kind: string) {
   const Icon = KIND_ICONS[kind as EvidenceKind] ?? CircleDashed
@@ -175,36 +188,52 @@ function AddSourceForm({
           a placeholder disappears the moment an author starts typing, and the
           asterisk is this panel's only signal that a field cannot be left
           empty, so its absence on Note is what says Note is optional. */}
-      <Field label="Kind">
-        <select
-          value={kind}
-          aria-label="Kind"
-          className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          onChange={(event) => setKind(event.target.value as EvidenceKind)}
-        >
-          {EVIDENCE_KINDS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Title" required>
-        <Input
-          required
-          placeholder="What the source is"
-          aria-label="Title"
-          className="h-7 text-xs"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-      </Field>
+
+      {/* A kind is a short enum and a title is a sentence, so they share a
+          row. Stacked, they were two of three full-width boxes in a narrow
+          panel, and the enum was as wide as the sentence. */}
+      <div className="flex items-start gap-2">
+        {/* A fixed column the width of the longest kind, "Observation", plus
+            the trigger's padding, gap and chevron. A title is free text and
+            scrolls; a kind is chosen by reading it, so the enum takes the
+            fixed column and the title takes the rest. */}
+        <div className="w-32 shrink-0">
+          <Field label="Kind">
+            {/*
+              The panel's own select — the same control the Status and Role
+              fields wear. What stood here was a native `<select>` with its own
+              radius and border, no hover state, and a 28px box that left its
+              value too little line to sit in.
+            */}
+            <OptionSelect
+              value={kind}
+              onChange={setKind}
+              options={KIND_OPTIONS}
+              aria-label="Kind"
+            />
+          </Field>
+        </div>
+        <div className="min-w-0 flex-1">
+          <Field label="Title" required>
+            {/* The shared input at its own height, which is the select
+                trigger's height: two controls on one row meet at one
+                baseline. */}
+            <Input
+              required
+              placeholder="What the source is"
+              aria-label="Title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </Field>
+        </div>
+      </div>
       <Field label="Note">
         <textarea
           rows={3}
           placeholder="Anything worth keeping — a quotation, an observation, a link"
           aria-label="Note"
-          className="w-full resize-none rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className={PANEL_TEXTAREA_CLASS}
           value={note}
           onChange={(event) => setNote(event.target.value)}
         />
