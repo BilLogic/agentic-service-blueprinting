@@ -533,8 +533,8 @@
  * size-4 sequence badge… 8px is a nowrap caption under a storyboard-lane
  * thumbnail. Collapsing them would be a design change nobody asked for" —
  * that was theme.css:531-534, and it was correct about the geometries then.
- * Both containers have since been resized, and the rule is now that a rung
- * is chosen for the text's job, never to fit a container. Nothing below xs exists in either scope.
+ * Both containers have since been resized.
+ * The rule: a rung is chosen for the text's job, never to fit a container. Nothing below xs exists in either scope.
  * The floor is 12px.
  *
  * A plain @theme block (not `inline`) because these are literal values, not
