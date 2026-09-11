@@ -6,7 +6,10 @@ summary: The shell's entrance stagger and the canvas's reveal ladder are two clo
 
 **Status** Accepted — 2026-09-08. Two clocks still hold. The assumption that
 the canvas remounts whenever another view covers it is superseded by
-[ADR 0010](./0010-open-views-stay-mounted.md).
+[ADR 0010](./0010-open-views-stay-mounted.md). Diffed against
+BilLogic/plus-uno-blueprint ADR 0010 on 2026-09-10 (#551): that copy still
+assumed uncover remounts; this copy already carried the supersession, so it
+stands.
 **Context** `src/components/editor/EditorShell.tsx`,
 `src/contexts/canvasRevealContext.ts`, `src/contexts/shellBootStore.ts`,
 `src/components/ui/deferred-skeleton.tsx`

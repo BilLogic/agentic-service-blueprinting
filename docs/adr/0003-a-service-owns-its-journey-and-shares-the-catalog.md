@@ -1,10 +1,14 @@
 ---
-summary: When a deployment holds more than one service, the journey entities (phase, scenario, path, step, lane, cell) are a hard per-service boundary while the catalog of nouns a journey references — touchpoints and stakeholders both — is one deployment-level pool where the name is the identity and a service's membership is implicit in what its journey references, so a tool or actor is recorded once and reused across services without a palette to author or keep in sync.
+summary: When a deployment holds more than one service, the journey entities (phase, scenario, path, step, lane, cell, slice) are a hard per-service boundary while the catalog of nouns a journey references — touchpoints and stakeholders both — is one deployment-level pool where the name is the identity and a service's membership is implicit in what its journey references, so a tool or actor is recorded once and reused across services without a palette to author or keep in sync.
 ---
 
 # 3. A service owns its journey and shares the catalog
 
-**Status** Accepted — 2026-09-04
+**Status** Accepted — 2026-09-04. Amended 2026-09-10 (#551): slices named as
+a per-service boundary, matching `slices.service_id uuid NOT NULL` in
+`supabase/generated/portable-core.schema.sql`. The deployment's copy
+(BilLogic/plus-uno-blueprint ADR 0014) already had that wording; this
+copy omitted it.
 **Context** `supabase/migrations/21000125000000_an_entity_has_a_status_and_a_lane_names_its_actor.sql`,
 which lands the first half; the deployment this template was generalised from
 made the decision first and holds both halves.
@@ -27,9 +31,10 @@ is whether that reference data is a service's or the deployment's.
 **A service owns its journey; the catalog of nouns its journey references is the
 deployment's.**
 
-- The **journey** — phase, scenario, path, step, lane, cell — is a **hard**
-  boundary: mutually exclusive per service, never crossing. Two services' boards
-  do not share a phase or a lane.
+- The **journey** — phase, scenario, path, step, lane, cell, slice — is a
+  **hard** boundary: mutually exclusive per service, never crossing. Two
+  services' boards do not share a phase or a lane, and a slice stays within
+  one service.
 - The **catalog** — the nouns a journey points at — is **soft**: one
   deployment-level pool holding both touchpoints (the tools) and stakeholders
   (the actors). A cell references a shared touchpoint; a lane references a

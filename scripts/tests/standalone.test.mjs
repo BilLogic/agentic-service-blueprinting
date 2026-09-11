@@ -59,6 +59,16 @@ test('PLUS is case-sensitive, because lowercase plus is legitimate copy', () => 
   assert.deepEqual(labels('the PLUS workspace'), ['PLUS (case-sensitive)'])
 })
 
+test('a citation of the source repository is not coupling', () => {
+  assert.deepEqual(labels('Moved from BilLogic/plus-uno-blueprint ADR 0012 (#551).'), [])
+  assert.deepEqual(labels('See BilLogic/plus-uno-blueprint#617'), [])
+  assert.deepEqual(labels('uno is a deployment'), ['uno'])
+  assert.deepEqual(
+    labels('PLUS lives in data, see BilLogic/plus-uno-blueprint'),
+    ['PLUS (case-sensitive)'],
+  )
+})
+
 test('product vocabulary is not coupling and is deliberately unmatched', () => {
   assert.deepEqual(labels('aria-label="View in Figma"'), [])
   assert.deepEqual(labels('styled after Notion properties'), [])
