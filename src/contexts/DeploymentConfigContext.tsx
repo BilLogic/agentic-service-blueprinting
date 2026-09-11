@@ -12,6 +12,7 @@ import {
 } from '@/deploymentConfig'
 import { ORG_NAME } from '@/config'
 import { applyBrandAccent } from '@/lib/brandAccent'
+import { configurePathColorPins } from '@/lib/pathColorTheme'
 
 /**
  * The deployment seam, made reachable to every surface in the app.
@@ -60,6 +61,17 @@ export function DeploymentConfigProvider({
   useLayoutEffect(() => {
     applyBrandAccent(document.documentElement, { accent })
   }, [accent])
+
+  /**
+   * The pin table onto the colour theme, as a LAYOUT effect for the same
+   * reason as the accent: the map is in force before the first paint, so a
+   * named path cannot flash the hash colour and then jump. Empty (the kit
+   * default) writes an empty table, which is today's assignment.
+   */
+  const pathColorPins = resolved.pathColorPins
+  useLayoutEffect(() => {
+    configurePathColorPins(pathColorPins)
+  }, [pathColorPins])
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>

@@ -27,11 +27,13 @@
  * not one, and a seam that overstates its reach is the defect it exists to
  * prevent.
  *
- * WIRED TODAY: the wordmark and the accent. `content.workspaceTitle ??
- * brand.name ?? ORG_NAME` is what app chrome calls this installation, read
- * through `useWorkspaceTitle` by the tab strip and the editor shell; and
- * `brand.accent` is written onto the root's `--hue` by
- * `DeploymentConfigProvider` before the first paint. `brand.logo`,
+ * WIRED TODAY: the wordmark, the accent, and the path-colour pins.
+ * `content.workspaceTitle ?? brand.name ?? ORG_NAME` is what app chrome calls
+ * this installation, read through `useWorkspaceTitle` by the tab strip and
+ * the editor shell; `brand.accent` is written onto the root's `--hue` by
+ * `DeploymentConfigProvider` before the first paint; and `pathColorPins` is
+ * written onto the path-colour theme in the same layout effect, so a
+ * deployment's map is in force before the board paints. `brand.logo`,
  * `content.coverTitle` and the whole `agent` block are declared shape with no
  * reader: the cover heading and the workspace breadcrumb still take
  * `coverContent.title` and `ORG_NAME` directly. They migrate onto this type in
@@ -127,6 +129,14 @@ export type DeploymentConfig = {
   sample?: {
     nav?: NavItem[]
   }
+  /**
+   * Path names pinned to a colour/dash slot in the open set, rather than left
+   * to the hash. The slot is an index into that set (indigo, purple, gold,
+   * yellow) and the matching dash list: colour and dash are both read from it
+   * so the pair cannot drift. Names absent from the map keep the ordinary
+   * assignment. An omitted or empty map is the kit's own behaviour.
+   */
+  pathColorPins?: Record<string, number>
 }
 
 /**
@@ -157,6 +167,12 @@ export type ResolvedDeploymentConfig = {
   sample: {
     nav: NavItem[]
   }
+  /**
+   * Guaranteed a map, the way `sample.nav` is guaranteed an array: the
+   * template's default supplies an empty one, and a deployment that overlays
+   * pins is adding names, not replacing a vocabulary the kit does not have.
+   */
+  pathColorPins: Record<string, number>
 }
 
 /**
@@ -191,6 +207,7 @@ export const asbDefaultConfig: DeploymentConfig = {
   brand: { name: ORG_NAME, accent: BRAND.accent },
   content: { workspaceTitle: coverContent.title },
   sample: { nav: SAMPLE_NAV },
+  pathColorPins: {},
 }
 
 /**
@@ -243,11 +260,16 @@ export function resolveDeploymentConfig(
       ...(overlaidNav?.length ? overlaidNav : (asbDefaultConfig.sample?.nav ?? [])),
     ],
   }
+  const pathColorPins = {
+    ...present(asbDefaultConfig.pathColorPins),
+    ...present(config?.pathColorPins),
+  } as Record<string, number>
 
   return {
     brand,
     ...(content ? { content } : {}),
     ...(agent ? { agent } : {}),
     sample,
+    pathColorPins,
   }
 }

@@ -29,6 +29,9 @@ describe('asbDefaultConfig', () => {
 
     expect(BRAND.accent).toBeUndefined()
     expect(asbDefaultConfig.brand?.accent).toBeUndefined()
+
+    // The kit ships no pins. A deployment that wants some supplies them.
+    expect(asbDefaultConfig.pathColorPins).toEqual({})
   })
 })
 
@@ -48,7 +51,18 @@ describe('resolveDeploymentConfig', () => {
       // `useWorkspaceTitle` falls through an empty section to `brand.name`.
       expect(resolved.content).toEqual({})
       expect(resolved.agent).toBeUndefined()
+      // No map is today's kit: every name falls through to the hash.
+      expect(resolved.pathColorPins).toEqual({})
     }
+  })
+
+  it('carries a supplied path-colour pin map without aliasing it', () => {
+    const pathColorPins: Record<string, number> = { 'Alpha Path': 2 }
+    const resolved = resolveDeploymentConfig({ pathColorPins })
+    expect(resolved.pathColorPins).toEqual({ 'Alpha Path': 2 })
+    expect(resolved.pathColorPins).not.toBe(pathColorPins)
+    pathColorPins.North = 0
+    expect(resolved.pathColorPins).toEqual({ 'Alpha Path': 2 })
   })
 
   it('a brand override keeps the fields it does not restate', () => {
