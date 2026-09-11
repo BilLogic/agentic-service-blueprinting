@@ -3,19 +3,18 @@
  * `CONTEXT.md` defines this repository's terms and stops.
  *
  * The engineering skills this repo routes to assume one shape: `AGENTS.md`
- * routes, `CONTEXT.md` defines terms, `docs/adr/` holds decisions. This
- * glossary had grown three reference sections inside it — a rename map, an
- * interface-to-schema map, and a section of reasoning about which words a
- * check should exempt — and every session that opened the file to look up one
- * word paid for all three. #137 moved them out: the rename map to
- * `scripts/retired-vocabulary.mjs` and `scripts/check-retired-identifiers.mjs`,
- * where the checks that enforce it live, and the interface map to
- * `references/interface-schema-map.md`, where one pointer reaches it.
+ * routes, `CONTEXT.md` defines terms, `docs/adr/` holds decisions. A glossary
+ * grows reference sections inside it — a rename map, an interface-to-schema
+ * map, reasoning about which words a check should exempt — and every session
+ * that opens the file to look up one word pays for all of them. Each belongs
+ * elsewhere: a rename map beside the checks that enforce it, and the interface
+ * map in the generated document `repoConfig.interfaceMap` names, where one
+ * pointer reaches it.
  *
  * A file that has been cut once grows back unless something holds it. The
- * glossary already SAID it was definitions only, in its own opening paragraph,
- * and went on saying it while three of its six sections were something else.
- * This is that sentence with a build behind it.
+ * glossary already SAID it was definitions only, and went on saying it while
+ * sections of it were something else. This is that sentence with a build
+ * behind it.
  *
  * ── THE GRAMMAR, READ OFF WHAT IS LEFT ──────────────────────────────────────
  *
@@ -29,30 +28,26 @@
  *   2. NO TABLE NAMES A COLUMN. Both evicted maps were tables of
  *      `table.column` spans, and that is the tell: a table whose cells are
  *      schema names restates the catalogue, which is what a generated
- *      reference is for. Tables as such are allowed — the file draws one, of
- *      who writes what, and no cell of it names a column — because the rule
+ *      reference is for. Tables as such are allowed — a glossary may draw one,
+ *      of who writes what, and no cell of it names a column — because the rule
  *      that catches the real thing is narrower than "no tables" and needs no
  *      exemption to stay true.
  *   3. EVERY SECTION DEFINES A TERM. A `##` or `###` section with no term row
  *      in it is a body: prose that is about something other than what a word
- *      means. All three evicted sections failed this rule on the day they were
+ *      means. Every evicted section failed this rule on the day it was
  *      written, and it is the one that catches the next one before it is a
  *      hundred lines long.
  *
  * SUBJECT is `CONTEXT.md` alone. It is named here rather than walked for,
  * because the glossary is one file by the shape's own definition: a second
- * glossary would be a second vocabulary. A workspace scaffolded from this
- * template carries its own, and `docs/agents/domain.md` is where that layout is
- * described; this check holds the template's.
+ * glossary would be a second vocabulary. Every repository that carries this
+ * check holds its own glossary to it.
  *
- * Sibling of the router's three checks (#139) — same shape, same failure style,
- * same place in CI — because `CONTEXT.md` is the first pointer `AGENTS.md`
- * fires and a session that reads the router reads this next.
- *
- * Adapted from the deployment's check of the same name (#365): same three
- * rules, same messages, same test shape. What differs is where a reference
- * lives — `references/` here, because a path under it is a published interface
- * a deployment can import (`docs/adr/0004-reference-paths-are-a-published-interface.md`).
+ * Sibling of the router's three checks — same shape, same failure style, same
+ * place in CI — because `CONTEXT.md` is the first pointer `AGENTS.md` fires
+ * and a session that reads the router reads this next. Like them it is the
+ * same file in every repository; the one path it names that differs, the
+ * interface map, comes from `scripts/repo-config.mjs`.
  *
  * Run: node scripts/check-glossary-only.mjs   (also: npm run check:glossary)
  */
@@ -60,7 +55,12 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { repoConfig } from './repo-config.mjs'
+
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
+
+/** Where a table of column names belongs instead of the glossary. */
+const INTERFACE_MAP = repoConfig.interfaceMap
 
 /** The glossary. One file, by the shape's own definition. */
 export const SUBJECT = 'CONTEXT.md'
@@ -109,7 +109,7 @@ export function findings(text, subject = SUBJECT) {
   const fenceFailure = (line) =>
     `${subject}:${line} a fenced code block — the glossary is headings, prose and ` +
     '`**term** — definition` rows. A snippet, a listing or an example is a reference, ' +
-    'and a reference is a document under references/ or docs/ that a pointer reaches.'
+    'and a reference is a document of its own that a pointer reaches.'
 
   let fence = null
   const inFence = []
@@ -136,7 +136,7 @@ export function findings(text, subject = SUBJECT) {
     out.push(
       `${subject}:${index + 1} a table row naming ${named.map((one) => `\`${one}\``).join(', ')} — ` +
         'a table of column names restates the catalogue, which is what ' +
-        'references/interface-schema-map.md is generated to do. Put the row there ' +
+        `${INTERFACE_MAP} is generated to do. Put the row there ` +
         'and leave the glossary the word.',
     )
   })
@@ -166,7 +166,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       `[glossary] ${failures.length} thing(s) in ${SUBJECT} that are not a definition:\n` +
         failures.map((one) => `  ${one}`).join('\n') +
         '\n  -> the glossary defines the words and stops. Everything else is a document ' +
-        'under references/ or docs/ with a pointer in AGENTS.md.',
+        'of its own with a pointer in AGENTS.md.',
     )
     process.exit(1)
   }

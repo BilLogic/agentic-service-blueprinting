@@ -3,17 +3,15 @@
  * Pointer sweep over the always-loaded router.
  *
  * A POINTER is a routing item that names material outside the router and the
- * branch that should reach it — a row of § Skill routing, a bullet of § Before
- * the task, a backticked path beside a rule. Its wording, not its target,
- * decides whether the agent gets there. Three ways a router fails silently,
- * all caught here on every run:
+ * branch that should reach it — a row of a routing table, a bullet of a boot
+ * list, a backticked path beside a rule. Its wording, not its target, decides
+ * whether the agent gets there. Three ways a router fails silently, all caught
+ * here on every run:
  *
  *   1. A POINTER DOES NOT RESOLVE. A path renamed under a pointer leaves the
  *      agent told to load a document that is not there; nothing errors, the
- *      agent guesses. Same failure as a stale path in a skill's prose
- *      (`scripts/check-doc-paths.mjs`), one layer up — and the same failure
- *      the reference-path guard catches pointed outward at a consumer. Where
- *      the pointer names a section (`path.md` § Heading), the heading is
+ *      agent guesses. Same failure as a stale path in prose, one layer up.
+ *      Where the pointer names a section (`path.md` § Heading), the heading is
  *      checked too, case-insensitively, so a section renamed under a pointer
  *      is caught the same way.
  *   2. A POINTER BURIES ITS TRIGGER. An always-loaded pointer is scanned, not
@@ -50,20 +48,14 @@
  * sweep is by structure rather than by a list of pointers, so a pointer added
  * tomorrow is swept tomorrow.
  *
- * Mirrors the deployment's `scripts/check-pointers.mjs`
- * (BilLogic/agentic-service-blueprinting#139, #135) — same pointer grammar,
- * same filler set, same failure shape — so that one harness review reads both
- * repositories the same way. It differs in two places, both because this
- * repository is the template rather than an app:
- *
- *   - `py` joins the extension list. The validator and the secret hook this
- *     router points at are Python (`scripts/validate_ir.py`,
- *     `hooks/secret_guard.py`); without the extension they would read as prose
- *     and go unswept, which is the one failure this check exists to prevent.
- *   - `EXEMPT_SECTION` is § Rules that hold for every skill rather than
- *     § Security lines. It is the same category — inline because it binds
- *     before a pointer could fire — under the name this router already used
- *     for it.
+ * The same file in every repository that carries it — same pointer grammar,
+ * same filler set, same exempt section, same failure shape — so that one
+ * harness review reads every router the same way. `py` is in the extension
+ * list because a router may point at a Python validator or hook, and without
+ * it that pointer would read as prose and go unswept, which is the one failure
+ * this check exists to prevent. A router that names its inline rules something
+ * other than `EXEMPT_SECTION` renames the heading, not the constant: the
+ * category is one category wherever it sits.
  *
  * Run: node scripts/check-pointers.mjs   (also: npm run check:pointers)
  */

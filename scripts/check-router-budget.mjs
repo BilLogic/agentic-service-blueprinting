@@ -17,22 +17,20 @@
  * TWO DIRECTIONS, ONE CONSTANT. `BUDGET` is a ceiling: over it, the check
  * fails. It is also a RATCHET: fall more than `SLACK` below it and the check
  * fails too, asking for the budget to be lowered. A ceiling that only ever
- * blocks is a ceiling that stops describing the file — the router shrank when
- * its bodies moved out in #139, and a 20,000-char budget written before that
- * cut would have gone on passing while meaning nothing. The downward failure
- * is the cheapest possible fix, a one-line edit here, and it is what makes the
- * number a promise rather than a decoration.
+ * blocks is a ceiling that stops describing the file — a router shrinks when
+ * its bodies move out to the documents they name, and a budget written before
+ * that cut goes on passing while meaning nothing. The downward failure is the
+ * cheapest possible fix, a one-line edit, and it is what makes the number a
+ * promise rather than a decoration.
  *
  * `SLACK` is wide on purpose. A pointer added or a trigger reworded moves the
  * file by tens of chars and must not turn the build red; only a cut big enough
  * to change what the budget describes does.
  *
- * This is this template's instance of the standard's always-loaded budget
- * (BilLogic/agentic-service-blueprinting#139, #135). It differs from the
- * deployment's copy in the two numbers and nothing else: the router here is
- * smaller, because the skill routing table carries four rows rather than a
- * dozen, so the ceiling and its slack are set against this file rather than
- * copied across.
+ * The two numbers are this repository's own, in `scripts/repo-config.mjs`. A
+ * ceiling is set against one router; copied to another, it describes a file it
+ * never measured. The mechanism is the standard's always-loaded budget and is
+ * the same file in every repository that carries it.
  *
  * Run: node scripts/check-router-budget.mjs   (also: npm run check:budget)
  */
@@ -41,14 +39,15 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
+import { repoConfig } from './repo-config.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
 /** The ceiling, in characters. Lower it whenever the tier lands well under. */
-export const BUDGET = 4600
+export const BUDGET = repoConfig.router.budget
 
 /** How far under the budget the tier may sit before the budget is stale. */
-export const SLACK = 920
+export const SLACK = repoConfig.router.slack
 
 const withCommas = (n) => n.toLocaleString('en-US')
 
@@ -88,7 +87,7 @@ export function verdict({ counted, total }, { budget = BUDGET, slack = SLACK } =
       `[budget] the ${TIER_NOUN} is ${withCommas(budget - total)} chars under a ` +
         `${withCommas(budget)} budget, more than the ${withCommas(slack)} slack: the budget ` +
         `no longer describes the file (${census}).\n` +
-        '  -> lower BUDGET in scripts/check-router-budget.mjs to about ' +
+        '  -> lower router.budget in scripts/repo-config.mjs to about ' +
         `${withCommas(total + slack / 2)}. A ceiling that only ever blocks stops being a\n` +
         '     ratchet, and a stale one passes while meaning nothing.',
     )

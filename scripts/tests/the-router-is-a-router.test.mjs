@@ -1,6 +1,6 @@
 /**
  * The three checks that keep `AGENTS.md` a router, each proven by a router that
- * breaks it (#139).
+ * breaks it.
  *
  * A guard seen only passing is not evidence: the committed router passes today,
  * and it would pass just as quietly if the check had stopped looking. So every
@@ -78,7 +78,7 @@ test('a tier far under budget fails too, asking for the budget to be lowered', (
   const total = BUDGET - SLACK - 1
   const { failures } = budgetVerdict({ counted: [{ file: 'AGENTS.md', chars: total }], total })
   assert.equal(failures.length, 1, 'a budget that no longer describes the file is a stale budget')
-  assert.match(failures[0], /lower BUDGET/)
+  assert.match(failures[0], /lower router\.budget in scripts\/repo-config\.mjs/)
 })
 
 test('the pass line names every file it counted', () => {
@@ -115,7 +115,7 @@ test('a tier that lost a file fails rather than reporting a smaller, greener num
 test('a fall passes, with the new number to record', () => {
   const { failures, line } = negationVerdict({ files: 1, counts: {}, total: 0 })
   assert.deepEqual(failures, [])
-  assert.match(line, /Down \d+: lower RECORDED\.tokens to 0\./)
+  assert.match(line, /Down \d+: lower router\.prohibitions\.tokens in scripts\/repo-config\.mjs to 0\./)
 })
 
 test('quoted speech and code spans are not prohibitions', () => {
