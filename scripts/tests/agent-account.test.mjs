@@ -146,6 +146,22 @@ test('the check fails when the account is stale or column-comment coverage falls
   assert.match(fell.failures[0], /coverage fell/)
 })
 
+test('recording the baseline is not judged against the baseline it replaces', () => {
+  const kinds = [{ kind: 'lane', label: 'Lane', definition: 'One row of the board.' }]
+  const sources = { columns, comments, readable }
+  const first = evaluate({ doc: MARKED, kinds, sources, baseline: null, check: false, record: true })
+  assert.deepEqual(first.failures, [], 'the first record writes the baseline the missing-file failure asks for')
+
+  const gained = { columnComments: { described: 0, of: 3 }, prohibitions: 0 }
+  const rerecord = evaluate({ doc: MARKED, kinds, sources, baseline: gained, check: false, record: true })
+  assert.deepEqual(rerecord.failures, [], 'a re-record after a gain is the fix the stale failure names')
+
+  const unrecorded = evaluate({ doc: MARKED, kinds, sources, baseline: gained, check: false })
+  assert.match(unrecorded.failures[0], /stale/)
+  const missing = evaluate({ doc: MARKED, kinds, sources, baseline: null, check: false })
+  assert.match(missing.failures[0], /does not exist/)
+})
+
 test('with no database configured, nothing is generated', () => {
   assert.equal(credentials({}), null)
   assert.equal(

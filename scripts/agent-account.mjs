@@ -243,7 +243,9 @@ export function ratchetFailures(current, baseline) {
  *
  * `check: true` fails when the document is not what the sources render.
  * Missing `baseline` is itself a failure: a ratchet that was never recorded
- * cannot hold.
+ * cannot hold. `record: true` skips both baseline failures, because the run
+ * is writing the baseline they ask for; judging it against the one it
+ * replaces failed the very command those failures prescribe.
  *
  * @param {{
  *   doc: string,
@@ -251,10 +253,11 @@ export function ratchetFailures(current, baseline) {
  *   sources: { columns: Map<string, string[]>, comments: { relation: string, column_name: string | null, comment: string }[], readable: Set<string> },
  *   baseline: { columnComments: { described: number, of: number }, prohibitions: number } | null,
  *   check: boolean,
+ *   record?: boolean,
  * }} input
  * @returns {{ next: string, current: { columnComments: { described: number, of: number }, prohibitions: number }, failures: string[] }}
  */
-export function evaluate({ doc, kinds, sources, baseline, check }) {
+export function evaluate({ doc, kinds, sources, baseline, check, record = false }) {
   const next = splice(splice(doc, 'vocabulary', renderVocabulary(kinds)), 'schema', renderSchema(sources))
   const current = { columnComments: coverage(sources), prohibitions: prohibitionCount(handWritten(next)) }
   const failures = []
@@ -264,6 +267,7 @@ export function evaluate({ doc, kinds, sources, baseline, check }) {
         'database.ts changed and the account did not. Run: npm run agent-account',
     )
   }
+  if (record) return { next, current, failures }
   if (baseline) {
     failures.push(...ratchetFailures(current, baseline))
   } else {
