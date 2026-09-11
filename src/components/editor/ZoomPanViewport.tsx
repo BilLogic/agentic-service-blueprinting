@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useCallback, type ReactNode } from 'react'
 import { useCanvasActive, useCanvasActiveEffect } from '@/contexts/canvasActiveContext'
 import {
   SEMANTIC_ZOOM_THRESHOLD,
@@ -11,6 +11,7 @@ import { CanvasPenCursor } from '@/components/editor/CanvasPenCursor'
 import { EditorSequenceNav } from '@/components/editor/EditorSequenceNav'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import {
+  flushPendingFocus,
   registerActiveFocusCells,
   registerFocusCells,
 } from '@/lib/canvasFocusCells'
@@ -92,6 +93,12 @@ function ZoomPanViewportInner({
 }: ZoomPanViewportProps) {
   const canvasActive = useCanvasActive()
   const { isAnnotating } = useCanvasAnnotationTool()
+  // A slice tab registers while its board is still loading, so a focus a
+  // presentation badge left pending can only land once a fit has.
+  const handleFitReady = useCallback(() => {
+    if (focusCellsKey) flushPendingFocus(focusCellsKey)
+    onFitReady?.()
+  }, [focusCellsKey, onFitReady])
   const {
     containerRef,
     contentRef,
@@ -125,7 +132,7 @@ function ZoomPanViewportInner({
     cameraDestinationKey,
     cameraDestinationResolved,
     cameraOutcomeKey,
-    onFitReady,
+    onFitReady: handleFitReady,
   })
 
   usePublishCanvasZoomChrome(onResetView)
