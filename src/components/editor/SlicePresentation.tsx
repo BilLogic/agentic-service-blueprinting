@@ -226,7 +226,7 @@ export function SlicePresentation({
               <span aria-hidden>▶ </span>
               {detail.slice.title}
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-foreground">
               This slice has no slides yet.
             </p>
           </div>
@@ -272,7 +272,7 @@ export function SlicePresentation({
 
           <div className="min-w-0 flex-1 overflow-y-auto px-2">
             <div className="flex min-h-full flex-col items-center justify-center gap-4 py-4 text-center">
-              <p className="font-mono text-2xs font-medium text-muted-foreground/70 tabular-nums uppercase">
+              <p className="font-mono text-sm font-medium text-foreground tabular-nums uppercase">
                 Slide {clampedSlide + 1} of {slideCount}
               </p>
               {stageMedia.length > 0 ? (
@@ -314,7 +314,7 @@ export function SlicePresentation({
                     {title}
                   </h2>
                   {item.caption && (
-                    <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    <p className="max-w-xl text-sm text-foreground">
                       {item.caption}
                     </p>
                   )}
@@ -326,7 +326,7 @@ export function SlicePresentation({
                     {title}
                   </h2>
                   {item.caption && (
-                    <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
+                    <p className="max-w-2xl text-base text-foreground">
                       {item.caption}
                     </p>
                   )}
@@ -355,7 +355,7 @@ export function SlicePresentation({
                 onClick={() => openSliceCell(cellId)}
                 aria-label={`Open ${snippet} in the slice`}
                 title="Open in slice focus view"
-                className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-full border border-border bg-card px-3 py-1 text-sm text-foreground transition-colors hover:bg-accent"
               >
                 {snippet}
               </button>
@@ -456,10 +456,10 @@ function PresentationFilmstrip({
                 onClick={() => onSelect(index)}
                 className={cn(
                   // h-auto/p-0 keeps the raw button's exact text hit area.
-                  'h-auto max-w-48 justify-start rounded-sm border-0 p-0 text-xs font-medium hover:bg-transparent dark:hover:bg-transparent',
+                  'h-auto max-w-48 justify-start rounded-sm border-0 p-0 text-sm font-medium hover:bg-transparent dark:hover:bg-transparent',
                   active
                     ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
+                    : 'text-foreground/70 hover:text-foreground',
                 )}
               >
                 <span className="min-w-0 truncate">
@@ -483,10 +483,10 @@ function PresentationFilmstrip({
                         aria-label={cellSnippet(cell)}
                         className={cn(
                           // size-10 squares, exactly the raw buttons' hit area.
-                          'size-10 shrink-0 rounded-md border font-mono text-xs font-medium tabular-nums',
+                          'size-10 shrink-0 rounded-md border font-mono text-sm font-medium tabular-nums',
                           active
                             ? 'border-foreground bg-foreground text-contrast hover:bg-foreground hover:text-contrast dark:hover:bg-foreground'
-                            : 'border-border bg-muted text-muted-foreground hover:bg-accent hover:text-foreground dark:hover:bg-accent',
+                            : 'border-border bg-muted text-foreground/70 hover:bg-accent hover:text-foreground dark:hover:bg-accent',
                           !cell && 'border-dashed opacity-60',
                         )}
                       >
@@ -560,7 +560,7 @@ function PresentationMiniMap({
 function PresentationMessage({ children }: { children: string }) {
   return (
     <div className="dark flex h-full items-center justify-center bg-background p-8">
-      <p className="text-sm text-muted-foreground">{children}</p>
+      <p className="text-sm text-foreground">{children}</p>
     </div>
   )
 }

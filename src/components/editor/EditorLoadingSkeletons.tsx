@@ -166,7 +166,7 @@ export function PendingCanvasLoadingSkeleton({
  * SliceHeaderBand placeholder — the container classes are the real band's
  * (`SliceHeaderBand.tsx`), so the header→content boundary sits at the same
  * pixel when the slice detail lands: title row (text-sm line + type badge),
- * subtitle line, primary action (`size="sm"` → h-7) on the far right.
+ * subtitle line at `sm`, primary action (`size="sm"` → h-7) on the far right.
  */
 export function SliceHeaderBandSkeleton() {
   return (
@@ -188,10 +188,9 @@ export function SliceHeaderBandSkeleton() {
           <Skeleton className="h-5 w-48 max-w-full rounded-sm" />
           <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
         </div>
-        {/* Caption row: `text-xs` line box (16px), inset by the 2px the
-            real row carries. */}
+        {/* Caption row: `text-sm` line box, matching the loaded band. */}
         <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
-          <Skeleton className="h-4 w-72 max-w-full rounded-sm" />
+          <Skeleton className="h-5 w-72 max-w-full rounded-sm" />
         </div>
       </div>
       {/* Primary action — `size="sm"` is h-8, and it has an icon before its
