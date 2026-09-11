@@ -72,7 +72,13 @@ type EditorContextValue = {
   slides: NavItem[]
   /** Slides from DB/fallback (same as slides; kept for callers). */
   baseSlides: NavItem[]
-  getScenarioDisplayViewType: (slide: NavItem) => SlideViewType
+  /**
+   * The scenario's own layout choice, or `undefined` when it has made none.
+   * Distinct from an explicit 'stacked' on purpose: a caller with a default
+   * of its own (a phase row's shared view) can only apply it to a scenario
+   * that never chose.
+   */
+  getScenarioDisplayViewType: (slide: NavItem) => SlideViewType | undefined
   setScenarioDisplayViewType: (
     scenarioId: string,
     layout: SlideViewType,
@@ -376,8 +382,9 @@ export function EditorProvider({ children }: EditorProviderProps) {
    * a tab whose board, now that `resolveBlueprint` no longer fills holes from
    * the sample, draws nothing at all.
    *
-   * Same rule as `lib/resolveBlueprint.ts` (#493): a hole in a deployment's
-   * own content is information, and the merge deleted that information.
+   * Same rule as `lib/resolveBlueprint.ts`, under the same ruling — a
+   * connected database is the whole truth: a hole in a deployment's own
+   * content is information, and the merge deleted that information.
    *
    * The remaining branch used to be "no rows at all → the sample", and that
    * reached further than it read. A read comes back with no rows in three
@@ -386,8 +393,8 @@ export function EditorProvider({ children }: EditorProviderProps) {
    * first of the three is the fresh clone the sample exists for. The other
    * two are a connected deployment, and on both of them the sample arrived as
    * theirs — on EVERY page load for the second, in the window before the
-   * fetch resolves, which is the common one. #496 called that a leak when it
-   * came through a merge; it is the same leak when it comes through timing.
+   * fetch resolves, which is the common one. The sample arriving through the
+   * merge was called a leak; it is the same leak when it comes through timing.
    *
    * So the question is `isBundledSampleActive()` — the same one the board
    * asks, so the two surfaces cannot answer it differently — and not "did
@@ -433,10 +440,10 @@ export function EditorProvider({ children }: EditorProviderProps) {
   >({})
 
   const getScenarioDisplayViewType = useCallback(
-    (slide: NavItem): SlideViewType => {
+    (slide: NavItem): SlideViewType | undefined => {
       const override = layoutOverrides[slide.id]
       if (override && override.over === slide.layout) return override.layout
-      return slide.layout ?? 'stacked'
+      return slide.layout
     },
     [layoutOverrides],
   )
@@ -454,7 +461,9 @@ export function EditorProvider({ children }: EditorProviderProps) {
     (scenarioId: string, layout: SlideViewType) => {
       const slide = slides.find((item) => item.id === scenarioId)
       const previous = slide ? getScenarioDisplayViewType(slide) : undefined
-      if (previous === layout) return
+      // No choice reads as stacked on screen, so choosing stacked there is
+      // no change and writes nothing.
+      if ((previous ?? 'stacked') === layout) return
       setLayoutOverrides((current) => ({
         ...current,
         [scenarioId]: { layout, over: slide?.layout },

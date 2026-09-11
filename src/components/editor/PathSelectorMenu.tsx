@@ -10,6 +10,7 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { cn } from '@/lib/utils'
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
+import { StatusBadge } from '@/components/blueprint/StatusBadge'
 import { ENTITY_HEADER_HOLD_KEY } from '@/components/blueprint/EntityHeader'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -19,9 +20,9 @@ import { useShellBooting } from '@/contexts/shellBootStore'
  * The top-bar path control: desktop reads and COMPARES paths, so this is a
  * multi-select over the same PathSelectionContext the sidebar checklist
  * used — only the mount moved.
- * The trigger is deliberately compact (decided 2026-08-17): overlapping
- * path-color dots plus a count, never the full names; a single selection
- * may show its (truncated) name.
+ * The trigger is deliberately compact: overlapping path-color dots plus a
+ * count, never the full names; a single selection may show its (truncated)
+ * name.
  */
 export function PathSelectorMenu({ options }: { options: PathOption[] }) {
   const { activePathKeys, togglePathKey } = usePathSelectionContext()
@@ -127,6 +128,10 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                       <span className="min-w-0 flex-1 truncate">
                         {option.name}
                       </span>
+                      {/* Dot, name, status — the same three the scenario
+                          panel shows, in the same order. Text in this row's
+                          one control, not a second control inside it. */}
+                      <StatusBadge status={option.status} definition={false} />
                       <Check
                         className={cn(
                           'size-3.5 shrink-0',

@@ -64,7 +64,7 @@ describe('mobile canvas navigation', () => {
       the canvas to one scenario never covered it.
     */
     expect(OVERVIEW_VIEW).toContain(
-      'const canvasNavigate = mobileShell ? undefined : openDetail',
+      'const canvasNavigate = mobileShell ? undefined : openCanvasDetail',
     )
     expect(OVERVIEW_VIEW).toContain('onOpenPhase={canvasNavigate}')
     expect(OVERVIEW_VIEW).toContain('openScenario={canvasNavigate}')
@@ -75,8 +75,10 @@ describe('mobile canvas navigation', () => {
     // would put navigation back on the phone without touching the gate.
     expect(PHASE_OVERVIEW).not.toContain('useMobileShell')
     expect(PHASE_OVERVIEW).toContain('openDetail?: (scenarioId: string) => void')
+    // One stable handler per scenario, and none at all without an opener.
+    expect(PHASE_OVERVIEW).toContain('if (!openDetail) return handlers')
     expect(PHASE_OVERVIEW).toContain(
-      'openDetail ? () => openDetail(scenario.id) : undefined',
+      'onNavigate={navigateByScenario.get(scenario.id)}',
     )
     expect(OVERVIEW_VIEW).toContain(
       'onNavigate={onOpenPhase ? () => onOpenPhase(phase.id) : undefined}',

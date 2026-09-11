@@ -18,6 +18,7 @@ import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 import { PathSelectorMenu } from '@/components/editor/PathSelectorMenu'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { setShellBooting } from '@/contexts/shellBootStore'
+import { ENTITY_STATUS_SHORT } from '@/lib/entityStatus'
 import { ENTITY_KIND_DEFINITIONS } from '@/lib/panelTerms'
 
 const HAPPY: PathOption = {
@@ -88,6 +89,27 @@ describe('the path control, against the shell boot signal', () => {
     expect(control()).toBeNull()
     expect(placeholder()).toBeNull()
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('the path control says how far along each path is', () => {
+  it('shows each option’s status inside its row', async () => {
+    mount([
+      { ...HAPPY, status: 'live' },
+      {
+        id: 'exception:Card declined',
+        name: 'Card declined',
+        summary: null,
+        kind: 'exception',
+        status: 'at_risk',
+      },
+    ])
+    fireEvent.click(control()!)
+    const badge = await screen.findByText(ENTITY_STATUS_SHORT.at_risk)
+    // Part of the row's one control, not a second control nested in it.
+    const row = badge.closest('button')
+    expect(row?.textContent).toContain('Card declined')
+    expect(badge.hasAttribute('tabindex')).toBe(false)
   })
 })
 

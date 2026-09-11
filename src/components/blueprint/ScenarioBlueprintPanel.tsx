@@ -4,7 +4,6 @@ import { MergedCompareGrid } from '@/components/blueprint/MergedCompareGrid'
 import { StackedCompareGrid } from '@/components/blueprint/StackedCompareGrid'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { ScenarioBoardScopeContext } from '@/contexts/scenarioBoardScopeContext'
-import { useEditor } from '@/contexts/EditorContext'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import {
@@ -77,20 +76,11 @@ type ScenarioBlueprintPanelBodyProps = ScenarioBlueprintPanelProps & {
   getScenarioDisplayViewType: (scenario: NavItem) => SlideViewType | undefined
 }
 
-/** One scenario's blueprint inside a compare panel — title badge, filters and grid. */
-export function ScenarioBlueprintPanel({
-  ...props
-}: ScenarioBlueprintPanelProps) {
-  const { getScenarioDisplayViewType } = useEditor()
-  return (
-    <ScenarioBlueprintPanelBody
-      {...props}
-      getScenarioDisplayViewType={getScenarioDisplayViewType}
-    />
-  )
-}
-
-/** Heavy panel body isolated from the combined navigation context. */
+/**
+ * One scenario's blueprint inside a compare panel — title badge, filters and
+ * grid. Memoised, with the editor's view-type getter handed in as a prop
+ * rather than read from the combined navigation context.
+ */
 export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBody({
   slide,
   slides,

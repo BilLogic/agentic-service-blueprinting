@@ -10,6 +10,7 @@ import { queryClient } from '@/lib/queryClient'
 import { withSupabaseTimeout } from '@/lib/supabaseFetchTimeout'
 import { resolveBlueprintForScenario } from '@/lib/resolveBlueprint'
 import type { RawPath } from '@/lib/normalizeBlueprint'
+import { asEntityStatus, DEFAULT_ENTITY_STATUS } from '@/lib/entityStatus'
 import type { PathListItem } from '@/lib/pathSelection'
 import { pickPreferredPath } from '@/lib/pathSelection'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
@@ -44,16 +45,21 @@ function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
   const blueprintsByPathId = new Map<string, BlueprintData>()
 
   for (const scenarioId of scenarioIds) {
-    const paths = getFallbackPathsForScenario(scenarioId)
-    if (paths.length > 0) {
-      pathsByScenario.set(scenarioId, paths)
-    }
-
-    for (const path of paths) {
+    const paths: PathListItem[] = []
+    for (const path of getFallbackPathsForScenario(scenarioId)) {
       const blueprint = getBlueprintFallback(scenarioId, path.id)
       if (blueprint) {
         blueprintsByPathId.set(path.id, blueprint)
       }
+      // The sample's status lives on its blueprint; the generated path list
+      // does not repeat it.
+      paths.push({
+        ...path,
+        status: blueprint?.path.status ?? DEFAULT_ENTITY_STATUS,
+      })
+    }
+    if (paths.length > 0) {
+      pathsByScenario.set(scenarioId, paths)
     }
 
     const defaultBlueprint = getBlueprintFallback(scenarioId)
@@ -113,6 +119,9 @@ function deriveFromRows(
             summary: path.summary ?? null,
             note: path.note ?? null,
             kind: path.kind,
+            // The query selects it; left off here, every picker's status
+            // badge silently had nothing to show.
+            status: asEntityStatus(path.status) ?? DEFAULT_ENTITY_STATUS,
           })),
         ),
       )

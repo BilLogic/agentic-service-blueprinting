@@ -1,3 +1,4 @@
+import type { EntityStatus } from '@/lib/entityStatus'
 import type { PathKind } from '@/types/database'
 
 export type PathListItem = {
@@ -6,6 +7,8 @@ export type PathListItem = {
   summary: string | null
   note: string | null
   kind: PathKind
+  /** How far along this route is. Drives the status badge in every path picker. */
+  status?: EntityStatus | null
 }
 
 /** Prefer the canonical "Happy Path" when several paths share kind happy. */
