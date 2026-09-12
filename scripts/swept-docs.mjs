@@ -17,8 +17,10 @@
  * fact about the tree rather than a defect in it; a sweep that threw on it
  * would take down every guard that reads prose.
  *
- * WHAT IS NOT, and why: `docs/adr/` records the decisions of its day in the
- * words of its day, and rewriting a decision record is falsifying it;
+ * WHAT IS NOT, and why: the trees `repoConfig.datedRecords` names — the
+ * decision records — keep the words of the day they were written, and
+ * rewriting a decision record is falsifying it. Which trees those are is each
+ * repository's own, for the same reason `sweptDirs` is;
  * CHANGELOG.md is history by definition; `src/lib/agent/skill/`, where it
  * exists, is a byte-for-byte mirror of `skills/` + `references/`, held
  * identical by `sync-canvas-skills.mjs`, so sweeping it reports every sentence
@@ -32,7 +34,7 @@ import { repoConfig } from './repo-config.mjs'
 export const ROOT_DOCS = ['README.md', 'CONTEXT.md', 'AGENTS.md']
 export const SWEPT_DIRS = repoConfig.sweptDirs
 /** Trees that keep the words of the day they were written, so nothing sweeps them. */
-export const DATED_RECORDS = ['docs/adr']
+export const DATED_RECORDS = repoConfig.datedRecords
 
 function markdownUnder(dir) {
   const found = []

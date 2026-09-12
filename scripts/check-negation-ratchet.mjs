@@ -34,9 +34,9 @@
  *
  * SCOPE is the always-loaded tier — the files in `scripts/always-loaded.mjs`,
  * which cost every session their whole length before any task begins.
- * Everything else loads when a pointer fires, and `docs/adr/` is append-only:
- * a decision record saying "X is not reversible" ADDS prohibitions by doing
- * its job, so a ratchet over it would rise by construction.
+ * Everything else loads when a pointer fires, and the decision records are
+ * append-only: a record saying "X is not reversible" ADDS prohibitions by
+ * doing its job, so a ratchet over them would rise by construction.
  *
  * ── THE RECORDED COUNT ──────────────────────────────────────────────────────
  *

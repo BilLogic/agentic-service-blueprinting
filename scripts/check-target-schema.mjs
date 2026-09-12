@@ -21,11 +21,14 @@
  * schema_version has never had `supabase db push` run against it, and that is
  * a different problem from a stale one.
  *
- * Usage:
- *   npm run check:target                 # reads .env, then the environment
- *   npm run check:target -- --url <u> --key <k>
+ * Usage — by path, because the npm alias is each repository's own and this
+ * file is read from more than one. Where an alias exists it is `check:target`.
  *
- * See docs/connectors/supabase/database.md § Did the migration run.
+ *   node scripts/check-target-schema.mjs              # .env, then the environment
+ *   node scripts/check-target-schema.mjs --url <u> --key <k>
+ *
+ * This repository's connector document walks the same three answers in a
+ * running system, under § Did the migration run.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'

@@ -14,7 +14,7 @@
  *                over the column inventory in src/types/database.ts, so an
  *                undescribed column shows as a gap rather than vanishing
  *
- * Two numbers ratchet against docs/reference/agent-account-baseline.json:
+ * Two numbers ratchet against the baseline `repo-config.mjs` names:
  * column-comment coverage, which may only rise, and the count of
  * prohibitions in the hand-written core, which may only fall. Instructions
  * phrased as what to do are what an agent can act on; "never X" leaves it
@@ -437,6 +437,11 @@ export function ratchetFailures(current, baseline) {
  * is writing the baseline they ask for; judging it against the one it
  * replaces failed the very command those failures prescribe.
  *
+ * `paths` is only for the failures to quote. The document and the baseline
+ * sit wherever the running repository's `repo-config.mjs` puts them, and the
+ * two trees do not agree, so a message that spelled either would be right in
+ * one repository and send the other's reader nowhere.
+ *
  * @param {{
  *   doc: string,
  *   kinds: { kind: string, label: string, definition: string }[],
@@ -444,16 +449,25 @@ export function ratchetFailures(current, baseline) {
  *   baseline: { columnComments: { described: number, of: number }, prohibitions: number } | null,
  *   check: boolean,
  *   record?: boolean,
+ *   paths?: { document: string, baseline: string },
  * }} input
  * @returns {{ next: string, current: { columnComments: { described: number, of: number }, prohibitions: number }, failures: string[] }}
  */
-export function evaluate({ doc, kinds, sources, baseline, check, record = false }) {
+export function evaluate({
+  doc,
+  kinds,
+  sources,
+  baseline,
+  check,
+  record = false,
+  paths = { document: 'the agent-account document', baseline: 'the ratchet baseline' },
+}) {
   const next = splice(splice(doc, 'vocabulary', renderVocabulary(kinds)), 'schema', renderSchema(sources))
   const current = { columnComments: coverage(sources), prohibitions: prohibitionCount(handWritten(next)) }
   const failures = []
   if (check && next !== doc) {
     failures.push(
-      'docs/agents/blueprint.md is not what its sources render — the vocabulary, the catalog or ' +
+      `${paths.document} is not what its sources render — the vocabulary, the catalog or ` +
         'this database changed and the account did not. Run: npm run agent-account. It renders only ' +
         'what this database confirmed, so it moves the document toward the database it talks to.',
     )
@@ -463,7 +477,7 @@ export function evaluate({ doc, kinds, sources, baseline, check, record = false 
     failures.push(...ratchetFailures(current, baseline))
   } else {
     failures.push(
-      'docs/reference/agent-account-baseline.json does not exist — record it: npm run agent-account -- --record',
+      `${paths.baseline} does not exist — record it: npm run agent-account -- --record`,
     )
   }
   return { next, current, failures }

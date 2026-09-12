@@ -3,13 +3,13 @@
  * `CONTEXT.md` defines this repository's terms and stops.
  *
  * The engineering skills this repo routes to assume one shape: `AGENTS.md`
- * routes, `CONTEXT.md` defines terms, `docs/adr/` holds decisions. A glossary
- * grows reference sections inside it — a rename map, an interface-to-schema
- * map, reasoning about which words a check should exempt — and every session
- * that opens the file to look up one word pays for all of them. Each belongs
- * elsewhere: a rename map beside the checks that enforce it, and the interface
- * map in the generated document `repoConfig.interfaceMap` names, where one
- * pointer reaches it.
+ * routes, `CONTEXT.md` defines terms, and the decision records hold
+ * decisions. A glossary grows reference sections inside it — a rename map, an
+ * interface-to-schema map, reasoning about which words a check should exempt
+ * — and every session that opens the file to look up one word pays for all of
+ * them. Each belongs elsewhere: a rename map beside the checks that enforce
+ * it, and the interface map in the generated document
+ * `repoConfig.interfaceMap` names, where one pointer reaches it.
  *
  * A file that has been cut once grows back unless something holds it. The
  * glossary already SAID it was definitions only, and went on saying it while

@@ -2,10 +2,10 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { ISSUE_NUMBER, RECORD_NUMBER, proseLines } from './citations'
+import { DOCUMENT_PATH, ISSUE_NUMBER, RECORD_NUMBER, proseLines } from './citations'
 
 /*
- * NO FILE UNDER `src/` CITES A NUMBER.
+ * NO FILE UNDER `src/` CITES A NUMBER, OR A DOCUMENT AN ADOPTER LACKS.
  *
  * The whole tree, not the subset a deployment has enrolled. `citations.ts`
  * carries the reasoning; the short version is that enrollment is a fact
@@ -18,9 +18,19 @@ import { ISSUE_NUMBER, RECORD_NUMBER, proseLines } from './citations'
  * deployment has neither of this repository's, so the reader lands on
  * somebody else's decision or on nothing, and believes they have the reason.
  *
- * Scripts, documentation, ADRs and changesets are out of scope. They are
- * this repository talking to itself, and a number there resolves where it
- * was written.
+ * A document path is the third, and it is the one with real exceptions, so it
+ * gets `EXEMPT` below rather than a blanket. `citations.ts` carries the test:
+ * a `docs/` path is a defect when it reaches an adopter as a DANGLING
+ * REFERENCE, which is a question about whose tree the reader is standing in,
+ * not about the spelling.
+ *
+ * Documentation, ADRs and changesets are out of scope. They are this
+ * repository talking to itself, and a citation there resolves where it was
+ * written. Scripts are out of scope HERE and in scope in
+ * `scripts/tests/a-shared-script-cites-no-local-path.test.mjs`, over the
+ * scripts this package publishes for a deployment to hold byte-identical —
+ * `scripts/` is the one tree where the shared files and this repository's own
+ * sit side by side, so the subject has to be named rather than walked.
  */
 
 const SRC = join(process.cwd(), 'src')
@@ -53,6 +63,58 @@ const GUARDS = new Set([
   join('components', 'vendoredDivergence.test.ts'),
 ])
 
+/**
+ * Files whose `docs/` paths are NOT dangling references, each with the reason
+ * it is not. Nothing else under `src/` may name one. The numbers have no
+ * equivalent list, because a number has no such case.
+ */
+const EXEMPT = new Map([
+  [
+    GENERATED,
+    // The vendored rulebook is read by an agent out of this package's own
+    // installed tree, and `docs/` ships in the package with it: `npm pack`
+    // carries `docs/erd.mmd` and the connector document alongside the
+    // references that name them. `check:doc-paths` is the authority over
+    // these paths and REQUIRES them to resolve here, which is the demand this
+    // guard would otherwise make impossible to meet. It holds them true; this
+    // guard stays out of the way. Fix a stale one at its source under
+    // `references/` or `skills/`.
+    'read out of this package, where docs/ ships beside it — check:doc-paths holds these true',
+  ],
+  [
+    join('content', 'coverContent.ts'),
+    // This package's own sample cover, about this package's own documentation.
+    // A deployment supplies `DeploymentConfig.cover` and the resolved cover IS
+    // that object — replaced whole, never merged, so none of these paths
+    // shows through. Un-replaced they are still not dangling: a section link
+    // renders as `${repoUrl}/blob/main/${docPath}`, and `repoUrl` here is this
+    // package's own repository, where `docs/guide/` is exactly what the reader
+    // gets. Banning them would delete true links from this package's material.
+    'the sample cover, about this package’s own docs — replaced whole by DeploymentConfig.cover',
+  ],
+  [
+    join('content', 'coverContent.test.ts'),
+    'the sample cover’s own suite, which reads docs/assets/ to prove the figures exist',
+  ],
+  [
+    join('types', 'database.ts'),
+    // The header describes THIS package's schema and points at the documents
+    // that ship with it. A deployment writes its own declaration — the one
+    // that exists keeps `deployment/types/database.ts`, with its own `@see`
+    // lines naming its own tree — so an adopter owns the header rather than
+    // inheriting this one.
+    'this package’s own schema declaration; a deployment writes its own, header included',
+  ],
+])
+
+/** The reason `name` may name a `docs/` path, or undefined when it may not. */
+function exemption(name: string): string | undefined {
+  for (const [subject, reason] of EXEMPT) {
+    if (name === subject || name.startsWith(subject)) return reason
+  }
+  return undefined
+}
+
 const READABLE = /\.(?:ts|tsx|js|jsx|mjs|cjs|css|md|json|snap|html|svg)$/
 
 function filesUnder(dir: string): string[] {
@@ -67,12 +129,13 @@ function filesUnder(dir: string): string[] {
  * Every prose line under `src/` that matches `citation`, addressed.
  *
  * @param citation - one of the matchers from `citations.ts`
+ * @param spare - names a file that may carry this citation, and why
  * @returns {string[]} `path:line: text`, empty when the rule holds
  */
-function offenders(citation: RegExp): string[] {
+function offenders(citation: RegExp, spare: (name: string) => unknown = () => false): string[] {
   return filesUnder(SRC).flatMap((path) => {
     const name = relative(SRC, path)
-    if (GUARDS.has(name)) return []
+    if (GUARDS.has(name) || spare(name)) return []
     const where = name.startsWith(GENERATED)
       ? `src/${name} (generated — fix the source under references/ or skills/, then \`npm run sync:canvas-skills\`)`
       : `src/${name}`
@@ -97,6 +160,49 @@ describe('a shared file names the decision, never the number', () => {
       found,
       `An ADR number resolves in this repository's docs/adr/, which a deployment enrolling the file does not have. Carry the decision into the sentence instead:\n${found.join('\n')}`,
     ).toEqual([])
+  })
+
+  it('names no document an adopter does not have, anywhere under src/', () => {
+    const found = offenders(DOCUMENT_PATH, exemption)
+    expect(
+      found,
+      `A docs/ path is an address in this repository's tree, and a deployment reading the file stands in its own. Name the document by its subject, or add the file to EXEMPT with the reason it does not dangle:\n${found.join('\n')}`,
+    ).toEqual([])
+  })
+
+  it('spares a document path only where it cannot dangle, and says why', () => {
+    // The exemptions are the interesting half of this rule, so they are
+    // asserted rather than left to a walk that would pass just as quietly
+    // with the list empty and the files gone.
+    expect(exemption(join('content', 'coverContent.ts'))).toMatch(/sample cover/)
+    expect(exemption(join('content', 'coverContent.test.ts'))).toMatch(/sample cover/)
+    expect(exemption(join('types', 'database.ts'))).toMatch(/own schema declaration/)
+    expect(exemption(join(GENERATED, 'references', 'data-model.md'))).toMatch(/check:doc-paths/)
+    // And nothing else. An ordinary module is not spared by sitting near one.
+    expect(exemption(join('lib', 'tokenModel.ts'))).toBeUndefined()
+    expect(exemption(join('content', 'other.ts'))).toBeUndefined()
+  })
+
+  it('reads a document path as an address, and a fixture or a tree as neither', () => {
+    // The shapes that reach an adopter with nothing behind them.
+    expect(DOCUMENT_PATH.test(' * @see docs/erd.mmd — entity relationship diagram')).toBe(true)
+    expect(DOCUMENT_PATH.test(' * See docs/connectors/supabase/database.md § Did it run.')).toBe(
+      true,
+    )
+    expect(DOCUMENT_PATH.test(' * authored once in `docs/assets/` and copied to')).toBe(true)
+    // A path relative to the READER is about the reader's own tree. This is
+    // how `bootstrap.ts` shows a host to import its own account document.
+    expect(DOCUMENT_PATH.test("import blueprintAccount from './docs/blueprint.md?raw'")).toBe(false)
+    expect(DOCUMENT_PATH.test("new URL('../../docs/assets', import.meta.url)")).toBe(false)
+    // The tree, and the glob over it, are not addresses.
+    expect(DOCUMENT_PATH.test(' * scans every non-gitignored file, `docs/**` included')).toBe(false)
+    expect(DOCUMENT_PATH.test(' * now holds `docs/`, `scripts/` and the changelog')).toBe(false)
+    // And a fixture is not a citation: a test that writes `docs/t.md` into a
+    // throwaway tree creates the file it names, so nobody is ever sent
+    // anywhere. `proseLines` is what keeps those out — they are string
+    // literals, addressed to the filesystem rather than to a reader — so the
+    // rule needs no fixture exemption of its own.
+    expect(proseLines("const r = repo('x', { 'docs/t.md': '' })\n", 'a.test.ts')).toEqual([])
   })
 
   it('reads a citation when there is one, so the guard is not vacuous', () => {
