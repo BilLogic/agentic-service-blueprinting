@@ -60,13 +60,13 @@ import type { CoverFigure } from '@/components/cover/coverModel'
 export const packageCoverFigures = {
   blueprintAnatomy: {
     src: blueprintAnatomy,
-    alt: 'Inside a single path — lanes, steps, cells, dependencies, and the derived divider lines',
+    alt: 'Inside one path — lanes, steps, cells, dependencies, and the derived divider lines',
     width: 880,
     height: 544,
   },
   cellAnatomy: {
     src: cellAnatomy,
-    alt: 'Inside a single cell — placement, ownership, function, evidence, dependencies, and the slices that quote it',
+    alt: 'Inside one cell — placement, ownership, function, evidence, dependencies, and the slices that quote it',
     width: 880,
     height: 730,
   },

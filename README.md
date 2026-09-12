@@ -71,9 +71,9 @@ The app is where people read, compare, and present. The in-app agent drafts chan
 
 *Read left to right — each panel zooms one level in: a **service** holds ordered **phases** (which can loop back via `loops_to_phase_id`); a phase holds **scenarios**; a scenario holds **path** variants; each path is a lanes × steps grid of **cells**.*
 
-### Inside a single path
+### Inside one path
 
-![Inside a single path — lanes, steps, cells, dependencies, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
+![Inside one path — lanes, steps, cells, dependencies, and the interaction/visibility lines](./docs/assets/blueprint-anatomy.svg)
 
 *Lanes are rows — one actor each, colored by semantic `lane_role` (labels are free-form, any language). Steps are columns — time runs left to right. A **cell** is what one actor does at one moment; **dependencies** are "this cell sets off that one" arrows between cells. The **interaction** and **visibility** lines are derived from roles, and the sheets stacked behind are the scenario's other **paths** (touchpoint lanes render their cells as touchpoints in the app).*
 
