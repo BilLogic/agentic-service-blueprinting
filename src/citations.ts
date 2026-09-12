@@ -33,11 +33,60 @@
  * only. So `proseLines` reads those literals too, and nothing else quoted —
  * a colour and a label the product shows stay where the compiler reads them.
  *
- * This module holds the two matchers and the prose extractor. Two guards
- * read them: `citations.test.ts` holds both numbers across all of `src/`,
- * and `components/vendoredDivergence.test.ts` holds them again over the
- * vendored component tree, where the divergence rule gives the failure its
- * own words.
+ * A DOCUMENT PATH is a citation when it reaches an adopter as a DANGLING
+ * REFERENCE, and not otherwise. `docs/…` has no digits and needs none: it
+ * addresses a file in a tree, and the only question worth asking is whose
+ * tree the reader is standing in when they follow it. Three answers, and the
+ * guard below is built out of them rather than out of the spelling.
+ *
+ *   - The reader is in THEIR OWN repository, and the file is not there. That
+ *     is the defect. A shared script writing `docs/connectors/supabase/…`
+ *     sends a deployment's maintainer to a document only this package has.
+ *   - The reader is in THIS PACKAGE, because the file naming the path also
+ *     ships from here and is read from here. `docs/` is packed with the rest
+ *     of the tree, so an agent that opens the vendored rulebook out of
+ *     `node_modules/agentic-service-blueprinting/` finds `docs/erd.mmd`
+ *     exactly where the sentence said. Not dangling, not a defect.
+ *   - The path is written `./docs/…`, which says out loud that it is
+ *     relative to the reader — `bootstrap.ts` shows a host how to import its
+ *     OWN account document. Not dangling either, and the matcher's lookbehind
+ *     is what encodes that.
+ *
+ * A TREE is not a document. `docs/adr/` names a directory both repositories
+ * have and both use the same way, so nobody following it lands anywhere
+ * wrong. It is still not written in a shared file, for a reason that is about
+ * cost rather than truth: the sentence never needed it. "the decision records
+ * are append-only" says what "`docs/adr/` is append-only" says, one word
+ * shorter, and it spares every scanner on either side of the seam a judgement
+ * it cannot make from outside the file — a deployment's gate reads a foreign
+ * repository's bytes with no parser for their language, so it must be
+ * line-based, and a line-based scan cannot tell the tree from the record. So:
+ * a shared file names a tree in words, and spells a path only where the path
+ * is the SUBJECT. Where the path really is the subject it is not prose at all
+ * but a value the code acts on, and a value about the running repository's own
+ * tree belongs in `scripts/repo-config.mjs`, which exists for that and is
+ * never shared.
+ *
+ * This module holds the three matchers and the prose extractor. Two guards
+ * read them: `citations.test.ts` holds all three across all of `src/`,
+ * and `components/vendoredDivergence.test.ts` holds the numbers again over
+ * the vendored component tree, where the divergence rule gives the failure
+ * its own words.
+ *
+ * WHO IS THE AUTHORITY FOR WHAT. `scripts/check-doc-paths.mjs` and this
+ * guard used to be able to contradict each other, and over one tree they
+ * still would if the line were not drawn: `check:doc-paths` REQUIRES every
+ * path the plugin surface names to resolve here, and a ban on naming one at
+ * all would make both impossible to satisfy. The line is which reader the
+ * document is written for.
+ *
+ *   - `skills/`, `references/`, `agents/`, `hooks/` — and therefore their
+ *     byte-for-byte copy under `src/lib/agent/skill/` — are read by an agent
+ *     out of this package's own installed tree. `check:doc-paths` is the
+ *     authority there: it holds those paths TRUE, and this guard exempts them.
+ *   - Everywhere else under `src/`, and in a shared script, the reader is in
+ *     their own repository. This guard is the authority there, and
+ *     `check:doc-paths` never looks.
  *
  * The narrower rule — hold only what a deployment has already enrolled — was
  * what we enforced until v1.41.0 shipped two files carrying `#622` and
@@ -69,6 +118,21 @@ export const RECORD_NUMBER = /\bADRs?[\s/-]*\d+/i
  * and a citation lives in a comment, a test's name or a failure's message.
  */
 export const ISSUE_NUMBER = /(?:^|[\s(])#\d+(?![\w])/
+
+/**
+ * A path into a documentation tree: `docs/erd.mmd`, `docs/guide/`,
+ * `docs/connectors/supabase/database.md`.
+ *
+ * The lookbehind is the whole of the rule that a relative path addresses the
+ * READER's tree: `./docs/blueprint.md` and `../../docs/assets` are rejected,
+ * `docs/assets` is not. A bare `docs/` with nothing after it names the tree
+ * and is rejected too, as is the glob `docs/**` — neither is an address.
+ *
+ * `docs/adr/0014-…` matches this AND `RECORD_NUMBER`. Both firing on one line
+ * is correct: the path dangles and the number means a different decision, and
+ * a reader needs to be told the second even after fixing the first.
+ */
+export const DOCUMENT_PATH = /(?<![.\w/])docs\/[A-Za-z0-9_.-]+/
 
 /** A line of prose, and where it came from. */
 export type ProseLine = { line: number; text: string }

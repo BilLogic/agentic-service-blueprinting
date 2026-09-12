@@ -12,6 +12,29 @@
  *
  *   node scripts/check-doc-paths.mjs
  *
+ * ── WHAT THIS CHECK IS THE AUTHORITY FOR ──────────────────────────────────
+ *
+ * This check and the citation guard in `src/citations.ts` ask opposite
+ * questions about the same string, and for one tree they would contradict
+ * each other outright if the line were not drawn. This one REQUIRES a path
+ * the plugin surface names to resolve HERE; that one FORBIDS a shared file
+ * naming a path its reader does not have. A document under both rules could
+ * satisfy neither.
+ *
+ * The line is which reader the document is written for. `skills/`,
+ * `references/`, `agents/` and `hooks/` — and their byte-for-byte copy under
+ * `src/lib/agent/skill/`, which `sync-canvas-skills.mjs` writes — are read by
+ * an agent out of THIS package's own installed tree, and `docs/` is packed
+ * with them, so `docs/erd.mmd` in `references/data-model.md` resolves for
+ * every reader who will ever follow it. This check is the authority over
+ * those paths and holds them true; the citation guard exempts them by name
+ * and says so beside the exemption.
+ *
+ * Everywhere else — the rest of `src/`, and a script a deployment holds
+ * byte-identical — the reader stands in their own repository, the path
+ * dangles, and the citation guard is the authority. This check never looks
+ * there.
+ *
  * The three that motivated it, all landed by ordinary refactors that never
  * looked at the prose:
  *
