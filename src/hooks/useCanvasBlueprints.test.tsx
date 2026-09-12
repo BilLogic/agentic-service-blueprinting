@@ -90,7 +90,7 @@ describe('invalidateCanvasBlueprintsForPath', () => {
 describe('useCanvasBlueprints (no database configured)', () => {
   // An adopter's real .env is loaded into import.meta.env by Vite for
   // vitest too — stub it empty so "no database configured" is true in
-  // ANY workspace, not just an env-less checkout (dogfood friction #24).
+  // ANY workspace, not just an env-less checkout (dogfood friction).
   beforeAll(() => {
     vi.stubEnv('VITE_SUPABASE_URL', '')
     vi.stubEnv('VITE_SUPABASE_ANON_KEY', '')

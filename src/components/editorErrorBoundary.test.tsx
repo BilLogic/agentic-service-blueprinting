@@ -7,7 +7,8 @@
  * the sidebar, the rail and the agent dock all go with it, so one bad view
  * reads as "the app died" and every route back to a working tab disappears
  * along with the broken one. The mobile shell has had a board-scoped
- * boundary since it was built; the desktop shell did not. #57, finding 16.
+ * boundary since it was built; the desktop shell did not, which a review of
+ * the two shells caught.
  *
  * What is asserted here is the property the second boundary buys — chrome
  * beside a throwing child survives, and navigating recovers — because that

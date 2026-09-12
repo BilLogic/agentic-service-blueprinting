@@ -10,7 +10,7 @@
  * the sample IS the navigation, whole, because a fresh clone's nav is
  * load-bearing for onboarding exactly as its board is.
  *
- * A database that answers with NOTHING is a database that answers (#505).
+ * A database that answers with NOTHING is a database that answers.
  * Zero rows reaches the nav two ways — a workspace with no phases in it, and
  * every page load in the window before the first fetch resolves — and both
  * used to draw the sample. The second is the common one: for a deployment
@@ -288,9 +288,9 @@ describe('the editor navigation', () => {
     supabase.client = inFlightClient
     await mount()
 
-    // The window this test exists for. Before #505 the nav here was
-    // SAMPLE_NAV — the template's phases and scenarios, wearing the deployment's
-    // name, on every page load.
+    // The window this test exists for. The nav here used to be SAMPLE_NAV —
+    // the template's phases and scenarios, wearing the deployment's name, on
+    // every page load.
     expect(observed).toEqual([])
     expect(observedLoading).toBe(true)
     for (const phrase of sampleProse()) {

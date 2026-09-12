@@ -2,8 +2,9 @@
 /**
  * A row belongs to the service you are looking at.
  *
- * #622 fixed this for evidence; its sweep found the same shape in three write
- * paths that still resolved `findFirstServiceId` — the first row by
+ * The evidence path was fixed first, and the sweep that followed found the
+ * same shape in three write paths that still resolved `findFirstServiceId`
+ * — the first row by
  * `created_at`, whatever the URL says. The sidebar drew the service the slug
  * names, and the slice or phase created from it landed on a different one.
  *
