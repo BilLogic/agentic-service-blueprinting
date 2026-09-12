@@ -11,22 +11,27 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
-import { isScanned, scannedFiles, violationsIn } from '../check-standalone.mjs'
-
-const ROOT = fileURLToPath(new URL('../..', import.meta.url))
+import {
+  isScanned,
+  scannedFiles,
+  violationsIn,
+  violationsUnder,
+} from '../check-standalone.mjs'
 
 const labels = (source) => violationsIn(source).map((hit) => hit.label)
 
 test('this tree names no deployment it was generalised from', () => {
-  const found = scannedFiles().flatMap((path) =>
-    violationsIn(readFileSync(`${ROOT}/${path}`, 'utf8')).map(
-      ({ line, label }) => `${path}:${line} — ${label}`,
-    ),
+  // Through `violationsUnder`, which is the function `check-standalone.mjs`
+  // itself runs. This test used to re-walk the subject by hand, and the
+  // hand-written copy was missing the guard the script had had for months —
+  // which is how one release window turned a green tree into a red suite
+  // (#632). One walk, one guard, two callers.
+  const found = violationsUnder().map(
+    ({ path, line, label }) => `${path}:${line} — ${label}`,
   )
   assert.deepEqual(found, [])
 })
@@ -101,5 +106,82 @@ test('an untracked file is in the subject — the sweep sees what a commit would
     assert.equal(new Set(files).size, files.length)
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+/* ------------------------------- a listing is older than the read it feeds */
+
+/**
+ * A repository whose index names a path the working tree no longer has, which
+ * is what `npm run version` leaves behind between consuming the changesets and
+ * `git add`. Returns the root; the caller removes it.
+ */
+function repoListingSomethingGone() {
+  const root = mkdtempSync(join(tmpdir(), 'standalone-gone-'))
+  const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+  git('init', '-q')
+  writeFileSync(join(root, 'gone.md'), 'fine\n')
+  writeFileSync(join(root, 'kept.md'), 'the PLUS workspace\n')
+  git('add', 'gone.md', 'kept.md')
+  rmSync(join(root, 'gone.md'))
+  return root
+}
+
+test('a sweep whose listed file is gone completes and skips it', () => {
+  const root = repoListingSomethingGone()
+  try {
+    // The listing really does still name it — otherwise this proves nothing.
+    assert.ok(scannedFiles(root).includes('gone.md'))
+
+    // And the sweep runs past the gap rather than throwing over it, and is
+    // still reporting when it comes out the other side: `gone.md` sorts first,
+    // so the violation below is only reachable through the skip.
+    assert.deepEqual(
+      violationsUnder(root).map(({ path, line, label }) => `${path}:${line} — ${label}`),
+      ['kept.md:1 — PLUS (case-sensitive)'],
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a sweep whose listed file is unreadable for another reason still fails', () => {
+  // The half that matters. Tolerating every read failure would be a shorter
+  // patch and a worse one: a sweep that quietly skips what it cannot open
+  // reports nothing and is indistinguishable from a clean tree.
+  //
+  // `a/b.md` is committed, then `a` is replaced by a FILE — so the index still
+  // names `a/b.md` and reading it gives ENOTDIR rather than ENOENT. Nothing
+  // vanished; the tree is in a state the walk cannot explain, and that is news.
+  const root = mkdtempSync(join(tmpdir(), 'standalone-unreadable-'))
+  try {
+    const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+    git('init', '-q')
+    mkdirSync(join(root, 'a'))
+    writeFileSync(join(root, 'a', 'b.md'), 'fine\n')
+    git('add', 'a/b.md')
+    rmSync(join(root, 'a'), { recursive: true })
+    writeFileSync(join(root, 'a'), '')
+
+    assert.ok(scannedFiles(root).includes('a/b.md'))
+    assert.throws(
+      () => violationsUnder(root),
+      (error) => error.code === 'ENOTDIR',
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('the sweep reads the whole tree, not a handful of directories', () => {
+  // The breadth, because the skip above is safe only while something counts
+  // what came back. A walk that had quietly stopped descending — or one
+  // skipping every file it could not open — looks exactly like a clean tree,
+  // right up until a reintroduced reference lands in the part it stopped
+  // reading.
+  const files = scannedFiles()
+  assert.ok(files.length > 700, `only ${files.length} files in the subject`)
+  for (const dir of ['src/', 'scripts/', 'docs/', 'skills/', 'supabase/']) {
+    assert.ok(files.some((path) => path.startsWith(dir)), `${dir} is not in the subject`)
   }
 })
