@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.40.5
+
+### Patch Changes
+
+- 903e112: Every source file ends with a newline, and a test keeps it that way.
+  `overviewPathFilters.ts` did not, which is unfixable on the consuming side —
+  a deployment holding that file byte-identical differs from it by one absent
+  byte, and one absent byte was blocking an enrolment.
+- a5be84d: The README's repo map names a stylesheet that exists. It pointed at
+  `src/styles/tokens.css`, which this tree has never had; the token layers are
+  `colors.css`, `semantic.css`, `theme.css` and `themes/`, and they are listed
+  in the order they resolve. The type guards get a line of their own, because a
+  reader adopting this template needs to know the doctrine is enforced rather
+  than described.
+
 ## 1.40.4
 
 ### Patch Changes
