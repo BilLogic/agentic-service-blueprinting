@@ -6,10 +6,16 @@
     // Two roots, tried in order — see `vite.config.ts`. The second is for a
     // deployment that reads the application out of the package rather than
     // keeping a copy of it, and is never reached here.
+    // The deployment's own root, under its own alias — a second prefix, not a
+    // second entry above, so a deployment file cannot stand in for a package
+    // file of the same name. `deployment/` does not exist here.
     "paths": {
       "@/*": [
         "./src/*",
         "./node_modules/agentic-service-blueprinting/src/*"
+      ],
+      "~/*": [
+        "./deployment/*"
       ]
     },
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
@@ -37,5 +43,8 @@
     "noFallthroughCasesInSwitch": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src"]
+  // `deployment` is a deployment's own source root, compiled beside `src`. An
+  // include that matches nothing contributes nothing, and here it matches
+  // nothing: `deploymentRoot.test.ts` holds the file set to what it was.
+  "include": ["src", "deployment"]
 }
