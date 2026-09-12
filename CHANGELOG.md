@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.44.1
+
+A review of 1.44.0 found eight defects, and several of them were guards that
+did not guard what they claimed.
+
+**A figure's caption said something the drawing no longer said.** 1.44.0 changed
+two diagrams to read "Inside one path" and "Inside one cell" and left the alt
+text and the section headings saying "a single". Since the figures became the
+package's to serve, that alt text is this package's words for the drawing — so a
+person using a screen reader was read a caption the picture does not carry. The
+words agree again, in the figures, the cover, the README and the guide.
+
+**A shared script's failure message named a document only this package has.**
+The account generator threw `docs/agents/blueprint.md has no …`, and the script
+a deployment holds byte-identical imports all of its logic from there, so that
+message would have reached a maintainer who has no such file. Four `npm run`
+aliases had the same problem and are named by path now.
+
+The guard for this fences a named list of shared scripts, and a named list is
+right — each entry carries a reason no walk can judge. But it missed this
+because a module the list imports is not on the list, and *that* is not a
+judgement call. The list is now held **closed under relative import**: a shared
+script may only import modules that are themselves shared, with the repository's
+own configuration module the single declared exception, because it is the seam
+that exists to hold what differs. Closing it found five more modules travelling
+that way.
+
+**A check computed an empty-subject refusal and never read it.** The database-name
+sweep counted what it had swept, in two variables, and refused nothing — it was
+standing only because resolving the application root throws when there is no
+application. That is the defect 1.44.0 set out to remove, left behind in the
+file where it was noticed. Nothing caught the dead counters because linting
+covered only TypeScript; it covers the scripts now, for unused variables alone,
+and that found four more left over from the same migration.
+
+**And the extractor that reads prose miscounted its own arguments.** It tracked
+call frames but not braces, so a comma inside an object literal advanced the
+enclosing call's argument index — enough to make a test fixture look like a
+citation. It also narrated fewer assertion forms than it claimed. Both are fixed
+with the failing case pinned as a test, and the assertion forms are named
+separately: `assert` and `assert.ok` carry their message in the second argument,
+the comparisons in the third, because the second argument of `assert.equal` is
+an expected value and reading it would make a colour into a citation.
+
+**Upgrading a deployment:** take the release. Nothing here changes an interface.
+If your own suite reads a figure's alt text, two strings changed; if you enrol
+the shared scripts, they now say what a reader of yours can act on.
+
 ## 1.44.0
 
 The cover's diagrams now arrive with this package, a shared file may name a
@@ -34,7 +82,7 @@ with the tree, so the vendored rulebook finds `docs/erd.mmd` exactly where its
 sentence said. And `./docs/…` says out loud that it is relative to the reader.
 
 The six scripts are fixed and a deployment can now hold them byte-identical.
-Where a path is genuinely the *subject* rather than prose, it moved to
+Where a path is genuinely the _subject_ rather than prose, it moved to
 `scripts/repo-config.mjs`, which exists for that and is never shared.
 
 **The guard reads what a person reads when something fails.** A test's name and
@@ -62,7 +110,7 @@ repository resolve into two empty folders. It refuses first now.
   `public/`, you can delete them: a cover that does not supply its own figures
   gets the package's. Keep only figures you authored.
 - Supplying your own is a value, not a path — `{ ...packageCoverFigures.cellAnatomy,
-  alt: 'our words' }` — so overriding one no longer means forking the cover.
+alt: 'our words' }` — so overriding one no longer means forking the cover.
 - Six scripts you may have wanted in your drift gate and could not enrol are
   enrollable now: `check-glossary-only.mjs`, `check-negation-ratchet.mjs`,
   `check-target-schema.mjs`, `generate-agent-account.mjs`, `swept-docs.mjs` and
@@ -5892,8 +5940,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
