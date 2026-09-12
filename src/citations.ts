@@ -128,11 +128,14 @@ export const ISSUE_NUMBER = /(?:^|[\s(])#\d+(?![\w])/
  * `docs/assets` is not. A bare `docs/` with nothing after it names the tree
  * and is rejected too, as is the glob `docs/**` — neither is an address.
  *
+ * It matches the WHOLE path rather than its first segment, because the guards
+ * quote what they matched and half an address is worse to read than none.
+ *
  * `docs/adr/0014-…` matches this AND `RECORD_NUMBER`. Both firing on one line
  * is correct: the path dangles and the number means a different decision, and
  * a reader needs to be told the second even after fixing the first.
  */
-export const DOCUMENT_PATH = /(?<![.\w/])docs\/[A-Za-z0-9_.-]+/
+export const DOCUMENT_PATH = /(?<![.\w/])docs\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/?/
 
 /** A line of prose, and where it came from. */
 export type ProseLine = { line: number; text: string }

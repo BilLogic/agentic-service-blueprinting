@@ -19,6 +19,18 @@
  * Same suite as the deployment's `the-router-is-a-router.test.mjs`, plus the
  * two cases for what differs here: a Python pointer is swept, and the exempt
  * section is § Rules that hold for every skill.
+ *
+ * THE FIXTURE PATHS SIT UNDER `notes/`, AND NOT UNDER EITHER REPOSITORY'S
+ * DOCUMENTATION TREE, DELIBERATELY. They are files this suite CREATES in a
+ * throwaway directory and deletes again — the folder name is arbitrary, and
+ * nothing here is a reference to any repository's documents. A fixture is not
+ * a citation. But this file is read from two repositories at once, and the
+ * gate that decides whether a deployment may hold it is line-based over
+ * bytes; it has to be, because it reads a foreign repository's file with no
+ * parser for the language. It cannot see that the file is written two
+ * characters later, and neither can a person skimming. So the fixtures are
+ * spelled so they cannot be read as an address in either tree, which costs
+ * nothing and saves the reader the same second it saves the scan.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
@@ -127,7 +139,7 @@ test('quoted speech and code spans are not prohibitions', () => {
 /* ----------------------------------------------------------- the sweep */
 
 test('a pointer to a file that exists resolves', () => {
-  const r = repo('## Routes\n\n- **Vocabulary** — load `docs/a.md` first.\n', { 'docs/a.md': '# A' })
+  const r = repo('## Routes\n\n- **Vocabulary** — load `notes/a.md` first.\n', { 'notes/a.md': '# A' })
   try {
     assert.deepEqual(sweep(r.root).failures, [])
   } finally {
@@ -136,11 +148,11 @@ test('a pointer to a file that exists resolves', () => {
 })
 
 test('a pointer to a missing file fails, and names it', () => {
-  const r = repo('## Routes\n\n- **Vocabulary** — load `docs/gone.md` first.\n', { 'docs/here.md': '# H' })
+  const r = repo('## Routes\n\n- **Vocabulary** — load `notes/gone.md` first.\n', { 'notes/here.md': '# H' })
   try {
     const { failures } = sweep(r.root)
     assert.equal(failures.length, 1)
-    assert.match(failures[0], /docs\/gone\.md/)
+    assert.match(failures[0], /notes\/gone\.md/)
     assert.match(failures[0], /does not resolve/)
   } finally {
     r.done()
@@ -148,8 +160,8 @@ test('a pointer to a missing file fails, and names it', () => {
 })
 
 test('a section pointer checks the heading, case-insensitively', () => {
-  const r = repo('## Routes\n\n- **Imports** read `docs/t.md` § Validating an import.\n', {
-    'docs/t.md': '# T\n\n## Validating An Import\n',
+  const r = repo('## Routes\n\n- **Imports** read `notes/t.md` § Validating an import.\n', {
+    'notes/t.md': '# T\n\n## Validating An Import\n',
   })
   try {
     assert.deepEqual(sweep(r.root).failures, [])
@@ -159,8 +171,8 @@ test('a section pointer checks the heading, case-insensitively', () => {
 })
 
 test('a section pointer to a renamed heading fails', () => {
-  const r = repo('## Routes\n\n- **Imports** read `docs/t.md` § Imports.\n', {
-    'docs/t.md': '# T\n\n## Exports\n',
+  const r = repo('## Routes\n\n- **Imports** read `notes/t.md` § Imports.\n', {
+    'notes/t.md': '# T\n\n## Exports\n',
   })
   try {
     const { failures } = sweep(r.root)
@@ -173,8 +185,8 @@ test('a section pointer to a renamed heading fails', () => {
 
 test('a routing item that leads with filler fails, and names the word', () => {
   const router =
-    '## Skill routing\n\n| Trigger | Load |\n|---|---|\n| Any task that writes | `docs/a.md` |\n| Writes of any kind | `docs/a.md` |\n'
-  const r = repo(router, { 'docs/a.md': '' })
+    '## Skill routing\n\n| Trigger | Load |\n|---|---|\n| Any task that writes | `notes/a.md` |\n| Writes of any kind | `notes/a.md` |\n'
+  const r = repo(router, { 'notes/a.md': '' })
   try {
     const { failures, triggers } = sweep(r.root)
     assert.equal(triggers, 2, 'the header and separator rows are the table frame, not items')
@@ -187,7 +199,7 @@ test('a routing item that leads with filler fails, and names the word', () => {
 
 test('a routing item carrying no pointer fails — a body in the router', () => {
   const r = repo('## Routes\n\n- Scenario, path, phase, step, cell, lane, dependency, need.\n', {
-    'docs/a.md': '',
+    'notes/a.md': '',
   })
   try {
     const { failures } = sweep(r.root)
@@ -208,13 +220,13 @@ test('a rule that holds for every skill is exempt from the trigger rules, and it
     bare.done()
   }
   const dead = repo(
-    `## ${EXEMPT_SECTION}\n\n- Secrets: see \`docs/gone.md\` § Secrets.\n`,
-    { 'docs/here.md': '' },
+    `## ${EXEMPT_SECTION}\n\n- Secrets: see \`notes/gone.md\` § Secrets.\n`,
+    { 'notes/here.md': '' },
   )
   try {
     const { failures } = sweep(dead.root)
     assert.equal(failures.length, 1)
-    assert.match(failures[0], /docs\/gone\.md/)
+    assert.match(failures[0], /notes\/gone\.md/)
   } finally {
     dead.done()
   }
@@ -242,7 +254,7 @@ test('a Python pointer is swept — the validator and the secret hook are not pr
 })
 
 test('a bare filename names a shape, not a place, and is skipped', () => {
-  const r = repo('x', { 'docs/x.md': '' })
+  const r = repo('x', { 'notes/x.md': '' })
   try {
     assert.deepEqual(pointersIn("a skill's own `SKILL.md` is the contract", r.root), [])
   } finally {

@@ -102,7 +102,7 @@ connected database has run `npm run agent-account`.
 Rendered from `pg_description` through `public.schema_comments()`, laid over
 the column inventory in `src/types/database.ts`. A dash is a column nobody has
 described yet; the coverage ratchets upward in
-`docs/reference/agent-account-baseline.json`. Renaming a column and rewriting
+`docs/engineering/agent-account-baseline.json`. Renaming a column and rewriting
 its description are the same migration.
 
 <!-- generated:schema from public.schema_comments() and src/types/database.ts — edit the migration, then npm run agent-account -->

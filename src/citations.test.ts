@@ -99,9 +99,10 @@ const EXEMPT = new Map([
   [
     join('types', 'database.ts'),
     // The header describes THIS package's schema and points at the documents
-    // that ship with it. A deployment writes its own declaration — uno keeps
-    // `deployment/types/database.ts` with its own `@see` lines naming its own
-    // tree — so an adopter owns the header rather than inheriting this one.
+    // that ship with it. A deployment writes its own declaration — the one
+    // that exists keeps `deployment/types/database.ts`, with its own `@see`
+    // lines naming its own tree — so an adopter owns the header rather than
+    // inheriting this one.
     'this package’s own schema declaration; a deployment writes its own, header included',
   ],
 ])

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * Render the generated sections of docs/agents/blueprint.md and hold the
- * document to its sources.
+ * Render the generated sections of the agent-account document and hold it to
+ * its sources. Which document, and where the ratchet baseline sits beside it,
+ * come from `repo-config.mjs` — the generator is the same file in every
+ * repository that carries it and the two docs trees agree on nothing.
  *
  *   npm run agent-account              rewrite the generated sections
  *   npm run agent-account -- --record  …and record the ratchet baseline
@@ -31,7 +33,8 @@
  * With no database configured this writes nothing, registers nothing, and
  * exits 0 — the template's bundled sample is the no-database path, and a
  * check that always skipped would read as an answer. Same stance as
- * `check:target`. A deployment that has a database runs this against it and
+ * `check-target-schema.mjs`, which asks a live target whether it was
+ * migrated. A deployment that has a database runs this against it and
  * registers the generated account through `registerReferenceDocs` or
  * `REFERENCE_NAMES_EXTRA`; the template's reference loader never imports that
  * file by path.
@@ -49,10 +52,13 @@ import {
   vocabularySource,
 } from './agent-account.mjs'
 import { parseEnvFile } from './check-target-schema.mjs'
+import { repoConfig } from './repo-config.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
-const DOC = resolve(REPO_ROOT, 'docs/agents/blueprint.md')
-const BASELINE = resolve(REPO_ROOT, 'docs/reference/agent-account-baseline.json')
+/** This repository's own two paths — see `repoConfig.agentAccount`. */
+const PATHS = repoConfig.agentAccount
+const DOC = resolve(REPO_ROOT, PATHS.document)
+const BASELINE = resolve(REPO_ROOT, PATHS.baseline)
 
 const PLACEHOLDER_KEY = 'your-anon-key'
 const PLACEHOLDER_URL = 'YOUR_PROJECT'
@@ -213,6 +219,7 @@ async function main() {
     baseline,
     check,
     record,
+    paths: PATHS,
   })
 
   if (!check) {
