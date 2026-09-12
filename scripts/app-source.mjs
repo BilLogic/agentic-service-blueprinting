@@ -39,8 +39,8 @@
  * reason `erd-value-sets.mjs` takes its source label rather than defaulting to
  * one repository's layout.
  */
-import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 
 /** The roots, in order, relative to a repository root. */
 export const APP_SOURCE_ROOTS = [
@@ -59,6 +59,90 @@ export function appSourceRoot(repoRoot) {
   if (!found) {
     throw new Error(
       `no application source under ${repoRoot}: neither ${roots.join(' nor ')} exists`,
+    )
+  }
+  return found
+}
+
+/**
+ * The directory the application's root sits in, absolute.
+ *
+ * This is the package: `<repo>` where the application is this repository's
+ * own `src`, and `<repo>/node_modules/agentic-service-blueprinting` where it
+ * is the one this tree depends on. It is what a FINDING is reported relative
+ * to, so a path reads `src/components/…` on either side and a check's expected
+ * paths are one list rather than one per deployment.
+ */
+export function appPackageRoot(repoRoot) {
+  return dirname(appSourceRoot(repoRoot))
+}
+
+/**
+ * An application path — `src/lib/panelTerms.ts` — wherever the application is.
+ *
+ * The argument is the path as a reader writes it and as a finding prints it,
+ * which is the whole reason this takes `src/…` rather than the part after it:
+ * the caller states one path, and the same string is what it reports.
+ *
+ * IT REFUSES A PATH THAT IS NOT THERE, naming the root it looked under. A
+ * check that reads a file it names by hand has already decided that file is
+ * its subject, so the file's absence is the subject's absence.
+ */
+export function appFile(repoRoot, path) {
+  const inside = path.replace(/^\/*/, '')
+  if (!/^src(?:\/|$)/.test(inside)) {
+    throw new Error(`not an application path: ${path} does not start with src/`)
+  }
+  const found = join(appPackageRoot(repoRoot), inside)
+  if (!existsSync(found)) {
+    throw new Error(`no ${inside} under ${appPackageRoot(repoRoot)}: this check has no subject`)
+  }
+  return found
+}
+
+/** `appFile`, read. */
+export function readAppFile(repoRoot, path, encoding = 'utf8') {
+  return readFileSync(appFile(repoRoot, path), encoding)
+}
+
+/** Directory names a walk of the application never descends into. */
+const NEVER_WALKED = new Set(['node_modules'])
+
+function filesUnder(dir) {
+  const found = []
+  for (const entry of readdirSync(dir).sort()) {
+    if (entry.startsWith('.') || NEVER_WALKED.has(entry)) continue
+    const path = join(dir, entry)
+    if (statSync(path).isDirectory()) found.push(...filesUnder(path))
+    else found.push(path)
+  }
+  return found
+}
+
+/**
+ * Every application file `matches` accepts, as `src/…` paths, sorted.
+ *
+ * A WALK THAT FINDS NOTHING THROWS. An empty subject and a clean one print the
+ * same green line, and the green one goes on being printed every run after —
+ * the run that would have caught the defect looks exactly like the run before
+ * it. So the absence of a subject is a failure here, and it names the root it
+ * swept and what it was looking for.
+ *
+ * @param {string} repoRoot
+ * @param {(path: string) => boolean} [matches] Called with the `src/…` path.
+ * @param {string} [subject] What the caller is looking for, for the message.
+ */
+export function appFiles(repoRoot, matches = () => true, subject = 'file') {
+  const source = appSourceRoot(repoRoot)
+  const base = dirname(source)
+  const found = filesUnder(source)
+    .map((path) => relative(base, path).split('\\').join('/'))
+    .filter((path) => matches(path))
+    .sort()
+  if (found.length === 0) {
+    throw new Error(
+      `no ${subject} under ${source}: this walk has no subject, which is a ` +
+        `failure and not a pass`,
     )
   }
   return found
