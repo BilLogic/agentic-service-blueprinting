@@ -1,7 +1,8 @@
 import { classListOf, classListsIn, type ClassListSite } from '@/lib/classList'
 
 /**
- * The ink guard. ADR 0012.
+ * The ink guard, under the decision that a rung owns size and leading
+ * while a call site owns weight, tracking and ink.
  *
  * Ink is the third axis of a rung, beside size and weight, and it is named
  * the same way: a surface picks the rung that says what the text IS, not a
@@ -59,7 +60,7 @@ export function inkFault(site: ClassListSite): string | null {
     if (!match) continue
     const level = Number(match[1])
     return (
-      `${token} dials ink — ADR 0012: name the rung instead, ` +
+      `${token} dials ink: name the rung instead, ` +
       `here ${rungFor(level)}`
     )
   }

@@ -4,7 +4,7 @@ import { sourceFiles } from '@/lib/tokenModel'
 import { HEADING_TOKENS, weightFault, weightFaultsIn } from '@/lib/typeWeight'
 
 /**
- * One working weight, and the guard that says so. ADR 0012.
+ * One working weight, and the guard that says so.
  *
  * 400 is content. 500 is the one working emphasis (labels, eyebrows, active
  * states, badge text). 600 is headings only. 700 is retired. The reader is
@@ -13,21 +13,19 @@ import { HEADING_TOKENS, weightFault, weightFaultsIn } from '@/lib/typeWeight'
  */
 
 describe('weightFaultsIn', () => {
-  it('fails a non-heading site that carries two functional weights, naming ADR 0012', () => {
+  it('fails a non-heading site that carries two functional weights, naming the rule', () => {
     const faults = weightFaultsIn(
       `<span className="text-xs font-medium font-semibold text-muted-foreground">Label</span>`,
     )
     expect(faults).not.toEqual([])
-    expect(faults.join('\n')).toMatch(/0012/)
     expect(faults.join('\n')).toMatch(/second functional weight/i)
   })
 
-  it('fails font-bold, naming ADR 0012', () => {
+  it('fails font-bold, naming the rule', () => {
     const faults = weightFaultsIn(
       `<p className="text-sm font-bold tracking-tight">Differences</p>`,
     )
     expect(faults).not.toEqual([])
-    expect(faults.join('\n')).toMatch(/0012/)
     expect(faults.join('\n')).toMatch(/font-bold/)
   })
 
@@ -76,7 +74,7 @@ describe('the reader the guard is written with', () => {
     expect(sites.some((site) => site.classes.includes('font-semibold'))).toBe(
       true,
     )
-    expect(weightFaultsIn(source).join('\n')).toMatch(/0012/)
+    expect(weightFaultsIn(source).join('\n')).toMatch(/second functional weight/i)
   })
 })
 

@@ -3,7 +3,7 @@ import { classLists } from '@/lib/classList'
 import { inkFault, inkFaultsIn, rungFor } from '@/lib/typeInk'
 
 /**
- * Ink is named, never dialled. ADR 0012.
+ * Ink is named, never dialled.
  *
  * The reader is `classList`, for the same reason the weight guard uses it:
  * a grep for `text-foreground/70` misses the site that writes it inside a
@@ -17,7 +17,7 @@ describe('inkFaultsIn', () => {
       'components/blueprint/Thing.tsx',
     )
     expect(faults).not.toEqual([])
-    expect(faults.join('\n')).toMatch(/0012/)
+    expect(faults.join('\n')).toMatch(/name the rung/)
     expect(faults.join('\n')).toMatch(/text-muted-foreground/)
   })
 
