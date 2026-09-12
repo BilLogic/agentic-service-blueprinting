@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.40.3
+
+### Patch Changes
+
+- 44c4bd1: A section label and an eyebrow each have one spelling.
+
+  Two label primitives existed and both were being bypassed. A dependency group inlined its own capitalised label while every other panel section used `PanelSectionLabel`, so the cell panel showed two kinds of section heading at once. And the small capitalised label over a region of chrome — the eyebrow — had been written by hand in twenty-odd places at two different letterspacings, which is invisible in review because every utility in those strings is legal on its own.
+
+  Panel sections are sentence case; eyebrows are `Eyebrow`, one spelling in one file. The open question of whether an eyebrow should be monospace, as this type register's third face suggests, is now a single line in that file rather than a decision the tree answers twenty times. A test refuses a hand-spelled eyebrow in any authored component.
+
+- 44c4bd1: The type, colour, layout-number and vendoring records read as instruction.
+  ADRs 0008, 0012, 0013 and 0014 argued their decisions by comparison with a
+  named product — its numbers quoted, its file counts cited, its choices taken
+  or declined in front of the reader. A record consumed as source is read by
+  someone who never saw that deliberation, so each now states its rule, what
+  it forbids, and the reason in terms of this tree. Provenance survives as one
+  sentence where a system was genuinely ported. No decision changed.
+- 44c4bd1: Ink is named, never dialled. Every authored surface outside the vendored
+  `components/ui/**` wrote its text colour as one of three rungs —
+  `text-foreground`, `text-muted-foreground`, `text-tertiary-foreground` —
+  in place of 68 opacity dials at eight different lightnesses across 39
+  files. A lightness could not be read back: nothing said whether `/70` and
+  `/75` were two jobs or two afternoons, and an opacity composites against
+  whatever sits behind it, so the same class was a different colour on a card
+  than on a page. `typeInk.ts` holds the rule at the class-list seam and names
+  the rung to write instead, and ADR 0012 gains ink as a fifth axis.
+- 44c4bd1: Leaving the board closes the cell panel.
+
+  Open a cell, switch to a slice or a presentation, and the drawer stayed on screen over the slides — describing a row that was no longer visible, with closing it by hand the only way out. The board is deliberately never unmounted, so the drawer inside it survived the tab change; the panel's reset key tracked navigation _within_ a board, which is why activating a tab changed nothing in it. The workspace tab is part of that key now, which settles what the panel's placement left open: an open cell is a fact about the board, not about the workspace. `?cell=` follows, so the address bar stops offering a share link to a drawer nobody has open.
+
+- 44c4bd1: The no-key model list is current, and says what it is.
+
+  The list a person sees before saving a key was a year out of date — it offered `gemini-3.6-flash` when the provider serves `gemini-3.8-flash`, and its first entry is also the default a person keeps running if they save a key without opening the dropdown. All three providers are refreshed, with the policy written beside them: three entries, newest first, no previews or dated snapshots or moving aliases, verified by calling each provider's list-models endpoint on the day of the change. Google was called; OpenAI's entries come from the published docs and say so, because no key was available to confirm them against an account.
+
+- fce9431: The test suite runs with the dev-server authoring flag off, whatever a
+  developer keeps in their own `.env.local`. `VITE_DEV_AUTHORING_UI` is read
+  once at module load, so a suite that inherits it starts with write flags
+  already up and fails only on the machine that has the flag.
+
 ## 1.40.2
 
 A vendored file names the decision it diverges for, never the record number.
