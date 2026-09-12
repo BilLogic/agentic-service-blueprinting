@@ -143,6 +143,31 @@ async function settle() {
   })
 }
 
+/**
+ * The reader's Back button, waited for BY ITS OWN SIGNAL.
+ *
+ * `history.back()` does not step the session history on the call: the
+ * traversal and the `popstate` it dispatches are queued, and the sync only
+ * reads the new address from that event. This used to wait a flat 20 ms for
+ * it, which is a bet that the machine will get round to the queue inside
+ * 20 ms of wall clock — true on an idle machine, and not true on one running
+ * the rest of this suite in parallel, where the assertion below read the
+ * address the reader had NOT stepped back from (#621).
+ *
+ * So wait for the event. There is nothing to tune, and a traversal that never
+ * arrives fails as a timeout rather than as a wrong address.
+ */
+async function goBack() {
+  const popped = new Promise<void>((resolve) => {
+    window.addEventListener('popstate', () => resolve(), { once: true })
+  })
+  await act(async () => {
+    window.history.back()
+    await popped
+  })
+  await settle()
+}
+
 const search = () => window.location.search
 
 afterEach(() => {
@@ -313,11 +338,7 @@ describe('back steps between boards, not between panel opens', () => {
     await act(async () => editor().selectScenario(INTERVIEW))
     await settle()
 
-    await act(async () => {
-      window.history.back()
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
-    await settle()
+    await goBack()
 
     expect(editor().selectedScenarioId).toBe(DISCOVERY)
     expect(new URLSearchParams(search()).get('scenario')).toBe(DISCOVERY)
@@ -328,11 +349,7 @@ describe('back steps between boards, not between panel opens', () => {
     await act(async () => editor().selectScenario(DISCOVERY))
     await settle()
 
-    await act(async () => {
-      window.history.back()
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
-    await settle()
+    await goBack()
 
     expect(editor().selectedScenarioId).toBeNull()
     expect(search()).toBe('')
