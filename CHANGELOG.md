@@ -1,5 +1,77 @@
 # Changelog
 
+## 1.44.0
+
+The cover's diagrams now arrive with this package, a shared file may name a
+document only where its reader will have one, and every check finds the
+application wherever it is rather than where this repository keeps it.
+
+**A deployment gets the diagrams, not a broken-image box.** The thirteen cover
+figures were paths into `public/`, filled by a build step this repository runs
+and a deployment never does — so a deployment requested each one and got the
+single-page fallback: **200 with `text/html`**, a broken image on the page and a
+success in the network tab. They are module imports now, taken from
+`docs/assets/` and re-exported as `packageCoverFigures`, so they resolve inside
+the package whether it is linked, hoisted or nested, and no build file has to
+know about it. A figure is a value: supply your own, or borrow one and change a
+field. And a missing figure is now an unresolved import, which stops the build —
+the point of the change as much as the figures are, because a request that
+fails by succeeding is what let this sit unnoticed.
+
+This is the last of a family. The stylesheet that built no utility classes, the
+dev server that would not start, and these: each broke only once the application
+was a dependency, and none was visible to any check running here. A sweep for
+the rest of the shape found none left.
+
+**A `docs/` path is a defect only where it dangles.** The rule was being read as
+a ban on the spelling, which is the wrong test — the question is whose tree the
+reader is standing in. Three answers, and the guard is built from them. A shared
+script that writes `docs/connectors/supabase/…` sends a deployment's maintainer
+to a document only this package has: that is the defect, and six shared scripts
+had it, two of them pointing at things that do not exist there at all. A file
+that ships from here and is read from here is not dangling — `docs/` is packed
+with the tree, so the vendored rulebook finds `docs/erd.mmd` exactly where its
+sentence said. And `./docs/…` says out loud that it is relative to the reader.
+
+The six scripts are fixed and a deployment can now hold them byte-identical.
+Where a path is genuinely the *subject* rather than prose, it moved to
+`scripts/repo-config.mjs`, which exists for that and is never shared.
+
+**The guard reads what a person reads when something fails.** A test's name and
+a failure's message are quoted strings, and they are what a reader has at the
+moment they can least afford a dead pointer. Two dangling record paths had been
+sitting inside a check's own failure text. The extractor now reads those two
+positions and nothing else quoted, so a colour and a product label stay where
+the compiler reads them.
+
+**A check that sweeps nothing now refuses.** Thirty of sixty enrolled test files
+could not run in a deployment, and three checks were worse than that — they
+passed while measuring almost nothing: one swept **no** application files and
+printed `ok — every database name…`, one swept a single content file, and one
+dropped two pointers as "not a place" before checking them. All of them resolve
+the application properly now and refuse an empty subject out loud.
+
+One more of the same kind, and the nastiest: `sync-canvas-skills.mjs` created
+`src/lib/agent/skill/` before writing to it. Run in a deployment, that **makes a
+`src/`** — after which the alias, both TypeScript configs and every walk in the
+repository resolve into two empty folders. It refuses first now.
+
+**Upgrading a deployment:**
+
+- Take the release. If you copied this package's cover figures into your own
+  `public/`, you can delete them: a cover that does not supply its own figures
+  gets the package's. Keep only figures you authored.
+- Supplying your own is a value, not a path — `{ ...packageCoverFigures.cellAnatomy,
+  alt: 'our words' }` — so overriding one no longer means forking the cover.
+- Six scripts you may have wanted in your drift gate and could not enrol are
+  enrollable now: `check-glossary-only.mjs`, `check-negation-ratchet.mjs`,
+  `check-target-schema.mjs`, `generate-agent-account.mjs`, `swept-docs.mjs` and
+  `tests/the-router-is-a-router.test.mjs`.
+- If your own suite was red on enrolled test files that walk `src/`, it should
+  go green. They resolve the application through `scripts/app-source.mjs` now.
+- If any check of yours has been reporting success while sweeping nothing, this
+  release will turn it red. That is the fix, not a regression.
+
 ## 1.43.1
 
 One enrolled test could not pass in a deployment, which is the one place it was
@@ -9,7 +81,7 @@ written to apply.
 `scripts/tests/one-badge-one-size.test.mjs` stages a throwaway tree with no
 `src` and the application mounted under the name a deployment depends on it by,
 then walks it and compares the result file for file. It staged that tree by
-mounting the root the suite was *run* from — which is the application's own
+mounting the root the suite was _run_ from — which is the application's own
 directory in a repository that keeps a copy of the application, and a directory
 with no application in it anywhere else. So in a deployment the staged tree had
 a `src` in neither root, the resolver refused it exactly as it should, and the
@@ -17,7 +89,7 @@ test failed. It asserted its own premise in every repository where that premise
 is false, and only there. A test that passes only where its subject does not
 exist is worse than no test, because the green line reads as coverage.
 
-It now mounts the parent of the application's own root — the directory that *is*
+It now mounts the parent of the application's own root — the directory that _is_
 the package, whichever of the two roots holds the application — so the staged
 tree has an application in it either way. The staged tree's lack of a `src` is
 asserted rather than assumed, and the fix was mutation-tested from inside a real
@@ -34,7 +106,7 @@ stages its tree.
 
 **Upgrading a deployment:** take the release. A deployment whose suite was red
 on this one file goes green; nothing else changes. If that suite is red on
-*other* enrolled test files, that is a separate and larger problem — forty-seven
+_other_ enrolled test files, that is a separate and larger problem — forty-seven
 of sixty enrolled test files still reach for `src` directly and cannot run where
 there is none. It is tracked, not fixed here.
 
@@ -5820,8 +5892,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
