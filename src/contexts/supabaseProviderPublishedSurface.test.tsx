@@ -6,8 +6,11 @@ import { SupabaseProvider, useSupabase } from '@/contexts/SupabaseProvider'
 /**
  * The published session surface is a closed set.
  *
- * Surfaces may ask `canWrite`. They may not ask the tier. ADR 0011 is the
- * ruling; this file is the pin that fails by naming it rather than by
+ * Surfaces may ask `canWrite`. They may not ask the tier: the provider still
+ * derives it and still folds it into `canWrite`, but it does not put it on
+ * the context, because a second exported answer that says
+ * almost-but-not-quite the same thing is an invitation to gate on the wrong
+ * one. This file is the pin, and it fails by naming that rule rather than by
  * restating the key list.
  */
 
@@ -19,7 +22,7 @@ vi.mock('@/lib/supabase', () => ({
   createSupabaseClient: () => null,
 }))
 
-/** The keys ADR 0011 publishes. Sorted so a missing or extra key is obvious. */
+/** The published keys. Sorted so a missing or extra key is obvious. */
 const PUBLISHED_KEYS = [
   'canAgent',
   'canAgentWrite',
@@ -60,13 +63,13 @@ afterEach(() => {
 })
 
 describe('the published session surface', () => {
-  it('publishes exactly the keys ADR 0011 names, and not the tier', () => {
+  it('publishes exactly the closed set, and not the tier', () => {
     const keys = publishedKeys()
     expect(
       keys,
       keys.includes('isServiceAccount')
-        ? 'isServiceAccount is not a published flag — surfaces ask canWrite. See docs/adr/0011-one-question-a-surface-may-ask.md.'
-        : 'Published session keys drifted from ADR 0011. See docs/adr/0011-one-question-a-surface-may-ask.md.',
+        ? 'isServiceAccount is not a published flag. The tier stays local to the provider, which folds it into canWrite; a surface asks canWrite.'
+        : 'The published session keys drifted from the closed set. A surface asks canWrite, the tier is never published, and a new flag needs a consumer that is not a test.',
     ).toEqual([...PUBLISHED_KEYS])
   })
 })

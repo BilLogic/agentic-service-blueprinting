@@ -10,16 +10,26 @@
  * A number is the thing that does not survive that trip. `#622` means an
  * issue in THIS repository's queue; a deployment reading it resolves it
  * against its own, where 622 is a different piece of work or none at all.
- * The reader lands on the wrong page, or on no page, and believes they have
- * the reason. So the sentence names the decision instead: "the fallback #622
+ * `ADR 0012` is the same trip through a directory rather than a tracker: it
+ * means a record in THIS repository's `docs/adr/`, and a deployment that
+ * enrols the file gets the sentence without the document. Either way the
+ * reader lands on the wrong page, or on no page, and believes they have the
+ * reason. So the sentence names the decision instead: "the fallback #622
  * retired" becomes "the retired fallback", and loses nothing, because the
  * number was never carrying the meaning. Where a number IS carrying the
  * meaning, the sentence was incomplete — the fact goes in, not the number.
  *
+ * A version is not a number of this kind. `2026.09.08` and
+ * `21000122000000` resolve inside a deployment's OWN database and its own
+ * migrations directory, which is why `lib/backend/schemaVersion.ts` keeps
+ * its schema versions and the migrations that stamped them. The test is
+ * where the pointer lands, not whether it has digits.
+ *
  * This module holds the two matchers and the prose extractor. Two guards
- * read them: `citations.test.ts` holds issue numbers across all of `src/`,
- * and `components/vendoredDivergence.test.ts` holds record numbers across
- * the vendored component tree.
+ * read them: `citations.test.ts` holds both numbers across all of `src/`,
+ * and `components/vendoredDivergence.test.ts` holds them again over the
+ * vendored component tree, where the divergence rule gives the failure its
+ * own words.
  *
  * The narrower rule — hold only what a deployment has already enrolled — was
  * what we enforced until v1.41.0 shipped two files carrying `#622` and
@@ -28,8 +38,16 @@
  * to find out. The rule is cheaper to hold where the files are written.
  */
 
-/** `ADR 0014`, `ADR-0014`, `adr 14` — a record number, however spelled. */
-export const RECORD_NUMBER = /\bADRs?[\s-]*\d+/i
+/**
+ * `ADR 0014`, `ADR-0014`, `adr 14`, `docs/adr/0014-…` — a record number,
+ * however spelled.
+ *
+ * The path spelling is the same citation: it names a document in THIS
+ * repository's `docs/adr/`, and a reader who follows it from an enrolled
+ * copy gets a 404 rather than the decision. So `/` joins the separators,
+ * and "see the ADR" is written as the decision itself either way.
+ */
+export const RECORD_NUMBER = /\bADRs?[\s/-]*\d+/i
 
 /**
  * An issue or PR number in prose: `#412`.

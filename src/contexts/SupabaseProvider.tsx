@@ -103,8 +103,8 @@ type SupabaseContextValue = {
    * reader, and a test is not a surface.
    *
    * No component reads it, including the portal itself, which needs only
-   * `devSimulation` to know it is on. Never a gate — surfaces read
-   * `canWrite`. See `docs/adr/0011-one-question-a-surface-may-ask.md`.
+   * `devSimulation` to know it is on. Never a gate — a surface asks
+   * `canWrite`, which is the one question it may ask of the session.
    */
   realCanWrite: boolean
 }
@@ -275,7 +275,8 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   // signing in as somebody else — retires it without waiting for a round trip.
   const answeredTier = tierAnswer?.userId === userId ? tierAnswer.tier : null
   // Local, not published. `canWrite` below is the only question a surface
-  // asks of the session — see docs/adr/0011-one-question-a-surface-may-ask.md.
+  // asks of the session, and it is derived from this tier rather than beside
+  // it, so there is no second answer to gate on by mistake.
   const isServiceAccount = answeredTier === 'service' || isDevAuthoring
 
   /*
