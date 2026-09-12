@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { resolveServiceBySlug, type ServiceIdentity } from '@/lib/serviceSlug'
-import { findActiveServiceId, resolveFirstServiceId } from '@/lib/service'
 
 type Client = SupabaseClient<Database>
 
@@ -72,16 +71,6 @@ export async function resolveServiceScope(
   }
 
   return SCOPE_ALL
-}
-
-/**
- * A throwing active-service id for the WRITE path — a phase, slice, finding or
- * piece of evidence the agent creates belongs to the service on screen, not a
- * cached "first" one. Reuses `findActiveServiceId` and falls back to the first
- * service when no slug resolves.
- */
-export async function resolveActiveServiceId(client: Client): Promise<string> {
-  return (await findActiveServiceId(client)) ?? (await resolveFirstServiceId(client))
 }
 
 async function selectIds(
