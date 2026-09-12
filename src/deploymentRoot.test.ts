@@ -1,6 +1,18 @@
 /// <reference types="vitest/config" />
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync, copyFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,6 +49,57 @@ const DEPLOYMENT_ALIAS = '~'
 
 function aliasEntries(alias: unknown): Array<{ find: unknown; replacement: string }> {
   return alias as Array<{ find: unknown; replacement: string }>
+}
+
+/**
+ * Throwaway trees. Every staged tree below is registered here and removed when
+ * the file is done with it, whether its test passed or threw.
+ */
+const scratches: string[] = []
+
+afterAll(() => {
+  for (const scratch of scratches) rmSync(scratch, { recursive: true, force: true })
+})
+
+/**
+ * A tree holding this repository's build files byte for byte, and everything
+ * this repository has installed. What a test puts in it after that — a package
+ * to read the application out of, a `src` to read it out of instead — is what
+ * that test is about.
+ */
+function stageBuildFiles(): string {
+  const scratch = mkdtempSync(path.join(tmpdir(), 'asb-deployment-'))
+  scratches.push(scratch)
+
+  for (const file of [
+    'vite.config.ts',
+    'tsconfig.json',
+    'tsconfig.app.json',
+    'tsconfig.node.json',
+  ]) {
+    copyFileSync(path.join(repoRoot, file), path.join(scratch, file))
+  }
+  writeFileSync(
+    path.join(scratch, 'package.json'),
+    `${JSON.stringify({ name: 'a-deployment', private: true, type: 'module' }, null, 2)}\n`,
+  )
+
+  const modules = path.join(scratch, 'node_modules')
+  mkdirSync(modules)
+  for (const entry of readdirSync(path.join(repoRoot, 'node_modules'))) {
+    symlinkSync(path.join(repoRoot, 'node_modules', entry), path.join(modules, entry))
+  }
+
+  return scratch
+}
+
+/**
+ * This repository, under the name a deployment depends on it by. A link rather
+ * than a copy: the point is to resolve against the real package, not a
+ * snapshot of it.
+ */
+function mountThePackage(scratch: string): void {
+  symlinkSync(repoRoot, path.join(scratch, 'node_modules', 'agentic-service-blueprinting'))
 }
 
 function readTsConfig(configPath: string, overrideInclude?: string[]) {
@@ -151,38 +214,9 @@ describe('a repository with no deployment root', () => {
  * carry it is to put a test in that directory and watch it run.
  */
 describe('a deployment that brings its own source root', () => {
-  const scratches: string[] = []
-
-  afterAll(() => {
-    for (const scratch of scratches) rmSync(scratch, { recursive: true, force: true })
-  })
-
   function stageDeployment(): string {
-    const scratch = mkdtempSync(path.join(tmpdir(), 'asb-deployment-root-'))
-    scratches.push(scratch)
-
-    for (const file of [
-      'vite.config.ts',
-      'tsconfig.json',
-      'tsconfig.app.json',
-      'tsconfig.node.json',
-    ]) {
-      copyFileSync(path.join(repoRoot, file), path.join(scratch, file))
-    }
-    writeFileSync(
-      path.join(scratch, 'package.json'),
-      `${JSON.stringify({ name: 'a-deployment', private: true, type: 'module' }, null, 2)}\n`,
-    )
-
-    // Everything this repository has installed, plus this repository under the
-    // name a deployment depends on it by. Links rather than copies: the point
-    // is to resolve against the real package, not a snapshot of it.
-    const modules = path.join(scratch, 'node_modules')
-    mkdirSync(modules)
-    for (const entry of readdirSync(path.join(repoRoot, 'node_modules'))) {
-      symlinkSync(path.join(repoRoot, 'node_modules', entry), path.join(modules, entry))
-    }
-    symlinkSync(repoRoot, path.join(modules, 'agentic-service-blueprinting'))
+    const scratch = stageBuildFiles()
+    mountThePackage(scratch)
 
     const deployment = path.join(scratch, DEPLOYMENT_ROOT_DIRNAME)
     mkdirSync(deployment)
@@ -234,5 +268,162 @@ describe('a deployment that brings its own source root', () => {
 
     expect(output).toContain('workspaceName.test.ts')
     expect(output).toMatch(/Test Files\s+1 passed \(1\)/)
+  }, 180_000)
+})
+
+/**
+ * The stylesheet the two roots build, compared.
+ *
+ * Tailwind writes a rule for a class name only where it finds that name
+ * written down, and the scan it does by itself starts at the project root and
+ * refuses `node_modules`. A repository that keeps the application in `src` is
+ * covered by that scan by coincidence — the root it starts at is the root the
+ * markup lives in. A deployment that reads the application out of the package
+ * is covered by nothing, and nothing says so: the build succeeds, the file is
+ * written, and every element on the page is unstyled. `styles/tailwind.config.css`
+ * carries the line that closes it and why the path is written the way it is.
+ *
+ * So this builds the same application twice — once read out of the package,
+ * once read out of a `src` of its own — and compares what came out. A byte
+ * count would answer the question and would drift with every release; what
+ * fails here is a class name the markup writes going missing from the
+ * deployment's stylesheet, which is the thing itself.
+ */
+describe('the stylesheet built from each root', () => {
+  /**
+   * The class names the compiled stylesheet has a rule for. Read off the
+   * selectors rather than the whole text, so a class name quoted inside a
+   * declaration — a `content:'.foo'`, a data URI — is not mistaken for one.
+   */
+  function classesWithARule(css: string): Set<string> {
+    const found = new Set<string>()
+    const source = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    let prelude = ''
+    let quote: string | null = null
+
+    for (let index = 0; index < source.length; index += 1) {
+      const character = source[index]
+      if (quote) {
+        if (character === '\\') index += 1
+        else if (character === quote) quote = null
+        continue
+      }
+      if (character === '"' || character === "'") {
+        quote = character
+      } else if (character === '{') {
+        // An at-rule's prelude is a query, not a selector list.
+        if (!prelude.trimStart().startsWith('@')) {
+          for (const match of prelude.matchAll(/\.((?:\\.|[\w-])+)/g)) {
+            found.add(match[1].replace(/\\(.)/g, '$1'))
+          }
+        }
+        prelude = ''
+      } else if (character === '}' || character === ';') {
+        prelude = ''
+      } else {
+        prelude += character
+      }
+    }
+
+    return found
+  }
+
+  /** Every class name the application's markup writes as a plain literal. */
+  function classesTheMarkupWrites(): Set<string> {
+    const written = new Set<string>()
+
+    const visit = (directory: string) => {
+      for (const entry of readdirSync(directory)) {
+        const child = path.join(directory, entry)
+        if (statSync(child).isDirectory()) visit(child)
+        else if (child.endsWith('.tsx') && !child.endsWith('.test.tsx')) {
+          const markup = readFileSync(child, 'utf8')
+          for (const match of markup.matchAll(/className="([^"{}]*)"/g)) {
+            for (const name of match[1].split(/\s+/)) if (name) written.add(name)
+          }
+        }
+      }
+    }
+    visit(path.join(repoRoot, 'src'))
+
+    return written
+  }
+
+  /** One entry, importing one stylesheet, and the page that loads it. */
+  function writeStylesheetEntry(scratch: string, entry: string, stylesheet: string): void {
+    writeFileSync(path.join(scratch, entry), `import '${stylesheet}'\n`)
+    writeFileSync(
+      path.join(scratch, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html lang="en">',
+        '  <head><meta charset="UTF-8" /><title>A Deployment</title></head>',
+        `  <body><div id="root"></div><script type="module" src="/${entry}"></script></body>`,
+        '</html>',
+        '',
+      ].join('\n'),
+    )
+  }
+
+  function buildStylesheet(scratch: string): Set<string> {
+    execFileSync(path.join(repoRoot, 'node_modules', '.bin', 'vite'), ['build'], {
+      cwd: scratch,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    const assets = path.join(scratch, 'dist', 'assets')
+    const stylesheets = readdirSync(assets).filter((file) => file.endsWith('.css'))
+    expect(stylesheets).toHaveLength(1)
+
+    return classesWithARule(readFileSync(path.join(assets, stylesheets[0]), 'utf8'))
+  }
+
+  /** The arrangement under the flip: the package mounted, no `src` at all. */
+  function stageReadingTheApplicationOutOfThePackage(): string {
+    const scratch = stageBuildFiles()
+    mountThePackage(scratch)
+    mkdirSync(path.join(scratch, DEPLOYMENT_ROOT_DIRNAME))
+    writeStylesheetEntry(
+      scratch,
+      `${DEPLOYMENT_ROOT_DIRNAME}/stylesheet.ts`,
+      'agentic-service-blueprinting/styles.css',
+    )
+    return scratch
+  }
+
+  /** The arrangement this repository is in: the application in a `src`. */
+  function stageReadingTheApplicationOutOfSrc(): string {
+    const scratch = stageBuildFiles()
+    cpSync(path.join(repoRoot, 'src'), path.join(scratch, 'src'), { recursive: true })
+    writeStylesheetEntry(scratch, 'stylesheet.ts', './src/styles/tailwind.config.css')
+    return scratch
+  }
+
+  it('is the same stylesheet, whichever root the application is read from', () => {
+    const fromSrc = buildStylesheet(stageReadingTheApplicationOutOfSrc())
+    const fromThePackage = buildStylesheet(stageReadingTheApplicationOutOfThePackage())
+
+    /*
+     * What the markup needs, named by the markup: every class the application
+     * writes into a `className` that this application also compiles a rule for
+     * when it is read out of `src`. The second half is what tells a utility
+     * from a word — `group` is written in the markup and gets no rule of its
+     * own, `flex` gets one — and it is decided by Tailwind rather than by a
+     * list kept here.
+     */
+    const needed = [...classesTheMarkupWrites()].filter((name) => fromSrc.has(name))
+    /*
+     * A floor, not a measurement. Two empty stylesheets compare equal, so the
+     * comparison below is only worth something while there is something to
+     * compare; the markup names hundreds and this only asks that it names any.
+     */
+    expect(needed.length).toBeGreaterThan(100)
+    expect(needed.filter((name) => !fromThePackage.has(name))).toEqual([])
+
+    // And the rest of the stylesheet with it — the utilities reached through a
+    // `cn()`, a variant map, a component's own defaults, which no literal in
+    // the markup names.
+    expect([...fromSrc].filter((name) => !fromThePackage.has(name))).toEqual([])
   }, 180_000)
 })
