@@ -67,31 +67,6 @@ const applicationSources = () =>
     '.tsx outside a test',
   )
 
-/**
- * The `<Name …>` element starting at `index`, and everything it contains.
- *
- * Brace depth decides where the opening tag ends; tag depth decides where the
- * element does. A `>` inside `{a > b}` closes nothing, and a nested
- * `<DefinitionPopover>` would otherwise be closed by its child's tag.
- */
-function elementAt(source, index, name) {
-  let depth = 0
-  let open = index + name.length + 1
-  for (; open < source.length; open++) {
-    const char = source[open]
-    if (char === '{') depth += 1
-    else if (char === '}') depth -= 1
-    else if (char === '>' && depth === 0) break
-  }
-  if (source[open - 1] === '/') return { tag: source.slice(index, open + 1), body: '' }
-  const closing = `</${name}>`
-  const end = source.indexOf(closing, open)
-  return {
-    tag: source.slice(index, open + 1),
-    body: end === -1 ? source.slice(open + 1) : source.slice(open + 1, end),
-  }
-}
-
 /** Where each component in `source` is declared, in order. */
 function components(source) {
   return [...source.matchAll(/^(?:export )?function (\w+)/gm)].map((match) => ({

@@ -56,7 +56,7 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -83,7 +83,6 @@ import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
 import { readAppFile } from '../app-source.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 
 /**
  * The application, wherever this tree keeps it.

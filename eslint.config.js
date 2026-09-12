@@ -36,6 +36,22 @@ export default defineConfig([
     },
   },
   {
+    // The checks are `.mjs`, and until this block nothing read them. A local
+    // that is computed and never used is the shape a guard takes when it is
+    // wired up half way: `check-database-names.mjs` counted the files it swept
+    // into two variables, refused on neither, and reported clean over a tree it
+    // had not opened. One rule, the same options as above, because a dead local
+    // in a check is the check's subject going missing.
+    files: ['**/*.{mjs,js}'],
+    languageOptions: { globals: globals.node },
+    rules: {
+      'no-unused-vars': [
+        'error',
+        { varsIgnorePattern: '^_', argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
     // Context modules and these components deliberately co-export their
     // hooks/constants beside the component (the standard shadcn/context-module
     // pattern). Vite HMR still works — it just falls back to a full reload for

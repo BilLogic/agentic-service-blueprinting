@@ -373,8 +373,16 @@ export function sourceFilesUnder(root) {
   let stats
   try {
     stats = statSync(abs)
-  } catch {
-    return []
+  } catch (error) {
+    // A PATH THE LISTING NAMED AND THE TREE NO LONGER HAS IS SKIPPED, and
+    // every other failure throws — the rule the application walk holds,
+    // applied here to the stat between the listing and the descent. A bare
+    // catch took both cases, which traded a loud failure for a silent one: a
+    // root that is unreadable rather than absent swept nothing and printed
+    // the line it prints after reading three hundred files. The refusal in
+    // `findings` is what stops the skip shrinking the subject quietly.
+    if (error.code === 'ENOENT') return []
+    throw error
   }
   if (!stats.isDirectory()) return SOURCE.test(abs) ? [abs] : []
   return readdirSync(abs, { withFileTypes: true })
@@ -401,6 +409,35 @@ function reportBase(file) {
 }
 
 /**
+ * Why a sweep of `swept` files, `sweptApplication` of them the application's,
+ * has no subject — or null when it has one.
+ *
+ * A WALK THAT FINDS NOTHING IS A FAILURE, not a pass. An empty subject and a
+ * clean one print the same green line, and the green one goes on being
+ * printed every run after: the run that would have caught the defect looks
+ * exactly like the run before it.
+ *
+ * The application half is counted separately because it can vanish on its
+ * own. `src` is not a directory of this repository — it is the APPLICATION,
+ * and a deployment reading the application out of the package has none of its
+ * own — so a walk that resolved `src` against the wrong root would still read
+ * `scripts/` and `skills/`, report no findings, and print clean over the
+ * three hundred files it never opened.
+ */
+export function sweepRefusal({ swept, sweptApplication }) {
+  if (swept === 0) {
+    return `no source file under ${ROOTS.join(', ')}: this walk has no subject, which is a failure and not a pass`
+  }
+  if (sweptApplication === 0) {
+    return (
+      `no application source among the ${swept} file(s) swept: the application is read from ` +
+      `${APP_SOURCE}, and a walk that misses it reports clean over every file in it`
+    )
+  }
+  return null
+}
+
+/**
  * Every finding, in file order, each site reported once.
  *
  * The dedupe is not cosmetic. A `.select('alias:relation(…)')` literal matches
@@ -408,13 +445,18 @@ function reportBase(file) {
  * `.from|rpc|select(` scan over the comment-stripped source — so one call site
  * yields two identical findings. Upstream prints both. Reporting the same line
  * twice teaches a reader that the count is not the number of places to fix.
+ *
+ * `roots` is the sweep's subject, and is a parameter so the refusal below can
+ * be driven through the real walk rather than described beside it.
+ *
+ * @param {string[]} [roots]
  */
-export function findings() {
+export function findings(roots = ROOTS) {
   const out = []
   const seen = new Set()
   let swept = 0
   let sweptApplication = 0
-  for (const root of ROOTS) {
+  for (const root of roots) {
     for (const file of sourceFilesUnder(root)) {
       swept += 1
       if (file.startsWith(APP_SOURCE + sep)) sweptApplication += 1
@@ -431,6 +473,8 @@ export function findings() {
       }
     }
   }
+  const refusal = sweepRefusal({ swept, sweptApplication })
+  if (refusal) throw new Error(refusal)
   return out
 }
 

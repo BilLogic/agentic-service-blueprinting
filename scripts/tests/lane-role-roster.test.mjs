@@ -34,7 +34,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SCHEMA, schemaInventory } from '../check-instance-vocabulary.mjs'
+import { schemaInventory } from '../check-instance-vocabulary.mjs'
 import { readAppFile } from '../app-source.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
