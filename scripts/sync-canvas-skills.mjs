@@ -12,9 +12,23 @@
  *
  *   node scripts/sync-canvas-skills.mjs           # copy source → vendored
  *   node scripts/sync-canvas-skills.mjs --check   # CI drift guard (exit 1)
+ *
+ * IT WALKS BOTH WAYS. The lists below name every source and where its copy
+ * goes, and for a long time that was the whole comparison — source to target,
+ * never target to source. A file sitting in the vendored tree with no entry
+ * here was compared against nothing and reported as a match.
+ *
+ * That is not a tidiness problem, because two other guards are fenced ON this
+ * claim: `check-standalone.mjs` and `check-content-coupling.mjs` both exclude
+ * the vendored tree by name, each on the stated ground that this check holds
+ * it identical to a source they already read. So the one tree both prose
+ * sweeps are told to skip was the one tree nothing looked at, and a file
+ * carrying a deployment's name, its cast or its cell ids could sit there
+ * behind three green checks. The reverse walk below is what makes the
+ * exclusion those two rely on true.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -120,5 +134,31 @@ for (const [source, target, label] of pairs) {
   }
 }
 
-if (check && drift > 0) process.exit(1)
+/** Every file under `dir`, absolute. A directory that is not there holds none. */
+function filesUnder(dir) {
+  if (!existsSync(dir)) return []
+  return readdirSync(dir)
+    .sort()
+    .flatMap((entry) => {
+      const path = join(dir, entry)
+      return statSync(path).isDirectory() ? filesUnder(path) : [path]
+    })
+}
+
+// The walk back. Every file under the two vendored directories has to be
+// something a pair above wrote; anything else is a copy of nothing, and the
+// two prose sweeps that skip this tree are skipping it on a false claim.
+const written = new Set(pairs.map(([, target]) => target))
+const orphans = [...filesUnder(VENDORED), ...filesUnder(VENDORED_SKILLS)]
+  .filter((path) => !written.has(path))
+  .map((path) => relative(ROOT, path).split('\\').join('/'))
+for (const orphan of orphans) {
+  console.error(
+    `orphan: ${orphan} — nothing in this script copies it, so it is held ` +
+      'identical to no source. Add the source it belongs to, or delete it.',
+  )
+  drift += 1
+}
+
+if (drift > 0) process.exit(1)
 console.log(check ? 'vendored copy matches the source trees' : 'done')
