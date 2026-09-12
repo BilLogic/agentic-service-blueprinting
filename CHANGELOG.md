@@ -1,5 +1,87 @@
 # Changelog
 
+## 1.43.0
+
+Everything a deployment needs to actually run the application out of this
+package, rather than nearly run it. Three of the four things that only break
+once the application arrives as a dependency, and the checks that would have
+caught them.
+
+**A deployment's dev server loads this package's documents.** It did not run at
+all: Vite pre-bundles a dependency, the pre-bundle does not preserve `?raw`, and
+the twenty-three reference documents the agent reads failed to load — a blank
+page behind twenty-three unloadable-dependency errors. `vite build` was
+unaffected, which is why nothing here noticed. The build files now exclude the
+application from pre-bundling when it *is* a dependency, and point the
+dependency crawl at the deployment's own files so the crawl does not stop at the
+package boundary and serve a transitive dependency as raw CommonJS. A
+deployment's cold dev load now serves the application's modules individually
+rather than in a few chunks; third-party dependencies are still pre-bundled.
+
+Worth knowing if you ever stage a deployment to test something: a **symlinked**
+package does not reproduce any of this. Vite resolves real paths before deciding
+what lives in `node_modules`, so a linked package is never pre-bundled and the
+whole class of defect stays hidden. Install it, do not link it.
+
+**A deployment owns the account of its own schema.** `docs/agents/blueprint.md`
+is what an agent reads to learn the schema it is about to write to, and the copy
+that shipped described *this* package's database. A deployment whose schema
+legitimately differs — which is what extending a template means — got a check
+that went red and, worse, a printed remedy that made things worse: running it
+rewrote a true account of the real database into an account of a schema that did
+not exist. The generator now asks two questions of two owners. The vocabulary
+follows the application, because the entity kinds are the board's definition of
+itself. The schema declaration follows the deployment, and the package's copy is
+a last-resort default rather than the truth. A declaration is only a list of
+relations to ask the database about, so what is absent is dropped and what the
+database has that nobody declared is rendered anyway — which is what makes the
+default harmless and the remedy incapable of reducing accuracy.
+
+**An enrolled check finds the application wherever it is.** Two scripts a
+deployment holds byte-identical walked `src/` to find their subject, so they
+could not run where there is no `src/`. They now start where the build resolves
+`@/…`, and report their findings relative to the application's own root so a
+finding still reads the way it always did.
+
+**A walk survives a file that is already gone, and a check that sweeps nothing
+fails.** Eight walks took a listing from git and then read those paths; between
+the two, `changeset version` deletes files that are still in the index, so a
+release reddened a suite that had nothing wrong with it. Four of the eight had
+been "fixed" with a blanket catch, which is the same defect with the crash
+removed. One rule now, in one place: a file that vanished is skipped, and
+anything else still fails loudly. The seed-load check's two sites went the other
+way deliberately — a missing seed file there is a real failure, so it says so,
+and the read that sat behind a multi-second subprocess moved in front of it. And
+several checks were found passing on an empty sweep, so a walk that finds
+nothing now refuses instead of reporting success.
+
+**A shared file names its decision, not the number.** Fifty-one citations —
+issue numbers, ADR numbers, and the four ADR paths wearing a slash, two of them
+inside a check's own failure message where a reader meets them exactly when
+their gate goes red. Each pointed at a record that resolves here and nowhere
+else. A guard now holds the rule across everything a deployment can enrol.
+Migration versions were measured and left alone: twenty-three of them, all
+legitimate, because a migration version resolves in a deployment's own database.
+
+**Upgrading a deployment:**
+
+- Take the three build files with the release as usual. The dev-server fix lives
+  in them and applies itself — it is gated on whether the application is a
+  dependency, so a repository that keeps the application in `src` is untouched.
+- Nothing is required for the schema account to be correct. Optionally keep a
+  `deployment/types/database.ts`, which narrows what the generator asks the
+  database about. If `check:agent-account` has been red, it should now pass, and
+  its remedy can only move the document toward the database.
+- A deployment that pinned an older release and worked around the empty
+  stylesheet or the dev server with configuration of its own can drop those
+  workarounds.
+- Still outstanding for a deployment reading the application from this package:
+  the cover figures. Thirteen of them are named as `/cover/*.svg` and arrive in
+  `public/` by way of this repository's own build step, so a deployment gets
+  fallback HTML where the figures should be. That is an asset arriving by a
+  build step rather than an import, which is the one category no bundler check
+  can see; it is tracked and not fixed here.
+
 ## 1.42.0
 
 A deployment that reads the application out of this package gets somewhere to
@@ -5700,8 +5782,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
