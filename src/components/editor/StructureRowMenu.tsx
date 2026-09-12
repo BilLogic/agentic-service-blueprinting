@@ -27,6 +27,7 @@ import { CreatePhaseDialog } from '@/components/editor/CreatePhaseDialog'
 import { CreateVersionDialog } from '@/components/editor/CreateVersionDialog'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { useArchiveAvailable } from '@/hooks/useArchiveAvailable'
 import { useScenarioPaths } from '@/hooks/useScenarioPaths'
 import { invalidateStructure } from '@/hooks/useSupabaseQuery'
@@ -38,7 +39,7 @@ import {
   renameScenario,
 } from '@/lib/authoringRpc'
 import { deletionReadiness } from '@/lib/deletionSafety'
-import { findFirstServiceId } from '@/lib/service'
+import { resolveActiveServiceId } from '@/lib/service'
 import { errorMessage } from '@/lib/utils'
 
 export type StructureKind = 'phase' | 'scenario' | 'path'
@@ -302,30 +303,43 @@ function SiblingCreateDialog({
 }
 
 /**
- * A phase belongs to a service, and there is exactly one in this workspace —
- * resolved the same way the sidebar header's `+` resolves it, through the
- * module-level cache in `findFirstServiceId`, so opening the menu on a
- * phase row costs at most one query per session.
+ * A phase belongs to the service the row belongs to — which is the service on
+ * screen, since the sidebar draws exactly that one's phases. Resolved the same
+ * way the sidebar header's `+` resolves it, through `resolveActiveServiceId`,
+ * which caches per slug, so opening the menu on a phase row costs at most one
+ * query per service per session.
+ *
+ * It used to resolve `findFirstServiceId` — the first service by `created_at`,
+ * whatever the URL said. A deployment with one service cannot show that; with
+ * two, "New phase" on a row of the second service's board wrote a phase onto
+ * the first one's.
  */
 function NewSiblingPhaseDialog({ onClose }: { onClose: () => void }) {
   const { client } = useSupabase()
+  const activeSlug = useActiveServiceSlug()
   const [serviceId, setServiceId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!client) return
     let cancelled = false
-    void findFirstServiceId(client)
+    void resolveActiveServiceId(client)
       .then((id) => {
         if (!cancelled) setServiceId(id)
       })
       .catch(() => {
-        // The dialog's own Create button stays disabled without a service,
-        // which is the same state the header `+` shows.
+        // No service to attach one to — an empty database, or a slug no
+        // service answers to. The dialog's own Create button stays disabled
+        // without one, which is the same state the header `+` shows, and is
+        // the right answer for both: neither may fall back to a sibling.
+        if (!cancelled) setServiceId(null)
       })
     return () => {
       cancelled = true
     }
-  }, [client])
+    // The slug belongs here even though the dialog mounts per open: it is what
+    // the resolver reads, and a dep list that omits it reads as if the answer
+    // could not change.
+  }, [activeSlug, client])
 
   return (
     <CreatePhaseDialog

@@ -11,7 +11,8 @@ import { CreatePhaseDialog } from '@/components/editor/CreatePhaseDialog'
 import { CreateBlueprintDialog } from '@/components/editor/CreateBlueprintDialog'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { findFirstServiceId } from '@/lib/service'
+import { useActiveServiceSlug } from '@/contexts/activeServiceStore'
+import { resolveActiveServiceId } from '@/lib/service'
 import { SlicesSidebarSection } from '@/components/editor/SlicesSidebarSection'
 import { SlideNav } from '@/components/editor/SlideNav'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -49,25 +50,38 @@ export function SlideModeSidebarNav({
   const [phaseDialogOpen, setPhaseDialogOpen] = useState(false)
   const [scenarioPhaseId, setScenarioPhaseId] = useState<string | null>(null)
 
-  // The service a new phase would belong to. Resolved once and cached at
-  // module level by `findFirstServiceId`, so this is a state read rather
+  // The service a new phase would belong to: the one the URL names, not the
+  // first by `created_at`. The sidebar draws the ACTIVE service's phases
+  // (`useServicePhases` resolves the same slug), so a `+` that wrote to the
+  // first service put the new phase on a board nobody was looking at.
+  //
+  // Keyed on the slug so switching service re-resolves rather than leaving
+  // the previous service's id behind — this sidebar outlives a switch, which
+  // changes the store without remounting anything.
+  //
+  // `resolveActiveServiceId` caches per slug, so this is a state read rather
   // than a query in the common case.
+  const activeSlug = useActiveServiceSlug()
   const [serviceId, setServiceId] = useState<string | null>(null)
   useEffect(() => {
     if (!client || !canWrite) return
     let cancelled = false
-    void findFirstServiceId(client)
+    void resolveActiveServiceId(client)
       .then((id) => {
         if (!cancelled) setServiceId(id)
       })
       .catch(() => {
-        // A missing service simply means no `+` on the section header;
-        // the rest of the sidebar is unaffected.
+        // No service to attach one to — an empty database, or a slug no
+        // service answers to — means no `+` on the section header, and the
+        // rest of the sidebar is unaffected. Both are states where the board
+        // has nothing to add a phase to, so neither may fall back to a
+        // service the reader is not looking at.
+        if (!cancelled) setServiceId(null)
       })
     return () => {
       cancelled = true
     }
-  }, [canWrite, client])
+  }, [activeSlug, canWrite, client])
 
   // The phase/scenario nav always drives the app-level (base blueprint
   // view) editor state. When a tab is active that would be invisible, so

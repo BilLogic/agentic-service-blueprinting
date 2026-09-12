@@ -13,7 +13,7 @@ import { SliceSlideComposer } from '@/components/editor/SliceSlideComposer'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { findFirstServiceId } from '@/lib/service'
+import { resolveActiveServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
 import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
@@ -124,10 +124,14 @@ export function CreateSliceSheet({
     setBusy(true)
     setError(null)
     try {
-      const serviceId = await findFirstServiceId(client)
-      if (!serviceId) {
-        throw new Error('No service found to attach this slice to.')
-      }
+      // The slice belongs to the service on screen. It used to be the first
+      // service by `created_at` — the cells being sliced come off the active
+      // service's canvas and `useSlices` reads that service, so with two
+      // services the slice was written somewhere it could never be seen.
+      // `resolveActiveServiceId` throws rather than falling back, and its two
+      // sentences — empty database, unresolvable slug — land in the Alert
+      // below.
+      const serviceId = await resolveActiveServiceId(client)
       const slice = await createSlice(client, {
         serviceId,
         title,
