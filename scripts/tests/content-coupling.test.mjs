@@ -14,6 +14,10 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   ALLOWED,
   PATTERNS,
@@ -24,6 +28,7 @@ import {
   isAllowed,
   isScanned,
   isTemplateId,
+  scannedFiles,
   staleAllowances,
 } from '../check-content-coupling.mjs'
 
@@ -37,6 +42,25 @@ test('no shared file a commit would carry holds a deployment’s content', () =>
     findings().map(({ path, line, match, label }) => `${path}:${line} — ${match} · ${label}`),
     [],
   )
+})
+
+test('a listing every predicate rejects is refused, not swept as clean', () => {
+  // The twin next door made the same claim and neither function held it: two
+  // steps stand between `git ls-files` and the subject — the listing, and a
+  // predicate that can reject every path in it — and either coming back empty
+  // printed `no deployment content in 0 shared files` in the usual green.
+  const root = mkdtempSync(join(tmpdir(), 'coupling-empty-'))
+  try {
+    const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+    git('init', '-q')
+    // Listed, and outside the subject: nothing here is under a scanned root.
+    mkdirSync(join(root, 'supabase'), { recursive: true })
+    writeFileSync(join(root, 'supabase/seed.sql'), 'select 1;\n')
+    git('add', '-A')
+    assert.throws(() => scannedFiles(root), /no scanned file under .*: git listed 1 path/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('every ALLOWED entry still has a site, so no exemption is a blind spot', () => {

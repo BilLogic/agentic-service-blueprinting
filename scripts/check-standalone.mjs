@@ -121,11 +121,24 @@ export function scannedFiles(root = REPO_ROOT) {
     { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
   )
   const seen = new Set()
-  return listed.split('\0').filter((path) => {
+  const found = listed.split('\0').filter((path) => {
     if (path === '' || seen.has(path) || !isScanned(path)) return false
     seen.add(path)
     return true
   })
+  // AN EMPTY SWEEP IS A FAILURE. Two steps stand between `git ls-files` and
+  // this result — the listing itself, and a predicate that can reject every
+  // path it returns — and either of them coming back with nothing produces the
+  // same green line the full sweep produces, with a `0` in it that nobody
+  // reads as a defect. The refusal lives here rather than in each caller
+  // because the subject is the same one in all of them.
+  if (found.length === 0) {
+    throw new Error(
+      `no scanned file under ${root}: git listed ${listed.split('\0').filter(Boolean).length} ` +
+        `path(s) and none of them is in this sweep's subject, which is a failure and not a pass`,
+    )
+  }
+  return found
 }
 
 /**
