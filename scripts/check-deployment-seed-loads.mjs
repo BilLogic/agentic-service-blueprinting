@@ -61,6 +61,10 @@
  * its order, globs expanded — and the named file is only how the deployment was
  * located. Without one, the named file is the whole seed.
  *
+ * An entry in that list with no file behind it stops the check rather than
+ * being passed over: what this check reports is a claim about a named set of
+ * files.
+ *
  * Needs a reachable Postgres 17 and permission to create a database, exactly
  * like its sibling.
  */
@@ -196,9 +200,68 @@ export function expandSeedEntries(entries, list) {
 }
 
 /**
+ * Why a `[db.seed]` entry that resolves to nothing stops the check.
+ *
+ * This is the one thing the surrounding script is built to keep visible. A seed
+ * loads in dependency order, so a file that never ran takes every row that
+ * depended on it with it: the foreign keys fail, the core's row validation
+ * raises, and `isDownstream` correctly files all of it under knock-on. The one
+ * line that would explain the pile is the file that was never loaded — and if
+ * it was dropped quietly, that line is nowhere in the output at all. The check
+ * would be reading a seed the deployment does not have, and saying so in a
+ * sentence that counts the files it managed to read.
+ */
+const RESOLVES_TO_NOTHING =
+  'This check loads what the deployment loads, in the order the deployment loads it, ' +
+  'and its result is a claim about that set. Passing over one of those files would ' +
+  'load the rest out of dependency order, report every row that then failed as ' +
+  'knock-on, and leave the one thing that explains them — a file that never ran — out ' +
+  'of the report entirely. Ship the file, or take its entry out of sql_paths.'
+
+/**
+ * One `[db.seed]` entry as an absolute path — or a failure naming what is there
+ * instead.
+ *
+ * `statSync` is the only call that can answer this, and it answers both halves
+ * at once: whether the path is there, and whether it is a file. An `existsSync`
+ * in front of it asks the first half a second time and believes the older
+ * answer, which buys nothing — if the path can go it can go between the two
+ * calls, and if it cannot the question was already settled.
+ *
+ * Absence is NOT tolerated here, and neither population makes it normal. A
+ * literal entry is the deployment stating outright that it loads that file. A
+ * pattern's matches came out of a directory listing taken microseconds earlier,
+ * in a check that creates its own database and touches nothing else — so a path
+ * that has gone by the time this runs is news either way. See
+ * `RESOLVES_TO_NOTHING` for what tolerating it would cost.
+ */
+function seedFile(dir, rel, config) {
+  const file = join(dir, rel)
+  let stats
+  try {
+    stats = statSync(file)
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+    throw new Error(
+      `${config} loads ${rel} under [db.seed], and ${file} is not there.\n${RESOLVES_TO_NOTHING}`,
+      { cause: error },
+    )
+  }
+  if (!stats.isFile()) {
+    throw new Error(
+      `${config} loads ${rel} under [db.seed], and ${file} is not a file.\n${RESOLVES_TO_NOTHING}`,
+    )
+  }
+  return file
+}
+
+/**
  * Every file the deployment loads, absolute, in order. When a `config.toml`
  * sits beside the named seed and states a `[db.seed]` list, that list is the
  * seed; otherwise the named file is.
+ *
+ * Every entry that list resolves to has to be a file that is there — see
+ * `seedFile`.
  */
 export function resolveSeedFiles(seedPath) {
   const dir = dirname(resolve(seedPath))
@@ -215,9 +278,7 @@ export function resolveSeedFiles(seedPath) {
       return []
     }
   }
-  return expandSeedEntries(section.sqlPaths, list)
-    .map((rel) => join(dir, rel))
-    .filter((file) => existsSync(file) && statSync(file).isFile())
+  return expandSeedEntries(section.sqlPaths, list).map((rel) => seedFile(dir, rel, config))
 }
 
 // ── Reading what psql said ─────────────────────────────────────────────────

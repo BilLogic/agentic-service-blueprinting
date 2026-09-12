@@ -83,7 +83,8 @@ test('a seed with no config beside it is the whole seed', () => {
   assert.deepEqual(resolveSeedFiles(seed), [seed])
 })
 
-test("the config's list wins over the named file, and a missing entry is dropped", () => {
+/** A supabase directory holding `seed.sql`, `seeds/one.sql` and the given config. */
+function deployment(sqlPaths) {
   const dir = mkdtempSync(join(tmpdir(), 'deployment-seed-'))
   const supabase = join(dir, 'supabase')
   mkdirSync(join(supabase, 'seeds'), { recursive: true })
@@ -91,12 +92,48 @@ test("the config's list wins over the named file, and a missing entry is dropped
   writeFileSync(join(supabase, 'seeds', 'one.sql'), 'select 1;\n')
   writeFileSync(
     join(supabase, 'config.toml'),
-    '[db.seed]\nenabled = true\nsql_paths = ["./seed.sql", "./seeds/one.sql", "./seeds/gone.sql"]\n',
+    `[db.seed]\nenabled = true\nsql_paths = [${sqlPaths.map((p) => `"${p}"`).join(', ')}]\n`,
   )
+  return supabase
+}
+
+test("the config's list wins over the named file, in the order it states", () => {
+  const supabase = deployment(['./seeds/one.sql', './seed.sql'])
   assert.deepEqual(resolveSeedFiles(join(supabase, 'seed.sql')), [
+    join(supabase, 'seeds', 'one.sql'),
     join(supabase, 'seed.sql'),
+  ])
+})
+
+test('an entry with no file behind it stops the check instead of being dropped', () => {
+  const supabase = deployment(['./seed.sql', './seeds/one.sql', './seeds/gone.sql'])
+  // Dropping it would load the rest out of dependency order and report every
+  // row that then failed as knock-on, with the cause absent from the output.
+  assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), (error) => {
+    assert.match(error.message, /seeds\/gone\.sql/)
+    assert.match(error.message, /is not there/)
+    assert.match(error.message, /sql_paths/)
+    assert.equal(error.cause?.code, 'ENOENT')
+    return true
+  })
+})
+
+test('an entry that resolves to a directory stops it too, and says so differently', () => {
+  const supabase = deployment(['./seed.sql', './seeds'])
+  assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), (error) => {
+    assert.match(error.message, /is not a file/)
+    assert.equal(error.cause, undefined)
+    return true
+  })
+})
+
+test('a glob is held to the same rule as a name it expands to', () => {
+  const supabase = deployment(['./seeds/*.sql'])
+  assert.deepEqual(resolveSeedFiles(join(supabase, 'seed.sql')), [
     join(supabase, 'seeds', 'one.sql'),
   ])
+  mkdirSync(join(supabase, 'seeds', 'two.sql'))
+  assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), /two\.sql is not a file/)
 })
 
 test('only the ERROR lines are failures; notices and detail lines are not', () => {
