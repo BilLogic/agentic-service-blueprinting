@@ -190,6 +190,9 @@ describe('a shared file names the decision, never the number', () => {
     expect(exemption(join('content', 'coverContent.test.ts'))).toMatch(/sample cover/)
     expect(exemption(join('types', 'database.ts'))).toMatch(/own schema declaration/)
     expect(exemption(join(GENERATED, 'references', 'data-model.md'))).toMatch(/check:doc-paths/)
+    expect(exemption(join('components', 'cover', 'packageCoverFigures.ts'))).toMatch(
+      /resolves wherever the package is read/,
+    )
     // And nothing else. An ordinary module is not spared by sitting near one.
     expect(exemption(join('lib', 'tokenModel.ts'))).toBeUndefined()
     expect(exemption(join('content', 'other.ts'))).toBeUndefined()

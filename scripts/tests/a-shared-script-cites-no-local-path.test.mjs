@@ -88,12 +88,15 @@ export const SHARED_SCRIPTS = new Map([
  * failure it exists to prevent.
  */
 function citedPaths(text) {
+  // EVERY match on the line, not the first. The failure quotes what it
+  // matched, so a line naming two documents used to hand back one — the
+  // reader fixes it, reruns, and meets the other. `DOCUMENT_PATH` is
+  // un-anchored and un-global by design, because its other two readers ask it
+  // a yes-or-no question; the `g` flag belongs to the reader that enumerates.
+  const every = new RegExp(DOCUMENT_PATH.source, 'g')
   return text
     .split('\n')
-    .flatMap((line, index) => {
-      const match = DOCUMENT_PATH.exec(line)
-      return match ? [`${index + 1}: ${match[0]}`] : []
-    })
+    .flatMap((line, index) => [...line.matchAll(every)].map((match) => `${index + 1}: ${match[0]}`))
 }
 
 test('a published shared script names no document an adopter does not have', () => {
@@ -159,6 +162,12 @@ test('the guard reads what the deployment’s gate reads, not only the comments'
   ])
   assert.deepEqual(citedPaths("const B = resolve(ROOT, 'docs/reference/baseline.json')"), [
     '1: docs/reference/baseline.json',
+  ])
+  // Both ends of a line that names two documents. Reporting the first and
+  // stopping is a reader who fixes it, reruns, and meets the other.
+  assert.deepEqual(citedPaths(' * renders into docs/agents/blueprint.md, ratchet in docs/e/b.json'), [
+    '1: docs/agents/blueprint.md',
+    '1: docs/e/b.json',
   ])
   // And the shapes that are not addresses stay out, so the fence is one a
   // contributor can live behind.

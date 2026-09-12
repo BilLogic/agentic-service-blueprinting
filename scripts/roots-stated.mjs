@@ -23,9 +23,8 @@
  * comments are blanked before the sweep — their newlines kept, so a line
  * number still means what it says.
  *
- * The
- * package may be named as a literal or through a constant the file holds, so
- * both spellings are read. What is REQUIRED of each is that the same path
+ * The package may be named as a literal or through a constant the file holds,
+ * so both spellings are read. What is REQUIRED of each is that the same path
  * under this repository's own `src` is stated in the same file, first —
  * the order is the rule, because the first root that exists wins and a pair in
  * the other order is a different answer on a tree that has both.
