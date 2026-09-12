@@ -62,8 +62,9 @@
  * located. Without one, the named file is the whole seed.
  *
  * An entry in that list with no file behind it stops the check rather than
- * being passed over: what this check reports is a claim about a named set of
- * files.
+ * being passed over, and the text of the files is read before a database is
+ * created rather than after the whole apply. Both for the same reason: what
+ * this check reports is a claim about a named set of files.
  *
  * Needs a reachable Postgres 17 and permission to create a database, exactly
  * like its sibling.
@@ -297,6 +298,27 @@ export function parsePsqlErrors(stderr) {
 }
 
 /**
+ * Did psql fail to RUN a seed file at all, rather than report the statements in
+ * it?
+ *
+ * The apply half runs with the stop switch off on purpose, so a file whose
+ * every statement fails still exits 0 and hands back the whole list. A non-zero
+ * status therefore means psql itself gave up before or outside that — and the
+ * reachable way for that to happen here is a path that stopped being there,
+ * since a scratch database that was just created sits between the listing and
+ * this moment. Left unread, that status is the quiet version of the same
+ * defect: nothing loads, nothing is reported, and the run goes on to grade a
+ * seed that never arrived.
+ *
+ * Collected failures win, because a seed that sets `ON_ERROR_STOP` in its own
+ * text exits non-zero with real findings attached, and those findings are the
+ * deliverable.
+ */
+export function fileNeverRan(status, failures) {
+  return status !== 0 && failures.length === 0
+}
+
+/**
  * Is this failure a consequence of an earlier one rather than a finding?
  *
  * A seed loads in dependency order. When the statement that inserts a path
@@ -335,6 +357,33 @@ export function groupFailures(failures) {
 }
 
 // ── Reading the loaded content back, as the deployed key ───────────────────
+
+/**
+ * The text of every seed file, joined — read BEFORE anything is applied.
+ *
+ * This read used to sit at the far end of the run: after the scratch database
+ * was made, after four core files went into it, and after one `psql -f` per
+ * seed file. Every other listing-then-read in this repository closes in
+ * microseconds; this one was held open across a multi-second subprocess, which
+ * made it the longest such window in the tree and the only one wide enough for
+ * an unrelated process to walk through.
+ *
+ * Nothing in the read needs the apply — it only wants the text, to learn which
+ * tables the seed writes. So it happens here, a moment after the listing that
+ * produced these paths, where the window is a few microseconds and where a path
+ * that has gone costs nothing that has already been done.
+ *
+ * A file that is not there is not skipped. The check's whole output is a claim
+ * about a named set of files, and a set it quietly shrank is a green that
+ * measured something else. This throws, and the reason stays legible in what it
+ * throws: `ENOENT` for a path that has gone, something else for a path that
+ * cannot be read — the same two cases `scripts/read-listed.mjs` keeps apart for
+ * the listings that ARE deliberately stale. Neither is tolerable here, so
+ * neither is caught.
+ */
+export function readSeedFiles(files) {
+  return files.map((file) => readFileSync(file, 'utf8')).join('\n')
+}
 
 /** Tables a seed inserts into, in first-mention order. */
 export function seededTables(sql) {
@@ -451,6 +500,8 @@ function main(argv = process.argv.slice(2)) {
   // report reads the way the deployment's own tree does.
   const deploymentRoot = dirname(dirname(resolve(seedPath)))
   const show = (file) => relative(deploymentRoot, file)
+  // Here, next to the listing, rather than after the apply — see readSeedFiles.
+  const seedSql = readSeedFiles(files)
 
   run('dropdb', ['--if-exists', DB])
   const created = run('createdb', [DB])
@@ -474,7 +525,18 @@ function main(argv = process.argv.slice(2)) {
     const failures = []
     for (const file of files) {
       const loaded = psql(['-f', file], { stopOnError: false })
-      failures.push(...parsePsqlErrors(loaded.stderr ?? ''))
+      const reported = parsePsqlErrors(loaded.stderr ?? '')
+      if (fileNeverRan(loaded.status, reported)) {
+        console.error(`psql could not run ${show(file)}:\n`)
+        console.error(loaded.stderr?.trim() ?? '')
+        console.error(
+          '\nNothing in that file reached the database, so everything after it would be ' +
+            'grading a seed the deployment does not load.',
+        )
+        process.exitCode = 1
+        return
+      }
+      failures.push(...reported)
     }
 
     if (failures.length > 0) {
@@ -516,7 +578,7 @@ function main(argv = process.argv.slice(2)) {
       return
     }
 
-    const tables = seededTables(files.map((file) => readFileSync(file, 'utf8')).join('\n'))
+    const tables = seededTables(seedSql)
     const inventory = psql(['-At', '-F', '|', '-c', buildInventorySql(tables)])
     if (inventory.status !== 0) {
       console.error("The deployment's seed applied, but the anon read was refused:\n")
