@@ -5,10 +5,14 @@
  * come from `repo-config.mjs` — the generator is the same file in every
  * repository that carries it and the two docs trees agree on nothing.
  *
- *   npm run agent-account              rewrite the generated sections
- *   npm run agent-account -- --record  …and record the ratchet baseline
- *   npm run check:agent-account        fail if the sections or the ratchet
- *                                      have drifted
+ * Usage — by path, because the npm alias is each repository's own and this
+ * file is read from more than one. Where aliases exist they are
+ * `agent-account` and `check:agent-account`.
+ *
+ *   node scripts/generate-agent-account.mjs           rewrite the generated sections
+ *   node scripts/generate-agent-account.mjs --record  …and record the ratchet baseline
+ *   node scripts/generate-agent-account.mjs --check   fail if the sections or the
+ *                                                     ratchet have drifted
  *
  * The schema section comes from `public.schema_comments()` on a LIVE
  * database under the anon key, because pg_description is the source and
