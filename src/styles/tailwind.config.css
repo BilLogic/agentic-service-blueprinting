@@ -7,6 +7,36 @@
  */
 @import 'tailwindcss';
 /*
+ * The application is source, wherever it is read from. Tailwind generates a
+ * utility only when it finds the class name written down somewhere, and its
+ * automatic detection starts at the project root and skips `node_modules`. A
+ * repository that keeps the application in `src` is therefore covered by
+ * accident: the root it scans and the root the application lives in are the
+ * same directory. A deployment that reads the application out of this package
+ * instead is covered by nothing — every class name the markup uses sits in a
+ * directory the scan refuses — and the failure is silent, because a stylesheet
+ * with no utilities in it is not an error, just a page whose every element is
+ * unstyled.
+ *
+ * So the application names its own source root, from inside itself. This path
+ * is relative to THIS FILE, which travels with the markup it describes: `..`
+ * is the application's `src` whether that is this repository's, a package
+ * symlinked into a deployment, one hoisted to the top of its node_modules, or
+ * one nested under another dependency. It reaches the application and stops
+ * there — a level higher would be the package root, and a package root holds
+ * `node_modules` of its own.
+ *
+ * Here the line names a directory the automatic scan already reaches, so this
+ * repository builds the same stylesheet it built before the line existed. The
+ * directory form is what makes that true: a directory is scanned by the same
+ * rules automatic detection uses, where a glob would have to re-decide which
+ * file extensions count and would answer differently. Both halves — that a
+ * deployment keeps the utilities, and that this repository is unchanged — are
+ * held by `deploymentRoot.test.ts`, which builds the stylesheet from each root
+ * and compares the utilities in it.
+ */
+@source '..';
+/*
  * Prose is not source. Tailwind v4 auto-detects sources from the project root
  * and scans every non-gitignored file, `docs/**` included — so a class name
  * written in a planning document generates that class in the compiled output.
