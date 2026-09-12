@@ -11,7 +11,7 @@ import {
 } from '@/lib/layoutTokens'
 import { CoverPage } from '@/components/cover/CoverPage'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
-import { coverContent } from '@/content/coverContent'
+import { useCoverContent } from '@/contexts/DeploymentConfigContext'
 import { ServiceOverviewView } from '@/components/editor/ServiceOverviewView'
 import {
   FloatingSidebarNavbar,
@@ -143,6 +143,11 @@ function DesktopEditorShell() {
   const { activeTab, activeKey, activateTab, openTab, closeTab, pendingUrlState } =
     useViewState()
   const { canAgent } = useSupabase()
+  // The landing page, from the deployment seam rather than from a content
+  // module this shell imports: an installation that mounts this package cannot
+  // edit the template's copy, so the cover has to arrive through the config.
+  // Standalone this is the template's own, unchanged.
+  const cover = useCoverContent()
   // `?cell=` boot deep link — the receiving end of the share link the agent
   // hands back with a cited cell. Mounted here because it needs the editor's
   // navigation and the boot URL state, and both live at this level.
@@ -843,7 +848,7 @@ function DesktopEditorShell() {
               <div className="absolute inset-0" data-editor-content="">
                 {isLanding ? (
                   <EditorErrorBoundary resetKey="landing">
-                    <CoverPage content={coverContent} />
+                    <CoverPage content={cover} />
                   </EditorErrorBoundary>
                 ) : (
                   <WarmMountedViews

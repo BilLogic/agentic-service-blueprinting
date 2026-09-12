@@ -4,6 +4,8 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import App from './App'
 import { ORG_NAME } from './config'
 import { coverContent } from './content/coverContent'
+import type { CoverContent } from './components/cover/coverModel'
+import type { DeploymentConfig } from './deploymentConfig'
 
 /**
  * Smoke render: the whole app mounts against the bundled fallback data with
@@ -105,5 +107,94 @@ describe('App (mounted by a deployment)', () => {
     // Only the wordmark reads the seam today; the cover's own heading still
     // carries the template name until `content` is wired. Asserting its
     // absence here would pin a surface the seam does not yet own.
+  })
+})
+
+/*
+  The cover seam, end to end.
+
+  A deployment that imports this package cannot edit `content/coverContent.ts`
+  — it has no copy of it — so without a seam every installation lands on the
+  template's own landing page. The config carries a whole `CoverContent`, and
+  these two tests are the contract: supplied, the deployment's cover is the
+  one that renders and none of the template's copy survives under it; absent,
+  the template's cover renders exactly as it does standalone.
+
+  Module-level for the same reason `hostConfig` is: a host passes a stable
+  object, not a literal rebuilt every render.
+*/
+const HOST_COVER_TITLE = 'Acme Service Design'
+
+const hostCover: CoverContent = {
+  title: HOST_COVER_TITLE,
+  lede: 'One map of the service Acme delivers, from first contact to renewal.',
+  primaryCtaLabel: 'Open the map',
+  commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
+  states: { noSlices: 'Nothing cut from this workspace yet.' },
+  tabs: [
+    {
+      value: 'what-it-covers',
+      label: 'What it covers',
+      sections: [
+        {
+          kind: 'prose',
+          id: 'covers-intro',
+          heading: 'Where this starts',
+          paragraphs: ['Every phase of the service, in one place.'],
+        },
+      ],
+    },
+  ],
+}
+
+const hostCoverConfig: DeploymentConfig = { cover: hostCover }
+
+describe('App (mounted by a deployment that brings its own cover)', () => {
+  it('renders the deployment cover and none of the template copy', async () => {
+    render(<App config={hostCoverConfig} />)
+
+    expect(
+      await screen.findByRole('button', { name: hostCover.primaryCtaLabel }),
+    ).toBeDefined()
+    expect(screen.getByText(hostCover.lede)).toBeDefined()
+    expect(
+      screen.getByRole('tab', { name: hostCover.tabs[0].label }),
+    ).toBeDefined()
+
+    // Replaced whole, not merged: the template's own lede, action and tabs
+    // are gone rather than showing through where the deployment said less.
+    expect(
+      screen.queryByRole('button', { name: coverContent.primaryCtaLabel }),
+    ).toBeNull()
+    expect(screen.queryByText(coverContent.lede)).toBeNull()
+    for (const tab of coverContent.tabs) {
+      expect(screen.queryByRole('tab', { name: tab.label })).toBeNull()
+    }
+  })
+
+  it('calls the installation by the cover title, not the template name', async () => {
+    render(<App config={hostCoverConfig} />)
+
+    // The heading on the page AND the wordmark in app chrome, which is what
+    // makes this more than one element: a deployment that names its cover has
+    // named its workspace, and nothing on screen still says the template's.
+    expect(
+      (await screen.findAllByText(HOST_COVER_TITLE)).length,
+    ).toBeGreaterThan(1)
+    expect(screen.queryAllByText(ORG_NAME)).toHaveLength(0)
+  })
+})
+
+describe('App (mounted by a deployment that supplies no cover)', () => {
+  it("renders the template's own cover, unchanged", async () => {
+    render(<App config={hostConfig} />)
+
+    expect(
+      await screen.findByRole('button', { name: coverContent.primaryCtaLabel }),
+    ).toBeDefined()
+    expect(screen.getByText(coverContent.lede)).toBeDefined()
+    for (const tab of coverContent.tabs) {
+      expect(screen.getByRole('tab', { name: tab.label })).toBeDefined()
+    }
   })
 })

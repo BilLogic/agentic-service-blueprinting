@@ -4,6 +4,7 @@ import {
   FALLBACK_SLICE_ITEMS,
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
+import { isBundledSampleActive } from '@/lib/bundledSample'
 import type { Slice, Slide } from '@/types/database'
 import { asSlideWithImages } from '@/lib/slideImages'
 
@@ -12,8 +13,18 @@ export type SliceDetail = {
   items: Slide[]
 }
 
-/** Bundled demo-slice detail; null when the id is not a fixture slice. */
+/**
+ * Bundled demo-slice detail; null when the id is not a fixture slice — and
+ * null for every id once a database exists.
+ *
+ * The gate is the list's, for the list's reason: `useSupabaseQuery` calls a
+ * fallback on the error path as well as the no-database one, so a configured
+ * deployment whose read failed was handed a template slice to open. The
+ * unknown-id null this function already returned is the same answer, so no
+ * consumer learns a new state.
+ */
 function sliceFallback(sliceId: string): SliceDetail | null {
+  if (!isBundledSampleActive()) return null
   const slice = FALLBACK_SLICES.find((entry) => entry.id === sliceId)
   if (!slice) return null
   return { slice, items: FALLBACK_SLICE_ITEMS[slice.id] ?? [] }

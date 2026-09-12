@@ -35,4 +35,24 @@ export {
   type CellContentBudgetRung,
   type DeploymentConfig,
   type ResolvedDeploymentConfig,
+  type ResolvedStoryboardConfig,
+  type StoryboardConfig,
 } from './deploymentConfig'
+/**
+ * The cover's content model, exported because `DeploymentConfig.cover` takes a
+ * whole one: a host writes its landing page as a typed module of its own, and
+ * without these it would be writing it against a type it cannot name. Types
+ * only — the renderers stay internal, which is the point of the split.
+ */
+export type {
+  CoverContent,
+  CoverContentTab,
+  CoverFigure,
+  CoverGuideLink,
+  CoverPortraitImage,
+  CoverSection,
+  CoverServicePage,
+  CoverServicesIndex,
+  CoverServicesTab,
+  CoverTab,
+} from './components/cover/coverModel'

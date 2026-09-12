@@ -38,11 +38,16 @@
  * too, so the person under the field and the agent in the tool result read
  * the same thresholds before the first paint. `defaultLanes` is read by the
  * create dialog through `useDeploymentConfig`, and is the lane set a new
- * blueprint starts with when nothing is copied. `brand.logo`,
- * `content.coverTitle` and the whole `agent` block are declared shape with no
- * reader: the cover heading and the workspace breadcrumb still take
- * `coverContent.title` and `ORG_NAME` directly. They migrate onto this type in
- * later slices; until then setting them changes nothing.
+ * blueprint starts with when nothing is copied. `cover` is the whole landing
+ * page, read by the editor shell and handed to `CoverPage`, and its `title` is
+ * the wordmark's second fallback — so a deployment that names its cover has
+ * named its workspace. `storyboard.embeddedBorderPaths` is written onto the
+ * walkthrough module in that same layout effect, beside the pins and the
+ * budget. `brand.logo`, `content.coverTitle` and the whole `agent` block are
+ * declared shape with no reader: the workspace breadcrumb still takes
+ * `ORG_NAME` directly, and `content.coverTitle` is the narrower restatement of
+ * a heading `cover` already carries. They migrate onto this type in later
+ * slices; until then setting them changes nothing.
  *
  * NOT FIELDS HERE, AND DELIBERATELY: the localStorage namespace, and the
  * agent's extra reference documents. A config is
@@ -90,6 +95,7 @@
  */
 import { BRAND, ORG_NAME } from './config'
 import { coverContent } from './content/coverContent'
+import type { CoverContent } from '@/components/cover/coverModel'
 import { SAMPLE_NAV } from '@/data/sampleNav'
 import type { LaneSetEntry } from '@/lib/authoringRpc'
 import { DEFAULT_LANE_SET } from '@/lib/blueprintValidation'
@@ -255,6 +261,67 @@ export type DeploymentConfig = {
    * a blueprint with no lanes is not a default anyone means to supply.
    */
   defaultLanes?: LaneSetEntry[]
+  /**
+   * The landing page, whole — every string, figure, link and tab the cover
+   * renders. A deployment's own writing, which is why it arrives here: the
+   * renderers under `components/cover/` hold no copy of their own, and the
+   * module this template writes ITS cover in cannot be edited by an
+   * installation that imports this package rather than forking it.
+   *
+   * REPLACED, NEVER MERGED — supplied, this is the whole cover; omitted, the
+   * template's own stands. Three reasons, and the first is the one that
+   * decides it:
+   *
+   *   - A merged cover is a cover half of which describes a service the
+   *     reader is not looking at. Every string in the template's is about
+   *     THIS template — its tabs, its guide links, its figures under
+   *     `/cover/`. A deployment that set a title and inherited the rest would
+   *     ship its own name over somebody else's landing page, which is the
+   *     failure this seam exists to prevent rather than a lenient default.
+   *   - There is no field-by-field merge to define. The value is a tree —
+   *     tabs hold sections hold figures — and merging it would need an
+   *     identity for every array entry at every level, which is a second
+   *     content model invented to describe the first.
+   *   - The type already refuses a half-supplied cover: `lede`,
+   *     `primaryCtaLabel`, `commandCopy`, `states` and `tabs` are required, so
+   *     "partial supply" is a compile error at the seam rather than a silent
+   *     blend at runtime. `title` and `repoUrl` are the two optional fields,
+   *     and both already have a defined absent state of their own.
+   *
+   * `sample.nav` and `defaultLanes` read the same way for the same reason:
+   * content a deployment states is the whole of what it states.
+   */
+  cover?: CoverContent
+  /**
+   * What this deployment's own storyboard artwork does, where the walkthrough
+   * cannot see it from the board.
+   *
+   * Narrow on purpose. The walkthrough derives almost everything it needs from
+   * the blueprint — which lanes it steps through comes from their roles, and a
+   * lane's label is its name — and a config field for either would be a
+   * pinned copy of data that already exists, free to go stale the day a
+   * deployment adds a lane. What is left is the one fact that is NOT in the
+   * board: whether an image file draws its own border.
+   */
+  storyboard?: StoryboardConfig
+}
+
+/**
+ * Frame paths whose artwork already draws a border, so the walkthrough does
+ * not draw a second one around them.
+ *
+ * Each entry is matched as a SUBSTRING of a cell's frame path, so a deployment
+ * names the folder a batch of artwork sits in rather than listing every file.
+ * An omitted or empty list is the template's own state: no artwork of its own,
+ * so every frame is bordered by the chrome.
+ */
+export type StoryboardConfig = {
+  embeddedBorderPaths?: string[]
+}
+
+/** {@link StoryboardConfig} with its one field settled. */
+export type ResolvedStoryboardConfig = {
+  embeddedBorderPaths: string[]
 }
 
 /**
@@ -311,6 +378,23 @@ export type ResolvedDeploymentConfig = {
    * to `laneSetFor`.
    */
   defaultLanes: LaneSetEntry[]
+  /**
+   * Guaranteed a cover, the way `sample.nav` is guaranteed an array: the
+   * template supplies its own, so a reader renders a landing page whether or
+   * not the deployment wrote one. Readers may pass it straight to `CoverPage`.
+   *
+   * Carried by REFERENCE, unlike every settings block above it. Those are
+   * copied because a host might mutate a small object after mount and reach
+   * into the app through it; this is a content document, authored as a module
+   * literal and read-only from the moment it evaluates. Cloning a tree of tabs
+   * and sections on every resolution would buy nothing and cost the copy.
+   */
+  cover: CoverContent
+  /**
+   * Guaranteed complete, the way `cellBudget` is: an empty list is the
+   * template's own state rather than an absence anyone has to interpret.
+   */
+  storyboard: ResolvedStoryboardConfig
 }
 
 /**
@@ -379,6 +463,11 @@ export const asbDefaultConfig: DeploymentConfig = {
     touchpointLabels: { ...asbDefaultCellBudget.touchpointLabels },
   },
   defaultLanes: DEFAULT_LANE_SET,
+  // The template's own landing page, named through the module it is authored
+  // in rather than restated here — the same rule the wordmark and the accent
+  // follow two fields up, and for the same reason.
+  cover: coverContent,
+  storyboard: { embeddedBorderPaths: [] },
 }
 
 /**
@@ -498,6 +587,14 @@ export function resolveDeploymentConfig(
   const cellBudget = mergeCellBudget(config?.cellBudget)
   // Each entry copied, so a later edit to the host's list cannot reach a
   // blueprint created after it.
+  // Whole or nothing. `??` and not a merge, and not `length` the way the two
+  // list fields above it are: an empty cover is not a shape anyone can supply
+  // — the required fields make it a compile error — so the only two states
+  // here are "the deployment wrote one" and "it did not".
+  const cover = config?.cover ?? asbDefaultConfig.cover ?? coverContent
+  const storyboard = {
+    embeddedBorderPaths: [...(config?.storyboard?.embeddedBorderPaths ?? [])],
+  }
   const overlaidLanes = config?.defaultLanes
   const defaultLanes = (
     overlaidLanes?.length ? overlaidLanes : (asbDefaultConfig.defaultLanes ?? [])
@@ -511,5 +608,7 @@ export function resolveDeploymentConfig(
     pathColorPins,
     cellBudget,
     defaultLanes,
+    cover,
+    storyboard,
   }
 }
