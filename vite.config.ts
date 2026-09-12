@@ -43,6 +43,14 @@ export default defineConfig({
     // component tests opt into jsdom per-file with a
     // `// @vitest-environment jsdom` docblock.
     environment: 'node',
+    // The suite runs with the dev-server flags OFF, whatever a developer keeps
+    // in their own `.env.local`. `VITE_DEV_AUTHORING_UI=true` is how a
+    // deployment shows its edit surfaces on a dev server without an authoring
+    // key; it is read once at module load, so no `stubEnv` inside a test can
+    // reach it, and a suite that inherits it starts with write flags already
+    // up. That fails on the machine that has the flag and passes in CI, which
+    // is the shape of failure that costs the most to diagnose.
+    env: { VITE_DEV_AUTHORING_UI: '' },
     include: [
       'src/**/*.test.ts',
       'src/**/*.test.tsx',
