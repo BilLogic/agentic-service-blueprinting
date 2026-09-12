@@ -72,9 +72,30 @@ import { join, relative, resolve } from 'node:path'
 import { readListed } from '../read-listed.mjs'
 import { RENAME_MAP } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
+import { appPackageRoot, appSourceRoot } from '../app-source.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
-const SRC = resolve(ROOT, 'src')
+/**
+ * The application, wherever this tree keeps it, and the package it sits in.
+ *
+ * `resolve(ROOT, 'src')` is this repository's answer and only this
+ * repository's: a deployment installs this package and reads the application
+ * out of `node_modules/agentic-service-blueprinting`, with no `src` of its
+ * own. `readdirSync` on a directory that is not there threw, which is the
+ * loud form of this defect and the lucky one — the walk below is one line
+ * away from the silent form, where a tolerated absence sweeps nothing and
+ * every assertion under it agrees. It refuses an empty result now for that
+ * reason, beside the three that count what came back. `APP_PACKAGE` is what a
+ * finding is reported relative to, so a file still reads
+ * `src/styles/blueprint.css` on either side and the spot checks stay one
+ * string apiece.
+ *
+ * `docs/assets`, further down, is deliberately NOT resolved this way. A figure
+ * is documentation and documentation is this tree's, the same way `scripts/`
+ * is.
+ */
+const SRC = appSourceRoot(ROOT)
+const APP_PACKAGE = appPackageRoot(ROOT)
 
 /* --------------------------------------------------------------- the tree */
 
@@ -154,19 +175,26 @@ function walk(dir) {
  * in the repository that reads a path something else listed.
  */
 export function appSources() {
-  return walk(SRC)
+  const found = walk(SRC)
     .flatMap((path) => {
       const source = readListed(path)
       if (source === null) return [] // listed, then gone before this read
       return [
         {
-          file: relative(ROOT, path).split('\\').join('/'),
+          file: relative(APP_PACKAGE, path).split('\\').join('/'),
           code: stripComments(source),
           comments: commentsOnly(source),
         },
       ]
     })
     .sort((a, b) => a.file.localeCompare(b.file))
+  if (found.length === 0) {
+    throw new Error(
+      `no .ts, .tsx or .css under ${SRC}: this walk has no subject, which is ` +
+        `a failure and not a pass`,
+    )
+  }
+  return found
 }
 
 /* --------------------------------------------- chip and pill, as names */

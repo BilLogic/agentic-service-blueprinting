@@ -21,9 +21,28 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAppFile } from '../app-source.mjs'
 
 const REPO_ROOT = process.cwd()
-const read = (path) => readFileSync(resolve(REPO_ROOT, path), 'utf8')
+
+/**
+ * A file of this tree, or a file of the application wherever it sits.
+ *
+ * The migrations are this tree's — a deployment applies them from here and
+ * keeps no copy — and the two `src/…` modules below are the APPLICATION's,
+ * which a deployment reads out of `node_modules/agentic-service-blueprinting`
+ * rather than from beside its `scripts/`. Resolving both against
+ * `process.cwd()` named a file that is not there, so the check that holds the
+ * canvas and the migration to one word failed where a deployment ran it. The
+ * split is the same one `check-database-names.mjs` makes and is made the same
+ * way: a path starting `src/` is the application's, everything else is this
+ * tree's. Both halves REFUSE a file that is absent — a subject that is gone
+ * is this check's subject gone, not a smaller one.
+ */
+const read = (path) =>
+  /^src(?:\/|$)/.test(path)
+    ? readAppFile(REPO_ROOT, path)
+    : readFileSync(resolve(REPO_ROOT, path), 'utf8')
 
 const EDIT_MIGRATION =
   'supabase/migrations/21000226000000_a_dependency_can_be_edited_where_it_sits.sql'

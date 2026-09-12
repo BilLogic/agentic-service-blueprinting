@@ -51,8 +51,23 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { sourceFilesUnder } from '../check-database-names.mjs'
+import { appPackageRoot } from '../app-source.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
+/**
+ * What a path in a finding is relative to: the application's own package.
+ *
+ * `sourceFilesUnder('src')` already sweeps whichever root holds the
+ * application — this tree's `src`, or the one inside
+ * `node_modules/agentic-service-blueprinting` in a deployment that keeps no
+ * copy — so what was left to get wrong here was the REPORTING. A path made
+ * relative to this tree's root came back as
+ * `node_modules/agentic-service-blueprinting/src/components/editor/…` there,
+ * which `SLICE_SURFACE` still matches but which the two files named below do
+ * not, so the walk's own proof that it reached the editor failed in the one
+ * arrangement it was written to survive.
+ */
+const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
 /**
  * The slice surface, by path rather than by enumeration: anything whose file
@@ -82,13 +97,32 @@ function stripComments(source) {
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
+/**
+ * The slice surface, as `src/…` paths.
+ *
+ * A SURFACE THAT COMES BACK EMPTY THROWS. A tree with no slice file in it is
+ * not a tree whose slice surface is clean, and the two report the same green
+ * line — every run after, because nothing about a walk that has stopped
+ * finding its subject looks different from one that found it and agreed.
+ */
+export function sliceSurfaceFiles() {
+  const found = sourceFilesUnder('src')
+    .map((abs) => relative(APP_PACKAGE, abs).split('\\').join('/'))
+    .filter((file) => SLICE_SURFACE.test(file))
+  if (found.length === 0) {
+    throw new Error(
+      `no slice file under ${APP_PACKAGE}/src: this walk has no subject, ` +
+        `which is a failure and not a pass`,
+    )
+  }
+  return found
+}
+
 /** Every line of the slice surface that names something `screen`. */
 export function screenNames() {
   const out = []
-  for (const abs of sourceFilesUnder('src')) {
-    const file = relative(REPO_ROOT, abs).split('\\').join('/')
-    if (!SLICE_SURFACE.test(file)) continue
-    stripComments(readFileSync(abs, 'utf8'))
+  for (const file of sliceSurfaceFiles()) {
+    stripComments(readFileSync(resolve(APP_PACKAGE, file), 'utf8'))
       .split('\n')
       .forEach((line, index) => {
         if (SCREEN.test(line)) out.push(`${file}:${index + 1} ${line.trim()}`)
@@ -112,9 +146,7 @@ test('nothing on the slice surface is named a screen', () => {
 test('the guard reads names and not prose', () => {
   // The subject, exercised directly. A guard whose extraction is wrong
   // reports clean forever and nobody finds out.
-  const files = sourceFilesUnder('src')
-    .map((abs) => relative(REPO_ROOT, abs).split('\\').join('/'))
-    .filter((file) => SLICE_SURFACE.test(file))
+  const files = sliceSurfaceFiles()
   assert.ok(
     files.includes('src/components/editor/SliceSlideEditor.tsx'),
     'the walk must reach the editor this check was written for',

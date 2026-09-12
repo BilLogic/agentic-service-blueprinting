@@ -75,8 +75,28 @@ import { readListed } from '../read-listed.mjs'
 import { sourceFilesUnder } from '../check-database-names.mjs'
 import { RETIRED_COPY_WORDS } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
+import { appPackageRoot } from '../app-source.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
+/**
+ * The package the application sits in: this tree, or the dependency a
+ * deployment reads it out of.
+ *
+ * TWO OF THE THREE SUBJECTS BELOW ARE THE APPLICATION'S and the third is this
+ * tree's, and they are resolved apart for that reason. The `.tsx` sweep and
+ * the enrolled copy modules are files a deployment does not have — it installs
+ * this package and keeps no `src` — so both are found under `APP_PACKAGE`,
+ * which is this repository's own root when the application is here. The
+ * residue sweep at the end is `git ls-files` over THIS commit, which is a
+ * question only this tree can ask of itself, and it stays on `REPO_ROOT`.
+ *
+ * `sourceFilesUnder` already resolved the walk; what was left wrong was the
+ * REPORTING. A path made relative to a deployment's root came back as
+ * `node_modules/agentic-service-blueprinting/src/components/…`, which the
+ * `.tsx` filter still admits and which no finding, no exemption and no reader
+ * of this file would recognise.
+ */
+const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
 /**
  * The props whose string value a person reads.
@@ -184,14 +204,28 @@ export function stripComments(source) {
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
-/** Every `.tsx` in the app, as `{ file, code }`. */
-function appFiles() {
-  return sourceFilesUnder('src')
+/**
+ * Every `.tsx` in the app, as `{ file, code }`, with `src/…` paths.
+ *
+ * A WALK THAT FINDS NOTHING THROWS. An empty subject and a clean one print the
+ * same green line, and the green one goes on being printed every run after —
+ * which on this guard means a retired word can be on screen with nothing in
+ * the suite disagreeing.
+ */
+function applicationComponents() {
+  const found = sourceFilesUnder('src')
     .filter((abs) => abs.endsWith('.tsx'))
     .map((abs) => ({
-      file: relative(REPO_ROOT, abs).split('\\').join('/'),
+      file: relative(APP_PACKAGE, abs).split('\\').join('/'),
       code: stripComments(readFileSync(abs, 'utf8')),
     }))
+  if (found.length === 0) {
+    throw new Error(
+      `no .tsx under ${APP_PACKAGE}/src: this walk has no subject, which is ` +
+        `a failure and not a pass`,
+    )
+  }
+  return found
 }
 
 /**
@@ -214,7 +248,7 @@ function bindingSource(code, start, indent) {
 }
 
 /** Every reader-facing string in the app, with where it came from. */
-export function readerFacingStrings(files = appFiles()) {
+export function readerFacingStrings(files = applicationComponents()) {
   const out = []
   for (const { file, code } of files) {
     if (!file.endsWith('.tsx')) continue
@@ -246,7 +280,13 @@ export function offenders(strings = readerFacingStrings()) {
 }
 
 test('no retired spelling reaches a reader', () => {
-  const found = offenders()
+  const strings = readerFacingStrings()
+  // The walk found FILES; this is what says it found the COPY. A tree whose
+  // components yield no reader-facing string at all is one this guard has
+  // stopped reading, and that reads exactly like a tree it has read and
+  // agreed with.
+  assert.ok(strings.length > 0, 'not one reader-facing string was read')
+  const found = offenders(strings)
   assert.deepEqual(
     found,
     [],
@@ -475,7 +515,7 @@ const COPY_MODULES = [
 export function copyModuleStrings(modules = COPY_MODULES) {
   const out = []
   for (const { path } of modules) {
-    const code = stripComments(readFileSync(resolve(REPO_ROOT, path), 'utf8'))
+    const code = stripComments(readFileSync(resolve(APP_PACKAGE, path), 'utf8'))
     for (const literal of code.matchAll(STRING_LITERAL)) {
       const value = literalText(literal[1] ?? literal[2] ?? literal[3] ?? '').trim()
       if (value && /[A-Za-z]/.test(value)) out.push({ file: path, where: 'copy', value })
@@ -499,7 +539,7 @@ test('every enrolled copy module exists, and says why it is enrolled', () => {
   // A list pointing at a renamed file reads exactly like a clean codebase.
   assert.ok(COPY_MODULES.length > 0)
   for (const entry of COPY_MODULES) {
-    assert.ok(existsSync(resolve(REPO_ROOT, entry.path)), `${entry.path} is gone`)
+    assert.ok(existsSync(resolve(APP_PACKAGE, entry.path)), `${entry.path} is gone`)
     assert.ok(entry.because.length > 40, `${entry.path} says nothing about why`)
   }
   assert.ok(copyModuleStrings().length > 10, 'the copy modules parsed to almost no text')
