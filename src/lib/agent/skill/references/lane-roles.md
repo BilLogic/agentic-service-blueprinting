@@ -82,8 +82,9 @@ went unclassified.
 
 **Authoring refuses a ninth.** `references/ir-schema.json` carries the eight
 as an enum and `scripts/validate_ir.py` errors on anything else, naming the
-value, the lane it is on and all eight legal values. This closed in #204:
-until then the schema took any `^[a-z0-9][a-z0-9_]*$` and the validator passed
+value, the lane it is on and all eight legal values. This closed with the
+`2026.09.10` schema version: until then the schema took any
+`^[a-z0-9][a-z0-9_]*$` and the validator passed
 a ninth role in silence, so a document validated and was then refused by
 `lanes_lane_role_check` part-way through its import — the value named, but at
 the one moment its author could no longer act on it. A file authored before

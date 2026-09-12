@@ -146,7 +146,7 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
   // The same wordmark the tab strip carries, from the same seam.
   const editorTitle = useWorkspaceTitle()
   // On a scenario the collapsed bar carries the path selector as a trailing
-  // control (#305), so paths can be switched without expanding the sidebar. A
+  // control, so paths can be switched without expanding the sidebar. A
   // phase hands over an empty list and this stays hidden — the same control,
   // mounted only where it applies.
   const paths = summary?.paths

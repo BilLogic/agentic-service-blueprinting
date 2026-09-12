@@ -782,7 +782,7 @@ export async function dispatchTool(
           serviceId: await resolveActiveServiceId(client),
           title: need(args, 'title'),
           // `description` is what the schema advertised while the handler
-          // read `summary` (#272), so a model taught the old wire is still
+          // read `summary`, so a model taught the old wire is still
           // holding the word that used to be dropped.
           summary: s(args, 'summary') ?? s(args, 'description') ?? '',
           sliceKind: need(args, 'kind') as SliceKind,

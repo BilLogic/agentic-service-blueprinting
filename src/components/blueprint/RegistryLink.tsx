@@ -9,7 +9,7 @@ import { removePlacement, setPlacementTouchpoint } from '@/lib/placementLinkMuta
 import { errorMessage } from '@/lib/utils'
 
 /**
- * A placement whose touchpoint the registry lacks (#112): the author's name,
+ * A placement whose touchpoint the registry lacks: the author's name,
  * kept, with two ways out. Link it to the registry entry it was about — a
  * choice made here, never a match on the name — or take it off the cell.
  * Both are immediate and both go in the ledger with their inverse; neither

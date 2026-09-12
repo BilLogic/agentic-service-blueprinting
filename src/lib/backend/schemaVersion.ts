@@ -24,7 +24,7 @@ export const TEMPLATE_SCHEMA_VERSION = '2026.09.11'
  * stops existing — which is a deliberate act, not an omission.
  */
 export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
-  // A service carries its own examples (#338). `21000123000000` gave
+  // A service carries its own examples. `21000123000000` gave
   // `public.services` an `entity_examples` map — one free-text example per
   // core kind, shown under that kind's definition — and granted it to a
   // signed-in author. The wire format never learned it, so the value was
@@ -35,7 +35,7 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // either — the column has been there since 21000123000000 — so a target at
   // 2026.09.08 is still one this checkout speaks.
   '2026.09.11',
-  // `lanes[].role` closes to the eight (#204). 21000122000000 closed the
+  // `lanes[].role` closes to the eight. 21000122000000 closed the
   // column at the database in 2026.09.08 and the wire format never followed,
   // so a document could validate against references/ir-schema.json and then be
   // refused by the CHECK part-way through an import. The schema now carries
@@ -44,13 +44,13 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // version: nothing in the database changed, so a target at 2026.09.08 is
   // still one this checkout speaks.
   '2026.09.10',
-  // A path's `triggers` array is its `dependencies` (#159). The database has
+  // A path's `triggers` array is its `dependencies`. The database has
   // said `cell_dependencies` since 21000103000000 and this app's own domain
   // layer since release 1.5.0; the IR was the last estate still spelling it the
   // retired way, and the owner settled all three together. A field rename, so
   // every authored value stays put and a signed scenario re-anchors.
   '2026.09.09',
-  // The lane vocabulary closes (#197). 21000122000000 renamed the roles it
+  // The lane vocabulary closes. 21000122000000 renamed the roles it
   // retired, folded the back-office systems role into backstage touchpoints,
   // gave the storyboard row its own name, and closed `lanes.lane_role` to
   // eight values with a CHECK — then stamped a database with this version and
@@ -65,42 +65,42 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   // 2026.09.09 stays where it is and the chain runs .07 -> .08 -> .09. A file
   // that authored a lane role by its retired spelling moves.
   '2026.09.08',
-  // A touchpoint is a thing the service owns (#112): the `touchpoints`
+  // A touchpoint is a thing the service owns: the `touchpoints`
   // registry, optional in the IR; placements still name theirs by name and
   // the import mints the rest. Nothing authored moves.
   '2026.09.07',
-  // A placement says what a tool does here (#111): `touchpoints[].url` and
+  // A placement says what a tool does here: `touchpoints[].url` and
   // `.screenshots` become resources on the placement, and `.role` arrives.
   // A file that authored either URL field moves.
   '2026.09.06',
-  // A resource keeps its id, knows its cell, and one of them is featured
-  // (#110). `resources.kind` is `link | attachment` and `featured` arrives;
-  // a file that authored `other` moves.
+  // A resource keeps its id, knows its cell, and one of them is featured.
+  // `resources.kind` is `link | attachment` and `featured` arrives; a file
+  // that authored `other` moves.
   '2026.09.05',
-  // `scenarios.layout` is `stacked | merged` (#109). `single` folded into
+  // `scenarios.layout` is `stacked | merged`. `single` folded into
   // stacked — one path stacked is one band — and merged, until now a
   // session-only display, is a value the row holds, so a scenario left
   // merged opens merged. A file that authored `single` moves.
   '2026.09.04',
-  // A cell's `picture` is its `frame` (#94). One word served two ideas — the
+  // A cell's `picture` is its `frame`. One word served two ideas — the
   // image on a cell, and the border a walkthrough draws around one — and the
   // column took it. `slice_items` became `slides` in the same migration; the
   // IR never carried that table, so only the cell field moves here.
   '2026.09.03',
   '2026.09.02',
-  // The dependency kinds became `leads_to` and `enables` (#94). Not a pair of
+  // The dependency kinds became `leads_to` and `enables`. Not a pair of
   // renames: `needs` put the source at the opposite end from `enables`, so
   // 21000114000000 and the IR step both TURN those edges around. This is the
   // only bump so far that moves authored content, so it is the only one that
   // can change a signed scenario's content hash.
   '2026.09.01',
-  // `cells.links` split into `resources` and `cell_touchpoints` (#91). One
+  // `cells.links` split into `resources` and `cell_touchpoints`. One
   // column held what a cell points at and the prose about a touchpoint used
   // at it; the IR splits with it, so a 2026.08.27 file authors a `links`
   // array this template no longer reads.
   '2026.08.31',
   // propositions → business_models, the last row of the vocabulary map that
-  // applied to this package (#84). `evidence.proposition_question_key` keeps
+  // applied to this package. `evidence.proposition_question_key` keeps
   // the word on purpose: the three validation questions ARE propositions.
   '2026.08.27',
   // The IR can author a `needs` edge: dependency edges carry an optional

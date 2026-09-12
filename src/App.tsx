@@ -94,7 +94,7 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
                 {/*
                  * One unscoped read of `touchpoints.tone` and `.aliases` for
                  * the whole session, published to the module store every
-                 * touchpoint face resolves its colour through (#326 S6).
+                 * touchpoint face resolves its colour through.
                  */}
                 <TouchpointRegistryProvider>
                   <EditorProvider>

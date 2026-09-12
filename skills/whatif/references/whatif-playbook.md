@@ -22,8 +22,8 @@ is the **comparison markdown** (`whatif/<key>/comparison.md`), which cites
 cell keys from both versions and quotes nothing.
 
 Record at analysis time: the base sign-off hashes, **per scenario**
-(workspace-state.md is canonical: sign-off binds per scenario, friction
-#19). For every scenario in scope, embed its recorded `content_hash`
+(workspace-state.md is canonical: sign-off binds per scenario, not per
+file). For every scenario in scope, embed its recorded `content_hash`
 (from the workspace's `scenarios` entry; recompute with
 `scripts/compute_signoff_hash.py <ir> --scenario <key>` when checking)
 keyed by scenario key in `base_signoff_hashes`. Legacy workspaces that

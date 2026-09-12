@@ -97,7 +97,7 @@ describe('the editor shell', () => {
     // here is the whole entered editor: 272 buttons, and half this test's
     // cost. Asked of `screen` the test ran 1.65 s in a full suite and over
     // 5 s once the machine was busy, which is vitest's default `testTimeout`
-    // and is what the suite was failing on (#621). Scoped to the rail it is
+    // and is what the suite was failing on. Scoped to the rail it is
     // four buttons, the test runs 0.82 s, and the assertion is the stronger
     // one anyway: the panel controls are IN the rail, not loose in the page.
     const rail = document.querySelector('[data-editor-rail]')

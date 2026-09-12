@@ -6,11 +6,11 @@ import { classLists, type ClassListSite } from '@/lib/classList'
 import { sourceFiles } from '@/lib/tokenModel'
 
 /**
- * #545: the cover, the mobile shell, the error boundary, and the shared
- * style helpers land on the new ladder. ADR 0012.
+ * The cover, the mobile shell, the error boundary, and the shared style
+ * helpers land on the new ladder. ADR 0012.
  *
  * The reader is `classLists` — a quoted-string search misses a token split
- * across `cn()` arguments. #537 retired the panel role layer, so these
+ * across `cn()` arguments. The panel role layer is retired, so these
  * surfaces name no rung below `xs`.
  */
 
