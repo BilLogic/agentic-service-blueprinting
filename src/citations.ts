@@ -160,11 +160,25 @@ const COMMENTED = /\.(?:ts|tsx|js|jsx|mjs|cjs|css)$/
  * `ISSUE_NUMBER.test('…')` is not a test declaration: the pattern is
  * anchored, so the name has to START with `it`, `test` or `describe` rather
  * than end with it.
+ *
+ * AN ASSERTION IS SPELLED SEVERAL WAYS AND THE MESSAGE MOVES WITH THE
+ * SPELLING. `assert.deepEqual(actual, expected, message)` is what the script
+ * suites write, and a pattern matching a bare `assert` read every one of
+ * those messages as data. So the forms are named, and named separately,
+ * because the argument the message occupies is the difference between them:
+ * `assert(value, message)` and `assert.ok(value, message)` narrate from
+ * argument 1, and every comparison — `equal`, `deepEqual`, `match`, `throws`,
+ * `rejects` and their negations — puts an EXPECTED VALUE at 1 and the message
+ * at 2. Reading the expected value would turn `assert.equal(swatch,
+ * '#475569')` into a citation, which is the fixture case this whole model
+ * exists to keep out.
  */
 const NARRATED: { call: RegExp; reads: (argument: number) => boolean }[] = [
   { call: /^(?:describe|it|test|suite|bench)(?:\.\w+)*$/, reads: (argument) => argument === 0 },
   { call: /^(?:[A-Z]\w*)?Error$/, reads: (argument) => argument === 0 },
-  { call: /^(?:expect|assert|invariant)$/, reads: (argument) => argument >= 1 },
+  { call: /^(?:expect|invariant)(?:\.\w+)*$/, reads: (argument) => argument >= 1 },
+  { call: /^assert(?:\.ok)?$/, reads: (argument) => argument >= 1 },
+  { call: /^assert\.\w+$/, reads: (argument) => argument >= 2 },
 ]
 
 /**
@@ -201,8 +215,17 @@ export function proseLines(source: string, path: string): ProseLine[] {
     held = ''
   }
 
-  /** The calls still open, innermost last, and the argument each is inside. */
-  const open: { call: string; argument: number }[] = []
+  /**
+   * The calls still open, innermost last, the argument each is inside, and how
+   * deep inside a literal that argument has gone.
+   *
+   * `depth` is what makes the argument index an ARGUMENT index rather than a
+   * comma count. Frames are pushed by `(`, so without it every comma inside an
+   * object or an array literal bumped the enclosing call: `expect({ a: 1, b:
+   * '#645' })` moved the walk to argument 1, where `expect` narrates, and a
+   * fixture read as a citation. A brace or a bracket holds its own commas.
+   */
+  const open: { call: string; argument: number; depth: number }[] = []
 
   /**
    * The name of the call an argument list belongs to.
@@ -271,14 +294,22 @@ export function proseLines(source: string, path: string): ProseLine[] {
       }
       index = stop
     } else if (char === '(') {
-      open.push({ call: callee(index), argument: 0 })
+      open.push({ call: callee(index), argument: 0, depth: 0 })
       index += 1
     } else if (char === ')') {
       open.pop()
       index += 1
+    } else if (char === '{' || char === '[') {
+      const here = open[open.length - 1]
+      if (here !== undefined) here.depth += 1
+      index += 1
+    } else if (char === '}' || char === ']') {
+      const here = open[open.length - 1]
+      if (here !== undefined && here.depth > 0) here.depth -= 1
+      index += 1
     } else if (char === ',') {
       const here = open[open.length - 1]
-      if (here !== undefined) here.argument += 1
+      if (here !== undefined && here.depth === 0) here.argument += 1
       index += 1
     } else if (char === '\\') {
       index += 2
