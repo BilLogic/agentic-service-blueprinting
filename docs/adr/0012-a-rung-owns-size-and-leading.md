@@ -1,5 +1,5 @@
 ---
-summary: A text style is a rung, a weight and a colour — the rung owns size and leading, the call site owns weight and tracking, two ladders are selected by face, a semantic type-role layer is the alternative this tree already tried, and the four panel judgements that layer held live in this record.
+summary: A text style is a rung, a weight and an ink — the rung owns size and leading, the call site owns weight, tracking and a named ink rung rather than an opacity, two ladders are selected by face, a semantic type-role layer is the alternative this tree already tried, and the four panel judgements that layer held live in this record.
 ---
 
 # 12. A rung owns size and leading; a call site owns weight and tracking
@@ -13,9 +13,9 @@ issue #531
 
 Colour has ADR 0008 and a guard, and that pairing is why colour has not
 drifted while type has. Type has neither. The stylesheet already states a
-weight rule at `theme.css:441-442` — *no weight overrides: Supabase defines
-none* — and the tree runs four weights, because a comment in a stylesheet is
-not a decision anyone is pointed at.
+weight rule at `theme.css:441-442` — *no weight overrides* — and the tree
+runs four weights, because a comment in a stylesheet is not a decision anyone
+is pointed at.
 
 Someone adding a label, a caption or a heading has no way to ask for a *kind
 of text*. They pick a size, a weight and a colour from utilities, and the
@@ -33,18 +33,19 @@ below anything legible. `text-2xs` (11px) through `text-5xs` (8px) carry 110
 call sites between them. Two of those rungs exist because a container was
 sized first and the text shrunk to fit it.
 
-The reference is Supabase's type system, measured from their shipped CSS,
-not inferred. Two numbers are deliberately not taken. Taking a system's
-mechanism while refusing two of its values is the kind of decision that
-looks like an oversight in six months unless it is written down.
+The ladder below was derived by measuring shipped CSS rather than by
+inference, and two of the numbers that measurement offered are deliberately
+not taken. Adopting a mechanism while refusing values that came with it looks
+like an oversight in six months unless the refusal is written down, so it is
+written down here.
 
 ## Decision
 
 **A text style has five axes: size, weight, family, leading, ink.** A rung
-owns size and leading. A call site owns weight, tracking and ink — and each
-of those three it writes by naming one of a closed set, never by dialling a
-number of its own. Family is chosen by
-which of three registers the text belongs to, not by feel.
+owns size and leading. A call site owns weight, tracking and ink, and writes
+each of those three by naming one of a closed set — never by dialling a
+number of its own. Family is chosen by which of three registers the text
+belongs to, not by feel.
 
 **There is no semantic type-role layer.** `PANEL_TEXT` and any constant that
 names a role instead of a rung is the rejected alternative. Colour already
@@ -54,10 +55,10 @@ TypeScript constant of roles — and reached 3.9% adoption (28 call sites
 against 685 hand-written size-and-weight decisions). A constant is invisible
 in JSX: someone reading a component for a class name sees
 `className={PANEL_TEXT.sectionLabel}` and has to open another file to know
-what it renders. Supabase, the reference for this whole system, has no
-equivalent. Their labels and inputs write `text-sm` and `text-foreground`
-directly. Consistency comes from complete primitives and few of them. 3.9%
-after two years is evidence the shape is wrong, not that the effort was
+what it renders. Consistency comes from complete primitives and few of them,
+not from a dictionary of roles: a label writes `text-xs font-medium
+text-muted-foreground` where it stands, and a reader sees the whole style.
+3.9% after two years is evidence the shape is wrong, not that the effort was
 insufficient.
 
 ### A rung is declared twice and a ratio once
@@ -98,20 +99,18 @@ and rescale every rem-derived spacing and radius token.
 | `4xl` | 2.125rem · 34px | 2.25rem · 36px | `calc(2.5 / 2.25)` |
 | `5xl` | 2.875rem · 46px | 3rem · 48px | `1` |
 
-### Which of their numbers we declined
+### Two numbers declined, and why the refusals are written down
 
-Their `--font-weight-normal` is 450 in the sans scope and 400 in the mono
-scope. **Both scopes stay at 400 here.** 450 is an Inter compensation —
-their sans is Inter, which reads light at 400, and their mono scope does not
-get the bump because Source Code Pro does not need it. Our sans is Ubuntu
-Sans, which holds its colour at 400 down to 12px. Copying the number imports
-a correction for a problem this typeface does not have. The two-scope
-*mechanism* is taken so the knob exists; the number is not.
+**A normal weight above 400 is declined; both scopes stay at 400.** A sans
+scope set to 450 is a compensation for a typeface that reads light at 400.
+Ubuntu Sans holds its colour at 400 down to 12px, so the compensation would
+correct a problem this tree does not have. Declaring the weight *per scope*
+is worth keeping — the knob has to exist for the day a face needs it — and
+that is what is taken here: the mechanism, at the value this face wants.
 
-Their body also computes to 500 — medium-as-body. **Declined.** With body at
-500 the next emphasis step is 600, which is already the heading weight, so
-labels and headings collapse onto one weight. At 400 there are three clean
-steps:
+**Body at 500 is declined.** With body at 500 the next emphasis step is 600,
+which is already the heading weight, so labels and headings collapse onto one
+weight. At 400 there are three clean steps:
 
 - **400** — all content: values, cell text, prose, meta, hints. The working
   weight.
@@ -127,18 +126,19 @@ hierarchy that size used to carry moves onto weight and colour.
 
 ### Family is three registers, not one
 
-Monospace is not "text a machine produced." That reading was withdrawn after
-measuring the reference: their docs chrome spends uppercase mono on nav
-headings and a wordmark. Ours, read across every call site rather than
-counted, does three distinct jobs. A call site belongs to at least one
+Monospace is not "text a machine produced." That reading was withdrawn
+because it does not survive contact with the call sites: uppercase mono on a
+nav heading or a wordmark is a typographic register, not a claim about where
+the string came from. Read across every call site rather than counted, this
+tree's monospace does three distinct jobs. A call site belongs to at least one
 register and may name two; what it may not be is none. The map is #536.
 
 1. **Code, identifiers and stored values** — model ids, API keys, error
    payloads, inline and fenced code, a stored enum shown as the value it is.
 2. **Aligned numerals** — always beside `tabular-nums`; the two travel
    together. Digit alignment, not a claim that the text is machine-generated.
-3. **Eyebrow and wordmark** — uppercase section labels and marks, the
-   register the reference also spends.
+3. **Eyebrow and wordmark** — uppercase section labels and marks, set in
+   mono for the even colour of its caps rather than for provenance.
 
 Register 2 is the only one that may pair with a numeric utility; register 3
 is the only one that may pair with tracking. Sans is the default and covers
@@ -184,9 +184,9 @@ confused.
 `theme.css:520-522` — *No `--text-*--line-height` on purpose: the utilities
 set font-size only… call sites keep their own `leading-*`.* The original
 argument was about what a utility should do. The counter-evidence is what
-the tree looks like after two years of it: 70 authored leading values
-across 14 distinct spellings, against two on the reference's live page. The
-rung now supplies the box. A call site writes `leading-*` only where it
+the tree looks like after two years of it: 70 authored leading values across
+14 distinct spellings, where a page whose rungs carry their own boxes needs
+two. The rung now supplies the box. A call site writes `leading-*` only where it
 overrides for deliberate geometry, and that override carries a comment
 naming which.
 
@@ -202,8 +202,8 @@ the text's job, never to fit a container.
 ## What this rejects
 
 **A semantic type-role layer** (`PANEL_TEXT` grown until every call site
-asks for a role by name). Tried; 3.9% adoption; invisible at the call site;
-the reference has none. The constant is retired. The four jobs it named
+asks for a role by name). Tried; 3.9% adoption; invisible at the call site.
+The constant is retired. The four jobs it named
 are rules here, written at the call site as a rung, a weight and a colour:
 
 - **title** — a panel's heading is `text-sm`, semibold (600), full ink.
@@ -216,12 +216,13 @@ are rules here, written at the call site as a rung, a weight and a colour:
 Under the ladder, title and value share `sm`; meta and sectionLabel share
 `xs`. Weight and colour separate them: 600 / 400 and 500 / 400-muted.
 
-**One register for monospace**, "machine-generated, full stop." It would
-break aligned numerals and the eyebrow register while claiming the
-reference as its authority, which the measurement contradicts.
+**One register for monospace**, "machine-generated, full stop." It breaks
+aligned numerals and the eyebrow register, both of which are typographic
+choices that have nothing to do with how the string was produced.
 
-**Copying their 450 and their body-at-500.** Mechanism, not those two
-numbers.
+**Adopting a borrowed 450 and a borrowed body-at-500.** Take a mechanism when
+it earns its place here; take a number only when this tree's own typeface and
+hierarchy ask for it.
 
 **A root font-size, on any platform.** Accessibility is the user's setting.
 Responsive type stays a per-utility `md:` decision.

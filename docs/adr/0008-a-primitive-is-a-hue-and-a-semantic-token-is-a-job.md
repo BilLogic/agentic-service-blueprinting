@@ -11,20 +11,20 @@ summary: A primitive is named for its hue and a semantic token for its job, with
 
 ## Context
 
-This colour system was ported from Supabase's, and most of it is theirs: the
-layer split, the formula shapes, the rule that components consume the semantic
-layer and never the ramps, the decision to name border strengths instead of
-dialling alphas at the call site. Where a value here is written the way theirs
-is written, that is not coincidence and should not be "improved".
+This colour system was ported, and most of its shape came with it: the layer
+split, the formula shapes, the rule that components consume the semantic layer
+and never the ramps, the decision to name border strengths instead of dialling
+alphas at the call site. Where a value here is written the way the source wrote
+it, that is not coincidence and should not be "improved".
 
 But a port carries two things that look identical in a diff and are not: a
-judgement somebody made, and an artefact of how the source file happens to be
-produced. Their stepped scales are literal because a Figma build step wrote
-them in 2023, and the OKLCH derivation arrived three years later *beside* that
-export rather than replacing it — the literals are a generator's output and a
-generator maintains them. Ours were literal because we copied the shape of a
-file we do not generate. The same characters, and only one of the two has
-anything keeping it true.
+judgement somebody made, and an artefact of how the source file happened to be
+produced. A literal stepped scale is a judgement when a build step writes it and
+a generator keeps it true; it is an artefact when it arrives here by copy, into a
+repo that generates nothing, where the same characters have nothing keeping them
+true. The rule this record turns on is the second case: a value whose truth
+depended on a process we did not also port is not a value, it is a snapshot, and
+it gets derived here or it drifts.
 
 Five divergences have accumulated, each settled by measuring rather than by
 taste, and each one was re-derived by somebody at least once before it was

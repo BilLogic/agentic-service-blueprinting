@@ -19,20 +19,22 @@ naming the reason, so a re-vendor is a merge rather than a surprise.
 
 ## Considered Options
 
-The obvious alternative — edit the vendored file, because it is right there and
-the change is small — is what upstream Supabase does, and it is the reason we are
-writing this down. Measured on `supabase/supabase` @ master (2026-08-22): **35 of
-51** files in `packages/ui/src/components/shadcn/ui/` carry Supabase-specific
-tokens or helpers, with no patch file, no diff record, and no note in
-`components.json`. Their `button.tsx` imports a local `getExplicitTabIndex` helper;
-re-running `npx shadcn add button` would silently delete it. They built the right
-layer — `packages/ui-patterns/` as a separate package — and then forked the layer
-below it anyway.
+The obvious alternative is to edit the vendored file, because it is right there
+and the change is small. It is rejected, and the reason is not tidiness: the
+vendored directory is *generated*. `npx shadcn add <name>` overwrites it from the
+registry, and an edit made in place leaves no patch file, no diff record and no
+note in `components.json` — so the next re-vendor deletes the change silently, and
+the surface that depended on it breaks somewhere else. One local helper imported
+into a vendored `button.tsx` is enough to turn a routine upgrade into a
+regression nobody attributes to the upgrade.
 
-The payoff for holding the boundary is visible in their own numbers: their pattern
-layer runs roughly 340 semantic-token classes against 11 raw primitive-colour
-utilities, while `apps/studio`, which composes primitives directly, runs 143 raw
-primitive-colour occurrences across 64 files. The discipline lives in the layer.
+Two habits follow, and they are the whole discipline. Product behaviour lives one
+layer up, in a wrapper that the generator never touches. Where a divergence in the
+vendored file is genuinely unavoidable, it carries a header comment naming the
+reason, so a re-vendor is a merge with a question attached rather than a surprise.
+A codebase that composes primitives directly accumulates raw primitive utilities
+at every call site; one that composes a pattern layer accumulates them in the
+pattern layer, where they can be counted and changed at once.
 
 ## Consequences
 
