@@ -17,7 +17,7 @@
 
   <rect x="0" y="-44" width="880" height="544" rx="14" fill="#eef1f5" stroke="#e2e4e9"/>
 
-  <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Inside a single path</text>
+  <text x="16" y="-18" font-size="15" font-weight="700" fill="#273036">Inside one path</text>
 
   <!-- Path sheets: variants stacked behind -->
   <rect x="130" y="22" width="580" height="424" rx="10" fill="#eceef2" stroke="#d4d4da"/>
