@@ -29,13 +29,28 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { resolve } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import {
   archivingFunctions,
   archivingFunctionsIn,
 } from '../authoring-archivers.mjs'
-import { ARCHIVED_BY_THE_DATABASE } from '../../src/lib/authoringLog.ts'
+// Through the alias, not up two directories. The client half of this seam is
+// APPLICATION source, and a deployment that reads the application out of the
+// package has no `src` to walk up into — `../../src/lib/…` is a file that is
+// not there, and the suite cannot even load. `@/…` is the same two roots the
+// build resolves, so this import lands on whichever one holds the application.
+import { ARCHIVED_BY_THE_DATABASE } from '@/lib/authoringLog.ts'
 
+/**
+ * The SQL half is the READING repository's own, and stays a plain path.
+ *
+ * The application is shared and the migration series is not: two repositories
+ * running this application apply their own migrations, so the question this
+ * test asks — does the client skip exactly what THIS database archives — is
+ * asked of the local series against the mounted client.
+ */
 const MIGRATIONS = resolve(
   new URL('../..', import.meta.url).pathname,
   'supabase/migrations',
@@ -58,10 +73,32 @@ $$;
 `
 
 test('the client skips exactly the SQL functions that archive', () => {
-  assert.deepEqual(
-    [...ARCHIVED_BY_THE_DATABASE].sort(),
-    archivingFunctionsIn(MIGRATIONS),
+  const archivers = archivingFunctionsIn(MIGRATIONS)
+  // Both halves are asserted present before they are compared, because the
+  // one thing this assertion cannot notice on its own is having nothing to
+  // compare: an empty skip set and an empty sweep agree perfectly, and the
+  // agreement is what a reader takes away from the green line.
+  assert.ok(
+    ARCHIVED_BY_THE_DATABASE.size > 0,
+    'the client skips no function at all, so this comparison holds nothing',
   )
+  assert.ok(
+    archivers.length > 0,
+    `no archiving function in ${MIGRATIONS}, so this comparison holds nothing`,
+  )
+  assert.deepEqual([...ARCHIVED_BY_THE_DATABASE].sort(), archivers)
+})
+
+test('a migration directory with nothing in it is a failure, not an empty set', () => {
+  // The shape the assertion above cannot see from the inside: a sweep that
+  // read the wrong directory reports no archivers, and no archivers matches a
+  // client that skips nothing.
+  const empty = mkdtempSync(join(tmpdir(), 'migrations-'))
+  try {
+    assert.throws(() => archivingFunctionsIn(empty), /no \.sql files/)
+  } finally {
+    rmSync(empty, { recursive: true, force: true })
+  }
 })
 
 test('a seventh archiving function is reported, not absorbed', () => {
