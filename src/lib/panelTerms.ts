@@ -75,7 +75,7 @@ export const ENTITY_KIND_DEFINITIONS = {
   step: {
     label: 'Step',
     definition:
-      'A column of the board: one moment in time, read down every lane at once. Steps run left to right.',
+      'One moment in time, read down every lane at once. Steps run left to right.',
   },
   lane: {
     label: 'Lane',

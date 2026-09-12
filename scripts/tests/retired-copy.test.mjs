@@ -9,25 +9,66 @@
  * when the table says `lanes`. It is true today because `21000104` was done
  * carefully by hand, which is not a mechanism.
  *
- * SUBJECT: JSX text nodes, and the props that reach a reader — `aria-label`,
- * `title`, `placeholder`, `alt`, `label`. Nothing else. Not comments, not
- * identifiers, not imports, not test files, not `data-*`, and not a string that
- * names a database object — that is Check B, a different check with a different
+ * SUBJECT: JSX text nodes; the props that reach a reader, named one by one in
+ * `READER_FACING_PROPS`; the copy a component assembles into a named local
+ * before handing it to one of those props; and the string content of the
+ * modules enrolled in `COPY_MODULES`. Nothing else. Not comments, not
+ * identifiers, not imports, not `data-*`, and not a string that names a
+ * database object — that is Check B, a different check with a different
  * subject.
  *
  * IF THIS PRODUCES A FALSE POSITIVE, NARROW THE SUBJECT — NEVER THE WORD LIST.
- * Fewer prop names, fewer node kinds. Dropping `layer` from the word list to
- * silence one legitimate use converts this into a rule that never covered
- * `layer` at all, and the next person cannot tell the difference.
+ * Fewer prop names, fewer node kinds, one module off the enrolment. Dropping
+ * `layer` from the word list to silence one legitimate use converts this into a
+ * rule that never covered `layer` at all, and the next person cannot tell the
+ * difference.
  *
  * `CanvasAnnotationLayer` is the case that tests this. It is a rendering layer
  * and a legitimate use of the word — but it is an identifier, and identifiers
  * are not the subject, so it needs no exemption. If it ever reaches a label a
  * user reads, the honest fix is to rename the label, not the list.
+ *
+ * ── WHAT THIS GUARD DOES NOT SEE ───────────────────────────────────────────
+ *
+ * #628 found three strings on screen that every check here passed, and the
+ * three escaped along three different edges. Two of those edges are now read
+ * and the rest are not, so they are written down: a guard whose blind spots are
+ * stated is worth more than one that reads as complete and is not. Each of
+ * these is a place a retired word can reach a reader today with nothing
+ * reporting it.
+ *
+ * - **A `.ts` module that is not enrolled.** `panelTerms.ts` and
+ *   `sliceValidation.ts` are read because `COPY_MODULES` names them, and
+ *   nothing puts the NEXT copy module on that list except a person. A blanket
+ *   sweep of `src/**` was measured instead of assumed and is not the answer:
+ *   46 strings in `.ts` files carry a retired spelling and 44 of them are
+ *   nobody's copy — a dev-only arrow catalogue naming layout columns, the
+ *   agent tool descriptions, `compareGridTracks`'s CSS track names,
+ *   `monoRegisters`'s "not a numeral column". Reading them all would force an
+ *   exemption apiece, and an exemption list is where a real finding hides.
+ * - **`src/content/coverContent.ts`, specifically.** It is reader-facing copy
+ *   by its own header — every string on the landing view — and it is NOT
+ *   enrolled, because two of its sentences say "one shared context layer" in
+ *   the software-tier sense, and the rename map's `layers` → `lanes` row
+ *   decides that collision by arguing a `.ts` module reaches no reader. On this
+ *   one file that argument is untrue. Which way it should fall is a ruling
+ *   about the word, not a fix to this guard, so it is named here and left.
+ * - **The interpolated half of a template literal.** `` `Unknown ${label}.` ``
+ *   is read as "Unknown ." — the guard sees the literal chunks and never what
+ *   the expression evaluates to, so a retired word reaching a reader through a
+ *   variable is invisible to every subject below.
+ * - **Copy assembled anywhere but a named local.** A `*Label` / `*Text` /
+ *   `*Hint` / `*Message` / `*Description` / `*Caption` binding is read; a
+ *   sentence built in a `.map`, a helper's return value, or a local called
+ *   something else is not.
+ * - **A reader-facing prop nobody added.** The list below has to name each one,
+ *   and a new prop is unread until it does. It was re-derived for #628 from
+ *   every prop in the tree carrying a prose string literal, which is a census
+ *   of today and not a mechanism.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { scannedFiles } from '../check-standalone.mjs'
 import { sourceFilesUnder } from '../check-database-names.mjs'
@@ -36,8 +77,38 @@ import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
-/** The props whose string value a person reads. */
-const READER_FACING_PROPS = ['aria-label', 'title', 'placeholder', 'alt', 'label']
+/**
+ * The props whose string value a person reads.
+ *
+ * Five of these are the HTML and ARIA attributes the guard started with. The
+ * rest are this tree's own panel vocabulary, added for #628 after `hint` —
+ * the popover under a field label — turned out to carry a retired word past
+ * every check. They were not guessed: every prop in every `.tsx` whose value
+ * is a prose string literal was listed, and these are the ones a person reads.
+ * What was left out is left out on purpose — `className` and
+ * `triggerClassName`, SVG's `d`, `viewBox`, `transform` and `strokeDasharray`,
+ * and `rel`. None of them is copy.
+ *
+ * A census is not a mechanism, which the header says out loud: the next
+ * reader-facing prop is unread until somebody puts it here.
+ */
+const READER_FACING_PROPS = [
+  'aria-label',
+  'ariaLabel',
+  'title',
+  'placeholder',
+  'alt',
+  'label',
+  'hint',
+  'description',
+  'summary',
+  'meta',
+  'message',
+  'closeLabel',
+  'triggerLabel',
+  'addLabel',
+  'removeLabel',
+]
 
 const PROP_VALUE = new RegExp(
   `\\b(${READER_FACING_PROPS.join('|')})\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{\\s*['"\`]([^'"\`]*)['"\`]\\s*\\})`,
@@ -52,6 +123,38 @@ const PROP_VALUE = new RegExp(
  * before anyone hears about it.
  */
 const JSX_TEXT = />([^<>{}]+)</g
+
+/** A single-quoted, double-quoted or backticked literal, wherever it sits. */
+const STRING_LITERAL = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g
+
+/**
+ * A literal's readable half, with every `${…}` blanked.
+ *
+ * The blanking is what makes a template literal readable at all — without it
+ * `` `Unknown ${draft.sliceKind}.` `` carries an identifier into the match and
+ * a retired NAME in an expression reads as a retired WORD on screen, which is
+ * Check B's subject and not this one. It is also the limit the header states:
+ * what the expression evaluates to is gone, so only the authored chunks around
+ * it are ever read. An interpolation containing a brace of its own —
+ * `${flag ? {a: 1} : 2}` — blanks only as far as the first `}`, which
+ * under-reads and never over-reads.
+ */
+export function literalText(raw) {
+  return raw.replace(/\$\{[^}]*\}/g, ' ')
+}
+
+/**
+ * A local whose NAME says it holds copy.
+ *
+ * `StepPanel` assembled "different columns on 3 paths" into `positionLabel`
+ * and handed it to a prop, so the prop scan saw an identifier and the text
+ * scan saw nothing — #628's fourth string, found by widening to this. Keyed on
+ * the suffix rather than on where the value goes, because a binding called
+ * `positionLabel` has already declared what it is; the six suffixes cover 77
+ * strings in this tree and none of them is anything but copy.
+ */
+const COPY_BINDING =
+  /^([ \t]*)const\s+[A-Za-z0-9_$]*(?:Label|Text|Hint|Message|Description|Caption)\s*=/gm
 
 /** Each retired spelling as a whole-word pattern, spaces matching any run. */
 const PATTERNS = RETIRED_COPY_WORDS.map((word) => ({
@@ -90,6 +193,25 @@ function appFiles() {
     }))
 }
 
+/**
+ * A copy binding's initialiser, as source text.
+ *
+ * It runs from the `const` to the first line that is blank or indented no
+ * deeper than the `const` itself — a continuation is always indented past its
+ * own statement, and a blank line ends one in every file this tree writes.
+ * Capped, so a binding that somehow never terminates cannot swallow a module.
+ */
+function bindingSource(code, start, indent) {
+  const lines = code.slice(start).split('\n')
+  const taken = [lines[0]]
+  for (const line of lines.slice(1, 40)) {
+    if (line.trim() === '') break
+    if (/^\s*/.exec(line)[0].length <= indent.length) break
+    taken.push(line)
+  }
+  return taken.join('\n')
+}
+
 /** Every reader-facing string in the app, with where it came from. */
 export function readerFacingStrings(files = appFiles()) {
   const out = []
@@ -102,6 +224,13 @@ export function readerFacingStrings(files = appFiles()) {
     for (const match of code.matchAll(JSX_TEXT)) {
       const value = match[1].trim()
       if (value && /[A-Za-z]/.test(value)) out.push({ file, where: 'text', value })
+    }
+    for (const match of code.matchAll(COPY_BINDING)) {
+      const source = bindingSource(code, match.index, match[1])
+      for (const literal of source.matchAll(STRING_LITERAL)) {
+        const value = literalText(literal[1] ?? literal[2] ?? literal[3] ?? '').trim()
+        if (value && /[A-Za-z]/.test(value)) out.push({ file, where: 'copy binding', value })
+      }
     }
   }
   return out
@@ -151,6 +280,67 @@ test('the guard reads the props and the text nodes it claims to', () => {
     '"row position"',
     '"service scenario"',
   ])
+})
+
+test('the panel props a reader reads are read too', () => {
+  // #628's third string was a `hint`, and the prop list did not name it. Every
+  // prop added with it is planted here: a list that names a prop and does not
+  // read it is the same silence as not naming it.
+  const planted = [
+    {
+      file: 'components/planted.tsx',
+      code: [
+        '<PanelTextareaField hint="the sentence that makes the column legible" />',
+        '<PanelHeader description="a service scenario, end to end" closeLabel="Close the layer" />',
+        '<PanelIdentity meta="different columns on 3 paths" />',
+        '<EmptyState summary="No lifecycle yet" />',
+        '<PanelErrorBoundary message="This slice item failed to display." />',
+        '<Expandable triggerLabel="Expand: row position" />',
+        '<KpiRows addLabel="Add a cell trigger" removeLabel="Remove a check name" />',
+        '<OwnerTagSelect ariaLabel="Perceived layer" />',
+      ].join('\n'),
+    },
+  ]
+  const found = offenders(readerFacingStrings(planted)).map((one) => one.split(' — ')[1])
+  assert.deepEqual(found.sort(), [
+    '"cell trigger"',
+    '"check name"',
+    '"column"',
+    '"columns"',
+    '"layer"',
+    '"layer"',
+    '"lifecycle"',
+    '"row position"',
+    '"service scenario"',
+    '"slice item"',
+  ])
+})
+
+test('a sentence assembled into a named local is read', () => {
+  // The shape that got past the prop scan: the prop holds an identifier and
+  // the sentence was built three lines above it. The binding after it has to
+  // stay out of the first one's initialiser, which is what the indent rule is
+  // for, and `positionClass` is not copy and is not read.
+  const planted = [
+    {
+      file: 'components/planted.tsx',
+      code: [
+        '  const positionLabel =',
+        '    step.positions.length === 0',
+        '      ? `different columns on ${step.positions.length} paths`',
+        '      : null',
+        '  const positionClass = "flex-col gap-2"',
+        '',
+        '  return <PanelIdentity meta={positionLabel} className={positionClass} />',
+      ].join('\n'),
+    },
+  ]
+  const strings = readerFacingStrings(planted).filter((one) => one.where === 'copy binding')
+  assert.deepEqual(strings.map((one) => one.value), ['different columns on   paths'])
+  assert.deepEqual(
+    offenders(strings).map((one) => one.split(' — ')[1]),
+    ['"columns"'],
+  )
 })
 
 test('the guard does not read what it excludes', () => {
@@ -245,6 +435,99 @@ test('a step is not called a column on screen, and a layout column in code passe
   ]
   const found = offenders(readerFacingStrings(planted)).map((one) => one.split(' — ')[1])
   assert.deepEqual(found.sort(), ['"column"', '"columns"'])
+})
+
+/* --------------------------------------------------------- the copy modules */
+
+/**
+ * THIRD SUBJECT: the `.ts` modules whose job is the words themselves.
+ *
+ * Two of #628's three strings were here and not in any component: a definition
+ * in `panelTerms.ts` and a validation message in `sliceValidation.ts`. Neither
+ * is a prop and neither is a text node, so no amount of widening the first
+ * subject reaches them — a component that renders `PANEL_TERMS.step` renders an
+ * identifier, and the sentence is a field of a plain object one import away.
+ *
+ * ENROLMENT, NOT THE TREE, and the header says what that costs. A module earns
+ * a place here by holding copy and nothing else, so that EVERY string in it can
+ * be read without a single exemption; that is the property the tree as a whole
+ * does not have. Each entry says why in a sentence a stranger can check, and
+ * the paths are asserted to exist so a rename cannot quietly empty the list.
+ */
+const COPY_MODULES = [
+  {
+    path: 'src/lib/panelTerms.ts',
+    because:
+      'it is nothing but sentences a reader hovers to read — the two invented ' +
+      'words and the six entity kinds — and it holds no identifier, no class ' +
+      'name and no database name for a word list to trip over.',
+  },
+  {
+    path: 'src/lib/sliceValidation.ts',
+    because:
+      'every `message` it returns is shown to the author inline, in place of ' +
+      'the PostgREST error it exists to replace. Its own header says so.',
+  },
+]
+
+/** Every string in an enrolled copy module, comments and `${…}` removed. */
+export function copyModuleStrings(modules = COPY_MODULES) {
+  const out = []
+  for (const { path } of modules) {
+    const code = stripComments(readFileSync(resolve(REPO_ROOT, path), 'utf8'))
+    for (const literal of code.matchAll(STRING_LITERAL)) {
+      const value = literalText(literal[1] ?? literal[2] ?? literal[3] ?? '').trim()
+      if (value && /[A-Za-z]/.test(value)) out.push({ file: path, where: 'copy', value })
+    }
+  }
+  return out
+}
+
+test('no retired spelling reaches a reader from a copy module', () => {
+  const found = offenders(copyModuleStrings())
+  assert.deepEqual(
+    found,
+    [],
+    'A retired word is in a module whose whole job is the words a reader ' +
+      `reads. It reaches a popover or an inline error the same way a label ` +
+      `does:\n${found.join('\n')}`,
+  )
+})
+
+test('every enrolled copy module exists, and says why it is enrolled', () => {
+  // A list pointing at a renamed file reads exactly like a clean codebase.
+  assert.ok(COPY_MODULES.length > 0)
+  for (const entry of COPY_MODULES) {
+    assert.ok(existsSync(resolve(REPO_ROOT, entry.path)), `${entry.path} is gone`)
+    assert.ok(entry.because.length > 40, `${entry.path} says nothing about why`)
+  }
+  assert.ok(copyModuleStrings().length > 10, 'the copy modules parsed to almost no text')
+})
+
+test('the copy-module reader reads a plain field and a template literal', () => {
+  // The two shapes #628 escaped through, and the interpolation blanked out.
+  const planted = `
+    export const TERMS = {
+      step: { definition: 'A column of the board, read down every lane.' },
+    }
+    export function problem(draft) {
+      return { message: \`Unknown slice type “\${draft.sliceKind}”.\` }
+    }
+  `
+  const values = []
+  for (const literal of stripComments(planted).matchAll(STRING_LITERAL)) {
+    values.push(literalText(literal[1] ?? literal[2] ?? literal[3] ?? '').trim())
+  }
+  assert.deepEqual(values, [
+    'A column of the board, read down every lane.',
+    'Unknown slice type “ ”.',
+  ])
+  assert.deepEqual(
+    offenders(values.map((value) => ({ file: 'planted.ts', where: 'copy', value }))).map(
+      (one) => one.split(' — ')[1],
+    ),
+    ['"column"', '"slice type"'],
+  )
 })
 
 /* ------------------------------------------------------------- the figures */
