@@ -64,6 +64,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ALWAYS_LOADED } from './always-loaded.mjs'
+import { appPackageRoot } from './app-source.mjs'
 
 export const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
@@ -90,9 +91,31 @@ export function sectionName(raw) {
   return raw.slice(0, cut === -1 ? undefined : cut).replace(/[.,]$/, '').trim() || null
 }
 
-/** A pointer names a PLACE in this repo: its first path segment is a real top-level entry. */
+/**
+ * Where a pointer's first segment is looked for: this tree, or the application.
+ *
+ * A router points at `src/lib/…` as readily as at `docs/…`, and `src` is not a
+ * directory of this repository — it is the APPLICATION. In a deployment that
+ * reads the application out of the package there is no `src` at the root, so
+ * every pointer into it failed the place test, was dropped from the subject
+ * before it could be checked, and the count went quietly down by two. A pointer
+ * that is not resolved is not a pointer that resolved.
+ *
+ * A TREE WITH NO APPLICATION ANYWHERE THROWS, rather than falling back to its
+ * own root. The fallback was written first and was the same defect again: with
+ * neither root present the pointer failed the place test, was dropped, and the
+ * count went down by two in silence. `appPackageRoot` names both roots it
+ * looked in. Nothing is asked of it for a pointer that is not into the
+ * application, so a fixture tree with no `src/…` pointer in it never reaches
+ * this.
+ */
+function placeOf(root, rel) {
+  return /^src(?:\/|$)/.test(rel) ? appPackageRoot(root) : root
+}
+
+/** A pointer names a PLACE: its first path segment is a real top-level entry. */
 function isRepoRelative(root, rel) {
-  return existsSync(join(root, rel.split('/')[0]))
+  return existsSync(join(placeOf(root, rel), rel.split('/')[0]))
 }
 
 const stripFences = (text) => text.replace(/```[\s\S]*?```/g, '')
@@ -191,7 +214,7 @@ export function sweep(root = REPO_ROOT, subjects = SUBJECTS) {
     const text = readFileSync(join(root, rel), 'utf8')
     for (const pointer of pointersIn(text, root)) {
       pointers += 1
-      const abs = join(root, pointer.rel)
+      const abs = join(placeOf(root, pointer.rel), pointer.rel)
       if (!existsSync(abs)) {
         failures.push(`${rel}: pointer to \`${pointer.rel}\` does not resolve — no such file`)
         continue
@@ -230,6 +253,19 @@ const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(imp
 
 if (isMain) {
   const { failures, pointers, triggers } = sweep()
+  // A ROUTER WITH NO POINTERS IN IT IS A FAILURE HERE. Nothing else in this
+  // check can tell "every pointer resolved" from "there was nothing to
+  // resolve", and the second reads as the first every run after. It is the
+  // command that says so rather than `sweep`, because a document carrying no
+  // pointer is a case `sweep` is asked about directly — that is the failure it
+  // reports next door.
+  if (pointers === 0) {
+    console.error(
+      `[pointers] no pointer in ${SUBJECTS.join(', ')} — this sweep has no subject, ` +
+        'which is a failure and not a clean router.',
+    )
+    process.exit(1)
+  }
   if (failures.length > 0) {
     console.error(
       `[pointers] ${failures.length} pointer problem(s):\n` +

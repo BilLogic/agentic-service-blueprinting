@@ -51,9 +51,21 @@ import { existsSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { appFiles, appPackageRoot } from './app-source.mjs'
 import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+/**
+ * The application's own package — the second place a claimed path can be.
+ *
+ * Half of what these documents name is APPLICATION source: `src/lib/…`,
+ * `src/styles/…`, the adapter's ports. A deployment that reads the application
+ * out of the package has none of that in its own tree or in its commit, so
+ * every one of those claims resolved to nothing and the check reported thirty
+ * stale paths in documents that had not changed.
+ */
+const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
 /** The documents an installed plugin reads. */
 const SURFACE = ['skills/', 'references/', 'agents/', 'hooks/']
@@ -77,11 +89,28 @@ const WORKSPACE_ARTIFACTS = new Map([
   ['sweep_orphans.py', 'declared planned in whatif-playbook §4, with a skip'],
 ])
 
-/** Every tracked path, once. */
+/**
+ * Every path a claim can land on: this tree's commit, and the application.
+ *
+ * The commit is the right universe for the documents themselves and for
+ * everything this repository authors. It is the wrong one for the application
+ * exactly when the application is not in it — and the two lists are the same
+ * list in a tree that keeps its own `src`, which is why this went unnoticed.
+ *
+ * AN EMPTY LISTING IS A FAILURE. Every claim in every document resolves
+ * against this, so a listing that came back empty turns the check into one
+ * that reports every path stale, and a subject that is only the application
+ * turns it into one that cannot see its own documents.
+ */
 export function trackedPaths() {
-  return execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' })
+  const listed = execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' })
     .split('\n')
     .filter(Boolean)
+  if (listed.length === 0) {
+    throw new Error(`git lists no file under ${REPO_ROOT}: this check has no subject`)
+  }
+  const application = appFiles(REPO_ROOT, () => true, 'application file')
+  return [...new Set([...listed, ...application])].sort()
 }
 
 /** The documents under SURFACE. */
@@ -128,7 +157,9 @@ export function resolves(token, docDir, tracked) {
   const candidates = [bare, normalize(join(docDir, bare))]
 
   for (const candidate of candidates) {
-    if (!candidate.includes('*') && existsSync(join(REPO_ROOT, candidate))) return true
+    if (candidate.includes('*')) continue
+    if (existsSync(join(REPO_ROOT, candidate))) return true
+    if (existsSync(join(APP_PACKAGE, candidate))) return true
   }
 
   // Segment-aligned suffix of a tracked path — how the docs actually write.
