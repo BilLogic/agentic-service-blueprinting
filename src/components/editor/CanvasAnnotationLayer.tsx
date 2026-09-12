@@ -62,6 +62,10 @@ import {
 } from '@/components/ui/popover'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
+import {
+  createFramePatchQueue,
+  releasePointerCapture,
+} from '@/lib/pointerGestures'
 import { cn } from '@/lib/utils'
 
 type DraftPen = {
@@ -1369,6 +1373,20 @@ function TextAnnotationNode({
 }
 
 /**
+ * What a drag or a resize may change: the box, and the font size a sticky's
+ * corner scales with. Narrower than `Partial<CanvasAnnotation>` on purpose —
+ * merging two members of that union widens `type` into something assignable to
+ * none of them, and neither gesture touches `type` anyway.
+ */
+type AnnotationBoxPatch = {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  fontSize?: number
+}
+
+/**
  * FigJam-style annotation surface over the canvas: pen strokes, shapes, text and
  * stickies, plus their selection and resize chrome. Coordinates are board space,
  * so `zoom` is only needed where a hit radius must stay constant on screen.
@@ -1398,6 +1416,27 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
     radius: number
   } | null>(null)
   const eraserRafRef = useRef(0)
+  /*
+    A drag publishes ONCE A FRAME, not once a pointer sample.
+
+    Dragging or resizing a mark used to call `updateAnnotation` straight off
+    every raw `pointermove` — a hundred and twenty times a second on a
+    trackpad, each one replacing the annotation collection and re-rendering
+    every surface that reads it. The pen path in this file already keeps its
+    stroke in a ref and publishes on a frame, and the eraser below batches the
+    same way; this is that pattern applied to the third path, which was the
+    one left behind.
+  */
+  const updateAnnotationRef = useRef(updateAnnotation)
+  updateAnnotationRef.current = updateAnnotation
+  const boxPatchesRef = useRef(
+    // Through a ref, because the queue outlives the render that created it and
+    // a frame must write with the handler the component holds NOW.
+    createFramePatchQueue<AnnotationBoxPatch>((id, patch) =>
+      updateAnnotationRef.current(id, patch),
+    ),
+  )
+  const boxPatches = boxPatchesRef.current
   const [draft, setDraftState] = useState<Draft>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -1471,6 +1510,7 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
     () => () => {
       endStrokeListeners()
       eraserPendingRef.current = null
+      boxPatches.cancel()
     },
     // Mount/unmount only — refs keep listeners current.
     [],
@@ -1769,11 +1809,7 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
         )
       }
 
-      try {
-        layer?.releasePointerCapture(pointerId)
-      } catch {
-        // Already released.
-      }
+      releasePointerCapture(layer, pointerId)
 
       if (current?.type === 'pen') {
         finishPenStroke()
@@ -1946,9 +1982,9 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
           72,
           Math.max(10, Math.round(resize.originFontSize * scale)),
         )
-        updateAnnotation(resize.id, { fontSize })
+        boxPatches.schedule(resize.id, { fontSize })
       } else {
-        updateAnnotation(resize.id, next)
+        boxPatches.schedule(resize.id, next)
       }
       return
     }
@@ -1968,7 +2004,7 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
         setEditingId(null)
       }
       if (drag.moved) {
-        updateAnnotation(drag.id, {
+        boxPatches.schedule(drag.id, {
           x: drag.originX + dx,
           y: drag.originY + dy,
         })
@@ -1983,22 +2019,26 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
     const resize = resizeRef.current
     if (resize && resize.pointerId === event.pointerId) {
       event.stopPropagation()
-      layerRef.current?.releasePointerCapture(event.pointerId)
+      // The frame this interrupts still owes a patch — publish it before the
+      // state that names its subject is cleared.
+      boxPatches.flush()
       resizeRef.current = null
       setDraggingId(null)
       setSelectedId(resize.id)
+      releasePointerCapture(layerRef.current, event.pointerId)
       return
     }
 
     const drag = dragRef.current
     if (drag && drag.pointerId === event.pointerId) {
       event.stopPropagation()
-      layerRef.current?.releasePointerCapture(event.pointerId)
+      boxPatches.flush()
       dragRef.current = null
       setDraggingId(null)
       if (!drag.moved) {
         setSelectedId(drag.id)
       }
+      releasePointerCapture(layerRef.current, event.pointerId)
     }
   }
 
