@@ -44,12 +44,40 @@ const NOT_A_SWEEP = new Set([
   'scripts/repository-only.mjs',
 ])
 
-/** Every script, tests excluded — a fixture is allowed to name anything. */
+/**
+ * Test files whose every application path is a FIXTURE — an argument handed to
+ * a pure function, or a file written into a throwaway tree — and which fixture
+ * it is.
+ *
+ * THE WHOLE `tests/` TREE WAS SKIPPED BEFORE, on the ground that a fixture is
+ * allowed to name anything. That is true and it is not a reason to skip the
+ * tree: a test that SWEEPS the application has exactly the defect this fence
+ * exists for, and twenty-two of the twenty-six suites that name an application
+ * path already resolve through `app-source.mjs` and would have been read here
+ * from the first run. Naming the ones that do not is cheaper than meeting the
+ * thirty-first file with the defect.
+ */
+const FIXTURE_ONLY = new Map([
+  [
+    'scripts/tests/reference-paths.test.mjs',
+    'one path handed to `absences`, to prove it reports a file outside the plugin surface',
+  ],
+  [
+    'scripts/tests/rpc-arguments.test.mjs',
+    'a `src/lib` it creates inside a temporary directory of its own and deletes after',
+  ],
+  [
+    'scripts/tests/sample-content.test.mjs',
+    'the marker table and the `isScanned` cases, arguments to the extraction rather than reads of a tree',
+  ],
+])
+
+/** Every script, including the suites — `FIXTURE_ONLY` names the exceptions. */
 export function scriptsUnder(root) {
   const found = []
   const walk = (dir) => {
     for (const entry of readdirSync(dir).sort()) {
-      if (entry === 'tests' || entry.startsWith('.')) continue
+      if (entry.startsWith('.')) continue
       const path = join(dir, entry)
       if (statSync(path).isDirectory()) walk(path)
       else if (/\.(?:mjs|cjs|js|mts|cts|ts|py)$/.test(entry)) found.push(path)
@@ -125,7 +153,8 @@ export function resolvesTheApplication(code) {
 test('every script naming an application path either resolves it or says it is this repository’s', () => {
   const unresolved = []
   for (const script of scriptsUnder(REPO_ROOT)) {
-    if (NOT_A_SWEEP.has(script) || REPOSITORY_ONLY_SCRIPTS.includes(script)) continue
+    if (NOT_A_SWEEP.has(script) || FIXTURE_ONLY.has(script)) continue
+    if (REPOSITORY_ONLY_SCRIPTS.includes(script)) continue
     const code = readFileSync(join(REPO_ROOT, script), 'utf8')
     const paths = applicationPathsIn(code, script.endsWith('.py'))
     if (paths.length === 0 || resolvesTheApplication(code)) continue
@@ -137,9 +166,10 @@ test('every script naming an application path either resolves it or says it is t
     'These scripts name a path into the application and never ask where the ' +
       'application is. In a deployment that reads it out of the package there ' +
       'is no `src`, so each one either fails there or sweeps nothing and ' +
-      'reports success. Resolve through scripts/app-source.mjs, or add the ' +
+      'reports success. Resolve through scripts/app-source.mjs, add the ' +
       'script to scripts/repository-only.mjs with the reason it measures this ' +
-      `repository alone:\n${unresolved.join('\n')}`,
+      'repository alone, or — if it is a suite whose paths are all fixtures — ' +
+      `to FIXTURE_ONLY beside this test, with the fixture named:\n${unresolved.join('\n')}`,
   )
 })
 
@@ -153,6 +183,20 @@ test('the sweep read scripts, and enough of them to mean something', () => {
     scripts.includes('scripts/app-source.mjs'),
     'the walk did not reach scripts/app-source.mjs, so it is not reading scripts/',
   )
+  assert.ok(
+    scripts.includes('scripts/tests/retired-copy.test.mjs'),
+    'the walk did not reach the suites, which is the tree it used to skip whole',
+  )
+})
+
+test('a fixture exemption names a file that is here, and the fixture it is', () => {
+  // Same shape as the repository-only list next door. An exemption naming a
+  // file nobody has exempts nothing and says it did; one with no reason is a
+  // judgement the next reader has to make again from scratch.
+  for (const [script, why] of FIXTURE_ONLY) {
+    assert.ok(existsSync(join(REPO_ROOT, script)), `${script} is exempted and is not here`)
+    assert.ok(why.length > 40, `${script} is exempted without a reason worth reading`)
+  }
 })
 
 test('every repository-only script is a file that is here, with a reason', () => {
@@ -180,7 +224,10 @@ test('a repository-only listing is not a place to park an application sweep', ()
   for (const entry of REPOSITORY_ONLY) {
     const code = readFileSync(join(REPO_ROOT, entry.script), 'utf8')
     const writes = /writeFileSync|copyFileSync|mkdirSync|\bPath\(|\.write_text\(/.test(code)
-    const listsTheCommit = /ls-files/.test(code)
+    // `scannedFiles` IS the `git ls-files` sweep, exported so a second suite
+    // can ask the same question of the same listing; a caller of it is asking
+    // what this commit would carry as surely as the shell-out is.
+    const listsTheCommit = /ls-files|\bscannedFiles\b/.test(code)
     if (!writes && !listsTheCommit) wrong.push(entry.script)
   }
   assert.deepEqual(

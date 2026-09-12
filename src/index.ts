@@ -46,12 +46,6 @@ export {
   type StoryboardConfig,
 } from './deploymentConfig'
 /**
- * The cover's content model, exported because `DeploymentConfig.cover` takes a
- * whole one: a host writes its landing page as a typed module of its own, and
- * without these it would be writing it against a type it cannot name. Types
- * only — the renderers stay internal, which is the point of the split.
- */
-/**
  * The diagrams this package draws of its own model, ready to place on a cover.
  *
  * A VALUE, not a type, and the only one on this seam — because these are the
@@ -63,6 +57,12 @@ export {
  */
 export { packageCoverFigures } from './components/cover/packageCoverFigures'
 export type { PackageCoverFigureName } from './components/cover/packageCoverFigures'
+/**
+ * The cover's content model, exported because `DeploymentConfig.cover` takes a
+ * whole one: a host writes its landing page as a typed module of its own, and
+ * without these it would be writing it against a type it cannot name. Types
+ * only — the renderers stay internal, which is the point of the split.
+ */
 export type {
   CoverContent,
   CoverContentTab,
