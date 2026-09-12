@@ -19,8 +19,7 @@ import { CANVAS_HEADER_TEXT } from '@/lib/canvasHeaderStyle'
 import { sourceFiles } from '@/lib/tokenModel'
 
 /**
- * #542: the blueprint canvas and its panels land on the new ladder.
- * ADR 0012.
+ * The blueprint canvas and its panels land on the new ladder. ADR 0012.
  *
  * 12px (`xs`) is canvas chrome and panel labels/meta. 13px (`sm`) is
  * panel titles and values. Weight and colour separate those four jobs,

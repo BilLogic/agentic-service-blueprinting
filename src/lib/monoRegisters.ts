@@ -11,8 +11,8 @@ import { declarationsIn } from '@/lib/tokenModel'
  * Monospace stays in three registers, and the guard knows the two ladders.
  *
  * Family is not "text a machine produced." A `font-mono` call site belongs
- * to exactly one of the three jobs #536 names; #546 is the guard that holds
- * the tree there. The scan is the class-list reader — a token present in
+ * to exactly one of the three jobs named below, and the guard holds the tree
+ * there. The scan is the class-list reader — a token present in
  * any order, including split across `cn()` arguments. Size is evaluated
  * against the ladder of the scope the site renders in: `text-sm` is 13px
  * in prose and 14px inside `.font-mono`.

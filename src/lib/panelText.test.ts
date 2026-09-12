@@ -21,8 +21,9 @@ const FORMER_PANEL_TEXT = {
 type PanelRole = keyof typeof FORMER_PANEL_TEXT
 
 /**
- * Per-file counts of `PANEL_TEXT.*` JSX sites on origin/main after #533.
- * #537 cites 28; the tree holds 21. The test enumerates those 21 so a
+ * Per-file counts of `PANEL_TEXT.*` JSX sites on origin/main, taken after
+ * the last batch that moved one. The retirement of the panel role layer
+ * cites 28; the tree holds 21. The test enumerates those 21 so a
  * coincidental `text-xs font-medium text-muted-foreground` elsewhere
  * cannot satisfy a missing call site.
  */

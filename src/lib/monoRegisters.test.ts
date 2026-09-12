@@ -17,13 +17,13 @@ import {
 /**
  * Monospace stays in three registers, and the guard knows the two ladders.
  *
- * #546 / #536. A `font-mono` call site belongs to exactly one register:
+ * A `font-mono` call site belongs to exactly one register:
  *
  * 1. code, identifiers and stored values
  * 2. aligned numerals — always beside `tabular-nums`
  * 3. eyebrow and wordmark
  *
- * The scan is the class-list reader from #541: a token is present in any
+ * The scan is the shared class-list reader: a token is present in any
  * order, including split across `cn()` arguments. Size is evaluated against
  * the ladder of the scope the site renders in, because `text-sm` is 13px
  * in prose and 14px inside `.font-mono`.
@@ -31,8 +31,9 @@ import {
 
 describe('signalledRegisters', () => {
   it('a site in two registers fails', () => {
-    // Slide-number-shaped: numerals and tracking at once. #546 tightens
-    // #536's overlap — a call site belongs to exactly one.
+    // Slide-number-shaped: numerals and tracking at once. The registers
+    // once allowed a site to signal two; they do not now — a call site
+    // belongs to exactly one.
     expect(
       signalledRegisters(
         'font-mono text-xs font-medium tracking-[0.2em] tabular-nums uppercase',

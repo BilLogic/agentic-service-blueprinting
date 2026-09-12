@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The editor shell on the new ladder: 12px (`xs`) is chrome, 13px (`sm`)
- * is UI text. #544.
+ * is UI text.
  *
  * Slice/presentation, the blueprint canvas, the cover/mobile remainder and
  * `PANEL_TEXT` are other batches. This file only names the shell.
@@ -24,7 +24,8 @@ const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 /**
  * Slice and presentation files live under `components/editor/` but belong
- * to #543, not this batch.
+ * to the slice and presentation batch, held by
+ * `slicePresentationTypeLadder.test.tsx`, not to this one.
  */
 const SLICE_PRESENTATION = new Set([
   'SlicePresentation.tsx',

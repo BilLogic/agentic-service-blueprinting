@@ -10,11 +10,11 @@ import { MobilePathSelector } from '@/components/mobile/MobilePathSelector'
 import { MobileTopBar } from '@/components/mobile/MobileTopBar'
 
 /**
- * #545: the mobile shell is the only surface in this batch that renders
+ * The mobile shell is the only surface in its batch that renders
  * below the `md` breakpoint, so its `xs` chrome has to be checked at phone
  * width. iOS zooms a focused field whose computed size is under 16px; the
  * shell itself has no fields, and the settings inputs it hosts already sit
- * on `text-lg` below `md` (#534). Overflow on the bar is `truncate`, not a
+ * on `text-lg` below `md`. Overflow on the bar is `truncate`, not a
  * clip of glyphs.
  */
 
@@ -123,7 +123,7 @@ describe('mobile chrome at phone width', () => {
     /*
       Measured assertion, not a layout probe: jsdom will not compute the
       focused size of a field inside the settings sheet. The phone hosts
-      those fields through the shared Input primitive, which #534 moved to
+      those fields through the shared Input primitive, which carries
       `text-lg md:text-sm` so `base` dropping to 15px could not zoom iOS.
       `lg` is 1rem — 16px at the root this app never overrides.
     */
