@@ -195,7 +195,9 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | [references/](./references/) | Shared core every skill uses: data model, blueprint schema, adapter contract, canvas adapter, lane-role & lane vocabularies, the interface→schema map, customization, audit playbook |
 | [scripts/](./scripts/) | Shared blueprint pipeline: validator, fallback + seed generators, sign-off hasher, tests |
 | [hooks/](./hooks/) | Session status, blueprint auto-validation on edit, service-role secret guard |
-| `src/components/blueprint/` | Blueprint grid, paths, dependency arrows (shadcn/ui + Tailwind v4; theme tokens in `src/styles/tokens.css`) |
+| `src/components/blueprint/` | Blueprint grid, paths, dependency arrows (shadcn/ui + Tailwind v4) |
+| [src/styles/](./src/styles/) | The token layers, in the order they resolve: `colors.css` (the ramps), `semantic.css` (what each colour is *for*), `theme.css` (the Tailwind bindings), `themes/` (light and dark) |
+| `src/lib/classList.ts`, `typeWeight.ts`, `typeInk.ts` | The type doctrine, enforced rather than described: one working weight, 600 for headings only, and ink named as a rung instead of dialled as an opacity. Each failure names the rung or weight to write instead. [ADR 0012](./docs/adr/0012-a-rung-owns-size-and-leading.md) |
 | `src/components/editor/` | Canvas/slide editor shell |
 | [src/lib/laneRoles.ts](./src/lib/laneRoles.ts) | `lane_role` rendering contract |
 | [src/data/blueprintFallbacks.ts](./src/data/blueprintFallbacks.ts) | Offline/no-DB fallback registry (sample content) |
