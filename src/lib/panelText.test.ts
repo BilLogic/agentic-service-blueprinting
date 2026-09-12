@@ -11,7 +11,11 @@ const FORMER_PANEL_TEXT = {
   title: 'min-w-0 text-sm font-semibold text-foreground',
   meta: 'text-xs font-normal text-muted-foreground',
   sectionLabel: 'text-xs font-medium text-muted-foreground',
-  value: 'text-sm font-normal text-foreground/80',
+  // Full ink, not the `/80` this inherited. The four panel roles are
+  // separated by size and weight, with colour telling label and meta
+  // (muted) apart from title and value (full) — an opacity between the
+  // content rung and the caption rung was never one of the four.
+  value: 'text-sm font-normal text-foreground',
 } as const
 
 type PanelRole = keyof typeof FORMER_PANEL_TEXT

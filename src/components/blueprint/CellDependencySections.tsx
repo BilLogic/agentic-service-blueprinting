@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { PanelSectionLabel } from '@/components/blueprint/PanelSectionLabel'
 import {
   ArrowDown,
   ArrowLeft,
@@ -61,7 +62,7 @@ function resolveRowDirection(
 }
 
 function DirectionIcon({ direction }: { direction: RowDirection }) {
-  const iconClass = 'size-3 shrink-0 text-muted-foreground/70'
+  const iconClass = 'size-3 shrink-0 text-muted-foreground'
 
   switch (direction) {
     case 'up':
@@ -135,7 +136,7 @@ function DependencyRow({
   const row = (
     <button
       type="button"
-      className="flex min-w-0 flex-col items-stretch gap-0.5 text-left text-foreground/85 transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+      className="flex min-w-0 flex-col items-stretch gap-0.5 text-left text-foreground transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
       onMouseEnter={() => preview(null)}
       onMouseLeave={clearPreview}
       onFocus={() => preview(null)}
@@ -147,7 +148,7 @@ function DependencyRow({
     >
       <span className="flex min-w-0 items-center gap-[7px]">
         <DirectionIcon direction={direction} />
-        <span className="min-w-0 truncate font-normal text-foreground/90">
+        <span className="min-w-0 truncate font-normal text-foreground">
           {connection.laneName}
           <span className="text-muted-foreground">
             {' '}
@@ -211,7 +212,7 @@ function DependencyRow({
                   asSpan
                   inline
                   // geometry: packs the name into the compact inline face, not a canvas cell.
-                  className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-foreground/75"
+                  className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-muted-foreground"
                 />
               </button>
             ))}
@@ -232,9 +233,7 @@ function DependencyGroup({
 }) {
   return (
     <div className="flex flex-col gap-1" data-dependency-group={title}>
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {title}
-      </p>
+      <PanelSectionLabel>{title}</PanelSectionLabel>
       <ul className="flex flex-col">{children}</ul>
     </div>
   )
@@ -418,7 +417,7 @@ export function CellDependencySections({
                     asSpan
                     inline
                     // geometry: packs the name into the compact inline face, not a canvas cell.
-                    className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-foreground/75"
+                    className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-muted-foreground"
                   />
                 </button>
               ))}

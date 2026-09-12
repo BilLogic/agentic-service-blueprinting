@@ -250,7 +250,7 @@ export function CreateSliceSheet({
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-muted-foreground">
                   Subtitle{' '}
-                  <span className="font-normal text-muted-foreground/70">
+                  <span className="font-normal text-muted-foreground">
                     · optional
                   </span>
                 </span>

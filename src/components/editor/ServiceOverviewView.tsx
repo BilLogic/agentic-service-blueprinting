@@ -41,6 +41,7 @@ import {
   CANVAS_REVEAL_PANELS,
 } from '@/contexts/canvasRevealContext'
 import { useEditor } from '@/contexts/EditorContext'
+import { useViewState } from '@/contexts/viewStateStore'
 import { usePhaseBlueprintFilters } from '@/hooks/usePhaseBlueprintFilters'
 import { useMobileShell } from '@/hooks/useMobileShell'
 import { cn } from '@/lib/utils'
@@ -565,12 +566,28 @@ function ServiceOverviewViewImpl({
     ? `service-canvas:${view}:${cameraTargetId ?? 'none'}:${phases.length}-${scenarioIds.length}:${focusedComparisonCameraKey}`
     : fitKey
 
-  // The cell-detail panel clears its selection when this changes, so it must
-  // track navigation only — never the camera's own bookkeeping. `fitKey`
-  // flips once when the skeleton swaps to content, which is not a
-  // navigation, and using it here silently deselected any cell picked in the
-  // first moments after a load.
-  const cellDetailResetKey = `service-canvas:${view}:${cameraTargetId ?? 'none'}:${focusNonce}`
+  /*
+    The cell-detail panel clears its selection when this changes, so it must
+    track NAVIGATION only — never the camera's own bookkeeping. `fitKey` flips
+    once when the skeleton swaps to content, which is not a navigation, and
+    using it here silently deselected any cell picked in the first moments
+    after a load.
+
+    The workspace tab is in it because leaving the board IS a navigation, and
+    the loudest one available. The board stays mounted behind a slice or a
+    presentation — deliberately, so entering one is smooth — and the drawer
+    lives inside it, so an open cell used to float over the slides describing
+    a row that was no longer on screen, with closing it the only way out.
+    Every other part of this key is a fact about moving around WITHIN a board,
+    which is why activating a tab changed none of them.
+
+    That settles the question the panel's placement leaves open: an open cell
+    is a fact about the BOARD, not about the workspace. Leaving the board drops
+    it, and `openCellStore` follows, so the address bar stops claiming a cell
+    is open while nothing is showing.
+  */
+  const { activeKey } = useViewState()
+  const cellDetailResetKey = `service-canvas:${activeKey ?? 'board'}:${view}:${cameraTargetId ?? 'none'}:${focusNonce}`
 
   /*
     The entity panel clears on the same navigations, from up here.

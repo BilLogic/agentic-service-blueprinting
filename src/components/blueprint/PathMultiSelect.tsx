@@ -213,7 +213,7 @@ function PathCheckbox({
         dense ? 'gap-1 px-0 py-0 text-xs' : 'gap-2 text-sm',
         compact && !dense ? 'px-1 py-0.5' : !dense ? 'px-1 py-1' : undefined,
         checked && 'font-medium text-foreground',
-        !checked && 'text-foreground/90',
+        !checked && 'text-foreground',
       )}
       onPointerDown={stopEvent}
       onClick={stopEvent}

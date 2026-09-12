@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { ImagePlus, Loader2, X } from 'lucide-react'
 import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { IconTooltip } from '@/components/editor/IconTooltip'
@@ -226,9 +227,9 @@ export function SlideImagesField({
   return (
     <div className="flex flex-col gap-1" onClick={(event) => event.stopPropagation()}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <Eyebrow>
           Images
-        </span>
+        </Eyebrow>
         <span className="text-xs text-muted-foreground">
           {showingAll
             ? citedFrames.length > 0

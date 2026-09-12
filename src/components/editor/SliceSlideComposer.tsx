@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { createPortal } from 'react-dom'
 import { GripVertical, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -246,9 +247,9 @@ export function SliceSlideComposer({
             )}
           >
             <div className="mb-1.5 flex items-center gap-1.5">
-              <span className="shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              <Eyebrow className="shrink-0">
                 Slide {slideIndex + 1}
-              </span>
+              </Eyebrow>
               {/*
                 No title field here any more, and the space it took is now
                 the slide's own. Captions are prose about a slide, and prose
@@ -296,7 +297,7 @@ export function SliceSlideComposer({
                             setDragging(cell)
                             setPointer({ x: event.clientX, y: event.clientY })
                           }}
-                          className="shrink-0 cursor-grab touch-none text-muted-foreground/60 hover:text-foreground active:cursor-grabbing"
+                          className="shrink-0 cursor-grab touch-none text-tertiary-foreground hover:text-foreground active:cursor-grabbing"
                         >
                           <GripVertical className="size-3" aria-hidden />
                         </button>

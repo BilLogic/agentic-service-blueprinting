@@ -32,10 +32,10 @@ export function PanelTextareaField({
     <Field label={label} hint={hint}>
       {disabled ? (
         // Read-only takes the cell panel's value treatment — `text-sm
-        // text-foreground/80`, the same step CellContentSection and
+        // text-foreground`, the same step CellContentSection and
         // CellOverviewSpec render every authored value at. A disabled
         // textarea reads as a broken input; prose reads as prose.
-        <p className="text-sm whitespace-pre-wrap text-foreground/80">
+        <p className="text-sm whitespace-pre-wrap text-foreground">
           {value || <span className="text-muted-foreground">Not specified.</span>}
         </p>
       ) : (

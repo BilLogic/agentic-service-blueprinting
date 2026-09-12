@@ -44,7 +44,7 @@ const COLOUR = /^text-(foreground|muted-foreground)/
 const PANEL_ROLES = {
   title: 'min-w-0 text-sm font-semibold text-foreground',
   sectionLabel: 'text-xs font-medium text-muted-foreground',
-  value: 'text-sm font-normal text-foreground/80',
+  value: 'text-sm font-normal text-foreground',
   meta: 'text-xs font-normal text-muted-foreground',
 } as const
 

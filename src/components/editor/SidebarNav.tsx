@@ -1,4 +1,5 @@
 import { useId, type KeyboardEvent, type ReactNode } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { ChevronRight } from 'lucide-react'
 import {
   Collapsible,
@@ -100,7 +101,7 @@ export function NavRowAction({
         className={cn(
           ROW_ACTION_SLOT_CLASS,
           CHEVRON_REVEAL_CLASS,
-          'text-sidebar-foreground/50 transition-[opacity,color] hover:text-sidebar-selected-rail',
+          'text-tertiary-foreground transition-[opacity,color] hover:text-sidebar-selected-rail',
           'focus-visible:text-sidebar-selected-rail focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
           '[@media(pointer:coarse)]:opacity-100',
         )}
@@ -116,7 +117,7 @@ function NavChevron({ open }: { open: boolean }) {
     <ChevronRight
       aria-hidden
       className={cn(
-        'size-3.5 text-sidebar-foreground/60 transition-transform duration-(--motion-fade) ease-out motion-reduce:transition-none',
+        'size-3.5 text-muted-foreground transition-transform duration-(--motion-fade) ease-out motion-reduce:transition-none',
         open && 'rotate-90',
       )}
     />
@@ -233,11 +234,11 @@ export function NavRow({
           size === 'md' ? 'text-sm' : 'text-xs',
           selected
             ? 'font-medium text-sidebar-selected-foreground'
-            : 'text-sidebar-foreground/85 group-hover/nav-row:text-sidebar-accent-foreground',
+            : 'text-foreground group-hover/nav-row:text-sidebar-accent-foreground',
         )}
       >
         {icon ? (
-          <span className="mr-1.5 text-sidebar-foreground/60" aria-hidden>
+          <span className="mr-1.5 text-muted-foreground" aria-hidden>
             {icon}
           </span>
         ) : null}
@@ -287,9 +288,9 @@ export function NavSection({
           <span className={cn(CHEVRON_SLOT_CLASS, CHEVRON_REVEAL_CLASS)}>
             <NavChevron open={open} />
           </span>
-          <span className="min-w-0 flex-1 truncate py-1.5 text-xs font-medium tracking-wider text-sidebar-foreground/60 uppercase">
+          <Eyebrow className="min-w-0 flex-1 truncate py-1.5">
             {title}
-          </span>
+          </Eyebrow>
         </CollapsibleTrigger>
         {trailing}
       </div>

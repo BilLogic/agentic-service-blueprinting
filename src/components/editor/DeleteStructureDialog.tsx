@@ -219,7 +219,7 @@ export function DeleteStructureDialog({
               </div>
 
               {impact.warnings.length > 0 ? (
-                <ul className="flex flex-col gap-1 text-sm text-foreground/80">
+                <ul className="flex flex-col gap-1 text-sm text-foreground">
                   {impact.warnings.map((line) => (
                     <li key={line}>{line}</li>
                   ))}

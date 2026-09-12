@@ -63,7 +63,7 @@ export function FeaturedPreviewFrame({
         target="_blank"
         rel="noopener noreferrer"
         className={cn(
-          'flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-foreground/90 hover:bg-accent',
+          'flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-foreground hover:bg-accent',
           frameClassName,
         )}
         data-featured-preview="document"

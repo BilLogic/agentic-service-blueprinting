@@ -258,21 +258,35 @@ describe('the agent panel reseats chrome below UI text', () => {
   it('keeps the Sessions eyebrow on xs and the row title on sm', () => {
     const source = sourceOf('components/editor/AgentPanel.tsx')
     const sites = classListsIn(source, 'components/editor/AgentPanel.tsx')
-    const eyebrow = sites.find((site) =>
-      classListHas(site.classes, [
-        'uppercase',
-        'tracking-wider',
-        'text-sidebar-foreground/60',
-      ]),
-    )
+
+    // The eyebrow's rung is not in this file any more, and that is the point:
+    // it is `Eyebrow`, spelled once, after twenty-odd call sites had written
+    // it by hand at two different letterspacings. Neither is its ink: the
+    // panel used to dial its own, and now the primitive names one rung for
+    // every caller. So what this file may still say about an eyebrow is
+    // layout, and nothing about how it reads.
+    const eyebrow = sites.find((site) => classListHas(site.classes, ['truncate', 'pl-1']))
     expect(eyebrow, 'Sessions eyebrow').toBeDefined()
-    expect(eyebrow?.classes).toContain('text-xs')
-    expect(eyebrow?.classes).not.toContain('text-sm')
+    for (const spelled of eyebrow?.classes ?? []) {
+      expect(
+        spelled,
+        `the Sessions eyebrow re-spells ${spelled}, which belongs to Eyebrow`,
+      ).not.toMatch(/^(text-(xs|sm|base)|uppercase|tracking-|font-|text-\w+-?foreground)/)
+    }
+
+    const primitive = classListsIn(
+      sourceOf('components/blueprint/Eyebrow.tsx'),
+      'components/blueprint/Eyebrow.tsx',
+    )
+    const register = primitive.find((site) => classListHas(site.classes, ['uppercase']))
+    expect(register, 'the eyebrow register').toBeDefined()
+    expect(register?.classes).toContain('text-xs')
+    expect(register?.classes).not.toContain('text-sm')
 
     const rowTitle = sites.find((site) =>
       classListHas(site.classes, [
         'truncate',
-        'text-sidebar-foreground/85',
+        'group-hover/session:text-sidebar-accent-foreground',
       ]),
     )
     expect(rowTitle, 'session row title').toBeDefined()

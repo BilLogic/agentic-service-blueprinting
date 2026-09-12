@@ -218,7 +218,7 @@ function StepPanelBody({
             {step.positions.map((entry) => (
               <li
                 key={`${entry.pathName}-${entry.position}`}
-                className="text-sm font-normal text-foreground/80"
+                className="text-sm font-normal text-foreground"
               >
                 <span className="font-medium text-foreground">
                   {entry.pathName}

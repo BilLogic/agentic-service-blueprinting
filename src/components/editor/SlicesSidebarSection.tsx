@@ -160,7 +160,7 @@ export function SlicesSidebarSection() {
       // Teaching tone, matching the agent panel's empty states: say what a
       // slice is and the two real routes to one (the Edit-mode Make slice
       // flow in CanvasDesignTools, or the agent's /sb:slice skill).
-      <p className="px-3 py-1.5 text-xs text-sidebar-foreground/50">
+      <p className="px-3 py-1.5 text-xs text-tertiary-foreground">
         No slices yet — a slice is a stakeholder view cut from the blueprint.
         In Edit mode, pick cells and press Make slice, or ask the agent with
         /sb:slice.
@@ -342,7 +342,7 @@ export function RenameSliceDialog({
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">
               Subtitle{' '}
-              <span className="font-normal text-muted-foreground/70">
+              <span className="font-normal text-muted-foreground">
                 · optional
               </span>
             </span>

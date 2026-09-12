@@ -21,8 +21,11 @@ an afternoon on 2026-08-21; at the time the same kind of value was expressed thr
 ways — pixel constants in `blueprintLayout.ts`, Tailwind class strings in
 `canvasHeaderStyle.ts`, and custom properties in `theme.css`.
 
-This is upstream Supabase's own pattern: `SIDEBAR_WIDTH = '13rem'` lives in
-`sidebar.tsx` and reaches CSS as `style={{ '--sidebar-width': SIDEBAR_WIDTH }}`.
+The shape is the one shadcn's own `sidebar.tsx` ships with, and we kept it:
+`SIDEBAR_WIDTH = '13rem'` is declared in the component and reaches CSS as
+`style={{ '--sidebar-width': SIDEBAR_WIDTH }}`. Declare the number where it can
+be typed, imported and asserted; hand it to CSS as a custom property on the
+element that needs it.
 
 ## Consequences
 

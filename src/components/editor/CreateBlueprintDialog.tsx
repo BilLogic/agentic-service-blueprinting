@@ -203,7 +203,7 @@ export function CreateBlueprintDialog({
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-foreground">Phase</span>
             {fixedPhaseId ? (
-              <p className="text-sm text-foreground/80">
+              <p className="text-sm text-foreground">
                 {phaseRows.find(
                   (phase: { id: string; name: string }) => phase.id === fixedPhaseId,
                 )?.name ?? 'This phase'}

@@ -107,16 +107,16 @@ export function CellResourcesTab({
             href={safeExternalHref(row.url) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 text-xs font-normal text-foreground/90 transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 text-xs font-normal text-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
           >
             {row.kind === 'attachment' ? (
               <FileText
-                className="size-3 shrink-0 text-muted-foreground/70"
+                className="size-3 shrink-0 text-muted-foreground"
                 aria-hidden
               />
             ) : (
               <ExternalLink
-                className="size-3 shrink-0 text-muted-foreground/70"
+                className="size-3 shrink-0 text-muted-foreground"
                 aria-hidden
               />
             )}

@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { Filter, Info, PanelRight } from 'lucide-react'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
@@ -135,11 +136,11 @@ const CompareDiffRow = memo(function CompareDiffRow({
         return (
           <div key={pathId} className="min-w-0 text-xs">
             {entry?.present ? (
-              <span className="line-clamp-2 text-foreground/85">
+              <span className="line-clamp-2 text-foreground">
                 {entry.contents.join(' · ')}
               </span>
             ) : (
-              <span aria-label="absent" className="text-muted-foreground/60">
+              <span aria-label="absent" className="text-tertiary-foreground">
                 —
               </span>
             )}
@@ -455,9 +456,9 @@ export function CompareDifferencesSurface({
               ) : null}
             </PopoverTrigger>
             <PopoverContent align="end" className="w-64 gap-2 p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Eyebrow>
                 Lanes
-              </p>
+              </Eyebrow>
               <div className="flex flex-wrap gap-1">
                 {laneFacets.map((facet) => (
                   <FilterTag
@@ -468,9 +469,9 @@ export function CompareDifferencesSurface({
                   />
                 ))}
               </div>
-              <p className="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Eyebrow className="pt-1">
                 Verdict
-              </p>
+              </Eyebrow>
               <div className="flex flex-wrap gap-1">
                 <FilterTag
                   label="≠ divergent"
@@ -487,9 +488,9 @@ export function CompareDifferencesSurface({
                   filter for a step with no differences filters to nothing. */}
               {stepGroups.length > 0 ? (
                 <>
-                  <p className="pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Eyebrow className="pt-1">
                     Steps
-                  </p>
+                  </Eyebrow>
                   <div className="flex flex-wrap gap-1">
                     {stepGroups.map((group) => (
                       <FilterTag
@@ -508,7 +509,7 @@ export function CompareDifferencesSurface({
             </PopoverContent>
           </Popover>
         </div>
-        <p className="flex items-center gap-1 text-xs text-muted-foreground/80">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <Info className="size-3 shrink-0" aria-hidden />
           dependency edges are not compared
         </p>

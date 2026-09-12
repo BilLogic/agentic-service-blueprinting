@@ -25,6 +25,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
+import { DEFAULT_MODELS } from '@/lib/agent/settings'
 
 // Unconfigured: the agent rows and the developer section, and no sign-in
 // form — which is the whole of the column that carries labelled rows.
@@ -122,7 +123,9 @@ describe('the settings column, read as one column', () => {
     expect(openMenu()).toBeNull()
 
     // Model: a list of ids, and they keep the identifier face.
-    fireEvent.click(screen.getByRole('button', { name: 'gemini-3.6-flash' }))
+    // Named through DEFAULT_MODELS, not spelled out: refreshing the no-key
+    // list should not break a test about typography.
+    fireEvent.click(screen.getByRole('button', { name: DEFAULT_MODELS.google }))
     expect(wearsMono(openMenu() as Element)).toBe(true)
     closeMenu()
     expect(openMenu()).toBeNull()

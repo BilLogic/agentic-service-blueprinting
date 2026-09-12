@@ -1,4 +1,5 @@
 import { Check, ChevronDown } from 'lucide-react'
+import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   Popover,
   PopoverContent,
@@ -99,9 +100,9 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                 same word and the same explanation, reachable on hover, focus
                 and tap. */}
             <EntityDefinitionPopover kind="path" side="left">
-              <span className="flex w-fit px-2 pb-1 pt-0.5 text-xs font-medium uppercase tracking-wider text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <Eyebrow className="flex w-fit px-2 pb-1 pt-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                 Path
-              </span>
+              </Eyebrow>
             </EntityDefinitionPopover>
             <ul className="flex flex-col gap-0.5">
               {options.map((option) => {

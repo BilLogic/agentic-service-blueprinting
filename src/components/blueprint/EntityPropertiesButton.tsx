@@ -58,7 +58,7 @@ export function EntityPropertiesButton({
         // properties" five times over tells a screen-reader user nothing.
         aria-label={`${label}: ${name}`}
         className={cn(
-          'size-6 shrink-0 text-muted-foreground/60 hover:text-foreground',
+          'size-6 shrink-0 text-tertiary-foreground hover:text-foreground',
           className,
         )}
         onClick={(event) => {

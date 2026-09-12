@@ -154,7 +154,7 @@ function NoteField({
     <label className={cn('flex flex-col gap-1', ROW_DETAIL_INDENT)}>
       <span className="text-xs font-medium text-muted-foreground">
         {DEPENDENCY_EDIT_TEXT.noteLabel}
-        <span className="font-normal text-muted-foreground/70">
+        <span className="font-normal text-muted-foreground">
           {' '}
           {DEPENDENCY_EDIT_TEXT.noteOptional}
         </span>
