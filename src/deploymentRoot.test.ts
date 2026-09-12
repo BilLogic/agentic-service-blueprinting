@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { createServer, resolveConfig } from 'vite'
 import { afterAll, describe, expect, it } from 'vitest'
+import { coverFigures } from '@/components/cover/coverModel'
+import { coverContent } from '@/content/coverContent'
 
 /**
  * The deployment source root: the second place application source can live.
@@ -101,6 +103,32 @@ function stageBuildFiles(): string {
  */
 function mountThePackage(scratch: string): void {
   symlinkSync(repoRoot, path.join(scratch, 'node_modules', 'agentic-service-blueprinting'))
+}
+
+/**
+ * The package INSTALLED, under the name a deployment depends on it by — copied
+ * in rather than linked.
+ *
+ * The distinction is the whole reason two of the blocks below exist. Vite
+ * resolves a symlink to its target before it decides whether a file is in
+ * `node_modules`, so a linked package is never one: it is never pre-bundled,
+ * and a path inside it is never the path the browser would ask for. A
+ * deployment installs. This installs.
+ *
+ * `src` and `docs` both, because an install ships the published tree and the
+ * application reaches out of `src` for the figures it draws. Nothing else is
+ * needed: what a test puts in the tree after this is what that test is about.
+ */
+function installThePackage(scratch: string): string {
+  const installed = path.join(scratch, 'node_modules', 'agentic-service-blueprinting')
+  mkdirSync(installed, { recursive: true })
+  copyFileSync(path.join(repoRoot, 'package.json'), path.join(installed, 'package.json'))
+  for (const directory of ['src', 'docs']) {
+    cpSync(path.join(repoRoot, directory), path.join(installed, directory), {
+      recursive: true,
+    })
+  }
+  return path.join(installed, 'src')
 }
 
 function readTsConfig(configPath: string, overrideInclude?: string[]) {
@@ -449,15 +477,6 @@ describe('the stylesheet built from each root', () => {
  * and cannot show this. A deployment installs; this installs.
  */
 describe('a deployment’s dev server', () => {
-  /** The package, copied in under the name a deployment depends on it by. */
-  function installThePackage(scratch: string): string {
-    const installed = path.join(scratch, 'node_modules', 'agentic-service-blueprinting')
-    mkdirSync(installed, { recursive: true })
-    copyFileSync(path.join(repoRoot, 'package.json'), path.join(installed, 'package.json'))
-    cpSync(path.join(repoRoot, 'src'), path.join(installed, 'src'), { recursive: true })
-    return path.join(installed, 'src')
-  }
-
   /** A deployment whose entry mounts the package, and nothing else. */
   function stageDeployment(): { scratch: string; appSource: string } {
     const scratch = stageBuildFiles()
@@ -606,6 +625,237 @@ describe('a deployment’s dev server', () => {
       for (const [file, body] of served) {
         expect(servedText(body)).toBe(readFileSync(file, 'utf8'))
       }
+    } finally {
+      await server.close()
+    }
+  }, 300_000)
+})
+
+/**
+ * The figures the cover draws, fetched from a deployment that installed the
+ * package.
+ *
+ * INSTALLED, NOT LINKED, for the reason the block above is: a link is
+ * realpathed before anything decides where a file lives, and the whole of
+ * this is about where a file lives.
+ *
+ * What goes wrong has no error in it anywhere. A figure named as a path the
+ * site serves — `/cover/why-now.svg` — is a path only a tree with that file
+ * in its `public/` serves. A deployment's `public/` is its own, and the
+ * figure is not in it, so the request lands on the single-page fallback and
+ * comes back 200 with a page of HTML in it. The browser puts a broken-image
+ * box where a diagram belongs; the network tab reports a success; no build
+ * step, no bundler and no check ever sees a thing. That is the defect under
+ * the defect, and it is why this went a release unnoticed.
+ *
+ * So what is asserted here is bytes, not status. Every figure the cover
+ * renders is fetched at the URL the deployment's own modules ask for — read
+ * off the served modules rather than guessed here, so this says nothing about
+ * HOW a figure arrives and everything about whether it does — and each
+ * response has to BE the figure: an image content type, an SVG document, and
+ * the same bytes the package authored. A page of HTML fails, which is the
+ * whole point.
+ */
+describe('a deployment’s cover figures', () => {
+  const COVER_ENTRY = `${DEPLOYMENT_ROOT_DIRNAME}/cover.ts`
+  const AUTHORED_FIGURES = path.join(repoRoot, 'docs', 'assets')
+
+  /**
+   * The figures the cover renders, by the file each one names.
+   *
+   * Read off the cover's own content rather than listed here, so a figure
+   * added tomorrow is one this block then requires a deployment to be able to
+   * fetch. Only the basename travels: WHERE a figure is served from is what
+   * differs between this repository and a deployment, and is the thing under
+   * test.
+   */
+  function figuresTheCoverRenders(): string[] {
+    return coverFigures(coverContent).map((figure) =>
+      path.basename(figure.src.split('?')[0]),
+    )
+  }
+
+  /** A deployment whose only module is the cover's content. */
+  function stageCoverDeployment(): string {
+    const scratch = stageBuildFiles()
+    installThePackage(scratch)
+
+    const deployment = path.join(scratch, DEPLOYMENT_ROOT_DIRNAME)
+    mkdirSync(deployment)
+    writeFileSync(
+      path.join(deployment, 'cover.ts'),
+      [
+        "import { coverFigures } from '@/components/cover/coverModel'",
+        "import { coverContent } from '@/content/coverContent'",
+        '',
+        'export const srcs = coverFigures(coverContent).map((figure) => figure.src)',
+        '',
+        '// Read, so that a build keeps every one of them.',
+        "document.title = srcs.join(' ')",
+        '',
+      ].join('\n'),
+    )
+    writeFileSync(
+      path.join(scratch, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html lang="en">',
+        '  <head><meta charset="UTF-8" /><title>A Deployment</title></head>',
+        `  <body><div id="root"></div><script type="module" src="/${COVER_ENTRY}"></script></body>`,
+        '</html>',
+        '',
+      ].join('\n'),
+    )
+
+    return scratch
+  }
+
+  /** Every absolute URL a served module names, however it names it. */
+  function urlsNamedBy(code: string): string[] {
+    const urls: string[] = []
+    for (const match of code.matchAll(/["'](\/[^"'\s]+)["']/g)) urls.push(match[1])
+    return urls
+  }
+
+  /**
+   * What the figures resolve to, as URLs the browser would ask for. A dev
+   * server hands an asset module the URL of the file it stands for, and
+   * appends `?import` to the specifier that reaches it; neither query belongs
+   * to the file.
+   */
+  function requestedUrlsByFigure(
+    served: string[],
+    figures: string[],
+  ): Map<string, Set<string>> {
+    const wanted = new Map(figures.map((name) => [name, new Set<string>()]))
+    for (const body of served) {
+      for (const url of urlsNamedBy(body)) {
+        const bare = url.split('?')[0]
+        const slot = wanted.get(path.basename(bare))
+        if (slot) slot.add(bare)
+      }
+    }
+    return wanted
+  }
+
+  it('serves every one of them as the image it is, and never as a page', async () => {
+    const figures = figuresTheCoverRenders()
+    // A floor, not a census: an empty expectation is met by a cover with no
+    // figures at all.
+    expect(figures.length).toBeGreaterThan(10)
+
+    const scratch = stageCoverDeployment()
+    const server = await createServer({
+      configFile: path.join(scratch, 'vite.config.ts'),
+      root: scratch,
+      logLevel: 'silent',
+      // Everything but the package itself is linked into this tree from this
+      // repository's own `node_modules`, which a deployment's would not be.
+      // This is about where the test put the files, not about the seam.
+      server: { port: 0, fs: { allow: [realpathSync(scratch), repoRoot] } },
+    })
+
+    try {
+      await server.listen()
+      const base = server.resolvedUrls!.local[0].replace(/\/$/, '')
+
+      // The module graph the cover's content reaches, so that the URLs below
+      // are the ones the application asks for rather than ones named here.
+      const served: string[] = []
+      const queue = [`/${COVER_ENTRY}`]
+      const seen = new Set(queue)
+      while (queue.length > 0) {
+        const url = queue.shift()!
+        const response = await fetch(`${base}${url}`)
+        if (!response.ok) continue
+        const body = await response.text()
+        served.push(body)
+        if (/\.(svg|png|jpe?g|webp|gif)(\?|$)/.test(url)) continue
+        for (const next of urlsNamedBy(body)) {
+          if (seen.has(next) || next.startsWith('/@vite/')) continue
+          seen.add(next)
+          queue.push(next)
+        }
+      }
+
+      const requested = requestedUrlsByFigure(served, figures)
+      const unreached = [...requested]
+        .filter(([, urls]) => urls.size === 0)
+        .map(([name]) => name)
+      expect(unreached).toEqual([])
+
+      const failures: string[] = []
+      for (const [name, urls] of requested) {
+        for (const url of urls) {
+          const response = await fetch(`${base}${url}`)
+          const type = response.headers.get('content-type') ?? ''
+          const body = await response.text()
+          if (!response.ok) failures.push(`${name}: ${response.status} ${url}`)
+          // The shape of this defect exactly: a success, a page, and a broken
+          // image where a diagram belongs.
+          else if (!type.startsWith('image/')) {
+            failures.push(`${name}: ${response.status} ${type} at ${url}`)
+          } else if (body !== readFileSync(path.join(AUTHORED_FIGURES, name), 'utf8')) {
+            failures.push(`${name}: served bytes are not the authored figure`)
+          }
+        }
+      }
+      expect(failures).toEqual([])
+    } finally {
+      await server.close()
+    }
+  }, 300_000)
+
+  it('builds every one of them into the deployment’s own output', () => {
+    const figures = figuresTheCoverRenders()
+    const scratch = stageCoverDeployment()
+
+    execFileSync(path.join(repoRoot, 'node_modules', '.bin', 'vite'), ['build'], {
+      cwd: scratch,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    // A build has no fallback to hide behind — it emits a file or it does not,
+    // and what it emits is all a static host will ever have.
+    const dist = path.join(scratch, 'dist')
+    const emitted = new Map<string, string>()
+    const visit = (directory: string) => {
+      for (const entry of readdirSync(directory)) {
+        const child = path.join(directory, entry)
+        if (statSync(child).isDirectory()) visit(child)
+        else emitted.set(path.relative(dist, child), readFileSync(child, 'utf8'))
+      }
+    }
+    visit(dist)
+
+    const missing = figures.filter((name) => {
+      const authored = readFileSync(path.join(AUTHORED_FIGURES, name), 'utf8')
+      return ![...emitted.values()].some((body) => body === authored)
+    })
+    expect(missing).toEqual([])
+  }, 300_000)
+
+  it('is asserting something a fallback cannot satisfy', async () => {
+    // A guard nobody has watched fail is a guard nobody knows the shape of.
+    // This is the failing case, held still: a path the deployment does not
+    // serve, answered by the single-page fallback with a success and a page.
+    const scratch = stageCoverDeployment()
+    const server = await createServer({
+      configFile: path.join(scratch, 'vite.config.ts'),
+      root: scratch,
+      logLevel: 'silent',
+      server: { port: 0, fs: { allow: [realpathSync(scratch), repoRoot] } },
+    })
+
+    try {
+      await server.listen()
+      const base = server.resolvedUrls!.local[0].replace(/\/$/, '')
+      const response = await fetch(`${base}/cover/${figuresTheCoverRenders()[0]}`)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toMatch(/^text\/html/)
+      expect(await response.text()).toContain('<!doctype html>')
     } finally {
       await server.close()
     }
