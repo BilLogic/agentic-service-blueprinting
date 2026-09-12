@@ -56,14 +56,24 @@ const BROWSER_FRAMES: FrameScheduler = {
  * A queue that publishes the LATEST patch for one subject, once a frame.
  *
  * `schedule` may be called as often as the pointer reports — a hundred and
- * twenty times a second on a trackpad — and `publish` runs at most once per
+ * twenty times a second on a trackpad — and the write runs at most once per
  * frame with the patches for that subject merged. `flush` publishes whatever
  * is owed immediately, which is what a `pointerup` needs before it clears the
  * state that identifies the subject. `cancel` drops it, which is what an
  * unmount needs.
+ *
+ * The WRITER is passed to `schedule` rather than held from construction. A
+ * queue outlives the render that created it, and a writer captured once would
+ * be the one that render closed over; passing it per sample means the frame
+ * publishes through the handler whose own pointer event scheduled it, with no
+ * ref for a component to keep in step.
  */
 export type FramePatchQueue<Patch> = {
-  schedule: (id: string, patch: Patch) => void
+  schedule: (
+    id: string,
+    patch: Patch,
+    publish: (id: string, patch: Patch) => void,
+  ) => void
   flush: () => void
   cancel: () => void
 }
@@ -79,10 +89,14 @@ export type FramePatchQueue<Patch> = {
  * merged into one patch would move a mark nobody dragged.
  */
 export function createFramePatchQueue<Patch extends object>(
-  publish: (id: string, patch: Patch) => void,
   frames: FrameScheduler = BROWSER_FRAMES,
 ): FramePatchQueue<Patch> {
-  let pending: { id: string; patch: Patch } | null = null
+  type Pending = {
+    id: string
+    patch: Patch
+    publish: (id: string, patch: Patch) => void
+  }
+  let pending: Pending | null = null
   let handle = 0
 
   const stopFrame = () => {
@@ -95,16 +109,17 @@ export function createFramePatchQueue<Patch extends object>(
     stopFrame()
     const owed = pending
     pending = null
-    if (owed) publish(owed.id, owed.patch)
+    if (owed) owed.publish(owed.id, owed.patch)
   }
 
   return {
-    schedule(id, patch) {
-      // A different subject is published on its own, not merged into this one.
+    schedule(id, patch, publish) {
+      // A different subject is published on its own, through the writer that
+      // scheduled it, rather than merged into this one.
       if (pending && pending.id !== id) flush()
       pending = pending
-        ? { id, patch: { ...pending.patch, ...patch } }
-        : { id, patch }
+        ? { id, patch: { ...pending.patch, ...patch }, publish }
+        : { id, patch, publish }
       if (handle) return
       handle = frames.request(() => {
         handle = 0

@@ -1427,16 +1427,9 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
     same way; this is that pattern applied to the third path, which was the
     one left behind.
   */
-  const updateAnnotationRef = useRef(updateAnnotation)
-  updateAnnotationRef.current = updateAnnotation
-  const boxPatchesRef = useRef(
-    // Through a ref, because the queue outlives the render that created it and
-    // a frame must write with the handler the component holds NOW.
-    createFramePatchQueue<AnnotationBoxPatch>((id, patch) =>
-      updateAnnotationRef.current(id, patch),
-    ),
+  const [boxPatches] = useState(() =>
+    createFramePatchQueue<AnnotationBoxPatch>(),
   )
-  const boxPatches = boxPatchesRef.current
   const [draft, setDraftState] = useState<Draft>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -1512,8 +1505,9 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
       eraserPendingRef.current = null
       boxPatches.cancel()
     },
-    // Mount/unmount only — refs keep listeners current.
-    [],
+    // Mount/unmount only — refs keep listeners current, and the queue is
+    // minted once by `useState` so naming it here changes nothing.
+    [boxPatches],
   )
 
   // Only capture the board while drawing or mid drag/resize. Select mode must
@@ -1982,9 +1976,9 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
           72,
           Math.max(10, Math.round(resize.originFontSize * scale)),
         )
-        boxPatches.schedule(resize.id, { fontSize })
+        boxPatches.schedule(resize.id, { fontSize }, updateAnnotation)
       } else {
-        boxPatches.schedule(resize.id, next)
+        boxPatches.schedule(resize.id, next, updateAnnotation)
       }
       return
     }
@@ -2004,10 +1998,11 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
         setEditingId(null)
       }
       if (drag.moved) {
-        boxPatches.schedule(drag.id, {
-          x: drag.originX + dx,
-          y: drag.originY + dy,
-        })
+        boxPatches.schedule(
+          drag.id,
+          { x: drag.originX + dx, y: drag.originY + dy },
+          updateAnnotation,
+        )
       }
     }
   }
