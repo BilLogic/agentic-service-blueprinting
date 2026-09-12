@@ -21,6 +21,15 @@ import { defineConfig } from 'vite'
  * this falls back per ROOT, so the two agree exactly when `src` is wholly
  * present or wholly absent, and can disagree on a tree that is half-vendored.
  * Do not half-vendor one.
+ *
+ * THE PAIR IS WRITTEN DOWN A FOURTH TIME, in `scripts/app-source.mjs`, for the
+ * checks that WALK the application — they have to land on the root the build
+ * resolves or they are measuring a tree nobody ships. They cannot read it from
+ * here: this file is loaded by bundling it in isolation, and it is a file a
+ * deployment holds byte-identical while its `scripts/` is its own, so a config
+ * that imports a module the deployment may not have is a config that does not
+ * load. `scripts/tests/the-build-and-a-walk-find-one-root.test.mjs` is what
+ * makes the copies one fact. Edit the roots here and that test goes red.
  */
 const APP_SOURCE_ROOTS = [
   path.resolve(__dirname, './src'),

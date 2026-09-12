@@ -98,10 +98,22 @@ export function archivingFunctions(source) {
   return [...found].sort()
 }
 
-/** Every archiving function named anywhere in a migration directory. */
+/**
+ * Every archiving function named anywhere in a migration directory.
+ *
+ * A DIRECTORY WITH NO `.sql` IN IT IS A FAILURE, not an empty answer. The set
+ * this returns is compared against the client's skip set, and an empty set
+ * agrees with an empty set: a caller pointed at the wrong directory would
+ * sweep nothing, match nothing, and go on passing. The sweep says which
+ * directory it read instead.
+ */
 export function archivingFunctionsIn(dir) {
+  const files = readdirSync(dir).filter((file) => file.endsWith('.sql'))
+  if (files.length === 0) {
+    throw new Error(`no .sql files in ${dir}: this sweep has no subject`)
+  }
   const found = new Set()
-  for (const name of readdirSync(dir).filter((file) => file.endsWith('.sql'))) {
+  for (const name of files) {
     for (const fn of archivingFunctions(readFileSync(join(dir, name), 'utf8'))) {
       found.add(fn)
     }

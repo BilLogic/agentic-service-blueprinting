@@ -40,11 +40,43 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, relative } from 'node:path'
+
+import { appSourceRoot } from '../app-source.mjs'
 
 const REPO_ROOT = process.cwd()
-const SOURCE_ROOT = 'src'
+
+/**
+ * The application, wherever this tree keeps it.
+ *
+ * A deployment that reads the application out of the package has no `src` of
+ * its own, and a walk that starts at `src` there sweeps nothing — which is a
+ * PASS, forever, on a check nobody has turned off. `scripts/app-source.mjs`
+ * holds the same two roots the build resolves `@/…` through, so this walk and
+ * the bundle are looking at one tree.
+ */
+const APP_SOURCE = appSourceRoot(REPO_ROOT)
+
+/**
+ * What a path in a finding is relative to: the application's own root's
+ * parent.
+ *
+ * So a finding says `src/components/…` whether that `src` is this repository's
+ * or the one inside `node_modules/agentic-service-blueprinting`, and
+ * `BADGE_COMPONENT` below is one path rather than one per deployment.
+ */
+const APP_PACKAGE = dirname(APP_SOURCE)
 
 /** Where the geometry is allowed to be written down. */
 const BADGE_COMPONENT = 'src/components/ui/badge.tsx'
@@ -79,6 +111,26 @@ function sourceFiles(dir) {
     const path = join(dir, entry)
     if (statSync(path).isDirectory()) found.push(...sourceFiles(path))
     else if (/\.tsx$/.test(entry) && !/\.test\.tsx$/.test(entry)) found.push(path)
+  }
+  return found
+}
+
+/**
+ * The application's `.tsx` files, as paths relative to `APP_PACKAGE`.
+ *
+ * A WALK THAT FINDS NOTHING THROWS. An empty subject and a clean one produce
+ * the same green line, and the green one goes on being printed: a check that
+ * has stopped looking at anything reports success every run, and the run that
+ * would have caught the defect looks exactly like the run before it. So the
+ * absence of a subject is a failure here, and it names the root it swept.
+ */
+export function applicationSources(appSource) {
+  const found = sourceFiles(appSource).map((file) => relative(dirname(appSource), file))
+  if (found.length === 0) {
+    throw new Error(
+      `no .tsx under ${appSource}: this walk has no subject, which is a ` +
+        `failure and not a pass`,
+    )
   }
   return found
 }
@@ -180,11 +232,18 @@ export function sizeOverrides(source, components) {
 }
 
 test('no call site passes a badge its size', () => {
-  const files = sourceFiles(resolve(REPO_ROOT, SOURCE_ROOT))
-    .map((path) => path.slice(resolve(REPO_ROOT).length + 1))
-    .filter((path) => path !== BADGE_COMPONENT)
+  const walked = applicationSources(APP_SOURCE)
+  // The walk found FILES; this is what says it found the APPLICATION. A tree
+  // with no `ui/badge.tsx` in it is not the tree this check is about, however
+  // many components it has.
+  assert.ok(
+    walked.includes(BADGE_COMPONENT),
+    `${BADGE_COMPONENT} is not among the ${walked.length} files under ` +
+      `${APP_SOURCE}, so this is not the application`,
+  )
+  const files = walked.filter((path) => path !== BADGE_COMPONENT)
   const sources = new Map(
-    files.map((path) => [path, readFileSync(resolve(REPO_ROOT, path), 'utf8')]),
+    files.map((path) => [path, readFileSync(join(APP_PACKAGE, path), 'utf8')]),
   )
 
   const components = ['Badge']
@@ -286,4 +345,56 @@ test('a nested element in a prop does not end the tag', () => {
   assert.deepEqual(sizeOverrides(source, ['Badge']), [
     { line: 1, text: '<Badge> is passed text-sm' },
   ])
+})
+
+/** A throwaway tree that reads the application out of the package. */
+function treeThatMountsThePackage() {
+  const root = mkdtempSync(join(tmpdir(), 'app-source-'))
+  mkdirSync(join(root, 'node_modules'))
+  // A link rather than a copy: the subject has to be the real application, or
+  // the comparison below is between two snapshots of the same walk.
+  symlinkSync(REPO_ROOT, join(root, 'node_modules', 'agentic-service-blueprinting'))
+  return { root, done: () => rmSync(root, { recursive: true, force: true }) }
+}
+
+test('a tree that reads the application out of the package walks the same call sites', () => {
+  // The arrangement this check used to fail in: no `src`, the application
+  // mounted under its own name. Same subject, file for file.
+  const tree = treeThatMountsThePackage()
+  try {
+    const mounted = appSourceRoot(tree.root)
+    assert.equal(
+      mounted,
+      join(tree.root, 'node_modules', 'agentic-service-blueprinting', 'src'),
+    )
+    assert.deepEqual(
+      [...applicationSources(mounted)].sort(),
+      [...applicationSources(APP_SOURCE)].sort(),
+    )
+  } finally {
+    tree.done()
+  }
+})
+
+test('a tree with neither root refuses instead of guessing', () => {
+  const root = mkdtempSync(join(tmpdir(), 'app-source-'))
+  try {
+    assert.throws(() => appSourceRoot(root), /no application source/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a walk that finds nothing fails', () => {
+  // The failure mode this check cannot be allowed to have. A root that exists
+  // and holds no call site is the shape an empty sweep takes, and an empty
+  // sweep reports success every run after the one that broke it.
+  const root = mkdtempSync(join(tmpdir(), 'app-source-'))
+  mkdirSync(join(root, 'src'))
+  writeFileSync(join(root, 'src', 'notes.md'), 'not a call site\n')
+  try {
+    assert.throws(() => applicationSources(appSourceRoot(root)), /no \.tsx/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
