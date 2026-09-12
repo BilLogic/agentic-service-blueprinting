@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.43.1
+
+One enrolled test could not pass in a deployment, which is the one place it was
+written to apply.
+
+**The test that proves an enrolled walk works in a deployment now runs in one.**
+`scripts/tests/one-badge-one-size.test.mjs` stages a throwaway tree with no
+`src` and the application mounted under the name a deployment depends on it by,
+then walks it and compares the result file for file. It staged that tree by
+mounting the root the suite was *run* from — which is the application's own
+directory in a repository that keeps a copy of the application, and a directory
+with no application in it anywhere else. So in a deployment the staged tree had
+a `src` in neither root, the resolver refused it exactly as it should, and the
+test failed. It asserted its own premise in every repository where that premise
+is false, and only there. A test that passes only where its subject does not
+exist is worse than no test, because the green line reads as coverage.
+
+It now mounts the parent of the application's own root — the directory that *is*
+the package, whichever of the two roots holds the application — so the staged
+tree has an application in it either way. The staged tree's lack of a `src` is
+asserted rather than assumed, and the fix was mutation-tested from inside a real
+deployment: making the resolver hand back the first root, or pinning the walk to
+the repository's own `src`, both turn it red.
+
+The link stays a link rather than becoming a copy, because this walk reads
+directory entries and follows one. That is worth distinguishing from the staged
+deployment in `deploymentRoot.test.ts`, which installs the package instead: a
+symlinked package is resolved to its real path before anything decides what
+lives in `node_modules`, so a linked package hides every defect that depends on
+being a dependency. Which test needs which is now written down where each one
+stages its tree.
+
+**Upgrading a deployment:** take the release. A deployment whose suite was red
+on this one file goes green; nothing else changes. If that suite is red on
+*other* enrolled test files, that is a separate and larger problem — forty-seven
+of sixty enrolled test files still reach for `src` directly and cannot run where
+there is none. It is tracked, not fixed here.
+
 ## 1.43.0
 
 Everything a deployment needs to actually run the application out of this
@@ -12,7 +50,7 @@ all: Vite pre-bundles a dependency, the pre-bundle does not preserve `?raw`, and
 the twenty-three reference documents the agent reads failed to load — a blank
 page behind twenty-three unloadable-dependency errors. `vite build` was
 unaffected, which is why nothing here noticed. The build files now exclude the
-application from pre-bundling when it *is* a dependency, and point the
+application from pre-bundling when it _is_ a dependency, and point the
 dependency crawl at the deployment's own files so the crawl does not stop at the
 package boundary and serve a transitive dependency as raw CommonJS. A
 deployment's cold dev load now serves the application's modules individually
@@ -25,7 +63,7 @@ whole class of defect stays hidden. Install it, do not link it.
 
 **A deployment owns the account of its own schema.** `docs/agents/blueprint.md`
 is what an agent reads to learn the schema it is about to write to, and the copy
-that shipped described *this* package's database. A deployment whose schema
+that shipped described _this_ package's database. A deployment whose schema
 legitimately differs — which is what extending a template means — got a check
 that went red and, worse, a printed remedy that made things worse: running it
 rewrote a true account of the real database into an account of a schema that did
@@ -5782,8 +5820,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
