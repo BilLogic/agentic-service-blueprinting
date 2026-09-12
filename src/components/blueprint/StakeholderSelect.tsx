@@ -78,7 +78,7 @@ export function StakeholderSelect({
       // reads the same way, which is the one case this cannot distinguish and
       // the one where "nobody owns this" is also the honest answer.)
       return (
-        <p className="text-sm font-normal text-foreground/80">
+        <p className="text-sm font-normal text-foreground">
           <span className="text-muted-foreground">Nobody — a structural row.</span>
         </p>
       )

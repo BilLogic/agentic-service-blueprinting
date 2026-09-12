@@ -75,7 +75,7 @@ export function CanvasEmptyState({
             'w-full flex-1 gap-1.5 rounded-2xl border border-dashed border-border bg-[color:var(--background-blueprint-panel-canvas,var(--secondary))] px-6 py-7',
         )}
       >
-        <p className="text-sm font-medium tracking-tight text-foreground/90">
+        <p className="text-sm font-medium tracking-tight text-foreground">
           {title}
         </p>
         <p

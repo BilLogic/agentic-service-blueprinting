@@ -80,4 +80,4 @@ export const BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS =
   'shrink-0 text-sm font-semibold tracking-tight text-foreground'
 
 export const BLUEPRINT_MENUBAR_SEPARATOR_CLASS =
-  'shrink-0 text-xs text-muted-foreground/70'
+  'shrink-0 text-xs text-muted-foreground'

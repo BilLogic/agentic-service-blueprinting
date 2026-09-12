@@ -82,7 +82,7 @@ function SliceGroups({
     // is in flight, the empty message only once it has truly come back bare.
     if (loading) return <SliceListLoadingSkeleton />
     return (
-      <p className="px-2 py-1.5 text-xs text-sidebar-foreground/50">
+      <p className="px-2 py-1.5 text-xs text-tertiary-foreground">
         No saved slices yet.
       </p>
     )
@@ -184,7 +184,7 @@ export function MobileNavSheet({
                 'relative flex size-11 items-center justify-center rounded-md',
                 surface === id
                   ? 'bg-sidebar-selected text-sidebar-selected-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-selected-rail'
-                  : 'text-sidebar-foreground/60',
+                  : 'text-muted-foreground',
               )}
             >
               <Icon className="size-4" aria-hidden />
@@ -207,7 +207,7 @@ export function MobileNavSheet({
               'relative flex size-11 items-center justify-center rounded-md',
               surface === 'settings'
                 ? 'bg-sidebar-selected text-sidebar-selected-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-selected-rail'
-                : 'text-sidebar-foreground/60',
+                : 'text-muted-foreground',
             )}
           >
             <Settings className="size-4" aria-hidden />
@@ -252,7 +252,7 @@ export function MobileNavSheet({
               phasesLoading ? (
                 <SlideNavLoadingSkeleton rows={4} />
               ) : (
-                <p className="px-2 py-1.5 text-xs text-sidebar-foreground/50">
+                <p className="px-2 py-1.5 text-xs text-tertiary-foreground">
                   No phases in this workspace yet.
                 </p>
               )

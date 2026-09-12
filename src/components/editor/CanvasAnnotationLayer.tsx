@@ -1213,7 +1213,7 @@ function StickyAnnotationNode({
           readOnly={!editing}
           // geometry: type is fitted to the drawn annotation box.
           className={cn(
-            'size-full resize-none border-0 font-sans leading-snug text-annotation-plate-foreground outline-none placeholder:text-annotation-plate-foreground/45',
+            'size-full resize-none border-0 font-sans leading-snug text-annotation-plate-foreground outline-none placeholder:text-(--foreground-annotation-chrome-tertiary)',
             editing || selected
               ? 'pointer-events-auto cursor-text'
               : 'pointer-events-none cursor-inherit',

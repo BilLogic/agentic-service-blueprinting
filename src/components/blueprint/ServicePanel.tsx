@@ -355,7 +355,7 @@ function ServiceExampleField({
       hint={`An example ${term.label.toLowerCase()} from this service, shown under its definition.`}
     >
       {disabled ? (
-        <p className="text-sm whitespace-pre-wrap text-foreground/80">
+        <p className="text-sm whitespace-pre-wrap text-foreground">
           {value || <span className="text-muted-foreground">Not specified.</span>}
         </p>
       ) : (

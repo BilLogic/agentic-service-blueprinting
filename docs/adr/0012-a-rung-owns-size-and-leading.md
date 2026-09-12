@@ -40,8 +40,10 @@ looks like an oversight in six months unless it is written down.
 
 ## Decision
 
-**A text style has four axes: size, weight, family, leading.** A rung owns
-size and leading. A call site owns weight and tracking. Family is chosen by
+**A text style has five axes: size, weight, family, leading, ink.** A rung
+owns size and leading. A call site owns weight, tracking and ink — and each
+of those three it writes by naming one of a closed set, never by dialling a
+number of its own. Family is chosen by
 which of three registers the text belongs to, not by feel.
 
 **There is no semantic type-role layer.** `PANEL_TEXT` and any constant that
@@ -147,6 +149,32 @@ everything not named above, including all canvas cell text.
 When a container cannot hold the smallest legible rung, the container
 changes or the text goes. The rung does not shrink. This is the rule that
 deletes `4xs` and `5xs` honestly rather than by decree.
+
+### Ink is named, never dialled
+
+A call site writes the ink rung the text's job asks for, and never an
+opacity on top of one:
+
+- `text-foreground` — what the surface is about: titles, values, body.
+- `text-muted-foreground` — labels, meta, and chrome that frames content.
+- `text-tertiary-foreground` — present but not being read: placeholders,
+  disabled states, dim counts.
+
+`text-foreground/70` is rejected in every form, including behind a variant
+and inside a `cn()` branch. Two reasons, and the first is the one that
+matters: a lightness cannot be read back. Nothing tells a later reader
+whether `/70` and `/75` are two jobs or two afternoons, so the tree
+accumulates steps nobody can defend and nobody dares change. The second is
+mechanical — an opacity composites against whatever happens to sit behind
+it, so the same class is a different colour on a card than on a page, and
+a theme that moves the background moves ink it never declared.
+
+Text that genuinely needs an ink these three do not name gets a token, in
+the semantic layer, with a name that says its job. That is a decision
+someone can find. A number on one call site is not.
+
+`typeInk.ts` holds this, at the class-list seam, and its failure message
+names the rung to write instead.
 
 ## The two arguments in the stylesheet this record overrules
 

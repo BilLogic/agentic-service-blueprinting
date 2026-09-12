@@ -346,7 +346,7 @@ function SliceRefocusButton({ onRefocus }: { onRefocus: () => void }) {
       >
         <span aria-hidden>○</span>
         Showing all
-        <span aria-hidden className="text-muted-foreground/60">
+        <span aria-hidden className="text-tertiary-foreground">
           ·
         </span>
         <span aria-hidden>⤺</span>

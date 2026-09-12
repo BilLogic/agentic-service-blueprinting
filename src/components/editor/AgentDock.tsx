@@ -66,7 +66,7 @@ function AgentDockChrome({
         )}
       >
         <GripHorizontal
-          className="size-3 shrink-0 text-muted-foreground/50 group-hover/agent-grab:text-muted-foreground"
+          className="size-3 shrink-0 text-tertiary-foreground group-hover/agent-grab:text-muted-foreground"
           aria-hidden
         />
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
@@ -84,7 +84,7 @@ function AgentDockChrome({
             type="button"
             aria-label={floating ? 'Dock the agent to the sidebar' : 'Hide the agent'}
             onClick={() => (floating ? dockAgent() : toggleAgentOpen(false))}
-            className="flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+            className="flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             {floating ? (
               <ChevronDown className="size-3" aria-hidden />

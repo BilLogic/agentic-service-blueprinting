@@ -69,7 +69,7 @@ function RailButton({
             'bg-sidebar-selected/70 text-sidebar-selected-foreground after:absolute after:right-1 after:top-1 after:size-1.5 after:rounded-full after:bg-primary',
           !selected &&
             !toggled &&
-            'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         )}
       >
         {children}

@@ -84,7 +84,7 @@ export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
             <li key={slice.id}>
               <button
                 type="button"
-                className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-foreground/85 transition-colors hover:bg-accent hover:text-foreground"
+                className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-foreground transition-colors hover:bg-accent hover:text-foreground"
                 onClick={() => openTab({ kind: 'slice', sliceId: slice.id })}
               >
                 <span aria-hidden>◇</span>

@@ -78,7 +78,7 @@ export function SlideNav({
   // this nav.)
   if (mains.length === 0) {
     return (
-      <p className="px-2 py-1.5 text-xs text-sidebar-foreground/50">
+      <p className="px-2 py-1.5 text-xs text-tertiary-foreground">
         No phases in this workspace yet.
       </p>
     )

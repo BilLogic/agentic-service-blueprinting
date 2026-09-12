@@ -80,7 +80,7 @@ export function StatusBadge({
       tabIndex={definition ? 0 : undefined}
       className={cn(
         'shrink-0 gap-0 font-normal',
-        status === 'live' && 'text-foreground/80',
+        status === 'live' && 'text-foreground',
         isUnbuilt(status) && 'border-dashed text-muted-foreground',
         className,
       )}

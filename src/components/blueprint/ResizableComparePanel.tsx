@@ -467,7 +467,7 @@ export function ResizableComparePanel({
           <button
             type="button"
             aria-label="Resize comparison panel"
-            className="absolute bottom-1 right-1 z-20 flex cursor-se-resize items-end justify-end rounded-sm p-1 text-muted-foreground/60 hover:bg-muted/70 hover:text-foreground"
+            className="absolute bottom-1 right-1 z-20 flex cursor-se-resize items-end justify-end rounded-sm p-1 text-tertiary-foreground hover:bg-muted/70 hover:text-foreground"
             style={{
               width: COMPARE_RESIZE_HANDLE_SIZE + 8,
               height: COMPARE_RESIZE_HANDLE_SIZE + 8,

@@ -772,7 +772,7 @@ function ChangeRow({
             ✦
           </span>
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-foreground/85">
+        <span className="min-w-0 flex-1 truncate text-foreground">
           {describeChange(entry)}
         </span>
         {cellId ? (

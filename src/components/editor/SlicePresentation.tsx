@@ -459,7 +459,7 @@ function PresentationFilmstrip({
                   'h-auto max-w-48 justify-start rounded-sm border-0 p-0 text-sm font-medium hover:bg-transparent dark:hover:bg-transparent',
                   active
                     ? 'text-foreground'
-                    : 'text-foreground/70 hover:text-foreground',
+                    : 'text-foreground',
                 )}
               >
                 <span className="min-w-0 truncate">
@@ -486,7 +486,7 @@ function PresentationFilmstrip({
                           'size-10 shrink-0 rounded-md border font-mono text-sm font-medium tabular-nums',
                           active
                             ? 'border-foreground bg-foreground text-contrast hover:bg-foreground hover:text-contrast dark:hover:bg-foreground'
-                            : 'border-border bg-muted text-foreground/70 hover:bg-accent hover:text-foreground dark:hover:bg-accent',
+                            : 'border-border bg-muted text-foreground hover:bg-accent dark:hover:bg-accent',
                           !cell && 'border-dashed opacity-60',
                         )}
                       >

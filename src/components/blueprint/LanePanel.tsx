@@ -273,7 +273,7 @@ function LanePanelBody({
         ) : (
           // A disabled empty input reads as a broken control. Read-only is
           // prose, the same as every other value in these panels.
-          <p className="text-sm font-normal text-foreground/80">
+          <p className="text-sm font-normal text-foreground">
             {form.ownerTeam || (
               <span className="text-muted-foreground">
                 Not specified — no team recorded for this lane.

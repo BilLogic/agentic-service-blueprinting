@@ -1359,7 +1359,7 @@ function BlueprintCellDetailPanelBody() {
             its own Summary field. */}
         {!editingCell && detailSummaryText.trim() && !summaryRepeatsTitle ? (
           <Field label="Summary" hint="What the detail fields add up to.">
-            <p className="whitespace-pre-wrap text-sm font-normal text-foreground/80">
+            <p className="whitespace-pre-wrap text-sm font-normal text-foreground">
               {detailSummaryText.trim()}
             </p>
           </Field>
@@ -1473,7 +1473,7 @@ function BlueprintCellDetailPanelBody() {
                     <TabsTrigger
                       key={value}
                       value={value}
-                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-muted-foreground/60 hover:text-muted-foreground data-active:text-foreground/90 after:bottom-[-1px] after:bg-foreground/70"
+                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-tertiary-foreground hover:text-muted-foreground data-active:text-foreground after:bottom-[-1px] after:bg-foreground/70"
                     >
                       <TabIcon className="size-3" aria-hidden />
                       {label}

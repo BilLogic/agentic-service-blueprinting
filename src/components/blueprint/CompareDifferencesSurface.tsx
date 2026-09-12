@@ -136,11 +136,11 @@ const CompareDiffRow = memo(function CompareDiffRow({
         return (
           <div key={pathId} className="min-w-0 text-xs">
             {entry?.present ? (
-              <span className="line-clamp-2 text-foreground/85">
+              <span className="line-clamp-2 text-foreground">
                 {entry.contents.join(' · ')}
               </span>
             ) : (
-              <span aria-label="absent" className="text-muted-foreground/60">
+              <span aria-label="absent" className="text-tertiary-foreground">
                 —
               </span>
             )}
@@ -509,7 +509,7 @@ export function CompareDifferencesSurface({
             </PopoverContent>
           </Popover>
         </div>
-        <p className="flex items-center gap-1 text-xs text-muted-foreground/80">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <Info className="size-3 shrink-0" aria-hidden />
           dependency edges are not compared
         </p>

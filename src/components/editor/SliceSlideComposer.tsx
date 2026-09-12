@@ -297,7 +297,7 @@ export function SliceSlideComposer({
                             setDragging(cell)
                             setPointer({ x: event.clientX, y: event.clientY })
                           }}
-                          className="shrink-0 cursor-grab touch-none text-muted-foreground/60 hover:text-foreground active:cursor-grabbing"
+                          className="shrink-0 cursor-grab touch-none text-tertiary-foreground hover:text-foreground active:cursor-grabbing"
                         >
                           <GripVertical className="size-3" aria-hidden />
                         </button>
