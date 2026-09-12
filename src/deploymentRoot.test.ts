@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -17,7 +18,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
-import { resolveConfig } from 'vite'
+import { createServer, resolveConfig } from 'vite'
 import { afterAll, describe, expect, it } from 'vitest'
 
 /**
@@ -426,4 +427,187 @@ describe('the stylesheet built from each root', () => {
     // the markup names.
     expect([...fromSrc].filter((name) => !fromThePackage.has(name))).toEqual([])
   }, 180_000)
+})
+
+/**
+ * The dev server a deployment runs, and the documents the application imports
+ * as text.
+ *
+ * `vite build` has no pre-bundling step, so everything below is invisible to
+ * a build, to this suite's other files, and to every check in this
+ * repository. The dev server does pre-bundle, and what it pre-bundles is
+ * whatever it resolves into `node_modules` — which, once the application is
+ * a package, is the application. The optimizer hands those files to rolldown,
+ * rolldown has never heard of `?raw`, and `role.md` and the skill and
+ * reference documents stop loading. The page is blank and the build is green.
+ *
+ * INSTALLED, NOT LINKED, and that is the whole reason this is a separate
+ * block. The tests above mount the package with a symlink, which is the right
+ * shape for what they ask — they want the real package, not a snapshot. But
+ * Vite resolves a symlink to its target before it decides whether a file is
+ * in `node_modules`, so a linked package is not one, is never pre-bundled,
+ * and cannot show this. A deployment installs; this installs.
+ */
+describe('a deployment’s dev server', () => {
+  /** The package, copied in under the name a deployment depends on it by. */
+  function installThePackage(scratch: string): string {
+    const installed = path.join(scratch, 'node_modules', 'agentic-service-blueprinting')
+    mkdirSync(installed, { recursive: true })
+    copyFileSync(path.join(repoRoot, 'package.json'), path.join(installed, 'package.json'))
+    cpSync(path.join(repoRoot, 'src'), path.join(installed, 'src'), { recursive: true })
+    return path.join(installed, 'src')
+  }
+
+  /** A deployment whose entry mounts the package, and nothing else. */
+  function stageDeployment(): { scratch: string; appSource: string } {
+    const scratch = stageBuildFiles()
+    const appSource = installThePackage(scratch)
+
+    const deployment = path.join(scratch, DEPLOYMENT_ROOT_DIRNAME)
+    mkdirSync(deployment)
+    writeFileSync(
+      path.join(deployment, 'main.tsx'),
+      [
+        "import { createRoot } from 'react-dom/client'",
+        "import { App } from 'agentic-service-blueprinting'",
+        '',
+        "createRoot(document.getElementById('root')!).render(<App />)",
+        '',
+      ].join('\n'),
+    )
+    writeFileSync(
+      path.join(scratch, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html lang="en">',
+        '  <head><meta charset="UTF-8" /><title>A Deployment</title></head>',
+        `  <body><div id="root"></div><script type="module" src="/${DEPLOYMENT_ROOT_DIRNAME}/main.tsx"></script></body>`,
+        '</html>',
+        '',
+      ].join('\n'),
+    )
+
+    return { scratch, appSource }
+  }
+
+  /**
+   * Every document the application imports as text, by the file it names.
+   *
+   * Read off the application's own source rather than listed here, so the
+   * expectation grows with the code: a document added tomorrow is one this
+   * test then requires the dev server to serve.
+   *
+   * The pattern is anchored at the start of a line because `bootstrap.ts`
+   * spells one of these imports inside a comment, to show a host how to
+   * register its own, and a comment is not an import.
+   */
+  function documentsTheApplicationImports(appSource: string): Set<string> {
+    const documents = new Set<string>()
+
+    const visit = (directory: string) => {
+      for (const entry of readdirSync(directory)) {
+        const child = path.join(directory, entry)
+        if (statSync(child).isDirectory()) visit(child)
+        else if (/\.tsx?$/.test(child) && !/\.test\.tsx?$/.test(child)) {
+          const source = readFileSync(child, 'utf8')
+          for (const match of source.matchAll(/^import\s+\w+\s+from\s+'([^']+)\?raw'/gm)) {
+            const specifier = match[1]
+            documents.add(
+              specifier.startsWith('@/')
+                ? path.join(appSource, specifier.slice(2))
+                : path.resolve(path.dirname(child), specifier),
+            )
+          }
+        }
+      }
+    }
+    visit(appSource)
+
+    return documents
+  }
+
+  /** The module URLs a served module asks the browser to fetch next. */
+  function importedUrls(code: string): string[] {
+    const urls: string[] = []
+    for (const pattern of [
+      /\bfrom\s*["']([^"']+)["']/g,
+      /\bimport\s*\(\s*["']([^"']+)["']/g,
+      /^\s*import\s*["']([^"']+)["']/gm,
+    ]) {
+      for (const match of code.matchAll(pattern)) urls.push(match[1])
+    }
+    return urls.filter((url) => url.startsWith('/') && !url.startsWith('/@vite/'))
+  }
+
+  /** `export default "…"` — the document, as the browser receives it. */
+  function servedText(body: string): string {
+    const match = /export default ("(?:[^"\\]|\\[\s\S])*")/.exec(body)
+    expect(match, `not a text module: ${body.slice(0, 120)}`).not.toBeNull()
+    return JSON.parse(match![1]) as string
+  }
+
+  it('serves the whole application, and the documents it imports as text', async () => {
+    const { scratch, appSource } = stageDeployment()
+    const expected = documentsTheApplicationImports(appSource)
+    // A floor, not a measurement: an empty expectation would be met by a dev
+    // server that served nothing at all.
+    expect(expected.size).toBeGreaterThan(20)
+
+    const server = await createServer({
+      configFile: path.join(scratch, 'vite.config.ts'),
+      root: scratch,
+      logLevel: 'silent',
+      // Everything but the package itself is linked into this tree from the
+      // repository's own `node_modules`, which a deployment's would not be.
+      // This is about where the test put the files, not about the seam.
+      server: { port: 0, fs: { allow: [realpathSync(scratch), repoRoot] } },
+    })
+
+    try {
+      await server.listen()
+      const base = server.resolvedUrls!.local[0].replace(/\/$/, '')
+
+      const failures: string[] = []
+      const served = new Map<string, string>()
+      const queue = [`/${DEPLOYMENT_ROOT_DIRNAME}/main.tsx`]
+      const seen = new Set(queue)
+
+      while (queue.length > 0) {
+        const url = queue.shift()!
+        const response = await fetch(`${base}${url}`)
+        const body = await response.text()
+        if (!response.ok) {
+          failures.push(`${response.status} ${url}`)
+          continue
+        }
+        // A document, reached by the URL the application's own module asked
+        // for. Nothing here guesses that URL.
+        if (/[?&]raw\b/.test(url)) {
+          served.set(path.resolve(scratch, decodeURIComponent(url.split('?')[0]).slice(1)), body)
+          continue
+        }
+        for (const next of importedUrls(body)) {
+          if (seen.has(next)) continue
+          seen.add(next)
+          queue.push(next)
+        }
+      }
+
+      /*
+       * Another floor. The two assertions below are about what the crawl
+       * reached, and both are met by a crawl that reached almost nothing —
+       * so this says the crawl walked the application rather than a corner
+       * of it. A number, because the alternative is a census that drifts
+       * with every module anyone adds.
+       */
+      expect(seen.size).toBeGreaterThan(200)
+      expect(failures.slice(0, 5)).toEqual([])
+      expect([...served.keys()].sort()).toEqual([...expected].sort())
+      for (const [file, body] of served) {
+        expect(servedText(body)).toBe(readFileSync(file, 'utf8'))
+      }
+    } finally {
+      await server.close()
+    }
+  }, 300_000)
 })
