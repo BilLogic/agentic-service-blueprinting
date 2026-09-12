@@ -71,7 +71,7 @@ export function validateDraftSlice(draft: DraftSlice): ValidationProblem[] {
   }
 
   if (!isSliceKind(draft.sliceKind)) {
-    problems.push({ message: `Unknown slice type “${draft.sliceKind}”.` })
+    problems.push({ message: `Unknown slice kind “${draft.sliceKind}”.` })
   }
 
   if (draft.slides.length === 0) {

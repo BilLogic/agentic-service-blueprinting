@@ -25,7 +25,7 @@ import { updateStepSummary } from '@/lib/stepSpecMutations'
  * The step: one moment, read across every lane.
  *
  * `summary` is the only editable field, and it is the one the storyboard row
- * has always needed — the sentence that makes a column legible without
+ * has always needed — the sentence that makes a step legible without
  * reading five cells. The storyboard row itself stays pictures only, so this
  * panel is where that sentence is read and written, and it is why a
  * storyboard cell opens here rather than into a cell panel describing some
@@ -104,10 +104,10 @@ function StepPanelBody({
 
   /*
     The meta line says only what a reader could not already see.
-    "column 1 of 1 path" is both of those things — the column is on screen and
+    "1st of 1 path" is both of those things — the position is on screen and
     the path is in the breadcrumb — so a step that sits where you would expect
     reports its cell count and nothing else. A step that sits at DIFFERENT
-    columns on different paths is the one case worth a sentence, and it gets
+    positions on different paths is the one case worth a sentence, and it gets
     the list below as well.
   */
   const distinct = new Set(step.positions.map((entry) => entry.position))
@@ -115,7 +115,7 @@ function StepPanelBody({
     step.positions.length === 0
       ? 'in no path yet'
       : distinct.size > 1
-        ? `different columns on ${step.positions.length} paths`
+        ? `different positions on ${step.positions.length} paths`
         : step.positions.length > 1
           ? `${step.positions.length} paths`
           : null
@@ -148,7 +148,7 @@ function StepPanelBody({
       <PanelIdentity
         badge={<PanelKindBadge label="Step" />}
         title={step.name}
-        // Only the surprise: a step that sits at a DIFFERENT column depending
+        // Only the surprise: a step that sits at a DIFFERENT position depending
         // on the path. A cell count is bookkeeping, not something a reader of
         // this panel came for.
         meta={positionLabel ?? ''}
@@ -156,7 +156,7 @@ function StepPanelBody({
 
       <PanelTextareaField
         label="Summary"
-        hint="What happens in this moment, across every lane — the sentence that makes the column legible without reading five cells."
+        hint="What happens in this moment, across every lane — the sentence that makes the step legible without reading five cells."
         placeholder="e.g. The student picks a slot; the system holds it 10 minutes."
         value={summary}
         rows={3}

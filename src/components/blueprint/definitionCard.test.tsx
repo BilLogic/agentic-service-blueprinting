@@ -437,7 +437,7 @@ describe('the made-up words and the entity kinds', () => {
         'A chapter of the service, in time order. Each phase holds the scenarios that can happen during it.',
       scenario: 'A specific situation inside a phase, mapped on its own board.',
       path: 'One route through a scenario: the main way, plus variants and exceptions. Paths are alternatives, not stages — nothing carries across them.',
-      step: 'A column of the board: one moment in time, read down every lane at once. Steps run left to right.',
+      step: 'One moment in time, read down every lane at once. Steps run left to right.',
       lane: 'A row of the board, for one kind of participant — the customer, frontstage staff, backstage work, the tools. A row reads across every step.',
     })
   })
