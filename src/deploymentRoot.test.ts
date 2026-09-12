@@ -219,7 +219,17 @@ describe('a deployment that brings its own source root', () => {
     const output = execFileSync(
       path.join(repoRoot, 'node_modules', '.bin', 'vitest'),
       ['run', '--reporter=verbose'],
-      { cwd: scratch, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+      {
+        cwd: scratch,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        // The summary below is read as text, so it has to BE text. A reporter
+        // that colours its output writes escape sequences between the words,
+        // and `Test Files  1 passed` stops matching anything — which is a
+        // green run reported as a failure. Locally the pipe is enough to turn
+        // colour off; a CI runner turns it back on.
+        env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+      },
     )
 
     expect(output).toContain('workspaceName.test.ts')
