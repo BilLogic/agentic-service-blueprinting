@@ -102,6 +102,9 @@ describe('a shared file names the decision, never the number', () => {
     )
     expect(RECORD_NUMBER.test('places it (ADR 0003). The import mints a row')).toBe(true)
     expect(RECORD_NUMBER.test(' * comes from `tokenModel` (ADR 6), so widening it')).toBe(true)
+    expect(
+      RECORD_NUMBER.test('   * `canWrite`. See `docs/adr/0011-one-question-a-surface-may-ask.md`.'),
+    ).toBe(true)
     // And not on the things that merely look like one.
     expect(ISSUE_NUMBER.test('className="bg-[#fff]"')).toBe(false)
     expect(ISSUE_NUMBER.test('const id = `#${slug}`')).toBe(false)

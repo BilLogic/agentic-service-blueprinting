@@ -38,8 +38,16 @@
  * to find out. The rule is cheaper to hold where the files are written.
  */
 
-/** `ADR 0014`, `ADR-0014`, `adr 14` — a record number, however spelled. */
-export const RECORD_NUMBER = /\bADRs?[\s-]*\d+/i
+/**
+ * `ADR 0014`, `ADR-0014`, `adr 14`, `docs/adr/0014-…` — a record number,
+ * however spelled.
+ *
+ * The path spelling is the same citation: it names a document in THIS
+ * repository's `docs/adr/`, and a reader who follows it from an enrolled
+ * copy gets a 404 rather than the decision. So `/` joins the separators,
+ * and "see the ADR" is written as the decision itself either way.
+ */
+export const RECORD_NUMBER = /\bADRs?[\s/-]*\d+/i
 
 /**
  * An issue or PR number in prose: `#412`.

@@ -51,8 +51,10 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
  * `--name:` — which can say whether a name is written down somewhere and can
  * never say what it resolves to, under which theme, at which scope. Two of the
  * rules below could only be approximated on that reading, and one of them was
- * quietly dead. The sample now comes from `tokenModel` (ADR 6), so widening it
- * widens every rule that asks.
+ * quietly dead. The sample now comes from `tokenModel`, the one seam style
+ * enforcement rides — a new style rule is an assertion against that model,
+ * never a fourth file walker — so widening the sample widens every rule that
+ * asks.
  */
 
 /**
