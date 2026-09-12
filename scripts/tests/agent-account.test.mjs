@@ -7,16 +7,20 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
+  classifyRelation,
   coverage,
   entityKinds,
   evaluate,
   handWritten,
   prohibitionCount,
   ratchetFailures,
+  reconcile,
   renderSchema,
   renderVocabulary,
+  schemaDeclaration,
   splice,
   tableColumns,
+  vocabularySource,
 } from '../agent-account.mjs'
 import { credentials } from '../generate-agent-account.mjs'
 
@@ -180,4 +184,140 @@ test('with no database configured, nothing is generated', () => {
 test('the committed core has no prohibitions', () => {
   const doc = readFileSync(`${ROOT}docs/agents/blueprint.md`, 'utf8')
   assert.equal(prohibitionCount(handWritten(doc)), 0)
+})
+
+/* ------------------------------------------ where each source comes from */
+
+test('the vocabulary follows the application, into the package when this tree has no src', () => {
+  const vendored = vocabularySource('/repo', (p) => p === '/repo/src/lib/panelTerms.ts')
+  assert.deepEqual(vendored, { path: '/repo/src/lib/panelTerms.ts', owner: 'repository' })
+
+  const imported = vocabularySource('/repo', (p) => p.includes('node_modules'))
+  assert.equal(imported.owner, 'package')
+  assert.match(imported.path, /node_modules\/agentic-service-blueprinting\/src\/lib\/panelTerms\.ts$/)
+})
+
+test('the schema declaration is the deployment root first, and the package only as a default', () => {
+  const own = schemaDeclaration('/repo', () => true)
+  assert.deepEqual(own, { path: '/repo/deployment/types/database.ts', owner: 'deployment' })
+
+  const vendored = schemaDeclaration('/repo', (p) => p === '/repo/src/types/database.ts')
+  assert.equal(vendored.owner, 'repository')
+
+  const fallback = schemaDeclaration('/repo', () => false)
+  assert.equal(fallback.owner, 'package')
+  assert.match(fallback.path, /node_modules\/agentic-service-blueprinting\/src\/types\/database\.ts$/)
+})
+
+/* ------------------------------------------ the database has the last word */
+
+test('a relation is readable, sealed or simply not in this database', () => {
+  assert.equal(classifyRelation({ status: 200, body: [] }), 'readable')
+  assert.equal(classifyRelation({ status: 404, body: { code: 'PGRST205' } }), 'absent')
+  assert.equal(classifyRelation({ status: 401, body: { code: '42501' } }), 'sealed')
+  assert.equal(classifyRelation({ status: 403, body: { code: '42501' } }), 'sealed')
+  assert.equal(classifyRelation({ status: 500, body: 'gateway' }), 'unknown')
+})
+
+// The measured case: a package declaration against a deployment's own
+// database. The declaration names two relations this database does not have
+// and one column it renamed; the database has three columns the declaration
+// never heard of.
+const DECLARED = new Map([
+  ['cells', ['id', 'content']],
+  ['stakeholders', ['id', 'name', 'part_of_id']],
+  ['business_models', ['id', 'name']],
+  ['schema_version', ['version']],
+  ['service_account_emails', ['email']],
+])
+const PROBED = new Map([
+  ['cells', { status: 'readable', columns: ['id', 'content', 'search_tsv'], order: 'table' }],
+  ['stakeholders', { status: 'readable', columns: ['id', 'name', 'parent_id'], order: 'table' }],
+  ['business_models', { status: 'sealed' }],
+  ['schema_version', { status: 'absent' }],
+  ['service_account_emails', { status: 'absent' }],
+])
+const LIVE_COMMENTS = [
+  { relation: 'cells', column_name: null, comment: 'One moment on the board.' },
+  { relation: 'cells', column_name: 'content', comment: 'The sentence of record.' },
+  { relation: 'cells', column_name: 'origin', comment: 'Where the row came from.' },
+  { relation: 'stakeholders', column_name: null, comment: 'Actors.' },
+  { relation: 'business_models', column_name: null, comment: 'Commercial framing.' },
+]
+
+test('the account names only what this database confirmed, whatever the declaration says', () => {
+  const { columns, readable, notes } = reconcile({
+    declared: DECLARED,
+    probed: PROBED,
+    comments: LIVE_COMMENTS,
+  })
+
+  assert.equal(columns.has('schema_version'), false, 'a declared relation this database lacks is dropped')
+  assert.equal(columns.has('service_account_emails'), false)
+  assert.deepEqual(columns.get('cells'), ['id', 'content', 'search_tsv', 'origin'])
+  assert.deepEqual(columns.get('stakeholders'), ['id', 'name', 'parent_id'], 'the renamed column goes')
+  assert.deepEqual(columns.get('business_models'), [], 'a sealed relation keeps its name and no columns')
+  assert.deepEqual([...readable], ['cells', 'stakeholders'])
+
+  assert.ok(notes.some((n) => /schema_version/.test(n) && /service_account_emails/.test(n)))
+  assert.ok(notes.some((n) => /stakeholders\.part_of_id/.test(n)))
+  assert.ok(notes.some((n) => /cells\.search_tsv/.test(n)))
+})
+
+test('a relation that gave no row renders in one order, whoever asked the questions', () => {
+  const asked = (columns) =>
+    reconcile({
+      declared: new Map([['slide_images', columns]]),
+      probed: new Map([['slide_images', { status: 'readable', columns }]]),
+      comments: [{ relation: 'slide_images', column_name: 'position', comment: 'The order.' }],
+    }).columns.get('slide_images')
+
+  assert.deepEqual(asked(['id', 'slide_id', 'position']), ['id', 'position', 'slide_id'])
+  assert.deepEqual(asked(['position', 'id', 'slide_id']), ['id', 'position', 'slide_id'])
+})
+
+test('a deployment whose schema differs holds a true account and passes its own check', () => {
+  const kinds = [{ kind: 'lane', label: 'Lane', definition: 'One row of the board.' }]
+  const sources = reconcile({ declared: DECLARED, probed: PROBED, comments: LIVE_COMMENTS })
+  const live = { ...sources, comments: LIVE_COMMENTS }
+
+  const rendered = evaluate({ doc: MARKED, kinds, sources: live, baseline: null, check: false, record: true }).next
+  assert.match(rendered, /### `cells`[\s\S]*\| `search_tsv` \| — \|/)
+  assert.doesNotMatch(rendered, /`schema_version`/)
+  assert.doesNotMatch(rendered, /`part_of_id`/)
+  assert.match(rendered, /### Not readable with the anon key[\s\S]*- `business_models` — Commercial framing\./)
+
+  const baseline = { columnComments: coverage(live), prohibitions: prohibitionCount(handWritten(rendered)) }
+  const held = evaluate({ doc: rendered, kinds, sources: live, baseline, check: true })
+  assert.deepEqual(held.failures, [], 'a true account of a differing schema is green')
+})
+
+test('an account that has gone stale against its own database fails', () => {
+  const kinds = [{ kind: 'lane', label: 'Lane', definition: 'One row of the board.' }]
+  const before = reconcile({ declared: DECLARED, probed: PROBED, comments: LIVE_COMMENTS })
+  const beforeSources = { ...before, comments: LIVE_COMMENTS }
+  const rendered = evaluate({ doc: MARKED, kinds, sources: beforeSources, baseline: null, check: false, record: true }).next
+  const baseline = {
+    columnComments: coverage(beforeSources),
+    prohibitions: prohibitionCount(handWritten(rendered)),
+  }
+
+  // The deployment's own migration adds a column. The document does not move.
+  const after = reconcile({
+    declared: DECLARED,
+    probed: new Map([
+      ...PROBED,
+      ['cells', { status: 'readable', columns: ['id', 'content', 'search_tsv', 'status'], order: 'table' }],
+    ]),
+    comments: LIVE_COMMENTS,
+  })
+  const stale = evaluate({
+    doc: rendered,
+    kinds,
+    sources: { ...after, comments: LIVE_COMMENTS },
+    baseline,
+    check: true,
+  })
+  assert.match(stale.failures[0], /is not what its sources render/)
+  assert.match(stale.failures[0], /toward the database/)
 })
