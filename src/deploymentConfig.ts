@@ -290,6 +290,23 @@ export type DeploymentConfig = {
    *
    * `sample.nav` and `defaultLanes` read the same way for the same reason:
    * content a deployment states is the whole of what it states.
+   *
+   * FIGURES ARE SPLIT BY WHO DREW THEM, and that split is the one part of
+   * this a deployment does not have to restate. The diagrams of the blueprint
+   * model — what a path holds, what a cell holds, what each skill does — are
+   * this package's own explaining, the same drawing whichever service is
+   * blueprinted, and they arrive with the package: import
+   * `packageCoverFigures` and place one, whole, on any section that takes a
+   * figure. Nothing is copied, no build step is run, and a figure that cannot
+   * be resolved stops the build rather than reaching a reader as a broken
+   * image.
+   *
+   * Everything else on the page is the deployment's to supply: its
+   * screenshots, its logomark, the portrait beside a heading. Those name a
+   * path this deployment serves, out of its own public directory — nothing is
+   * served out of this package's. And any one of the package's own figures
+   * can be replaced in place, because a figure is a value: write a different
+   * one, or spread one of these and override the field that should differ.
    */
   cover?: CoverContent
   /**

@@ -1,12 +1,25 @@
 #!/usr/bin/env node
 /**
- * Copy the cover page's figures from their authored home (docs/assets/) into
- * public/cover/, where the app serves them. Runs at predev and prebuild;
+ * Copy the figures from their authored home (docs/assets/) into public/cover/,
+ * where this repository serves them. Runs at predev and prebuild;
  * public/cover/ is generated and gitignored, so docs/assets/ stays the single
  * source of truth and the two copies cannot drift.
  *
- * Fails loudly, naming every missing source — a cover page with a broken
- * figure should never build.
+ * NOT FOR THE COVER PAGE ANY MORE. That page imports its figures through
+ * `components/cover/packageCoverFigures.ts`, so the bundler carries them into
+ * whatever output is being built and a deployment reading the application out
+ * of the package gets them by depending on it. A named path could not do
+ * that: it is served by whichever tree holds the file, which is this one.
+ *
+ * What is left is the bundled sample blueprint, whose storyboard frames name
+ * these same drawings. Those are DATABASE VALUES — a `cells.frame` is a
+ * string in a row, written by the seed and read back by whatever renders the
+ * board — so they can only name a served path, and this is the step that
+ * serves it. A deployment's own blueprint carries its own frame paths, served
+ * out of its own public directory, which is where that responsibility has
+ * always sat.
+ *
+ * Fails loudly, naming every missing source.
  *
  * Usage: node scripts/sync-cover-assets.mjs [srcDir] [destDir]
  * (the optional dirs exist for the test harness; defaults are the real ones)
@@ -15,8 +28,9 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-/** Every SVG the cover page may reference, by basename. The content module's
- * `/cover/<name>` paths are checked against this list in a test. */
+/** Every SVG served under `/cover/`, by basename. A test holds this list to
+ * the figures the package authors, so the seed's frames and the cover's
+ * imports cannot come to name different drawings. */
 export const COVER_ASSET_MANIFEST = [
   'blueprint-anatomy.svg',
   'cell-anatomy.svg',

@@ -10,8 +10,23 @@
 /** One figure on its plate. Dimensions come from the SVG's viewBox so the
  * page reserves the right box before the image decodes. */
 export type CoverFigure = {
-  /** Public path, e.g. `/cover/blueprint-anatomy.svg`. Never a filename the
-   * component knows about — the content module owns the whole path. */
+  /**
+   * Where the image is. Never a filename the component knows about — the
+   * content module owns the whole of it.
+   *
+   * TWO KINDS OF VALUE GO HERE, and which one is right follows from who drew
+   * the picture. A diagram of the blueprint model is this package's, and
+   * `packageCoverFigures` hands one over already filled in: its `src` is a
+   * module the bundler resolved, so it travels with the application into
+   * whatever output is being built. Anything a deployment drew is the
+   * deployment's, and its `src` is a path that deployment serves — from its
+   * own public directory, or imported the same way out of its own source.
+   *
+   * A path only resolves in a tree that holds the file. A deployment naming
+   * `/cover/something.svg` is naming a file in ITS public directory; nothing
+   * is copied out of this package's, and a request with nothing behind it is
+   * answered by the single-page fallback with a success and a page of HTML.
+   */
   src: string
   /** What the figure shows, not what it is called. */
   alt: string

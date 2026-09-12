@@ -152,7 +152,9 @@ const repoLink = (name, path) => {
   return { id: null, name, kind: 'link', url: `${REPO_URL}/${path}`, placementId: null, featured: false }
 }
 
-/** Figures for the storyboard row — served from /cover/ by scripts/sync-cover-assets.mjs. */
+/** Figures for the storyboard row — served from /cover/ by
+ * scripts/sync-cover-assets.mjs. A frame is a database value, so it names a
+ * served path; the cover page imports the same drawings instead. */
 const figure = (name) => {
   if (!existsSync(join(REPO_ROOT, 'docs', 'assets', name))) {
     throw new Error(`figure("${name}"): docs/assets/${name} does not exist`)

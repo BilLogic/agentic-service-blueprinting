@@ -1,9 +1,10 @@
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { COVER_ASSET_MANIFEST } from '../../scripts/sync-cover-assets.mjs'
 import { coverFigures, coverTabSections } from '@/components/cover/coverModel'
+import { packageCoverFigures } from '@/components/cover/packageCoverFigures'
 import { coverContent } from '@/content/coverContent'
 
 // Pins the template skin's content contract (plan §6 U3): generalized copy
@@ -80,16 +81,38 @@ describe('coverContent', () => {
     }
   })
 
-  it('every rendered SVG figure src is /cover/<name> with <name> in the sync manifest', () => {
+  it('draws every figure from the ones the package brings with it', () => {
+    // Not a path this page names — a module it imports. A named path is
+    // served by whatever tree holds the file, which is this one and not a
+    // deployment's; an import is resolved by the bundler, emitted into
+    // whatever output is being built, and fails the build when it is missing
+    // instead of falling through to a page of HTML.
+    const supplied = new Set(
+      Object.values(packageCoverFigures).map((figure) => figure.src),
+    )
     for (const image of coverFigures(coverContent)) {
-      if (!image.src.endsWith('.svg')) continue
-      const match = /^\/cover\/([^/]+)$/.exec(image.src)
-      expect(match, `unexpected src shape: ${image.src}`).not.toBeNull()
-      expect(COVER_ASSET_MANIFEST).toContain(match?.[1])
+      expect(supplied, `not one of the package's figures: ${image.src}`).toContain(
+        image.src,
+      )
     }
   })
 
-  it('every manifest figure exists in docs/assets/', () => {
+  it('resolves each of the package’s figures to a file it authored', () => {
+    for (const figure of Object.values(packageCoverFigures)) {
+      const name = basename(figure.src.split('?')[0])
+      expect(existsSync(join(ASSETS_DIR, name)), `missing ${name}`).toBe(true)
+    }
+  })
+
+  it('and the sample blueprint’s frames name those same files', () => {
+    // The sample's storyboard frames are database values, so they name a
+    // served path and cannot be imports; the copy that serves them is what
+    // the manifest is for. One home, two consumers, and this is what keeps
+    // them naming the same drawings.
+    const authored = Object.values(packageCoverFigures)
+      .map((figure) => basename(figure.src.split('?')[0]))
+      .sort()
+    expect(authored).toEqual([...COVER_ASSET_MANIFEST].sort())
     for (const name of COVER_ASSET_MANIFEST) {
       expect(existsSync(join(ASSETS_DIR, name)), `missing ${name}`).toBe(true)
     }
@@ -105,11 +128,11 @@ describe('coverContent', () => {
 
     // The figures are authored truth; these three slots were the last empty
     // ones and the copy around them reads off the drawings.
-    expect(figureOf('overview-when')).toBe('/cover/when-to-use.svg')
+    expect(figureOf('overview-when')).toBe(packageCoverFigures.whenToUse.src)
     // The definition and the presenting behaviour are one opening section
     // now, and "From path to presentation" belongs to it.
-    expect(figureOf('slices-intro')).toBe('/cover/slice-concept.svg')
-    expect(figureOf('slices-types')).toBe('/cover/slicing-model.svg')
+    expect(figureOf('slices-intro')).toBe(packageCoverFigures.sliceConcept.src)
+    expect(figureOf('slices-types')).toBe(packageCoverFigures.slicingModel.src)
   })
 
   it("the Overview defs list carries the four categories the figure shows", () => {
