@@ -17,12 +17,17 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { validateResourceUrl } from '../../src/lib/resourceUrl.ts'
+// Through the alias, not up two directories. A deployment reads the
+// application out of `node_modules/agentic-service-blueprinting` and has no
+// `src` to walk up into, so `../../src/lib/…` is a file that is not there and
+// the suite cannot even load. `@/…` is the same pair of roots the build
+// resolves, so this import lands on whichever one holds the application.
+import { validateResourceUrl } from '@/lib/resourceUrl.ts'
 import {
   updateCellContent,
   updateCellResources,
-} from '../../src/lib/cellContentMutations.ts'
-import { updateCellSpec } from '../../src/lib/cellSpecMutations.ts'
+} from '@/lib/cellContentMutations.ts'
+import { updateCellSpec } from '@/lib/cellSpecMutations.ts'
 
 test('bare host is upgraded to https', () => {
   const result = validateResourceUrl('figma.com/file/abc')

@@ -56,13 +56,26 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { LABEL_COLUMNS } from '../interface-schema-map.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
+import { appFiles, appPackageRoot, readAppFile } from '../app-source.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
-const SRC = resolve(ROOT, 'src')
+
+/**
+ * The package the application sits in, which is what a finding names its file
+ * relative to.
+ *
+ * The map and the document are THIS repository's — `scripts/` and
+ * `references/` are the reading tree's own, and stay resolved off `ROOT`. The
+ * panels and the generated types are the application's, and a deployment
+ * keeps those in `node_modules/agentic-service-blueprinting`. A finding still
+ * reads `src/components/…` on either side, because it is relative to the
+ * application's root's parent rather than to whichever tree ran the check.
+ */
+const APP_PACKAGE = appPackageRoot(ROOT)
 const GUARD_FILE = relative(ROOT, new URL(import.meta.url).pathname).split('\\').join('/')
 const GUARD_SOURCE = readFileSync(new URL(import.meta.url), 'utf8')
 const RERUN = 'npm test -- scripts/tests/labels-name-their-columns.test.mjs'
@@ -148,22 +161,20 @@ const LABEL_PROP = /\b(label|title)\s*=\s*"([^"]*)"/
  */
 const TAB_TABLE = 'const PANEL_TABS'
 
-function walk(dir) {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) return walk(path)
-    if (!/\.tsx$/.test(entry) || entry.includes('.test.')) return []
-    return [path]
-  })
-}
-
+/**
+ * Every panel `.tsx` in the application, with its source.
+ *
+ * `appFiles` sweeps whichever root holds the application and REFUSES to come
+ * back empty. That refusal is the point: every assertion below reports what it
+ * did not find, so a walk of a `src` that is not there agrees with a clean
+ * interface exactly, and goes on agreeing.
+ */
 export function panelSources() {
-  return walk(SRC)
-    .map((path) => ({
-      file: relative(ROOT, path).split('\\').join('/'),
-      code: readFileSync(path, 'utf8'),
-    }))
-    .sort((a, b) => a.file.localeCompare(b.file))
+  return appFiles(
+    ROOT,
+    (path) => /\.tsx$/.test(path) && !path.includes('.test.'),
+    'panel .tsx',
+  ).map((file) => ({ file, code: readFileSync(join(APP_PACKAGE, file), 'utf8') }))
 }
 
 /** Every panel label in the app, with where it is written. */
@@ -369,7 +380,7 @@ test('the fossil check goes red on a row no panel says', () => {
  * CI. So the types are the schema here, and this file reuses that script's
  * parser rather than growing a second reader of the same file.
  */
-const SCHEMA = parseGeneratedTypes(readFileSync(resolve(ROOT, 'src/types/database.ts'), 'utf8'))
+const SCHEMA = parseGeneratedTypes(readAppFile(ROOT, 'src/types/database.ts'))
 
 /** Schema names the map claims, that the schema does not have. */
 export function namesThatDoNotExist(schema, map = LABEL_COLUMNS) {

@@ -10,11 +10,16 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { validateDraftDependency } from '../../src/lib/dependencyValidation.ts'
+// Through the alias, not up two directories. A deployment reads the
+// application out of `node_modules/agentic-service-blueprinting` and has no
+// `src` to walk up into, so `../../src/lib/…` is a file that is not there and
+// the suite cannot even load. `@/…` is the same pair of roots the build
+// resolves, so this import lands on whichever one holds the application.
+import { validateDraftDependency } from '@/lib/dependencyValidation.ts'
 import {
   validateDraftVersion,
   describeVersionOutcome,
-} from '../../src/lib/versionValidation.ts'
+} from '@/lib/versionValidation.ts'
 
 const source = { cellId: 'a', pathId: 'p1', label: 'Greet customer' }
 const sameVersion = { cellId: 'b', pathId: 'p1', label: 'Share screen' }

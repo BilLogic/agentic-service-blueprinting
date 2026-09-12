@@ -41,8 +41,8 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { RETIRED_IDENTIFIER_FRAGMENTS } from '../retired-vocabulary.mjs'
+import { readAppFile } from '../app-source.mjs'
 
 /**
  * Every retired fragment in its presentation spelling: hyphens where the
@@ -85,9 +85,19 @@ export function retiredSpellingsIn(fill) {
   return RETIRED_PRESENTATION_SPELLINGS.filter((word) => lower.includes(word))
 }
 
-const styleModule = readFileSync(STYLE_MODULE, 'utf8')
-const stylesheet = readFileSync(STYLESHEET, 'utf8')
-const theme = readFileSync(THEME, 'utf8')
+/**
+ * The three files, read out of the application wherever it is.
+ *
+ * They were read at a bare relative path, which is a path off the working
+ * directory — the deployment's root, which holds no `src`. All three are
+ * application source, so all three go through the pair of roots the build
+ * resolves, and a file that is not under either is a missing subject rather
+ * than an empty string.
+ */
+const REPO_ROOT = process.cwd()
+const styleModule = readAppFile(REPO_ROOT, STYLE_MODULE)
+const stylesheet = readAppFile(REPO_ROOT, STYLESHEET)
+const theme = readAppFile(REPO_ROOT, THEME)
 
 test('no fill name contains a word the schema has retired', () => {
   const offenders = declaredFills(styleModule)
