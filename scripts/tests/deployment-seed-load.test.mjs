@@ -19,9 +19,11 @@ import { join } from 'node:path'
 import {
   chooseDeployment,
   expandSeedEntries,
+  fileNeverRan,
   groupFailures,
   isDownstream,
   parsePsqlErrors,
+  readSeedFiles,
   resolveSeedFiles,
   seedFlag,
   seedSectionFromConfig,
@@ -83,7 +85,8 @@ test('a seed with no config beside it is the whole seed', () => {
   assert.deepEqual(resolveSeedFiles(seed), [seed])
 })
 
-test("the config's list wins over the named file, and a missing entry is dropped", () => {
+/** A supabase directory holding `seed.sql`, `seeds/one.sql` and the given config. */
+function deployment(sqlPaths) {
   const dir = mkdtempSync(join(tmpdir(), 'deployment-seed-'))
   const supabase = join(dir, 'supabase')
   mkdirSync(join(supabase, 'seeds'), { recursive: true })
@@ -91,12 +94,64 @@ test("the config's list wins over the named file, and a missing entry is dropped
   writeFileSync(join(supabase, 'seeds', 'one.sql'), 'select 1;\n')
   writeFileSync(
     join(supabase, 'config.toml'),
-    '[db.seed]\nenabled = true\nsql_paths = ["./seed.sql", "./seeds/one.sql", "./seeds/gone.sql"]\n',
+    `[db.seed]\nenabled = true\nsql_paths = [${sqlPaths.map((p) => `"${p}"`).join(', ')}]\n`,
   )
+  return supabase
+}
+
+test("the config's list wins over the named file, in the order it states", () => {
+  const supabase = deployment(['./seeds/one.sql', './seed.sql'])
   assert.deepEqual(resolveSeedFiles(join(supabase, 'seed.sql')), [
+    join(supabase, 'seeds', 'one.sql'),
     join(supabase, 'seed.sql'),
+  ])
+})
+
+test('an entry with no file behind it stops the check instead of being dropped', () => {
+  const supabase = deployment(['./seed.sql', './seeds/one.sql', './seeds/gone.sql'])
+  // Dropping it would load the rest out of dependency order and report every
+  // row that then failed as knock-on, with the cause absent from the output.
+  assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), (error) => {
+    assert.match(error.message, /seeds\/gone\.sql/)
+    assert.match(error.message, /is not there/)
+    assert.match(error.message, /sql_paths/)
+    assert.equal(error.cause?.code, 'ENOENT')
+    return true
+  })
+})
+
+test('an entry that resolves to a directory stops it too, and says so differently', () => {
+  const supabase = deployment(['./seed.sql', './seeds'])
+  assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), (error) => {
+    assert.match(error.message, /is not a file/)
+    assert.equal(error.cause, undefined)
+    return true
+  })
+})
+
+test('a glob is held to the same rule as a name it expands to', () => {
+  const supabase = deployment(['./seeds/*.sql'])
+  assert.deepEqual(resolveSeedFiles(join(supabase, 'seed.sql')), [
     join(supabase, 'seeds', 'one.sql'),
   ])
+  mkdirSync(join(supabase, 'seeds', 'two.sql'))
+  assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), /two\.sql is not a file/)
+})
+
+test('the seed text is read straight off the listing, and a gone path throws', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'deployment-seed-'))
+  const first = join(dir, 'a.sql')
+  const second = join(dir, 'b.sql')
+  writeFileSync(first, 'insert into public.services (id) values (1);\n')
+  writeFileSync(second, 'insert into public.cells (id) values (2);\n')
+  assert.deepEqual(seededTables(readSeedFiles([first, second])), ['services', 'cells'])
+
+  // Not skipped: the check's result counts these files, so a set it shrank
+  // quietly would be a green that measured something else.
+  assert.throws(() => readSeedFiles([first, join(dir, 'gone.sql')]), { code: 'ENOENT' })
+  // And a path that is there but unreadable stays a different fact, as
+  // scripts/read-listed.mjs keeps it for the listings that are deliberately stale.
+  assert.throws(() => readSeedFiles([first, dir]), (error) => error.code !== 'ENOENT')
 })
 
 test('only the ERROR lines are failures; notices and detail lines are not', () => {
@@ -119,6 +174,15 @@ test('only the ERROR lines are failures; notices and detail lines are not', () =
       message: 'column "old_column" of relation "phases" does not exist',
     },
   ])
+})
+
+test('psql exiting non-zero with nothing to report means the file never ran', () => {
+  const finding = { file: 'a.sql', line: 1, message: 'relation "x" does not exist' }
+  assert.equal(fileNeverRan(1, []), true)
+  assert.equal(fileNeverRan(0, []), false)
+  // A seed that sets ON_ERROR_STOP in its own text exits non-zero with real
+  // findings attached, and those findings are what this check is for.
+  assert.equal(fileNeverRan(3, [finding]), false)
 })
 
 test('a knock-on failure is one of three shapes, and nothing else is', () => {
