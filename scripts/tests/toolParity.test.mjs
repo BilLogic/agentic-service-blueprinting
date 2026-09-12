@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 
+import { readAppFile } from '../app-source.mjs'
+
 /**
  * The eval harness must run against the app's tool surface. The spec
  * DECLARATIONS are one-sourced — `surface.mjs` bundles `app-surface.entry.ts`
@@ -18,8 +20,22 @@ import assert from 'node:assert/strict'
 // working directory (npm test runs at the repo root), not from import.meta.
 const REPO_ROOT = process.cwd()
 
+/** A file of THIS tree: the harness, which a deployment holds beside this test. */
 function read(path) {
   return readFileSync(resolve(REPO_ROOT, path), 'utf8')
+}
+
+/**
+ * A file of the APPLICATION, wherever this tree keeps it.
+ *
+ * The harness modules above are this repository's and sit next to this test in
+ * every deployment. `specs.ts` and `registry.ts` are not: a deployment keeps no
+ * `src` and reads them out of `node_modules/agentic-service-blueprinting`.
+ * Read by hand from `src/…`, this file did not fail there — it threw ENOENT on
+ * import, which took the parity checks out of the run entirely.
+ */
+function readApp(path) {
+  return readAppFile(REPO_ROOT, path)
 }
 
 /** The string members of a `new Set([...])` assigned to `name`. */
@@ -32,8 +48,8 @@ function setMembers(source, name) {
 
 // Specs and rosters live in specs.ts (pure data); dispatch stays in
 // registry.ts. The parity checks read each from where it lives.
-const specs = read('src/lib/agent/tools/specs.ts')
-const registry = read('src/lib/agent/tools/registry.ts')
+const specs = readApp('src/lib/agent/tools/specs.ts')
+const registry = readApp('src/lib/agent/tools/registry.ts')
 const harness = read('scripts/agent-harness/run.mjs')
 const bundler = read('scripts/agent-harness/surface.mjs')
 const surfaceEntry = read('scripts/agent-harness/app-surface.entry.ts')

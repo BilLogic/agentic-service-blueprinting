@@ -29,8 +29,23 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readAppFile } from './app-source.mjs'
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
+/**
+ * The two sides, and the two places they live.
+ *
+ * The adapter is a file of THIS tree — a deployment holds it byte-identical
+ * beside this script, and that copy is the one its agent reads. The specs are
+ * the APPLICATION's, which a deployment does not keep a `src` for: it depends
+ * on this repository as a package and reads them out of
+ * `node_modules/agentic-service-blueprinting/src`. `readAppFile` is what knows
+ * the difference, and it refuses a tree that has the application in neither
+ * place rather than comparing the document against an empty roster — which is
+ * the shape this check fails in most expensively, because a document that
+ * declares tools nobody has and a roster with nobody in it agree perfectly.
+ */
 const ADAPTER = 'references/canvas-adapter.md'
 const SPECS = 'src/lib/agent/tools/specs.ts'
 
@@ -94,9 +109,8 @@ export function differences(documented, declared) {
 }
 
 export function compare(root = REPO_ROOT) {
-  const read = (path) => readFileSync(join(root, path), 'utf8')
-  const adapter = read(ADAPTER)
-  const specs = read(SPECS)
+  const adapter = readFileSync(join(root, ADAPTER), 'utf8')
+  const specs = readAppFile(root, SPECS)
   return {
     ...differences(documentedReadTools(adapter), declaredReadTools(specs)),
     phantom: phantomTools(adapter, registeredTools(specs)),

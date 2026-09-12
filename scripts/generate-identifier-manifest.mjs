@@ -25,6 +25,8 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readAppFile } from './app-source.mjs'
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 export const MANIFEST_PATH = 'identifiers.json'
 
@@ -131,24 +133,36 @@ function hookNames(root) {
 /**
  * Tool names as the model sees them, read out of the spec source rather than
  * imported: `specs.ts` is TypeScript and this script runs under bare node.
+ *
+ * Read through `readAppFile`, because these two are the only names in the
+ * manifest that come out of the APPLICATION rather than out of the plugin tree,
+ * and a deployment keeps no `src` of its own — it depends on this repository as
+ * a package and reads them out of `node_modules/agentic-service-blueprinting`.
+ * These functions used to answer a missing file with `[]`, which is the worst
+ * available answer: the manifest generated there would have declared that the
+ * canvas agent offers no tools and accepts no reference names, and `--check`
+ * would have called the committed truth stale. A tree with no application has
+ * no answer to give, and `readAppFile` says so, naming both roots it looked in.
  */
 function agentToolNames(root) {
-  const file = join(root, 'src/lib/agent/tools/specs.ts')
-  if (!existsSync(file)) return []
-  const source = readFileSync(file, 'utf8')
-  return [...source.matchAll(/^\s*name: '([a-z_]+)',$/gm)]
+  const source = readAppFile(root, 'src/lib/agent/tools/specs.ts')
+  const names = [...source.matchAll(/^\s*name: '([a-z_]+)',$/gm)]
     .map((match) => match[1])
     .sort()
+  if (names.length === 0) throw new Error('no tool names in src/lib/agent/tools/specs.ts')
+  return names
 }
 
 /** Reference names the canvas agent will accept, which is its own list. */
 function canvasReferenceNames(root) {
-  const file = join(root, 'src/lib/agent/tools/referenceNames.ts')
-  if (!existsSync(file)) return []
-  const source = readFileSync(file, 'utf8')
+  const source = readAppFile(root, 'src/lib/agent/tools/referenceNames.ts')
   const block = /REFERENCE_NAMES[^=]*=\s*\[([\s\S]*?)\]/.exec(source)
-  if (!block) return []
-  return [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort()
+  if (!block) throw new Error('no REFERENCE_NAMES list in src/lib/agent/tools/referenceNames.ts')
+  const names = [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort()
+  if (names.length === 0) {
+    throw new Error('REFERENCE_NAMES is empty in src/lib/agent/tools/referenceNames.ts')
+  }
+  return names
 }
 
 export function buildManifest(root = REPO_ROOT) {

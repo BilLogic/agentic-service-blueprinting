@@ -40,8 +40,11 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { declaredWriteTools } from '../check-write-surface.mjs'
+import { readAppFile } from '../app-source.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
+
+/** CONTEXT.md is a file of this tree; every deployment holds it beside this test. */
 const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 
 /**
@@ -175,7 +178,17 @@ test('a write tool that names no record is not this file’s business', () => {
 // The repository
 // ---------------------------------------------------------------------------
 
-const ROSTER = declaredWriteTools(read('src/lib/agent/tools/specs.ts'))
+/**
+ * The roster, read out of the application wherever this tree keeps it.
+ *
+ * A deployment has no `src` — it reads the application out of
+ * `node_modules/agentic-service-blueprinting` — and `readAppFile` refuses a tree
+ * that has it in neither place. That refusal is the point: `declaredWriteTools`
+ * throws on a source with no `WRITE_TOOL_NAMES` in it, but an EMPTY roster would
+ * have satisfied both rules below, because a table can credit no unreal tool and
+ * orphan no write when there are no writes to orphan.
+ */
+const ROSTER = declaredWriteTools(readAppFile(ROOT, 'src/lib/agent/tools/specs.ts'))
 
 test('every tool the ownership table credits is one the agent has', () => {
   const unreal = creditedButUnreal(RECORD_OWNERS, ROSTER)
