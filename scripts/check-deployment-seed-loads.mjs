@@ -74,6 +74,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RENDER_READS, RENDER_READ_NAMES, STACK, parseCounts } from './check-seed-loads.mjs'
+import { unverified } from './unverified.mjs'
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url))
 const P = (rel) => resolve(ROOT, rel)
@@ -462,6 +463,16 @@ export function seedFlag(argv) {
 }
 
 function skip(reason) {
+  // The skip is correct — one checkout genuinely has no deployment to load —
+  // and it was invisible, which is the half that is not. A run that loaded a
+  // deployment's seed onto this core and a run that loaded nothing at all
+  // both ended in a green exit and a log line.
+  unverified(
+    "a deployment's seed against this core",
+    `${reason}, so nothing was loaded: not that the portable core accepts a real ` +
+      `deployment's content, and not that the app's role can read it back. Point this ` +
+      `at a deployment checkout with --seed <path> or DEPLOYMENT_SEED=<path>.`,
+  )
   console.log(
     `skipped: ${reason}.\n` +
       `  This check loads a DEPLOYMENT's seed onto this template's core, so it needs a\n` +

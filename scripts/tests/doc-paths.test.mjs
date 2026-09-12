@@ -23,7 +23,7 @@ const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
 test('a listing with no plugin-surface document in it is refused', () => {
   assert.throws(
-    () => surfaceDocs(['README.md', 'src/main.tsx', 'docs/guide/01-the-blueprint-model.md']),
+    () => surfaceDocs(['README.md', 'INDEX.md', 'docs/guide/01-the-blueprint-model.md']),
     /no markdown under .*: this check has no subject/,
   )
 })

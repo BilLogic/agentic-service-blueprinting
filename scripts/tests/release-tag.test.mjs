@@ -10,7 +10,18 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   localTags,
@@ -44,6 +55,69 @@ test('the released versions are the release headings, not the title', () => {
 
 test('an untagged repo passes, and says that it is untagged', () => {
   assert.deepEqual(faults({ released: ['0.4.0'] }), [])
+})
+
+test('this checkout can see tags, so the guard has something to hold', () => {
+  // The counterweight to the case above. Every assertion in `tagFaults` is
+  // written over the tags that exist, so an empty list makes all of them
+  // vacuous — and this repository has a hundred tags, which means an empty
+  // answer here is a checkout that cannot see them rather than a repository
+  // that has none.
+  assert.ok(localTags().length > 0, 'no v* tag is visible — run `git fetch --tags` first')
+})
+
+/**
+ * The script beside the two files it reads, in a throwaway root.
+ *
+ * It resolves its own repository root from where it sits, so the only way to
+ * run it against a tree that is not this one is to put a copy of it in that
+ * tree. `unverified.mjs` travels with it because it is imported.
+ */
+function stage() {
+  // Realpath, because the script decides it is the entry point by comparing
+  // `process.argv[1]` against its own resolved URL — and a temporary directory
+  // reached through a symlinked root would make it decide it is not.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'release-tag-')))
+  mkdirSync(join(root, 'scripts'))
+  for (const file of ['scripts/check-release-tag.mjs', 'scripts/unverified.mjs']) {
+    cpSync(join(ROOT, file), join(root, file))
+  }
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '0.4.0' }))
+  writeFileSync(join(root, 'CHANGELOG.md'), '# Changelog\n\n## 0.4.0\n')
+  const run = () =>
+    spawnSync(process.execPath, [join(root, 'scripts/check-release-tag.mjs')], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: tmpdir() },
+    })
+  return { root, run, done: () => rmSync(root, { recursive: true, force: true }) }
+}
+
+test('a tree with no git behind it is a failure, not an empty tag list', () => {
+  // `localTags` turned every git failure into `[]`, so a tree that is not a
+  // repository, a checkout handed no tags and a box with no git on it all
+  // printed the same reassuring `no release tags yet` and exited 0.
+  const t = stage()
+  try {
+    const run = t.run()
+    assert.notEqual(run.status, 0, `${run.stdout}${run.stderr}`)
+    assert.match(run.stderr, /git tag --list v\* failed/)
+  } finally {
+    t.done()
+  }
+})
+
+test('a repository that genuinely has no tag passes, and says what went unheld', () => {
+  const t = stage()
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: t.root })
+    const run = t.run()
+    assert.equal(run.status, 0, `${run.stdout}${run.stderr}`)
+    assert.match(run.stdout, /no release tags yet/)
+    assert.match(run.stderr, /^::warning::unverified — every release tag\./m)
+  } finally {
+    t.done()
+  }
 })
 
 test('once tagging has started, a release inside the era may not skip it', () => {

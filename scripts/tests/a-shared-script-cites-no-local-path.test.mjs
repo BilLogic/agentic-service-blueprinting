@@ -74,6 +74,10 @@ export const SHARED_SCRIPTS = new Map([
   ['scripts/generate-agent-account.mjs', 'one generator, each repository’s own document and baseline'],
   ['scripts/swept-docs.mjs', 'one list of swept prose, read by every sweep in both repositories'],
   [
+    'scripts/unverified.mjs',
+    'one way of saying a subject went unmeasured, so a correct skip is visible in either tree',
+  ],
+  [
     'scripts/tests/the-router-is-a-router.test.mjs',
     'the router’s three checks, proven the same way on both sides',
   ],

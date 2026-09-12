@@ -85,8 +85,13 @@ const say = (where, { value, column, is, migration }) =>
 
 test('no swept document offers a retired value in the company of its column', () => {
   const live = catalog()
+  const docs = sweptDocs(ROOT)
+  // Same breadth assertion the figures half of this file already makes: the
+  // root documents are prepended unconditionally, so a corpus that collapsed
+  // to them alone still has a length and still sweeps green.
+  assert.ok(docs.length > 20, `only ${docs.length} swept document(s) — is the sweep still on?`)
   const found = []
-  for (const relative of sweptDocs(ROOT)) {
+  for (const relative of docs) {
     for (const sentence of sentencesOf(readFileSync(`${ROOT}/${relative}`, 'utf8'))) {
       // A sentence recording the retirement has to spell the retired value,
       // and proves it is doing that the way the markdown sweep asks: a
