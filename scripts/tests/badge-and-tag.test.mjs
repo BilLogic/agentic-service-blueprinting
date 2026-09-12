@@ -69,6 +69,7 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { readListed } from '../read-listed.mjs'
 import { RENAME_MAP } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
 
@@ -145,16 +146,25 @@ function walk(dir) {
  * `code` is the file with comments stripped, `comments` is what the stripping
  * removed. One walk, because the two assertions below are one subject read
  * twice and a second walk would be a second thing to keep in step.
+ *
+ * The skip in `walk` covered the `statSync` and stopped there, so an entry that
+ * vanished in the wider gap — between the walk finishing and this read starting
+ * — still threw, and the promise above held for part of a second. It is the
+ * same rule either way, and `read-listed.mjs` now states it once for every walk
+ * in the repository that reads a path something else listed.
  */
 export function appSources() {
   return walk(SRC)
-    .map((path) => {
-      const source = readFileSync(path, 'utf8')
-      return {
-        file: relative(ROOT, path).split('\\').join('/'),
-        code: stripComments(source),
-        comments: commentsOnly(source),
-      }
+    .flatMap((path) => {
+      const source = readListed(path)
+      if (source === null) return [] // listed, then gone before this read
+      return [
+        {
+          file: relative(ROOT, path).split('\\').join('/'),
+          code: stripComments(source),
+          comments: commentsOnly(source),
+        },
+      ]
     })
     .sort((a, b) => a.file.localeCompare(b.file))
 }

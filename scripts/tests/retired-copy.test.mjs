@@ -71,6 +71,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { scannedFiles } from '../check-standalone.mjs'
+import { readListed } from '../read-listed.mjs'
 import { sourceFilesUnder } from '../check-database-names.mjs'
 import { RETIRED_COPY_WORDS } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
@@ -763,12 +764,8 @@ test('a rename left no mangled English behind', () => {
   const found = scannedFiles(REPO_ROOT)
     .filter((path) => !mangleExempt(path))
     .flatMap((path) => {
-      let source
-      try {
-        source = readFileSync(resolve(REPO_ROOT, path), 'utf8')
-      } catch {
-        return [] // a submodule, or a path removed between listing and here
-      }
+      const source = readListed(resolve(REPO_ROOT, path))
+      if (source === null) return [] // listed, then gone before this read
       if (source.includes('\0')) return [] // binary
       return mangledIn(source).map((hit) => `${path}:${hit.line} — meant "${hit.meant}"`)
     })
