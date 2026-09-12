@@ -1,5 +1,91 @@
 # Changelog
 
+## 1.42.0
+
+A deployment that reads the application out of this package gets somewhere to
+keep its own files, and a stylesheet with classes in it.
+
+**A deployment brings its own source root.** `@/…` already finds this package
+once a deployment stops keeping a copy of the application, and that left the
+deployment's own files with nowhere to go. They cannot go back into `src`: the
+first root that exists wins, so a `src` holding only a deployment's files would
+capture every `@/…` import in the package and resolve none of them. They go in
+`deployment/` now, reached by `~/…`. Make that directory at the root of the
+repository and put in it every module that is the deployment's rather than the
+application's — its `DeploymentConfig`, its cover content, its pre-database
+navigation, its entry point, its stylesheet layer — then point `index.html` at
+the entry kept there. Inside it, `~/…` reaches the deployment's own modules and
+`@/…` reaches this package's, so which side an import is on is visible at the
+import site.
+
+**Why a second prefix rather than a second root under `@/…`.** A bundler alias
+maps a prefix to exactly one directory, so one prefix could only ever choose
+between the two roots, never hold both. And where a per-module fallback is
+available at all — TypeScript's `paths` does offer one — it is precisely the
+arrangement this replaces: a deployment file quietly standing in for a package
+file of the same name, with nothing reporting the substitution.
+
+**What carries a deployment's content now that its copies are gone.** The seams
+that were already there, and this release writes the whole inventory down as a
+test rather than a paragraph. A deployment's name and accent, its cover, and the
+board shown before a database answers all arrive on `DeploymentConfig` —
+`brand`, `cover`, `sample.nav`. The bundled sample blueprint has no field and
+needs none: a deployment with a database never reaches it, and where a surface
+consults it without asking first, the lookup is by identifier and the
+identifiers are this template's own. `types/database.ts` is the largest file
+anyone forked and has no seam either, because every import of it is a type
+import — it is this template's compile-time statement of the schema its code
+needs, satisfied by having that schema, not by swapping a module underneath code
+that was typechecked against it.
+
+One value still reaches no config: the workspace breadcrumb's label, built while
+the navigation model evaluates. The component that renders that trail has no
+consumer in this tree, so nothing is wrong on screen, and a test holds it that
+way — wiring the component up is what will force the label to be carried in from
+the resolved config.
+
+**A deployment's stylesheet keeps its utility classes.** A deployment reading
+the application out of this package built a stylesheet with no utility classes
+in it at all — measured on a staged deployment, 83 kB against 291 kB, and nine
+class names with a rule rather than sixteen hundred, every one of those nine
+hand-written in this package's own CSS. The build succeeded, the CSS file was
+written, and every element on the page rendered unstyled.
+
+Tailwind writes a rule for a class name only where it finds that name written
+down, and the scan it does by itself starts at the project root and refuses
+`node_modules`. A repository that keeps the application in `src` is covered by
+that scan by coincidence: the root it starts at is the root the markup lives in.
+Once the application arrives as a package, every class name the markup uses sits
+in the one directory the scan will not read — and finding no class names is not
+an error, so nothing reported it. The stylesheet entry now names the
+application's source root itself, from inside itself, so the application is
+scanned wherever it is read from. That path is relative to the entry, which
+travels with the markup it describes, so it holds whether this package is linked
+into a tree, hoisted to the top of `node_modules`, or nested under another
+dependency — all three measured, all three building the identical stylesheet.
+
+**Two shared files name their decision instead of citing an issue number.** A
+deployment that enrols `src/lib/service.ts` or the board-address test in a drift
+gate no longer inherits a pointer to an issue its own tracker does not have.
+
+**Upgrading a deployment:**
+
+- Nothing is required, and nothing changes until files move. A repository with
+  no `deployment/` directory compiles exactly the files it compiled before and
+  collects exactly the tests it collected before — measured against the file
+  list `tsc -b` emits, not asserted.
+- Take `vite.config.ts`, `tsconfig.json` and `tsconfig.app.json` with the
+  release as usual. The alias, the TypeScript include and the test glob all ship
+  in them, so there is nothing to edit and nothing to unenrol.
+- Keep importing `agentic-service-blueprinting/styles.css` exactly as before. A
+  deployment's own markup in `deployment/` is still found by the ordinary scan
+  of its project root, and its stylesheet gains the application's utilities
+  alongside it.
+- A deployment that worked around the empty stylesheet with an `@source` of its
+  own pointed into `node_modules` can drop it. That path is now this package's
+  business rather than something to maintain against a path inside someone
+  else's package.
+
 ## 1.41.0
 
 A deployment lands on its own cover, the bundled sample stops reaching a
@@ -139,25 +225,31 @@ slice actually carries, which is `authorship`.
   exported `CoverContent` type and name it on the config:
 
   ```ts
-  import type { CoverContent, DeploymentConfig } from 'agentic-service-blueprinting'
+  import type {
+    CoverContent,
+    DeploymentConfig,
+  } from "agentic-service-blueprinting";
 
   export const coverContent: CoverContent = {
-    title: 'The workspace name shown on the cover and in app chrome',
-    lede: 'One paragraph under the heading.',
-    primaryCtaLabel: 'Open the blueprint',
-    repoUrl: 'https://github.com/<owner>/<repo>', // optional; guide links are dropped without it
-    commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
-    states: { noSlices: 'No slices in this workspace yet.' },
-    tabs: [/* sections may be `prose`, `figure`, `defs`, `portrait` or `skill` */],
-  }
+    title: "The workspace name shown on the cover and in app chrome",
+    lede: "One paragraph under the heading.",
+    primaryCtaLabel: "Open the blueprint",
+    repoUrl: "https://github.com/<owner>/<repo>", // optional; guide links are dropped without it
+    commandCopy: { copyLabel: "Copy", copiedLabel: "Copied" },
+    states: { noSlices: "No slices in this workspace yet." },
+    tabs: [
+      /* sections may be `prose`, `figure`, `defs`, `portrait` or `skill` */
+    ],
+  };
 
-  export const deploymentConfig: DeploymentConfig = { cover: coverContent }
+  export const deploymentConfig: DeploymentConfig = { cover: coverContent };
   ```
 
   The cover is taken whole, never merged, and `lede`, `primaryCtaLabel`,
   `commandCopy`, `states` and `tabs` are all required. Figure and portrait `src`
   values are paths this deployment serves itself; nothing is copied out of the
   template's `public/cover/`.
+
 - A supplied `cover.title` becomes the wordmark unless `content.workspaceTitle`
   says otherwise, which still wins. A deployment that wants its workspace called
   something other than its cover heading keeps saying so there.
@@ -5608,8 +5700,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                        "lanes_lane_role_check" … compliance_review
+                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
