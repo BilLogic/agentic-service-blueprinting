@@ -16,8 +16,22 @@ type Client = SupabaseClient<Database>
  */
 let firstServiceId: Promise<string | null> | null = null
 
-/** First service by `created_at`, or null when the database has none. */
-export function findFirstServiceId(client: Client): Promise<string | null> {
+/**
+ * First service by `created_at`, or null when the database has none.
+ *
+ * NOT exported. Its one legitimate caller is `findActiveServiceId`'s no-slug
+ * branch below — the bare root, where nothing claims a service and "first" is
+ * what active MEANS. That is a different thing from the fallback #622 retired,
+ * which fired when a slug named no service and sent the write to a sibling.
+ *
+ * It was exported, and three write paths reached for it: a new slice, and the
+ * two "new phase" resolvers. Each of them wanted the service on screen and got
+ * the first one instead. Keeping it module-private is what stops the fourth —
+ * a surface that wants a service id can only reach `findActiveServiceId` (a
+ * read, nullable) or `resolveActiveServiceId` (a write, throwing), and both
+ * honour the URL.
+ */
+function findFirstServiceId(client: Client): Promise<string | null> {
   if (!firstServiceId) {
     firstServiceId = (async () => {
       const { data, error } = await client
