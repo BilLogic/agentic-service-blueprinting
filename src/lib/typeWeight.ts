@@ -6,7 +6,8 @@ import {
 } from '@/lib/classList'
 
 /**
- * The weight guard. ADR 0012.
+ * The weight guard, under the decision that a rung owns size and leading
+ * while a call site owns weight, tracking and ink.
  *
  * A class list is the seam: a type rule is almost never about one utility,
  * and a quoted-string search is defeated the moment weights are reordered
@@ -120,7 +121,7 @@ function isHeadingSite(site: ClassListSite, source: string): boolean {
 }
 
 /**
- * Why this class list violates ADR 0012, or `null` if it does not.
+ * Why this class list violates the weight rule, or `null` if it does not.
  *
  * @param site - one class list, as `classLists` / `classListsIn` reports it
  * @param source - the file's source, so a heading tag at this line can pass
@@ -131,18 +132,18 @@ export function weightFault(
 ): string | null {
   const weights = weightNamesOn(site.classes)
   if (weights.some((name) => RETIRED.has(name))) {
-    return 'font-bold is retired — ADR 0012: 700 is not a weight this tree uses'
+    return 'font-bold is retired: 700 is not a weight this tree uses'
   }
   const functional = weights.filter((name) => FUNCTIONAL.has(name))
   if (functional.length > 1) {
     return (
-      `second functional weight (${functional.join(' + ')}) — ADR 0012: ` +
+      `second functional weight (${functional.join(' + ')}): ` +
       '500 is the one working emphasis, 600 is headings only'
     )
   }
   if (functional.includes('semibold') && !isHeadingSite(site, source)) {
     return (
-      'second functional weight (font-semibold on a non-heading) — ADR 0012: ' +
+      'second functional weight (font-semibold on a non-heading): ' +
       '600 is headings only'
     )
   }
