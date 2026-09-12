@@ -17,6 +17,7 @@ import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configureAgentSearch } from '@/lib/agent/searchPlan'
 import { configurePathColorPins } from '@/lib/pathColorTheme'
+import { configureStoryboardBorders } from '@/lib/storyboardWalkthrough'
 
 /**
  * The deployment seam, made reachable to every surface in the app.
@@ -87,6 +88,20 @@ export function DeploymentConfigProvider({
   useLayoutEffect(() => {
     configureCellBudget(cellBudget)
   }, [cellBudget])
+
+  /**
+   * The deployment's bordered artwork onto the walkthrough module, as a
+   * LAYOUT effect for the same reason as the pins: the list decides whether a
+   * frame is drawn with a border around it, so a late write would show every
+   * frame double-bordered for one frame and then correct itself. Empty — the
+   * template, and every deployment whose artwork carries no border of its own
+   * — is today's behaviour, written explicitly rather than left to whatever a
+   * previous mount put there.
+   */
+  const embeddedBorderPaths = resolved.storyboard.embeddedBorderPaths
+  useLayoutEffect(() => {
+    configureStoryboardBorders(embeddedBorderPaths)
+  }, [embeddedBorderPaths])
 
   /**
    * The search state onto the agent's plan module. An ORDINARY effect, not a

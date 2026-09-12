@@ -41,7 +41,9 @@
  * blueprint starts with when nothing is copied. `cover` is the whole landing
  * page, read by the editor shell and handed to `CoverPage`, and its `title` is
  * the wordmark's second fallback — so a deployment that names its cover has
- * named its workspace. `brand.logo`, `content.coverTitle` and the whole `agent` block are
+ * named its workspace. `storyboard.embeddedBorderPaths` is written onto the
+ * walkthrough module in that same layout effect, beside the pins and the
+ * budget. `brand.logo`, `content.coverTitle` and the whole `agent` block are
  * declared shape with no reader: the workspace breadcrumb still takes
  * `ORG_NAME` directly, and `content.coverTitle` is the narrower restatement of
  * a heading `cover` already carries. They migrate onto this type in later
@@ -290,6 +292,36 @@ export type DeploymentConfig = {
    * content a deployment states is the whole of what it states.
    */
   cover?: CoverContent
+  /**
+   * What this deployment's own storyboard artwork does, where the walkthrough
+   * cannot see it from the board.
+   *
+   * Narrow on purpose. The walkthrough derives almost everything it needs from
+   * the blueprint — which lanes it steps through comes from their roles, and a
+   * lane's label is its name — and a config field for either would be a
+   * pinned copy of data that already exists, free to go stale the day a
+   * deployment adds a lane. What is left is the one fact that is NOT in the
+   * board: whether an image file draws its own border.
+   */
+  storyboard?: StoryboardConfig
+}
+
+/**
+ * Frame paths whose artwork already draws a border, so the walkthrough does
+ * not draw a second one around them.
+ *
+ * Each entry is matched as a SUBSTRING of a cell's frame path, so a deployment
+ * names the folder a batch of artwork sits in rather than listing every file.
+ * An omitted or empty list is the template's own state: no artwork of its own,
+ * so every frame is bordered by the chrome.
+ */
+export type StoryboardConfig = {
+  embeddedBorderPaths?: string[]
+}
+
+/** {@link StoryboardConfig} with its one field settled. */
+export type ResolvedStoryboardConfig = {
+  embeddedBorderPaths: string[]
 }
 
 /**
@@ -358,6 +390,11 @@ export type ResolvedDeploymentConfig = {
    * and sections on every resolution would buy nothing and cost the copy.
    */
   cover: CoverContent
+  /**
+   * Guaranteed complete, the way `cellBudget` is: an empty list is the
+   * template's own state rather than an absence anyone has to interpret.
+   */
+  storyboard: ResolvedStoryboardConfig
 }
 
 /**
@@ -430,6 +467,7 @@ export const asbDefaultConfig: DeploymentConfig = {
   // in rather than restated here — the same rule the wordmark and the accent
   // follow two fields up, and for the same reason.
   cover: coverContent,
+  storyboard: { embeddedBorderPaths: [] },
 }
 
 /**
@@ -554,6 +592,9 @@ export function resolveDeploymentConfig(
   // — the required fields make it a compile error — so the only two states
   // here are "the deployment wrote one" and "it did not".
   const cover = config?.cover ?? asbDefaultConfig.cover ?? coverContent
+  const storyboard = {
+    embeddedBorderPaths: [...(config?.storyboard?.embeddedBorderPaths ?? [])],
+  }
   const overlaidLanes = config?.defaultLanes
   const defaultLanes = (
     overlaidLanes?.length ? overlaidLanes : (asbDefaultConfig.defaultLanes ?? [])
@@ -568,5 +609,6 @@ export function resolveDeploymentConfig(
     cellBudget,
     defaultLanes,
     cover,
+    storyboard,
   }
 }

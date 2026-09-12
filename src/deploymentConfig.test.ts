@@ -44,6 +44,9 @@ describe('asbDefaultConfig', () => {
     // named rather than restated. A deployment's cover belongs on its overlay.
     expect(asbDefaultConfig.cover).toBe(coverContent)
 
+    // No artwork of the template's own draws its own border.
+    expect(asbDefaultConfig.storyboard).toEqual({ embeddedBorderPaths: [] })
+
     // The current single cap, expressed as target and warning per lane kind.
     // A deployment's own numbers (for example 80/100 and 32/48) belong on
     // its overlay, not here.
@@ -80,6 +83,7 @@ describe('resolveDeploymentConfig', () => {
       })
       // The template's own landing page, and no bordered artwork.
       expect(resolved.cover).toBe(coverContent)
+      expect(resolved.storyboard).toEqual({ embeddedBorderPaths: [] })
     }
   })
 
@@ -127,6 +131,20 @@ describe('resolveDeploymentConfig', () => {
     const resolved = resolveDeploymentConfig({ cover: hostCover })
     expect(resolved.cover).toBe(hostCover)
     expect(resolved.cover.tabs[0]).toBe(hostCover.tabs[0])
+  })
+
+  it('copies the bordered-artwork list rather than aliasing it', () => {
+    const paths = ['/artwork/first-batch/']
+    const resolved = resolveDeploymentConfig({
+      storyboard: { embeddedBorderPaths: paths },
+    })
+    expect(resolved.storyboard.embeddedBorderPaths).toEqual(paths)
+    expect(resolved.storyboard.embeddedBorderPaths).not.toBe(paths)
+
+    paths.push('/artwork/second-batch/')
+    expect(resolved.storyboard.embeddedBorderPaths).toEqual([
+      '/artwork/first-batch/',
+    ])
   })
 
   it('carries a supplied cell budget without aliasing it, filling omitted kinds from the template', () => {

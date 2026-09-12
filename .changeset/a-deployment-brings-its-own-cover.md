@@ -6,6 +6,8 @@ A deployment brings its own landing page. `DeploymentConfig` takes a whole `cove
 
 The cover is replaced, never merged. Every string in this template's cover describes this template — its tabs, its guide links, its figures — so a deployment that set a title and inherited the rest would ship its own name over somebody else's page. There is also no field-by-field merge to define: the value is a tree of tabs holding sections holding figures, and merging it would need an identity for every array entry at every level. The type already refuses half a cover, because `lede`, `primaryCtaLabel`, `commandCopy`, `states` and `tabs` are all required.
 
+The walkthrough gets one narrow field and not a second seam. Which lanes it steps through is derived from their roles and a lane's label is its name, so both are read off the board and a config field for either would be a pinned copy free to go stale the day a deployment adds a lane. What the board does not record is whether an image file draws its own border — a cell carries the path, not the picture — so `storyboard.embeddedBorderPaths` states it, matched as a substring of the frame path so a deployment names a folder rather than every file. Empty is this template's behaviour: the chrome borders every frame.
+
 `CoverContent` and the types under it are now exported from the package root, so a host can write its landing page as a typed module of its own. The renderers stay internal.
 
 **Upgrading a deployment:** nothing changes for a deployment that supplies no cover — the template's own still renders. To supply one, write a content module against the exported type and name it on the config:
@@ -51,6 +53,10 @@ import { coverContent } from './content/coverContent'
 
 export const deploymentConfig: DeploymentConfig = {
   cover: coverContent,
+  // Only if this deployment's own artwork already draws its border. Each entry
+  // is matched as a substring of a cell's frame path; omit the whole section
+  // when no artwork does.
+  storyboard: { embeddedBorderPaths: ['/warm-up/', '/goal-setting/'] },
 }
 ```
 

@@ -20,15 +20,41 @@ export const STORYBOARD_WALKTHROUGH_LANE_NAMES: readonly string[] = []
 export const STORYBOARD_LANE_SHORT_LABELS: Record<string, string> = {}
 
 /**
+ * Frame paths whose artwork draws its own border.
+ *
+ * Written by {@link configureStoryboardBorders} from the deployment config,
+ * never authored here — the paths are a fact about one installation's image
+ * files, and this file stays identical across installs. Empty (the template
+ * default) means no artwork of this kind, so the chrome borders every frame.
+ */
+let embeddedBorderPaths: readonly string[] = []
+
+/**
+ * Replace the list {@link hasEmbeddedStoryboardFrame} matches against.
+ *
+ * Called from `DeploymentConfigProvider` in a layout effect, and from tests
+ * directly. Replaces rather than merges: the resolved config is the whole
+ * list. Copied, so a later mutation of the host's array cannot reach the
+ * walkthrough.
+ */
+export function configureStoryboardBorders(paths?: readonly string[]): void {
+  embeddedBorderPaths = paths ? [...paths] : []
+}
+
+/**
  * Whether a step's frame already has a border drawn into the artwork, so the
  * walkthrough should not draw one around it. Two senses of one word met here:
  * `frame` is the image on the cell, and the border is a frame in the picture
  * sense — so the border keeps the word and the image does not.
- * No path convention in the template: an adopter whose artwork bakes in a
- * border keys it off their own asset paths.
+ *
+ * Matched as a SUBSTRING of the frame path, so a deployment names the folder a
+ * batch of artwork sits in rather than every file in it. No path convention in
+ * the template, and none possible: whether a border is painted into a PNG is
+ * knowable only to whoever drew it, so it is stated on the config rather than
+ * guessed from a name.
  */
-export function hasEmbeddedStoryboardFrame(_frame: string): boolean {
-  return false
+export function hasEmbeddedStoryboardFrame(frame: string): boolean {
+  return embeddedBorderPaths.some((path) => frame.includes(path))
 }
 
 export type StoryboardWalkthroughLaneEntry = {

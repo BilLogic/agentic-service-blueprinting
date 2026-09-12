@@ -35,6 +35,8 @@ export {
   type CellContentBudgetRung,
   type DeploymentConfig,
   type ResolvedDeploymentConfig,
+  type ResolvedStoryboardConfig,
+  type StoryboardConfig,
 } from './deploymentConfig'
 /**
  * The cover's content model, exported because `DeploymentConfig.cover` takes a
