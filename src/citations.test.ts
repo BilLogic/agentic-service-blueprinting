@@ -82,6 +82,18 @@ const EXEMPT = new Map([
     'read out of this package, where docs/ ships beside it — check:doc-paths holds these true',
   ],
   [
+    join('components', 'cover', 'packageCoverFigures.ts'),
+    // The module whose subject IS that directory: it `import`s each figure
+    // from `../../../docs/assets/`, so the prose naming the folder is naming
+    // the specifier one line below it. That path is relative to this file and
+    // resolves wherever the package is read from — `npm pack` carries `docs/`,
+    // which is the same reason the vendored rulebook is exempt. A deployment
+    // reading this module stands inside the package, not in its own tree, so
+    // the reference does not dangle. Rewording it to avoid the folder would
+    // describe the import without being allowed to name it.
+    'the module that imports from docs/assets/ — the path resolves wherever the package is read',
+  ],
+  [
     join('content', 'coverContent.ts'),
     // This package's own sample cover, about this package's own documentation.
     // A deployment supplies `DeploymentConfig.cover` and the resolved cover IS
