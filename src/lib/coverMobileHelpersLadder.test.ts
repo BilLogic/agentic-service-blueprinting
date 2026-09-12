@@ -7,7 +7,8 @@ import { sourceFiles } from '@/lib/tokenModel'
 
 /**
  * The cover, the mobile shell, the error boundary, and the shared style
- * helpers land on the new ladder. ADR 0012.
+ * helpers land on the new ladder, where a rung owns size and leading and a
+ * call site owns weight, tracking and ink.
  *
  * The reader is `classLists` — a quoted-string search misses a token split
  * across `cn()` arguments. The panel role layer is retired, so these

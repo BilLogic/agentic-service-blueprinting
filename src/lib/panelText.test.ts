@@ -5,7 +5,9 @@ import { sourceFiles } from '@/lib/tokenModel'
 /**
  * Former `PANEL_TEXT` class lists, now written inline. Title and value
  * sit on `sm`; label and meta sit on `xs`. Weight and colour separate
- * the four jobs. ADR 0012.
+ * the four jobs. There is no semantic type-role layer: a call site writes
+ * the whole style where it stands, so a reader sees it without opening
+ * another file.
  */
 const FORMER_PANEL_TEXT = {
   title: 'min-w-0 text-sm font-semibold text-foreground',

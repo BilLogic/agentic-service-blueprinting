@@ -12,7 +12,8 @@ import {
 import { declarationsIn } from '@/lib/tokenModel'
 
 /**
- * The type ladder, and the guards that hold it. ADR 0012.
+ * The type ladder, and the guards that hold it. A rung owns size and
+ * leading; a call site owns weight, tracking and ink.
  *
  * Nine rungs, two scopes, one ratio each. Nothing below `xs`. On a
  * presentation surface the floor is `sm`. The roster must know both

@@ -19,7 +19,8 @@ import { CANVAS_HEADER_TEXT } from '@/lib/canvasHeaderStyle'
 import { sourceFiles } from '@/lib/tokenModel'
 
 /**
- * The blueprint canvas and its panels land on the new ladder. ADR 0012.
+ * The blueprint canvas and its panels land on the new ladder, where a rung
+ * owns size and leading and a call site owns weight, tracking and ink.
  *
  * 12px (`xs`) is canvas chrome and panel labels/meta. 13px (`sm`) is
  * panel titles and values. Weight and colour separate those four jobs,
@@ -37,8 +38,9 @@ const WEIGHT = /^font-(normal|medium|semibold)$/
 const COLOUR = /^text-(foreground|muted-foreground)/
 
 /**
- * The four panel jobs ADR 0012 writes at the call site. Title and value
- * share `sm`; label and meta share `xs`. The tuples are the hierarchy.
+ * The four panel jobs, written at the call site because there is no
+ * semantic type-role layer to write them through. Title and value share
+ * `sm`; label and meta share `xs`. The tuples are the hierarchy.
  */
 const PANEL_ROLES = {
   title: 'min-w-0 text-sm font-semibold text-foreground',

@@ -5,9 +5,10 @@ import { describe, expect, it } from 'vitest'
 import { declarationsIn } from '@/lib/tokenModel'
 
 /**
- * The two-scope `--font-weight-normal` knob. ADR 0012 takes the mechanism
- * from the reference and declines the 450: Inter reads light at 400, Ubuntu
- * Sans holds its colour at 400 down to 12px, so both scopes stay at 400.
+ * The two-scope `--font-weight-normal` knob. The mechanism is taken from the
+ * reference and the 450 that came with it declined: Inter reads light at 400,
+ * Ubuntu Sans holds its colour at 400 down to 12px, so both scopes stay at
+ * 400.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url))
