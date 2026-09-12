@@ -16,7 +16,14 @@
  * there — a sixth statement is found the moment it is written, and a statement
  * that stops agreeing is found the moment it stops.
  *
- * WHAT COUNTS AS A STATEMENT: a path under the package's own `src`. The
+ * WHAT COUNTS AS A STATEMENT: a path under the package's own `src`, IN CODE.
+ * A docblock explaining the arrangement names both roots in prose and in
+ * whichever order the sentence wanted; it resolves nothing, and holding it to
+ * the order would be holding an explanation to a rule about execution. So
+ * comments are blanked before the sweep — their newlines kept, so a line
+ * number still means what it says.
+ *
+ * The
  * package may be named as a literal or through a constant the file holds, so
  * both spellings are read. What is REQUIRED of each is that the same path
  * under this repository's own `src` is stated in the same file, first —
@@ -44,6 +51,52 @@ const PACKAGED = new RegExp(
 
 /** Where a path ends: the quote, space or punctuation that closes it. */
 const PATH_END = /[`'"\s,)\]}]/
+
+/**
+ * Comments blanked, newlines kept: a docblock is not a statement.
+ *
+ * STRING-AWARE, because `"@/*"` is a tsconfig key and not the start of a block
+ * comment. A stripper that missed that blanked the rest of the file and the
+ * two tsconfigs dropped out of the sweep entirely — which is the sweep
+ * reporting that every statement it found agrees, having lost the ones that
+ * matter most.
+ */
+export function withoutComments(code) {
+  let out = ''
+  let i = 0
+  const blank = (text) => text.replace(/[^\n]/g, ' ')
+  while (i < code.length) {
+    const char = code[i]
+    if (char === '"' || char === "'" || char === '`') {
+      const start = i
+      i += 1
+      while (i < code.length && code[i] !== char) {
+        if (code[i] === '\\') i += 1
+        i += 1
+      }
+      out += code.slice(start, Math.min(i + 1, code.length))
+      i += 1
+      continue
+    }
+    if (char === '/' && code[i + 1] === '/') {
+      const end = code.indexOf('\n', i)
+      const stop = end === -1 ? code.length : end
+      out += blank(code.slice(i, stop))
+      i = stop
+      continue
+    }
+    if (char === '/' && code[i + 1] === '*') {
+      const end = code.indexOf('*/', i + 2)
+      const stop = end === -1 ? code.length : end + 2
+      out += blank(code.slice(i, stop))
+      i = stop
+      continue
+    }
+    out += char
+    i += 1
+  }
+  return out
+}
 
 /**
  * The files that RESOLVE the roots: the build configuration and the checks.
@@ -80,7 +133,7 @@ export function filesThatResolveTheRoots(repoRoot) {
 export function statementsOfTheRoots(repoRoot) {
   const statements = []
   for (const path of filesThatResolveTheRoots(repoRoot)) {
-    const text = readFileSync(path, 'utf8')
+    const text = withoutComments(readFileSync(path, 'utf8'))
     for (const match of text.matchAll(PACKAGED)) {
       const after = text.slice(match.index + match[0].length)
       const stop = after.search(PATH_END)

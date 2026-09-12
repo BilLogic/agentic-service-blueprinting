@@ -35,6 +35,14 @@
  * are cheaper to read as one sentence naming the two places that were looked
  * in.
  *
+ * NOT EVERY SCRIPT SHOULD ASK. A generator writing into this tree's own
+ * `src/data`, the skills vendoring sync, and a `git ls-files` sweep of what
+ * THIS commit would carry are about this repository and nothing else.
+ * `repository-only.mjs` lists them with the reason each one is there, and
+ * `tests/every-sweep-knows-what-it-measures.test.mjs` holds the two halves
+ * apart — so a script that names an application path and asks neither question
+ * is found at the moment it is written.
+ *
  * The repository root is the caller's fact, so the caller says it — the same
  * reason `erd-value-sets.mjs` takes its source label rather than defaulting to
  * one repository's layout.
@@ -108,12 +116,28 @@ export function readAppFile(repoRoot, path, encoding = 'utf8') {
 /** Directory names a walk of the application never descends into. */
 const NEVER_WALKED = new Set(['node_modules'])
 
+/**
+ * A PATH THE LISTING NAMED AND THE TREE NO LONGER HAS IS SKIPPED, and every
+ * other failure throws — the rule `read-listed.mjs` holds for reads, applied
+ * here to the stat between the listing and the descent. A sibling guard writes
+ * a probe file under the application and deletes it, so a walk that ran in
+ * that window would fail on a tree that is not wrong. A bare catch would take
+ * both cases, which trades a loud failure for a silent one; the empty-subject
+ * refusal below is what stops the skip shrinking the subject quietly.
+ */
 function filesUnder(dir) {
   const found = []
   for (const entry of readdirSync(dir).sort()) {
     if (entry.startsWith('.') || NEVER_WALKED.has(entry)) continue
     const path = join(dir, entry)
-    if (statSync(path).isDirectory()) found.push(...filesUnder(path))
+    let stats
+    try {
+      stats = statSync(path)
+    } catch (error) {
+      if (error.code === 'ENOENT') continue // listed, then gone before this stat
+      throw error
+    }
+    if (stats.isDirectory()) found.push(...filesUnder(path))
     else found.push(path)
   }
   return found
