@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { __resetActiveServiceIdCache, findActiveServiceId } from '@/lib/service'
+import {
+  __resetActiveServiceIdCache,
+  findActiveServiceId,
+  resolveActiveServiceId,
+} from '@/lib/service'
 import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
 
 /*
@@ -64,5 +68,27 @@ describe('findActiveServiceId', () => {
     const renamed = [{ id: 'svc-sales', name: 'Revenue Ops', slug: 'sales-pipeline' }]
     setActiveServiceSlug('sales-pipeline')
     await expect(findActiveServiceId(fakeClient(renamed))).resolves.toBe('svc-sales')
+  })
+})
+
+/*
+ * The write seam. `resolveActiveServiceId` is what a new phase, slice, finding
+ * or piece of evidence is attached to, so its `null` has to become an error
+ * rather than the first service by `created_at` — falling back was how the
+ * evidence panel filed a source against a service nobody was looking at.
+ */
+describe('resolveActiveServiceId', () => {
+  it('resolves the service the URL slug names', async () => {
+    setActiveServiceSlug('sales-pipeline')
+    await expect(resolveActiveServiceId(fakeClient(TWO_SERVICES))).resolves.toBe(
+      'svc-sales',
+    )
+  })
+
+  it('refuses to write to a sibling when no service carries the slug', async () => {
+    setActiveServiceSlug('billing')
+    await expect(resolveActiveServiceId(fakeClient(TWO_SERVICES))).rejects.toThrow(
+      'No service matches "billing"',
+    )
   })
 })

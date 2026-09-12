@@ -45,7 +45,7 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: {}, configured: true, canWrite: true }),
 }))
 vi.mock('@/lib/service', () => ({
-  resolveFirstServiceId: async () => 'svc-1',
+  resolveActiveServiceId: async () => 'svc-1',
 }))
 
 let rows: Evidence[] = []

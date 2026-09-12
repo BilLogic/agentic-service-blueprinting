@@ -35,13 +35,6 @@ export function findFirstServiceId(client: Client): Promise<string | null> {
   return firstServiceId
 }
 
-/** First service by `created_at`; throws when the database has none. */
-export async function resolveFirstServiceId(client: Client): Promise<string> {
-  const id = await findFirstServiceId(client)
-  if (!id) throw new Error('No service exists in the database')
-  return id
-}
-
 /**
  * The active service's id — one lookup per slug, shared in flight.
  *
@@ -90,6 +83,26 @@ export function findActiveServiceId(client: Client): Promise<string | null> {
     activeServiceIdBySlug.set(slug, pending)
   }
   return pending
+}
+
+/**
+ * A throwing active-service id for the WRITE path — the row a person or an
+ * agent creates belongs to the service on screen, not to whichever one is
+ * first by `created_at`.
+ *
+ * This is `findActiveServiceId` with its `null` turned into the error a caller
+ * can show. The `null` has two causes and they deserve different sentences:
+ * an empty database, and a slug no service answers to. The second used to fall
+ * back to the first service, which is the wrong-service write this exists to
+ * prevent — a board that draws nothing must not quietly file the author's work
+ * against a service they are not looking at.
+ */
+export async function resolveActiveServiceId(client: Client): Promise<string> {
+  const id = await findActiveServiceId(client)
+  if (id) return id
+  const slug = getActiveServiceSlug()
+  if (slug) throw new Error(`No service matches "${slug}" in the database`)
+  throw new Error('No service exists in the database')
 }
 
 /**

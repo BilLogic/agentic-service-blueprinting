@@ -88,10 +88,8 @@ import {
   readReference,
 } from '@/lib/agent/tools/read'
 import type { BlueprintListOptions } from '@/lib/agent/tools/format'
-import {
-  resolveActiveServiceId,
-  resolveServiceScope,
-} from '@/lib/agent/tools/serviceScope'
+import { resolveServiceScope } from '@/lib/agent/tools/serviceScope'
+import { resolveActiveServiceId } from '@/lib/service'
 import {
   sampleGetBlueprint,
   sampleGetCell,

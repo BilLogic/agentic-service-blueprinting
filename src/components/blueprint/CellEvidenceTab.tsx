@@ -23,7 +23,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { invalidateEvidence, useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
 import { linkedTextSegments } from '@/lib/linkedText'
-import { resolveFirstServiceId } from '@/lib/service'
+import { resolveActiveServiceId } from '@/lib/service'
 import type { Database, Evidence } from '@/types/database'
 
 const EVIDENCE_KINDS = [
@@ -146,7 +146,10 @@ function AddSourceForm({
     setBusy(true)
     setError(null)
     try {
-      const serviceId = await resolveFirstServiceId(client)
+      // The service the URL names, like every other read on this board —
+      // this used to take the first service by `created_at`, so a deployment
+      // with two filed the source against the one nobody was looking at.
+      const serviceId = await resolveActiveServiceId(client)
       // Through the ledger wrapper, like every other write — an added source
       // shows in the session log and can be taken back.
       await addEvidence(client, {
