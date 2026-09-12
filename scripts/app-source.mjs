@@ -152,6 +152,15 @@ function filesUnder(dir) {
  * it. So the absence of a subject is a failure here, and it names the root it
  * swept and what it was looking for.
  *
+ * WHEN THIS IS NOT THE ANSWER, and several walks are right not to call it.
+ * What it owns is one shape — walk the application, keep the paths a matcher
+ * accepts, refuse an empty result. A walk whose SUBJECT differs owns its own
+ * body and its own refusal: one that excludes test files, one that merges this
+ * listing with a second, one that hands back read text rather than paths and
+ * so has to survive a file vanishing between the listing and the read. The
+ * four lines they would save are the refusal, and the message each writes
+ * names its own subject, which is the half a reader needs.
+ *
  * @param {string} repoRoot
  * @param {(path: string) => boolean} [matches] Called with the `src/…` path.
  * @param {string} [subject] What the caller is looking for, for the message.

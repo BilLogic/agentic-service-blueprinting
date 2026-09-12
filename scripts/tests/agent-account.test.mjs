@@ -91,6 +91,42 @@ test('a generated section is replaced between its markers and nothing else moves
   assert.throws(() => splice('no markers', 'x', 'new'), /no <!-- generated:x -->/)
 })
 
+test('a splice that cannot find its markers names the document it was handed', () => {
+  // The message reaches a reader standing in whichever repository ran the
+  // generator, so it quotes that repository's own spelling. The default is a
+  // description rather than either one.
+  assert.throws(
+    () => splice('no markers', 'x', 'new', 'docs/whatever/this-tree-calls-it.md'),
+    /^Error: docs\/whatever\/this-tree-calls-it\.md has no/,
+  )
+  assert.throws(() => splice('no markers', 'x', 'new'), /^Error: the agent-account document has no/)
+})
+
+test('every failure a reader is handed names their document, not one tree\u2019s spelling', () => {
+  // The generator is byte-identical in two repositories and the two docs
+  // trees agree on nothing, so a message that spelled either would be right
+  // in one and send the other's reader nowhere. Same rule as the npm alias:
+  // the command these failures prescribe is named by path.
+  const kinds = [{ kind: 'lane', label: 'Lane', definition: 'One row of the board.' }]
+  const sources = { columns, comments, readable }
+  const paths = { document: 'docs/elsewhere/account.md', baseline: 'docs/elsewhere/baseline.json' }
+  const { failures } = evaluate({ doc: MARKED, kinds, sources, baseline: null, check: true, paths })
+
+  assert.ok(failures.length >= 2, 'a stale document and a missing baseline are both failures')
+  for (const failure of failures) {
+    assert.doesNotMatch(failure, /docs\/agents\/|docs\/engineering\//, failure)
+    assert.doesNotMatch(failure, /npm run/, failure)
+  }
+  assert.ok(
+    failures.some((one) => one.includes(paths.document)),
+    'the stale-document failure names the document the reader has',
+  )
+  assert.ok(
+    failures.some((one) => one.includes(paths.baseline)),
+    'the missing-baseline failure names the baseline the reader has',
+  )
+})
+
 test('the hand-written core excludes frontmatter and generated sections, and its prohibitions are counted', () => {
   const doc = '---\nsummary: never mind\n---\n\nDo this. <!-- generated:x -->\nnever that\n<!-- /generated:x -->\nDo not skip; the staff they do not see may never notice.'
   assert.equal(handWritten(doc).trim(), 'Do this. \nDo not skip; the staff they do not see may never notice.')

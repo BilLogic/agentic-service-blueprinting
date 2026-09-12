@@ -190,6 +190,9 @@ describe('a shared file names the decision, never the number', () => {
     expect(exemption(join('content', 'coverContent.test.ts'))).toMatch(/sample cover/)
     expect(exemption(join('types', 'database.ts'))).toMatch(/own schema declaration/)
     expect(exemption(join(GENERATED, 'references', 'data-model.md'))).toMatch(/check:doc-paths/)
+    expect(exemption(join('components', 'cover', 'packageCoverFigures.ts'))).toMatch(
+      /resolves wherever the package is read/,
+    )
     // And nothing else. An ordinary module is not spared by sitting near one.
     expect(exemption(join('lib', 'tokenModel.ts'))).toBeUndefined()
     expect(exemption(join('content', 'other.ts'))).toBeUndefined()
@@ -294,6 +297,50 @@ describe('a shared file names the decision, never the number', () => {
     ])
     // And a quoted string with nobody calling it is not addressed to anyone.
     expect(proseLines("const label = 'interview #4'\n", 'a.ts')).toEqual([])
+  })
+
+  it('counts an argument, not a comma — a brace or a bracket holds its own', () => {
+    // The frames were pushed by `(` alone, so every comma inside an object or
+    // an array literal bumped the ENCLOSING call's argument index. One comma
+    // inside argument 0 of `expect` moved the walk to argument 1, where
+    // `expect` narrates, and a fixture became a citation. Nothing in the tree
+    // spelled it that way yet; the first destructured fixture would have.
+    expect(proseLines("expect({ a: 1, b: '#645' }).toBeTruthy()\n", 'a.test.ts')).toEqual([])
+    expect(proseLines("expect([1, '#645']).toBeTruthy()\n", 'a.test.ts')).toEqual([])
+    // Nested, and with the message still read where it really is.
+    expect(
+      proseLines("expect({ a: { b: 1, c: 2 } }, 'drifted from ADR 0011').toBe(x)\n", 'a.test.ts'),
+    ).toEqual([{ line: 1, text: 'drifted from ADR 0011' }])
+    // And a comma at the call's own depth still counts, which is the whole
+    // reason the index is kept at all.
+    expect(proseLines("expect(found, 'see ADR 0011').toEqual([])\n", 'a.test.ts')).toEqual([
+      { line: 1, text: 'see ADR 0011' },
+    ])
+  })
+
+  it('reads an assertion message however the assertion is spelled', () => {
+    // `assert.deepEqual(actual, expected, message)` is the spelling the script
+    // suites use throughout, and the pattern matched a bare `assert` only — so
+    // every message in that tree read as data. Where the message sits differs
+    // with the form, and the walk has to know which: `assert.ok(value,
+    // message)` narrates from argument 1, a comparison from argument 2, and
+    // the expected value in between is a fixture like any other.
+    expect(proseLines("assert.ok(x, 'see ADR 0011')\n", 'a.test.mjs')).toEqual([
+      { line: 1, text: 'see ADR 0011' },
+    ])
+    expect(proseLines("assert.deepEqual(a, b, 'drifted from ADR 0011')\n", 'a.test.mjs')).toEqual([
+      { line: 1, text: 'drifted from ADR 0011' },
+    ])
+    expect(proseLines("assert(x, 'see ADR 0011')\n", 'a.test.mjs')).toEqual([
+      { line: 1, text: 'see ADR 0011' },
+    ])
+    // The expected value of a comparison is data, and stays out.
+    expect(proseLines("assert.deepEqual(found, ['#475569'])\n", 'a.test.mjs')).toEqual([])
+    expect(proseLines("assert.equal(swatch, '#475569')\n", 'a.test.mjs')).toEqual([])
+    // A matcher is called with data and narrates nothing.
+    expect(proseLines("expect(x).toEqual(expect.arrayContaining(['#475569']))\n", 'a.test.ts')).toEqual(
+      [],
+    )
   })
 
   it('reads the message the session pin carried while the extractor read comments only', () => {

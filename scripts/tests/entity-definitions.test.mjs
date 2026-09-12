@@ -94,9 +94,11 @@ export function appSources() {
     })
     .filter((one) => one !== null)
     .sort((a, b) => a.file.localeCompare(b.file))
-  // A WALK THAT FINDS NOTHING THROWS — `appFiles` says why, and this walk
-  // keeps its own body rather than calling it only because of the vanishing
-  // probe above, which `appFiles` would throw on instead of skipping.
+  // A WALK THAT FINDS NOTHING THROWS — `appFiles` says why. What this walk
+  // keeps its own body for is the READ: `appFiles` hands back paths, and the
+  // probe above can vanish between that listing and the `readFileSync` here.
+  // Both skip a vanished entry at the stat; only this one also survives it at
+  // the read.
   if (found.length === 0) {
     throw new Error(
       `no .ts or .tsx under ${SRC}: this walk has no subject, which is a ` +

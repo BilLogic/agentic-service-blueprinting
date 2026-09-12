@@ -23,10 +23,12 @@
  *   - it WRITES into this repository's own application (a generator, a
  *     vendoring sync). A deployment has nothing to write into, and would be
  *     writing into its dependency if it did.
- *   - it asks what THIS COMMIT would carry (`git ls-files`). A deployment's
- *     commit is the deployment's, and the question — does this tree carry a
- *     particular deployment's identity or content — is one only the template
- *     can ask of itself.
+ *   - it asks what THIS COMMIT would carry (`git ls-files`, whether by the
+ *     shell-out or through `scannedFiles`, which is that listing exported). A
+ *     deployment's commit is the deployment's, and the questions asked of it —
+ *     does this tree carry a particular deployment's identity or content, does
+ *     its prose still use a retired word — are ones only the template can ask
+ *     of itself.
  *
  * Being on this list is not an exemption from the second half of the rule. A
  * repository-only sweep still refuses an empty subject; what it does not do is
@@ -67,6 +69,15 @@ export const REPOSITORY_ONLY = [
       'question is whether a deployment’s name survived into the template. A ' +
       'deployment running it would be asked whether its own files name it, ' +
       'which they are entitled to.',
+  },
+  {
+    script: 'scripts/tests/a-lane-is-not-a-layer.test.mjs',
+    why:
+      'its subject is `scannedFiles` — the same `git ls-files` listing the ' +
+      'standalone sweep reads — because the retired sense of the word turns up ' +
+      'in prose anywhere in the tree, not in the application alone. The one ' +
+      'application path it names is an argument to `quotesTheRetiredSense`, not ' +
+      'a file it opens.',
   },
   {
     script: 'scripts/check-content-coupling.mjs',

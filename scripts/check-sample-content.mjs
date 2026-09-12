@@ -113,7 +113,7 @@
  * red build — which is the whole argument for the check being advisory, made
  * from the other end.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { appPackageRoot } from './app-source.mjs'

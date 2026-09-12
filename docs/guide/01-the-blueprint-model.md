@@ -28,7 +28,7 @@ meaningful rather than approximate.
 
 ## 2. Lanes and roles
 
-![Inside a single path](../assets/blueprint-anatomy.svg)
+![Inside one path](../assets/blueprint-anatomy.svg)
 
 Lanes are rows, one actor each. Steps are columns, time running left to
 right. Rendering is driven by `lanes.lane_role`, a semantic key, never by
@@ -53,7 +53,7 @@ lanes they separate.
 
 ## 3. Cells
 
-![Inside a single cell](../assets/cell-anatomy.svg)
+![Inside one cell](../assets/cell-anatomy.svg)
 
 A cell is what one actor does at one step. Beyond its content it carries:
 
