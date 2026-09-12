@@ -20,10 +20,200 @@
  * phrased as what to do are what an agent can act on; "never X" leaves it
  * guessing what to do instead.
  *
- * Pure: reads text, returns text. `generate-agent-account.mjs` does the I/O.
- * With no database connected that script generates nothing, so this module
- * is the whole of what CI can hold.
+ * WHO OWNS WHICH SOURCE. The vocabulary is the APPLICATION'S: the six kinds
+ * are how the board defines itself to a reader, and they travel with whichever
+ * copy of the application is running — so a deployment that reads the
+ * application out of this package reads the same six, and `vocabularySource`
+ * follows the application into `node_modules`. The schema is the DATABASE'S: a
+ * deployment extends the template, so which relations exist and what columns
+ * they carry is a fact about ITS database and no other. That is why
+ * `schemaDeclaration` looks in the deployment's own root before this tree's,
+ * and why what this package ships is only the last of three — a default, not
+ * the truth.
+ *
+ * AND THE DATABASE HAS THE LAST WORD. A declaration is a list of relations to
+ * ASK the database about; `reconcile` renders only what the answers confirmed.
+ * A declared relation the database does not have is dropped, a declared column
+ * it does not have is dropped, and a column it has that no declaration
+ * mentions is rendered anyway. So the rendering is monotone in accuracy: the
+ * command a red check prints can only move the document toward the database,
+ * never away from it, whatever the declaration it started from said. The
+ * disagreements come back as notes for the deployment to fold into its own
+ * declaration, and none of them is a failure — a deployment is entitled to a
+ * schema this package never had.
+ *
+ * Pure: reads text and paths, returns text and paths. Every answer that needs
+ * a filesystem or a database is taken by `generate-agent-account.mjs` and
+ * handed in. With no database connected that script generates nothing, so this
+ * module is the whole of what CI can hold.
  */
+
+/* ------------------------------------------------ where a source comes from */
+
+/** The package a deployment reads the application out of. */
+const PACKAGE = 'agentic-service-blueprinting'
+
+/**
+ * The first of `candidates` that exists, or the last of them when none does —
+ * the last is the default, and naming it lets the caller report a source it
+ * could not find rather than a source it never had.
+ *
+ * @param {{ path: string, owner: string }[]} candidates
+ * @param {(path: string) => boolean} exists
+ */
+function firstPresent(candidates, exists) {
+  return candidates.find((candidate) => exists(candidate.path)) ?? candidates[candidates.length - 1]
+}
+
+/**
+ * Where the entity definitions are read from: this tree's own application, or
+ * the package's when this tree has none.
+ *
+ * A deployment that stopped keeping a copy of the application did not stop
+ * running it, and the kinds it shows a reader are the kinds that copy defines.
+ * Two roots, in the order the build config resolves them.
+ *
+ * @param {string} root
+ * @param {(path: string) => boolean} exists
+ * @returns {{ path: string, owner: 'repository' | 'package' }}
+ */
+export function vocabularySource(root, exists) {
+  return firstPresent(
+    [
+      { path: `${root}/src/lib/panelTerms.ts`, owner: 'repository' },
+      { path: `${root}/node_modules/${PACKAGE}/src/lib/panelTerms.ts`, owner: 'package' },
+    ],
+    exists,
+  )
+}
+
+/**
+ * Where the declared relation inventory is read from.
+ *
+ * The deployment's own root first, because a deployment must not have to
+ * change a file it holds identical to this package's in order to say something
+ * true about its own database. Then this tree's own application, for a
+ * repository that still keeps one — this package included. The package's copy
+ * is last and is a DEFAULT: a starting list of relations to ask the database
+ * about, which `reconcile` then corrects.
+ *
+ * @param {string} root
+ * @param {(path: string) => boolean} exists
+ * @returns {{ path: string, owner: 'deployment' | 'repository' | 'package' }}
+ */
+export function schemaDeclaration(root, exists) {
+  return firstPresent(
+    [
+      { path: `${root}/deployment/types/database.ts`, owner: 'deployment' },
+      { path: `${root}/src/types/database.ts`, owner: 'repository' },
+      { path: `${root}/node_modules/${PACKAGE}/src/types/database.ts`, owner: 'package' },
+    ],
+    exists,
+  )
+}
+
+/* --------------------------------------------- what the database answered */
+
+/**
+ * What one bare select said about a relation.
+ *
+ *   readable  the anon key selects it
+ *   sealed    it is there and this key may not read it (42501, 401, 403)
+ *   absent    this database does not have it at all (PGRST205, 404)
+ *   unknown   something else went wrong, and the caller says so out loud
+ *
+ * `absent` is the answer the whole seam turns on, and PostgREST distinguishes
+ * it from `sealed` precisely: a missing grant and a missing table are
+ * different failures, and an account that confuses them either hides a
+ * relation an agent could be told about or invents one that is not there.
+ *
+ * @param {{ status: number, body: unknown }} response
+ * @returns {'readable' | 'sealed' | 'absent' | 'unknown'}
+ */
+export function classifyRelation({ status, body }) {
+  const code = body && typeof body === 'object' ? body.code : undefined
+  if (status === 200 || status === 206) return 'readable'
+  if (status === 404 || code === 'PGRST205') return 'absent'
+  if (status === 401 || status === 403 || code === '42501') return 'sealed'
+  return 'unknown'
+}
+
+/**
+ * The relations and columns the account may name, from what the database
+ * answered — with the declaration contributing candidates and nothing else.
+ *
+ * `probed` is one entry per candidate relation: its classification, and for a
+ * readable one the columns the database confirmed. A commented column is
+ * confirmed too, because a comment hangs off an attribute that exists, so the
+ * catalog's own columns are added to whatever the probe found; that is what
+ * keeps an undescribed column a visible gap rather than the only column
+ * anybody can see.
+ *
+ * ORDER. `order: 'table'` means the probe read a row and its keys are the
+ * relation's own column order, which is the order worth printing. Anything
+ * else means the columns were assembled name by name, and the order they came
+ * out in is the order they were ASKED in — a property of whoever wrote the
+ * declaration, not of the database. Those are sorted, so two deployments
+ * asking the same database the same question in different orders render the
+ * same table.
+ *
+ * @param {{
+ *   declared: Map<string, string[]>,
+ *   probed: Map<string, { status: 'readable' | 'sealed' | 'absent', columns?: string[], order?: 'table' }>,
+ *   comments: { relation: string, column_name: string | null }[],
+ * }} input
+ * @returns {{ columns: Map<string, string[]>, readable: Set<string>, notes: string[] }}
+ */
+export function reconcile({ declared, probed, comments }) {
+  const commented = new Map()
+  for (const row of comments) {
+    if (!row.column_name) continue
+    if (!commented.has(row.relation)) commented.set(row.relation, [])
+    commented.get(row.relation).push(row.column_name)
+  }
+
+  const columns = new Map()
+  const readable = new Set()
+  const absent = []
+  const dropped = []
+  const undeclared = []
+
+  for (const [name, probe] of probed) {
+    if (probe.status === 'absent') {
+      if (declared.has(name)) absent.push(name)
+      continue
+    }
+    if (probe.status === 'sealed') {
+      columns.set(name, [])
+      continue
+    }
+    const confirmed = []
+    for (const column of [...(probe.columns ?? []), ...(commented.get(name) ?? [])]) {
+      if (!confirmed.includes(column)) confirmed.push(column)
+    }
+    if (probe.order !== 'table') confirmed.sort()
+    columns.set(name, confirmed)
+    readable.add(name)
+    for (const column of declared.get(name) ?? []) {
+      if (!confirmed.includes(column)) dropped.push(`${name}.${column}`)
+    }
+    for (const column of confirmed) {
+      if (!(declared.get(name) ?? []).includes(column)) undeclared.push(`${name}.${column}`)
+    }
+  }
+
+  const notes = []
+  if (absent.length > 0) {
+    notes.push(`declared but not in this database, so not in the account: ${absent.join(', ')}`)
+  }
+  if (dropped.length > 0) {
+    notes.push(`declared columns this database does not have: ${dropped.join(', ')}`)
+  }
+  if (undeclared.length > 0) {
+    notes.push(`columns this database has that the declaration does not: ${undeclared.join(', ')}`)
+  }
+  return { columns, readable, notes }
+}
 
 /* ------------------------------------------------------------- sources */
 
@@ -263,8 +453,9 @@ export function evaluate({ doc, kinds, sources, baseline, check, record = false 
   const failures = []
   if (check && next !== doc) {
     failures.push(
-      'docs/agents/blueprint.md is not what its sources render — panelTerms.ts, pg_description or ' +
-        'database.ts changed and the account did not. Run: npm run agent-account',
+      'docs/agents/blueprint.md is not what its sources render — the vocabulary, the catalog or ' +
+        'this database changed and the account did not. Run: npm run agent-account. It renders only ' +
+        'what this database confirmed, so it moves the document toward the database it talks to.',
     )
   }
   if (record) return { next, current, failures }
