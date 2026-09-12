@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import App from './App'
 import { ORG_NAME } from './config'
@@ -89,9 +89,22 @@ describe('the editor shell', () => {
     expect((open as HTMLElement).style.width).not.toBe('0px')
     // The rail, and the two panels it selects between. ✦ is not among them:
     // it toggles the chat under whichever panel is open.
-    expect(document.querySelector('[data-editor-rail]')).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Blueprints' })).toBeDefined()
-    expect(screen.getByRole('button', { name: 'Slices' })).toBeDefined()
+    //
+    // Asked OF THE RAIL rather than of the document, which is load-bearing
+    // and not tidiness. A `*ByRole(…, { name })` query computes an accessible
+    // name for every candidate in its container, and each of those calls
+    // `getComputedStyle` — the most expensive thing jsdom does. The container
+    // here is the whole entered editor: 272 buttons, and half this test's
+    // cost. Asked of `screen` the test ran 1.65 s in a full suite and over
+    // 5 s once the machine was busy, which is vitest's default `testTimeout`
+    // and is what the suite was failing on (#621). Scoped to the rail it is
+    // four buttons, the test runs 0.82 s, and the assertion is the stronger
+    // one anyway: the panel controls are IN the rail, not loose in the page.
+    const rail = document.querySelector('[data-editor-rail]')
+    expect(rail).not.toBeNull()
+    const inRail = within(rail as HTMLElement)
+    expect(inRail.getByRole('button', { name: 'Blueprints' })).toBeDefined()
+    expect(inRail.getByRole('button', { name: 'Slices' })).toBeDefined()
   })
 })
 

@@ -1,5 +1,5 @@
 ---
-summary: How work gets proposed and landed here — the queue is GitHub issues rather than a folder, a durable decision is an ADR, branches are named for what they do, and a commit says what changed and why in the imperative.
+summary: How work gets proposed and landed here — the queue is GitHub issues rather than a folder, a durable decision is an ADR, a component test waits for signals rather than milliseconds and scopes its role queries because the suite runs in parallel, and a commit says what changed and why in the imperative.
 ---
 
 # Contributing
@@ -35,6 +35,27 @@ Two rules that are not checks, and cost the most when skipped:
   not adding a second statement of it somewhere more convenient.
 - **Do not reformat what you did not change.** A diff that mixes a decision
   with a rewrap cannot be reviewed, only trusted.
+
+### A component test is racing a clock it does not mention
+
+`npm test` runs the files in parallel, so every test's wall clock is a
+function of what else the machine is doing. Two habits turn that into a suite
+that is red on a branch which changed nothing near the failure — the most
+expensive shape a failure comes in, because the first place anyone looks is
+their own diff.
+
+- **Do not wait a number of milliseconds for a browser signal. Wait for the
+  signal.** `history.back()`, a transition end, a load event: sleeping 20 ms
+  for one is a bet on an idle machine, and a machine running the rest of this
+  suite is not idle. Await the event, or the state the event produces.
+- **Scope every `*ByRole(…, { name })` query.** The query computes an
+  accessible name for every candidate in its container, and each of those
+  calls `getComputedStyle`, which is the most expensive thing jsdom does.
+  Asked of `screen` against a mounted editor that is hundreds of elements and
+  seconds of wall clock; asked of the element the assertion is about, through
+  `within(…)`, it is a handful. A test has no stated budget — vitest's default
+  `testTimeout` of five seconds is the only one — so a test that costs
+  seconds on an idle machine is already failing on a loaded one.
 
 ## 3. The commit, and the pull request
 
