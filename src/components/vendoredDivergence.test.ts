@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { ISSUE_NUMBER, RECORD_NUMBER } from '../citations'
+
 /*
  * WHAT A VENDORED FILE MAY SAY ABOUT ITSELF.
  *
@@ -25,18 +27,13 @@ import { describe, expect, it } from 'vitest'
  * shares — sixteen of them arrived here in one pass and were caught only
  * downstream, after release. The rule is cheaper to hold where the files are
  * written.
+ *
+ * The matchers live in `src/citations.ts`, because the issue-number half of
+ * this rule is held across the whole of `src/` by `src/citations.test.ts`.
+ * One definition of what a citation is, two guards that read it.
  */
 
 const UI = join(process.cwd(), 'src/components/ui')
-
-/** `ADR 0014`, `ADR-0014`, `adr 14` — a record number, however spelled. */
-const RECORD_NUMBER = /\bADRs?[\s-]*\d+/i
-
-/**
- * An issue or PR number in prose: `#412`. Not `#fff` (a colour), not
- * `#{id}` (a template string), not a CSS id selector.
- */
-const ISSUE_NUMBER = /(?:^|[\s(])#\d+/
 
 function uiFiles(): string[] {
   return readdirSync(UI).filter((name) => name.endsWith('.tsx'))
@@ -75,9 +72,7 @@ describe('a vendored file names the decision, never the number', () => {
     expect(RECORD_NUMBER.test(' * DIVERGENCE from the vendored source (ADR 0014)')).toBe(true)
     expect(RECORD_NUMBER.test(' * controls are primary, not brand (ADR 0008).')).toBe(true)
     expect(RECORD_NUMBER.test('adr-14')).toBe(true)
-    expect(ISSUE_NUMBER.test(' * the panel judgement recorded in #412')).toBe(true)
-    // And not on the things that merely look like one.
-    expect(ISSUE_NUMBER.test('className="bg-[#fff]"')).toBe(false)
-    expect(ISSUE_NUMBER.test('const id = `#${slug}`')).toBe(false)
+    // The issue-number half of the same claim is exercised in
+    // `src/citations.test.ts`, which is where a fixture may spell one out.
   })
 })
