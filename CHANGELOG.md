@@ -1,5 +1,187 @@
 # Changelog
 
+## 1.41.0
+
+A deployment lands on its own cover, the bundled sample stops reaching a
+deployment that has a database, and four write paths start filing rows against
+the service the author is looking at.
+
+**A deployment brings its own landing page.** `DeploymentConfig` takes a whole
+`cover`, and the editor shell reads it through `useCoverContent()` instead of
+importing this template's content module — so an installation that mounts this
+package rather than forking it lands on its own writing. The cover is replaced,
+never merged: every string in this template's cover describes this template, and
+there is no field-by-field merge to define for a tree of tabs holding sections
+holding figures. Omitted, the template's own renders exactly as it did, which is
+what standalone still does. The cover's `title` becomes the wordmark's second
+fallback — `content.workspaceTitle ?? cover.title ?? brand.name ?? ORG_NAME` —
+because an installation that has named its landing page has named its workspace
+and should not have to write the name twice. `CoverContent` and the types under
+it are exported from the package root; the renderers stay internal.
+
+**The walkthrough gets one narrow field and not a second seam.** Which lanes it
+steps through is derived from their roles, and a lane's label is its name, so
+both are read off the board and a config field for either would be a pinned copy
+free to go stale. What the board does not record is whether an image file draws
+its own border — a cell carries the path, not the picture — so
+`storyboard.embeddedBorderPaths` states it, matched as a substring of the frame
+path so a deployment names a folder rather than every file. Empty is this
+template's behaviour: the chrome borders every frame.
+
+**A failed read is not entitled to say a workspace has no slices.**
+`useSupabaseQuery` calls a hook's fallback on two paths — the no-database one,
+where the bundled sample is the point, and the error one, where it is not — and
+four surfaces render `fallback ?? []`: the slices sidebar, the tab strip, a
+cell's "In slices" footer and the mobile shell. A deployment whose slices read
+failed or timed out was shown this template's three demo slices as its own, with
+nothing on screen saying otherwise. `useSlices` and `useSlice` now ask
+`isBundledSampleActive()` — the same question the board and the editor's
+navigation ask — and return `null` rather than an empty list. Gated, not made
+configurable: a `sample.slices` field would make this an opt-out, and the state
+a deployment wants here is "nothing that is not mine".
+
+**Evidence, slices and phases belong to the service you are looking at — and a
+deployment with two or more services may already hold rows on the wrong one.**
+Four write paths resolved the first service by `created_at`, whatever the URL
+said. The evidence panel drew the second service and filed the source against
+the first. A new slice was written against a service whose canvas the sliced
+cells had not come from, so it could never be seen from the board it was made
+on. The sidebar's `+` added a phase to a board nobody was looking at, and a row
+menu's "New phase" made a sibling on a different service from the row it was
+opened over. All four resolve `resolveActiveServiceId` now, which throws on an
+unresolvable slug instead of falling back to a sibling, and the two phase
+resolvers key on the slug so switching service re-resolves rather than leaving
+the previous service's id behind. **The symptom is silence.** Nothing in the UI
+revealed any of it: the row simply does not appear under the service it was
+authored for, and it does appear under the oldest one. A single-service
+deployment is unaffected by construction — first and active are the same row
+there, which is why this survived — but anyone running more than one service
+should read `evidence.service_id`, `slices.service_id` and `phases.service_id`
+against the boards those rows were authored on before adding more.
+`resolveFirstServiceId` is retired and `findFirstServiceId` is module-private,
+so a surface can now reach only `findActiveServiceId` (a read, nullable) or
+`resolveActiveServiceId` (a write, throwing), and both honour the URL.
+
+**A drag publishes once a frame.** Dragging or resizing a canvas annotation
+called `updateAnnotation` off every raw `pointermove` — a hundred and twenty
+times a second on a trackpad, each one replacing the annotation collection and
+re-rendering every surface that reads it. It batches now, through a queue that
+merges the samples of one mark and refuses to merge two. And releasing a
+captured pointer throws for an id the element no longer holds, which mid-drag is
+ordinary: a `pointercancel` from an OS edge swipe releases the capture on its
+way out, so the `pointerup` that follows used to throw and skip its own
+teardown, welding the mark to the cursor. `createFramePatchQueue` and
+`releasePointerCapture` are the shared pieces, and both are tested.
+
+**Guards a deployment inherits.** Every dial `themes/light.css` declares,
+`themes/dark.css` declares too, and `print.css` restates every dial whose dark
+value differs from its light one — the check that would have caught the
+surface-hue leak, where light's bare `:root` meant a dial dark omitted silently
+became dark's value and dark then ran on a number no file of its own ever named.
+The brand-accent seam is swept around the hue wheel rather than measured at the
+one accent this template ships, so a deployment layering its own accent gains
+proof that `semantic.css`'s derivations hold for the accent it chose; the ink
+flip's worst case was stated in prose beside the arithmetic and held by nothing,
+and it is 3.44:1 at the threshold. The badge-and-tag vocabulary walk survives an
+entry that disappears between being listed and being stated, and a new assertion
+counts what the walk came back with and names the directories that must be in
+it. And a ledger entry recorded under an older `removed_placements` shape still
+reverts — captured with and without a `position` on each row, and with the key
+written empty as well as omitted.
+
+**The board says "step" everywhere a reader can see it.** The step definition in
+the popover a reader opens on the board opened with "A column of the board"; the
+hint under the step panel's Summary field promised "the sentence that makes the
+column legible"; the meta line said "different columns on 3 paths"; and a slice
+that failed validation was refused with "Unknown slice type". Nothing about the
+schema moved — these were the words on screen drifting from the words
+underneath, which is the defect the retired-copy guard exists to stop. It did
+not stop them, because it read JSX text nodes and five props. Its reader-facing
+prop list is fifteen now, re-derived from every prop in the tree whose value is
+a prose string literal; a local whose name ends `Label`, `Text`, `Hint`,
+`Message`, `Description` or `Caption` is read, so a sentence assembled a few
+lines above the prop that renders it is no longer invisible; and `panelTerms.ts`
+and `sliceValidation.ts` are enrolled by name, because a blanket sweep of
+`src/**` was measured rather than assumed and would have needed an exemption
+list, which is where a real finding hides. The guard's header now also states
+what it still cannot see — the interpolated half of a template literal, copy
+assembled anywhere but a named local, a prop nobody has added to the list, and
+`src/content/coverContent.ts` by name — because a guard that implies
+completeness it does not have is worse than one whose blind spots are written
+down.
+
+**The suite holds under parallel load.** Two component tests stopped racing the
+clock, so a full `npm test` on a loaded machine is green rather than green on
+the second try. The editor-shell test asked `screen` for two buttons by
+accessible name after the whole editor had mounted, which computes a name — and
+a `getComputedStyle` — for every one of the 272 buttons in the document; scoped
+to the rail they are about, which is the stronger assertion as well as the cheap
+one, it costs 0.82 s where it cost 1.65 s against vitest's five-second default.
+`boardAddressSync.test.tsx` waited a flat 20 ms for the `popstate` that
+`history.back()` queues and read the pre-back address when the machine did not
+get there in time; it waits for the event. `docs/guidelines/contributing.md`
+states both rules, because a suite that is sometimes red for no reason teaches
+the person cutting a release to re-run rather than to read.
+
+**Also:** four comments in `sliceMutations.ts` said `origin` for the field a
+slice actually carries, which is `authorship`.
+
+### Upgrading a deployment
+
+- **Nothing to apply to the database, and no identifier changed.** No migration
+  ships with this release and `identifiers.json` is untouched.
+- **A multi-service deployment should audit three columns.** New evidence,
+  slices and phases land on the service in the URL from this release forward;
+  rows written before it may sit on the oldest service and will need moving by
+  hand. Single-service deployments see no behaviour change at all.
+- A deployment that supplies no `cover` sees no change — the template's own
+  landing page still renders. To supply one, write a content module against the
+  exported `CoverContent` type and name it on the config:
+
+  ```ts
+  import type { CoverContent, DeploymentConfig } from 'agentic-service-blueprinting'
+
+  export const coverContent: CoverContent = {
+    title: 'The workspace name shown on the cover and in app chrome',
+    lede: 'One paragraph under the heading.',
+    primaryCtaLabel: 'Open the blueprint',
+    repoUrl: 'https://github.com/<owner>/<repo>', // optional; guide links are dropped without it
+    commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
+    states: { noSlices: 'No slices in this workspace yet.' },
+    tabs: [/* sections may be `prose`, `figure`, `defs`, `portrait` or `skill` */],
+  }
+
+  export const deploymentConfig: DeploymentConfig = { cover: coverContent }
+  ```
+
+  The cover is taken whole, never merged, and `lede`, `primaryCtaLabel`,
+  `commandCopy`, `states` and `tabs` are all required. Figure and portrait `src`
+  values are paths this deployment serves itself; nothing is copied out of the
+  template's `public/cover/`.
+- A supplied `cover.title` becomes the wordmark unless `content.workspaceTitle`
+  says otherwise, which still wins. A deployment that wants its workspace called
+  something other than its cover heading keeps saying so there.
+- Set `storyboard.embeddedBorderPaths` only if this deployment's own storyboard
+  artwork already draws its border. Each entry is matched as a substring of a
+  cell's frame path, so name a folder rather than every file; omit the section
+  when no artwork does.
+- A deployment with `VITE_SUPABASE_*` set now shows no slices when a slices read
+  fails, where it previously showed this template's demo slices. With no
+  database configured the bundled sample still serves both the list and each
+  slice exactly as before. A deployment that emptied `data/sliceFallbacks.ts` in
+  its own fork to stop the leak can stop doing so.
+- Visible copy changes a deployment's own tests may match: the step definition
+  in the board popover, the hint under the step panel's Summary field, the step
+  panel's meta line, and the slice-validation refusal now say "step",
+  "position" and "slice kind".
+- A deployment taking the retired-copy guard inherits a wider subject: fifteen
+  reader-facing props, copy locals by name suffix, and the `.ts` modules named
+  in `COPY_MODULES`. A deployment whose own copy lives in other `.ts` modules
+  enrols them there.
+- A deployment taking the component suite inherits two rules now stated in
+  `docs/guidelines/contributing.md`: scope an accessible-name query to the
+  region it is about, and wait for the event rather than a flat timeout.
+
 ## 1.40.5
 
 ### Patch Changes
@@ -301,11 +483,11 @@ docs checks read this repository's own numbers from `scripts/repo-config.mjs`.
   ```ts
   export const deploymentConfig: DeploymentConfig = {
     defaultLanes: [
-      { name: 'Storyboard', lane_role: 'storyboard', position: 0 },
-      { name: 'Caller', lane_role: 'customer_actions', position: 1 },
+      { name: "Storyboard", lane_role: "storyboard", position: 0 },
+      { name: "Caller", lane_role: "customer_actions", position: 1 },
       // …one entry per lane, top to bottom
     ],
-  }
+  };
   ```
 
   `CreateBlueprintDialog` now reads the deployment config, so a test that renders it has to wrap it in `DeploymentConfigProvider`, the same way the app already does.
@@ -5426,8 +5608,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
