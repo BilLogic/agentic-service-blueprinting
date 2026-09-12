@@ -110,12 +110,30 @@
  * Run: node scripts/check-database-names.mjs   (also: npm run check:database-names)
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
+import { appPackageRoot, appSourceRoot } from './app-source.mjs'
 import { RENAME_MAP, replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
+/**
+ * The application, and the directory it sits in.
+ *
+ * `src` is not a directory of this repository — it is the APPLICATION, and a
+ * deployment that reads the application out of the package has none of its
+ * own. A walk that resolved `src` against this tree's root would find nothing
+ * there, report no findings, and print the same clean line it prints after
+ * reading three hundred files. `scripts` and `skills` stay this tree's, because
+ * they are: a deployment's scripts are its own.
+ */
+const APP_SOURCE = appSourceRoot(REPO_ROOT)
+const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 // `skills/` carries the two scripts a model runs against a live database.
 const ROOTS = ['src', 'scripts', 'skills']
+
+/** Which root a relative sweep root hangs off: the application's, or this tree's. */
+function baseOf(root) {
+  return /^src(?:\/|$)/.test(root) ? APP_PACKAGE : REPO_ROOT
+}
 const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 const SOURCE = /\.(?:[cm]?[jt]sx?|py)$/
 /**
@@ -351,7 +369,7 @@ export function namedObjects(code, language = 'javascript') {
  * clean.
  */
 export function sourceFilesUnder(root) {
-  const abs = resolve(REPO_ROOT, root)
+  const abs = resolve(baseOf(root), root)
   let stats
   try {
     stats = statSync(abs)
@@ -371,6 +389,18 @@ export function sourceFilesUnder(root) {
 }
 
 /**
+ * What a path in a finding is relative to.
+ *
+ * The application's own package, so a finding reads `src/lib/…` whether that
+ * `src` is this repository's or the one inside
+ * `node_modules/agentic-service-blueprinting`; this tree's root for everything
+ * else, which is this tree's.
+ */
+function reportBase(file) {
+  return file.startsWith(APP_SOURCE + sep) ? APP_PACKAGE : REPO_ROOT
+}
+
+/**
  * Every finding, in file order, each site reported once.
  *
  * The dedupe is not cosmetic. A `.select('alias:relation(…)')` literal matches
@@ -382,9 +412,13 @@ export function sourceFilesUnder(root) {
 export function findings() {
   const out = []
   const seen = new Set()
+  let swept = 0
+  let sweptApplication = 0
   for (const root of ROOTS) {
     for (const file of sourceFilesUnder(root)) {
-      const relativePath = relative(REPO_ROOT, file).split('\\').join('/')
+      swept += 1
+      if (file.startsWith(APP_SOURCE + sep)) sweptApplication += 1
+      const relativePath = relative(reportBase(file), file).split('\\').join('/')
       const language = file.endsWith('.py') ? 'python' : 'javascript'
       for (const use of namedObjects(readFileSync(file, 'utf8'), language)) {
         const words = retiredFragmentsIn(use.name)

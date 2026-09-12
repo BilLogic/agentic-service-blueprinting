@@ -116,12 +116,21 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { appPackageRoot } from './app-source.mjs'
 import { SAMPLE_ID_PREFIX } from './check-content-coupling.mjs'
 import { resolveSeedFiles } from './check-deployment-seed-loads.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
-/** The offline half of a deployment's content — see the header. */
+/**
+ * The offline half of a deployment's content — see the header.
+ *
+ * It is APPLICATION source, so it is read wherever the application is. A
+ * deployment that reads the application out of the package has no `src` of its
+ * own: resolved against the deployment's root this directory is simply absent,
+ * the sweep quietly drops to the seed alone, and the report says how many
+ * files it read without saying that half of them were never there.
+ */
 export const FALLBACK_DIR = 'src/data'
 
 /** The database half, before `[db.seed]` gets a say. */
@@ -216,11 +225,34 @@ export function contentFiles(root = REPO_ROOT) {
     .map((file) => relative(root, file).split('\\').join('/'))
     .filter((path) => !path.startsWith('..'))
   const seen = new Set()
-  return [...seeds, ...filesUnder(root, FALLBACK_DIR)].filter((path) => {
+  const found = [...seeds, ...filesUnder(appPackageRoot(root), FALLBACK_DIR)].filter((path) => {
     if (seen.has(path) || !isScanned(path)) return false
     seen.add(path)
     return true
   })
+  // NEITHER HALF IS OPTIONAL TOGETHER. A deployment may have moved its seed or
+  // re-registered its board, and either half alone is a tree this report can
+  // still say something true about — but no content at all is a sweep that
+  // reports "no sample content" because it read nothing, which is the one
+  // answer it must not give quietly.
+  if (found.length === 0) {
+    throw new Error(
+      `no content file under ${root}: neither ${DEFAULT_SEED} nor ` +
+        `${FALLBACK_DIR} under ${appPackageRoot(root)}, so this sweep has no subject`,
+    )
+  }
+  return found
+}
+
+/**
+ * Which root a content path hangs off.
+ *
+ * The application's package for the offline board, the tree's own root for the
+ * seed — the two halves come from different places and a path that reads
+ * `src/data/…` has to be opened where that `src` actually is.
+ */
+function contentBase(root, path) {
+  return path.startsWith(`${FALLBACK_DIR}/`) ? appPackageRoot(root) : root
 }
 
 /**
@@ -248,7 +280,7 @@ export function findings(root = REPO_ROOT) {
   for (const path of contentFiles(root)) {
     let source
     try {
-      source = readFileSync(resolve(root, path), 'utf8')
+      source = readFileSync(resolve(contentBase(root, path), path), 'utf8')
     } catch {
       continue // removed between the listing and here
     }

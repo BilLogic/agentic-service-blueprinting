@@ -15,12 +15,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { appSourceRoot } from '../app-source.mjs'
 import {
   isScanned,
   scannedFiles,
   violationsIn,
   violationsUnder,
 } from '../check-standalone.mjs'
+
+const REPO_ROOT = process.cwd()
 
 const labels = (source) => violationsIn(source).map((hit) => hit.label)
 
@@ -179,9 +182,48 @@ test('the sweep reads the whole tree, not a handful of directories', () => {
   // skipping every file it could not open — looks exactly like a clean tree,
   // right up until a reintroduced reference lands in the part it stopped
   // reading.
+  //
+  // THE DIRECTORIES ARE DISCOVERED RATHER THAN NAMED. A list written here is a
+  // list of THIS tree's folders, and this file is one a deployment holds
+  // byte-identical: `src/` is not there when the application is read out of
+  // the package, `skills/` is not there in a tree with no plugin surface, and
+  // a test asserting either would fail on a tree that is not wrong. What holds
+  // everywhere is that every directory git reports a scannable file in is a
+  // directory the sweep reached.
+  const listed = execFileSync(
+    'git',
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
+  )
+    .split('\0')
+    .filter((path) => path !== '')
+  assert.ok(listed.length > 0, 'git listed no file at all, so there is no tree to sweep')
+
   const files = scannedFiles()
-  assert.ok(files.length > 700, `only ${files.length} files in the subject`)
-  for (const dir of ['src/', 'scripts/', 'docs/', 'skills/', 'supabase/']) {
+  assert.ok(files.length > 0, 'the sweep came back empty, which is not a clean tree')
+
+  const directories = new Set(
+    listed.filter(isScanned).filter((path) => path.includes('/')).map((path) => `${path.split('/')[0]}/`),
+  )
+  assert.ok(directories.size > 3, `only ${directories.size} directories in the subject`)
+  for (const dir of [...directories].sort()) {
     assert.ok(files.some((path) => path.startsWith(dir)), `${dir} is not in the subject`)
   }
+})
+
+test('the application is in the subject wherever this tree keeps its own', () => {
+  // The half the discovery above cannot state: a tree that keeps the
+  // application in its own `src` must be sweeping it, and a tree that reads
+  // the application out of the package must not — that copy is a dependency,
+  // not something this commit would carry, and it is the template's own code
+  // in any case. `app-source.mjs` is what says which tree this is.
+  const files = scannedFiles()
+  const own = appSourceRoot(REPO_ROOT) === join(REPO_ROOT, 'src')
+  assert.equal(
+    files.some((path) => path.startsWith('src/')),
+    own,
+    own
+      ? 'this tree keeps the application in src/ and the sweep is not reading it'
+      : 'this tree reads the application out of the package, so src/ cannot be in its commit',
+  )
 })

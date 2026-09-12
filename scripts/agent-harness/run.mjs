@@ -40,6 +40,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { appFile, readAppFile } from '../app-source.mjs'
 import { CASES } from './cases.mjs'
 import { surface } from './surface.mjs'
 
@@ -133,9 +134,12 @@ const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 // ---------------------------------------------------------------------------
 // System prompt (mirror of src/lib/agent/loop.ts buildSystem — see header)
 // ---------------------------------------------------------------------------
-const ROLE = readFileSync(resolve(ROOT, 'src/lib/agent/role.md'), 'utf8').trimEnd()
-const REFERENCES_DIR = resolve(ROOT, 'src/lib/agent/skill/references')
-const SKILLS_DIR = resolve(ROOT, 'src/lib/agent/skill/skills')
+// The role and the vendored skill surface are APPLICATION source, read
+// wherever the application is — `<root>/src` in a tree that keeps its own copy
+// and the package's `src` in a deployment that reads it out of `node_modules`.
+const ROLE = readAppFile(ROOT, 'src/lib/agent/role.md').trimEnd()
+const REFERENCES_DIR = appFile(ROOT, 'src/lib/agent/skill/references')
+const SKILLS_DIR = appFile(ROOT, 'src/lib/agent/skill/skills')
 const adapterDoc = readFileSync(resolve(REFERENCES_DIR, 'canvas-adapter.md'), 'utf8')
 
 function buildSystem(skillId, contextNote) {

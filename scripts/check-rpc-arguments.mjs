@@ -55,8 +55,20 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readAppFile } from './app-source.mjs'
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
+/**
+ * The caller is APPLICATION source and the schema dump is the tree's own.
+ *
+ * A deployment that reads the application out of the package has no `src`, so
+ * `join(root, CALLER)` there names a file that is not present — and the check
+ * that could not read its subject is the check with nothing to report. The
+ * caller is resolved wherever the application is; the dump stays a plain path,
+ * because a deployment's schema is its own and the question this asks is
+ * whether the calls fit THAT database.
+ */
 const CALLER = 'src/lib/authoringRpc.ts'
 const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 
@@ -275,7 +287,7 @@ export function problemsAt(site, functions) {
 
 export function compare(root = REPO_ROOT) {
   const read = (path) => readFileSync(join(root, path), 'utf8')
-  const source = read(CALLER)
+  const source = readAppFile(root, CALLER)
   const functions = schemaFunctions(read(SCHEMA))
   const sites = rpcCallSites(source)
   if (sites.length === 0) {
