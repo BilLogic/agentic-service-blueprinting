@@ -295,9 +295,9 @@ export type DeploymentConfig = {
    * this a deployment does not have to restate. The diagrams of the blueprint
    * model — what a path holds, what a cell holds, what each skill does — are
    * this package's own explaining, the same drawing whichever service is
-   * blueprinted, and they arrive with the package: import
-   * `packageCoverFigures` and place one, whole, on any section that takes a
-   * figure. Nothing is copied, no build step is run, and a figure that cannot
+   * blueprinted, and they arrive with the package: `packageCoverFigures`, from
+   * the package root beside this type, holds all thirteen as finished figures,
+   * and one goes whole on any section that takes one. Nothing is copied, no build step is run, and a figure that cannot
    * be resolved stops the build rather than reaching a reader as a broken
    * image.
    *

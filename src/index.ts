@@ -51,6 +51,18 @@ export {
  * without these it would be writing it against a type it cannot name. Types
  * only — the renderers stay internal, which is the point of the split.
  */
+/**
+ * The diagrams this package draws of its own model, ready to place on a cover.
+ *
+ * A VALUE, not a type, and the only one on this seam — because these are the
+ * one part of a cover that is not the host's to write. They explain the
+ * blueprint model rather than any service, so a host that had to supply them
+ * would be supplying somebody else's explanation. Each is a module import, so
+ * it travels into whatever the host builds; a host that wants its own writes
+ * its own figure, or spreads one of these and changes the field that differs.
+ */
+export { packageCoverFigures } from './components/cover/packageCoverFigures'
+export type { PackageCoverFigureName } from './components/cover/packageCoverFigures'
 export type {
   CoverContent,
   CoverContentTab,
