@@ -39,6 +39,13 @@ const GENERATED = 'lib/agent/skill/'
  * one down. `vendoredDivergence.test.ts` joined them when record numbers came
  * into scope here: it is the guard that states the vendoring half of the rule,
  * and it states it by quoting the citation it refuses. Nothing else is exempt.
+ *
+ * The exemption carries more weight now that `proseLines` reads test names
+ * and failure messages, because a guard whose SUBJECT is a citation writes
+ * most of its examples there — `expect(RECORD_NUMBER.test('… ADR 0012 …'))`
+ * is the assertion, not a pointer, and a test named for the thing it refuses
+ * is the clearest name it can have. These three earn the exemption by being
+ * the definition; everything else states the decision in words.
  */
 const GUARDS = new Set([
   'citations.ts',
@@ -130,5 +137,60 @@ describe('a shared file names the decision, never the number', () => {
       { line: 1, text: 'see #12' },
       { line: 2, text: '' },
     ])
+  })
+
+  it('reads a test name and a failure message, which is what a reader has when it fails', () => {
+    // The two shapes a person meets at the worst moment.
+    expect(proseLines("it('drops the fallback #622 keeps', fn)\n", 'a.test.ts')).toEqual([
+      { line: 1, text: 'drops the fallback #622 keeps' },
+    ])
+    expect(proseLines("expect(found, 'drifted from ADR 0011').toEqual([])\n", 'a.test.ts')).toEqual(
+      [{ line: 1, text: 'drifted from ADR 0011' }],
+    )
+    // A thrown message reaches a reader the same way.
+    expect(proseLines("throw new Error('the shape ADR 0012 names')\n", 'a.ts')).toEqual([
+      { line: 1, text: 'the shape ADR 0012 names' },
+    ])
+    // A suite name, and a name spelled through a modifier.
+    expect(proseLines("describe('the rule ADR 6 states', fn)\n", 'a.test.ts')).toEqual([
+      { line: 1, text: 'the rule ADR 6 states' },
+    ])
+    expect(proseLines("it.each(rows)('row ADR 6 names', fn)\n", 'a.test.ts')).toEqual([
+      { line: 1, text: 'row ADR 6 names' },
+    ])
+    // The table a curried declaration takes is data, not a name.
+    expect(proseLines("it.each(['#475569'])('%s', fn)\n", 'a.test.ts')).toEqual([
+      { line: 1, text: '%s' },
+    ])
+  })
+
+  it('leaves the data beside the message alone, so a fixture needs no exemption', () => {
+    // `expect(value, message)` compares the first argument and narrates the
+    // rest. A swatch is compared, so it is never read as a citation.
+    expect(proseLines("expect(swatch).toBe('#475569')\n", 'a.test.ts')).toEqual([])
+    expect(proseLines("expect(ISSUE_NUMBER.test('see #12')).toBe(true)\n", 'a.test.ts')).toEqual([])
+    // A test's name is its first argument; its body is addressed to the
+    // compiler again.
+    expect(proseLines("it('name', () => { const c = '#475569' })\n", 'a.test.ts')).toEqual([
+      { line: 1, text: 'name' },
+    ])
+    // And a quoted string with nobody calling it is not addressed to anyone.
+    expect(proseLines("const label = 'interview #4'\n", 'a.ts')).toEqual([])
+  })
+
+  it('reads the message the session pin carried while the extractor read comments only', () => {
+    // The verbatim shapes that survived a sweep and were found by hand. They
+    // are the reason the extractor stopped at the quote mark being a bug.
+    const pin = [
+      "    it('publishes exactly the keys ADR 0011 names, and not the tier', () => {",
+      '      expect(',
+      '        keys,',
+      "        'Published session keys drifted from ADR 0011. See docs/adr/0011-one-question-a-surface-may-ask.md.',",
+      '      ).toEqual(PUBLISHED)',
+      '    })',
+      '',
+    ].join('\n')
+    const read = proseLines(pin, 'supabaseProviderPublishedSurface.test.tsx')
+    expect(read.filter(({ text }) => RECORD_NUMBER.test(text)).length).toBe(2)
   })
 })

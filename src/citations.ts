@@ -25,6 +25,14 @@
  * its schema versions and the migrations that stamped them. The test is
  * where the pointer lands, not whether it has digits.
  *
+ * Prose is not only what sits in a comment. A test's name and a failure's
+ * message are quoted, and a reader meets them at the moment they can least
+ * afford a dead pointer: something has just gone red and the message is the
+ * whole of what they have. Two dangling `docs/adr/0011-…` paths sat inside a
+ * session pin's own failure text for as long as the extractor read comments
+ * only. So `proseLines` reads those literals too, and nothing else quoted —
+ * a colour and a label the product shows stay where the compiler reads them.
+ *
  * This module holds the two matchers and the prose extractor. Two guards
  * read them: `citations.test.ts` holds both numbers across all of `src/`,
  * and `components/vendoredDivergence.test.ts` holds them again over the
@@ -57,8 +65,8 @@ export const RECORD_NUMBER = /\bADRs?[\s/-]*\d+/i
  * rejects a run that continues into letters, which is what separates a
  * citation from a hex colour that happens to open with digits. `#000` is
  * indistinguishable from `#000` the issue by shape alone; `proseLines` is
- * what keeps it out, because a colour lives in a declaration and a citation
- * lives in a comment.
+ * what keeps it out, because a colour lives in a declaration or a fixture
+ * and a citation lives in a comment, a test's name or a failure's message.
  */
 export const ISSUE_NUMBER = /(?:^|[\s(])#\d+(?![\w])/
 
@@ -68,16 +76,50 @@ export type ProseLine = { line: number; text: string }
 const COMMENTED = /\.(?:ts|tsx|js|jsx|mjs|cjs|css)$/
 
 /**
+ * The calls that write to a person, and which of their arguments do it.
+ *
+ * `it('publishes exactly the keys ADR 0011 names')` and `expect(found, 'See
+ * `docs/adr/0011-….md`')` are prose that happens to be quoted, and both are
+ * read at the one moment a reader cannot go looking: the gate is red and the
+ * message is all they have.
+ *
+ * Position is what separates the message from the data beside it.
+ * `expect(value, message)` hands the first argument to a comparison and the
+ * rest to a reader, so a fixture — `expect(swatch).toBe('#475569')` — stays
+ * out without needing to be exempted. A test's name is its first argument;
+ * everything after it is the body, where a string is addressed to the
+ * compiler again. An `Error` carries its message first.
+ *
+ * `ISSUE_NUMBER.test('…')` is not a test declaration: the pattern is
+ * anchored, so the name has to START with `it`, `test` or `describe` rather
+ * than end with it.
+ */
+const NARRATED: { call: RegExp; reads: (argument: number) => boolean }[] = [
+  { call: /^(?:describe|it|test|suite|bench)(?:\.\w+)*$/, reads: (argument) => argument === 0 },
+  { call: /^(?:[A-Z]\w*)?Error$/, reads: (argument) => argument === 0 },
+  { call: /^(?:expect|assert|invariant)$/, reads: (argument) => argument >= 1 },
+]
+
+/**
  * The lines of `source` a reader reads as prose.
  *
- * A citation is a claim addressed to a person, so it lives in a comment or
- * in a document. The rest of a source file is addressed to a compiler:
- * `linear-gradient(#000 0 0)` is a colour and `'Onboarding interview #4'` is
- * a label the product shows, and neither resolves against anybody's tracker.
+ * A citation is a claim addressed to a person, so it lives in a comment, in
+ * a document, in a test's name or in a failure's message. The rest of a
+ * source file is addressed to a compiler: `linear-gradient(#000 0 0)` is a
+ * colour and `'Onboarding interview #4'` is a label the product shows, and
+ * neither resolves against anybody's tracker.
  *
  * Markdown is prose end to end. Everything else is scanned by walking the
- * characters, so that a `#` inside a string literal stays out and a comment
- * trailing a statement stays in.
+ * characters, so that a `#` in a colour stays out, a comment trailing a
+ * statement stays in, and a quoted string is judged by the call it sits in.
+ *
+ * The walk knows nothing of regular-expression literals, which is why a
+ * quote inside one reads as a string. The guards it feeds are prose rules,
+ * and a missed line is a citation that survives rather than a false failure.
+ *
+ * @param source - the file's text
+ * @param path - the file's name, which decides how it is read
+ * @returns {ProseLine[]} every line a reader reads, in the order they occur
  */
 export function proseLines(source: string, path: string): ProseLine[] {
   if (!COMMENTED.test(path)) {
@@ -90,6 +132,49 @@ export function proseLines(source: string, path: string): ProseLine[] {
   const keep = () => {
     if (held.trim() !== '') out.push({ line, text: held })
     held = ''
+  }
+
+  /** The calls still open, innermost last, and the argument each is inside. */
+  const open: { call: string; argument: number }[] = []
+
+  /**
+   * The name of the call an argument list belongs to.
+   *
+   * `it.each(table)(name, fn)` splits one declaration across two argument
+   * lists: the table goes where a name usually goes, and the name follows in
+   * a second list with no identifier in front of it. So the walk steps back
+   * over a finished call to find the name, and the table's own list reads
+   * nothing — it is data, and often data full of colours.
+   */
+  const callee = (paren: number) => {
+    let end = paren
+    let curried = false
+    for (;;) {
+      while (end > 0 && /\s/.test(source[end - 1])) end -= 1
+      if (source[end - 1] !== ')') break
+      let at = end - 2
+      let depth = 0
+      while (at >= 0) {
+        if (source[at] === ')') depth += 1
+        else if (source[at] === '(') {
+          if (depth === 0) break
+          depth -= 1
+        }
+        at -= 1
+      }
+      if (at < 0) return ''
+      end = at
+      curried = true
+    }
+    let start = end
+    while (start > 0 && /[\w$.]/.test(source[start - 1])) start -= 1
+    const name = source.slice(start, end)
+    return name.endsWith('.each') && !curried ? '' : name
+  }
+  const narrated = () => {
+    const here = open[open.length - 1]
+    if (here === undefined) return false
+    return NARRATED.some(({ call, reads }) => call.test(here.call) && reads(here.argument))
   }
 
   let index = 0
@@ -118,16 +203,35 @@ export function proseLines(source: string, path: string): ProseLine[] {
         }
       }
       index = stop
+    } else if (char === '(') {
+      open.push({ call: callee(index), argument: 0 })
+      index += 1
+    } else if (char === ')') {
+      open.pop()
+      index += 1
+    } else if (char === ',') {
+      const here = open[open.length - 1]
+      if (here !== undefined) here.argument += 1
+      index += 1
     } else if (char === '\\') {
       index += 2
     } else if (char === '"' || char === "'" || char === '`') {
+      const opened = line
+      const start = index
+      const reads = narrated()
       index += 1
       while (index < source.length && source[index] !== char) {
         if (source[index] === '\\') index += 1
         else if (source[index] === '\n') line += 1
         index += 1
       }
+      const quoted = source.slice(start + 1, index)
       index += 1
+      if (reads) {
+        quoted.split('\n').forEach((text, at) => {
+          if (text.trim() !== '') out.push({ line: opened + at, text })
+        })
+      }
     } else {
       index += 1
     }
