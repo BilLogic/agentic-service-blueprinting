@@ -34,8 +34,28 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { readAppFile } from '../app-source.mjs'
+
 const REPO_ROOT = process.cwd()
-const read = (path) => readFileSync(resolve(REPO_ROOT, path), 'utf8')
+
+/**
+ * A teaching surface, read wherever this tree keeps it.
+ *
+ * Two of the three are files of THIS tree, which every deployment holds
+ * byte-identical beside this test. The third is the APPLICATION's, and a
+ * deployment keeps no `src`: it reads the application out of
+ * `node_modules/agentic-service-blueprinting`. `readAppFile` knows the
+ * difference and refuses a tree that has it in neither place — which matters
+ * here more than it looks, because the rule below is "no surface says the wrong
+ * thing", and a surface nobody can read says nothing at all.
+ *
+ * The path is spelled `src/…` on both sides of that, so a failure names the
+ * file the way a reader would go looking for it.
+ */
+const read = (path) =>
+  path.startsWith('src/')
+    ? readAppFile(REPO_ROOT, path)
+    : readFileSync(resolve(REPO_ROOT, path), 'utf8')
 
 /**
  * Every place that TEACHES the kinds, as opposed to storing them. The canvas

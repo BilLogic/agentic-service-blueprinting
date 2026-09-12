@@ -32,11 +32,25 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SCHEMA, schemaInventory } from '../check-instance-vocabulary.mjs'
+import { readAppFile } from '../app-source.mjs'
 
-const ROOT = new URL('../../', import.meta.url)
-const read = (path) => readFileSync(fileURLToPath(new URL(path, ROOT)), 'utf8')
+const ROOT = fileURLToPath(new URL('../../', import.meta.url))
+
+/**
+ * A file of THIS repository, read: the dump, the IR schema, the validator.
+ *
+ * Three of the five statements of the roster are the reading repository's own
+ * — its migrations build the constraint, its `references/` publishes the
+ * schema, its `scripts/` refuses on import. The other two are the
+ * application's, and `readApp` finds those wherever the application is.
+ */
+const read = (path) => readFileSync(join(ROOT, path), 'utf8')
+
+/** A file of the APPLICATION, read, whether this tree holds it or the package does. */
+const readApp = (path) => readAppFile(ROOT, path)
 
 /** The values `lanes_lane_role_check` accepts, read off the committed dump. */
 function constraintRoles() {
@@ -70,7 +84,7 @@ function validatorRoles() {
  * constants rather than literals — so the constants are resolved first.
  */
 function appRoles() {
-  const source = read('src/lib/laneRoles.ts')
+  const source = readApp('src/lib/laneRoles.ts')
   const literals = new Map(
     [...source.matchAll(/export const ([A-Z][A-Z_]*) = '([a-z_]+)'/g)].map((m) => [m[1], m[2]]),
   )
@@ -94,7 +108,7 @@ function appRoles() {
  */
 function roleStyleRoles() {
   const block = /const ROLE_STYLES: Record<string, BlueprintLaneStyle> = \{([\s\S]*?)\n\}/.exec(
-    read('src/lib/blueprintTheme.ts'),
+    readApp('src/lib/blueprintTheme.ts'),
   )
   assert.ok(block, 'src/lib/blueprintTheme.ts no longer declares ROLE_STYLES as an object literal')
   const keys = [...block[1].matchAll(/^ {2}([a-z_]+): cellStyleFromFill\(/gm)].map((m) => m[1])

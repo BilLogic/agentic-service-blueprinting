@@ -19,8 +19,20 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readAppFile } from './app-source.mjs'
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
+/**
+ * The two sides, and the two places they live — same split as the read check.
+ *
+ * The adapter is a file of THIS tree, held byte-identical by every deployment.
+ * The specs are the APPLICATION's, and a deployment keeps no `src` of its own:
+ * it reads them out of `node_modules/agentic-service-blueprinting/src`.
+ * `readAppFile` refuses a tree that has the application in neither place,
+ * because "the document lists nothing the roster lacks" is satisfied by a
+ * roster that could not be read at all.
+ */
 const ADAPTER = 'references/canvas-adapter.md'
 const SPECS = 'src/lib/agent/tools/specs.ts'
 
@@ -67,8 +79,8 @@ export function differences(documented, declared) {
 }
 
 export function compare(root = REPO_ROOT) {
-  const read = (path) => readFileSync(join(root, path), 'utf8')
-  return differences(documentedWriteTools(read(ADAPTER)), declaredWriteTools(read(SPECS)))
+  const adapter = readFileSync(join(root, ADAPTER), 'utf8')
+  return differences(documentedWriteTools(adapter), declaredWriteTools(readAppFile(root, SPECS)))
 }
 
 function main() {

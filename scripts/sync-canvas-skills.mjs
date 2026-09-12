@@ -58,6 +58,33 @@ const SKILLS = [
 
 const check = process.argv.includes('--check')
 
+/*
+ * THIS TREE'S OWN `src`, OR NOTHING AT ALL.
+ *
+ * Both sides of this sync are THIS repository's: the canonical trees are here
+ * and the vendored copy is in the application this repository keeps. A tree
+ * with no `src` of its own is not a tree with an empty vendored copy — it is a
+ * deployment reading the application out of the package, where the copy is the
+ * package's and already correct.
+ *
+ * It has to refuse BEFORE the two `mkdirSync` calls below, and that is the
+ * whole reason this is here rather than in a message. Those calls CREATE
+ * `src/lib/agent/skill/` wherever they are run, so a deployment that ran this
+ * would be left with a `src` holding two empty directories — and the first
+ * root that exists wins, so from that moment the build's `@/…` alias, both
+ * tsconfigs and every walk resolve into it and the application is gone. A
+ * refusal costs a deployment one clear line; the sync costs it the build.
+ */
+if (!existsSync(resolve(ROOT, 'src'))) {
+  console.error(
+    `no src under ${ROOT}: this sync is between this repository's own trees ` +
+      'and the application it keeps, and this tree keeps none. A deployment ' +
+      'reads the vendored copy out of the package, where it is already in ' +
+      'step with the sources beside it.',
+  )
+  process.exit(1)
+}
+
 mkdirSync(VENDORED, { recursive: true })
 mkdirSync(VENDORED_SKILLS, { recursive: true })
 

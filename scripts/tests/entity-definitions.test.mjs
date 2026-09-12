@@ -27,9 +27,23 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { appSourceRoot, appPackageRoot, readAppFile } from '../app-source.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
-const SRC = resolve(ROOT, 'src')
+
+/**
+ * The application's own root, and the directory a finding is relative to.
+ *
+ * `resolve(ROOT, 'src')` was a directory a deployment does not have, and the
+ * walk below would have read it as an application with no files in it — every
+ * assertion here reports what it did NOT find, so a subject of nothing is a
+ * green run that stays green. `appSourceRoot` answers with whichever of the
+ * two roots the build resolves through actually exists, and refuses when
+ * neither does. Paths stay `src/…` either way, because they are relative to
+ * the application's root's parent rather than to this tree.
+ */
+const SRC = appSourceRoot(ROOT)
+const APP_PACKAGE = appPackageRoot(ROOT)
 
 /* --------------------------------------------------------------- the tree */
 
@@ -67,11 +81,11 @@ function walk(dir) {
  * that IS there.
  */
 export function appSources() {
-  return walk(SRC)
+  const found = walk(SRC)
     .map((path) => {
       try {
         return {
-          file: relative(ROOT, path).split('\\').join('/'),
+          file: relative(APP_PACKAGE, path).split('\\').join('/'),
           code: stripComments(readFileSync(path, 'utf8')),
         }
       } catch {
@@ -80,9 +94,20 @@ export function appSources() {
     })
     .filter((one) => one !== null)
     .sort((a, b) => a.file.localeCompare(b.file))
+  // A WALK THAT FINDS NOTHING THROWS — `appFiles` says why, and this walk
+  // keeps its own body rather than calling it only because of the vanishing
+  // probe above, which `appFiles` would throw on instead of skipping.
+  if (found.length === 0) {
+    throw new Error(
+      `no .ts or .tsx under ${SRC}: this walk has no subject, which is a ` +
+        `failure and not a pass`,
+    )
+  }
+  return found
 }
 
-const read = (path) => stripComments(readFileSync(resolve(ROOT, path), 'utf8'))
+/** One named application file, read, wherever the application is. */
+const read = (path) => stripComments(readAppFile(ROOT, path))
 
 /* ------------------------------------- 1. every kind defines itself */
 

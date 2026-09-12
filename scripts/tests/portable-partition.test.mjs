@@ -16,7 +16,9 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readAppFile } from '../app-source.mjs'
 import {
   applyRename,
   generate,
@@ -29,8 +31,17 @@ import {
 } from '../generate-portable-core.mjs'
 import { compare, parseGeneratedTypes, parseInventory } from '../check-schema-inventory.mjs'
 
-const ROOT = new URL('../../', import.meta.url)
-const read = (path) => readFileSync(fileURLToPath(new URL(path, ROOT)), 'utf8')
+const ROOT = fileURLToPath(new URL('../../', import.meta.url))
+
+/**
+ * A repository file, read.
+ *
+ * The generated schema and the recipe are THIS tree's — a deployment applies
+ * its own migrations — so they stay a plain path off the repository root.
+ * The generated types are not: they describe the database the APPLICATION
+ * compiles against, and they travel with it.
+ */
+const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 
 test('a file is core until a mark says otherwise, and the mark carries its reason', () => {
   const { core, recipe } = partition(
@@ -218,7 +229,7 @@ test('drift is reported in the direction that tells you what to do', () => {
 })
 
 test('the generated types still parse into tables and columns', () => {
-  const tables = parseGeneratedTypes(read('src/types/database.ts'))
+  const tables = parseGeneratedTypes(readAppFile(ROOT, 'src/types/database.ts'))
   assert.ok(tables.size > 10, 'expected the app schema, got ' + tables.size + ' tables')
   assert.ok(tables.get('cells')?.has('id'))
 })

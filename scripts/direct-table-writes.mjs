@@ -19,10 +19,23 @@
  * drift from the first, and drift is precisely what both of these rules exist
  * to catch.
  *
- * **The walk starts at `src/`, deliberately.** A guard that scans a list of
- * named roots covers only the directories that existed the day it was written.
- * Starting at the root and naming the exceptions inverts that: a new directory
- * is covered the moment it appears, and a new writer has to argue for itself.
+ * **The walk starts at the application's root, deliberately.** A guard that
+ * scans a list of named roots covers only the directories that existed the day
+ * it was written. Starting at the root and naming the exceptions inverts that:
+ * a new directory is covered the moment it appears, and a new writer has to
+ * argue for itself.
+ *
+ * WHERE THAT ROOT IS, this file no longer decides. It used to be this
+ * repository's own `src`, spelled once here so no consumer had to — which is
+ * the right shape and was the wrong fact: a deployment installs this repository
+ * as a package and reads the application out of
+ * `node_modules/agentic-service-blueprinting/src`, keeping no `src` of its own.
+ * A walk pointed at the `src` that is not there finds no file, reports no
+ * write, and every rule built on it passes — `PANEL_WRITE_SURFACE` matches an
+ * empty set of writers, `check:seed-load` asks the database about nothing, and
+ * the green line is identical to the one a healthy run prints. So the root
+ * comes from `scripts/app-source.mjs`, which is where the build's two roots are
+ * written down, and A WALK THAT FINDS NO FILE THROWS.
  *
  * Two shapes look like writes and are not, and both are asserted by the tests
  * that use this rather than left to the pattern's good behaviour:
@@ -36,8 +49,23 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-/** The tree every consumer scans, so none of them has to spell the path. */
-export const SRC = fileURLToPath(new URL('../src', import.meta.url))
+import { appSourceRoot } from './app-source.mjs'
+
+/** The tree this scan runs in — the deployment's root, or this repository's. */
+const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+/**
+ * The application's root, wherever `repoRoot` keeps it, so no consumer has to
+ * spell the path.
+ *
+ * A function rather than the constant it replaces, because the answer is a
+ * question about a disk that may have neither root, and `appSourceRoot` refuses
+ * that case by name. A constant would have had to answer it at import time, on
+ * every import, including the ones that never walk anything.
+ */
+export function appSource(repoRoot = REPO_ROOT) {
+  return appSourceRoot(repoRoot)
+}
 
 /**
  * `.from('table')` followed by a write verb: table in group 1, verb in group 2.
@@ -72,11 +100,24 @@ export function walkSources(directory, prefix = '') {
  * `{ path, line, table, verb }` for every direct table write under `root`.
  *
  * `path` is relative to `root`, and `line` is 1-based, so a failure can name
- * the offending call the way an editor does.
+ * the offending call the way an editor does. `lib/sliceMutations.ts` reads the
+ * same whether that root is this repository's `src` or the package's.
+ *
+ * A ROOT WITH NO SOURCE IN IT THROWS. Every rule over this set is a claim about
+ * what the writers do, and a set with no writers in it satisfies all of them at
+ * once: nothing is undeclared, nothing is unexempted, nothing writes a table it
+ * may not. That is the one answer this scan must never return quietly.
  */
-export function directTableWrites(root = SRC) {
+export function directTableWrites(root = appSource()) {
+  const sources = walkSources(root)
+  if (sources.length === 0) {
+    throw new Error(
+      `no .ts or .tsx source under ${root}: this scan has no subject, which is ` +
+        `a failure and not a pass`,
+    )
+  }
   const writes = []
-  for (const relative of walkSources(root)) {
+  for (const relative of sources) {
     const source = readFileSync(resolve(root, relative), 'utf8')
     for (const match of source.matchAll(TABLE_WRITE)) {
       writes.push({

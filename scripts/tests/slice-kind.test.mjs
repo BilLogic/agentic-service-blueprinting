@@ -11,7 +11,12 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { deriveSliceType, describeSliceType } from '../../src/lib/sliceKind.ts'
+// Through the alias, not up two directories. A deployment reads the
+// application out of `node_modules/agentic-service-blueprinting` and has no
+// `src` to walk up into, so `../../src/lib/…` is a file that is not there and
+// the suite cannot even load. `@/…` is the same pair of roots the build
+// resolves, so this import lands on whichever one holds the application.
+import { deriveSliceType, describeSliceType } from '@/lib/sliceKind.ts'
 
 /** A fake grid: `id` is "step/lane". */
 const at = (id) => {

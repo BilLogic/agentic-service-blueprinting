@@ -30,26 +30,29 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
 import { RETIRED_IDENTIFIER_FRAGMENTS } from '../retired-vocabulary.mjs'
+import { appFiles, readAppFile } from '../app-source.mjs'
 
 const REPO_ROOT = process.cwd()
-const SOURCE_ROOT = 'src'
 
-/** Files that may hold a select string. */
-function sourceFiles(dir) {
-  const found = []
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) {
-      found.push(...sourceFiles(path))
-    } else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) {
-      found.push(path)
-    }
-  }
-  return found
-}
+/**
+ * Files that may hold a select string: the application's, wherever it is.
+ *
+ * A select string is APPLICATION source by definition — it is the text a
+ * component hands PostgREST — and a deployment reads the application out of
+ * `node_modules/agentic-service-blueprinting` with no `src` beside its
+ * `scripts/`. The hand-rolled walk that started at `resolve(REPO_ROOT, 'src')`
+ * crashed there, and the day somebody made it tolerant of a missing directory
+ * it would have done the worse thing instead: swept nothing and passed.
+ * `appFiles` sweeps whichever root holds the application, REFUSES an empty
+ * result, and reports each file as the `src/…` path a reader writes.
+ */
+const selectStringSources = () =>
+  appFiles(
+    REPO_ROOT,
+    (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
+    '.ts or .tsx outside a test',
+  )
 
 /**
  * The select strings in `source`.
@@ -93,14 +96,21 @@ export function retiredAliases(select) {
 
 test('no select string aliases a row field to a word the database retired', () => {
   const findings = []
-  for (const file of sourceFiles(resolve(REPO_ROOT, SOURCE_ROOT))) {
-    const source = readFileSync(file, 'utf8')
+  let read = 0
+  for (const file of selectStringSources()) {
+    const source = readAppFile(REPO_ROOT, file)
     for (const select of selectStrings(source)) {
+      read += 1
       for (const alias of retiredAliases(select)) {
-        findings.push(`${relative(REPO_ROOT, file)}: ${alias}`)
+        findings.push(`${file}: ${alias}`)
       }
     }
   }
+  // The walk found FILES; this is what says it found the QUERIES. This app
+  // reads every row it draws through PostgREST, so a sweep that reaches no
+  // select string at all has landed somewhere that is not the application —
+  // and an alias nobody looked for is not an alias nobody wrote.
+  assert.ok(read > 0, 'not one select string was read, so nothing was checked')
   assert.deepEqual(
     findings,
     [],

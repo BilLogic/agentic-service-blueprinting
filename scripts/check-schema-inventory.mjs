@@ -23,10 +23,22 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { appFile } from './app-source.mjs'
 
-const GENERATED_TYPES = fileURLToPath(
-  new URL('../src/types/database.ts', import.meta.url),
-)
+/** The tree this script is part of: the directory `scripts/` sits in. */
+const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+/**
+ * The generated types, wherever the application is.
+ *
+ * `../src/types/database.ts` was a path relative to THIS FILE, and a
+ * deployment's `scripts/` is its own while its application is the package's —
+ * so the types sat one directory away from where that path pointed and this
+ * check died on an ENOENT with nothing to say about why. Resolved rather than
+ * read at load, because both halves of this module are imported for their
+ * parsers by tests that never open the file.
+ */
+const generatedTypes = () => appFile(REPO_ROOT, 'src/types/database.ts')
 
 /** `table<TAB>column` rows, as psql -At -F '\t' emits them. */
 export function parseInventory(tsv) {
@@ -109,7 +121,7 @@ function main() {
     process.exit(2)
   }
   const problems = compare(
-    parseGeneratedTypes(readFileSync(GENERATED_TYPES, 'utf8')),
+    parseGeneratedTypes(readFileSync(generatedTypes(), 'utf8')),
     parseInventory(readFileSync(inventoryPath, 'utf8')),
   )
   if (problems.length === 0) {

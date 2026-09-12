@@ -56,12 +56,13 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import {
-  SRC,
   TABLE_WRITE,
+  appSource,
   directTableWrites,
   walkSources,
   writtenTableNames,
@@ -79,9 +80,22 @@ import {
 } from '../panel-write-surface.mjs'
 import { POPULATED } from '../check-seed-loads.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
+import { readAppFile } from '../app-source.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const read = (path) => readFileSync(join(ROOT, path), 'utf8')
+
+/**
+ * The application, wherever this tree keeps it.
+ *
+ * A deployment reads it out of `node_modules/agentic-service-blueprinting/src`
+ * and holds no `src` of its own, and a walk that starts at `src` there finds no
+ * writer — which satisfies every rule below at once, because a surface with no
+ * writers to contradict it cannot be contradicted. `appSource` is the same
+ * answer `panel-write-surface.mjs` walks, so the declaration and the check of it
+ * are looking at one tree.
+ */
+const APP_SOURCE = appSource(ROOT)
 
 /**
  * psql's `-At -F '|'` output for the real probe set, with named outcomes.
@@ -321,18 +335,34 @@ test('the scan reads writes, and not reads or uploads', () => {
 // The repository
 // ---------------------------------------------------------------------------
 
-const WRITES = directTableWrites(SRC)
+const WRITES = directTableWrites(APP_SOURCE)
 const WRITTEN = writtenTableNames(WRITES)
 
 test('the walk sees the whole of src, not a list of roots', () => {
   // A walk that silently found nothing would pass every assertion below, so
   // hold it to the facts that make the scan meaningful: it reaches files, it
   // reaches them outside `lib/`, and it finds writes at all.
-  const sources = walkSources(SRC)
+  const sources = walkSources(APP_SOURCE)
   assert.ok(sources.length > 0)
   assert.ok(sources.some((one) => one.startsWith('components/')))
   assert.ok(WRITES.length > 0)
   assert.ok(WRITTEN.length > 0)
+})
+
+test('a root with no application in it refuses, and one with no source fails', () => {
+  // The arrangement this whole file used to be wrong in. A deployment keeps no
+  // `src` of its own, so the walk found nothing, `WRITTEN` was empty, and every
+  // rule below held vacuously — the run that should have caught a new writer
+  // printed the same green as the run before it.
+  const empty = mkdtempSync(join(tmpdir(), 'write-surface-'))
+  try {
+    assert.throws(() => appSource(empty), /no application source/)
+    mkdirSync(join(empty, 'src'))
+    writeFileSync(join(empty, 'src', 'notes.md'), 'not a source file\n')
+    assert.throws(() => directTableWrites(appSource(empty)), /no \.ts or \.tsx source/)
+  } finally {
+    rmSync(empty, { recursive: true, force: true })
+  }
 })
 
 test('every table the app writes directly is declared, or exempted with a reason', () => {
@@ -424,7 +454,7 @@ test('the surface asks about every verb the app uses, on every table it uses it'
 })
 
 test('every name on the write surface is a name the schema has', () => {
-  const schema = parseGeneratedTypes(read('src/types/database.ts'))
+  const schema = parseGeneratedTypes(readAppFile(ROOT, 'src/types/database.ts'))
   const problems = namesTheSchemaLacks(PANEL_WRITE_SURFACE, schema)
   assert.deepEqual(
     problems,

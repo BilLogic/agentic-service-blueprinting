@@ -42,23 +42,30 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { appFiles, readAppFile } from '../app-source.mjs'
 
 const REPO_ROOT = process.cwd()
-const SOURCE_ROOT = 'src'
 /** The card itself. Its own module declares the surface rather than using it. */
 const CARD_MODULE = 'src/components/blueprint/DefinitionCard.tsx'
 
-function sourceFiles(dir) {
-  const found = []
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) found.push(...sourceFiles(path))
-    else if (/\.tsx$/.test(entry) && !/\.test\.tsx$/.test(entry)) found.push(path)
-  }
-  return found
-}
+/**
+ * Every `.tsx` of the application, wherever this tree keeps it, as `src/…`.
+ *
+ * A deployment reads the application out of
+ * `node_modules/agentic-service-blueprinting` and has no `src` beside its
+ * `scripts/`, so the walk that started at `resolve(REPO_ROOT, 'src')` swept
+ * nothing there and reported it in green — a check that has stopped looking
+ * prints the same line as one that looked and agreed. `appFiles` sweeps
+ * whichever root holds the application and REFUSES an empty result, and the
+ * paths it hands back stay `src/…` so `CARD_MODULE` is one string rather than
+ * one per deployment.
+ */
+const applicationSources = () =>
+  appFiles(
+    REPO_ROOT,
+    (path) => /\.tsx$/.test(path) && !/\.test\.tsx$/.test(path),
+    '.tsx outside a test',
+  )
 
 /**
  * The `<Name …>` element starting at `index`, and everything it contains.
@@ -142,13 +149,20 @@ export function definitionsNotOnABadge(source) {
 }
 
 test('every definition in the app hangs off a badge', () => {
-  const files = sourceFiles(resolve(REPO_ROOT, SOURCE_ROOT))
-    .map((path) => path.slice(resolve(REPO_ROOT).length + 1))
-    .filter((path) => path !== CARD_MODULE)
+  const walked = applicationSources()
+  // The walk found FILES; this is what says it found the APPLICATION. A tree
+  // with no `DefinitionCard.tsx` in it is not the tree this check is about,
+  // however many components it has.
+  assert.ok(
+    walked.includes(CARD_MODULE),
+    `${CARD_MODULE} is not among the ${walked.length} files walked, so this ` +
+      `is not the application`,
+  )
+  const files = walked.filter((path) => path !== CARD_MODULE)
 
   const found = []
   for (const path of files) {
-    const source = readFileSync(resolve(REPO_ROOT, path), 'utf8')
+    const source = readAppFile(REPO_ROOT, path)
     for (const finding of definitionsNotOnABadge(source)) {
       found.push(`${path}:${finding.line}  ${finding.owner} explains a label`)
     }

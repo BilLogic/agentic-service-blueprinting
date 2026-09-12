@@ -88,7 +88,7 @@
  * have.
  */
 
-import { SRC, directTableWrites, writtenVerbsByTable } from './direct-table-writes.mjs'
+import { directTableWrites, writtenVerbsByTable } from './direct-table-writes.mjs'
 
 /**
  * `table: [columns]`. The columns are the ones named in an `.update({…})`
@@ -183,13 +183,20 @@ export const OUTSIDE_THE_SURFACE = [
  * order.
  *
  * `verbs` is derived, never declared: `writtenVerbsByTable` reads them off the
- * same walk of `src/` that finds the tables. An entry whose table nothing
- * writes any more comes back with no verbs and therefore asks the database
- * nothing — `evaluateWriteSurface` reports that rather than letting the check
- * pass on an empty question.
+ * same walk of the application that finds the tables. An entry whose table
+ * nothing writes any more comes back with no verbs and therefore asks the
+ * database nothing — `evaluateWriteSurface` reports that rather than letting the
+ * check pass on an empty question.
+ *
+ * The walk takes no root here, and that is the point: `directTableWrites`
+ * resolves the application through `scripts/app-source.mjs`, so a deployment
+ * that reads it out of `node_modules/agentic-service-blueprinting/src` derives
+ * the same verbs from the same modules. A root spelled here would have been a
+ * second answer to that question, and the deployment is where the two would
+ * have disagreed — silently, with every entry coming back verbless at once.
  */
 export function writeSurfaceEntries() {
-  const verbs = writtenVerbsByTable(directTableWrites(SRC))
+  const verbs = writtenVerbsByTable(directTableWrites())
   return Object.entries(PANEL_WRITE_SURFACE).map(([table, columns]) => ({
     table,
     columns,

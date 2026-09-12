@@ -32,10 +32,11 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { appFiles, readAppFile } from '../app-source.mjs'
 
 const REPO_ROOT = process.cwd()
+/** The query this check was written for, and the file it lives in. */
+const HINTED_QUERY = 'src/hooks/useStepSpec.ts'
 
 /**
  * Embeds that PostgREST cannot resolve without a hint, as source → target.
@@ -51,15 +52,23 @@ const AMBIGUOUS = [
   },
 ]
 
-function sourceFiles(dir) {
-  const found = []
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) found.push(...sourceFiles(path))
-    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) found.push(path)
-  }
-  return found
-}
+/**
+ * Every file that may hold a select string, wherever the application is.
+ *
+ * A deployment reads the application out of
+ * `node_modules/agentic-service-blueprinting` and keeps no `src` beside its
+ * `scripts/`, so a walk rooted at `resolve(REPO_ROOT, 'src')` measured nothing
+ * there — and an embed nobody looked at is answered by PostgREST with a 300
+ * whether or not a check said so. `appFiles` sweeps whichever root holds the
+ * application, REFUSES an empty result, and hands back the `src/…` paths a
+ * finding prints.
+ */
+const selectStringSources = () =>
+  appFiles(
+    REPO_ROOT,
+    (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
+    '.ts or .tsx outside a test',
+  )
 
 /**
  * `.from(X).select(Y)` pairs in `source`, as `{ root, select }`.
@@ -138,14 +147,23 @@ export function unresolvableEmbeds(select, pairs, root = 'root') {
 
 test('no select embeds a multiply-reachable table without its key', () => {
   const findings = []
-  for (const file of sourceFiles(resolve(REPO_ROOT, 'src'))) {
-    for (const { root, select } of selectsWithRoot(readFileSync(file, 'utf8'))) {
+  const walked = selectStringSources()
+  // The walk found FILES; this is what says it found the APPLICATION. The
+  // query this check was written for is in the tree it is supposed to be
+  // reading, or the tree is not the one this check is about.
+  assert.ok(
+    walked.includes(HINTED_QUERY),
+    `${HINTED_QUERY} is not among the ${walked.length} files walked, so this ` +
+      `is not the application`,
+  )
+  for (const file of walked) {
+    for (const { root, select } of selectsWithRoot(readAppFile(REPO_ROOT, file))) {
       for (const embed of unresolvableEmbeds(select, AMBIGUOUS, root)) {
         const pair = AMBIGUOUS.find(
           (entry) => entry.source === embed.parent && entry.target === embed.target,
         )
         findings.push(
-          `${relative(REPO_ROOT, file)}: ${embed.text} under ${root} — ` +
+          `${file}: ${embed.text} under ${root} — ` +
             `${pair.source} reaches ${pair.target} through ${pair.keys.join(' and ')}`,
         )
       }
@@ -180,7 +198,7 @@ test('the same embed is legal from a parent with one key', () => {
 })
 
 test('the live query this was written for is hinted', () => {
-  const source = readFileSync(resolve(REPO_ROOT, 'src/hooks/useStepSpec.ts'), 'utf8')
+  const source = readAppFile(REPO_ROOT, HINTED_QUERY)
   const frames = selectsWithRoot(source).filter(({ select }) => select.includes('frame'))
   assert.ok(frames.length > 0, 'the storyboard frames query went missing')
   for (const { root, select } of frames) {

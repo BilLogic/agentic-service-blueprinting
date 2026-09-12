@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
   argumentDrift,
   declaredArguments,
   readArguments,
 } from '../tool-arguments.mjs'
+import { readAppFile } from '../app-source.mjs'
 
 /**
  * #272 — the agent tool's wire, read from both ends.
@@ -21,9 +21,15 @@ import {
  * directions, on every run.
  */
 
+/**
+ * Both ends of the wire, read out of the application wherever this tree keeps
+ * it. A deployment has no `src` of its own and reads them out of
+ * `node_modules/agentic-service-blueprinting`; spelled by hand from `src/…`,
+ * this file threw ENOENT on import there and took every check below with it.
+ */
 const root = fileURLToPath(new URL('../..', import.meta.url))
-const specs = readFileSync(`${root}src/lib/agent/tools/specs.ts`, 'utf8')
-const registry = readFileSync(`${root}src/lib/agent/tools/registry.ts`, 'utf8')
+const specs = readAppFile(root, 'src/lib/agent/tools/specs.ts')
+const registry = readAppFile(root, 'src/lib/agent/tools/registry.ts')
 
 /**
  * Names the handler still reads and the schema no longer advertises.

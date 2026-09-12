@@ -23,11 +23,25 @@ import {
   vocabularySource,
 } from '../agent-account.mjs'
 import { credentials } from '../generate-agent-account.mjs'
+import { readAppFile } from '../app-source.mjs'
 
 const ROOT = new URL('../..', import.meta.url).pathname
 
+/**
+ * The two application sources this suite reads, out of wherever they are.
+ *
+ * `agent-account.mjs` itself already states this pair of roots — that is what
+ * `vocabularySource` and `schemaDeclaration` are for, and the fixtures below
+ * assert both branches of each. Its TEST was the half still spelling
+ * `${ROOT}src/…`, so the thing that measured the two-root rule was the one
+ * thing that only worked under one of them. `docs/agents/blueprint.md` below
+ * stays a plain path: the account document is the READING repository's, and
+ * a deployment renders its own.
+ */
+const readApp = (path) => readAppFile(ROOT, path)
+
 test('the six entity kinds are read off panelTerms.ts as written', () => {
-  const kinds = entityKinds(readFileSync(`${ROOT}src/lib/panelTerms.ts`, 'utf8'))
+  const kinds = entityKinds(readApp('src/lib/panelTerms.ts'))
   assert.deepEqual(
     kinds.map((k) => k.kind),
     ['service', 'phase', 'scenario', 'path', 'step', 'lane'],
@@ -37,7 +51,7 @@ test('the six entity kinds are read off panelTerms.ts as written', () => {
 })
 
 test('every relation with a Row type is a column inventory', () => {
-  const columns = tableColumns(readFileSync(`${ROOT}src/types/database.ts`, 'utf8'))
+  const columns = tableColumns(readApp('src/types/database.ts'))
   assert.ok(columns.get('paths').includes('kind'))
   assert.ok(columns.get('evidence_counts'), 'views carry a Row too')
   assert.equal(columns.has('search_blueprint'), false, 'a function has no Row')

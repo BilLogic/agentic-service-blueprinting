@@ -38,12 +38,26 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { RENAME_MAP } from '../retired-vocabulary.mjs'
+import { appFiles, appPackageRoot, readAppFile } from '../app-source.mjs'
 
 const REPO_ROOT = process.cwd()
 const DATABASE_TYPES = 'src/types/database.ts'
+
+/**
+ * Where a `src/…` path below actually is.
+ *
+ * Both subjects are APPLICATION source — the editor forms, and every `.ts`
+ * and `.tsx` the assignment sweep reads — and a deployment keeps the
+ * application in `node_modules/agentic-service-blueprinting`, not beside its
+ * `scripts/`. `resolve(process.cwd(), 'src/…')` named a file that is not
+ * there, and the sweep's `resolve(REPO_ROOT, 'src')` named a directory that
+ * is not there: the first is an ENOENT and the second a walk of nothing,
+ * which is the worse of the two because it passes.
+ */
+const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
 /**
  * Which table each editor form writes. `nested` names a key whose value is
@@ -196,20 +210,25 @@ export function columnsArrivingUnderOldNames(source, pairs = renamePairs()) {
   return findings
 }
 
-function sourceFiles(dir) {
-  const found = []
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) found.push(...sourceFiles(path))
-    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) found.push(path)
-  }
-  return found
-}
+/**
+ * Every application `.ts` and `.tsx` that is not a test, as `src/…` paths.
+ *
+ * `appFiles` sweeps whichever root holds the application and REFUSES an empty
+ * result, which is the property the hand-rolled walk here did not have: a
+ * deployment's missing `src` made this the check that examined no file and
+ * reported success for it.
+ */
+const applicationSources = () =>
+  appFiles(
+    REPO_ROOT,
+    (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
+    '.ts or .tsx outside a test',
+  )
 
 test('every editor form key is a column of the table it writes', () => {
-  const tables = tableColumns(readFileSync(resolve(REPO_ROOT, DATABASE_TYPES), 'utf8'))
+  const tables = tableColumns(readAppFile(REPO_ROOT, DATABASE_TYPES))
   const found = EDITOR_FORMS.flatMap((form) =>
-    keysThatAreNotColumns(form, readFileSync(resolve(REPO_ROOT, form.file), 'utf8'), tables),
+    keysThatAreNotColumns(form, readAppFile(REPO_ROOT, form.file), tables),
   )
   assert.deepEqual(
     found,
@@ -220,13 +239,12 @@ test('every editor form key is a column of the table it writes', () => {
 })
 
 test('no column arrives in the app under a name the schema retired', () => {
-  const tables = tableColumns(readFileSync(resolve(REPO_ROOT, DATABASE_TYPES), 'utf8'))
+  const tables = tableColumns(readAppFile(REPO_ROOT, DATABASE_TYPES))
   const pairs = renamePairs(RENAME_MAP, tables)
-  const root = resolve(REPO_ROOT, 'src')
   const found = []
-  for (const path of sourceFiles(root)) {
-    const rel = path.slice(resolve(REPO_ROOT).length + 1)
-    for (const finding of columnsArrivingUnderOldNames(readFileSync(path, 'utf8'), pairs)) {
+  for (const rel of applicationSources()) {
+    const source = readFileSync(join(APP_PACKAGE, rel), 'utf8')
+    for (const finding of columnsArrivingUnderOldNames(source, pairs)) {
       found.push(`${rel}:${finding.line}  ${finding.text}`)
     }
   }
@@ -239,7 +257,7 @@ test('the roster yields the pairs this check runs on', () => {
   // tree, and qualifies only the slice's own pair. That qualified pair is the
   // one this check can run on, so it is the one asserted: without it the
   // assignment-site check above examines nothing.
-  const tables = tableColumns(readFileSync(resolve(REPO_ROOT, DATABASE_TYPES), 'utf8'))
+  const tables = tableColumns(readAppFile(REPO_ROOT, DATABASE_TYPES))
   const pairs = renamePairs(RENAME_MAP, tables)
   assert.ok(!pairs.some((p) => p.was === 'label'), '`label` is still live on deleted_structure and must not be a pair')
   assert.ok(pairs.some((p) => p.was === 'description' && p.is === 'summary' && p.table === 'slices'),
