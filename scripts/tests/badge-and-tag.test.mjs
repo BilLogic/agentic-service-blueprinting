@@ -109,10 +109,32 @@ export function commentsOnly(source) {
   return out.join('')
 }
 
+/**
+ * The tree under `dir`, and an entry that vanishes mid-walk is skipped rather
+ * than thrown over.
+ *
+ * `readdirSync` lists what was there a moment ago, and `statSync` asks about it
+ * a moment later. A build artefact removed in between, or a symlink pointing at
+ * something that has gone, turns a vocabulary guard red for a reason that has
+ * nothing to do with vocabulary — and a guard that goes red for unrelated
+ * reasons is one people learn to rerun rather than read.
+ *
+ * Only the vanishing is swallowed. Anything else — a permission, an unreadable
+ * encoding — is a fact about the tree worth hearing, and it throws. And the
+ * skip cannot quietly shrink the subject: `the walk reads the tree it claims
+ * to` below counts what came back and names the directories that must be in it.
+ */
 function walk(dir) {
   return readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry)
-    if (statSync(path).isDirectory()) return walk(path)
+    let stats
+    try {
+      stats = statSync(path)
+    } catch (error) {
+      if (error.code === 'ENOENT') return []
+      throw error
+    }
+    if (stats.isDirectory()) return walk(path)
     if (!/\.(tsx?|css)$/.test(entry)) return []
     return [path]
   })
@@ -345,6 +367,25 @@ test('the walk reads the tree it claims to', () => {
   assert.ok(
     sources.some(({ code }) => code.includes('export function FloatingSidebarNavbar')),
   )
+})
+
+test('the walk reads the WHOLE tree, not a handful of directories', () => {
+  // The breadth, stated separately from the two spot checks above, because the
+  // two would still pass over a walk that had quietly stopped descending — and
+  // because `walk` skips an entry that vanishes under it, which is safe only
+  // while something counts what came back.
+  //
+  // The sampling gap this names is a real one: a guard that reads only
+  // `components/` looks exactly like a guard that reads everything, right up
+  // until a retired name lands in `lib/`.
+  const sources = appSources()
+  assert.ok(sources.length > 200, `only ${sources.length} source files found under src`)
+  for (const root of ['components/', 'lib/', 'contexts/', 'hooks/', 'styles/', 'types/']) {
+    assert.ok(
+      sources.some((one) => one.file.startsWith(`src/${root}`)),
+      `src/${root} is not in the subject`,
+    )
+  }
 })
 
 /* ----------------------------------- chip and pill, in a figure's classes */

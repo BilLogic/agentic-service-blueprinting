@@ -117,7 +117,7 @@ export type NewSlice = {
 /**
  * Create a slice and its slides.
  *
- * `origin` is `human` — this slice was authored here, so the slice skill will
+ * `authorship` is `human` — this slice was authored here, so the slice skill will
  * never regenerate over it. Slides default to one cell each: that is the
  * honest reading of a selection made by clicking cells one at a time, and
  * merging them afterwards is one click in the editor.
@@ -354,7 +354,7 @@ export type SliceMetaUpdate = {
   summary: string
   sliceKind: SliceKind
   actor: string
-  /** Current origin; an edit promotes `generated` to `customized`. */
+  /** Current authorship; an edit promotes `generated` to `customized`. */
   authorship: string
 }
 
@@ -368,7 +368,7 @@ export type SliceMetaUpdate = {
  * site already holds the row (it had to, for the token), but a captured
  * inverse that depends on each caller remembering to pass one is an inverse
  * that will be missing somewhere — and the one field a caller would most
- * likely forget is `origin`, which this write *changes* as a side effect
+ * likely forget is `authorship`, which this write *changes* as a side effect
  * (`generated` → `customized`) without being asked to.
  *
  * Recorded only on `ok`. A conflict wrote nothing, and the ledger's whole
@@ -434,9 +434,10 @@ type SliceMetaFields = Pick<
  * Did the update change anything?
  *
  * Compared field by field against the row the update RETURNED, not against the
- * caller's intent: `origin` is rewritten by `authorshipAfterEdit` rather than
- * passed through, and the trimming happens in the update itself, so comparing
- * `before` to the arguments would call a no-op save a change (and vice versa).
+ * caller's intent: `authorship` is rewritten by `authorshipAfterEdit` rather
+ * than passed through, and the trimming happens in the update itself, so
+ * comparing `before` to the arguments would call a no-op save a change (and
+ * vice versa).
  */
 function metaMoved(before: SliceMetaFields, after: SliceMetaFields): boolean {
   return (

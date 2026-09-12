@@ -30,8 +30,17 @@ type Row = Record<string, unknown>
 
 function fakeClient(table: string, rows: Row[]) {
   const updates: Array<{ table: string; patch: Row; filters: Row }> = []
+  /** Every RPC the revert issued, in order, with the arguments it sent. */
+  const calls: Array<{ fn: string; args: Row }> = []
 
   const client = {
+    rpc(fn: string, args: Row) {
+      calls.push({ fn, args })
+      // `sync_cell_touchpoints` answers with what it removed; nothing here
+      // removes anything, and a revert's own sync must not record a second
+      // inverse anyway.
+      return Promise.resolve({ data: { removed: [] }, error: null })
+    },
     from(from: string) {
       return {
         update(patch: Row) {
@@ -69,7 +78,7 @@ function fakeClient(table: string, rows: Row[]) {
     },
   } as unknown as SupabaseClient<Database>
 
-  return { client, updates }
+  return { client, updates, calls }
 }
 
 /**
@@ -182,5 +191,166 @@ describe('reverting a placement edit captured under the older columns', () => {
       filters: { id: 'ct-1' },
     })
     expect(updates[0]?.patch).toEqual({ summary: 'The words before.', role: null })
+  })
+})
+
+/**
+ * THE OTHER SHAPE AN OLD ENTRY COMES IN.
+ *
+ * `removed_placements` is the writing a save destroyed — the per-moment
+ * summary and role on each placement the text stopped naming, plus the
+ * resources those placements carried. It has been captured under more than one
+ * shape: `position` was added to the captured row after entries were already
+ * being recorded without it, and the key itself was written unconditionally
+ * before it was omitted when the list is empty.
+ *
+ * Both older shapes have to keep reverting, and that is a claim about the
+ * WHOLE chain rather than about this module: nothing here reads `position`,
+ * and neither does `restore_cell_touchpoints`, whose row type names `name`,
+ * `summary`, `role` and `resources` and nothing else. A placement's position
+ * is captured because the sync hands it back, not because the restore needs
+ * it. What these pin is that it stays that way — the day something starts
+ * reading it, an entry recorded before it existed would revert onto a null.
+ *
+ * The resources nested inside are the one place a position IS read, and the
+ * function already coalesces a missing one to the row's ordinal, which is the
+ * same tolerance stated one level down.
+ */
+describe('reverting a cell edit whose captured placements predate a field', () => {
+  it('passes a row with no position through to the restore verbatim', async () => {
+    const { client, calls } = fakeClient('cells', [
+      { id: 'cell-1', content: 'What it says now' },
+    ])
+    await executeRevert(
+      client,
+      entry('update_cell_content', {
+        cell_id: 'cell-1',
+        update: {
+          content: 'What it said before',
+          summary: '',
+          owner: '',
+          perceivedOwner: '',
+          status: 'built',
+        },
+        // As an entry recorded before the captured row carried a position.
+        removed_placements: [
+          {
+            name: 'Checkout form',
+            summary: 'The moment the card details are asked for.',
+            role: 'primary',
+            resources: [
+              {
+                kind: 'link',
+                name: 'The design',
+                url: 'https://example.com/designs/checkout',
+                featured: true,
+                origin: 'app',
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    const restore = calls.find((call) => call.fn === 'restore_cell_touchpoints')
+    expect(restore, 'the restore never ran').toBeDefined()
+    expect(restore?.args.p_cell_id).toBe('cell-1')
+    // Verbatim: nothing invented to stand in for the absent position, and
+    // nothing dropped for being absent either.
+    expect(restore?.args.p_rows).toEqual([
+      {
+        name: 'Checkout form',
+        summary: 'The moment the card details are asked for.',
+        role: 'primary',
+        resources: [
+          {
+            kind: 'link',
+            name: 'The design',
+            url: 'https://example.com/designs/checkout',
+            featured: true,
+            origin: 'app',
+          },
+        ],
+      },
+    ])
+  })
+
+  it('restores the text before it restores the writing on the placements', async () => {
+    // Ordering, not decoration. Restoring the text is what re-creates the
+    // placement rows the original save removed; a restore that ran first would
+    // find nothing to write onto and report success.
+    const { client, calls, updates } = fakeClient('cells', [
+      { id: 'cell-1', content: 'What it says now' },
+    ])
+    await executeRevert(
+      client,
+      entry('update_cell_content', {
+        cell_id: 'cell-1',
+        update: {
+          content: 'Checkout form',
+          summary: '',
+          owner: '',
+          perceivedOwner: '',
+          status: 'built',
+        },
+        removed_placements: [
+          { name: 'Checkout form', summary: 'Before.', role: null },
+        ],
+      }),
+    )
+
+    expect(updates.map((one) => one.table)).toEqual(['cells'])
+    expect(calls.map((call) => call.fn)).toEqual([
+      'sync_cell_touchpoints',
+      'restore_cell_touchpoints',
+    ])
+  })
+
+  it('runs no restore for an entry that wrote the key empty', async () => {
+    // The shape before the key was omitted when nothing was removed. An empty
+    // list is not a list of one empty thing: sending it would be a write that
+    // matches no row, and a write that matches no row is a failure in this
+    // tree rather than a no-op.
+    const { client, calls } = fakeClient('cells', [
+      { id: 'cell-1', content: 'What it says now' },
+    ])
+    await executeRevert(
+      client,
+      entry('update_cell_content', {
+        cell_id: 'cell-1',
+        update: {
+          content: 'What it said before',
+          summary: '',
+          owner: '',
+          perceivedOwner: '',
+          status: 'built',
+        },
+        removed_placements: [],
+      }),
+    )
+
+    expect(calls.map((call) => call.fn)).toEqual(['sync_cell_touchpoints'])
+  })
+
+  it('runs no restore for an entry that carries no key at all', async () => {
+    // And the shape after. Both reach the same place, which is the point.
+    const { client, calls } = fakeClient('cells', [
+      { id: 'cell-1', content: 'What it says now' },
+    ])
+    await executeRevert(
+      client,
+      entry('update_cell_content', {
+        cell_id: 'cell-1',
+        update: {
+          content: 'What it said before',
+          summary: '',
+          owner: '',
+          perceivedOwner: '',
+          status: 'built',
+        },
+      }),
+    )
+
+    expect(calls.map((call) => call.fn)).toEqual(['sync_cell_touchpoints'])
   })
 })

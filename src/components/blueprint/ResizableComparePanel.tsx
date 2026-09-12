@@ -11,6 +11,7 @@ import {
 import { ScenarioTitleBadge } from '@/components/blueprint/ScenarioTitleBadge'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { ARROW_VIEWPORT_PAD } from '@/lib/blueprintArrowGeometry'
+import { releasePointerCapture } from '@/lib/pointerGestures'
 import {
   COMPARE_MIN_PANEL_HEIGHT,
   COMPARE_MIN_PANEL_WIDTH,
@@ -271,12 +272,7 @@ export function ResizableComparePanel({
       }
 
       const endDrag = () => {
-        try {
-          target.releasePointerCapture(pointerId)
-        } catch {
-          // Already released, or never captured — the teardown below is the
-          // part that matters and must not be skipped for it.
-        }
+        releasePointerCapture(target, pointerId)
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onPointerEnd)
         window.removeEventListener('pointercancel', onPointerEnd)
