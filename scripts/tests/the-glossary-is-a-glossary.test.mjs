@@ -48,6 +48,24 @@ test('a glossary of headings, prose and term rows passes', () => {
   assert.deepEqual(findings(GLOSSARY), [])
 })
 
+/* ------------------------------------------- the subject, before the rules */
+
+test('a glossary that defines nothing fails, rather than breaking no rule', () => {
+  // The three rules are refusals, so an emptied file breaks none of them and
+  // used to print `0 term rows` in the same green as a whole one.
+  for (const empty of ['', '# Domain language\n', '# Domain language\n\nProse and no rows.\n']) {
+    const found = findings(empty)
+    assert.equal(found.length, 1, JSON.stringify(empty))
+    assert.match(found[0], /^CONTEXT\.md:1 defines no term at all/)
+  }
+})
+
+test('one term row is enough to have a subject, and the rules then apply', () => {
+  const oneRow = '**Cell** — what one actor does at one moment.\n'
+  assert.deepEqual(findings(oneRow), [])
+  assert.equal(findings(`${oneRow}\n\`\`\`sql\nselect 1;\n\`\`\`\n`).length, 1)
+})
+
 /* ------------------------------------------------------- rule 1: fences */
 
 test('a fenced code block fails, and the failure names its line', () => {

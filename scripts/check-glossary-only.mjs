@@ -43,6 +43,15 @@
  * glossary would be a second vocabulary. Every repository that carries this
  * check holds its own glossary to it.
  *
+ * AND A GLOSSARY WITH NO TERMS IN IT IS NOT ONE. The three rules above are all
+ * written as refusals, which is the right shape for each of them and the wrong
+ * shape for the whole: an emptied file breaks none of them. No fence, no
+ * table, no section — nothing to fail. The run printed `0 term rows` and
+ * exited 0, in the same sentence and the same green as the run over a file
+ * with fifty-one. The count was already being computed and printed; it is now
+ * also read, which is the difference between reporting a subject and having
+ * one.
+ *
  * Sibling of the router's three checks — same shape, same failure style, same
  * place in CI — because `CONTEXT.md` is the first pointer `AGENTS.md` fires
  * and a session that reads the router reads this next. Like them it is the
@@ -104,6 +113,18 @@ export function sectionsIn(lines) {
  */
 export function findings(text, subject = SUBJECT) {
   const out = []
+
+  // The subject, before the three rules that read it. A file with no term row
+  // in it fails none of them, so without this the emptied glossary and the
+  // whole one print the same line.
+  if (!text.split('\n').some((line) => TERM_ROW.test(line))) {
+    out.push(
+      `${subject}:1 defines no term at all — not one \`**term** — definition\` row. The three ` +
+        'rules below are refusals, and an empty file breaks none of them, so a glossary that ' +
+        'has lost its contents would otherwise pass exactly the way a whole one does.',
+    )
+    return out
+  }
   const lines = text.split('\n')
 
   const fenceFailure = (line) =>
