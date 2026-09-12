@@ -152,7 +152,7 @@ async function settle() {
  * it, which is a bet that the machine will get round to the queue inside
  * 20 ms of wall clock — true on an idle machine, and not true on one running
  * the rest of this suite in parallel, where the assertion below read the
- * address the reader had NOT stepped back from (#621).
+ * address the reader had NOT stepped back from.
  *
  * So wait for the event. There is nothing to tune, and a traversal that never
  * arrives fails as a timeout rather than as a wrong address.

@@ -21,7 +21,7 @@ let firstServiceId: Promise<string | null> | null = null
  *
  * NOT exported. Its one legitimate caller is `findActiveServiceId`'s no-slug
  * branch below — the bare root, where nothing claims a service and "first" is
- * what active MEANS. That is a different thing from the fallback #622 retired,
+ * what active MEANS. That is a different thing from the retired fallback,
  * which fired when a slug named no service and sent the write to a sibling.
  *
  * It was exported, and three write paths reached for it: a new slice, and the
