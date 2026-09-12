@@ -18,12 +18,12 @@ import type { CoverFigure } from '@/components/cover/coverModel'
  * cover.
  *
  * WHO AUTHORED A FIGURE IS WHO SUPPLIES IT. These thirteen are about the
- * blueprint model itself — "User #1", "Step 1", frontstage and backstage,
- * what a slice selects out of a path. They explain this package, they are the
- * same drawing whichever service is being blueprinted, and a deployment that
- * had to supply them would be supplying somebody else's explanation of
- * somebody else's model. So the package brings them and a deployment gets
- * them by depending on it. Everything else on a cover — a deployment's own
+ * blueprint model itself — a numbered user, a numbered step, frontstage and
+ * backstage, what a slice selects out of a path. They explain this package,
+ * they are the same drawing whichever service is being blueprinted, and a
+ * deployment that had to supply them would be supplying somebody else's
+ * explanation of somebody else's model. So the package brings them, and a
+ * deployment gets them by depending on it. Everything else on a cover — its own
  * screenshots, its logomark, its portraits — is its own to serve, and
  * `deploymentConfig` states that split where a deployment meets it.
  *
