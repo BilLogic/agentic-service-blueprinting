@@ -12,6 +12,7 @@ import {
   type ResolvedDeploymentConfig,
 } from '@/deploymentConfig'
 import { ORG_NAME } from '@/config'
+import type { CoverContent } from '@/components/cover/coverModel'
 import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configureAgentSearch } from '@/lib/agent/searchPlan'
@@ -119,14 +120,29 @@ export function useDeploymentConfig(): ResolvedDeploymentConfig {
 }
 
 /**
+ * The cover this installation lands on — the deployment's own when it supplied
+ * one, the template's when it did not. Guaranteed, so the caller renders it
+ * with no fallback of its own and names no content module.
+ */
+export function useCoverContent(): CoverContent {
+  return useDeploymentConfig().cover
+}
+
+/**
  * The workspace wordmark — what this installation calls itself in app chrome.
  *
- * `content.workspaceTitle ?? brand.name ?? ORG_NAME`, in that order. The two
- * fields are not redundant: `brand.name` is the deployment's own name and
- * `content.workspaceTitle` is what the workspace is called inside it, which a
- * deployment whose product name is not its workspace name needs to say
- * separately. Both fall through to the template's `ORG_NAME`, so standalone
- * this renders exactly what it rendered before the seam existed.
+ * `content.workspaceTitle ?? cover.title ?? brand.name ?? ORG_NAME`, in that
+ * order. The three are not redundant: `brand.name` is the deployment's own
+ * name, `content.workspaceTitle` is what the workspace is called inside it —
+ * which a deployment whose product name is not its workspace name needs to say
+ * separately — and the cover's own `title` is the heading the landing page
+ * already shows, which no installation should have to write twice. A
+ * deployment that names its cover has named its workspace; one that wants the
+ * two to differ says so on `content.workspaceTitle`, which still wins.
+ *
+ * All of them fall through to the template's `ORG_NAME`, and the template's
+ * own cover omits `title` on purpose, so standalone this renders exactly what
+ * it rendered before the seam existed.
  *
  * NOT every wordmark surface reads this yet. `types/nav.ts`'s
  * `WORKSPACE_BREADCRUMB_LABEL` is consumed by `slideBreadcrumbs()`, a pure
@@ -134,6 +150,6 @@ export function useDeploymentConfig(): ResolvedDeploymentConfig {
  * moving it means threading the title into that call, which is its own change.
  */
 export function useWorkspaceTitle(): string {
-  const { brand, content } = useDeploymentConfig()
-  return content?.workspaceTitle ?? brand.name ?? ORG_NAME
+  const { brand, content, cover } = useDeploymentConfig()
+  return content?.workspaceTitle ?? cover.title ?? brand.name ?? ORG_NAME
 }

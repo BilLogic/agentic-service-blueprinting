@@ -7,6 +7,7 @@ import {
   type DeploymentConfig,
 } from './deploymentConfig'
 import { DEFAULT_LANE_SET } from './lib/blueprintValidation'
+import type { CoverContent } from './components/cover/coverModel'
 
 // The deployment seam's one contract: a sparse overlay resolves against the
 // template defaults, and the standalone app — no config at all — reads exactly
@@ -38,6 +39,10 @@ describe('asbDefaultConfig', () => {
     // named once in `blueprintValidation.ts` and referenced here, never
     // restated. A deployment's own lanes belong on its overlay.
     expect(asbDefaultConfig.defaultLanes).toEqual(DEFAULT_LANE_SET)
+
+    // The landing page the template lands on is its own content module,
+    // named rather than restated. A deployment's cover belongs on its overlay.
+    expect(asbDefaultConfig.cover).toBe(coverContent)
 
     // The current single cap, expressed as target and warning per lane kind.
     // A deployment's own numbers (for example 80/100 and 32/48) belong on
@@ -73,7 +78,55 @@ describe('resolveDeploymentConfig', () => {
         prose: { target: 120, warning: 120 },
         touchpointLabels: { target: 120, warning: 120 },
       })
+      // The template's own landing page, and no bordered artwork.
+      expect(resolved.cover).toBe(coverContent)
     }
+  })
+
+  /*
+    The cover is REPLACED, never merged, and these two say so from both ends.
+    A deployment's cover is a document about its own service: a merge would
+    leave a reader on a page half of which describes the template, which is
+    the failure the seam exists to prevent rather than a lenient default.
+  */
+  const hostCover: CoverContent = {
+    title: 'Acme Service Design',
+    lede: 'One map of the service Acme delivers.',
+    primaryCtaLabel: 'Open the map',
+    commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
+    states: { noSlices: 'Nothing cut yet.' },
+    tabs: [
+      {
+        value: 'what-it-covers',
+        label: 'What it covers',
+        sections: [
+          {
+            kind: 'prose',
+            id: 'covers-intro',
+            paragraphs: ['Every phase of the service, in one place.'],
+          },
+        ],
+      },
+    ],
+  }
+
+  it('takes a supplied cover whole, and none of the template shows through', () => {
+    const resolved = resolveDeploymentConfig({ cover: hostCover })
+    expect(resolved.cover).toBe(hostCover)
+    expect(resolved.cover.tabs).toHaveLength(1)
+    // Not one tab, label, link or figure of the template's survives — the
+    // resolved cover IS the supplied object, so there is nothing to survive.
+    expect(resolved.cover.repoUrl).toBeUndefined()
+  })
+
+  it('carries a cover by reference, unlike every settings block beside it', () => {
+    // Deliberate and not an oversight in the aliasing rule: a cover is a
+    // content document authored as a module literal, not a small settings
+    // object a host might mutate after mount, and deep-copying a tree of tabs
+    // and sections on every resolution would buy nothing.
+    const resolved = resolveDeploymentConfig({ cover: hostCover })
+    expect(resolved.cover).toBe(hostCover)
+    expect(resolved.cover.tabs[0]).toBe(hostCover.tabs[0])
   })
 
   it('carries a supplied cell budget without aliasing it, filling omitted kinds from the template', () => {
