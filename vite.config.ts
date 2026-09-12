@@ -30,12 +30,41 @@ const APP_SOURCE_ROOTS = [
 const appSource =
   APP_SOURCE_ROOTS.find((root) => existsSync(root)) ?? APP_SOURCE_ROOTS[0]
 
+/**
+ * Where `~/…` points: the deployment's own source root.
+ *
+ * The paragraph above settles where the APPLICATION comes from. It leaves the
+ * deployment's own files — its config module, its content, whatever else it
+ * authors — with nowhere to go, and they cannot go back into `src`: the first
+ * root that exists wins, so a `src` holding only a deployment's files would
+ * capture every `@/…` import in the package and resolve none of them.
+ *
+ * So they live in `deployment/`, reached by an alias that is deliberately NOT
+ * the application's. One prefix cannot name both roots — an alias maps a
+ * prefix to exactly one directory here, and where a per-module fallback is
+ * available at all (TypeScript's `paths`) it is the path-shadowing this
+ * arrangement exists to end: a deployment file quietly standing in for a
+ * package file of the same name, with nothing reporting the substitution.
+ * Two roots, two prefixes, and an import says at a glance which side it is on.
+ *
+ * The directory is named here, in the template, rather than by each
+ * deployment, because this file is one a deployment holds byte-identical to
+ * this one. The same bytes have to serve a repository that has a deployment
+ * root and one that has not. This repository is the second kind: `deployment/`
+ * does not exist here and never will, the alias is never reached, and the test
+ * glob below matches nothing. `deploymentRoot.test.ts` holds both halves —
+ * that the three lines name the root, and that this tree is unchanged by their
+ * naming it.
+ */
+const deploymentSource = path.resolve(__dirname, './deployment')
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': appSource,
+      '~': deploymentSource,
     },
   },
   test: {
@@ -54,6 +83,10 @@ export default defineConfig({
     include: [
       'src/**/*.test.ts',
       'src/**/*.test.tsx',
+      // A deployment's own tests, in its own root. Nothing here matches them —
+      // see the deployment source root above.
+      'deployment/**/*.test.ts',
+      'deployment/**/*.test.tsx',
       'scripts/tests/**/*.test.mjs',
     ],
   },

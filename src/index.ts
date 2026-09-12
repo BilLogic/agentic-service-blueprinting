@@ -17,6 +17,13 @@
  * Consumed as source (see `deploymentConfig.ts`): the host's bundler resolves
  * this repo's `@/` alias and Vite's `import.meta.env` / `?raw` imports.
  *
+ * WHERE THE HOST'S OWN FILES GO: `deployment/`, reached by `~/…`. A host that
+ * mounts this package has no `src` of its own — `@/…` has to find the package,
+ * and the first root that exists wins, so a `src` holding only the host's
+ * files would capture every one of those imports and resolve none of them. The
+ * build files a host holds identical to this repository's already name the
+ * other root, its alias and its tests; `vite.config.ts` carries why.
+ *
  * TWO SEAMS DO NOT ARRIVE THROUGH THE CONFIG, and cannot: the localStorage
  * namespace and the agent's extra reference documents are both settled while
  * this package's modules evaluate, which is before `App` renders anything. A

@@ -13,10 +13,15 @@
     // package's, so a deployment that vendors the application instead of
     // copying it resolves `@/…` without editing this file. Here the second
     // is never reached. See `vite.config.ts` for the whole account.
+    // And `~/…` is the deployment's own root beside it, so an editor resolves
+    // what the build resolves. Absent here; see `vite.config.ts`.
     "paths": {
       "@/*": [
         "./src/*",
         "./node_modules/agentic-service-blueprinting/src/*"
+      ],
+      "~/*": [
+        "./deployment/*"
       ]
     }
   }
