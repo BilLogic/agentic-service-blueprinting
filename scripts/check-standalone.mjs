@@ -51,10 +51,11 @@
  * `BilLogic` is the repository owner and copyright holder — authorship and
  * the canonical repo URL, required rather than coupling.
  */
-import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -182,19 +183,38 @@ export function violationsIn(source) {
   return found
 }
 
-function main() {
-  const files = scannedFiles()
+/**
+ * Every violation in the tree under `root`, as `{ path, line, label, text }`.
+ *
+ * THE WALK, so there is only one. `main` below and `standalone.test.mjs` are
+ * both callers: the test used to re-walk the subject by hand, and the copy it
+ * wrote was missing the skip this has — so the release that deleted its own
+ * changesets passed the script and failed the suite (#632).
+ *
+ * A path the listing named and the tree no longer has is skipped, because the
+ * listing was taken a moment before the read and `git ls-files` reports the
+ * index. Every other read failure throws; `read-listed.mjs` holds that rule
+ * and the argument for it. The skip cannot quietly shrink the subject —
+ * `standalone.test.mjs` counts what came back.
+ *
+ * `files` is the listing to walk, so a caller that has already asked for one
+ * — `main` below, which reports its size — walks exactly the subject it
+ * counted rather than asking git a second time and hoping for the same answer.
+ */
+export function violationsUnder(root = REPO_ROOT, files = scannedFiles(root)) {
   const problems = []
   for (const path of files) {
-    let source
-    try {
-      source = readFileSync(resolve(REPO_ROOT, path), 'utf8')
-    } catch {
-      continue // a submodule or a path removed between ls-files and here
-    }
+    const source = readListed(resolve(root, path))
+    if (source === null) continue // listed, then gone before this read
     if (source.includes('\0')) continue // binary without a listed extension
     for (const hit of violationsIn(source)) problems.push({ path, ...hit })
   }
+  return problems
+}
+
+function main() {
+  const files = scannedFiles()
+  const problems = violationsUnder(REPO_ROOT, files)
 
   if (problems.length === 0) {
     console.log(`no uno / PLUS / Ecoeled references in ${files.length} files a commit would carry`)

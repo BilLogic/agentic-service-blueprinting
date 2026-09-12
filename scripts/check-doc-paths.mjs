@@ -48,9 +48,10 @@
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { readFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -146,7 +147,8 @@ function main() {
 
   for (const doc of surfaceDocs(tracked)) {
     const docDir = dirname(doc)
-    const source = readFileSync(join(REPO_ROOT, doc), 'utf8')
+    const source = readListed(join(REPO_ROOT, doc))
+    if (source === null) continue // listed, then gone before this read
     for (const { token, line } of claimedPaths(source)) {
       if (!resolves(token, docDir, tracked)) failures.push({ doc, line, token })
     }

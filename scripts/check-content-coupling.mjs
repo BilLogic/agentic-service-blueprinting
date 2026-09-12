@@ -119,10 +119,11 @@
  * than by pattern, and the class stays a reviewer's job — what these four
  * catch is everything that CAN be bounded.
  */
-import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -286,12 +287,8 @@ export function isAllowed(path, match, allowed = ALLOWED) {
 export function findings(allowed = ALLOWED) {
   const out = []
   for (const path of scannedFiles()) {
-    let source
-    try {
-      source = readFileSync(resolve(REPO_ROOT, path), 'utf8')
-    } catch {
-      continue // a submodule or a path removed between ls-files and here
-    }
+    const source = readListed(resolve(REPO_ROOT, path))
+    if (source === null) continue // listed, then gone before this read
     if (source.includes('\0')) continue // binary without a listed extension
     for (const hit of couplingsIn(source)) {
       if (isAllowed(path, hit.match, allowed)) continue
@@ -305,12 +302,8 @@ export function findings(allowed = ALLOWED) {
 export function staleAllowances(files = scannedFiles(), allowed = ALLOWED) {
   const live = new Set()
   for (const path of files) {
-    let source
-    try {
-      source = readFileSync(resolve(REPO_ROOT, path), 'utf8')
-    } catch {
-      continue
-    }
+    const source = readListed(resolve(REPO_ROOT, path))
+    if (source === null) continue // listed, then gone before this read
     for (const hit of couplingsIn(source)) live.add(`${path}\0${hit.match}`)
   }
   return allowed.filter((entry) => !live.has(`${entry.file}\0${entry.match}`))

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { execSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readListed } from '../../scripts/read-listed.mjs'
 import { GROUNDS } from '@/lib/ground'
 import {
   type Consumer,
@@ -406,17 +406,23 @@ describe('token resolution', () => {
       .filter((file) => !excluded.some((pattern) => pattern.test(file)))
     expect(prose.length).toBeGreaterThan(0)
 
+    // `git ls-files` reports the INDEX, which goes on naming a file after the
+    // working tree has stopped having it — the state a release leaves behind
+    // between consuming its changeset files and recording that they are gone.
+    // So a listed path that is no longer there is skipped, and every other
+    // read failure still throws. `prose.length` above is what keeps the skip
+    // honest: a sweep that quietly skipped everything would report nothing.
     const spelled: string[] = []
     for (const file of prose) {
-      readFileSync(resolve(REPO_ROOT, file), 'utf8')
-        .split('\n')
-        .forEach((text, index) => {
-          for (const [token] of text.matchAll(/--[a-zA-Z0-9_-]+/g)) {
-            if (registered.has(token)) {
-              spelled.push(`${file}:${index + 1} ${token}`)
-            }
+      const source = readListed(resolve(REPO_ROOT, file))
+      if (source === null) continue
+      source.split('\n').forEach((text, index) => {
+        for (const [token] of text.matchAll(/--[a-zA-Z0-9_-]+/g)) {
+          if (registered.has(token)) {
+            spelled.push(`${file}:${index + 1} ${token}`)
           }
-        })
+        }
+      })
     }
     expect(
       spelled,
