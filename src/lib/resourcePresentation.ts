@@ -141,48 +141,6 @@ export function featuredPresentation(input: {
   return { preview, buttons }
 }
 
-/** The one picture a cell leads with, and where it came from. */
-export type FeaturedImage = {
-  url: string
-  name: string
-  source: 'attachment' | 'logo'
-}
-
-/**
- * A cell's featured image: its own featured attachment if it has one;
- * otherwise the logo of the touchpoint it is placed on. Nothing else is one.
- *
- * Asked about one placement, only that placement's attachment and logo count.
- * Asked about the cell, its placement-less attachment leads, then any of its
- * placements' in the order the rows arrive, and the logo is the first placed
- * touchpoint that carries one. The logo is read off the registry row each
- * time and never written into `resources`: one logo serves every placement,
- * and a copy per placement would drift from it.
- */
-export function featuredImage(input: {
-  resources: readonly CellResource[]
-  touchpoints: readonly CellTouchpoint[]
-  placement?: CellTouchpoint | null
-}): FeaturedImage | null {
-  const scoped = input.placement
-  const attachments = input.resources.filter(
-    (resource) =>
-      resource.featured && resource.kind === 'attachment' && resource.url?.trim(),
-  )
-  const own = scoped
-    ? attachments.find(
-        (resource) => scoped.id !== null && resource.placementId === scoped.id,
-      )
-    : (attachments.find((resource) => resource.placementId === null) ??
-      attachments[0])
-  if (own) return { url: own.url!.trim(), name: own.name, source: 'attachment' }
-
-  const logo = (scoped ? [scoped] : input.touchpoints).find((placement) =>
-    placement.iconUrl?.trim(),
-  )
-  return logo ? { url: logo.iconUrl!.trim(), name: logo.name, source: 'logo' } : null
-}
-
 /**
  * The logos a cell inherits from the touchpoints placed on it, each once.
  * Derived at read, never stored: the Resources tab lists them read-only.
