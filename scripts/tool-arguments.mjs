@@ -31,10 +31,10 @@
  *     `properties: { path_id: str('Path id'), name: str('New name') }`, and a
  *     line-oriented reading of it finds no keys at all — which reads as
  *     "declares nothing, reads name" and accuses a correct tool.
- *   - an argument read through a HELPER. `list_blueprint` never says
- *     `s(args, 'service')`; it calls `readScope(client, args)`, which does.
- *     Any local function in the same file that takes `args` lends its keys to
- *     every case that passes `args` to it.
+ *   - an argument read through a HELPER. A case that never says
+ *     `s(args, 'service')` but calls a local function that does is still
+ *     reading `service`. Any local function in the same file that takes
+ *     `args` lends its keys to every case that passes `args` to it.
  */
 
 /** Brace-, bracket- and quote-aware slice from `source[open]` to its match. */
@@ -153,10 +153,16 @@ export function readArguments(registrySource) {
   const helpers = helperKeys(registrySource)
   const read = new Map()
   const cases = [...registrySource.matchAll(/\bcase '([a-z_]+)':/g)]
+  // A case body ends at the next case, or where its enclosing function does
+  // — a closing brace in column 0. Without the second stop the last case of
+  // one switch runs on into the next function's signature, and a function
+  // that takes `args` there lends that case every key it reads.
+  const functionEnds = [...registrySource.matchAll(/^\}/gm)].map((m) => m.index)
   cases.forEach((entry, index) => {
     const start = entry.index
-    const end = index + 1 < cases.length ? cases[index + 1].index : registrySource.length
-    const body = registrySource.slice(start, end)
+    const nextCase = index + 1 < cases.length ? cases[index + 1].index : registrySource.length
+    const nextEnd = functionEnds.find((at) => at > start) ?? registrySource.length
+    const body = registrySource.slice(start, Math.min(nextCase, nextEnd))
     const keys = directKeys(body)
     for (const [helper, lent] of helpers) {
       if (new RegExp(`\\b${helper}\\([^)]*\\bargs\\b`).test(body))

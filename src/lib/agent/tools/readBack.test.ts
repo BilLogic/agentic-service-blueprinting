@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { getBlueprint, getCell } from '@/lib/agent/tools/read'
-import { dispatchTool } from '@/lib/agent/tools/registry'
+import { runTool } from '@/lib/agent/tools/definition'
+import { listFindingsTool } from '@/lib/agent/tools/definitions/findings'
+import { fakeToolContext } from '@/lib/agent/tools/definitions/testContext'
 import { formatBlueprints } from '@/lib/agent/tools/format'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'
 
@@ -163,9 +165,7 @@ describe('list_findings answers for one cell', () => {
 
   it('narrows the ledger to findings that cite the cell', async () => {
     const { client, log } = fakeClient(() => [])
-    const text = await dispatchTool(client, 'session', 'list_findings', {
-      cell_id: CELL,
-    })
+    const text = await runTool(listFindingsTool, { cell_id: CELL }, fakeToolContext({ client }))
     const findings = log.find((rec) => rec.table === 'audit_findings')
     expect(findings?.calls).toContainEqual(['contains', 'cell_ids', [CELL]])
     expect(text).toBe(`No open findings touch cell ${CELL}.`)
@@ -173,9 +173,7 @@ describe('list_findings answers for one cell', () => {
 
   it('reads the whole ledger when no cell is named', async () => {
     const { client, log } = fakeClient(() => [])
-    const text = await dispatchTool(client, 'session', 'list_findings', {
-      status: 'all',
-    })
+    const text = await runTool(listFindingsTool, { status: 'all' }, fakeToolContext({ client }))
     const findings = log.find((rec) => rec.table === 'audit_findings')
     expect(findings?.calls.some(([op]) => op === 'contains')).toBe(false)
     expect(text).toBe('No findings recorded yet.')
