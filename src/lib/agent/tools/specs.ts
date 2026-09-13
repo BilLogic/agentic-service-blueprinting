@@ -1,4 +1,6 @@
 import type { ToolSpec } from '@/lib/agent/providers/provider'
+import { toolSpec } from '@/lib/agent/tools/definition'
+import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 import { CANONICAL_LANE_ROLES } from '@/lib/laneRoles'
 import { PATH_KINDS } from '@/lib/versionValidation'
@@ -391,15 +393,10 @@ export const TOOL_SPECS: ToolSpec[] = [
       required: ['scenario_id'],
     },
   },
-  {
-    name: 'get_cell',
-    description: 'One cell in full: content, summary, owners, function/form/value, position.',
-    parameters: {
-      type: 'object',
-      properties: { cell_id: str('Cell id') },
-      required: ['cell_id'],
-    },
-  },
+  // Tools that are definitions (`definitions/`) derive their spec from their
+  // own zod schema; they join the table here, in the position they held, so
+  // the roster the model sees is unchanged by the move.
+  ...TOOL_DEFINITIONS.map(toolSpec),
   {
     name: 'list_slices',
     description: 'List existing slices (stakeholder views) with ids and types.',

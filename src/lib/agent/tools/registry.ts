@@ -71,7 +71,6 @@ import type { DeletableKind } from '@/lib/deletionSafety'
 import {
   getBlueprint,
   getBusinessModel,
-  getCell,
   getCompareDiff,
   getDeletionImpact,
   getEvidence,
@@ -88,11 +87,10 @@ import {
   readReference,
 } from '@/lib/agent/tools/read'
 import type { BlueprintListOptions } from '@/lib/agent/tools/format'
-import { resolveServiceScope } from '@/lib/agent/tools/serviceScope'
+import { SCOPE_ALL, resolveServiceScope } from '@/lib/agent/tools/serviceScope'
 import { resolveActiveServiceId } from '@/lib/service'
 import {
   sampleGetBlueprint,
-  sampleGetCell,
   sampleGetCompareDiff,
   sampleGetSlice,
   sampleListCellDependencies,
@@ -104,6 +102,8 @@ import {
 import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
 import { searchBlueprint } from '@/lib/agent/tools/search'
 import type { AgentSearchIndex } from '@/deploymentConfig'
+import { runTool, type ToolContext } from '@/lib/agent/tools/definition'
+import { findToolDefinition } from '@/lib/agent/tools/definitions'
 
 type Client = SupabaseClient<Database>
 
@@ -229,6 +229,35 @@ export type DispatchContext = {
 }
 
 /**
+ * The context a defined tool runs in, built from what the dispatcher already
+ * holds. The scope is the whole deployment — the default every read has
+ * today, until a session carries the resolved active service and hands it
+ * down; the UI is the live bridge. A test builds its own.
+ */
+function toolContext(
+  client: Client | null,
+  agentSessionId: string,
+  context: DispatchContext,
+): ToolContext {
+  return {
+    client,
+    scope: SCOPE_ALL,
+    session: { id: agentSessionId },
+    ui: {
+      openPhase: agentOpenPhase,
+      openScenario: agentOpenScenario,
+      focusCell: agentFocusCell,
+      openCellPanel: agentOpenCellPanel,
+      setSidebar: agentSetSidebar,
+      annotateCells: agentAnnotateCells,
+      uiState: collectAgentUiContext,
+    },
+    meaning: context.meaning ?? null,
+    signal: context.signal,
+  }
+}
+
+/**
  * Execute one tool call. Returns the text the model sees. Writes are
  * attributed to the agent session for the ledger's ✦ badge, and the query
  * cache is invalidated so the canvas repaints live.
@@ -240,6 +269,15 @@ export async function dispatchTool(
   args: Record<string, unknown>,
   context: DispatchContext = {},
 ): Promise<string> {
+  // A tool that is a definition runs from it, whichever mode the session is
+  // in — the definition branches on `ctx.client` itself. The switches below
+  // shrink as tools move; a name found here never reaches them. The one
+  // exception is a definition the no-database trial does not offer: it falls
+  // through to the trial's refusal below rather than running with no client.
+  const definition = findToolDefinition(name)
+  if (definition && (client !== null || definition.availability.sample)) {
+    return runTool(definition, args, toolContext(client, agentSessionId, context))
+  }
   // No-database trial: the read tools answer from the bundled sample, and
   // the roster the panel registered contains nothing else. A call from
   // outside it can only be a model inventing a name — say so plainly.
@@ -284,8 +322,6 @@ export async function dispatchTool(
         : undefined
       return getCompareDiff(client, need(args, 'scenario_id'), pathIds)
     }
-    case 'get_cell':
-      return getCell(client, need(args, 'cell_id'))
     case 'measure_deletion_impact': {
       const kind = s(args, 'kind')
       // `lane` and `step` were withheld here because their counts did not
@@ -956,8 +992,6 @@ async function dispatchSampleTool(
         : undefined
       return sampleGetCompareDiff(need(args, 'scenario_id'), pathIds)
     }
-    case 'get_cell':
-      return sampleGetCell(need(args, 'cell_id'))
     case 'list_slices':
       return sampleListSlices()
     case 'get_slice':

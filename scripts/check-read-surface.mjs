@@ -30,6 +30,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { readAppFile } from './app-source.mjs'
+import { toolSources } from './tool-sources.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -113,7 +114,9 @@ export function compare(root = REPO_ROOT) {
   const specs = readAppFile(root, SPECS)
   return {
     ...differences(documentedReadTools(adapter), declaredReadTools(specs)),
-    phantom: phantomTools(adapter, registeredTools(specs)),
+    // Registered tools live in the spec table AND the definitions folder;
+    // a tool that moved to a definition is still a tool the document may name.
+    phantom: phantomTools(adapter, registeredTools(toolSources(root))),
   }
 }
 

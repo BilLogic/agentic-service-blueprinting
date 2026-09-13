@@ -13,10 +13,29 @@
  * write roster its trace checks count against. An ES module evaluates once, so
  * two importers still pay for one bundle.
  */
+import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { appSourceRoot } from '../app-source.mjs'
+
+/**
+ * Vite's `?raw` import, for the bundler that is not Vite. The app reads its
+ * reference documents as text this way, and a tool definition carries its
+ * `run` beside its spec — so the spec table now reaches the readers, and the
+ * readers reach the documents. Without this, the surface bundle fails on the
+ * first `.md?raw` it meets; with it, the document is the string it is in the
+ * browser.
+ */
+const RAW_SUFFIX = '?raw'
+const rawImports = {
+  name: 'vite-raw-imports',
+  load(id) {
+    if (!id.endsWith(RAW_SUFFIX)) return null
+    const text = readFileSync(id.slice(0, -RAW_SUFFIX.length), 'utf8')
+    return `export default ${JSON.stringify(text)}`
+  },
+}
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -26,6 +45,7 @@ async function loadAppSurface() {
     input: resolve(ROOT, 'scripts/agent-harness/app-surface.entry.ts'),
     // Honor tsconfig's `@/*` path alias, on whichever root holds the application.
     resolve: { alias: { '@': appSourceRoot(ROOT) } },
+    plugins: [rawImports],
     logLevel: 'silent',
   })
   const { output } = await bundle.generate({ format: 'esm' })
