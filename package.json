@@ -39,6 +39,7 @@
     "check:database-names": "node scripts/check-database-names.mjs",
     "check:pinned-shapes": "node scripts/check-pinned-shapes.mjs",
     "test:ir": "bash scripts/tests/run_tests.sh",
+    "slice:cell-edit": "vitest run src/slices/cellEditRevert.slice.test.tsx",
     "version": "changeset version && node scripts/check-version-agreement.mjs --write",
     "preview": "vite preview",
     "supabase:start": "supabase start",
