@@ -137,13 +137,32 @@ function ZoomPanViewportInner({
 
   usePublishCanvasZoomChrome(onResetView)
 
+  /*
+    A pending focus that asks for the panel opens it the way "View cell
+    detail" and the agent's open_cell_panel do: a ⌘-click on the drawn cell,
+    so the cell's own button builds the selection. Scoped to this viewport's
+    board — a warm-mounted tab elsewhere can draw the same cell.
+  */
+  const openCellDetail = useCallback(
+    (cellId: string) => {
+      contentRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-blueprint-cell="${CSS.escape(cellId)}"][data-blueprint-cell-interactive]`,
+        )
+        ?.dispatchEvent(
+          new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }),
+        )
+    },
+    [contentRef],
+  )
+
   // Cross-tree fly-to-cell: portalled surfaces (ledger drawer, agent
   // commands) resolve this at call time from the module registry —
   // `focusCells` is identity-stable, so this re-registers only on key moves.
   useCanvasActiveEffect(() => {
     if (!focusCellsKey) return
-    return registerFocusCells(focusCellsKey, focusCells)
-  }, [focusCells, focusCellsKey])
+    return registerFocusCells(focusCellsKey, focusCells, openCellDetail)
+  }, [focusCells, focusCellsKey, openCellDetail])
 
   useCanvasActiveEffect(() => {
     return registerActiveFocusCells(focusCells)

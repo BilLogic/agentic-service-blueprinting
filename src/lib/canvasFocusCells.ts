@@ -13,6 +13,10 @@
  * and `flushPendingFocus` lands it once that viewport's first fit is done:
  * a slice tab registers while its board is still behind the loading
  * skeleton, and a flight at a board with no cells on it is a miss.
+ *
+ * A pending focus may also ask for the cell's detail panel. The viewport
+ * that lands it opens the panel only after a flight that found the cell,
+ * so a cell no longer on the board never opens one.
  */
 
 export type FocusCellsResult =
@@ -24,10 +28,20 @@ export type FocusCellsFn = (
   opts?: { animate?: boolean },
 ) => FocusCellsResult | Promise<FocusCellsResult>
 
-const registry = new Map<string, FocusCellsFn>()
-const pendingByKey = new Map<string, string[]>()
+/** Opens the detail panel for a cell this viewport has drawn. */
+export type OpenCellDetailFn = (cellId: string) => void
+
+type RegisteredViewport = {
+  focusCells: FocusCellsFn
+  openCellDetail?: OpenCellDetailFn
+}
+
+type PendingFocus = { cellIds: string[]; openDetail: boolean }
+
+const registry = new Map<string, RegisteredViewport>()
+const pendingByKey = new Map<string, PendingFocus>()
 /** The latest request per key, so a stale miss never displaces a newer one. */
-const latestByKey = new Map<string, string[]>()
+const latestByKey = new Map<string, PendingFocus>()
 let activeFocusCells: FocusCellsFn | null = null
 
 /**
@@ -53,17 +67,19 @@ export function sliceFocusCellsKey(sliceId: string): string {
  *
  * @param sliceId - The slice whose tab should receive the focus.
  * @param cellIds - Cells to bring into view, in the order `focusCells` reads them.
+ * @param opts.openDetail - Also open the first cell's detail panel once the flight has found it.
  */
 export function requestSliceCellFocus(
   sliceId: string,
   cellIds: string[],
+  opts?: { openDetail?: boolean },
 ): void {
   const key = sliceFocusCellsKey(sliceId)
-  const ids = [...cellIds]
-  pendingByKey.set(key, ids)
-  latestByKey.set(key, ids)
-  const focusCells = registry.get(key)
-  if (focusCells) attemptPendingFocus(key, focusCells, false)
+  const request = { cellIds: [...cellIds], openDetail: opts?.openDetail ?? false }
+  pendingByKey.set(key, request)
+  latestByKey.set(key, request)
+  const viewport = registry.get(key)
+  if (viewport) attemptPendingFocus(key, viewport, false)
 }
 
 /**
@@ -85,21 +101,28 @@ export function clearPendingSliceCellFocus(): void {
  * cell it does not hold will not appear.
  *
  * @param key - The registry key the viewport serves.
- * @param focusCells - The live viewport's fly-to-cell function.
+ * @param viewport - The live viewport's fly-to-cell and open-detail functions.
  * @param final - True once the viewport has fitted its board.
  */
 function attemptPendingFocus(
   key: string,
-  focusCells: FocusCellsFn,
+  viewport: RegisteredViewport,
   final: boolean,
 ): void {
-  const ids = pendingByKey.get(key)
-  if (!ids) return
+  const request = pendingByKey.get(key)
+  if (!request) return
   pendingByKey.delete(key)
-  void Promise.resolve(focusCells(ids)).then((result) => {
-    if (final || result.kind !== 'miss') return
-    if (latestByKey.get(key) === ids && !pendingByKey.has(key)) {
-      pendingByKey.set(key, ids)
+  void Promise.resolve(viewport.focusCells(request.cellIds)).then((result) => {
+    if (result.kind !== 'miss') {
+      const [first] = request.cellIds
+      if (request.openDetail && first !== undefined) {
+        viewport.openCellDetail?.(first)
+      }
+      return
+    }
+    if (final) return
+    if (latestByKey.get(key) === request && !pendingByKey.has(key)) {
+      pendingByKey.set(key, request)
     }
   })
 }
@@ -112,8 +135,8 @@ function attemptPendingFocus(
  * @param key - The registry key the viewport serves.
  */
 export function flushPendingFocus(key: string): void {
-  const focusCells = registry.get(key)
-  if (focusCells) attemptPendingFocus(key, focusCells, true)
+  const viewport = registry.get(key)
+  if (viewport) attemptPendingFocus(key, viewport, true)
 }
 
 /**
@@ -123,21 +146,24 @@ export function flushPendingFocus(key: string): void {
  *
  * @param key - Scenario slide id, or {@link sliceFocusCellsKey} for a slice tab.
  * @param focusCells - The live viewport's fly-to-cell function.
+ * @param openCellDetail - Opens a drawn cell's detail panel, for a pending focus that asks for it.
  */
 export function registerFocusCells(
   key: string,
   focusCells: FocusCellsFn,
+  openCellDetail?: OpenCellDetailFn,
 ): () => void {
-  registry.set(key, focusCells)
-  attemptPendingFocus(key, focusCells, false)
+  const viewport = { focusCells, openCellDetail }
+  registry.set(key, viewport)
+  attemptPendingFocus(key, viewport, false)
   return () => {
-    if (registry.get(key) === focusCells) registry.delete(key)
+    if (registry.get(key) === viewport) registry.delete(key)
   }
 }
 
 /** Null when no viewport currently serves that key. */
 export function resolveFocusCells(key: string): FocusCellsFn | null {
-  return registry.get(key) ?? null
+  return registry.get(key)?.focusCells ?? null
 }
 
 export function registerActiveFocusCells(focusCells: FocusCellsFn): () => void {
