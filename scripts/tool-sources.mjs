@@ -5,12 +5,11 @@ import { appFiles, readAppFile } from './app-source.mjs'
  * out of source text rather than importing them (the spec table imports
  * supabase-js and Vite `?raw` markdown, so bare node cannot load it).
  *
- * Two places now. The spec table (`specs.ts`) holds the tools that are still
- * a spec beside a switch case; the definitions folder holds the tools that
- * are one definition each, whose spec derives from their own schema. A tool
- * moving from the first to the second must stay visible to every check that
- * counts tools, so they read both through this one function and never learn
- * which side a tool is on.
+ * Two places. The definitions folder holds every tool — one definition
+ * each, whose spec derives from its own schema — and the spec table
+ * (`specs.ts`) holds the rosters and the projection. Both are read through
+ * this one function so a check that counts tools never learns which file a
+ * name is in.
  *
  * Test files under the folder are not declarations and are skipped.
  */

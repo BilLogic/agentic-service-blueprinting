@@ -172,16 +172,28 @@ declare const SESSION_ORIGIN: unique symbol
 export type SessionEntry = ChangeEntry & { readonly [SESSION_ORIGIN]: true }
 
 /**
- * While set, recorded changes are attributed to the agent. Set around the
- * agent's tool dispatch only. A human save landing during an in-flight
- * agent batch would wear the wrong badge — a cosmetic misattribution, not
- * a data hazard (unlike the old recording-suspend flag this deliberately
- * does not gate), and one person racing their own agent is the corner.
+ * While set, recorded changes are attributed to the agent. Set only by
+ * `attributedTo`, for the span of one tool call. A human save landing
+ * during an in-flight agent batch would wear the wrong badge — a cosmetic
+ * misattribution, not a data hazard (unlike the old recording-suspend flag
+ * this deliberately does not gate), and one person racing their own agent
+ * is the corner.
  */
 let agentAttribution: { sessionId: string } | null = null
 
-export function setAgentAttribution(sessionId: string | null): void {
-  agentAttribution = sessionId === null ? null : { sessionId }
+/**
+ * Run a piece of work as an agent session's: every change recorded while it
+ * runs wears that session's badge. Scoped rather than a set/clear pair, so
+ * no caller can leave attribution on after a throw — the one caller is the
+ * live tool context, and a tool never touches this by name.
+ */
+export async function attributedTo<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
+  agentAttribution = { sessionId }
+  try {
+    return await work()
+  } finally {
+    agentAttribution = null
+  }
 }
 
 /**

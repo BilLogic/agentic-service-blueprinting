@@ -1,6 +1,6 @@
 import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
 import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { setAgentAttribution } from '@/lib/authoringSession'
+import { attributedTo } from '@/lib/authoringSession'
 import {
   agentUiCommandMutates,
   listAgentUiCommands,
@@ -21,7 +21,7 @@ import type { ToolSession, ToolUi } from '@/lib/agent/tools/definition'
  * The live half of a tool's context: the canvas the shells registered, and
  * the session's place on the authoring ledger. This is the ONE module that
  * knows the bridge, the command registry, the canvas-mode store and the
- * attribution toggle by name; a tool sees them only as `ctx.ui` and
+ * ledger's attribution by name; a tool sees them only as `ctx.ui` and
  * `ctx.session`, and a test hands it something else.
  */
 
@@ -43,11 +43,9 @@ export function liveSession(id: string): ToolSession {
   return {
     id,
     async attributed(work) {
-      setAgentAttribution(id)
       try {
-        return await work()
+        return await attributedTo(id, work)
       } finally {
-        setAgentAttribution(null)
         // The canvas reads through the shared query cache; the empty prefix
         // matches every key, so the grids refetch and repaint after a write.
         invalidateQueries('')

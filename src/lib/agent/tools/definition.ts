@@ -100,6 +100,15 @@ export type ToolDefinition<Args extends z.ZodObject = z.ZodObject> = {
   surface: ToolSurface
   args: Args
   availability: ToolAvailability
+  /**
+   * Names a caller may still send for an argument, and the schema no longer
+   * advertises: `{ description: 'summary' }` reads a `description` the model
+   * was once taught as today's `summary`. Read before validation, so the
+   * schema stays the one the model sees. An alias only ever goes this way —
+   * a name the schema knows and the handler does not is the silent drop a
+   * zod schema exists to prevent.
+   */
+  aliases?: Record<string, string>
   run: (args: z.infer<Args>, ctx: ToolContext) => Promise<string>
 }
 
@@ -108,6 +117,46 @@ export function defineTool<Args extends z.ZodObject>(
   definition: ToolDefinition<Args>,
 ): ToolDefinition<Args> {
   return definition
+}
+
+/** A context whose client is known to be there: what every write runs in. */
+export type WriteContext = ToolContext & { client: Client }
+
+/**
+ * A write is a definition with three facts fixed by its being one: it is on
+ * the write surface, it is offered neither to the no-database trial nor to
+ * the view-only mobile shell, and it runs attributed to the session — the
+ * ledger's ✦ badge, and how a scoped revert knows which entries are its own.
+ * Stated here once, so a write tool is its schema, its mutation and its
+ * reply, and cannot forget any of the three.
+ */
+export function defineWriteTool<Args extends z.ZodObject>(definition: {
+  name: string
+  description: string
+  args: Args
+  aliases?: Record<string, string>
+  run: (args: z.infer<Args>, ctx: WriteContext) => Promise<string>
+}): ToolDefinition<Args> {
+  return {
+    name: definition.name,
+    description: definition.description,
+    surface: 'write',
+    args: definition.args,
+    availability: { sample: false, mobile: false },
+    aliases: definition.aliases,
+    run: (args, ctx) =>
+      ctx.session.attributed(() => definition.run(args, { ...ctx, client: requireClient(ctx) })),
+  }
+}
+
+/**
+ * The client a database tool needs. The roster keeps such a tool off a
+ * session without one, so this is the type's word for what the roster already
+ * promised, not a second gate — and if it ever fires, the roster is wrong.
+ */
+export function requireClient(ctx: ToolContext): Client {
+  if (!ctx.client) throw new Error('No database in this session.')
+  return ctx.client
 }
 
 /**
@@ -160,7 +209,7 @@ export async function runTool(
   rawArgs: Record<string, unknown>,
   ctx: ToolContext,
 ): Promise<string> {
-  const parsed = definition.args.safeParse(rawArgs)
+  const parsed = definition.args.safeParse(withAliases(rawArgs, definition.aliases))
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((issue) => `${issue.path.join('.') || '(arguments)'}: ${issue.message}`)
@@ -168,4 +217,18 @@ export async function runTool(
     throw new Error(`${definition.name}: invalid arguments — ${issues}.`)
   }
   return definition.run(parsed.data, ctx)
+}
+
+/** The call as sent, with each accepted alias read as the argument it names. */
+function withAliases(
+  rawArgs: Record<string, unknown>,
+  aliases: Record<string, string> | undefined,
+): Record<string, unknown> {
+  if (!aliases) return rawArgs
+  const args = { ...rawArgs }
+  for (const [alias, name] of Object.entries(aliases)) {
+    if (args[name] === undefined && args[alias] !== undefined) args[name] = args[alias]
+    delete args[alias]
+  }
+  return args
 }

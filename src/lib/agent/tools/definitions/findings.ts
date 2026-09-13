@@ -1,7 +1,9 @@
 import { z } from 'zod'
-import { arg, defineTool } from '@/lib/agent/tools/definition'
+import { arg, defineTool, defineWriteTool, requireClient } from '@/lib/agent/tools/definition'
 import { listFindings } from '@/lib/agent/tools/read'
-import { requireClient } from '@/lib/agent/tools/definitions/scope'
+import { findingFingerprint } from '@/lib/findingFingerprint'
+import { recordFinding, updateFinding } from '@/lib/findingMutations'
+import { resolveActiveServiceId } from '@/lib/service'
 
 /** The findings ledger: what an audit or a what-if run recorded, and its status. */
 
@@ -22,4 +24,65 @@ export const listFindingsTool = defineTool({
   availability: { sample: false, mobile: true },
   run: async ({ status, cell_id }, ctx) =>
     listFindings(requireClient(ctx), { status, cellId: cell_id }),
+})
+
+export const createFindingTool = defineWriteTool({
+  name: 'create_finding',
+  description:
+    'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_key + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
+  args: z.object({
+    source: z.enum(['audit', 'whatif']).describe('Which skill produced it'),
+    check_key: arg.text('Roster check key, e.g. "gap-sweep"'),
+    severity: z
+      .enum(['info', 'warn', 'critical'])
+      .describe('Per the check doc default unless evidence says otherwise'),
+    summary: arg.text(
+      'The finding itself — what is wrong, where, and why it matters. No raw ids in this text.',
+    ),
+    cell_ids: arg.strings('Cells the finding is about; omit only for zero-cell findings').optional(),
+    scope: arg.optionalText(
+      'Zero-cell fingerprint scope, required when cell_ids is empty. Include a short reason slug so two zero-cell findings from one check cannot collide, e.g. "scenario:Intake Call:orphan-step-cooldown"',
+    ),
+    run_id: arg.optionalText('The run identity returned by the first create_finding of this run'),
+  }),
+  run: async ({ source, check_key, severity, summary, cell_ids, scope, run_id }, { client }) => {
+    const cellIds = cell_ids ?? []
+    if (cellIds.length === 0 && !scope)
+      throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
+    const runId = run_id ?? crypto.randomUUID()
+    const fingerprint = await findingFingerprint(check_key, cellIds, scope)
+    // The dedupe branch and both its writes live in findingMutations, so
+    // every one of them reaches the session ledger. The tool's job here is
+    // the sentence the model reads back, which differs per outcome.
+    const outcome = await recordFinding(client, {
+      serviceId: await resolveActiveServiceId(client),
+      runId,
+      source,
+      checkKey: check_key,
+      severity,
+      cellIds,
+      summary,
+      fingerprint,
+    })
+    const reuse = `run_id ${runId}; reuse it for the rest of this run.`
+    if (outcome.kind === 'deduped')
+      return `An open finding already had this fingerprint — updated it in place (dedupe). ${reuse}`
+    if (outcome.kind === 'suppressed')
+      return `A finding with this fingerprint was dismissed by a human — dismissed stays dismissed. Nothing recorded. ${reuse}`
+    return `Recorded ${severity} finding for ${check_key}${outcome.reopened ? ' (a resolved twin existed — this reopens the issue)' : ''}. ${reuse}`
+  },
+})
+
+export const updateFindingTool = defineWriteTool({
+  name: 'update_finding',
+  description:
+    'Triage a finding: resolved (fixed / no longer true) or dismissed (accepted as-is; dismissed findings never reopen), or open to reopen. This is the only edit humans or agents make to an existing finding.',
+  args: z.object({
+    finding_id: arg.text('Finding id from list_findings'),
+    status: z.enum(['open', 'resolved', 'dismissed']).describe('New status'),
+  }),
+  run: async ({ finding_id, status }, { client }) => {
+    await updateFinding(client, finding_id, { status })
+    return `Finding is now ${status}.`
+  },
 })

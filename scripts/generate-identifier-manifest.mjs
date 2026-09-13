@@ -146,8 +146,8 @@ function hookNames(root) {
  * no answer to give, and `readAppFile` says so, naming both roots it looked in.
  */
 function agentToolNames(root) {
-  // The spec table and the definitions folder together — a tool that moved
-  // from a spec beside a switch case to one definition is the same tool.
+  // The definitions folder and the spec table together, so a tool is counted
+  // wherever a tool source declares one.
   const source = toolSources(root)
   const names = [...source.matchAll(/^\s*name: '([a-z_]+)',$/gm)]
     .map((match) => match[1])

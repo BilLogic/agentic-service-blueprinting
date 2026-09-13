@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import type { ToolContext } from '@/lib/agent/tools/definition'
 import { arg } from '@/lib/agent/tools/definition'
 import {
   resolveServiceScope,
@@ -33,14 +32,4 @@ export const SERVICE_ARG = arg.optionalText(
  */
 export function readScope(client: Client, service: string | undefined): Promise<ServiceScope> {
   return resolveServiceScope(client, { serviceArg: service })
-}
-
-/**
- * The client a database read needs. The roster keeps such a tool off a
- * session without one, so this is the type's word for what the roster already
- * promised, not a second gate — and if it ever fires, the roster is wrong.
- */
-export function requireClient(ctx: ToolContext): Client {
-  if (!ctx.client) throw new Error('No database in this session.')
-  return ctx.client
 }

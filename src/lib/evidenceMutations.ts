@@ -9,16 +9,22 @@ type Client = SupabaseClient<Database>
 type EvidenceRow = Database['public']['Tables']['evidence']['Row']
 type EvidenceInsert = Database['public']['Tables']['evidence']['Insert']
 
-/** Mirrors the DB CHECK constraint — a bad kind fails at compile time. */
-export type EvidenceKind =
-  | 'interview'
-  | 'survey'
-  | 'analytics'
-  | 'doc'
-  | 'meeting'
-  | 'decision'
-  | 'observation'
-  | 'other'
+/**
+ * Mirrors the DB CHECK constraint. A value, so the agent's tool schema is
+ * built from it and a bad kind is refused at the seam; a type, so a bad
+ * kind in this build's own code fails to compile.
+ */
+export const EVIDENCE_KINDS = [
+  'interview',
+  'survey',
+  'analytics',
+  'doc',
+  'meeting',
+  'decision',
+  'observation',
+  'other',
+] as const
+export type EvidenceKind = (typeof EVIDENCE_KINDS)[number]
 
 export type EvidenceDraft = {
   serviceId: string

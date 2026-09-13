@@ -424,6 +424,34 @@ export async function updateSliceMeta(
   return outcome
 }
 
+/**
+ * Edit the fields a patch names and keep the rest, under the same
+ * concurrency guard: the row is read for its token and its current values,
+ * and the update goes through `updateSliceMeta` with both. What comes back
+ * is that function's outcome — `conflict` when the row moved between the
+ * read and the write, which the caller words for whoever asked.
+ */
+export async function patchSliceMeta(
+  client: Client,
+  sliceId: string,
+  patch: Partial<Omit<SliceMetaUpdate, 'authorship'>>,
+): Promise<WriteOutcome<Slice>> {
+  const { data, error } = await client
+    .from('slices')
+    .select('title, summary, kind, actor, authorship, updated_at')
+    .eq('id', sliceId)
+    .maybeSingle()
+  if (error) throw toAuthoringError(error)
+  if (!data) throw new Error(`No slice with id ${sliceId}.`)
+  return updateSliceMeta(client, sliceId, asUpdatedAtToken(data.updated_at), {
+    title: patch.title ?? data.title,
+    summary: patch.summary ?? data.summary ?? '',
+    sliceKind: patch.sliceKind ?? (data.kind as SliceKind),
+    actor: patch.actor ?? data.actor ?? '',
+    authorship: data.authorship,
+  })
+}
+
 /** The subset of `slices` a meta update writes — what is compared and restored. */
 type SliceMetaFields = Pick<
   Slice,
