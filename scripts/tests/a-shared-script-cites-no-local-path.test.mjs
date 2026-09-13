@@ -74,6 +74,10 @@ export const SHARED_SCRIPTS = new Map([
   ['scripts/generate-agent-account.mjs', 'one generator, each repository’s own document and baseline'],
   ['scripts/swept-docs.mjs', 'one list of swept prose, read by every sweep in both repositories'],
   [
+    'scripts/unverified.mjs',
+    'one way of saying a subject went unmeasured, so a correct skip is visible in either tree',
+  ],
+  [
     'scripts/tests/the-router-is-a-router.test.mjs',
     'the router’s three checks, proven the same way on both sides',
   ],
@@ -137,9 +141,16 @@ export const REPO_LOCAL_IMPORTS = new Map([
  */
 function relativeImports(path, text) {
   const here = dirname(path)
-  return [...text.matchAll(/\bfrom\s+'(\.[^']*)'/g)].map((match) =>
-    join(here, match[1]).split(sep).join('/'),
-  )
+  // BOTH SPELLINGS, because a fence that reaches only one of them is a fence
+  // the next module walks around. `import x from './y'` and `export … from
+  // './y'` are the static form; `await import('./y')` is the same dependency
+  // written where a bundler cannot see it either. No shared script uses the
+  // dynamic form today, and that is exactly when the hole is cheap to close.
+  const specifiers = [
+    ...text.matchAll(/\bfrom\s+'(\.[^']*)'/g),
+    ...text.matchAll(/\bimport\(\s*'(\.[^']*)'/g),
+  ]
+  return specifiers.map((match) => join(here, match[1]).split(sep).join('/'))
 }
 
 test('every published shared script exists, and says why it is shared', () => {
@@ -173,6 +184,20 @@ test('the guard reads what the deployment’s gate reads, not only the comments'
   // contributor can live behind.
   assert.deepEqual(citedPaths("import doc from './docs/blueprint.md?raw'"), [])
   assert.deepEqual(citedPaths(' * the decision records are append-only'), [])
+})
+
+test('the walk reads both spellings of an import', () => {
+  assert.deepEqual(relativeImports('scripts/a.mjs', "import { x } from './b.mjs'\n"), [
+    'scripts/b.mjs',
+  ])
+  assert.deepEqual(relativeImports('scripts/a.mjs', "export { x } from './b.mjs'\n"), [
+    'scripts/b.mjs',
+  ])
+  assert.deepEqual(relativeImports('scripts/a.mjs', "const m = await import('./b.mjs')\n"), [
+    'scripts/b.mjs',
+  ])
+  // A package arrives the same way in either tree, so it is not the subject.
+  assert.deepEqual(relativeImports('scripts/a.mjs', "import ts from 'typescript'\n"), [])
 })
 
 test('the list is closed under import — a shared script imports nothing unclassified', () => {

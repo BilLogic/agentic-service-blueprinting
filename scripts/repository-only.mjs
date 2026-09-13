@@ -80,6 +80,14 @@ export const REPOSITORY_ONLY = [
       'a file it opens.',
   },
   {
+    script: 'scripts/tests/the-vendored-copy-is-only-the-copy.test.mjs',
+    why:
+      'it stages the vendoring sync — this repository’s own plugin surface beside ' +
+      'this repository’s own application — and plants a file inside the staged copy. ' +
+      'Same subject and same reason as the sync it drives: both sides are this ' +
+      'tree’s, and a deployment has neither to stage.',
+  },
+  {
     script: 'scripts/check-content-coupling.mjs',
     why:
       'the same subject and the same reason as the standalone sweep: `git ' +

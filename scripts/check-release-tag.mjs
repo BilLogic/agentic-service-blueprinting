@@ -32,6 +32,8 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { unverified } from './unverified.mjs'
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 /** `v0.4.0` for `0.4.0`. One shape, so nothing has to guess. */
@@ -96,24 +98,47 @@ export function tagFaults({ tags, released, version, taggedTree, require = false
   return faults
 }
 
+/**
+ * `git`, run — and a failure to run it is a fact about the tree, not an empty
+ * answer.
+ *
+ * This caught everything and returned `null`, and `localTags` turned `null`
+ * into `[]`. Every assertion below is written over the tags that exist, so an
+ * empty list makes all four vacuous: the loops do not run, the era scan slices
+ * to length zero, and the script prints `no release tags yet` and exits 0.
+ * That sentence was then the same for a repository that has never been tagged,
+ * a checkout handed no tags, a tree that is not a git repository at all, and a
+ * box with no `git` on it — four states, one green line.
+ *
+ * `git tag --list` exits 0 and prints nothing when there are simply no tags,
+ * so the two cases ARE distinguishable and only the catch was conflating them.
+ * A non-zero exit is news.
+ */
 const git = (...args) => {
   try {
     return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' }).trim()
-  } catch {
-    return null
+  } catch (error) {
+    throw new Error(
+      `git ${args.join(' ')} failed in ${REPO_ROOT}: ${error.message.split('\n')[0]}. ` +
+        `This check reads tags out of git, so it has no subject without one.`,
+    )
   }
 }
 
-/** The `v*` tags this checkout can see. */
+/** The `v*` tags this checkout can see. Empty means git said there are none. */
 export function localTags() {
-  const listed = git('tag', '--list', 'v*')
-  return listed ? listed.split('\n').filter(Boolean) : []
+  return git('tag', '--list', 'v*').split('\n').filter(Boolean)
 }
 
-/** The version stated by the tree a tag points at, or null when it is absent. */
+/**
+ * The version stated by the tree a tag points at.
+ *
+ * Only ever called for a tag `localTags` just reported, so a tag that cannot
+ * be read is a tag that says nothing about the tree it names — which is the
+ * thing this check exists to refuse, and it now arrives as the failure it is.
+ */
 export function versionAtTag(tag) {
-  const manifest = git('show', `${tag}:package.json`)
-  return manifest ? JSON.parse(manifest).version : null
+  return JSON.parse(git('show', `${tag}:package.json`)).version
 }
 
 function main() {
@@ -132,6 +157,18 @@ function main() {
 
   if (faults.length === 0) {
     if (tags.length === 0) {
+      // Every assertion this check makes is written over the tags that exist,
+      // so with none there is nothing for any of them to be true of. A
+      // checkout is normally handed no tags — the workflow fetches them in a
+      // step of its own — and a reader looking at a green job has no way to
+      // tell that run from one where the fetch was dropped.
+      unverified(
+        'every release tag',
+        `this checkout can see no \`v*\` tag, so nothing was held: not that a tag names a ` +
+          `released version, not that ${tagFor(version)} would point at a tree stating ` +
+          `${version}, and not that tagging has gone on once it started. Fetch tags before ` +
+          `this check (see docs/engineering/releasing.md).`,
+      )
       console.log(`no release tags yet; ${version} is untagged (see docs/engineering/releasing.md)`)
     } else if (tags.includes(tagFor(version))) {
       console.log(`${tags.length} release tag(s), and ${tagFor(version)} is among them`)

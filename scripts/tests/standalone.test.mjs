@@ -112,6 +112,24 @@ test('an untracked file is in the subject — the sweep sees what a commit would
   }
 })
 
+test('a listing every predicate rejects is refused, not swept as clean', () => {
+  // Two steps stand between `git ls-files` and the subject — the listing, and
+  // a predicate that can reject every path in it. Either coming back empty
+  // produced the same green line the full sweep produces, with a `0` in it.
+  const root = mkdtempSync(join(tmpdir(), 'standalone-empty-'))
+  try {
+    const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+    git('init', '-q')
+    // Listed, and outside the subject: the vendored mirror is skipped by name.
+    mkdirSync(join(root, 'src/lib/agent/skill/references'), { recursive: true })
+    writeFileSync(join(root, 'src/lib/agent/skill/references/a.md'), 'fine\n')
+    git('add', '-A')
+    assert.throws(() => scannedFiles(root), /no scanned file under .*: git listed 1 path/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 /* ------------------------------- a listing is older than the read it feeds */
 
 /**

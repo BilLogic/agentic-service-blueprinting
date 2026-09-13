@@ -136,11 +136,29 @@ export function trackedPaths() {
   return [...new Set([...listed, ...application])].sort()
 }
 
-/** The documents under SURFACE. */
+/**
+ * The documents under SURFACE.
+ *
+ * AN EMPTY RESULT IS A FAILURE, and the refusal belongs here rather than one
+ * level up. `trackedPaths` already refuses an empty listing — but the listing
+ * is not what this check sweeps. A FILTER stands between them, and a filter
+ * that matches nothing empties the subject just as completely as a listing
+ * that came back empty: the loop runs zero times, no claim is resolved, and
+ * the report says `every path named by 0 plugin-surface documents resolves`
+ * in the same green as the run over thirty-six. One renamed folder in
+ * `SURFACE` does it.
+ */
 export function surfaceDocs(tracked) {
-  return tracked.filter(
+  const found = tracked.filter(
     (path) => path.endsWith('.md') && SURFACE.some((dir) => path.startsWith(dir)),
   )
+  if (found.length === 0) {
+    throw new Error(
+      `no markdown under ${SURFACE.join(', ')} in ${REPO_ROOT}: this check has no subject, ` +
+        `which is a failure and not a pass`,
+    )
+  }
+  return found
 }
 
 /** A `*` glob as a whole-string regexp; a plain token as itself. */
@@ -199,13 +217,27 @@ function main() {
   const tracked = trackedPaths()
   const failures = []
 
-  for (const doc of surfaceDocs(tracked)) {
+  const docs = surfaceDocs(tracked)
+  let read = 0
+  for (const doc of docs) {
     const docDir = dirname(doc)
     const source = readListed(join(REPO_ROOT, doc))
     if (source === null) continue // listed, then gone before this read
+    read += 1
     for (const { token, line } of claimedPaths(source)) {
       if (!resolves(token, docDir, tracked)) failures.push({ doc, line, token })
     }
+  }
+
+  // The breadth assertion `read-listed.mjs` asks each of its callers for: the
+  // skip above is right for a file that went away mid-run and wrong as an
+  // account of the whole subject, so a sweep where every read skipped is a
+  // sweep that measured nothing.
+  if (read === 0) {
+    throw new Error(
+      `${docs.length} plugin-surface document(s) were listed and none could be read: this ` +
+        `check has no subject, which is a failure and not a pass`,
+    )
   }
 
   if (failures.length > 0) {
@@ -225,8 +257,7 @@ function main() {
     return
   }
 
-  const docs = surfaceDocs(tracked).length
-  console.log(`check-doc-paths: every path named by ${docs} plugin-surface documents resolves.`)
+  console.log(`check-doc-paths: every path named by ${read} plugin-surface documents resolves.`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main()

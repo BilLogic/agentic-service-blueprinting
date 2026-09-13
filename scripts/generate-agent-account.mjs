@@ -36,7 +36,11 @@
  *
  * With no database configured this writes nothing, registers nothing, and
  * exits 0 — the template's bundled sample is the no-database path, and a
- * check that always skipped would read as an answer. Same stance as
+ * check that always skipped would read as an answer. It SAYS SO, though: the
+ * sentence it printed was an ordinary log line among the other ordinary log
+ * lines, so a `--check` run that held the document to nothing at all was
+ * green in exactly the way a run that held it to a live catalog is. The skip
+ * is correct and it is now also visible. Same stance as
  * `check-target-schema.mjs`, which asks a live target whether it was
  * migrated. A deployment that has a database runs this against it and
  * registers the generated account through `registerReferenceDocs` or
@@ -57,6 +61,7 @@ import {
 } from './agent-account.mjs'
 import { parseEnvFile } from './check-target-schema.mjs'
 import { repoConfig } from './repo-config.mjs'
+import { unverified } from './unverified.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 /** This repository's own two paths — see `repoConfig.agentAccount`. */
@@ -190,10 +195,16 @@ async function main() {
   const record = process.argv.includes('--record')
   const target = credentials(process.env, readDotenv())
   if (!target) {
+    unverified(
+      check ? 'the agent account against its catalog' : 'the agent account',
+      'no database is configured, so nothing was read: not the catalog\'s column ' +
+        'comments, not which relations the anon role can actually select, and not ' +
+        'the prohibition ratchet. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY ' +
+        '(not the example placeholders) to render an account from a connected catalog.',
+    )
     console.log(
-      'no database configured — nothing to generate. Set VITE_SUPABASE_URL and ' +
-        'VITE_SUPABASE_ANON_KEY (not the example placeholders) to render an account ' +
-        'from a connected catalog. The agent reference list stays this template\'s own.',
+      'no database configured — nothing to generate. The agent reference list stays ' +
+        'this package\'s own.',
     )
     return
   }

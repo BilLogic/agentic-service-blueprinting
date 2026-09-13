@@ -113,12 +113,13 @@
  * red build — which is the whole argument for the check being advisory, made
  * from the other end.
  */
-import { readFileSync, readdirSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { appPackageRoot } from './app-source.mjs'
 import { SAMPLE_ID_PREFIX } from './check-content-coupling.mjs'
 import { resolveSeedFiles } from './check-deployment-seed-loads.mjs'
+import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -277,15 +278,27 @@ export function sitesIn(source) {
 /** Every site in a deployment's content surfaces. */
 export function findings(root = REPO_ROOT) {
   const out = []
-  for (const path of contentFiles(root)) {
-    let source
-    try {
-      source = readFileSync(resolve(contentBase(root, path), path), 'utf8')
-    } catch {
-      continue // removed between the listing and here
-    }
+  const files = contentFiles(root)
+  let read = 0
+  for (const path of files) {
+    // ENOENT alone. A bare catch also took a permission the checkout should
+    // not have and a directory where a file belongs, and a sweep that skips
+    // every file it cannot open reports nothing and looks exactly like a clean
+    // tree — which for this report is the one answer it must not give quietly.
+    const source = readListed(resolve(contentBase(root, path), path))
+    if (source === null) continue // removed between the listing and here
+    read += 1
     if (source.includes('\0')) continue // binary without a listed extension
     for (const site of sitesIn(source)) out.push({ path, ...site })
+  }
+  // The breadth assertion `read-listed.mjs` asks of each of its callers. The
+  // listing is refused when it is empty; this is the other end of the same
+  // claim, over the files that were actually opened.
+  if (read === 0) {
+    throw new Error(
+      `${files.length} content file(s) were listed under ${root} and none could be read, ` +
+        `so this sweep has no subject`,
+    )
   }
   return out
 }

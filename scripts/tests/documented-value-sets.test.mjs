@@ -21,8 +21,14 @@ const ROOT = process.cwd()
 test('no document states a value set the schema refutes', () => {
   const catalog = catalogFromSchema(readFileSync(SCHEMA, 'utf8'))
   assert.ok(catalog.columns.size >= 10, 'the dump has value lists to hold the docs to')
+  const docs = sweptDocs(ROOT)
+  // The breadth of the OTHER half. The catalog is asserted above; the corpus
+  // was not, and `sweptDocs` prepends the three root documents unconditionally
+  // — so a swept folder that is renamed or misspelt takes the subject from
+  // fifty-four documents to three and this test goes on passing.
+  assert.ok(docs.length > 20, `only ${docs.length} swept document(s) — is the sweep still on?`)
   const findings = []
-  for (const relative of sweptDocs(ROOT)) {
+  for (const relative of docs) {
     const text = readFileSync(`${ROOT}/${relative}`, 'utf8')
     findings.push(...valueSetFindings({ text, source: relative, medium: 'markdown' }, catalog))
   }
