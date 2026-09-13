@@ -26,7 +26,8 @@ list. Widening added 36 files and produced one finding: a released CHANGELOG
 entry quoting the check's own header, which is one allowed site with its
 reason, not an excluded file. The changelog stays swept, and so do the
 changesets it is generated from — where a pasted value now fails before a
-release rather than after one. 620 files became 657.
+release rather than after one. The swept count went from 620 to 657 in the
+commit that widened it, and moves with the tree from there.
 
 The shared module that assembles the prose corpus went with it: the root
 documents are discovered rather than listed, because which documents sit at a
