@@ -82,11 +82,14 @@
  *
  *   - `skills/`, `references/`, `agents/`, `hooks/` — and therefore their
  *     byte-for-byte copy under `src/lib/agent/skill/` — are read by an agent
- *     out of this package's own installed tree. `check:doc-paths` is the
- *     authority there: it holds those paths TRUE, and this guard exempts them.
+ *     out of this package's own installed tree, and so are the documentation
+ *     tree and the documents at the package root, which are packed with them.
+ *     `check:doc-paths` is the authority over all of that: it holds those
+ *     paths TRUE, and this guard exempts the part of it that lives here.
  *   - Everywhere else under `src/`, and in a shared script, the reader is in
  *     their own repository. This guard is the authority there, and
- *     `check:doc-paths` never looks.
+ *     `check:doc-paths` never looks. The two subjects do not overlap: nothing
+ *     this guard sweeps is a document that check holds.
  *
  * The narrower rule — hold only what a deployment has already enrolled — was
  * what we enforced until v1.41.0 shipped two files carrying `#622` and

@@ -745,7 +745,7 @@ const { data } = await supabase
 | --- | --- |
 | `src/lib/workflowQueries.ts` | Supabase nested selects |
 | `src/lib/normalizeBlueprint.ts` | Raw path row → `BlueprintData` |
-| `src/hooks/useScenarioBlueprint.ts` | Load paths + blueprints per scenario |
+| `src/hooks/useCanvasBlueprints.ts` | Load paths + blueprints per scenario |
 | `src/data/blueprintFallbacks.ts` | Offline/demo blueprint data |
 
 ## Local commands
