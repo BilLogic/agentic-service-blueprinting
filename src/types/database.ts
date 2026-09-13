@@ -1329,6 +1329,10 @@ export type Database = {
         Args: { p_resource_id: string; p_featured: boolean }
         Returns: Json
       }
+      set_cell_featured_image: {
+        Args: { cell_id: string; image_url: string | null }
+        Returns: Json
+      }
       restore_featured_resources: {
         Args: { p_rows: Json }
         Returns: undefined

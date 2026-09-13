@@ -1899,6 +1899,51 @@ end;
 $$;
 
 --
+-- Name: set_cell_featured_image(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_cell_featured_image(cell_id uuid, image_url text) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_catalog', 'pg_temp'
+    AS $$
+declare
+  found_id uuid;
+  previous_frame text;
+  next_frame text;
+begin
+  if not public.is_service_account() then
+    raise exception 'This account cannot edit the blueprint'
+      using errcode = '42501';
+  end if;
+
+  select c.id, c.frame into found_id, previous_frame
+    from public.cells c
+   where c.id = set_cell_featured_image.cell_id
+   for update;
+  if found_id is null then
+    raise exception 'That cell no longer exists';
+  end if;
+
+  next_frame := nullif(btrim(set_cell_featured_image.image_url), '');
+  if next_frame is not null and next_frame !~ '^(https://|/[^/\\])' then
+    raise exception 'A featured image is an https address or a path on this site';
+  end if;
+
+  update public.cells c
+     set frame = next_frame
+   where c.id = found_id;
+
+  return jsonb_build_object('cell_id', found_id, 'frame', previous_frame);
+end;
+$$;
+
+--
+-- Name: FUNCTION set_cell_featured_image(cell_id uuid, image_url text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.set_cell_featured_image(cell_id uuid, image_url text) IS 'Sets a cell''s featured image, which is its frame: an https address, a path on this site, or null to clear. Returns the frame as it stood, which is the inverse.';
+
+--
 -- Name: set_featured_resource(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2022,6 +2067,18 @@ begin
          name          = case when p_touchpoint_id is null then btrim(p_name) end,
          updated_at    = now()
    where id = p_placement_id;
+
+  -- An entry with a logo fills the cell's empty frame with that logo's path;
+  -- a frame that holds anything is left alone.
+  if p_touchpoint_id is not null then
+    update public.cells c
+       set frame = btrim(tp.icon_url)
+      from public.touchpoints tp
+     where tp.id = p_touchpoint_id
+       and c.id = v_row.cell_id
+       and nullif(btrim(tp.icon_url), '') is not null
+       and nullif(btrim(c.frame), '') is null;
+  end if;
 
   return jsonb_build_object('touchpoint_id', v_row.touchpoint_id, 'name', v_row.name);
 end
@@ -2383,15 +2440,32 @@ begin
    where ct.id = ranked.id
      and ct.position is distinct from ranked.position;
 
-  insert into public.cell_touchpoints (cell_id, touchpoint_id, position, origin)
-  select p_cell_id, tp.id, w.position, 'app'
-    from jsonb_to_recordset(v_wanted) as w(name text, position int)
-    join public.touchpoints tp
-      on tp.name = w.name
-   where not exists (
-     select 1 from public.cell_touchpoints ct
-      where ct.cell_id = p_cell_id and ct.touchpoint_id = tp.id
-   );
+  -- A placement it inserts on a touchpoint with a logo fills an empty
+  -- frame with that logo's path; a frame that holds anything is left alone.
+  with placed as (
+    insert into public.cell_touchpoints (cell_id, touchpoint_id, position, origin)
+    select p_cell_id, tp.id, w.position, 'app'
+      from jsonb_to_recordset(v_wanted) as w(name text, position int)
+      join public.touchpoints tp
+        on tp.name = w.name
+     where not exists (
+       select 1 from public.cell_touchpoints ct
+        where ct.cell_id = p_cell_id and ct.touchpoint_id = tp.id
+     )
+    returning touchpoint_id, position
+  )
+  update public.cells c
+     set frame = logo.icon_url
+    from (
+      select btrim(tp.icon_url) as icon_url
+        from placed
+        join public.touchpoints tp on tp.id = placed.touchpoint_id
+       where nullif(btrim(tp.icon_url), '') is not null
+       order by placed.position
+       limit 1
+    ) logo
+   where c.id = p_cell_id
+     and nullif(btrim(c.frame), '') is null;
 
   return jsonb_build_object('skipped', false, 'removed', v_removed);
 end

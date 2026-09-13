@@ -2473,3 +2473,34 @@ $proof$;
 
 revoke execute on function public.update_cell_dependency(uuid, text, uuid, text) from anon;
 grant execute on function public.update_cell_dependency(uuid, text, uuid, text) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 21000227000000_a_featured_image_is_the_frame.sql
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- the grants name the Supabase roles, on the same terms as every
+-- other authoring write.
+
+revoke execute on function public.set_cell_featured_image(uuid, text) from anon;
+grant execute on function public.set_cell_featured_image(uuid, text) to authenticated;
+
+-- the ACL the two rewrites had to preserve, and the new function's,
+-- asserted where the roles exist.
+do $posture$
+declare
+  fn text;
+begin
+  foreach fn in array array[
+    'public.set_cell_featured_image(uuid, text)',
+    'public.sync_cell_touchpoints(uuid, text[])',
+    'public.set_placement_touchpoint(uuid, uuid, text)'
+  ] loop
+    if not has_function_privilege('authenticated', fn::regprocedure, 'execute') then
+      raise exception 'authenticated cannot execute %', fn;
+    end if;
+    if has_function_privilege('anon', fn::regprocedure, 'execute') then
+      raise exception 'anon can execute %', fn;
+    end if;
+  end loop;
+end
+$posture$;

@@ -170,6 +170,7 @@ export function CellPanelEditor({
   draft,
   placement = null,
   placementResources = [],
+  frame = null,
   fallbackSummary = '',
   onDone,
 }: {
@@ -191,6 +192,8 @@ export function CellPanelEditor({
    * note at the list.
    */
   placementResources?: readonly CellResource[]
+  /** The cell's frame — its featured image — for the placement's list to name. */
+  frame?: string | null
   /**
    * What the panel displays as this cell's summary when the column is
    * empty (tech cells keep prose in `links`). Seeded into the field so the
@@ -242,6 +245,7 @@ export function CellPanelEditor({
         draft={undefined}
         placement={editable}
         placementResources={placementResources}
+        frame={frame}
         baseline={baseline}
         seededSummary={cell.summary ?? fallbackSummary}
         onDone={onDone}
@@ -273,6 +277,7 @@ export function CellPanelEditor({
       seededSummary=""
       placement={null}
       placementResources={[]}
+      frame={null}
       onDone={onDone}
     />
   )
@@ -283,6 +288,7 @@ function CellPanelEditorForm({
   draft,
   placement,
   placementResources,
+  frame,
   baseline: baselineProp,
   seededSummary,
   onDone,
@@ -292,6 +298,7 @@ function CellPanelEditorForm({
   /** Non-null only when it carries a row id — see CellPanelEditor. */
   placement: CellTouchpoint | null
   placementResources: readonly CellResource[]
+  frame: string | null
   baseline: FormState
   seededSummary: string
   onDone: () => void
@@ -610,6 +617,7 @@ function CellPanelEditorForm({
             <PlacementResourcesList
               placement={{ id: placement.id, cellId, name: placement.name }}
               resources={placementResources}
+              frame={frame}
             />
           ) : null}
         </div>

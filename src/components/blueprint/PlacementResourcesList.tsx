@@ -3,7 +3,8 @@ import {
   type ResourceListDraft,
 } from '@/components/blueprint/ResourcesList'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
+import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
+import { setCellFeaturedImage } from '@/lib/authoringRpc'
 import {
   setFeaturedResource,
   updatePlacementResources,
@@ -23,9 +24,12 @@ import type { CellResource } from '@/types/blueprint'
 export function PlacementResourcesList({
   placement,
   resources,
+  frame = null,
   onWritten,
 }: {
   placement: { id: string; cellId: string | null; name: string }
+  /** The cell's frame, which is its featured image. */
+  frame?: string | null
   /** The cell's resources — this list keeps the placement's. */
   resources: readonly CellResource[]
   /** After any write landed: the caller refetches what it shows. */
@@ -47,6 +51,13 @@ export function PlacementResourcesList({
     )
   }
 
+  const setFeaturedImage = async (url: string) => {
+    if (!client || !placement.cellId) return
+    await setCellFeaturedImage(client, { cellId: placement.cellId, imageUrl: url })
+    invalidateStructure()
+    invalidateQueries('step-spec:')
+  }
+
   return (
     <div data-placement-resources="">
       <ResourcesList
@@ -54,12 +65,14 @@ export function PlacementResourcesList({
         resources={resources.filter((resource) => resource.placementId === placement.id)}
         hint={
           <>
-            What “{placement.name}” points at here. The preview and the buttons
-            come from the featured ones.
+            What “{placement.name}” points at here. Featured links are the
+            buttons; a picture can be set as the cell’s featured image.
           </>
         }
         onSave={save}
         onFeature={feature}
+        frame={frame}
+        onSetFeaturedImage={placement.cellId ? setFeaturedImage : undefined}
         onWritten={() => {
           invalidateQueries('service-phases')
           invalidateQueries('canvas-blueprints')

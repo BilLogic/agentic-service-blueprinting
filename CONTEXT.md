@@ -86,6 +86,11 @@ drawn from the cells beside it.
 storyboard holds at most one. A frame is never a row of a slice; that is a
 *slide*.
 
+**Featured image** — the one picture a cell leads with. It **is** `cells.frame`:
+one slot per cell. It may be a storyboard illustration, a screenshot, one of the
+cell's attachments, or its touchpoint's logo — whatever a person chose. What is
+stored is what shows; nothing is substituted at display time.
+
 **Strip** — a step's frames, read across the lanes: the script for that moment.
 **Not a column.** It is derived at render time from the frames of the step's
 cells, which is why a strip and the frames it is made of cannot disagree. A

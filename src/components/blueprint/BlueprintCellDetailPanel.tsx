@@ -29,10 +29,7 @@ import {
   PanelKindBadge,
 } from '@/components/blueprint/panelShell'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
-import {
-  FeaturedButtons,
-  FeaturedPreviewFrame,
-} from '@/components/blueprint/FeaturedResources'
+import { FeaturedButtons } from '@/components/blueprint/FeaturedResources'
 import { featuredPresentation } from '@/lib/resourcePresentation'
 import {
   TOUCHPOINT_ROLE_DEFINITION,
@@ -86,7 +83,7 @@ import {
   scrollBlueprintTouchpointCellIntoView,
 } from '@/lib/blueprintStepTech'
 import { shouldUseTouchpointCellContent, shouldUseStoryboardContent } from '@/lib/blueprintLayout'
-import { resolveCellDetailImages } from '@/lib/blueprintTechPictures'
+import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import {
   getBlueprintLaneStyle,
   getBlueprintLaneZone,
@@ -661,9 +658,8 @@ function BlueprintCellDetailPanelBody() {
   )
 
   /*
-    What the cell leads with: the selected placement's featured
-    attachment is the preview, every featured link — the placement's, then
-    the cell's own — is a button named by its host.
+    The cell's buttons: every featured link — the selected placement's, then
+    the cell's own — named by its host.
   */
   const featured = useMemo(
     () =>
@@ -672,7 +668,7 @@ function BlueprintCellDetailPanelBody() {
             placementId: selectedPlacement?.id ?? null,
             resources: cellResourceList,
           })
-        : { preview: null, buttons: [] },
+        : { buttons: [] },
     [cellResourceList, selection, selectedPlacement],
   )
 
@@ -1023,22 +1019,18 @@ function BlueprintCellDetailPanelBody() {
     techDetailLabel && detailBodyText.trim() === techDetailLabel
       ? ''
       : detailBodyText
-  const detailImages = resolveCellDetailImages({
-    techItem: touchpointDetail?.name ?? selection.techItem,
-    cellContent: selection.paths[0]?.content,
-    cellFrame: selection.paths[0]?.frame,
-    cellTouchpoints: cellTouchpointList,
-    cellResources: cellResourceList,
-  })
-  // A featured attachment is the owner's picture; the frame and the
-  // placement's screenshots are the fallback until the work that moves what a
-  // placement points at into the cell's resources brings them here.
-  // The stock logo for the touchpoint this panel is about — a string on the
-  // registry row now, not a tool name matched against a table in code.
-  const techLogoUrl = selectedPlacement?.iconUrl?.trim() || null
-  const showImages = Boolean(
-    (featured.preview || detailImages?.length) && !isStoryboardLane,
+  // The featured image is the frame: what is stored is what shows.
+  const storedFrame = selectedCell?.frame?.trim() || null
+  const featuredImage =
+    storedFrame && !isBlueprintStepStoryboardPlaceholder(storedFrame)
+      ? storedFrame
+      : null
+  // A logo when it IS the registry icon of a touchpoint placed here — a string
+  // on the registry row, not a tool name matched against a table in code.
+  const frameIsLogo = cellTouchpointList.some(
+    (placement) => placement.iconUrl?.trim() === featuredImage,
   )
+  const showImages = Boolean(featuredImage) && !isStoryboardLane
   // Widened from "is a touchpoint lane" to "names a touchpoint at all", so a
   // real placement on a lane that draws no touchpoints still shows its name
   // — see `hasRealPlacement`.
@@ -1165,91 +1157,29 @@ function BlueprintCellDetailPanelBody() {
   const cellTitleText =
     cellContent.split('\n')[0]?.trim() || selection.laneName
 
-  const imageBlock = showImages ? (
+  /*
+    One image: the frame, which is the cell's featured image. Nothing else
+    leads — not a featured attachment, not a logo row beside it. A frame that
+    IS a placed touchpoint's registry icon is drawn at the logo size and stays
+    inert: there is nothing inside a brand mark to read closer, and making one
+    open a viewer spends the signal a real picture depends on.
+  */
+  const imageBlock = showImages && featuredImage ? (
     <div className="flex w-full flex-col items-center gap-3">
-      {(() => {
-        const frames = detailImages ?? []
-        // A picture is a logo when it IS the touchpoint's registry icon;
-        // the filename convention stays a fallback for a logo carried as a
-        // placement attachment.
-        const isTechLogo = (src: string) =>
-          (techLogoUrl != null && src === techLogoUrl) ||
-          src.includes('-logo.') ||
-          src.includes('/logo/')
-        const logos = frames.filter(isTechLogo)
-        const screenshots = frames.filter((src) => !isTechLogo(src))
-        /*
-          The screenshots that actually get drawn, hoisted so that the group
-          handed to the viewer IS the row on the page.
-
-          A featured attachment renders in its own frame above and is dropped
-          from this list, so building the group from `screenshots` would hand
-          every trigger a group one longer than the row it belongs to, and
-          `siblingIndex` would then point at the wrong picture from the first
-          cell that features one of its own screenshots.
-
-          The name is the cell's own content sentence. A frame has no caption
-          anywhere in the schema and is not getting one for the sake of a
-          label — what the picture shows is the moment the cell describes,
-          and that sentence is already right here.
-        */
-        const openableScreenshots = screenshots.filter(
-          (src) => src !== featured.preview?.url,
-        )
-        const screenshotSiblings = openableScreenshots.map((src) => ({
-          src,
-          alt: cellTitleText,
-        }))
-
-        return (
-          <>
-            {/*
-              Logos stay inert, at every size. They are iconography, not
-              content: there is nothing inside a brand mark to read closer,
-              and making one open a fullscreen viewer teaches the reader that
-              the openable affordance is decorative — which spends the signal
-              the screenshots below it depend on.
-            */}
-            {logos.length > 0 ? (
-              <div className="flex w-full flex-wrap items-center justify-center gap-3">
-                {logos.map((src) => (
-                  <img
-                    key={src}
-                    src={src}
-                    alt=""
-                    className={CELL_DETAIL_LOGO_CLASS}
-                  />
-                ))}
-              </div>
-            ) : null}
-            {featured.preview ? (
-              <FeaturedPreviewFrame
-                preview={featured.preview}
-                frameClassName={CELL_DETAIL_PICTURE_FRAME_CLASS}
-                mediaClassName={CELL_DETAIL_PICTURE_CLASS}
-              />
-            ) : null}
-            {/* Every screenshot in the same plain frame. Nothing elects one
-                url as "the design" — a featured attachment is what a cell
-                leads with, and `featuredPresentation` decides that without
-                naming a vendor. */}
-            {openableScreenshots.map((src, index) => (
-              <div key={src} className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
-                <ZoomableImage
-                  src={src}
-                  alt={cellTitleText}
-                  triggerLabel={`Expand: ${cellTitleText}`}
-                  siblings={screenshotSiblings}
-                  siblingIndex={index}
-                  triggerClassName="absolute inset-0 block cursor-pointer"
-                >
-                  <img src={src} alt="" className={CELL_DETAIL_PICTURE_CLASS} />
-                </ZoomableImage>
-              </div>
-            ))}
-          </>
-        )
-      })()}
+      {frameIsLogo ? (
+        <img src={featuredImage} alt="" className={CELL_DETAIL_LOGO_CLASS} />
+      ) : (
+        <div className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
+          <ZoomableImage
+            src={featuredImage}
+            alt={cellTitleText}
+            triggerLabel={`Expand: ${cellTitleText}`}
+            triggerClassName="absolute inset-0 block cursor-pointer"
+          >
+            <img src={featuredImage} alt="" className={CELL_DETAIL_PICTURE_CLASS} />
+          </ZoomableImage>
+        </div>
+      )}
     </div>
   ) : null
 
@@ -1373,6 +1303,7 @@ function BlueprintCellDetailPanelBody() {
           // editor with a second Save button.
           placement={selectedPlacement}
           placementResources={cellResourceList}
+          frame={selectedCell?.frame ?? null}
           // Never seed the field with the title wearing a summary's
           // clothes — only prose that actually says more than the cell text.
           fallbackSummary={
@@ -1531,6 +1462,7 @@ function BlueprintCellDetailPanelBody() {
                       cellId={resolvedCellId}
                       resources={cellResourceList}
                       touchpoints={cellTouchpointList}
+                      frame={selectedCell?.frame ?? null}
                     />
                   ) : null}
                 </div>

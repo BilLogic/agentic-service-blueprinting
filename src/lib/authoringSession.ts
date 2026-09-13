@@ -103,6 +103,7 @@ export type WriteFn =
   | 'delete_evidence'
   | 'set_cell_dependency'
   | 'update_cell_dependency'
+  | 'set_cell_featured_image'
   | 'clear_cell_dependency'
   | 'reorder_steps'
   | 'set_path_steps'
@@ -416,6 +417,8 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
       ? 'Connected two cells'
       : 'Edited a connection',
   update_cell_dependency: () => 'Edited a connection',
+  set_cell_featured_image: (entry) =>
+    entry.args.image_url ? 'Set a cell’s featured image' : 'Cleared a cell’s featured image',
   clear_cell_dependency: () => 'Removed a connection',
   reorder_steps: () => 'Reordered the steps',
   set_path_steps: () => 'Reordered the steps',

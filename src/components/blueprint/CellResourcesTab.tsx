@@ -1,16 +1,21 @@
+import { useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ExternalLink, FileText } from 'lucide-react'
+import { Check, ExternalLink, FileText, ImageIcon } from 'lucide-react'
 import {
   ResourcesList,
   type ResourceListDraft,
 } from '@/components/blueprint/ResourcesList'
+import { IconTooltip } from '@/components/editor/IconTooltip'
+import { Button } from '@/components/ui/button'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
+import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
+import { setCellFeaturedImage } from '@/lib/authoringRpc'
 import { updateCellResources } from '@/lib/cellContentMutations'
 import { setFeaturedResource } from '@/lib/placementResourceMutations'
 import { touchpointLogos } from '@/lib/resourcePresentation'
 import { safeExternalHref } from '@/lib/sliceCells'
+import { errorMessage } from '@/lib/utils'
 import type { Database } from '@/types/database'
 import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
@@ -27,6 +32,8 @@ type CellResourcesTabProps = {
   resources: CellResource[]
   /** The touchpoints placed at the cell, whose logos it inherits. */
   touchpoints?: readonly CellTouchpoint[]
+  /** The cell's frame, which is its featured image. */
+  frame?: string | null
 }
 
 /**
@@ -48,25 +55,83 @@ function placementRows(resources: CellResource[]): CellResource[] {
 
 /**
  * The logos a cell inherits from its touchpoints: read off the registry at
- * render, listed without controls, and never saved as rows of the cell's own.
+ * render and never saved as rows of the cell's own, so they cannot be edited,
+ * reordered or removed here. In Edit mode each offers the one thing it can
+ * be: the cell's featured image, which writes the frame.
  */
-function InheritedLogos({ touchpoints }: { touchpoints: readonly CellTouchpoint[] }) {
+function InheritedLogos({
+  touchpoints,
+  frame = null,
+  onSetFeaturedImage,
+}: {
+  touchpoints: readonly CellTouchpoint[]
+  frame?: string | null
+  onSetFeaturedImage?: (url: string) => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   const logos = touchpointLogos(touchpoints)
   if (logos.length === 0) return null
+
+  const choose = async (url: string) => {
+    if (!onSetFeaturedImage || busy) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      await onSetFeaturedImage(url)
+    } catch (writeError) {
+      setProblem(errorMessage(writeError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <ul className="flex flex-col" aria-label="Inherited from this cell's touchpoints">
-      {logos.map((logo) => (
-        <li
-          key={logo.url}
-          className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
-        >
-          <img src={logo.url} alt="" className="size-3 shrink-0 object-contain" />
-          <span className="min-w-0 truncate">{logo.name}</span>
-          <span className="shrink-0 text-xs opacity-70">logo, from the touchpoint</span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="flex flex-col" aria-label="Inherited from this cell's touchpoints">
+        {logos.map((logo) => {
+          const isFrame = logo.url === frame?.trim()
+          const label = isFrame
+            ? `The ${logo.name} logo is the featured image`
+            : `Set the ${logo.name} logo as the featured image`
+          return (
+            <li
+              key={logo.url}
+              className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+            >
+              <img src={logo.url} alt="" className="size-3 shrink-0 object-contain" />
+              <span className="min-w-0 truncate">{logo.name}</span>
+              <span className="shrink-0 text-xs opacity-70">logo, from the touchpoint</span>
+              {onSetFeaturedImage ? (
+                <IconTooltip label={label}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="ml-auto"
+                    aria-label={label}
+                    aria-pressed={isFrame}
+                    disabled={isFrame || busy}
+                    onClick={() => void choose(logo.url)}
+                  >
+                    {isFrame ? <Check className="size-3" /> : <ImageIcon className="size-3" />}
+                  </Button>
+                </IconTooltip>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+      {problem ? <p className="text-xs text-destructive">{problem}</p> : null}
+    </>
   )
+}
+
+/** After the frame changed: everything that draws a frame reads it again. */
+function frameWritten(cellId: string) {
+  invalidateStructure()
+  invalidateQueries('step-spec:')
+  invalidateQueries(`cell-content:${cellId}`)
 }
 
 /**
@@ -94,6 +159,7 @@ export function CellResourcesTab({
   cellId,
   resources,
   touchpoints = [],
+  frame = null,
 }: CellResourcesTabProps) {
   const { client, canWrite } = useSupabase()
   const mode = useCanvasModeValue()
@@ -106,6 +172,7 @@ export function CellResourcesTab({
         client={client}
         resources={resources}
         touchpoints={touchpoints}
+        frame={frame}
       />
     )
   }
@@ -175,11 +242,13 @@ function CellResourcesEditor({
   client,
   resources: stored,
   touchpoints,
+  frame,
 }: {
   cellId: string
   client: SupabaseClient<Database>
   resources: CellResource[]
   touchpoints: readonly CellTouchpoint[]
+  frame: string | null
 }) {
   const fromPlacements = placementRows(stored)
   const inheritsAny = touchpointLogos(touchpoints).length > 0
@@ -200,6 +269,11 @@ function CellResourcesEditor({
 
   const feature = async (resourceId: string, featured: boolean) => {
     await setFeaturedResource(client, { id: resourceId, placementId: null, cellId }, featured)
+  }
+
+  const setFeaturedImage = async (url: string) => {
+    await setCellFeaturedImage(client, { cellId, imageUrl: url })
+    frameWritten(cellId)
   }
 
   return (
@@ -231,11 +305,17 @@ function CellResourcesEditor({
               ))}
             </ul>
           ) : null}
-          <InheritedLogos touchpoints={touchpoints} />
+          <InheritedLogos
+            touchpoints={touchpoints}
+            frame={frame}
+            onSetFeaturedImage={setFeaturedImage}
+          />
         </>
       }
       onSave={save}
       onFeature={feature}
+      frame={frame}
+      onSetFeaturedImage={setFeaturedImage}
       onWritten={() => {
         invalidateQueries('service-phases')
         invalidateQueries(`cell-content:${cellId}`)

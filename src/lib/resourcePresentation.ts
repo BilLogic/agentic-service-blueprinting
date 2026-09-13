@@ -3,8 +3,8 @@
  *
  * Two pure maps. A link's host decides the verb on its button ("Open in
  * Figma", "Watch on YouTube") and the glyph beside it; an attachment's
- * extension decides whether the preview is an image, a video, audio or a
- * document card. Both have a default, because a map that refuses an unknown
+ * extension decides whether it is an image, a video, audio or a document —
+ * and so whether it can be a cell's featured image. Both have a default, because a map that refuses an unknown
  * host is a button that goes missing the day someone links a new tool.
  *
  * Stored nowhere on purpose. A `host` column would be a second copy
@@ -54,7 +54,7 @@ export function linkPresentation(url: string): LinkPresentation {
   return { host, label: 'Open link', glyph: 'open' }
 }
 
-/** What an attachment's preview is made of. */
+/** What an attachment is made of. */
 export type AttachmentMedium = 'image' | 'video' | 'audio' | 'document'
 
 const MEDIA_BY_EXTENSION: Record<string, AttachmentMedium> = {
@@ -67,7 +67,7 @@ const MEDIA_BY_EXTENSION: Record<string, AttachmentMedium> = {
 /**
  * The medium of an attachment, from its extension — or from a content type
  * when the caller has one (an upload knows its own). Unknown is a document:
- * the preview that says the least, and the one that is never wrong.
+ * the medium that claims the least, and the one that is never wrong.
  */
 export function attachmentMedium(
   url: string,
@@ -86,21 +86,19 @@ export function attachmentMedium(
   return MEDIA_BY_EXTENSION[extension] ?? 'document'
 }
 
-export type FeaturedPreview = { url: string; name: string; medium: AttachmentMedium }
 export type FeaturedButton = { url: string; name: string } & LinkPresentation
 
 export type FeaturedPresentation = {
-  /** The one featured attachment the placement leads with, or nothing. */
-  preview: FeaturedPreview | null
   /** Every featured link — the placement's first, then the cell's own. */
   buttons: FeaturedButton[]
 }
 
 /**
- * What the panel leads with for one placement at one cell.
+ * The buttons the panel shows for one placement at one cell.
  *
- * The placement's featured attachment is the preview; every featured link,
- * the placement's and then the cell's own, is a button. A placement's own
+ * Every featured link, the placement's and then the cell's own, is a button.
+ * An attachment carries no featured meaning: the one picture a cell leads with
+ * is its frame. A placement's own
  * `url` column still exists and has not yet been folded into these rows as
  * a featured link; the panel reads that column separately for now, and this
  * reads only rows.
@@ -118,15 +116,6 @@ export function featuredPresentation(input: {
   )
   const ofCell = featured.filter((resource) => resource.placementId === null)
 
-  const attachment = ofPlacement.find((resource) => resource.kind === 'attachment')
-  const preview = attachment
-    ? {
-        url: attachment.url!.trim(),
-        name: attachment.name,
-        medium: attachmentMedium(attachment.url!.trim()),
-      }
-    : null
-
   const buttons: FeaturedButton[] = []
   const seen = new Set<string>()
   const add = (url: string, name: string) => {
@@ -138,7 +127,7 @@ export function featuredPresentation(input: {
     if (resource.kind === 'link') add(resource.url!.trim(), resource.name)
   }
 
-  return { preview, buttons }
+  return { buttons }
 }
 
 /**

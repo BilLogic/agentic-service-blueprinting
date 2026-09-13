@@ -163,6 +163,16 @@ export type CellDependencyWrite = {
 export type CellDependencyBefore = Omit<CellDependencyRow, 'name'>
 
 /**
+ * What `set_cell_featured_image` hands back: the cell, and its frame as it
+ * stood before the write — null when it had none. The inverse is the same
+ * function fed that frame.
+ */
+export type CellFeaturedImageBefore = {
+  cell_id: string
+  frame: string | null
+}
+
+/**
  * What the column accepts, which is now what the client says.
  *
  * `side-by-side` and `integrated` were the historical tokens, translated at a
@@ -379,6 +389,17 @@ function deriveRevert(
               target_cell_id: before.target_cell_id,
               note: before.note,
             },
+          }
+        : undefined
+    }
+    case 'set_cell_featured_image': {
+      // Self-inverse, keyed on the cell: the frame as it stood goes back
+      // through the function that replaced it, and an empty one clears.
+      const before = data as CellFeaturedImageBefore | null
+      return before?.cell_id
+        ? {
+            fn: 'set_cell_featured_image',
+            args: { cell_id: before.cell_id, image_url: before.frame },
           }
         : undefined
     }
@@ -735,6 +756,23 @@ export function updateCellDependency(
     kind: input.kind,
     target_cell_id: input.targetCellId,
     note: input.note,
+  })
+}
+
+/**
+ * Set a cell's featured image — its frame — or clear it with null.
+ *
+ * One slot per cell: an attachment's url, or a touchpoint's stock logo path.
+ * The function refuses a cell that is not there, so a write that matched
+ * nothing fails rather than logging an edit the database does not hold.
+ */
+export function setCellFeaturedImage(
+  client: Client,
+  input: { cellId: string; imageUrl: string | null },
+): Promise<CellFeaturedImageBefore> {
+  return call<CellFeaturedImageBefore>(client, 'set_cell_featured_image', {
+    cell_id: input.cellId,
+    image_url: input.imageUrl,
   })
 }
 

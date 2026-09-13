@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import {
-  FeaturedButtons,
-  FeaturedPreviewFrame,
-} from '@/components/blueprint/FeaturedResources'
+import { FeaturedButtons } from '@/components/blueprint/FeaturedResources'
 import { featuredPresentation } from '@/lib/resourcePresentation'
 import type { CellResource } from '@/types/blueprint'
 
@@ -19,8 +16,8 @@ const row = (over: Partial<CellResource> & { url: string }): CellResource => ({
   ...over,
 })
 
-describe('what a placement leads with', () => {
-  it('shows the featured attachment as the preview, and a button per featured link named by host', () => {
+describe('the buttons a placement shows', () => {
+  it('draws a button per featured link named by host, and nothing for an attachment', () => {
     const shown = featuredPresentation({
       placementId: 'placement-1',
       resources: [
@@ -31,13 +28,10 @@ describe('what a placement leads with', () => {
     })
     const { container, getAllByRole } = render(
       <>
-        {shown.preview ? <FeaturedPreviewFrame preview={shown.preview} /> : null}
         <FeaturedButtons buttons={shown.buttons} />
       </>,
     )
-    expect(container.querySelector('[data-featured-preview="image"] img')?.getAttribute('src')).toBe(
-      '/blueprint-images/intake-portal/step-05.png',
-    )
+    expect(container.querySelector('img')).toBeNull()
     const links = getAllByRole('link')
     expect(links.map((link) => link.textContent?.trim())).toEqual([
       'Open in Figma',
@@ -48,16 +42,6 @@ describe('what a placement leads with', () => {
       'https://youtu.be/walkthrough',
     ])
     expect(links.every((link) => link.getAttribute('rel') === 'noopener noreferrer')).toBe(true)
-  })
-
-  it('draws a video attachment as a video with a play glyph, not as a broken image', () => {
-    const shown = featuredPresentation({
-      placementId: 'placement-1',
-      resources: [row({ url: 'https://cdn.example/clip.mp4', kind: 'attachment' })],
-    })
-    const { container } = render(<FeaturedPreviewFrame preview={shown.preview!} />)
-    expect(container.querySelector('[data-featured-preview="video"] video')).not.toBeNull()
-    expect(container.querySelector('img')).toBeNull()
   })
 
   it('renders nothing for a cell with no featured link', () => {

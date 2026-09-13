@@ -11,10 +11,10 @@
  * appearance. A test that asserted the layout wholesale would fail on every
  * ordinary edit and teach the next author to delete it.
  *
- *   - **A picture is a logo when it IS the touchpoint's registry icon.** The
- *     `-logo.` / `/logo/` filename convention the stock assets follow is the
- *     fallback, for a logo carried as a placement attachment; the row's own
- *     `icon_url` is the rule. No touchpoint gets a size because of its NAME.
+ *   - **The panel draws one image: the frame.** The frame is the cell's
+ *     featured image. Nothing else leads — not a featured attachment, not a
+ *     logo row beside it. A frame that IS a placed touchpoint's registry icon
+ *     is drawn at the logo size; no touchpoint gets a size because of its NAME.
  *   - **No url is elected "the design".** A cell carrying a figma.com
  *     resource gets no hover overlay and no vendor-named link. That
  *     affordance was a regex in a renderer deciding one deployment's tool
@@ -245,30 +245,24 @@ async function open(selection: BlueprintCellSelection) {
 describe('the pictures a cell panel draws', () => {
   it('draws a stock logo at the one logo size, unframed', async () => {
     await open(
-      selectionFor({ touchpointName: 'Intake portal', iconUrl: STOCK_LOGO }),
+      selectionFor({ touchpointName: 'Intake portal', iconUrl: STOCK_LOGO, frame: STOCK_LOGO }),
     )
 
+    expect(pictures()).toHaveLength(1)
     const logo = pictureFor(STOCK_LOGO)
     expect(logo.className).toContain('size-32')
     // Not in a 4:3 frame — a logo is drawn at its own size.
     expect(logo.closest('[class*="aspect-"]')).toBeNull()
   })
 
-  /*
-    The registry row decides, not the url.
-
-    `resolveCellDetailImages` reads the placement's `icon_url`, puts it first
-    and says in its own comment that the panel draws it as the logo — then
-    returns bare strings. The panel used to re-derive the answer from the
-    filename alone, so an icon hosted off-convention was filed as a screenshot;
-    and because the screenshot branch yields to a featured preview, on a cell
-    that had one the logo did not move down the panel, it vanished.
-  */
+  // The registry row decides, not the url: an icon hosted off-convention is
+  // still drawn as the logo when it is the frame.
   it('draws the registry icon as the logo whatever its url looks like', async () => {
     await open(
       selectionFor({
         touchpointName: 'Intake portal',
         iconUrl: OFF_CONVENTION_ICON,
+        frame: OFF_CONVENTION_ICON,
       }),
     )
 
@@ -290,6 +284,40 @@ describe('the pictures a cell panel draws', () => {
       expect(picture.closest('[class*="aspect-"]'), name).toBeTruthy()
       expect(picture.className, name).not.toContain('size-32')
     }
+  })
+})
+
+describe('the panel draws one image, the frame', () => {
+  it('draws a frame that is not the logo, and no logo row beside it', async () => {
+    await open(
+      selectionFor({ touchpointName: 'Intake portal', iconUrl: STOCK_LOGO, frame: AUTHORED_FRAME }),
+    )
+    expect(pictures().map((image) => image.getAttribute('src'))).toEqual([AUTHORED_FRAME])
+  })
+
+  it('draws nothing for a cell with no frame, logo or not', async () => {
+    await open(selectionFor({ touchpointName: 'Intake portal', iconUrl: STOCK_LOGO }))
+    expect(pictures()).toHaveLength(0)
+  })
+
+  it('leads with no featured attachment and no placement screenshot', async () => {
+    await open(
+      selectionFor({
+        touchpointName: 'Intake portal',
+        frame: AUTHORED_FRAME,
+        resources: [
+          {
+            id: 'r-shot',
+            kind: 'attachment',
+            name: 'Screen',
+            url: 'https://example.supabase.co/storage/v1/object/public/cell-attachments/cells/c-1/other.png',
+            placementId: 'ct-1',
+            featured: true,
+          },
+        ],
+      }),
+    )
+    expect(pictures().map((image) => image.getAttribute('src'))).toEqual([AUTHORED_FRAME])
   })
 })
 
