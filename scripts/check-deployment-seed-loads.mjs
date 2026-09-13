@@ -59,7 +59,14 @@
  * scenario, loaded after the file that creates the service they hang off. So
  * when a `config.toml` sits beside the named seed, that list is the seed — in
  * its order, globs expanded — and the named file is only how the deployment was
- * located. Without one, the named file is the whole seed.
+ * located. With no `[db.seed]` section at all, the named file is the whole seed.
+ *
+ * A section that is there but DISABLED or EMPTY is neither of those, and is the
+ * third case this check used to collapse into the second: a deployment that has
+ * taken its seed list out of the CLI's reach on purpose. It refuses — see
+ * `SEED_LIST_IS_ELSEWHERE` — and the way to run it against such a deployment is
+ * to name the files, `--seed a.sql --seed b.sql` or `--seed a.sql,b.sql`, in
+ * load order. Named files win over everything, including that refusal.
  *
  * An entry in that list with no file behind it stops the check rather than
  * being passed over, and the text of the files is read before a database is
@@ -221,6 +228,38 @@ const RESOLVES_TO_NOTHING =
   'of the report entirely. Ship the file, or take its entry out of sql_paths.'
 
 /**
+ * Why a `[db.seed]` a deployment has emptied stops the check rather than
+ * falling back to the one file it was pointed at.
+ *
+ * A section that is `enabled = false`, or whose `sql_paths` is empty, is not a
+ * broken config and not an absent one. It is a deployment that has deliberately
+ * taken its seed list out of the CLI's reach: four `supabase` subcommands read
+ * that table and only one of them has the word "reset" in its name, so
+ * `db push --include-seed` — whose `--linked` is the default — would load a
+ * whole seed, deletes and upserts included, into a live project. A deployment
+ * that has noticed empties the table, disables it, and moves the list into a
+ * loader of its own.
+ *
+ * The list then lives in a file of that deployment's choosing, under a name
+ * this package has no business knowing. So the honest answer is that the seed
+ * cannot be resolved from here — NOT that it is the single file this check
+ * happened to be pointed at. Falling back cost exactly what
+ * `RESOLVES_TO_NOTHING` describes, at the scale of twenty-two files instead of
+ * one: the check read a twenty-third of a deployment's content, found the
+ * tables the rest fill empty, and reported that as the anon role being unable
+ * to read them — naming the wrong subsystem and prescribing a grant that was
+ * already in the recipe.
+ */
+const SEED_LIST_IS_ELSEWHERE =
+  'states a [db.seed] section that is disabled or empty, so this deployment loads its ' +
+  'seed from somewhere this check cannot read — which is a deliberate thing to do, ' +
+  'because `supabase db push --include-seed` reads that table and defaults to --linked. ' +
+  'The seed therefore cannot be resolved from the config. Name the files instead, in ' +
+  'load order: --seed <a.sql> --seed <b.sql>, or --seed <a.sql,b.sql>. Passing the one ' +
+  'file this check was pointed at would load a fraction of the seed and report every ' +
+  'table the rest fill as one the deployed key cannot see.'
+
+/**
  * One `[db.seed]` entry as an absolute path — or a failure naming what is there
  * instead.
  *
@@ -270,8 +309,9 @@ export function resolveSeedFiles(seedPath) {
   const config = join(dir, 'config.toml')
   if (!existsSync(config)) return [resolve(seedPath)]
   const section = seedSectionFromConfig(readFileSync(config, 'utf8'))
-  if (!section || !section.enabled || section.sqlPaths.length === 0) {
-    return [resolve(seedPath)]
+  if (!section) return [resolve(seedPath)]
+  if (!section.enabled || section.sqlPaths.length === 0) {
+    throw new Error(`${config}\n${SEED_LIST_IS_ELSEWHERE}`)
   }
   const list = (sub) => {
     try {
@@ -452,14 +492,52 @@ function psql(args, { stopOnError = true } = {}) {
 }
 
 /** `--seed <path>` from argv, or null. */
-export function seedFlag(argv) {
-  const at = argv.indexOf('--seed')
-  if (at === -1) return null
-  const value = argv[at + 1]
-  if (value === undefined || value.startsWith('--')) {
-    throw new Error('--seed needs a path')
+export function seedFlags(argv) {
+  const paths = []
+  for (let at = 0; at < argv.length; at += 1) {
+    if (argv[at] !== '--seed') continue
+    const value = argv[at + 1]
+    if (value === undefined || value.startsWith('--')) {
+      throw new Error('--seed needs a path')
+    }
+    // Repeated and comma-separated both, because a deployment whose seed is
+    // twenty-three files has to be able to name them without twenty-three
+    // flags, and a caller assembling the list from a loop wants the flag.
+    for (const part of value.split(',')) {
+      const path = part.trim()
+      if (path !== '') paths.push(path)
+    }
+    at += 1
   }
-  return value
+  return paths
+}
+
+/**
+ * Named seed files, absolute and in the order given — the operator's answer to
+ * the question a config with no list cannot answer.
+ *
+ * Held to the same rule as an entry in a `[db.seed]` list: every one has to be
+ * a file that is there. A name with nothing behind it is the failure
+ * `RESOLVES_TO_NOTHING` describes, and typing it by hand makes it likelier,
+ * not less.
+ */
+export function resolveNamedSeeds(paths) {
+  return paths.map((path) => {
+    const file = resolve(path)
+    let stats
+    try {
+      stats = statSync(file)
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+      throw new Error(`--seed names ${file}, and it is not there.\n${RESOLVES_TO_NOTHING}`, {
+        cause: error,
+      })
+    }
+    if (!stats.isFile()) {
+      throw new Error(`--seed names ${file}, and it is not a file.\n${RESOLVES_TO_NOTHING}`)
+    }
+    return file
+  })
 }
 
 function skip(reason) {
@@ -483,25 +561,52 @@ function skip(reason) {
 }
 
 function main(argv = process.argv.slice(2)) {
-  const named = seedFlag(argv) ?? process.env.DEPLOYMENT_SEED ?? null
+  const fromEnv = process.env.DEPLOYMENT_SEED
+    ? process.env.DEPLOYMENT_SEED.split(',').map((part) => part.trim()).filter(Boolean)
+    : []
+  const named = [...seedFlags(argv), ...fromEnv]
   let seedPath
-  if (named) {
-    seedPath = resolve(named)
-    if (!existsSync(seedPath)) {
-      console.error(`no seed at ${seedPath}`)
-      process.exitCode = 1
-      return
-    }
-  } else {
-    const chosen = chooseDeployment(siblingCandidates(ROOT), packageName(ROOT))
-    if (chosen.skip) {
-      skip(chosen.skip)
-      return
-    }
-    seedPath = join(chosen.dir, 'supabase', 'seed.sql')
+  let files
+  // Every way of resolving the seed refuses by throwing, and each of those
+  // refusals is written for the person who ran the command. A stack trace
+  // buries the sentence that tells them what to pass — so the message is the
+  // output, and the exit code carries the failure.
+  const refuse = (error) => {
+    console.error(error.message)
+    process.exitCode = 1
   }
-
-  const files = resolveSeedFiles(seedPath)
+  if (named.length > 1) {
+    // Several files named outright: the operator has answered what the config
+    // could not, so nothing else is consulted. This is the ONLY way to run the
+    // check against a deployment that loads its seed from its own loader.
+    try {
+      files = resolveNamedSeeds(named)
+    } catch (error) {
+      return refuse(error)
+    }
+    seedPath = files[0]
+  } else {
+    if (named.length === 1) {
+      seedPath = resolve(named[0])
+      if (!existsSync(seedPath)) {
+        console.error(`no seed at ${seedPath}`)
+        process.exitCode = 1
+        return
+      }
+    } else {
+      const chosen = chooseDeployment(siblingCandidates(ROOT), packageName(ROOT))
+      if (chosen.skip) {
+        skip(chosen.skip)
+        return
+      }
+      seedPath = join(chosen.dir, 'supabase', 'seed.sql')
+    }
+    try {
+      files = resolveSeedFiles(seedPath)
+    } catch (error) {
+      return refuse(error)
+    }
+  }
   if (files.length === 0) {
     console.error(`the seed at ${seedPath} resolves to no files`)
     process.exitCode = 1
