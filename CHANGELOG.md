@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.44.8
+
+**The service, phase and scenario bars above the canvas hold their name and
+summary inside the bar.**
+
+The bar was 36px tall and the two-line block inside it 42px, so the summary sat
+on the bar's bottom border and over the canvas. It showed most on a deployment
+with a long service summary; the bundled sample's short summaries hid it.
+
+- **Height.** The bar is now 52px, with the same room above and below the two
+  lines. The space is still held before the summary loads, so nothing jumps.
+  The canvas, and the cell detail panel's top edge, start 16px lower.
+- **Truncation.** A long summary stops at the edge of its column with an
+  ellipsis instead of running under the controls on the right and off the
+  screen; hovering it shows the full text. A long name keeps to one line the
+  same way.
+- **Alignment.** The name starts on the same left edge as the summary under
+  it, and the loading placeholder lines up with both. The highlight behind the
+  name on hover is unchanged.
+
+**Upgrading a deployment:** nothing to do beyond taking the release. No
+migration, no configuration. A deployment that styles its own chrome against a
+36px bar should re-check it against 52px.
+
 ## 1.44.7
 
 **A cell's featured image is its frame, and a person can choose it.**
@@ -6234,8 +6258,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
