@@ -2,9 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { SCOPE_ALL } from '@/lib/agent/tools/serviceScope'
 import type { AgentSearchIndex } from '@/deploymentConfig'
-import { runTool, type ToolContext } from '@/lib/agent/tools/definition'
+import { runTool, type ToolContext, type ToolDefinition } from '@/lib/agent/tools/definition'
 import { TOOL_DEFINITIONS, findToolDefinition } from '@/lib/agent/tools/definitions'
 import { liveSession, liveUi } from '@/lib/agent/tools/liveContext'
+import { sessionRoster } from '@/lib/agent/tools/roster'
 
 type Client = SupabaseClient<Database>
 
@@ -31,6 +32,12 @@ export type DispatchContext = {
    * on somebody else's network, not just the gap between calls.
    */
   signal?: AbortSignal
+  /**
+   * The roster this session was offered, so a served document lists exactly
+   * it. The loop hands its own down; a caller with no session — a test, a
+   * script — gets the whole roster for the mode the client implies.
+   */
+  roster?: readonly ToolDefinition[]
 }
 
 /**
@@ -49,6 +56,14 @@ function toolContext(
     scope: SCOPE_ALL,
     session: liveSession(agentSessionId),
     ui: liveUi,
+    roster:
+      context.roster ??
+      sessionRoster({
+        sampleTrial: client === null,
+        mobileReading: false,
+        allowWrites: true,
+        searchOffered: true,
+      }),
     meaning: context.meaning ?? null,
     signal: context.signal,
   }

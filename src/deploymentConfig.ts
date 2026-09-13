@@ -43,14 +43,14 @@
  * the wordmark's second fallback — so a deployment that names its cover has
  * named its workspace. `storyboard.embeddedBorderPaths` is written onto the
  * walkthrough module in that same layout effect, beside the pins and the
- * budget. `brand.logo`, `content.coverTitle` and the whole `agent` block are
- * declared shape with no reader: the workspace breadcrumb still takes
- * `ORG_NAME` directly, and `content.coverTitle` is the narrower restatement of
- * a heading `cover` already carries. They migrate onto this type in later
- * slices; until then setting them changes nothing.
+ * budget. `brand.logo` and `content.coverTitle` are declared shape with no
+ * reader: the workspace breadcrumb still takes `ORG_NAME` directly, and
+ * `content.coverTitle` is the narrower restatement of a heading `cover`
+ * already carries. They migrate onto this type in later slices; until then
+ * setting them changes nothing. The `agent` block is read in full — see its
+ * own comment below.
  *
- * NOT FIELDS HERE, AND DELIBERATELY: the localStorage namespace, and the
- * agent's extra reference documents. A config is
+ * NOT A FIELD HERE, AND DELIBERATELY: the localStorage namespace. A config is
  * read when `App` RENDERS, and the namespace is settled long before that —
  * six modules build their storage key while the import graph evaluates, and
  * two of them read localStorage there to seed a store snapshot. A field whose
@@ -60,20 +60,16 @@
  * this package, and `lib/storageNamespace.ts` carries the reasoning and the
  * guard that makes a late call throw.
  *
- * The reference documents fail the same test for the same reason. The record
- * the agent serves, the vocabulary that names it, and the `get_reference` tool
- * description that quotes that vocabulary to the model are all built while
- * `referenceDocs.ts`, `referenceNames.ts` and `specs.ts` evaluate. A document
- * handed over at render time would be served by a tool that never mentions it.
- * So a deployment registers its own with `registerReferenceDocs`, from the
- * same pre-import module — `lib/agent/tools/referenceRegistry.ts` carries that
- * reasoning, and `bootstrap.ts` is the entry point both are reached through.
+ * The agent's reference documents used to fail the same test, because the
+ * tool description that names them was built while the spec table evaluated.
+ * It is built when a roster is assembled now, so they are a field
+ * (`agent.references`) read when a document is served, and the pre-import
+ * call and its ordering rule are gone.
  *
- * Timing is the whole of the argument in both cases: it is not that these
- * values are unimportant, it is that a render-time seam cannot carry an
- * import-time value. Nothing is lost by their being calls — they are typed,
- * they are reviewable at the one place the two repos meet, and getting them
- * wrong throws.
+ * Timing is the whole of the argument: it is not that the namespace is more
+ * important, it is that a render-time seam cannot carry an import-time
+ * value. Nothing is lost by its being a call — it is typed, reviewable at the
+ * one place the two repos meet, and getting it wrong throws.
  *
  * NOT A GAP, THOUGH IT LOOKED LIKE ONE: the provider tree. `App` renders a
  * fixed one, and a config object cannot express a provider tree, so the
@@ -214,15 +210,23 @@ export type DeploymentConfig = {
    * search exists at all are set by the deployment, not hardcoded, the same
    * way brand and content are.
    *
-   * `search` and `enabledTools` ARE READ: the second is an allowlist of
-   * tool names the session roster is filtered by (absent means every tool —
-   * see `lib/agent/tools/roster.ts`). `doctrine` is still declared shape
-   * with no reader: a later slice wires it into the agent's prompt assembly.
-   * Present and unused, on purpose.
+   * Every field is read. `enabledTools` is an allowlist of tool names the
+   * session roster is filtered by (absent means every tool —
+   * `lib/agent/tools/roster.ts`); `references` are laid over the template's
+   * when a document is served (`lib/agent/tools/references.ts`); `doctrine`
+   * joins the system prompt after the canvas adapter (`lib/agent/doctrine.ts`).
    */
   agent?: {
     doctrine?: string
     enabledTools?: string[]
+    /**
+     * Reference documents of the deployment's own, by the bare name
+     * `get_reference` serves them under. A name the template already serves
+     * replaces that document; a new name is an additional reference, listed
+     * right after the canvas adapter. The host holds the `?raw` imports and
+     * hands strings.
+     */
+    references?: Record<string, string>
     search?: AgentSearchConfig
   }
   /**
@@ -360,6 +364,7 @@ export type ResolvedDeploymentConfig = {
   agent?: {
     doctrine?: string
     enabledTools?: string[]
+    references?: Record<string, string>
     /**
      * Settled when the deployment names a search section, absent when it does
      * not — the same sparseness as its two neighbours. An absent section is

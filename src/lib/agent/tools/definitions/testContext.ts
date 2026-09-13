@@ -1,5 +1,6 @@
 import type { ToolContext, ToolUi } from '@/lib/agent/tools/definition'
 import { SCOPE_ALL } from '@/lib/agent/tools/serviceScope'
+import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 
 /**
  * A context a test builds by hand. Every field has an inert default, so a
@@ -47,6 +48,7 @@ export function fakeToolContext(overrides: Partial<ToolContext> = {}): ToolConte
     scope: SCOPE_ALL,
     session: { id: 'test-session', attributed: (work) => work() },
     ui: recordingUi().ui,
+    roster: TOOL_DEFINITIONS,
     meaning: null,
     ...overrides,
   }

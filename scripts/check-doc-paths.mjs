@@ -7,7 +7,7 @@
  * of those documents writes `` `src/styles/tokens.css` `` the agent does not
  * treat it as illustration — it opens the file, and a rename three months ago
  * turns a routing instruction into a dead end the agent has to recover from
- * mid-run. Same class as check-write-surface / check-read-surface, one level
+ * mid-run. Same class as check-dependency-kinds, one level
  * out: a document asserting an interface the tree does not have.
  *
  *   node scripts/check-doc-paths.mjs
@@ -84,7 +84,7 @@
  * the asterisk down, which left the three documents naming the real file
  * failing against an exemption written for them.
  *
- * BOTH LISTS FAIL CLOSED, the way check-read-surface's NOT_TOOLS does: a file
+ * BOTH LISTS FAIL CLOSED, the way the references test's NOT_TOOLS does: a file
  * that legitimately cannot exist here is a one-line admission with a reason,
  * not a hole the next stale path slips through. And an entry in either that
  * matches nothing any more is itself a failure, for the reason every list of

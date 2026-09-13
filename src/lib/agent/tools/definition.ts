@@ -88,6 +88,11 @@ export type ToolContext = {
   scope: ServiceScope
   session: ToolSession
   ui: ToolUi
+  /**
+   * The roster this call was offered from: what the canvas adapter lists
+   * when it is served, so the agent reads exactly the tools it can call.
+   */
+  roster: readonly ToolDefinition[]
   /** Ranked search: the index this person's key can embed against, or null. */
   meaning?: { index: AgentSearchIndex; apiKey: string } | null
   /** The run's abort signal, so Stop reaches a call waiting on a network. */
@@ -96,7 +101,13 @@ export type ToolContext = {
 
 export type ToolDefinition<Args extends z.ZodObject = z.ZodObject> = {
   name: string
-  description: string
+  /**
+   * What the model reads. A function when the words depend on the
+   * deployment — `get_reference` names the documents it serves — resolved
+   * whenever a spec is derived: per round in a live session, and once, with
+   * the template's own words, in the spec table's import-time projection.
+   */
+  description: string | (() => string)
   surface: ToolSurface
   args: Args
   availability: ToolAvailability
@@ -194,7 +205,10 @@ export function toolSpec(definition: ToolDefinition): ToolSpec {
   } = z.toJSONSchema(definition.args, { io: 'input' }) as Record<string, unknown>
   return {
     name: definition.name,
-    description: definition.description,
+    description:
+      typeof definition.description === 'function'
+        ? definition.description()
+        : definition.description,
     parameters,
   }
 }

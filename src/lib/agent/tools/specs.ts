@@ -49,6 +49,8 @@ import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 /**
  * The spec the model receives for every tool, derived from the definitions
  * in the order they are offered. Nothing is declared here: a tool's schema
- * is its zod `args`, and this table is a projection of it.
+ * is its zod `args`, and this table is a projection of it — taken when this
+ * module evaluates, so with the template's own words where a description
+ * depends on the deployment. A live session projects its roster per round.
  */
 export const TOOL_SPECS: ToolSpec[] = TOOL_DEFINITIONS.map(toolSpec)

@@ -7,6 +7,13 @@
  */
 export { TOOL_SPECS } from '@/lib/agent/tools/specs'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
+export { TOOL_DEFINITIONS }
+/**
+ * The adapter's surface rows are rendered from a roster when the app serves
+ * the document; the harness renders them the same way against the roster
+ * each case offers.
+ */
+export { renderCanvasAdapter } from '@/lib/agent/tools/references'
 /**
  * The two rosters the harness gates on, derived here from the definitions
  * the way the app's roster derives them: a write is a tool on the write

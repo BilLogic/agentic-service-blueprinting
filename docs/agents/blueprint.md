@@ -14,10 +14,10 @@ shows a reader, and from the table and column comments in the database — and
 does not.
 
 With no database connected, the generated sections stay empty and this
-document is not registered as an agent reference. A deployment that has a
-database runs `npm run agent-account` and then registers the result through
-`registerReferenceDocs` or `REFERENCE_NAMES_EXTRA`. The template's reference
-loader never imports this file by path.
+document is not served as an agent reference. A deployment that has a
+database runs `npm run agent-account` and then supplies the result as
+`agent.references.blueprint` on its deployment config. The template's
+reference loader never imports this file by path.
 
 ## What it is
 

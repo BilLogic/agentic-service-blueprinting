@@ -28,8 +28,6 @@ import {
 } from '@/lib/deletionSafety'
 import { agentSessionsSnapshot } from '@/lib/agent/sessions'
 import { loadPersistedEvents } from '@/lib/agent/persistence'
-import { REFERENCE_DOCS } from '@/lib/agent/tools/referenceDocs'
-import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 import {
   SCOPE_ALL,
   serviceStakeholderIds,
@@ -52,41 +50,6 @@ const UUID =
  * way a person skims a grid, and ids ride along in parentheses so every
  * later write can name its target precisely.
  */
-
-/**
- * The same reference files the IDE skills read from disk, served as a tool.
- * One progressive-disclosure mechanism, two consumers.
- *
- * WHERE those files come from is a DECLARED FORK SEAM: `referenceDocs.ts`
- * is the only module that names their paths, because a vendored tree and an
- * installed package can never spell the same specifier. Read its header
- * before adding, moving or overriding a document — this file deliberately
- * knows nothing about any of that, and that ignorance is what lets it be
- * shared verbatim.
- *
- * The names live in `referenceNames.ts` (a leaf module, so specs.ts can
- * quote them without the seam's `?raw` import graph). `referenceDocs.ts`
- * holds the documents themselves; the init-time check below keeps the two in
- * lockstep. It is the fastest failure for a reference added on one side and
- * not the other — the throw happens at module init, before any test that
- * touches the tools can get further.
- */
-{
-  const here = Object.keys(REFERENCE_DOCS).sort().join(',')
-  const published = [...REFERENCE_NAMES].sort().join(',')
-  if (here !== published)
-    throw new Error(
-      'REFERENCE_DOCS (referenceDocs.ts) and REFERENCE_NAMES (referenceNames.ts) drifted — add the reference to both.',
-    )
-}
-
-export function readReference(name: string): string {
-  const doc = REFERENCE_DOCS[name]
-  if (doc) return doc
-  return `Unknown reference "${name}". Available: ${REFERENCE_NAMES.join(', ')}`
-}
-
-export { REFERENCE_NAMES }
 
 /**
  * How many rows one PostgREST request asks for. The server answers at most its
@@ -274,10 +237,6 @@ export async function listBlueprint(
   const request = listBlueprintRequest(options)
   const tree = await readJourneyTree(client, request.levels, options.scope ?? SCOPE_ALL)
   return formatBlueprintList(tree, request)
-}
-
-export function listReferences(): string {
-  return REFERENCE_NAMES.map((name) => `- ${name}`).join('\n')
 }
 
 /**

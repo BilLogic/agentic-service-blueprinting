@@ -474,9 +474,9 @@ With no database configured (missing `VITE_SUPABASE_*`, or still the
 example placeholders) both commands print a skip and exit 0. Nothing is
 generated and nothing is registered — the agent's reference list is this
 template's own. A deployment that has a database runs the generator, then
-registers the document through `registerReferenceDocs` or
-`REFERENCE_NAMES_EXTRA` (see `references/customization.md`). The template's
-reference loader never imports that file by path.
+supplies the document as `agent.references.blueprint` on its deployment
+config (see `references/customization.md`). The template's reference loader
+never imports that file by path.
 
 ## Ranked search (`search_blueprint`), which this schema does not ship
 

@@ -127,7 +127,8 @@ async function rest(pathAndQuery) {
 // ---------------------------------------------------------------------------
 // One-sourced app surface: surface.mjs bundles specs + fixture from src.
 // ---------------------------------------------------------------------------
-const { TOOL_SPECS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES } = surface
+const { TOOL_SPECS, TOOL_DEFINITIONS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES, renderCanvasAdapter } =
+  surface
 
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
@@ -142,11 +143,24 @@ const REFERENCES_DIR = appFile(ROOT, 'src/lib/agent/skill/references')
 const SKILLS_DIR = appFile(ROOT, 'src/lib/agent/skill/skills')
 const adapterDoc = readFileSync(resolve(REFERENCES_DIR, 'canvas-adapter.md'), 'utf8')
 
-function buildSystem(skillId, contextNote) {
+/**
+ * The adapter's two surface rows are placeholders in the file and are
+ * rendered from the roster a session is offered — here, the specs a case
+ * offers, mapped back to their definitions.
+ */
+function adapterFor(offered) {
+  const names = new Set(offered.map((spec) => spec.name))
+  return renderCanvasAdapter(
+    adapterDoc,
+    TOOL_DEFINITIONS.filter((tool) => names.has(tool.name)),
+  )
+}
+
+function buildSystem(skillId, contextNote, offered) {
   const parts = [
     ROLE,
     '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
-    adapterDoc,
+    adapterFor(offered),
   ]
   if (skillId) {
     const content = readFileSync(resolve(SKILLS_DIR, `${skillId}.md`), 'utf8')
@@ -860,7 +874,7 @@ async function runCaseLLM(caseDef) {
   // The tier / mobile injections are the app's, verbatim (loop.ts). The
   // mobile paragraph subsumes the tier one, so only one may speak.
   const system =
-    buildSystem(caseDef.skill, caseDef.contextNote) +
+    buildSystem(caseDef.skill, caseDef.contextNote, offered) +
     (caseDef.allowWrites !== false || caseDef.mobile
       ? ''
       : '\n\n--- session tier ---\nThis session is VIEW-ONLY (not a service account): you have no write tools. Navigate, read, and answer with citations; when the user wants an edit, describe the exact change for a service account to make — never imply you made it.') +

@@ -6,8 +6,8 @@
  * and lost both, because no one word was true of all four. What replaced the
  * noun is an OWNER per record, and that claim is not a preference: a table's
  * owner is whoever may CHANGE it, and the set of things that may change it is
- * the write surface — read here through `check-write-surface.mjs`'s own
- * `declaredWriteTools` rather than a second parser of the definitions.
+ * the write surface — read here through `tool-sources.mjs`'s own
+ * `toolsOnSurface` rather than a second parser of the definitions.
  *
  * Three rules:
  *
@@ -21,9 +21,8 @@
  *
  * The SUBJECT of rule 2 is the tool NAME, deliberately: a tool called
  * `refresh_board` that happened to write `slices` would pass. The name is what
- * a reader of the roster has, what a table actually writes is
- * `check:write-surface`'s subject, and reimplementing that scan here would be a
- * second reader to drift from the first.
+ * a reader of the roster has, and what a table actually writes is the
+ * mutation modules' business.
  *
  * Rule 2 has already done its one job. `evidence` claimed NO tools and was
  * owned by "nobody" — true of the roster, not a position — until
@@ -39,8 +38,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { declaredWriteTools } from '../check-write-surface.mjs'
-import { toolSources } from '../tool-sources.mjs'
+import { toolSources, toolsOnSurface } from '../tool-sources.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -183,12 +181,12 @@ test('a write tool that names no record is not this file’s business', () => {
  *
  * A deployment has no `src` — it reads the application out of
  * `node_modules/agentic-service-blueprinting` — and `readAppFile` refuses a tree
- * that has it in neither place. That refusal is the point: `declaredWriteTools`
+ * that has it in neither place. That refusal is the point: `toolSurfaces`
  * throws on a source with no definitions in it, but an EMPTY roster would
  * have satisfied both rules below, because a table can credit no unreal tool and
  * orphan no write when there are no writes to orphan.
  */
-const ROSTER = declaredWriteTools(toolSources(ROOT))
+const ROSTER = toolsOnSurface(toolSources(ROOT), 'write')
 
 test('every tool the ownership table credits is one the agent has', () => {
   const unreal = creditedButUnreal(RECORD_OWNERS, ROSTER)

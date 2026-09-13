@@ -17,6 +17,8 @@ import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configureAgentSearch } from '@/lib/agent/searchPlan'
 import { configureAgentTools } from '@/lib/agent/tools/roster'
+import { configureAgentReferences } from '@/lib/agent/tools/references'
+import { configureAgentDoctrine } from '@/lib/agent/doctrine'
 import { configurePathColorPins } from '@/lib/pathColorTheme'
 import { configureStoryboardBorders } from '@/lib/storyboardWalkthrough'
 
@@ -126,6 +128,20 @@ export function DeploymentConfigProvider({
   useEffect(() => {
     configureAgentTools(agentEnabledTools)
   }, [agentEnabledTools])
+
+  /**
+   * The deployment's reference documents and doctrine onto the modules that
+   * serve them — read when a document is served or a prompt is built, so
+   * ordinary effects. Absent is the template's own rulebook and prompt.
+   */
+  const agentReferences = resolved.agent?.references
+  useEffect(() => {
+    configureAgentReferences(agentReferences)
+  }, [agentReferences])
+  const agentDoctrine = resolved.agent?.doctrine
+  useEffect(() => {
+    configureAgentDoctrine(agentDoctrine)
+  }, [agentDoctrine])
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>
