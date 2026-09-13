@@ -2,32 +2,34 @@
 
 ## 1.44.5
 
-### Patch Changes
+**The presentation page lays each slide out in one left-aligned column, and
+every image frame on a slide is the same size.**
 
-- 21446e7: **The presentation page lays each slide out in one left-aligned column, and
-  every image frame on a slide is the same size.**
+A slide with several images used to shrink each picture to a percentage of its
+own button, so a 300px source rendered at about 80px and no two pictures
+matched. Now the column reads, top to bottom: the slide counter, the title, the
+caption, the images, and an `N cells` button.
 
-  A slide with several images used to shrink each picture to a percentage of
-  its own button, so a 300px source rendered at about 80px and no two pictures
-  matched. Now the column reads, top to bottom: the slide counter, the title,
-  the caption, the images, and an `N cells` button.
+- **Images** sit in even 4:3 frames with the picture fitted inside, so a
+  picture's dimensions can no longer change its frame's size. One image takes
+  two-thirds of the column; two, three and four share a row; more than four
+  wrap in quarters. A picture is never drawn above twice its natural size.
+  Clicking a frame still enlarges it. With up to four images a short window
+  shrinks the frames before the title and caption are pushed off; five or more
+  wrap to a second row that can run past a short stage, and no slide in the
+  deployment this was measured against has more than three.
+- **Cells**: the row of pills at the bottom of the stage is gone. The `N cells`
+  button opens a list of the slide's cells, including cells with no image; each
+  row opens that cell in the slice exactly as a pill did.
+- **Type**: one job per style. The counter stays mono and drops its uppercase,
+  reading `Slide 1 of 3` at the filmstrip squares' size. A slide with no images
+  now uses the same title and caption sizes as one with images.
+- **Filmstrip** starts on the column's left edge instead of centring itself.
 
-  - **Images** sit in even 4:3 frames with the picture fitted inside. One image
-    takes two-thirds of the column; two, three and four share a row; more than
-    four wrap in quarters. A picture is never drawn above twice its natural
-    size, and on a short window the frames shrink before the title and caption
-    are pushed off. Clicking a frame still enlarges it.
-  - **Cells**: the row of pills at the bottom of the stage is gone. The `N cells`
-    button opens a list of the slide's cells, including cells with no image;
-    each row opens that cell in the slice exactly as a pill did.
-  - **Type**: the counter reads `Slide 1 of 3` in sentence case. A slide with no
-    images now uses the same title and caption sizes as one with images.
-  - **Filmstrip** starts on the column's left edge instead of centring itself.
+The header band, the prev/next arrows and the mini-map are unchanged.
 
-  The header band, the prev/next arrows and the mini-map are unchanged.
-
-  **Upgrading a deployment:** nothing to do. No data, schema or stored slide
-  changes; this is the presentation page's layout only.
+**Upgrading a deployment:** nothing to do. No data, schema or stored slide
+changes; this is the presentation page's layout only.
 
 ## 1.44.4
 
