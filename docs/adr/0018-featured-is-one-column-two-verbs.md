@@ -1,12 +1,18 @@
 ---
-summary: A resource's featured flag is one boolean whose meaning depends on the resource's kind — a featured attachment is the owner's preview, a featured link is one of its buttons — rather than two columns or a role enum, because the two verbs are what a reader sees and the one column is what an author decides.
+summary: A featured link is one of its owner's buttons, held by one boolean rather than a role enum. The other half — a featured attachment as the owner's preview — is superseded: a cell's featured image is its frame.
 ---
 
 # 18. Featured is one column, two verbs
 
 **Status** Accepted — 2026-09-02. Moved into this repository from
 BilLogic/plus-uno-blueprint ADR 0011 on 2026-09-10 (#551); the number
-here is this repository's.
+here is this repository's. **Partly superseded — 2026-09-13 (#713).** The
+link half stands: a featured link is one of its owner's buttons. The
+attachment half does not: a cell's picture is no longer a featured
+attachment but its **featured image**, which is `cells.frame` (see
+"Featured image" in [CONTEXT.md](../../CONTEXT.md)). The panel says "Set as
+featured image" over a picture, and nothing says "Set as preview" any more.
+The record below is kept as it was decided.
 **Context** `src/lib/resourcePresentation.ts`,
 BilLogic/plus-uno-blueprint#271,
 BilLogic/plus-uno-blueprint#273,
@@ -24,8 +30,8 @@ row, `featured`, and read through the resource's `kind`:
 - a featured **link** is one of the owner's **buttons**, named by its host:
   any number.
 
-The panel says "Set as preview" over an attachment and "Set as button" over a
-link (BilLogic/plus-uno-blueprint#273); the column underneath says
+When this was decided, the panel said "Set as preview" over an attachment and
+"Set as button" over a link (BilLogic/plus-uno-blueprint#273); the column underneath says
 `featured = true` for both.
 
 ## Why one column and not two, or an enum
@@ -48,6 +54,9 @@ means "unset" is the same write whichever verb it undoes, the inverse is
 and a resource carries everything about itself.
 
 ## Consequences
+
+The first two consequences below describe the attachment half, and are
+historical since the supersession above; the third still holds for links.
 
 - The "one preview per owner" rule is a partial unique index over
   `(cell_touchpoint_id) where featured and kind = 'attachment'` and its
