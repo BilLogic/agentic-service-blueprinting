@@ -1,5 +1,61 @@
 # Changelog
 
+## 1.44.4
+
+**`check:deployment-seed-load` read one file of a many-file seed and blamed the
+shortfall on grants.** Run against a real deployment it reported two tables
+empty to `anon` and both render reads returning nothing, and prescribed a
+migration granting a permission the recipe already grants. What had actually
+happened is that it loaded **1 of that deployment's 23 seed files**. The tables
+really were empty. The diagnosis named the wrong subsystem entirely.
+
+One line resolved three situations as though they were two. A deployment states
+its seed in `config.toml` under `[db.seed]`; when that section was absent,
+disabled, **or** empty, the check fell back to the single file it had been
+pointed at. Absent is a genuine fallback — one seed file, the CLI's own default.
+Disabled-or-empty is not. It is a deployment that has deliberately taken its
+seed list out of the CLI's reach, because four `supabase` subcommands read that
+table and only one of them has the word "reset" in its name: `db push
+--include-seed`, whose `--linked` is the default and which is otherwise the
+ordinary way to ship migrations, would load a whole seed — deletes and upserts
+included — into a live project. A deployment that has noticed empties the table,
+disables it, and moves the list into a loader of its own, under a name this
+package has no business knowing.
+
+So the measure a deployment takes to protect its production database was the
+thing that made this check read a twenty-third of its content.
+
+It refuses now, and the refusal names what to pass instead. `--seed` takes
+several paths — repeated, or comma-separated — and when files are named they
+are the seed, in that order, with nothing else consulted, including the
+refusal. The case that worked is untouched: no `[db.seed]` section still means
+the named file is the whole seed, and that case is asserted beside the broken
+one, because a distinction can be drawn too far. Every refusal here prints its
+message and exits 1 rather than throwing a stack trace over the sentence that
+says what to do — which also improves the older refusal, for an entry with no
+file behind it.
+
+The script already held the doctrine that names this failure. Its own
+`RESOLVES_TO_NOTHING` explains why a single unresolved entry must stop the
+check: a seed loads in dependency order, so the file that never ran is the one
+line that would explain the pile of foreign-key failures it caused, and
+dropping it quietly leaves that line out of the report altogether. The same
+thing was happening twenty-two files at a time, in the one branch that had no
+such guard.
+
+Verified in both directions against the deployment that exposed it. Pointed at
+its `supabase/seed.sql` it refuses. Given its loader's twenty-three files in
+load order it passes — and that result is worth stating on its own, because it
+is the question this check exists to ask: **the portable core accepts a real
+deployment's seed and renders it to `anon`**, eleven tables populated, both
+render reads returning rows.
+
+**Upgrading a deployment:** if your `[db.seed]` is disabled or empty and you run
+this check, it will now refuse where it used to answer — and the answer it used
+to give was wrong. Pass your loader's list, in load order: `--seed a.sql,b.sql`,
+or the flag repeated. If your `[db.seed]` is a real list, or you have no such
+section, nothing changes.
+
 ## 1.44.3
 
 **Two sweeps stopped where their fence stopped rather than where their argument
@@ -6087,8 +6143,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
