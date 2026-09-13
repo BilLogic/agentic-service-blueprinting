@@ -77,6 +77,13 @@ export type CellFieldDescriptor<K extends CellFieldKey = CellFieldKey> = {
    */
   agentArg?: K
   /**
+   * The sentence the agent reads for that argument, where it needs more
+   * than the panel's hint says — how to fill it, what to look up first.
+   * Absent, the argument carries the hint itself: one sentence about the
+   * field, read by a person above the control and by a model in the schema.
+   */
+  agentHint?: string
+  /**
    * `canvas` where the canvas length budget applies to the text — the rung
    * is per lane, decided by `cellBudgetKindForLane`, and this only says the
    * guidance is read for the field at all.
@@ -138,6 +145,8 @@ export const CELL_FIELDS = [
     group: 'structure',
     writeRoute: 'rpc',
     required: true,
+    agentArg: 'lane_id',
+    agentHint: 'Lane id from get_blueprint',
   },
   {
     key: 'step_id',
@@ -146,6 +155,8 @@ export const CELL_FIELDS = [
     group: 'structure',
     writeRoute: 'rpc',
     required: true,
+    agentArg: 'step_id',
+    agentHint: 'Step id (from get_blueprint)',
   },
   {
     key: 'position',
@@ -167,6 +178,8 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: true,
     agentArg: 'content',
+    agentHint:
+      'The cell text — a journey moment, not a system capability. Aim for the canvas budget: the canvas reads at a glance and shows what fits, so put detail in the summary. Longer text is written in full and comes back with a note naming the thresholds. Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".',
     budget: 'canvas',
     editor: { control: 'input' },
   },
@@ -186,6 +199,7 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: false,
     agentArg: 'summary',
+    agentHint: 'The tl;dr — never a copy of the text',
     editor: { control: 'textarea', rows: 3 },
   },
   {
@@ -229,6 +243,7 @@ export const CELL_FIELDS = [
     writeRoute: 'spec',
     required: false,
     agentArg: 'value_props',
+    agentHint: 'Full replacement list of {for, value} — who gets what from it',
     // The column is jsonb; the cell type names the shape the panel renders.
     // Absent rather than empty, so "unset" and "set to nothing" stay apart.
     normalize: (value) => (value ?? undefined) as BlueprintCell['value_props'],
@@ -244,6 +259,7 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: false,
     agentArg: 'owner',
+    agentHint: 'Owner tag — the team accountable (an existing tag; see list_owner_tags)',
     editor: { control: 'ownerTag', row: 'owners' },
   },
   {
@@ -254,6 +270,7 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: false,
     agentArg: 'perceived_owner',
+    agentHint: 'Perceived-owner tag — who the person on the other side thinks they are dealing with (an existing tag; see list_owner_tags)',
     editor: { control: 'ownerTag', row: 'owners' },
   },
 ] as const satisfies readonly AnyCellField[]

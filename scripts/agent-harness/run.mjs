@@ -136,8 +136,21 @@ const {
   MOBILE_SHELL_REFUSAL,
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
+  AGENT_CELL_FIELDS,
   renderCanvasAdapter,
 } = surface
+
+/**
+ * The cell columns the harness's `get_cell` returns: the id and the fields
+ * the agent may edit, from the list `update_cell` builds its arguments from.
+ * The app's own `get_cell` also returns the slot and the resources; the
+ * harness reads what its cases judge, which is the writable half.
+ */
+const CELL_COLUMNS = ['id', ...AGENT_CELL_FIELDS.map((field) => field.key)]
+/** The owner-tag columns, from the same list: the fields the panel edits as tags. */
+const OWNER_TAG_COLUMNS = AGENT_CELL_FIELDS.filter((field) => field.editor.control === 'ownerTag').map(
+  (field) => field.key,
+)
 
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
@@ -311,19 +324,16 @@ async function realGetBlueprint(scenarioId) {
 }
 
 async function realGetCell(cellId) {
-  const data = await rest(
-    `cells?select=id,content,summary,owner,perceived_owner,function,form,value_props&id=eq.${encodeURIComponent(cellId)}`,
-  )
+  const data = await rest(`cells?select=${CELL_COLUMNS.join(',')}&id=eq.${encodeURIComponent(cellId)}`)
   if (!data?.[0]) throw new Error(`No cell with id ${cellId}.`)
   return JSON.stringify(data[0], null, 1)
 }
 
 async function realListOwnerTags() {
-  const data = await rest('cells?select=owner,perceived_owner')
+  const data = await rest(`cells?select=${OWNER_TAG_COLUMNS.join(',')}`)
   const tags = new Set()
   for (const row of data ?? []) {
-    if (row.owner) tags.add(row.owner)
-    if (row.perceived_owner) tags.add(row.perceived_owner)
+    for (const column of OWNER_TAG_COLUMNS) if (row[column]) tags.add(row[column])
   }
   return tags.size ? [...tags].sort().join(', ') : 'No owner tags in use yet.'
 }
