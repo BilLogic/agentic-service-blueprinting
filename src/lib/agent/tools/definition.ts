@@ -31,6 +31,11 @@ export type ToolSurface = 'read' | 'interface' | 'write'
  * Where a tool may run. `sample`: the no-database trial, where `ctx.client`
  * is null and a read answers from the bundled sample. `mobile`: the mobile
  * shell, which is view-only for every tier.
+ *
+ * Stated here AND, until the roster derives from definitions, in the name
+ * sets the spec table still keeps — as `surface` is. A test holds each
+ * definition equal to the sets, so neither statement can drift while both
+ * exist; the sets go when the roster reads the definitions.
  */
 export type ToolAvailability = {
   sample: boolean
@@ -92,17 +97,38 @@ export function defineTool<Args extends z.ZodObject>(
 }
 
 /**
+ * The argument shapes the tools share, so the rule each one encodes is
+ * written once. `text` is what the dispatcher's `need()` enforced by hand: a
+ * required string, and an empty one refused rather than looked up — the
+ * schema says so, as `minLength`. `optionalText` is its `s()`: a blank reads
+ * as absent. That one stays out of the schema, because it is a courtesy to
+ * the caller and not a rule for the model to learn.
+ */
+export const arg = {
+  text: (description: string) => z.string().min(1).describe(description),
+  optionalText: (description: string) =>
+    z
+      .string()
+      .describe(description)
+      .optional()
+      .transform((value) => (value && value.trim() !== '' ? value : undefined)),
+  strings: (description: string) => z.array(z.string()).describe(description),
+  number: (description: string) => z.number().describe(description),
+}
+
+/**
  * The spec the model receives, derived from the definition. Plain JSON
- * Schema: no `$schema`, and no `additionalProperties` at the root — the
- * provider adapters expect the object shape and nothing else, and one of
- * them strips both anyway.
+ * Schema of the INPUT side — what a caller sends, before any transform — with
+ * no `$schema` and no `additionalProperties` at the root: the provider
+ * adapters expect the object shape and nothing else, and one of them strips
+ * both anyway.
  */
 export function toolSpec(definition: ToolDefinition): ToolSpec {
   const {
     $schema: _schema,
     additionalProperties: _additional,
     ...parameters
-  } = z.toJSONSchema(definition.args) as Record<string, unknown>
+  } = z.toJSONSchema(definition.args, { io: 'input' }) as Record<string, unknown>
   return {
     name: definition.name,
     description: definition.description,

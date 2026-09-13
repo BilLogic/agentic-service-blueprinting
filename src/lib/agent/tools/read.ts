@@ -546,6 +546,60 @@ export async function listSlices(client: Client): Promise<string> {
   return formatSliceList(data ?? [])
 }
 
+/** One slice in full: its fields and every slide with its cells. */
+export async function getSlice(client: Client, sliceId: string): Promise<string> {
+  const { data, error } = await client
+    .from('slices')
+    .select(
+      'id, title, summary, kind, actor, authorship, slides(id, position, title, caption, cell_ids)',
+    )
+    .eq('id', sliceId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(`No slice with id ${sliceId}.`)
+  const slides = [...(data.slides ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map(
+      (slide, index) =>
+        `slide ${index + 1}: cells [${(slide.cell_ids ?? []).join(', ')}]${slide.title ? ` title "${slide.title}"` : ''}${slide.caption ? ` caption "${slide.caption}"` : ''}`,
+    )
+  return `slice "${data.title}" (${data.id}) type=${data.kind}${data.actor ? ` actor=${data.actor}` : ''}\n${slides.join('\n') || '(no slides)'}`
+}
+
+export type FindingsFilter = 'open' | 'resolved' | 'dismissed' | 'all'
+
+/**
+ * The findings ledger, newest first and capped. `cell_ids` is an array, so
+ * "which findings cite this cell" is a containment test; without it a finding
+ * was reachable only by reading the whole ledger, and the ledger is capped.
+ */
+export async function listFindings(
+  client: Client,
+  options: { status?: FindingsFilter; cellId?: string } = {},
+): Promise<string> {
+  const filter = options.status ?? 'open'
+  const forCell = options.cellId
+  let query = client
+    .from('audit_findings')
+    .select('id, source, check_key, severity, summary, status, cell_ids, created_at')
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (filter !== 'all') query = query.eq('status', filter)
+  if (forCell) query = query.contains('cell_ids', [forCell])
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    if (forCell) return `No ${filter === 'all' ? '' : `${filter} `}findings touch cell ${forCell}.`
+    return filter === 'all' ? 'No findings recorded yet.' : `No ${filter} findings.`
+  }
+  return data
+    .map(
+      (row) =>
+        `${row.id} [${row.severity}] ${row.check_key} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.summary ? ` — ${row.summary}` : ''}`,
+    )
+    .join('\n')
+}
+
 /** The tag vocabulary — read this before writing any owner value. */
 export async function listOwnerTags(client: Client): Promise<string> {
   const { data, error } = await client
