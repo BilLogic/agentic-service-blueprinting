@@ -101,8 +101,8 @@ function readIf<T>(wanted: boolean, read: () => Promise<T[]>): Promise<T[]> {
  * The scope is one column on `phases`. The journey is the HARD per-service
  * boundary, so a service's rows are exactly those under its phases: the walk
  * never descends into a phase the scope left out, and no table below needs a
- * filter of its own. `all` — the default, and what a single-service deployment
- * always resolves to — reads every phase.
+ * filter of its own. `all` — what a single-service deployment always resolves
+ * to, and what a call asks for by name — reads every phase.
  */
 async function readJourneyTree(
   client: Client,
@@ -266,9 +266,9 @@ export async function listLanes(client: Client): Promise<string> {
  * and shares the catalog — no stakeholder carries a `service_id`. Scoped to
  * one service, membership is IMPLICIT and derived by JOIN: the actors that
  * service's lanes actually pick (`serviceStakeholderIds`), not a `service_id`
- * lookup that does not exist. `all` — the default, and every single-service
- * deployment — returns the whole catalog, which under the shared model is the
- * correct unscoped read.
+ * lookup that does not exist. `all` — every single-service deployment, and a
+ * call that asks for it — returns the whole catalog, which under the shared
+ * model is the correct unscoped read.
  */
 export async function listStakeholders(
   client: Client,
@@ -326,17 +326,20 @@ const EVIDENCE_SELECT =
 /**
  * Evidence the blueprint's claims rest on. A cell with no evidence is a
  * claim, not a finding — which is a distinction the agent could not make
- * until it could read the table.
+ * until it could read the table. Under a service scope the newest hundred
+ * are that service's; a cell's own list is one service's already.
  */
 export async function listEvidence(
   client: Client,
   cellId?: string,
+  scope: ServiceScope = SCOPE_ALL,
 ): Promise<string> {
   let query = client
     .from('evidence')
     .select(EVIDENCE_SELECT)
     .order('created_at', { ascending: false })
     .limit(100)
+  if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
   if (cellId) query = query.eq('cell_id', cellId)
   const { data, error } = await query
   if (error) throw new Error(error.message)
@@ -407,14 +410,18 @@ export async function getSession(sessionId: string): Promise<string> {
 
 /**
  * The service's business model — one row per service, so there is nothing
- * to list and no id to pass.
+ * to list and no id to pass: the row is the scope's service's. Unscoped
+ * (one service in the deployment) it is the one row there is.
  */
-export async function getBusinessModel(client: Client): Promise<string> {
-  const { data, error } = await client
+export async function getBusinessModel(
+  client: Client,
+  scope: ServiceScope = SCOPE_ALL,
+): Promise<string> {
+  let query = client
     .from('business_models')
     .select('pricing, funding, partners, revenue_model, delivery_cost')
-    .limit(1)
-    .maybeSingle()
+  if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
+  const { data, error } = await query.limit(1).maybeSingle()
   if (error) throw new Error(error.message)
   if (!data) return 'No business model recorded for this service yet.'
   const filled = formatFields([
@@ -496,11 +503,11 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
   return formatFields(fields)
 }
 
-export async function listSlices(client: Client): Promise<string> {
-  const { data, error } = await client
-    .from('slices')
-    .select('id, title, kind')
-    .order('kind')
+/** The scope's slices — a slice belongs to one service by column. */
+export async function listSlices(client: Client, scope: ServiceScope = SCOPE_ALL): Promise<string> {
+  let query = client.from('slices').select('id, title, kind')
+  if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
+  const { data, error } = await query.order('kind')
   if (error) throw new Error(error.message)
   return formatSliceList(data ?? [])
 }
@@ -534,15 +541,17 @@ export type FindingsFilter = 'open' | 'resolved' | 'dismissed' | 'all'
  */
 export async function listFindings(
   client: Client,
-  options: { status?: FindingsFilter; cellId?: string } = {},
+  options: { status?: FindingsFilter; cellId?: string; scope?: ServiceScope } = {},
 ): Promise<string> {
   const filter = options.status ?? 'open'
   const forCell = options.cellId
+  const scope = options.scope ?? SCOPE_ALL
   let query = client
     .from('audit_findings')
     .select('id, source, check_key, severity, summary, status, cell_ids, created_at')
     .order('created_at', { ascending: false })
     .limit(100)
+  if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
   if (filter !== 'all') query = query.eq('status', filter)
   if (forCell) query = query.contains('cell_ids', [forCell])
   const { data, error } = await query

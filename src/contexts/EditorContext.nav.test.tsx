@@ -31,7 +31,6 @@ import { useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setActiveService } from '@/contexts/activeService'
 import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
-import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider, useEditor } from '@/contexts/EditorContext'
 import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
@@ -214,7 +213,6 @@ async function mount() {
 
 afterEach(() => {
   cleanup()
-  setActiveServiceSlug(null)
   setActiveService(null)
   supabase.configured = false
   supabase.client = null

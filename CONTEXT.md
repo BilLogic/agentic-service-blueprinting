@@ -391,6 +391,14 @@ absent means every tool) and by each tool's own availability for the session's
 mode. A tool absent from the roster does not exist for that session — it is
 never offered, so it is never refused.
 
+**Scope** — which service(s) one agent call covers: the active service,
+handed to the session in its context and the same default the interface has;
+the whole deployment, when a call names it (`service: "all"`); or none, when
+no service is active, in which case a call names its scope or is refused. A
+read covers its scope unless its `service` argument moves it; a write that
+creates under the service lands on the scope's service. A tool never
+resolves a slug — the shell did, once.
+
 ## The session
 
 **identity** — whether anyone is signed in.
@@ -403,7 +411,7 @@ for this session.
 **config** — whether a database is connected.
 
 **active service** — the single service the URL slug names, resolved once at
-the surface root into a module store as its id and slug together. There is no
+the surface root into a module store as its id, slug and name together. There is no
 inactive service and no flag that marks one; a reader who takes it as a
 filter over many gets a plural where the code means a singular. A
 service-scoped read takes the id as a parameter and resolves nothing; given

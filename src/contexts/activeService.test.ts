@@ -19,8 +19,8 @@ afterEach(() => {
 describe('the active-service store', () => {
   it('starts with no service, and reads back the one it is set to', () => {
     expect(getActiveService()).toBeNull()
-    setActiveService({ id: 'svc-a', slug: 'support-desk' })
-    expect(getActiveService()).toEqual({ id: 'svc-a', slug: 'support-desk' })
+    setActiveService({ id: 'svc-a', slug: 'support-desk', name: 'Support Desk' })
+    expect(getActiveService()).toEqual({ id: 'svc-a', slug: 'support-desk', name: 'Support Desk' })
   })
 
   it('notifies on a change, not on the same service set again', () => {
@@ -28,19 +28,19 @@ describe('the active-service store', () => {
     const unsubscribe = subscribeToActiveService(() => {
       notifications += 1
     })
-    setActiveService({ id: 'svc-a', slug: 'support-desk' })
-    setActiveService({ id: 'svc-a', slug: 'support-desk' })
+    setActiveService({ id: 'svc-a', slug: 'support-desk', name: 'Support Desk' })
+    setActiveService({ id: 'svc-a', slug: 'support-desk', name: 'Support Desk' })
     expect(notifications).toBe(1)
-    setActiveService({ id: 'svc-b', slug: 'sales-pipeline' })
+    setActiveService({ id: 'svc-b', slug: 'sales-pipeline', name: 'Sales Pipeline' })
     setActiveService(null)
     setActiveService(null)
     expect(notifications).toBe(3)
     unsubscribe()
   })
 
-  it('leaves the URL alone — the slug store owns the address bar', () => {
+  it('leaves the URL alone — the provider owns the address bar', () => {
     const before = typeof window === 'undefined' ? null : window.location.pathname
-    setActiveService({ id: 'svc-a', slug: 'support-desk' })
+    setActiveService({ id: 'svc-a', slug: 'support-desk', name: 'Support Desk' })
     if (before !== null) expect(window.location.pathname).toBe(before)
   })
 })

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, requireClient } from '@/lib/agent/tools/definition'
+import { defineTool, requireClient, requireScope } from '@/lib/agent/tools/definition'
 import { getBusinessModel } from '@/lib/agent/tools/read'
 
 /** The service itself: what it is, and how it sustains itself. */
@@ -13,5 +13,5 @@ export const getBusinessModelTool = defineTool({
   // The bundled sample is a board, not a deployment: it carries no business
   // model to answer from, so the trial is not offered this read.
   availability: { sample: false, mobile: true },
-  run: async (_args, ctx) => getBusinessModel(requireClient(ctx)),
+  run: async (_args, ctx) => getBusinessModel(requireClient(ctx), requireScope(ctx)),
 })

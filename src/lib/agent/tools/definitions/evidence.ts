@@ -5,6 +5,7 @@ import {
   defineWriteTool,
   requireActiveService,
   requireClient,
+  requireScope,
 } from '@/lib/agent/tools/definition'
 import { getEvidence, listEvidence } from '@/lib/agent/tools/read'
 import { EVIDENCE_KINDS, addEvidence, updateEvidence } from '@/lib/evidenceMutations'
@@ -21,11 +22,11 @@ export const listEvidenceTool = defineTool({
   surface: 'read',
   args: z.object({
     cell_id: arg.optionalText(
-      'Restrict to evidence attached to this cell; omit for the newest 100 across the blueprint',
+      'Restrict to evidence attached to this cell; omit for the newest 100 across the active service',
     ),
   }),
   availability: { sample: false, mobile: true },
-  run: async ({ cell_id }, ctx) => listEvidence(requireClient(ctx), cell_id),
+  run: async ({ cell_id }, ctx) => listEvidence(requireClient(ctx), cell_id, requireScope(ctx)),
 })
 
 export const getEvidenceTool = defineTool({

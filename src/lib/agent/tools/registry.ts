@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { SCOPE_ALL } from '@/lib/agent/tools/serviceScope'
+import { scopeOf } from '@/lib/agent/tools/serviceScope'
 import { getActiveService } from '@/contexts/activeService'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import { runTool, type ToolContext, type ToolDefinition } from '@/lib/agent/tools/definition'
@@ -43,10 +43,10 @@ export type DispatchContext = {
 
 /**
  * The context a defined tool runs in, built from what the dispatcher already
- * holds. The read scope is still the whole deployment; the service a write
- * creates under is the resolved store's, read here because the dispatcher is
- * the agent session's surface root. The UI and the session are the live
- * ones. A test builds its own.
+ * holds. The scope is the resolved active service, read from the store here
+ * because the dispatcher is the agent session's surface root — the same
+ * default the interface has. The UI and the session are the live ones. A
+ * test builds its own.
  */
 function toolContext(
   client: Client | null,
@@ -55,11 +55,10 @@ function toolContext(
 ): ToolContext {
   return {
     client,
-    scope: SCOPE_ALL,
     // The agent session is a surface root: it reads the resolved store the
     // shell wrote, once per call, and hands the answer down. No tool
     // resolves a slug.
-    service: getActiveService(),
+    scope: scopeOf(getActiveService()),
     session: liveSession(agentSessionId),
     ui: liveUi,
     roster:

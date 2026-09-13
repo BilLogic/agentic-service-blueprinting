@@ -47,7 +47,7 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 }))
 // The service is the resolved store's; the root that would set it is stood
 // in for below.
-setActiveService({ id: 'svc-1', slug: 'svc-1' })
+setActiveService({ id: 'svc-1', slug: 'svc-1', name: 'Rooftop Retrofit' })
 
 let rows: Evidence[] = []
 vi.mock('@/hooks/useEvidence', () => ({

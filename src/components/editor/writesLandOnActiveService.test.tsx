@@ -34,8 +34,8 @@ import { fakeToolContext } from '@/lib/agent/tools/definitions/testContext'
 import { dispatchTool } from '@/lib/agent/tools/registry'
 import type { Database } from '@/types/database'
 
-const ROOFTOP = { id: 'svc-1', slug: 'rooftop-retrofit' }
-const HEAT_PUMPS = { id: 'svc-2', slug: 'heat-pump-grants' }
+const ROOFTOP = { id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' }
+const HEAT_PUMPS = { id: 'svc-2', slug: 'heat-pump-grants', name: 'Heat Pump Grants' }
 
 /** Nothing here reads the database; the client is a token the writes are handed. */
 const client = {} as unknown as SupabaseClient<Database>
@@ -203,8 +203,8 @@ describe('a write lands on the active service, and follows a switch', () => {
     expect(phaseServiceIds).toEqual(['svc-1', 'svc-2'])
   })
 
-  it('every tool that creates under the service refuses when the context carries none', async () => {
-    const none = fakeToolContext({ client, service: null })
+  it('every tool that creates under the service refuses a scope that is not one service', async () => {
+    const none = fakeToolContext({ client, scope: null })
     await expect(runTool(createPhaseTool, { name: 'Lost' }, none)).rejects.toThrow('No service is active')
     await expect(
       runTool(createEvidenceTool, { cell_id: 'c1', kind: 'interview', title: 'Lost' }, none),

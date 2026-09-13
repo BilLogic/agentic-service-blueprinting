@@ -5,6 +5,7 @@ import {
   defineWriteTool,
   requireActiveService,
   requireClient,
+  requireScope,
 } from '@/lib/agent/tools/definition'
 import { listFindings } from '@/lib/agent/tools/read'
 import { findingFingerprint } from '@/lib/findingFingerprint'
@@ -28,7 +29,7 @@ export const listFindingsTool = defineTool({
   }),
   availability: { sample: false, mobile: true },
   run: async ({ status, cell_id }, ctx) =>
-    listFindings(requireClient(ctx), { status, cellId: cell_id }),
+    listFindings(requireClient(ctx), { status, cellId: cell_id, scope: requireScope(ctx) }),
 })
 
 export const createFindingTool = defineWriteTool({

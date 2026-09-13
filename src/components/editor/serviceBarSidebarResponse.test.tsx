@@ -160,7 +160,7 @@ async function mountWithService() {
 
 // The service is resolved once, at the root, into a store the hook is handed
 // from; here that root is stood in for by setting the store directly.
-beforeEach(() => setActiveService({ id: 'svc-1', slug: 'our-service' }))
+beforeEach(() => setActiveService({ id: 'svc-1', slug: 'our-service', name: 'Rooftop Retrofit' }))
 
 afterEach(() => {
   cleanup()

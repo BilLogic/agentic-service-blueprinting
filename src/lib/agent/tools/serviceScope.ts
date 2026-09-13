@@ -1,16 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { resolveServiceBySlug, type ServiceIdentity } from '@/lib/serviceSlug'
+import type { ActiveServiceRef } from '@/contexts/activeService'
 
 type Client = SupabaseClient<Database>
 
 /**
- * Which service(s) an agent read covers — the scope that replaced the old
- * global single-service cache.
+ * Which service(s) an agent call covers — the scope a session is handed in
+ * `ctx.scope`, and what a read's optional `service` argument moves.
  *
- * `all` means no scoping (every service, the whole deployment) and is the
- * DEFAULT; `service` names exactly one, and only a call that asks for one gets
- * it — see `resolveServiceScope`.
+ * `service` names exactly one — the active service, the one the board draws,
+ * is the DEFAULT, the same default the interface has; `all` is every service
+ * in the deployment, and only a call that asks for it gets it — see
+ * `resolveServiceScope`. A write that creates under the service lands on the
+ * `service` scope's id and refuses `all`.
  */
 export type ServiceScope =
   | { kind: 'all' }
@@ -19,23 +22,39 @@ export type ServiceScope =
 /** The whole-deployment scope — a shared constant so callers read as one. */
 export const SCOPE_ALL: ServiceScope = { kind: 'all' }
 
+/**
+ * The scope a session runs under: the resolved active service, or `null`
+ * when none is active — a slug no service carries, a bare script. Not the
+ * whole deployment: that is a scope a call asks for by name, never one it
+ * falls into.
+ */
+export function scopeOf(active: ActiveServiceRef | null): ServiceScope | null {
+  return active ? { kind: 'service', serviceId: active.id, serviceName: active.name } : null
+}
+
 type ServiceRow = ServiceIdentity & { id: string; name: string; created_at?: string | null }
 
 /**
  * Resolve which service(s) a read covers, from the tool's optional `service`
- * argument alone.
+ * argument and the scope the session was handed.
  *
  * The rules, in order:
+ * - One service in the deployment: `all`, whatever was asked — every scope is
+ *   the same set, and the shared catalog is shown whole rather than narrowed
+ *   by a join to the actors that service's lanes happen to pick.
  * - `service: "all"` widens to every service (the deliberate cross-service read).
  * - `service: "<slug or name>"` narrows to that one service; an unknown name
  *   throws with the real ones listed, rather than silently searching everything.
- * - No `service`: **every service in the deployment**. A question that names no
- *   service reads across all of them; a creator who wants one names it. Nothing
- *   configures this — the URL slug scopes the canvas, not the agent's reach.
+ * - No `service`: **the session's scope** — the active service, the one the
+ *   board draws, which is the interface's default too. A question that names
+ *   no service is about the service on screen; a reader who wants the whole
+ *   deployment says "all". The URL scopes the canvas AND the agent's reach.
+ *   With no service active there is nothing to default to, and the call is
+ *   refused with the sentence that says so.
  */
 export async function resolveServiceScope(
   client: Client,
-  options: { serviceArg?: string } = {},
+  options: { serviceArg?: string; active?: ServiceScope | null } = {},
 ): Promise<ServiceScope> {
   const { data, error } = await client
     .from('services')
@@ -45,12 +64,10 @@ export async function resolveServiceScope(
     (a.created_at ?? '').localeCompare(b.created_at ?? ''),
   )
 
-  // One service: an OPTIMISATION now, not a rule. The default no longer needs
-  // it — the general path below returns the same `all` for an unnamed service —
-  // and what it still buys is the explicitly-named case: naming the only
-  // service would otherwise pay a join per read to narrow the shared catalog to
-  // the actors that service's lanes pick, hiding catalog rows no lane uses.
-  // With one service, unscoped IS the whole deployment, so return it directly.
+  // One service: every scope is the same set, so the machinery is skipped —
+  // and the shared catalog stays whole, where a `service` scope would pay a
+  // join per read to narrow it to the actors that service's lanes pick,
+  // hiding catalog rows no lane uses yet.
   if (services.length <= 1) return SCOPE_ALL
 
   const arg = options.serviceArg?.trim()
@@ -70,7 +87,10 @@ export async function resolveServiceScope(
     return { kind: 'service', serviceId: match.id, serviceName: match.name }
   }
 
-  return SCOPE_ALL
+  if (options.active) return options.active
+  throw new Error(
+    'No service is active — name one, or pass service:"all" for the whole deployment.',
+  )
 }
 
 async function selectIds(

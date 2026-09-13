@@ -158,7 +158,7 @@ function mountPanel(node: ReactElement) {
 beforeEach(() => {
   named = []
   supabase.client = fakeSupabase()
-  setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit' })
+  setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
 })
 
 afterEach(() => {

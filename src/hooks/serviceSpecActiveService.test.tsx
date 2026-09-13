@@ -181,7 +181,7 @@ afterEach(() => {
   setActiveService(null)
 })
 
-const HEAT_PUMPS = { id: 'svc-2', slug: 'heat-pump-grants' }
+const HEAT_PUMPS = { id: 'svc-2', slug: 'heat-pump-grants', name: 'Heat Pump Grants' }
 
 describe('the service the header names', () => {
   it('is the active one, not the first one created', async () => {
@@ -203,7 +203,7 @@ describe('the service the header names', () => {
   })
 
   it('follows a switch: the new service is a new key, read afresh', async () => {
-    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit' })
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
     mount(<ServiceLine />)
     expect(
       await screen.findByText('Rooftop Retrofit · 1 phases · 1 scenarios'),
