@@ -20,7 +20,17 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { forgetUnverified, unverified } from '../unverified.mjs'
-import { ROOT_DOCS, sweptDocs, unsweptDirs } from '../swept-docs.mjs'
+import { sweptDocs, unsweptDirs } from '../swept-docs.mjs'
+
+/**
+ * The root documents these throwaway trees hold, in the order the walk
+ * returns them.
+ *
+ * Named here rather than imported, because the module DISCOVERS the root
+ * documents now: importing its answer would make each assertion below a
+ * restatement of the walk rather than a claim about it.
+ */
+const ROOT_FILES = ['AGENTS.md', 'CONTEXT.md', 'README.md']
 
 beforeEach(() => forgetUnverified())
 
@@ -85,7 +95,7 @@ function tree(files) {
 }
 
 test('a swept folder this tree does not have is named', () => {
-  const t = tree([...ROOT_DOCS, 'docs/guide.md'])
+  const t = tree([...ROOT_FILES, 'docs/guide.md'])
   try {
     assert.deepEqual(unsweptDirs(t.root, ['docs', 'references', 'skills']), [
       'references',
@@ -97,15 +107,16 @@ test('a swept folder this tree does not have is named', () => {
 })
 
 test('every folder misspelt collapses the corpus to the root docs, loudly', () => {
-  // The whole reason this is a warning rather than a count: `ROOT_DOCS` is
-  // prepended unconditionally, so the result is never empty and a refusal on
-  // emptiness would never fire. Four misspelt names take fifty-four documents
-  // to three and every prose guard goes on passing.
-  const t = tree([...ROOT_DOCS, 'docs/guide.md', 'skills/map/SKILL.md'])
+  // The whole reason this is a warning rather than a count: the root
+  // documents are prepended whatever the folders do, so the result is never
+  // empty and a refusal on emptiness would never fire. Four misspelt names
+  // take the corpus down to the root alone and every prose guard goes on
+  // passing.
+  const t = tree([...ROOT_FILES, 'docs/guide.md', 'skills/map/SKILL.md'])
   const s = sinks()
   try {
     const swept = sweptDocs(t.root, ['doc', 'skils'], s.io)
-    assert.deepEqual(swept, ROOT_DOCS)
+    assert.deepEqual(swept, ROOT_FILES)
     assert.equal(s.written.length, 1)
     assert.match(s.written[0], /^::warning::unverified — the prose under doc, skils\./)
   } finally {
@@ -114,11 +125,11 @@ test('every folder misspelt collapses the corpus to the root docs, loudly', () =
 })
 
 test('a tree that has every swept folder says nothing', () => {
-  const t = tree([...ROOT_DOCS, 'docs/guide.md', 'skills/map/SKILL.md'])
+  const t = tree([...ROOT_FILES, 'docs/guide.md', 'skills/map/SKILL.md'])
   const s = sinks()
   try {
     assert.deepEqual(sweptDocs(t.root, ['docs', 'skills'], s.io), [
-      ...ROOT_DOCS,
+      ...ROOT_FILES,
       'docs/guide.md',
       'skills/map/SKILL.md',
     ])

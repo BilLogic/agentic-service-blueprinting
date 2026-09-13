@@ -19,12 +19,22 @@
  *
  * ── The subject ────────────────────────────────────────────────────────────
  *
- * SHARED CODE: everything a commit would carry — tracked plus untracked files
- * git would not ignore, the subject `check-standalone.mjs` settled in #182 —
- * under `src/`, `skills/`, `agents/`, `references/`, `evals/`, `scripts/` and
- * `docs/`. That is the tree an adopter reads and runs.
+ * EVERYTHING A COMMIT WOULD CARRY — tracked plus untracked files git would not
+ * ignore, the subject `check-standalone.mjs` settled in #182 and the subject
+ * `commit-subject.mjs` now describes for both sweeps in one place.
  *
- * Two things are deliberately outside it.
+ * IT USED TO BE NARROWED BY DIRECTORY, over a list of seven roots — `src/`,
+ * `skills/`, `agents/`, `references/`, `evals/`, `scripts/`, `docs/` — that no
+ * root-level file can match. So every root document was outside the subject:
+ * `README.md`, `CONTEXT.md`, `SETUP.md`, `INDEX.md`, `CONTRIBUTING.md`,
+ * `SECURITY.md`, and `AGENTS.md`, which is the always-loaded tier — the one
+ * file every session is handed without choosing. A foreign cell id, a cast
+ * role and a deployment touchpoint asset appended to `AGENTS.md` and `SETUP.md`
+ * passed in green while the same three lines in `references/data-model.md`
+ * failed at once. `hooks/` and the changesets were outside it too. The list was
+ * an escape rather than a decision, because nothing beside it said which
+ * documents it dropped or why, so it is gone and the exclusions that survive
+ * are named one at a time with their reasons.
  *
  * TESTS. A fixture has to be able to write down the value the code under test
  * receives, and the check's own tests have to be able to plant one. This is
@@ -40,6 +50,12 @@
  * is the seed's TypeScript twin and stays IN, because the id rule below passes
  * it for a reason worth asserting: the sample's ids are all in the sample's own
  * namespace, and the day one is not, something was pasted in.
+ *
+ * `CHANGELOG.md` stays IN, and is the one place the widening found anything:
+ * a released entry quotes this file's own header, cast and all. History is not
+ * rewritten, so that one site is in ALLOWED below rather than excluded — which
+ * leaves the rest of the file swept, and leaves the changesets it is generated
+ * FROM in subject, where a pasted value is caught before it is ever released.
  *
  * ── The patterns, and why each is bounded the way it is ────────────────────
  *
@@ -119,16 +135,13 @@
  * than by pattern, and the class stays a reviewer's job — what these four
  * catch is everything that CAN be bounded.
  */
-import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { commitFiles } from './commit-subject.mjs'
 import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
-
-/** Directories that hold shared code. Everything else is out of subject. */
-const ROOTS = ['src/', 'skills/', 'agents/', 'references/', 'evals/', 'scripts/', 'docs/']
 
 /** The namespace `fid()` in scripts/generate_sample_blueprint.mjs mints. */
 export const SAMPLE_ID_PREFIX = 'f0000000-0000-4000-8000-'
@@ -211,6 +224,11 @@ export const PATTERNS = [
 export const EXCLUDED = [
   'src/lib/agent/skill/', // mirror of skills/ + references/
   'scripts/check-content-coupling.mjs', // this file
+  // A generated seed of 1,474 sample ids and a historical migration series.
+  // Neither is a place anybody hides content, and the hand-written source of
+  // both — `scripts/generate_sample_blueprint.mjs` — is in subject. Named here
+  // rather than left to fall outside a root list, so the decision is readable.
+  'supabase/',
 ]
 
 /** A fixture is out of subject — see the header. */
@@ -220,42 +238,18 @@ const TEST_FILE = /(?:^|\/)(?:tests?)\/|\.test\.[cm]?[jt]sx?$|\.test\.sh$|_test\
 const BINARY = /\.(?:png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf|pdf|zip|mp4)$/i
 
 export function isScanned(path) {
-  if (!ROOTS.some((root) => path.startsWith(root))) return false
   if (BINARY.test(path) || TEST_FILE.test(path)) return false
   return !EXCLUDED.some((prefix) => path.startsWith(prefix))
 }
 
 /**
- * Every file the sweep reads: what a commit would carry, narrowed to the
- * roots. One listing, one predicate — the shape #182 settled next door, so a
- * file written and checked before `git add` is swept rather than waiting for
- * CI to find it.
+ * Every file the sweep reads: what a commit would carry, minus the exclusions
+ * above. `commit-subject.mjs` holds the listing and the empty-sweep refusal,
+ * so the subject this sweep and the word-grep share is stated in one place and
+ * only the narrowing is each sweep's own.
  */
 export function scannedFiles(root = REPO_ROOT) {
-  const listed = execFileSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
-  )
-  const seen = new Set()
-  const found = listed.split('\0').filter((path) => {
-    if (path === '' || seen.has(path) || !isScanned(path)) return false
-    seen.add(path)
-    return true
-  })
-  // AN EMPTY SWEEP IS A FAILURE. Two steps stand between `git ls-files` and
-  // this result — the listing itself, and a predicate that can reject every
-  // path it returns — and either of them coming back with nothing produces the
-  // same green line the full sweep produces, with a `0` in it that nobody
-  // reads as a defect. The refusal lives here rather than in each caller
-  // because the subject is the same one in all of them.
-  if (found.length === 0) {
-    throw new Error(
-      `no scanned file under ${root}: git listed ${listed.split('\0').filter(Boolean).length} ` +
-        `path(s) and none of them is in this sweep's subject, which is a failure and not a pass`,
-    )
-  }
-  return found
+  return commitFiles(root, isScanned)
 }
 
 /**
@@ -289,7 +283,18 @@ export function couplingsIn(source) {
  *
  * @type {ReadonlyArray<{ file: string, match: string, why: string }>}
  */
-export const ALLOWED = []
+export const ALLOWED = [
+  {
+    file: 'CHANGELOG.md',
+    match: 'Tutor',
+    why:
+      'a released changelog entry quoting this check’s own header — the ' +
+      'sentence that explains what `Regular Tutor` is. A changelog is history ' +
+      'and rewriting a released entry falsifies it; the changesets it is ' +
+      'generated from are in subject, so a value pasted into a new one fails ' +
+      'before it can reach this file.',
+  },
+]
 
 /** Whether one site is one of the allowlist's. */
 export function isAllowed(path, match, allowed = ALLOWED) {

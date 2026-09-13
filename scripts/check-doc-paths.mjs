@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Does every repository path the plugin surface names still exist?
+ * Does every repository path this package's own prose names still exist?
  *
  * `skills/`, `references/`, `agents/` and `hooks/` are what an installed
  * `sb:map` / `sb:audit` / `sb:slice` / `sb:whatif` reads at runtime. When one
@@ -17,23 +17,35 @@
  * This check and the citation guard in `src/citations.ts` ask opposite
  * questions about the same string, and for one tree they would contradict
  * each other outright if the line were not drawn. This one REQUIRES a path
- * the plugin surface names to resolve HERE; that one FORBIDS a shared file
- * naming a path its reader does not have. A document under both rules could
- * satisfy neither.
+ * the document names to resolve HERE; that one FORBIDS a shared file naming a
+ * path its reader does not have. A document under both rules could satisfy
+ * neither.
  *
- * The line is which reader the document is written for. `skills/`,
- * `references/`, `agents/` and `hooks/` — and their byte-for-byte copy under
- * `src/lib/agent/skill/`, which `sync-canvas-skills.mjs` writes — are read by
- * an agent out of THIS package's own installed tree, and `docs/` is packed
- * with them, so `docs/erd.mmd` in `references/data-model.md` resolves for
- * every reader who will ever follow it. This check is the authority over
- * those paths and holds them true; the citation guard exempts them by name
- * and says so beside the exemption.
+ * THE LINE IS WHICH READER THE DOCUMENT IS WRITTEN FOR, and it has not moved.
+ * What moved is the subject, which used to stop short of it.
  *
- * Everywhere else — the rest of `src/`, and a script a deployment holds
- * byte-identical — the reader stands in their own repository, the path
- * dangles, and the citation guard is the authority. This check never looks
- * there.
+ *   - A document PACKED WITH THIS PACKAGE, read out of this package's own
+ *     installed tree. `skills/`, `references/`, `agents/`, `hooks/` — and
+ *     their byte-for-byte copy under `src/lib/agent/skill/`, which
+ *     `sync-canvas-skills.mjs` writes — plus `docs/` and the root documents.
+ *     An agent that opens the vendored rulebook out of
+ *     `node_modules/agentic-service-blueprinting/` finds `docs/erd.mmd`
+ *     exactly where the sentence said, and finds it whether the sentence was
+ *     written in `references/data-model.md` or in `docs/guide/`. This check is
+ *     the authority over all of them and holds their paths true.
+ *   - A SHARED FILE, read by somebody standing in their OWN repository: the
+ *     rest of `src/`, and a script a deployment holds byte-identical. There
+ *     the path dangles, the citation guard is the authority, and this check
+ *     never looks. The two subjects do not overlap: the citation guard sweeps
+ *     `src/` and the named shared scripts, and nothing here is either.
+ *
+ * `docs/` sat on the first side of that line and was swept by nothing. It is
+ * the largest prose tree in the repository, and a dangling path planted in
+ * `docs/engineering/checks.md` and in `CONTEXT.md` passed the whole suite.
+ * Measured before widening: three failures under `docs/engineering/`, none
+ * under `docs/guidelines/`, eleven under the rest of `docs/`, and one in
+ * `README.md` — against thirty-four in `CHANGELOG.md`, which is why history is
+ * the one thing the wider subject leaves out.
  *
  * The three that motivated it, all landed by ordinary refactors that never
  * looked at the prose:
@@ -60,14 +72,24 @@
  *      spelling the whole path every time — the docs do this constantly and
  *      the reader resolves it fine. A suffix that matches nothing is the
  *      failure this check is for;
- *   4. it is in WORKSPACE_ARTIFACTS below.
+ *   4. it is in WORKSPACE_ARTIFACTS below — a file an ADOPTER's workspace
+ *      has and this tree never will, whatever document names it;
+ *   5. it is in ABSENT_BY_DESIGN below, which exempts ONE document naming ONE
+ *      token, because the reasons there are about the sentence rather than
+ *      about the path.
  *
- * `*` is honoured at every step, because the roster genuinely is a glob
- * (`skills/audit/references/check-*.md`).
+ * `*` is honoured at every step, including in WORKSPACE_ARTIFACTS — the
+ * roster genuinely is a glob (`skills/audit/references/check-*.md`), and
+ * `blueprint/*.json` was listed as one and matched only a document that wrote
+ * the asterisk down, which left the three documents naming the real file
+ * failing against an exemption written for them.
  *
- * WORKSPACE_ARTIFACTS fails CLOSED, the way check-read-surface's NOT_TOOLS
- * does: a file that legitimately cannot exist here is a one-line admission
- * with a reason, not a hole the next stale path slips through.
+ * BOTH LISTS FAIL CLOSED, the way check-read-surface's NOT_TOOLS does: a file
+ * that legitimately cannot exist here is a one-line admission with a reason,
+ * not a hole the next stale path slips through. And an entry in either that
+ * matches nothing any more is itself a failure, for the reason every list of
+ * its kind here gives — an exemption nobody can reach is a hole nobody is
+ * watching.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -76,6 +98,7 @@ import { fileURLToPath } from 'node:url'
 
 import { appFiles, appPackageRoot } from './app-source.mjs'
 import { readListed } from './read-listed.mjs'
+import { repoConfig } from './repo-config.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -90,20 +113,55 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  */
 const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
-/** The documents an installed plugin reads. */
-const SURFACE = ['skills/', 'references/', 'agents/', 'hooks/']
+/**
+ * The trees this package packs and its reader reads out of it.
+ *
+ * The first four are what an installed plugin reads at run time; `docs/` ships
+ * beside them and is the largest prose tree here. A root-level document is in
+ * subject too — see `isPackagedProse` — and is not a prefix anybody can write.
+ */
+const PACKAGED_TREES = ['skills/', 'references/', 'agents/', 'hooks/', 'docs/']
+
+/**
+ * Documents the wider subject leaves out, each with the reason it is out.
+ *
+ * HISTORY. `CHANGELOG.md` is a record of what shipped on the day it shipped,
+ * and every path in it was true then. Thirty-four are not true now — renamed
+ * files, deleted ones, and a dozen fixtures invented to explain a guard — and
+ * holding a released entry to today's tree would mean editing what happened.
+ *
+ * DECISION RECORDS. `repoConfig.datedRecords` is the same rule one tree over,
+ * and `swept-docs.mjs` already states it: a decision record keeps the words of
+ * the day it was written, and rewriting one is falsifying it. Four of them
+ * name a path this tree does not have — a file in the DEPLOYMENT's repository,
+ * an instance's override, a workspace artifact and the ADR filename template —
+ * and all four are correct sentences about something other than this tree.
+ * Read from the config rather than spelled here, so a repository that keeps
+ * its records elsewhere is not holding a name this one chose.
+ */
+const UNHELD_PROSE = ['CHANGELOG.md', ...repoConfig.datedRecords.map((dir) => `${dir}/`)]
+
+/** Whether a tracked path is a document this check holds to the tree. */
+export function isPackagedProse(path) {
+  if (!path.endsWith('.md')) return false
+  if (UNHELD_PROSE.some((prefix) => path === prefix || path.startsWith(prefix))) return false
+  // A root-level document — README, CONTEXT, AGENTS, SETUP, INDEX and the
+  // rest — is packed and read from here exactly as the trees below are.
+  return !path.includes('/') || PACKAGED_TREES.some((dir) => path.startsWith(dir))
+}
 
 /** Extensions that make a backticked token a claim about a file. */
 const EXTENSIONS =
   'md|json|py|mjs|cjs|js|ts|tsx|sql|sh|css|html|yaml|yml|toml'
 
 /**
- * Paths named by the plugin surface that are created in an ADOPTER's
+ * Paths named by this package's prose that are created in an ADOPTER's
  * workspace at run time and are therefore never tracked here. Each line is a
  * claim that the file's absence is correct — keep it short, and keep the
- * reason attached.
+ * reason attached. `*` is honoured, so an entry may be the glob the documents
+ * actually write around.
  */
-const WORKSPACE_ARTIFACTS = new Map([
+export const WORKSPACE_ARTIFACTS = new Map([
   ['blueprint-workspace.json', 'per-workspace state file, written by sb:map'],
   ['blueprint/*.json', 'the adopter\'s IR, authored in their workspace'],
   ['HANDOFF.md', 'generated per workspace from assets/HANDOFF.md.template'],
@@ -111,6 +169,65 @@ const WORKSPACE_ARTIFACTS = new Map([
   ['export-all.json', 'the whole-blueprint audit export, written at dispatch'],
   ['sweep_orphans.py', 'declared planned in whatif-playbook §4, with a skip'],
 ])
+
+/**
+ * ONE DOCUMENT naming ONE token, where the sentence is right and the file is
+ * correctly absent. Keyed by both, because the reason is about the sentence:
+ * `src/styles/tokens.css` is exempt in the document that explains why it is
+ * gone and stays a failure in the document that sends a reader to it, which is
+ * where this check caught it.
+ *
+ * @type {ReadonlyArray<{ doc: string, token: string, why: string }>}
+ */
+export const ABSENT_BY_DESIGN = [
+  {
+    doc: 'docs/engineering/checks.md',
+    token: 'src/styles/tokens.css',
+    why: 'quoted as one of the three stale paths this check was written to catch — it is named BECAUSE it is gone',
+  },
+  {
+    doc: 'docs/engineering/checks.md',
+    token: 'scripts/generate_scale_fixture.mjs',
+    why: 'the same row, the same three: renamed to generate_sample_blueprint.mjs, and quoted as the rename this check found',
+  },
+  {
+    doc: 'docs/engineering/checks.md',
+    token: 'path.md',
+    why: 'a placeholder standing for any pointer target, in the shape a pointer takes: `path.md` § Heading',
+  },
+  {
+    doc: 'docs/agents/blueprint.md',
+    token: 'docs/engineering/agent-account-baseline.json',
+    why: 'the ratchet baseline repo-config.mjs names, written by generate-agent-account.mjs --record and not recorded in this tree',
+  },
+  {
+    doc: 'docs/agents/domain.md',
+    token: 'CONTEXT-MAP.md',
+    why: 'named as a conditional — the document says to read it IF it exists and to proceed silently otherwise, which is a fact about a multi-context repository rather than a claim about this one',
+  },
+  {
+    doc: 'docs/connectors/supabase/database.md',
+    token: '20260901120000_theirs.sql',
+    why: 'an invented filename in the worked example of a fork whose migration history desynced from upstream',
+  },
+]
+
+/** Whether one document naming one token is excused by the list above. */
+export function isAbsentByDesign(doc, token, list = ABSENT_BY_DESIGN) {
+  return list.some((entry) => entry.doc === doc && entry.token === token)
+}
+
+/**
+ * Entries with no site left, which is a hole nobody is watching.
+ *
+ * `claims` is every unresolved `{ doc, token }` the sweep found, excused ones
+ * included — an entry is live exactly while the document still names the
+ * token and the tree still lacks it.
+ */
+export function staleAbsences(claims, list = ABSENT_BY_DESIGN) {
+  const live = new Set(claims.map(({ doc, token }) => `${doc}\0${token}`))
+  return list.filter((entry) => !live.has(`${entry.doc}\0${entry.token}`))
+}
 
 /**
  * Every path a claim can land on: this tree's commit, and the application.
@@ -137,28 +254,43 @@ export function trackedPaths() {
 }
 
 /**
- * The documents under SURFACE.
+ * The documents this check holds: `isPackagedProse` over the listing.
  *
  * AN EMPTY RESULT IS A FAILURE, and the refusal belongs here rather than one
  * level up. `trackedPaths` already refuses an empty listing — but the listing
  * is not what this check sweeps. A FILTER stands between them, and a filter
  * that matches nothing empties the subject just as completely as a listing
  * that came back empty: the loop runs zero times, no claim is resolved, and
- * the report says `every path named by 0 plugin-surface documents resolves`
- * in the same green as the run over thirty-six. One renamed folder in
- * `SURFACE` does it.
+ * the report says `every path named by 0 packaged documents resolves` in the
+ * same green as the run over fifty-eight. One renamed folder in
+ * `PACKAGED_TREES` does it.
  */
 export function surfaceDocs(tracked) {
-  const found = tracked.filter(
-    (path) => path.endsWith('.md') && SURFACE.some((dir) => path.startsWith(dir)),
-  )
+  const found = tracked.filter(isPackagedProse)
   if (found.length === 0) {
     throw new Error(
-      `no markdown under ${SURFACE.join(', ')} in ${REPO_ROOT}: this check has no subject, ` +
-        `which is a failure and not a pass`,
+      `no markdown at the root or under ${PACKAGED_TREES.join(', ')} in ${REPO_ROOT}: ` +
+        `this check has no subject, which is a failure and not a pass`,
     )
   }
   return found
+}
+
+/**
+ * Whether a token is one of the adopter-workspace artifacts.
+ *
+ * The entries are GLOBS, because that is how the documents write: three of
+ * them name `blueprint/blueprint.json` and the list carries `blueprint/*.json`.
+ * An exact-key lookup matched only a document that wrote the asterisk down, so
+ * the exemption sat there excusing nothing while the documents it was written
+ * for failed.
+ */
+function isWorkspaceArtifact(token) {
+  if (WORKSPACE_ARTIFACTS.has(token)) return true
+  for (const entry of WORKSPACE_ARTIFACTS.keys()) {
+    if (entry.includes('*') && asPattern(entry).test(token)) return true
+  }
+  return false
 }
 
 /** A `*` glob as a whole-string regexp; a plain token as itself. */
@@ -192,7 +324,7 @@ export function claimedPaths(source) {
 
 /** Does `token`, as named by a document in `docDir`, resolve to something? */
 export function resolves(token, docDir, tracked) {
-  if (WORKSPACE_ARTIFACTS.has(token)) return true
+  if (isWorkspaceArtifact(token)) return true
 
   const bare = token.replace(/^\//, '')
   const candidates = [bare, normalize(join(docDir, bare))]
@@ -215,7 +347,7 @@ export function resolves(token, docDir, tracked) {
 
 function main() {
   const tracked = trackedPaths()
-  const failures = []
+  const unresolved = []
 
   const docs = surfaceDocs(tracked)
   let read = 0
@@ -225,9 +357,11 @@ function main() {
     if (source === null) continue // listed, then gone before this read
     read += 1
     for (const { token, line } of claimedPaths(source)) {
-      if (!resolves(token, docDir, tracked)) failures.push({ doc, line, token })
+      if (!resolves(token, docDir, tracked)) unresolved.push({ doc, line, token })
     }
   }
+  const failures = unresolved.filter(({ doc, token }) => !isAbsentByDesign(doc, token))
+  const stale = staleAbsences(unresolved)
 
   // The breadth assertion `read-listed.mjs` asks each of its callers for: the
   // skip above is right for a file that went away mid-run and wrong as an
@@ -242,7 +376,7 @@ function main() {
 
   if (failures.length > 0) {
     console.error(
-      `${failures.length} path${failures.length === 1 ? '' : 's'} named by the plugin surface that nothing in the tree matches:\n`,
+      `${failures.length} path${failures.length === 1 ? '' : 's'} named by this package's own documents that nothing in the tree matches:\n`,
     )
     for (const { doc, line, token } of failures) {
       console.error(`  ${doc}:${line}  ${token}`)
@@ -251,13 +385,29 @@ function main() {
       '\nFix the document to name the file that exists, or — if the path is an' +
         '\nartifact of an adopter workspace rather than of this repository — add it' +
         '\nto WORKSPACE_ARTIFACTS in scripts/check-doc-paths.mjs with its reason.' +
+        '\nIf the sentence is right and the absence is correct only THERE, the list' +
+        '\nis ABSENT_BY_DESIGN, which takes the document and the token together.' +
         '\n\n  npm run check:doc-paths\n',
     )
     process.exitCode = 1
     return
   }
 
-  console.log(`check-doc-paths: every path named by ${read} plugin-surface documents resolves.`)
+  if (stale.length > 0) {
+    console.error(
+      `\n${stale.length} entr${stale.length === 1 ? 'y' : 'ies'} in ABSENT_BY_DESIGN match ` +
+        'nothing any more. An exemption nobody can reach is a hole nobody is ' +
+        'watching — delete each one:\n',
+    )
+    for (const entry of stale) console.error(`  ${entry.doc} — ${entry.token}`)
+    process.exitCode = 1
+    return
+  }
+
+  console.log(
+    `check-doc-paths: every path named by ${read} packaged documents resolves` +
+      ` — ${ABSENT_BY_DESIGN.length} absent by design.`,
+  )
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main()
