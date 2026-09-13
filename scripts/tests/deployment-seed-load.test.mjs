@@ -24,8 +24,9 @@ import {
   isDownstream,
   parsePsqlErrors,
   readSeedFiles,
+  resolveNamedSeeds,
   resolveSeedFiles,
-  seedFlag,
+  seedFlags,
   seedSectionFromConfig,
   seededTables,
 } from '../check-deployment-seed-loads.mjs'
@@ -127,6 +128,68 @@ test('an entry that resolves to a directory stops it too, and says so differentl
     assert.equal(error.cause, undefined)
     return true
   })
+})
+
+/** The same tree, with a `[db.seed]` a deployment has deliberately emptied. */
+function withSeedSection(body) {
+  const dir = mkdtempSync(join(tmpdir(), 'deployment-seed-'))
+  const supabase = join(dir, 'supabase')
+  mkdirSync(join(supabase, 'seeds'), { recursive: true })
+  writeFileSync(join(supabase, 'seed.sql'), 'select 1;\n')
+  writeFileSync(join(supabase, 'seeds', 'one.sql'), 'select 1;\n')
+  writeFileSync(join(supabase, 'config.toml'), `[db.seed]\n${body}\n`)
+  return supabase
+}
+
+test('a [db.seed] the deployment emptied is a refusal, not a fallback to one file', () => {
+  // THE DEFECT, pinned. A deployment that has taken its seed list out of
+  // `config.toml` — to keep `db push --include-seed` from reaching it — used
+  // to fall through to the named file, so this check read ONE of a deployment's
+  // twenty-three seed files, found the tables that the other twenty-two fill
+  // empty, and reported that as the anon role being unable to see them. It
+  // named the wrong subsystem and prescribed a grant that was already granted.
+  for (const body of [
+    'enabled = false\nsql_paths = []',
+    'enabled = false\nsql_paths = ["./seed.sql", "./seeds/one.sql"]',
+    'sql_paths = []',
+  ]) {
+    const supabase = withSeedSection(body)
+    assert.throws(() => resolveSeedFiles(join(supabase, 'seed.sql')), (error) => {
+      assert.match(error.message, /\[db\.seed\]/)
+      assert.match(error.message, /--seed/)
+      return true
+    })
+  }
+})
+
+test('no [db.seed] at all still means the named file is the whole seed', () => {
+  // The case that WORKS, asserted beside the one that did not, because the fix
+  // is a distinction between them and a distinction can be drawn too far.
+  const dir = mkdtempSync(join(tmpdir(), 'deployment-seed-'))
+  const supabase = join(dir, 'supabase')
+  mkdirSync(supabase, { recursive: true })
+  writeFileSync(join(supabase, 'seed.sql'), 'select 1;\n')
+  writeFileSync(join(supabase, 'config.toml'), '[db]\nport = 54322\n')
+  assert.deepEqual(resolveSeedFiles(join(supabase, 'seed.sql')), [join(supabase, 'seed.sql')])
+})
+
+test('named seeds are the seed, in the order they were named', () => {
+  const supabase = withSeedSection('enabled = false\nsql_paths = []')
+  const one = join(supabase, 'seeds', 'one.sql')
+  const base = join(supabase, 'seed.sql')
+  // Explicit wins: an operator who names the files has answered the question
+  // the config could not, so nothing else is consulted — not even the section
+  // that would otherwise refuse.
+  assert.deepEqual(resolveNamedSeeds([one, base]), [one, base])
+  assert.deepEqual(resolveNamedSeeds([base, one]), [base, one])
+})
+
+test('a named seed that is not there stops the check, like an entry that is not', () => {
+  const supabase = withSeedSection('enabled = false\nsql_paths = []')
+  assert.throws(
+    () => resolveNamedSeeds([join(supabase, 'seeds', 'gone.sql')]),
+    /gone\.sql/,
+  )
 })
 
 test('a glob is held to the same rule as a name it expands to', () => {
@@ -257,8 +320,15 @@ test('none and several both skip, and the message says which it was', () => {
 })
 
 test('--seed takes the next argument, and refuses to swallow the next flag', () => {
-  assert.equal(seedFlag(['--seed', '../their-app/supabase/seed.sql']), '../their-app/supabase/seed.sql')
-  assert.equal(seedFlag([]), null)
-  assert.throws(() => seedFlag(['--seed']))
-  assert.throws(() => seedFlag(['--seed', '--verbose']))
+  assert.deepEqual(seedFlags(['--seed', '../their-app/supabase/seed.sql']), [
+    '../their-app/supabase/seed.sql',
+  ])
+  assert.deepEqual(seedFlags([]), [])
+  assert.throws(() => seedFlags(['--seed']))
+  assert.throws(() => seedFlags(['--seed', '--verbose']))
+  // A deployment whose seed is many files has to be able to say so, which is
+  // the whole reason the flag stopped being singular.
+  assert.deepEqual(seedFlags(['--seed', 'a.sql', '--seed', 'b.sql']), ['a.sql', 'b.sql'])
+  assert.deepEqual(seedFlags(['--seed', 'a.sql,b.sql']), ['a.sql', 'b.sql'])
+  assert.deepEqual(seedFlags(['--seed', ' a.sql , b.sql ']), ['a.sql', 'b.sql'])
 })
