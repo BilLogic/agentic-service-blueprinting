@@ -48,9 +48,19 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setShellBooting } from '@/contexts/shellBootStore'
 import type { ReactNode } from 'react'
-import { EntityHeader } from '@/components/blueprint/EntityHeader'
+import {
+  ENTITY_TITLE_OUTDENT_CLASS,
+  EntityHeader,
+} from '@/components/blueprint/EntityHeader'
 import { ServiceOverviewHeader } from '@/components/editor/ServiceOverviewHeader'
-import { BLUEPRINT_MENUBAR_IDENTITY_HEIGHT } from '@/components/editor/menubarHeaderLayout'
+import {
+  BLUEPRINT_MENUBAR_FLAT_CLASS,
+  BLUEPRINT_MENUBAR_HEADER_CLASS,
+  BLUEPRINT_MENUBAR_IDENTITY_HEIGHT,
+  BLUEPRINT_MENUBAR_ROW_HEIGHT,
+  BLUEPRINT_MENUBAR_SUMMARY_CLASS,
+  CELL_DETAIL_PANEL_TOP_CLASS,
+} from '@/components/editor/menubarHeaderLayout'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
 import { ENTITY_KIND_DEFINITIONS } from '@/lib/panelTerms'
@@ -167,6 +177,141 @@ describe('EntityHeader height', () => {
     // passing if the badge stopped rendering entirely.
     expect(kindBadge()).not.toBeNull()
     expect(measure()).toBe(BLUEPRINT_MENUBAR_IDENTITY_HEIGHT)
+  })
+})
+
+/* ------------------------------------------- the block fits its bar */
+
+/**
+ * Three layout defects, each guarded as far as jsdom can see.
+ *
+ * jsdom applies no Tailwind and performs no layout, so nothing here can read
+ * a pixel off the canvas. What it can read is the contract the pixels come
+ * from: the row height the classes spell out, the bound on the summary, and
+ * the outdent that cancels the title's inset. Each assertion names the
+ * defect it would have caught.
+ */
+const rem = (length: string) => {
+  const match = /^(\d+(?:\.\d+)?)rem$/.exec(length)
+  if (!match) throw new Error(`not a rem length: ${length}`)
+  return Number(match[1])
+}
+const classes = (className: string) => className.split(/\s+/).filter(Boolean)
+
+describe('the identity block fits its bar', () => {
+  it('the menubar row is taller than the pinned block, with even room either side', () => {
+    const room = rem(BLUEPRINT_MENUBAR_ROW_HEIGHT) - rem(BLUEPRINT_MENUBAR_IDENTITY_HEIGHT)
+    // The defect: a 36px row around a 42px block, so the summary sat on the
+    // bar's bottom border. Room must be positive, and split into two whole
+    // pixels at 16px/rem so the block centres without a half-pixel edge.
+    expect(room).toBeGreaterThan(0)
+    expect(((room * 16) / 2) % 1).toBe(0)
+  })
+
+  it('both row classes spell out that height, and nothing shorter', () => {
+    const height = `h-[${BLUEPRINT_MENUBAR_ROW_HEIGHT}]`
+    for (const [name, className] of [
+      ['header', BLUEPRINT_MENUBAR_HEADER_CLASS],
+      ['flat', BLUEPRINT_MENUBAR_FLAT_CLASS],
+    ] as const) {
+      const heights = classes(className).filter((token) => /^h-/.test(token))
+      expect(heights, name).toEqual([height])
+    }
+  })
+
+  it('the header row is a flex row, so the block centres in it', () => {
+    // The service bar renders this class on a plain div; `items-center`
+    // without `flex` left its block on the row's top edge.
+    expect(classes(BLUEPRINT_MENUBAR_HEADER_CLASS)).toContain('flex')
+  })
+
+  it('the drawer\u2019s fallback top clears the same row', () => {
+    expect(CELL_DETAIL_PANEL_TOP_CLASS).toContain(
+      `calc(${BLUEPRINT_MENUBAR_ROW_HEIGHT}+1px+1rem)`,
+    )
+  })
+
+  it('the service bar renders its block inside a row of that height', () => {
+    renderWithEntityDetail(
+      <QueryClientProvider client={new QueryClient()}>
+        <ServiceOverviewHeader />
+      </QueryClientProvider>,
+    )
+    const row = block()?.parentElement
+    expect(row?.closest('[data-editor-navbar]')).not.toBeNull()
+    expect(classes(row?.className ?? '')).toContain(
+      `h-[${BLUEPRINT_MENUBAR_ROW_HEIGHT}]`,
+    )
+  })
+})
+
+describe('the summary truncates', () => {
+  it('is bound to its column, not sized to its sentence', () => {
+    renderWithEntityDetail(
+      <EntityHeader
+        kind="service"
+        id="svc-1"
+        label="Example service"
+        summary={'A long summary. '.repeat(40)}
+      />,
+    )
+    const summary = summarySlot()!
+    // The column is `items-start`, where a child sizes to its content; only a
+    // width bound lets `truncate` clip and show its ellipsis.
+    expect(summary.parentElement?.className).toMatch(/\bitems-start\b/)
+    expect(classes(summary.className)).toEqual(
+      expect.arrayContaining(['truncate', 'max-w-full']),
+    )
+    expect(summary.getAttribute('title')).toBe('A long summary. '.repeat(40))
+  })
+
+  it('keeps the bound in the shared class, where every bar reads it', () => {
+    expect(classes(BLUEPRINT_MENUBAR_SUMMARY_CLASS)).toEqual(
+      expect.arrayContaining(['truncate', 'max-w-full']),
+    )
+  })
+})
+
+describe('the title lines up with the summary', () => {
+  it('outdents the affordance by exactly its own inline padding', () => {
+    renderWithEntityDetail(
+      <EntityHeader
+        kind="scenario"
+        id="scn-1"
+        label="Example service"
+        summary="Rooftop solar, end to end."
+      />,
+    )
+    const tokens = classes(titleSlot()!.className)
+    // The hover highlight's padding stays; the margin cancels it on the left,
+    // so the name's text edge is the summary's text edge.
+    const padding = tokens.find((token) => /^px-/.test(token))
+    expect(padding).toBeDefined()
+    expect(tokens).toContain(ENTITY_TITLE_OUTDENT_CLASS)
+    expect(ENTITY_TITLE_OUTDENT_CLASS).toBe(`-ml-${padding!.slice('px-'.length)}`)
+    // The summary carries no inset of its own for the outdent to disagree with.
+    expect(
+      classes(summarySlot()!.className).some((token) => /^(p|px|pl|ps|m|mx|ml|ms)-/.test(token)),
+    ).toBe(false)
+  })
+
+  it('keeps a long name to the one line the block pins', () => {
+    renderWithEntityDetail(
+      <EntityHeader kind="scenario" id="scn-1" label={'Long name '.repeat(20)} />,
+    )
+    expect(classes(panelOpener()!.className)).toContain('truncate')
+  })
+
+  it('draws the skeleton on the same left edge as the content', () => {
+    renderWithEntityDetail(<EntityHeader kind="service" status="loading" />)
+    const rows = [...skeleton()!.children] as HTMLElement[]
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      expect(
+        classes(row.className).some((token) => /^(p|px|pl|ps)-/.test(token)),
+        row.outerHTML,
+      ).toBe(false)
+    }
   })
 })
 

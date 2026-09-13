@@ -56,6 +56,12 @@ export type EntityHeaderProps = {
 export const ENTITY_HEADER_HOLD_KEY = 'entity-header'
 
 /**
+ * The title affordance's outdent: the negative of its `px-1.5` inset, so the
+ * name's text edge and the summary's text edge are one edge.
+ */
+export const ENTITY_TITLE_OUTDENT_CLASS = '-ml-1.5'
+
+/**
  * The two lines, as boxes rather than as text. `aria-hidden` because a
  * placeholder read aloud is a placeholder announced as content — the same
  * rule `EditorSidebarBootSkeleton` follows.
@@ -67,13 +73,15 @@ function EntityHeaderSkeleton() {
       aria-hidden
       className="flex w-full min-w-0 flex-col gap-0.5"
     >
-      {/* The affordance's own box — a 20px `text-sm` line inside `py-0.5`, at
-          its `px-1.5` inset — so the name lands where the space was held. */}
-      <div className="flex h-6 items-center px-1.5">
+      {/* The affordance's own 24px box — a 20px `text-sm` line inside
+          `py-0.5`. No inset: the affordance's `px-1.5` is cancelled by the
+          header's matching negative margin, so the name lands at the column's
+          edge, and the placeholder holds the space where it will land. */}
+      <div className="flex h-6 items-center">
         <Skeleton className="h-3.5 w-40 max-w-full rounded-sm" />
       </div>
-      {/* The summary's 16px `text-xs` row, at the summary's own inset. */}
-      <div className="flex h-4 items-center px-1.5">
+      {/* The summary's 16px `text-xs` row, on the same edge. */}
+      <div className="flex h-4 items-center">
         <Skeleton className="h-2.5 w-64 max-w-full rounded-sm" />
       </div>
     </div>
@@ -219,7 +227,16 @@ export function EntityHeader({
             data-entity-header-identity=""
             className="flex min-w-0 max-w-full items-center gap-1.5"
           >
-            <EntityTitleAffordance kind={kind} id={id} label={label} />
+            {/* `-ml-1.5` cancels the affordance's own `px-1.5`. The padding
+                is the hover highlight's breathing room and stays; the margin
+                pulls the box out by the same amount, so the name's first
+                letter sits on the summary's left edge instead of 6px in. */}
+            <EntityTitleAffordance
+              kind={kind}
+              id={id}
+              label={label}
+              className={ENTITY_TITLE_OUTDENT_CLASS}
+            />
             <EntityKindBadge kind={kind} label={label} />
           </div>
         ) : null}

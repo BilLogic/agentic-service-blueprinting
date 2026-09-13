@@ -68,9 +68,13 @@ export function EntityTitleAffordance({
           aria-label={`View details: ${label}`}
           aria-pressed={open}
           data-entity-title-affordance=""
+          // `truncate`: the bar pins ONE title line. A long name that wrapped
+          // made the row two lines tall inside a block held at one, and the
+          // second line sat on the summary. The full name is the panel's
+          // heading and the button's accessible name.
           className={cn(
             BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS,
-            'w-fit max-w-full cursor-pointer rounded-sm text-left outline-none',
+            'w-fit max-w-full cursor-pointer truncate rounded-sm text-left outline-none',
           )}
           onClick={(event) => {
             event.stopPropagation()

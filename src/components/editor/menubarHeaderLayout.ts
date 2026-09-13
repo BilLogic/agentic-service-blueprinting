@@ -1,6 +1,12 @@
 /** Shared layout classes for blueprint canvas menubar headers. */
+/*
+  `flex` is stated here rather than left to the caller. The phase bar renders
+  this class on a `Menubar`, which is flex by itself; the service bar renders
+  it on a plain `<div>`, where `items-center` without `flex` did nothing and
+  the identity block sat on the row's top edge instead of its middle.
+*/
 export const BLUEPRINT_MENUBAR_HEADER_CLASS =
-  'relative h-9 w-full max-w-full shrink-0 items-center gap-3 rounded-none border-0 bg-transparent px-3 py-0 shadow-none'
+  'relative flex h-[3.25rem] w-full max-w-full shrink-0 items-center gap-3 rounded-none border-0 bg-transparent px-3 py-0 shadow-none'
 
 /** Docked navbar bar — same surface/elevation as the side nav. */
 export const BLUEPRINT_NAVBAR_BAR_CLASS =
@@ -10,13 +16,14 @@ export const BLUEPRINT_NAVBAR_BAR_CLASS =
  * Cell-detail drawer top offset. The drawer is portalled to the body, so it
  * cannot inherit the chrome above it — the panel measures the canvas region
  * (`[data-slide-canvas]`) at open time and publishes the result in this
- * variable. The fallback is the base view's docked h-9 navbar + border; a
- * slice tab, which stacks its header band on top, resolves taller and no
- * longer covers it.
+ * variable. The fallback is the base view's docked navbar — one menubar row
+ * (`BLUEPRINT_MENUBAR_ROW_HEIGHT`) plus its 1px bottom border — and the 16px
+ * gap; a slice tab, which stacks its header band on top, resolves taller and
+ * no longer covers it. Written out for the same reason the bottom class is.
  */
 export const CELL_DETAIL_PANEL_TOP_VAR = '--cell-detail-panel-top'
 export const CELL_DETAIL_PANEL_TOP_CLASS =
-  '!top-[var(--cell-detail-panel-top,calc(2.25rem+1px+1rem))]'
+  '!top-[var(--cell-detail-panel-top,calc(3.25rem+1px+1rem))]'
 
 /** Gap between the canvas top edge and the panel — matches its right inset. */
 export const CELL_DETAIL_PANEL_TOP_GAP_PX = 16
@@ -46,7 +53,7 @@ export const CANVAS_REGION_SELECTOR = '[data-slide-canvas]'
 
 /** Flattens the menubar when it sits inside the docked navbar bar. */
 export const BLUEPRINT_MENUBAR_FLAT_CLASS =
-  'relative h-9 rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
+  'relative h-[3.25rem] rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
 
 /**
  * Left-aligned title + paths control row. Right padding keeps the row clear
@@ -55,8 +62,15 @@ export const BLUEPRINT_MENUBAR_FLAT_CLASS =
 export const BLUEPRINT_MENUBAR_TITLE_CLASS =
   'relative z-10 flex h-full min-w-0 max-w-[calc(100%-9rem)] items-center gap-2.5 px-1'
 
+/*
+  `max-w-full` is what makes `truncate` truncate. The summary's parent is a
+  `flex-col items-start` column, and an `items-start` child sizes to its own
+  content: without a bound the line was as wide as its sentence, ran under the
+  right-hand controls and off the viewport, and never showed an ellipsis.
+  Bound to the column, it clips at the block's edge.
+*/
 export const BLUEPRINT_MENUBAR_SUMMARY_CLASS =
-  'min-w-0 truncate text-xs text-muted-foreground'
+  'min-w-0 max-w-full truncate text-xs text-muted-foreground'
 
 /**
  * The identity block's pinned height: the title line, then the summary line.
@@ -75,6 +89,20 @@ export const BLUEPRINT_MENUBAR_SUMMARY_CLASS =
  * block's `gap-0.5` + a 16px `text-xs` summary line.
  */
 export const BLUEPRINT_MENUBAR_IDENTITY_HEIGHT = '2.625rem'
+
+/**
+ * The menubar row's height: the identity block, plus even room above and
+ * below it.
+ *
+ * The row was `h-9` — 36px around a 42px block — so the block overflowed its
+ * own bar by 3px at each edge and the summary line sat on the bar's bottom
+ * border, over the canvas. 52px holds the block with 5px either side, inside
+ * the border.
+ *
+ * Tailwind reads source text, so the classes above spell this value out as a
+ * literal; the layout test keeps the literals and this constant in step.
+ */
+export const BLUEPRINT_MENUBAR_ROW_HEIGHT = '3.25rem'
 
 export const BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS =
   'shrink-0 text-sm font-semibold tracking-tight text-foreground'
