@@ -1,5 +1,82 @@
 # Changelog
 
+## 1.44.2
+
+**A check that cannot see its subject now either refuses or says so.** The
+failure has one shape and two endings: a guard looks at nothing and reports
+success, and then goes on reporting it, because a run that has stopped measuring
+prints the line it printed yesterday. Seven were found here by planting the
+defect each one exists to catch and watching the suite stay green.
+
+**Four refuse now, because an empty subject is never the right answer.**
+
+The vendoring sync walks both ways. It named every source and where its copy
+goes, and compared source to target only, so a file in `src/lib/agent/skill/`
+that no entry named was compared against nothing. That is not a tidiness
+problem: the standalone sweep and the coupling sweep both exclude that tree by
+name, each on the stated ground that the sync holds it identical to a source
+they already read. So the one tree both prose sweeps are told to skip was the one
+tree nothing looked at — measured, a planted file carrying a deployment's name,
+its cast and its cell ids passed all three checks and the whole suite. A copying
+run that met a missing source also counted it as drift, printed `done`, and
+exited 0.
+
+The glossary check refuses a glossary with no terms in it. Its three rules are
+refusals — no fence, no table of column names, no section without a term — and an
+emptied file breaks none of them. `CONTEXT.md` reduced to nothing printed
+`0 term rows` and exited 0, in the same sentence and the same green as the run
+over fifty-one. The count was already computed and printed; it is now also
+read.
+
+The path sweep refuses a subject a filter emptied. The listing was already
+refused when empty, but the listing is not what the check sweeps: one renamed
+folder in its surface list takes it to `every path named by 0 plugin-surface
+documents resolves`.
+
+And the two `git ls-files` sweeps refuse a listing every predicate rejects —
+the same two steps, the same gap, and four call sites relying on a breadth
+assertion only one of them made.
+
+**Three skips are correct, and were invisible — which is the other half of the
+same defect.** A new register separates "looked and found nothing" from "did not
+look": a warning in the run summary, said once per fact, never an error, because
+a guard whose readers have learned to ignore it is worse than no guard. It
+carries the swept prose corpus with a folder missing, the agent account with no
+database configured, the deployment seed load with no deployment to load, and
+the release tags a checkout cannot see.
+
+The prose corpus is worth naming on its own, because nothing about it looked
+wrong. The root documents are prepended unconditionally, so that walk is never
+empty — and with the four swept folder names misspelt, the corpus went from
+fifty-four documents to three, every prose guard passed, and the full suite was
+green. Both suites that sweep it now assert their own breadth.
+
+**Two reads that could shrink a subject quietly are narrowed to the case they
+were for.** The sample-content report caught every read failure and continued,
+so a permission the checkout should not have was skipped the way a file that
+vanished mid-run is; it takes `ENOENT` alone now, and counts what it opened. The
+release-tag guard caught every git failure and returned an empty tag list, so a
+tree that is not a repository, a checkout handed no tags, and a box with no git
+all printed `no release tags yet` and exited 0 — `git tag --list` exits 0 and
+says nothing when there are genuinely none, so those are told apart now.
+
+**Two smaller holes of the same kind.** The shared-script fence is closed under
+relative import, and the walk that closes it read one spelling of an import; no
+shared script uses the other one today, which is exactly when the hole is cheap
+to close. And the tag fetch moves to the top of the CI job, beside `npm ci` — a
+checkout does not fetch tags, and the fetch sat two dozen steps below the test
+run, so the suite ran against an empty tag list, which is the vacuous state this
+whole release is about, one layer up. It was the new breadth assertion that
+found it.
+
+**Upgrading a deployment:** take the release. This repository's own results are
+unchanged throughout — the same subjects, the same counts, the same verdicts —
+and nothing here changes an interface. Yours may differ, and that is the point:
+if you enrol the shared scripts, a check of yours that has been passing over an
+empty subject will now refuse, and one that is correctly skipping will say so in
+the run summary rather than nothing at all. Read a new warning before silencing
+it; it names what the check could not see.
+
 ## 1.44.1
 
 A review of 1.44.0 found eight defects, and several of them were guards that
@@ -20,7 +97,7 @@ aliases had the same problem and are named by path now.
 
 The guard for this fences a named list of shared scripts, and a named list is
 right — each entry carries a reason no walk can judge. But it missed this
-because a module the list imports is not on the list, and *that* is not a
+because a module the list imports is not on the list, and _that_ is not a
 judgement call. The list is now held **closed under relative import**: a shared
 script may only import modules that are themselves shared, with the repository's
 own configuration module the single declared exception, because it is the seam
@@ -5940,8 +6017,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
