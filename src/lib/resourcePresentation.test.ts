@@ -3,8 +3,9 @@ import {
   attachmentMedium,
   featuredPresentation,
   linkPresentation,
+  touchpointLogos,
 } from '@/lib/resourcePresentation'
-import type { CellResource } from '@/types/blueprint'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 const resource = (over: Partial<CellResource> & { url: string }): CellResource => ({
   id: over.url,
@@ -77,13 +78,11 @@ describe('featuredPresentation', () => {
     }),
   ]
 
-  it('leads with the placement’s featured attachment', () => {
-    const { preview } = featuredPresentation({ placementId: 'placement-1', resources: rows })
-    expect(preview).toEqual({
-      url: '/blueprint-images/intake-portal/step-05.png',
-      name: 'Intake portal',
-      medium: 'image',
-    })
+  it('leads with no attachment: a featured attachment is not a button', () => {
+    const { buttons } = featuredPresentation({ placementId: 'placement-1', resources: rows })
+    expect(buttons.map((button) => button.url)).not.toContain(
+      '/blueprint-images/intake-portal/step-05.png',
+    )
   })
 
   it('makes a button of every featured link — the placement’s first, then the cell’s', () => {
@@ -95,8 +94,7 @@ describe('featuredPresentation', () => {
   })
 
   it('shows another placement’s featured link nowhere on this one', () => {
-    const { buttons, preview } = featuredPresentation({ placementId: 'placement-2', resources: rows })
-    expect(preview).toBeNull()
+    const { buttons } = featuredPresentation({ placementId: 'placement-2', resources: rows })
     expect(buttons.map((button) => button.url)).toEqual([
       'https://www.figma.com/design/other',
       'https://youtu.be/walkthrough',
@@ -104,14 +102,34 @@ describe('featuredPresentation', () => {
   })
 
   it('ignores an unfeatured resource, whoever owns it', () => {
-    const { preview, buttons } = featuredPresentation({
+    const { buttons } = featuredPresentation({
       placementId: 'placement-1',
       resources: [
         resource({ url: '/img.png', kind: 'attachment', placementId: 'placement-1' }),
         resource({ url: 'https://tracker.dev/1' }),
       ],
     })
-    expect(preview).toBeNull()
     expect(buttons).toEqual([])
+  })
+})
+
+describe('touchpointLogos', () => {
+  it('lists each placed touchpoint’s logo once, in placement order', () => {
+    const at = (id: string, name: string, iconUrl: string | null): CellTouchpoint => ({
+      id,
+      touchpointId: id,
+      name,
+      kind: null,
+      iconUrl,
+      summary: null,
+      role: null,
+    })
+    expect(
+      touchpointLogos([
+        at('a', 'Intake portal', '/touchpoint-logos/example-logo.png'),
+        at('b', 'Field visit', null),
+        at('c', 'Intake portal again', '/touchpoint-logos/example-logo.png'),
+      ]),
+    ).toEqual([{ url: '/touchpoint-logos/example-logo.png', name: 'Intake portal' }])
   })
 })

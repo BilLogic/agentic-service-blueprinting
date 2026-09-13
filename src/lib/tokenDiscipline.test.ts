@@ -310,11 +310,6 @@ test('nothing outside the ramp-owning layers reaches a ramp step through var()',
  */
 const ABSOLUTE_EXEMPT_FILES: ReadonlyArray<{ file: string; because: string }> = [
   {
-    file: 'components/blueprint/FeaturedResources.tsx',
-    because:
-      'the play glyph sits on a video poster frame, not on a themed surface — its ground is whatever the author uploaded, so absolute white plus a drop shadow is the only ink that holds in both themes',
-  },
-  {
     file: 'components/blueprint/ZoomableImage.tsx',
     because:
       'a modal scrim darkens rather than inverts; `bg-foreground/70` — which this same file uses on the close button — would turn the backdrop pale in dark mode, and the vendored overlays it sits beside are all `bg-black/N`',

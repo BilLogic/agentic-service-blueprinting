@@ -9,7 +9,10 @@ const rpc = vi.fn()
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: { rpc }, canWrite: true }),
 }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
+vi.mock('@/hooks/useSupabaseQuery', () => ({
+  invalidateQueries: () => {},
+  invalidateStructure: () => {},
+}))
 const uploadAttachment = vi.fn()
 vi.mock('@/lib/attachmentUpload', () => ({
   uploadAttachment: (...args: unknown[]) => uploadAttachment(...args),
@@ -57,18 +60,19 @@ describe('one list for what a placement points at', () => {
     const all = container.querySelectorAll('[data-resource-row]')
     expect(all).toHaveLength(3)
     const top = getByLabelText('Featured')
-    expect(top.textContent).toContain('Preview')
+    // The featured attachment leads nothing: only links are featured now.
+    expect(top.textContent).not.toContain('Preview')
     expect(top.textContent).toContain('Open in Figma')
     expect(top.textContent).not.toContain('Spec')
   })
 
   it('“Unset” writes one flag and leaves the row in the list', async () => {
     const { container, getAllByLabelText } = mount()
-    // Two featured rows share the touchpoint's name; the preview is first.
+    // One featured row is left to unset: the link.
     fireEvent.click(getAllByLabelText('Unset Intake App')[0]!)
     await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
     expect(rpc).toHaveBeenCalledWith('set_featured_resource', {
-      p_resource_id: 'r-shot',
+      p_resource_id: 'r-figma',
       p_featured: false,
     })
     expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(3)
@@ -138,33 +142,6 @@ describe('one list for what a placement points at', () => {
       kind: 'attachment',
       name: 'Module opening',
       url: 'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/o.png',
-    })
-  })
-
-  it('“Replace…” on the preview swaps that row’s file and nothing else', async () => {
-    uploadAttachment.mockResolvedValue({
-      kind: 'attachment',
-      name: 'b',
-      url: 'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/b.png',
-      objectKey: 'cells/cell-1/b.png',
-    })
-    const { container, getByLabelText, getByText } = mount()
-    fireEvent.click(getByText('Replace…'))
-    const file = new File(['png'], 'b.png', { type: 'image/png' })
-    fireEvent.change(getByLabelText('Upload a file'), { target: { files: [file] } })
-    await waitFor(() =>
-      expect((getByText('Save resources') as HTMLButtonElement).disabled).toBe(false),
-    )
-    expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(3)
-
-    fireEvent.click(getByText('Save resources'))
-    await waitFor(() => expect(rpc).toHaveBeenCalled())
-    const [, args] = rpc.mock.calls[0]
-    expect(args.p_rows[0]).toEqual({
-      id: 'r-shot',
-      kind: 'attachment',
-      name: 'Intake App',
-      url: 'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/b.png',
     })
   })
 

@@ -1,8 +1,10 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Reorder, useDragControls } from 'framer-motion'
 import {
+  Check,
   FileText,
   GripVertical,
+  ImageIcon,
   Link2,
   Loader2,
   MoreHorizontal,
@@ -25,7 +27,7 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { uploadAttachment } from '@/lib/attachmentUpload'
 import { hostOf } from '@/lib/cellResources'
-import { linkPresentation } from '@/lib/resourcePresentation'
+import { attachmentMedium, linkPresentation } from '@/lib/resourcePresentation'
 import { validateResourceUrl } from '@/lib/resourceUrl'
 import { ROW_REVEAL_CLASS } from '@/lib/rowReveal'
 import { cn, errorMessage } from '@/lib/utils'
@@ -57,8 +59,6 @@ type Row = ResourceListDraft & { key: string; featured: boolean }
  */
 type PendingUpload = {
   file: File
-  /** Which row it replaces; null means it joins the list. */
-  replaceKey: string | null
   failed: boolean
 }
 
@@ -101,11 +101,17 @@ function ResourceListRow({
   onRename,
   onRemove,
   onFeature,
+  frame,
+  onSetFeaturedImage,
 }: {
   row: Row
   first: boolean
   last: boolean
   busy: boolean
+  /** The cell's frame — its featured image — to say which picture already is it. */
+  frame: string | null
+  /** Make this picture the cell's featured image; absent where there is no cell. */
+  onSetFeaturedImage?: () => void
   /** Move this row one place up (-1) or down (1). */
   onMove: (by: -1 | 1) => void
   onRename: (name: string) => void
@@ -129,7 +135,7 @@ function ResourceListRow({
       dragControls={controls}
       className={cn(
         'group flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 text-xs',
-        row.featured && 'bg-muted/40',
+        row.kind === 'link' && row.featured && 'bg-muted/40',
       )}
       data-resource-row=""
     >
@@ -219,13 +225,30 @@ function ResourceListRow({
           }
         />
         <DropdownMenuContent align="end">
-          {row.id && !row.featured ? (
+          {/* A picture becomes the cell's featured image, which is its frame;
+              a link is featured as a button. An attachment carries no
+              featured meaning of its own. */}
+          {row.id && row.kind === 'attachment' && onSetFeaturedImage &&
+          attachmentMedium(row.url) === 'image' ? (
+            row.url === frame ? (
+              <DropdownMenuItem disabled>
+                <Check className="size-3.5" aria-hidden />
+                Featured image
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem disabled={busy} onClick={onSetFeaturedImage}>
+                <ImageIcon className="size-3.5" aria-hidden />
+                Set as featured image
+              </DropdownMenuItem>
+            )
+          ) : null}
+          {row.id && row.kind === 'link' && !row.featured ? (
             <DropdownMenuItem disabled={busy} onClick={() => onFeature(true)}>
               <Star className="size-3.5" aria-hidden />
-              {row.kind === 'attachment' ? 'Set as preview' : 'Set as button'}
+              Set as button
             </DropdownMenuItem>
           ) : null}
-          {row.id && row.featured ? (
+          {row.id && row.kind === 'link' && row.featured ? (
             <DropdownMenuItem disabled={busy} onClick={() => onFeature(false)}>
               <StarOff className="size-3.5" aria-hidden />
               Unset
@@ -248,10 +271,10 @@ function ResourceListRow({
 /**
  * One list for everything an owner points at — a placement, or the cell itself.
  *
- * The top of the list is what the owner LEADS with — its preview and its
- * buttons — each with an unset control; the list under it is every resource in
- * order, with a row menu that sets a preview (attachments) or a button (links)
- * or unsets one, renames the row, or drops it. Pasting a URL adds a link named
+ * The top of the list is the owner's featured links — its buttons — each with
+ * an unset control; the list under it is every resource in order, with a row
+ * menu that sets a picture as the cell's featured image (its frame), sets a
+ * link as a button or unsets one, renames the row, or drops it. Pasting a URL adds a link named
  * by its host and a file arrives under its own name; naming is a second,
  * optional act, which is why it is a rename and not a field on the way in.
  * The rename has one door, the menu item — which is also how a reader FINDS
@@ -268,18 +291,15 @@ function ResourceListRow({
  *
  * Two writes, deliberately different in tempo. The list (add, remove, rename,
  * reorder) is a draft saved by its own button, one RPC, one transaction,
- * because a reorder is a whole-list fact. Featuring is immediate: it is one
- * row's flag, the function clears the previous preview in the same
- * transaction, and waiting for a Save would leave the top of the list showing
- * a state the database does not hold.
+ * because a reorder is a whole-list fact. Featuring is immediate — a link's
+ * flag, or the cell's frame — because waiting for a Save would leave the list
+ * showing a state the database does not hold.
  *
  * A file is a third way in: it goes to the bucket at once — the object's URL is
  * what the row carries, so there is no row to draft until the upload has
  * answered — and then joins the list as an `attachment` row saved like any
  * other. It is visible the whole way: the row is on screen, dimmed, while the
  * bucket is being written, and stays as a `Retry` if the write is refused.
- * "Replace…" on the preview uploads the same way and swaps that row's URL; the
- * old object stays in the bucket, deliberately.
  *
  * Which owner this is shows in three places and nowhere else: the two writes it
  * is handed, and the sentence under the heading. Everything else — the rows,
@@ -295,6 +315,8 @@ export function ResourcesList({
   onSave,
   onFeature,
   onWritten,
+  frame = null,
+  onSetFeaturedImage,
 }: {
   /** The cell a chosen file is filed under; null means no file can join. */
   cellId: string | null
@@ -312,6 +334,10 @@ export function ResourcesList({
   onFeature: (resourceId: string, featured: boolean) => Promise<void>
   /** After any write landed: the caller refetches what it shows. */
   onWritten: () => void
+  /** The cell's frame, which is its featured image. */
+  frame?: string | null
+  /** The frame write: make this picture the cell's featured image. */
+  onSetFeaturedImage?: (url: string) => Promise<void>
 }) {
   const { client } = useSupabase()
   const stored = rowsFrom(resources)
@@ -320,8 +346,6 @@ export function ResourcesList({
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<PendingUpload | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
-  /** Which row the next chosen file replaces; null means it joins the list. */
-  const replacing = useRef<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const uploading = pending !== null && !pending.failed
@@ -349,36 +373,27 @@ export function ResourcesList({
     setPasted('')
   }
 
-  const chooseFile = (replaceKey: string | null) => {
-    replacing.current = replaceKey
-    fileInput.current?.click()
-  }
-
-  const upload = async (file: File, replaceKey: string | null) => {
+  const upload = async (file: File) => {
     if (!client || !cellId || uploading) return
-    setPending({ file, replaceKey, failed: false })
+    setPending({ file, failed: false })
     setError(null)
     try {
       const uploaded = await uploadAttachment(client, { cellId, file })
-      setRows((current) =>
-        replaceKey !== null && current.some((row) => row.key === replaceKey)
-          ? current.map((row) => (row.key === replaceKey ? { ...row, url: uploaded.url } : row))
-          : [
-              ...current,
-              {
-                key: `new:${uploaded.objectKey}`,
-                id: null,
-                kind: 'attachment',
-                name: uploaded.name,
-                url: uploaded.url,
-                featured: false,
-              },
-            ],
-      )
+      setRows((current) => [
+        ...current,
+        {
+          key: `new:${uploaded.objectKey}`,
+          id: null,
+          kind: 'attachment',
+          name: uploaded.name,
+          url: uploaded.url,
+          featured: false,
+        },
+      ])
       setPending(null)
     } catch (uploadError) {
       setError(errorMessage(uploadError))
-      setPending({ file, replaceKey, failed: true })
+      setPending({ file, failed: true })
     }
   }
 
@@ -422,7 +437,21 @@ export function ResourcesList({
     }
   }
 
-  const featuredRows = stored.filter((row) => row.featured)
+  const setFeaturedImage = async (row: Row) => {
+    if (!client || busy || !onSetFeaturedImage) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onSetFeaturedImage(row.url)
+      onWritten()
+    } catch (writeError) {
+      setError(errorMessage(writeError))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const featuredRows = stored.filter((row) => row.featured && row.kind === 'link')
 
   return (
     <div className="flex flex-col gap-2" data-resources-list="">
@@ -440,9 +469,9 @@ export function ResourcesList({
       {aside}
 
       {featuredRows.length > 0 ? (
-        // No drag handle here, deliberately. There is at most one preview, and
-        // the buttons follow the main list's order, so this block has no order
-        // of its own to change — a handle would offer a move that does nothing.
+        // No drag handle here, deliberately. The buttons follow the main list's
+        // order, so this block has no order of its own to change — a handle
+        // would offer a move that does nothing.
         <ul className="flex flex-col gap-1" aria-label="Featured">
           {featuredRows.map((row) => (
             <li
@@ -450,27 +479,11 @@ export function ResourcesList({
               className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs"
               data-featured-row=""
             >
-              {row.kind === 'attachment' ? (
-                <FileText className="size-3 shrink-0 text-muted-foreground" aria-hidden />
-              ) : (
-                <Link2 className="size-3 shrink-0 text-muted-foreground" aria-hidden />
-              )}
+              <Link2 className="size-3 shrink-0 text-muted-foreground" aria-hidden />
               <span className="min-w-0 flex-1 truncate">
-                {row.kind === 'attachment' ? 'Preview' : linkPresentation(row.url).label}
+                {linkPresentation(row.url).label}
                 <span className="text-muted-foreground"> · {row.name}</span>
               </span>
-              {row.kind === 'attachment' && cellId ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-1.5 text-xs"
-                  disabled={busy || uploading}
-                  onClick={() => chooseFile(row.key)}
-                >
-                  Replace…
-                </Button>
-              ) : null}
               <IconTooltip label="Unset — keep it in the list, stop leading with it">
                 <Button
                   type="button"
@@ -513,6 +526,10 @@ export function ResourcesList({
               setRows((current) => current.filter((entry) => entry.key !== row.key))
             }
             onFeature={(featured) => void feature(row, featured)}
+            frame={frame}
+            onSetFeaturedImage={
+              onSetFeaturedImage ? () => void setFeaturedImage(row) : undefined
+            }
           />
         ))}
       </Reorder.Group>
@@ -538,7 +555,7 @@ export function ResourcesList({
                   variant="outline"
                   size="sm"
                   className="h-6 px-1.5 text-xs"
-                  onClick={() => void upload(pending.file, pending.replaceKey)}
+                  onClick={() => void upload(pending.file)}
                 >
                   Retry
                 </Button>
@@ -597,10 +614,8 @@ export function ResourcesList({
             tabIndex={-1}
             onChange={(event) => {
               const file = event.target.files?.[0]
-              const replaceKey = replacing.current
-              replacing.current = null
               event.target.value = ''
-              if (file) void upload(file, replaceKey)
+              if (file) void upload(file)
             }}
           />
           <Button
@@ -609,7 +624,7 @@ export function ResourcesList({
             size="sm"
             className="self-start px-2 text-muted-foreground hover:text-foreground"
             disabled={uploading || !client}
-            onClick={() => chooseFile(null)}
+            onClick={() => fileInput.current?.click()}
           >
             <Upload className="size-3" />
             {uploading ? 'Uploading…' : 'Upload a file'}

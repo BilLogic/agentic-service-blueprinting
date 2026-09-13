@@ -22,11 +22,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   setCellDependency,
+  setCellFeaturedImage,
   updateCellDependency,
   upsertCell,
   type CellDependencyBefore,
   type CellDependencyRow,
   type CellDependencyWrite,
+  type CellFeaturedImageBefore,
   type CellWrite,
 } from '@/lib/authoringRpc'
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
@@ -105,6 +107,9 @@ const RPC_BACKED = new Set([
   // that same function pointed at the row it returned, keyed on the row's own
   // id — so the default branch calls it back as is.
   'update_cell_dependency',
+  // Setting a cell's featured image writes its frame and returns the frame
+  // as it stood; the inverse is the same function fed that value.
+  'set_cell_featured_image',
   // The inverse of the half of `set_cell_dependency` that UPDATED: the two
   // prose columns, on one row, by id. It exists only to be an undo, like the
   // two names above it, and is reached through the default branch.
@@ -492,5 +497,58 @@ describe('an edit in place is undone by itself, keyed on the row', () => {
 
     const [entry] = sessionSnapshot()
     expect(entry.revert).toBeUndefined()
+  })
+})
+
+/**
+ * Setting a featured image is undone by itself, fed the frame as it stood.
+ */
+describe('a featured image is undone by itself, keyed on the cell', () => {
+  const written = (before: CellFeaturedImageBefore | null) => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = []
+    const client = {
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        calls.push({ fn, args })
+        return { data: before, error: null }
+      },
+    } as unknown as SupabaseClient<Database>
+    return { client, calls }
+  }
+
+  beforeEach(() => {
+    clearSession()
+  })
+
+  it('records the frame as it stood as the inverse, and the undo sends it back', async () => {
+    const { client, calls } = written({ cell_id: 'cell-1', frame: '/storyboards/one.png' })
+    await setCellFeaturedImage(client, { cellId: 'cell-1', imageUrl: '/touchpoint-logos/example-logo.png' })
+
+    const [entry] = sessionSnapshot()
+    expect(entry.fn).toBe('set_cell_featured_image')
+    expect(entry.revert).toEqual({
+      fn: 'set_cell_featured_image',
+      args: { cell_id: 'cell-1', image_url: '/storyboards/one.png' },
+    })
+
+    await executeRevert(client, entry)
+    expect(calls[1]).toEqual({
+      fn: 'set_cell_featured_image',
+      args: { cell_id: 'cell-1', image_url: '/storyboards/one.png' },
+    })
+  })
+
+  it('an empty frame as it stood is undone by clearing', async () => {
+    const { client } = written({ cell_id: 'cell-1', frame: null })
+    await setCellFeaturedImage(client, { cellId: 'cell-1', imageUrl: 'https://x.example/a.png' })
+    expect(sessionSnapshot()[0]!.revert).toEqual({
+      fn: 'set_cell_featured_image',
+      args: { cell_id: 'cell-1', image_url: null },
+    })
+  })
+
+  it('offers no undo when the frame as it stood did not come back', async () => {
+    const { client } = written(null)
+    await setCellFeaturedImage(client, { cellId: 'cell-1', imageUrl: 'https://x.example/a.png' })
+    expect(sessionSnapshot()[0]!.revert).toBeUndefined()
   })
 })

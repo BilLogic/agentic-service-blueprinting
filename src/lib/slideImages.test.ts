@@ -159,6 +159,20 @@ describe('what images does this slide show', () => {
     ])
   })
 
+  it('renders a root-relative logo stored as an image_url member', () => {
+    const logo = '/touchpoint-logos/example-logo.png'
+    const shown = imagesThisSlideShows(
+      blueprint,
+      slide({
+        shows_all_images: false,
+        slide_images: [
+          { id: 'a', slide_id: 'slide-1', position: 0, cell_id: null, image_url: logo },
+        ],
+      }),
+    )
+    expect(shown).toEqual([{ src: logo, cellId: null, imageUrl: logo }])
+  })
+
   it('does not cap the list at 3', () => {
     const shown = imagesThisSlideShows(
       blueprint,

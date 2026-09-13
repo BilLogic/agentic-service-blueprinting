@@ -104,8 +104,8 @@ export type FeaturedBefore = { id: string; featured: boolean }
 /**
  * Feature or unfeature one resource.
  *
- * "Set as preview" on an attachment, "Set as button" on a link, "Unset" on
- * either. The function clears the owner's previous preview in the same
+ * "Set as button" on a link, "Unset" on one. An attachment's picture is set
+ * as the cell's frame instead, which is its featured image. The function clears the owner's previous preview in the same
  * transaction and hands back every row it changed with its before-value, so
  * featuring an attachment records an inverse of exactly two rows and undo
  * restores both — through `restore_featured_resources`, which writes the

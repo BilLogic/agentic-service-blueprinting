@@ -3,6 +3,7 @@ import { getBlueprintFallback, SAMPLE_SCENARIO_ID } from '@/data/blueprintFallba
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
   findFallbackScenarioForCells,
+  isRenderableImageSrc,
   pickBlueprintForCells,
   resolveSliceCells,
 } from '@/lib/sliceCells'
@@ -134,5 +135,21 @@ describe('bundled demo slices', () => {
       const resolution = resolveSliceCells(fallback, items)
       expect(resolution.missingCellIds).toEqual([])
     }
+  })
+})
+
+describe('isRenderableImageSrc', () => {
+  it('admits a storage url and a root-relative asset, a stock logo included', () => {
+    expect(isRenderableImageSrc('https://x.supabase.co/storage/v1/object/public/a.png')).toBe(true)
+    expect(isRenderableImageSrc('/storyboards/one.png')).toBe(true)
+    expect(isRenderableImageSrc('/touchpoint-logos/example-logo.png')).toBe(true)
+  })
+
+  it('refuses a scheme, and a path a browser reads as another host', () => {
+    expect(isRenderableImageSrc('//evil.example/x.png')).toBe(false)
+    expect(isRenderableImageSrc('/\\evil.example/x.png')).toBe(false)
+    expect(isRenderableImageSrc('javascript:alert(1)')).toBe(false)
+    expect(isRenderableImageSrc('data:image/png;base64,AAAA')).toBe(false)
+    expect(isRenderableImageSrc('http://example.com/x.png')).toBe(false)
   })
 })

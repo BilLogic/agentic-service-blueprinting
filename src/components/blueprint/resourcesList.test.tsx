@@ -28,7 +28,10 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: { rpc }, canWrite: true }),
 }))
 vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => 'design' }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
+vi.mock('@/hooks/useSupabaseQuery', () => ({
+  invalidateQueries: () => {},
+  invalidateStructure: () => {},
+}))
 vi.mock('@/lib/authoringSession', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authoringSession')>()),
   recordChange: () => {},
@@ -40,6 +43,8 @@ vi.mock('@/lib/attachmentUpload', () => ({
 
 const SHOT =
   'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/r.pdf'
+const PICTURE =
+  'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/screen.png'
 
 const row = (over: Partial<CellResource> & { id: string; url: string }): CellResource => ({
   name: 'Tracker',
@@ -156,39 +161,71 @@ describe('the list is the same list whichever owner draws it', () => {
     }
   })
 
-  it('names the featuring verb by kind — a preview for a file, a button for a link', async () => {
+  it('offers a picture as the featured image and a link as a button, and a file as neither', async () => {
     const { getByLabelText } = mountCell([
+      row({ id: 'r-pic', url: PICTURE, kind: 'attachment', name: 'Screen' }),
       row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook' }),
       TRACKER,
     ])
 
-    openMenu(getByLabelText('More for Runbook'))
-    await waitFor(() => expect(document.body.textContent).toContain('Set as preview'))
+    openMenu(getByLabelText('More for Screen'))
+    await waitFor(() => expect(document.body.textContent).toContain('Set as featured image'))
+    expect(document.body.textContent).not.toContain('Set as preview')
     expect(document.body.textContent).not.toContain('Set as button')
-
     fireEvent.keyDown(document.body, { key: 'Escape' })
-    await waitFor(() => expect(document.body.textContent).not.toContain('Set as preview'))
+    await waitFor(() =>
+      expect(document.body.textContent).not.toContain('Set as featured image'),
+    )
+
+    // A PDF is not a picture: it carries no featured meaning at all now.
+    openMenu(getByLabelText('More for Runbook'))
+    await waitFor(() => expect(document.body.textContent).toContain('Rename…'))
+    expect(document.body.textContent).not.toContain('Set as featured image')
+    expect(document.body.textContent).not.toContain('Set as preview')
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(document.body.textContent).not.toContain('Rename…'))
 
     openMenu(getByLabelText('More for Tracker'))
     await waitFor(() => expect(document.body.textContent).toContain('Set as button'))
-    expect(document.body.textContent).not.toContain('Set as preview')
+    expect(document.body.textContent).not.toContain('Set as featured image')
   })
 
-  it('features one row at once, without waiting for the list Save', async () => {
-    rpc.mockResolvedValue({ data: { previous: [{ id: 'r-shot', featured: false }] }, error: null })
-    const { getByLabelText, getByText } = mountCell([
-      row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook' }),
-    ])
+  it('sets the featured image at once, as the cell’s frame, from either owner', async () => {
+    for (const mount of [mountCell, mountPlacement]) {
+      rpc.mockReset()
+      rpc.mockResolvedValue({ data: { cell_id: 'cell-1', frame: null }, error: null })
+      const { getByLabelText, getByText } = mount([
+        row({ id: 'r-pic', url: PICTURE, kind: 'attachment', name: 'Screen', placementId: mount === mountPlacement ? 'p-1' : null }),
+      ])
 
-    openMenu(getByLabelText('More for Runbook'))
-    await waitFor(() => expect(document.body.textContent).toContain('Set as preview'))
-    fireEvent.click(getByText('Set as preview'))
+      openMenu(getByLabelText('More for Screen'))
+      await waitFor(() => expect(document.body.textContent).toContain('Set as featured image'))
+      fireEvent.click(getByText('Set as featured image'))
 
-    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
-    expect(rpc).toHaveBeenCalledWith('set_featured_resource', {
-      p_resource_id: 'r-shot',
-      p_featured: true,
-    })
+      await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
+      expect(rpc).toHaveBeenCalledWith('set_cell_featured_image', {
+        cell_id: 'cell-1',
+        image_url: PICTURE,
+      })
+      cleanup()
+    }
+  })
+
+  it('shows the picture that already is the frame as the featured image, and offers nothing to do', async () => {
+    const { getByLabelText, getByText } = render(
+      <TooltipProvider>
+        <CellResourcesTab
+          cellId="cell-1"
+          frame={PICTURE}
+          resources={[row({ id: 'r-pic', url: PICTURE, kind: 'attachment', name: 'Screen' })]}
+        />
+      </TooltipProvider>,
+    )
+    openMenu(getByLabelText('More for Screen'))
+    await waitFor(() => expect(document.body.textContent).toContain('Featured image'))
+    const item = getByText('Featured image').closest('[role="menuitem"]')!
+    expect(item.getAttribute('aria-disabled') ?? item.getAttribute('data-disabled')).not.toBeNull()
+    expect(document.body.textContent).not.toContain('Set as featured image')
   })
 
   it('lists a placement’s row in the cell’s tab without giving the cell a menu for it', () => {
@@ -229,16 +266,23 @@ describe('the order stays reachable without a pointer', () => {
   })
 
   it('gives the featured block no handle — it has no order of its own', () => {
-    // At most one preview, and the buttons follow the main list's order. A
-    // handle there would offer a move that changes nothing.
+    // The buttons follow the main list's order. A handle there would offer a
+    // move that changes nothing.
     const { getByLabelText, queryByLabelText } = mountCell([
-      row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook', featured: true }),
+      row({ id: 'r-cell', url: 'https://tracker.dev/1', featured: true }),
     ])
     expect(
       getByLabelText('Featured').querySelectorAll('button[aria-label^="Reorder"]'),
     ).toHaveLength(0)
     // The same row is in the main list below, where it does have one.
-    expect(queryByLabelText('Reorder Runbook')).not.toBeNull()
+    expect(queryByLabelText('Reorder Tracker')).not.toBeNull()
+  })
+
+  it('an attachment flagged featured leads nothing any more', () => {
+    const { queryByLabelText } = mountCell([
+      row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook', featured: true }),
+    ])
+    expect(queryByLabelText('Featured')).toBeNull()
   })
 })
 

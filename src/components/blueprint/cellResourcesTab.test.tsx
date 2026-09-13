@@ -3,14 +3,18 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { CellResource } from '@/types/blueprint'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 const rpc = vi.fn()
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: { rpc }, canWrite: true }),
 }))
-vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => 'design' }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
+let canvasMode = 'design'
+vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => canvasMode }))
+vi.mock('@/hooks/useSupabaseQuery', () => ({
+  invalidateQueries: () => {},
+  invalidateStructure: () => {},
+}))
 vi.mock('@/lib/authoringSession', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authoringSession')>()),
   recordChange: () => {},
@@ -32,6 +36,7 @@ const RESOURCES: CellResource[] = [
 ]
 
 const SHOT = 'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/r.pdf'
+const PICTURE = 'https://x.supabase.co/storage/v1/object/public/cell-attachments/cells/cell-1/screen.png'
 
 const row = (over: Partial<CellResource> & { id: string; url: string }): CellResource => ({
   name: 'Tracker',
@@ -48,15 +53,25 @@ function openMenu(trigger: HTMLElement) {
   fireEvent.click(trigger)
 }
 
-function mount(resources: CellResource[]) {
+function mount(
+  resources: CellResource[],
+  touchpoints: CellTouchpoint[] = [],
+  frame: string | null = null,
+) {
   return render(
     <TooltipProvider>
-      <CellResourcesTab cellId="cell-1" resources={resources} />
+      <CellResourcesTab
+        cellId="cell-1"
+        resources={resources}
+        touchpoints={touchpoints}
+        frame={frame}
+      />
     </TooltipProvider>,
   )
 }
 
 beforeEach(() => {
+  canvasMode = 'design'
   uploadAttachment.mockReset()
   rpc.mockReset()
   rpc.mockResolvedValue({ data: 1, error: null })
@@ -64,70 +79,62 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('the cell’s own list wears the shape the placement’s already has', () => {
-  it('the row menu names the verb by kind — a preview for a file, a button for a link', async () => {
+  it('the row menu names the verb by kind — a featured image for a picture, a button for a link', async () => {
     const { getByLabelText } = mount([
-      row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook' }),
+      row({ id: 'r-pic', url: PICTURE, kind: 'attachment', name: 'Screen' }),
       ...RESOURCES,
     ])
 
-    openMenu(getByLabelText('More for Runbook'))
-    await waitFor(() => expect(document.body.textContent).toContain('Set as preview'))
+    openMenu(getByLabelText('More for Screen'))
+    await waitFor(() => expect(document.body.textContent).toContain('Set as featured image'))
     expect(document.body.textContent).not.toContain('Set as button')
 
     fireEvent.keyDown(document.body, { key: 'Escape' })
-    await waitFor(() => expect(document.body.textContent).not.toContain('Set as preview'))
+    await waitFor(() => expect(document.body.textContent).not.toContain('Set as featured image'))
 
     openMenu(getByLabelText('More for Tracker'))
     await waitFor(() => expect(document.body.textContent).toContain('Set as button'))
-    expect(document.body.textContent).not.toContain('Set as preview')
+    expect(document.body.textContent).not.toContain('Set as featured image')
   })
 
-  it('featuring an attachment writes one flag, and the featured row reads “Preview · name”', async () => {
+  it('featuring a link writes one flag, and the featured row reads its button', async () => {
     rpc.mockResolvedValue({
-      data: { previous: [{ id: 'r-shot', featured: false }] },
+      data: { previous: [{ id: 'r-cell', featured: false }] },
       error: null,
     })
-    const shot = row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook' })
-    const { getByLabelText, getByText, rerender } = mount([shot, ...RESOURCES])
+    const { getByLabelText, getByText, rerender } = mount(RESOURCES)
 
-    openMenu(getByLabelText('More for Runbook'))
-    await waitFor(() => expect(document.body.textContent).toContain('Set as preview'))
-    fireEvent.click(getByText('Set as preview'))
+    openMenu(getByLabelText('More for Tracker'))
+    await waitFor(() => expect(document.body.textContent).toContain('Set as button'))
+    fireEvent.click(getByText('Set as button'))
     await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
     expect(rpc).toHaveBeenCalledWith('set_featured_resource', {
-      p_resource_id: 'r-shot',
+      p_resource_id: 'r-cell',
       p_featured: true,
     })
 
-    // The featured section reads the stored rows, so it arrives with the refetch.
     rerender(
       <TooltipProvider>
-        <CellResourcesTab
-          cellId="cell-1"
-          resources={[{ ...shot, featured: true }, ...RESOURCES]}
-        />
+        <CellResourcesTab cellId="cell-1" resources={[{ ...RESOURCES[0]!, featured: true }]} />
       </TooltipProvider>,
     )
-    expect(getByLabelText('Featured').textContent).toContain('Preview · Runbook')
+    expect(getByLabelText('Featured').textContent).toContain('Open link · Tracker')
   })
 
   it('“Unset” writes one flag and keeps the row in the list', async () => {
     rpc.mockResolvedValue({
-      data: { previous: [{ id: 'r-shot', featured: true }] },
+      data: { previous: [{ id: 'r-cell', featured: true }] },
       error: null,
     })
-    const { container, getByLabelText } = mount([
-      row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook', featured: true }),
-      ...RESOURCES,
-    ])
+    const { container, getByLabelText } = mount([{ ...RESOURCES[0]!, featured: true }])
 
-    fireEvent.click(getByLabelText('Unset Runbook'))
+    fireEvent.click(getByLabelText('Unset Tracker'))
     await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
     expect(rpc).toHaveBeenCalledWith('set_featured_resource', {
-      p_resource_id: 'r-shot',
+      p_resource_id: 'r-cell',
       p_featured: false,
     })
-    expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(2)
+    expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(1)
   })
 
   it('a pasted link is named by its host, and nothing on screen asks for a name', async () => {
@@ -172,14 +179,12 @@ describe('the cell’s own list wears the shape the placement’s already has', 
   })
 
   it('the featured block carries no drag handle — it has no order of its own', () => {
-    const { queryByLabelText, getByLabelText } = mount([
-      row({ id: 'r-shot', url: SHOT, kind: 'attachment', name: 'Runbook', featured: true }),
-    ])
+    const { queryByLabelText, getByLabelText } = mount([{ ...RESOURCES[0]!, featured: true }])
     expect(getByLabelText('Featured').querySelectorAll('button[aria-label^="Reorder"]')).toHaveLength(
       0,
     )
     // The same row is still in the main list below, where it does have one.
-    expect(queryByLabelText('Reorder Runbook')).not.toBeNull()
+    expect(queryByLabelText('Reorder Tracker')).not.toBeNull()
   })
 
   it('“Rename…” edits the name in the row, and Enter commits it to the save', async () => {
@@ -328,5 +333,71 @@ describe('the Resources tab takes a file with no placement', () => {
     await waitFor(() => expect(container.textContent).toContain('too large'))
     expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(1)
     expect((getByText('Save resources') as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
+describe('a touchpoint’s logo is listed on the cell, inherited and read-only', () => {
+  const LOGO = '/touchpoint-logos/example-logo.png'
+  const placedOn: CellTouchpoint = {
+    id: 'p-1',
+    touchpointId: 'tp-1',
+    name: 'Intake App',
+    kind: 'app',
+    iconUrl: LOGO,
+    summary: null,
+    role: null,
+  }
+  const inherited = () =>
+    document.querySelector('[aria-label="Inherited from this cell\'s touchpoints"]')
+
+  it('in Edit mode: listed with no menu, no reorder, and never saved as a row', async () => {
+    const { container, getByLabelText, getByText, queryByLabelText } = mount(RESOURCES, [placedOn])
+    expect(inherited()?.textContent).toContain('Intake App')
+    expect(inherited()?.querySelector('img')?.getAttribute('src')).toBe(LOGO)
+    // One control and only one: set it as the featured image. No menu, no
+    // delete, no reorder.
+    expect(inherited()?.querySelectorAll('button')).toHaveLength(1)
+    expect(queryByLabelText('More for Intake App')).toBeNull()
+    expect(queryByLabelText('Reorder Intake App')).toBeNull()
+    expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(1)
+
+    fireEvent.change(getByLabelText('Paste a link'), { target: { value: 'tracker.dev/2' } })
+    fireEvent.click(getByText('Add'))
+    fireEvent.click(getByText('Save resources'))
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
+    const [, args] = rpc.mock.calls[0]!
+    expect(args.p_rows.map((r: { url: string }) => r.url)).not.toContain(LOGO)
+  })
+
+  it('in Edit mode: the logo can be set as the featured image, which writes the frame', async () => {
+    rpc.mockResolvedValue({ data: { cell_id: 'cell-1', frame: null }, error: null })
+    const { getByLabelText } = mount(RESOURCES, [placedOn])
+    fireEvent.click(getByLabelText('Set the Intake App logo as the featured image'))
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
+    expect(rpc).toHaveBeenCalledWith('set_cell_featured_image', {
+      cell_id: 'cell-1',
+      image_url: LOGO,
+    })
+  })
+
+  it('in Edit mode: a logo that already is the frame says so and offers nothing', () => {
+    const { getByLabelText } = mount(RESOURCES, [placedOn], LOGO)
+    const control = getByLabelText('The Intake App logo is the featured image') as HTMLButtonElement
+    expect(control.disabled).toBe(true)
+  })
+
+  it('in View mode: listed on a cell that points at nothing else', () => {
+    canvasMode = 'view'
+    const { container } = mount([], [placedOn])
+    expect(container.textContent).not.toContain('No resources linked to this cell.')
+    expect(inherited()?.textContent).toContain('Intake App')
+    expect(inherited()?.querySelector('a')).toBeNull()
+  })
+
+  it('a touchpoint with no logo lends nothing', () => {
+    canvasMode = 'view'
+    const { container } = mount([], [{ ...placedOn, iconUrl: null }])
+    expect(inherited()).toBeNull()
+    expect(container.textContent).toContain('No resources linked to this cell.')
   })
 })

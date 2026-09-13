@@ -171,12 +171,14 @@ export function resolveSlideStrip(
 }
 
 /**
- * The sources a slide image may have. Storage URLs and the bundled sample
- * both, and nothing else — these strings come out of the database, so a
- * `javascript:` or `data:` src is a stored payload waiting for a renderer.
+ * The sources a slide image may have. Storage URLs and the app's own bundled
+ * assets — the sample's frames, a touchpoint's stock logo — and nothing else:
+ * these strings come out of the database, so a `javascript:` or `data:` src is
+ * a stored payload waiting for a renderer. A root-relative path must not
+ * start `//` or `/\`, which a browser reads as another host.
  */
 export function isRenderableImageSrc(src: string): boolean {
-  return src.startsWith('https://') || src.startsWith('/storyboards/')
+  return src.startsWith('https://') || /^\/(?![/\\])/.test(src)
 }
 
 /** Only http(s) URLs may render as anchors — DB-sourced refs are untrusted. */
